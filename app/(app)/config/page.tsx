@@ -15,7 +15,13 @@ import {
   Plus,
   Save,
   Upload,
+  Tags,
+  HelpCircle,
+  Layers,
 } from "lucide-react";
+import TiposRiscoTab from "@/components/config/TiposRiscoTab";
+import PerguntasTab from "@/components/config/PerguntasTab";
+import MatrizesTab from "@/components/config/MatrizesTab";
 import toast from "react-hot-toast";
 import MatrizRisco from "@/components/riscos/MatrizRisco";
 import { PROBABILIDADES, SEVERIDADES } from "@/lib/utils";
@@ -27,7 +33,10 @@ import { gerarId, cn } from "@/lib/utils";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 
 type TabKey =
-  | "matriz"
+  | "matrizes"
+  | "tiposRisco"
+  | "perguntas"
+  | "matrizPadrao"
   | "listas"
   | "probsev"
   | "niveis"
@@ -37,7 +46,7 @@ type TabKey =
 export default function ConfigPage() {
   const router = useRouter();
   const isAdmin = useIsAdmin();
-  const [tab, setTab] = useState<TabKey>("matriz");
+  const [tab, setTab] = useState<TabKey>("matrizes");
   const { data: configs, isLoading } = useConfiguracoes();
 
   useEffect(() => {
@@ -51,11 +60,14 @@ export default function ConfigPage() {
   }, [isAdmin, router]);
 
   const TABS = [
-    { key: "matriz" as TabKey, label: "Matriz de Risco", icon: Grid3x3 },
+    { key: "matrizes" as TabKey, label: "Matrizes de Risco", icon: Layers },
+    { key: "tiposRisco" as TabKey, label: "Tipos de Risco", icon: Tags },
+    { key: "perguntas" as TabKey, label: "Perguntas Customizadas", icon: HelpCircle },
+    { key: "matrizPadrao" as TabKey, label: "Matriz Padrão (visual)", icon: Grid3x3 },
     { key: "listas" as TabKey, label: "Listas Auxiliares", icon: ListChecks },
-    { key: "probsev" as TabKey, label: "Probabilidade & Severidade", icon: Activity },
+    { key: "probsev" as TabKey, label: "Probabilidade & Severidade (legado)", icon: Activity },
     { key: "niveis" as TabKey, label: "Níveis", icon: BarChart3 },
-    { key: "tipos" as TabKey, label: "Tipos de Risco", icon: AlertTriangle },
+    { key: "tipos" as TabKey, label: "Catálogo Tipos (legado)", icon: AlertTriangle },
     { key: "logo" as TabKey, label: "Logo da Empresa", icon: ImageIcon },
   ];
 
@@ -88,11 +100,15 @@ export default function ConfigPage() {
         </nav>
 
         <div className="p-5">
-          {tab === "matriz" && (
+          {tab === "matrizes" && <MatrizesTab />}
+          {tab === "tiposRisco" && <TiposRiscoTab />}
+          {tab === "perguntas" && <PerguntasTab />}
+          {tab === "matrizPadrao" && (
             <section className="space-y-3">
               <p className="text-sm text-gray-600">
-                Matriz Severidade × Probabilidade. Lógica SGG: peso por índice
-                (Probabilidade 0–4, Severidade 0–3) com regras de pontuação.
+                Visualização da matriz SGG padrão (calculada pela fórmula
+                hardcoded). Para criar matrizes customizadas, use a aba{" "}
+                <strong>Matrizes de Risco</strong>.
               </p>
               <MatrizRisco />
             </section>

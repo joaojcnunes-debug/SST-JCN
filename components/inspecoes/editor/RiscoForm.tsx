@@ -8,14 +8,10 @@ import Modal from "@/components/ui/Modal";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import SetorMultiSelect from "./SetorMultiSelect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { gerarId } from "@/lib/utils";
+import { calcularNivelComMatriz } from "@/lib/calc";
+import { useMatrizAtiva, useTiposRisco, usePerguntasPorTipo } from "@/lib/hooks/useV3";
 import {
-  gerarId,
-  calcularNivelRisco,
-  PROBABILIDADES,
-  SEVERIDADES,
-} from "@/lib/utils";
-import {
-  TIPOS_RISCO,
   TIPO_ICONE,
   AGENTES_SUGERIDOS,
   PERGUNTAS_QUIMICAS,
@@ -45,7 +41,7 @@ interface Props {
 }
 
 interface FormState {
-  tipo_risco: TipoRisco;
+  tipo_risco: string;
   agente: string;
   fonte_geradora: string;
   ids_setores: string[];
@@ -80,6 +76,7 @@ interface FormState {
   medidas_adotadas: string;
   medidas_recomendadas: string;
   observacoes_risco: string;
+  respostas_custom: Record<string, string>;
 }
 
 function emptyForm(): FormState {
@@ -89,8 +86,8 @@ function emptyForm(): FormState {
     fonte_geradora: "",
     ids_setores: [],
     id_cargo: "",
-    probabilidade: PROBABILIDADES[2],
-    severidade: SEVERIDADES[1],
+    probabilidade: "Ocasional",
+    severidade: "Marginal",
     meio_propagacao: "",
     situacao: "",
     tempo_exposicao: "",
@@ -119,6 +116,7 @@ function emptyForm(): FormState {
     medidas_adotadas: "",
     medidas_recomendadas: "",
     observacoes_risco: "",
+    respostas_custom: {},
   };
 }
 
@@ -135,6 +133,29 @@ export default function RiscoForm({
   const isEdit = !!risco;
   const [form, setForm] = useState<FormState>(emptyForm);
 
+  // V3: matriz, tipos e perguntas vêm do banco (admin edita pela UI).
+  const { data: matrizAtiva } = useMatrizAtiva();
+  const { data: tiposCustom = [] } = useTiposRisco();
+  const { data: perguntasCustom = [] } = usePerguntasPorTipo(
+    // O id_tipo é o slug correspondente ao nome — busca no array.
+    tiposCustom.find((t) => t.nome === form.tipo_risco)?.id_tipo
+  );
+
+  // Listas dinâmicas vindas da matriz ativa (com fallback pra defaults V2).
+  const probsLista = matrizAtiva?.probabilidades ?? [
+    "Improvável",
+    "Remoto",
+    "Ocasional",
+    "Provável",
+    "Frequente",
+  ];
+  const sevsLista = matrizAtiva?.severidades ?? [
+    "Insignificante",
+    "Marginal",
+    "Crítico",
+    "Catastrófico",
+  ];
+
   useEffect(() => {
     if (!open) return;
     if (risco) {
@@ -144,8 +165,8 @@ export default function RiscoForm({
         fonte_geradora: risco.fonte_geradora ?? "",
         ids_setores: risco.id_setor ? [risco.id_setor] : [],
         id_cargo: risco.id_cargo ?? "",
-        probabilidade: risco.probabilidade ?? PROBABILIDADES[2],
-        severidade: risco.severidade ?? SEVERIDADES[1],
+        probabilidade: risco.probabilidade ?? probsLista[Math.floor(probsLista.length / 2)] ?? "",
+        severidade: risco.severidade ?? sevsLista[Math.floor(sevsLista.length / 2)] ?? "",
         meio_propagacao: risco.meio_propagacao ?? "",
         situacao: risco.situacao ?? "",
         tempo_exposicao: risco.tempo_exposicao ?? "",
@@ -174,10 +195,15 @@ export default function RiscoForm({
         medidas_adotadas: risco.medidas_adotadas ?? "",
         medidas_recomendadas: risco.medidas_recomendadas ?? "",
         observacoes_risco: risco.observacoes_risco ?? "",
+        respostas_custom: (risco.respostas_custom ?? {}) as Record<
+          string,
+          string
+        >,
       });
     } else {
       setForm(emptyForm());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, risco]);
 
   const cargosDoSetor = useMemo(() => {
@@ -186,7 +212,11 @@ export default function RiscoForm({
     return cargos.filter((c) => c.id_setor === primSetor);
   }, [cargos, form.ids_setores]);
 
-  const nivel = calcularNivelRisco(form.probabilidade, form.severidade);
+  const nivel = calcularNivelComMatriz(
+    form.probabilidade,
+    form.severidade,
+    matrizAtiva
+  );
 
   const isFisico = form.tipo_risco === "Físico";
   const isQuimico = form.tipo_risco === "Químico";
@@ -200,7 +230,7 @@ export default function RiscoForm({
       const supabase = createSupabaseBrowserClient();
 
       const baseRisco: Partial<Risco> = {
-        tipo_risco: form.tipo_risco,
+        tipo_risco: form.tipo_risco as TipoRisco,
         agente: form.agente.trim() || null,
         fonte_geradora: form.fonte_geradora.trim() || null,
         id_cargo: form.id_cargo || null,
@@ -235,6 +265,10 @@ export default function RiscoForm({
         medidas_adotadas: form.medidas_adotadas.trim() || null,
         medidas_recomendadas: form.medidas_recomendadas.trim() || null,
         observacoes_risco: form.observacoes_risco.trim() || null,
+        respostas_custom:
+          Object.keys(form.respostas_custom).length > 0
+            ? form.respostas_custom
+            : null,
         updated_at: new Date().toISOString(),
       };
 
@@ -319,13 +353,13 @@ export default function RiscoForm({
             <select
               value={form.tipo_risco}
               onChange={(e) =>
-                setForm({ ...form, tipo_risco: e.target.value as TipoRisco })
+                setForm({ ...form, tipo_risco: e.target.value })
               }
               className={inputCls}
             >
-              {TIPOS_RISCO.map((t) => (
-                <option key={t} value={t}>
-                  {TIPO_ICONE[t] ?? "•"} {t}
+              {tiposCustom.map((t) => (
+                <option key={t.id_tipo} value={t.nome}>
+                  {t.icone ?? "•"} {t.nome}
                 </option>
               ))}
             </select>
@@ -356,7 +390,11 @@ export default function RiscoForm({
               placeholder="Ex: Ruído contínuo, Cloreto de sódio..."
             />
             <datalist id="agentes-sugeridos">
-              {(AGENTES_SUGERIDOS[form.tipo_risco] ?? []).map((s) => (
+              {(
+                (AGENTES_SUGERIDOS as Record<string, string[]>)[
+                  form.tipo_risco
+                ] ?? []
+              ).map((s: string) => (
                 <option key={s} value={s} />
               ))}
             </datalist>
@@ -473,7 +511,7 @@ export default function RiscoForm({
                 }
                 className={inputCls}
               >
-                {PROBABILIDADES.map((p) => (
+                {probsLista.map((p) => (
                   <option key={p} value={p}>
                     {p}
                   </option>
@@ -488,7 +526,7 @@ export default function RiscoForm({
                 }
                 className={inputCls}
               >
-                {SEVERIDADES.map((s) => (
+                {sevsLista.map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>
@@ -502,6 +540,73 @@ export default function RiscoForm({
             </Field>
           </div>
         </section>
+
+        {/* Perguntas Customizadas (V3) — definidas pelo Admin em /config */}
+        {perguntasCustom.length > 0 && (
+          <section>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Perguntas — {form.tipo_risco}
+            </p>
+            <div className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
+              {perguntasCustom.map((p) => {
+                const valor = form.respostas_custom[p.chave] ?? "";
+                const setVal = (v: string) =>
+                  setForm({
+                    ...form,
+                    respostas_custom: {
+                      ...form.respostas_custom,
+                      [p.chave]: v,
+                    },
+                  });
+                return (
+                  <div
+                    key={p.id_pergunta}
+                    className={
+                      p.input_type === "select"
+                        ? "grid grid-cols-[1fr_auto] items-center gap-3"
+                        : "space-y-1"
+                    }
+                  >
+                    <label className="text-sm text-gray-700">
+                      {p.texto}
+                      {p.obrigatoria && (
+                        <span className="ml-1 text-red-alert">*</span>
+                      )}
+                    </label>
+                    {p.input_type === "select" ? (
+                      <select
+                        value={valor}
+                        onChange={(e) => setVal(e.target.value)}
+                        className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                      >
+                        <option value="">—</option>
+                        {p.opcoes.map((o) => (
+                          <option key={o} value={o}>
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    ) : p.input_type === "textarea" ? (
+                      <textarea
+                        value={valor}
+                        onChange={(e) => setVal(e.target.value)}
+                        rows={2}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={valor}
+                        onChange={(e) => setVal(e.target.value)}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Específico FÍSICO */}
         {isFisico && (

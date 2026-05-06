@@ -155,6 +155,13 @@ export default function InspecaoEditorPage({ params }: Props) {
             >
               <ChartBar className="size-4" /> Relatório
             </Link>
+            <Link
+              href={`/inspecoes/${id}/pgr`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-amber-warning bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-warning hover:bg-amber-100"
+              title="PGR / Inventário de Riscos (NR-1)"
+            >
+              <FileText className="size-4" /> PGR
+            </Link>
             {canEdit && (
               <button
                 type="button"

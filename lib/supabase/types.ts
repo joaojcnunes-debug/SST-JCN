@@ -128,6 +128,48 @@ export interface Risco {
   medidas_adotadas: string | null;
   medidas_recomendadas: string | null;
   observacoes_risco: string | null;
+  // V3: respostas a perguntas customizadas dinâmicas (chave → valor)
+  respostas_custom?: Record<string, string> | null;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
+// V3: tipos editáveis pelo Admin (substituem TIPOS_RISCO hardcoded)
+export interface TipoRiscoCustom {
+  id_tipo: string;
+  nome: string;
+  icone: string | null;
+  ordem: number;
+  ativo: boolean;
+  sistema: boolean;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
+// V3: pergunta customizada vinculada a um tipo de risco
+export interface PerguntaTipoRisco {
+  id_pergunta: string;
+  id_tipo: string;
+  chave: string;
+  texto: string;
+  input_type: "select" | "text" | "textarea";
+  opcoes: string[];
+  ordem: number;
+  obrigatoria: boolean;
+  ativo: boolean;
+  created_at?: string;
+}
+
+// V3: matriz de risco NxM com lookup table.
+// lookup[iP][iS] retorna o nome do nível (NivelRisco).
+export interface MatrizRisco {
+  id_matriz: string;
+  nome: string;
+  descricao: string | null;
+  probabilidades: string[];
+  severidades: string[];
+  lookup: string[][];
+  ativa: boolean;
   created_at?: string;
   updated_at?: string | null;
 }
@@ -221,6 +263,9 @@ export interface Database {
       complementos: TableShape<Complemento>;
       usuarios: TableShape<Usuario>;
       configuracoes: TableShape<Configuracao>;
+      tipos_risco: TableShape<TipoRiscoCustom>;
+      perguntas_tipo_risco: TableShape<PerguntaTipoRisco>;
+      matrizes_risco: TableShape<MatrizRisco>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
