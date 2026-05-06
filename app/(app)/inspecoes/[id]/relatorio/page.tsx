@@ -749,7 +749,7 @@ function RiscoCard({ risco, epis }: { risco: Risco; epis: EpiEpc[] }) {
           <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] md:grid-cols-4">
             <Campo label="Probabilidade" valor={risco.probabilidade} />
             <Campo label="Severidade" valor={risco.severidade} />
-            <Campo label="Meio de Propagação" valor={risco.meio_propagacao} />
+            <Campo label="Meio de Propagação" valor={risco.meio_propagacao?.join(", ")} />
             <Campo label="Situação" valor={risco.situacao} />
             <Campo label="Tempo de Exposição" valor={risco.tempo_exposicao} />
             <Campo

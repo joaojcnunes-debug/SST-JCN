@@ -97,7 +97,7 @@ export interface Risco {
   probabilidade: string | null;
   severidade: string | null;
   nivel_risco: NivelRisco | null;
-  meio_propagacao: string | null;
+  meio_propagacao: string[] | null;
   situacao: string | null;
   tempo_exposicao: string | null;
   tecnica_utilizada: string | null;

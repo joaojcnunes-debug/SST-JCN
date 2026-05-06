@@ -256,7 +256,7 @@ export default function PgrPage({ params }: Props) {
                         <Td className="font-medium">{r.agente ?? "—"}</Td>
                         <Td>{r.fonte_geradora ?? "—"}</Td>
                         <Td>{r.tempo_exposicao ?? "—"}</Td>
-                        <Td>{r.meio_propagacao ?? "—"}</Td>
+                        <Td>{r.meio_propagacao?.join(", ") ?? "—"}</Td>
                         <Td>{r.tecnica_utilizada ?? "—"}</Td>
                         <Td>{r.probabilidade ?? "—"}</Td>
                         <Td>{r.severidade ?? "—"}</Td>

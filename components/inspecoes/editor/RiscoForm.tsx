@@ -7,6 +7,7 @@ import { Plus, Trash2, Upload } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import SetorMultiSelect from "./SetorMultiSelect";
+import MeiosPropagacaoMultiSelect from "./MeiosPropagacaoMultiSelect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { calcularNivelComMatriz } from "@/lib/calc";
@@ -48,7 +49,7 @@ interface FormState {
   id_cargo: string;
   probabilidade: string;
   severidade: string;
-  meio_propagacao: string;
+  meio_propagacao: string[];
   situacao: string;
   tempo_exposicao: string;
   tecnica_utilizada: string;
@@ -88,7 +89,7 @@ function emptyForm(): FormState {
     id_cargo: "",
     probabilidade: "Ocasional",
     severidade: "Marginal",
-    meio_propagacao: "",
+    meio_propagacao: [],
     situacao: "",
     tempo_exposicao: "",
     tecnica_utilizada: "",
@@ -167,7 +168,7 @@ export default function RiscoForm({
         id_cargo: risco.id_cargo ?? "",
         probabilidade: risco.probabilidade ?? probsLista[Math.floor(probsLista.length / 2)] ?? "",
         severidade: risco.severidade ?? sevsLista[Math.floor(sevsLista.length / 2)] ?? "",
-        meio_propagacao: risco.meio_propagacao ?? "",
+        meio_propagacao: risco.meio_propagacao ?? [],
         situacao: risco.situacao ?? "",
         tempo_exposicao: risco.tempo_exposicao ?? "",
         tecnica_utilizada: risco.tecnica_utilizada ?? "",
@@ -237,7 +238,7 @@ export default function RiscoForm({
         probabilidade: form.probabilidade,
         severidade: form.severidade,
         nivel_risco: nivel,
-        meio_propagacao: form.meio_propagacao || null,
+        meio_propagacao: form.meio_propagacao.length > 0 ? form.meio_propagacao : null,
         situacao: form.situacao || null,
         tempo_exposicao: form.tempo_exposicao || null,
         tecnica_utilizada: form.tecnica_utilizada || null,
@@ -434,20 +435,13 @@ export default function RiscoForm({
         {/* Caracterização da exposição */}
         <SubGrid title="Caracterização da Exposição">
           <Field label="Meio de Propagação">
-            <select
+            <MeiosPropagacaoMultiSelect
+              options={MEIOS_PROPAGACAO_DEFAULT}
               value={form.meio_propagacao}
-              onChange={(e) =>
-                setForm({ ...form, meio_propagacao: e.target.value })
+              onChange={(meios) =>
+                setForm({ ...form, meio_propagacao: meios })
               }
-              className={inputCls}
-            >
-              <option value="">—</option>
-              {MEIOS_PROPAGACAO_DEFAULT.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+            />
           </Field>
           <Field label="Situação">
             <select
