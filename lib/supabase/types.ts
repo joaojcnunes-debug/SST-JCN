@@ -1,8 +1,11 @@
-// Tipos dos dados do banco. Reflete exatamente o schema descrito na spec.
-// Mantenha sincronizado com a estrutura real das tabelas no Supabase.
+// Tipos dos dados do banco. Reflete o schema v2 descrito na spec.
 
-export type StatusInspecao = "RASCUNHO" | "EM_ANDAMENTO" | "CONCLUIDA";
-export type TipoCriacao = "BRANCO" | "REVISAO";
+export type StatusInspecao =
+  | "RASCUNHO"
+  | "EM_ANDAMENTO"
+  | "CONCLUIDA"
+  | "DELETADA";
+export type TipoCriacao = "BRANCO" | "REVISAO" | "COPIA_EMPRESA";
 export type StatusEmpresa = "Ativo" | "Inativa";
 export type PerfilUsuario = "Admin" | "Tecnico" | "Visualizador";
 
@@ -13,7 +16,9 @@ export type TipoRisco =
   | "Químico"
   | "Biológico"
   | "Psicossocial"
-  | "Ambiental";
+  | "Ambiental"
+  | "IAPAT Complexidade Laboral"
+  | "IAPAT Impactos de Alto Risco";
 
 export type NivelRisco =
   | "Trivial"
@@ -67,6 +72,7 @@ export interface Setor {
   descricao: string | null;
   conformidade: string | null;
   nao_conformidade: string | null;
+  created_at?: string;
 }
 
 export interface Cargo {
@@ -76,6 +82,7 @@ export interface Cargo {
   id_setor: string;
   cargo: string;
   descricao: string | null;
+  created_at?: string;
 }
 
 export interface Risco {
@@ -90,7 +97,7 @@ export interface Risco {
   probabilidade: string | null;
   severidade: string | null;
   nivel_risco: NivelRisco | null;
-  medio_propagacao: string | null;
+  meio_propagacao: string | null;
   situacao: string | null;
   tempo_exposicao: string | null;
   tecnica_utilizada: string | null;
@@ -104,9 +111,25 @@ export interface Risco {
   fator_ergonomico: string | null;
   fator_psicossocial: string | null;
   pontuacao_iapat: string | null;
+  // Campos físicos novos
+  fisico_necessita_medicao: string | null;
+  fisico_qual_medicao: string | null;
+  fisico_motivo_medicao: string | null;
+  // Campos químicos novos (perguntas Q1-Q6)
+  quim_q1: string | null;
+  quim_q2: string | null;
+  quim_q3: string | null;
+  quim_q4: string | null;
+  quim_q5: string | null;
+  quim_q6: string | null;
+  uso_processo: string | null;
+  foto_quim_url: string | null;
+  // Comuns
   medidas_adotadas: string | null;
   medidas_recomendadas: string | null;
   observacoes_risco: string | null;
+  created_at?: string;
+  updated_at?: string | null;
 }
 
 export interface EpiEpc {
@@ -119,6 +142,7 @@ export interface EpiEpc {
   descricao: string;
   ca: string | null;
   recomendado: "Sim" | "Não" | null;
+  created_at?: string;
 }
 
 export interface Foto {
@@ -144,6 +168,18 @@ export interface Responsavel {
   data_hora: string | null;
 }
 
+export interface Complemento {
+  id_complemento: string;
+  id_inspecao: string;
+  id_empresa: string;
+  id_setor: string | null;
+  tipo: string | null;
+  titulo: string | null;
+  descricao: string | null;
+  dados: string | null;
+  created_at?: string;
+}
+
 export interface Usuario {
   id_usuario: string;
   nome: string;
@@ -152,6 +188,15 @@ export interface Usuario {
   perfil: PerfilUsuario;
   ativo_sistema: boolean;
   empresas_vinculadas: string[];
+  senha_hash?: string | null;
+  created_at?: string;
+}
+
+export interface Configuracao {
+  chave: string;
+  valor: unknown;
+  updated_at: string;
+  updated_by: string | null;
 }
 
 // Schema esperado pelo @supabase/ssr / supabase-js (Database genérico).
@@ -173,7 +218,9 @@ export interface Database {
       epi_epc: TableShape<EpiEpc>;
       fotos: TableShape<Foto>;
       responsaveis: TableShape<Responsavel>;
+      complementos: TableShape<Complemento>;
       usuarios: TableShape<Usuario>;
+      configuracoes: TableShape<Configuracao>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

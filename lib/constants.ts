@@ -15,6 +15,8 @@ export const TIPOS_RISCO: TipoRisco[] = [
   "Biológico",
   "Psicossocial",
   "Ambiental",
+  "IAPAT Complexidade Laboral",
+  "IAPAT Impactos de Alto Risco",
 ];
 
 export const NIVEIS_RISCO: NivelRisco[] = [
@@ -36,6 +38,9 @@ export const NIVEL_CONFIG: Record<
   "Muito Alto": { cor: "#be185d", bg: "#fce7f3", borda: "#f9a8d4" },
 };
 
+// Alias para a spec v2.
+export const NIVEL_COR = NIVEL_CONFIG;
+
 export const TIPO_ICONE: Record<TipoRisco, string> = {
   Acidente: "⚡",
   Físico: "🌡️",
@@ -44,6 +49,8 @@ export const TIPO_ICONE: Record<TipoRisco, string> = {
   Ergonômico: "🏋️",
   Psicossocial: "🧠",
   Ambiental: "🌿",
+  "IAPAT Complexidade Laboral": "📋",
+  "IAPAT Impactos de Alto Risco": "⚠️",
 };
 
 export const STATUS_INSPECAO_CONFIG: Record<
@@ -67,6 +74,12 @@ export const STATUS_INSPECAO_CONFIG: Record<
     cor: "#065f46",
     bg: "#d1fae5",
     borda: "#6ee7b7",
+  },
+  DELETADA: {
+    label: "Deletada",
+    cor: "#991b1b",
+    bg: "#fee2e2",
+    borda: "#fca5a5",
   },
 };
 
@@ -101,3 +114,145 @@ export const GRAU_RISCO_CONFIG: Record<
   3: { label: "Grau 3", cor: "#c2410c", bg: "#ffedd5" },
   4: { label: "Grau 4", cor: "#b91c1c", bg: "#fee2e2" },
 };
+
+// Listas auxiliares (edição via /config persiste em public.configuracoes).
+// Estes valores são fallback caso a tabela esteja vazia.
+export const MEIOS_PROPAGACAO_DEFAULT = [
+  "Corporal",
+  "Contato",
+  "Sonora",
+  "Respiratório",
+  "Cutâneo",
+  "Visual",
+  "Oral",
+];
+
+export const SITUACOES_DEFAULT = [
+  "Controlada",
+  "Não Controlada",
+  "Em Avaliação",
+];
+
+export const TEMPOS_EXPOSICAO_DEFAULT = [
+  "Ocasional",
+  "Intermitente",
+  "Permanente",
+  "Habitual",
+];
+
+export const TECNICAS_DEFAULT = [
+  "Qualitativa",
+  "Quantitativa",
+  "Semi-quantitativa",
+];
+
+// Sugestões de agente por tipo (usadas no combobox de RiscoForm).
+export const AGENTES_SUGERIDOS: Record<TipoRisco, string[]> = {
+  Acidente: [
+    "Queda em mesmo nível",
+    "Queda de altura",
+    "Choque elétrico",
+    "Corte/Perfuração",
+    "Esmagamento",
+    "Projeção de partículas",
+  ],
+  Físico: [
+    "Ruído contínuo",
+    "Ruído de impacto",
+    "Calor",
+    "Frio",
+    "Vibração",
+    "Radiação não ionizante",
+    "Radiação ionizante",
+    "Umidade",
+    "Pressão atmosférica",
+  ],
+  Químico: [
+    "Poeira",
+    "Fumo metálico",
+    "Névoa",
+    "Neblina",
+    "Gases",
+    "Vapores orgânicos",
+    "Solventes",
+    "Produtos químicos em geral",
+  ],
+  Biológico: [
+    "Bactérias",
+    "Vírus",
+    "Fungos",
+    "Parasitas",
+    "Bacilos",
+    "Sangue/fluidos corpóreos",
+  ],
+  Ergonômico: [
+    "Postura inadequada",
+    "Esforço físico intenso",
+    "Levantamento de peso",
+    "Movimentos repetitivos",
+    "Mobiliário inadequado",
+    "Iluminação inadequada",
+  ],
+  Psicossocial: [
+    "Sobrecarga de trabalho",
+    "Assédio moral",
+    "Pressão por produtividade",
+    "Conflitos interpessoais",
+    "Trabalho monótono",
+  ],
+  Ambiental: [
+    "Resíduos sólidos",
+    "Efluentes líquidos",
+    "Emissões atmosféricas",
+    "Contaminação do solo",
+  ],
+  "IAPAT Complexidade Laboral": [
+    "Demanda cognitiva",
+    "Demanda emocional",
+    "Demanda física",
+  ],
+  "IAPAT Impactos de Alto Risco": [
+    "Atividade em altura",
+    "Espaço confinado",
+    "Eletricidade",
+    "Trabalho a quente",
+  ],
+};
+
+// Q1-Q6 — perguntas qualitativas para riscos químicos.
+export const PERGUNTAS_QUIMICAS = [
+  { id: "quim_q1", texto: "O agente está em sistema fechado?" },
+  { id: "quim_q2", texto: "Há ventilação local exaustora adequada?" },
+  { id: "quim_q3", texto: "Existem EPCs (enclausuramento, captação)?" },
+  { id: "quim_q4", texto: "Trabalhadores têm treinamento sobre o agente?" },
+  { id: "quim_q5", texto: "Há monitoramento periódico de exposição?" },
+  { id: "quim_q6", texto: "EPIs específicos são fornecidos e utilizados?" },
+] as const;
+
+// Fatores ergonômicos sugeridos (select).
+export const FATORES_ERGONOMICOS = [
+  "Postura inadequada",
+  "Levantamento manual de cargas",
+  "Movimentos repetitivos",
+  "Esforço físico estático",
+  "Pressão sobre tecidos",
+  "Pega de ferramentas inadequada",
+  "Mobiliário inadequado",
+  "Iluminação deficiente",
+  "Trabalho em pé prolongado",
+  "Trabalho sentado prolongado",
+];
+
+// Fatores psicossociais sugeridos.
+export const FATORES_PSICOSSOCIAIS = [
+  "Pressão por metas",
+  "Jornada excessiva",
+  "Trabalho monótono",
+  "Conflitos com chefia",
+  "Conflitos entre colegas",
+  "Assédio moral",
+  "Assédio sexual",
+  "Falta de autonomia",
+  "Insegurança no emprego",
+  "Comunicação deficiente",
+];

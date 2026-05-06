@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Plus, ClipboardList } from "lucide-react";
+import { Plus, ClipboardList, ChartBar } from "lucide-react";
 import { Suspense } from "react";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import InspecaoRow from "@/components/inspecoes/InspecaoRow";
@@ -13,9 +13,8 @@ import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { usePagination } from "@/lib/hooks/usePagination";
 import { cn } from "@/lib/utils";
-import type { StatusInspecao } from "@/lib/supabase/types";
 
-type Filtro = "Todos" | StatusInspecao;
+type Filtro = "Todos" | "RASCUNHO" | "EM_ANDAMENTO" | "CONCLUIDA";
 type Ordem = "recentes" | "antigas" | "revisao";
 
 const FILTROS: { value: Filtro; label: string }[] = [
@@ -62,7 +61,8 @@ function InspecoesInner() {
   const { data: inspecoes = [], isLoading } = useInspecoesByEmpresa(empresaId);
 
   const lista = useMemo(() => {
-    let arr = [...inspecoes];
+    // Por padrão, ocultar inspeções DELETADA da lista visual.
+    let arr = inspecoes.filter((i) => i.status !== "DELETADA");
     if (filtro !== "Todos") arr = arr.filter((i) => i.status === filtro);
     arr.sort((a, b) => {
       if (ordem === "recentes")
@@ -81,13 +81,18 @@ function InspecoesInner() {
   });
 
   const counts = useMemo(() => {
+    const visiveis = inspecoes.filter((i) => i.status !== "DELETADA");
     const acc: Record<Filtro, number> = {
-      Todos: inspecoes.length,
+      Todos: visiveis.length,
       RASCUNHO: 0,
       EM_ANDAMENTO: 0,
       CONCLUIDA: 0,
     };
-    for (const i of inspecoes) acc[i.status]++;
+    for (const i of visiveis) {
+      if (i.status === "RASCUNHO" || i.status === "EM_ANDAMENTO" || i.status === "CONCLUIDA") {
+        acc[i.status]++;
+      }
+    }
     return acc;
   }, [inspecoes]);
 
@@ -100,17 +105,29 @@ function InspecoesInner() {
           </label>
           <EmpresaSelect value={empresaId} onChange={setEmpresaId} />
         </div>
-        <Link
-          href={
-            empresaId
-              ? `/inspecoes/nova?empresa=${empresaId}`
-              : "/inspecoes/nova"
-          }
-          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
-        >
-          <Plus className="size-4" />
-          Nova Inspeção
-        </Link>
+        <div className="flex gap-2">
+          {empresaId && (
+            <Link
+              href={`/empresas/${empresaId}/relatorio`}
+              className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              title="Relatório consolidado"
+            >
+              <ChartBar className="size-4" />
+              Consolidado
+            </Link>
+          )}
+          <Link
+            href={
+              empresaId
+                ? `/inspecoes/nova?empresa=${empresaId}`
+                : "/inspecoes/nova"
+            }
+            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+          >
+            <Plus className="size-4" />
+            Nova Inspeção
+          </Link>
+        </div>
       </div>
 
       {empresaId && empresa && (

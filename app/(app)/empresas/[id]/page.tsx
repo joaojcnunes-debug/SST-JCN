@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, ClipboardList, Building2 } from "lucide-react";
+import { ArrowLeft, Pencil, ClipboardList, Building2, ChartBar } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -83,15 +83,24 @@ export default function EmpresaDetalhePage({ params }: Props) {
             >
               {grauCfg.label}
             </span>
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => setEditOpen(true)}
+            <div className="flex gap-1.5">
+              <Link
+                href={`/empresas/${empresa.id_empresa}/relatorio`}
                 className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                title="Relatório consolidado"
               >
-                <Pencil className="size-3.5" /> Editar
-              </button>
-            )}
+                <ChartBar className="size-3.5" /> Consolidado
+              </Link>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Pencil className="size-3.5" /> Editar
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

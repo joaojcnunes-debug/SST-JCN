@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, ChevronDown } from "lucide-react";
+import { Plus, ChevronDown, Copy as CopyIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import RiscoForm from "../RiscoForm";
@@ -9,7 +9,7 @@ import RiscoRow from "@/components/riscos/RiscoRow";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { TIPO_ICONE, TIPOS_RISCO } from "@/lib/constants";
-import { cn } from "@/lib/utils";
+import { cn, gerarId } from "@/lib/utils";
 import type { Cargo, Risco, Setor, TipoRisco } from "@/lib/supabase/types";
 
 interface Props {
@@ -63,6 +63,27 @@ export default function RiscosTab({
       qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
       toast.success("Risco removido");
       setConfirm(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Duplica um risco mantendo o mesmo setor — útil pra ajustar variações.
+  const copiar = useMutation({
+    mutationFn: async (r: Risco) => {
+      const supabase = createSupabaseBrowserClient();
+      const clone = {
+        ...r,
+        id_risco: gerarId("RSC"),
+        agente: r.agente ? `${r.agente} (cópia)` : "(cópia)",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const { error } = await supabase.from("riscos").insert(clone as never);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+      toast.success("Risco duplicado");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -152,6 +173,7 @@ export default function RiscosTab({
                             setEditing(risco);
                             setFormOpen(true);
                           }}
+                          onCopy={(risco) => copiar.mutate(risco)}
                           onDelete={(risco) => setConfirm(risco)}
                         />
                       ))}

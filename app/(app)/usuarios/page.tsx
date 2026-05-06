@@ -299,6 +299,21 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         .from("usuarios")
         .insert(insertRow as never);
       if (errInsert) throw errInsert;
+
+      // E-mail de boas-vindas — não bloqueia se a Edge Function não estiver
+      // deployada ou se o RESEND_API_KEY ainda não foi configurado.
+      try {
+        await supabase.functions.invoke("welcome-email", {
+          body: {
+            email: form.email.trim().toLowerCase(),
+            nome: form.nome.trim(),
+            perfil: form.perfil,
+            senha: form.senha,
+          },
+        });
+      } catch (e) {
+        console.warn("welcome-email não enviado:", e);
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["usuarios"] });

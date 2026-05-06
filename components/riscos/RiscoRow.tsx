@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Copy } from "lucide-react";
 import NivelBadge from "./NivelBadge";
 import type { NivelRisco, Risco } from "@/lib/supabase/types";
 
@@ -9,6 +9,7 @@ interface Props {
   setorNome?: string;
   onEdit?: (r: Risco) => void;
   onDelete?: (r: Risco) => void;
+  onCopy?: (r: Risco) => void;
   readOnly?: boolean;
 }
 
@@ -17,6 +18,7 @@ export default function RiscoRow({
   setorNome,
   onEdit,
   onDelete,
+  onCopy,
   readOnly,
 }: Props) {
   return (
@@ -42,6 +44,16 @@ export default function RiscoRow({
               >
                 <Pencil className="size-4" />
               </button>
+              {onCopy && (
+                <button
+                  type="button"
+                  onClick={() => onCopy(risco)}
+                  className="rounded p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-700"
+                  title="Duplicar"
+                >
+                  <Copy className="size-4" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => onDelete?.(risco)}

@@ -15,6 +15,9 @@ import {
   Users,
   FileText,
   Loader2,
+  RotateCcw,
+  Copy,
+  Sticker,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -31,7 +34,9 @@ import RiscosTab from "@/components/inspecoes/editor/tabs/RiscosTab";
 import EpisTab from "@/components/inspecoes/editor/tabs/EpisTab";
 import FotosTab from "@/components/inspecoes/editor/tabs/FotosTab";
 import ResponsaveisTab from "@/components/inspecoes/editor/tabs/ResponsaveisTab";
+import ComplementosTab from "@/components/inspecoes/editor/tabs/ComplementosTab";
 import ObservacoesTab from "@/components/inspecoes/editor/tabs/ObservacoesTab";
+import CopiarParaEmpresaModal from "@/components/inspecoes/editor/CopiarParaEmpresaModal";
 
 type TabKey =
   | "setores"
@@ -40,6 +45,7 @@ type TabKey =
   | "epis"
   | "fotos"
   | "responsaveis"
+  | "complementos"
   | "observacoes";
 
 interface Props {
@@ -55,23 +61,25 @@ export default function InspecaoEditorPage({ params }: Props) {
   const { data, isLoading, error } = useInspecao(id);
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
   const [tab, setTab] = useState<TabKey>("setores");
+  const [copiarOpen, setCopiarOpen] = useState(false);
 
-  const concluir = useMutation({
-    mutationFn: async () => {
+  const mudarStatus = useMutation({
+    mutationFn: async (novoStatus: "CONCLUIDA" | "EM_ANDAMENTO") => {
       const supabase = createSupabaseBrowserClient();
       const { error } = await supabase
         .from("inspecoes")
         .update({
-          status: "CONCLUIDA",
+          status: novoStatus,
           updated_at: new Date().toISOString(),
         } as never)
         .eq("id_inspecao", id);
       if (error) throw error;
+      return novoStatus;
     },
-    onSuccess: () => {
+    onSuccess: (s) => {
       qc.invalidateQueries({ queryKey: ["inspecao", id] });
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      toast.success("Inspeção concluída");
+      toast.success(s === "CONCLUIDA" ? "Inspeção concluída" : "Inspeção reaberta");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -90,8 +98,19 @@ export default function InspecaoEditorPage({ params }: Props) {
       </div>
     );
 
-  const { inspecao, setores, cargos, riscos, epis, fotos, responsaveis } = data;
-  const readOnly = !canEdit || inspecao.status === "CONCLUIDA";
+  const {
+    inspecao,
+    setores,
+    cargos,
+    riscos,
+    epis,
+    fotos,
+    responsaveis,
+    complementos,
+  } = data;
+  const isConcluida = inspecao.status === "CONCLUIDA";
+  // V2: usuários podem editar inspeções concluídas (spec exige).
+  const readOnly = !canEdit;
 
   const TABS: { key: TabKey; label: string; icon: typeof Layers; count: number }[] = [
     { key: "setores", label: "Setores", icon: Layers, count: setores.length },
@@ -100,6 +119,7 @@ export default function InspecaoEditorPage({ params }: Props) {
     { key: "epis", label: "EPIs/EPCs", icon: ShieldCheck, count: epis.length },
     { key: "fotos", label: "Fotos", icon: ImageIcon, count: fotos.length },
     { key: "responsaveis", label: "Responsáveis", icon: Users, count: responsaveis.length },
+    { key: "complementos", label: "Complementos", icon: Sticker, count: complementos.length },
     { key: "observacoes", label: "Observações", icon: FileText, count: inspecao.observacoes ? 1 : 0 },
   ];
 
@@ -135,19 +155,45 @@ export default function InspecaoEditorPage({ params }: Props) {
             >
               <ChartBar className="size-4" /> Relatório
             </Link>
-            {canEdit && inspecao.status !== "CONCLUIDA" && (
+            {canEdit && (
               <button
                 type="button"
-                onClick={() => concluir.mutate()}
-                disabled={concluir.isPending}
+                onClick={() => setCopiarOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                title="Copiar inspeção para outra empresa"
+              >
+                <Copy className="size-4" /> Copiar p/ Empresa
+              </button>
+            )}
+            {canEdit && !isConcluida && (
+              <button
+                type="button"
+                onClick={() => mudarStatus.mutate("CONCLUIDA")}
+                disabled={mudarStatus.isPending}
                 className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
               >
-                {concluir.isPending ? (
+                {mudarStatus.isPending ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <CheckCircle2 className="size-4" />
                 )}
                 Concluir
+              </button>
+            )}
+            {canEdit && isConcluida && (
+              <button
+                type="button"
+                onClick={() => mudarStatus.mutate("EM_ANDAMENTO")}
+                disabled={mudarStatus.isPending}
+                className="inline-flex items-center gap-1.5 rounded-md border border-amber-warning bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-warning hover:bg-amber-100 disabled:opacity-60"
+                title="Voltar para Em Andamento"
+              >
+                {mudarStatus.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="size-4" />
+                )}
+                Reabrir
               </button>
             )}
           </div>
@@ -244,6 +290,15 @@ export default function InspecaoEditorPage({ params }: Props) {
               readOnly={readOnly}
             />
           )}
+          {tab === "complementos" && (
+            <ComplementosTab
+              idInspecao={id}
+              idEmpresa={inspecao.id_empresa}
+              setores={setores}
+              complementos={complementos}
+              readOnly={readOnly}
+            />
+          )}
           {tab === "observacoes" && (
             <ObservacoesTab
               idInspecao={id}
@@ -253,6 +308,13 @@ export default function InspecaoEditorPage({ params }: Props) {
           )}
         </div>
       </div>
+
+      <CopiarParaEmpresaModal
+        open={copiarOpen}
+        onClose={() => setCopiarOpen(false)}
+        idInspecao={id}
+        idEmpresaOrigem={inspecao.id_empresa}
+      />
     </div>
   );
 }

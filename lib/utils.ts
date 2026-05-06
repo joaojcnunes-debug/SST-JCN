@@ -22,21 +22,21 @@ export function fmtDataHora(value: string | Date | null | undefined): string {
   return fmtData(value, "dd/MM/yyyy HH:mm");
 }
 
-// Lógica SGG. Listas em ordem crescente de peso (índice = peso).
+// Lógica SGG v2 — listas em ordem crescente de peso (índice = peso).
+// Probabilidades: 5 níveis (0–4). Severidades: 4 níveis (0–3).
 export const PROBABILIDADES = [
-  "Não há exposição",
-  "Exposição a níveis baixos",
-  "Exposição moderada",
-  "Exposição elevada",
-  "Exposição elevadíssima",
+  "Improvável",
+  "Remoto",
+  "Ocasional",
+  "Provável",
+  "Frequente",
 ] as const;
 
 export const SEVERIDADES = [
-  "Pouca importância",
-  "Preocupantes",
-  "Severos",
-  "Irreversíveis",
-  "Ameaça",
+  "Insignificante",
+  "Marginal",
+  "Crítico",
+  "Catastrófico",
 ] as const;
 
 export function calcularNivelRisco(
@@ -49,26 +49,34 @@ export function calcularNivelRisco(
   if (iP < 0 || iS < 0) return "Baixo";
 
   const score = iP * iS;
-  if (score === 0 && iP < 4 && iS < 4) return "Trivial";
+  // Trivial: score 0 e ambos não-extremos.
+  if (score === 0 && iP < 4 && iS < 3) return "Trivial";
+  // Baixo: score baixo + casos especiais nos extremos.
   if (
     (score >= 1 && score < 3) ||
     (iP === 4 && iS === 0) ||
-    (iP === 0 && iS === 4) ||
+    (iP === 0 && iS === 3) ||
     (iP === 3 && iS === 1)
   )
     return "Baixo";
+  // Moderado: score médio + caso especial.
   if ((score > 3 && score <= 8) || (iP === 1 && iS === 3)) return "Moderado";
+  // Alto: score alto.
   if (score > 8 && score <= 12) return "Alto";
+  // Muito Alto: matematicamente inalcançável com 5×4 mas mantido por
+  // compatibilidade com a tipagem — pode ser usado em futuras matrizes 6×4.
   if (score > 12) return "Muito Alto";
   return "Moderado";
 }
 
 // Gera ID curto compatível com PRIMARY KEY TEXT.
-// Formato: prefixo + timestamp base36 + 4 caracteres aleatórios.
-export function gerarId(prefixo = ""): string {
-  const ts = Date.now().toString(36);
-  const rnd = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `${prefixo}${ts}${rnd}`.toUpperCase();
+// Formato: PREFIX-XXXXXXXX (8 chars hex maiúsculo) — ex. INS-A3F4B7C2.
+export function gerarId(prefixo = "ID"): string {
+  const hex = Array.from(crypto.getRandomValues(new Uint8Array(4)))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase();
+  return `${prefixo}-${hex}`;
 }
 
 export function formatCNPJ(cnpj: string | null | undefined): string {
