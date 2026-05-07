@@ -9,7 +9,7 @@ import {
   ArrowDown,
   Eye,
   EyeOff,
-  ChevronDown,
+  ClipboardList,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -37,7 +37,7 @@ export default function TiposRiscoTab() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<TipoRiscoCustom | null>(null);
   const [confirm, setConfirm] = useState<TipoRiscoCustom | null>(null);
-  const [expandido, setExpandido] = useState<string | null>(null);
+  const [catalogoDe, setCatalogoDe] = useState<TipoRiscoCustom | null>(null);
 
   function reordenar(idx: number, dir: -1 | 1) {
     const target = idx + dir;
@@ -70,105 +70,109 @@ export default function TiposRiscoTab() {
       </div>
 
       <ul className="space-y-1.5">
-        {tipos.map((t, i) => {
-          const aberto = expandido === t.id_tipo;
-          return (
-            <li
-              key={t.id_tipo}
-              className={cn(
-                "overflow-hidden rounded-lg border bg-white",
-                t.ativo ? "border-gray-200" : "border-gray-200 opacity-50"
-              )}
+        {tipos.map((t, i) => (
+          <li
+            key={t.id_tipo}
+            className={cn(
+              "flex items-center gap-2 rounded-lg border bg-white p-2.5",
+              t.ativo ? "border-gray-200" : "border-gray-200 opacity-50"
+            )}
+          >
+            <span className="w-7 text-center text-2xl">{t.icone ?? "•"}</span>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900">
+                {t.nome}
+                {t.sistema && (
+                  <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                    sistema
+                  </span>
+                )}
+                {!t.ativo && (
+                  <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                    inativo
+                  </span>
+                )}
+              </p>
+              <p className="text-xs text-gray-500 font-mono">{t.id_tipo}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCatalogoDe(t)}
+              className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-verde-light px-2.5 py-1 text-xs font-semibold text-verde-primary hover:bg-verde-primary hover:text-white"
+              title="Editar catálogo de agentes, EPIs e medidas"
             >
-              <div className="flex items-center gap-2 p-2.5">
-                <button
-                  type="button"
-                  onClick={() => setExpandido(aberto ? null : t.id_tipo)}
-                  className="rounded p-1 text-gray-500 hover:bg-gray-100"
-                  title={aberto ? "Recolher catálogo" : "Expandir catálogo"}
-                >
-                  <ChevronDown
-                    className={cn(
-                      "size-4 transition-transform",
-                      !aberto && "-rotate-90"
-                    )}
-                  />
-                </button>
-                <span className="w-7 text-center text-2xl">{t.icone ?? "•"}</span>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900">
-                    {t.nome}
-                    {t.sistema && (
-                      <span className="ml-2 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
-                        sistema
-                      </span>
-                    )}
-                    {!t.ativo && (
-                      <span className="ml-2 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
-                        inativo
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-xs text-gray-500 font-mono">{t.id_tipo}</p>
-                </div>
-                <div className="flex items-center gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => reordenar(i, -1)}
-                    disabled={i === 0}
-                    className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
-                    title="Subir"
-                  >
-                    <ArrowUp className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => reordenar(i, 1)}
-                    disabled={i === tipos.length - 1}
-                    className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
-                    title="Descer"
-                  >
-                    <ArrowDown className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      save.mutate({ id_tipo: t.id_tipo, ativo: !t.ativo })
-                    }
-                    className="rounded p-1.5 text-gray-500 hover:bg-gray-100"
-                    title={t.ativo ? "Desativar" : "Ativar"}
-                  >
-                    {t.ativo ? (
-                      <Eye className="size-4" />
-                    ) : (
-                      <EyeOff className="size-4" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditing(t);
-                      setModalOpen(true);
-                    }}
-                    className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
-                  >
-                    <Pencil className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirm(t)}
-                    className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
-                    title={t.sistema ? "Desativar" : "Remover"}
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                </div>
-              </div>
-              {aberto && <CatalogoTipoPanel idTipo={t.id_tipo} />}
-            </li>
-          );
-        })}
+              <ClipboardList className="size-3.5" />
+              Catálogo
+            </button>
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => reordenar(i, -1)}
+                disabled={i === 0}
+                className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                title="Subir"
+              >
+                <ArrowUp className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => reordenar(i, 1)}
+                disabled={i === tipos.length - 1}
+                className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                title="Descer"
+              >
+                <ArrowDown className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  save.mutate({ id_tipo: t.id_tipo, ativo: !t.ativo })
+                }
+                className="rounded p-1.5 text-gray-500 hover:bg-gray-100"
+                title={t.ativo ? "Desativar" : "Ativar"}
+              >
+                {t.ativo ? (
+                  <Eye className="size-4" />
+                ) : (
+                  <EyeOff className="size-4" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(t);
+                  setModalOpen(true);
+                }}
+                className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                title="Editar nome / ícone / ordem"
+              >
+                <Pencil className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirm(t)}
+                className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                title={t.sistema ? "Desativar" : "Remover"}
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+          </li>
+        ))}
       </ul>
+
+      <Modal
+        open={!!catalogoDe}
+        onClose={() => setCatalogoDe(null)}
+        title={
+          catalogoDe
+            ? `Catálogo — ${catalogoDe.icone ?? "•"} ${catalogoDe.nome}`
+            : "Catálogo"
+        }
+        size="xl"
+      >
+        {catalogoDe && <CatalogoTipoPanel idTipo={catalogoDe.id_tipo} />}
+      </Modal>
 
       <TipoModal
         open={modalOpen}

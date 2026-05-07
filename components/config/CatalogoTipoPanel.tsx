@@ -63,7 +63,7 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
   if (isLoading) return <LoadingSkeleton rows={4} />;
 
   return (
-    <div className="space-y-3 border-t border-gray-200 bg-gray-50 p-3">
+    <div className="space-y-3">
       <p className="text-xs text-gray-600">
         Itens pré-cadastrados pra este tipo. Aparecem como sugestão durante o
         cadastro de risco. Itens inativos não aparecem mas ficam no histórico.
