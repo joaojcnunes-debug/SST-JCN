@@ -203,7 +203,6 @@ function MatrizEditorModal({
   const [pesosProb, setPesosProb] = useState<number[]>([]);
   const [pesosSev, setPesosSev] = useState<number[]>([]);
   const [faixas, setFaixas] = useState<FaixaRisco[]>([]);
-  const [showPesos, setShowPesos] = useState(false);
 
   useEffect(() => {
     if (open && matriz) {
@@ -228,85 +227,124 @@ function MatrizEditorModal({
           ? matriz.faixas.map((f) => ({ ...f }))
           : [...FAIXAS_PADRAO]
       );
-      setShowPesos(!!matriz.pesos_prob || !!matriz.faixas);
     }
   }, [open, matriz]);
 
   function addProb() {
     const novo = [...probs, `Probab. ${probs.length + 1}`];
+    const novosPesos = [...pesosProb, pesosProb.length]; // peso default = índice
     setProbs(novo);
-    setLookup(redimensionarLookup(lookup, novo.length, sevs.length));
-    setPesosProb([...pesosProb, pesosProb.length]); // peso default = índice
+    setPesosProb(novosPesos);
+    if (faixas.length > 0 && pesosSev.length === sevs.length) {
+      setLookup(calcularLookupPorPesos(novosPesos, pesosSev, faixas));
+    } else {
+      setLookup(redimensionarLookup(lookup, novo.length, sevs.length));
+    }
   }
   function removeProb(idx: number) {
     if (probs.length <= 1) return;
     const novo = probs.filter((_, i) => i !== idx);
+    const novosPesos = pesosProb.filter((_, i) => i !== idx);
     setProbs(novo);
-    setLookup(lookup.filter((_, i) => i !== idx));
-    setPesosProb(pesosProb.filter((_, i) => i !== idx));
+    setPesosProb(novosPesos);
+    if (faixas.length > 0 && pesosSev.length === sevs.length) {
+      setLookup(calcularLookupPorPesos(novosPesos, pesosSev, faixas));
+    } else {
+      setLookup(lookup.filter((_, i) => i !== idx));
+    }
   }
   function renameProb(idx: number, val: string) {
     setProbs(probs.map((p, i) => (i === idx ? val : p)));
   }
   function setPesoProb(idx: number, val: number) {
-    setPesosProb(pesosProb.map((w, i) => (i === idx ? val : w)));
+    const novo = pesosProb.map((w, i) => (i === idx ? val : w));
+    setPesosProb(novo);
+    recalcularLookup(novo, pesosSev, faixas);
   }
   function addSev() {
     const novo = [...sevs, `Sever. ${sevs.length + 1}`];
+    const novosPesos = [...pesosSev, pesosSev.length];
     setSevs(novo);
-    setLookup(redimensionarLookup(lookup, probs.length, novo.length));
-    setPesosSev([...pesosSev, pesosSev.length]);
+    setPesosSev(novosPesos);
+    if (faixas.length > 0 && pesosProb.length === probs.length) {
+      setLookup(calcularLookupPorPesos(pesosProb, novosPesos, faixas));
+    } else {
+      setLookup(redimensionarLookup(lookup, probs.length, novo.length));
+    }
   }
   function removeSev(idx: number) {
     if (sevs.length <= 1) return;
     const novo = sevs.filter((_, i) => i !== idx);
+    const novosPesos = pesosSev.filter((_, i) => i !== idx);
     setSevs(novo);
-    setLookup(lookup.map((row) => row.filter((_, i) => i !== idx)));
-    setPesosSev(pesosSev.filter((_, i) => i !== idx));
+    setPesosSev(novosPesos);
+    if (faixas.length > 0 && pesosProb.length === probs.length) {
+      setLookup(calcularLookupPorPesos(pesosProb, novosPesos, faixas));
+    } else {
+      setLookup(lookup.map((row) => row.filter((_, i) => i !== idx)));
+    }
   }
   function renameSev(idx: number, val: string) {
     setSevs(sevs.map((s, i) => (i === idx ? val : s)));
   }
   function setPesoSev(idx: number, val: number) {
-    setPesosSev(pesosSev.map((w, i) => (i === idx ? val : w)));
+    const novo = pesosSev.map((w, i) => (i === idx ? val : w));
+    setPesosSev(novo);
+    recalcularLookup(pesosProb, novo, faixas);
   }
 
-  function aplicarCalculoAutomatico() {
+  /**
+   * Recalcula o lookup baseado nos pesos atuais e faixas.
+   * Chamado automaticamente sempre que peso/faixa muda — assim a matriz
+   * fica sempre coerente e o user não precisa clicar "Aplicar".
+   */
+  function recalcularLookup(
+    novosProb: number[],
+    novosSev: number[],
+    novasFaixas: typeof faixas
+  ) {
     if (
-      pesosProb.length !== probs.length ||
-      pesosSev.length !== sevs.length ||
-      faixas.length === 0
+      novosProb.length !== probs.length ||
+      novosSev.length !== sevs.length ||
+      novasFaixas.length === 0
     ) {
-      toast.error("Pesos e faixas precisam estar preenchidos");
       return;
     }
-    const novoLookup = calcularLookupPorPesos(pesosProb, pesosSev, faixas);
+    const novoLookup = calcularLookupPorPesos(
+      novosProb,
+      novosSev,
+      novasFaixas
+    );
     setLookup(novoLookup);
-    toast.success("Lookup gerado pelos pesos");
   }
 
-  // Funções pra editar a lista de faixas
+  // Funções pra editar a lista de faixas (auto-recalculam o lookup)
   function setFaixaCampo(
     idx: number,
     campo: "nivel" | "min" | "max",
     valor: string | number
   ) {
-    setFaixas(
-      faixas.map((f, i) =>
-        i === idx
-          ? {
-              ...f,
-              [campo]: campo === "nivel" ? (valor as NivelRisco) : Number(valor),
-            }
-          : f
-      )
+    const novas = faixas.map((f, i) =>
+      i === idx
+        ? {
+            ...f,
+            [campo]:
+              campo === "nivel" ? (valor as NivelRisco) : Number(valor),
+          }
+        : f
     );
+    setFaixas(novas);
+    recalcularLookup(pesosProb, pesosSev, novas);
   }
   function addFaixa() {
-    setFaixas([...faixas, { nivel: "Baixo", min: 0, max: 0 }]);
+    const novas = [...faixas, { nivel: "Baixo" as NivelRisco, min: 0, max: 0 }];
+    setFaixas(novas);
+    recalcularLookup(pesosProb, pesosSev, novas);
   }
   function removeFaixa(idx: number) {
-    setFaixas(faixas.filter((_, i) => i !== idx));
+    const novas = faixas.filter((_, i) => i !== idx);
+    setFaixas(novas);
+    recalcularLookup(pesosProb, pesosSev, novas);
   }
   function setCelula(iP: number, iS: number, nivel: string) {
     setLookup(
@@ -379,182 +417,95 @@ function MatrizEditorModal({
           </div>
         </div>
 
-        {/* Seção colapsável: Pesos e Faixas (cálculo automático) */}
-        <details
-          open={showPesos}
-          onToggle={(e) => setShowPesos((e.target as HTMLDetailsElement).open)}
-          className="rounded-lg border border-blue-200 bg-blue-50/30"
-        >
-          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wider text-blue-700">
-            🧮 Pesos e Faixas (cálculo automático) — opcional
-          </summary>
-          <div className="space-y-3 border-t border-blue-200 p-3">
-            <p className="text-xs text-gray-600">
-              Defina um peso numérico para cada probabilidade e severidade.
-              O <strong>score</strong> de cada célula é{" "}
-              <code className="rounded bg-white px-1 text-blue-700">
-                pesoProb × pesoSev
-              </code>
-              ; as <strong>faixas</strong> abaixo mapeiam cada score em um nível.
-              Clique em &ldquo;Aplicar&rdquo; para gerar o lookup automaticamente.
+        {/* Tabela de Faixas — visível direto, sem accordion.
+            Editar peso/faixa recalcula o lookup automaticamente. */}
+        <div className="rounded-lg border border-blue-200 bg-blue-50/30 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-700">
+              🧮 Faixas de Score → Nível
             </p>
-
-            {/* Pesos das probabilidades */}
-            <div>
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-700">
-                Pesos das probabilidades
-              </p>
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5">
-                {probs.map((p, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-1.5 rounded border border-gray-200 bg-white px-1.5 py-1"
-                  >
-                    <span
-                      className="flex-1 truncate text-[11px] text-gray-700"
-                      title={p}
-                    >
-                      {p}
-                    </span>
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={pesosProb[i] ?? 0}
-                      onChange={(e) =>
-                        setPesoProb(i, Number(e.target.value) || 0)
-                      }
-                      className="w-12 rounded border border-gray-300 px-1 py-0.5 text-center text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Pesos das severidades */}
-            <div>
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-700">
-                Pesos das severidades
-              </p>
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5">
-                {sevs.map((s, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-1.5 rounded border border-gray-200 bg-white px-1.5 py-1"
-                  >
-                    <span
-                      className="flex-1 truncate text-[11px] text-gray-700"
-                      title={s}
-                    >
-                      {s}
-                    </span>
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={pesosSev[i] ?? 0}
-                      onChange={(e) =>
-                        setPesoSev(i, Number(e.target.value) || 0)
-                      }
-                      className="w-12 rounded border border-gray-300 px-1 py-0.5 text-center text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Editor de faixas */}
-            <div>
-              <div className="mb-1 flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
-                  Faixas de score → nível
-                </p>
-                <button
-                  type="button"
-                  onClick={addFaixa}
-                  className="rounded border border-dashed border-gray-400 bg-white px-2 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50"
-                >
-                  + Faixa
-                </button>
-              </div>
-              <table className="w-full text-xs">
-                <thead className="text-gray-500">
-                  <tr>
-                    <th className="px-2 py-1 text-left font-medium">Nível</th>
-                    <th className="px-2 py-1 text-left font-medium">Score min</th>
-                    <th className="px-2 py-1 text-left font-medium">Score max</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {faixas.map((f, i) => {
-                    const cfg = NIVEL_CONFIG[f.nivel] ?? NIVEL_CONFIG.Baixo;
-                    return (
-                      <tr key={i}>
-                        <td className="py-0.5">
-                          <select
-                            value={f.nivel}
-                            onChange={(e) =>
-                              setFaixaCampo(i, "nivel", e.target.value)
-                            }
-                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs"
-                            style={{
-                              color: cfg.cor,
-                              backgroundColor: cfg.bg,
-                            }}
-                          >
-                            {NIVEIS_RISCO.map((n) => (
-                              <option key={n} value={n}>
-                                {n}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="py-0.5">
-                          <input
-                            type="number"
-                            step="0.5"
-                            value={f.min}
-                            onChange={(e) =>
-                              setFaixaCampo(i, "min", e.target.value)
-                            }
-                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs"
-                          />
-                        </td>
-                        <td className="py-0.5">
-                          <input
-                            type="number"
-                            step="0.5"
-                            value={f.max}
-                            onChange={(e) =>
-                              setFaixaCampo(i, "max", e.target.value)
-                            }
-                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs"
-                          />
-                        </td>
-                        <td className="py-0.5 pl-1">
-                          <button
-                            type="button"
-                            onClick={() => removeFaixa(i)}
-                            className="rounded px-1 text-[10px] text-gray-400 hover:bg-red-50 hover:text-red-alert"
-                          >
-                            ✕
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
             <button
               type="button"
-              onClick={aplicarCalculoAutomatico}
-              className="w-full rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+              onClick={addFaixa}
+              className="rounded border border-dashed border-blue-400 bg-white px-2 py-0.5 text-[10px] text-blue-700 hover:bg-blue-50"
             >
-              Aplicar pesos → recalcular lookup
+              + Faixa
             </button>
           </div>
-        </details>
+          <p className="mb-2 text-xs text-gray-600">
+            Score de cada célula = <strong>peso(prob) × peso(sev)</strong>.
+            Editar pesos ou faixas recalcula o lookup automaticamente.
+          </p>
+          <table className="w-full text-xs">
+            <thead className="text-gray-500">
+              <tr>
+                <th className="px-2 py-1 text-left font-medium">Nível</th>
+                <th className="px-2 py-1 text-left font-medium">Score min</th>
+                <th className="px-2 py-1 text-left font-medium">Score max</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {faixas.map((f, i) => {
+                const cfg = NIVEL_CONFIG[f.nivel] ?? NIVEL_CONFIG.Baixo;
+                return (
+                  <tr key={i}>
+                    <td className="py-0.5">
+                      <select
+                        value={f.nivel}
+                        onChange={(e) =>
+                          setFaixaCampo(i, "nivel", e.target.value)
+                        }
+                        className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs"
+                        style={{
+                          color: cfg.cor,
+                          backgroundColor: cfg.bg,
+                        }}
+                      >
+                        {NIVEIS_RISCO.map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-0.5">
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={f.min}
+                        onChange={(e) =>
+                          setFaixaCampo(i, "min", e.target.value)
+                        }
+                        className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs"
+                      />
+                    </td>
+                    <td className="py-0.5">
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={f.max}
+                        onChange={(e) =>
+                          setFaixaCampo(i, "max", e.target.value)
+                        }
+                        className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs"
+                      />
+                    </td>
+                    <td className="py-0.5 pl-1">
+                      <button
+                        type="button"
+                        onClick={() => removeFaixa(i)}
+                        className="rounded px-1 text-[10px] text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
 
         <div className="rounded-lg border border-gray-200 bg-white p-3">
           <div className="mb-2 flex items-center justify-between">
@@ -589,21 +540,37 @@ function MatrizEditorModal({
                     P↓ / S→
                   </th>
                   {sevs.map((s, j) => (
-                    <th key={j} className="bg-gray-100 p-1" style={{ minWidth: 110 }}>
+                    <th
+                      key={j}
+                      className="bg-gray-100 p-1"
+                      style={{ minWidth: 130 }}
+                    >
                       <input
                         type="text"
                         value={s}
                         onChange={(e) => renameSev(j, e.target.value)}
                         className="w-full rounded border-0 bg-transparent px-1 py-0.5 text-center text-xs font-medium hover:bg-white focus:bg-white focus:outline focus:outline-1 focus:outline-verde-primary"
                       />
-                      <button
-                        type="button"
-                        onClick={() => removeSev(j)}
-                        disabled={sevs.length <= 1}
-                        className="mx-auto mt-0.5 block rounded px-1 text-[10px] text-gray-400 hover:bg-red-50 hover:text-red-alert disabled:opacity-30"
-                      >
-                        ✕
-                      </button>
+                      <div className="mt-0.5 flex items-center justify-center gap-1">
+                        <span className="text-[9px] text-gray-500">peso</span>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={pesosSev[j] ?? 0}
+                          onChange={(e) =>
+                            setPesoSev(j, Number(e.target.value) || 0)
+                          }
+                          className="w-12 rounded border border-blue-300 bg-white px-1 py-0 text-center text-[11px] font-bold text-blue-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeSev(j)}
+                          disabled={sevs.length <= 1}
+                          className="rounded px-1 text-[10px] text-gray-400 hover:bg-red-50 hover:text-red-alert disabled:opacity-30"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </th>
                   ))}
                   <th className="bg-gray-50 p-1">
@@ -620,13 +587,23 @@ function MatrizEditorModal({
               <tbody>
                 {probs.map((p, i) => (
                   <tr key={i}>
-                    <th className="bg-gray-100 p-1" style={{ minWidth: 130 }}>
+                    <th className="bg-gray-100 p-1" style={{ minWidth: 170 }}>
                       <div className="flex items-center gap-1">
                         <input
                           type="text"
                           value={p}
                           onChange={(e) => renameProb(i, e.target.value)}
                           className="flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs font-medium hover:bg-white focus:bg-white focus:outline focus:outline-1 focus:outline-verde-primary"
+                        />
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={pesosProb[i] ?? 0}
+                          onChange={(e) =>
+                            setPesoProb(i, Number(e.target.value) || 0)
+                          }
+                          title="Peso"
+                          className="w-12 rounded border border-blue-300 bg-white px-1 py-0 text-center text-[11px] font-bold text-blue-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
                         />
                         <button
                           type="button"

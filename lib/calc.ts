@@ -18,6 +18,23 @@ export function calcularNivelComMatriz(
   const iP = matriz.probabilidades.indexOf(prob);
   const iS = matriz.severidades.indexOf(sev);
   if (iP < 0 || iS < 0) return "Baixo";
+
+  // V3.3: se a matriz tem pesos+faixas configurados, calcula via score.
+  // Garante que mudanças em peso/faixa reflitam SEM precisar de
+  // re-save do lookup (o lookup pode estar defasado em casos raros).
+  if (
+    matriz.pesos_prob &&
+    matriz.pesos_sev &&
+    matriz.faixas &&
+    matriz.pesos_prob.length === matriz.probabilidades.length &&
+    matriz.pesos_sev.length === matriz.severidades.length &&
+    matriz.faixas.length > 0
+  ) {
+    const score = matriz.pesos_prob[iP] * matriz.pesos_sev[iS];
+    return nivelPorFaixa(score, matriz.faixas);
+  }
+
+  // Fallback: lookup salvo (matrizes legadas sem pesos)
   const v = matriz.lookup?.[iP]?.[iS];
   if (typeof v === "string" && v.length > 0) return v as NivelRisco;
   return "Baixo";
