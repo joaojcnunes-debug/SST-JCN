@@ -18,10 +18,15 @@ import {
 } from "@/lib/hooks/useV3";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { matrizVazia, redimensionarLookup } from "@/lib/calc";
+import {
+  matrizVazia,
+  redimensionarLookup,
+  calcularLookupPorPesos,
+  FAIXAS_PADRAO,
+} from "@/lib/calc";
 import { NIVEIS_RISCO, NIVEL_CONFIG } from "@/lib/constants";
 import { gerarId, cn } from "@/lib/utils";
-import type { MatrizRisco, NivelRisco } from "@/lib/supabase/types";
+import type { FaixaRisco, MatrizRisco, NivelRisco } from "@/lib/supabase/types";
 
 export default function MatrizesTab() {
   const { data: matrizes = [] } = useMatrizes();
@@ -39,6 +44,9 @@ export default function MatrizesTab() {
       probabilidades: ["Baixa", "Média", "Alta"],
       severidades: ["Leve", "Moderada", "Grave"],
       lookup: matrizVazia(3, 3),
+      pesos_prob: [1, 2, 3],
+      pesos_sev: [1, 2, 3],
+      faixas: FAIXAS_PADRAO,
       ativa: false,
     };
     setEditing(padrao);
@@ -51,6 +59,9 @@ export default function MatrizesTab() {
       id_matriz: gerarId("MTZ"),
       nome: `${m.nome} (cópia)`,
       ativa: false,
+      pesos_prob: m.pesos_prob ? [...m.pesos_prob] : null,
+      pesos_sev: m.pesos_sev ? [...m.pesos_sev] : null,
+      faixas: m.faixas ? m.faixas.map((f) => ({ ...f })) : null,
     });
     setEditorOpen(true);
   }
@@ -189,6 +200,10 @@ function MatrizEditorModal({
   const [probs, setProbs] = useState<string[]>([]);
   const [sevs, setSevs] = useState<string[]>([]);
   const [lookup, setLookup] = useState<string[][]>([]);
+  const [pesosProb, setPesosProb] = useState<number[]>([]);
+  const [pesosSev, setPesosSev] = useState<number[]>([]);
+  const [faixas, setFaixas] = useState<FaixaRisco[]>([]);
+  const [showPesos, setShowPesos] = useState(false);
 
   useEffect(() => {
     if (open && matriz) {
@@ -197,6 +212,23 @@ function MatrizEditorModal({
       setProbs([...matriz.probabilidades]);
       setSevs([...matriz.severidades]);
       setLookup(matriz.lookup.map((row) => [...row]));
+      // Pesos: se não houver, gera sequência 0..N-1 como sugestão.
+      setPesosProb(
+        matriz.pesos_prob && matriz.pesos_prob.length === matriz.probabilidades.length
+          ? [...matriz.pesos_prob]
+          : matriz.probabilidades.map((_, i) => i)
+      );
+      setPesosSev(
+        matriz.pesos_sev && matriz.pesos_sev.length === matriz.severidades.length
+          ? [...matriz.pesos_sev]
+          : matriz.severidades.map((_, i) => i)
+      );
+      setFaixas(
+        matriz.faixas && matriz.faixas.length > 0
+          ? matriz.faixas.map((f) => ({ ...f }))
+          : [...FAIXAS_PADRAO]
+      );
+      setShowPesos(!!matriz.pesos_prob || !!matriz.faixas);
     }
   }, [open, matriz]);
 
@@ -204,29 +236,77 @@ function MatrizEditorModal({
     const novo = [...probs, `Probab. ${probs.length + 1}`];
     setProbs(novo);
     setLookup(redimensionarLookup(lookup, novo.length, sevs.length));
+    setPesosProb([...pesosProb, pesosProb.length]); // peso default = índice
   }
   function removeProb(idx: number) {
     if (probs.length <= 1) return;
     const novo = probs.filter((_, i) => i !== idx);
     setProbs(novo);
     setLookup(lookup.filter((_, i) => i !== idx));
+    setPesosProb(pesosProb.filter((_, i) => i !== idx));
   }
   function renameProb(idx: number, val: string) {
     setProbs(probs.map((p, i) => (i === idx ? val : p)));
+  }
+  function setPesoProb(idx: number, val: number) {
+    setPesosProb(pesosProb.map((w, i) => (i === idx ? val : w)));
   }
   function addSev() {
     const novo = [...sevs, `Sever. ${sevs.length + 1}`];
     setSevs(novo);
     setLookup(redimensionarLookup(lookup, probs.length, novo.length));
+    setPesosSev([...pesosSev, pesosSev.length]);
   }
   function removeSev(idx: number) {
     if (sevs.length <= 1) return;
     const novo = sevs.filter((_, i) => i !== idx);
     setSevs(novo);
     setLookup(lookup.map((row) => row.filter((_, i) => i !== idx)));
+    setPesosSev(pesosSev.filter((_, i) => i !== idx));
   }
   function renameSev(idx: number, val: string) {
     setSevs(sevs.map((s, i) => (i === idx ? val : s)));
+  }
+  function setPesoSev(idx: number, val: number) {
+    setPesosSev(pesosSev.map((w, i) => (i === idx ? val : w)));
+  }
+
+  function aplicarCalculoAutomatico() {
+    if (
+      pesosProb.length !== probs.length ||
+      pesosSev.length !== sevs.length ||
+      faixas.length === 0
+    ) {
+      toast.error("Pesos e faixas precisam estar preenchidos");
+      return;
+    }
+    const novoLookup = calcularLookupPorPesos(pesosProb, pesosSev, faixas);
+    setLookup(novoLookup);
+    toast.success("Lookup gerado pelos pesos");
+  }
+
+  // Funções pra editar a lista de faixas
+  function setFaixaCampo(
+    idx: number,
+    campo: "nivel" | "min" | "max",
+    valor: string | number
+  ) {
+    setFaixas(
+      faixas.map((f, i) =>
+        i === idx
+          ? {
+              ...f,
+              [campo]: campo === "nivel" ? (valor as NivelRisco) : Number(valor),
+            }
+          : f
+      )
+    );
+  }
+  function addFaixa() {
+    setFaixas([...faixas, { nivel: "Baixo", min: 0, max: 0 }]);
+  }
+  function removeFaixa(idx: number) {
+    setFaixas(faixas.filter((_, i) => i !== idx));
   }
   function setCelula(iP: number, iS: number, nivel: string) {
     setLookup(
@@ -257,6 +337,9 @@ function MatrizEditorModal({
         probabilidades: probs,
         severidades: sevs,
         lookup,
+        pesos_prob: pesosProb.length === probs.length ? pesosProb : null,
+        pesos_sev: pesosSev.length === sevs.length ? pesosSev : null,
+        faixas: faixas.length > 0 ? faixas : null,
         ativa: matriz?.ativa ?? false,
       },
       { onSuccess: onClose }
@@ -295,6 +378,183 @@ function MatrizEditorModal({
             />
           </div>
         </div>
+
+        {/* Seção colapsável: Pesos e Faixas (cálculo automático) */}
+        <details
+          open={showPesos}
+          onToggle={(e) => setShowPesos((e.target as HTMLDetailsElement).open)}
+          className="rounded-lg border border-blue-200 bg-blue-50/30"
+        >
+          <summary className="cursor-pointer px-3 py-2 text-xs font-semibold uppercase tracking-wider text-blue-700">
+            🧮 Pesos e Faixas (cálculo automático) — opcional
+          </summary>
+          <div className="space-y-3 border-t border-blue-200 p-3">
+            <p className="text-xs text-gray-600">
+              Defina um peso numérico para cada probabilidade e severidade.
+              O <strong>score</strong> de cada célula é{" "}
+              <code className="rounded bg-white px-1 text-blue-700">
+                pesoProb × pesoSev
+              </code>
+              ; as <strong>faixas</strong> abaixo mapeiam cada score em um nível.
+              Clique em &ldquo;Aplicar&rdquo; para gerar o lookup automaticamente.
+            </p>
+
+            {/* Pesos das probabilidades */}
+            <div>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                Pesos das probabilidades
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5">
+                {probs.map((p, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-1.5 rounded border border-gray-200 bg-white px-1.5 py-1"
+                  >
+                    <span
+                      className="flex-1 truncate text-[11px] text-gray-700"
+                      title={p}
+                    >
+                      {p}
+                    </span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={pesosProb[i] ?? 0}
+                      onChange={(e) =>
+                        setPesoProb(i, Number(e.target.value) || 0)
+                      }
+                      className="w-12 rounded border border-gray-300 px-1 py-0.5 text-center text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Pesos das severidades */}
+            <div>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                Pesos das severidades
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:grid-cols-5">
+                {sevs.map((s, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-1.5 rounded border border-gray-200 bg-white px-1.5 py-1"
+                  >
+                    <span
+                      className="flex-1 truncate text-[11px] text-gray-700"
+                      title={s}
+                    >
+                      {s}
+                    </span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={pesosSev[i] ?? 0}
+                      onChange={(e) =>
+                        setPesoSev(i, Number(e.target.value) || 0)
+                      }
+                      className="w-12 rounded border border-gray-300 px-1 py-0.5 text-center text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Editor de faixas */}
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                  Faixas de score → nível
+                </p>
+                <button
+                  type="button"
+                  onClick={addFaixa}
+                  className="rounded border border-dashed border-gray-400 bg-white px-2 py-0.5 text-[10px] text-gray-600 hover:bg-gray-50"
+                >
+                  + Faixa
+                </button>
+              </div>
+              <table className="w-full text-xs">
+                <thead className="text-gray-500">
+                  <tr>
+                    <th className="px-2 py-1 text-left font-medium">Nível</th>
+                    <th className="px-2 py-1 text-left font-medium">Score min</th>
+                    <th className="px-2 py-1 text-left font-medium">Score max</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {faixas.map((f, i) => {
+                    const cfg = NIVEL_CONFIG[f.nivel] ?? NIVEL_CONFIG.Baixo;
+                    return (
+                      <tr key={i}>
+                        <td className="py-0.5">
+                          <select
+                            value={f.nivel}
+                            onChange={(e) =>
+                              setFaixaCampo(i, "nivel", e.target.value)
+                            }
+                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs"
+                            style={{
+                              color: cfg.cor,
+                              backgroundColor: cfg.bg,
+                            }}
+                          >
+                            {NIVEIS_RISCO.map((n) => (
+                              <option key={n} value={n}>
+                                {n}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-0.5">
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={f.min}
+                            onChange={(e) =>
+                              setFaixaCampo(i, "min", e.target.value)
+                            }
+                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs"
+                          />
+                        </td>
+                        <td className="py-0.5">
+                          <input
+                            type="number"
+                            step="0.5"
+                            value={f.max}
+                            onChange={(e) =>
+                              setFaixaCampo(i, "max", e.target.value)
+                            }
+                            className="w-full rounded border border-gray-300 px-1 py-0.5 text-xs"
+                          />
+                        </td>
+                        <td className="py-0.5 pl-1">
+                          <button
+                            type="button"
+                            onClick={() => removeFaixa(i)}
+                            className="rounded px-1 text-[10px] text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <button
+              type="button"
+              onClick={aplicarCalculoAutomatico}
+              className="w-full rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+            >
+              Aplicar pesos → recalcular lookup
+            </button>
+          </div>
+        </details>
 
         <div className="rounded-lg border border-gray-200 bg-white p-3">
           <div className="mb-2 flex items-center justify-between">

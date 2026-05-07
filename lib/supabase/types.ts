@@ -161,8 +161,18 @@ export interface PerguntaTipoRisco {
   created_at?: string;
 }
 
+// V3.2: faixa de score → nível (cálculo automático por pesos)
+export interface FaixaRisco {
+  nivel: NivelRisco;
+  min: number;
+  max: number;
+}
+
 // V3: matriz de risco NxM com lookup table.
 // lookup[iP][iS] retorna o nome do nível (NivelRisco).
+// V3.2: pesos_prob/pesos_sev/faixas opcionais — se preenchidos,
+// o usuário pode gerar o lookup automaticamente via score = pesoP × pesoS
+// e procurar o nível correspondente nas faixas.
 export interface MatrizRisco {
   id_matriz: string;
   nome: string;
@@ -170,6 +180,9 @@ export interface MatrizRisco {
   probabilidades: string[];
   severidades: string[];
   lookup: string[][];
+  pesos_prob: number[] | null;
+  pesos_sev: number[] | null;
+  faixas: FaixaRisco[] | null;
   ativa: boolean;
   created_at?: string;
   updated_at?: string | null;
