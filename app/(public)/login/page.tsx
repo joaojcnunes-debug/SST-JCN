@@ -6,6 +6,7 @@ import { Shield, Loader2, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
+import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 
 export default function LoginPage() {
   return (
@@ -19,6 +20,7 @@ function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
   const setUser = useUserStore((s) => s.setUser);
+  const { data: configs } = useConfiguracoes();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showPwd, setShowPwd] = useState(false);
@@ -93,9 +95,19 @@ function LoginInner() {
     >
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
         <div className="flex flex-col items-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-primary text-white shadow-lg">
-            <Shield className="size-7" />
-          </div>
+          {configs?.logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={configs.logo_url}
+              alt="Logo"
+              className="h-20 w-auto max-w-[160px] object-contain"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-primary text-white shadow-lg">
+              <Shield className="size-7" />
+            </div>
+          )}
           <h1 className="mt-4 text-2xl font-bold text-gray-900">Painel SST</h1>
           <p className="text-sm text-gray-500">Chabra · Segurança e Saúde do Trabalho</p>
         </div>
