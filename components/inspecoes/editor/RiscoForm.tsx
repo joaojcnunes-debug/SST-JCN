@@ -84,6 +84,20 @@ interface FormState {
   medidas_recomendadas: string;
   observacoes_risco: string;
   respostas_custom: Record<string, string>;
+  /**
+   * EPIs/EPCs adicionados durante a CRIAÇÃO do risco. Ficam em buffer
+   * local até o risco ser salvo; depois são inseridos em batch
+   * (replicados pra cada setor selecionado em multi-setor).
+   * Ignorado em modo edit — lá usamos persistência imediata via EpiInline.
+   */
+  epis_pendentes: EpiPendente[];
+}
+
+interface EpiPendente {
+  tipo: "EPI" | "EPC";
+  descricao: string;
+  ca: string | null;
+  recomendado: "Sim" | "Não";
 }
 
 function emptyForm(): FormState {
@@ -125,6 +139,7 @@ function emptyForm(): FormState {
     medidas_recomendadas: "",
     observacoes_risco: "",
     respostas_custom: {},
+    epis_pendentes: [],
   };
 }
 
@@ -218,6 +233,7 @@ export default function RiscoForm({
           string,
           string
         >,
+        epis_pendentes: [],
       });
     } else {
       setForm(emptyForm());
@@ -334,6 +350,28 @@ export default function RiscoForm({
 
       const { error } = await supabase.from("riscos").insert(novos as never);
       if (error) throw error;
+
+      // Insere EPIs/EPCs pendentes — replicados pra cada risco criado
+      if (form.epis_pendentes.length > 0) {
+        const linhasEpi = novos.flatMap((r) =>
+          form.epis_pendentes.map((ep) => ({
+            id_protecao: gerarId("EPI"),
+            id_risco: r.id_risco,
+            id_inspecao: idInspecao,
+            id_empresa: idEmpresa,
+            id_setor: r.id_setor,
+            tipo: ep.tipo,
+            descricao: ep.descricao,
+            ca: ep.ca,
+            recomendado: ep.recomendado,
+          }))
+        );
+        const { error: errEpi } = await supabase
+          .from("epi_epc")
+          .insert(linhasEpi as never);
+        if (errEpi) throw errEpi;
+      }
+
       return { criados: novos.length, extras: 0 };
     },
     onSuccess: (res) => {
@@ -900,6 +938,25 @@ export default function RiscoForm({
           </SubGrid>
         )}
 
+        {/* EPIs e EPCs vinculados — sempre visível */}
+        {isEdit && risco ? (
+          <EpiInline
+            mode="server"
+            idRisco={risco.id_risco}
+            idInspecao={idInspecao}
+            idEmpresa={idEmpresa}
+            idSetor={risco.id_setor}
+          />
+        ) : (
+          <EpiInline
+            mode="local"
+            items={form.epis_pendentes}
+            onChange={(items) =>
+              setForm({ ...form, epis_pendentes: items })
+            }
+          />
+        )}
+
         {/* Medidas + observações */}
         <Field label="Medidas Já Adotadas">
           <textarea
@@ -931,16 +988,6 @@ export default function RiscoForm({
             className={inputCls}
           />
         </Field>
-
-        {/* EPIs/EPCs inline (só editing) */}
-        {isEdit && risco && (
-          <EpiInline
-            idRisco={risco.id_risco}
-            idInspecao={idInspecao}
-            idEmpresa={idEmpresa}
-            idSetor={risco.id_setor}
-          />
-        )}
 
         <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
           <button
@@ -1053,21 +1100,26 @@ function FotoQuimUpload({
 }
 
 // =============================================================
-// SUBCOMPONENTE: EPI/EPC inline (só aparece editing)
+// SUBCOMPONENTE: EPI/EPC inline (2 modos)
+//   - server: risco já existe → persiste cada add/del imediatamente
+//   - local:  risco ainda não existe → manipula buffer via prop
 // =============================================================
 
-function EpiInline({
-  idRisco,
-  idInspecao,
-  idEmpresa,
-  idSetor,
-}: {
-  idRisco: string;
-  idInspecao: string;
-  idEmpresa: string;
-  idSetor: string | null;
-}) {
-  const qc = useQueryClient();
+type EpiInlineProps =
+  | {
+      mode: "server";
+      idRisco: string;
+      idInspecao: string;
+      idEmpresa: string;
+      idSetor: string | null;
+    }
+  | {
+      mode: "local";
+      items: EpiPendente[];
+      onChange: (items: EpiPendente[]) => void;
+    };
+
+function EpiInline(props: EpiInlineProps) {
   const [novo, setNovo] = useState({
     tipo: "EPI" as "EPI" | "EPC",
     descricao: "",
@@ -1075,29 +1127,35 @@ function EpiInline({
     recomendado: "Sim" as "Sim" | "Não",
   });
 
-  const { data: lista = [], isLoading } = useQuery({
-    queryKey: ["epi-risco", idRisco],
+  // ===== Modo server (editing) =====
+  const qc = useQueryClient();
+  const idRiscoServer = props.mode === "server" ? props.idRisco : null;
+  const { data: serverLista = [], isLoading: serverLoading } = useQuery({
+    queryKey: ["epi-risco", idRiscoServer],
+    enabled: props.mode === "server",
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("epi_epc")
         .select("*")
-        .eq("id_risco", idRisco);
+        .eq("id_risco", idRiscoServer!);
       if (error) throw error;
       return (data ?? []) as unknown as EpiEpc[];
     },
   });
 
-  const add = useMutation({
+  const addServer = useMutation({
     mutationFn: async () => {
+      if (props.mode !== "server")
+        throw new Error("Modo inválido");
       if (!novo.descricao.trim()) throw new Error("Descrição obrigatória");
       const supabase = createSupabaseBrowserClient();
       const row = {
         id_protecao: gerarId("EPI"),
-        id_risco: idRisco,
-        id_inspecao: idInspecao,
-        id_empresa: idEmpresa,
-        id_setor: idSetor,
+        id_risco: props.idRisco,
+        id_inspecao: props.idInspecao,
+        id_empresa: props.idEmpresa,
+        id_setor: props.idSetor,
         tipo: novo.tipo,
         descricao: novo.descricao.trim(),
         ca: novo.ca.trim() || null,
@@ -1107,16 +1165,19 @@ function EpiInline({
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["epi-risco", idRisco] });
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+      if (props.mode === "server") {
+        qc.invalidateQueries({ queryKey: ["epi-risco", props.idRisco] });
+        qc.invalidateQueries({ queryKey: ["inspecao", props.idInspecao] });
+      }
       setNovo({ tipo: "EPI", descricao: "", ca: "", recomendado: "Sim" });
       toast.success("Adicionado");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const del = useMutation({
+  const delServer = useMutation({
     mutationFn: async (id: string) => {
+      if (props.mode !== "server") throw new Error("Modo inválido");
       const supabase = createSupabaseBrowserClient();
       const { error } = await supabase
         .from("epi_epc")
@@ -1125,12 +1186,61 @@ function EpiInline({
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["epi-risco", idRisco] });
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+      if (props.mode === "server") {
+        qc.invalidateQueries({ queryKey: ["epi-risco", props.idRisco] });
+        qc.invalidateQueries({ queryKey: ["inspecao", props.idInspecao] });
+      }
       toast.success("Removido");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  // ===== Lista unificada (vinda do server ou do local) =====
+  const lista =
+    props.mode === "server"
+      ? serverLista.map((e) => ({
+          key: e.id_protecao,
+          tipo: e.tipo,
+          descricao: e.descricao,
+          ca: e.ca,
+          recomendado: e.recomendado,
+        }))
+      : props.items.map((e, i) => ({
+          key: `local-${i}`,
+          tipo: e.tipo,
+          descricao: e.descricao,
+          ca: e.ca,
+          recomendado: e.recomendado,
+        }));
+
+  function handleAdd() {
+    if (!novo.descricao.trim()) {
+      toast.error("Descrição obrigatória");
+      return;
+    }
+    if (props.mode === "server") {
+      addServer.mutate();
+    } else {
+      props.onChange([
+        ...props.items,
+        {
+          tipo: novo.tipo,
+          descricao: novo.descricao.trim(),
+          ca: novo.ca.trim() || null,
+          recomendado: novo.recomendado,
+        },
+      ]);
+      setNovo({ tipo: "EPI", descricao: "", ca: "", recomendado: "Sim" });
+    }
+  }
+
+  function handleDel(key: string, idx: number) {
+    if (props.mode === "server") {
+      delServer.mutate(key);
+    } else {
+      props.onChange(props.items.filter((_, i) => i !== idx));
+    }
+  }
 
   return (
     <section>
@@ -1138,19 +1248,31 @@ function EpiInline({
         EPIs e EPCs vinculados a este risco
       </p>
       <div className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
-        {isLoading ? (
+        {props.mode === "server" && serverLoading ? (
           <p className="text-sm text-gray-500">Carregando...</p>
         ) : lista.length === 0 ? (
-          <p className="text-sm text-gray-500">Nenhum EPI/EPC vinculado.</p>
+          <p className="text-sm text-gray-500">
+            Nenhum EPI/EPC. Adicione abaixo
+            {props.mode === "local" && (
+              <span className="text-xs"> (serão salvos junto com o risco)</span>
+            )}
+            .
+          </p>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {lista.map((e) => (
+            {lista.map((e, idx) => (
               <li
-                key={e.id_protecao}
+                key={e.key}
                 className="flex items-center justify-between py-1.5"
               >
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-700">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-xs font-medium ${
+                      e.tipo === "EPI"
+                        ? "bg-blue-50 text-blue-700"
+                        : "bg-emerald-50 text-emerald-700"
+                    }`}
+                  >
                     {e.tipo}
                   </span>
                   <span className="font-medium text-gray-900">
@@ -1167,7 +1289,7 @@ function EpiInline({
                 </div>
                 <button
                   type="button"
-                  onClick={() => del.mutate(e.id_protecao)}
+                  onClick={() => handleDel(e.key, idx)}
                   className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
                   title="Remover"
                 >
@@ -1194,6 +1316,12 @@ function EpiInline({
             onChange={(ev) => setNovo({ ...novo, descricao: ev.target.value })}
             placeholder="Descrição"
             className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+            onKeyDown={(ev) => {
+              if (ev.key === "Enter") {
+                ev.preventDefault();
+                handleAdd();
+              }
+            }}
           />
           <input
             type="text"
@@ -1217,8 +1345,8 @@ function EpiInline({
           </select>
           <button
             type="button"
-            onClick={() => add.mutate()}
-            disabled={add.isPending}
+            onClick={handleAdd}
+            disabled={addServer.isPending}
             className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent disabled:opacity-50"
           >
             <Plus className="size-3.5" /> Add
