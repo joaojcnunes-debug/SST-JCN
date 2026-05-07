@@ -94,6 +94,7 @@ export default function EmpresasPage() {
             <EmpresaCard
               key={empresa.id_empresa}
               empresa={empresa}
+              canEdit={canEdit}
               onEdit={() => {
                 setEditing(empresa);
                 setFormOpen(true);

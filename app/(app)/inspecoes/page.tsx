@@ -11,6 +11,7 @@ import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import Pagination from "@/components/ui/Pagination";
 import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { usePagination } from "@/lib/hooks/usePagination";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,7 @@ function InspecoesInner() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const canEdit = useCanEdit();
   const empresaParam = params.get("empresa");
   const [empresaId, setEmpresaId] = useState<string | null>(empresaParam);
   const [filtro, setFiltro] = useState<Filtro>("Todos");
@@ -116,17 +118,19 @@ function InspecoesInner() {
               Consolidado
             </Link>
           )}
-          <Link
-            href={
-              empresaId
-                ? `/inspecoes/nova?empresa=${empresaId}`
-                : "/inspecoes/nova"
-            }
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
-          >
-            <Plus className="size-4" />
-            Nova Inspeção
-          </Link>
+          {canEdit && (
+            <Link
+              href={
+                empresaId
+                  ? `/inspecoes/nova?empresa=${empresaId}`
+                  : "/inspecoes/nova"
+              }
+              className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+            >
+              <Plus className="size-4" />
+              Nova Inspeção
+            </Link>
+          )}
         </div>
       </div>
 

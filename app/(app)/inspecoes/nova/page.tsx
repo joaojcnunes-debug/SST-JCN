@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useMemo } from "react";
+import { Suspense, useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronRight,
@@ -53,6 +53,14 @@ function NovaInspecaoInner() {
   const params = useSearchParams();
   const qc = useQueryClient();
   const user = useUserStore((s) => s.user);
+
+  // Visualizador não pode criar inspeções — bloqueia mesmo via URL direta.
+  useEffect(() => {
+    if (user && user.perfil === "Visualizador") {
+      toast.error("Visualizadores não podem criar inspeções");
+      router.replace("/inspecoes");
+    }
+  }, [user, router]);
 
   const [step, setStep] = useState<Step>(1);
   const [empresaDestinoId, setEmpresaDestinoId] = useState<string | null>(

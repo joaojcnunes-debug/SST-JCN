@@ -27,9 +27,11 @@ function useInspCount(idEmpresa: string) {
 export default function EmpresaCard({
   empresa,
   onEdit,
+  canEdit = true,
 }: {
   empresa: Empresa;
   onEdit: () => void;
+  canEdit?: boolean;
 }) {
   const { data: count } = useInspCount(empresa.id_empresa);
   const grau = empresa.grau_risco ?? 1;
@@ -83,14 +85,16 @@ export default function EmpresaCard({
           <ClipboardList className="size-3.5" />
           Inspeções
         </Link>
-        <button
-          type="button"
-          onClick={onEdit}
-          className="flex items-center justify-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-        >
-          <Pencil className="size-3.5" />
-          Editar
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="flex items-center justify-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Pencil className="size-3.5" />
+            Editar
+          </button>
+        )}
       </div>
     </div>
   );

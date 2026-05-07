@@ -43,6 +43,7 @@ export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isAdmin = user?.perfil === "Admin";
+  const canEdit = user?.perfil === "Admin" || user?.perfil === "Tecnico";
 
   async function handleLogout() {
     try {
@@ -123,10 +124,14 @@ export default function Sidebar() {
         {PRINCIPAL.map((item) => (
           <NavItem key={item.href} {...item} />
         ))}
-        <SectionLabel>Ações</SectionLabel>
-        {ACOES.map((item) => (
-          <NavItem key={item.href} {...item} />
-        ))}
+        {canEdit && (
+          <>
+            <SectionLabel>Ações</SectionLabel>
+            {ACOES.map((item) => (
+              <NavItem key={item.href} {...item} />
+            ))}
+          </>
+        )}
         {isAdmin && (
           <>
             <SectionLabel>Admin</SectionLabel>
