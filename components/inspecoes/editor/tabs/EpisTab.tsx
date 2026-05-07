@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Pencil, Trash2, ShieldCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy, ShieldCheck } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import EpiForm from "../EpiForm";
+import CopiarEpiModal from "../CopiarEpiModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { TIPO_ICONE } from "@/lib/constants";
@@ -29,6 +30,7 @@ export default function EpisTab({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<EpiEpc | null>(null);
   const [confirm, setConfirm] = useState<EpiEpc | null>(null);
+  const [copiando, setCopiando] = useState<EpiEpc | null>(null);
 
   const riscoMap = useMemo(() => new Map(riscos.map((r) => [r.id_risco, r])), [riscos]);
 
@@ -141,13 +143,23 @@ export default function EpisTab({
                                   setFormOpen(true);
                                 }}
                                 className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                                title="Editar"
                               >
                                 <Pencil className="size-4" />
                               </button>
                               <button
                                 type="button"
+                                onClick={() => setCopiando(e)}
+                                className="rounded p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-700"
+                                title="Copiar para outra empresa"
+                              >
+                                <Copy className="size-4" />
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => setConfirm(e)}
                                 className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                                title="Excluir"
                               >
                                 <Trash2 className="size-4" />
                               </button>
@@ -163,6 +175,12 @@ export default function EpisTab({
           );
         })
       )}
+
+      <CopiarEpiModal
+        open={!!copiando}
+        onClose={() => setCopiando(null)}
+        epi={copiando}
+      />
 
       <EpiForm
         open={formOpen}
