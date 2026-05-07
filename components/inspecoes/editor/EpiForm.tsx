@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
-import { TIPO_ICONE } from "@/lib/constants";
+import { useTipoIcone } from "@/lib/hooks/useV3";
 import type { EpiEpc, Risco } from "@/lib/supabase/types";
 
 interface Props {
@@ -27,6 +27,7 @@ export default function EpiForm({
   epi,
 }: Props) {
   const qc = useQueryClient();
+  const iconeDe = useTipoIcone();
   const isEdit = !!epi;
   const [form, setForm] = useState({
     id_risco: "",
@@ -116,7 +117,7 @@ export default function EpiForm({
             <option value="">Selecione...</option>
             {riscos.map((r) => (
               <option key={r.id_risco} value={r.id_risco}>
-                {TIPO_ICONE[r.tipo_risco] ?? "•"} {r.tipo_risco} —{" "}
+                {iconeDe(r.tipo_risco)} {r.tipo_risco} —{" "}
                 {r.agente ?? r.id_risco}
               </option>
             ))}

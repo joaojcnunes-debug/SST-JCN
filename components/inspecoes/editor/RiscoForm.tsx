@@ -16,10 +16,9 @@ import {
   useMatrizes,
   useTiposRisco,
   usePerguntasPorTipo,
+  useCatalogoPorTipo,
 } from "@/lib/hooks/useV3";
 import {
-  TIPO_ICONE,
-  AGENTES_SUGERIDOS,
   PERGUNTAS_QUIMICAS,
   FATORES_ERGONOMICOS,
   FATORES_PSICOSSOCIAIS,
@@ -28,6 +27,7 @@ import {
   TEMPOS_EXPOSICAO_DEFAULT,
   TECNICAS_DEFAULT,
 } from "@/lib/constants";
+import type { CategoriaCatalogo } from "@/lib/supabase/types";
 import type {
   Cargo,
   EpiEpc,
@@ -160,10 +160,24 @@ export default function RiscoForm({
   const { data: matrizAtiva } = useMatrizAtiva();
   const { data: matrizes = [] } = useMatrizes();
   const { data: tiposCustom = [] } = useTiposRisco();
-  const { data: perguntasCustom = [] } = usePerguntasPorTipo(
-    // O id_tipo é o slug correspondente ao nome — busca no array.
-    tiposCustom.find((t) => t.nome === form.tipo_risco)?.id_tipo
+  const idTipoSelecionado = useMemo(
+    () => tiposCustom.find((t) => t.nome === form.tipo_risco)?.id_tipo,
+    [tiposCustom, form.tipo_risco]
   );
+  const { data: perguntasCustom = [] } =
+    usePerguntasPorTipo(idTipoSelecionado);
+
+  // V4: catálogo do tipo selecionado popula sugestões dos selects/datalists.
+  const { data: catalogo = [] } = useCatalogoPorTipo(idTipoSelecionado);
+  const sugestoesPorCategoria = useMemo(() => {
+    const acc = {} as Record<CategoriaCatalogo, string[]>;
+    for (const i of catalogo) {
+      const arr = acc[i.categoria] ?? [];
+      arr.push(i.texto);
+      acc[i.categoria] = arr;
+    }
+    return acc;
+  }, [catalogo]);
 
   // V3.1: cada risco pode ter sua própria matriz. Se não tiver,
   // cai no fallback global (matriz ativa).
@@ -439,7 +453,7 @@ export default function RiscoForm({
           <div>
             <label className={lblCls}>Agente / Risco *</label>
             <input
-              list="agentes-sugeridos"
+              list="catalogo-agente"
               type="text"
               value={form.agente}
               onChange={(e) => setForm({ ...form, agente: e.target.value })}
@@ -447,12 +461,8 @@ export default function RiscoForm({
               required
               placeholder="Ex: Ruído contínuo, Cloreto de sódio..."
             />
-            <datalist id="agentes-sugeridos">
-              {(
-                (AGENTES_SUGERIDOS as Record<string, string[]>)[
-                  form.tipo_risco
-                ] ?? []
-              ).map((s: string) => (
+            <datalist id="catalogo-agente">
+              {(sugestoesPorCategoria.agente ?? []).map((s) => (
                 <option key={s} value={s} />
               ))}
             </datalist>
@@ -460,6 +470,7 @@ export default function RiscoForm({
           <div>
             <label className={lblCls}>Fonte Geradora</label>
             <input
+              list="catalogo-fonte"
               type="text"
               value={form.fonte_geradora}
               onChange={(e) =>
@@ -467,6 +478,11 @@ export default function RiscoForm({
               }
               className={inputCls}
             />
+            <datalist id="catalogo-fonte">
+              {(sugestoesPorCategoria.fonte_geradora ?? []).map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
           </div>
         </div>
 
@@ -946,6 +962,7 @@ export default function RiscoForm({
             idInspecao={idInspecao}
             idEmpresa={idEmpresa}
             idSetor={risco.id_setor}
+            sugestoes={sugestoesPorCategoria}
           />
         ) : (
           <EpiInline
@@ -954,6 +971,7 @@ export default function RiscoForm({
             onChange={(items) =>
               setForm({ ...form, epis_pendentes: items })
             }
+            sugestoes={sugestoesPorCategoria}
           />
         )}
 
@@ -967,6 +985,8 @@ export default function RiscoForm({
           onChangeRecomendadas={(items) =>
             setForm({ ...form, medidas_recomendadas_lista: items })
           }
+          sugestoesAdotadas={sugestoesPorCategoria.medida_adotada ?? []}
+          sugestoesRecomendadas={sugestoesPorCategoria.medida_recomendada ?? []}
         />
 
         <Field label="Observações">
@@ -1099,7 +1119,7 @@ function FotoQuimUpload({
 // 2 modos: server (persistência imediata) e local (buffer pra novos riscos)
 // =============================================================
 
-type EpiInlineProps =
+type EpiInlineProps = (
   | {
       mode: "server";
       idRisco: string;
@@ -1111,7 +1131,14 @@ type EpiInlineProps =
       mode: "local";
       items: EpiPendente[];
       onChange: (items: EpiPendente[]) => void;
-    };
+    }
+) & {
+  /**
+   * Sugestões do catálogo do tipo de risco — chave por categoria.
+   * Cada bloco abaixo lê apenas a sua categoria correspondente.
+   */
+  sugestoes: Partial<Record<CategoriaCatalogo, string[]>>;
+};
 
 function EpiInline(props: EpiInlineProps) {
   // Modo server: busca lista uma vez; cada bloco filtra
@@ -1144,6 +1171,7 @@ function EpiInline(props: EpiInlineProps) {
         cor="blue"
         props={props}
         serverLista={serverLista}
+        sugestoes={props.sugestoes.epi_utilizado ?? []}
       />
       <EpiBloco
         ordem={2}
@@ -1154,6 +1182,7 @@ function EpiInline(props: EpiInlineProps) {
         cor="indigo"
         props={props}
         serverLista={serverLista}
+        sugestoes={props.sugestoes.epi_recomendado ?? []}
       />
       <EpiBloco
         ordem={3}
@@ -1164,6 +1193,7 @@ function EpiInline(props: EpiInlineProps) {
         cor="emerald"
         props={props}
         serverLista={serverLista}
+        sugestoes={props.sugestoes.epc_utilizado ?? []}
       />
       <EpiBloco
         ordem={4}
@@ -1174,6 +1204,7 @@ function EpiInline(props: EpiInlineProps) {
         cor="teal"
         props={props}
         serverLista={serverLista}
+        sugestoes={props.sugestoes.epc_recomendado ?? []}
       />
     </section>
   );
@@ -1222,6 +1253,7 @@ function EpiBloco({
   cor,
   props,
   serverLista,
+  sugestoes,
 }: {
   ordem: number;
   titulo: string;
@@ -1231,10 +1263,12 @@ function EpiBloco({
   cor: keyof typeof CORES_BLOCO;
   props: EpiInlineProps;
   serverLista: EpiEpc[];
+  sugestoes: string[];
 }) {
   const qc = useQueryClient();
   const cfg = CORES_BLOCO[cor];
   const [novo, setNovo] = useState({ descricao: "", ca: "" });
+  const datalistId = `cat-${tipoFixo.toLowerCase()}-${recomendadoFixo === "Sim" ? "rec" : "uti"}`;
 
   // Estado de edição inline (1 item por vez)
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -1517,6 +1551,7 @@ function EpiBloco({
       <div className="grid grid-cols-[1fr_120px_auto] items-center gap-2">
         <input
           type="text"
+          list={sugestoes.length > 0 ? datalistId : undefined}
           value={novo.descricao}
           onChange={(ev) => setNovo({ ...novo, descricao: ev.target.value })}
           placeholder={`Descrição do ${tipoFixo}`}
@@ -1528,6 +1563,13 @@ function EpiBloco({
             }
           }}
         />
+        {sugestoes.length > 0 && (
+          <datalist id={datalistId}>
+            {sugestoes.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+        )}
         <input
           type="text"
           value={novo.ca}
@@ -1563,11 +1605,15 @@ function MedidasInline({
   recomendadas,
   onChangeAdotadas,
   onChangeRecomendadas,
+  sugestoesAdotadas,
+  sugestoesRecomendadas,
 }: {
   adotadas: string[];
   recomendadas: string[];
   onChangeAdotadas: (items: string[]) => void;
   onChangeRecomendadas: (items: string[]) => void;
+  sugestoesAdotadas: string[];
+  sugestoesRecomendadas: string[];
 }) {
   return (
     <section className="space-y-3">
@@ -1579,6 +1625,7 @@ function MedidasInline({
         items={adotadas}
         onChange={onChangeAdotadas}
         placeholder="Ex: Treinamento NR-06 anual"
+        sugestoes={sugestoesAdotadas}
       />
       <MedidaBloco
         ordem={6}
@@ -1588,6 +1635,7 @@ function MedidasInline({
         items={recomendadas}
         onChange={onChangeRecomendadas}
         placeholder="Ex: Sinalizar pisos escorregadios"
+        sugestoes={sugestoesRecomendadas}
       />
     </section>
   );
@@ -1619,6 +1667,7 @@ function MedidaBloco({
   items,
   onChange,
   placeholder,
+  sugestoes,
 }: {
   ordem: number;
   titulo: string;
@@ -1627,11 +1676,13 @@ function MedidaBloco({
   items: string[];
   onChange: (items: string[]) => void;
   placeholder: string;
+  sugestoes: string[];
 }) {
   const cfg = CORES_MEDIDA[cor];
   const [novo, setNovo] = useState("");
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
+  const datalistId = `cat-medida-${ordem}`;
 
   function handleAdd() {
     const txt = novo.trim();
@@ -1752,6 +1803,7 @@ function MedidaBloco({
       <div className="grid grid-cols-[1fr_auto] items-center gap-2">
         <input
           type="text"
+          list={sugestoes.length > 0 ? datalistId : undefined}
           value={novo}
           onChange={(ev) => setNovo(ev.target.value)}
           placeholder={placeholder}
@@ -1763,6 +1815,13 @@ function MedidaBloco({
             }
           }}
         />
+        {sugestoes.length > 0 && (
+          <datalist id={datalistId}>
+            {sugestoes.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+        )}
         <button
           type="button"
           onClick={handleAdd}

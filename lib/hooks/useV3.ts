@@ -1,9 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type {
+  CategoriaCatalogo,
+  ItemCatalogoTipo,
   MatrizRisco,
   PerguntaTipoRisco,
   TipoRiscoCustom,
@@ -52,6 +55,27 @@ export function useSaveTipoRisco() {
   });
 }
 
+/**
+ * Lookup nome → ícone derivado da tabela `tipos_risco`. Inclui
+ * inativos pra que riscos antigos cujo tipo foi desativado ainda
+ * exibam o ícone correto. Fallback "•" quando o tipo não está
+ * cadastrado ou não tem ícone.
+ *
+ *   const iconeDe = useTipoIcone();
+ *   <span>{iconeDe(risco.tipo_risco)}</span>
+ */
+export function useTipoIcone() {
+  const { data: tipos = [] } = useTiposRisco({ incluirInativos: true });
+  return useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of tipos) {
+      if (t.icone) map.set(t.nome, t.icone);
+    }
+    return (nome: string | null | undefined) =>
+      (nome && map.get(nome)) || "•";
+  }, [tipos]);
+}
+
 export function useDeleteTipoRisco() {
   const qc = useQueryClient();
   return useMutation({
@@ -82,6 +106,102 @@ export function useDeleteTipoRisco() {
     onSuccess: (acao) => {
       qc.invalidateQueries({ queryKey: ["tipos-risco"] });
       toast.success(acao === "desativado" ? "Tipo desativado" : "Tipo removido");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// =========================================================================
+// CATÁLOGO POR TIPO DE RISCO (V4)
+// =========================================================================
+// Lista de itens pré-cadastrados que populam selects/datalists do
+// RiscoForm. 8 categorias por tipo: agente, fonte_geradora, EPI/EPC
+// (utilizado/recomendado), medida (adotada/recomendada).
+
+export function useCatalogoPorTipo(
+  idTipo: string | null | undefined,
+  opts?: { incluirInativos?: boolean }
+) {
+  const incluirInativos = opts?.incluirInativos ?? false;
+  return useQuery({
+    queryKey: ["catalogo-tipo", idTipo, incluirInativos],
+    enabled: !!idTipo,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("itens_catalogo_tipo")
+        .select("*")
+        .eq("id_tipo", idTipo!)
+        .order("categoria")
+        .order("ordem");
+      if (!incluirInativos) q = q.eq("ativo", true);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as ItemCatalogoTipo[];
+    },
+  });
+}
+
+/**
+ * Filtra o catálogo de um tipo por categoria, preservando ordem.
+ * Use direto nas telas que precisam só de uma das listas (ex: agentes
+ * no datalist do RiscoForm).
+ */
+export function useCatalogoCategoria(
+  idTipo: string | null | undefined,
+  categoria: CategoriaCatalogo
+) {
+  const { data: tudo = [], ...rest } = useCatalogoPorTipo(idTipo);
+  const itens = useMemo(
+    () => tudo.filter((i) => i.categoria === categoria),
+    [tudo, categoria]
+  );
+  return { ...rest, data: itens };
+}
+
+export function useSaveItemCatalogo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      item: Partial<ItemCatalogoTipo> & {
+        id_item: string;
+        id_tipo: string;
+        categoria: CategoriaCatalogo;
+      }
+    ) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("itens_catalogo_tipo")
+        .upsert(
+          {
+            ...item,
+            updated_at: new Date().toISOString(),
+          } as never,
+          { onConflict: "id_item" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["catalogo-tipo", vars.id_tipo] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeleteItemCatalogo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (idItem: string) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("itens_catalogo_tipo")
+        .delete()
+        .eq("id_item", idItem);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["catalogo-tipo"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

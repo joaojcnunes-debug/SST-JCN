@@ -135,7 +135,7 @@ export interface Risco {
   updated_at?: string | null;
 }
 
-// V3: tipos editáveis pelo Admin (substituem TIPOS_RISCO hardcoded)
+// V3: tipos de risco editáveis pelo Admin via /config (única fonte de verdade)
 export interface TipoRiscoCustom {
   id_tipo: string;
   nome: string;
@@ -143,6 +143,31 @@ export interface TipoRiscoCustom {
   ordem: number;
   ativo: boolean;
   sistema: boolean;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
+// V4: catálogo de itens pré-cadastrados por tipo de risco.
+// Cada tipo guarda listas que alimentam selects/datalists do RiscoForm
+// (agentes, fontes geradoras, EPIs, EPCs e medidas). 8 categorias
+// espelham a planilha modelo do cliente.
+export type CategoriaCatalogo =
+  | "agente"
+  | "fonte_geradora"
+  | "epi_utilizado"
+  | "epi_recomendado"
+  | "epc_utilizado"
+  | "epc_recomendado"
+  | "medida_adotada"
+  | "medida_recomendada";
+
+export interface ItemCatalogoTipo {
+  id_item: string;
+  id_tipo: string;
+  categoria: CategoriaCatalogo;
+  texto: string;
+  ordem: number;
+  ativo: boolean;
   created_at?: string;
   updated_at?: string | null;
 }
@@ -280,6 +305,7 @@ export interface Database {
       tipos_risco: TableShape<TipoRiscoCustom>;
       perguntas_tipo_risco: TableShape<PerguntaTipoRisco>;
       matrizes_risco: TableShape<MatrizRisco>;
+      itens_catalogo_tipo: TableShape<ItemCatalogoTipo>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

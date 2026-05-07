@@ -9,7 +9,7 @@ import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId, cn } from "@/lib/utils";
-import { TIPO_ICONE } from "@/lib/constants";
+import { useTipoIcone } from "@/lib/hooks/useV3";
 import type {
   Cargo,
   EpiEpc,
@@ -49,6 +49,7 @@ export default function CopiarRiscoModal({
   cargosAtual,
 }: Props) {
   const qc = useQueryClient();
+  const iconeDe = useTipoIcone();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const [modo, setModo] = useState<Modo>("mesma_inspecao");
@@ -222,9 +223,7 @@ export default function CopiarRiscoModal({
               Risco de origem
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <span className="text-base">
-                {TIPO_ICONE[risco.tipo_risco as keyof typeof TIPO_ICONE] ?? "•"}
-              </span>
+              <span className="text-base">{iconeDe(risco.tipo_risco)}</span>
               <span className="font-medium text-gray-900">
                 {risco.tipo_risco} · {risco.agente ?? "—"}
               </span>

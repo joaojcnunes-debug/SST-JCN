@@ -8,7 +8,7 @@ import EpiForm from "../EpiForm";
 import CopiarEpiModal from "../CopiarEpiModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { TIPO_ICONE } from "@/lib/constants";
+import { useTipoIcone } from "@/lib/hooks/useV3";
 import type { EpiEpc, Risco } from "@/lib/supabase/types";
 
 interface Props {
@@ -27,6 +27,7 @@ export default function EpisTab({
   readOnly,
 }: Props) {
   const qc = useQueryClient();
+  const iconeDe = useTipoIcone();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<EpiEpc | null>(null);
   const [confirm, setConfirm] = useState<EpiEpc | null>(null);
@@ -100,7 +101,7 @@ export default function EpisTab({
             >
               <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 text-sm">
                 <span className="text-base">
-                  {r ? TIPO_ICONE[r.tipo_risco] ?? "•" : <ShieldCheck className="size-4" />}
+                  {r ? iconeDe(r.tipo_risco) : <ShieldCheck className="size-4" />}
                 </span>
                 <span className="font-semibold text-gray-900">
                   {r?.tipo_risco ?? "Risco"} — {r?.agente ?? "—"}

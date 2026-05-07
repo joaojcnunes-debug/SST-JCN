@@ -81,7 +81,7 @@ lib/
   supabase/               ← clients (browser/server) + types
   hooks/                  ← useEmpresas, useInspecao, useUsuario
   utils.ts                ← cn, fmtData, calcularNivelRisco, gerarId, PROBABILIDADES, SEVERIDADES
-  constants.ts            ← TIPOS_RISCO, NIVEL_CONFIG, TIPO_ICONE, CATEGORIAS_FOTO, ...
+  constants.ts            ← NIVEL_CONFIG, CATEGORIAS_FOTO, listas defaults (tipos de risco em DB)
   store.ts                ← Zustand (usuário logado)
   providers.tsx           ← QueryClient + Toaster
 middleware.ts             ← redireciona para /login se não autenticado

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Grid3x3,
   Activity,
-  AlertTriangle,
   BarChart3,
   ListChecks,
   Image as ImageIcon,
@@ -25,7 +24,7 @@ import MatrizesTab from "@/components/config/MatrizesTab";
 import toast from "react-hot-toast";
 import MatrizRisco from "@/components/riscos/MatrizRisco";
 import { PROBABILIDADES, SEVERIDADES } from "@/lib/utils";
-import { NIVEIS_RISCO, NIVEL_CONFIG, TIPOS_RISCO, TIPO_ICONE } from "@/lib/constants";
+import { NIVEIS_RISCO, NIVEL_CONFIG } from "@/lib/constants";
 import { useIsAdmin } from "@/lib/hooks/useUsuario";
 import { useConfiguracoes, useSaveConfig, type Configs } from "@/lib/hooks/useConfiguracoes";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -40,7 +39,6 @@ type TabKey =
   | "listas"
   | "probsev"
   | "niveis"
-  | "tipos"
   | "logo";
 
 export default function ConfigPage() {
@@ -67,7 +65,6 @@ export default function ConfigPage() {
     { key: "listas" as TabKey, label: "Listas Auxiliares", icon: ListChecks },
     { key: "probsev" as TabKey, label: "Probabilidade & Severidade (legado)", icon: Activity },
     { key: "niveis" as TabKey, label: "Níveis", icon: BarChart3 },
-    { key: "tipos" as TabKey, label: "Catálogo Tipos (legado)", icon: AlertTriangle },
     { key: "logo" as TabKey, label: "Logo da Empresa", icon: ImageIcon },
   ];
 
@@ -123,8 +120,6 @@ export default function ConfigPage() {
           )}
 
           {tab === "niveis" && <NiveisView />}
-
-          {tab === "tipos" && <TiposView />}
 
           {tab === "logo" && <LogoUpload configs={configs} />}
         </div>
@@ -398,31 +393,6 @@ function NiveisView() {
             </div>
           );
         })}
-      </div>
-    </section>
-  );
-}
-
-// =============================================================
-// Tipos de Risco (read-only)
-// =============================================================
-
-function TiposView() {
-  return (
-    <section>
-      <h2 className="mb-3 text-base font-semibold text-gray-900">
-        Tipos de Risco
-      </h2>
-      <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
-        {TIPOS_RISCO.map((t) => (
-          <div
-            key={t}
-            className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3"
-          >
-            <span className="text-2xl">{TIPO_ICONE[t] ?? "•"}</span>
-            <span className="font-medium text-gray-900">{t}</span>
-          </div>
-        ))}
       </div>
     </section>
   );

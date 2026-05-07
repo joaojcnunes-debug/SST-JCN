@@ -28,10 +28,8 @@ import {
   formatCNPJ,
   parseMedidas,
 } from "@/lib/utils";
-import {
-  NIVEL_CONFIG,
-  TIPO_ICONE,
-} from "@/lib/constants";
+import { NIVEL_CONFIG } from "@/lib/constants";
+import { useTipoIcone } from "@/lib/hooks/useV3";
 import type {
   EpiEpc,
   Foto,
@@ -50,6 +48,7 @@ export default function RelatorioChabraPage({ params }: Props) {
   const { data, isLoading } = useInspecao(id);
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
   const { data: configs } = useConfiguracoes();
+  const iconeDe = useTipoIcone();
 
   const ctx = useMemo(() => {
     if (!data) return null;
@@ -370,7 +369,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                       key={tipo}
                       className="inline-flex items-center gap-1 rounded-full border border-verde-border bg-verde-light px-2 py-0.5 text-xs font-medium text-verde-dark"
                     >
-                      <span>{TIPO_ICONE[tipo as keyof typeof TIPO_ICONE] ?? "•"}</span>
+                      <span>{iconeDe(tipo)}</span>
                       {tipo}: <strong>{count}</strong>
                     </span>
                   ))}
@@ -546,6 +545,7 @@ function SetorBlock({
   episPorRisco: Map<string, EpiEpc[]>;
 }) {
   const isConforme = !setor.nao_conformidade?.trim();
+  const iconeDe = useTipoIcone();
 
   return (
     <section className="secao-setor border-t border-gray-200 px-8 py-6 md:px-12">
@@ -657,7 +657,7 @@ function SetorBlock({
                 {/* Header do tipo */}
                 <div className="mb-1.5 flex items-center justify-between border-b border-gray-200 pb-1">
                   <p className="text-xs font-bold uppercase tracking-wider text-gray-700">
-                    {TIPO_ICONE[tipo as keyof typeof TIPO_ICONE] ?? "•"} {tipo}
+                    {iconeDe(tipo)} {tipo}
                   </p>
                   <p className="text-[10px] text-gray-500">
                     {lista.length}{" "}

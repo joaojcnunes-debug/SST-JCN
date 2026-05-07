@@ -8,7 +8,7 @@ import Modal from "@/components/ui/Modal";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
-import { TIPO_ICONE } from "@/lib/constants";
+import { useTipoIcone } from "@/lib/hooks/useV3";
 import type {
   EpiEpc,
   Inspecao,
@@ -31,6 +31,7 @@ interface Props {
  */
 export default function CopiarEpiModal({ open, onClose, epi }: Props) {
   const qc = useQueryClient();
+  const iconeDe = useTipoIcone();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const [idEmpresaDestino, setIdEmpresaDestino] = useState<string | null>(null);
@@ -253,8 +254,8 @@ export default function CopiarEpiModal({ open, onClose, epi }: Props) {
                 <option value="">Selecione...</option>
                 {riscos.map((r) => (
                   <option key={r.id_risco} value={r.id_risco}>
-                    {TIPO_ICONE[r.tipo_risco as keyof typeof TIPO_ICONE] ?? "•"}{" "}
-                    {r.tipo_risco} — {r.agente ?? "(sem agente)"}
+                    {iconeDe(r.tipo_risco)} {r.tipo_risco} —{" "}
+                    {r.agente ?? "(sem agente)"}
                   </option>
                 ))}
               </select>

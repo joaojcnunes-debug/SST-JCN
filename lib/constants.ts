@@ -2,22 +2,9 @@ import type {
   CategoriaFoto,
   NivelRisco,
   StatusInspecao,
-  TipoRisco,
 } from "./supabase/types";
 
 export { PROBABILIDADES, SEVERIDADES } from "./utils";
-
-export const TIPOS_RISCO: TipoRisco[] = [
-  "Acidente",
-  "Ergonômico",
-  "Físico",
-  "Químico",
-  "Biológico",
-  "Psicossocial",
-  "Ambiental",
-  "IAPAT Complexidade Laboral",
-  "IAPAT Impactos de Alto Risco",
-];
 
 export const NIVEIS_RISCO: NivelRisco[] = [
   "Trivial",
@@ -40,18 +27,6 @@ export const NIVEL_CONFIG: Record<
 
 // Alias para a spec v2.
 export const NIVEL_COR = NIVEL_CONFIG;
-
-export const TIPO_ICONE: Record<TipoRisco, string> = {
-  Acidente: "⚡",
-  Físico: "🌡️",
-  Químico: "⚗️",
-  Biológico: "🦠",
-  Ergonômico: "🏋️",
-  Psicossocial: "🧠",
-  Ambiental: "🌿",
-  "IAPAT Complexidade Laboral": "📋",
-  "IAPAT Impactos de Alto Risco": "⚠️",
-};
 
 export const STATUS_INSPECAO_CONFIG: Record<
   StatusInspecao,
@@ -145,79 +120,6 @@ export const TECNICAS_DEFAULT = [
   "Quantitativa",
   "Semi-quantitativa",
 ];
-
-// Sugestões de agente por tipo (usadas no combobox de RiscoForm).
-export const AGENTES_SUGERIDOS: Record<TipoRisco, string[]> = {
-  Acidente: [
-    "Queda em mesmo nível",
-    "Queda de altura",
-    "Choque elétrico",
-    "Corte/Perfuração",
-    "Esmagamento",
-    "Projeção de partículas",
-  ],
-  Físico: [
-    "Ruído contínuo",
-    "Ruído de impacto",
-    "Calor",
-    "Frio",
-    "Vibração",
-    "Radiação não ionizante",
-    "Radiação ionizante",
-    "Umidade",
-    "Pressão atmosférica",
-  ],
-  Químico: [
-    "Poeira",
-    "Fumo metálico",
-    "Névoa",
-    "Neblina",
-    "Gases",
-    "Vapores orgânicos",
-    "Solventes",
-    "Produtos químicos em geral",
-  ],
-  Biológico: [
-    "Bactérias",
-    "Vírus",
-    "Fungos",
-    "Parasitas",
-    "Bacilos",
-    "Sangue/fluidos corpóreos",
-  ],
-  Ergonômico: [
-    "Postura inadequada",
-    "Esforço físico intenso",
-    "Levantamento de peso",
-    "Movimentos repetitivos",
-    "Mobiliário inadequado",
-    "Iluminação inadequada",
-  ],
-  Psicossocial: [
-    "Sobrecarga de trabalho",
-    "Assédio moral",
-    "Pressão por produtividade",
-    "Conflitos interpessoais",
-    "Trabalho monótono",
-  ],
-  Ambiental: [
-    "Resíduos sólidos",
-    "Efluentes líquidos",
-    "Emissões atmosféricas",
-    "Contaminação do solo",
-  ],
-  "IAPAT Complexidade Laboral": [
-    "Demanda cognitiva",
-    "Demanda emocional",
-    "Demanda física",
-  ],
-  "IAPAT Impactos de Alto Risco": [
-    "Atividade em altura",
-    "Espaço confinado",
-    "Eletricidade",
-    "Trabalho a quente",
-  ],
-};
 
 // Q1-Q6 — perguntas qualitativas para riscos químicos.
 export const PERGUNTAS_QUIMICAS = [

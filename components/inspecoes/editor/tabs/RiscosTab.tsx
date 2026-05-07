@@ -9,7 +9,7 @@ import RiscoRow from "@/components/riscos/RiscoRow";
 import CopiarRiscoModal from "../CopiarRiscoModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { TIPO_ICONE, TIPOS_RISCO } from "@/lib/constants";
+import { useTipoIcone, useTiposRisco } from "@/lib/hooks/useV3";
 import { cn } from "@/lib/utils";
 import type { Cargo, Risco, Setor, TipoRisco } from "@/lib/supabase/types";
 
@@ -31,6 +31,8 @@ export default function RiscosTab({
   readOnly,
 }: Props) {
   const qc = useQueryClient();
+  const iconeDe = useTipoIcone();
+  const { data: tiposCustom = [] } = useTiposRisco({ incluirInativos: true });
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Risco | null>(null);
   const [confirm, setConfirm] = useState<Risco | null>(null);
@@ -51,6 +53,19 @@ export default function RiscosTab({
     }
     return acc;
   }, [riscos]);
+
+  // Ordenação: respeita a ordem cadastrada na tabela `tipos_risco`.
+  // Tipos órfãos (riscos antigos com nome não cadastrado) caem no fim
+  // ordenados alfabeticamente — assim nada some da tela.
+  const tiposOrdenados = useMemo<TipoRisco[]>(() => {
+    const cadastrados = tiposCustom
+      .map((t) => t.nome as TipoRisco)
+      .filter((nome) => grupos.has(nome));
+    const orfaos = Array.from(grupos.keys())
+      .filter((nome) => !cadastrados.includes(nome))
+      .sort((a, b) => a.localeCompare(b));
+    return [...cadastrados, ...orfaos];
+  }, [tiposCustom, grupos]);
 
   const del = useMutation({
     mutationFn: async (r: Risco) => {
@@ -100,7 +115,7 @@ export default function RiscosTab({
           Nenhum risco cadastrado nesta inspeção.
         </div>
       ) : (
-        TIPOS_RISCO.filter((t) => grupos.has(t)).map((tipo) => {
+        tiposOrdenados.map((tipo) => {
           const lista = grupos.get(tipo) ?? [];
           const isOpen = openTipos[tipo] ?? true;
           return (
@@ -122,7 +137,7 @@ export default function RiscosTab({
                       !isOpen && "-rotate-90"
                     )}
                   />
-                  <span className="text-base">{TIPO_ICONE[tipo] ?? "•"}</span>
+                  <span className="text-base">{iconeDe(tipo)}</span>
                   {tipo}
                   <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-gray-600">
                     {lista.length}
