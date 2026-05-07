@@ -11,7 +11,12 @@ import MeiosPropagacaoMultiSelect from "./MeiosPropagacaoMultiSelect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { calcularNivelComMatriz } from "@/lib/calc";
-import { useMatrizAtiva, useTiposRisco, usePerguntasPorTipo } from "@/lib/hooks/useV3";
+import {
+  useMatrizAtiva,
+  useMatrizes,
+  useTiposRisco,
+  usePerguntasPorTipo,
+} from "@/lib/hooks/useV3";
 import {
   TIPO_ICONE,
   AGENTES_SUGERIDOS,
@@ -43,6 +48,7 @@ interface Props {
 
 interface FormState {
   tipo_risco: string;
+  id_matriz: string;
   agente: string;
   fonte_geradora: string;
   ids_setores: string[];
@@ -83,6 +89,7 @@ interface FormState {
 function emptyForm(): FormState {
   return {
     tipo_risco: "Físico",
+    id_matriz: "",
     agente: "",
     fonte_geradora: "",
     ids_setores: [],
@@ -136,21 +143,31 @@ export default function RiscoForm({
 
   // V3: matriz, tipos e perguntas vêm do banco (admin edita pela UI).
   const { data: matrizAtiva } = useMatrizAtiva();
+  const { data: matrizes = [] } = useMatrizes();
   const { data: tiposCustom = [] } = useTiposRisco();
   const { data: perguntasCustom = [] } = usePerguntasPorTipo(
     // O id_tipo é o slug correspondente ao nome — busca no array.
     tiposCustom.find((t) => t.nome === form.tipo_risco)?.id_tipo
   );
 
-  // Listas dinâmicas vindas da matriz ativa (com fallback pra defaults V2).
-  const probsLista = matrizAtiva?.probabilidades ?? [
+  // V3.1: cada risco pode ter sua própria matriz. Se não tiver,
+  // cai no fallback global (matriz ativa).
+  const matrizSelecionada = useMemo(() => {
+    if (form.id_matriz) {
+      return matrizes.find((m) => m.id_matriz === form.id_matriz) ?? null;
+    }
+    return matrizAtiva ?? null;
+  }, [form.id_matriz, matrizes, matrizAtiva]);
+
+  // Listas dinâmicas vindas da matriz SELECIONADA (não mais da ativa global).
+  const probsLista = matrizSelecionada?.probabilidades ?? [
     "Improvável",
     "Remoto",
     "Ocasional",
     "Provável",
     "Frequente",
   ];
-  const sevsLista = matrizAtiva?.severidades ?? [
+  const sevsLista = matrizSelecionada?.severidades ?? [
     "Insignificante",
     "Marginal",
     "Crítico",
@@ -162,6 +179,7 @@ export default function RiscoForm({
     if (risco) {
       setForm({
         tipo_risco: risco.tipo_risco ?? "Físico",
+        id_matriz: risco.id_matriz ?? "",
         agente: risco.agente ?? "",
         fonte_geradora: risco.fonte_geradora ?? "",
         ids_setores: risco.id_setor ? [risco.id_setor] : [],
@@ -216,7 +234,7 @@ export default function RiscoForm({
   const nivel = calcularNivelComMatriz(
     form.probabilidade,
     form.severidade,
-    matrizAtiva
+    matrizSelecionada
   );
 
   const isFisico = form.tipo_risco === "Físico";
@@ -232,6 +250,7 @@ export default function RiscoForm({
 
       const baseRisco: Partial<Risco> = {
         tipo_risco: form.tipo_risco as TipoRisco,
+        id_matriz: form.id_matriz || matrizAtiva?.id_matriz || null,
         agente: form.agente.trim() || null,
         fonte_geradora: form.fonte_geradora.trim() || null,
         id_cargo: form.id_cargo || null,
@@ -493,9 +512,50 @@ export default function RiscoForm({
 
         {/* Avaliação (matriz) */}
         <section className="rounded-lg bg-gray-50 p-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Avaliação (Matriz de Risco)
-          </p>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Avaliação (Matriz de Risco)
+            </p>
+            <div className="flex items-center gap-2">
+              <label className="text-[11px] font-medium text-gray-600">
+                Matriz:
+              </label>
+              <select
+                value={form.id_matriz}
+                onChange={(e) => {
+                  const novaId = e.target.value;
+                  const nova = matrizes.find((m) => m.id_matriz === novaId);
+                  // Reseta prob/sev se não existirem na nova matriz.
+                  setForm((f) => ({
+                    ...f,
+                    id_matriz: novaId,
+                    probabilidade:
+                      nova?.probabilidades.includes(f.probabilidade)
+                        ? f.probabilidade
+                        : nova?.probabilidades[
+                            Math.floor(nova.probabilidades.length / 2)
+                          ] ?? f.probabilidade,
+                    severidade: nova?.severidades.includes(f.severidade)
+                      ? f.severidade
+                      : nova?.severidades[
+                          Math.floor(nova.severidades.length / 2)
+                        ] ?? f.severidade,
+                  }));
+                }}
+                className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+              >
+                <option value="">
+                  Padrão (ativa: {matrizAtiva?.nome ?? "—"})
+                </option>
+                {matrizes.map((m) => (
+                  <option key={m.id_matriz} value={m.id_matriz}>
+                    {m.nome}
+                    {m.ativa ? " ⭐" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           <div className="grid gap-3 md:grid-cols-3 md:items-end">
             <Field label="Probabilidade">
               <select
