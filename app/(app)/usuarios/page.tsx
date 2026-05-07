@@ -10,15 +10,18 @@ import {
   Search,
   ShieldCheck,
   Lock,
+  Trash2,
+  KeyRound,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Modal from "@/components/ui/Modal";
 import Badge from "@/components/ui/Badge";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import Pagination from "@/components/ui/Pagination";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
-import { useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useIsAdmin, useCurrentUser } from "@/lib/hooks/useUsuario";
 import { usePagination } from "@/lib/hooks/usePagination";
 import { cn, gerarId } from "@/lib/utils";
 import type { PerfilUsuario, Usuario } from "@/lib/supabase/types";
@@ -43,10 +46,30 @@ function useUsuarios() {
 export default function UsuariosPage() {
   const router = useRouter();
   const isAdmin = useIsAdmin();
+  const currentUser = useCurrentUser();
   const { data: usuarios = [], isLoading } = useUsuarios();
   const [busca, setBusca] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Usuario | null>(null);
+  const [confirmDel, setConfirmDel] = useState<Usuario | null>(null);
+  const qcGlobal = useQueryClient();
+
+  const excluir = useMutation({
+    mutationFn: async (u: Usuario) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.rpc(
+        "excluir_usuario_admin" as never,
+        { p_email: u.email } as never
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qcGlobal.invalidateQueries({ queryKey: ["usuarios"] });
+      toast.success("Usuário excluído");
+      setConfirmDel(null);
+    },
+    onError: (e: Error) => toast.error(e.message || "Falha ao excluir"),
+  });
 
   // Acesso: somente Admin pode entrar nesta tela
   useEffect(() => {
@@ -158,6 +181,16 @@ export default function UsuariosPage() {
                           <Pencil className="size-4" />
                         </button>
                         <ToggleAtivo usuario={u} />
+                        {currentUser?.email !== u.email && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmDel(u)}
+                            className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                            title="Excluir"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -181,6 +214,20 @@ export default function UsuariosPage() {
         open={formOpen}
         onClose={() => setFormOpen(false)}
         usuario={editing}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDel}
+        title="Excluir usuário?"
+        description={
+          confirmDel
+            ? `${confirmDel.nome} (${confirmDel.email}) será removido permanentemente do sistema e do Auth. Esta ação não pode ser desfeita.`
+            : undefined
+        }
+        variant="danger"
+        loading={excluir.isPending}
+        onConfirm={() => confirmDel && excluir.mutate(confirmDel)}
+        onCancel={() => setConfirmDel(null)}
       />
     </div>
   );
@@ -260,6 +307,41 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
       if (isEdit && usuario) {
+        const emailAntigo = usuario.email.toLowerCase();
+        const emailNovo = form.email.trim().toLowerCase();
+
+        // 1) Se email mudou → chama RPC que sincroniza auth.users + identities
+        if (emailNovo !== emailAntigo) {
+          const { error: errEmail } = await supabase.rpc(
+            "atualizar_email_admin" as never,
+            {
+              p_email_antigo: emailAntigo,
+              p_email_novo: emailNovo,
+            } as never
+          );
+          if (errEmail) {
+            throw new Error(errEmail.message || "Falha ao atualizar e-mail");
+          }
+        }
+
+        // 2) Se senha foi preenchida → chama RPC pra redefinir
+        if (form.senha && form.senha.length > 0) {
+          if (form.senha.length < 6) {
+            throw new Error("A nova senha deve ter ao menos 6 caracteres");
+          }
+          const { error: errSenha } = await supabase.rpc(
+            "redefinir_senha_admin" as never,
+            {
+              p_email: emailNovo,
+              p_nova_senha: form.senha,
+            } as never
+          );
+          if (errSenha) {
+            throw new Error(errSenha.message || "Falha ao redefinir senha");
+          }
+        }
+
+        // 3) Atualiza demais campos em public.usuarios
         const { error } = await supabase
           .from("usuarios")
           .update({
@@ -410,26 +492,37 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               className={inputCls}
               required
-              disabled={isEdit}
             />
+            {isEdit && form.email.trim().toLowerCase() !== usuario?.email.toLowerCase() && (
+              <p className="mt-1 text-[11px] text-amber-warning">
+                ⚠ Mudar o e-mail força o usuário a logar com o novo
+              </p>
+            )}
           </Field>
         </div>
 
-        {!isEdit && (
-          <Field label="Senha inicial *">
-            <div className="relative">
-              <Lock className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="password"
-                value={form.senha}
-                onChange={(e) => setForm({ ...form, senha: e.target.value })}
-                className={cn(inputCls, "pl-8")}
-                placeholder="Mínimo 6 caracteres"
-                required
-              />
-            </div>
-          </Field>
-        )}
+        <Field
+          label={
+            isEdit ? "Nova senha (deixe vazio pra manter a atual)" : "Senha inicial *"
+          }
+        >
+          <div className="relative">
+            <Lock className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="password"
+              value={form.senha}
+              onChange={(e) => setForm({ ...form, senha: e.target.value })}
+              className={cn(inputCls, "pl-8")}
+              placeholder={
+                isEdit
+                  ? "Vazio = senha atual permanece"
+                  : "Mínimo 6 caracteres"
+              }
+              required={!isEdit}
+              minLength={isEdit && form.senha.length === 0 ? undefined : 6}
+            />
+          </div>
+        </Field>
 
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Cargo">
