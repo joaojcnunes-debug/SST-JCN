@@ -210,23 +210,42 @@ function MatrizEditorModal({
       setDescricao(matriz.descricao ?? "");
       setProbs([...matriz.probabilidades]);
       setSevs([...matriz.severidades]);
-      setLookup(matriz.lookup.map((row) => [...row]));
+
       // Pesos: se não houver, gera sequência 0..N-1 como sugestão.
-      setPesosProb(
-        matriz.pesos_prob && matriz.pesos_prob.length === matriz.probabilidades.length
+      const novosPesosProb =
+        matriz.pesos_prob &&
+        matriz.pesos_prob.length === matriz.probabilidades.length
           ? [...matriz.pesos_prob]
-          : matriz.probabilidades.map((_, i) => i)
-      );
-      setPesosSev(
-        matriz.pesos_sev && matriz.pesos_sev.length === matriz.severidades.length
+          : matriz.probabilidades.map((_, i) => i);
+      const novosPesosSev =
+        matriz.pesos_sev &&
+        matriz.pesos_sev.length === matriz.severidades.length
           ? [...matriz.pesos_sev]
-          : matriz.severidades.map((_, i) => i)
-      );
-      setFaixas(
+          : matriz.severidades.map((_, i) => i);
+      const novasFaixas =
         matriz.faixas && matriz.faixas.length > 0
           ? matriz.faixas.map((f) => ({ ...f }))
-          : [...FAIXAS_PADRAO]
-      );
+          : [...FAIXAS_PADRAO];
+
+      setPesosProb(novosPesosProb);
+      setPesosSev(novosPesosSev);
+      setFaixas(novasFaixas);
+
+      // Recalcula o lookup baseado nos pesos+faixas pra garantir
+      // coerência (caso o lookup salvo esteja defasado por células
+      // editadas antes da mudança pra cálculo automático).
+      // Fallback no lookup salvo se algo estiver inconsistente.
+      if (
+        novosPesosProb.length === matriz.probabilidades.length &&
+        novosPesosSev.length === matriz.severidades.length &&
+        novasFaixas.length > 0
+      ) {
+        setLookup(
+          calcularLookupPorPesos(novosPesosProb, novosPesosSev, novasFaixas)
+        );
+      } else {
+        setLookup(matriz.lookup.map((row) => [...row]));
+      }
     }
   }, [open, matriz]);
 
