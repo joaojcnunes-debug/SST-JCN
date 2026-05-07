@@ -275,32 +275,31 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         return;
       }
 
-      // Criação: usa API route privilegiada que cria via Admin API
-      // (sem disparo de e-mail de confirmação — evita rate limit do SMTP).
+      // Criação: chama função RPC `criar_usuario_admin` no banco.
+      // A função tem SECURITY DEFINER e valida internamente que o caller
+      // é Admin ativo via JWT. Cria em auth.users + public.usuarios em
+      // uma única transação, sem disparar e-mail de confirmação.
+      // Não precisa de service_role — usa a sessão já autenticada.
       if (!form.senha || form.senha.length < 6) {
         throw new Error("A senha deve ter pelo menos 6 caracteres");
       }
 
-      const res = await fetch("/api/admin/usuarios", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nome: form.nome.trim(),
-          email: form.email.trim().toLowerCase(),
-          senha: form.senha,
-          cargo: form.cargo.trim() || null,
-          perfil: form.perfil,
-          ativo_sistema: form.ativo_sistema,
-          empresas_vinculadas:
+      const { error: rpcError } = await supabase.rpc(
+        "criar_usuario_admin" as never,
+        {
+          p_email: form.email.trim().toLowerCase(),
+          p_senha: form.senha,
+          p_nome: form.nome.trim(),
+          p_cargo: form.cargo.trim() || null,
+          p_perfil: form.perfil,
+          p_ativo_sistema: form.ativo_sistema,
+          p_empresas_vinculadas:
             form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
-        }),
-      });
+        } as never
+      );
 
-      if (!res.ok) {
-        const payload = (await res.json().catch(() => ({}))) as {
-          error?: string;
-        };
-        throw new Error(payload.error || `Falha ao criar usuário (HTTP ${res.status})`);
+      if (rpcError) {
+        throw new Error(rpcError.message || "Falha ao criar usuário");
       }
 
       // E-mail de boas-vindas — não bloqueia se a Edge Function não estiver
