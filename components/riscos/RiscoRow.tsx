@@ -49,7 +49,7 @@ export default function RiscoRow({
                   type="button"
                   onClick={() => onCopy(risco)}
                   className="rounded p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-700"
-                  title="Duplicar"
+                  title="Copiar para outro setor ou empresa"
                 >
                   <Copy className="size-4" />
                 </button>
