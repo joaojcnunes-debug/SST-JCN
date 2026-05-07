@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { Plus, Trash2, Upload } from "lucide-react";
+import { Plus, Trash2, Upload, Pencil, Check, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import SetorMultiSelect from "./SetorMultiSelect";
 import MeiosPropagacaoMultiSelect from "./MeiosPropagacaoMultiSelect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { gerarId } from "@/lib/utils";
+import { gerarId, parseMedidas, stringifyMedidas } from "@/lib/utils";
 import { calcularNivelComMatriz } from "@/lib/calc";
 import {
   useMatrizAtiva,
@@ -80,8 +80,8 @@ interface FormState {
   quim_q6: string;
   uso_processo: string;
   foto_quim_url: string;
-  medidas_adotadas: string;
-  medidas_recomendadas: string;
+  medidas_adotadas_lista: string[];
+  medidas_recomendadas_lista: string[];
   observacoes_risco: string;
   respostas_custom: Record<string, string>;
   /**
@@ -135,8 +135,8 @@ function emptyForm(): FormState {
     quim_q6: "",
     uso_processo: "",
     foto_quim_url: "",
-    medidas_adotadas: "",
-    medidas_recomendadas: "",
+    medidas_adotadas_lista: [],
+    medidas_recomendadas_lista: [],
     observacoes_risco: "",
     respostas_custom: {},
     epis_pendentes: [],
@@ -226,8 +226,8 @@ export default function RiscoForm({
         quim_q6: risco.quim_q6 ?? "",
         uso_processo: risco.uso_processo ?? "",
         foto_quim_url: risco.foto_quim_url ?? "",
-        medidas_adotadas: risco.medidas_adotadas ?? "",
-        medidas_recomendadas: risco.medidas_recomendadas ?? "",
+        medidas_adotadas_lista: parseMedidas(risco.medidas_adotadas),
+        medidas_recomendadas_lista: parseMedidas(risco.medidas_recomendadas),
         observacoes_risco: risco.observacoes_risco ?? "",
         respostas_custom: (risco.respostas_custom ?? {}) as Record<
           string,
@@ -298,8 +298,8 @@ export default function RiscoForm({
         quim_q6: form.quim_q6 || null,
         uso_processo: form.uso_processo.trim() || null,
         foto_quim_url: form.foto_quim_url || null,
-        medidas_adotadas: form.medidas_adotadas.trim() || null,
-        medidas_recomendadas: form.medidas_recomendadas.trim() || null,
+        medidas_adotadas: stringifyMedidas(form.medidas_adotadas_lista),
+        medidas_recomendadas: stringifyMedidas(form.medidas_recomendadas_lista),
         observacoes_risco: form.observacoes_risco.trim() || null,
         respostas_custom:
           Object.keys(form.respostas_custom).length > 0
@@ -957,29 +957,18 @@ export default function RiscoForm({
           />
         )}
 
-        {/* Medidas + observações */}
-        <Field label="5º Medidas Já Adotadas">
-          <textarea
-            value={form.medidas_adotadas}
-            onChange={(e) =>
-              setForm({ ...form, medidas_adotadas: e.target.value })
-            }
-            rows={2}
-            className={inputCls}
-            placeholder="Ações administrativas/operacionais já em prática"
-          />
-        </Field>
-        <Field label="6º Medidas Recomendadas">
-          <textarea
-            value={form.medidas_recomendadas}
-            onChange={(e) =>
-              setForm({ ...form, medidas_recomendadas: e.target.value })
-            }
-            rows={2}
-            className={inputCls}
-            placeholder="Ações que precisam ser implementadas"
-          />
-        </Field>
+        {/* Medidas (5º e 6º) — agora em listas com Adicionar/Editar/Excluir */}
+        <MedidasInline
+          adotadas={form.medidas_adotadas_lista}
+          recomendadas={form.medidas_recomendadas_lista}
+          onChangeAdotadas={(items) =>
+            setForm({ ...form, medidas_adotadas_lista: items })
+          }
+          onChangeRecomendadas={(items) =>
+            setForm({ ...form, medidas_recomendadas_lista: items })
+          }
+        />
+
         <Field label="Observações">
           <textarea
             value={form.observacoes_risco}
@@ -1247,11 +1236,17 @@ function EpiBloco({
   const cfg = CORES_BLOCO[cor];
   const [novo, setNovo] = useState({ descricao: "", ca: "" });
 
+  // Estado de edição inline (1 item por vez)
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [editFields, setEditFields] = useState({ descricao: "", ca: "" });
+
   // Filtra lista pelos critérios deste bloco
   const lista =
     props.mode === "server"
       ? serverLista
-          .filter((e) => e.tipo === tipoFixo && e.recomendado === recomendadoFixo)
+          .filter(
+            (e) => e.tipo === tipoFixo && e.recomendado === recomendadoFixo
+          )
           .map((e) => ({
             key: e.id_protecao,
             descricao: e.descricao,
@@ -1295,6 +1290,33 @@ function EpiBloco({
         qc.invalidateQueries({ queryKey: ["inspecao", props.idInspecao] });
       }
       setNovo({ descricao: "", ca: "" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateServer = useMutation({
+    mutationFn: async ({
+      id,
+      descricao,
+      ca,
+    }: {
+      id: string;
+      descricao: string;
+      ca: string | null;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("epi_epc")
+        .update({ descricao, ca } as never)
+        .eq("id_protecao", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      if (props.mode === "server") {
+        qc.invalidateQueries({ queryKey: ["epi-risco", props.idRisco] });
+        qc.invalidateQueries({ queryKey: ["inspecao", props.idInspecao] });
+      }
+      setEditingKey(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -1346,13 +1368,37 @@ function EpiBloco({
     }
   }
 
+  function abrirEdit(item: { key: string; descricao: string; ca: string | null }) {
+    setEditingKey(item.key);
+    setEditFields({ descricao: item.descricao, ca: item.ca ?? "" });
+  }
+
+  function salvarEdit(key: string, localIdx: number) {
+    const desc = editFields.descricao.trim();
+    if (!desc) {
+      toast.error("Descrição não pode ficar vazia");
+      return;
+    }
+    const caClean = editFields.ca.trim() || null;
+    if (props.mode === "server") {
+      updateServer.mutate({ id: key, descricao: desc, ca: caClean });
+    } else {
+      props.onChange(
+        props.items.map((it, i) =>
+          i === localIdx ? { ...it, descricao: desc, ca: caClean } : it
+        )
+      );
+      setEditingKey(null);
+    }
+  }
+
   return (
-    <div
-      className={`rounded-lg border ${cfg.border} ${cfg.bg} p-3`}
-    >
+    <div className={`rounded-lg border ${cfg.border} ${cfg.bg} p-3`}>
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <div>
-          <p className={`text-xs font-bold uppercase tracking-wider ${cfg.text}`}>
+          <p
+            className={`text-xs font-bold uppercase tracking-wider ${cfg.text}`}
+          >
             {ordem}º {titulo}
           </p>
           <p className="text-[11px] text-gray-600">{descricao}</p>
@@ -1366,27 +1412,105 @@ function EpiBloco({
 
       {lista.length > 0 && (
         <ul className="mb-2 divide-y divide-gray-100 rounded-md bg-white">
-          {lista.map((e) => (
-            <li
-              key={e.key}
-              className="flex items-center justify-between gap-2 px-2 py-1.5"
-            >
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="font-medium text-gray-900">{e.descricao}</span>
-                {e.ca && (
-                  <span className="text-xs text-gray-500">CA: {e.ca}</span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => handleDel(e.key, e.localIdx)}
-                className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
-                title="Remover"
+          {lista.map((e) => {
+            const editando = editingKey === e.key;
+            return (
+              <li
+                key={e.key}
+                className="flex items-center gap-2 px-2 py-1.5"
               >
-                <Trash2 className="size-3.5" />
-              </button>
-            </li>
-          ))}
+                {editando ? (
+                  <>
+                    <div className="grid flex-1 grid-cols-[1fr_120px] gap-2">
+                      <input
+                        type="text"
+                        value={editFields.descricao}
+                        onChange={(ev) =>
+                          setEditFields({
+                            ...editFields,
+                            descricao: ev.target.value,
+                          })
+                        }
+                        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                        autoFocus
+                        onKeyDown={(ev) => {
+                          if (ev.key === "Enter") {
+                            ev.preventDefault();
+                            salvarEdit(e.key, e.localIdx);
+                          }
+                          if (ev.key === "Escape") {
+                            ev.preventDefault();
+                            setEditingKey(null);
+                          }
+                        }}
+                      />
+                      <input
+                        type="text"
+                        value={editFields.ca}
+                        onChange={(ev) =>
+                          setEditFields({ ...editFields, ca: ev.target.value })
+                        }
+                        placeholder="CA"
+                        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => salvarEdit(e.key, e.localIdx)}
+                      disabled={updateServer.isPending}
+                      className="rounded p-1 text-verde-primary hover:bg-verde-light disabled:opacity-50"
+                      title="Salvar"
+                    >
+                      <Check className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingKey(null)}
+                      className="rounded p-1 text-gray-400 hover:bg-gray-100"
+                      title="Cancelar"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-1 flex-wrap items-center gap-2 text-sm">
+                      <span className="font-medium text-gray-900">
+                        {e.descricao}
+                      </span>
+                      {e.ca && (
+                        <span className="text-xs text-gray-500">
+                          CA: {e.ca}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        abrirEdit({
+                          key: e.key,
+                          descricao: e.descricao,
+                          ca: e.ca,
+                        })
+                      }
+                      className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                      title="Editar"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDel(e.key, e.localIdx)}
+                      className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                      title="Remover"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -1417,7 +1541,234 @@ function EpiBloco({
           disabled={addServer.isPending}
           className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent disabled:opacity-50"
         >
-          <Plus className="size-3.5" /> Add
+          <Plus className="size-3.5" /> Adicionar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// =============================================================
+// SUBCOMPONENTE: Medidas (Adotadas + Recomendadas) inline
+//
+// Mesma UX dos blocos EPI/EPC: lista com Adicionar/Editar/Excluir.
+// Diferente: medidas são apenas strings (campo único). Persistidas
+// como JSON.stringify no campo TEXT do risco (medidas_adotadas e
+// medidas_recomendadas). Edit inline e adição/remoção são imediatos
+// no array local — o save do form persiste tudo de uma vez.
+// =============================================================
+
+function MedidasInline({
+  adotadas,
+  recomendadas,
+  onChangeAdotadas,
+  onChangeRecomendadas,
+}: {
+  adotadas: string[];
+  recomendadas: string[];
+  onChangeAdotadas: (items: string[]) => void;
+  onChangeRecomendadas: (items: string[]) => void;
+}) {
+  return (
+    <section className="space-y-3">
+      <MedidaBloco
+        ordem={5}
+        titulo="Medidas Já Adotadas"
+        descricao="Ações administrativas/operacionais já em prática"
+        cor="green"
+        items={adotadas}
+        onChange={onChangeAdotadas}
+        placeholder="Ex: Treinamento NR-06 anual"
+      />
+      <MedidaBloco
+        ordem={6}
+        titulo="Medidas Recomendadas"
+        descricao="Ações que precisam ser implementadas"
+        cor="amber"
+        items={recomendadas}
+        onChange={onChangeRecomendadas}
+        placeholder="Ex: Sinalizar pisos escorregadios"
+      />
+    </section>
+  );
+}
+
+const CORES_MEDIDA: Record<
+  "green" | "amber",
+  { border: string; bg: string; text: string; tag: string }
+> = {
+  green: {
+    border: "border-green-200",
+    bg: "bg-green-50/30",
+    text: "text-green-800",
+    tag: "bg-green-100 text-green-800",
+  },
+  amber: {
+    border: "border-amber-200",
+    bg: "bg-amber-50/30",
+    text: "text-amber-800",
+    tag: "bg-amber-100 text-amber-800",
+  },
+};
+
+function MedidaBloco({
+  ordem,
+  titulo,
+  descricao,
+  cor,
+  items,
+  onChange,
+  placeholder,
+}: {
+  ordem: number;
+  titulo: string;
+  descricao: string;
+  cor: keyof typeof CORES_MEDIDA;
+  items: string[];
+  onChange: (items: string[]) => void;
+  placeholder: string;
+}) {
+  const cfg = CORES_MEDIDA[cor];
+  const [novo, setNovo] = useState("");
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+
+  function handleAdd() {
+    const txt = novo.trim();
+    if (!txt) {
+      toast.error("Texto não pode ficar vazio");
+      return;
+    }
+    onChange([...items, txt]);
+    setNovo("");
+  }
+
+  function handleDel(idx: number) {
+    onChange(items.filter((_, i) => i !== idx));
+  }
+
+  function abrirEdit(idx: number, valor: string) {
+    setEditingIdx(idx);
+    setEditText(valor);
+  }
+
+  function salvarEdit(idx: number) {
+    const txt = editText.trim();
+    if (!txt) {
+      toast.error("Texto não pode ficar vazio");
+      return;
+    }
+    onChange(items.map((it, i) => (i === idx ? txt : it)));
+    setEditingIdx(null);
+  }
+
+  return (
+    <div className={`rounded-lg border ${cfg.border} ${cfg.bg} p-3`}>
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <div>
+          <p
+            className={`text-xs font-bold uppercase tracking-wider ${cfg.text}`}
+          >
+            {ordem}º {titulo}
+          </p>
+          <p className="text-[11px] text-gray-600">{descricao}</p>
+        </div>
+        <span
+          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${cfg.tag}`}
+        >
+          {items.length}
+        </span>
+      </div>
+
+      {items.length > 0 && (
+        <ul className="mb-2 divide-y divide-gray-100 rounded-md bg-white">
+          {items.map((it, idx) => {
+            const editando = editingIdx === idx;
+            return (
+              <li key={idx} className="flex items-center gap-2 px-2 py-1.5">
+                {editando ? (
+                  <>
+                    <input
+                      type="text"
+                      value={editText}
+                      onChange={(ev) => setEditText(ev.target.value)}
+                      className="flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                      autoFocus
+                      onKeyDown={(ev) => {
+                        if (ev.key === "Enter") {
+                          ev.preventDefault();
+                          salvarEdit(idx);
+                        }
+                        if (ev.key === "Escape") {
+                          ev.preventDefault();
+                          setEditingIdx(null);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => salvarEdit(idx)}
+                      className="rounded p-1 text-verde-primary hover:bg-verde-light"
+                      title="Salvar"
+                    >
+                      <Check className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingIdx(null)}
+                      className="rounded p-1 text-gray-400 hover:bg-gray-100"
+                      title="Cancelar"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm text-gray-900">{it}</span>
+                    <button
+                      type="button"
+                      onClick={() => abrirEdit(idx, it)}
+                      className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                      title="Editar"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDel(idx)}
+                      className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                      title="Remover"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+        <input
+          type="text"
+          value={novo}
+          onChange={(ev) => setNovo(ev.target.value)}
+          placeholder={placeholder}
+          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          onKeyDown={(ev) => {
+            if (ev.key === "Enter") {
+              ev.preventDefault();
+              handleAdd();
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
+        >
+          <Plus className="size-3.5" /> Adicionar
         </button>
       </div>
     </div>

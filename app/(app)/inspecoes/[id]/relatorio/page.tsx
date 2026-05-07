@@ -22,7 +22,12 @@ import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import NivelBadge from "@/components/riscos/NivelBadge";
-import { fmtData, fmtDataHora, formatCNPJ } from "@/lib/utils";
+import {
+  fmtData,
+  fmtDataHora,
+  formatCNPJ,
+  parseMedidas,
+} from "@/lib/utils";
 import {
   NIVEL_CONFIG,
   TIPO_ICONE,
@@ -849,7 +854,10 @@ function RiscoCard({ risco, epis }: { risco: Risco; epis: EpiEpc[] }) {
         {/* Medidas adotadas */}
         <div className="rounded border-l-4 border-green-400 bg-green-50/40 px-2 py-1 text-[11px]">
           <p className="font-bold text-green-700">✓ MEDIDAS JÁ ADOTADAS</p>
-          <p className="text-gray-700">{risco.medidas_adotadas ?? "Nenhuma"}</p>
+          <ListaMedidasRelatorio
+            raw={risco.medidas_adotadas}
+            fallback="Nenhuma"
+          />
         </div>
 
         {/* Medidas a adotar */}
@@ -857,10 +865,10 @@ function RiscoCard({ risco, epis }: { risco: Risco; epis: EpiEpc[] }) {
           <p className="font-bold text-amber-warning">
             ⚠ MEDIDAS A SEREM ADOTADAS
           </p>
-          <p className="text-gray-700">
-            {risco.medidas_recomendadas ??
-              "Monitoramento do risco e implementação de controle"}
-          </p>
+          <ListaMedidasRelatorio
+            raw={risco.medidas_recomendadas}
+            fallback="Monitoramento do risco e implementação de controle"
+          />
         </div>
 
         {/* EPIs */}
@@ -989,5 +997,29 @@ function FotoCard({ foto }: { foto: Foto }) {
         <p className="truncate p-1 text-[10px] text-gray-700">{foto.legenda}</p>
       )}
     </div>
+  );
+}
+
+/** Renderiza medidas (JSON array ou texto livre legado) com bullets se >1. */
+function ListaMedidasRelatorio({
+  raw,
+  fallback,
+}: {
+  raw: string | null | undefined;
+  fallback: string;
+}) {
+  const items = parseMedidas(raw);
+  if (items.length === 0) {
+    return <p className="text-gray-700">{fallback}</p>;
+  }
+  if (items.length === 1) {
+    return <p className="text-gray-700">{items[0]}</p>;
+  }
+  return (
+    <ul className="ml-3 list-disc space-y-0.5 text-gray-700">
+      {items.map((m, i) => (
+        <li key={i}>{m}</li>
+      ))}
+    </ul>
   );
 }

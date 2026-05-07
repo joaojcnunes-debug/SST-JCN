@@ -79,6 +79,39 @@ export function gerarId(prefixo = "ID"): string {
   return `${prefixo}-${hex}`;
 }
 
+/**
+ * Faz parse de campo `medidas_adotadas` ou `medidas_recomendadas`.
+ *
+ * Compat: aceita tanto JSON array de strings (formato novo, lista de
+ * itens individuais) quanto texto livre (formato legado pré-2026-05).
+ * Em texto livre, retorna 1 item com o texto inteiro — assim o usuário
+ * vê o conteúdo antigo e na primeira edição+save vira JSON limpo.
+ */
+export function parseMedidas(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  const s = String(raw).trim();
+  if (!s) return [];
+  try {
+    const parsed = JSON.parse(s);
+    if (Array.isArray(parsed) && parsed.every((x) => typeof x === "string")) {
+      return (parsed as string[]).map((x) => x.trim()).filter(Boolean);
+    }
+  } catch {
+    // não é JSON — trata como item único
+  }
+  return [s];
+}
+
+/**
+ * Converte array de medidas em string JSON pra persistir no banco.
+ * Retorna null se a lista estiver vazia (deixa a coluna NULL).
+ */
+export function stringifyMedidas(arr: string[]): string | null {
+  const limpas = arr.map((s) => s.trim()).filter(Boolean);
+  if (limpas.length === 0) return null;
+  return JSON.stringify(limpas);
+}
+
 export function formatCNPJ(cnpj: string | null | undefined): string {
   if (!cnpj) return "—";
   const digits = cnpj.replace(/\D/g, "");

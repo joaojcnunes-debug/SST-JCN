@@ -8,7 +8,7 @@ import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import NivelBadge from "@/components/riscos/NivelBadge";
-import { fmtData, fmtDataHora, formatCNPJ } from "@/lib/utils";
+import { fmtData, fmtDataHora, formatCNPJ, parseMedidas } from "@/lib/utils";
 import { NIVEIS_RISCO, NIVEL_CONFIG } from "@/lib/constants";
 import type { EpiEpc, NivelRisco } from "@/lib/supabase/types";
 
@@ -71,7 +71,8 @@ export default function PgrPage({ params }: Props) {
 
   // Plano de Ação: apenas riscos com medidas recomendadas.
   const planoAcao = useMemo(
-    () => inventario.filter((r) => (r.medidas_recomendadas ?? "").trim() !== ""),
+    () =>
+      inventario.filter((r) => parseMedidas(r.medidas_recomendadas).length > 0),
     [inventario]
   );
 
@@ -265,7 +266,9 @@ export default function PgrPage({ params }: Props) {
                             nivel={(r.nivel_risco as NivelRisco) ?? "Baixo"}
                           />
                         </Td>
-                        <Td>{r.medidas_adotadas ?? "—"}</Td>
+                        <Td>
+                          <ListaMedidas raw={r.medidas_adotadas} />
+                        </Td>
                         <Td>
                           {eps.length === 0 ? (
                             "—"
@@ -280,7 +283,9 @@ export default function PgrPage({ params }: Props) {
                             </ul>
                           )}
                         </Td>
-                        <Td>{r.medidas_recomendadas ?? "—"}</Td>
+                        <Td>
+                          <ListaMedidas raw={r.medidas_recomendadas} />
+                        </Td>
                       </tr>
                     );
                   })}
@@ -448,7 +453,9 @@ export default function PgrPage({ params }: Props) {
                           nivel={(r.nivel_risco as NivelRisco) ?? "Baixo"}
                         />
                       </Td>
-                      <Td>{r.medidas_recomendadas}</Td>
+                      <Td>
+                        <ListaMedidas raw={r.medidas_recomendadas} />
+                      </Td>
                       <Td>{r.situacao ?? "Pendente"}</Td>
                     </tr>
                   ))}
@@ -538,5 +545,19 @@ function Td({
     <td className={`px-2 py-1.5 align-top text-gray-700 ${className ?? ""}`}>
       {children}
     </td>
+  );
+}
+
+/** Renderiza medidas (JSON array ou texto livre legado) como lista bullets. */
+function ListaMedidas({ raw }: { raw: string | null | undefined }) {
+  const items = parseMedidas(raw);
+  if (items.length === 0) return <>—</>;
+  if (items.length === 1) return <>{items[0]}</>;
+  return (
+    <ul className="list-disc pl-3">
+      {items.map((m, i) => (
+        <li key={i}>{m}</li>
+      ))}
+    </ul>
   );
 }
