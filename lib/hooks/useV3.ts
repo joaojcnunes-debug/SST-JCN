@@ -36,15 +36,25 @@ export function useSaveTipoRisco() {
   return useMutation({
     mutationFn: async (t: Partial<TipoRiscoCustom> & { id_tipo: string }) => {
       const supabase = createSupabaseBrowserClient();
+      const { id_tipo, ...rest } = t;
+      const payload = { ...rest, updated_at: new Date().toISOString() };
+
+      // Update parcial (reordenar, ativar/desativar) não traz `nome` —
+      // upsert tentaria a branch INSERT e violaria a NOT NULL constraint.
+      // Diferenciamos: se `nome` veio no payload é create/edit completo
+      // (upsert), senão é só patch de campos (update).
+      if (rest.nome === undefined) {
+        const { error } = await supabase
+          .from("tipos_risco")
+          .update(payload as never)
+          .eq("id_tipo", id_tipo);
+        if (error) throw error;
+        return;
+      }
+
       const { error } = await supabase
         .from("tipos_risco")
-        .upsert(
-          {
-            ...t,
-            updated_at: new Date().toISOString(),
-          } as never,
-          { onConflict: "id_tipo" }
-        );
+        .upsert({ id_tipo, ...payload } as never, { onConflict: "id_tipo" });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -171,15 +181,24 @@ export function useSaveItemCatalogo() {
       }
     ) => {
       const supabase = createSupabaseBrowserClient();
+      const { id_item, ...rest } = item;
+      const payload = { ...rest, updated_at: new Date().toISOString() };
+
+      // `texto` é NOT NULL — patches parciais (reordenar, ativar/desativar)
+      // não trazem texto, então nesse caso usamos UPDATE em vez de UPSERT
+      // (o UPSERT tentaria fase INSERT e violaria a constraint).
+      if (rest.texto === undefined) {
+        const { error } = await supabase
+          .from("itens_catalogo_tipo")
+          .update(payload as never)
+          .eq("id_item", id_item);
+        if (error) throw error;
+        return;
+      }
+
       const { error } = await supabase
         .from("itens_catalogo_tipo")
-        .upsert(
-          {
-            ...item,
-            updated_at: new Date().toISOString(),
-          } as never,
-          { onConflict: "id_item" }
-        );
+        .upsert({ id_item, ...payload } as never, { onConflict: "id_item" });
       if (error) throw error;
     },
     onSuccess: (_, vars) => {
