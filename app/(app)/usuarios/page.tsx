@@ -20,7 +20,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useIsAdmin } from "@/lib/hooks/useUsuario";
 import { usePagination } from "@/lib/hooks/usePagination";
-import { cn } from "@/lib/utils";
+import { cn, gerarId } from "@/lib/utils";
 import type { PerfilUsuario, Usuario } from "@/lib/supabase/types";
 
 const PERFIS: PerfilUsuario[] = ["Admin", "Tecnico", "Visualizador"];
@@ -275,31 +275,73 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         return;
       }
 
-      // Criação: chama função RPC `criar_usuario_admin` no banco.
-      // A função tem SECURITY DEFINER e valida internamente que o caller
-      // é Admin ativo via JWT. Cria em auth.users + public.usuarios em
-      // uma única transação, sem disparar e-mail de confirmação.
-      // Não precisa de service_role — usa a sessão já autenticada.
+      // Criação: usa signUp() oficial do Supabase Auth.
+      //
+      // Pré-requisito: "Confirm email" deve estar DESABILITADO no projeto
+      // (Authentication → Providers → Email → "Confirm email" off). Com
+      // isso, signUp cria o usuário JÁ CONFIRMADO sem disparar e-mail —
+      // sem rate limit do SMTP free tier.
+      //
+      // Por que essa abordagem em vez de RPC direto em auth.users:
+      // o schema interno de auth.users/identities muda entre versões do
+      // Supabase Auth, e o login (signInWithPassword) requer registros
+      // exatos. Usar signUp passa pelo endpoint oficial que sempre cria
+      // tudo certo.
       if (!form.senha || form.senha.length < 6) {
         throw new Error("A senha deve ter pelo menos 6 caracteres");
       }
 
-      const { error: rpcError } = await supabase.rpc(
-        "criar_usuario_admin" as never,
-        {
-          p_email: form.email.trim().toLowerCase(),
-          p_senha: form.senha,
-          p_nome: form.nome.trim(),
-          p_cargo: form.cargo.trim() || null,
-          p_perfil: form.perfil,
-          p_ativo_sistema: form.ativo_sistema,
-          p_empresas_vinculadas:
-            form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
-        } as never
-      );
+      const emailNorm = form.email.trim().toLowerCase();
 
-      if (rpcError) {
-        throw new Error(rpcError.message || "Falha ao criar usuário");
+      // Salva sessão atual pra restaurar (signUp pode trocar a sessão ativa).
+      const { data: { session: sessaoAdmin } } = await supabase.auth.getSession();
+
+      const { error: errAuth } = await supabase.auth.signUp({
+        email: emailNorm,
+        password: form.senha,
+      });
+      if (errAuth) {
+        // Restaura sessão antes de propagar o erro.
+        if (sessaoAdmin) {
+          await supabase.auth.setSession({
+            access_token: sessaoAdmin.access_token,
+            refresh_token: sessaoAdmin.refresh_token,
+          });
+        }
+        throw new Error(
+          errAuth.message ===
+          "User already registered"
+            ? "E-mail já cadastrado"
+            : errAuth.message
+        );
+      }
+
+      // Restaura sessão do Admin (signUp logou como o novo usuário).
+      if (sessaoAdmin) {
+        await supabase.auth.setSession({
+          access_token: sessaoAdmin.access_token,
+          refresh_token: sessaoAdmin.refresh_token,
+        });
+      }
+
+      // Insere o registro em public.usuarios.
+      const insertRow = {
+        id_usuario: gerarId("USR"),
+        nome: form.nome.trim(),
+        email: emailNorm,
+        cargo: form.cargo.trim() || null,
+        perfil: form.perfil,
+        ativo_sistema: form.ativo_sistema,
+        empresas_vinculadas:
+          form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
+      };
+      const { error: errInsert } = await supabase
+        .from("usuarios")
+        .insert(insertRow as never);
+      if (errInsert) {
+        throw new Error(
+          `Usuário criado no Auth mas falhou ao salvar perfil: ${errInsert.message}`
+        );
       }
 
       // E-mail de boas-vindas — não bloqueia se a Edge Function não estiver
