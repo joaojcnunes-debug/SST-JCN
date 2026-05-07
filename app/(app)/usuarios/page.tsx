@@ -20,7 +20,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useIsAdmin } from "@/lib/hooks/useUsuario";
 import { usePagination } from "@/lib/hooks/usePagination";
-import { gerarId, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import type { PerfilUsuario, Usuario } from "@/lib/supabase/types";
 
 const PERFIS: PerfilUsuario[] = ["Admin", "Tecnico", "Visualizador"];
@@ -275,30 +275,33 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         return;
       }
 
-      // Cria no Supabase Auth + insere na tabela usuarios.
+      // Criação: usa API route privilegiada que cria via Admin API
+      // (sem disparo de e-mail de confirmação — evita rate limit do SMTP).
       if (!form.senha || form.senha.length < 6) {
         throw new Error("A senha deve ter pelo menos 6 caracteres");
       }
-      const { error: errAuth } = await supabase.auth.signUp({
-        email: form.email.trim().toLowerCase(),
-        password: form.senha,
-      });
-      if (errAuth) throw errAuth;
 
-      const insertRow = {
-        id_usuario: gerarId("USR"),
-        nome: form.nome.trim(),
-        email: form.email.trim().toLowerCase(),
-        cargo: form.cargo.trim() || null,
-        perfil: form.perfil,
-        ativo_sistema: form.ativo_sistema,
-        empresas_vinculadas:
-          form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
-      };
-      const { error: errInsert } = await supabase
-        .from("usuarios")
-        .insert(insertRow as never);
-      if (errInsert) throw errInsert;
+      const res = await fetch("/api/admin/usuarios", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: form.nome.trim(),
+          email: form.email.trim().toLowerCase(),
+          senha: form.senha,
+          cargo: form.cargo.trim() || null,
+          perfil: form.perfil,
+          ativo_sistema: form.ativo_sistema,
+          empresas_vinculadas:
+            form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
+        }),
+      });
+
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(payload.error || `Falha ao criar usuário (HTTP ${res.status})`);
+      }
 
       // E-mail de boas-vindas — não bloqueia se a Edge Function não estiver
       // deployada ou se o RESEND_API_KEY ainda não foi configurado.
