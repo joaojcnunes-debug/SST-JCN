@@ -194,6 +194,32 @@ export default function PerguntasTab() {
   );
 }
 
+/**
+ * Converte texto livre em slug compatível com a constraint do banco
+ * (chave começa com letra, contém só letras/números/underscore).
+ * "Usa protetor auricular?" → "usa_protetor_auricular"
+ * "Há ventilação?" → "ha_ventilacao"
+ */
+function slugify(texto: string): string {
+  return texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // remove acentos
+    .replace(/[^a-z0-9]+/g, "_") // não-alfanumérico vira _
+    .replace(/^_+|_+$/g, "") // tira _ no começo/fim
+    .replace(/_+/g, "_") // colapsa _ duplicados
+    .replace(/^[^a-z]+/, "") // se sobrar começando com número/underscore, remove
+    .slice(0, 60) || "pergunta";
+}
+
+/** Garante slug único acrescentando _2, _3, ... se já existir. */
+function uniqueSlug(base: string, existentes: string[]): string {
+  if (!existentes.includes(base)) return base;
+  let i = 2;
+  while (existentes.includes(`${base}_${i}`)) i++;
+  return `${base}_${i}`;
+}
+
 function PerguntaModal({
   open,
   onClose,
@@ -206,6 +232,7 @@ function PerguntaModal({
   editing: PerguntaTipoRisco | null;
 }) {
   const save = useSavePergunta();
+  const { data: existentes = [] } = useTodasPerguntas(idTipo);
   const [form, setForm] = useState({
     chave: "",
     texto: "",
@@ -232,21 +259,35 @@ function PerguntaModal({
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.texto.trim() || !form.chave.trim()) {
-      toast.error("Chave e Texto são obrigatórios");
+    if (!form.texto.trim()) {
+      toast.error("Texto da pergunta é obrigatório");
       return;
     }
-    if (!/^[a-z][a-z0-9_]*$/i.test(form.chave)) {
+
+    // Chave: usa o que o user digitou OU auto-gera do texto
+    let chaveFinal = form.chave.trim();
+    if (!editing) {
+      // Criação: pode auto-gerar
+      if (!chaveFinal) {
+        chaveFinal = slugify(form.texto);
+      }
+      // Garante unicidade dentro do tipo
+      const usadas = existentes.map((p) => p.chave);
+      chaveFinal = uniqueSlug(chaveFinal, usadas);
+    }
+
+    if (!/^[a-z][a-z0-9_]*$/i.test(chaveFinal)) {
       toast.error(
-        "Chave deve começar com letra e conter apenas letras, números e _"
+        "Não foi possível gerar uma chave válida. Informe uma manualmente (letras, números e _)"
       );
       return;
     }
+
     save.mutate(
       {
         id_pergunta: editing?.id_pergunta ?? gerarId("PRG"),
         id_tipo: idTipo,
-        chave: form.chave.trim(),
+        chave: chaveFinal,
         texto: form.texto.trim(),
         input_type: form.input_type,
         opcoes: form.input_type === "select" ? form.opcoes : [],
@@ -281,7 +322,9 @@ function PerguntaModal({
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <label className="text-sm font-medium text-gray-700">Chave *</label>
+            <label className="text-sm font-medium text-gray-700">
+              Chave {editing ? "" : <span className="text-gray-400">(opcional)</span>}
+            </label>
             <input
               type="text"
               value={form.chave}
@@ -293,13 +336,14 @@ function PerguntaModal({
                     .replace(/[^a-z0-9_]/g, "_"),
                 })
               }
-              placeholder="ex: usa_protetor_auricular"
+              placeholder={editing ? "" : "Deixe vazio para gerar do texto"}
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
               disabled={!!editing}
-              required
             />
             <p className="mt-1 text-xs text-gray-500">
-              Identificador interno (não muda após criação).
+              {editing
+                ? "Identificador interno (não muda após criação)."
+                : "Se vazio, gera automaticamente a partir do texto."}
             </p>
           </div>
           <div>
