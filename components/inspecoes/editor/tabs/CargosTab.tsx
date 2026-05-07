@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2, ChevronDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy, ChevronDown } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import CargoForm from "../CargoForm";
+import CopiarCargoModal from "../CopiarCargoModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ export default function CargosTab({
   const [editing, setEditing] = useState<Cargo | null>(null);
   const [confirm, setConfirm] = useState<Cargo | null>(null);
   const [openSetores, setOpenSetores] = useState<Record<string, boolean>>({});
+  const [copiando, setCopiando] = useState<Cargo | null>(null);
 
   const del = useMutation({
     mutationFn: async (c: Cargo) => {
@@ -132,13 +134,23 @@ export default function CargosTab({
                               setFormOpen(true);
                             }}
                             className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                            title="Editar"
                           >
                             <Pencil className="size-4" />
                           </button>
                           <button
                             type="button"
+                            onClick={() => setCopiando(c)}
+                            className="rounded p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-700"
+                            title="Copiar para outro setor ou empresa"
+                          >
+                            <Copy className="size-4" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => setConfirm(c)}
                             className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                            title="Excluir"
                           >
                             <Trash2 className="size-4" />
                           </button>
@@ -152,6 +164,13 @@ export default function CargosTab({
           </div>
         );
       })}
+
+      <CopiarCargoModal
+        open={!!copiando}
+        onClose={() => setCopiando(null)}
+        cargo={copiando}
+        setoresAtual={setores}
+      />
 
       <CargoForm
         open={formOpen}

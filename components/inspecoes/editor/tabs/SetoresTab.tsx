@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Copy } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import SetorForm from "../SetorForm";
+import CopiarSetorModal from "../CopiarSetorModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Setor } from "@/lib/supabase/types";
@@ -26,6 +27,7 @@ export default function SetoresTab({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Setor | null>(null);
   const [confirm, setConfirm] = useState<Setor | null>(null);
+  const [copiando, setCopiando] = useState<Setor | null>(null);
 
   const del = useMutation({
     mutationFn: async (s: Setor) => {
@@ -110,6 +112,14 @@ export default function SetoresTab({
                             </button>
                             <button
                               type="button"
+                              onClick={() => setCopiando(s)}
+                              className="rounded p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-700"
+                              title="Copiar para outra inspeção ou empresa"
+                            >
+                              <Copy className="size-4" />
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => setConfirm(s)}
                               className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
                               title="Excluir"
@@ -127,6 +137,13 @@ export default function SetoresTab({
           </div>
         )}
       </div>
+
+      <CopiarSetorModal
+        open={!!copiando}
+        onClose={() => setCopiando(null)}
+        setor={copiando}
+        idEmpresaOrigem={idEmpresa}
+      />
 
       <SetorForm
         open={formOpen}
