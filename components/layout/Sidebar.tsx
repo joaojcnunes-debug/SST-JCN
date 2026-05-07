@@ -13,6 +13,7 @@ import {
   Shield,
   Menu,
   X,
+  BarChart3,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ const PRINCIPAL = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/empresas", label: "Empresas", icon: Building2 },
   { href: "/inspecoes", label: "Inspeções", icon: ClipboardList },
+  { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
 ];
 
 const ACOES = [{ href: "/inspecoes/nova", label: "Nova Inspeção", icon: PlusCircle }];
