@@ -958,7 +958,7 @@ export default function RiscoForm({
         )}
 
         {/* Medidas + observações */}
-        <Field label="Medidas Já Adotadas">
+        <Field label="5º Medidas Já Adotadas">
           <textarea
             value={form.medidas_adotadas}
             onChange={(e) =>
@@ -966,9 +966,10 @@ export default function RiscoForm({
             }
             rows={2}
             className={inputCls}
+            placeholder="Ações administrativas/operacionais já em prática"
           />
         </Field>
-        <Field label="Medidas Recomendadas">
+        <Field label="6º Medidas Recomendadas">
           <textarea
             value={form.medidas_recomendadas}
             onChange={(e) =>
@@ -976,6 +977,7 @@ export default function RiscoForm({
             }
             rows={2}
             className={inputCls}
+            placeholder="Ações que precisam ser implementadas"
           />
         </Field>
         <Field label="Observações">
@@ -1100,9 +1102,12 @@ function FotoQuimUpload({
 }
 
 // =============================================================
-// SUBCOMPONENTE: EPI/EPC inline (2 modos)
-//   - server: risco já existe → persiste cada add/del imediatamente
-//   - local:  risco ainda não existe → manipula buffer via prop
+// SUBCOMPONENTE: EPIs/EPCs em 4 blocos separados
+//   - 1º EPI Utilizado     (tipo=EPI, recomendado=Não)
+//   - 2º EPI Recomendado   (tipo=EPI, recomendado=Sim)
+//   - 3º EPC Utilizado     (tipo=EPC, recomendado=Não)
+//   - 4º EPC Recomendado   (tipo=EPC, recomendado=Sim)
+// 2 modos: server (persistência imediata) e local (buffer pra novos riscos)
 // =============================================================
 
 type EpiInlineProps =
@@ -1120,17 +1125,9 @@ type EpiInlineProps =
     };
 
 function EpiInline(props: EpiInlineProps) {
-  const [novo, setNovo] = useState({
-    tipo: "EPI" as "EPI" | "EPC",
-    descricao: "",
-    ca: "",
-    recomendado: "Sim" as "Sim" | "Não",
-  });
-
-  // ===== Modo server (editing) =====
-  const qc = useQueryClient();
+  // Modo server: busca lista uma vez; cada bloco filtra
   const idRiscoServer = props.mode === "server" ? props.idRisco : null;
-  const { data: serverLista = [], isLoading: serverLoading } = useQuery({
+  const { data: serverLista = [] } = useQuery({
     queryKey: ["epi-risco", idRiscoServer],
     enabled: props.mode === "server",
     queryFn: async () => {
@@ -1144,10 +1141,138 @@ function EpiInline(props: EpiInlineProps) {
     },
   });
 
+  return (
+    <section className="space-y-3">
+      <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+        EPIs e EPCs vinculados a este risco
+      </p>
+      <EpiBloco
+        ordem={1}
+        titulo="EPI Utilizado"
+        descricao="EPI que o trabalhador já utiliza atualmente neste risco"
+        tipoFixo="EPI"
+        recomendadoFixo="Não"
+        cor="blue"
+        props={props}
+        serverLista={serverLista}
+      />
+      <EpiBloco
+        ordem={2}
+        titulo="EPI Recomendado"
+        descricao="EPI sugerido como medida de proteção (pode não estar em uso ainda)"
+        tipoFixo="EPI"
+        recomendadoFixo="Sim"
+        cor="indigo"
+        props={props}
+        serverLista={serverLista}
+      />
+      <EpiBloco
+        ordem={3}
+        titulo="EPC Utilizado"
+        descricao="EPC já instalado no setor para este risco"
+        tipoFixo="EPC"
+        recomendadoFixo="Não"
+        cor="emerald"
+        props={props}
+        serverLista={serverLista}
+      />
+      <EpiBloco
+        ordem={4}
+        titulo="EPC Recomendado"
+        descricao="EPC sugerido como melhoria de proteção coletiva"
+        tipoFixo="EPC"
+        recomendadoFixo="Sim"
+        cor="teal"
+        props={props}
+        serverLista={serverLista}
+      />
+    </section>
+  );
+}
+
+// =============================================================
+// Bloco individual (1 dos 4)
+// =============================================================
+
+const CORES_BLOCO: Record<
+  "blue" | "indigo" | "emerald" | "teal",
+  { border: string; bg: string; text: string; tag: string }
+> = {
+  blue: {
+    border: "border-blue-200",
+    bg: "bg-blue-50/30",
+    text: "text-blue-800",
+    tag: "bg-blue-100 text-blue-800",
+  },
+  indigo: {
+    border: "border-indigo-200",
+    bg: "bg-indigo-50/30",
+    text: "text-indigo-800",
+    tag: "bg-indigo-100 text-indigo-800",
+  },
+  emerald: {
+    border: "border-emerald-200",
+    bg: "bg-emerald-50/30",
+    text: "text-emerald-800",
+    tag: "bg-emerald-100 text-emerald-800",
+  },
+  teal: {
+    border: "border-teal-200",
+    bg: "bg-teal-50/30",
+    text: "text-teal-800",
+    tag: "bg-teal-100 text-teal-800",
+  },
+};
+
+function EpiBloco({
+  ordem,
+  titulo,
+  descricao,
+  tipoFixo,
+  recomendadoFixo,
+  cor,
+  props,
+  serverLista,
+}: {
+  ordem: number;
+  titulo: string;
+  descricao: string;
+  tipoFixo: "EPI" | "EPC";
+  recomendadoFixo: "Sim" | "Não";
+  cor: keyof typeof CORES_BLOCO;
+  props: EpiInlineProps;
+  serverLista: EpiEpc[];
+}) {
+  const qc = useQueryClient();
+  const cfg = CORES_BLOCO[cor];
+  const [novo, setNovo] = useState({ descricao: "", ca: "" });
+
+  // Filtra lista pelos critérios deste bloco
+  const lista =
+    props.mode === "server"
+      ? serverLista
+          .filter((e) => e.tipo === tipoFixo && e.recomendado === recomendadoFixo)
+          .map((e) => ({
+            key: e.id_protecao,
+            descricao: e.descricao,
+            ca: e.ca,
+            localIdx: -1,
+          }))
+      : props.items
+          .map((e, i) => ({ ...e, idx: i }))
+          .filter(
+            (e) => e.tipo === tipoFixo && e.recomendado === recomendadoFixo
+          )
+          .map((e) => ({
+            key: `local-${e.idx}`,
+            descricao: e.descricao,
+            ca: e.ca,
+            localIdx: e.idx,
+          }));
+
   const addServer = useMutation({
     mutationFn: async () => {
-      if (props.mode !== "server")
-        throw new Error("Modo inválido");
+      if (props.mode !== "server") throw new Error("Modo inválido");
       if (!novo.descricao.trim()) throw new Error("Descrição obrigatória");
       const supabase = createSupabaseBrowserClient();
       const row = {
@@ -1156,10 +1281,10 @@ function EpiInline(props: EpiInlineProps) {
         id_inspecao: props.idInspecao,
         id_empresa: props.idEmpresa,
         id_setor: props.idSetor,
-        tipo: novo.tipo,
+        tipo: tipoFixo,
         descricao: novo.descricao.trim(),
         ca: novo.ca.trim() || null,
-        recomendado: novo.recomendado,
+        recomendado: recomendadoFixo,
       };
       const { error } = await supabase.from("epi_epc").insert(row as never);
       if (error) throw error;
@@ -1169,15 +1294,13 @@ function EpiInline(props: EpiInlineProps) {
         qc.invalidateQueries({ queryKey: ["epi-risco", props.idRisco] });
         qc.invalidateQueries({ queryKey: ["inspecao", props.idInspecao] });
       }
-      setNovo({ tipo: "EPI", descricao: "", ca: "", recomendado: "Sim" });
-      toast.success("Adicionado");
+      setNovo({ descricao: "", ca: "" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const delServer = useMutation({
     mutationFn: async (id: string) => {
-      if (props.mode !== "server") throw new Error("Modo inválido");
       const supabase = createSupabaseBrowserClient();
       const { error } = await supabase
         .from("epi_epc")
@@ -1190,28 +1313,9 @@ function EpiInline(props: EpiInlineProps) {
         qc.invalidateQueries({ queryKey: ["epi-risco", props.idRisco] });
         qc.invalidateQueries({ queryKey: ["inspecao", props.idInspecao] });
       }
-      toast.success("Removido");
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-  // ===== Lista unificada (vinda do server ou do local) =====
-  const lista =
-    props.mode === "server"
-      ? serverLista.map((e) => ({
-          key: e.id_protecao,
-          tipo: e.tipo,
-          descricao: e.descricao,
-          ca: e.ca,
-          recomendado: e.recomendado,
-        }))
-      : props.items.map((e, i) => ({
-          key: `local-${i}`,
-          tipo: e.tipo,
-          descricao: e.descricao,
-          ca: e.ca,
-          recomendado: e.recomendado,
-        }));
 
   function handleAdd() {
     if (!novo.descricao.trim()) {
@@ -1224,136 +1328,99 @@ function EpiInline(props: EpiInlineProps) {
       props.onChange([
         ...props.items,
         {
-          tipo: novo.tipo,
+          tipo: tipoFixo,
           descricao: novo.descricao.trim(),
           ca: novo.ca.trim() || null,
-          recomendado: novo.recomendado,
+          recomendado: recomendadoFixo,
         },
       ]);
-      setNovo({ tipo: "EPI", descricao: "", ca: "", recomendado: "Sim" });
+      setNovo({ descricao: "", ca: "" });
     }
   }
 
-  function handleDel(key: string, idx: number) {
+  function handleDel(key: string, localIdx: number) {
     if (props.mode === "server") {
       delServer.mutate(key);
     } else {
-      props.onChange(props.items.filter((_, i) => i !== idx));
+      props.onChange(props.items.filter((_, i) => i !== localIdx));
     }
   }
 
   return (
-    <section>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-        EPIs e EPCs vinculados a este risco
-      </p>
-      <div className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
-        {props.mode === "server" && serverLoading ? (
-          <p className="text-sm text-gray-500">Carregando...</p>
-        ) : lista.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            Nenhum EPI/EPC. Adicione abaixo
-            {props.mode === "local" && (
-              <span className="text-xs"> (serão salvos junto com o risco)</span>
-            )}
-            .
+    <div
+      className={`rounded-lg border ${cfg.border} ${cfg.bg} p-3`}
+    >
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <div>
+          <p className={`text-xs font-bold uppercase tracking-wider ${cfg.text}`}>
+            {ordem}º {titulo}
           </p>
-        ) : (
-          <ul className="divide-y divide-gray-100">
-            {lista.map((e, idx) => (
-              <li
-                key={e.key}
-                className="flex items-center justify-between py-1.5"
-              >
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span
-                    className={`rounded px-1.5 py-0.5 text-xs font-medium ${
-                      e.tipo === "EPI"
-                        ? "bg-blue-50 text-blue-700"
-                        : "bg-emerald-50 text-emerald-700"
-                    }`}
-                  >
-                    {e.tipo}
-                  </span>
-                  <span className="font-medium text-gray-900">
-                    {e.descricao}
-                  </span>
-                  {e.ca && (
-                    <span className="text-xs text-gray-500">CA: {e.ca}</span>
-                  )}
-                  {e.recomendado && (
-                    <span className="text-xs text-gray-500">
-                      · {e.recomendado}
-                    </span>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleDel(e.key, idx)}
-                  className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
-                  title="Remover"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="grid grid-cols-[80px_1fr_120px_90px_auto] items-center gap-2 border-t border-gray-100 pt-2">
-          <select
-            value={novo.tipo}
-            onChange={(ev) =>
-              setNovo({ ...novo, tipo: ev.target.value as "EPI" | "EPC" })
-            }
-            className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-          >
-            <option value="EPI">EPI</option>
-            <option value="EPC">EPC</option>
-          </select>
-          <input
-            type="text"
-            value={novo.descricao}
-            onChange={(ev) => setNovo({ ...novo, descricao: ev.target.value })}
-            placeholder="Descrição"
-            className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-            onKeyDown={(ev) => {
-              if (ev.key === "Enter") {
-                ev.preventDefault();
-                handleAdd();
-              }
-            }}
-          />
-          <input
-            type="text"
-            value={novo.ca}
-            onChange={(ev) => setNovo({ ...novo, ca: ev.target.value })}
-            placeholder="CA"
-            className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-          />
-          <select
-            value={novo.recomendado}
-            onChange={(ev) =>
-              setNovo({
-                ...novo,
-                recomendado: ev.target.value as "Sim" | "Não",
-              })
-            }
-            className="rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-          >
-            <option value="Sim">Sim</option>
-            <option value="Não">Não</option>
-          </select>
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={addServer.isPending}
-            className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent disabled:opacity-50"
-          >
-            <Plus className="size-3.5" /> Add
-          </button>
+          <p className="text-[11px] text-gray-600">{descricao}</p>
         </div>
+        <span
+          className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${cfg.tag}`}
+        >
+          {lista.length}
+        </span>
       </div>
-    </section>
+
+      {lista.length > 0 && (
+        <ul className="mb-2 divide-y divide-gray-100 rounded-md bg-white">
+          {lista.map((e) => (
+            <li
+              key={e.key}
+              className="flex items-center justify-between gap-2 px-2 py-1.5"
+            >
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="font-medium text-gray-900">{e.descricao}</span>
+                {e.ca && (
+                  <span className="text-xs text-gray-500">CA: {e.ca}</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDel(e.key, e.localIdx)}
+                className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                title="Remover"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="grid grid-cols-[1fr_120px_auto] items-center gap-2">
+        <input
+          type="text"
+          value={novo.descricao}
+          onChange={(ev) => setNovo({ ...novo, descricao: ev.target.value })}
+          placeholder={`Descrição do ${tipoFixo}`}
+          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          onKeyDown={(ev) => {
+            if (ev.key === "Enter") {
+              ev.preventDefault();
+              handleAdd();
+            }
+          }}
+        />
+        <input
+          type="text"
+          value={novo.ca}
+          onChange={(ev) => setNovo({ ...novo, ca: ev.target.value })}
+          placeholder="CA"
+          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
+        />
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={addServer.isPending}
+          className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent disabled:opacity-50"
+        >
+          <Plus className="size-3.5" /> Add
+        </button>
+      </div>
+    </div>
   );
 }
 
