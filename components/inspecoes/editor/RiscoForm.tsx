@@ -607,27 +607,35 @@ export default function RiscoForm({
       <form onSubmit={onSubmit} className="space-y-5">
         {/* Linha 1: Tipo + Setores */}
         <div className="grid gap-3 md:grid-cols-2">
-          <div>
-            <label className={lblCls}>Tipo de Risco *</label>
-            <select
-              value={form.tipo_risco}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  tipo_risco: e.target.value,
-                  // Modelo é escopado por tipo: trocar tipo zera o modelo.
-                  id_modelo: "",
-                })
-              }
-              className={inputCls}
-            >
-              {tiposCustom.map((t) => (
-                <option key={t.id_tipo} value={t.nome}>
-                  {t.icone ?? "•"} {t.nome}
-                </option>
-              ))}
-            </select>
-          </div>
+          {(() => {
+            const corTipo = corNR09(form.tipo_risco);
+            const cfgTipo = SUBGRID_CORES[corTipo];
+            return (
+              <div className={`rounded-lg border-l-4 p-2 ${cfgTipo.border} ${cfgTipo.bg}`}>
+                <label className={`${lblCls} ${cfgTipo.text}`}>
+                  Tipo de Risco * <span className="text-[10px] font-normal opacity-70">(cor NR-09)</span>
+                </label>
+                <select
+                  value={form.tipo_risco}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      tipo_risco: e.target.value,
+                      // Modelo é escopado por tipo: trocar tipo zera o modelo.
+                      id_modelo: "",
+                    })
+                  }
+                  className={inputCls}
+                >
+                  {tiposCustom.map((t) => (
+                    <option key={t.id_tipo} value={t.nome}>
+                      {t.icone ?? "•"} {t.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          })()}
           <div>
             <label className={lblCls}>Setor(es) / GHE</label>
             <SetorMultiSelect
@@ -2518,6 +2526,23 @@ function Field({
       {children}
     </div>
   );
+}
+
+/**
+ * Mapeia o nome do tipo de risco pra sua cor NR-09 oficial.
+ * Tipos não-padrão (Psicossocial, Ambiental, IAPAT*) usam cores
+ * arbitrárias mas distintas.
+ */
+function corNR09(tipo: string): SubGridCor {
+  if (tipo === "Acidente") return "blue";
+  if (tipo === "Ergonômico") return "yellow";
+  if (tipo === "Físico") return "green";
+  if (tipo === "Químico") return "red";
+  if (tipo === "Biológico") return "amber";
+  if (tipo === "Psicossocial") return "purple";
+  if (tipo === "Ambiental") return "stone";
+  if (tipo.startsWith("IAPAT")) return "slate";
+  return "gray";
 }
 
 // Cores das seções "Detalhes — X" seguem o padrão NR-09 / PGR brasileiro:
