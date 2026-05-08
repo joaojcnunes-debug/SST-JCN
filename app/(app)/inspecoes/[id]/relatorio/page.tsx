@@ -741,13 +741,19 @@ function RiscoCard({ risco, epis }: { risco: Risco; epis: EpiEpc[] }) {
       </div>
 
       <div className="space-y-1.5 px-3 py-2">
-        {/* Fonte geradora */}
-        {risco.fonte_geradora && (
-          <p className="rounded border-l-4 border-amber-warning bg-amber-50/40 px-2 py-1 text-xs">
-            <strong className="text-amber-warning">⚡ FONTE GERADORA:</strong>{" "}
-            <span className="text-gray-800">{risco.fonte_geradora}</span>
-          </p>
-        )}
+        {/* Fonte geradora — V6: pode ser lista (JSON) ou texto legado */}
+        {(() => {
+          const fontes = parseMedidas(risco.fonte_geradora);
+          if (fontes.length === 0) return null;
+          return (
+            <p className="rounded border-l-4 border-amber-warning bg-amber-50/40 px-2 py-1 text-xs">
+              <strong className="text-amber-warning">
+                ⚡ FONTE GERADORA{fontes.length > 1 ? "S" : ""}:
+              </strong>{" "}
+              <span className="text-gray-800">{fontes.join("; ")}</span>
+            </p>
+          );
+        })()}
 
         {/* Grid principal de avaliação */}
         {!isIapat && (

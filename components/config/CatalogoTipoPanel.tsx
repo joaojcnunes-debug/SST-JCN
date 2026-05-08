@@ -44,6 +44,11 @@ const CATEGORIAS_MODELO: {
   desc: string;
 }[] = [
   {
+    key: "fonte_geradora",
+    titulo: "Fonte Geradora",
+    desc: "Origens do agente neste cenário (uma ou mais).",
+  },
+  {
     key: "epi_utilizado",
     titulo: "EPI Utilizado",
     desc: "Itens já em uso pelos trabalhadores neste cenário.",
@@ -301,11 +306,19 @@ function ModeloCard({
               </span>
             )}
           </p>
-          {modelo.fonte_geradora && (
-            <p className="text-xs text-gray-500">
-              Fonte: {modelo.fonte_geradora}
-            </p>
-          )}
+          {(() => {
+            const fontes = itens
+              .filter((i) => i.categoria === "fonte_geradora" && i.ativo)
+              .map((i) => i.texto);
+            if (fontes.length === 0) return null;
+            const resumo =
+              fontes.length === 1
+                ? fontes[0]
+                : `${fontes[0]} +${fontes.length - 1}`;
+            return (
+              <p className="text-xs text-gray-500">Fonte: {resumo}</p>
+            );
+          })()}
           <p className="mt-0.5 text-[10px] text-gray-400">
             {itens.filter((i) => i.ativo).length} item(ns)
           </p>
@@ -818,7 +831,9 @@ function CategoriaListaTipo({
 }
 
 // =========================================================================
-// Modal de criação/edição de modelo (agente + fonte + ordem)
+// Modal de criação/edição de modelo (agente + ordem).
+// Fonte geradora deixou de ser campo único — agora é lista filha
+// (categoria 'fonte_geradora') gerenciada dentro do card expandido.
 // =========================================================================
 
 function ModeloModal({
@@ -834,13 +849,11 @@ function ModeloModal({
 }) {
   const save = useSaveModeloRisco();
   const [agente, setAgente] = useState("");
-  const [fonte, setFonte] = useState("");
   const [ordem, setOrdem] = useState(99);
 
   useEffect(() => {
     if (open) {
       setAgente(editing?.agente ?? "");
-      setFonte(editing?.fonte_geradora ?? "");
       setOrdem(editing?.ordem ?? 99);
     }
   }, [open, editing]);
@@ -856,14 +869,15 @@ function ModeloModal({
         id_modelo: editing?.id_modelo ?? gerarId("MOD"),
         id_tipo: idTipo,
         agente: agente.trim(),
-        fonte_geradora: fonte.trim() || null,
+        // fonte_geradora deprecada como campo único — não setamos mais.
+        // Mantida nullable no banco pra compat retroativa.
+        fonte_geradora: editing?.fonte_geradora ?? null,
         ordem,
         ativo: editing?.ativo ?? true,
       },
       {
         onSuccess: () => {
           setAgente("");
-          setFonte("");
           setOrdem(99);
           onClose();
         },
@@ -891,18 +905,11 @@ function ModeloModal({
             placeholder="Ex: Ruído contínuo"
             required
           />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-gray-700">
-            Fonte Geradora
-          </label>
-          <input
-            type="text"
-            value={fonte}
-            onChange={(e) => setFonte(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-            placeholder="Ex: Compressor industrial em operação"
-          />
+          <p className="mt-1 text-[11px] text-gray-500">
+            A fonte geradora agora é gerenciada como lista dentro do
+            modelo (depois de criar, expanda o card e adicione fontes
+            no bloco &ldquo;Fonte Geradora&rdquo;).
+          </p>
         </div>
         <div>
           <label className="text-sm font-medium text-gray-700">

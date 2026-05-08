@@ -255,7 +255,7 @@ export default function PgrPage({ params }: Props) {
                         <Td>{cargo?.cargo ?? "—"}</Td>
                         <Td>{r.tipo_risco}</Td>
                         <Td className="font-medium">{r.agente ?? "—"}</Td>
-                        <Td>{r.fonte_geradora ?? "—"}</Td>
+                        <Td>{parseMedidas(r.fonte_geradora).join("; ") || "—"}</Td>
                         <Td>{r.tempo_exposicao ?? "—"}</Td>
                         <Td>{r.meio_propagacao?.join(", ") ?? "—"}</Td>
                         <Td>{r.tecnica_utilizada ?? "—"}</Td>

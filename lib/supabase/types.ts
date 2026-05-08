@@ -190,9 +190,11 @@ export interface ModeloRisco {
 }
 
 // V5: categoria dos itens dentro de um modelo. Subset de
-// CategoriaCatalogo — não inclui agente nem fonte_geradora porque
-// esses são atributos do próprio modelo.
+// CategoriaCatalogo — não inclui agente porque esse é atributo
+// do próprio modelo. V6 incluiu fonte_geradora pra permitir
+// múltiplas fontes por modelo.
 export type CategoriaModelo =
+  | "fonte_geradora"
   | "epi_utilizado"
   | "epi_recomendado"
   | "epc_utilizado"

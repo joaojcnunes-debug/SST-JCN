@@ -60,7 +60,9 @@ interface FormState {
   id_modelo: string;
   id_matriz: string;
   agente: string;
-  fonte_geradora: string;
+  // V6: lista de fontes geradoras (parallel a medidas/EPIs).
+  // Persistida como JSON.stringify em risco.fonte_geradora (texto único).
+  fontes_geradoras_lista: string[];
   ids_setores: string[];
   id_cargo: string;
   probabilidade: string;
@@ -116,7 +118,7 @@ function emptyForm(): FormState {
     id_modelo: "",
     id_matriz: "",
     agente: "",
-    fonte_geradora: "",
+    fontes_geradoras_lista: [],
     ids_setores: [],
     id_cargo: "",
     probabilidade: "Ocasional",
@@ -189,11 +191,17 @@ export default function RiscoForm({
     [modelos, form.id_modelo]
   );
   const itensModeloQ = useItensModelo(form.id_modelo || null);
-  const itensModelo = itensModeloQ.data ?? [];
+  const itensModelo = useMemo(
+    () => itensModeloQ.data ?? [],
+    [itensModeloQ.data]
+  );
   const perguntasModeloQ = usePerguntasDoModelo(form.id_modelo || null, {
     somenteAtivas: true,
   });
-  const perguntasModelo = perguntasModeloQ.data ?? [];
+  const perguntasModelo = useMemo(
+    () => perguntasModeloQ.data ?? [],
+    [perguntasModeloQ.data]
+  );
 
   // Sugestões: se há modelo escolhido, usa itens do modelo como datalist.
   // Senão, fallback pra biblioteca compartilhada (V4).
@@ -256,7 +264,7 @@ export default function RiscoForm({
         id_modelo: risco.id_modelo ?? "",
         id_matriz: risco.id_matriz ?? "",
         agente: risco.agente ?? "",
-        fonte_geradora: risco.fonte_geradora ?? "",
+        fontes_geradoras_lista: parseMedidas(risco.fonte_geradora),
         ids_setores: risco.id_setor ? [risco.id_setor] : [],
         id_cargo: risco.id_cargo ?? "",
         probabilidade: risco.probabilidade ?? probsLista[Math.floor(probsLista.length / 2)] ?? "",
@@ -355,7 +363,8 @@ export default function RiscoForm({
       ...f,
       id_modelo: idModelo,
       agente: m.agente,
-      fonte_geradora: m.fonte_geradora ?? "",
+      // fonte_geradora é populada pelo autofill effect quando os itens
+      // do modelo (categoria='fonte_geradora') chegarem da query.
     }));
   }
 
@@ -381,11 +390,15 @@ export default function RiscoForm({
 
     if (isEdit) return; // em edit, não sobrescreve listas existentes
 
+    const fontes: string[] = [];
     const epis: EpiPendente[] = [];
     const adotadas: string[] = [];
     const recomendadas: string[] = [];
     for (const i of itensModelo) {
       switch (i.categoria) {
+        case "fonte_geradora":
+          fontes.push(i.texto);
+          break;
         case "epi_utilizado":
           epis.push({ tipo: "EPI", descricao: i.texto, ca: null, recomendado: "Não" });
           break;
@@ -408,6 +421,7 @@ export default function RiscoForm({
     }
     setForm((f) => ({
       ...f,
+      fontes_geradoras_lista: fontes,
       epis_pendentes: epis,
       medidas_adotadas_lista: adotadas,
       medidas_recomendadas_lista: recomendadas,
@@ -447,7 +461,7 @@ export default function RiscoForm({
         id_modelo: form.id_modelo || null,
         id_matriz: form.id_matriz || matrizAtiva?.id_matriz || null,
         agente: form.agente.trim() || null,
-        fonte_geradora: form.fonte_geradora.trim() || null,
+        fonte_geradora: stringifyMedidas(form.fontes_geradoras_lista),
         id_cargo: form.id_cargo || null,
         probabilidade: form.probabilidade,
         severidade: form.severidade,
@@ -626,8 +640,8 @@ export default function RiscoForm({
           </div>
         </div>
 
-        {/* Linha 2: Agente + Fonte */}
-        <div className="grid gap-3 md:grid-cols-2">
+        {/* Linha 2: Agente (full width) — fonte virou bloco lista abaixo */}
+        <div>
           <div>
             <label className={lblCls}>Agente / Risco *</label>
             <input
@@ -662,6 +676,7 @@ export default function RiscoForm({
                 ))}
             </datalist>
             {modeloSelecionado && (() => {
+              const nFonte = itensModelo.filter((i) => i.categoria === "fonte_geradora").length;
               const nEpiUti = itensModelo.filter((i) => i.categoria === "epi_utilizado").length;
               const nEpiRec = itensModelo.filter((i) => i.categoria === "epi_recomendado").length;
               const nEpcUti = itensModelo.filter((i) => i.categoria === "epc_utilizado").length;
@@ -676,9 +691,9 @@ export default function RiscoForm({
                 return (
                   <p className="mt-1 text-[11px] text-amber-700">
                     ⚠ Modelo &ldquo;{modeloSelecionado.agente}&rdquo; aplicado,
-                    mas o <strong>kit está vazio</strong>. Adicione EPIs, EPCs,
-                    medidas e perguntas em <em>Configurações → Tipos de Risco
-                    → Catálogo</em> (expanda o card do modelo).
+                    mas o <strong>kit está vazio</strong>. Adicione fontes,
+                    EPIs, EPCs, medidas e perguntas em <em>Configurações →
+                    Tipos de Risco → Catálogo</em> (expanda o card do modelo).
                   </p>
                 );
               }
@@ -686,32 +701,25 @@ export default function RiscoForm({
               return (
                 <p className="mt-1 text-[11px] text-verde-primary">
                   ✓ Modelo &ldquo;{modeloSelecionado.agente}&rdquo;{" "}
-                  {isEdit ? "vinculado" : "aplicado"}: {nEpiUti + nEpiRec} EPI(s),{" "}
-                  {nEpcUti + nEpcRec} EPC(s), {nMedAdo + nMedRec} medida(s)
+                  {isEdit ? "vinculado" : "aplicado"}: {nFonte} fonte(s),{" "}
+                  {nEpiUti + nEpiRec} EPI(s), {nEpcUti + nEpcRec} EPC(s),{" "}
+                  {nMedAdo + nMedRec} medida(s)
                   {nPerg > 0 ? `, ${nPerg} pergunta(s)` : ""}
                   {!isEdit && " — edite à vontade"}.
                 </p>
               );
             })()}
           </div>
-          <div>
-            <label className={lblCls}>Fonte Geradora</label>
-            <input
-              list="catalogo-fonte"
-              type="text"
-              value={form.fonte_geradora}
-              onChange={(e) =>
-                setForm({ ...form, fonte_geradora: e.target.value })
-              }
-              className={inputCls}
-            />
-            <datalist id="catalogo-fonte">
-              {(sugestoesPorCategoria.fonte_geradora ?? []).map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
-          </div>
         </div>
+
+        {/* V6: Fonte Geradora como lista (parallel a medidas/EPIs) */}
+        <FonteBlocoLista
+          items={form.fontes_geradoras_lista}
+          onChange={(items) =>
+            setForm({ ...form, fontes_geradoras_lista: items })
+          }
+          sugestoes={sugestoesPorCategoria.fonte_geradora ?? []}
+        />
 
         {/* Cargo (opcional, baseado no 1º setor) */}
         {cargosDoSetor.length > 0 && (
@@ -1886,6 +1894,172 @@ function EpiBloco({
 }
 
 // =============================================================
+// SUBCOMPONENTE: Fontes Geradoras inline (V6)
+//
+// Mesma UX dos blocos de medidas. String única por item, persistido
+// como JSON.stringify em risco.fonte_geradora.
+// =============================================================
+
+function FonteBlocoLista({
+  items,
+  onChange,
+  sugestoes,
+}: {
+  items: string[];
+  onChange: (items: string[]) => void;
+  sugestoes: string[];
+}) {
+  const [novo, setNovo] = useState("");
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+  const datalistId = "cat-fonte-form";
+
+  function handleAdd() {
+    const txt = novo.trim();
+    if (!txt) return;
+    onChange([...items, txt]);
+    setNovo("");
+  }
+
+  function handleDel(idx: number) {
+    onChange(items.filter((_, i) => i !== idx));
+  }
+
+  function abrirEdit(idx: number, valor: string) {
+    setEditingIdx(idx);
+    setEditText(valor);
+  }
+
+  function salvarEdit(idx: number) {
+    const txt = editText.trim();
+    if (!txt) {
+      toast.error("Texto não pode ficar vazio");
+      return;
+    }
+    onChange(items.map((it, i) => (i === idx ? txt : it)));
+    setEditingIdx(null);
+  }
+
+  return (
+    <section className="rounded-lg border border-sky-200 bg-sky-50/30 p-3">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-sky-800">
+            Fonte Geradora
+          </p>
+          <p className="text-[11px] text-gray-600">
+            Origens do agente neste risco (uma ou mais).
+          </p>
+        </div>
+        <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800">
+          {items.length}
+        </span>
+      </div>
+
+      {items.length > 0 && (
+        <ul className="mb-2 divide-y divide-gray-100 rounded-md bg-white">
+          {items.map((it, idx) => {
+            const editando = editingIdx === idx;
+            return (
+              <li key={idx} className="flex items-center gap-2 px-2 py-1.5">
+                {editando ? (
+                  <>
+                    <input
+                      type="text"
+                      value={editText}
+                      onChange={(ev) => setEditText(ev.target.value)}
+                      className="flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                      autoFocus
+                      onKeyDown={(ev) => {
+                        if (ev.key === "Enter") {
+                          ev.preventDefault();
+                          salvarEdit(idx);
+                        }
+                        if (ev.key === "Escape") {
+                          ev.preventDefault();
+                          setEditingIdx(null);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => salvarEdit(idx)}
+                      className="rounded p-1 text-verde-primary hover:bg-verde-light"
+                      title="Salvar"
+                    >
+                      <Check className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingIdx(null)}
+                      className="rounded p-1 text-gray-400 hover:bg-gray-100"
+                      title="Cancelar"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm text-gray-900">{it}</span>
+                    <button
+                      type="button"
+                      onClick={() => abrirEdit(idx, it)}
+                      className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                      title="Editar"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDel(idx)}
+                      className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                      title="Remover"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+        <input
+          type="text"
+          list={sugestoes.length > 0 ? datalistId : undefined}
+          value={novo}
+          onChange={(ev) => setNovo(ev.target.value)}
+          placeholder="Ex: Compressor industrial em operação"
+          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          onKeyDown={(ev) => {
+            if (ev.key === "Enter") {
+              ev.preventDefault();
+              handleAdd();
+            }
+          }}
+        />
+        {sugestoes.length > 0 && (
+          <datalist id={datalistId}>
+            {sugestoes.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+        )}
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
+        >
+          <Plus className="size-3.5" /> Adicionar
+        </button>
+      </div>
+    </section>
+  );
+}
+
+// =============================================================
 // SUBCOMPONENTE: Medidas (Adotadas + Recomendadas) inline
 //
 // Mesma UX dos blocos EPI/EPC: lista com Adicionar/Editar/Excluir.
@@ -2161,11 +2335,9 @@ async function semearCatalogoFormSnapshot(
   if (form.agente.trim()) {
     novos.push({ categoria: "agente", texto: form.agente.trim() });
   }
-  if (form.fonte_geradora.trim()) {
-    novos.push({
-      categoria: "fonte_geradora",
-      texto: form.fonte_geradora.trim(),
-    });
+  for (const f of form.fontes_geradoras_lista) {
+    const t = f.trim();
+    if (t) novos.push({ categoria: "fonte_geradora", texto: t });
   }
   for (const ep of form.epis_pendentes) {
     const desc = ep.descricao.trim();
@@ -2241,6 +2413,7 @@ async function semearItensModelo(
   form: FormState
 ) {
   type CatModelo =
+    | "fonte_geradora"
     | "epi_utilizado"
     | "epi_recomendado"
     | "epc_utilizado"
@@ -2250,6 +2423,10 @@ async function semearItensModelo(
 
   const novos: Array<{ categoria: CatModelo; texto: string }> = [];
 
+  for (const f of form.fontes_geradoras_lista) {
+    const t = f.trim();
+    if (t) novos.push({ categoria: "fonte_geradora", texto: t });
+  }
   for (const ep of form.epis_pendentes) {
     const desc = ep.descricao.trim();
     if (!desc) continue;

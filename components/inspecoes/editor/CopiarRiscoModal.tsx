@@ -8,7 +8,7 @@ import Modal from "@/components/ui/Modal";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { gerarId, cn } from "@/lib/utils";
+import { gerarId, cn, parseMedidas } from "@/lib/utils";
 import { useTipoIcone } from "@/lib/hooks/useV3";
 import type {
   Cargo,
@@ -232,7 +232,7 @@ export default function CopiarRiscoModal({
               />
             </div>
             <p className="mt-1 text-xs text-gray-600">
-              {risco.fonte_geradora ?? "Sem fonte geradora"} ·{" "}
+              {parseMedidas(risco.fonte_geradora).join("; ") || "Sem fonte geradora"} ·{" "}
               {risco.probabilidade ?? "—"} / {risco.severidade ?? "—"}
             </p>
           </div>
