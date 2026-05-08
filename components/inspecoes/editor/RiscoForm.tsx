@@ -741,7 +741,7 @@ export default function RiscoForm({
         )}
 
         {/* Caracterização da exposição */}
-        <SubGrid title="Caracterização da Exposição">
+        <SubGrid title="Caracterização da Exposição" cor="stone">
           <Field label="Meio de Propagação">
             <MeiosPropagacaoMultiSelect
               options={MEIOS_PROPAGACAO_DEFAULT}
@@ -800,9 +800,9 @@ export default function RiscoForm({
         </SubGrid>
 
         {/* Avaliação (matriz) */}
-        <section className="rounded-lg bg-gray-50 p-4">
+        <section className="rounded-lg border border-rose-200 bg-rose-50/40 p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <p className="text-xs font-semibold uppercase tracking-wider text-rose-800">
               Avaliação (Matriz de Risco)
             </p>
             <div className="flex items-center gap-2">
@@ -887,10 +887,10 @@ export default function RiscoForm({
         {/* Perguntas Customizadas (V3) — definidas pelo Admin em /config */}
         {perguntasCombinadas.length > 0 && (
           <section>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-verde-primary">
               Perguntas — {form.tipo_risco}
             </p>
-            <div className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
+            <div className="space-y-2 rounded-lg border border-verde-primary/30 bg-verde-light/30 p-3">
               {perguntasCombinadas.map((p) => {
                 const valor = form.respostas_custom[p.chave] ?? "";
                 const setVal = (v: string) =>
@@ -953,7 +953,7 @@ export default function RiscoForm({
 
         {/* Específico FÍSICO */}
         {isFisico && (
-          <SubGrid title="Detalhes — Físico">
+          <SubGrid title="Detalhes — Físico" cor="green">
             <Field label="Necessita medição?">
               <select
                 value={form.fisico_necessita_medicao}
@@ -1026,7 +1026,7 @@ export default function RiscoForm({
         {/* Específico QUÍMICO */}
         {isQuimico && (
           <>
-            <SubGrid title="Detalhes — Químico">
+            <SubGrid title="Detalhes — Químico" cor="red">
               <Field label="Número CAS">
                 <input
                   value={form.numero_cas}
@@ -1117,7 +1117,7 @@ export default function RiscoForm({
 
         {/* Específico BIOLÓGICO */}
         {isBiologico && (
-          <SubGrid title="Detalhes — Biológico">
+          <SubGrid title="Detalhes — Biológico" cor="amber">
             <Field label="Tipo de agente biológico">
               <input
                 value={form.tipo_agente_biologico}
@@ -1133,7 +1133,7 @@ export default function RiscoForm({
 
         {/* Específico ERGONÔMICO */}
         {isErgo && (
-          <SubGrid title="Detalhes — Ergonômico">
+          <SubGrid title="Detalhes — Ergonômico" cor="yellow">
             <Field label="Fator ergonômico">
               <input
                 list="fatores-ergo"
@@ -1154,7 +1154,7 @@ export default function RiscoForm({
 
         {/* Específico PSICOSSOCIAL */}
         {isPsico && (
-          <SubGrid title="Detalhes — Psicossocial">
+          <SubGrid title="Detalhes — Psicossocial" cor="purple">
             <Field label="Fator psicossocial">
               <input
                 list="fatores-psico"
@@ -1175,7 +1175,7 @@ export default function RiscoForm({
 
         {/* IAPAT */}
         {isIapat && (
-          <SubGrid title="Detalhes — IAPAT">
+          <SubGrid title="Detalhes — IAPAT" cor="slate">
             <Field label="Pontuação IAPAT">
               <input
                 value={form.pontuacao_iapat}
@@ -1228,16 +1228,19 @@ export default function RiscoForm({
           sugestoesRecomendadas={sugestoesPorCategoria.medida_recomendada ?? []}
         />
 
-        <Field label="Observações">
+        <section className="rounded-lg border border-slate-200 bg-slate-50/40 p-3">
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+            Observações
+          </label>
           <textarea
             value={form.observacoes_risco}
             onChange={(e) =>
               setForm({ ...form, observacoes_risco: e.target.value })
             }
             rows={2}
-            className={inputCls}
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
           />
-        </Field>
+        </section>
 
         <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
           <button
@@ -2517,19 +2520,98 @@ function Field({
   );
 }
 
+// Cores das seções "Detalhes — X" seguem o padrão NR-09 / PGR brasileiro:
+//   Físico=verde, Químico=vermelho, Biológico=marrom (amber escuro),
+//   Ergonômico=amarelo, Acidente=azul. Psicossocial e IAPAT não têm
+//   cor oficial — uso roxo e ardósia respectivamente.
+type SubGridCor =
+  | "green"
+  | "red"
+  | "amber"
+  | "yellow"
+  | "blue"
+  | "purple"
+  | "slate"
+  | "stone"
+  | "rose"
+  | "gray";
+
+const SUBGRID_CORES: Record<
+  SubGridCor,
+  { border: string; bg: string; text: string }
+> = {
+  green: {
+    border: "border-green-300",
+    bg: "bg-green-50/40",
+    text: "text-green-800",
+  },
+  red: {
+    border: "border-red-300",
+    bg: "bg-red-50/40",
+    text: "text-red-800",
+  },
+  amber: {
+    border: "border-amber-400",
+    bg: "bg-amber-50/40",
+    text: "text-amber-900",
+  },
+  yellow: {
+    border: "border-yellow-300",
+    bg: "bg-yellow-50/40",
+    text: "text-yellow-800",
+  },
+  blue: {
+    border: "border-blue-300",
+    bg: "bg-blue-50/40",
+    text: "text-blue-800",
+  },
+  purple: {
+    border: "border-purple-300",
+    bg: "bg-purple-50/40",
+    text: "text-purple-800",
+  },
+  slate: {
+    border: "border-slate-200",
+    bg: "bg-slate-50/40",
+    text: "text-slate-700",
+  },
+  stone: {
+    border: "border-stone-200",
+    bg: "bg-stone-50/40",
+    text: "text-stone-700",
+  },
+  rose: {
+    border: "border-rose-200",
+    bg: "bg-rose-50/40",
+    text: "text-rose-800",
+  },
+  gray: {
+    border: "border-gray-200",
+    bg: "bg-white",
+    text: "text-gray-500",
+  },
+};
+
 function SubGrid({
   title,
   children,
+  cor = "gray",
 }: {
   title: string;
   children: React.ReactNode;
+  cor?: SubGridCor;
 }) {
+  const cfg = SUBGRID_CORES[cor];
   return (
     <section>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+      <p
+        className={`mb-2 text-xs font-semibold uppercase tracking-wider ${cfg.text}`}
+      >
         {title}
       </p>
-      <div className="grid gap-3 rounded-lg border border-gray-200 bg-white p-3 md:grid-cols-3">
+      <div
+        className={`grid gap-3 rounded-lg border p-3 md:grid-cols-3 ${cfg.border} ${cfg.bg}`}
+      >
         {children}
       </div>
     </section>
