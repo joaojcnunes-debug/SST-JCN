@@ -313,6 +313,22 @@ export default function RiscoForm({
   );
 
   /**
+   * Reage ao input do campo Agente: se o texto bater com o nome de
+   * algum modelo (case-insensitive), aplica o kit do modelo. Senão,
+   * fica em modo livre (id_modelo zerado).
+   */
+  function onAgenteChange(valor: string) {
+    const match = modelos.find(
+      (m) => m.agente.toLowerCase() === valor.trim().toLowerCase()
+    );
+    if (match) {
+      aplicarModelo(match.id_modelo);
+    } else {
+      setForm((f) => ({ ...f, agente: valor, id_modelo: "" }));
+    }
+  }
+
+  /**
    * Quando o usuário escolhe um modelo, pré-preenche o form com os
    * dados do modelo. Em modo CRIAR substitui também o buffer de
    * EPIs/EPCs (seguro porque ainda não foi salvo). Em modo EDITAR,
@@ -596,40 +612,6 @@ export default function RiscoForm({
           </div>
         </div>
 
-        {/* V5: Modelo de Risco — preenche o form com kit pré-cadastrado */}
-        {modelos.length > 0 && (
-          <div className="rounded-lg border border-verde-primary/30 bg-verde-light/30 p-3">
-            <label className="text-xs font-semibold uppercase tracking-wider text-verde-primary">
-              Modelo de Risco
-            </label>
-            <select
-              value={form.id_modelo}
-              onChange={(e) => aplicarModelo(e.target.value)}
-              className={inputCls}
-            >
-              <option value="">— Sem modelo (preencher manualmente) —</option>
-              {modelos.map((m) => (
-                <option key={m.id_modelo} value={m.id_modelo}>
-                  {m.agente}
-                  {m.fonte_geradora ? ` — ${m.fonte_geradora}` : ""}
-                </option>
-              ))}
-            </select>
-            {modeloSelecionado && !isEdit && (
-              <p className="mt-1.5 text-[11px] text-gray-600">
-                ✓ Form pré-preenchido com o kit deste modelo. Você pode editar
-                qualquer campo livremente.
-              </p>
-            )}
-            {modeloSelecionado && isEdit && (
-              <p className="mt-1.5 text-[11px] text-gray-600">
-                Modelo vinculado a este risco. Mudar o modelo só atualiza
-                agente e fonte — EPIs/medidas existentes ficam preservados.
-              </p>
-            )}
-          </div>
-        )}
-
         {/* Linha 2: Agente + Fonte */}
         <div className="grid gap-3 md:grid-cols-2">
           <div>
@@ -638,16 +620,44 @@ export default function RiscoForm({
               list="catalogo-agente"
               type="text"
               value={form.agente}
-              onChange={(e) => setForm({ ...form, agente: e.target.value })}
+              onChange={(e) => onAgenteChange(e.target.value)}
               className={inputCls}
               required
-              placeholder="Ex: Ruído contínuo, Cloreto de sódio..."
+              placeholder="Escolha um modelo da lista ou digite um agente novo"
             />
             <datalist id="catalogo-agente">
-              {(sugestoesPorCategoria.agente ?? []).map((s) => (
-                <option key={s} value={s} />
+              {/* Modelos primeiro (kit completo) — fonte aparece como label */}
+              {modelos.map((m) => (
+                <option
+                  key={`mod-${m.id_modelo}`}
+                  value={m.agente}
+                  label={m.fonte_geradora ?? undefined}
+                />
               ))}
+              {/* Sugestões livres da biblioteca, sem duplicar agentes que
+                  já vieram dos modelos. */}
+              {(sugestoesPorCategoria.agente ?? [])
+                .filter(
+                  (s) =>
+                    !modelos.some(
+                      (m) => m.agente.toLowerCase() === s.toLowerCase()
+                    )
+                )
+                .map((s) => (
+                  <option key={`sug-${s}`} value={s} />
+                ))}
             </datalist>
+            {modeloSelecionado && !isEdit && (
+              <p className="mt-1 text-[11px] text-verde-primary">
+                ✓ Modelo &ldquo;{modeloSelecionado.agente}&rdquo; aplicado — kit
+                completo pré-preenchido (edite à vontade).
+              </p>
+            )}
+            {modeloSelecionado && isEdit && (
+              <p className="mt-1 text-[11px] text-verde-primary">
+                ✓ Vinculado ao modelo &ldquo;{modeloSelecionado.agente}&rdquo;.
+              </p>
+            )}
           </div>
           <div>
             <label className={lblCls}>Fonte Geradora</label>
