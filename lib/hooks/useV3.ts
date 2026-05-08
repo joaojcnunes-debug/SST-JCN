@@ -761,21 +761,22 @@ export function useOpcoesDaTriagem(
 }
 
 /**
- * Carrega TODAS as opções de TODAS as triagens de um tipo de uma vez.
- * Usado pelo RiscoForm pra evitar N+1 queries (uma por triagem).
+ * Carrega TODAS as opções ativas de uma lista de triagens (1 query batch).
+ * Mais robusto do que tentar inner-join no PostgREST: aqui só passamos
+ * os IDs e usamos um IN simples.
  */
-export function useTodasOpcoesPorTipo(idTipo: string | null | undefined) {
+export function useOpcoesDeTriagens(idsTriagens: string[]) {
+  const idsKey = idsTriagens.slice().sort().join(",");
   return useQuery({
-    queryKey: ["triagem-opcoes-tipo", idTipo],
-    enabled: !!idTipo,
+    queryKey: ["triagem-opcoes-multi", idsKey],
+    enabled: idsTriagens.length > 0,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
-      // Subquery via inner join
       const { data, error } = await supabase
         .from("triagens_opcao")
-        .select("*, triagens_tipo!inner(id_tipo)")
-        .eq("triagens_tipo.id_tipo", idTipo!)
+        .select("*")
+        .in("id_triagem", idsTriagens)
         .eq("ativo", true)
         .order("ordem");
       if (error) throw error;

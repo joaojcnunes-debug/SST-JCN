@@ -21,7 +21,7 @@ import {
   useItensModelo,
   usePerguntasDoModelo,
   useTriagensPorTipo,
-  useTodasOpcoesPorTipo,
+  useOpcoesDeTriagens,
 } from "@/lib/hooks/useV3";
 import {
   PERGUNTAS_QUIMICAS,
@@ -209,9 +209,13 @@ export default function RiscoForm({
     [perguntasModeloQ.data]
   );
 
-  // V7: triagens do tipo + opções (carregadas em batch)
+  // V7: triagens do tipo + opções (carregadas em batch via .in)
   const { data: triagens = [] } = useTriagensPorTipo(idTipoSelecionado);
-  const { data: todasOpcoes = [] } = useTodasOpcoesPorTipo(idTipoSelecionado);
+  const idsTriagens = useMemo(
+    () => triagens.map((t) => t.id_triagem),
+    [triagens]
+  );
+  const { data: todasOpcoes = [] } = useOpcoesDeTriagens(idsTriagens);
   const opcoesPorTriagem = useMemo(() => {
     const acc = new Map<string, typeof todasOpcoes>();
     for (const o of todasOpcoes) {
@@ -753,9 +757,9 @@ export default function RiscoForm({
           </div>
         </div>
 
-        {/* V7: Triagem do tipo — perguntas multi-select que pré-preenchem
-            ou replicam riscos. Aparece só se admin cadastrou triagens. */}
-        {triagens.length > 0 && (
+        {/* V7: Triagem do tipo — só aparece se há ao menos 1 triagem com
+            ao menos 1 opção. Triagens sem opções são ignoradas. */}
+        {triagens.length > 0 && todasOpcoes.length > 0 && (
           <section className="rounded-lg border-l-4 border-amber-300 bg-amber-50/30 p-3">
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
               Triagem
