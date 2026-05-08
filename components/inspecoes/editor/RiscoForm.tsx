@@ -60,7 +60,10 @@ interface Props {
 interface FormState {
   tipo_risco: string;
   id_modelo: string;
-  // V8: triagem — IDs dos modelos marcados via checkbox (multi-select).
+  // V8: triagem escolhida (cascata Tipo → Triagem → Modelos vinculados).
+  // Vazio = sem triagem (usuário preenche agente livre).
+  id_triagem_selecionada: string;
+  // IDs dos modelos marcados via checkbox dentro da triagem escolhida.
   // Cada modelo marcado vira 1 risco no save (cross-product com setores).
   triagem_modelos_ids: string[];
   id_matriz: string;
@@ -121,6 +124,7 @@ function emptyForm(): FormState {
   return {
     tipo_risco: "Físico",
     id_modelo: "",
+    id_triagem_selecionada: "",
     triagem_modelos_ids: [],
     id_matriz: "",
     agente: "",
@@ -289,6 +293,7 @@ export default function RiscoForm({
         tipo_risco: risco.tipo_risco ?? "Físico",
         id_modelo: risco.id_modelo ?? "",
         // Edit não preserva seleção de triagem — campo é só pra create flow
+        id_triagem_selecionada: "",
         triagem_modelos_ids: [],
         id_matriz: risco.id_matriz ?? "",
         agente: risco.agente ?? "",
@@ -713,8 +718,9 @@ export default function RiscoForm({
                       ...form,
                       tipo_risco: e.target.value,
                       // Modelo e triagem são escopados por tipo —
-                      // trocar tipo zera ambos.
+                      // trocar tipo zera tudo.
                       id_modelo: "",
+                      id_triagem_selecionada: "",
                       triagem_modelos_ids: [],
                     })
                   }
@@ -741,71 +747,95 @@ export default function RiscoForm({
           </div>
         </div>
 
-        {/* V8: Triagem do tipo — cada pergunta lista os modelos associados
-            como checkboxes. Triagem sem modelos mostra aviso. */}
+        {/* V8.1: Cascata Tipo → Triagem → Riscos vinculados.
+            Se o tipo tem triagens cadastradas, o usuário escolhe UMA
+            triagem (a pergunta) e abaixo aparecem os modelos vinculados
+            como checkboxes. Sem triagem escolhida = preenche agente livre. */}
         {triagens.length > 0 && (
           <section className="rounded-lg border-l-4 border-amber-300 bg-amber-50/30 p-3">
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
               Triagem
             </p>
-            <p className="mb-3 text-[11px] text-gray-600">
-              Marque os riscos que se aplicam. Cada marcado vira 1 risco no
-              save (
-              {form.triagem_modelos_ids.length === 0
-                ? "nenhum marcado — usa o agente abaixo"
-                : `${form.triagem_modelos_ids.length} risco(s) será(ão) criado(s)`}
-              ).
+            <p className="mb-2 text-[11px] text-gray-600">
+              Escolha a pergunta que descreve a condição investigada — depois
+              marque os riscos que se aplicam. Cada marcado vira 1 risco no
+              save.
             </p>
-            <div className="space-y-3">
-              {triagens.map((t) => {
-                const modelosDaTriagem = modelosPorTriagem.get(t.id_triagem) ?? [];
-                return (
-                  <div key={t.id_triagem}>
-                    <p className="mb-1.5 text-sm font-medium text-gray-800">
-                      {t.texto}
+
+            <select
+              value={form.id_triagem_selecionada}
+              onChange={(e) => {
+                const novaTriagem = e.target.value;
+                setForm((f) => ({
+                  ...f,
+                  id_triagem_selecionada: novaTriagem,
+                  // Trocar de triagem zera os modelos marcados (eram da
+                  // triagem anterior).
+                  triagem_modelos_ids: [],
+                  id_modelo: "",
+                  agente: "",
+                }));
+              }}
+              className="w-full rounded-md border border-amber-300 bg-white px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-300/30"
+            >
+              <option value="">— Sem triagem (preencher agente livre) —</option>
+              {triagens.map((t) => (
+                <option key={t.id_triagem} value={t.id_triagem}>
+                  {t.texto}
+                </option>
+              ))}
+            </select>
+
+            {form.id_triagem_selecionada && (() => {
+              const modelosDaTriagem =
+                modelosPorTriagem.get(form.id_triagem_selecionada) ?? [];
+              return (
+                <div className="mt-3">
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-800">
+                    Riscos vinculados (
+                    {form.triagem_modelos_ids.length === 0
+                      ? "nenhum marcado"
+                      : `${form.triagem_modelos_ids.length} marcado(s) → ${form.triagem_modelos_ids.length} risco(s) no save`}
+                    )
+                  </p>
+                  {modelosDaTriagem.length === 0 ? (
+                    <p className="rounded border border-dashed border-amber-300 bg-white px-2 py-1.5 text-[11px] text-amber-700">
+                      ⚠ Nenhum risco/modelo vinculado a esta pergunta. Vá em{" "}
+                      <em>
+                        Configurações → Tipos de Risco → Catálogo
+                      </em>
+                      , expanda esta triagem e marque os modelos que ela cobre.
                     </p>
-                    {modelosDaTriagem.length === 0 ? (
-                      <p className="rounded border border-dashed border-amber-300 bg-white px-2 py-1.5 text-[11px] text-amber-700">
-                        ⚠ Nenhum modelo associado. Vá em{" "}
-                        <em>
-                          Configurações → Tipos de Risco → Catálogo
-                        </em>
-                        , expanda esta triagem e marque os modelos que ela
-                        cobre.
-                      </p>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {modelosDaTriagem.map((m) => {
-                          const checked = form.triagem_modelos_ids.includes(
-                            m.id_modelo
-                          );
-                          return (
-                            <label
-                              key={m.id_modelo}
-                              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs ${
-                                checked
-                                  ? "border-amber-500 bg-amber-100 text-amber-900"
-                                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                              }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() =>
-                                  toggleModeloTriagem(m.id_modelo)
-                                }
-                                className="rounded border-gray-300 text-amber-600 focus:ring-amber-500/30"
-                              />
-                              {m.agente}
-                            </label>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {modelosDaTriagem.map((m) => {
+                        const checked = form.triagem_modelos_ids.includes(
+                          m.id_modelo
+                        );
+                        return (
+                          <label
+                            key={m.id_modelo}
+                            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs ${
+                              checked
+                                ? "border-amber-500 bg-amber-100 text-amber-900"
+                                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleModeloTriagem(m.id_modelo)}
+                              className="rounded border-gray-300 text-amber-600 focus:ring-amber-500/30"
+                            />
+                            {m.agente}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </section>
         )}
 
