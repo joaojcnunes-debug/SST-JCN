@@ -747,19 +747,19 @@ export default function RiscoForm({
           </div>
         </div>
 
-        {/* V8.1: Cascata Tipo → Triagem → Riscos vinculados.
-            Se o tipo tem triagens cadastradas, o usuário escolhe UMA
-            triagem (a pergunta) e abaixo aparecem os modelos vinculados
-            como checkboxes. Sem triagem escolhida = preenche agente livre. */}
+        {/* V8.3: Triagem — só o select da pergunta. Os riscos vinculados
+            aparecem como sugestões NO CAMPO AGENTE abaixo (filtrado pela
+            triagem escolhida). Sem triagem = agente mostra todos os
+            modelos do tipo como sugestão. */}
         {triagens.length > 0 && (
           <section className="rounded-lg border-l-4 border-amber-300 bg-amber-50/30 p-3">
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
               Triagem
             </p>
             <p className="mb-2 text-[11px] text-gray-600">
-              Escolha a pergunta que descreve a condição investigada — depois
-              marque os riscos que se aplicam. Cada marcado vira 1 risco no
-              save.
+              Escolha a pergunta que descreve a condição investigada. Os
+              riscos vinculados ficam disponíveis como opções no campo
+              <strong> Agente</strong> abaixo.
             </p>
 
             <select
@@ -769,7 +769,7 @@ export default function RiscoForm({
                 setForm((f) => ({
                   ...f,
                   id_triagem_selecionada: novaTriagem,
-                  // Trocar de triagem zera os modelos marcados (eram da
+                  // Trocar de triagem zera o agente/modelo (eram da
                   // triagem anterior).
                   triagem_modelos_ids: [],
                   id_modelo: "",
@@ -789,51 +789,20 @@ export default function RiscoForm({
             {form.id_triagem_selecionada && (() => {
               const modelosDaTriagem =
                 modelosPorTriagem.get(form.id_triagem_selecionada) ?? [];
-              return (
-                <div className="mt-3">
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-800">
-                    Riscos vinculados (
-                    {form.triagem_modelos_ids.length === 0
-                      ? "nenhum marcado"
-                      : `${form.triagem_modelos_ids.length} marcado(s) → ${form.triagem_modelos_ids.length} risco(s) no save`}
-                    )
+              if (modelosDaTriagem.length === 0) {
+                return (
+                  <p className="mt-2 rounded border border-dashed border-amber-300 bg-white px-2 py-1.5 text-[11px] text-amber-700">
+                    ⚠ Nenhum risco/modelo vinculado a esta pergunta. Vá em{" "}
+                    <em>Configurações → Tipos de Risco → Catálogo</em>, expanda
+                    esta triagem e cadastre os modelos que ela cobre.
                   </p>
-                  {modelosDaTriagem.length === 0 ? (
-                    <p className="rounded border border-dashed border-amber-300 bg-white px-2 py-1.5 text-[11px] text-amber-700">
-                      ⚠ Nenhum risco/modelo vinculado a esta pergunta. Vá em{" "}
-                      <em>
-                        Configurações → Tipos de Risco → Catálogo
-                      </em>
-                      , expanda esta triagem e marque os modelos que ela cobre.
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {modelosDaTriagem.map((m) => {
-                        const checked = form.triagem_modelos_ids.includes(
-                          m.id_modelo
-                        );
-                        return (
-                          <label
-                            key={m.id_modelo}
-                            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs ${
-                              checked
-                                ? "border-amber-500 bg-amber-100 text-amber-900"
-                                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleModeloTriagem(m.id_modelo)}
-                              className="rounded border-gray-300 text-amber-600 focus:ring-amber-500/30"
-                            />
-                            {m.agente}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                );
+              }
+              return (
+                <p className="mt-2 text-[11px] text-amber-700">
+                  ✓ {modelosDaTriagem.length} risco(s) vinculado(s) — disponíveis
+                  no campo Agente abaixo.
+                </p>
               );
             })()}
           </section>
@@ -853,26 +822,39 @@ export default function RiscoForm({
               placeholder="Escolha um modelo da lista ou digite um agente novo"
             />
             <datalist id="catalogo-agente">
-              {/* Modelos primeiro (kit completo) — fonte aparece como label */}
-              {modelos.map((m) => (
-                <option
-                  key={`mod-${m.id_modelo}`}
-                  value={m.agente}
-                  label={m.fonte_geradora ?? undefined}
-                />
-              ))}
-              {/* Sugestões livres da biblioteca, sem duplicar agentes que
-                  já vieram dos modelos. */}
-              {(sugestoesPorCategoria.agente ?? [])
-                .filter(
-                  (s) =>
-                    !modelos.some(
-                      (m) => m.agente.toLowerCase() === s.toLowerCase()
-                    )
-                )
-                .map((s) => (
-                  <option key={`sug-${s}`} value={s} />
-                ))}
+              {(() => {
+                // Quando uma triagem está escolhida, só mostra os modelos
+                // vinculados a ela. Senão, todos os modelos do tipo
+                // (e a biblioteca livre como fallback).
+                const modelosVisiveis = form.id_triagem_selecionada
+                  ? modelosPorTriagem.get(form.id_triagem_selecionada) ?? []
+                  : modelos;
+                return (
+                  <>
+                    {modelosVisiveis.map((m) => (
+                      <option
+                        key={`mod-${m.id_modelo}`}
+                        value={m.agente}
+                        label={m.fonte_geradora ?? undefined}
+                      />
+                    ))}
+                    {/* Biblioteca livre só quando NÃO há triagem (manter o
+                        escopo da triagem limpo) */}
+                    {!form.id_triagem_selecionada &&
+                      (sugestoesPorCategoria.agente ?? [])
+                        .filter(
+                          (s) =>
+                            !modelos.some(
+                              (m) =>
+                                m.agente.toLowerCase() === s.toLowerCase()
+                            )
+                        )
+                        .map((s) => (
+                          <option key={`sug-${s}`} value={s} />
+                        ))}
+                  </>
+                );
+              })()}
             </datalist>
             {modeloSelecionado && (() => {
               const nFonte = itensModelo.filter((i) => i.categoria === "fonte_geradora").length;
