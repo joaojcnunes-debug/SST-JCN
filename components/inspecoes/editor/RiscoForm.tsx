@@ -647,17 +647,38 @@ export default function RiscoForm({
                   <option key={`sug-${s}`} value={s} />
                 ))}
             </datalist>
-            {modeloSelecionado && !isEdit && (
-              <p className="mt-1 text-[11px] text-verde-primary">
-                ✓ Modelo &ldquo;{modeloSelecionado.agente}&rdquo; aplicado — kit
-                completo pré-preenchido (edite à vontade).
-              </p>
-            )}
-            {modeloSelecionado && isEdit && (
-              <p className="mt-1 text-[11px] text-verde-primary">
-                ✓ Vinculado ao modelo &ldquo;{modeloSelecionado.agente}&rdquo;.
-              </p>
-            )}
+            {modeloSelecionado && (() => {
+              const nEpiUti = itensModelo.filter((i) => i.categoria === "epi_utilizado").length;
+              const nEpiRec = itensModelo.filter((i) => i.categoria === "epi_recomendado").length;
+              const nEpcUti = itensModelo.filter((i) => i.categoria === "epc_utilizado").length;
+              const nEpcRec = itensModelo.filter((i) => i.categoria === "epc_recomendado").length;
+              const nMedAdo = itensModelo.filter((i) => i.categoria === "medida_adotada").length;
+              const nMedRec = itensModelo.filter((i) => i.categoria === "medida_recomendada").length;
+              const nPerg = perguntasModelo.length;
+              const total = itensModelo.length + nPerg;
+              const kitVazio = total === 0;
+
+              if (kitVazio) {
+                return (
+                  <p className="mt-1 text-[11px] text-amber-700">
+                    ⚠ Modelo &ldquo;{modeloSelecionado.agente}&rdquo; aplicado,
+                    mas o <strong>kit está vazio</strong>. Adicione EPIs, EPCs,
+                    medidas e perguntas em <em>Configurações → Tipos de Risco
+                    → Catálogo</em> (expanda o card do modelo).
+                  </p>
+                );
+              }
+
+              return (
+                <p className="mt-1 text-[11px] text-verde-primary">
+                  ✓ Modelo &ldquo;{modeloSelecionado.agente}&rdquo;{" "}
+                  {isEdit ? "vinculado" : "aplicado"}: {nEpiUti + nEpiRec} EPI(s),{" "}
+                  {nEpcUti + nEpcRec} EPC(s), {nMedAdo + nMedRec} medida(s)
+                  {nPerg > 0 ? `, ${nPerg} pergunta(s)` : ""}
+                  {!isEdit && " — edite à vontade"}.
+                </p>
+              );
+            })()}
           </div>
           <div>
             <label className={lblCls}>Fonte Geradora</label>
