@@ -757,9 +757,9 @@ export default function RiscoForm({
           </div>
         </div>
 
-        {/* V7: Triagem do tipo — só aparece se há ao menos 1 triagem com
-            ao menos 1 opção. Triagens sem opções são ignoradas. */}
-        {triagens.length > 0 && todasOpcoes.length > 0 && (
+        {/* V7: Triagem do tipo — sempre aparece quando o admin cadastrou
+            triagens. Triagens sem opções mostram aviso pra ir no Catálogo. */}
+        {triagens.length > 0 && (
           <section className="rounded-lg border-l-4 border-amber-300 bg-amber-50/30 p-3">
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
               Triagem
@@ -775,45 +775,56 @@ export default function RiscoForm({
             <div className="space-y-3">
               {triagens.map((t) => {
                 const opcoes = opcoesPorTriagem.get(t.id_triagem) ?? [];
-                if (opcoes.length === 0) return null;
                 return (
                   <div key={t.id_triagem}>
                     <p className="mb-1.5 text-sm font-medium text-gray-800">
                       {t.texto}
                     </p>
-                    <div className="flex flex-wrap gap-2">
-                      {opcoes.map((o) => {
-                        const checked = form.triagem_opcoes_ids.includes(
-                          o.id_opcao
-                        );
-                        return (
-                          <label
-                            key={o.id_opcao}
-                            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs ${
-                              checked
-                                ? "border-amber-500 bg-amber-100 text-amber-900"
-                                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleOpcaoTriagem(o.id_opcao)}
-                              className="rounded border-gray-300 text-amber-600 focus:ring-amber-500/30"
-                            />
-                            {o.texto}
-                            {o.id_modelo && (
-                              <span
-                                className="text-[9px] text-verde-primary"
-                                title="Vinculado a um modelo"
-                              >
-                                ●
-                              </span>
-                            )}
-                          </label>
-                        );
-                      })}
-                    </div>
+                    {opcoes.length === 0 ? (
+                      <p className="rounded border border-dashed border-amber-300 bg-white px-2 py-1.5 text-[11px] text-amber-700">
+                        ⚠ Sem opções cadastradas. Vá em{" "}
+                        <em>
+                          Configurações → Tipos de Risco → Catálogo
+                        </em>
+                        , expanda esta triagem e adicione as opções.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {opcoes.map((o) => {
+                          const checked = form.triagem_opcoes_ids.includes(
+                            o.id_opcao
+                          );
+                          return (
+                            <label
+                              key={o.id_opcao}
+                              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs ${
+                                checked
+                                  ? "border-amber-500 bg-amber-100 text-amber-900"
+                                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() =>
+                                  toggleOpcaoTriagem(o.id_opcao)
+                                }
+                                className="rounded border-gray-300 text-amber-600 focus:ring-amber-500/30"
+                              />
+                              {o.texto}
+                              {o.id_modelo && (
+                                <span
+                                  className="text-[9px] text-verde-primary"
+                                  title="Vinculado a um modelo"
+                                >
+                                  ●
+                                </span>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
