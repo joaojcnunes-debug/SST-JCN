@@ -9,6 +9,7 @@ import {
   useSaveItemCatalogo,
 } from "@/lib/hooks/useV3";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import PerguntasDoTipo from "./PerguntasDoTipo";
 import { gerarId, cn } from "@/lib/utils";
 import type { CategoriaCatalogo, ItemCatalogoTipo } from "@/lib/supabase/types";
 
@@ -78,6 +79,20 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
           itens={itens.filter((i) => i.categoria === c.key)}
         />
       ))}
+
+      <div className="mt-4 space-y-3 rounded-lg border border-verde-primary/30 bg-verde-light/30 p-3">
+        <div>
+          <h3 className="text-sm font-semibold text-verde-primary">
+            Perguntas Customizadas deste Tipo
+          </h3>
+          <p className="text-[11px] text-gray-600">
+            Aparecem no formulário de risco quando o usuário escolhe este tipo.
+            As respostas ficam gravadas no risco e saem no relatório PGR. Para
+            uma visão geral, use a aba "Perguntas Customizadas".
+          </p>
+        </div>
+        <PerguntasDoTipo idTipo={idTipo} />
+      </div>
     </div>
   );
 }
