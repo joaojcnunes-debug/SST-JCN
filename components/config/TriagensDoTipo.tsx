@@ -27,12 +27,19 @@ import { gerarId, cn } from "@/lib/utils";
 import type { TriagemTipoRisco } from "@/lib/supabase/types";
 
 /**
- * Gerencia triagens (perguntas + opções) de um tipo de risco.
- * Usado dentro do CatalogoTipoPanel. Cada triagem tem opções
- * multi-selecionáveis no RiscoForm; cada opção pode estar
- * vinculada a um modelo do mesmo tipo.
+ * Gerencia triagens de um tipo de risco. Cada triagem é uma
+ * pergunta com modelos associados (M:N via triagens_modelo).
+ * No catálogo, os modelos vinculados podem ser renderizados
+ * dentro da expansão da triagem via prop `renderModelosVinculados`.
+ * Sem essa prop, mostra o ModelosLinker padrão (checkboxes).
  */
-export default function TriagensDoTipo({ idTipo }: { idTipo: string }) {
+export default function TriagensDoTipo({
+  idTipo,
+  renderModelosVinculados,
+}: {
+  idTipo: string;
+  renderModelosVinculados?: (idTriagem: string) => React.ReactNode;
+}) {
   const { data: triagens = [] } = useTriagensPorTipo(idTipo, {
     incluirInativas: true,
   });
@@ -105,6 +112,7 @@ export default function TriagensDoTipo({ idTipo }: { idTipo: string }) {
               onDescer={() => reordenar(i, 1)}
               isFirst={i === 0}
               isLast={i === triagens.length - 1}
+              renderModelosVinculados={renderModelosVinculados}
             />
           ))}
         </ul>
@@ -150,6 +158,7 @@ function TriagemCard({
   onDescer,
   isFirst,
   isLast,
+  renderModelosVinculados,
 }: {
   triagem: TriagemTipoRisco;
   idTipo: string;
@@ -162,6 +171,7 @@ function TriagemCard({
   onDescer: () => void;
   isFirst: boolean;
   isLast: boolean;
+  renderModelosVinculados?: (idTriagem: string) => React.ReactNode;
 }) {
   const { data: relacoes = [] } = useModelosDaTriagem(triagem.id_triagem);
 
@@ -242,12 +252,16 @@ function TriagemCard({
       </div>
 
       {expandida && (
-        <div className="border-t border-gray-200 bg-gray-50 p-2">
-          <ModelosLinker
-            idTriagem={triagem.id_triagem}
-            idTipo={idTipo}
-            associados={relacoes}
-          />
+        <div className="space-y-2 border-t border-gray-200 bg-gray-50 p-2">
+          {renderModelosVinculados ? (
+            renderModelosVinculados(triagem.id_triagem)
+          ) : (
+            <ModelosLinker
+              idTriagem={triagem.id_triagem}
+              idTipo={idTipo}
+              associados={relacoes}
+            />
+          )}
         </div>
       )}
     </li>

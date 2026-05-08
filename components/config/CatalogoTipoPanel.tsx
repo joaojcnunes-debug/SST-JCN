@@ -21,9 +21,12 @@ import {
   useDeleteModeloRisco,
   useItensModelo,
   useModelosPorTipo,
+  useRelacoesDeTriagens,
   useSaveItemCatalogo,
   useSaveItemModelo,
   useSaveModeloRisco,
+  useToggleModeloTriagem,
+  useTriagensPorTipo,
 } from "@/lib/hooks/useV3";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import Modal from "@/components/ui/Modal";
@@ -164,16 +167,44 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
   const { data: itensTipo = [], isLoading: lTipo } = useCatalogoPorTipo(idTipo, {
     incluirInativos: true,
   });
+  const { data: triagens = [] } = useTriagensPorTipo(idTipo, {
+    incluirInativas: true,
+  });
+  const idsTriagens = triagens.map((t) => t.id_triagem);
+  const { data: relacoes = [] } = useRelacoesDeTriagens(idsTriagens);
+  const toggleRel = useToggleModeloTriagem();
 
   const [expandido, setExpandido] = useState<string | null>(null);
   const [bibliotecaAberta, setBibliotecaAberta] = useState(false);
-  const [modeloModal, setModeloModal] = useState<ModeloRisco | "novo" | null>(null);
+  // Quando "novo" vier com id_triagem, criar modelo + auto-link à triagem
+  const [modeloModal, setModeloModal] = useState<
+    ModeloRisco | { tipo: "novo"; id_triagem?: string } | null
+  >(null);
   const [confirmExclusao, setConfirmExclusao] = useState<ModeloRisco | null>(
     null
   );
 
   const save = useSaveModeloRisco();
   const del = useDeleteModeloRisco();
+
+  // Map<id_modelo, Set<id_triagem>> — pra saber rapidamente onde cada
+  // modelo está vinculado.
+  const triagensDoModelo = new Map<string, Set<string>>();
+  for (const r of relacoes) {
+    const set = triagensDoModelo.get(r.id_modelo) ?? new Set();
+    set.add(r.id_triagem);
+    triagensDoModelo.set(r.id_modelo, set);
+  }
+  const modelosOrfaos = modelos.filter(
+    (m) => !triagensDoModelo.has(m.id_modelo)
+  );
+
+  function modelosDeTriagem(idTriagem: string): ModeloRisco[] {
+    const idsLink = relacoes
+      .filter((r) => r.id_triagem === idTriagem)
+      .map((r) => r.id_modelo);
+    return modelos.filter((m) => idsLink.includes(m.id_modelo));
+  }
 
   function reordenar(idx: number, dir: -1 | 1) {
     const target = idx + dir;
@@ -186,78 +217,165 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
 
   if (lModelos || lTipo) return <LoadingSkeleton rows={5} />;
 
+  /** Helper: render dos modelos vinculados a uma triagem (passado como
+   * render-prop pro TriagensDoTipo). Inclui botão "Novo Modelo nesta
+   * Triagem" no fim, que cria + auto-vincula. */
+  function renderModelosVinculados(idTriagem: string) {
+    const lista = modelosDeTriagem(idTriagem);
+    return (
+      <div className="space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+          Riscos / Modelos vinculados
+        </p>
+        {lista.length === 0 ? (
+          <p className="rounded border border-dashed border-gray-300 bg-white px-2 py-1.5 text-[11px] text-gray-500">
+            Nenhum modelo vinculado ainda. Use o botão abaixo pra criar um.
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {lista.map((m, i) => (
+              <ModeloCard
+                key={m.id_modelo}
+                modelo={m}
+                expandido={expandido === m.id_modelo}
+                onToggle={() =>
+                  setExpandido((cur) =>
+                    cur === m.id_modelo ? null : m.id_modelo
+                  )
+                }
+                onEditar={() => setModeloModal(m)}
+                onRemover={() => setConfirmExclusao(m)}
+                onAtivarToggle={() =>
+                  save.mutate({
+                    id_modelo: m.id_modelo,
+                    id_tipo: m.id_tipo,
+                    ativo: !m.ativo,
+                  })
+                }
+                onSubir={() => {
+                  if (i === 0) return;
+                  const a = lista[i];
+                  const b = lista[i - 1];
+                  save.mutate({
+                    id_modelo: a.id_modelo,
+                    id_tipo: a.id_tipo,
+                    ordem: b.ordem,
+                  });
+                  save.mutate({
+                    id_modelo: b.id_modelo,
+                    id_tipo: b.id_tipo,
+                    ordem: a.ordem,
+                  });
+                }}
+                onDescer={() => {
+                  if (i === lista.length - 1) return;
+                  const a = lista[i];
+                  const b = lista[i + 1];
+                  save.mutate({
+                    id_modelo: a.id_modelo,
+                    id_tipo: a.id_tipo,
+                    ordem: b.ordem,
+                  });
+                  save.mutate({
+                    id_modelo: b.id_modelo,
+                    id_tipo: b.id_tipo,
+                    ordem: a.ordem,
+                  });
+                }}
+                isFirst={i === 0}
+                isLast={i === lista.length - 1}
+                onDesvincular={() =>
+                  toggleRel.mutate({
+                    id_triagem: idTriagem,
+                    id_modelo: m.id_modelo,
+                    ativar: false,
+                  })
+                }
+              />
+            ))}
+          </ul>
+        )}
+        <button
+          type="button"
+          onClick={() => setModeloModal({ tipo: "novo", id_triagem: idTriagem })}
+          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-verde-accent"
+        >
+          <Plus className="size-3.5" /> Novo Modelo nesta Triagem
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {/* V7: Triagem (perguntas condicionantes acima do agente no form) */}
+      {/* V8.2: Triagem do tipo com modelos aninhados */}
       <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50/30 p-3">
         <div>
           <h3 className="text-sm font-semibold text-amber-800">
             Triagem do tipo
           </h3>
           <p className="text-[11px] text-gray-600">
-            Perguntas que aparecem ANTES do agente no formulário do risco.
-            Cada opção pode estar vinculada a um modelo — selecionar a opção
-            pré-preenche o form. Múltiplas opções marcadas geram múltiplos
-            riscos no save.
+            Cada triagem é uma pergunta. Os riscos/modelos vinculados aparecem
+            dentro dela (expanda pra ver). No formulário do risco, escolher
+            uma triagem mostra esses modelos como checkboxes.
           </p>
         </div>
-        <TriagensDoTipo idTipo={idTipo} />
+        <TriagensDoTipo
+          idTipo={idTipo}
+          renderModelosVinculados={renderModelosVinculados}
+        />
       </div>
 
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-xs text-gray-600">
-          Cada modelo é um <strong>kit de risco</strong> centrado num agente.
-          Quando o usuário escolher esse modelo no formulário, todos os campos
-          do modelo (fonte, EPIs, EPCs, medidas e perguntas) serão
-          pré-preenchidos.
-        </p>
-        <button
-          type="button"
-          onClick={() => setModeloModal("novo")}
-          className="shrink-0 inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent"
-        >
-          <Plus className="size-3.5" /> Novo Modelo
-        </button>
-      </div>
-
-      {modelos.length === 0 ? (
-        <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-500">
-          Nenhum modelo cadastrado para este tipo. Comece com{" "}
-          <button
-            type="button"
-            onClick={() => setModeloModal("novo")}
-            className="font-semibold text-verde-primary hover:underline"
-          >
-            Novo Modelo
-          </button>
-          .
+      {/* Modelos órfãos: sem nenhuma triagem associada */}
+      {modelosOrfaos.length > 0 && (
+        <div className="rounded-lg border border-gray-300 bg-white p-3">
+          <div className="mb-2 flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-800">
+                Modelos sem triagem
+              </h3>
+              <p className="text-[11px] text-gray-600">
+                Modelos cadastrados mas não vinculados a nenhuma pergunta de
+                triagem. Vincule editando uma triagem ou crie modelos
+                diretamente nelas.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setModeloModal({ tipo: "novo" })}
+              className="shrink-0 inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs hover:bg-gray-50"
+            >
+              <Plus className="size-3.5" /> Novo Modelo (sem triagem)
+            </button>
+          </div>
+          <ul className="space-y-1.5">
+            {modelosOrfaos.map((m, i) => (
+              <ModeloCard
+                key={m.id_modelo}
+                modelo={m}
+                expandido={expandido === m.id_modelo}
+                onToggle={() =>
+                  setExpandido((cur) =>
+                    cur === m.id_modelo ? null : m.id_modelo
+                  )
+                }
+                onEditar={() => setModeloModal(m)}
+                onRemover={() => setConfirmExclusao(m)}
+                onAtivarToggle={() =>
+                  save.mutate({
+                    id_modelo: m.id_modelo,
+                    id_tipo: m.id_tipo,
+                    ativo: !m.ativo,
+                  })
+                }
+                onSubir={() => reordenar(i, -1)}
+                onDescer={() => reordenar(i, 1)}
+                isFirst={i === 0}
+                isLast={i === modelosOrfaos.length - 1}
+              />
+            ))}
+          </ul>
         </div>
-      ) : (
-        <ul className="space-y-2">
-          {modelos.map((m, i) => (
-            <ModeloCard
-              key={m.id_modelo}
-              modelo={m}
-              expandido={expandido === m.id_modelo}
-              onToggle={() =>
-                setExpandido((cur) => (cur === m.id_modelo ? null : m.id_modelo))
-              }
-              onEditar={() => setModeloModal(m)}
-              onRemover={() => setConfirmExclusao(m)}
-              onAtivarToggle={() =>
-                save.mutate({
-                  id_modelo: m.id_modelo,
-                  id_tipo: m.id_tipo,
-                  ativo: !m.ativo,
-                })
-              }
-              onSubir={() => reordenar(i, -1)}
-              onDescer={() => reordenar(i, 1)}
-              isFirst={i === 0}
-              isLast={i === modelos.length - 1}
-            />
-          ))}
-        </ul>
       )}
 
       {/* Biblioteca compartilhada (V4) — colapsável, secundária */}
@@ -304,7 +422,14 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
         open={modeloModal !== null}
         onClose={() => setModeloModal(null)}
         idTipo={idTipo}
-        editing={modeloModal === "novo" ? null : modeloModal}
+        editing={
+          modeloModal && "id_modelo" in modeloModal ? modeloModal : null
+        }
+        autoLinkTriagem={
+          modeloModal && "tipo" in modeloModal && modeloModal.tipo === "novo"
+            ? modeloModal.id_triagem
+            : undefined
+        }
       />
 
       <ConfirmDialog
@@ -340,6 +465,7 @@ function ModeloCard({
   onDescer,
   isFirst,
   isLast,
+  onDesvincular,
 }: {
   modelo: ModeloRisco;
   expandido: boolean;
@@ -351,6 +477,9 @@ function ModeloCard({
   onDescer: () => void;
   isFirst: boolean;
   isLast: boolean;
+  /** Se setado, mostra botão pra desvincular o modelo da triagem onde
+   * está sendo renderizado (não apaga o modelo, só o link). */
+  onDesvincular?: () => void;
 }) {
   const { data: itens = [] } = useItensModelo(modelo.id_modelo, {
     incluirInativos: true,
@@ -441,6 +570,16 @@ function ModeloCard({
           >
             <Pencil className="size-4" />
           </button>
+          {onDesvincular && (
+            <button
+              type="button"
+              onClick={onDesvincular}
+              className="rounded p-1.5 text-gray-500 hover:bg-amber-50 hover:text-amber-700"
+              title="Desvincular desta triagem (modelo continua existindo)"
+            >
+              <ChevronRight className="size-4 rotate-180" />
+            </button>
+          )}
           <button
             type="button"
             onClick={onRemover}
@@ -937,13 +1076,17 @@ function ModeloModal({
   onClose,
   idTipo,
   editing,
+  autoLinkTriagem,
 }: {
   open: boolean;
   onClose: () => void;
   idTipo: string;
   editing: ModeloRisco | null;
+  /** Se setado, o modelo recém-criado é automaticamente vinculado a essa triagem. */
+  autoLinkTriagem?: string;
 }) {
   const save = useSaveModeloRisco();
+  const linkTriagem = useToggleModeloTriagem();
   const [agente, setAgente] = useState("");
   const [ordem, setOrdem] = useState(99);
 
@@ -960,9 +1103,10 @@ function ModeloModal({
       toast.error("Agente é obrigatório");
       return;
     }
+    const idModelo = editing?.id_modelo ?? gerarId("MOD");
     save.mutate(
       {
-        id_modelo: editing?.id_modelo ?? gerarId("MOD"),
+        id_modelo: idModelo,
         id_tipo: idTipo,
         agente: agente.trim(),
         // fonte_geradora deprecada como campo único — não setamos mais.
@@ -973,6 +1117,14 @@ function ModeloModal({
       },
       {
         onSuccess: () => {
+          // Auto-link à triagem se for criação a partir do contexto dela
+          if (!editing && autoLinkTriagem) {
+            linkTriagem.mutate({
+              id_triagem: autoLinkTriagem,
+              id_modelo: idModelo,
+              ativar: true,
+            });
+          }
           setAgente("");
           setOrdem(99);
           onClose();
