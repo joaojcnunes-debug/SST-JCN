@@ -188,11 +188,12 @@ export default function RiscoForm({
     () => modelos.find((m) => m.id_modelo === form.id_modelo) ?? null,
     [modelos, form.id_modelo]
   );
-  const { data: itensModelo = [] } = useItensModelo(form.id_modelo || null);
-  const { data: perguntasModelo = [] } = usePerguntasDoModelo(
-    form.id_modelo || null,
-    { somenteAtivas: true }
-  );
+  const itensModeloQ = useItensModelo(form.id_modelo || null);
+  const itensModelo = itensModeloQ.data ?? [];
+  const perguntasModeloQ = usePerguntasDoModelo(form.id_modelo || null, {
+    somenteAtivas: true,
+  });
+  const perguntasModelo = perguntasModeloQ.data ?? [];
 
   // Sugestões: se há modelo escolhido, usa itens do modelo como datalist.
   // Senão, fallback pra biblioteca compartilhada (V4).
@@ -361,6 +362,12 @@ export default function RiscoForm({
   // Quando os itens do modelo carregam, preenche os campos de lista
   // (medidas/EPIs). Só faz isso em modo CRIAR — edit preserva o que
   // já está persistido.
+  //
+  // IMPORTANTE: itens e perguntas vêm de queries independentes que podem
+  // chegar fora de ordem. Antes de marcar como "aplicado", esperamos que
+  // AMBAS tenham terminado o primeiro fetch (isFetched). Senão, perguntas
+  // chegando primeiro com dados mas itens ainda zerados marcaria o ref e
+  // bloquearia o autofill quando os itens chegassem.
   const aplicouItensRef = useRef<string>("");
   useEffect(() => {
     if (!form.id_modelo) {
@@ -368,7 +375,7 @@ export default function RiscoForm({
       return;
     }
     if (aplicouItensRef.current === form.id_modelo) return;
-    if (itensModelo.length === 0 && perguntasModelo.length === 0) return;
+    if (!itensModeloQ.isFetched || !perguntasModeloQ.isFetched) return;
 
     aplicouItensRef.current = form.id_modelo;
 
@@ -405,7 +412,14 @@ export default function RiscoForm({
       medidas_adotadas_lista: adotadas,
       medidas_recomendadas_lista: recomendadas,
     }));
-  }, [form.id_modelo, itensModelo, perguntasModelo, isEdit]);
+  }, [
+    form.id_modelo,
+    itensModelo,
+    perguntasModelo,
+    itensModeloQ.isFetched,
+    perguntasModeloQ.isFetched,
+    isEdit,
+  ]);
 
   // Perguntas combinadas: tipo + modelo (modelo depois pra preservar
   // ordem do tipo primeiro). Exibido na seção de Perguntas Customizadas.
