@@ -47,17 +47,22 @@ FROM t CROSS JOIN (VALUES
 ) AS v(agente, ordem)
 ON CONFLICT DO NOTHING;
 
+-- Links via JOIN-by-name pra ser resiliente a modelos pré-existentes
+-- com id_modelo diferente do md5 que estamos gerando.
 WITH t AS (SELECT id_tipo FROM public.tipos_risco WHERE nome = 'IAPAT Complexidade Laboral')
 INSERT INTO public.triagens_modelo (id_triagem, id_modelo, ordem)
-SELECT 'TRI_' || md5(t.id_tipo || ':' || v.tri),
-       'MOD_' || md5(t.id_tipo || ':' || v.mod),
-       v.ordem
-FROM t CROSS JOIN (VALUES
+SELECT tri.id_triagem, mod.id_modelo, v.ordem
+FROM t
+JOIN public.triagens_tipo tri ON tri.id_tipo = t.id_tipo
+JOIN public.modelos_risco mod ON mod.id_tipo = t.id_tipo
+CROSS JOIN (VALUES
   ('Há demandas cognitivas elevadas (concentração intensa, decisões complexas)?', 'Estresse por sobrecarga cognitiva', 0),
   ('Há demandas cognitivas elevadas (concentração intensa, decisões complexas)?', 'Estresse decisório', 1),
   ('Há pressão de tempo, prazos apertados ou ritmo acelerado?', 'Fadiga mental por excesso de prazos', 0),
   ('Há sobrecarga de informações ou múltiplas tarefas simultâneas?', 'Erro humano por sobrecarga informacional', 0)
-) AS v(tri, mod, ordem)
+) AS v(tri_texto, mod_agente, ordem)
+WHERE lower(tri.texto) = lower(v.tri_texto)
+  AND lower(mod.agente) = lower(v.mod_agente)
 ON CONFLICT DO NOTHING;
 
 
@@ -87,15 +92,18 @@ ON CONFLICT DO NOTHING;
 
 WITH t AS (SELECT id_tipo FROM public.tipos_risco WHERE nome = 'IAPAT Impactos de Alto Risco')
 INSERT INTO public.triagens_modelo (id_triagem, id_modelo, ordem)
-SELECT 'TRI_' || md5(t.id_tipo || ':' || v.tri),
-       'MOD_' || md5(t.id_tipo || ':' || v.mod),
-       v.ordem
-FROM t CROSS JOIN (VALUES
+SELECT tri.id_triagem, mod.id_modelo, v.ordem
+FROM t
+JOIN public.triagens_tipo tri ON tri.id_tipo = t.id_tipo
+JOIN public.modelos_risco mod ON mod.id_tipo = t.id_tipo
+CROSS JOIN (VALUES
   ('A atividade envolve risco de acidente com lesões graves ou fatais?', 'Risco de lesão grave ou fatal', 0),
   ('A atividade envolve risco de acidente com lesões graves ou fatais?', 'Acidente com máquinas críticas', 1),
   ('Há exposição a violência ocupacional, ameaças ou agressões?', 'Exposição a violência ocupacional', 0),
   ('Há manipulação de materiais perigosos ou operação de máquinas críticas?', 'Exposição a materiais perigosos', 0)
-) AS v(tri, mod, ordem)
+) AS v(tri_texto, mod_agente, ordem)
+WHERE lower(tri.texto) = lower(v.tri_texto)
+  AND lower(mod.agente) = lower(v.mod_agente)
 ON CONFLICT DO NOTHING;
 
 
@@ -126,16 +134,19 @@ ON CONFLICT DO NOTHING;
 
 WITH t AS (SELECT id_tipo FROM public.tipos_risco WHERE nome = 'IAPAT Relações Interpessoais')
 INSERT INTO public.triagens_modelo (id_triagem, id_modelo, ordem)
-SELECT 'TRI_' || md5(t.id_tipo || ':' || v.tri),
-       'MOD_' || md5(t.id_tipo || ':' || v.mod),
-       v.ordem
-FROM t CROSS JOIN (VALUES
+SELECT tri.id_triagem, mod.id_modelo, v.ordem
+FROM t
+JOIN public.triagens_tipo tri ON tri.id_tipo = t.id_tipo
+JOIN public.modelos_risco mod ON mod.id_tipo = t.id_tipo
+CROSS JOIN (VALUES
   ('Há conflitos frequentes com chefia, colegas ou subordinados?', 'Conflito hierárquico com chefia', 0),
   ('Há conflitos frequentes com chefia, colegas ou subordinados?', 'Conflito horizontal entre colegas', 1),
   ('Há falta de apoio social, isolamento profissional ou bullying?', 'Isolamento social no trabalho', 0),
   ('Há falta de apoio social, isolamento profissional ou bullying?', 'Bullying / assédio moral', 1),
   ('Há comunicação deficiente entre equipes ou turnos?', 'Comunicação ineficaz entre equipes', 0)
-) AS v(tri, mod, ordem)
+) AS v(tri_texto, mod_agente, ordem)
+WHERE lower(tri.texto) = lower(v.tri_texto)
+  AND lower(mod.agente) = lower(v.mod_agente)
 ON CONFLICT DO NOTHING;
 
 
@@ -168,10 +179,11 @@ ON CONFLICT DO NOTHING;
 
 WITH t AS (SELECT id_tipo FROM public.tipos_risco WHERE nome = 'Psicossocial')
 INSERT INTO public.triagens_modelo (id_triagem, id_modelo, ordem)
-SELECT 'TRI_' || md5(t.id_tipo || ':' || v.tri),
-       'MOD_' || md5(t.id_tipo || ':' || v.mod),
-       v.ordem
-FROM t CROSS JOIN (VALUES
+SELECT tri.id_triagem, mod.id_modelo, v.ordem
+FROM t
+JOIN public.triagens_tipo tri ON tri.id_tipo = t.id_tipo
+JOIN public.modelos_risco mod ON mod.id_tipo = t.id_tipo
+CROSS JOIN (VALUES
   ('Há sinais de estresse crônico, ansiedade ou exaustão emocional?', 'Estresse ocupacional crônico', 0),
   ('Há sinais de estresse crônico, ansiedade ou exaustão emocional?', 'Síndrome de Burnout', 1),
   ('Há sinais de estresse crônico, ansiedade ou exaustão emocional?', 'Ansiedade ocupacional', 2),
@@ -179,5 +191,7 @@ FROM t CROSS JOIN (VALUES
   ('Há indícios de assédio moral, sexual ou discriminação?', 'Assédio sexual', 1),
   ('Há indícios de assédio moral, sexual ou discriminação?', 'Discriminação no ambiente de trabalho', 2),
   ('Há jornada exaustiva ou desbalanceio entre vida pessoal e trabalho?', 'Sobrecarga horária', 0)
-) AS v(tri, mod, ordem)
+) AS v(tri_texto, mod_agente, ordem)
+WHERE lower(tri.texto) = lower(v.tri_texto)
+  AND lower(mod.agente) = lower(v.mod_agente)
 ON CONFLICT DO NOTHING;
