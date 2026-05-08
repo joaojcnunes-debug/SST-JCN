@@ -88,7 +88,7 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
           <p className="text-[11px] text-gray-600">
             Aparecem no formulário de risco quando o usuário escolhe este tipo.
             As respostas ficam gravadas no risco e saem no relatório PGR. Para
-            uma visão geral, use a aba "Perguntas Customizadas".
+            uma visão geral, use a aba &ldquo;Perguntas Customizadas&rdquo;.
           </p>
         </div>
         <PerguntasDoTipo idTipo={idTipo} />
