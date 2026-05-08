@@ -14,6 +14,8 @@ import type {
   PerguntaModeloRisco,
   PerguntaTipoRisco,
   TipoRiscoCustom,
+  TriagemOpcao,
+  TriagemTipoRisco,
 } from "@/lib/supabase/types";
 
 // =========================================================================
@@ -645,6 +647,186 @@ export function useDeletePerguntaModelo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["perguntas-modelo"] });
       toast.success("Pergunta removida");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// =========================================================================
+// TRIAGENS (V7)
+// =========================================================================
+// Perguntas que aparecem ANTES do agente no RiscoForm. Cada pergunta tem
+// opções multi-selecionáveis; cada opção pode estar vinculada a um modelo.
+// O save replica o risco por opção marcada.
+
+export function useTriagensPorTipo(
+  idTipo: string | null | undefined,
+  opts?: { incluirInativas?: boolean }
+) {
+  const incluirInativas = opts?.incluirInativas ?? false;
+  return useQuery({
+    queryKey: ["triagens-tipo", idTipo, incluirInativas],
+    enabled: !!idTipo,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("triagens_tipo")
+        .select("*")
+        .eq("id_tipo", idTipo!)
+        .order("ordem");
+      if (!incluirInativas) q = q.eq("ativo", true);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as TriagemTipoRisco[];
+    },
+  });
+}
+
+export function useSaveTriagem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      t: Partial<TriagemTipoRisco> & { id_triagem: string; id_tipo: string }
+    ) => {
+      const supabase = createSupabaseBrowserClient();
+      const { id_triagem, ...rest } = t;
+      const payload = { ...rest, updated_at: new Date().toISOString() };
+      // texto NOT NULL: patches parciais (ordem/ativo) usam UPDATE
+      if (rest.texto === undefined) {
+        const { error } = await supabase
+          .from("triagens_tipo")
+          .update(payload as never)
+          .eq("id_triagem", id_triagem);
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase
+        .from("triagens_tipo")
+        .upsert({ id_triagem, ...payload } as never, {
+          onConflict: "id_triagem",
+        });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["triagens-tipo", vars.id_tipo] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeleteTriagem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (idTriagem: string) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("triagens_tipo")
+        .delete()
+        .eq("id_triagem", idTriagem);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["triagens-tipo"] });
+      toast.success("Triagem removida");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// OPÇÕES DA TRIAGEM -------------------------------------------------------
+
+export function useOpcoesDaTriagem(
+  idTriagem: string | null | undefined,
+  opts?: { incluirInativas?: boolean }
+) {
+  const incluirInativas = opts?.incluirInativas ?? false;
+  return useQuery({
+    queryKey: ["triagem-opcoes", idTriagem, incluirInativas],
+    enabled: !!idTriagem,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("triagens_opcao")
+        .select("*")
+        .eq("id_triagem", idTriagem!)
+        .order("ordem");
+      if (!incluirInativas) q = q.eq("ativo", true);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as TriagemOpcao[];
+    },
+  });
+}
+
+/**
+ * Carrega TODAS as opções de TODAS as triagens de um tipo de uma vez.
+ * Usado pelo RiscoForm pra evitar N+1 queries (uma por triagem).
+ */
+export function useTodasOpcoesPorTipo(idTipo: string | null | undefined) {
+  return useQuery({
+    queryKey: ["triagem-opcoes-tipo", idTipo],
+    enabled: !!idTipo,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      // Subquery via inner join
+      const { data, error } = await supabase
+        .from("triagens_opcao")
+        .select("*, triagens_tipo!inner(id_tipo)")
+        .eq("triagens_tipo.id_tipo", idTipo!)
+        .eq("ativo", true)
+        .order("ordem");
+      if (error) throw error;
+      return (data ?? []) as unknown as TriagemOpcao[];
+    },
+  });
+}
+
+export function useSaveOpcaoTriagem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      o: Partial<TriagemOpcao> & { id_opcao: string; id_triagem: string }
+    ) => {
+      const supabase = createSupabaseBrowserClient();
+      const { id_opcao, ...rest } = o;
+      if (rest.texto === undefined) {
+        const { error } = await supabase
+          .from("triagens_opcao")
+          .update(rest as never)
+          .eq("id_opcao", id_opcao);
+        if (error) throw error;
+        return;
+      }
+      const { error } = await supabase
+        .from("triagens_opcao")
+        .upsert({ id_opcao, ...rest } as never, { onConflict: "id_opcao" });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["triagem-opcoes", vars.id_triagem] });
+      qc.invalidateQueries({ queryKey: ["triagem-opcoes-tipo"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeleteOpcaoTriagem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (idOpcao: string) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("triagens_opcao")
+        .delete()
+        .eq("id_opcao", idOpcao);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["triagem-opcoes"] });
+      qc.invalidateQueries({ queryKey: ["triagem-opcoes-tipo"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

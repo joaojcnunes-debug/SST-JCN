@@ -20,6 +20,8 @@ import {
   useModelosPorTipo,
   useItensModelo,
   usePerguntasDoModelo,
+  useTriagensPorTipo,
+  useTodasOpcoesPorTipo,
 } from "@/lib/hooks/useV3";
 import {
   PERGUNTAS_QUIMICAS,
@@ -58,6 +60,9 @@ interface Props {
 interface FormState {
   tipo_risco: string;
   id_modelo: string;
+  // V7: triagem — opções marcadas (multi-select). Cada opção é um agente
+  // que vai virar 1 risco no save.
+  triagem_opcoes_ids: string[];
   id_matriz: string;
   agente: string;
   // V6: lista de fontes geradoras (parallel a medidas/EPIs).
@@ -116,6 +121,7 @@ function emptyForm(): FormState {
   return {
     tipo_risco: "Físico",
     id_modelo: "",
+    triagem_opcoes_ids: [],
     id_matriz: "",
     agente: "",
     fontes_geradoras_lista: [],
@@ -203,6 +209,19 @@ export default function RiscoForm({
     [perguntasModeloQ.data]
   );
 
+  // V7: triagens do tipo + opções (carregadas em batch)
+  const { data: triagens = [] } = useTriagensPorTipo(idTipoSelecionado);
+  const { data: todasOpcoes = [] } = useTodasOpcoesPorTipo(idTipoSelecionado);
+  const opcoesPorTriagem = useMemo(() => {
+    const acc = new Map<string, typeof todasOpcoes>();
+    for (const o of todasOpcoes) {
+      const arr = acc.get(o.id_triagem) ?? [];
+      arr.push(o);
+      acc.set(o.id_triagem, arr);
+    }
+    return acc;
+  }, [todasOpcoes]);
+
   // Sugestões: se há modelo escolhido, usa itens do modelo como datalist.
   // Senão, fallback pra biblioteca compartilhada (V4).
   const sugestoesPorCategoria = useMemo(() => {
@@ -262,6 +281,8 @@ export default function RiscoForm({
       setForm({
         tipo_risco: risco.tipo_risco ?? "Físico",
         id_modelo: risco.id_modelo ?? "",
+        // Edit não preserva seleção de triagem — campo é só pra create flow
+        triagem_opcoes_ids: [],
         id_matriz: risco.id_matriz ?? "",
         agente: risco.agente ?? "",
         fontes_geradoras_lista: parseMedidas(risco.fonte_geradora),
@@ -320,6 +341,53 @@ export default function RiscoForm({
     form.severidade,
     matrizSelecionada
   );
+
+  /**
+   * V7: liga/desliga uma opção de triagem (multi-select).
+   *
+   * Regras:
+   *   - 0 opções marcadas: comportamento livre (usuário digita agente).
+   *   - 1 opção marcada: aplica o modelo da opção (autofill como se
+   *     tivesse digitado o agente). Se a opção não tem modelo, só seta
+   *     o agente como o texto da opção.
+   *   - 2+ opções: limpa agente/modelo do form (vão ser preenchidos por
+   *     opção no save, replicando 1 risco por opção).
+   */
+  function toggleOpcaoTriagem(idOpcao: string) {
+    const isChecked = form.triagem_opcoes_ids.includes(idOpcao);
+    const novaLista = isChecked
+      ? form.triagem_opcoes_ids.filter((x) => x !== idOpcao)
+      : [...form.triagem_opcoes_ids, idOpcao];
+
+    if (novaLista.length === 1) {
+      const opcao = todasOpcoes.find((o) => o.id_opcao === novaLista[0]);
+      if (opcao?.id_modelo) {
+        const m = modelos.find((x) => x.id_modelo === opcao.id_modelo);
+        setForm((f) => ({
+          ...f,
+          triagem_opcoes_ids: novaLista,
+          id_modelo: opcao.id_modelo!,
+          agente: m?.agente ?? opcao.texto,
+        }));
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        triagem_opcoes_ids: novaLista,
+        id_modelo: "",
+        agente: opcao?.texto ?? "",
+      }));
+      return;
+    }
+
+    // 0 ou 2+: limpa modelo/agente, só atualiza a lista
+    setForm((f) => ({
+      ...f,
+      triagem_opcoes_ids: novaLista,
+      id_modelo: "",
+      agente: novaLista.length === 0 ? f.agente : "",
+    }));
+  }
 
   /**
    * Reage ao input do campo Agente: se o texto bater com o nome de
@@ -530,17 +598,49 @@ export default function RiscoForm({
         return { criados: 1, extras: extras.length };
       }
 
-      // Criação nova: 1 risco por setor selecionado (mín. 1).
+      // Criação nova: cross-product entre opções de triagem × setores.
+      // - Sem triagem marcada: 1 risco por setor (comportamento original).
+      // - Com triagem marcada: 1 risco por (opção × setor), com agente
+      //   e id_modelo override por opção.
       const setoresParaCriar =
         form.ids_setores.length > 0 ? form.ids_setores : [null];
-      const novos = setoresParaCriar.map((idSetor) => ({
-        ...baseRisco,
-        id_risco: gerarId("RSC"),
-        id_inspecao: idInspecao,
-        id_empresa: idEmpresa,
-        id_setor: idSetor,
-        created_at: new Date().toISOString(),
-      }));
+
+      const opcoesParaCriar: Array<{
+        id_opcao: string | null;
+        agente: string | null;
+        id_modelo: string | null;
+      }> = form.triagem_opcoes_ids.length > 0
+        ? form.triagem_opcoes_ids.map((idOpcao) => {
+            const o = todasOpcoes.find((x) => x.id_opcao === idOpcao);
+            const m = o?.id_modelo
+              ? modelos.find((x) => x.id_modelo === o.id_modelo)
+              : null;
+            return {
+              id_opcao: idOpcao,
+              agente: m?.agente ?? o?.texto ?? null,
+              id_modelo: o?.id_modelo ?? null,
+            };
+          })
+        : [
+            {
+              id_opcao: null,
+              agente: baseRisco.agente ?? null,
+              id_modelo: baseRisco.id_modelo ?? null,
+            },
+          ];
+
+      const novos = opcoesParaCriar.flatMap((opc) =>
+        setoresParaCriar.map((idSetor) => ({
+          ...baseRisco,
+          agente: opc.agente,
+          id_modelo: opc.id_modelo,
+          id_risco: gerarId("RSC"),
+          id_inspecao: idInspecao,
+          id_empresa: idEmpresa,
+          id_setor: idSetor,
+          created_at: new Date().toISOString(),
+        }))
+      );
 
       const { error } = await supabase.from("riscos").insert(novos as never);
       if (error) throw error;
@@ -590,8 +690,11 @@ export default function RiscoForm({
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!form.agente.trim()) {
-      toast.error("Informe o agente do risco");
+    // Triagem com 1+ opções marcadas dispensa preencher agente —
+    // cada opção vira um risco com seu próprio agente/modelo.
+    const temTriagem = form.triagem_opcoes_ids.length > 0;
+    if (!temTriagem && !form.agente.trim()) {
+      toast.error("Informe o agente do risco ou marque opções da triagem");
       return;
     }
     mutation.mutate();
@@ -621,8 +724,10 @@ export default function RiscoForm({
                     setForm({
                       ...form,
                       tipo_risco: e.target.value,
-                      // Modelo é escopado por tipo: trocar tipo zera o modelo.
+                      // Modelo e triagem são escopados por tipo —
+                      // trocar tipo zera ambos.
                       id_modelo: "",
+                      triagem_opcoes_ids: [],
                     })
                   }
                   className={inputCls}
@@ -647,6 +752,70 @@ export default function RiscoForm({
             />
           </div>
         </div>
+
+        {/* V7: Triagem do tipo — perguntas multi-select que pré-preenchem
+            ou replicam riscos. Aparece só se admin cadastrou triagens. */}
+        {triagens.length > 0 && (
+          <section className="rounded-lg border-l-4 border-amber-300 bg-amber-50/30 p-3">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
+              Triagem
+            </p>
+            <p className="mb-3 text-[11px] text-gray-600">
+              Marque as opções que se aplicam. Cada opção marcada vira um
+              risco no save (
+              {form.triagem_opcoes_ids.length === 0
+                ? "nenhuma marcada — usa o agente abaixo"
+                : `${form.triagem_opcoes_ids.length} risco(s) será(ão) criado(s)`}
+              ).
+            </p>
+            <div className="space-y-3">
+              {triagens.map((t) => {
+                const opcoes = opcoesPorTriagem.get(t.id_triagem) ?? [];
+                if (opcoes.length === 0) return null;
+                return (
+                  <div key={t.id_triagem}>
+                    <p className="mb-1.5 text-sm font-medium text-gray-800">
+                      {t.texto}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {opcoes.map((o) => {
+                        const checked = form.triagem_opcoes_ids.includes(
+                          o.id_opcao
+                        );
+                        return (
+                          <label
+                            key={o.id_opcao}
+                            className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs ${
+                              checked
+                                ? "border-amber-500 bg-amber-100 text-amber-900"
+                                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleOpcaoTriagem(o.id_opcao)}
+                              className="rounded border-gray-300 text-amber-600 focus:ring-amber-500/30"
+                            />
+                            {o.texto}
+                            {o.id_modelo && (
+                              <span
+                                className="text-[9px] text-verde-primary"
+                                title="Vinculado a um modelo"
+                              >
+                                ●
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Linha 2: Agente (full width) — fonte virou bloco lista abaixo */}
         <div>

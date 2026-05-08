@@ -29,6 +29,7 @@ import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import PerguntasDoModelo from "./PerguntasDoModelo";
+import TriagensDoTipo from "./TriagensDoTipo";
 import { gerarId, cn } from "@/lib/utils";
 import type {
   CategoriaCatalogo,
@@ -187,6 +188,22 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
 
   return (
     <div className="space-y-3">
+      {/* V7: Triagem (perguntas condicionantes acima do agente no form) */}
+      <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50/30 p-3">
+        <div>
+          <h3 className="text-sm font-semibold text-amber-800">
+            Triagem do tipo
+          </h3>
+          <p className="text-[11px] text-gray-600">
+            Perguntas que aparecem ANTES do agente no formulário do risco.
+            Cada opção pode estar vinculada a um modelo — selecionar a opção
+            pré-preenche o form. Múltiplas opções marcadas geram múltiplos
+            riscos no save.
+          </p>
+        </div>
+        <TriagensDoTipo idTipo={idTipo} />
+      </div>
+
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs text-gray-600">
           Cada modelo é um <strong>kit de risco</strong> centrado num agente.

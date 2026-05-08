@@ -229,6 +229,30 @@ export interface PerguntaModeloRisco {
   created_at?: string;
 }
 
+// V7: triagem — banco de perguntas que aparecem ANTES do agente no
+// RiscoForm. Cada pergunta tem opções multi-selecionáveis, e cada
+// opção pode (opcionalmente) estar vinculada a um modelo. Selecionar
+// múltiplas opções no save replica o risco (1 por opção).
+export interface TriagemTipoRisco {
+  id_triagem: string;
+  id_tipo: string;
+  texto: string;
+  ordem: number;
+  ativo: boolean;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
+export interface TriagemOpcao {
+  id_opcao: string;
+  id_triagem: string;
+  texto: string;
+  id_modelo: string | null;
+  ordem: number;
+  ativo: boolean;
+  created_at?: string;
+}
+
 // V3: pergunta customizada vinculada a um tipo de risco
 export interface PerguntaTipoRisco {
   id_pergunta: string;
@@ -366,6 +390,8 @@ export interface Database {
       modelos_risco: TableShape<ModeloRisco>;
       itens_modelo_risco: TableShape<ItemModeloRisco>;
       perguntas_modelo_risco: TableShape<PerguntaModeloRisco>;
+      triagens_tipo: TableShape<TriagemTipoRisco>;
+      triagens_opcao: TableShape<TriagemOpcao>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
