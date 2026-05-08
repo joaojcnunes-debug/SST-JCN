@@ -14,6 +14,7 @@ import type {
   PerguntaModeloRisco,
   PerguntaTipoRisco,
   TipoRiscoCustom,
+  TriagemModeloRel,
   TriagemOpcao,
   TriagemTipoRisco,
 } from "@/lib/supabase/types";
@@ -828,6 +829,93 @@ export function useDeleteOpcaoTriagem() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["triagem-opcoes"] });
       qc.invalidateQueries({ queryKey: ["triagem-opcoes-tipo"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// =========================================================================
+// V8: Triagem ↔ Modelos (M:N direto)
+// =========================================================================
+// Cada triagem aponta diretamente pra modelos do tipo. No RiscoForm,
+// cada modelo da triagem vira um checkbox cujo label é o agente do
+// modelo. Substitui o sistema antigo de TriagemOpcao (texto livre).
+
+export function useModelosDaTriagem(idTriagem: string | null | undefined) {
+  return useQuery({
+    queryKey: ["triagem-modelos", idTriagem],
+    enabled: !!idTriagem,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("triagens_modelo")
+        .select("*")
+        .eq("id_triagem", idTriagem!)
+        .order("ordem");
+      if (error) throw error;
+      return (data ?? []) as unknown as TriagemModeloRel[];
+    },
+  });
+}
+
+/**
+ * Carrega TODAS as relações triagem→modelo de uma lista de triagens.
+ * Usado pelo RiscoForm pra evitar N+1.
+ */
+export function useRelacoesDeTriagens(idsTriagens: string[]) {
+  const idsKey = idsTriagens.slice().sort().join(",");
+  return useQuery({
+    queryKey: ["triagem-modelos-multi", idsKey],
+    enabled: idsTriagens.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("triagens_modelo")
+        .select("*")
+        .in("id_triagem", idsTriagens)
+        .order("ordem");
+      if (error) throw error;
+      return (data ?? []) as unknown as TriagemModeloRel[];
+    },
+  });
+}
+
+export function useToggleModeloTriagem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: {
+      id_triagem: string;
+      id_modelo: string;
+      ativar: boolean;
+      ordem?: number;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      if (vars.ativar) {
+        const { error } = await supabase
+          .from("triagens_modelo")
+          .upsert(
+            {
+              id_triagem: vars.id_triagem,
+              id_modelo: vars.id_modelo,
+              ordem: vars.ordem ?? 0,
+            } as never,
+            { onConflict: "id_triagem,id_modelo" }
+          );
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("triagens_modelo")
+          .delete()
+          .eq("id_triagem", vars.id_triagem)
+          .eq("id_modelo", vars.id_modelo);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["triagem-modelos", vars.id_triagem] });
+      qc.invalidateQueries({ queryKey: ["triagem-modelos-multi"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

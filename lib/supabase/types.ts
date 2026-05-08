@@ -253,6 +253,16 @@ export interface TriagemOpcao {
   created_at?: string;
 }
 
+// V8: relação direta triagem ↔ modelos. Substitui o sistema antigo
+// de TriagemOpcao (texto livre + id_modelo opcional). Cada triagem
+// agora "lista" modelos como checkboxes no RiscoForm.
+export interface TriagemModeloRel {
+  id_triagem: string;
+  id_modelo: string;
+  ordem: number;
+  created_at?: string;
+}
+
 // V3: pergunta customizada vinculada a um tipo de risco
 export interface PerguntaTipoRisco {
   id_pergunta: string;
@@ -392,6 +402,7 @@ export interface Database {
       perguntas_modelo_risco: TableShape<PerguntaModeloRisco>;
       triagens_tipo: TableShape<TriagemTipoRisco>;
       triagens_opcao: TableShape<TriagemOpcao>;
+      triagens_modelo: TableShape<TriagemModeloRel>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

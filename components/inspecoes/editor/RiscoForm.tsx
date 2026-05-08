@@ -21,7 +21,7 @@ import {
   useItensModelo,
   usePerguntasDoModelo,
   useTriagensPorTipo,
-  useOpcoesDeTriagens,
+  useRelacoesDeTriagens,
 } from "@/lib/hooks/useV3";
 import {
   PERGUNTAS_QUIMICAS,
@@ -60,9 +60,9 @@ interface Props {
 interface FormState {
   tipo_risco: string;
   id_modelo: string;
-  // V7: triagem — opções marcadas (multi-select). Cada opção é um agente
-  // que vai virar 1 risco no save.
-  triagem_opcoes_ids: string[];
+  // V8: triagem — IDs dos modelos marcados via checkbox (multi-select).
+  // Cada modelo marcado vira 1 risco no save (cross-product com setores).
+  triagem_modelos_ids: string[];
   id_matriz: string;
   agente: string;
   // V6: lista de fontes geradoras (parallel a medidas/EPIs).
@@ -121,7 +121,7 @@ function emptyForm(): FormState {
   return {
     tipo_risco: "Físico",
     id_modelo: "",
-    triagem_opcoes_ids: [],
+    triagem_modelos_ids: [],
     id_matriz: "",
     agente: "",
     fontes_geradoras_lista: [],
@@ -209,22 +209,25 @@ export default function RiscoForm({
     [perguntasModeloQ.data]
   );
 
-  // V7: triagens do tipo + opções (carregadas em batch via .in)
+  // V8: triagens do tipo + relações triagem→modelo (carregadas em batch via .in)
   const { data: triagens = [] } = useTriagensPorTipo(idTipoSelecionado);
   const idsTriagens = useMemo(
     () => triagens.map((t) => t.id_triagem),
     [triagens]
   );
-  const { data: todasOpcoes = [] } = useOpcoesDeTriagens(idsTriagens);
-  const opcoesPorTriagem = useMemo(() => {
-    const acc = new Map<string, typeof todasOpcoes>();
-    for (const o of todasOpcoes) {
-      const arr = acc.get(o.id_triagem) ?? [];
-      arr.push(o);
-      acc.set(o.id_triagem, arr);
+  const { data: relacoesTriagem = [] } = useRelacoesDeTriagens(idsTriagens);
+  /** Map<id_triagem, ModeloRisco[]> — modelos associados a cada triagem. */
+  const modelosPorTriagem = useMemo(() => {
+    const acc = new Map<string, typeof modelos>();
+    for (const r of relacoesTriagem) {
+      const m = modelos.find((x) => x.id_modelo === r.id_modelo);
+      if (!m) continue;
+      const arr = acc.get(r.id_triagem) ?? [];
+      arr.push(m);
+      acc.set(r.id_triagem, arr);
     }
     return acc;
-  }, [todasOpcoes]);
+  }, [relacoesTriagem, modelos]);
 
   // Sugestões: se há modelo escolhido, usa itens do modelo como datalist.
   // Senão, fallback pra biblioteca compartilhada (V4).
@@ -286,7 +289,7 @@ export default function RiscoForm({
         tipo_risco: risco.tipo_risco ?? "Físico",
         id_modelo: risco.id_modelo ?? "",
         // Edit não preserva seleção de triagem — campo é só pra create flow
-        triagem_opcoes_ids: [],
+        triagem_modelos_ids: [],
         id_matriz: risco.id_matriz ?? "",
         agente: risco.agente ?? "",
         fontes_geradoras_lista: parseMedidas(risco.fonte_geradora),
@@ -347,39 +350,26 @@ export default function RiscoForm({
   );
 
   /**
-   * V7: liga/desliga uma opção de triagem (multi-select).
+   * V8: liga/desliga um modelo via triagem (multi-select).
    *
    * Regras:
-   *   - 0 opções marcadas: comportamento livre (usuário digita agente).
-   *   - 1 opção marcada: aplica o modelo da opção (autofill como se
-   *     tivesse digitado o agente). Se a opção não tem modelo, só seta
-   *     o agente como o texto da opção.
-   *   - 2+ opções: limpa agente/modelo do form (vão ser preenchidos por
-   *     opção no save, replicando 1 risco por opção).
+   *   - 0 marcados: comportamento livre (usuário digita agente).
+   *   - 1 marcado: aplica o modelo (autofill agente/fonte/EPIs/medidas).
+   *   - 2+ marcados: limpa agente/modelo (cada um vira 1 risco no save).
    */
-  function toggleOpcaoTriagem(idOpcao: string) {
-    const isChecked = form.triagem_opcoes_ids.includes(idOpcao);
+  function toggleModeloTriagem(idModelo: string) {
+    const isChecked = form.triagem_modelos_ids.includes(idModelo);
     const novaLista = isChecked
-      ? form.triagem_opcoes_ids.filter((x) => x !== idOpcao)
-      : [...form.triagem_opcoes_ids, idOpcao];
+      ? form.triagem_modelos_ids.filter((x) => x !== idModelo)
+      : [...form.triagem_modelos_ids, idModelo];
 
     if (novaLista.length === 1) {
-      const opcao = todasOpcoes.find((o) => o.id_opcao === novaLista[0]);
-      if (opcao?.id_modelo) {
-        const m = modelos.find((x) => x.id_modelo === opcao.id_modelo);
-        setForm((f) => ({
-          ...f,
-          triagem_opcoes_ids: novaLista,
-          id_modelo: opcao.id_modelo!,
-          agente: m?.agente ?? opcao.texto,
-        }));
-        return;
-      }
+      const m = modelos.find((x) => x.id_modelo === novaLista[0]);
       setForm((f) => ({
         ...f,
-        triagem_opcoes_ids: novaLista,
-        id_modelo: "",
-        agente: opcao?.texto ?? "",
+        triagem_modelos_ids: novaLista,
+        id_modelo: novaLista[0],
+        agente: m?.agente ?? "",
       }));
       return;
     }
@@ -387,7 +377,7 @@ export default function RiscoForm({
     // 0 ou 2+: limpa modelo/agente, só atualiza a lista
     setForm((f) => ({
       ...f,
-      triagem_opcoes_ids: novaLista,
+      triagem_modelos_ids: novaLista,
       id_modelo: "",
       agente: novaLista.length === 0 ? f.agente : "",
     }));
@@ -602,32 +592,26 @@ export default function RiscoForm({
         return { criados: 1, extras: extras.length };
       }
 
-      // Criação nova: cross-product entre opções de triagem × setores.
+      // Criação nova: cross-product entre modelos da triagem × setores.
       // - Sem triagem marcada: 1 risco por setor (comportamento original).
-      // - Com triagem marcada: 1 risco por (opção × setor), com agente
-      //   e id_modelo override por opção.
+      // - Com triagem marcada: 1 risco por (modelo × setor), com agente
+      //   e id_modelo override por modelo.
       const setoresParaCriar =
         form.ids_setores.length > 0 ? form.ids_setores : [null];
 
       const opcoesParaCriar: Array<{
-        id_opcao: string | null;
         agente: string | null;
         id_modelo: string | null;
-      }> = form.triagem_opcoes_ids.length > 0
-        ? form.triagem_opcoes_ids.map((idOpcao) => {
-            const o = todasOpcoes.find((x) => x.id_opcao === idOpcao);
-            const m = o?.id_modelo
-              ? modelos.find((x) => x.id_modelo === o.id_modelo)
-              : null;
+      }> = form.triagem_modelos_ids.length > 0
+        ? form.triagem_modelos_ids.map((idModelo) => {
+            const m = modelos.find((x) => x.id_modelo === idModelo);
             return {
-              id_opcao: idOpcao,
-              agente: m?.agente ?? o?.texto ?? null,
-              id_modelo: o?.id_modelo ?? null,
+              agente: m?.agente ?? null,
+              id_modelo: idModelo,
             };
           })
         : [
             {
-              id_opcao: null,
               agente: baseRisco.agente ?? null,
               id_modelo: baseRisco.id_modelo ?? null,
             },
@@ -696,7 +680,7 @@ export default function RiscoForm({
     e.preventDefault();
     // Triagem com 1+ opções marcadas dispensa preencher agente —
     // cada opção vira um risco com seu próprio agente/modelo.
-    const temTriagem = form.triagem_opcoes_ids.length > 0;
+    const temTriagem = form.triagem_modelos_ids.length > 0;
     if (!temTriagem && !form.agente.trim()) {
       toast.error("Informe o agente do risco ou marque opções da triagem");
       return;
@@ -731,7 +715,7 @@ export default function RiscoForm({
                       // Modelo e triagem são escopados por tipo —
                       // trocar tipo zera ambos.
                       id_modelo: "",
-                      triagem_opcoes_ids: [],
+                      triagem_modelos_ids: [],
                     })
                   }
                   className={inputCls}
@@ -757,46 +741,47 @@ export default function RiscoForm({
           </div>
         </div>
 
-        {/* V7: Triagem do tipo — sempre aparece quando o admin cadastrou
-            triagens. Triagens sem opções mostram aviso pra ir no Catálogo. */}
+        {/* V8: Triagem do tipo — cada pergunta lista os modelos associados
+            como checkboxes. Triagem sem modelos mostra aviso. */}
         {triagens.length > 0 && (
           <section className="rounded-lg border-l-4 border-amber-300 bg-amber-50/30 p-3">
             <p className="mb-2 text-xs font-bold uppercase tracking-wider text-amber-800">
               Triagem
             </p>
             <p className="mb-3 text-[11px] text-gray-600">
-              Marque as opções que se aplicam. Cada opção marcada vira um
-              risco no save (
-              {form.triagem_opcoes_ids.length === 0
-                ? "nenhuma marcada — usa o agente abaixo"
-                : `${form.triagem_opcoes_ids.length} risco(s) será(ão) criado(s)`}
+              Marque os riscos que se aplicam. Cada marcado vira 1 risco no
+              save (
+              {form.triagem_modelos_ids.length === 0
+                ? "nenhum marcado — usa o agente abaixo"
+                : `${form.triagem_modelos_ids.length} risco(s) será(ão) criado(s)`}
               ).
             </p>
             <div className="space-y-3">
               {triagens.map((t) => {
-                const opcoes = opcoesPorTriagem.get(t.id_triagem) ?? [];
+                const modelosDaTriagem = modelosPorTriagem.get(t.id_triagem) ?? [];
                 return (
                   <div key={t.id_triagem}>
                     <p className="mb-1.5 text-sm font-medium text-gray-800">
                       {t.texto}
                     </p>
-                    {opcoes.length === 0 ? (
+                    {modelosDaTriagem.length === 0 ? (
                       <p className="rounded border border-dashed border-amber-300 bg-white px-2 py-1.5 text-[11px] text-amber-700">
-                        ⚠ Sem opções cadastradas. Vá em{" "}
+                        ⚠ Nenhum modelo associado. Vá em{" "}
                         <em>
                           Configurações → Tipos de Risco → Catálogo
                         </em>
-                        , expanda esta triagem e adicione as opções.
+                        , expanda esta triagem e marque os modelos que ela
+                        cobre.
                       </p>
                     ) : (
                       <div className="flex flex-wrap gap-2">
-                        {opcoes.map((o) => {
-                          const checked = form.triagem_opcoes_ids.includes(
-                            o.id_opcao
+                        {modelosDaTriagem.map((m) => {
+                          const checked = form.triagem_modelos_ids.includes(
+                            m.id_modelo
                           );
                           return (
                             <label
-                              key={o.id_opcao}
+                              key={m.id_modelo}
                               className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs ${
                                 checked
                                   ? "border-amber-500 bg-amber-100 text-amber-900"
@@ -807,19 +792,11 @@ export default function RiscoForm({
                                 type="checkbox"
                                 checked={checked}
                                 onChange={() =>
-                                  toggleOpcaoTriagem(o.id_opcao)
+                                  toggleModeloTriagem(m.id_modelo)
                                 }
                                 className="rounded border-gray-300 text-amber-600 focus:ring-amber-500/30"
                               />
-                              {o.texto}
-                              {o.id_modelo && (
-                                <span
-                                  className="text-[9px] text-verde-primary"
-                                  title="Vinculado a um modelo"
-                                >
-                                  ●
-                                </span>
-                              )}
+                              {m.agente}
                             </label>
                           );
                         })}

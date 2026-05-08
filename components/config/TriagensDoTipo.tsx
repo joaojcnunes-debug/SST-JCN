@@ -14,18 +14,17 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-  useDeleteOpcaoTriagem,
   useDeleteTriagem,
+  useModelosDaTriagem,
   useModelosPorTipo,
-  useOpcoesDaTriagem,
-  useSaveOpcaoTriagem,
   useSaveTriagem,
+  useToggleModeloTriagem,
   useTriagensPorTipo,
 } from "@/lib/hooks/useV3";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { gerarId, cn } from "@/lib/utils";
-import type { TriagemOpcao, TriagemTipoRisco } from "@/lib/supabase/types";
+import type { TriagemTipoRisco } from "@/lib/supabase/types";
 
 /**
  * Gerencia triagens (perguntas + opções) de um tipo de risco.
@@ -164,9 +163,7 @@ function TriagemCard({
   isFirst: boolean;
   isLast: boolean;
 }) {
-  const { data: opcoes = [] } = useOpcoesDaTriagem(triagem.id_triagem, {
-    incluirInativas: true,
-  });
+  const { data: relacoes = [] } = useModelosDaTriagem(triagem.id_triagem);
 
   return (
     <li
@@ -191,7 +188,7 @@ function TriagemCard({
         <div className="flex-1 cursor-pointer" onClick={onToggle}>
           <p className="text-sm font-medium text-gray-900">{triagem.texto}</p>
           <p className="text-[10px] text-gray-400">
-            {opcoes.filter((o) => o.ativo).length} opção(ões)
+            {relacoes.length} modelo(s) associado(s)
           </p>
         </div>
         <div className="flex items-center gap-0.5">
@@ -246,7 +243,11 @@ function TriagemCard({
 
       {expandida && (
         <div className="border-t border-gray-200 bg-gray-50 p-2">
-          <OpcoesEditor idTriagem={triagem.id_triagem} idTipo={idTipo} opcoes={opcoes} />
+          <ModelosLinker
+            idTriagem={triagem.id_triagem}
+            idTipo={idTipo}
+            associados={relacoes}
+          />
         </div>
       )}
     </li>
@@ -254,193 +255,72 @@ function TriagemCard({
 }
 
 // =========================================================================
-// Editor de opções de uma triagem
+// V8: Linker — multi-select dos modelos do tipo associados à triagem
 // =========================================================================
 
-function OpcoesEditor({
+function ModelosLinker({
   idTriagem,
   idTipo,
-  opcoes,
+  associados,
 }: {
   idTriagem: string;
   idTipo: string;
-  opcoes: TriagemOpcao[];
+  associados: { id_triagem: string; id_modelo: string; ordem: number }[];
 }) {
   const { data: modelos = [] } = useModelosPorTipo(idTipo);
-  const save = useSaveOpcaoTriagem();
-  const del = useDeleteOpcaoTriagem();
-  const [novoTexto, setNovoTexto] = useState("");
-  const [novoModelo, setNovoModelo] = useState<string>("");
+  const toggle = useToggleModeloTriagem();
 
-  function adicionar() {
-    const txt = novoTexto.trim();
-    if (!txt) {
-      toast.error("Texto da opção é obrigatório");
-      return;
-    }
-    save.mutate(
-      {
-        id_opcao: gerarId("OPC"),
-        id_triagem: idTriagem,
-        texto: txt,
-        id_modelo: novoModelo || null,
-        ordem: opcoes.length,
-        ativo: true,
-      },
-      {
-        onSuccess: () => {
-          setNovoTexto("");
-          setNovoModelo("");
-        },
-      }
-    );
-  }
-
-  function mover(opcao: TriagemOpcao, dir: -1 | 1) {
-    const idx = opcoes.findIndex((o) => o.id_opcao === opcao.id_opcao);
-    const target = idx + dir;
-    if (target < 0 || target >= opcoes.length) return;
-    const a = opcoes[idx];
-    const b = opcoes[target];
-    save.mutate({
-      id_opcao: a.id_opcao,
-      id_triagem: idTriagem,
-      ordem: b.ordem,
-    });
-    save.mutate({
-      id_opcao: b.id_opcao,
-      id_triagem: idTriagem,
-      ordem: a.ordem,
-    });
-  }
+  const idsAssociados = new Set(associados.map((a) => a.id_modelo));
 
   return (
     <div className="space-y-1.5">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-        Opções (multi-select no form)
+        Modelos associados (aparecem como checkboxes no form)
       </p>
-      {opcoes.length > 0 && (
+      {modelos.length === 0 ? (
+        <p className="rounded border border-dashed border-gray-300 bg-white px-2 py-1.5 text-[11px] text-gray-500">
+          Nenhum modelo cadastrado neste tipo. Crie modelos antes de associar.
+        </p>
+      ) : (
         <ul className="space-y-1">
-          {opcoes.map((o, i) => {
-            const modelo = modelos.find((m) => m.id_modelo === o.id_modelo);
+          {modelos.map((m) => {
+            const isOn = idsAssociados.has(m.id_modelo);
             return (
               <li
-                key={o.id_opcao}
+                key={m.id_modelo}
                 className={cn(
-                  "flex items-center gap-1.5 rounded border bg-white px-2 py-1.5",
-                  o.ativo ? "border-gray-200" : "border-gray-200 opacity-60"
+                  "flex items-center gap-2 rounded border bg-white px-2 py-1.5",
+                  isOn
+                    ? "border-verde-primary bg-verde-light/30"
+                    : "border-gray-200"
                 )}
               >
-                <span className="w-5 text-center text-xs font-mono text-gray-400">
-                  {i}
-                </span>
+                <input
+                  type="checkbox"
+                  checked={isOn}
+                  onChange={() =>
+                    toggle.mutate({
+                      id_triagem: idTriagem,
+                      id_modelo: m.id_modelo,
+                      ativar: !isOn,
+                      ordem: associados.length,
+                    })
+                  }
+                  className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                />
                 <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm">{o.texto}</p>
-                  {o.id_modelo && (
-                    <p className="text-[10px] text-verde-primary">
-                      → modelo: {modelo?.agente ?? o.id_modelo}
-                    </p>
+                  <p className="truncate text-sm font-medium text-gray-900">
+                    {m.agente}
+                  </p>
+                  {!m.ativo && (
+                    <p className="text-[10px] text-gray-400">(modelo inativo)</p>
                   )}
                 </div>
-                <select
-                  value={o.id_modelo ?? ""}
-                  onChange={(e) =>
-                    save.mutate({
-                      id_opcao: o.id_opcao,
-                      id_triagem: idTriagem,
-                      texto: o.texto,
-                      id_modelo: e.target.value || null,
-                    })
-                  }
-                  className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px]"
-                  title="Vincular a um modelo (opcional)"
-                >
-                  <option value="">— sem modelo —</option>
-                  {modelos.map((m) => (
-                    <option key={m.id_modelo} value={m.id_modelo}>
-                      {m.agente}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => mover(o, -1)}
-                  disabled={i === 0}
-                  className="rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
-                  title="Subir"
-                >
-                  <ArrowUp className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => mover(o, 1)}
-                  disabled={i === opcoes.length - 1}
-                  className="rounded p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
-                  title="Descer"
-                >
-                  <ArrowDown className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    save.mutate({
-                      id_opcao: o.id_opcao,
-                      id_triagem: idTriagem,
-                      ativo: !o.ativo,
-                    })
-                  }
-                  className="rounded p-1 text-gray-500 hover:bg-gray-100"
-                  title={o.ativo ? "Desativar" : "Ativar"}
-                >
-                  {o.ativo ? (
-                    <Eye className="size-3.5" />
-                  ) : (
-                    <EyeOff className="size-3.5" />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => del.mutate(o.id_opcao)}
-                  className="rounded p-1 text-gray-500 hover:bg-red-50 hover:text-red-alert"
-                  title="Remover"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
               </li>
             );
           })}
         </ul>
       )}
-      <div className="grid grid-cols-[1fr_180px_auto] gap-1.5">
-        <input
-          type="text"
-          value={novoTexto}
-          onChange={(e) => setNovoTexto(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && adicionar()}
-          placeholder="Texto da opção (ex: Térmico)"
-          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
-        />
-        <select
-          value={novoModelo}
-          onChange={(e) => setNovoModelo(e.target.value)}
-          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
-        >
-          <option value="">— sem modelo —</option>
-          {modelos.map((m) => (
-            <option key={m.id_modelo} value={m.id_modelo}>
-              {m.agente}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={adicionar}
-          disabled={save.isPending}
-          className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
-        >
-          <Plus className="size-3.5" /> Adicionar
-        </button>
-      </div>
     </div>
   );
 }
