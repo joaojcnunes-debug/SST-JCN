@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { Plus, Trash2, Upload, Pencil, Check, X } from "lucide-react";
@@ -17,6 +17,9 @@ import {
   useTiposRisco,
   usePerguntasPorTipo,
   useCatalogoPorTipo,
+  useModelosPorTipo,
+  useItensModelo,
+  usePerguntasDoModelo,
 } from "@/lib/hooks/useV3";
 import {
   PERGUNTAS_QUIMICAS,
@@ -27,7 +30,13 @@ import {
   TEMPOS_EXPOSICAO_DEFAULT,
   TECNICAS_DEFAULT,
 } from "@/lib/constants";
-import type { CategoriaCatalogo, ItemCatalogoTipo } from "@/lib/supabase/types";
+import type {
+  CategoriaCatalogo,
+  ItemCatalogoTipo,
+  ItemModeloRisco,
+  PerguntaModeloRisco,
+  PerguntaTipoRisco,
+} from "@/lib/supabase/types";
 import type {
   Cargo,
   EpiEpc,
@@ -48,6 +57,7 @@ interface Props {
 
 interface FormState {
   tipo_risco: string;
+  id_modelo: string;
   id_matriz: string;
   agente: string;
   fonte_geradora: string;
@@ -103,6 +113,7 @@ interface EpiPendente {
 function emptyForm(): FormState {
   return {
     tipo_risco: "Físico",
+    id_modelo: "",
     id_matriz: "",
     agente: "",
     fonte_geradora: "",
@@ -167,17 +178,50 @@ export default function RiscoForm({
   const { data: perguntasCustom = [] } =
     usePerguntasPorTipo(idTipoSelecionado);
 
-  // V4: catálogo do tipo selecionado popula sugestões dos selects/datalists.
+  // V4: catálogo do tipo selecionado popula sugestões dos selects/datalists
+  // (usado quando NÃO há modelo escolhido).
   const { data: catalogo = [] } = useCatalogoPorTipo(idTipoSelecionado);
+
+  // V5: modelos do tipo. Cada modelo é um "kit" centrado num agente.
+  const { data: modelos = [] } = useModelosPorTipo(idTipoSelecionado);
+  const modeloSelecionado = useMemo(
+    () => modelos.find((m) => m.id_modelo === form.id_modelo) ?? null,
+    [modelos, form.id_modelo]
+  );
+  const { data: itensModelo = [] } = useItensModelo(form.id_modelo || null);
+  const { data: perguntasModelo = [] } = usePerguntasDoModelo(
+    form.id_modelo || null,
+    { somenteAtivas: true }
+  );
+
+  // Sugestões: se há modelo escolhido, usa itens do modelo como datalist.
+  // Senão, fallback pra biblioteca compartilhada (V4).
   const sugestoesPorCategoria = useMemo(() => {
     const acc = {} as Record<CategoriaCatalogo, string[]>;
-    for (const i of catalogo) {
-      const arr = acc[i.categoria] ?? [];
-      arr.push(i.texto);
-      acc[i.categoria] = arr;
+    if (form.id_modelo && itensModelo.length > 0) {
+      for (const i of itensModelo) {
+        const arr = acc[i.categoria as CategoriaCatalogo] ?? [];
+        arr.push(i.texto);
+        acc[i.categoria as CategoriaCatalogo] = arr;
+      }
+      // Mesmo com modelo, agente/fonte ainda vêm da biblioteca pra dar
+      // autocomplete de outros modelos do mesmo tipo.
+      for (const i of catalogo) {
+        if (i.categoria === "agente" || i.categoria === "fonte_geradora") {
+          const arr = acc[i.categoria] ?? [];
+          arr.push(i.texto);
+          acc[i.categoria] = arr;
+        }
+      }
+    } else {
+      for (const i of catalogo) {
+        const arr = acc[i.categoria] ?? [];
+        arr.push(i.texto);
+        acc[i.categoria] = arr;
+      }
     }
     return acc;
-  }, [catalogo]);
+  }, [catalogo, itensModelo, form.id_modelo]);
 
   // V3.1: cada risco pode ter sua própria matriz. Se não tiver,
   // cai no fallback global (matriz ativa).
@@ -208,6 +252,7 @@ export default function RiscoForm({
     if (risco) {
       setForm({
         tipo_risco: risco.tipo_risco ?? "Físico",
+        id_modelo: risco.id_modelo ?? "",
         id_matriz: risco.id_matriz ?? "",
         agente: risco.agente ?? "",
         fonte_geradora: risco.fonte_geradora ?? "",
@@ -267,6 +312,95 @@ export default function RiscoForm({
     matrizSelecionada
   );
 
+  /**
+   * Quando o usuário escolhe um modelo, pré-preenche o form com os
+   * dados do modelo. Em modo CRIAR substitui também o buffer de
+   * EPIs/EPCs (seguro porque ainda não foi salvo). Em modo EDITAR,
+   * preserva EPIs já persistidos no servidor — o usuário pode
+   * adicionar manualmente os do modelo se quiser.
+   */
+  function aplicarModelo(idModelo: string) {
+    if (!idModelo) {
+      setForm((f) => ({ ...f, id_modelo: "" }));
+      return;
+    }
+    const m = modelos.find((x) => x.id_modelo === idModelo);
+    if (!m) {
+      setForm((f) => ({ ...f, id_modelo: idModelo }));
+      return;
+    }
+    // Itens da resposta atual de itensModelo podem estar desatualizados
+    // se idModelo acabou de mudar (a query ainda não reagiu). Por isso,
+    // buscamos do query cache na próxima renderização. Por enquanto,
+    // aplicamos só agente/fonte e deixamos os itens autopreencher quando
+    // a query de itensModelo terminar (vide useEffect mais abaixo).
+    setForm((f) => ({
+      ...f,
+      id_modelo: idModelo,
+      agente: m.agente,
+      fonte_geradora: m.fonte_geradora ?? "",
+    }));
+  }
+
+  // Quando os itens do modelo carregam, preenche os campos de lista
+  // (medidas/EPIs). Só faz isso em modo CRIAR — edit preserva o que
+  // já está persistido.
+  const aplicouItensRef = useRef<string>("");
+  useEffect(() => {
+    if (!form.id_modelo) {
+      aplicouItensRef.current = "";
+      return;
+    }
+    if (aplicouItensRef.current === form.id_modelo) return;
+    if (itensModelo.length === 0 && perguntasModelo.length === 0) return;
+
+    aplicouItensRef.current = form.id_modelo;
+
+    if (isEdit) return; // em edit, não sobrescreve listas existentes
+
+    const epis: EpiPendente[] = [];
+    const adotadas: string[] = [];
+    const recomendadas: string[] = [];
+    for (const i of itensModelo) {
+      switch (i.categoria) {
+        case "epi_utilizado":
+          epis.push({ tipo: "EPI", descricao: i.texto, ca: null, recomendado: "Não" });
+          break;
+        case "epi_recomendado":
+          epis.push({ tipo: "EPI", descricao: i.texto, ca: null, recomendado: "Sim" });
+          break;
+        case "epc_utilizado":
+          epis.push({ tipo: "EPC", descricao: i.texto, ca: null, recomendado: "Não" });
+          break;
+        case "epc_recomendado":
+          epis.push({ tipo: "EPC", descricao: i.texto, ca: null, recomendado: "Sim" });
+          break;
+        case "medida_adotada":
+          adotadas.push(i.texto);
+          break;
+        case "medida_recomendada":
+          recomendadas.push(i.texto);
+          break;
+      }
+    }
+    setForm((f) => ({
+      ...f,
+      epis_pendentes: epis,
+      medidas_adotadas_lista: adotadas,
+      medidas_recomendadas_lista: recomendadas,
+    }));
+  }, [form.id_modelo, itensModelo, perguntasModelo, isEdit]);
+
+  // Perguntas combinadas: tipo + modelo (modelo depois pra preservar
+  // ordem do tipo primeiro). Exibido na seção de Perguntas Customizadas.
+  const perguntasCombinadas = useMemo(() => {
+    const lista: Array<PerguntaTipoRisco | PerguntaModeloRisco> = [
+      ...perguntasCustom,
+      ...perguntasModelo,
+    ];
+    return lista;
+  }, [perguntasCustom, perguntasModelo]);
+
   const isFisico = form.tipo_risco === "Físico";
   const isQuimico = form.tipo_risco === "Químico";
   const isBiologico = form.tipo_risco === "Biológico";
@@ -280,6 +414,7 @@ export default function RiscoForm({
 
       const baseRisco: Partial<Risco> = {
         tipo_risco: form.tipo_risco as TipoRisco,
+        id_modelo: form.id_modelo || null,
         id_matriz: form.id_matriz || matrizAtiva?.id_matriz || null,
         agente: form.agente.trim() || null,
         fonte_geradora: form.fonte_geradora.trim() || null,
@@ -347,7 +482,7 @@ export default function RiscoForm({
             .insert(novos as never);
           if (errExtra) throw errExtra;
         }
-        await semearCatalogoFormSnapshot(supabase, idTipoSelecionado, catalogo, form);
+        await semearCatalogoFormSnapshot(supabase, idTipoSelecionado, catalogo, itensModelo, form);
         return { criados: 1, extras: extras.length };
       }
 
@@ -387,13 +522,16 @@ export default function RiscoForm({
         if (errEpi) throw errEpi;
       }
 
-      await semearCatalogoFormSnapshot(supabase, idTipoSelecionado, catalogo, form);
+      await semearCatalogoFormSnapshot(supabase, idTipoSelecionado, catalogo, itensModelo, form);
       return { criados: novos.length, extras: 0 };
     },
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
       if (idTipoSelecionado) {
         qc.invalidateQueries({ queryKey: ["catalogo-tipo", idTipoSelecionado] });
+      }
+      if (form.id_modelo) {
+        qc.invalidateQueries({ queryKey: ["itens-modelo", form.id_modelo] });
       }
       const total = res.criados + res.extras;
       if (total > 1) {
@@ -430,7 +568,12 @@ export default function RiscoForm({
             <select
               value={form.tipo_risco}
               onChange={(e) =>
-                setForm({ ...form, tipo_risco: e.target.value })
+                setForm({
+                  ...form,
+                  tipo_risco: e.target.value,
+                  // Modelo é escopado por tipo: trocar tipo zera o modelo.
+                  id_modelo: "",
+                })
               }
               className={inputCls}
             >
@@ -452,6 +595,40 @@ export default function RiscoForm({
             />
           </div>
         </div>
+
+        {/* V5: Modelo de Risco — preenche o form com kit pré-cadastrado */}
+        {modelos.length > 0 && (
+          <div className="rounded-lg border border-verde-primary/30 bg-verde-light/30 p-3">
+            <label className="text-xs font-semibold uppercase tracking-wider text-verde-primary">
+              Modelo de Risco
+            </label>
+            <select
+              value={form.id_modelo}
+              onChange={(e) => aplicarModelo(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">— Sem modelo (preencher manualmente) —</option>
+              {modelos.map((m) => (
+                <option key={m.id_modelo} value={m.id_modelo}>
+                  {m.agente}
+                  {m.fonte_geradora ? ` — ${m.fonte_geradora}` : ""}
+                </option>
+              ))}
+            </select>
+            {modeloSelecionado && !isEdit && (
+              <p className="mt-1.5 text-[11px] text-gray-600">
+                ✓ Form pré-preenchido com o kit deste modelo. Você pode editar
+                qualquer campo livremente.
+              </p>
+            )}
+            {modeloSelecionado && isEdit && (
+              <p className="mt-1.5 text-[11px] text-gray-600">
+                Modelo vinculado a este risco. Mudar o modelo só atualiza
+                agente e fonte — EPIs/medidas existentes ficam preservados.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Linha 2: Agente + Fonte */}
         <div className="grid gap-3 md:grid-cols-2">
@@ -655,7 +832,7 @@ export default function RiscoForm({
         </section>
 
         {/* Perguntas Customizadas (V3) — definidas pelo Admin em /config */}
-        {perguntasCustom.length > 0 && (
+        {perguntasCombinadas.length > 0 && (
           <section>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
               Perguntas — {form.tipo_risco}
@@ -969,6 +1146,7 @@ export default function RiscoForm({
             idSetor={risco.id_setor}
             sugestoes={sugestoesPorCategoria}
             idTipo={idTipoSelecionado}
+            idModelo={form.id_modelo || undefined}
           />
         ) : (
           <EpiInline
@@ -979,6 +1157,7 @@ export default function RiscoForm({
             }
             sugestoes={sugestoesPorCategoria}
             idTipo={idTipoSelecionado}
+            idModelo={form.id_modelo || undefined}
           />
         )}
 
@@ -1151,6 +1330,12 @@ type EpiInlineProps = (
    * um EPI/EPC novo durante a edição de um risco existente.
    */
   idTipo?: string;
+  /**
+   * Id do modelo selecionado, se houver. Quando setado, EPIs/EPCs
+   * adicionados inline vão pra `itens_modelo_risco` desse modelo
+   * em vez de `itens_catalogo_tipo`.
+   */
+  idModelo?: string;
 };
 
 function EpiInline(props: EpiInlineProps) {
@@ -1332,34 +1517,48 @@ function EpiBloco({
       const { error } = await supabase.from("epi_epc").insert(row as never);
       if (error) throw error;
 
-      // V4: alimenta catálogo do tipo. Conflito (já existe) é silenciado
-      // pelo índice único; outros erros são apenas logados.
-      if (props.idTipo) {
-        const categoria: CategoriaCatalogo =
-          tipoFixo === "EPI"
-            ? recomendadoFixo === "Sim"
-              ? "epi_recomendado"
-              : "epi_utilizado"
-            : recomendadoFixo === "Sim"
-            ? "epc_recomendado"
-            : "epc_utilizado";
-        const jaExiste = sugestoes.some(
-          (s) => s.toLowerCase() === descricaoLimpa.toLowerCase()
-        );
-        if (!jaExiste) {
-          const { error: errCat } = await supabase
-            .from("itens_catalogo_tipo")
-            .insert({
-              id_item: gerarId("CAT"),
-              id_tipo: props.idTipo,
-              categoria,
-              texto: descricaoLimpa,
-              ordem: sugestoes.length,
-              ativo: true,
-            } as never);
-          if (errCat && errCat.code !== "23505") {
-            console.warn("[catalogo] semeadura EPI falhou:", errCat.message);
-          }
+      // V4/V5: alimenta catálogo do tipo OU itens do modelo (se houver
+      // modelo escolhido). Conflito (já existe) é silenciado pelo índice
+      // único; outros erros são apenas logados.
+      const categoria =
+        tipoFixo === "EPI"
+          ? recomendadoFixo === "Sim"
+            ? "epi_recomendado"
+            : "epi_utilizado"
+          : recomendadoFixo === "Sim"
+          ? "epc_recomendado"
+          : "epc_utilizado";
+      const jaExiste = sugestoes.some(
+        (s) => s.toLowerCase() === descricaoLimpa.toLowerCase()
+      );
+
+      if (!jaExiste && props.idModelo) {
+        const { error: errMod } = await supabase
+          .from("itens_modelo_risco")
+          .insert({
+            id_item: gerarId("ITM"),
+            id_modelo: props.idModelo,
+            categoria,
+            texto: descricaoLimpa,
+            ordem: sugestoes.length,
+            ativo: true,
+          } as never);
+        if (errMod && errMod.code !== "23505") {
+          console.warn("[modelo] semeadura EPI falhou:", errMod.message);
+        }
+      } else if (!jaExiste && props.idTipo) {
+        const { error: errCat } = await supabase
+          .from("itens_catalogo_tipo")
+          .insert({
+            id_item: gerarId("CAT"),
+            id_tipo: props.idTipo,
+            categoria: categoria as CategoriaCatalogo,
+            texto: descricaoLimpa,
+            ordem: sugestoes.length,
+            ativo: true,
+          } as never);
+        if (errCat && errCat.code !== "23505") {
+          console.warn("[catalogo] semeadura EPI falhou:", errCat.message);
         }
       }
     },
@@ -1367,6 +1566,9 @@ function EpiBloco({
       if (props.mode === "server") {
         qc.invalidateQueries({ queryKey: ["epi-risco", props.idRisco] });
         qc.invalidateQueries({ queryKey: ["inspecao", props.idInspecao] });
+        if (props.idModelo) {
+          qc.invalidateQueries({ queryKey: ["itens-modelo", props.idModelo] });
+        }
         if (props.idTipo) {
           qc.invalidateQueries({ queryKey: ["catalogo-tipo", props.idTipo] });
         }
@@ -1896,8 +2098,17 @@ async function semearCatalogoFormSnapshot(
   supabase: ReturnType<typeof createSupabaseBrowserClient>,
   idTipo: string | undefined,
   catalogo: ItemCatalogoTipo[],
+  itensModelo: ItemModeloRisco[],
   form: FormState
 ) {
+  // Se há modelo escolhido: semeia EPIs/EPCs/medidas em itens_modelo_risco.
+  // Agente/fonte NÃO são semeados (são atributos do modelo, não listas).
+  // Senão: comportamento V4 — semeia tudo em itens_catalogo_tipo.
+  if (form.id_modelo) {
+    await semearItensModelo(supabase, form.id_modelo, itensModelo, form);
+    return;
+  }
+
   if (!idTipo) return;
 
   const novos: Array<{ categoria: CategoriaCatalogo; texto: string }> = [];
@@ -1975,6 +2186,89 @@ async function semearCatalogoFormSnapshot(
     .insert(inserir as never);
   if (error) {
     console.warn("[catalogo] semeadura falhou:", error.message);
+  }
+}
+
+async function semearItensModelo(
+  supabase: ReturnType<typeof createSupabaseBrowserClient>,
+  idModelo: string,
+  itensModelo: ItemModeloRisco[],
+  form: FormState
+) {
+  type CatModelo =
+    | "epi_utilizado"
+    | "epi_recomendado"
+    | "epc_utilizado"
+    | "epc_recomendado"
+    | "medida_adotada"
+    | "medida_recomendada";
+
+  const novos: Array<{ categoria: CatModelo; texto: string }> = [];
+
+  for (const ep of form.epis_pendentes) {
+    const desc = ep.descricao.trim();
+    if (!desc) continue;
+    const cat: CatModelo =
+      ep.tipo === "EPI"
+        ? ep.recomendado === "Sim"
+          ? "epi_recomendado"
+          : "epi_utilizado"
+        : ep.recomendado === "Sim"
+        ? "epc_recomendado"
+        : "epc_utilizado";
+    novos.push({ categoria: cat, texto: desc });
+  }
+  for (const m of form.medidas_adotadas_lista) {
+    const t = m.trim();
+    if (t) novos.push({ categoria: "medida_adotada", texto: t });
+  }
+  for (const m of form.medidas_recomendadas_lista) {
+    const t = m.trim();
+    if (t) novos.push({ categoria: "medida_recomendada", texto: t });
+  }
+
+  if (novos.length === 0) return;
+
+  const existentes = new Set(
+    itensModelo.map((i) => `${i.categoria}::${i.texto.toLowerCase()}`)
+  );
+  const maxOrdem = new Map<string, number>();
+  for (const i of itensModelo) {
+    const cur = maxOrdem.get(i.categoria) ?? -1;
+    if (i.ordem > cur) maxOrdem.set(i.categoria, i.ordem);
+  }
+
+  const seen = new Set<string>();
+  const inserir: Array<{
+    id_item: string;
+    id_modelo: string;
+    categoria: CatModelo;
+    texto: string;
+    ordem: number;
+  }> = [];
+
+  for (const { categoria, texto } of novos) {
+    const k = `${categoria}::${texto.toLowerCase()}`;
+    if (existentes.has(k) || seen.has(k)) continue;
+    seen.add(k);
+    const next = (maxOrdem.get(categoria) ?? -1) + 1;
+    maxOrdem.set(categoria, next);
+    inserir.push({
+      id_item: gerarId("ITM"),
+      id_modelo: idModelo,
+      categoria,
+      texto,
+      ordem: next,
+    });
+  }
+
+  if (inserir.length === 0) return;
+
+  const { error } = await supabase
+    .from("itens_modelo_risco")
+    .insert(inserir as never);
+  if (error) {
+    console.warn("[modelo] semeadura falhou:", error.message);
   }
 }
 

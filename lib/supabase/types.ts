@@ -131,6 +131,9 @@ export interface Risco {
   observacoes_risco: string | null;
   // V3: respostas a perguntas customizadas dinâmicas (chave → valor)
   respostas_custom?: Record<string, string> | null;
+  // V5: ponteiro pro modelo que originou esse risco (opcional — riscos
+  // antigos ou criados sem modelo escolhido ficam null).
+  id_modelo?: string | null;
   created_at?: string;
   updated_at?: string | null;
 }
@@ -170,6 +173,58 @@ export interface ItemCatalogoTipo {
   ativo: boolean;
   created_at?: string;
   updated_at?: string | null;
+}
+
+// V5: modelo de risco — kit fechado centrado num agente.
+// Coexiste com itens_catalogo_tipo (V4): V4 é a biblioteca compartilhada
+// do tipo, V5 é o "modelo específico" que pré-preenche o RiscoForm.
+export interface ModeloRisco {
+  id_modelo: string;
+  id_tipo: string;
+  agente: string;
+  fonte_geradora: string | null;
+  ordem: number;
+  ativo: boolean;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
+// V5: categoria dos itens dentro de um modelo. Subset de
+// CategoriaCatalogo — não inclui agente nem fonte_geradora porque
+// esses são atributos do próprio modelo.
+export type CategoriaModelo =
+  | "epi_utilizado"
+  | "epi_recomendado"
+  | "epc_utilizado"
+  | "epc_recomendado"
+  | "medida_adotada"
+  | "medida_recomendada";
+
+export interface ItemModeloRisco {
+  id_item: string;
+  id_modelo: string;
+  categoria: CategoriaModelo;
+  texto: string;
+  ordem: number;
+  ativo: boolean;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
+// V5: pergunta customizada vinculada a um modelo (não ao tipo).
+// Estrutura espelha PerguntaTipoRisco. No form, perguntas do tipo
+// + perguntas do modelo aparecem combinadas.
+export interface PerguntaModeloRisco {
+  id_pergunta: string;
+  id_modelo: string;
+  chave: string;
+  texto: string;
+  input_type: "select" | "text" | "textarea";
+  opcoes: string[];
+  ordem: number;
+  obrigatoria: boolean;
+  ativo: boolean;
+  created_at?: string;
 }
 
 // V3: pergunta customizada vinculada a um tipo de risco
@@ -306,6 +361,9 @@ export interface Database {
       perguntas_tipo_risco: TableShape<PerguntaTipoRisco>;
       matrizes_risco: TableShape<MatrizRisco>;
       itens_catalogo_tipo: TableShape<ItemCatalogoTipo>;
+      modelos_risco: TableShape<ModeloRisco>;
+      itens_modelo_risco: TableShape<ItemModeloRisco>;
+      perguntas_modelo_risco: TableShape<PerguntaModeloRisco>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

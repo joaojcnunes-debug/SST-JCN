@@ -6,8 +6,12 @@ import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type {
   CategoriaCatalogo,
+  CategoriaModelo,
   ItemCatalogoTipo,
+  ItemModeloRisco,
   MatrizRisco,
+  ModeloRisco,
+  PerguntaModeloRisco,
   PerguntaTipoRisco,
   TipoRiscoCustom,
 } from "@/lib/supabase/types";
@@ -414,6 +418,233 @@ export function useDeleteMatriz() {
       qc.invalidateQueries({ queryKey: ["matrizes"] });
       qc.invalidateQueries({ queryKey: ["matriz-ativa"] });
       toast.success("Matriz removida");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// =========================================================================
+// MODELOS DE RISCO (V5)
+// =========================================================================
+// Cada modelo é um "kit" centrado num agente: fonte geradora + 6 listas
+// (EPIs/EPCs/medidas) + perguntas. Coexiste com itens_catalogo_tipo (V4),
+// que vira "biblioteca compartilhada" do tipo.
+
+export function useModelosPorTipo(
+  idTipo: string | null | undefined,
+  opts?: { incluirInativos?: boolean }
+) {
+  const incluirInativos = opts?.incluirInativos ?? false;
+  return useQuery({
+    queryKey: ["modelos-tipo", idTipo, incluirInativos],
+    enabled: !!idTipo,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("modelos_risco")
+        .select("*")
+        .eq("id_tipo", idTipo!)
+        .order("ordem");
+      if (!incluirInativos) q = q.eq("ativo", true);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as ModeloRisco[];
+    },
+  });
+}
+
+export function useSaveModeloRisco() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      m: Partial<ModeloRisco> & { id_modelo: string; id_tipo: string }
+    ) => {
+      const supabase = createSupabaseBrowserClient();
+      const { id_modelo, ...rest } = m;
+      const payload = { ...rest, updated_at: new Date().toISOString() };
+
+      // `agente` é NOT NULL — patches parciais (ordem/ativo) não trazem
+      // agente, então UPDATE em vez de UPSERT (mesma estratégia de V3/V4).
+      if (rest.agente === undefined) {
+        const { error } = await supabase
+          .from("modelos_risco")
+          .update(payload as never)
+          .eq("id_modelo", id_modelo);
+        if (error) throw error;
+        return;
+      }
+
+      const { error } = await supabase
+        .from("modelos_risco")
+        .upsert({ id_modelo, ...payload } as never, { onConflict: "id_modelo" });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["modelos-tipo", vars.id_tipo] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeleteModeloRisco() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (idModelo: string) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("modelos_risco")
+        .delete()
+        .eq("id_modelo", idModelo);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["modelos-tipo"] });
+      toast.success("Modelo removido");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// ITENS DO MODELO ---------------------------------------------------------
+
+export function useItensModelo(
+  idModelo: string | null | undefined,
+  opts?: { incluirInativos?: boolean }
+) {
+  const incluirInativos = opts?.incluirInativos ?? false;
+  return useQuery({
+    queryKey: ["itens-modelo", idModelo, incluirInativos],
+    enabled: !!idModelo,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("itens_modelo_risco")
+        .select("*")
+        .eq("id_modelo", idModelo!)
+        .order("categoria")
+        .order("ordem");
+      if (!incluirInativos) q = q.eq("ativo", true);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as ItemModeloRisco[];
+    },
+  });
+}
+
+export function useSaveItemModelo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      item: Partial<ItemModeloRisco> & {
+        id_item: string;
+        id_modelo: string;
+        categoria: CategoriaModelo;
+      }
+    ) => {
+      const supabase = createSupabaseBrowserClient();
+      const { id_item, ...rest } = item;
+      const payload = { ...rest, updated_at: new Date().toISOString() };
+
+      if (rest.texto === undefined) {
+        const { error } = await supabase
+          .from("itens_modelo_risco")
+          .update(payload as never)
+          .eq("id_item", id_item);
+        if (error) throw error;
+        return;
+      }
+
+      const { error } = await supabase
+        .from("itens_modelo_risco")
+        .upsert({ id_item, ...payload } as never, { onConflict: "id_item" });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["itens-modelo", vars.id_modelo] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeleteItemModelo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (idItem: string) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("itens_modelo_risco")
+        .delete()
+        .eq("id_item", idItem);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["itens-modelo"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// PERGUNTAS DO MODELO -----------------------------------------------------
+
+export function usePerguntasDoModelo(
+  idModelo: string | null | undefined,
+  opts?: { somenteAtivas?: boolean }
+) {
+  const somenteAtivas = opts?.somenteAtivas ?? false;
+  return useQuery({
+    queryKey: ["perguntas-modelo", idModelo, somenteAtivas],
+    enabled: !!idModelo,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("perguntas_modelo_risco")
+        .select("*")
+        .eq("id_modelo", idModelo!)
+        .order("ordem");
+      if (somenteAtivas) q = q.eq("ativo", true);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as PerguntaModeloRisco[];
+    },
+  });
+}
+
+export function useSavePerguntaModelo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      p: Partial<PerguntaModeloRisco> & { id_pergunta: string; id_modelo: string }
+    ) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("perguntas_modelo_risco")
+        .upsert(p as never, { onConflict: "id_pergunta" });
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["perguntas-modelo", vars.id_modelo] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeletePerguntaModelo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (idPergunta: string) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("perguntas_modelo_risco")
+        .delete()
+        .eq("id_pergunta", idPergunta);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["perguntas-modelo"] });
+      toast.success("Pergunta removida");
     },
     onError: (e: Error) => toast.error(e.message),
   });
