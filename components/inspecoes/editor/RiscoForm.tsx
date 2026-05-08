@@ -27,7 +27,7 @@ import {
   TEMPOS_EXPOSICAO_DEFAULT,
   TECNICAS_DEFAULT,
 } from "@/lib/constants";
-import type { CategoriaCatalogo } from "@/lib/supabase/types";
+import type { CategoriaCatalogo, ItemCatalogoTipo } from "@/lib/supabase/types";
 import type {
   Cargo,
   EpiEpc,
@@ -347,6 +347,7 @@ export default function RiscoForm({
             .insert(novos as never);
           if (errExtra) throw errExtra;
         }
+        await semearCatalogoFormSnapshot(supabase, idTipoSelecionado, catalogo, form);
         return { criados: 1, extras: extras.length };
       }
 
@@ -386,10 +387,14 @@ export default function RiscoForm({
         if (errEpi) throw errEpi;
       }
 
+      await semearCatalogoFormSnapshot(supabase, idTipoSelecionado, catalogo, form);
       return { criados: novos.length, extras: 0 };
     },
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+      if (idTipoSelecionado) {
+        qc.invalidateQueries({ queryKey: ["catalogo-tipo", idTipoSelecionado] });
+      }
       const total = res.criados + res.extras;
       if (total > 1) {
         toast.success(`${total} risco(s) criado(s), um por setor ✓`);
@@ -963,6 +968,7 @@ export default function RiscoForm({
             idEmpresa={idEmpresa}
             idSetor={risco.id_setor}
             sugestoes={sugestoesPorCategoria}
+            idTipo={idTipoSelecionado}
           />
         ) : (
           <EpiInline
@@ -972,6 +978,7 @@ export default function RiscoForm({
               setForm({ ...form, epis_pendentes: items })
             }
             sugestoes={sugestoesPorCategoria}
+            idTipo={idTipoSelecionado}
           />
         )}
 
@@ -1138,6 +1145,12 @@ type EpiInlineProps = (
    * Cada bloco abaixo lê apenas a sua categoria correspondente.
    */
   sugestoes: Partial<Record<CategoriaCatalogo, string[]>>;
+  /**
+   * Id do tipo selecionado no form. Usado em modo server para
+   * alimentar o catálogo automaticamente quando o usuário adiciona
+   * um EPI/EPC novo durante a edição de um risco existente.
+   */
+  idTipo?: string;
 };
 
 function EpiInline(props: EpiInlineProps) {
@@ -1304,6 +1317,7 @@ function EpiBloco({
       if (props.mode !== "server") throw new Error("Modo inválido");
       if (!novo.descricao.trim()) throw new Error("Descrição obrigatória");
       const supabase = createSupabaseBrowserClient();
+      const descricaoLimpa = novo.descricao.trim();
       const row = {
         id_protecao: gerarId("EPI"),
         id_risco: props.idRisco,
@@ -1311,17 +1325,51 @@ function EpiBloco({
         id_empresa: props.idEmpresa,
         id_setor: props.idSetor,
         tipo: tipoFixo,
-        descricao: novo.descricao.trim(),
+        descricao: descricaoLimpa,
         ca: novo.ca.trim() || null,
         recomendado: recomendadoFixo,
       };
       const { error } = await supabase.from("epi_epc").insert(row as never);
       if (error) throw error;
+
+      // V4: alimenta catálogo do tipo. Conflito (já existe) é silenciado
+      // pelo índice único; outros erros são apenas logados.
+      if (props.idTipo) {
+        const categoria: CategoriaCatalogo =
+          tipoFixo === "EPI"
+            ? recomendadoFixo === "Sim"
+              ? "epi_recomendado"
+              : "epi_utilizado"
+            : recomendadoFixo === "Sim"
+            ? "epc_recomendado"
+            : "epc_utilizado";
+        const jaExiste = sugestoes.some(
+          (s) => s.toLowerCase() === descricaoLimpa.toLowerCase()
+        );
+        if (!jaExiste) {
+          const { error: errCat } = await supabase
+            .from("itens_catalogo_tipo")
+            .insert({
+              id_item: gerarId("CAT"),
+              id_tipo: props.idTipo,
+              categoria,
+              texto: descricaoLimpa,
+              ordem: sugestoes.length,
+              ativo: true,
+            } as never);
+          if (errCat && errCat.code !== "23505") {
+            console.warn("[catalogo] semeadura EPI falhou:", errCat.message);
+          }
+        }
+      }
     },
     onSuccess: () => {
       if (props.mode === "server") {
         qc.invalidateQueries({ queryKey: ["epi-risco", props.idRisco] });
         qc.invalidateQueries({ queryKey: ["inspecao", props.idInspecao] });
+        if (props.idTipo) {
+          qc.invalidateQueries({ queryKey: ["catalogo-tipo", props.idTipo] });
+        }
       }
       setNovo({ descricao: "", ca: "" });
     },
@@ -1832,6 +1880,102 @@ function MedidaBloco({
       </div>
     </div>
   );
+}
+
+// =============================================================
+// SEMEADURA DO CATÁLOGO (V4)
+//
+// Ao salvar um risco, alimenta `itens_catalogo_tipo` com os valores
+// digitados (agente, fonte, EPIs/EPCs, medidas) — só insere os que
+// ainda não existem no catálogo do tipo. Idempotente: o índice único
+// (id_tipo, categoria, lower(texto)) protege contra race conditions.
+// Falhas aqui são logadas mas não derrubam o save do risco.
+// =============================================================
+
+async function semearCatalogoFormSnapshot(
+  supabase: ReturnType<typeof createSupabaseBrowserClient>,
+  idTipo: string | undefined,
+  catalogo: ItemCatalogoTipo[],
+  form: FormState
+) {
+  if (!idTipo) return;
+
+  const novos: Array<{ categoria: CategoriaCatalogo; texto: string }> = [];
+
+  if (form.agente.trim()) {
+    novos.push({ categoria: "agente", texto: form.agente.trim() });
+  }
+  if (form.fonte_geradora.trim()) {
+    novos.push({
+      categoria: "fonte_geradora",
+      texto: form.fonte_geradora.trim(),
+    });
+  }
+  for (const ep of form.epis_pendentes) {
+    const desc = ep.descricao.trim();
+    if (!desc) continue;
+    const cat: CategoriaCatalogo =
+      ep.tipo === "EPI"
+        ? ep.recomendado === "Sim"
+          ? "epi_recomendado"
+          : "epi_utilizado"
+        : ep.recomendado === "Sim"
+        ? "epc_recomendado"
+        : "epc_utilizado";
+    novos.push({ categoria: cat, texto: desc });
+  }
+  for (const m of form.medidas_adotadas_lista) {
+    const t = m.trim();
+    if (t) novos.push({ categoria: "medida_adotada", texto: t });
+  }
+  for (const m of form.medidas_recomendadas_lista) {
+    const t = m.trim();
+    if (t) novos.push({ categoria: "medida_recomendada", texto: t });
+  }
+
+  if (novos.length === 0) return;
+
+  const existentes = new Set(
+    catalogo.map((i) => `${i.categoria}::${i.texto.toLowerCase()}`)
+  );
+  const maxOrdem = new Map<CategoriaCatalogo, number>();
+  for (const i of catalogo) {
+    const cur = maxOrdem.get(i.categoria) ?? -1;
+    if (i.ordem > cur) maxOrdem.set(i.categoria, i.ordem);
+  }
+
+  const seen = new Set<string>();
+  const inserir: Array<{
+    id_item: string;
+    id_tipo: string;
+    categoria: CategoriaCatalogo;
+    texto: string;
+    ordem: number;
+  }> = [];
+
+  for (const { categoria, texto } of novos) {
+    const k = `${categoria}::${texto.toLowerCase()}`;
+    if (existentes.has(k) || seen.has(k)) continue;
+    seen.add(k);
+    const next = (maxOrdem.get(categoria) ?? -1) + 1;
+    maxOrdem.set(categoria, next);
+    inserir.push({
+      id_item: gerarId("CAT"),
+      id_tipo: idTipo,
+      categoria,
+      texto,
+      ordem: next,
+    });
+  }
+
+  if (inserir.length === 0) return;
+
+  const { error } = await supabase
+    .from("itens_catalogo_tipo")
+    .insert(inserir as never);
+  if (error) {
+    console.warn("[catalogo] semeadura falhou:", error.message);
+  }
 }
 
 // =============================================================
