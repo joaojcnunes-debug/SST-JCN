@@ -883,7 +883,7 @@ export default function RiscoForm({
               Perguntas — {form.tipo_risco}
             </p>
             <div className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
-              {perguntasCustom.map((p) => {
+              {perguntasCombinadas.map((p) => {
                 const valor = form.respostas_custom[p.chave] ?? "";
                 const setVal = (v: string) =>
                   setForm({
