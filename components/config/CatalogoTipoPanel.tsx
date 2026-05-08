@@ -38,45 +38,105 @@ import type {
   ModeloRisco,
 } from "@/lib/supabase/types";
 
+// Paleta espelha as cores do RiscoForm (FonteBlocoLista, EpiBloco, MedidaBloco)
+// pra dar consistência visual entre o Catálogo e o form.
+type Cor = "sky" | "blue" | "indigo" | "emerald" | "teal" | "green" | "amber";
+
+const CORES: Record<
+  Cor,
+  { border: string; bg: string; text: string; tag: string }
+> = {
+  sky: {
+    border: "border-sky-200",
+    bg: "bg-sky-50/30",
+    text: "text-sky-800",
+    tag: "bg-sky-100 text-sky-800",
+  },
+  blue: {
+    border: "border-blue-200",
+    bg: "bg-blue-50/30",
+    text: "text-blue-800",
+    tag: "bg-blue-100 text-blue-800",
+  },
+  indigo: {
+    border: "border-indigo-200",
+    bg: "bg-indigo-50/30",
+    text: "text-indigo-800",
+    tag: "bg-indigo-100 text-indigo-800",
+  },
+  emerald: {
+    border: "border-emerald-200",
+    bg: "bg-emerald-50/30",
+    text: "text-emerald-800",
+    tag: "bg-emerald-100 text-emerald-800",
+  },
+  teal: {
+    border: "border-teal-200",
+    bg: "bg-teal-50/30",
+    text: "text-teal-800",
+    tag: "bg-teal-100 text-teal-800",
+  },
+  green: {
+    border: "border-green-200",
+    bg: "bg-green-50/30",
+    text: "text-green-800",
+    tag: "bg-green-100 text-green-800",
+  },
+  amber: {
+    border: "border-amber-200",
+    bg: "bg-amber-50/30",
+    text: "text-amber-800",
+    tag: "bg-amber-100 text-amber-800",
+  },
+};
+
 const CATEGORIAS_MODELO: {
   key: CategoriaModelo;
   titulo: string;
   desc: string;
+  cor: Cor;
 }[] = [
   {
     key: "fonte_geradora",
     titulo: "Fonte Geradora",
     desc: "Origens do agente neste cenário (uma ou mais).",
+    cor: "sky",
   },
   {
     key: "epi_utilizado",
     titulo: "EPI Utilizado",
     desc: "Itens já em uso pelos trabalhadores neste cenário.",
+    cor: "blue",
   },
   {
     key: "epi_recomendado",
     titulo: "EPI Recomendado",
     desc: "EPIs sugeridos como medida de proteção.",
+    cor: "indigo",
   },
   {
     key: "epc_utilizado",
     titulo: "EPC Utilizado",
     desc: "EPCs já instalados no setor.",
+    cor: "emerald",
   },
   {
     key: "epc_recomendado",
     titulo: "EPC Recomendado",
     desc: "EPCs sugeridos como melhoria.",
+    cor: "teal",
   },
   {
     key: "medida_adotada",
     titulo: "Medidas Já Adotadas",
     desc: "Ações administrativas/operacionais em prática.",
+    cor: "green",
   },
   {
     key: "medida_recomendada",
     titulo: "Medidas Recomendadas",
     desc: "Ações que precisam ser implementadas.",
+    cor: "amber",
   },
 ];
 
@@ -84,15 +144,16 @@ const CATEGORIAS_BIBLIOTECA: {
   key: CategoriaCatalogo;
   titulo: string;
   desc: string;
+  cor: Cor;
 }[] = [
-  { key: "agente", titulo: "Agente / Risco", desc: "Sugestões livres do tipo." },
-  { key: "fonte_geradora", titulo: "Fonte Geradora", desc: "Sugestões livres." },
-  { key: "epi_utilizado", titulo: "EPI Utilizado", desc: "Sugestões livres." },
-  { key: "epi_recomendado", titulo: "EPI Recomendado", desc: "Sugestões livres." },
-  { key: "epc_utilizado", titulo: "EPC Utilizado", desc: "Sugestões livres." },
-  { key: "epc_recomendado", titulo: "EPC Recomendado", desc: "Sugestões livres." },
-  { key: "medida_adotada", titulo: "Medidas Já Adotadas", desc: "Sugestões livres." },
-  { key: "medida_recomendada", titulo: "Medidas Recomendadas", desc: "Sugestões livres." },
+  { key: "agente", titulo: "Agente / Risco", desc: "Sugestões livres do tipo.", cor: "amber" },
+  { key: "fonte_geradora", titulo: "Fonte Geradora", desc: "Sugestões livres.", cor: "sky" },
+  { key: "epi_utilizado", titulo: "EPI Utilizado", desc: "Sugestões livres.", cor: "blue" },
+  { key: "epi_recomendado", titulo: "EPI Recomendado", desc: "Sugestões livres.", cor: "indigo" },
+  { key: "epc_utilizado", titulo: "EPC Utilizado", desc: "Sugestões livres.", cor: "emerald" },
+  { key: "epc_recomendado", titulo: "EPC Recomendado", desc: "Sugestões livres.", cor: "teal" },
+  { key: "medida_adotada", titulo: "Medidas Já Adotadas", desc: "Sugestões livres.", cor: "green" },
+  { key: "medida_recomendada", titulo: "Medidas Recomendadas", desc: "Sugestões livres.", cor: "amber" },
 ];
 
 export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
@@ -214,6 +275,7 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
                 categoria={c.key}
                 titulo={c.titulo}
                 desc={c.desc}
+                cor={c.cor}
                 itens={itensTipo.filter((i) => i.categoria === c.key)}
               />
             ))}
@@ -382,6 +444,7 @@ function ModeloCard({
               categoria={c.key}
               titulo={c.titulo}
               desc={c.desc}
+              cor={c.cor}
               itens={itens.filter((i) => i.categoria === c.key)}
             />
           ))}
@@ -407,14 +470,17 @@ function CategoriaListaModelo({
   categoria,
   titulo,
   desc,
+  cor,
   itens,
 }: {
   idModelo: string;
   categoria: CategoriaModelo;
   titulo: string;
   desc: string;
+  cor: Cor;
   itens: ItemModeloRisco[];
 }) {
+  const cfg = CORES[cor];
   const save = useSaveItemModelo();
   const del = useDeleteItemModelo();
   const [novo, setNovo] = useState("");
@@ -496,13 +562,18 @@ function CategoriaListaModelo({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3">
+    <div className={cn("rounded-lg border p-3", cfg.border, cfg.bg)}>
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <div>
-          <h4 className="text-sm font-semibold text-gray-900">{titulo}</h4>
-          <p className="text-[11px] text-gray-500">{desc}</p>
+          <h4 className={cn("text-sm font-semibold", cfg.text)}>{titulo}</h4>
+          <p className="text-[11px] text-gray-600">{desc}</p>
         </div>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-700">
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-bold",
+            cfg.tag
+          )}
+        >
           {itens.filter((i) => i.ativo).length}/{itens.length}
         </span>
       </div>
@@ -515,7 +586,7 @@ function CategoriaListaModelo({
               <li
                 key={item.id_item}
                 className={cn(
-                  "flex items-center gap-1 rounded border bg-gray-50 px-2 py-1",
+                  "flex items-center gap-1 rounded border bg-white px-2 py-1",
                   item.ativo
                     ? "border-gray-200"
                     : "border-gray-200 opacity-60"
@@ -624,14 +695,17 @@ function CategoriaListaTipo({
   categoria,
   titulo,
   desc,
+  cor,
   itens,
 }: {
   idTipo: string;
   categoria: CategoriaCatalogo;
   titulo: string;
   desc: string;
+  cor: Cor;
   itens: ItemCatalogoTipo[];
 }) {
+  const cfg = CORES[cor];
   const save = useSaveItemCatalogo();
   const del = useDeleteItemCatalogo();
   const [novo, setNovo] = useState("");
@@ -711,13 +785,18 @@ function CategoriaListaTipo({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3">
+    <div className={cn("rounded-lg border p-3", cfg.border, cfg.bg)}>
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <div>
-          <h4 className="text-sm font-semibold text-gray-900">{titulo}</h4>
-          <p className="text-[11px] text-gray-500">{desc}</p>
+          <h4 className={cn("text-sm font-semibold", cfg.text)}>{titulo}</h4>
+          <p className="text-[11px] text-gray-600">{desc}</p>
         </div>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-700">
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[10px] font-bold",
+            cfg.tag
+          )}
+        >
           {itens.filter((i) => i.ativo).length}/{itens.length}
         </span>
       </div>
@@ -730,7 +809,7 @@ function CategoriaListaTipo({
               <li
                 key={item.id_item}
                 className={cn(
-                  "flex items-center gap-1 rounded border bg-gray-50 px-2 py-1",
+                  "flex items-center gap-1 rounded border bg-white px-2 py-1",
                   item.ativo
                     ? "border-gray-200"
                     : "border-gray-200 opacity-60"
