@@ -5,15 +5,20 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Plus, ClipboardList, ChartBar } from "lucide-react";
 import { Suspense } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import InspecaoRow from "@/components/inspecoes/InspecaoRow";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import Pagination from "@/components/ui/Pagination";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
-import { useCanEdit } from "@/lib/hooks/useUsuario";
+import { useCanEdit, useIsAdmin } from "@/lib/hooks/useUsuario";
 import { usePagination } from "@/lib/hooks/usePagination";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import type { Inspecao } from "@/lib/supabase/types";
 
 type Filtro = "Todos" | "RASCUNHO" | "EM_ANDAMENTO" | "CONCLUIDA";
 type Ordem = "recentes" | "antigas" | "revisao";
@@ -44,6 +49,28 @@ function InspecoesInner() {
   const router = useRouter();
   const pathname = usePathname();
   const canEdit = useCanEdit();
+  const isAdmin = useIsAdmin();
+  const qc = useQueryClient();
+  const [confirmDel, setConfirmDel] = useState<Inspecao | null>(null);
+
+  const delInsp = useMutation({
+    mutationFn: async (insp: Inspecao) => {
+      const supabase = createSupabaseBrowserClient();
+      // Soft delete: marca como DELETADA (a lista já filtra esse status)
+      const { error } = await supabase
+        .from("inspecoes")
+        .update({ status: "DELETADA", updated_at: new Date().toISOString() } as never)
+        .eq("id_inspecao", insp.id_inspecao);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inspecoes"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      toast.success("Inspeção excluída");
+      setConfirmDel(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const empresaParam = params.get("empresa");
   const [empresaId, setEmpresaId] = useState<string | null>(empresaParam);
   const [filtro, setFiltro] = useState<Filtro>("Todos");
@@ -209,7 +236,11 @@ function InspecoesInner() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {pag.pageItems.map((i) => (
-                  <InspecaoRow key={i.id_inspecao} insp={i} />
+                  <InspecaoRow
+                    key={i.id_inspecao}
+                    insp={i}
+                    onDelete={isAdmin ? setConfirmDel : undefined}
+                  />
                 ))}
               </tbody>
             </table>
@@ -225,6 +256,20 @@ function InspecoesInner() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!confirmDel}
+        title="Excluir inspeção?"
+        description={
+          confirmDel
+            ? `A inspeção ${confirmDel.id_inspecao} (rev. ${confirmDel.revisao}) será marcada como excluída. Ela não aparecerá mais na lista, mas o histórico fica preservado no banco.`
+            : undefined
+        }
+        variant="danger"
+        loading={delInsp.isPending}
+        onConfirm={() => confirmDel && delInsp.mutate(confirmDel)}
+        onCancel={() => setConfirmDel(null)}
+      />
     </div>
   );
 }

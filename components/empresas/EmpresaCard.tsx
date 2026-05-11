@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Pencil, ClipboardList } from "lucide-react";
+import { Building2, Pencil, ClipboardList, Trash2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Empresa } from "@/lib/supabase/types";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -27,10 +27,13 @@ function useInspCount(idEmpresa: string) {
 export default function EmpresaCard({
   empresa,
   onEdit,
+  onDelete,
   canEdit = true,
 }: {
   empresa: Empresa;
   onEdit: () => void;
+  /** Quando setado, mostra botão de excluir. Use só para Admin. */
+  onDelete?: (e: Empresa) => void;
   canEdit?: boolean;
 }) {
   const { data: count } = useInspCount(empresa.id_empresa);
@@ -93,6 +96,16 @@ export default function EmpresaCard({
           >
             <Pencil className="size-3.5" />
             Editar
+          </button>
+        )}
+        {onDelete && (
+          <button
+            type="button"
+            onClick={() => onDelete(empresa)}
+            className="flex items-center justify-center rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-red-50 hover:text-red-alert hover:border-red-200"
+            title="Excluir empresa (Admin)"
+          >
+            <Trash2 className="size-3.5" />
           </button>
         )}
       </div>

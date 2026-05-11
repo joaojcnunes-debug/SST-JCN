@@ -1,12 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil, ChartBar } from "lucide-react";
+import { Pencil, ChartBar, Trash2 } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { fmtData } from "@/lib/utils";
 import type { Inspecao } from "@/lib/supabase/types";
 
-export default function InspecaoRow({ insp }: { insp: Inspecao }) {
+export default function InspecaoRow({
+  insp,
+  onDelete,
+}: {
+  insp: Inspecao;
+  /** Quando setado, mostra botão de excluir. Use só para Admin. */
+  onDelete?: (insp: Inspecao) => void;
+}) {
   return (
     <tr className="hover:bg-gray-50">
       <td className="px-4 py-2.5 font-mono text-xs text-gray-600">
@@ -34,6 +41,16 @@ export default function InspecaoRow({ insp }: { insp: Inspecao }) {
           >
             <ChartBar className="size-4" />
           </Link>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => onDelete(insp)}
+              className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+              title="Excluir inspeção (Admin)"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          )}
         </div>
       </td>
     </tr>

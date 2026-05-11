@@ -25,7 +25,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
-import { useCanEdit } from "@/lib/hooks/useUsuario";
+import { useCanEdit, useCurrentUser, useIsAdmin } from "@/lib/hooks/useUsuario";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -63,6 +63,8 @@ export default function InspecaoEditorPage({ params }: Props) {
   const router = useRouter();
   const qc = useQueryClient();
   const canEdit = useCanEdit();
+  const isAdmin = useIsAdmin();
+  const currentUser = useCurrentUser();
 
   const { data, isLoading, error } = useInspecao(id);
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
@@ -120,6 +122,16 @@ export default function InspecaoEditorPage({ params }: Props) {
     treinamentosRisco,
   } = data;
   const isConcluida = inspecao.status === "CONCLUIDA";
+  // Quem pode reabrir uma inspeção concluída:
+  //   - Admin (sempre)
+  //   - Técnico que criou a inspeção (inspecao.usuario === email do logado)
+  // Visualizador e técnicos de outras inspeções não podem.
+  const podeReabrir =
+    isAdmin ||
+    (canEdit &&
+      currentUser?.email &&
+      (inspecao.usuario ?? "").toLowerCase() ===
+        currentUser.email.toLowerCase());
   // V2: usuários podem editar inspeções concluídas (spec exige).
   const readOnly = !canEdit;
 
@@ -200,13 +212,17 @@ export default function InspecaoEditorPage({ params }: Props) {
                 Concluir
               </button>
             )}
-            {canEdit && isConcluida && (
+            {isConcluida && podeReabrir && (
               <button
                 type="button"
                 onClick={() => mudarStatus.mutate("EM_ANDAMENTO")}
                 disabled={mudarStatus.isPending}
                 className="inline-flex items-center gap-1.5 rounded-md border border-amber-warning bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-warning hover:bg-amber-100 disabled:opacity-60"
-                title="Voltar para Em Andamento"
+                title={
+                  isAdmin
+                    ? "Reabrir inspeção (Admin)"
+                    : "Reabrir sua inspeção"
+                }
               >
                 {mudarStatus.isPending ? (
                   <Loader2 className="size-4 animate-spin" />

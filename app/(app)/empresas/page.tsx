@@ -2,20 +2,46 @@
 
 import { useMemo, useState } from "react";
 import { Plus, Search, Building2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import EmpresaCard from "@/components/empresas/EmpresaCard";
 import EmpresaForm from "@/components/empresas/EmpresaForm";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useIsAdmin, useCanEdit } from "@/lib/hooks/useUsuario";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Empresa } from "@/lib/supabase/types";
 
 export default function EmpresasPage() {
   const { data: empresas = [], isLoading, error } = useEmpresas();
   const canEdit = useCanEdit();
   const isAdmin = useIsAdmin();
+  const qc = useQueryClient();
   const [busca, setBusca] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Empresa | null>(null);
+  const [confirmDel, setConfirmDel] = useState<Empresa | null>(null);
+
+  const delEmpresa = useMutation({
+    mutationFn: async (e: Empresa) => {
+      const supabase = createSupabaseBrowserClient();
+      // Hard delete — FKs com ON DELETE CASCADE limpam todas as
+      // inspeções, setores, riscos, etc da empresa.
+      const { error } = await supabase
+        .from("empresas")
+        .delete()
+        .eq("id_empresa", e.id_empresa);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["empresas"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+      toast.success("Empresa excluída");
+      setConfirmDel(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const filtradas = useMemo(() => {
     if (!busca.trim()) return empresas;
@@ -99,6 +125,7 @@ export default function EmpresasPage() {
                 setEditing(empresa);
                 setFormOpen(true);
               }}
+              onDelete={isAdmin ? setConfirmDel : undefined}
             />
           ))}
         </div>
@@ -108,6 +135,21 @@ export default function EmpresasPage() {
         open={formOpen}
         onClose={() => setFormOpen(false)}
         empresa={editing}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDel}
+        title="Excluir empresa?"
+        description={
+          confirmDel
+            ? `"${confirmDel.nome_empresa}" será excluída permanentemente, junto com TODAS as suas inspeções, setores, cargos, riscos, EPIs, fotos, responsáveis, PAE e treinamentos. Esta ação é irreversível.`
+            : undefined
+        }
+        confirmLabel="Sim, excluir tudo"
+        variant="danger"
+        loading={delEmpresa.isPending}
+        onConfirm={() => confirmDel && delEmpresa.mutate(confirmDel)}
+        onCancel={() => setConfirmDel(null)}
       />
     </div>
   );
