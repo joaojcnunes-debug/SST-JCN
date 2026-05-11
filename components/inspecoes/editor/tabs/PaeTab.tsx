@@ -55,8 +55,13 @@ export default function PaeTab({
       const supabase = createSupabaseBrowserClient();
       const { id_contato, ...rest } = c;
       const payload = { ...rest, updated_at: new Date().toISOString() };
-      // Patch parcial (sem nome) usa UPDATE; com nome usa UPSERT.
-      if (rest.nome === undefined) {
+      // Discriminador: payload completo (inclui id_inspecao) → INSERT
+      // (criação de novo contato via adicionar()). Patch parcial sem
+      // id_inspecao → UPDATE. Antes o check era `rest.nome === undefined`,
+      // mas se o usuário editasse o NOME de um contato existente, o save
+      // ia pro UPSERT que tenta INSERT primeiro e falha em id_inspecao
+      // NOT NULL.
+      if (rest.id_inspecao === undefined) {
         const { error } = await supabase
           .from("pae_contatos")
           .update(payload as never)
@@ -66,9 +71,7 @@ export default function PaeTab({
       }
       const { error } = await supabase
         .from("pae_contatos")
-        .upsert({ id_contato, ...payload } as never, {
-          onConflict: "id_contato",
-        });
+        .insert({ id_contato, ...payload } as never);
       if (error) throw error;
     },
     onSuccess: () => {
