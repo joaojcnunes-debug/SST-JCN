@@ -3,10 +3,11 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { Loader2, Sparkles } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useSaveAcao } from "@/lib/hooks/useAcoes";
-import { useCurrentUser } from "@/lib/hooks/useUsuario";
+import { useCurrentUser, useIsAdmin } from "@/lib/hooks/useUsuario";
 import { useTipoIcone } from "@/lib/hooks/useV3";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
@@ -74,7 +75,9 @@ export default function AcaoForm({ open, onClose, editing }: Props) {
   const { data: empresas = [] } = useEmpresas();
   const save = useSaveAcao();
   const user = useCurrentUser();
+  const isAdmin = useIsAdmin();
   const iconeDe = useTipoIcone();
+  const [gerandoIA, setGerandoIA] = useState(false);
 
   const [form, setForm] = useState({
     id_empresa: "",
@@ -120,6 +123,100 @@ export default function AcaoForm({ open, onClose, editing }: Props) {
   const riscosFiltrados = form.id_setor
     ? riscos.filter((r) => r.id_setor === form.id_setor || !r.id_setor)
     : riscos;
+
+  async function gerarComIA() {
+    if (!form.id_empresa) {
+      toast.error("Selecione a empresa antes de gerar com IA");
+      return;
+    }
+    setGerandoIA(true);
+    try {
+      const empresaSel = empresas.find((e) => e.id_empresa === form.id_empresa);
+      const setorSel = setores.find((s) => s.id_setor === form.id_setor);
+      const riscoSel = riscos.find((r) => r.id_risco === form.id_risco);
+
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase.functions.invoke(
+        "gerar-acao-ia",
+        {
+          body: {
+            empresa: {
+              nome: empresaSel?.nome_empresa ?? null,
+              cnpj: empresaSel?.cnpj ?? null,
+            },
+            setor: setorSel
+              ? {
+                  nome: setorSel.setor_ghe,
+                  descricao: setorSel.descricao ?? null,
+                }
+              : null,
+            risco: riscoSel
+              ? {
+                  tipo: riscoSel.tipo_risco,
+                  agente: riscoSel.agente,
+                  fonte: riscoSel.fonte_geradora,
+                  severidade: riscoSel.severidade,
+                  probabilidade: riscoSel.probabilidade,
+                  nivel: riscoSel.nivel_risco,
+                  medidasRecomendadas: riscoSel.medidas_recomendadas,
+                }
+              : null,
+            parcial: {
+              what_acao: form.what_acao,
+              why_justificativa: form.why_justificativa,
+              where_local: form.where_local,
+              who_responsavel: form.who_responsavel,
+              how_metodo: form.how_metodo,
+              how_much_custo: form.how_much_custo,
+            },
+          },
+        }
+      );
+
+      if (error) throw error;
+      const ai = (data as { data?: Record<string, unknown> } | null)?.data;
+      if (!ai) throw new Error("Resposta vazia da IA");
+
+      // Converte prazo em dias para data ISO (hoje + N dias)
+      let prazoData = "";
+      const prazoDias = ai.when_prazo_dias;
+      if (typeof prazoDias === "number" && prazoDias > 0) {
+        const d = new Date();
+        d.setDate(d.getDate() + prazoDias);
+        prazoData = d.toISOString().split("T")[0];
+      }
+
+      // Aplica IA só nos campos vazios (preserva o que usuário digitou)
+      setForm((f) => ({
+        ...f,
+        what_acao: f.what_acao || String(ai.what_acao ?? ""),
+        why_justificativa:
+          f.why_justificativa || String(ai.why_justificativa ?? ""),
+        where_local:
+          f.where_local ||
+          String(ai.where_local ?? "") ||
+          (setorSel?.setor_ghe ?? ""),
+        who_responsavel:
+          f.who_responsavel || String(ai.who_responsavel ?? ""),
+        how_metodo: f.how_metodo || String(ai.how_metodo ?? ""),
+        how_much_custo:
+          f.how_much_custo || String(ai.how_much_custo ?? ""),
+        when_prazo: f.when_prazo || prazoData,
+        // Prioridade: só substitui se ainda é o default "Media"
+        prioridade:
+          f.prioridade !== "Media"
+            ? f.prioridade
+            : (ai.prioridade as AcaoPrioridade) ?? "Media",
+      }));
+      toast.success("Plano gerado pela IA — revise antes de salvar");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Erro ao gerar com IA"
+      );
+    } finally {
+      setGerandoIA(false);
+    }
+  }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -228,9 +325,31 @@ export default function AcaoForm({ open, onClose, editing }: Props) {
 
         {/* 5W2H */}
         <section className="space-y-3 rounded-lg border-l-4 border-verde-primary bg-verde-light/30 p-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-verde-primary">
-            5W2H — Plano de Ação
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-verde-primary">
+              5W2H — Plano de Ação
+            </p>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={gerarComIA}
+                disabled={gerandoIA || !form.id_empresa}
+                className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 disabled:cursor-not-allowed disabled:opacity-50"
+                title={
+                  !form.id_empresa
+                    ? "Selecione a empresa primeiro"
+                    : "Preenche os 7 campos com sugestão da IA (Groq · Llama 3.3)"
+                }
+              >
+                {gerandoIA ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3.5" />
+                )}
+                {gerandoIA ? "Gerando..." : "Gerar com IA"}
+              </button>
+            )}
+          </div>
 
           <Field label="O QUÊ (What) — ação a ser executada *">
             <textarea
