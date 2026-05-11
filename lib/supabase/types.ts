@@ -372,6 +372,37 @@ export interface TreinamentoRiscoRel {
   id_risco: string;
 }
 
+// V13: Plano de Ação (5W2H)
+export type AcaoStatus =
+  | "Pendente"
+  | "Em Andamento"
+  | "Concluida"
+  | "Cancelada";
+
+export type AcaoPrioridade = "Baixa" | "Media" | "Alta" | "Critica";
+
+export interface Acao5W2H {
+  id_acao: string;
+  id_empresa: string;
+  id_setor: string | null;
+  id_risco: string | null;
+  id_inspecao: string | null;
+  what_acao: string;
+  why_justificativa: string | null;
+  where_local: string | null;
+  when_prazo: string | null; // ISO date
+  who_responsavel: string | null;
+  how_metodo: string | null;
+  how_much_custo: string | null;
+  status: AcaoStatus;
+  prioridade: AcaoPrioridade;
+  data_conclusao: string | null;
+  observacoes: string | null;
+  created_by: string | null;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
 // V10: Plano de Ação e Emergência (PAE) — árvore de contatos
 // (nome/cargo/telefone) com hierarquia via id_parent.
 export interface PaeContato {
@@ -443,6 +474,7 @@ export interface Database {
       treinamentos_setor: TableShape<TreinamentoSetorRel>;
       treinamentos_cargo: TableShape<TreinamentoCargoRel>;
       treinamentos_risco: TableShape<TreinamentoRiscoRel>;
+      acoes_5w2h: TableShape<Acao5W2H>;
       usuarios: TableShape<Usuario>;
       configuracoes: TableShape<Configuracao>;
       tipos_risco: TableShape<TipoRiscoCustom>;

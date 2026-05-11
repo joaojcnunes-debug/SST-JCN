@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   BarChart3,
+  Target,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -29,7 +30,10 @@ const PRINCIPAL = [
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
 ];
 
-const ACOES = [{ href: "/inspecoes/nova", label: "Nova Inspeção", icon: PlusCircle }];
+const ACOES = [
+  { href: "/inspecoes/nova", label: "Nova Inspeção", icon: PlusCircle },
+  { href: "/acoes", label: "Plano de Ação", icon: Target },
+];
 
 const ADMIN = [
   { href: "/usuarios", label: "Usuários", icon: Users },
