@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Phone,
   Plus,
+  Save,
   Trash2,
   User,
 } from "lucide-react";
@@ -161,6 +162,24 @@ export default function PaeTab({
             />
           ))}
         </ul>
+      )}
+
+      {!readOnly && contatos.length > 0 && (
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              // Força blur do campo ativo pra disparar o auto-save da
+              // edição em andamento (caso o usuário não tenha saído do campo).
+              const ativo = document.activeElement as HTMLElement | null;
+              if (ativo && typeof ativo.blur === "function") ativo.blur();
+              toast.success("Alterações salvas");
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
+          >
+            <Save className="size-4" /> Salvar alterações
+          </button>
+        </div>
       )}
 
       <ConfirmDialog
