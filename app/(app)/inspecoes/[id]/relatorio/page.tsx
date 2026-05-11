@@ -1063,75 +1063,70 @@ function PaeArvore({ contatos }: { contatos: PaeContato[] }) {
     arr.push(c);
     childrenOf.set(key, arr);
   }
-  const raizes = childrenOf.get(null) ?? [];
-  return (
-    <ul className="space-y-2">
-      {raizes.map((r) => (
-        <PaeNo key={r.id_contato} contato={r} childrenOf={childrenOf} nivel={0} />
-      ))}
-    </ul>
-  );
-}
 
-function PaeNo({
-  contato,
-  childrenOf,
-  nivel,
-}: {
-  contato: PaeContato;
-  childrenOf: Map<string | null, PaeContato[]>;
-  nivel: number;
-}) {
-  const filhos = childrenOf.get(contato.id_contato) ?? [];
-  const inicial = (contato.nome ?? "?").trim().charAt(0).toUpperCase() || "?";
-  // Indent visual escalonado: nó raiz sem margem; níveis seguintes
-  // ficam abaixo da linha vertical do pai.
+  // Flatten da árvore em ordem (DFS) preservando o nível pra mostrar
+  // a hierarquia através de indent na coluna Nome.
+  const linhas: Array<{ contato: PaeContato; nivel: number }> = [];
+  function visitar(parent: string | null, nivel: number) {
+    const filhos = childrenOf.get(parent) ?? [];
+    for (const c of filhos) {
+      linhas.push({ contato: c, nivel });
+      visitar(c.id_contato, nivel + 1);
+    }
+  }
+  visitar(null, 0);
+
   return (
-    <li>
-      <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 shadow-sm">
-        <div
-          className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
-            nivel === 0
-              ? "bg-red-100 text-red-700"
-              : nivel === 1
-              ? "bg-amber-100 text-amber-800"
-              : "bg-slate-100 text-slate-700"
-          }`}
-        >
-          {inicial}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-900">
-            {contato.nome}
-          </p>
-          {contato.cargo && (
-            <p className="truncate text-[11px] text-gray-600">
-              {contato.cargo}
-            </p>
-          )}
-        </div>
-        {contato.telefone && (
-          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-800">
-            <span className="text-[10px]">📞</span>
-            <span className="font-mono">{contato.telefone}</span>
-          </span>
-        )}
-      </div>
-      {filhos.length > 0 && (
-        <ul
-          className="mt-2 space-y-2 border-l-2 border-red-200 pl-4"
-          style={{ marginLeft: 16 }}
-        >
-          {filhos.map((f) => (
-            <PaeNo
-              key={f.id_contato}
-              contato={f}
-              childrenOf={childrenOf}
-              nivel={nivel + 1}
-            />
-          ))}
-        </ul>
-      )}
-    </li>
+    <table className="w-full border-collapse overflow-hidden rounded-md border border-gray-200 bg-white text-sm">
+      <thead className="bg-red-50 text-red-800">
+        <tr>
+          <th className="border-b border-red-200 px-3 py-2 text-center text-xs font-bold uppercase tracking-wider">
+            Nome
+          </th>
+          <th className="border-b border-red-200 px-3 py-2 text-center text-xs font-bold uppercase tracking-wider">
+            Cargo
+          </th>
+          <th className="border-b border-red-200 px-3 py-2 text-center text-xs font-bold uppercase tracking-wider">
+            Telefone
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {linhas.map(({ contato, nivel }) => {
+          const indent = Math.min(nivel, 6) * 12;
+          return (
+            <tr
+              key={contato.id_contato}
+              className="border-b border-gray-100 last:border-b-0"
+            >
+              <td className="px-3 py-2 text-center align-middle">
+                <span
+                  className="inline-flex items-center gap-1.5 font-semibold text-gray-900"
+                  style={{ paddingLeft: indent }}
+                >
+                  {nivel > 0 && (
+                    <span className="text-red-400">└─</span>
+                  )}
+                  {contato.nome}
+                </span>
+              </td>
+              <td className="px-3 py-2 text-center align-middle text-gray-700">
+                {contato.cargo ?? "—"}
+              </td>
+              <td className="px-3 py-2 text-center align-middle">
+                {contato.telefone ? (
+                  <span className="inline-flex items-center gap-1 font-mono text-gray-800">
+                    <span className="text-[10px]">📞</span>
+                    {contato.telefone}
+                  </span>
+                ) : (
+                  <span className="text-gray-400">—</span>
+                )}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
