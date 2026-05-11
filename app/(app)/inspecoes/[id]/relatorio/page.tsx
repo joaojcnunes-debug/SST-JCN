@@ -437,12 +437,14 @@ export default function RelatorioChabraPage({ params }: Props) {
         ============================================================ */}
         <section className="border-t border-gray-200 px-8 py-6 md:px-12">
           {inspecao.observacoes && (
-            <div className="mb-6">
-              <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-900">
+            <div className="mb-6 overflow-hidden rounded-md border-l-4 border-slate-400 bg-slate-50/40">
+              <div className="flex items-center gap-2 border-b border-slate-200 bg-white/60 px-3 py-2">
                 <span className="text-base">📝</span>
-                Observações Gerais
-              </h3>
-              <p className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm whitespace-pre-wrap text-gray-700">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700">
+                  Observações Gerais
+                </h3>
+              </div>
+              <p className="whitespace-pre-wrap p-3 text-sm text-gray-700">
                 {inspecao.observacoes}
               </p>
             </div>
@@ -450,12 +452,19 @@ export default function RelatorioChabraPage({ params }: Props) {
 
           {/* PAE — Plano de Ação e Emergência (hierárquico) */}
           {paeContatos.length > 0 && (
-            <div className="mb-8">
-              <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-900">
+            <div className="mb-8 overflow-hidden rounded-md border-l-4 border-red-500 bg-red-50/30">
+              <div className="flex items-center gap-2 border-b border-red-200 bg-white/60 px-3 py-2">
                 <span className="text-base">🚨</span>
-                Plano de Ação e Emergência (PAE)
-              </h3>
-              <PaeArvore contatos={paeContatos} />
+                <h3 className="text-sm font-bold uppercase tracking-wider text-red-700">
+                  Plano de Ação e Emergência (PAE)
+                </h3>
+                <span className="ml-auto rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                  {paeContatos.length} contato(s)
+                </span>
+              </div>
+              <div className="p-3">
+                <PaeArvore contatos={paeContatos} />
+              </div>
             </div>
           )}
 
@@ -1056,7 +1065,7 @@ function PaeArvore({ contatos }: { contatos: PaeContato[] }) {
   }
   const raizes = childrenOf.get(null) ?? [];
   return (
-    <ul className="space-y-1.5 text-xs">
+    <ul className="space-y-2">
       {raizes.map((r) => (
         <PaeNo key={r.id_contato} contato={r} childrenOf={childrenOf} nivel={0} />
       ))}
@@ -1074,27 +1083,44 @@ function PaeNo({
   nivel: number;
 }) {
   const filhos = childrenOf.get(contato.id_contato) ?? [];
-  const indent = Math.min(nivel, 6) * 16;
+  const inicial = (contato.nome ?? "?").trim().charAt(0).toUpperCase() || "?";
+  // Indent visual escalonado: nó raiz sem margem; níveis seguintes
+  // ficam abaixo da linha vertical do pai.
   return (
     <li>
-      <div
-        className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded border border-gray-200 bg-white px-2 py-1"
-        style={{ marginLeft: indent }}
-      >
-        <span className="font-semibold text-gray-900">{contato.nome}</span>
-        {contato.cargo && (
-          <span className="text-gray-600">— {contato.cargo}</span>
-        )}
+      <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 shadow-sm">
+        <div
+          className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+            nivel === 0
+              ? "bg-red-100 text-red-700"
+              : nivel === 1
+              ? "bg-amber-100 text-amber-800"
+              : "bg-slate-100 text-slate-700"
+          }`}
+        >
+          {inicial}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-gray-900">
+            {contato.nome}
+          </p>
+          {contato.cargo && (
+            <p className="truncate text-[11px] text-gray-600">
+              {contato.cargo}
+            </p>
+          )}
+        </div>
         {contato.telefone && (
-          <span className="ml-auto font-mono text-[11px] text-gray-700">
-            📞 {contato.telefone}
+          <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-800">
+            <span className="text-[10px]">📞</span>
+            <span className="font-mono">{contato.telefone}</span>
           </span>
         )}
       </div>
       {filhos.length > 0 && (
         <ul
-          className="mt-1 space-y-1.5 border-l-2 border-gray-200"
-          style={{ marginLeft: indent + 8 }}
+          className="mt-2 space-y-2 border-l-2 border-red-200 pl-4"
+          style={{ marginLeft: 16 }}
         >
           {filhos.map((f) => (
             <PaeNo
