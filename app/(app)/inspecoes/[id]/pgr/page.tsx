@@ -10,7 +10,7 @@ import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import { fmtData, fmtDataHora, formatCNPJ, parseMedidas } from "@/lib/utils";
 import { NIVEIS_RISCO, NIVEL_CONFIG } from "@/lib/constants";
-import type { EpiEpc, NivelRisco } from "@/lib/supabase/types";
+import type { EpiEpc, NivelRisco, PaeContato } from "@/lib/supabase/types";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -79,7 +79,7 @@ export default function PgrPage({ params }: Props) {
   if (isLoading) return <LoadingSkeleton rows={10} />;
   if (!data) return null;
 
-  const { inspecao, responsaveis } = data;
+  const { inspecao, responsaveis, paeContatos } = data;
 
   return (
     <div className="space-y-4">
@@ -494,11 +494,21 @@ export default function PgrPage({ params }: Props) {
           </section>
         )}
 
+        {/* PAE — Plano de Ação e Emergência */}
+        {paeContatos.length > 0 && (
+          <section className="print-avoid-break">
+            <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-gray-700">
+              6. Plano de Ação e Emergência (PAE)
+            </h2>
+            <PaeArvorePgr contatos={paeContatos} />
+          </section>
+        )}
+
         {/* OBSERVAÇÕES */}
         {inspecao.observacoes && (
           <section className="print-avoid-break">
             <h2 className="mb-1.5 text-sm font-bold uppercase tracking-wider text-gray-700">
-              6. Observações Gerais
+              7. Observações Gerais
             </h2>
             <p className="whitespace-pre-wrap text-xs text-gray-700">
               {inspecao.observacoes}
@@ -559,5 +569,75 @@ function ListaMedidas({ raw }: { raw: string | null | undefined }) {
         <li key={i}>{m}</li>
       ))}
     </ul>
+  );
+}
+
+// =============================================================
+// PAE — árvore hierárquica de contatos (compacta pro PGR)
+// =============================================================
+
+function PaeArvorePgr({ contatos }: { contatos: PaeContato[] }) {
+  const childrenOf = new Map<string | null, PaeContato[]>();
+  for (const c of contatos) {
+    const key = c.id_parent ?? null;
+    const arr = childrenOf.get(key) ?? [];
+    arr.push(c);
+    childrenOf.set(key, arr);
+  }
+  const raizes = childrenOf.get(null) ?? [];
+  return (
+    <ul className="space-y-1 text-xs">
+      {raizes.map((r) => (
+        <PaeNoPgr
+          key={r.id_contato}
+          contato={r}
+          childrenOf={childrenOf}
+          nivel={0}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function PaeNoPgr({
+  contato,
+  childrenOf,
+  nivel,
+}: {
+  contato: PaeContato;
+  childrenOf: Map<string | null, PaeContato[]>;
+  nivel: number;
+}) {
+  const filhos = childrenOf.get(contato.id_contato) ?? [];
+  const indent = Math.min(nivel, 6) * 14;
+  return (
+    <li>
+      <div
+        className="flex flex-wrap items-baseline gap-x-2 border-b border-gray-100 py-0.5"
+        style={{ marginLeft: indent }}
+      >
+        <span className="font-semibold">{contato.nome}</span>
+        {contato.cargo && (
+          <span className="text-gray-600">— {contato.cargo}</span>
+        )}
+        {contato.telefone && (
+          <span className="ml-auto font-mono text-[10px]">
+            {contato.telefone}
+          </span>
+        )}
+      </div>
+      {filhos.length > 0 && (
+        <ul className="space-y-1">
+          {filhos.map((f) => (
+            <PaeNoPgr
+              key={f.id_contato}
+              contato={f}
+              childrenOf={childrenOf}
+              nivel={nivel + 1}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }

@@ -34,6 +34,7 @@ import type {
   EpiEpc,
   Foto,
   NivelRisco,
+  PaeContato,
   Risco,
   Setor,
   Cargo,
@@ -131,7 +132,7 @@ export default function RelatorioChabraPage({ params }: Props) {
   if (isLoading) return <LoadingSkeleton rows={10} />;
   if (!data || !ctx) return null;
 
-  const { inspecao, responsaveis } = data;
+  const { inspecao, responsaveis, paeContatos } = data;
   const dataInspFmt = fmtData(inspecao.data_inspecao);
 
   return (
@@ -444,6 +445,17 @@ export default function RelatorioChabraPage({ params }: Props) {
               <p className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm whitespace-pre-wrap text-gray-700">
                 {inspecao.observacoes}
               </p>
+            </div>
+          )}
+
+          {/* PAE — Plano de Ação e Emergência (hierárquico) */}
+          {paeContatos.length > 0 && (
+            <div className="mb-8">
+              <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-900">
+                <span className="text-base">🚨</span>
+                Plano de Ação e Emergência (PAE)
+              </h3>
+              <PaeArvore contatos={paeContatos} />
             </div>
           )}
 
@@ -1027,5 +1039,73 @@ function ListaMedidasRelatorio({
         <li key={i}>{m}</li>
       ))}
     </ul>
+  );
+}
+
+// =============================================================
+// PAE — árvore hierárquica de contatos (print-friendly)
+// =============================================================
+
+function PaeArvore({ contatos }: { contatos: PaeContato[] }) {
+  const childrenOf = new Map<string | null, PaeContato[]>();
+  for (const c of contatos) {
+    const key = c.id_parent ?? null;
+    const arr = childrenOf.get(key) ?? [];
+    arr.push(c);
+    childrenOf.set(key, arr);
+  }
+  const raizes = childrenOf.get(null) ?? [];
+  return (
+    <ul className="space-y-1.5 text-xs">
+      {raizes.map((r) => (
+        <PaeNo key={r.id_contato} contato={r} childrenOf={childrenOf} nivel={0} />
+      ))}
+    </ul>
+  );
+}
+
+function PaeNo({
+  contato,
+  childrenOf,
+  nivel,
+}: {
+  contato: PaeContato;
+  childrenOf: Map<string | null, PaeContato[]>;
+  nivel: number;
+}) {
+  const filhos = childrenOf.get(contato.id_contato) ?? [];
+  const indent = Math.min(nivel, 6) * 16;
+  return (
+    <li>
+      <div
+        className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded border border-gray-200 bg-white px-2 py-1"
+        style={{ marginLeft: indent }}
+      >
+        <span className="font-semibold text-gray-900">{contato.nome}</span>
+        {contato.cargo && (
+          <span className="text-gray-600">— {contato.cargo}</span>
+        )}
+        {contato.telefone && (
+          <span className="ml-auto font-mono text-[11px] text-gray-700">
+            📞 {contato.telefone}
+          </span>
+        )}
+      </div>
+      {filhos.length > 0 && (
+        <ul
+          className="mt-1 space-y-1.5 border-l-2 border-gray-200"
+          style={{ marginLeft: indent + 8 }}
+        >
+          {filhos.map((f) => (
+            <PaeNo
+              key={f.id_contato}
+              contato={f}
+              childrenOf={childrenOf}
+              nivel={nivel + 1}
+            />
+          ))}
+        </ul>
+      )}
+    </li>
   );
 }
