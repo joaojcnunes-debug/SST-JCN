@@ -340,6 +340,21 @@ export interface Responsavel {
   data_hora: string | null;
 }
 
+// V10: Plano de Ação e Emergência (PAE) — árvore de contatos
+// (nome/cargo/telefone) com hierarquia via id_parent.
+export interface PaeContato {
+  id_contato: string;
+  id_inspecao: string;
+  id_empresa: string;
+  id_parent: string | null;
+  nome: string;
+  cargo: string | null;
+  telefone: string | null;
+  ordem: number;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
 export interface Complemento {
   id_complemento: string;
   id_inspecao: string;
@@ -391,6 +406,7 @@ export interface Database {
       fotos: TableShape<Foto>;
       responsaveis: TableShape<Responsavel>;
       complementos: TableShape<Complemento>;
+      pae_contatos: TableShape<PaeContato>;
       usuarios: TableShape<Usuario>;
       configuracoes: TableShape<Configuracao>;
       tipos_risco: TableShape<TipoRiscoCustom>;

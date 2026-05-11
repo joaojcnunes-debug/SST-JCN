@@ -18,6 +18,7 @@ import {
   RotateCcw,
   Copy,
   Sticker,
+  Siren,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -36,6 +37,7 @@ import FotosTab from "@/components/inspecoes/editor/tabs/FotosTab";
 import ResponsaveisTab from "@/components/inspecoes/editor/tabs/ResponsaveisTab";
 import ComplementosTab from "@/components/inspecoes/editor/tabs/ComplementosTab";
 import ObservacoesTab from "@/components/inspecoes/editor/tabs/ObservacoesTab";
+import PaeTab from "@/components/inspecoes/editor/tabs/PaeTab";
 import CopiarParaEmpresaModal from "@/components/inspecoes/editor/CopiarParaEmpresaModal";
 
 type TabKey =
@@ -45,6 +47,7 @@ type TabKey =
   | "epis"
   | "fotos"
   | "responsaveis"
+  | "pae"
   | "complementos"
   | "observacoes";
 
@@ -107,6 +110,7 @@ export default function InspecaoEditorPage({ params }: Props) {
     fotos,
     responsaveis,
     complementos,
+    paeContatos,
   } = data;
   const isConcluida = inspecao.status === "CONCLUIDA";
   // V2: usuários podem editar inspeções concluídas (spec exige).
@@ -119,6 +123,7 @@ export default function InspecaoEditorPage({ params }: Props) {
     { key: "epis", label: "EPIs/EPCs", icon: ShieldCheck, count: epis.length },
     { key: "fotos", label: "Fotos", icon: ImageIcon, count: fotos.length },
     { key: "responsaveis", label: "Responsáveis", icon: Users, count: responsaveis.length },
+    { key: "pae", label: "PAE", icon: Siren, count: paeContatos.length },
     { key: "complementos", label: "Complementos", icon: Sticker, count: complementos.length },
     { key: "observacoes", label: "Observações", icon: FileText, count: inspecao.observacoes ? 1 : 0 },
   ];
@@ -294,6 +299,14 @@ export default function InspecaoEditorPage({ params }: Props) {
               idInspecao={id}
               idEmpresa={inspecao.id_empresa}
               responsaveis={responsaveis}
+              readOnly={readOnly}
+            />
+          )}
+          {tab === "pae" && (
+            <PaeTab
+              idInspecao={id}
+              idEmpresa={inspecao.id_empresa}
+              contatos={paeContatos}
               readOnly={readOnly}
             />
           )}
