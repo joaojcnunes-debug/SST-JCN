@@ -11,6 +11,12 @@ interface ModalProps {
   children: ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
   footer?: ReactNode;
+  /**
+   * Se true, clicar no fundo escuro fecha o modal. Default `false` —
+   * evita fechamento acidental quando o usuário está preenchendo um
+   * formulário. X e Esc continuam fechando direto.
+   */
+  closeOnBackdrop?: boolean;
 }
 
 const SIZE: Record<NonNullable<ModalProps["size"]>, string> = {
@@ -27,6 +33,7 @@ export default function Modal({
   children,
   size = "md",
   footer,
+  closeOnBackdrop = false,
 }: ModalProps) {
   useEffect(() => {
     if (!open) return;
@@ -46,7 +53,7 @@ export default function Modal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 animate-in fade-in"
-      onClick={onClose}
+      onClick={closeOnBackdrop ? onClose : undefined}
     >
       <div
         className={cn(
