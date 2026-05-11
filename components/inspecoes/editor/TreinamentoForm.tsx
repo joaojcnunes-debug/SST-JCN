@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
@@ -83,6 +83,10 @@ export default function TreinamentoForm({
 
   const [nr, setNr] = useState("");
   const [titulo, setTitulo] = useState("");
+  // Rastreia o último auto-fill — permite re-replicar a descrição ao
+  // trocar de NR, sem sobrescrever um título que o usuário editou
+  // manualmente.
+  const ultimoAutofillRef = useRef<string>("");
   const [cargaHoraria, setCargaHoraria] = useState("");
   const [periodicidade, setPeriodicidade] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -222,7 +226,25 @@ export default function TreinamentoForm({
               type="text"
               list="nrs-comuns"
               value={nr}
-              onChange={(e) => setNr(e.target.value)}
+              onChange={(e) => {
+                const valor = e.target.value;
+                // Se o valor tem " — " (formato da datalist), divide
+                // em código + descrição e preenche o título.
+                if (valor.includes(" — ")) {
+                  const [codigo, ...descParts] = valor.split(" — ");
+                  const desc = descParts.join(" — ").trim();
+                  setNr(codigo.trim());
+                  // Só sobrescreve o título se estiver vazio OU se
+                  // ainda for o auto-fill anterior (não manualmente
+                  // editado).
+                  if (titulo === "" || titulo === ultimoAutofillRef.current) {
+                    setTitulo(desc);
+                    ultimoAutofillRef.current = desc;
+                  }
+                } else {
+                  setNr(valor);
+                }
+              }}
               required
               placeholder="Ex: NR-06"
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
