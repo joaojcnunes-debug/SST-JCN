@@ -12,6 +12,10 @@ import type {
   Responsavel,
   Risco,
   Setor,
+  TreinamentoNR,
+  TreinamentoSetorRel,
+  TreinamentoCargoRel,
+  TreinamentoRiscoRel,
 } from "@/lib/supabase/types";
 
 export interface InspecaoFull {
@@ -24,6 +28,10 @@ export interface InspecaoFull {
   responsaveis: Responsavel[];
   complementos: Complemento[];
   paeContatos: PaeContato[];
+  treinamentos: TreinamentoNR[];
+  treinamentosSetor: TreinamentoSetorRel[];
+  treinamentosCargo: TreinamentoCargoRel[];
+  treinamentosRisco: TreinamentoRiscoRel[];
 }
 
 export function useInspecao(id: string | null | undefined) {
@@ -45,6 +53,7 @@ export function useInspecao(id: string | null | undefined) {
         respRes,
         compRes,
         paeRes,
+        treinaRes,
       ] = await Promise.all([
         supabase.from("inspecoes").select("*").eq("id_inspecao", inspId).single(),
         supabase.from("setores").select("*").eq("id_inspecao", inspId).order("setor_ghe"),
@@ -55,9 +64,22 @@ export function useInspecao(id: string | null | undefined) {
         supabase.from("responsaveis").select("*").eq("id_inspecao", inspId),
         supabase.from("complementos").select("*").eq("id_inspecao", inspId),
         supabase.from("pae_contatos").select("*").eq("id_inspecao", inspId).order("ordem"),
+        supabase.from("treinamentos_nr").select("*").eq("id_inspecao", inspId).order("ordem"),
       ]);
 
       if (inspRes.error) throw inspRes.error;
+
+      const treinamentos = (treinaRes.data ?? []) as unknown as TreinamentoNR[];
+      const idsTreina = treinamentos.map((t) => t.id_treinamento);
+
+      // Relações M:N só carregam se há treinamentos (evita query inútil)
+      const [setRelRes, carRelRes, risRelRes] = idsTreina.length
+        ? await Promise.all([
+            supabase.from("treinamentos_setor").select("*").in("id_treinamento", idsTreina),
+            supabase.from("treinamentos_cargo").select("*").in("id_treinamento", idsTreina),
+            supabase.from("treinamentos_risco").select("*").in("id_treinamento", idsTreina),
+          ])
+        : [{ data: [] }, { data: [] }, { data: [] }];
 
       return {
         inspecao: inspRes.data as unknown as Inspecao,
@@ -69,6 +91,10 @@ export function useInspecao(id: string | null | undefined) {
         responsaveis: (respRes.data ?? []) as unknown as Responsavel[],
         complementos: (compRes.data ?? []) as unknown as Complemento[],
         paeContatos: (paeRes.data ?? []) as unknown as PaeContato[],
+        treinamentos,
+        treinamentosSetor: (setRelRes.data ?? []) as unknown as TreinamentoSetorRel[],
+        treinamentosCargo: (carRelRes.data ?? []) as unknown as TreinamentoCargoRel[],
+        treinamentosRisco: (risRelRes.data ?? []) as unknown as TreinamentoRiscoRel[],
       };
     },
   });

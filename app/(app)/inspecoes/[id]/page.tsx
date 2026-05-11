@@ -19,6 +19,7 @@ import {
   Copy,
   Sticker,
   Siren,
+  GraduationCap,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -38,6 +39,7 @@ import ResponsaveisTab from "@/components/inspecoes/editor/tabs/ResponsaveisTab"
 import ComplementosTab from "@/components/inspecoes/editor/tabs/ComplementosTab";
 import ObservacoesTab from "@/components/inspecoes/editor/tabs/ObservacoesTab";
 import PaeTab from "@/components/inspecoes/editor/tabs/PaeTab";
+import TreinamentosTab from "@/components/inspecoes/editor/tabs/TreinamentosTab";
 import CopiarParaEmpresaModal from "@/components/inspecoes/editor/CopiarParaEmpresaModal";
 
 type TabKey =
@@ -48,6 +50,7 @@ type TabKey =
   | "fotos"
   | "responsaveis"
   | "pae"
+  | "treinamentos"
   | "complementos"
   | "observacoes";
 
@@ -111,6 +114,10 @@ export default function InspecaoEditorPage({ params }: Props) {
     responsaveis,
     complementos,
     paeContatos,
+    treinamentos,
+    treinamentosSetor,
+    treinamentosCargo,
+    treinamentosRisco,
   } = data;
   const isConcluida = inspecao.status === "CONCLUIDA";
   // V2: usuários podem editar inspeções concluídas (spec exige).
@@ -124,6 +131,7 @@ export default function InspecaoEditorPage({ params }: Props) {
     { key: "fotos", label: "Fotos", icon: ImageIcon, count: fotos.length },
     { key: "responsaveis", label: "Responsáveis", icon: Users, count: responsaveis.length },
     { key: "pae", label: "PAE", icon: Siren, count: paeContatos.length },
+    { key: "treinamentos", label: "Treinamentos", icon: GraduationCap, count: treinamentos.length },
     { key: "complementos", label: "Complementos", icon: Sticker, count: complementos.length },
     { key: "observacoes", label: "Observações", icon: FileText, count: inspecao.observacoes ? 1 : 0 },
   ];
@@ -307,6 +315,20 @@ export default function InspecaoEditorPage({ params }: Props) {
               idInspecao={id}
               idEmpresa={inspecao.id_empresa}
               contatos={paeContatos}
+              readOnly={readOnly}
+            />
+          )}
+          {tab === "treinamentos" && (
+            <TreinamentosTab
+              idInspecao={id}
+              idEmpresa={inspecao.id_empresa}
+              setores={setores}
+              cargos={cargos}
+              riscos={riscos}
+              treinamentos={treinamentos}
+              treinamentosSetor={treinamentosSetor}
+              treinamentosCargo={treinamentosCargo}
+              treinamentosRisco={treinamentosRisco}
               readOnly={readOnly}
             />
           )}

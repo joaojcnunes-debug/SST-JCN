@@ -340,6 +340,38 @@ export interface Responsavel {
   data_hora: string | null;
 }
 
+// V11: Treinamento NR — direcionado por setor, cargo e/ou risco.
+export interface TreinamentoNR {
+  id_treinamento: string;
+  id_inspecao: string;
+  id_empresa: string;
+  nr: string;
+  titulo: string;
+  descricao: string | null;
+  carga_horaria: string | null;
+  periodicidade: string | null;
+  observacoes: string | null;
+  ordem: number;
+  ativo: boolean;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
+export interface TreinamentoSetorRel {
+  id_treinamento: string;
+  id_setor: string;
+}
+
+export interface TreinamentoCargoRel {
+  id_treinamento: string;
+  id_cargo: string;
+}
+
+export interface TreinamentoRiscoRel {
+  id_treinamento: string;
+  id_risco: string;
+}
+
 // V10: Plano de Ação e Emergência (PAE) — árvore de contatos
 // (nome/cargo/telefone) com hierarquia via id_parent.
 export interface PaeContato {
@@ -407,6 +439,10 @@ export interface Database {
       responsaveis: TableShape<Responsavel>;
       complementos: TableShape<Complemento>;
       pae_contatos: TableShape<PaeContato>;
+      treinamentos_nr: TableShape<TreinamentoNR>;
+      treinamentos_setor: TableShape<TreinamentoSetorRel>;
+      treinamentos_cargo: TableShape<TreinamentoCargoRel>;
+      treinamentos_risco: TableShape<TreinamentoRiscoRel>;
       usuarios: TableShape<Usuario>;
       configuracoes: TableShape<Configuracao>;
       tipos_risco: TableShape<TipoRiscoCustom>;
