@@ -5,8 +5,6 @@ import {
   Building2,
   ClipboardList,
   PlusCircle,
-  Users,
-  Settings,
   BarChart3,
   Target,
 } from "lucide-react";
@@ -25,21 +23,14 @@ const ACOES = [
   { href: "/acoes", label: "Plano de Ação", icon: Target },
 ];
 
-const ADMIN = [
-  { href: "/usuarios", label: "Usuários", icon: Users },
-  { href: "/config", label: "Configurações", icon: Settings },
-];
-
 export default function Sidebar() {
   const user = useUserStore((s) => s.user);
-  const isAdmin = user?.perfil === "Admin";
   const canEdit = user?.perfil === "Admin" || user?.perfil === "Tecnico";
 
   const sections: NavSection[] = [
     { label: "Principal", items: PRINCIPAL },
   ];
   if (canEdit) sections.push({ label: "Ações", items: ACOES });
-  if (isAdmin) sections.push({ label: "Admin", items: ADMIN });
 
   return (
     <SidebarShell

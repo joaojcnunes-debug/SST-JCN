@@ -13,7 +13,6 @@ import {
   Trash2,
   KeyRound,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import Modal from "@/components/ui/Modal";
 import Badge from "@/components/ui/Badge";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
@@ -21,7 +20,7 @@ import Pagination from "@/components/ui/Pagination";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
-import { useIsAdmin, useCurrentUser } from "@/lib/hooks/useUsuario";
+import { useCurrentUser } from "@/lib/hooks/useUsuario";
 import { usePagination } from "@/lib/hooks/usePagination";
 import { cn, gerarId } from "@/lib/utils";
 import type {
@@ -49,8 +48,6 @@ function useUsuarios() {
 }
 
 export default function UsuariosPage() {
-  const router = useRouter();
-  const isAdmin = useIsAdmin();
   const currentUser = useCurrentUser();
   const { data: usuarios = [], isLoading } = useUsuarios();
   const [busca, setBusca] = useState("");
@@ -75,17 +72,6 @@ export default function UsuariosPage() {
     },
     onError: (e: Error) => toast.error(e.message || "Falha ao excluir"),
   });
-
-  // Acesso: somente Admin pode entrar nesta tela
-  useEffect(() => {
-    if (!isAdmin) {
-      const t = setTimeout(() => {
-        toast.error("Apenas administradores podem acessar Usuários");
-        router.replace("/dashboard");
-      }, 200);
-      return () => clearTimeout(t);
-    }
-  }, [isAdmin, router]);
 
   const filtrados = usuarios.filter((u) => {
     if (!busca.trim()) return true;
@@ -359,10 +345,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             ativo_sistema: form.ativo_sistema,
             empresas_vinculadas:
               form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
-            modulos_permitidos:
-              form.perfil === "Admin"
-                ? [...TODOS_MODULOS]
-                : form.modulos_permitidos,
+            modulos_permitidos: form.modulos_permitidos,
           } as never)
           .eq("id_usuario", usuario.id_usuario);
         if (error) throw error;
@@ -428,10 +411,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         ativo_sistema: form.ativo_sistema,
         empresas_vinculadas:
           form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
-        modulos_permitidos:
-          form.perfil === "Admin"
-            ? [...TODOS_MODULOS]
-            : form.modulos_permitidos,
+        modulos_permitidos: form.modulos_permitidos,
       };
       const { error: errInsert } = await supabase
         .from("usuarios")
@@ -605,39 +585,31 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         )}
 
         <Field
-          label={
-            form.perfil === "Admin"
-              ? "Acesso aos módulos — Admin sempre acessa todos"
-              : `Acesso aos módulos — ${form.modulos_permitidos.length} de ${TODOS_MODULOS.length}`
-          }
+          label={`Acesso aos módulos — ${form.modulos_permitidos.length} de ${TODOS_MODULOS.length}`}
         >
           <div className="grid gap-2 rounded-md border border-gray-200 bg-white p-3 sm:grid-cols-2">
-            {TODOS_MODULOS.map((m) => {
-              const checked =
-                form.perfil === "Admin" || form.modulos_permitidos.includes(m);
-              const disabled = form.perfil === "Admin";
-              return (
-                <label
-                  key={m}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-gray-50",
-                    disabled && "cursor-not-allowed opacity-70"
-                  )}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    disabled={disabled}
-                    onChange={() => toggleModulo(m)}
-                    className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
-                  />
-                  <span className="text-sm text-gray-700">
-                    {ROTULO_MODULO[m]}
-                  </span>
-                </label>
-              );
-            })}
+            {TODOS_MODULOS.map((m) => (
+              <label
+                key={m}
+                className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-gray-50"
+              >
+                <input
+                  type="checkbox"
+                  checked={form.modulos_permitidos.includes(m)}
+                  onChange={() => toggleModulo(m)}
+                  className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                />
+                <span className="text-sm text-gray-700">
+                  {ROTULO_MODULO[m]}
+                </span>
+              </label>
+            ))}
           </div>
+          <p className="mt-1 text-[11px] text-gray-500">
+            Funções administrativas (gestão de usuários, configurações)
+            permanecem acessíveis a qualquer Admin, mesmo sem acesso a esses
+            módulos.
+          </p>
         </Field>
 
         <label className="flex items-center gap-2 text-sm">

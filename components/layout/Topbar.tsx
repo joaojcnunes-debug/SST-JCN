@@ -10,8 +10,6 @@ const TITLES: Record<string, string> = {
   "/inspecoes": "Inspeções",
   "/inspecoes/nova": "Nova Inspeção",
   "/relatorios": "Relatórios",
-  "/usuarios": "Usuários",
-  "/config": "Configurações",
 };
 
 function deriveTitle(pathname: string): string {

@@ -69,7 +69,6 @@ export default function InicioPage() {
   const isAdmin = user?.perfil === "Admin";
   const cards = CARDS.filter((c) => {
     if (!user) return false;
-    if (isAdmin) return true;
     const permitidos = user.modulos_permitidos ?? [];
     return permitidos.includes(c.modulo);
   });
