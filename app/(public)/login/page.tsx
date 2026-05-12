@@ -75,7 +75,7 @@ function LoginInner() {
 
       setUser(perfil);
       toast.success(`Bem-vindo, ${perfil.nome}!`);
-      const next = params.get("next") || "/dashboard";
+      const next = params.get("next") || "/inicio";
       router.replace(next);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao entrar";

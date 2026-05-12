@@ -15,6 +15,7 @@ import {
   X,
   BarChart3,
   Target,
+  Home,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -148,7 +149,14 @@ export default function Sidebar() {
         )}
       </nav>
 
-      <div className="border-t border-white/10 p-3">
+      <div className="border-t border-white/10 p-3 space-y-1">
+        <Link
+          href="/inicio"
+          onClick={() => setMobileOpen(false)}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+        >
+          <Home className="size-4" /> Início
+        </Link>
         <button
           type="button"
           onClick={handleLogout}
