@@ -9,6 +9,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   Users,
+  Cog,
+  Boxes,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
@@ -58,6 +60,22 @@ const CARDS: HubCardCfg[] = [
     description: "Itens em não conformidade e tratativas pendentes",
     icon: <AlertTriangle className="size-12" />,
     accent: "#DC2626",
+  },
+  {
+    modulo: "apreciacao_maquinas",
+    href: "/apreciacao-maquinas",
+    title: "Apreciação de Máquinas",
+    description: "Avaliação técnica de máquinas conforme NR-12",
+    icon: <Cog className="size-12" />,
+    accent: "#EA580C",
+  },
+  {
+    modulo: "inventario_maquinas",
+    href: "/inventario-maquinas",
+    title: "Inventário de Equipamentos",
+    description: "Máquinas e equipamentos internos da Chabra",
+    icon: <Boxes className="size-12" />,
+    accent: "#2563EB",
   },
 ];
 
@@ -165,7 +183,8 @@ export default function InicioPage() {
               cards.length === 1 && "max-w-sm",
               cards.length === 2 && "max-w-3xl sm:grid-cols-2",
               cards.length === 3 && "max-w-5xl sm:grid-cols-2 lg:grid-cols-3",
-              cards.length >= 4 && "max-w-4xl sm:grid-cols-2"
+              cards.length === 4 && "max-w-4xl sm:grid-cols-2",
+              cards.length >= 5 && "max-w-6xl sm:grid-cols-2 lg:grid-cols-3"
             )}
           >
             {cards.map((c) => (

@@ -13,13 +13,17 @@ export type ModuloPermitido =
   | "painel"
   | "psicossocial"
   | "conformidade"
-  | "nao_conformidade";
+  | "nao_conformidade"
+  | "apreciacao_maquinas"
+  | "inventario_maquinas";
 
 export const TODOS_MODULOS: ModuloPermitido[] = [
   "painel",
   "psicossocial",
   "conformidade",
   "nao_conformidade",
+  "apreciacao_maquinas",
+  "inventario_maquinas",
 ];
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
@@ -27,6 +31,8 @@ export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   psicossocial: "Psicossocial",
   conformidade: "Relatório de Conformidade",
   nao_conformidade: "Relatório de Não Conformidade",
+  apreciacao_maquinas: "Apreciação de Máquinas",
+  inventario_maquinas: "Inventário de Equipamentos",
 };
 
 export type TipoRisco =
