@@ -5,8 +5,11 @@ import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type {
   DrpsEmpresaConfig,
+  DrpsMonitoramento,
+  DrpsPlanoMedidas,
   DrpsProbabilidade,
   DrpsRespondente,
+  DrpsRevisao,
 } from "@/lib/drps/types";
 import type { LinhaParsed } from "@/lib/drps/calculos";
 
@@ -176,6 +179,157 @@ export function useDrpsSalvarProbabilidade() {
       qc.invalidateQueries({
         queryKey: ["drps-probabilidades", args.id_empresa],
       });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// =========================================================================
+// SUB-FASE 2B: gestão (plano anual, monitoramento, revisão)
+// =========================================================================
+
+export function useDrpsPlanoMedidas(
+  idEmpresa: string | null | undefined,
+  ano: number
+) {
+  return useQuery({
+    queryKey: ["drps-plano-medidas", idEmpresa, ano],
+    enabled: !!idEmpresa,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("drps_plano_medidas")
+        .select("*")
+        .eq("id_empresa", idEmpresa!)
+        .eq("ano", ano)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as DrpsPlanoMedidas | null;
+    },
+  });
+}
+
+export function useDrpsSalvarPlanoMedidas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id_empresa: string;
+      ano: number;
+      plano: DrpsPlanoMedidas["plano"];
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("drps_plano_medidas")
+        .upsert(
+          {
+            id_empresa: args.id_empresa,
+            ano: args.ano,
+            plano: args.plano,
+            updated_at: new Date().toISOString(),
+          } as never,
+          { onConflict: "id_empresa,ano" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: (_v, vars) => {
+      qc.invalidateQueries({
+        queryKey: ["drps-plano-medidas", vars.id_empresa, vars.ano],
+      });
+      toast.success("Plano salvo");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDrpsMonitoramento(idEmpresa: string | null | undefined) {
+  return useQuery({
+    queryKey: ["drps-monitoramento", idEmpresa],
+    enabled: !!idEmpresa,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("drps_monitoramento")
+        .select("*")
+        .eq("id_empresa", idEmpresa!);
+      if (error) throw error;
+      return (data ?? []) as unknown as DrpsMonitoramento[];
+    },
+  });
+}
+
+export function useDrpsSalvarMonitoramento() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (m: Partial<DrpsMonitoramento> & {
+      id_empresa: string;
+      setor: string;
+      topico_idx: number;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("drps_monitoramento")
+        .upsert(
+          {
+            ...m,
+            updated_at: new Date().toISOString(),
+          } as never,
+          { onConflict: "id_empresa,setor,topico_idx" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: (_v, vars) => {
+      qc.invalidateQueries({
+        queryKey: ["drps-monitoramento", vars.id_empresa],
+      });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDrpsRevisao(idEmpresa: string | null | undefined) {
+  return useQuery({
+    queryKey: ["drps-revisao", idEmpresa],
+    enabled: !!idEmpresa,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("drps_revisao")
+        .select("*")
+        .eq("id_empresa", idEmpresa!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as DrpsRevisao | null;
+    },
+  });
+}
+
+export function useDrpsSalvarRevisao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id_empresa: string;
+      checklist?: DrpsRevisao["checklist"];
+      equipe?: DrpsRevisao["equipe"];
+      anotacoes?: string | null;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("drps_revisao")
+        .upsert(
+          {
+            ...args,
+            updated_at: new Date().toISOString(),
+          } as never,
+          { onConflict: "id_empresa" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: (_v, vars) => {
+      qc.invalidateQueries({ queryKey: ["drps-revisao", vars.id_empresa] });
+      toast.success("Revisão salva");
     },
     onError: (e: Error) => toast.error(e.message),
   });

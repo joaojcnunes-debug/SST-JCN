@@ -33,6 +33,47 @@ export interface DrpsEmpresaConfig {
   updated_at: string;
 }
 
+export interface MedidaPlano {
+  /** 12 booleanos, índice = mês (0=Jan, 11=Dez) */
+  meses: boolean[];
+  responsavel: string;
+}
+
+export interface DrpsPlanoMedidas {
+  id_empresa: string;
+  ano: number;
+  plano: Record<string, MedidaPlano>; // chave = nome da ação
+  updated_at: string;
+}
+
+export type StatusMonitoramento =
+  | "Pendente"
+  | "Em Andamento"
+  | "Concluido"
+  | "Cancelado";
+
+export interface DrpsMonitoramento {
+  id_empresa: string;
+  setor: string;
+  topico_idx: number;
+  data_intervencao: string | null;
+  responsavel: string | null;
+  status: StatusMonitoramento;
+  proxima_avaliacao: string | null;
+  observacoes: string | null;
+  updated_at: string;
+}
+
+export interface DrpsRevisao {
+  id_empresa: string;
+  /** chave = id da ação obrigatória; valor = data ISO (se marcada) ou true/false */
+  checklist: Record<string, boolean | string>;
+  /** chave = id do membro da equipe; valor = boolean */
+  equipe: Record<string, boolean>;
+  anotacoes: string | null;
+  updated_at: string;
+}
+
 export type NivelGravidade = "Baixa" | "Média" | "Alta";
 export type NivelProbabilidade = "Baixa" | "Média" | "Alta";
 export type NivelMatriz = "Baixo" | "Médio" | "Alto" | "Crítico";
