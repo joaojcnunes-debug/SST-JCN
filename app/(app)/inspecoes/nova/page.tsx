@@ -82,25 +82,33 @@ function NovaInspecaoInner() {
     fotos: false,
   });
 
-  // Inspeções da empresa de origem (para REVISAO ou COPIA_EMPRESA).
-  // Em REVISAO a origem é a mesma do destino; em COPIA_EMPRESA o usuário escolhe.
-  const idOrigemEfetivo =
-    tipo === "REVISAO"
-      ? empresaDestinoId
-      : tipo === "COPIA_EMPRESA"
-      ? empresaOrigemId
-      : null;
+  // Inspeções da empresa destino — usadas para calcular o próximo número de
+  // revisão, sempre sequencial dentro da empresa independente do responsável
+  // ou do tipo de criação (BRANCO / REVISAO / COPIA_EMPRESA).
+  const { data: inspecoesDestino = [] } =
+    useInspecoesByEmpresa(empresaDestinoId);
 
-  const { data: inspecoesOrigem = [] } = useInspecoesByEmpresa(idOrigemEfetivo);
+  // Inspeções da empresa origem — só relevantes para COPIA_EMPRESA, onde a
+  // origem é diferente do destino. Em REVISAO, origem === destino, então
+  // reusamos inspecoesDestino.
+  const { data: inspecoesOrigemCopia = [] } = useInspecoesByEmpresa(
+    tipo === "COPIA_EMPRESA" ? empresaOrigemId : null
+  );
+
+  const inspecoesParaBase =
+    tipo === "REVISAO" ? inspecoesDestino : inspecoesOrigemCopia;
+
   const { data: baseFull } = useInspecao(
     tipo !== "BRANCO" ? inspBaseId : null
   );
 
   const proximaRevisao = useMemo(() => {
-    if (tipo !== "REVISAO") return 1;
-    const max = Math.max(0, ...inspecoesOrigem.map((i) => i.revisao ?? 0));
+    const max = Math.max(
+      0,
+      ...inspecoesDestino.map((i) => i.revisao ?? 0)
+    );
     return max + 1;
-  }, [tipo, inspecoesOrigem]);
+  }, [inspecoesDestino]);
 
   const create = useMutation({
     mutationFn: async () => {
@@ -359,7 +367,7 @@ function NovaInspecaoInner() {
 
             {tipo === "REVISAO" && (
               <SelectInspecaoBase
-                inspecoes={inspecoesOrigem}
+                inspecoes={inspecoesParaBase}
                 value={inspBaseId}
                 onChange={setInspBaseId}
                 proximaRevisao={proximaRevisao}
@@ -383,9 +391,10 @@ function NovaInspecaoInner() {
                 </div>
                 {empresaOrigemId && (
                   <SelectInspecaoBase
-                    inspecoes={inspecoesOrigem}
+                    inspecoes={inspecoesParaBase}
                     value={inspBaseId}
                     onChange={setInspBaseId}
+                    proximaRevisao={proximaRevisao}
                   />
                 )}
               </div>
@@ -418,6 +427,10 @@ function NovaInspecaoInner() {
         {step === 3 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Dados da inspeção</h2>
+            <div className="rounded-md border border-verde-primary/30 bg-verde-light/50 px-3 py-2 text-sm text-gray-700">
+              Esta inspeção será gravada como{" "}
+              <strong>Rev. {proximaRevisao}</strong> nesta empresa.
+            </div>
             <div>
               <label className="text-sm font-medium text-gray-700">
                 Data da inspeção
