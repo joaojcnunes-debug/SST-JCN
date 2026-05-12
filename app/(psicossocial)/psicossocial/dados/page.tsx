@@ -197,6 +197,25 @@ export default function DrpsDadosPage() {
                       </strong>{" "}
                       (esperado 93 por linha)
                     </li>
+                    {previa.diagnostico.amostraLinha && (
+                      <li className="mt-2">
+                        Amostra raw da 1ª linha de dados (primeiros 200
+                        chars):
+                        <pre className="mt-1 max-h-32 overflow-auto rounded bg-blue-100 p-2 font-mono text-[10px] text-blue-900 break-all whitespace-pre-wrap">
+                          {previa.diagnostico.amostraLinha}
+                        </pre>
+                      </li>
+                    )}
+                    {previa.diagnostico.codigosNaoAscii.length > 0 && (
+                      <li>
+                        Chars não-ASCII suspeitos encontrados:{" "}
+                        <strong className="font-mono">
+                          {previa.diagnostico.codigosNaoAscii
+                            .map((c) => `${c.code} (${c.char})`)
+                            .join(", ")}
+                        </strong>
+                      </li>
+                    )}
                   </ul>
                   {previa.diagnostico.colunasPorLinha.length > 0 &&
                     previa.diagnostico.colunasPorLinha.every(

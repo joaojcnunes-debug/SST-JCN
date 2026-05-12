@@ -182,10 +182,12 @@ export interface LinhaParsed {
 }
 
 export interface ParseDiagnostico {
-  separador: "tab" | "vírgula" | "ponto-e-vírgula";
+  separador: "tab" | "vírgula" | "ponto-e-vírgula" | "pipe";
   totalLinhas: number;
   pulouHeader: boolean;
   colunasPorLinha: number[]; // colunas detectadas nas primeiras 5 linhas de dados
+  amostraLinha: string; // primeiros 200 chars da 1ª linha de dados (debug)
+  codigosNaoAscii: { char: string; code: string }[]; // chars suspeitos da amostra
 }
 
 export interface ParseResult {
@@ -197,19 +199,26 @@ export interface ParseResult {
 const COLUNAS_ESPERADAS = 93; // data + setor + cargo + 90 respostas
 
 /**
- * Detecta o separador testando os 3 candidatos (tab, vírgula, ponto-e-vírgula)
- * em uma amostra das primeiras linhas e escolhendo o que produz MAIS colunas
- * em média. Mais robusto que olhar só contagem de chars na linha 1, porque
- * mistura ocasional (ex: 1 TAB invísivel entre data e hora num CSV) não
- * confunde a detecção.
+ * Detecta o separador testando candidatos em uma amostra das primeiras linhas
+ * e escolhendo o que produz MAIS colunas em média. Inclui variantes Unicode
+ * (vírgula fullwidth, pipe) que às vezes aparecem em pastes de fontes
+ * estranhas (PDFs, OCR, teclados asiáticos).
  */
+const SEPARADORES_CANDIDATOS = [
+  "\t", // tab
+  ",", // vírgula ASCII
+  ";", // ponto-e-vírgula
+  "|", // pipe
+  "，", // vírgula fullwidth (Chinês/Japonês)
+  "،", // vírgula árabe
+];
+
 function detectarSeparador(linhas: string[]): string {
   const amostra = linhas.slice(0, Math.min(10, linhas.length));
   if (amostra.length === 0) return ",";
-  const candidatos = ["\t", ",", ";"];
   let melhor = ",";
   let maxMedia = 0;
-  for (const sep of candidatos) {
+  for (const sep of SEPARADORES_CANDIDATOS) {
     let total = 0;
     for (const l of amostra) {
       total += parseLine(l, sep).length;
@@ -221,6 +230,15 @@ function detectarSeparador(linhas: string[]): string {
     }
   }
   return melhor;
+}
+
+function nomeSeparador(
+  sep: string
+): "tab" | "vírgula" | "ponto-e-vírgula" | "pipe" {
+  if (sep === "\t") return "tab";
+  if (sep === ";") return "ponto-e-vírgula";
+  if (sep === "|") return "pipe";
+  return "vírgula";
 }
 
 function pareceHeader(linha: string, sep: string): boolean {
@@ -312,6 +330,8 @@ export function parsearTexto(texto: string): ParseResult {
     totalLinhas: 0,
     pulouHeader: false,
     colunasPorLinha: [],
+    amostraLinha: "",
+    codigosNaoAscii: [],
   };
 
   if (!limpo) {
@@ -331,8 +351,7 @@ export function parsearTexto(texto: string): ParseResult {
 
   const primeiraLinha = linhasRaw[0];
   const sep = detectarSeparador(linhasRaw);
-  diagBase.separador =
-    sep === "\t" ? "tab" : sep === ";" ? "ponto-e-vírgula" : "vírgula";
+  diagBase.separador = nomeSeparador(sep);
   diagBase.pulouHeader = pareceHeader(primeiraLinha, sep);
 
   const dataLinhas = diagBase.pulouHeader ? linhasRaw.slice(1) : linhasRaw;
@@ -341,6 +360,22 @@ export function parsearTexto(texto: string): ParseResult {
   diagBase.colunasPorLinha = dataLinhas
     .slice(0, 5)
     .map((l) => parseLine(l, sep).length);
+
+  // Diagnóstico extra: amostra raw + chars não-ASCII suspeitos
+  const amostra = dataLinhas[0] ?? primeiraLinha;
+  diagBase.amostraLinha = amostra.slice(0, 200);
+  const codigos = new Map<string, string>();
+  for (const ch of amostra.slice(0, 500)) {
+    const code = ch.charCodeAt(0);
+    // Chars não-ASCII (>127) ou de controle exóticos (<32 mas não \t)
+    if (code > 127 || (code < 32 && code !== 9)) {
+      const key = `U+${code.toString(16).padStart(4, "0").toUpperCase()}`;
+      if (!codigos.has(key)) codigos.set(key, ch);
+    }
+  }
+  diagBase.codigosNaoAscii = Array.from(codigos.entries())
+    .slice(0, 10)
+    .map(([code, char]) => ({ char, code }));
 
   const resultado: LinhaParsed[] = [];
 
