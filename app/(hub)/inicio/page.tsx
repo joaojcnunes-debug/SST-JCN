@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 import type { ModuloPermitido } from "@/lib/supabase/types";
 
 interface HubCardCfg {
@@ -158,7 +159,15 @@ export default function InicioPage() {
         </div>
 
         {cards.length > 0 && (
-          <div className="grid w-full max-w-4xl grid-cols-1 gap-6 sm:grid-cols-2">
+          <div
+            className={cn(
+              "grid w-full gap-6 grid-cols-1",
+              cards.length === 1 && "max-w-sm",
+              cards.length === 2 && "max-w-3xl sm:grid-cols-2",
+              cards.length === 3 && "max-w-5xl sm:grid-cols-2 lg:grid-cols-3",
+              cards.length >= 4 && "max-w-4xl sm:grid-cols-2"
+            )}
+          >
             {cards.map((c) => (
               <HubCard key={c.modulo} {...c} />
             ))}
