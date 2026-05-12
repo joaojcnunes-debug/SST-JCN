@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Shield, Brain, LogOut } from "lucide-react";
+import { Shield, Brain, LogOut, CheckCircle2, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
@@ -86,7 +86,7 @@ export default function InicioPage() {
           </p>
         </div>
 
-        <div className="grid w-full max-w-3xl grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="grid w-full max-w-4xl grid-cols-1 gap-6 sm:grid-cols-2">
           <HubCard
             href="/dashboard"
             title="Painel SST"
@@ -100,6 +100,20 @@ export default function InicioPage() {
             description="Gestão de riscos psicossociais e IAPAT"
             icon={<Brain className="size-12" />}
             accent="#7C3AED"
+          />
+          <HubCard
+            href="/relatorio-conformidade"
+            title="Relatório de Conformidade"
+            description="Itens em conformidade por empresa, setor e NR"
+            icon={<CheckCircle2 className="size-12" />}
+            accent="#0D9488"
+          />
+          <HubCard
+            href="/relatorio-nao-conformidade"
+            title="Relatório de Não Conformidade"
+            description="Itens em não conformidade e tratativas pendentes"
+            icon={<AlertTriangle className="size-12" />}
+            accent="#DC2626"
           />
         </div>
 
