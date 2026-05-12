@@ -9,6 +9,26 @@ export type TipoCriacao = "BRANCO" | "REVISAO" | "COPIA_EMPRESA";
 export type StatusEmpresa = "Ativo" | "Inativa";
 export type PerfilUsuario = "Admin" | "Tecnico" | "Visualizador";
 
+export type ModuloPermitido =
+  | "painel"
+  | "psicossocial"
+  | "conformidade"
+  | "nao_conformidade";
+
+export const TODOS_MODULOS: ModuloPermitido[] = [
+  "painel",
+  "psicossocial",
+  "conformidade",
+  "nao_conformidade",
+];
+
+export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
+  painel: "Painel SST",
+  psicossocial: "Psicossocial",
+  conformidade: "Relatório de Conformidade",
+  nao_conformidade: "Relatório de Não Conformidade",
+};
+
 export type TipoRisco =
   | "Acidente"
   | "Ergonômico"
@@ -438,6 +458,7 @@ export interface Usuario {
   perfil: PerfilUsuario;
   ativo_sistema: boolean;
   empresas_vinculadas: string[];
+  modulos_permitidos?: ModuloPermitido[];
   senha_hash?: string | null;
   created_at?: string;
 }

@@ -5,6 +5,7 @@ import { Brain } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useRequireModule } from "@/lib/hooks/useRequireModule";
 
 const sections: NavSection[] = [
   {
@@ -21,6 +22,7 @@ export default function PsicossocialLayout({
   children: ReactNode;
 }) {
   useAuth();
+  useRequireModule("psicossocial");
 
   return (
     <div className="min-h-screen">

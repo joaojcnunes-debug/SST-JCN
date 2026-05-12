@@ -2,17 +2,77 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Shield, Brain, LogOut, CheckCircle2, AlertTriangle } from "lucide-react";
+import {
+  Shield,
+  Brain,
+  LogOut,
+  CheckCircle2,
+  AlertTriangle,
+  Users,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { ModuloPermitido } from "@/lib/supabase/types";
+
+interface HubCardCfg {
+  modulo: ModuloPermitido;
+  href: string;
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  accent: string;
+}
+
+const CARDS: HubCardCfg[] = [
+  {
+    modulo: "painel",
+    href: "/dashboard",
+    title: "Painel SST",
+    description: "Inspeções, riscos, ações 5W2H, treinamentos e relatórios",
+    icon: <Shield className="size-12" />,
+    accent: "#00835A",
+  },
+  {
+    modulo: "psicossocial",
+    href: "/psicossocial",
+    title: "Psicossocial",
+    description: "Gestão de riscos psicossociais e IAPAT",
+    icon: <Brain className="size-12" />,
+    accent: "#7C3AED",
+  },
+  {
+    modulo: "conformidade",
+    href: "/relatorio-conformidade",
+    title: "Relatório de Conformidade",
+    description: "Itens em conformidade por empresa, setor e NR",
+    icon: <CheckCircle2 className="size-12" />,
+    accent: "#0D9488",
+  },
+  {
+    modulo: "nao_conformidade",
+    href: "/relatorio-nao-conformidade",
+    title: "Relatório de Não Conformidade",
+    description: "Itens em não conformidade e tratativas pendentes",
+    icon: <AlertTriangle className="size-12" />,
+    accent: "#DC2626",
+  },
+];
 
 export default function InicioPage() {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
   const logout = useUserStore((s) => s.logout);
   const { data: configs } = useConfiguracoes();
+
+  const isAdmin = user?.perfil === "Admin";
+  const cards = CARDS.filter((c) => {
+    if (!user) return false;
+    if (isAdmin) return true;
+    const permitidos = user.modulos_permitidos ?? [];
+    return permitidos.includes(c.modulo);
+  });
 
   async function handleLogout() {
     try {
@@ -66,6 +126,16 @@ export default function InicioPage() {
               </p>
             </div>
           )}
+          {isAdmin && (
+            <Link
+              href="/usuarios"
+              className="flex items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20"
+              title="Gerenciar usuários"
+            >
+              <Users className="size-4" />
+              <span className="hidden sm:inline">Usuários</span>
+            </Link>
+          )}
           <button
             type="button"
             onClick={handleLogout}
@@ -82,40 +152,19 @@ export default function InicioPage() {
             Bem-vindo{user?.nome ? `, ${user.nome.split(" ")[0]}` : ""}
           </h1>
           <p className="mt-2 text-sm text-white/75 sm:text-base">
-            Escolha o sistema que deseja acessar
+            {cards.length > 0
+              ? "Escolha o sistema que deseja acessar"
+              : "Você ainda não tem acesso a nenhum módulo. Solicite acesso ao administrador."}
           </p>
         </div>
 
-        <div className="grid w-full max-w-4xl grid-cols-1 gap-6 sm:grid-cols-2">
-          <HubCard
-            href="/dashboard"
-            title="Painel SST"
-            description="Inspeções, riscos, ações 5W2H, treinamentos e relatórios"
-            icon={<Shield className="size-12" />}
-            accent="#00835A"
-          />
-          <HubCard
-            href="/psicossocial"
-            title="Psicossocial"
-            description="Gestão de riscos psicossociais e IAPAT"
-            icon={<Brain className="size-12" />}
-            accent="#7C3AED"
-          />
-          <HubCard
-            href="/relatorio-conformidade"
-            title="Relatório de Conformidade"
-            description="Itens em conformidade por empresa, setor e NR"
-            icon={<CheckCircle2 className="size-12" />}
-            accent="#0D9488"
-          />
-          <HubCard
-            href="/relatorio-nao-conformidade"
-            title="Relatório de Não Conformidade"
-            description="Itens em não conformidade e tratativas pendentes"
-            icon={<AlertTriangle className="size-12" />}
-            accent="#DC2626"
-          />
-        </div>
+        {cards.length > 0 && (
+          <div className="grid w-full max-w-4xl grid-cols-1 gap-6 sm:grid-cols-2">
+            {cards.map((c) => (
+              <HubCard key={c.modulo} {...c} />
+            ))}
+          </div>
+        )}
 
         <p className="mt-10 text-center text-xs text-white/50">
           © {new Date().getFullYear()} Chabra · Sistemas Internos

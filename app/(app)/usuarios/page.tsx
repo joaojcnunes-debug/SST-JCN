@@ -24,7 +24,12 @@ import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useIsAdmin, useCurrentUser } from "@/lib/hooks/useUsuario";
 import { usePagination } from "@/lib/hooks/usePagination";
 import { cn, gerarId } from "@/lib/utils";
-import type { PerfilUsuario, Usuario } from "@/lib/supabase/types";
+import type {
+  ModuloPermitido,
+  PerfilUsuario,
+  Usuario,
+} from "@/lib/supabase/types";
+import { ROTULO_MODULO, TODOS_MODULOS } from "@/lib/supabase/types";
 
 const PERFIS: PerfilUsuario[] = ["Admin", "Tecnico", "Visualizador"];
 
@@ -287,6 +292,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     perfil: "Tecnico" as PerfilUsuario,
     ativo_sistema: true,
     empresas_vinculadas: [] as string[],
+    modulos_permitidos: [...TODOS_MODULOS] as ModuloPermitido[],
   });
 
   useEffect(() => {
@@ -299,6 +305,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         perfil: usuario?.perfil ?? "Tecnico",
         ativo_sistema: usuario?.ativo_sistema ?? true,
         empresas_vinculadas: usuario?.empresas_vinculadas ?? [],
+        modulos_permitidos:
+          usuario?.modulos_permitidos ?? [...TODOS_MODULOS],
       });
     }
   }, [open, usuario]);
@@ -351,6 +359,10 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             ativo_sistema: form.ativo_sistema,
             empresas_vinculadas:
               form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
+            modulos_permitidos:
+              form.perfil === "Admin"
+                ? [...TODOS_MODULOS]
+                : form.modulos_permitidos,
           } as never)
           .eq("id_usuario", usuario.id_usuario);
         if (error) throw error;
@@ -416,6 +428,10 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         ativo_sistema: form.ativo_sistema,
         empresas_vinculadas:
           form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
+        modulos_permitidos:
+          form.perfil === "Admin"
+            ? [...TODOS_MODULOS]
+            : form.modulos_permitidos,
       };
       const { error: errInsert } = await supabase
         .from("usuarios")
@@ -464,6 +480,15 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
       empresas_vinculadas: f.empresas_vinculadas.includes(id)
         ? f.empresas_vinculadas.filter((x) => x !== id)
         : [...f.empresas_vinculadas, id],
+    }));
+  }
+
+  function toggleModulo(m: ModuloPermitido) {
+    setForm((f) => ({
+      ...f,
+      modulos_permitidos: f.modulos_permitidos.includes(m)
+        ? f.modulos_permitidos.filter((x) => x !== m)
+        : [...f.modulos_permitidos, m],
     }));
   }
 
@@ -578,6 +603,42 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             </div>
           </Field>
         )}
+
+        <Field
+          label={
+            form.perfil === "Admin"
+              ? "Acesso aos módulos — Admin sempre acessa todos"
+              : `Acesso aos módulos — ${form.modulos_permitidos.length} de ${TODOS_MODULOS.length}`
+          }
+        >
+          <div className="grid gap-2 rounded-md border border-gray-200 bg-white p-3 sm:grid-cols-2">
+            {TODOS_MODULOS.map((m) => {
+              const checked =
+                form.perfil === "Admin" || form.modulos_permitidos.includes(m);
+              const disabled = form.perfil === "Admin";
+              return (
+                <label
+                  key={m}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-gray-50",
+                    disabled && "cursor-not-allowed opacity-70"
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={disabled}
+                    onChange={() => toggleModulo(m)}
+                    className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                  />
+                  <span className="text-sm text-gray-700">
+                    {ROTULO_MODULO[m]}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        </Field>
 
         <label className="flex items-center gap-2 text-sm">
           <input
