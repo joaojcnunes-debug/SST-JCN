@@ -15,19 +15,16 @@ create table if not exists public.drps_respondentes (
   id_empresa       text not null references public.empresas(id_empresa) on delete cascade,
   setor            text not null,
   cargo            text,
-  -- 90 respostas inteiras 0..4 (9 tópicos × 10 perguntas, na ordem do spec)
+  -- 90 respostas inteiras 0..4 (9 tópicos × 10 perguntas, na ordem do spec).
+  -- O range 0..4 é garantido pelo parser do app (lib/drps/calculos.ts) que
+  -- clipa via Math.max(0, Math.min(4, v)). Não usamos CHECK com unnest()
+  -- porque Postgres não permite subqueries em check constraints.
   respostas        smallint[] not null,
   data_carimbo     timestamptz,
   importado_em     timestamptz not null default now(),
   -- agrupa importações para permitir "limpar última importação" e auditoria
   lote_importacao  uuid not null default gen_random_uuid(),
-  constraint drps_resp_tam check (cardinality(respostas) = 90),
-  constraint drps_resp_valores check (
-    not exists (
-      select 1 from unnest(respostas) v
-      where v < 0 or v > 4
-    )
-  )
+  constraint drps_resp_tam check (cardinality(respostas) = 90)
 );
 
 create index if not exists idx_drps_resp_empresa
