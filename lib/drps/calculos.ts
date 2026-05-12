@@ -196,15 +196,31 @@ export interface ParseResult {
 
 const COLUNAS_ESPERADAS = 93; // data + setor + cargo + 90 respostas
 
-function detectarSeparador(linha: string): string {
-  const tabs = (linha.match(/\t/g) || []).length;
-  const virgulas = (linha.match(/,/g) || []).length;
-  const pvs = (linha.match(/;/g) || []).length;
-  // Para 93 colunas precisamos ~92 separadores. Se tem 50+ tabs, é TSV.
-  if (tabs >= 50) return "\t";
-  if (tabs > 0 && tabs >= virgulas && tabs >= pvs) return "\t";
-  if (pvs > virgulas) return ";";
-  return ",";
+/**
+ * Detecta o separador testando os 3 candidatos (tab, vírgula, ponto-e-vírgula)
+ * em uma amostra das primeiras linhas e escolhendo o que produz MAIS colunas
+ * em média. Mais robusto que olhar só contagem de chars na linha 1, porque
+ * mistura ocasional (ex: 1 TAB invísivel entre data e hora num CSV) não
+ * confunde a detecção.
+ */
+function detectarSeparador(linhas: string[]): string {
+  const amostra = linhas.slice(0, Math.min(10, linhas.length));
+  if (amostra.length === 0) return ",";
+  const candidatos = ["\t", ",", ";"];
+  let melhor = ",";
+  let maxMedia = 0;
+  for (const sep of candidatos) {
+    let total = 0;
+    for (const l of amostra) {
+      total += parseLine(l, sep).length;
+    }
+    const media = total / amostra.length;
+    if (media > maxMedia) {
+      maxMedia = media;
+      melhor = sep;
+    }
+  }
+  return melhor;
 }
 
 function pareceHeader(linha: string, sep: string): boolean {
@@ -286,7 +302,11 @@ function parseDataBR(raw: string): string | null {
 
 export function parsearTexto(texto: string): ParseResult {
   const erros: string[] = [];
-  const limpo = texto.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+  const limpo = texto
+    .replace(/^﻿/, "") // remove BOM se vier do clipboard do Excel/Sheets
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .trim();
   const diagBase: ParseDiagnostico = {
     separador: "vírgula",
     totalLinhas: 0,
@@ -310,7 +330,7 @@ export function parsearTexto(texto: string): ParseResult {
   }
 
   const primeiraLinha = linhasRaw[0];
-  const sep = detectarSeparador(primeiraLinha);
+  const sep = detectarSeparador(linhasRaw);
   diagBase.separador =
     sep === "\t" ? "tab" : sep === ";" ? "ponto-e-vírgula" : "vírgula";
   diagBase.pulouHeader = pareceHeader(primeiraLinha, sep);
