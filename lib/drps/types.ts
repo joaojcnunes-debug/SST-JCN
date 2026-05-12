@@ -19,6 +19,20 @@ export interface DrpsProbabilidade {
   updated_at: string;
 }
 
+export interface DrpsEmpresaConfig {
+  id_empresa: string;
+  responsavel_tecnico: string | null;
+  crp: string | null;
+  data_elaboracao: string | null;
+  funcoes: string | null;
+  qtd_trabalhadores: number | null;
+  qtd_homens: number | null;
+  qtd_mulheres: number | null;
+  agravos_saude_mental: string | null;
+  medidas_existentes: string | null;
+  updated_at: string;
+}
+
 export type NivelGravidade = "Baixa" | "Média" | "Alta";
 export type NivelProbabilidade = "Baixa" | "Média" | "Alta";
 export type NivelMatriz = "Baixo" | "Médio" | "Alto" | "Crítico";

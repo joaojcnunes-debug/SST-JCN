@@ -144,13 +144,13 @@ export default function SidebarShell({
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        className="fixed left-3 top-3 z-40 flex size-10 items-center justify-center rounded-md bg-verde-dark text-white shadow md:hidden"
+        className="fixed left-3 top-3 z-40 flex size-10 items-center justify-center rounded-md bg-verde-dark text-white shadow md:hidden print:hidden"
         aria-label="Abrir menu"
       >
         <Menu className="size-5" />
       </button>
 
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col bg-verde-dark md:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col bg-verde-dark md:flex print:hidden">
         {Content}
       </aside>
 

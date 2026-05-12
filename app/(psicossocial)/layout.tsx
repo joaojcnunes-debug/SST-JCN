@@ -64,9 +64,9 @@ export default function PsicossocialLayout({
         logoHref="/psicossocial"
         sections={sections}
       />
-      <div className="md:pl-[220px]">
+      <div className="md:pl-[220px] print:pl-0">
         <ModuleTopbar title="DRPS — Diagnóstico de Riscos Psicossociais" />
-        <main className="px-4 py-6 md:px-6">{children}</main>
+        <main className="px-4 py-6 md:px-6 print:p-0">{children}</main>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type {
+  DrpsEmpresaConfig,
   DrpsProbabilidade,
   DrpsRespondente,
 } from "@/lib/drps/types";
@@ -106,6 +107,50 @@ export interface SalvarProbabilidadeArgs {
   setor: string;
   topico_idx: number;
   probabilidade: 1 | 2 | 3;
+}
+
+export function useDrpsEmpresaConfig(idEmpresa: string | null | undefined) {
+  return useQuery({
+    queryKey: ["drps-empresa-config", idEmpresa],
+    enabled: !!idEmpresa,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("drps_empresa_config")
+        .select("*")
+        .eq("id_empresa", idEmpresa!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as DrpsEmpresaConfig | null;
+    },
+  });
+}
+
+export function useDrpsSalvarEmpresaConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (cfg: Partial<DrpsEmpresaConfig> & { id_empresa: string }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("drps_empresa_config")
+        .upsert(
+          {
+            ...cfg,
+            updated_at: new Date().toISOString(),
+          } as never,
+          { onConflict: "id_empresa" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: (_v, vars) => {
+      qc.invalidateQueries({
+        queryKey: ["drps-empresa-config", vars.id_empresa],
+      });
+      toast.success("Configurações salvas");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 }
 
 export function useDrpsSalvarProbabilidade() {

@@ -13,7 +13,7 @@ export default function ModuleTopbar({ title }: { title: string }) {
       : "muted";
 
   return (
-    <header className="sticky top-0 z-20 flex h-[54px] items-center justify-between border-b border-black/10 bg-verde-primary px-4 md:px-6 text-white shadow-sm">
+    <header className="sticky top-0 z-20 flex h-[54px] items-center justify-between border-b border-black/10 bg-verde-primary px-4 md:px-6 text-white shadow-sm print:hidden">
       <h1 className="ml-12 md:ml-0 text-base font-semibold">{title}</h1>
       <div className="flex items-center gap-3">
         {user ? (
