@@ -163,15 +163,17 @@ export function aplicarMatriz(
 }
 
 /**
- * Parser tolerante de TSV/CSV colado do Google Sheets/Excel.
- * Espera primeira linha como header (Carimbo | Setor | Cargo | Q1..Q90)
- * e a partir da segunda linha, cada respondente.
+ * Parser tolerante de TSV/CSV colado do Google Sheets/Excel/Forms.
  *
- * Aceita separador TAB (colagem direta do Sheets) ou vírgula/ponto-e-vírgula.
- * Respostas devem ser inteiros 0..4 — valores fora desse range são clipados.
- *
- * Retorna { linhas: array, erros: array<string> }.
+ * Funcionalidades:
+ * - Detecta separador automaticamente (tab / vírgula / ponto-e-vírgula)
+ * - Detecta se a primeira linha é header (texto) ou já é dado (data)
+ * - Suporta CSV com campos entre aspas duplas ("valor, com vírgula")
+ * - Interpreta data BR (dd/mm/aaaa hh:mm:ss) e serial Excel
+ * - Respostas fora do range 0..4 são clipadas
+ * - Retorna diagnóstico detalhado pra o usuário entender o que rolou
  */
+
 export interface LinhaParsed {
   setor: string;
   cargo: string | null;
@@ -179,73 +181,189 @@ export interface LinhaParsed {
   data_carimbo: string | null;
 }
 
-export function parsearTexto(texto: string): {
+export interface ParseDiagnostico {
+  separador: "tab" | "vírgula" | "ponto-e-vírgula";
+  totalLinhas: number;
+  pulouHeader: boolean;
+  colunasPorLinha: number[]; // colunas detectadas nas primeiras 5 linhas de dados
+}
+
+export interface ParseResult {
   linhas: LinhaParsed[];
   erros: string[];
-} {
+  diagnostico: ParseDiagnostico;
+}
+
+const COLUNAS_ESPERADAS = 93; // data + setor + cargo + 90 respostas
+
+function detectarSeparador(linha: string): string {
+  const tabs = (linha.match(/\t/g) || []).length;
+  const virgulas = (linha.match(/,/g) || []).length;
+  const pvs = (linha.match(/;/g) || []).length;
+  // Para 93 colunas precisamos ~92 separadores. Se tem 50+ tabs, é TSV.
+  if (tabs >= 50) return "\t";
+  if (tabs > 0 && tabs >= virgulas && tabs >= pvs) return "\t";
+  if (pvs > virgulas) return ";";
+  return ",";
+}
+
+function pareceHeader(linha: string, sep: string): boolean {
+  const cols = parseLine(linha, sep);
+  const primeira = (cols[0] ?? "").trim().toLowerCase();
+  if (!primeira) return false;
+  // Palavras-chave típicas do header
+  const headerKeywords = ["carimbo", "timestamp", "data/hora", "qual o seu setor"];
+  for (const kw of headerKeywords) {
+    if (primeira.includes(kw)) return true;
+    if (cols.slice(0, 5).some((c) => c.toLowerCase().includes(kw))) return true;
+  }
+  // Data BR (dd/mm/aaaa) → não é header
+  if (/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(primeira)) return false;
+  // Serial Excel (>20000) → não é header
+  if (/^\d{5,}(\.\d+)?$/.test(primeira)) return false;
+  // ISO date → não é header
+  if (/^\d{4}-\d{2}-\d{2}/.test(primeira)) return false;
+  // Default: se primeira coluna não parece data nem número, trata como header
+  return true;
+}
+
+/** Parser de uma linha que respeita aspas duplas (CSV padrão). */
+function parseLine(linha: string, sep: string): string[] {
+  const out: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < linha.length; i++) {
+    const ch = linha[i];
+    if (ch === '"') {
+      if (inQuotes && linha[i + 1] === '"') {
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === sep && !inQuotes) {
+      out.push(cur);
+      cur = "";
+    } else {
+      cur += ch;
+    }
+  }
+  out.push(cur);
+  return out;
+}
+
+function parseDataBR(raw: string): string | null {
+  if (!raw) return null;
+  // Serial Excel
+  const asNum = parseFloat(raw);
+  if (!Number.isNaN(asNum) && asNum > 20000 && asNum < 100000) {
+    const ms = (asNum - 25569) * 86400 * 1000;
+    const d = new Date(ms);
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  // dd/mm/aaaa hh:mm:ss (formato BR do Google Forms)
+  const m = raw.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[\s,]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/
+  );
+  if (m) {
+    const [, dd, mm, yy, h, mi, s] = m;
+    const year = yy.length === 2 ? 2000 + parseInt(yy) : parseInt(yy);
+    const d = new Date(
+      year,
+      parseInt(mm) - 1,
+      parseInt(dd),
+      parseInt(h ?? "0"),
+      parseInt(mi ?? "0"),
+      parseInt(s ?? "0")
+    );
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  // Fallback: parser do JS
+  const d = new Date(raw);
+  if (!Number.isNaN(d.getTime())) return d.toISOString();
+  return null;
+}
+
+export function parsearTexto(texto: string): ParseResult {
   const erros: string[] = [];
-  const limpo = texto.replace(/\r\n/g, "\n").trim();
-  if (!limpo) return { linhas: [], erros: ["Texto vazio"] };
+  const limpo = texto.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
+  const diagBase: ParseDiagnostico = {
+    separador: "vírgula",
+    totalLinhas: 0,
+    pulouHeader: false,
+    colunasPorLinha: [],
+  };
 
-  // Detecta separador olhando a primeira linha
-  const primeiraLinha = limpo.split("\n")[0];
-  const sep = primeiraLinha.includes("\t")
-    ? "\t"
-    : primeiraLinha.split(";").length > primeiraLinha.split(",").length
-    ? ";"
-    : ",";
-
-  const linhas = limpo.split("\n");
-  if (linhas.length < 2) {
-    return { linhas: [], erros: ["Esperado header + pelo menos 1 respondente"] };
+  if (!limpo) {
+    return { linhas: [], erros: ["Texto vazio"], diagnostico: diagBase };
   }
 
+  const linhasRaw = limpo.split("\n").filter((l) => l.trim().length > 0);
+  diagBase.totalLinhas = linhasRaw.length;
+
+  if (linhasRaw.length === 0) {
+    return {
+      linhas: [],
+      erros: ["Nenhuma linha com conteúdo"],
+      diagnostico: diagBase,
+    };
+  }
+
+  const primeiraLinha = linhasRaw[0];
+  const sep = detectarSeparador(primeiraLinha);
+  diagBase.separador =
+    sep === "\t" ? "tab" : sep === ";" ? "ponto-e-vírgula" : "vírgula";
+  diagBase.pulouHeader = pareceHeader(primeiraLinha, sep);
+
+  const dataLinhas = diagBase.pulouHeader ? linhasRaw.slice(1) : linhasRaw;
+
+  // Diagnóstico: quantas colunas tem cada uma das primeiras 5 linhas de dados
+  diagBase.colunasPorLinha = dataLinhas
+    .slice(0, 5)
+    .map((l) => parseLine(l, sep).length);
+
   const resultado: LinhaParsed[] = [];
-  for (let i = 1; i < linhas.length; i++) {
-    const cols = linhas[i].split(sep);
-    if (cols.length < 93) {
+
+  for (let i = 0; i < dataLinhas.length; i++) {
+    const numLinhaOriginal = diagBase.pulouHeader ? i + 2 : i + 1;
+    const cols = parseLine(dataLinhas[i], sep);
+
+    if (cols.length < COLUNAS_ESPERADAS) {
       erros.push(
-        `Linha ${i + 1}: esperado 93 colunas (data + setor + cargo + 90 respostas), recebido ${cols.length}`
+        `Linha ${numLinhaOriginal}: ${cols.length} coluna(s) — esperado ${COLUNAS_ESPERADAS} (data + setor + cargo + 90 respostas)`
       );
       continue;
     }
-    const setor = cols[1]?.trim();
+
+    const setor = (cols[1] ?? "").trim();
     if (!setor) {
-      erros.push(`Linha ${i + 1}: setor vazio — ignorada`);
+      erros.push(`Linha ${numLinhaOriginal}: setor vazio`);
       continue;
     }
-    const cargo = cols[2]?.trim() || null;
+    const cargo = (cols[2] ?? "").trim() || null;
+
     const respostas: number[] = [];
     let parseOk = true;
-    for (let c = 3; c < 93; c++) {
-      const raw = cols[c]?.trim().replace(",", ".");
+    for (let c = 3; c < 3 + 90; c++) {
+      const raw = (cols[c] ?? "").trim().replace(",", ".");
+      if (raw === "") {
+        // Resposta em branco — assume 0 (não respondida)
+        respostas.push(0);
+        continue;
+      }
       const v = parseFloat(raw);
       if (Number.isNaN(v)) {
-        erros.push(`Linha ${i + 1}: resposta Q${c - 2} inválida ("${raw}")`);
+        erros.push(
+          `Linha ${numLinhaOriginal}: resposta Q${c - 2} inválida ("${raw}")`
+        );
         parseOk = false;
         break;
       }
-      // Clipa para 0..4
-      const clip = Math.max(0, Math.min(4, Math.round(v)));
-      respostas.push(clip);
+      respostas.push(Math.max(0, Math.min(4, Math.round(v))));
     }
     if (!parseOk) continue;
 
-    // Tenta interpretar coluna 0 como timestamp ISO ou serial Excel
-    const dataRaw = cols[0]?.trim();
-    let dataIso: string | null = null;
-    if (dataRaw) {
-      const asNum = parseFloat(dataRaw);
-      if (!Number.isNaN(asNum) && asNum > 20000) {
-        // Excel serial: dias desde 1899-12-30
-        const ms = (asNum - 25569) * 86400 * 1000;
-        const d = new Date(ms);
-        if (!Number.isNaN(d.getTime())) dataIso = d.toISOString();
-      } else {
-        const d = new Date(dataRaw);
-        if (!Number.isNaN(d.getTime())) dataIso = d.toISOString();
-      }
-    }
+    const dataIso = parseDataBR((cols[0] ?? "").trim());
 
     resultado.push({ setor, cargo, respostas, data_carimbo: dataIso });
   }
@@ -254,5 +372,5 @@ export function parsearTexto(texto: string): {
     erros.push("Nenhum respondente válido encontrado");
   }
 
-  return { linhas: resultado, erros };
+  return { linhas: resultado, erros, diagnostico: diagBase };
 }

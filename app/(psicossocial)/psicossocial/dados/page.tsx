@@ -166,11 +166,57 @@ export default function DrpsDadosPage() {
                     </>
                   )}
                 </div>
+
+                <details
+                  open={previa.linhas.length === 0}
+                  className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900"
+                >
+                  <summary className="cursor-pointer font-medium">
+                    Diagnóstico do parser
+                  </summary>
+                  <ul className="mt-2 space-y-0.5 pl-1">
+                    <li>
+                      Separador detectado:{" "}
+                      <strong>{previa.diagnostico.separador}</strong>
+                    </li>
+                    <li>
+                      Total de linhas com conteúdo:{" "}
+                      <strong>{previa.diagnostico.totalLinhas}</strong>
+                    </li>
+                    <li>
+                      Primeira linha tratada como header:{" "}
+                      <strong>
+                        {previa.diagnostico.pulouHeader ? "sim" : "não"}
+                      </strong>
+                    </li>
+                    <li>
+                      Colunas detectadas nas primeiras linhas de dados:{" "}
+                      <strong>
+                        [
+                        {previa.diagnostico.colunasPorLinha.join(", ") || "—"}]
+                      </strong>{" "}
+                      (esperado 93 por linha)
+                    </li>
+                  </ul>
+                  {previa.diagnostico.colunasPorLinha.length > 0 &&
+                    previa.diagnostico.colunasPorLinha.every(
+                      (n) => n < 93
+                    ) && (
+                      <p className="mt-2 rounded bg-blue-100 px-2 py-1">
+                        ⚠ Todas as linhas têm menos colunas que o esperado.
+                        Confira se: (a) você copiou todas as colunas (data +
+                        setor + cargo + 90 respostas), (b) o separador no
+                        Sheets é o mesmo da colagem, (c) não há quebra de
+                        linha dentro de respostas.
+                      </p>
+                    )}
+                </details>
+
                 {previa.erros.length > 0 && (
                   <details className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                     <summary className="cursor-pointer font-medium">
                       <AlertTriangle className="mr-1 inline size-3.5" />
-                      Avisos do parser
+                      Avisos do parser ({previa.erros.length})
                     </summary>
                     <ul className="mt-2 max-h-40 list-disc overflow-auto pl-5">
                       {previa.erros.slice(0, 50).map((e, i) => (
