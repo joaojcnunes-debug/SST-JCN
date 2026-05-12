@@ -7,9 +7,11 @@ import {
   Trash2,
   Database,
   AlertTriangle,
+  Eye,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
+import RespostasModal from "@/components/drps/RespostasModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useDrpsStore } from "@/lib/drps/store";
 import {
@@ -18,6 +20,7 @@ import {
   useDrpsRespondentes,
 } from "@/lib/hooks/useDrps";
 import { listarSetores, parsearTexto } from "@/lib/drps/calculos";
+import type { DrpsRespondente } from "@/lib/drps/types";
 
 export default function DrpsDadosPage() {
   const idEmpresa = useDrpsStore((s) => s.idEmpresa);
@@ -27,6 +30,8 @@ export default function DrpsDadosPage() {
 
   const [texto, setTexto] = useState("");
   const [confirmLimpar, setConfirmLimpar] = useState(false);
+  const [vendoRespondente, setVendoRespondente] =
+    useState<DrpsRespondente | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const previa = useMemo(() => {
@@ -303,6 +308,12 @@ export default function DrpsDadosPage() {
                       <th className="px-3 py-2 text-left font-medium">
                         Importado em
                       </th>
+                      <th className="px-3 py-2 text-center font-medium">
+                        Respostas
+                      </th>
+                      <th className="px-3 py-2 text-right font-medium">
+                        Ações
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -320,6 +331,19 @@ export default function DrpsDadosPage() {
                         <td className="px-3 py-2 text-gray-600">
                           {new Date(r.importado_em).toLocaleString("pt-BR")}
                         </td>
+                        <td className="px-3 py-2 text-center text-gray-600">
+                          {r.respostas.length}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setVendoRespondente(r)}
+                            className="inline-flex items-center gap-1 rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                            title="Ver respostas"
+                          >
+                            <Eye className="size-4" />
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -332,6 +356,11 @@ export default function DrpsDadosPage() {
               </div>
             </div>
           )}
+
+          <RespostasModal
+            respondente={vendoRespondente}
+            onClose={() => setVendoRespondente(null)}
+          />
 
           <ConfirmDialog
             open={confirmLimpar}
