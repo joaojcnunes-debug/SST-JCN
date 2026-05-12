@@ -133,11 +133,28 @@ export function calcularTopico(
   };
 }
 
-/** Calcula os 9 tópicos para um conjunto filtrado de respondentes. */
+/**
+ * Calcula os tópicos para um conjunto filtrado de respondentes.
+ * Suporta questionários reduzidos: se os respondentes têm menos de 90
+ * respostas (mas múltiplo de 10), só calcula os tópicos correspondentes.
+ * Ex.: 50 respostas → tópicos 0..4 (5 primeiros).
+ */
 export function calcularResumoCompleto(
   respondentesFiltrados: DrpsRespondente[]
 ): TopicoCalculado[] {
-  return TOPICOS.map((_, i) => calcularTopico(i, respondentesFiltrados));
+  if (respondentesFiltrados.length === 0) {
+    return TOPICOS.map((_, i) => calcularTopico(i, respondentesFiltrados));
+  }
+  const minRespostas = Math.min(
+    ...respondentesFiltrados.map((r) => r.respostas.length)
+  );
+  const numTopicos = Math.min(
+    TOPICOS.length,
+    Math.max(1, Math.floor(minRespostas / 10))
+  );
+  return TOPICOS.slice(0, numTopicos).map((_, i) =>
+    calcularTopico(i, respondentesFiltrados)
+  );
 }
 
 /**
@@ -196,7 +213,9 @@ export interface ParseResult {
   diagnostico: ParseDiagnostico;
 }
 
-const COLUNAS_ESPERADAS = 93; // data + setor + cargo + 90 respostas
+const META_COLS = 3; // data + setor + cargo
+const RESPOSTAS_MIN = 10; // pelo menos 1 tópico
+const RESPOSTAS_MAX = 90; // até 9 tópicos do spec
 
 /**
  * Parser CSV completo que respeita aspas duplas através de QUEBRAS DE LINHA.
@@ -408,15 +427,39 @@ export function parsearTexto(texto: string): ParseResult {
     .slice(0, 10)
     .map(([code, char]) => ({ char, code }));
 
+  // Detecta o número de respostas baseado na PRIMEIRA linha válida.
+  // Tem que ser múltiplo de 10 (cada tópico DRPS tem 10 perguntas).
+  // Trunca pra múltiplo de 10 mais próximo se vier um número estranho.
+  const primeiraDataLinha = dataLinhas[0];
+  let numRespostas = 0;
+  if (primeiraDataLinha) {
+    const candidato = primeiraDataLinha.length - META_COLS;
+    if (candidato >= RESPOSTAS_MIN) {
+      // Trunca pra múltiplo de 10
+      numRespostas = Math.min(
+        RESPOSTAS_MAX,
+        Math.floor(candidato / 10) * 10
+      );
+    }
+  }
+
+  if (numRespostas === 0) {
+    erros.push(
+      `Não foi possível detectar um número válido de respostas (precisa ser múltiplo de 10, entre 10 e 90). Primeira linha tinha ${primeiraDataLinha?.length ?? 0} colunas.`
+    );
+    return { linhas: [], erros, diagnostico: diagBase };
+  }
+
   const resultado: LinhaParsed[] = [];
+  const totalCols = META_COLS + numRespostas;
 
   for (let i = 0; i < dataLinhas.length; i++) {
     const numLinhaOriginal = diagBase.pulouHeader ? i + 2 : i + 1;
     const cols = dataLinhas[i];
 
-    if (cols.length < COLUNAS_ESPERADAS) {
+    if (cols.length < totalCols) {
       erros.push(
-        `Linha ${numLinhaOriginal}: ${cols.length} coluna(s) — esperado ${COLUNAS_ESPERADAS} (data + setor + cargo + 90 respostas)`
+        `Linha ${numLinhaOriginal}: ${cols.length} coluna(s) — esperado ${totalCols} (data + setor + cargo + ${numRespostas} respostas)`
       );
       continue;
     }
@@ -430,7 +473,7 @@ export function parsearTexto(texto: string): ParseResult {
 
     const respostas: number[] = [];
     let parseOk = true;
-    for (let c = 3; c < 3 + 90; c++) {
+    for (let c = META_COLS; c < META_COLS + numRespostas; c++) {
       const raw = (cols[c] ?? "").trim().replace(",", ".");
       if (raw === "") {
         respostas.push(0);
