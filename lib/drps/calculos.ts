@@ -199,10 +199,62 @@ export interface ParseResult {
 const COLUNAS_ESPERADAS = 93; // data + setor + cargo + 90 respostas
 
 /**
- * Detecta o separador testando candidatos em uma amostra das primeiras linhas
- * e escolhendo o que produz MAIS colunas em média. Inclui variantes Unicode
- * (vírgula fullwidth, pipe) que às vezes aparecem em pastes de fontes
- * estranhas (PDFs, OCR, teclados asiáticos).
+ * Parser CSV completo que respeita aspas duplas através de QUEBRAS DE LINHA.
+ * Isso é fundamental porque o Google Forms/Sheets exporta perguntas longas
+ * dentro de "..." e essas aspas podem conter \n no meio. Quebrar por \n
+ * antes de respeitar aspas faz o parser ver 90 linhas em vez de 1 (header).
+ *
+ * Convenção CSV padrão (RFC 4180):
+ * - Campos entre aspas duplas podem conter sep, \n, \r
+ * - Aspa dupla dentro de campo entre aspas é escapada como ""
+ */
+function parseCSV(texto: string, sep: string): string[][] {
+  const linhas: string[][] = [];
+  let linhaAtual: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < texto.length; i++) {
+    const ch = texto[i];
+
+    if (ch === '"') {
+      if (inQuotes && texto[i + 1] === '"') {
+        // Escape: "" dentro de campo entre aspas vira "
+        cur += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === sep && !inQuotes) {
+      linhaAtual.push(cur);
+      cur = "";
+    } else if (ch === "\n" && !inQuotes) {
+      linhaAtual.push(cur);
+      cur = "";
+      // Só adiciona linha se tem algum conteúdo
+      if (linhaAtual.some((c) => c.trim().length > 0)) {
+        linhas.push(linhaAtual);
+      }
+      linhaAtual = [];
+    } else {
+      cur += ch;
+    }
+  }
+
+  // Última célula/linha
+  if (cur.length > 0 || linhaAtual.length > 0) {
+    linhaAtual.push(cur);
+    if (linhaAtual.some((c) => c.trim().length > 0)) {
+      linhas.push(linhaAtual);
+    }
+  }
+
+  return linhas;
+}
+
+/**
+ * Detecta o separador rodando parseCSV completo com cada candidato e
+ * escolhendo o que produz mais colunas em média (e mais linhas).
  */
 const SEPARADORES_CANDIDATOS = [
   "\t", // tab
@@ -213,23 +265,28 @@ const SEPARADORES_CANDIDATOS = [
   "،", // vírgula árabe
 ];
 
-function detectarSeparador(linhas: string[]): string {
-  const amostra = linhas.slice(0, Math.min(10, linhas.length));
-  if (amostra.length === 0) return ",";
-  let melhor = ",";
-  let maxMedia = 0;
+function detectarSeparadorComLinhas(texto: string): {
+  sep: string;
+  linhas: string[][];
+} {
+  let melhorSep = ",";
+  let melhorLinhas: string[][] = [];
+  let melhorScore = 0;
   for (const sep of SEPARADORES_CANDIDATOS) {
-    let total = 0;
-    for (const l of amostra) {
-      total += parseLine(l, sep).length;
-    }
-    const media = total / amostra.length;
-    if (media > maxMedia) {
-      maxMedia = media;
-      melhor = sep;
+    const linhas = parseCSV(texto, sep);
+    if (linhas.length === 0) continue;
+    const totalCols = linhas.reduce((s, r) => s + r.length, 0);
+    const mediaCols = totalCols / linhas.length;
+    // Score = média de colunas (preferimos sep que dá muitas colunas por linha).
+    // Empate é desempatado por nº de linhas.
+    const score = mediaCols * 1000 + linhas.length;
+    if (score > melhorScore) {
+      melhorScore = score;
+      melhorSep = sep;
+      melhorLinhas = linhas;
     }
   }
-  return melhor;
+  return { sep: melhorSep, linhas: melhorLinhas };
 }
 
 function nomeSeparador(
@@ -241,8 +298,7 @@ function nomeSeparador(
   return "vírgula";
 }
 
-function pareceHeader(linha: string, sep: string): boolean {
-  const cols = parseLine(linha, sep);
+function pareceHeader(cols: string[]): boolean {
   const primeira = (cols[0] ?? "").trim().toLowerCase();
   if (!primeira) return false;
   // Palavras-chave típicas do header
@@ -259,31 +315,6 @@ function pareceHeader(linha: string, sep: string): boolean {
   if (/^\d{4}-\d{2}-\d{2}/.test(primeira)) return false;
   // Default: se primeira coluna não parece data nem número, trata como header
   return true;
-}
-
-/** Parser de uma linha que respeita aspas duplas (CSV padrão). */
-function parseLine(linha: string, sep: string): string[] {
-  const out: string[] = [];
-  let cur = "";
-  let inQuotes = false;
-  for (let i = 0; i < linha.length; i++) {
-    const ch = linha[i];
-    if (ch === '"') {
-      if (inQuotes && linha[i + 1] === '"') {
-        cur += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === sep && !inQuotes) {
-      out.push(cur);
-      cur = "";
-    } else {
-      cur += ch;
-    }
-  }
-  out.push(cur);
-  return out;
 }
 
 function parseDataBR(raw: string): string | null {
@@ -338,10 +369,14 @@ export function parsearTexto(texto: string): ParseResult {
     return { linhas: [], erros: ["Texto vazio"], diagnostico: diagBase };
   }
 
-  const linhasRaw = limpo.split("\n").filter((l) => l.trim().length > 0);
-  diagBase.totalLinhas = linhasRaw.length;
+  // Roda o parser CSV completo com detecção de separador. parseCSV respeita
+  // aspas duplas através de quebras de linha — fundamental porque o Forms
+  // exporta perguntas dentro de "..." e essas podem ter \n no meio.
+  const { sep, linhas } = detectarSeparadorComLinhas(limpo);
+  diagBase.separador = nomeSeparador(sep);
+  diagBase.totalLinhas = linhas.length;
 
-  if (linhasRaw.length === 0) {
+  if (linhas.length === 0) {
     return {
       linhas: [],
       erros: ["Nenhuma linha com conteúdo"],
@@ -349,25 +384,21 @@ export function parsearTexto(texto: string): ParseResult {
     };
   }
 
-  const primeiraLinha = linhasRaw[0];
-  const sep = detectarSeparador(linhasRaw);
-  diagBase.separador = nomeSeparador(sep);
-  diagBase.pulouHeader = pareceHeader(primeiraLinha, sep);
-
-  const dataLinhas = diagBase.pulouHeader ? linhasRaw.slice(1) : linhasRaw;
+  diagBase.pulouHeader = pareceHeader(linhas[0]);
+  const dataLinhas = diagBase.pulouHeader ? linhas.slice(1) : linhas;
 
   // Diagnóstico: quantas colunas tem cada uma das primeiras 5 linhas de dados
-  diagBase.colunasPorLinha = dataLinhas
-    .slice(0, 5)
-    .map((l) => parseLine(l, sep).length);
+  diagBase.colunasPorLinha = dataLinhas.slice(0, 5).map((l) => l.length);
 
   // Diagnóstico extra: amostra raw + chars não-ASCII suspeitos
-  const amostra = dataLinhas[0] ?? primeiraLinha;
-  diagBase.amostraLinha = amostra.slice(0, 200);
+  const amostraTxt =
+    dataLinhas[0]?.join(sep === "\t" ? "→" : sep) ??
+    linhas[0]?.join(sep === "\t" ? "→" : sep) ??
+    "";
+  diagBase.amostraLinha = amostraTxt.slice(0, 200);
   const codigos = new Map<string, string>();
-  for (const ch of amostra.slice(0, 500)) {
+  for (const ch of amostraTxt.slice(0, 500)) {
     const code = ch.charCodeAt(0);
-    // Chars não-ASCII (>127) ou de controle exóticos (<32 mas não \t)
     if (code > 127 || (code < 32 && code !== 9)) {
       const key = `U+${code.toString(16).padStart(4, "0").toUpperCase()}`;
       if (!codigos.has(key)) codigos.set(key, ch);
@@ -381,7 +412,7 @@ export function parsearTexto(texto: string): ParseResult {
 
   for (let i = 0; i < dataLinhas.length; i++) {
     const numLinhaOriginal = diagBase.pulouHeader ? i + 2 : i + 1;
-    const cols = parseLine(dataLinhas[i], sep);
+    const cols = dataLinhas[i];
 
     if (cols.length < COLUNAS_ESPERADAS) {
       erros.push(
@@ -402,7 +433,6 @@ export function parsearTexto(texto: string): ParseResult {
     for (let c = 3; c < 3 + 90; c++) {
       const raw = (cols[c] ?? "").trim().replace(",", ".");
       if (raw === "") {
-        // Resposta em branco — assume 0 (não respondida)
         respostas.push(0);
         continue;
       }
