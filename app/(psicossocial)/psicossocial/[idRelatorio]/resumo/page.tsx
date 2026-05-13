@@ -15,6 +15,13 @@ import {
   filtrarPorSetor,
 } from "@/lib/drps/calculos";
 import { TOPICOS } from "@/lib/drps/topicos";
+import type { NivelProbabilidade } from "@/lib/drps/types";
+
+const COR_PROBABILIDADE: Record<NivelProbabilidade, string> = {
+  Baixa: "#27ae60",
+  Média: "#f39c12",
+  Alta: "#e74c3c",
+};
 
 export default function ResumoPage({
   params,
@@ -140,8 +147,16 @@ export default function ResumoPage({
                       {t.classificacaoGravidade.texto}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-center text-gray-700">
-                    {t.classificacaoProbabilidade}
+                  <td className="px-3 py-2 text-center">
+                    <span
+                      className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold text-white"
+                      style={{
+                        backgroundColor:
+                          COR_PROBABILIDADE[t.classificacaoProbabilidade],
+                      }}
+                    >
+                      {t.classificacaoProbabilidade}
+                    </span>
                   </td>
                   <td className="px-3 py-2 text-center">
                     <span
