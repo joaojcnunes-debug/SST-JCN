@@ -15,6 +15,7 @@ import {
   Building2,
   BookOpen,
   Files,
+  FileEdit,
 } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
@@ -26,6 +27,16 @@ const SECTIONS_LISTA: NavSection[] = [
     label: "Psicossocial",
     items: [
       { href: "/psicossocial", label: "Relatórios DRPS", icon: Files },
+    ],
+  },
+  {
+    label: "Configuração",
+    items: [
+      {
+        href: "/psicossocial/texto-padrao",
+        label: "Texto Padrão",
+        icon: FileEdit,
+      },
     ],
   },
   {
@@ -66,6 +77,7 @@ function sectionsRelatorio(idRelatorio: string): NavSection[] {
       label: "Configuração",
       items: [
         { href: `${base}/metadados`, label: "Metadados do Relatório", icon: Building2 },
+        { href: "/psicossocial/texto-padrao", label: "Texto Padrão", icon: FileEdit },
       ],
     },
     {
@@ -86,7 +98,7 @@ function extrairIdRelatorio(pathname: string): string | null {
   if (!m) return null;
   const candidato = m[1];
   // Rotas reservadas que NÃO são ids
-  const reservadas = new Set(["novo", "ajuda", "criterios"]);
+  const reservadas = new Set(["novo", "ajuda", "criterios", "texto-padrao"]);
   if (reservadas.has(candidato)) return null;
   return candidato;
 }

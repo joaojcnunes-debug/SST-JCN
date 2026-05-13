@@ -11,6 +11,7 @@ import type {
   DrpsRelatorio,
   DrpsRespondente,
   DrpsRevisao,
+  DrpsTextoPadraoCapitulo,
   StatusRelatorio,
 } from "@/lib/drps/types";
 import type { LinhaParsed } from "@/lib/drps/calculos";
@@ -454,6 +455,102 @@ export function useDrpsSalvarRevisao() {
         queryKey: ["drps-revisao", vars.id_relatorio],
       });
       toast.success("Revisão salva");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// ============================================================
+// TEXTO PADRAO (capitulos globais do PDF)
+// ============================================================
+
+export function useDrpsTextoPadrao() {
+  return useQuery({
+    queryKey: ["drps-texto-padrao"],
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("drps_texto_padrao")
+        .select("*")
+        .eq("ativo", true)
+        .order("ordem", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as DrpsTextoPadraoCapitulo[];
+    },
+  });
+}
+
+export function useDrpsCriarCapitulo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      titulo: string;
+      conteudo?: string | null;
+      ordem?: number;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const id = gerarId("TXT");
+      const { error } = await supabase
+        .from("drps_texto_padrao")
+        .insert({
+          id_capitulo: id,
+          titulo: args.titulo,
+          conteudo: args.conteudo ?? null,
+          ordem: args.ordem ?? 0,
+          ativo: true,
+          created_at: new Date().toISOString(),
+        } as never);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drps-texto-padrao"] });
+      toast.success("Capítulo criado");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDrpsSalvarCapitulo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id_capitulo: string;
+      titulo?: string;
+      conteudo?: string | null;
+      ordem?: number;
+      ativo?: boolean;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { id_capitulo, ...rest } = args;
+      const { error } = await supabase
+        .from("drps_texto_padrao")
+        .update({ ...rest, updated_at: new Date().toISOString() } as never)
+        .eq("id_capitulo", id_capitulo);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drps-texto-padrao"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDrpsExcluirCapitulo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id_capitulo: string) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("drps_texto_padrao")
+        .delete()
+        .eq("id_capitulo", id_capitulo);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drps-texto-padrao"] });
+      toast.success("Capítulo excluído");
     },
     onError: (e: Error) => toast.error(e.message),
   });

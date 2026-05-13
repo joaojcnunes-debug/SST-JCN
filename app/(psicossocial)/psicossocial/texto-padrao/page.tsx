@@ -1,0 +1,269 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import {
+  Plus,
+  Save,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  BookOpen,
+} from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import {
+  useDrpsTextoPadrao,
+  useDrpsCriarCapitulo,
+  useDrpsSalvarCapitulo,
+  useDrpsExcluirCapitulo,
+} from "@/lib/hooks/useDrps";
+import type { DrpsTextoPadraoCapitulo } from "@/lib/drps/types";
+
+const TEMPLATE_INICIAL: { titulo: string; conteudo: string }[] = [
+  {
+    titulo: "1. Introdução",
+    conteudo:
+      "Este relatório apresenta o Diagnóstico de Riscos Psicossociais (DRPS) " +
+      "conduzido em conformidade com a NR-1 (Disposições Gerais e " +
+      "Gerenciamento de Riscos Ocupacionais) e a NR-17 (Ergonomia).",
+  },
+  {
+    titulo: "2. Objetivo",
+    conteudo:
+      "Identificar, avaliar e classificar os riscos psicossociais presentes " +
+      "no ambiente de trabalho, subsidiando o plano de ação preventivo e " +
+      "interventivo.",
+  },
+  {
+    titulo: "3. Metodologia",
+    conteudo:
+      "Aplicação de questionário estruturado (50 perguntas, 13 tópicos) aos " +
+      "trabalhadores; tabulação e cálculo da média de gravidade por tópico; " +
+      "definição da probabilidade pelo psicólogo responsável; cruzamento " +
+      "Gravidade × Probabilidade na matriz 3×3 de risco.",
+  },
+  {
+    titulo: "4. Considerações Finais",
+    conteudo:
+      "Recomenda-se monitoramento periódico, revisão anual do DRPS e " +
+      "implementação das medidas de controle conforme matriz de risco.",
+  },
+];
+
+export default function TextoPadraoPage() {
+  const { data: capitulos = [], isLoading } = useDrpsTextoPadrao();
+  const criar = useDrpsCriarCapitulo();
+  const salvar = useDrpsSalvarCapitulo();
+  const excluir = useDrpsExcluirCapitulo();
+
+  const [confirmExcluir, setConfirmExcluir] =
+    useState<DrpsTextoPadraoCapitulo | null>(null);
+
+  function novoCapitulo() {
+    const ordem = capitulos.length;
+    criar.mutate({
+      titulo: `Capítulo ${ordem + 1}`,
+      conteudo: "",
+      ordem,
+    });
+  }
+
+  function seedTemplate() {
+    let ordem = capitulos.length;
+    for (const tpl of TEMPLATE_INICIAL) {
+      criar.mutate({ titulo: tpl.titulo, conteudo: tpl.conteudo, ordem });
+      ordem++;
+    }
+  }
+
+  function mover(cap: DrpsTextoPadraoCapitulo, direcao: "up" | "down") {
+    const idx = capitulos.findIndex((c) => c.id_capitulo === cap.id_capitulo);
+    const novoIdx = direcao === "up" ? idx - 1 : idx + 1;
+    if (novoIdx < 0 || novoIdx >= capitulos.length) return;
+    const outro = capitulos[novoIdx];
+    salvar.mutate({ id_capitulo: cap.id_capitulo, ordem: outro.ordem });
+    salvar.mutate({ id_capitulo: outro.id_capitulo, ordem: cap.ordem });
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">Texto Padrão</h1>
+          <p className="text-sm text-gray-600">
+            Capítulos que entram no PDF de Análise e Avaliação. A ordem aqui é
+            a ordem que aparece no relatório. Use{" "}
+            <strong>Carregar modelo inicial</strong> para começar com sugestões
+            de Introdução, Objetivo, Metodologia e Considerações Finais.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {capitulos.length === 0 && !isLoading && (
+            <button
+              type="button"
+              onClick={seedTemplate}
+              disabled={criar.isPending}
+              className="inline-flex items-center gap-2 rounded-md border border-verde-primary bg-white px-3 py-2 text-sm font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+            >
+              <BookOpen className="size-4" /> Carregar modelo inicial
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={novoCapitulo}
+            disabled={criar.isPending}
+            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+          >
+            <Plus className="size-4" /> Novo Capítulo
+          </button>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+          <LoadingSkeleton rows={3} />
+        </div>
+      ) : capitulos.length === 0 ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-900">
+          Nenhum capítulo cadastrado ainda. Clique em{" "}
+          <strong>Carregar modelo inicial</strong> para popular com sugestões
+          ou em <strong>Novo Capítulo</strong> para começar do zero.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {capitulos.map((cap, i) => (
+            <CapituloCard
+              key={cap.id_capitulo}
+              capitulo={cap}
+              indice={i}
+              total={capitulos.length}
+              salvando={salvar.isPending}
+              onSalvar={(patch) =>
+                salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })
+              }
+              onMover={(dir) => mover(cap, dir)}
+              onExcluir={() => setConfirmExcluir(cap)}
+            />
+          ))}
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={!!confirmExcluir}
+        title="Excluir capítulo?"
+        description={
+          confirmExcluir
+            ? `O capítulo "${confirmExcluir.titulo}" será removido permanentemente.`
+            : undefined
+        }
+        variant="danger"
+        loading={excluir.isPending}
+        onConfirm={() => {
+          if (!confirmExcluir) return;
+          excluir.mutate(confirmExcluir.id_capitulo, {
+            onSuccess: () => setConfirmExcluir(null),
+          });
+        }}
+        onCancel={() => setConfirmExcluir(null)}
+      />
+    </div>
+  );
+}
+
+function CapituloCard({
+  capitulo,
+  indice,
+  total,
+  salvando,
+  onSalvar,
+  onMover,
+  onExcluir,
+}: {
+  capitulo: DrpsTextoPadraoCapitulo;
+  indice: number;
+  total: number;
+  salvando: boolean;
+  onSalvar: (patch: { titulo?: string; conteudo?: string | null }) => void;
+  onMover: (dir: "up" | "down") => void;
+  onExcluir: () => void;
+}) {
+  const [titulo, setTitulo] = useState(capitulo.titulo);
+  const [conteudo, setConteudo] = useState(capitulo.conteudo ?? "");
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    setTitulo(capitulo.titulo);
+    setConteudo(capitulo.conteudo ?? "");
+    setDirty(false);
+  }, [capitulo.id_capitulo, capitulo.titulo, capitulo.conteudo]);
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-2 flex items-start gap-2">
+        <div className="flex flex-col gap-0.5">
+          <button
+            type="button"
+            onClick={() => onMover("up")}
+            disabled={indice === 0}
+            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
+            title="Mover para cima"
+          >
+            <ChevronUp className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onMover("down")}
+            disabled={indice === total - 1}
+            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
+            title="Mover para baixo"
+          >
+            <ChevronDown className="size-4" />
+          </button>
+        </div>
+        <div className="flex-1">
+          <input
+            type="text"
+            value={titulo}
+            onChange={(e) => {
+              setTitulo(e.target.value);
+              setDirty(true);
+            }}
+            placeholder="Título do capítulo"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            onSalvar({
+              titulo: titulo.trim(),
+              conteudo: conteudo.trim() || null,
+            })
+          }
+          disabled={!dirty || salvando || !titulo.trim()}
+          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+        >
+          <Save className="size-3.5" /> Salvar
+        </button>
+        <button
+          type="button"
+          onClick={onExcluir}
+          className="rounded-md border border-gray-300 bg-white p-2 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+          title="Excluir"
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </div>
+      <textarea
+        value={conteudo}
+        onChange={(e) => {
+          setConteudo(e.target.value);
+          setDirty(true);
+        }}
+        placeholder="Conteúdo do capítulo (texto livre)..."
+        rows={5}
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+      />
+    </div>
+  );
+}

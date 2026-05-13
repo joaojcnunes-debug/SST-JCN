@@ -79,6 +79,20 @@ export interface DrpsMonitoramento {
   updated_at: string;
 }
 
+/**
+ * Texto padrao do relatorio DRPS — capitulos globais (intro/metodologia/etc)
+ * que entram no PDF. Nao vinculado a empresa/relatorio.
+ */
+export interface DrpsTextoPadraoCapitulo {
+  id_capitulo: string;
+  ordem: number;
+  titulo: string;
+  conteudo: string | null;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
 export interface DrpsRevisao {
   id_relatorio: string;
   id_empresa: string;
