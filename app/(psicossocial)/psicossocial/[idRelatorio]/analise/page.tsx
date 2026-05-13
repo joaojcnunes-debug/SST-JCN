@@ -544,7 +544,7 @@ export default function AnalisePage({
 
           <div className="drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
             {capitulos.length > 0 && (
-              <section className="drps-capitulos mb-6">
+              <section className="drps-capitulos mb-6 hidden print:block">
                 {capitulos.map((c) => {
                   const ehCapa = !!c.bg_imagem_url;
                   return (
