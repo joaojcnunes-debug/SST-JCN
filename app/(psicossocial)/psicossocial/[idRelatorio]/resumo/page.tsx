@@ -130,6 +130,12 @@ export default function ResumoPage({
                           probabilidade: v,
                         });
                       }}
+                      style={{
+                        backgroundColor:
+                          COR_PROBABILIDADE[t.classificacaoProbabilidade],
+                        color: "white",
+                        fontWeight: 600,
+                      }}
                       className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option value={1}>1 — Baixa</option>
