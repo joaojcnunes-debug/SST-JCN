@@ -25,6 +25,7 @@ import {
   CORES_MATRIZ,
   filtrarPorSetor,
 } from "@/lib/drps/calculos";
+import { TOPICOS } from "@/lib/drps/topicos";
 import type { NivelMatriz } from "@/lib/drps/types";
 
 const NIVEIS: NivelMatriz[] = ["Baixo", "Médio", "Alto", "Crítico"];
@@ -47,7 +48,7 @@ export default function DrpsDashboardPage() {
 
   const mapaProb = useMemo(() => {
     const m: Record<number, 1 | 2 | 3> = {};
-    for (let i = 0; i < 9; i++) m[i] = 1;
+    for (let i = 0; i < TOPICOS.length; i++) m[i] = 1;
     if (setor === "Todos") return m;
     for (const p of probabilidades) {
       if (p.setor === setor) {

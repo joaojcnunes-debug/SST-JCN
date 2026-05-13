@@ -224,14 +224,14 @@ export default function DrpsDadosPage() {
                   </ul>
                   {previa.diagnostico.colunasPorLinha.length > 0 &&
                     previa.diagnostico.colunasPorLinha.every(
-                      (n) => n < 93
+                      (n) => n < 53
                     ) && (
                       <p className="mt-2 rounded bg-blue-100 px-2 py-1">
-                        ⚠ Todas as linhas têm menos colunas que o esperado.
-                        Confira se: (a) você copiou todas as colunas (data +
-                        setor + cargo + 90 respostas), (b) o separador no
-                        Sheets é o mesmo da colagem, (c) não há quebra de
-                        linha dentro de respostas.
+                        ⚠ Todas as linhas têm menos colunas que o esperado
+                        (53). Confira se: (a) você copiou todas as colunas
+                        (data + cargo + setor + 50 respostas — nessa ordem),
+                        (b) o separador no Sheets é o mesmo da colagem, (c)
+                        não há quebra de linha dentro de respostas.
                       </p>
                     )}
                 </details>

@@ -16,6 +16,7 @@ import {
   filtrarPorSetor,
   listarSetores,
 } from "@/lib/drps/calculos";
+import { TOPICOS } from "@/lib/drps/topicos";
 import { formatCNPJ } from "@/lib/utils";
 import type {
   DrpsEmpresaConfig,
@@ -34,7 +35,7 @@ function montarMapaProb(
   setor: string
 ): Record<number, 1 | 2 | 3> {
   const m: Record<number, 1 | 2 | 3> = {};
-  for (let i = 0; i < 9; i++) m[i] = 1;
+  for (let i = 0; i < TOPICOS.length; i++) m[i] = 1;
   for (const p of probabilidades) {
     if (p.setor === setor) {
       m[p.topico_idx] = p.probabilidade as 1 | 2 | 3;

@@ -3,7 +3,7 @@
 // As regras vêm do spec PROMPT_DRPS_PSICOSSOCIAL.md (extraído da planilha
 // Excel original com 111+ respondentes reais).
 
-import { TOPICOS } from "./topicos";
+import { TOPICOS, TOTAL_PERGUNTAS } from "./topicos";
 import type {
   ClassificacaoGravidade,
   DrpsRespondente,
@@ -26,18 +26,46 @@ export const CORES_MATRIZ: Record<NivelMatriz, string> = {
   Crítico: COR_CRITICO,
 };
 
-/** Converte pontuação bruta em corrigida segundo a lógica da pergunta. */
+/**
+ * Converte pontuação bruta em corrigida segundo a lógica da pergunta.
+ * Aplica ROUNDUP (Math.ceil) ANTES da inversão, conforme fórmula do Excel:
+ *   =IF(UPPER(D)="INVERTIDA", 4 - ROUNDUP(media,0), ROUNDUP(media,0))
+ */
 export function pontuacaoCorrigida(
   valor: number,
   logica: "direta" | "invertida"
 ): number {
-  return logica === "invertida" ? 4 - valor : valor;
+  const arredondado = Math.ceil(valor);
+  return logica === "invertida" ? 4 - arredondado : arredondado;
 }
 
-/** Classifica gravidade a partir de uma pontuação corrigida 0..4. */
-export function classificarGravidade(pontuacao: number): ClassificacaoGravidade {
-  if (pontuacao < 1.5) return { texto: "Baixa", num: 1, cor: COR_BAIXA };
-  if (pontuacao < 2.5) return { texto: "Média", num: 2, cor: COR_MEDIA };
+/**
+ * Classifica gravidade individual de uma pergunta a partir da pontuação
+ * corrigida (inteira após ROUNDUP).
+ *   >= 3 → Alta (3)
+ *   == 2 → Média (2)
+ *   <= 1 → Baixa (1)
+ */
+export function classificarGravidade(
+  pontuacao: number
+): ClassificacaoGravidade {
+  if (pontuacao >= 3) return { texto: "Alta", num: 3, cor: COR_ALTA };
+  if (pontuacao === 2) return { texto: "Média", num: 2, cor: COR_MEDIA };
+  return { texto: "Baixa", num: 1, cor: COR_BAIXA };
+}
+
+/**
+ * Classifica gravidade do TÓPICO a partir da média dos gravidade.num das
+ * suas perguntas (limiares exatos extraídos da planilha modelo):
+ *   ≤ 1.66 → Baixa
+ *   ≤ 2.32 → Média
+ *   >  2.32 → Alta
+ */
+export function classificarGravidadeTopico(
+  mediaGravNum: number
+): ClassificacaoGravidade {
+  if (mediaGravNum <= 1.66) return { texto: "Baixa", num: 1, cor: COR_BAIXA };
+  if (mediaGravNum <= 2.32) return { texto: "Média", num: 2, cor: COR_MEDIA };
   return { texto: "Alta", num: 3, cor: COR_ALTA };
 }
 
@@ -100,7 +128,11 @@ function mediaColuna(
   return { media: n === 0 ? 0 : soma / n, n };
 }
 
-/** Calcula tudo de UM tópico (10 perguntas + média + classificação). */
+/**
+ * Calcula tudo de UM tópico: 1 entrada por pergunta + média de
+ * gravidade.num das perguntas + classificação do tópico (limiares próprios
+ * 1.66 / 2.32).
+ */
 export function calcularTopico(
   topicoIdx: number,
   respondentesFiltrados: DrpsRespondente[]
@@ -129,32 +161,15 @@ export function calcularTopico(
     fonteGeradora: t.fonteGeradora,
     perguntas,
     mediaGravidade,
-    classificacaoGravidade: classificarGravidade(mediaGravidade),
+    classificacaoGravidade: classificarGravidadeTopico(mediaGravidade),
   };
 }
 
-/**
- * Calcula os tópicos para um conjunto filtrado de respondentes.
- * Suporta questionários reduzidos: se os respondentes têm menos de 90
- * respostas (mas múltiplo de 10), só calcula os tópicos correspondentes.
- * Ex.: 50 respostas → tópicos 0..4 (5 primeiros).
- */
+/** Calcula os 13 tópicos para um conjunto filtrado de respondentes. */
 export function calcularResumoCompleto(
   respondentesFiltrados: DrpsRespondente[]
 ): TopicoCalculado[] {
-  if (respondentesFiltrados.length === 0) {
-    return TOPICOS.map((_, i) => calcularTopico(i, respondentesFiltrados));
-  }
-  const minRespostas = Math.min(
-    ...respondentesFiltrados.map((r) => r.respostas.length)
-  );
-  const numTopicos = Math.min(
-    TOPICOS.length,
-    Math.max(1, Math.floor(minRespostas / 10))
-  );
-  return TOPICOS.slice(0, numTopicos).map((_, i) =>
-    calcularTopico(i, respondentesFiltrados)
-  );
+  return TOPICOS.map((_, i) => calcularTopico(i, respondentesFiltrados));
 }
 
 /**
@@ -213,9 +228,7 @@ export interface ParseResult {
   diagnostico: ParseDiagnostico;
 }
 
-const META_COLS = 3; // data + setor + cargo
-const RESPOSTAS_MIN = 10; // pelo menos 1 tópico
-const RESPOSTAS_MAX = 90; // até 9 tópicos do spec
+const META_COLS = 3; // data + cargo + setor (ordem do Forms NR-01 50P)
 
 /**
  * Parser CSV completo que respeita aspas duplas através de QUEBRAS DE LINHA.
@@ -427,31 +440,10 @@ export function parsearTexto(texto: string): ParseResult {
     .slice(0, 10)
     .map(([code, char]) => ({ char, code }));
 
-  // Detecta o número de respostas baseado na PRIMEIRA linha válida.
-  // Tem que ser múltiplo de 10 (cada tópico DRPS tem 10 perguntas).
-  // Trunca pra múltiplo de 10 mais próximo se vier um número estranho.
-  const primeiraDataLinha = dataLinhas[0];
-  let numRespostas = 0;
-  if (primeiraDataLinha) {
-    const candidato = primeiraDataLinha.length - META_COLS;
-    if (candidato >= RESPOSTAS_MIN) {
-      // Trunca pra múltiplo de 10
-      numRespostas = Math.min(
-        RESPOSTAS_MAX,
-        Math.floor(candidato / 10) * 10
-      );
-    }
-  }
-
-  if (numRespostas === 0) {
-    erros.push(
-      `Não foi possível detectar um número válido de respostas (precisa ser múltiplo de 10, entre 10 e 90). Primeira linha tinha ${primeiraDataLinha?.length ?? 0} colunas.`
-    );
-    return { linhas: [], erros, diagnostico: diagBase };
-  }
-
+  // O modelo NR-01 50P tem 50 perguntas fixas → 53 colunas total
+  // (data + cargo + setor + 50 respostas).
+  const totalCols = META_COLS + TOTAL_PERGUNTAS;
   const resultado: LinhaParsed[] = [];
-  const totalCols = META_COLS + numRespostas;
 
   for (let i = 0; i < dataLinhas.length; i++) {
     const numLinhaOriginal = diagBase.pulouHeader ? i + 2 : i + 1;
@@ -459,21 +451,22 @@ export function parsearTexto(texto: string): ParseResult {
 
     if (cols.length < totalCols) {
       erros.push(
-        `Linha ${numLinhaOriginal}: ${cols.length} coluna(s) — esperado ${totalCols} (data + setor + cargo + ${numRespostas} respostas)`
+        `Linha ${numLinhaOriginal}: ${cols.length} coluna(s) — esperado ${totalCols} (data + cargo + setor + ${TOTAL_PERGUNTAS} respostas)`
       );
       continue;
     }
 
-    const setor = (cols[1] ?? "").trim();
+    // Ordem do Forms NR-01 50P: col0=data, col1=cargo, col2=setor
+    const cargo = (cols[1] ?? "").trim() || null;
+    const setor = (cols[2] ?? "").trim();
     if (!setor) {
-      erros.push(`Linha ${numLinhaOriginal}: setor vazio`);
+      erros.push(`Linha ${numLinhaOriginal}: setor vazio (coluna 3)`);
       continue;
     }
-    const cargo = (cols[2] ?? "").trim() || null;
 
     const respostas: number[] = [];
     let parseOk = true;
-    for (let c = META_COLS; c < META_COLS + numRespostas; c++) {
+    for (let c = META_COLS; c < META_COLS + TOTAL_PERGUNTAS; c++) {
       const raw = (cols[c] ?? "").trim().replace(",", ".");
       if (raw === "") {
         respostas.push(0);

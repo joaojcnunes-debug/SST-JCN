@@ -19,15 +19,11 @@ interface Props {
 export default function RespostasModal({ respondente, onClose }: Props) {
   const blocos = useMemo(() => {
     if (!respondente) return [];
-    const numTopicos = Math.min(
-      TOPICOS.length,
-      Math.floor(respondente.respostas.length / 10)
-    );
-    return TOPICOS.slice(0, numTopicos).map((t, ti) => ({
+    return TOPICOS.map((t, ti) => ({
       idx: ti,
       nome: t.nome,
       perguntas: t.perguntas.map((p, pi) => {
-        const resp = respondente.respostas[ti * 10 + pi] ?? 0;
+        const resp = respondente.respostas[t.colunaInicio + pi] ?? 0;
         const corrigida = pontuacaoCorrigida(resp, p.logica);
         const grav = classificarGravidade(corrigida);
         return {

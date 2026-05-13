@@ -1,20 +1,23 @@
-// DRPS — Tópicos e perguntas do questionário NR-01 psicossocial.
+// DRPS — Tópicos e perguntas do questionário NR-01 (modelo NR_01_50P_Atual_13F).
 //
-// São 9 tópicos × 10 perguntas = 90 perguntas, na ordem das colunas D–CO
-// da planilha de origem. Cada pergunta tem lógica "direta" (quanto maior
-// a resposta, maior o risco) ou "invertida" (resposta alta = proteção,
-// pontuação é convertida via 4 - valor antes de classificar).
+// 13 tópicos com número variável de perguntas (5, 5, 4, 4, 3, 4, 4, 3, 4, 4, 3,
+// 4, 3 = 50 perguntas), ocupando as colunas D a BA do CSV exportado do Forms.
+// Cada pergunta tem lógica "direta" (resposta alta = risco alto) ou
+// "invertida" (resposta alta = proteção; pontuação convertida via 4 - valor).
 
 export type LogicaPergunta = "direta" | "invertida";
 
 export interface PerguntaDRPS {
+  num: number;
   texto: string;
   logica: LogicaPergunta;
 }
 
 export interface TopicoDRPS {
+  id: string;
   nome: string;
-  /** Índice da primeira pergunta deste tópico no array de 90 respostas (0-based). */
+  nomeAbreviado: string;
+  /** Índice da primeira pergunta deste tópico no array de respostas (0-based). */
   colunaInicio: number;
   /** Fonte geradora padrão (pré-preenchida no relatório DRPS). */
   fonteGeradora: string;
@@ -23,168 +26,192 @@ export interface TopicoDRPS {
 
 export const TOPICOS: TopicoDRPS[] = [
   {
-    nome: "Assédio Moral e Sexual",
+    id: "T01",
+    nome: "Tópico 01 - Assédio de qualquer natureza no trabalho",
+    nomeAbreviado: "Assédio no Trabalho",
     colunaInicio: 0,
     fonteGeradora:
-      "Relações de trabalho abusivas, comunicação violenta e importunação sexual.",
+      "Cultura permissiva a desrespeito; ausência de canal de denúncia; liderança despreparada; comunicação violenta.",
     perguntas: [
-      { texto: "1. Você já presenciou ou sofreu comentários ofensivos, piadas ou insinuações inadequadas?", logica: "direta" },
-      { texto: "2. Você se sente à vontade para relatar situações de assédio sem medo de retaliação?", logica: "invertida" },
-      { texto: "3. Existe canal seguro e sigiloso para denunciar assédio na empresa?", logica: "invertida" },
-      { texto: "4. Você já recebeu tratamento desrespeitoso ou humilhante de colegas ou superiores?", logica: "direta" },
-      { texto: "5. Você sente que há favoritismo ou perseguição por parte da liderança?", logica: "direta" },
-      { texto: "6. Há casos de assédio não investigados ou punidos?", logica: "direta" },
-      { texto: "7. A empresa realiza treinamentos sobre assédio?", logica: "invertida" },
-      { texto: "8. O RH e gestores demonstram comprometimento com prevenção do assédio?", logica: "invertida" },
-      { texto: "9. Você já foi forçado(a) a realizar tarefas humilhantes?", logica: "direta" },
-      { texto: "10. Existe cultura de brincadeiras que desrespeitam funcionários?", logica: "direta" },
+      { num: 1, texto: "Você já presenciou ou sofreu comentários ofensivos, piadas ou insinuações inadequadas no ambiente de trabalho?", logica: "direta" },
+      { num: 2, texto: "Você se sente à vontade para relatar situações de assédio moral ou sexual na empresa sem medo de represálias?", logica: "invertida" },
+      { num: 3, texto: "Existe um canal seguro e sigiloso para denunciar assédio na empresa?", logica: "invertida" },
+      { num: 4, texto: "Há casos conhecidos de assédio moral ou sexual que não foram devidamente investigados ou punidos?", logica: "direta" },
+      { num: 5, texto: "O RH e os gestores demonstram comprometimento real com a prevenção do assédio?", logica: "invertida" },
     ],
   },
   {
-    nome: "Carga Excessiva de Trabalho",
+    id: "T02",
+    nome: "Tópico 02 - Falta de suporte/apoio no trabalho",
+    nomeAbreviado: "Falta de Suporte",
+    colunaInicio: 5,
+    fonteGeradora:
+      "Liderança ausente; falta de escuta; cobrança sem acompanhamento; RH pouco atuante.",
+    perguntas: [
+      { num: 1, texto: "Você sente que pode contar com seus colegas em momentos de dificuldade?", logica: "invertida" },
+      { num: 2, texto: "Existe apoio da liderança para lidar com desafios relacionados ao trabalho?", logica: "invertida" },
+      { num: 3, texto: "O RH está presente e atuante quando surgem conflitos ou dificuldades no trabalho?", logica: "invertida" },
+      { num: 4, texto: "Os gestores promovem um ambiente saudável e respeitoso?", logica: "invertida" },
+      { num: 5, texto: "Você sente que pode expressar suas dificuldades no trabalho sem ser julgado(a)?", logica: "invertida" },
+    ],
+  },
+  {
+    id: "T03",
+    nome: "Tópico 03 - Má gestão de mudanças organizacionais",
+    nomeAbreviado: "Gestão de Mudanças",
     colunaInicio: 10,
     fonteGeradora:
-      "Metas irrealistas, jornadas prolongadas, horas extras excessivas e má distribuição de cargos.",
+      "Comunicação inadequada; mudanças abruptas; falta de planejamento; insegurança quanto à estabilidade.",
     perguntas: [
-      { texto: "1. Sua carga de trabalho diária é superior à sua capacidade dentro do horário normal?", logica: "direta" },
-      { texto: "2. Você frequentemente faz horas extras ou leva trabalho para casa?", logica: "direta" },
-      { texto: "3. As demandas e prazos são realistas e atingíveis?", logica: "invertida" },
-      { texto: "4. A empresa respeita seus limites físicos e mentais?", logica: "invertida" },
-      { texto: "5. Você recebe pausas adequadas ao longo do dia?", logica: "invertida" },
-      { texto: "6. Existe equilíbrio entre tarefas administrativas e operacionais?", logica: "invertida" },
-      { texto: "7. Há redistribuição de tarefas quando há sobrecarga?", logica: "invertida" },
-      { texto: "8. Você já teve sintomas físicos ou emocionais devido ao excesso de trabalho?", logica: "direta" },
-      { texto: "9. Existe flexibilidade para gerenciar sua carga de trabalho?", logica: "invertida" },
-      { texto: "10. A equipe é dimensionada corretamente para a demanda?", logica: "invertida" },
+      { num: 1, texto: "Mudanças organizacionais impactaram negativamente seu sentimento de segurança no trabalho?", logica: "direta" },
+      { num: 2, texto: "Há comunicação clara sobre mudanças que afetam a empresa ou os trabalhadores?", logica: "invertida" },
+      { num: 3, texto: "Você já sentiu que seu emprego estava ameaçado sem explicações claras durante períodos de mudança?", logica: "direta" },
+      { num: 4, texto: "Existe transparência na comunicação da empresa durante processos de mudança?", logica: "invertida" },
     ],
   },
   {
-    nome: "Reconhecimento e Recompensas",
-    colunaInicio: 20,
+    id: "T04",
+    nome: "Tópico 04 - Baixa clareza de papel/função",
+    nomeAbreviado: "Clareza de Função",
+    colunaInicio: 14,
     fonteGeradora:
-      "Gestão pouco humanizada e administração precária de recursos.",
+      "Falta de definição de responsabilidades; ordens contraditórias; comunicação confusa; atribuições mal definidas.",
     perguntas: [
-      { texto: "1. Seu esforço e desempenho são reconhecidos pela liderança?", logica: "invertida" },
-      { texto: "2. A empresa possui políticas claras de promoção e progressão de carreira?", logica: "invertida" },
-      { texto: "3. As avaliações de desempenho são justas e transparentes?", logica: "invertida" },
-      { texto: "4. Há igualdade no reconhecimento entre diferentes áreas?", logica: "invertida" },
-      { texto: "5. A empresa oferece incentivos pelo bom desempenho?", logica: "invertida" },
-      { texto: "6. Você recebe feedback construtivo regularmente?", logica: "invertida" },
-      { texto: "7. Existe cultura de valorização dos funcionários?", logica: "invertida" },
-      { texto: "8. Você já se sentiu desmotivado(a) por falta de reconhecimento?", logica: "direta" },
-      { texto: "9. A empresa celebra conquistas individuais e coletivas?", logica: "invertida" },
-      { texto: "10. O plano de benefícios é condizente com suas necessidades?", logica: "invertida" },
+      { num: 1, texto: "Você recebe instruções claras sobre suas responsabilidades no trabalho?", logica: "invertida" },
+      { num: 2, texto: "A comunicação da empresa ajuda você a entender o que é esperado do seu trabalho?", logica: "invertida" },
+      { num: 3, texto: "A comunicação entre equipes e setores contribui para a clareza das suas tarefas?", logica: "invertida" },
+      { num: 4, texto: "Você se sente confortável para pedir esclarecimentos quando não entende suas funções ou prioridades?", logica: "invertida" },
     ],
   },
   {
-    nome: "Clima Organizacional",
-    colunaInicio: 30,
+    id: "T05",
+    nome: "Tópico 05 - Baixas recompensas e reconhecimento",
+    nomeAbreviado: "Recompensas",
+    colunaInicio: 18,
     fonteGeradora:
-      "Autoritarismo, gestão centralizadora e ausência de regras de bom convívio.",
+      "Ausência de feedback; foco exclusivo em metas; reconhecimento desigual; falta de plano de crescimento.",
     perguntas: [
-      { texto: "1. O ambiente de trabalho é amigável e colaborativo?", logica: "invertida" },
-      { texto: "2. Existe sentimento de confiança entre os colegas?", logica: "invertida" },
-      { texto: "3. Você se sente confortável para expressar suas opiniões?", logica: "invertida" },
-      { texto: "4. Os gestores promovem um ambiente saudável e respeitoso?", logica: "invertida" },
-      { texto: "5. Existe transparência na comunicação da empresa?", logica: "invertida" },
-      { texto: "6. Você pode contar com seus colegas em momentos de dificuldade?", logica: "invertida" },
-      { texto: "7. Há senso de propósito e pertencimento entre os funcionários?", logica: "invertida" },
-      { texto: "8. Conflitos são resolvidos de forma justa e eficiente?", logica: "invertida" },
-      { texto: "9. O ambiente físico do local de trabalho é confortável e seguro?", logica: "invertida" },
-      { texto: "10. A cultura organizacional está alinhada com seus valores pessoais?", logica: "invertida" },
+      { num: 1, texto: "Você sente que seu esforço e desempenho são reconhecidos pela liderança?", logica: "invertida" },
+      { num: 2, texto: "Você recebe feedback construtivo sobre o seu trabalho com regularidade?", logica: "invertida" },
+      { num: 3, texto: "Com que frequência você já se sentiu desmotivado(a) por falta de reconhecimento no trabalho?", logica: "direta" },
     ],
   },
   {
-    nome: "Autonomia e Controle sobre o Trabalho",
+    id: "T06",
+    nome: "Tópico 06 - Baixo controle no trabalho / Falta de autonomia",
+    nomeAbreviado: "Autonomia",
+    colunaInicio: 21,
+    fonteGeradora:
+      "Microgestão; excesso de burocracia; centralização de decisões; baixa confiança na equipe.",
+    perguntas: [
+      { num: 1, texto: "Você tem liberdade para tomar decisões sobre como executar suas tarefas diárias?", logica: "invertida" },
+      { num: 2, texto: "A empresa confia na sua capacidade de organizar e gerenciar o próprio trabalho?", logica: "invertida" },
+      { num: 3, texto: "Existe excesso de controle ou burocracia que interfere no seu desempenho?", logica: "direta" },
+      { num: 4, texto: "Existe excesso de supervisão que impacte negativamente sua produtividade ou bem-estar?", logica: "direta" },
+    ],
+  },
+  {
+    id: "T07",
+    nome: "Tópico 07 - Baixa justiça organizacional",
+    nomeAbreviado: "Justiça Organizacional",
+    colunaInicio: 25,
+    fonteGeradora:
+      "Critérios pouco transparentes; favorecimento; desigualdade de tratamento; decisões pouco claras.",
+    perguntas: [
+      { num: 1, texto: "Você acha justas e claras as formas que a empresa usa para avaliar o seu trabalho?", logica: "invertida" },
+      { num: 2, texto: "Você sente que há igualdade no reconhecimento entre diferentes áreas ou equipes?", logica: "invertida" },
+      { num: 3, texto: "Você sente que há transparência nas decisões de desligamento na empresa?", logica: "invertida" },
+      { num: 4, texto: "Você já presenciou casos de demissões que considerasse injustas?", logica: "direta" },
+    ],
+  },
+  {
+    id: "T08",
+    nome: "Tópico 08 - Eventos violentos ou traumáticos",
+    nomeAbreviado: "Eventos Traumáticos",
+    colunaInicio: 29,
+    fonteGeradora:
+      "Falta de protocolos de segurança; exposição a risco; ausência de treinamento; falta de suporte pós-evento.",
+    perguntas: [
+      { num: 1, texto: "Você já vivenciou ou presenciou alguma situação de violência grave no trabalho (como agressão física, ameaça séria ou ataque)?", logica: "direta" },
+      { num: 2, texto: "Você já passou por algum evento grave no trabalho (como acidente sério, situação de risco extremo ou episódio muito impactante)?", logica: "direta" },
+      { num: 3, texto: "Alguma situação vivida no trabalho já foi tão marcante que deixou medo, choque ou forte abalo emocional?", logica: "direta" },
+    ],
+  },
+  {
+    id: "T09",
+    nome: "Tópico 09 - Baixa demanda no trabalho (Subcarga)",
+    nomeAbreviado: "Subcarga de Trabalho",
+    colunaInicio: 32,
+    fonteGeradora:
+      "Subutilização de competências; ociosidade; má distribuição de tarefas; funções pouco desafiadoras.",
+    perguntas: [
+      { num: 1, texto: "Você sente que, na maior parte do tempo, tem pouco trabalho a realizar durante sua jornada?", logica: "direta" },
+      { num: 2, texto: "Você costuma ficar com tempo ocioso no trabalho por falta de tarefas ou demandas claras?", logica: "direta" },
+      { num: 3, texto: "Você sente que suas habilidades ou conhecimentos são pouco utilizados no seu trabalho?", logica: "direta" },
+      { num: 4, texto: "Seu trabalho costuma ser pouco desafiador ou repetitivo a ponto de gerar desânimo?", logica: "direta" },
+    ],
+  },
+  {
+    id: "T10",
+    nome: "Tópico 10 - Excesso de demandas no trabalho (Sobrecarga)",
+    nomeAbreviado: "Sobrecarga de Trabalho",
+    colunaInicio: 36,
+    fonteGeradora:
+      "Metas irrealistas; equipe insuficiente; jornadas prolongadas; acúmulo de funções.",
+    perguntas: [
+      { num: 1, texto: "Você sente que sua carga de trabalho diária é maior do que consegue realizar dentro do horário normal?", logica: "direta" },
+      { num: 2, texto: "Você frequentemente precisa fazer horas extras ou levar trabalho para casa?", logica: "direta" },
+      { num: 3, texto: "Você já teve sintomas físicos ou emocionais (como exaustão, ansiedade ou insônia) devido ao excesso de trabalho?", logica: "direta" },
+      { num: 4, texto: "A equipe é dimensionada/dividida corretamente para a demanda/quantidade de trabalho existente?", logica: "invertida" },
+    ],
+  },
+  {
+    id: "T11",
+    nome: "Tópico 11 - Maus relacionamentos no local de trabalho",
+    nomeAbreviado: "Relacionamentos",
     colunaInicio: 40,
     fonteGeradora:
-      "Gestão não humanizada e escassez de inteligência emocional.",
+      "Comunicação agressiva; rivalidade interna; conflitos mal geridos; liderança despreparada.",
     perguntas: [
-      { texto: "1. Você tem liberdade para tomar decisões sobre suas tarefas diárias?", logica: "invertida" },
-      { texto: "2. Seu trabalho permite flexibilidade para adaptar sua rotina?", logica: "invertida" },
-      { texto: "3. Você sente que tem voz ativa na empresa?", logica: "direta" },
-      { texto: "4. A empresa confia em sua capacidade de autogestão?", logica: "invertida" },
-      { texto: "5. Você recebe instruções claras sobre suas responsabilidades?", logica: "invertida" },
-      { texto: "6. O excesso de controle ou burocracia interfere no seu desempenho?", logica: "direta" },
-      { texto: "7. Suas sugestões são ouvidas e consideradas pela liderança?", logica: "direta" },
-      { texto: "8. Você tem acesso às ferramentas e recursos necessários?", logica: "invertida" },
-      { texto: "9. Você pode propor melhorias sem medo de represálias?", logica: "invertida" },
-      { texto: "10. O excesso de supervisão impacta sua produtividade ou bem-estar?", logica: "direta" },
+      { num: 1, texto: "Você já evitou colegas ou superiores por causa de desentendimentos frequentes?", logica: "direta" },
+      { num: 2, texto: "Você percebe rivalidade excessiva ou desnecessária entre colegas ou setores?", logica: "direta" },
+      { num: 3, texto: "Conflitos no trabalho costumam ser resolvidos de forma justa?", logica: "invertida" },
     ],
   },
   {
-    nome: "Pressão e Metas",
-    colunaInicio: 50,
+    id: "T12",
+    nome: "Tópico 12 - Trabalho em condições de difícil comunicação",
+    nomeAbreviado: "Comunicação Difícil",
+    colunaInicio: 43,
     fonteGeradora:
-      "Propósitos financeiros desalinhados com saúde e bem-estar.",
+      "Turnos desalinhados; distância física; falha nos meios de comunicação; fluxo de informação inadequado.",
     perguntas: [
-      { texto: "1. As metas da empresa são realistas e atingíveis?", logica: "invertida" },
-      { texto: "2. Você sente que há pressão excessiva para alcançar resultados?", logica: "direta" },
-      { texto: "3. A cobrança por metas impacta sua saúde mental ou emocional?", logica: "direta" },
-      { texto: "4. Existe apoio da liderança para lidar com desafios relacionados às metas?", logica: "invertida" },
-      { texto: "5. Você pode negociar prazos ou objetivos quando necessário?", logica: "invertida" },
-      { texto: "6. A competitividade entre funcionários é estimulada de maneira saudável?", logica: "invertida" },
-      { texto: "7. Você já sentiu medo de punição por não atingir metas?", logica: "direta" },
-      { texto: "8. O sistema de avaliação de metas é transparente?", logica: "invertida" },
-      { texto: "9. Você tem tempo suficiente para cumprir suas demandas com qualidade?", logica: "invertida" },
-      { texto: "10. A pressão por resultados impacta negativamente o ambiente de trabalho?", logica: "direta" },
+      { num: 1, texto: "Você trabalha em condições (como turnos diferentes, trabalho externo ou distância física) que dificultam a comunicação no trabalho?", logica: "direta" },
+      { num: 2, texto: "A distância física entre você e sua equipe ou liderança dificulta a troca de informações?", logica: "direta" },
+      { num: 3, texto: "Você já teve dificuldade para receber informações importantes no momento certo por causa da organização do trabalho?", logica: "direta" },
+      { num: 4, texto: "Você tem acesso fácil aos meios necessários para se comunicar com colegas e liderança durante o trabalho?", logica: "invertida" },
     ],
   },
   {
-    nome: "Insegurança e Ameaças",
-    colunaInicio: 60,
+    id: "T13",
+    nome: "Tópico 13 - Trabalho remoto e isolado",
+    nomeAbreviado: "Trabalho Remoto/Isolado",
+    colunaInicio: 47,
     fonteGeradora:
-      "Gestão não humanizada e falhas na condução de conflitos.",
+      "Isolamento social; falta de acompanhamento; comunicação exclusivamente digital; baixa integração da equipe.",
     perguntas: [
-      { texto: "1. Você já sentiu que seu emprego está ameaçado sem justificativa clara?", logica: "direta" },
-      { texto: "2. A empresa faz cortes ou demissões repentinas sem aviso prévio?", logica: "direta" },
-      { texto: "3. Há comunicação clara sobre a estabilidade da empresa e dos empregos?", logica: "invertida" },
-      { texto: "4. Você já sofreu ameaças veladas ou diretas no trabalho?", logica: "direta" },
-      { texto: "5. Há transparência nas políticas de desligamento?", logica: "invertida" },
-      { texto: "6. Mudanças organizacionais impactaram seu sentimento de segurança?", logica: "direta" },
-      { texto: "7. Você já presenciou casos de demissões injustas?", logica: "direta" },
-      { texto: "8. O medo da demissão afeta seu desempenho?", logica: "direta" },
-      { texto: "9. A empresa oferece suporte psicológico para funcionários inseguros?", logica: "invertida" },
-      { texto: "10. Você já evitou expressar sua opinião por medo de represálias?", logica: "direta" },
-    ],
-  },
-  {
-    nome: "Conflitos Interpessoais e Falta de Comunicação",
-    colunaInicio: 70,
-    fonteGeradora:
-      "Falta de treinamentos e baixa habilidade de comunicação.",
-    perguntas: [
-      { texto: "1. Conflitos internos são resolvidos de maneira justa?", logica: "invertida" },
-      { texto: "2. A comunicação entre equipes e departamentos é eficiente?", logica: "invertida" },
-      { texto: "3. Você já evitou colegas ou superiores devido a desentendimentos?", logica: "direta" },
-      { texto: "4. Existe canal aberto para feedback entre colaboradores e liderança?", logica: "invertida" },
-      { texto: "5. A falta de comunicação já comprometeu seu trabalho?", logica: "direta" },
-      { texto: "6. Você sente que há rivalidade desnecessária entre setores?", logica: "direta" },
-      { texto: "7. Há treinamentos sobre comunicação assertiva e gestão de conflitos?", logica: "invertida" },
-      { texto: "8. Você pode expressar suas dificuldades sem ser julgado?", logica: "invertida" },
-      { texto: "9. A empresa promove ambiente de diálogo aberto?", logica: "invertida" },
-      { texto: "10. O RH está presente e atuante na mediação de conflitos?", logica: "invertida" },
-    ],
-  },
-  {
-    nome: "Alinhamento entre Vida Pessoal e Profissional",
-    colunaInicio: 80,
-    fonteGeradora:
-      "Falta de tempo, planejamento, incentivo e recursos.",
-    perguntas: [
-      { texto: "1. Sua jornada de trabalho permite equilíbrio com sua vida pessoal?", logica: "invertida" },
-      { texto: "2. Você tem tempo para sua família e lazer?", logica: "invertida" },
-      { texto: "3. O trabalho impacta negativamente sua saúde mental?", logica: "direta" },
-      { texto: "4. Você tem flexibilidade para lidar com questões pessoais urgentes?", logica: "invertida" },
-      { texto: "5. A empresa oferece suporte para equilíbrio entre trabalho e vida pessoal?", logica: "invertida" },
-      { texto: "6. Você consegue se desconectar do trabalho fora do expediente?", logica: "invertida" },
-      { texto: "7. Sua vida pessoal é respeitada pela empresa?", logica: "invertida" },
-      { texto: "8. Há incentivo ao bem-estar e qualidade de vida no trabalho?", logica: "invertida" },
-      { texto: "9. O estresse profissional afeta sua vida familiar?", logica: "direta" },
-      { texto: "10. O ambiente corporativo valoriza o descanso e recuperação dos funcionários?", logica: "invertida" },
+      { num: 1, texto: "Você trabalha grande parte do tempo de forma remota ou sozinho(a), com pouco contato presencial com colegas ou liderança?", logica: "direta" },
+      { num: 2, texto: "Você sente que o trabalho remoto ou isolado faz com que se sinta distante da equipe ou da empresa?", logica: "direta" },
+      { num: 3, texto: "Se você trabalha de forma remota ou isolada, você sente que recebe apoio e acompanhamento adequados da empresa?", logica: "invertida" },
     ],
   },
 ];
+
+/** Total de perguntas esperadas no array de respostas (= 50). */
+export const TOTAL_PERGUNTAS = TOPICOS.reduce(
+  (s, t) => s + t.perguntas.length,
+  0
+);
 
 /** Programas/medidas de controle padrão para o plano anual. */
 export const MEDIDAS_CONTROLE: string[] = [

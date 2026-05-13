@@ -13,6 +13,7 @@ import {
   calcularResumoCompleto,
   filtrarPorSetor,
 } from "@/lib/drps/calculos";
+import { TOPICOS } from "@/lib/drps/topicos";
 
 export default function DrpsResumoPage() {
   const idEmpresa = useDrpsStore((s) => s.idEmpresa);
@@ -36,7 +37,7 @@ export default function DrpsResumoPage() {
   // a edição requer um setor específico selecionado).
   const mapaProb = useMemo(() => {
     const m: Record<number, 1 | 2 | 3> = {};
-    for (let i = 0; i < 9; i++) m[i] = 1;
+    for (let i = 0; i < TOPICOS.length; i++) m[i] = 1;
     if (setor === "Todos") return m;
     for (const p of probabilidades) {
       if (p.setor === setor) {
