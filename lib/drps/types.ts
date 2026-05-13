@@ -20,6 +20,8 @@ export interface DrpsRelatorio {
   qtd_mulheres: number | null;
   agravos_saude_mental: string | null;
   medidas_existentes: string | null;
+  /** Mapa setor -> texto de conclusao manuscrita pelo psicologo. */
+  conclusoes_por_setor: Record<string, string> | null;
   usuario_email: string | null;
   created_at: string;
   updated_at: string | null;

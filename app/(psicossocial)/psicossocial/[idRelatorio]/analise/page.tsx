@@ -613,6 +613,21 @@ export default function AnalisePage({
                 indice={idx + 1}
                 total={relatoriosPorSetor.length}
                 ehConsolidado={setor === "Todos"}
+                conclusao={
+                  relatorio?.conclusoes_por_setor?.[r.setor] ?? ""
+                }
+                onSalvarConclusao={(texto) => {
+                  if (!relatorio) return;
+                  const atual = relatorio.conclusoes_por_setor ?? {};
+                  salvar.mutate({
+                    id_relatorio: idRelatorio,
+                    id_empresa: relatorio.id_empresa,
+                    conclusoes_por_setor: {
+                      ...atual,
+                      [r.setor]: texto,
+                    },
+                  });
+                }}
               />
             ))}
 
@@ -634,6 +649,8 @@ function BlocoSetor({
   indice,
   total,
   ehConsolidado,
+  conclusao,
+  onSalvarConclusao,
 }: {
   relatorio: SetorRelatorio;
   drpsRel: DrpsRelatorio | null;
@@ -641,7 +658,14 @@ function BlocoSetor({
   indice: number;
   total: number;
   ehConsolidado: boolean;
+  conclusao: string;
+  onSalvarConclusao: (texto: string) => void;
 }) {
+  const [textoLocal, setTextoLocal] = useState(conclusao);
+
+  useEffect(() => {
+    setTextoLocal(conclusao);
+  }, [conclusao]);
   const identificadores: { label: string; valor: string }[] = [];
   if (empresa?.cnpj) {
     identificadores.push({ label: "CNPJ", valor: formatCNPJ(empresa.cnpj) });
@@ -844,6 +868,38 @@ function BlocoSetor({
         {relatorio.totalRespondentes} respondente(s) · {relatorio.topicos.length}{" "}
         tópico(s)
       </div>
+
+      <table className="drps-tabela mt-2">
+        <tbody>
+          <tr>
+            <td className="drps-header-section">Conclusão</td>
+          </tr>
+          <tr>
+            <td className="align-top">
+              <textarea
+                value={textoLocal}
+                onChange={(e) => setTextoLocal(e.target.value)}
+                onBlur={() => {
+                  if (textoLocal !== conclusao) onSalvarConclusao(textoLocal);
+                }}
+                rows={4}
+                placeholder="Conclusão do psicólogo para o setor — clique para editar."
+                className="w-full border-0 bg-transparent p-0 text-[11px] leading-relaxed text-gray-900 focus:outline-none focus:ring-0 resize-none print:hidden"
+              />
+              <div
+                className="hidden whitespace-pre-wrap text-[11px] leading-relaxed text-gray-900 print:block"
+                style={{ minHeight: 70 }}
+              >
+                {textoLocal || (
+                  <span className="italic text-gray-400">
+                    (Conclusão não preenchida)
+                  </span>
+                )}
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </section>
   );
 }

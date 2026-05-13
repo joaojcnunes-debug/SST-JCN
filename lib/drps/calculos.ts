@@ -95,13 +95,15 @@ export function calcularMatriz(
   return tabela[`${gravNum}-${probNum}`] ?? "Baixo";
 }
 
-/** Filtra respondentes por setor (ou "Todos"). */
+/** Filtra respondentes por setor (ou "Todos"). Compara com trim para
+ *  tolerar espacos no CSV (mesma normalizacao usada em listarSetores). */
 export function filtrarPorSetor(
   respondentes: DrpsRespondente[],
   setor: string
 ): DrpsRespondente[] {
   if (!setor || setor === "Todos") return respondentes;
-  return respondentes.filter((r) => r.setor === setor);
+  const alvo = setor.trim();
+  return respondentes.filter((r) => (r.setor ?? "").trim() === alvo);
 }
 
 /** Lista os setores distintos dos respondentes, ordenados alfabeticamente. */
