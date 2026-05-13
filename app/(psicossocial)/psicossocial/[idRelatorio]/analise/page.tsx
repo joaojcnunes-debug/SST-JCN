@@ -10,6 +10,7 @@ import {
   useDrpsRelatorio,
   useDrpsRespondentes,
   useDrpsSalvarRelatorio,
+  useDrpsTextoPadrao,
 } from "@/lib/hooks/useDrps";
 import {
   aplicarMatriz,
@@ -98,6 +99,7 @@ export default function AnalisePage({
   const { data: empresa } = useEmpresa(relatorio?.id_empresa);
   const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
+  const { data: capitulos = [] } = useDrpsTextoPadrao();
   const salvar = useDrpsSalvarRelatorio();
 
   const [agravosSel, setAgravosSel] = useState<string[]>([]);
@@ -213,8 +215,9 @@ export default function AnalisePage({
           @page { size: A4; margin: 1.2cm; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .drps-print-container { padding: 0 !important; box-shadow: none !important; border: none !important; }
+          .drps-capitulos { break-after: page; }
           .drps-setor-bloco { break-before: page; }
-          .drps-setor-bloco:first-of-type { break-before: auto; }
+          .drps-setor-bloco:first-child { break-before: auto; }
           .drps-tabela tr, .drps-tabela td, .drps-tabela th { break-inside: avoid; }
         }
         .drps-tabela {
@@ -246,6 +249,24 @@ export default function AnalisePage({
           font-size: 14px;
           text-align: center;
           letter-spacing: 0.5px;
+        }
+        .drps-capitulo {
+          margin-bottom: 18px;
+        }
+        .drps-capitulo-titulo {
+          font-size: 14px;
+          font-weight: 700;
+          color: #1e4d28;
+          border-bottom: 2px solid #006B54;
+          padding-bottom: 4px;
+          margin-bottom: 8px;
+        }
+        .drps-capitulo-conteudo {
+          font-size: 11px;
+          color: #1f2937;
+          line-height: 1.55;
+          text-align: justify;
+          white-space: pre-wrap;
         }
       `}</style>
 
@@ -452,6 +473,21 @@ export default function AnalisePage({
           </div>
 
           <div className="drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
+            {capitulos.length > 0 && (
+              <section className="drps-capitulos mb-6">
+                {capitulos.map((c) => (
+                  <article key={c.id_capitulo} className="drps-capitulo">
+                    <h2 className="drps-capitulo-titulo">{c.titulo}</h2>
+                    {c.conteudo && (
+                      <div className="drps-capitulo-conteudo">
+                        {c.conteudo}
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </section>
+            )}
+
             {relatoriosPorSetor.map((r, idx) => (
               <BlocoSetor
                 key={r.setor}
