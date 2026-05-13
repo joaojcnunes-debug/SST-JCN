@@ -12,9 +12,16 @@ interface Props {
   open: boolean;
   onClose: () => void;
   empresa?: Empresa | null;
+  /** Chamado apos criar (não edição), recebe o id_empresa novo. */
+  onCreated?: (idEmpresa: string) => void;
 }
 
-export default function EmpresaForm({ open, onClose, empresa }: Props) {
+export default function EmpresaForm({
+  open,
+  onClose,
+  empresa,
+  onCreated,
+}: Props) {
   const qc = useQueryClient();
   const isEdit = !!empresa;
 
@@ -59,6 +66,7 @@ export default function EmpresaForm({ open, onClose, empresa }: Props) {
           .update(payload as never)
           .eq("id_empresa", empresa.id_empresa);
         if (error) throw error;
+        return null;
       } else {
         const id = gerarId("EMP");
         const insertRow = {
@@ -70,11 +78,13 @@ export default function EmpresaForm({ open, onClose, empresa }: Props) {
           .from("empresas")
           .insert(insertRow as never);
         if (error) throw error;
+        return id;
       }
     },
-    onSuccess: () => {
+    onSuccess: (novoId) => {
       qc.invalidateQueries({ queryKey: ["empresas"] });
       toast.success(isEdit ? "Empresa atualizada" : "Empresa criada");
+      if (!isEdit && novoId && onCreated) onCreated(novoId);
       onClose();
     },
     onError: (err: Error) => {

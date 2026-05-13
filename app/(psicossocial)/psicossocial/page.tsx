@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, FileText, Trash2, ArrowRight } from "lucide-react";
+import { Plus, FileText, Trash2, ArrowRight, Building2 } from "lucide-react";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import EmpresaForm from "@/components/empresas/EmpresaForm";
 import Badge from "@/components/ui/Badge";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -39,6 +40,7 @@ export default function DrpsListaPage() {
   const [confirmExcluir, setConfirmExcluir] = useState<DrpsRelatorio | null>(
     null
   );
+  const [novaEmpresaOpen, setNovaEmpresaOpen] = useState(false);
   const excluir = useDrpsExcluirRelatorio();
 
   return (
@@ -57,7 +59,18 @@ export default function DrpsListaPage() {
         <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">
           Empresa
         </label>
-        <EmpresaSelect value={idEmpresa} onChange={setIdEmpresa} />
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="flex-1">
+            <EmpresaSelect value={idEmpresa} onChange={setIdEmpresa} />
+          </div>
+          <button
+            type="button"
+            onClick={() => setNovaEmpresaOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-verde-primary bg-white px-3 py-2 text-sm font-semibold text-verde-primary shadow-sm hover:bg-verde-light"
+          >
+            <Building2 className="size-4" /> Nova Empresa
+          </button>
+        </div>
       </div>
 
       {!idEmpresa ? (
@@ -173,6 +186,12 @@ export default function DrpsListaPage() {
           </div>
         </>
       )}
+
+      <EmpresaForm
+        open={novaEmpresaOpen}
+        onClose={() => setNovaEmpresaOpen(false)}
+        onCreated={(id) => setIdEmpresa(id)}
+      />
 
       <ConfirmDialog
         open={!!confirmExcluir}
