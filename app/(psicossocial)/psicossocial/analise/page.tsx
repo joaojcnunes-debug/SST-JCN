@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Printer, FileText } from "lucide-react";
+import { Printer } from "lucide-react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import { useDrpsStore } from "@/lib/drps/store";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -52,15 +52,11 @@ export default function DrpsAnalisePage() {
   const { data: respondentes = [] } = useDrpsRespondentes(idEmpresa);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idEmpresa);
 
-  // Lista de setores a incluir no relatório:
-  // - "Todos" no filtro → todos os setores únicos
-  // - Setor específico → só ele
   const setoresParaRelatorio = useMemo<string[]>(() => {
     if (setor === "Todos") return listarSetores(respondentes);
     return [setor];
   }, [setor, respondentes]);
 
-  // Calcula cada setor com sua própria matriz
   const relatoriosPorSetor = useMemo<SetorRelatorio[]>(() => {
     return setoresParaRelatorio.map((s) => {
       const filtrados = filtrarPorSetor(respondentes, s);
@@ -85,12 +81,43 @@ export default function DrpsAnalisePage() {
     <div className="space-y-4">
       <style>{`
         @media print {
-          @page { size: A4; margin: 1.5cm; }
+          @page { size: A4; margin: 1.2cm; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .drps-print-container { padding: 0 !important; box-shadow: none !important; border: none !important; }
-          .drps-print-section { break-inside: avoid; }
           .drps-setor-bloco { break-before: page; }
           .drps-setor-bloco:first-of-type { break-before: auto; }
+          .drps-tabela tr, .drps-tabela td, .drps-tabela th { break-inside: avoid; }
+        }
+        .drps-tabela {
+          border-collapse: collapse;
+          width: 100%;
+        }
+        .drps-tabela td, .drps-tabela th {
+          border: 1px solid #999;
+          padding: 6px 8px;
+          vertical-align: middle;
+        }
+        .drps-label {
+          background: #d4edda;
+          font-weight: 600;
+          color: #1e4d28;
+          font-size: 11px;
+          text-transform: none;
+        }
+        .drps-header-section {
+          background: #d4edda;
+          color: #1e4d28;
+          font-weight: 700;
+          text-align: center;
+          font-size: 12px;
+        }
+        .drps-title {
+          background: #006B54;
+          color: white;
+          font-weight: 700;
+          font-size: 14px;
+          text-align: center;
+          letter-spacing: 0.5px;
         }
       `}</style>
 
@@ -99,10 +126,8 @@ export default function DrpsAnalisePage() {
           Análise e Avaliação — Relatório DRPS
         </h1>
         <p className="text-sm text-gray-600">
-          Documento formal para anexar ao PGR. Escolha o setor no filtro:{" "}
-          <strong>setor específico</strong> = relatório de 1 setor.{" "}
-          <strong>Todos os setores</strong> = relatório consolidado (cada
-          setor numa página).
+          Documento formal para anexar ao PGR. Setor específico = 1 setor;
+          &ldquo;Todos os setores&rdquo; = consolidado (1 página por setor).
         </p>
       </div>
 
@@ -126,14 +151,12 @@ export default function DrpsAnalisePage() {
                 <>
                   Relatório consolidado:{" "}
                   <strong>{setoresParaRelatorio.length} setor(es)</strong> ·{" "}
-                  {totalRespondentesGeral} respondente(s) no total
+                  {totalRespondentesGeral} respondente(s)
                 </>
               ) : (
                 <>
-                  Setor avaliado: <strong>{setor}</strong> ·{" "}
-                  {relatoriosPorSetor[0]?.totalRespondentes ?? 0}{" "}
-                  respondente(s) · {relatoriosPorSetor[0]?.topicos.length ?? 0}{" "}
-                  tópico(s)
+                  Setor: <strong>{setor}</strong> ·{" "}
+                  {relatoriosPorSetor[0]?.totalRespondentes ?? 0} respondente(s)
                 </>
               )}
             </div>
@@ -148,30 +171,24 @@ export default function DrpsAnalisePage() {
           </div>
 
           {/* RELATÓRIO */}
-          <div className="drps-print-container rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-            <CabecalhoRelatorio
-              empresa={empresa?.nome_empresa ?? "—"}
-              cnpj={empresa?.cnpj ? formatCNPJ(empresa.cnpj) : "—"}
-              config={config ?? null}
-              ehConsolidado={setor === "Todos"}
-              totalSetores={setoresParaRelatorio.length}
-              totalRespondentes={totalRespondentesGeral}
-            />
-
+          <div className="drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
             {relatoriosPorSetor.map((r, idx) => (
               <BlocoSetor
                 key={r.setor}
                 relatorio={r}
-                ehConsolidado={setor === "Todos"}
+                empresa={empresa?.nome_empresa ?? "—"}
+                cnpj={empresa?.cnpj ? formatCNPJ(empresa.cnpj) : "—"}
+                config={config ?? null}
                 indice={idx + 1}
                 total={relatoriosPorSetor.length}
+                ehConsolidado={setor === "Todos"}
               />
             ))}
 
-            <footer className="mt-8 border-t border-gray-300 pt-3 text-center text-[10px] text-gray-500">
+            <p className="mt-6 text-center text-[9px] text-gray-500">
               Documento gerado pelo Painel SST Chabra em{" "}
               {new Date().toLocaleDateString("pt-BR")}
-            </footer>
+            </p>
           </div>
         </>
       )}
@@ -179,205 +196,216 @@ export default function DrpsAnalisePage() {
   );
 }
 
-function CabecalhoRelatorio({
+function BlocoSetor({
+  relatorio,
   empresa,
   cnpj,
   config,
+  indice,
+  total,
   ehConsolidado,
-  totalSetores,
-  totalRespondentes,
 }: {
+  relatorio: SetorRelatorio;
   empresa: string;
   cnpj: string;
   config: DrpsEmpresaConfig | null;
+  indice: number;
+  total: number;
   ehConsolidado: boolean;
-  totalSetores: number;
-  totalRespondentes: number;
 }) {
   return (
-    <>
-      <header className="drps-print-section mb-6 border-b-2 border-verde-primary pb-4 text-center">
-        <div className="flex items-center justify-center gap-3">
-          <FileText className="size-8 text-verde-primary" />
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              DRPS — Diagnóstico de Riscos Psicossociais
-            </h2>
-            <p className="text-xs text-gray-500">
-              NR-01 · Portaria MTE nº 1.419/2024
-            </p>
-            {ehConsolidado && (
-              <p className="mt-1 text-xs font-semibold text-verde-primary">
-                Relatório Consolidado · {totalSetores} setor(es) ·{" "}
-                {totalRespondentes} respondente(s)
-              </p>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <section className="drps-print-section mb-5">
-        <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-          Identificação da Empresa
-        </h3>
-        <div className="grid gap-2 text-sm md:grid-cols-2">
-          <Linha label="Empresa" valor={empresa} />
-          <Linha label="CNPJ" valor={cnpj} />
-          <Linha
-            label="Responsável Técnico"
-            valor={config?.responsavel_tecnico ?? "—"}
-          />
-          <Linha label="CRP" valor={config?.crp ?? "—"} />
-          <Linha
-            label="Data de elaboração"
-            valor={
-              config?.data_elaboracao
+    <section className="drps-setor-bloco mb-4">
+      {/* Banner do topo: verde Chabra com título do diagnóstico */}
+      <table className="drps-tabela mb-0">
+        <tbody>
+          <tr>
+            <td className="drps-title" colSpan={4}>
+              DRPS — DIAGNÓSTICO DE RISCOS PSICOSSOCIAIS
+              {ehConsolidado && (
+                <span className="ml-3 text-[10px] font-normal opacity-90">
+                  · Página {indice} de {total}
+                </span>
+              )}
+            </td>
+          </tr>
+          <tr>
+            <td className="drps-label" style={{ width: "30%" }}>
+              Responsável Técnico pela Avaliação (Psicólogo)
+            </td>
+            <td>{config?.responsavel_tecnico ?? ""}</td>
+            <td className="drps-label" style={{ width: "10%" }}>
+              CRP
+            </td>
+            <td style={{ width: "20%" }}>{config?.crp ?? ""}</td>
+          </tr>
+          <tr>
+            <td className="drps-header-section" colSpan={4}>
+              IDENTIFICAÇÃO
+            </td>
+          </tr>
+          <tr>
+            <td className="drps-label">CNPJ</td>
+            <td>{cnpj}</td>
+            <td className="drps-label">Data da Elaboração</td>
+            <td>
+              {config?.data_elaboracao
                 ? new Date(
                     config.data_elaboracao + "T00:00:00"
                   ).toLocaleDateString("pt-BR")
-                : "—"
-            }
-          />
-          <Linha
-            label="Total de trabalhadores"
-            valor={config?.qtd_trabalhadores?.toString() ?? "—"}
-          />
-        </div>
-      </section>
+                : ""}
+            </td>
+          </tr>
+          <tr>
+            <td className="drps-label">Empresa</td>
+            <td colSpan={3}>{empresa}</td>
+          </tr>
+          <tr>
+            <td className="drps-label">Setor</td>
+            <td colSpan={3}>{relatorio.setor}</td>
+          </tr>
+          <tr>
+            <td className="drps-label">Funções</td>
+            <td colSpan={3}>{config?.funcoes ?? ""}</td>
+          </tr>
+          <tr>
+            <td className="drps-label">
+              Quantidade de Trabalhadores na Função
+            </td>
+            <td>{config?.qtd_trabalhadores ?? ""}</td>
+            <td className="drps-label">Homens</td>
+            <td>
+              {config?.qtd_homens ?? ""}
+              {config?.qtd_mulheres !== null &&
+                config?.qtd_mulheres !== undefined && (
+                  <>
+                    {" · "}
+                    <span className="text-[10px] uppercase tracking-wider text-gray-600">
+                      Mulheres
+                    </span>{" "}
+                    {config.qtd_mulheres}
+                  </>
+                )}
+            </td>
+          </tr>
+          <tr>
+            <td className="drps-label align-top">
+              Possíveis Agravos à Saúde Mental
+              <div className="mt-1 text-[9px] font-normal italic text-gray-600">
+                Ex: tudo aquilo que pode acontecer com colaboradores se os
+                riscos psicossociais não forem identificados e controlados,
+                incluindo transtornos psicológicos e emocionais como burnout
+                etc.
+              </div>
+            </td>
+            <td colSpan={3} className="whitespace-pre-wrap align-top">
+              {config?.agravos_saude_mental ?? ""}
+            </td>
+          </tr>
+          <tr>
+            <td className="drps-label align-top">
+              Medidas de Controle Existentes
+              <div className="mt-1 text-[9px] font-normal italic text-gray-600">
+                Ex: ações que a empresa já realiza para controle dos riscos
+                psicossociais, se houver.
+              </div>
+            </td>
+            <td colSpan={3} className="whitespace-pre-wrap align-top">
+              {config?.medidas_existentes ?? ""}
+            </td>
+          </tr>
+          <tr>
+            <td className="drps-header-section" colSpan={4}>
+              Classificação de Risco Psicossocial
+            </td>
+          </tr>
+          <tr>
+            <td
+              colSpan={4}
+              className="text-center text-[11px] font-semibold uppercase tracking-wider"
+              style={{ background: "#f0f9f4", color: "#1e4d28" }}
+            >
+              Quantitativo e Qualitativo
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
-      {config?.funcoes && (
-        <section className="drps-print-section mb-5">
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-            Funções Avaliadas
-          </h3>
-          <p className="whitespace-pre-wrap text-sm text-gray-800">
-            {config.funcoes}
-          </p>
-        </section>
-      )}
+      {/* Tabela de Fatores de Risco */}
+      <table className="drps-tabela mt-0">
+        <thead>
+          <tr>
+            <th
+              className="drps-label"
+              style={{ width: "30%", textAlign: "left" }}
+            >
+              Fatores de Risco
+            </th>
+            <th
+              className="drps-label"
+              style={{ width: "35%", textAlign: "left" }}
+            >
+              Fontes Geradoras do Risco
+            </th>
+            <th className="drps-label" style={{ width: "11%" }}>
+              Gravidade
+              <br />
+              <span className="text-[9px] font-normal italic">(Severidade)</span>
+            </th>
+            <th className="drps-label" style={{ width: "12%" }}>
+              Probabilidade
+              <br />
+              <span className="text-[9px] font-normal italic">
+                de Ocorrência
+              </span>
+            </th>
+            <th className="drps-label" style={{ width: "12%" }}>
+              Matriz de Risco
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {relatorio.topicos.map((t) => (
+            <tr key={t.idx}>
+              <td className="text-[11px] text-gray-900">
+                {t.nome.replace(/^Tópico \d+ - /, "")}
+              </td>
+              <td className="text-[10px] text-gray-700">{t.fonteGeradora}</td>
+              <td className="text-center">
+                <span
+                  className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+                  style={{ backgroundColor: t.classificacaoGravidade.cor }}
+                >
+                  {t.classificacaoGravidade.texto}
+                </span>
+              </td>
+              <td className="text-center text-[10px] text-gray-700">
+                {t.classificacaoProbabilidade}
+              </td>
+              <td className="text-center">
+                <span
+                  className="inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold text-white"
+                  style={{ backgroundColor: t.corMatriz }}
+                >
+                  {t.matriz}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
-      {config?.agravos_saude_mental && (
-        <section className="drps-print-section mb-5">
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-            Possíveis Agravos à Saúde Mental
-          </h3>
-          <p className="whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
-            {config.agravos_saude_mental}
-          </p>
-        </section>
-      )}
-
-      {config?.medidas_existentes && (
-        <section className="drps-print-section mb-5">
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-500">
-            Medidas de Controle já Existentes
-          </h3>
-          <p className="whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
-            {config.medidas_existentes}
-          </p>
-        </section>
-      )}
-    </>
-  );
-}
-
-function BlocoSetor({
-  relatorio,
-  ehConsolidado,
-  indice,
-  total,
-}: {
-  relatorio: SetorRelatorio;
-  ehConsolidado: boolean;
-  indice: number;
-  total: number;
-}) {
-  return (
-    <section className="drps-setor-bloco drps-print-section mb-5 mt-6 first:mt-0">
-      <div className="mb-3 rounded border-l-4 border-verde-primary bg-verde-light/30 px-3 py-2">
-        <h3 className="text-sm font-bold text-gray-900">
-          {ehConsolidado && (
-            <span className="mr-2 text-xs text-gray-500">
-              [{indice}/{total}]
-            </span>
-          )}
-          Setor: {relatorio.setor}
-        </h3>
-        <p className="text-xs text-gray-600">
-          {relatorio.totalRespondentes} respondente(s) ·{" "}
+      <div className="mt-2 flex items-center justify-between text-[9px] text-gray-500">
+        <span>
+          {relatorio.totalRespondentes} respondente(s) considerado(s) ·{" "}
           {relatorio.topicos.length} tópico(s) avaliado(s)
-        </p>
+        </span>
+        <span>
+          Legenda: <span className="text-green-700">■</span> Baixo ·{" "}
+          <span className="text-amber-600">■</span> Médio ·{" "}
+          <span className="text-red-600">■</span> Alto ·{" "}
+          <span className="text-gray-900">■</span> Crítico
+        </span>
       </div>
-
-      {relatorio.topicos.length === 0 ? (
-        <p className="text-sm text-gray-500">
-          Sem dados suficientes para este setor.
-        </p>
-      ) : (
-        <div className="overflow-hidden rounded border border-gray-300">
-          <table className="w-full text-xs">
-            <thead className="bg-gray-100 text-[10px] uppercase text-gray-700">
-              <tr>
-                <th className="border-r border-gray-300 px-2 py-1.5 text-left font-bold">
-                  Fator de Risco
-                </th>
-                <th className="border-r border-gray-300 px-2 py-1.5 text-left font-bold">
-                  Fonte Geradora
-                </th>
-                <th className="border-r border-gray-300 px-2 py-1.5 text-center font-bold w-20">
-                  Gravidade
-                </th>
-                <th className="border-r border-gray-300 px-2 py-1.5 text-center font-bold w-24">
-                  Probabilidade
-                </th>
-                <th className="px-2 py-1.5 text-center font-bold w-24">
-                  Matriz de Risco
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {relatorio.topicos.map((t) => (
-                <tr key={t.idx}>
-                  <td className="border-r border-gray-300 px-2 py-1.5 font-medium text-gray-900">
-                    {t.idx + 1}. {t.nome}
-                  </td>
-                  <td className="border-r border-gray-300 px-2 py-1.5 text-gray-700">
-                    {t.fonteGeradora}
-                  </td>
-                  <td className="border-r border-gray-300 px-2 py-1.5 text-center">
-                    <span
-                      className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
-                      style={{ backgroundColor: t.classificacaoGravidade.cor }}
-                    >
-                      {t.classificacaoGravidade.texto}
-                    </span>
-                  </td>
-                  <td className="border-r border-gray-300 px-2 py-1.5 text-center text-gray-700">
-                    {t.classificacaoProbabilidade}
-                  </td>
-                  <td className="px-2 py-1.5 text-center">
-                    <span
-                      className="inline-flex rounded-full px-3 py-0.5 text-[10px] font-bold text-white"
-                      style={{ backgroundColor: t.corMatriz }}
-                    >
-                      {t.matriz}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </section>
-  );
-}
-
-function Linha({ label, valor }: { label: string; valor: string }) {
-  return (
-    <div className="flex gap-2">
-      <span className="font-semibold text-gray-700">{label}:</span>
-      <span className="text-gray-900">{valor}</span>
-    </div>
   );
 }
