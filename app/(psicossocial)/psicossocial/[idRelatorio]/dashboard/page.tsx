@@ -155,7 +155,7 @@ export default function DashboardPage({
               <h2 className="mb-3 text-sm font-semibold text-gray-900">
                 Matriz de Risco
               </h2>
-              <MatrizRisco topicos={topicosComMatriz} />
+              <MatrizRisco topicos={topicosComMatriz} mostrarTopicos={false} />
               <p className="mt-2 text-[11px] text-gray-500">
                 {filtrados.length} respondente(s) considerado(s)
               </p>

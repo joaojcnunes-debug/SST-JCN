@@ -5,12 +5,15 @@ import type { NivelMatriz, TopicoComMatriz } from "@/lib/drps/types";
 
 /**
  * Heatmap 3×3 (Gravidade × Probabilidade) com os tópicos posicionados na
- * célula correspondente, conforme spec do DRPS.
+ * célula correspondente. Quando `mostrarTopicos=false`, mostra só o nome
+ * do nível (Baixo/Médio/Alto/Crítico) + contagem, sem listar os tópicos.
  */
 export default function MatrizRisco({
   topicos,
+  mostrarTopicos = true,
 }: {
   topicos: TopicoComMatriz[];
+  mostrarTopicos?: boolean;
 }) {
   // Preencho a matriz: linha = gravidade (3-1 top→bottom), col = probabilidade (1-3)
   const linhas: NivelMatriz[][] = [];
@@ -65,20 +68,36 @@ export default function MatrizRisco({
                         className="min-h-[90px] rounded-md p-2 text-xs text-white shadow-sm"
                         style={{ backgroundColor: CORES_MATRIZ[nivel] }}
                       >
-                        <p className="mb-1 font-bold uppercase tracking-wider">
-                          {nivel}
-                        </p>
-                        <ul className="space-y-0.5">
-                          {cell.map((t) => (
-                            <li
-                              key={t.idx}
-                              className="truncate"
-                              title={t.nome}
-                            >
-                              • {t.nome}
-                            </li>
-                          ))}
-                        </ul>
+                        {mostrarTopicos ? (
+                          <>
+                            <p className="mb-1 font-bold uppercase tracking-wider">
+                              {nivel}
+                            </p>
+                            <ul className="space-y-0.5">
+                              {cell.map((t) => (
+                                <li
+                                  key={t.idx}
+                                  className="truncate"
+                                  title={t.nome}
+                                >
+                                  • {t.nome}
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        ) : (
+                          <div className="flex h-full flex-col items-center justify-center gap-1 py-3 text-center">
+                            <p className="text-sm font-bold uppercase tracking-wider">
+                              {nivel}
+                            </p>
+                            {cell.length > 0 && (
+                              <p className="text-[10px] opacity-90">
+                                {cell.length}{" "}
+                                {cell.length === 1 ? "tópico" : "tópicos"}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </td>
                   );
