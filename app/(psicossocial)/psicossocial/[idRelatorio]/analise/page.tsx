@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState, use } from "react";
-import { Printer, Save, Plus, X, CheckCircle2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, use } from "react";
+import {
+  Printer,
+  Save,
+  Plus,
+  X,
+  CheckCircle2,
+  ChevronDown,
+} from "lucide-react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import { useDrpsStore } from "@/lib/drps/store";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -907,43 +914,105 @@ function MultiSelectInline({
   onNovoValor: (v: string) => void;
   placeholder: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  const total = selecionados.length + extras.length;
+
   return (
-    <div>
-      <div className="grid gap-x-3 gap-y-0.5 sm:grid-cols-2">
-        {opcoes.map((opt) => (
-          <label
-            key={opt}
-            className="flex cursor-pointer items-start gap-1.5 rounded px-1 py-0.5 text-[11px] hover:bg-gray-50"
-          >
-            <input
-              type="checkbox"
-              checked={selecionados.includes(opt)}
-              onChange={() => onToggle(opt)}
-              className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
-            />
-            <span className="text-gray-800">{opt}</span>
-          </label>
-        ))}
-      </div>
-      {extras.length > 0 && (
-        <div className="mt-1.5 space-y-1">
-          {extras.map((e, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2 rounded bg-amber-50 px-2 py-1 text-[11px]"
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-2 py-1.5 text-left text-[11px] hover:bg-gray-50"
+      >
+        <span className={total === 0 ? "text-gray-400" : "text-gray-700"}>
+          {total === 0
+            ? "Selecionar..."
+            : `${total} selecionado${total === 1 ? "" : "s"}`}
+        </span>
+        <ChevronDown
+          className={`size-3.5 text-gray-400 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
+          <ul className="max-h-56 overflow-auto py-1">
+            {opcoes.map((opt) => {
+              const marcado = selecionados.includes(opt);
+              return (
+                <li key={opt}>
+                  <button
+                    type="button"
+                    onClick={() => onToggle(opt)}
+                    className={`flex w-full items-center gap-2 px-3 py-1 text-left text-[11px] hover:bg-verde-light ${
+                      marcado ? "bg-verde-light/60" : ""
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={marcado}
+                      readOnly
+                      className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                    />
+                    <span className="text-gray-800">{opt}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {(selecionados.length > 0 || extras.length > 0) && (
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {selecionados.map((s) => (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2 py-0.5 text-[10px] text-verde-primary"
             >
-              <span className="flex-1 text-gray-800">{e}</span>
+              {s}
               <button
                 type="button"
-                onClick={() => onRemoveExtra(i)}
-                className="text-gray-400 hover:text-red-600"
+                onClick={() => onToggle(s)}
+                className="text-verde-primary/60 hover:text-red-600"
               >
                 <X className="size-3" />
               </button>
-            </div>
+            </span>
+          ))}
+          {extras.map((e, i) => (
+            <span
+              key={`extra-${i}`}
+              className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-800"
+            >
+              {e}
+              <button
+                type="button"
+                onClick={() => onRemoveExtra(i)}
+                className="text-amber-700/60 hover:text-red-600"
+              >
+                <X className="size-3" />
+              </button>
+            </span>
           ))}
         </div>
       )}
+
       <div className="mt-1.5 flex gap-1.5">
         <input
           type="text"
