@@ -40,6 +40,53 @@ body {
   .print-avoid-break { page-break-inside: avoid; }
 }
 
+/* TipTap rich text editor — estilos visuais do conteudo */
+.tiptap-conteudo:focus { outline: none; }
+.tiptap-conteudo p { margin: 0 0 0.5em 0; }
+.tiptap-conteudo h1 { font-size: 1.5rem; font-weight: 700; color: #1e4d28; margin: 0.6em 0 0.3em; }
+.tiptap-conteudo h2 { font-size: 1.25rem; font-weight: 700; color: #1e4d28; margin: 0.5em 0 0.3em; }
+.tiptap-conteudo h3 { font-size: 1.1rem; font-weight: 700; color: #1e4d28; margin: 0.4em 0 0.2em; }
+.tiptap-conteudo ul { list-style: disc; margin: 0 0 0.5em 1.5em; }
+.tiptap-conteudo ol { list-style: decimal; margin: 0 0 0.5em 1.5em; }
+.tiptap-conteudo li { margin: 0.1em 0; }
+.tiptap-conteudo strong { font-weight: 700; }
+.tiptap-conteudo em { font-style: italic; }
+.tiptap-conteudo u { text-decoration: underline; }
+.tiptap-conteudo s { text-decoration: line-through; }
+.tiptap-conteudo a { color: #006B54; text-decoration: underline; }
+.tiptap-conteudo img { max-width: 100%; height: auto; border-radius: 4px; margin: 0.5em 0; }
+.tiptap-conteudo table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+  table-layout: fixed;
+}
+.tiptap-conteudo th,
+.tiptap-conteudo td {
+  border: 1px solid #999;
+  padding: 6px 8px;
+  vertical-align: top;
+  position: relative;
+  min-width: 60px;
+}
+.tiptap-conteudo th {
+  background: #d4edda;
+  color: #1e4d28;
+  font-weight: 700;
+}
+.tiptap-conteudo .selectedCell {
+  background: rgba(0, 107, 84, 0.15);
+}
+.tiptap-conteudo .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background-color: #006B54;
+  pointer-events: none;
+}
+
 /* Scrollbar discreta */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }

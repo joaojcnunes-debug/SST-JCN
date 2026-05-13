@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import RichTextEditor from "@/components/drps/RichTextEditor";
 import {
   useDrpsTextoPadrao,
   useDrpsCriarCapitulo,
@@ -23,30 +24,33 @@ const TEMPLATE_INICIAL: { titulo: string; conteudo: string }[] = [
   {
     titulo: "1. Introdução",
     conteudo:
-      "Este relatório apresenta o Diagnóstico de Riscos Psicossociais (DRPS) " +
-      "conduzido em conformidade com a NR-1 (Disposições Gerais e " +
-      "Gerenciamento de Riscos Ocupacionais) e a NR-17 (Ergonomia).",
+      "<p style=\"text-align: justify\">Este relatório apresenta o " +
+      "<strong>Diagnóstico de Riscos Psicossociais (DRPS)</strong> conduzido " +
+      "em conformidade com a NR-1 (Disposições Gerais e Gerenciamento de " +
+      "Riscos Ocupacionais) e a NR-17 (Ergonomia).</p>",
   },
   {
     titulo: "2. Objetivo",
     conteudo:
-      "Identificar, avaliar e classificar os riscos psicossociais presentes " +
-      "no ambiente de trabalho, subsidiando o plano de ação preventivo e " +
-      "interventivo.",
+      "<p style=\"text-align: justify\">Identificar, avaliar e classificar " +
+      "os riscos psicossociais presentes no ambiente de trabalho, " +
+      "subsidiando o plano de ação preventivo e interventivo.</p>",
   },
   {
     titulo: "3. Metodologia",
     conteudo:
-      "Aplicação de questionário estruturado (50 perguntas, 13 tópicos) aos " +
-      "trabalhadores; tabulação e cálculo da média de gravidade por tópico; " +
-      "definição da probabilidade pelo psicólogo responsável; cruzamento " +
-      "Gravidade × Probabilidade na matriz 3×3 de risco.",
+      "<p style=\"text-align: justify\">Aplicação de questionário " +
+      "estruturado (50 perguntas, 13 tópicos) aos trabalhadores; tabulação " +
+      "e cálculo da média de gravidade por tópico; definição da " +
+      "probabilidade pelo psicólogo responsável; cruzamento Gravidade × " +
+      "Probabilidade na matriz 3×3 de risco.</p>",
   },
   {
     titulo: "4. Considerações Finais",
     conteudo:
-      "Recomenda-se monitoramento periódico, revisão anual do DRPS e " +
-      "implementação das medidas de controle conforme matriz de risco.",
+      "<p style=\"text-align: justify\">Recomenda-se monitoramento " +
+      "periódico, revisão anual do DRPS e implementação das medidas de " +
+      "controle conforme matriz de risco.</p>",
   },
 ];
 
@@ -254,15 +258,13 @@ function CapituloCard({
           <Trash2 className="size-4" />
         </button>
       </div>
-      <textarea
+      <RichTextEditor
         value={conteudo}
-        onChange={(e) => {
-          setConteudo(e.target.value);
+        onChange={(html) => {
+          setConteudo(html);
           setDirty(true);
         }}
-        placeholder="Conteúdo do capítulo (texto livre)..."
-        rows={5}
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+        placeholder="Conteúdo do capítulo..."
       />
     </div>
   );

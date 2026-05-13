@@ -265,8 +265,38 @@ export default function AnalisePage({
           font-size: 11px;
           color: #1f2937;
           line-height: 1.55;
-          text-align: justify;
-          white-space: pre-wrap;
+        }
+        .drps-capitulo-conteudo p { margin: 0 0 8px 0; }
+        .drps-capitulo-conteudo h1 { font-size: 16px; font-weight: 700; color: #1e4d28; margin: 12px 0 6px; }
+        .drps-capitulo-conteudo h2 { font-size: 14px; font-weight: 700; color: #1e4d28; margin: 10px 0 6px; }
+        .drps-capitulo-conteudo h3 { font-size: 12px; font-weight: 700; color: #1e4d28; margin: 8px 0 4px; }
+        .drps-capitulo-conteudo ul,
+        .drps-capitulo-conteudo ol { margin: 0 0 8px 20px; padding: 0; }
+        .drps-capitulo-conteudo li { margin: 2px 0; }
+        .drps-capitulo-conteudo a { color: #006B54; text-decoration: underline; }
+        .drps-capitulo-conteudo img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 4px;
+          margin: 8px 0;
+        }
+        .drps-capitulo-conteudo table {
+          border-collapse: collapse;
+          width: 100%;
+          margin: 8px 0;
+          font-size: 10px;
+        }
+        .drps-capitulo-conteudo th,
+        .drps-capitulo-conteudo td {
+          border: 1px solid #999;
+          padding: 5px 7px;
+          vertical-align: top;
+        }
+        .drps-capitulo-conteudo th {
+          background: #d4edda;
+          color: #1e4d28;
+          font-weight: 700;
+          text-align: left;
         }
       `}</style>
 
@@ -479,9 +509,10 @@ export default function AnalisePage({
                   <article key={c.id_capitulo} className="drps-capitulo">
                     <h2 className="drps-capitulo-titulo">{c.titulo}</h2>
                     {c.conteudo && (
-                      <div className="drps-capitulo-conteudo">
-                        {c.conteudo}
-                      </div>
+                      <div
+                        className="drps-capitulo-conteudo"
+                        dangerouslySetInnerHTML={{ __html: c.conteudo }}
+                      />
                     )}
                   </article>
                 ))}
