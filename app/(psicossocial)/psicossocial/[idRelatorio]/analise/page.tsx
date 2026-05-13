@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, use } from "react";
-import { Printer } from "lucide-react";
+import { useEffect, useMemo, useState, use } from "react";
+import { Printer, Save, Plus, X, CheckCircle2 } from "lucide-react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import { useDrpsStore } from "@/lib/drps/store";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -9,6 +9,7 @@ import {
   useDrpsProbabilidades,
   useDrpsRelatorio,
   useDrpsRespondentes,
+  useDrpsSalvarRelatorio,
 } from "@/lib/hooks/useDrps";
 import {
   aplicarMatriz,
@@ -16,7 +17,11 @@ import {
   filtrarPorSetor,
   listarSetores,
 } from "@/lib/drps/calculos";
-import { TOPICOS } from "@/lib/drps/topicos";
+import {
+  AGRAVOS_OPCOES,
+  MEDIDAS_EXISTENTES_OPCOES,
+  TOPICOS,
+} from "@/lib/drps/topicos";
 import {
   formatCNPJ,
   formatCPF,
@@ -52,6 +57,36 @@ function montarMapaProb(
   return m;
 }
 
+/**
+ * Separa um texto multi-linha em itens predefinidos e itens extras (manuais).
+ */
+function parseMultiSelect(
+  texto: string | null,
+  opcoes: string[]
+): { selecionados: string[]; extras: string[] } {
+  if (!texto) return { selecionados: [], extras: [] };
+  const itens = texto
+    .split("\n")
+    .map((s) => s.replace(/^[•\-\s]+/, "").trim())
+    .filter((s) => s.length > 0);
+  const selecionados: string[] = [];
+  const extras: string[] = [];
+  for (const item of itens) {
+    if (opcoes.includes(item)) selecionados.push(item);
+    else extras.push(item);
+  }
+  return { selecionados, extras };
+}
+
+function serializeMultiSelect(
+  selecionados: string[],
+  extras: string[]
+): string | null {
+  const all = [...selecionados, ...extras.filter((e) => e.trim().length > 0)];
+  if (all.length === 0) return null;
+  return all.map((s) => `• ${s}`).join("\n");
+}
+
 export default function AnalisePage({
   params,
 }: {
@@ -63,6 +98,81 @@ export default function AnalisePage({
   const { data: empresa } = useEmpresa(relatorio?.id_empresa);
   const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
+  const salvar = useDrpsSalvarRelatorio();
+
+  const [agravosSel, setAgravosSel] = useState<string[]>([]);
+  const [agravosExtras, setAgravosExtras] = useState<string[]>([]);
+  const [medidasSel, setMedidasSel] = useState<string[]>([]);
+  const [medidasExtras, setMedidasExtras] = useState<string[]>([]);
+  const [novoAgravo, setNovoAgravo] = useState("");
+  const [novaMedida, setNovaMedida] = useState("");
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (!relatorio) return;
+    const a = parseMultiSelect(
+      relatorio.agravos_saude_mental,
+      AGRAVOS_OPCOES
+    );
+    const m = parseMultiSelect(
+      relatorio.medidas_existentes,
+      MEDIDAS_EXISTENTES_OPCOES
+    );
+    setAgravosSel(a.selecionados);
+    setAgravosExtras(a.extras);
+    setMedidasSel(m.selecionados);
+    setMedidasExtras(m.extras);
+    setDirty(false);
+  }, [relatorio]);
+
+  function toggleAgravo(item: string) {
+    setAgravosSel((s) =>
+      s.includes(item) ? s.filter((a) => a !== item) : [...s, item]
+    );
+    setDirty(true);
+  }
+  function toggleMedida(item: string) {
+    setMedidasSel((s) =>
+      s.includes(item) ? s.filter((a) => a !== item) : [...s, item]
+    );
+    setDirty(true);
+  }
+  function adicionarAgravo() {
+    const v = novoAgravo.trim();
+    if (!v) return;
+    setAgravosExtras((s) => [...s, v]);
+    setNovoAgravo("");
+    setDirty(true);
+  }
+  function adicionarMedida() {
+    const v = novaMedida.trim();
+    if (!v) return;
+    setMedidasExtras((s) => [...s, v]);
+    setNovaMedida("");
+    setDirty(true);
+  }
+  function removerAgravoExtra(i: number) {
+    setAgravosExtras((s) => s.filter((_, idx) => idx !== i));
+    setDirty(true);
+  }
+  function removerMedidaExtra(i: number) {
+    setMedidasExtras((s) => s.filter((_, idx) => idx !== i));
+    setDirty(true);
+  }
+
+  function salvarCampos(extras?: { status?: "CONCLUIDO" }) {
+    if (!relatorio) return;
+    salvar.mutate(
+      {
+        id_relatorio: idRelatorio,
+        id_empresa: relatorio.id_empresa,
+        agravos_saude_mental: serializeMultiSelect(agravosSel, agravosExtras),
+        medidas_existentes: serializeMultiSelect(medidasSel, medidasExtras),
+        ...(extras?.status ? { status: extras.status } : {}),
+      },
+      { onSuccess: () => setDirty(false) }
+    );
+  }
 
   const setoresParaRelatorio = useMemo<string[]>(() => {
     if (setor === "Todos") return listarSetores(respondentes);
@@ -152,6 +262,163 @@ export default function AnalisePage({
 
       <div className="print:hidden">
         <DrpsFiltro idRelatorio={idRelatorio} />
+      </div>
+
+      <div className="print:hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-gray-900">
+            Diagnóstico Descritivo
+          </h2>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => salvarCampos()}
+              disabled={!dirty || salvar.isPending || !relatorio}
+              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Save className="size-3.5" />
+              {salvar.isPending ? "Salvando..." : "Salvar"}
+            </button>
+            <button
+              type="button"
+              onClick={() => salvarCampos({ status: "CONCLUIDO" })}
+              disabled={salvar.isPending || !relatorio}
+              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+            >
+              <CheckCircle2 className="size-3.5" />
+              {relatorio?.status === "CONCLUIDO"
+                ? "Concluído"
+                : "Concluir Análise e Avaliação"}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Possíveis Agravos à Saúde Mental
+            </h3>
+            <p className="mb-2 text-[10px] italic text-gray-500">
+              Marque os agravos aplicáveis e adicione outros manualmente.
+            </p>
+            <div className="space-y-1">
+              {AGRAVOS_OPCOES.map((opt) => (
+                <label
+                  key={opt}
+                  className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-0.5 text-xs hover:bg-gray-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={agravosSel.includes(opt)}
+                    onChange={() => toggleAgravo(opt)}
+                    className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                  />
+                  <span className="text-gray-800">{opt}</span>
+                </label>
+              ))}
+            </div>
+            {agravosExtras.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {agravosExtras.map((e, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 rounded bg-amber-50 px-2 py-1 text-xs"
+                  >
+                    <span className="flex-1 text-gray-800">{e}</span>
+                    <button
+                      type="button"
+                      onClick={() => removerAgravoExtra(i)}
+                      className="text-gray-400 hover:text-red-600"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-2 flex gap-1.5">
+              <input
+                type="text"
+                value={novoAgravo}
+                onChange={(e) => setNovoAgravo(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && adicionarAgravo()}
+                placeholder="Adicionar outro agravo..."
+                className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+              />
+              <button
+                type="button"
+                onClick={adicionarAgravo}
+                disabled={!novoAgravo.trim()}
+                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Plus className="size-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Medidas de Controle Existentes
+            </h3>
+            <p className="mb-2 text-[10px] italic text-gray-500">
+              Marque as medidas que a empresa já adota e adicione outras
+              manualmente.
+            </p>
+            <div className="space-y-1">
+              {MEDIDAS_EXISTENTES_OPCOES.map((opt) => (
+                <label
+                  key={opt}
+                  className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-0.5 text-xs hover:bg-gray-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={medidasSel.includes(opt)}
+                    onChange={() => toggleMedida(opt)}
+                    className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                  />
+                  <span className="text-gray-800">{opt}</span>
+                </label>
+              ))}
+            </div>
+            {medidasExtras.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {medidasExtras.map((e, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 rounded bg-amber-50 px-2 py-1 text-xs"
+                  >
+                    <span className="flex-1 text-gray-800">{e}</span>
+                    <button
+                      type="button"
+                      onClick={() => removerMedidaExtra(i)}
+                      className="text-gray-400 hover:text-red-600"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-2 flex gap-1.5">
+              <input
+                type="text"
+                value={novaMedida}
+                onChange={(e) => setNovaMedida(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && adicionarMedida()}
+                placeholder="Adicionar outra medida..."
+                className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+              />
+              <button
+                type="button"
+                onClick={adicionarMedida}
+                disabled={!novaMedida.trim()}
+                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Plus className="size-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {respondentes.length === 0 ? (
@@ -313,11 +580,7 @@ function BlocoSetor({
             <td className="drps-label">
               Quantidade de Trabalhadores na Função
             </td>
-            <td>{relatorio.totalRespondentes}</td>
-            <td className="drps-label">Homens / Mulheres</td>
-            <td>
-              {drpsRel?.qtd_homens ?? "—"} / {drpsRel?.qtd_mulheres ?? "—"}
-            </td>
+            <td colSpan={3}>{relatorio.totalRespondentes}</td>
           </tr>
           <tr>
             <td className="drps-label align-top">
