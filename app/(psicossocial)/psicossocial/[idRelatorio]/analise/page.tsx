@@ -24,6 +24,11 @@ import {
   TOPICOS,
 } from "@/lib/drps/topicos";
 import {
+  montarValoresVariaveis,
+  substituirVariaveis,
+  substituirVariaveisTexto,
+} from "@/lib/drps/variaveis";
+import {
   formatCNPJ,
   formatCPF,
   formatCEI,
@@ -100,6 +105,11 @@ export default function AnalisePage({
   const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
   const { data: capitulos = [] } = useDrpsTextoPadrao();
+
+  const valoresVars = useMemo(
+    () => montarValoresVariaveis(empresa, relatorio ?? null),
+    [empresa, relatorio]
+  );
   const salvar = useDrpsSalvarRelatorio();
 
   const [agravosSel, setAgravosSel] = useState<string[]>([]);
@@ -507,11 +517,15 @@ export default function AnalisePage({
               <section className="drps-capitulos mb-6">
                 {capitulos.map((c) => (
                   <article key={c.id_capitulo} className="drps-capitulo">
-                    <h2 className="drps-capitulo-titulo">{c.titulo}</h2>
+                    <h2 className="drps-capitulo-titulo">
+                      {substituirVariaveisTexto(c.titulo, valoresVars)}
+                    </h2>
                     {c.conteudo && (
                       <div
                         className="drps-capitulo-conteudo"
-                        dangerouslySetInnerHTML={{ __html: c.conteudo }}
+                        dangerouslySetInnerHTML={{
+                          __html: substituirVariaveis(c.conteudo, valoresVars),
+                        }}
                       />
                     )}
                   </article>

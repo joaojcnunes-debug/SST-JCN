@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -33,9 +33,12 @@ import {
   Undo,
   Redo,
   Loader2,
+  Braces,
+  ChevronDown,
 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { VARIAVEIS } from "@/lib/drps/variaveis";
 
 interface Props {
   value: string;
@@ -146,6 +149,10 @@ export default function RichTextEditor({
     editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   }
 
+  function insertVariavel(chave: string) {
+    editor?.chain().focus().insertContent(`{{${chave}}}`).run();
+  }
+
   if (!editor) {
     return (
       <div className="flex h-48 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-xs text-gray-500">
@@ -161,6 +168,7 @@ export default function RichTextEditor({
         onPickImage={() => inputRef.current?.click()}
         onLink={setLink}
         onTable={insertTable}
+        onInsertVariavel={insertVariavel}
       />
       <input
         ref={inputRef}
@@ -183,11 +191,13 @@ function Toolbar({
   onPickImage,
   onLink,
   onTable,
+  onInsertVariavel,
 }: {
   editor: Editor;
   onPickImage: () => void;
   onLink: () => void;
   onTable: () => void;
+  onInsertVariavel: (chave: string) => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-1.5 py-1">
@@ -319,6 +329,10 @@ function Toolbar({
 
       <Divider />
 
+      <VariaveisMenu onInsert={onInsertVariavel} />
+
+      <Divider />
+
       <ToolButton
         onClick={() => editor.chain().focus().undo().run()}
         disabled={!editor.can().undo()}
@@ -339,6 +353,72 @@ function Toolbar({
 
 function Divider() {
   return <span className="mx-0.5 h-5 w-px bg-gray-300" />;
+}
+
+function VariaveisMenu({
+  onInsert,
+}: {
+  onInsert: (chave: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title="Inserir variável dinâmica"
+        className={cn(
+          "inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-200",
+          open && "bg-verde-light text-verde-primary"
+        )}
+      >
+        <Braces className="size-3.5" />
+        Variável
+        <ChevronDown className="size-3" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-30 mt-1 w-72 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
+          <div className="border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            Inserir variável
+          </div>
+          <ul className="max-h-72 overflow-auto py-1">
+            {VARIAVEIS.map((v) => (
+              <li key={v.chave}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onInsert(v.chave);
+                    setOpen(false);
+                  }}
+                  className="flex w-full flex-col items-start px-3 py-1.5 text-left hover:bg-verde-light"
+                >
+                  <span className="text-xs font-medium text-gray-900">
+                    {v.rotulo}
+                  </span>
+                  <span className="font-mono text-[10px] text-gray-500">
+                    {`{{${v.chave}}}`} → {v.exemplo}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function ToolButton({
