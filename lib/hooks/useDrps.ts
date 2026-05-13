@@ -557,3 +557,40 @@ export function useDrpsExcluirCapitulo() {
     onError: (e: Error) => toast.error(e.message),
   });
 }
+
+// ============================================================
+// DASHBOARD GERAL (todas as empresas)
+// ============================================================
+
+export interface DrpsRelatorioComEmpresa extends DrpsRelatorio {
+  empresa_nome: string | null;
+  empresa_cnpj: string | null;
+}
+
+export function useDrpsRelatoriosGeral() {
+  return useQuery({
+    queryKey: ["drps-relatorios-geral"],
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("drps_relatorios")
+        .select("*, empresas(id_empresa, nome_empresa, cnpj)")
+        .neq("status", "DELETADO")
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      type Row = DrpsRelatorio & {
+        empresas:
+          | { id_empresa: string; nome_empresa: string; cnpj: string | null }
+          | null;
+      };
+      const rows = (data ?? []) as unknown as Row[];
+      return rows.map<DrpsRelatorioComEmpresa>((r) => ({
+        ...r,
+        empresa_nome: r.empresas?.nome_empresa ?? null,
+        empresa_cnpj: r.empresas?.cnpj ?? null,
+      }));
+    },
+  });
+}
