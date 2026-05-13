@@ -230,6 +230,34 @@ export const MEDIDAS_CONTROLE: string[] = [
   "Programa de treinamento à equipe de RH para implementação da NR-01",
 ];
 
+/** Possíveis agravos à saúde mental — sugestões padrão (multi-select). */
+export const AGRAVOS_OPCOES: string[] = [
+  "Transtornos de ansiedade",
+  "Quadros depressivos",
+  "Síndrome de Burnout (esgotamento profissional)",
+  "Transtornos do sono",
+  "Transtornos psicossomáticos",
+  "Estresse pós-traumático",
+  "Uso abusivo de álcool e outras drogas",
+  "Ideação suicida e comportamento autolesivo",
+  "Conflitos interpessoais e assédio moral",
+  "Absenteísmo e presenteísmo",
+];
+
+/** Medidas de controle já existentes — sugestões padrão (multi-select). */
+export const MEDIDAS_EXISTENTES_OPCOES: string[] = [
+  "Programa de Apoio ao Empregado (PAE / EAP)",
+  "Canal de denúncias e ouvidoria",
+  "Treinamentos de liderança e gestão de equipes",
+  "Pausas regulares e ginástica laboral",
+  "Plano de saúde com cobertura para saúde mental",
+  "Pesquisas de clima organizacional",
+  "Política de prevenção ao assédio moral e sexual",
+  "Programa de qualidade de vida no trabalho",
+  "Acompanhamento psicológico (interno ou conveniado)",
+  "Reuniões periódicas de feedback estruturado",
+];
+
 export const MESES = [
   "Jan",
   "Fev",

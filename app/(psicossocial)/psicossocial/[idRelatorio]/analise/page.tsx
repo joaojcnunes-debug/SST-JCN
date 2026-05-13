@@ -27,6 +27,7 @@ import type {
 interface SetorRelatorio {
   setor: string;
   totalRespondentes: number;
+  funcoes: string;
   topicos: TopicoComMatriz[];
 }
 
@@ -67,9 +68,17 @@ export default function AnalisePage({
       const topicos = calcularResumoCompleto(filtrados);
       const mapaProb = montarMapaProb(probabilidades, s);
       const topicosComMatriz = aplicarMatriz(topicos, mapaProb);
+      const cargosSet = new Set<string>();
+      for (const r of filtrados) {
+        if (r.cargo && r.cargo.trim()) cargosSet.add(r.cargo.trim());
+      }
+      const funcoes = Array.from(cargosSet)
+        .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
+        .join(", ");
       return {
         setor: s,
         totalRespondentes: filtrados.length,
+        funcoes,
         topicos: topicosComMatriz,
       };
     });
@@ -266,13 +275,13 @@ function BlocoSetor({
           </tr>
           <tr>
             <td className="drps-label">Funções</td>
-            <td colSpan={3}>{drpsRel?.funcoes ?? ""}</td>
+            <td colSpan={3}>{relatorio.funcoes || "—"}</td>
           </tr>
           <tr>
             <td className="drps-label">
               Quantidade de Trabalhadores na Função
             </td>
-            <td>{drpsRel?.qtd_trabalhadores ?? ""}</td>
+            <td>{relatorio.totalRespondentes}</td>
             <td className="drps-label">Homens / Mulheres</td>
             <td>
               {drpsRel?.qtd_homens ?? "—"} / {drpsRel?.qtd_mulheres ?? "—"}
