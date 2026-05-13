@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, use } from "react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import { useDrpsStore } from "@/lib/drps/store";
 import { useDrpsRespondentes } from "@/lib/hooks/useDrps";
@@ -9,10 +9,14 @@ import {
   filtrarPorSetor,
 } from "@/lib/drps/calculos";
 
-export default function DrpsEscalaPage() {
-  const idEmpresa = useDrpsStore((s) => s.idEmpresa);
+export default function EscalaPage({
+  params,
+}: {
+  params: Promise<{ idRelatorio: string }>;
+}) {
+  const { idRelatorio } = use(params);
   const setor = useDrpsStore((s) => s.setor);
-  const { data: respondentes = [] } = useDrpsRespondentes(idEmpresa);
+  const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
   const [topicoFiltro, setTopicoFiltro] = useState<number | "todos">("todos");
 
   const filtrados = useMemo(
@@ -35,7 +39,6 @@ export default function DrpsEscalaPage() {
       mediaBruta: number;
       corrigida: number;
       gravidade: { texto: string; cor: string };
-      respondentesN: number;
     }> = [];
     let n = 1;
     for (const t of topicosCalc) {
@@ -47,13 +50,12 @@ export default function DrpsEscalaPage() {
         result.push({
           n,
           topicoIdx: t.idx,
-          topicoNome: t.nome,
+          topicoNome: t.nome.replace(/^Tópico \d+ - /, ""),
           texto: p.texto,
           logica: p.logica,
           mediaBruta: p.mediaBruta,
           corrigida: p.pontuacaoCorrigida,
           gravidade: p.gravidade,
-          respondentesN: p.n,
         });
         n++;
       }
@@ -68,23 +70,19 @@ export default function DrpsEscalaPage() {
           Escala — Detalhe das Perguntas
         </h1>
         <p className="text-sm text-gray-600">
-          Cada pergunta com sua média bruta, pontuação corrigida (após
-          inversão se aplicável) e gravidade individual. Escala 0–4:{" "}
+          Cada pergunta com média bruta, pontuação corrigida (após ROUNDUP
+          e inversão se aplicável) e gravidade individual. Escala 0–4:{" "}
           <strong>0</strong> Nunca · <strong>1</strong> Raramente ·{" "}
           <strong>2</strong> Ocasionalmente · <strong>3</strong>{" "}
           Frequentemente · <strong>4</strong> Sempre.
         </p>
       </div>
 
-      <DrpsFiltro />
+      <DrpsFiltro idRelatorio={idRelatorio} />
 
-      {!idEmpresa ? (
+      {respondentes.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Selecione uma empresa.
-        </div>
-      ) : respondentes.length === 0 ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Nenhum respondente importado para esta empresa.
+          Nenhum respondente importado neste relatório.
         </div>
       ) : (
         <>
@@ -101,10 +99,12 @@ export default function DrpsEscalaPage() {
               }
               className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
             >
-              <option value="todos">Todos os tópicos ({topicosCalc.length})</option>
+              <option value="todos">
+                Todos os tópicos ({topicosCalc.length})
+              </option>
               {topicosCalc.map((t) => (
                 <option key={t.idx} value={t.idx}>
-                  {t.idx + 1}. {t.nome}
+                  {t.idx + 1}. {t.nome.replace(/^Tópico \d+ - /, "")}
                 </option>
               ))}
             </select>
@@ -154,7 +154,7 @@ export default function DrpsEscalaPage() {
                         {l.mediaBruta.toFixed(2)}
                       </td>
                       <td className="px-3 py-2 text-center font-mono text-gray-700">
-                        {l.corrigida.toFixed(2)}
+                        {l.corrigida}
                       </td>
                       <td className="px-3 py-2 text-center">
                         <span

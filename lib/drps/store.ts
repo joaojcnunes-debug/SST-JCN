@@ -4,26 +4,21 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 interface DrpsState {
-  idEmpresa: string | null;
+  /**
+   * Setor filtrado atualmente nas telas do relatório DRPS.
+   * Default "Todos" = não filtra. Persiste em localStorage pra preservar
+   * entre trocas de aba dentro do mesmo relatório.
+   *
+   * O id_relatorio e o id_empresa vêm da URL/dados — não são guardados aqui.
+   */
   setor: string;
-  setIdEmpresa: (id: string | null) => void;
   setSetor: (s: string) => void;
 }
 
-/**
- * Estado compartilhado pelo módulo Psicossocial: empresa atual e setor
- * filtrado (padrão "Todos"). Persiste em localStorage pra não perder a
- * seleção quando o usuário navega entre as abas.
- */
 export const useDrpsStore = create<DrpsState>()(
   persist(
     (set) => ({
-      idEmpresa: null,
       setor: "Todos",
-      setIdEmpresa: (id) =>
-        set((s) =>
-          s.idEmpresa === id ? s : { idEmpresa: id, setor: "Todos" }
-        ),
       setSetor: (setor) => set({ setor }),
     }),
     { name: "drps-filtro" }

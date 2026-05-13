@@ -1,238 +1,201 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState } from "react";
+import Link from "next/link";
+import { Plus, FileText, Trash2, ArrowRight } from "lucide-react";
+import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import Badge from "@/components/ui/Badge";
+import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import {
-  Bar,
-  BarChart,
-  Cell,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import DrpsFiltro from "@/components/drps/DrpsFiltro";
-import MatrizRisco from "@/components/drps/MatrizRisco";
-import { useDrpsStore } from "@/lib/drps/store";
-import {
-  useDrpsProbabilidades,
-  useDrpsRespondentes,
+  useDrpsExcluirRelatorio,
+  useDrpsRelatorios,
 } from "@/lib/hooks/useDrps";
-import {
-  aplicarMatriz,
-  calcularResumoCompleto,
-  CORES_MATRIZ,
-  filtrarPorSetor,
-} from "@/lib/drps/calculos";
-import { TOPICOS } from "@/lib/drps/topicos";
-import type { NivelMatriz } from "@/lib/drps/types";
+import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import { fmtData } from "@/lib/utils";
+import type { DrpsRelatorio, StatusRelatorio } from "@/lib/drps/types";
 
-const NIVEIS: NivelMatriz[] = ["Baixo", "Médio", "Alto", "Crítico"];
+const STATUS_LABEL: Record<StatusRelatorio, string> = {
+  RASCUNHO: "Rascunho",
+  EM_ANDAMENTO: "Em andamento",
+  CONCLUIDO: "Concluído",
+  DELETADO: "Excluído",
+};
 
-export default function DrpsDashboardPage() {
-  const idEmpresa = useDrpsStore((s) => s.idEmpresa);
-  const setor = useDrpsStore((s) => s.setor);
-  const { data: respondentes = [] } = useDrpsRespondentes(idEmpresa);
-  const { data: probabilidades = [] } = useDrpsProbabilidades(idEmpresa);
+const STATUS_VARIANT: Record<
+  StatusRelatorio,
+  "info" | "success" | "muted" | "warning"
+> = {
+  RASCUNHO: "muted",
+  EM_ANDAMENTO: "info",
+  CONCLUIDO: "success",
+  DELETADO: "warning",
+};
 
-  const filtrados = useMemo(
-    () => filtrarPorSetor(respondentes, setor),
-    [respondentes, setor]
+export default function DrpsListaPage() {
+  const [idEmpresa, setIdEmpresa] = useState<string | null>(null);
+  const { data: empresa } = useEmpresa(idEmpresa);
+  const { data: relatorios = [], isLoading } = useDrpsRelatorios(idEmpresa);
+  const [confirmExcluir, setConfirmExcluir] = useState<DrpsRelatorio | null>(
+    null
   );
-
-  const topicos = useMemo(
-    () => calcularResumoCompleto(filtrados),
-    [filtrados]
-  );
-
-  const mapaProb = useMemo(() => {
-    const m: Record<number, 1 | 2 | 3> = {};
-    for (let i = 0; i < TOPICOS.length; i++) m[i] = 1;
-    if (setor === "Todos") return m;
-    for (const p of probabilidades) {
-      if (p.setor === setor) {
-        m[p.topico_idx] = p.probabilidade as 1 | 2 | 3;
-      }
-    }
-    return m;
-  }, [probabilidades, setor]);
-
-  const topicosComMatriz = useMemo(
-    () => aplicarMatriz(topicos, mapaProb),
-    [topicos, mapaProb]
-  );
-
-  const contagem = useMemo(() => {
-    const c: Record<NivelMatriz, number> = {
-      Baixo: 0,
-      Médio: 0,
-      Alto: 0,
-      Crítico: 0,
-    };
-    for (const t of topicosComMatriz) c[t.matriz]++;
-    return c;
-  }, [topicosComMatriz]);
-
-  const dadosBarras = useMemo(
-    () =>
-      topicosComMatriz.map((t) => ({
-        nome: t.nome.length > 28 ? t.nome.substring(0, 26) + "…" : t.nome,
-        nomeCompleto: t.nome,
-        gravidade: Number(t.mediaGravidade.toFixed(2)),
-        cor: t.classificacaoGravidade.cor,
-      })),
-    [topicosComMatriz]
-  );
-
-  const dadosRosca = useMemo(
-    () =>
-      NIVEIS.map((n) => ({
-        nome: n,
-        valor: contagem[n],
-        cor: CORES_MATRIZ[n],
-      })).filter((d) => d.valor > 0),
-    [contagem]
-  );
+  const excluir = useDrpsExcluirRelatorio();
 
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-semibold text-gray-900">
-          Painel Resumo NR-01
+          Relatórios DRPS
         </h1>
         <p className="text-sm text-gray-600">
-          Visão geral do diagnóstico psicossocial: matriz de risco, gravidade
-          por tópico e distribuição dos níveis de risco.
+          Diagnósticos de Riscos Psicossociais. Cada empresa pode ter
+          múltiplos relatórios (revisões sequenciais).
         </p>
       </div>
 
-      <DrpsFiltro />
+      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+          Empresa
+        </label>
+        <EmpresaSelect value={idEmpresa} onChange={setIdEmpresa} />
+      </div>
 
       {!idEmpresa ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Selecione uma empresa para visualizar o painel.
-        </div>
-      ) : respondentes.length === 0 ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Nenhum respondente importado para esta empresa. Vá em{" "}
-          <strong>Dados do Forms</strong> para começar.
+          Selecione uma empresa para ver/criar relatórios DRPS.
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {NIVEIS.map((n) => (
-              <div
-                key={n}
-                className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-              >
-                <div
-                  className="mb-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white"
-                  style={{ backgroundColor: CORES_MATRIZ[n] }}
-                >
-                  {n}
-                </div>
-                <p className="text-3xl font-bold text-gray-900">
-                  {contagem[n]}
-                </p>
-                <p className="text-xs text-gray-500">
-                  tópico{contagem[n] !== 1 ? "s" : ""}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <h2 className="mb-3 text-sm font-semibold text-gray-900">
-                Matriz de Risco
-              </h2>
-              <MatrizRisco topicos={topicosComMatriz} />
-              <p className="mt-2 text-[11px] text-gray-500">
-                {filtrados.length} respondente(s) considerado(s)
-              </p>
-            </div>
-
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <h2 className="mb-3 text-sm font-semibold text-gray-900">
-                Distribuição do Risco Final
-              </h2>
-              {dadosRosca.length > 0 ? (
-                <ResponsiveContainer width="100%" height={280}>
-                  <PieChart>
-                    <Pie
-                      data={dadosRosca}
-                      dataKey="valor"
-                      nameKey="nome"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      label={(props) => {
-                        const p = props as unknown as {
-                          nome: string;
-                          valor: number;
-                        };
-                        return `${p.nome}: ${p.valor}`;
-                      }}
-                    >
-                      {dadosRosca.map((d, i) => (
-                        <Cell key={i} fill={d.cor} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <p className="py-10 text-center text-sm text-gray-500">
-                  Sem dados
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-gray-900">
-              Gravidade Média por Tópico
-            </h2>
-            <ResponsiveContainer width="100%" height={360}>
-              <BarChart
-                data={dadosBarras}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 8, bottom: 5 }}
-              >
-                <XAxis
-                  type="number"
-                  domain={[0, 3]}
-                  ticks={[0, 1, 1.5, 2, 2.5, 3]}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="nome"
-                  width={220}
-                  tick={{ fontSize: 11 }}
-                />
-                <Tooltip
-                  formatter={(v) =>
-                    typeof v === "number" ? v.toFixed(2) : String(v)
-                  }
-                  labelFormatter={(_, payload) =>
-                    (payload?.[0]?.payload as { nomeCompleto?: string } | undefined)
-                      ?.nomeCompleto ?? ""
-                  }
-                />
-                <Bar dataKey="gravidade">
-                  {dadosBarras.map((d, i) => (
-                    <Cell key={i} fill={d.cor} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-            <p className="mt-1 text-[11px] text-gray-500">
-              Escala: 0–3 (Baixa &lt; 1,5 &lt; Média &lt; 2,5 ≤ Alta)
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-gray-600">
+              <strong>{relatorios.length}</strong> relatório(s) de{" "}
+              <strong>{empresa?.nome_empresa ?? "—"}</strong>
             </p>
+            <Link
+              href={`/psicossocial/novo?empresa=${idEmpresa}`}
+              className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+            >
+              <Plus className="size-4" /> Novo Relatório
+            </Link>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            {isLoading ? (
+              <div className="p-4">
+                <LoadingSkeleton rows={4} />
+              </div>
+            ) : relatorios.length === 0 ? (
+              <div className="p-12 text-center text-sm text-gray-500">
+                Nenhum relatório DRPS para esta empresa. Clique em{" "}
+                <strong>Novo Relatório</strong> para começar.
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-xs uppercase text-gray-500">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left font-medium">
+                      Revisão
+                    </th>
+                    <th className="px-4 py-2.5 text-left font-medium">
+                      Data Elaboração
+                    </th>
+                    <th className="px-4 py-2.5 text-left font-medium">
+                      Responsável Técnico
+                    </th>
+                    <th className="px-4 py-2.5 text-left font-medium">CRP</th>
+                    <th className="px-4 py-2.5 text-left font-medium">
+                      Status
+                    </th>
+                    <th className="px-4 py-2.5 text-left font-medium">
+                      Criado em
+                    </th>
+                    <th className="px-4 py-2.5 text-right font-medium">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {relatorios.map((r) => (
+                    <tr key={r.id_relatorio} className="hover:bg-gray-50">
+                      <td className="px-4 py-2.5">
+                        <Link
+                          href={`/psicossocial/${r.id_relatorio}/dashboard`}
+                          className="inline-flex items-center gap-1.5 font-mono text-sm font-semibold text-verde-primary hover:underline"
+                        >
+                          <FileText className="size-4" /> Rev. {r.revisao}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-700">
+                        {r.data_elaboracao
+                          ? new Date(
+                              r.data_elaboracao + "T00:00:00"
+                            ).toLocaleDateString("pt-BR")
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-700">
+                        {r.responsavel_tecnico ?? "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-700">
+                        {r.crp ?? "—"}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Badge variant={STATUS_VARIANT[r.status]}>
+                          {STATUS_LABEL[r.status]}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-600">
+                        {fmtData(r.created_at)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex justify-end gap-1">
+                          <Link
+                            href={`/psicossocial/${r.id_relatorio}/dashboard`}
+                            className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                            title="Abrir"
+                          >
+                            <ArrowRight className="size-4" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setConfirmExcluir(r)}
+                            className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                            title="Excluir"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </>
       )}
+
+      <ConfirmDialog
+        open={!!confirmExcluir}
+        title="Excluir relatório DRPS?"
+        description={
+          confirmExcluir
+            ? `O relatório Rev. ${confirmExcluir.revisao} e todos os respondentes/probabilidades/plano associados serão marcados como excluídos. Esta operação pode ser revertida no banco se necessário.`
+            : undefined
+        }
+        variant="danger"
+        loading={excluir.isPending}
+        onConfirm={() => {
+          if (!confirmExcluir) return;
+          excluir.mutate(
+            {
+              id_relatorio: confirmExcluir.id_relatorio,
+              id_empresa: confirmExcluir.id_empresa,
+            },
+            { onSuccess: () => setConfirmExcluir(null) }
+          );
+        }}
+        onCancel={() => setConfirmExcluir(null)}
+      />
     </div>
   );
 }

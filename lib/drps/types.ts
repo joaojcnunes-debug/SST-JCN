@@ -1,35 +1,48 @@
 // DRPS — tipos compartilhados entre cliente e camada de dados.
 
-export interface DrpsRespondente {
-  id_respondente: string;
-  id_empresa: string;
-  setor: string;
-  cargo: string | null;
-  respostas: number[]; // 90 valores 0..4
-  data_carimbo: string | null;
-  importado_em: string;
-  lote_importacao: string;
-}
+export type StatusRelatorio =
+  | "RASCUNHO"
+  | "EM_ANDAMENTO"
+  | "CONCLUIDO"
+  | "DELETADO";
 
-export interface DrpsProbabilidade {
+export interface DrpsRelatorio {
+  id_relatorio: string;
   id_empresa: string;
-  setor: string;
-  topico_idx: number;
-  probabilidade: 1 | 2 | 3;
-  updated_at: string;
-}
-
-export interface DrpsEmpresaConfig {
-  id_empresa: string;
+  revisao: number;
+  status: StatusRelatorio;
+  data_elaboracao: string | null;
   responsavel_tecnico: string | null;
   crp: string | null;
-  data_elaboracao: string | null;
   funcoes: string | null;
   qtd_trabalhadores: number | null;
   qtd_homens: number | null;
   qtd_mulheres: number | null;
   agravos_saude_mental: string | null;
   medidas_existentes: string | null;
+  usuario_email: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface DrpsRespondente {
+  id_respondente: string;
+  id_relatorio: string;
+  id_empresa: string;
+  setor: string;
+  cargo: string | null;
+  respostas: number[];
+  data_carimbo: string | null;
+  importado_em: string;
+  lote_importacao: string;
+}
+
+export interface DrpsProbabilidade {
+  id_relatorio: string;
+  id_empresa: string;
+  setor: string;
+  topico_idx: number;
+  probabilidade: 1 | 2 | 3;
   updated_at: string;
 }
 
@@ -40,6 +53,7 @@ export interface MedidaPlano {
 }
 
 export interface DrpsPlanoMedidas {
+  id_relatorio: string;
   id_empresa: string;
   ano: number;
   plano: Record<string, MedidaPlano>; // chave = nome da ação
@@ -53,6 +67,7 @@ export type StatusMonitoramento =
   | "Cancelado";
 
 export interface DrpsMonitoramento {
+  id_relatorio: string;
   id_empresa: string;
   setor: string;
   topico_idx: number;
@@ -65,6 +80,7 @@ export interface DrpsMonitoramento {
 }
 
 export interface DrpsRevisao {
+  id_relatorio: string;
   id_empresa: string;
   /** chave = id da ação obrigatória; valor = data ISO (se marcada) ou true/false */
   checklist: Record<string, boolean | string>;

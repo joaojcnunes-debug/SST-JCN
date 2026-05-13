@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, use } from "react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import { useDrpsStore } from "@/lib/drps/store";
 import {
   useDrpsProbabilidades,
+  useDrpsRelatorio,
   useDrpsRespondentes,
   useDrpsSalvarProbabilidade,
 } from "@/lib/hooks/useDrps";
@@ -15,11 +16,16 @@ import {
 } from "@/lib/drps/calculos";
 import { TOPICOS } from "@/lib/drps/topicos";
 
-export default function DrpsResumoPage() {
-  const idEmpresa = useDrpsStore((s) => s.idEmpresa);
+export default function ResumoPage({
+  params,
+}: {
+  params: Promise<{ idRelatorio: string }>;
+}) {
+  const { idRelatorio } = use(params);
   const setor = useDrpsStore((s) => s.setor);
-  const { data: respondentes = [] } = useDrpsRespondentes(idEmpresa);
-  const { data: probabilidades = [] } = useDrpsProbabilidades(idEmpresa);
+  const { data: relatorio } = useDrpsRelatorio(idRelatorio);
+  const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
+  const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
   const salvar = useDrpsSalvarProbabilidade();
 
   const filtrados = useMemo(
@@ -32,9 +38,6 @@ export default function DrpsResumoPage() {
     [filtrados]
   );
 
-  // Probabilidades aplicáveis: o psicólogo define por setor. Quando o
-  // filtro é "Todos os setores", usa a média ponderada (sem persistência —
-  // a edição requer um setor específico selecionado).
   const mapaProb = useMemo(() => {
     const m: Record<number, 1 | 2 | 3> = {};
     for (let i = 0; i < TOPICOS.length; i++) m[i] = 1;
@@ -52,7 +55,7 @@ export default function DrpsResumoPage() {
     [topicos, mapaProb]
   );
 
-  const podeEditar = setor !== "Todos" && idEmpresa !== null;
+  const podeEditar = setor !== "Todos" && relatorio !== null;
 
   return (
     <div className="space-y-4">
@@ -67,15 +70,11 @@ export default function DrpsResumoPage() {
         </p>
       </div>
 
-      <DrpsFiltro />
+      <DrpsFiltro idRelatorio={idRelatorio} />
 
-      {!idEmpresa ? (
+      {respondentes.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Selecione uma empresa.
-        </div>
-      ) : respondentes.length === 0 ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Nenhum respondente importado para esta empresa.
+          Nenhum respondente importado neste relatório.
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -104,7 +103,7 @@ export default function DrpsResumoPage() {
               {topicosComMatriz.map((t) => (
                 <tr key={t.idx} className="hover:bg-gray-50">
                   <td className="px-3 py-2 font-medium text-gray-900">
-                    {t.nome}
+                    {t.idx + 1}. {t.nome.replace(/^Tópico \d+ - /, "")}
                   </td>
                   <td className="px-3 py-2 text-center text-gray-700">
                     {t.mediaGravidade.toFixed(2)}
@@ -124,10 +123,11 @@ export default function DrpsResumoPage() {
                       value={t.probabilidade}
                       disabled={!podeEditar}
                       onChange={(e) => {
-                        if (!idEmpresa) return;
+                        if (!relatorio) return;
                         const v = Number(e.target.value) as 1 | 2 | 3;
                         salvar.mutate({
-                          id_empresa: idEmpresa,
+                          id_relatorio: idRelatorio,
+                          id_empresa: relatorio.id_empresa,
                           setor,
                           topico_idx: t.idx,
                           probabilidade: v,

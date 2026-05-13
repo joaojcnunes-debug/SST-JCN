@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, use } from "react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import { useDrpsStore } from "@/lib/drps/store";
 import {
   useDrpsMonitoramento,
   useDrpsProbabilidades,
+  useDrpsRelatorio,
   useDrpsRespondentes,
   useDrpsSalvarMonitoramento,
 } from "@/lib/hooks/useDrps";
@@ -44,16 +45,21 @@ const RECOMENDACOES: Record<NivelMatriz, { titulo: string; texto: string }> = {
   Crítico: {
     titulo: "⚫ Risco Crítico",
     texto:
-      "Programas interventivos imediatos + reavaliação do DRPS em 90 dias. Comunicação imediata à liderança e CIPA.",
+      "Programas interventivos imediatos + reavaliação do DRPS em 90 dias.",
   },
 };
 
-export default function DrpsMonitoramentoPage() {
-  const idEmpresa = useDrpsStore((s) => s.idEmpresa);
+export default function MonitoramentoPage({
+  params,
+}: {
+  params: Promise<{ idRelatorio: string }>;
+}) {
+  const { idRelatorio } = use(params);
   const setor = useDrpsStore((s) => s.setor);
-  const { data: respondentes = [] } = useDrpsRespondentes(idEmpresa);
-  const { data: probabilidades = [] } = useDrpsProbabilidades(idEmpresa);
-  const { data: monitoramentos = [] } = useDrpsMonitoramento(idEmpresa);
+  const { data: relatorio } = useDrpsRelatorio(idRelatorio);
+  const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
+  const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
+  const { data: monitoramentos = [] } = useDrpsMonitoramento(idRelatorio);
   const salvar = useDrpsSalvarMonitoramento();
 
   const filtrados = useMemo(
@@ -91,20 +97,34 @@ export default function DrpsMonitoramentoPage() {
 
   function atualizar(
     topicoIdx: number,
-    campo: "data_intervencao" | "responsavel" | "status" | "proxima_avaliacao",
+    campo:
+      | "data_intervencao"
+      | "responsavel"
+      | "status"
+      | "proxima_avaliacao",
     valor: string
   ) {
-    if (!idEmpresa || setor === "Todos") return;
+    if (!relatorio || setor === "Todos") return;
     const m = getMonit(topicoIdx);
     salvar.mutate({
-      id_empresa: idEmpresa,
+      id_relatorio: idRelatorio,
+      id_empresa: relatorio.id_empresa,
       setor,
       topico_idx: topicoIdx,
-      data_intervencao: campo === "data_intervencao" ? valor || null : m?.data_intervencao ?? null,
-      responsavel: campo === "responsavel" ? valor || null : m?.responsavel ?? null,
-      status: campo === "status" ? (valor as StatusMonitoramento) : m?.status ?? "Pendente",
+      data_intervencao:
+        campo === "data_intervencao"
+          ? valor || null
+          : m?.data_intervencao ?? null,
+      responsavel:
+        campo === "responsavel" ? valor || null : m?.responsavel ?? null,
+      status:
+        campo === "status"
+          ? (valor as StatusMonitoramento)
+          : m?.status ?? "Pendente",
       proxima_avaliacao:
-        campo === "proxima_avaliacao" ? valor || null : m?.proxima_avaliacao ?? null,
+        campo === "proxima_avaliacao"
+          ? valor || null
+          : m?.proxima_avaliacao ?? null,
       observacoes: m?.observacoes ?? null,
     });
   }
@@ -116,38 +136,36 @@ export default function DrpsMonitoramentoPage() {
           Monitoramento do Desempenho
         </h1>
         <p className="text-sm text-gray-600">
-          Recomendações de conduta por nível de risco e acompanhamento das
-          intervenções por tópico. Selecione um setor específico para
-          editar.
+          Recomendações por nível de risco e acompanhamento por tópico.
+          Selecione um setor específico para editar.
         </p>
       </div>
 
-      <DrpsFiltro />
+      <DrpsFiltro idRelatorio={idRelatorio} />
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-        {(Object.entries(RECOMENDACOES) as [NivelMatriz, typeof RECOMENDACOES.Baixo][]).map(
-          ([nivel, info]) => (
-            <div
-              key={nivel}
-              className="rounded-xl border-l-4 bg-white p-3 shadow-sm"
-              style={{ borderLeftColor: CORES_MATRIZ[nivel] }}
-            >
-              <h3 className="text-sm font-semibold text-gray-900">
-                {info.titulo}
-              </h3>
-              <p className="mt-1 text-xs text-gray-600">{info.texto}</p>
-            </div>
-          )
-        )}
+        {(
+          Object.entries(RECOMENDACOES) as [
+            NivelMatriz,
+            (typeof RECOMENDACOES)["Baixo"],
+          ][]
+        ).map(([nivel, info]) => (
+          <div
+            key={nivel}
+            className="rounded-xl border-l-4 bg-white p-3 shadow-sm"
+            style={{ borderLeftColor: CORES_MATRIZ[nivel] }}
+          >
+            <h3 className="text-sm font-semibold text-gray-900">
+              {info.titulo}
+            </h3>
+            <p className="mt-1 text-xs text-gray-600">{info.texto}</p>
+          </div>
+        ))}
       </div>
 
-      {!idEmpresa ? (
+      {respondentes.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Selecione uma empresa para ver os tópicos a monitorar.
-        </div>
-      ) : respondentes.length === 0 ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Nenhum respondente importado para esta empresa.
+          Nenhum respondente importado neste relatório.
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -180,7 +198,7 @@ export default function DrpsMonitoramentoPage() {
                   return (
                     <tr key={t.idx} className="hover:bg-gray-50">
                       <td className="px-2 py-1.5 font-medium text-gray-800">
-                        {t.idx + 1}. {t.nome}
+                        {t.idx + 1}. {t.nome.replace(/^Tópico \d+ - /, "")}
                       </td>
                       <td className="px-2 py-1.5 text-center">
                         <span
@@ -235,7 +253,11 @@ export default function DrpsMonitoramentoPage() {
                           value={m?.proxima_avaliacao ?? ""}
                           disabled={!podeEditar}
                           onChange={(e) =>
-                            atualizar(t.idx, "proxima_avaliacao", e.target.value)
+                            atualizar(
+                              t.idx,
+                              "proxima_avaliacao",
+                              e.target.value
+                            )
                           }
                           className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
                         />
@@ -249,7 +271,7 @@ export default function DrpsMonitoramentoPage() {
           {setor === "Todos" && (
             <p className="border-t border-gray-100 bg-amber-50 px-3 py-2 text-xs text-amber-900">
               Selecione um setor específico no filtro para editar o
-              monitoramento (cada setor tem seu próprio plano).
+              monitoramento.
             </p>
           )}
         </div>
