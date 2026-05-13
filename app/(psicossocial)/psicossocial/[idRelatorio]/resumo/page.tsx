@@ -138,9 +138,33 @@ export default function ResumoPage({
                       }}
                       className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      <option value={1}>1 — Baixa</option>
-                      <option value={2}>2 — Média</option>
-                      <option value={3}>3 — Alta</option>
+                      <option
+                        value={1}
+                        style={{
+                          backgroundColor: COR_PROBABILIDADE.Baixa,
+                          color: "white",
+                        }}
+                      >
+                        1 — Baixa
+                      </option>
+                      <option
+                        value={2}
+                        style={{
+                          backgroundColor: COR_PROBABILIDADE.Média,
+                          color: "white",
+                        }}
+                      >
+                        2 — Média
+                      </option>
+                      <option
+                        value={3}
+                        style={{
+                          backgroundColor: COR_PROBABILIDADE.Alta,
+                          color: "white",
+                        }}
+                      >
+                        3 — Alta
+                      </option>
                     </select>
                   </td>
                   <td className="px-3 py-2 text-center">
