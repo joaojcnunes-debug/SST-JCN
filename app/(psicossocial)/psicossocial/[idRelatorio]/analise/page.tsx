@@ -331,7 +331,7 @@ export default function AnalisePage({
         }
         .drps-capitulo--capa {
           position: relative;
-          min-height: calc(297mm - 2.4cm);
+          min-height: calc(297mm - 2.8cm);
           margin: -1.5rem -1.5rem 0 -1.5rem;
           overflow: hidden;
           color: inherit;
@@ -357,8 +357,12 @@ export default function AnalisePage({
           .drps-capitulo--capa {
             margin: 0;
             padding: 0;
-            height: calc(297mm - 2.4cm);
-            min-height: calc(297mm - 2.4cm);
+            /* @page tem margin 1.4cm vertical x 1.2cm horizontal,
+               entao a area util e 297mm - 2.8cm de altura.
+               -1mm de seguranca pra evitar overflow por arredondamento. */
+            height: calc(297mm - 2.8cm - 1mm);
+            min-height: calc(297mm - 2.8cm - 1mm);
+            max-height: calc(297mm - 2.8cm - 1mm);
           }
           .drps-capitulo--capa .drps-capitulo-conteudo {
             padding: 1.2cm;
