@@ -112,75 +112,112 @@ export default function AnalisePage({
   );
   const salvar = useDrpsSalvarRelatorio();
 
-  const [agravosSel, setAgravosSel] = useState<string[]>([]);
-  const [agravosExtras, setAgravosExtras] = useState<string[]>([]);
-  const [medidasSel, setMedidasSel] = useState<string[]>([]);
-  const [medidasExtras, setMedidasExtras] = useState<string[]>([]);
-  const [novoAgravo, setNovoAgravo] = useState("");
-  const [novaMedida, setNovaMedida] = useState("");
+  interface SetorEditor {
+    agravosSel: string[];
+    agravosExtras: string[];
+    medidasSel: string[];
+    medidasExtras: string[];
+    novoAgravo: string;
+    novaMedida: string;
+  }
+  const editorVazio: SetorEditor = {
+    agravosSel: [],
+    agravosExtras: [],
+    medidasSel: [],
+    medidasExtras: [],
+    novoAgravo: "",
+    novaMedida: "",
+  };
+
+  const [editores, setEditores] = useState<Record<string, SetorEditor>>({});
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     if (!relatorio) return;
-    const a = parseMultiSelect(
-      relatorio.agravos_saude_mental,
-      AGRAVOS_OPCOES
-    );
-    const m = parseMultiSelect(
-      relatorio.medidas_existentes,
-      MEDIDAS_EXISTENTES_OPCOES
-    );
-    setAgravosSel(a.selecionados);
-    setAgravosExtras(a.extras);
-    setMedidasSel(m.selecionados);
-    setMedidasExtras(m.extras);
+    const agravosMap = relatorio.agravos_por_setor ?? {};
+    const medidasMap = relatorio.medidas_por_setor ?? {};
+    const setoresUnicos = new Set<string>([
+      ...Object.keys(agravosMap),
+      ...Object.keys(medidasMap),
+      ...listarSetores(respondentes),
+    ]);
+    const novos: Record<string, SetorEditor> = {};
+    for (const s of setoresUnicos) {
+      const a = parseMultiSelect(agravosMap[s] ?? null, AGRAVOS_OPCOES);
+      const m = parseMultiSelect(medidasMap[s] ?? null, MEDIDAS_EXISTENTES_OPCOES);
+      novos[s] = {
+        agravosSel: a.selecionados,
+        agravosExtras: a.extras,
+        medidasSel: m.selecionados,
+        medidasExtras: m.extras,
+        novoAgravo: "",
+        novaMedida: "",
+      };
+    }
+    setEditores(novos);
     setDirty(false);
-  }, [relatorio]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [relatorio, respondentes]);
 
-  function toggleAgravo(item: string) {
-    setAgravosSel((s) =>
-      s.includes(item) ? s.filter((a) => a !== item) : [...s, item]
-    );
+  function getEditor(s: string): SetorEditor {
+    return editores[s] ?? editorVazio;
+  }
+  function patchEditor(s: string, patch: Partial<SetorEditor>) {
+    setEditores((prev) => ({ ...prev, [s]: { ...getEditor(s), ...patch } }));
     setDirty(true);
   }
-  function toggleMedida(item: string) {
-    setMedidasSel((s) =>
-      s.includes(item) ? s.filter((a) => a !== item) : [...s, item]
-    );
-    setDirty(true);
+  function toggleAgravo(s: string, item: string) {
+    const ed = getEditor(s);
+    const nova = ed.agravosSel.includes(item)
+      ? ed.agravosSel.filter((a) => a !== item)
+      : [...ed.agravosSel, item];
+    patchEditor(s, { agravosSel: nova });
   }
-  function adicionarAgravo() {
-    const v = novoAgravo.trim();
+  function toggleMedida(s: string, item: string) {
+    const ed = getEditor(s);
+    const nova = ed.medidasSel.includes(item)
+      ? ed.medidasSel.filter((a) => a !== item)
+      : [...ed.medidasSel, item];
+    patchEditor(s, { medidasSel: nova });
+  }
+  function adicionarAgravo(s: string) {
+    const ed = getEditor(s);
+    const v = ed.novoAgravo.trim();
     if (!v) return;
-    setAgravosExtras((s) => [...s, v]);
-    setNovoAgravo("");
-    setDirty(true);
+    patchEditor(s, { agravosExtras: [...ed.agravosExtras, v], novoAgravo: "" });
   }
-  function adicionarMedida() {
-    const v = novaMedida.trim();
+  function adicionarMedida(s: string) {
+    const ed = getEditor(s);
+    const v = ed.novaMedida.trim();
     if (!v) return;
-    setMedidasExtras((s) => [...s, v]);
-    setNovaMedida("");
-    setDirty(true);
+    patchEditor(s, { medidasExtras: [...ed.medidasExtras, v], novaMedida: "" });
   }
-  function removerAgravoExtra(i: number) {
-    setAgravosExtras((s) => s.filter((_, idx) => idx !== i));
-    setDirty(true);
+  function removerAgravoExtra(s: string, i: number) {
+    const ed = getEditor(s);
+    patchEditor(s, { agravosExtras: ed.agravosExtras.filter((_, idx) => idx !== i) });
   }
-  function removerMedidaExtra(i: number) {
-    setMedidasExtras((s) => s.filter((_, idx) => idx !== i));
-    setDirty(true);
+  function removerMedidaExtra(s: string, i: number) {
+    const ed = getEditor(s);
+    patchEditor(s, { medidasExtras: ed.medidasExtras.filter((_, idx) => idx !== i) });
   }
 
-  function salvarCampos(extras?: { status?: "CONCLUIDO" }) {
+  function salvarCampos(extrasArg?: { status?: "CONCLUIDO" }) {
     if (!relatorio) return;
+    const agravosMap: Record<string, string> = {};
+    const medidasMap: Record<string, string> = {};
+    for (const [s, ed] of Object.entries(editores)) {
+      const a = serializeMultiSelect(ed.agravosSel, ed.agravosExtras);
+      const m = serializeMultiSelect(ed.medidasSel, ed.medidasExtras);
+      if (a) agravosMap[s] = a;
+      if (m) medidasMap[s] = m;
+    }
     salvar.mutate(
       {
         id_relatorio: idRelatorio,
         id_empresa: relatorio.id_empresa,
-        agravos_saude_mental: serializeMultiSelect(agravosSel, agravosExtras),
-        medidas_existentes: serializeMultiSelect(medidasSel, medidasExtras),
-        ...(extras?.status ? { status: extras.status } : {}),
+        agravos_por_setor: agravosMap,
+        medidas_por_setor: medidasMap,
+        ...(extrasArg?.status ? { status: extrasArg.status } : {}),
       },
       { onSuccess: () => setDirty(false) }
     );
@@ -503,26 +540,27 @@ export default function AnalisePage({
                     },
                   });
                 }}
-                editor={
-                  idx === 0
-                    ? {
-                        agravosSel,
-                        agravosExtras,
-                        medidasSel,
-                        medidasExtras,
-                        novoAgravo,
-                        novaMedida,
-                        toggleAgravo,
-                        toggleMedida,
-                        adicionarAgravo,
-                        adicionarMedida,
-                        removerAgravoExtra,
-                        removerMedidaExtra,
-                        setNovoAgravo,
-                        setNovaMedida,
-                      }
-                    : null
-                }
+                editor={(() => {
+                  const ed = getEditor(r.setor);
+                  return {
+                    agravosSel: ed.agravosSel,
+                    agravosExtras: ed.agravosExtras,
+                    medidasSel: ed.medidasSel,
+                    medidasExtras: ed.medidasExtras,
+                    novoAgravo: ed.novoAgravo,
+                    novaMedida: ed.novaMedida,
+                    toggleAgravo: (item) => toggleAgravo(r.setor, item),
+                    toggleMedida: (item) => toggleMedida(r.setor, item),
+                    adicionarAgravo: () => adicionarAgravo(r.setor),
+                    adicionarMedida: () => adicionarMedida(r.setor),
+                    removerAgravoExtra: (i) => removerAgravoExtra(r.setor, i),
+                    removerMedidaExtra: (i) => removerMedidaExtra(r.setor, i),
+                    setNovoAgravo: (v) =>
+                      patchEditor(r.setor, { novoAgravo: v }),
+                    setNovaMedida: (v) =>
+                      patchEditor(r.setor, { novaMedida: v }),
+                  };
+                })()}
               />
             ))}
 
@@ -573,7 +611,7 @@ function BlocoSetor({
   ehConsolidado: boolean;
   conclusao: string;
   onSalvarConclusao: (texto: string) => void;
-  editor: BlocoEditorProps | null;
+  editor: BlocoEditorProps;
 }) {
   const [textoLocal, setTextoLocal] = useState(conclusao);
 
@@ -681,30 +719,22 @@ function BlocoSetor({
               </div>
             </td>
             <td colSpan={3} className="align-top">
-              {editor ? (
-                <>
-                  <div className="print:hidden">
-                    <MultiSelectInline
-                      opcoes={AGRAVOS_OPCOES}
-                      selecionados={editor.agravosSel}
-                      extras={editor.agravosExtras}
-                      novoValor={editor.novoAgravo}
-                      onToggle={editor.toggleAgravo}
-                      onAdd={editor.adicionarAgravo}
-                      onRemoveExtra={editor.removerAgravoExtra}
-                      onNovoValor={editor.setNovoAgravo}
-                      placeholder="Adicionar outro agravo..."
-                    />
-                  </div>
-                  <div className="hidden whitespace-pre-wrap print:block">
-                    {drpsRel?.agravos_saude_mental ?? ""}
-                  </div>
-                </>
-              ) : (
-                <div className="whitespace-pre-wrap">
-                  {drpsRel?.agravos_saude_mental ?? ""}
-                </div>
-              )}
+              <div className="print:hidden">
+                <MultiSelectInline
+                  opcoes={AGRAVOS_OPCOES}
+                  selecionados={editor.agravosSel}
+                  extras={editor.agravosExtras}
+                  novoValor={editor.novoAgravo}
+                  onToggle={editor.toggleAgravo}
+                  onAdd={editor.adicionarAgravo}
+                  onRemoveExtra={editor.removerAgravoExtra}
+                  onNovoValor={editor.setNovoAgravo}
+                  placeholder="Adicionar outro agravo..."
+                />
+              </div>
+              <div className="hidden whitespace-pre-wrap print:block">
+                {drpsRel?.agravos_por_setor?.[relatorio.setor] ?? ""}
+              </div>
             </td>
           </tr>
           <tr>
@@ -716,30 +746,22 @@ function BlocoSetor({
               </div>
             </td>
             <td colSpan={3} className="align-top">
-              {editor ? (
-                <>
-                  <div className="print:hidden">
-                    <MultiSelectInline
-                      opcoes={MEDIDAS_EXISTENTES_OPCOES}
-                      selecionados={editor.medidasSel}
-                      extras={editor.medidasExtras}
-                      novoValor={editor.novaMedida}
-                      onToggle={editor.toggleMedida}
-                      onAdd={editor.adicionarMedida}
-                      onRemoveExtra={editor.removerMedidaExtra}
-                      onNovoValor={editor.setNovaMedida}
-                      placeholder="Adicionar outra medida..."
-                    />
-                  </div>
-                  <div className="hidden whitespace-pre-wrap print:block">
-                    {drpsRel?.medidas_existentes ?? ""}
-                  </div>
-                </>
-              ) : (
-                <div className="whitespace-pre-wrap">
-                  {drpsRel?.medidas_existentes ?? ""}
-                </div>
-              )}
+              <div className="print:hidden">
+                <MultiSelectInline
+                  opcoes={MEDIDAS_EXISTENTES_OPCOES}
+                  selecionados={editor.medidasSel}
+                  extras={editor.medidasExtras}
+                  novoValor={editor.novaMedida}
+                  onToggle={editor.toggleMedida}
+                  onAdd={editor.adicionarMedida}
+                  onRemoveExtra={editor.removerMedidaExtra}
+                  onNovoValor={editor.setNovaMedida}
+                  placeholder="Adicionar outra medida..."
+                />
+              </div>
+              <div className="hidden whitespace-pre-wrap print:block">
+                {drpsRel?.medidas_por_setor?.[relatorio.setor] ?? ""}
+              </div>
             </td>
           </tr>
           <tr>
