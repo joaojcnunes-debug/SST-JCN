@@ -56,10 +56,13 @@ export function classificarGravidade(
 
 /**
  * Classifica gravidade do TÓPICO a partir da média dos gravidade.num das
- * suas perguntas (limiares exatos extraídos da planilha modelo):
+ * suas perguntas (limiares da planilha modelo NR-01 50P):
  *   ≤ 1.66 → Baixa
  *   ≤ 2.32 → Média
  *   >  2.32 → Alta
+ *
+ * Esses cortes são finos de propósito: 2,25 cai em Média e 2,33 em Alta,
+ * mesmo ambos exibidos como "2,3" com uma casa decimal.
  */
 export function classificarGravidadeTopico(
   mediaGravNum: number
@@ -228,7 +231,7 @@ export interface ParseResult {
   diagnostico: ParseDiagnostico;
 }
 
-const META_COLS = 3; // data + cargo + setor (ordem do Forms NR-01 50P)
+const META_COLS = 3; // data + setor + cargo (ordem do Forms NR-01 50P)
 
 /**
  * Parser CSV completo que respeita aspas duplas através de QUEBRAS DE LINHA.
@@ -441,9 +444,35 @@ export function parsearTexto(texto: string): ParseResult {
     .map(([code, char]) => ({ char, code }));
 
   // O modelo NR-01 50P tem 50 perguntas fixas → 53 colunas total
-  // (data + cargo + setor + 50 respostas).
+  // (data + setor + cargo + 50 respostas).
   const totalCols = META_COLS + TOTAL_PERGUNTAS;
   const resultado: LinhaParsed[] = [];
+
+  // Detecta dinamicamente qual coluna é setor e qual é cargo a partir do
+  // cabeçalho (procura por "setor" e "função/funcao/cargo"). Se não houver
+  // cabeçalho ou texto reconhecível, cai no padrão: col1=setor, col2=cargo.
+  let setorIdx = 1;
+  let cargoIdx = 2;
+  if (diagBase.pulouHeader && linhas[0]) {
+    const h = linhas[0].map((c) =>
+      (c ?? "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .trim()
+    );
+    const acharSetor = h.findIndex(
+      (s, i) => i > 0 && i <= 3 && s.includes("setor")
+    );
+    const acharCargo = h.findIndex(
+      (s, i) =>
+        i > 0 &&
+        i <= 3 &&
+        (s.includes("funcao") || s.includes("cargo"))
+    );
+    if (acharSetor >= 0) setorIdx = acharSetor;
+    if (acharCargo >= 0) cargoIdx = acharCargo;
+  }
 
   for (let i = 0; i < dataLinhas.length; i++) {
     const numLinhaOriginal = diagBase.pulouHeader ? i + 2 : i + 1;
@@ -451,16 +480,17 @@ export function parsearTexto(texto: string): ParseResult {
 
     if (cols.length < totalCols) {
       erros.push(
-        `Linha ${numLinhaOriginal}: ${cols.length} coluna(s) — esperado ${totalCols} (data + cargo + setor + ${TOTAL_PERGUNTAS} respostas)`
+        `Linha ${numLinhaOriginal}: ${cols.length} coluna(s) — esperado ${totalCols} (data + setor + cargo + ${TOTAL_PERGUNTAS} respostas)`
       );
       continue;
     }
 
-    // Ordem do Forms NR-01 50P: col0=data, col1=cargo, col2=setor
-    const cargo = (cols[1] ?? "").trim() || null;
-    const setor = (cols[2] ?? "").trim();
+    const setor = (cols[setorIdx] ?? "").trim();
+    const cargo = (cols[cargoIdx] ?? "").trim() || null;
     if (!setor) {
-      erros.push(`Linha ${numLinhaOriginal}: setor vazio (coluna 3)`);
+      erros.push(
+        `Linha ${numLinhaOriginal}: setor vazio (coluna ${setorIdx + 1})`
+      );
       continue;
     }
 

@@ -96,7 +96,7 @@ export default function DadosPage({
         </h1>
         <p className="text-sm text-gray-600">
           Importe as respostas do Forms colando do Google Sheets ou via CSV.
-          Estrutura esperada: data + cargo + setor + 50 respostas.
+          Estrutura esperada: data + setor + cargo + 50 respostas.
         </p>
       </div>
 
@@ -226,7 +226,7 @@ export default function DadosPage({
                   <p className="mt-2 rounded bg-blue-100 px-2 py-1">
                     ⚠ Todas as linhas têm menos colunas que o esperado (53).
                     Confira se: (a) você copiou todas as colunas (data +
-                    cargo + setor + 50 respostas, nessa ordem), (b) o
+                    setor + cargo + 50 respostas, nessa ordem), (b) o
                     separador no Sheets é o mesmo da colagem.
                   </p>
                 )}

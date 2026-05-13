@@ -86,13 +86,13 @@ export default function ResumoPage({
                   Média Gravidade
                 </th>
                 <th className="px-3 py-2.5 text-center font-medium">
-                  Classif. Gravidade
+                  Média Probabilidade
                 </th>
                 <th className="px-3 py-2.5 text-center font-medium">
-                  Probabilidade
+                  Classificação Gravidade
                 </th>
                 <th className="px-3 py-2.5 text-center font-medium">
-                  Classif. Probab.
+                  Classificação Probabilidade
                 </th>
                 <th className="px-3 py-2.5 text-center font-medium">
                   Matriz de Risco
@@ -107,16 +107,6 @@ export default function ResumoPage({
                   </td>
                   <td className="px-3 py-2 text-center text-gray-700">
                     {t.mediaGravidade.toFixed(2)}
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <span
-                      className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold text-white"
-                      style={{
-                        backgroundColor: t.classificacaoGravidade.cor,
-                      }}
-                    >
-                      {t.classificacaoGravidade.texto}
-                    </span>
                   </td>
                   <td className="px-3 py-2 text-center">
                     <select
@@ -139,6 +129,16 @@ export default function ResumoPage({
                       <option value={2}>2 — Média</option>
                       <option value={3}>3 — Alta</option>
                     </select>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <span
+                      className="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold text-white"
+                      style={{
+                        backgroundColor: t.classificacaoGravidade.cor,
+                      }}
+                    >
+                      {t.classificacaoGravidade.texto}
+                    </span>
                   </td>
                   <td className="px-3 py-2 text-center text-gray-700">
                     {t.classificacaoProbabilidade}
