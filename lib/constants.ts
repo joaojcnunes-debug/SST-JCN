@@ -80,16 +80,6 @@ export const CATEGORIA_FOTO_ICONE: Record<CategoriaFoto, string> = {
   Geral: "📷",
 };
 
-export const GRAU_RISCO_CONFIG: Record<
-  number,
-  { label: string; cor: string; bg: string }
-> = {
-  1: { label: "Grau 1", cor: "#15803d", bg: "#dcfce7" },
-  2: { label: "Grau 2", cor: "#a16207", bg: "#fef9c3" },
-  3: { label: "Grau 3", cor: "#c2410c", bg: "#ffedd5" },
-  4: { label: "Grau 4", cor: "#b91c1c", bg: "#fee2e2" },
-};
-
 // Listas auxiliares (edição via /config persiste em public.configuracoes).
 // Estes valores são fallback caso a tabela esteja vazia.
 export const MEIOS_PROPAGACAO_DEFAULT = [

@@ -148,8 +148,7 @@ export default function PgrPage({ params }: Props) {
               </h1>
               <p className="text-xs text-gray-600">
                 {empresa?.razao_social && <>{empresa.razao_social} · </>}
-                CNPJ: {formatCNPJ(empresa?.cnpj)} · Grau de Risco (NR-04):{" "}
-                <strong>{empresa?.grau_risco ?? "—"}</strong>
+                CNPJ: {formatCNPJ(empresa?.cnpj)}
               </p>
             </div>
           </div>

@@ -29,7 +29,6 @@ export default function EmpresaForm({
     nome_empresa: "",
     razao_social: "",
     cnpj: "",
-    grau_risco: 1,
     status: "Ativo" as "Ativo" | "Inativa",
     observacao: "",
   });
@@ -40,7 +39,6 @@ export default function EmpresaForm({
         nome_empresa: empresa?.nome_empresa ?? "",
         razao_social: empresa?.razao_social ?? "",
         cnpj: empresa?.cnpj ?? "",
-        grau_risco: empresa?.grau_risco ?? 1,
         status: (empresa?.status as "Ativo" | "Inativa") ?? "Ativo",
         observacao: empresa?.observacao ?? "",
       });
@@ -54,7 +52,6 @@ export default function EmpresaForm({
         nome_empresa: form.nome_empresa.trim(),
         razao_social: form.razao_social.trim() || null,
         cnpj: form.cnpj.replace(/\D/g, "") || null,
-        grau_risco: form.grau_risco,
         status: form.status,
         observacao: form.observacao.trim() || null,
         updated_at: new Date().toISOString(),
@@ -140,38 +137,18 @@ export default function EmpresaForm({
             />
           </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="text-sm font-medium text-gray-700">
-              Grau de Risco (NR-04)
-            </label>
-            <select
-              value={form.grau_risco}
-              onChange={(e) =>
-                setForm({ ...form, grau_risco: Number(e.target.value) })
-              }
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-            >
-              {[1, 2, 3, 4].map((g) => (
-                <option key={g} value={g}>
-                  Grau {g}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Status</label>
-            <select
-              value={form.status}
-              onChange={(e) =>
-                setForm({ ...form, status: e.target.value as "Ativo" | "Inativa" })
-              }
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-            >
-              <option value="Ativo">Ativo</option>
-              <option value="Inativa">Inativa</option>
-            </select>
-          </div>
+        <div>
+          <label className="text-sm font-medium text-gray-700">Status</label>
+          <select
+            value={form.status}
+            onChange={(e) =>
+              setForm({ ...form, status: e.target.value as "Ativo" | "Inativa" })
+            }
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          >
+            <option value="Ativo">Ativo</option>
+            <option value="Inativa">Inativa</option>
+          </select>
         </div>
         <div>
           <label className="text-sm font-medium text-gray-700">Observação</label>

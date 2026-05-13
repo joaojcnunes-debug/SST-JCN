@@ -282,12 +282,6 @@ export default function RelatorioChabraPage({ params }: Props) {
               {inspecao.usuario && (
                 <Item label="Cadastrado por" value={inspecao.usuario} />
               )}
-              {empresa?.grau_risco && (
-                <Item
-                  label="Grau de Risco (NR-04)"
-                  value={`Grau ${empresa.grau_risco}`}
-                />
-              )}
               <Item label="Revisão" value={`Rev. ${inspecao.revisao}`} />
             </dl>
           </div>

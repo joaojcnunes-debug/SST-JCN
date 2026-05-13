@@ -10,7 +10,6 @@ import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
 import EmpresaForm from "@/components/empresas/EmpresaForm";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { formatCNPJ } from "@/lib/utils";
-import { GRAU_RISCO_CONFIG } from "@/lib/constants";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { fmtData } from "@/lib/utils";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
@@ -42,9 +41,6 @@ export default function EmpresaDetalhePage({ params }: Props) {
     );
   }
 
-  const grauCfg =
-    GRAU_RISCO_CONFIG[empresa.grau_risco ?? 1] ?? GRAU_RISCO_CONFIG[1];
-
   return (
     <div className="space-y-6">
       <button
@@ -74,15 +70,6 @@ export default function EmpresaDetalhePage({ params }: Props) {
             </div>
           </div>
           <div className="flex flex-col items-start gap-2 md:items-end">
-            <span
-              className="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
-              style={{
-                color: grauCfg.cor,
-                backgroundColor: grauCfg.bg,
-              }}
-            >
-              {grauCfg.label}
-            </span>
             <div className="flex gap-1.5">
               <Link
                 href={`/empresas/${empresa.id_empresa}/relatorio`}
