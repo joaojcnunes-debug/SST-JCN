@@ -268,18 +268,24 @@ export default function AnalisePage({
         .drps-capitulo--capa {
           position: relative;
           min-height: calc(297mm - 2.4cm);
-          padding: 1.5cm;
           margin: -1.5rem -1.5rem 0 -1.5rem;
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
-          color: inherit;
           overflow: hidden;
+          color: inherit;
+        }
+        .drps-capitulo-bg-img {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center;
+          z-index: 0;
         }
         .drps-capitulo--capa .drps-capitulo-titulo {
           display: none;
         }
-        .drps-capitulo--capa .drps-capitulo-conteudo {
+        .drps-capitulo--capa .drps-capitulo-conteudo,
+        .drps-capitulo--capa .drps-caixa-texto {
           position: relative;
           z-index: 1;
         }
@@ -287,7 +293,8 @@ export default function AnalisePage({
           .drps-capitulo--capa {
             margin: 0;
             padding: 0;
-            min-height: 100vh;
+            height: calc(297mm - 2.4cm);
+            min-height: calc(297mm - 2.4cm);
           }
           .drps-capitulo--capa .drps-capitulo-conteudo {
             padding: 1.2cm;
@@ -555,12 +562,15 @@ export default function AnalisePage({
                           ? "drps-capitulo drps-capitulo--capa"
                           : "drps-capitulo"
                       }
-                      style={
-                        ehCapa
-                          ? { backgroundImage: `url(${c.bg_imagem_url})` }
-                          : undefined
-                      }
                     >
+                      {ehCapa && c.bg_imagem_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={c.bg_imagem_url}
+                          alt=""
+                          className="drps-capitulo-bg-img"
+                        />
+                      )}
                       {!ehCapa && (
                         <h2 className="drps-capitulo-titulo">
                           {substituirVariaveisTexto(c.titulo, valoresVars)}
