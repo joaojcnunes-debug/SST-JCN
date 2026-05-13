@@ -566,7 +566,28 @@ export default function AnalisePage({
                           {substituirVariaveisTexto(c.titulo, valoresVars)}
                         </h2>
                       )}
-                      {c.conteudo && (
+                      {ehCapa && c.caixas_texto && c.caixas_texto.length > 0 ? (
+                        c.caixas_texto.map((cx) => (
+                          <div
+                            key={cx.id}
+                            className="drps-caixa-texto"
+                            style={{
+                              position: "absolute",
+                              left: `${cx.x}%`,
+                              top: `${cx.y}%`,
+                              width: `${cx.w ?? 40}%`,
+                              fontSize: cx.fontSize ?? 16,
+                              fontWeight: cx.bold ? 700 : 400,
+                              color: cx.color ?? "#ffffff",
+                              textAlign: cx.align ?? "left",
+                              whiteSpace: "pre-wrap",
+                              lineHeight: 1.3,
+                            }}
+                          >
+                            {substituirVariaveisTexto(cx.conteudo, valoresVars)}
+                          </div>
+                        ))
+                      ) : c.conteudo ? (
                         <div
                           className="drps-capitulo-conteudo"
                           dangerouslySetInnerHTML={{
@@ -576,7 +597,7 @@ export default function AnalisePage({
                             ),
                           }}
                         />
-                      )}
+                      ) : null}
                     </article>
                   );
                 })}

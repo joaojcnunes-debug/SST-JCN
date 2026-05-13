@@ -522,6 +522,7 @@ export function useDrpsSalvarCapitulo() {
       ordem?: number;
       ativo?: boolean;
       bg_imagem_url?: string | null;
+      caixas_texto?: import("@/lib/drps/types").CaixaTexto[] | null;
     }) => {
       const supabase = createSupabaseBrowserClient();
       const { id_capitulo, ...rest } = args;

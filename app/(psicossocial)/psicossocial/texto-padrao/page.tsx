@@ -16,7 +16,9 @@ import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import RichTextEditor from "@/components/drps/RichTextEditor";
+import CapaEditor from "@/components/drps/CapaEditor";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { CaixaTexto } from "@/lib/drps/types";
 import {
   useDrpsTextoPadrao,
   useDrpsCriarCapitulo,
@@ -196,12 +198,16 @@ function CapituloCard({
     titulo?: string;
     conteudo?: string | null;
     bg_imagem_url?: string | null;
+    caixas_texto?: CaixaTexto[] | null;
   }) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
 }) {
   const [titulo, setTitulo] = useState(capitulo.titulo);
   const [conteudo, setConteudo] = useState(capitulo.conteudo ?? "");
+  const [caixas, setCaixas] = useState<CaixaTexto[]>(
+    capitulo.caixas_texto ?? []
+  );
   const [dirty, setDirty] = useState(false);
   const [enviandoBg, setEnviandoBg] = useState(false);
   const bgInputRef = useRef<HTMLInputElement | null>(null);
@@ -209,8 +215,14 @@ function CapituloCard({
   useEffect(() => {
     setTitulo(capitulo.titulo);
     setConteudo(capitulo.conteudo ?? "");
+    setCaixas(capitulo.caixas_texto ?? []);
     setDirty(false);
-  }, [capitulo.id_capitulo, capitulo.titulo, capitulo.conteudo]);
+  }, [
+    capitulo.id_capitulo,
+    capitulo.titulo,
+    capitulo.conteudo,
+    capitulo.caixas_texto,
+  ]);
 
   async function enviarBg(file: File) {
     if (enviandoBg) return;
@@ -285,6 +297,7 @@ function CapituloCard({
             onSalvar({
               titulo: titulo.trim(),
               conteudo: conteudo.trim() || null,
+              caixas_texto: caixas,
             })
           }
           disabled={!dirty || salvando || !titulo.trim()}
@@ -358,14 +371,25 @@ function CapituloCard({
         )}
       </div>
 
-      <RichTextEditor
-        value={conteudo}
-        onChange={(html) => {
-          setConteudo(html);
-          setDirty(true);
-        }}
-        placeholder="Conteúdo do capítulo..."
-      />
+      {capitulo.bg_imagem_url ? (
+        <CapaEditor
+          bgImagemUrl={capitulo.bg_imagem_url}
+          caixas={caixas}
+          onChange={(novas) => {
+            setCaixas(novas);
+            setDirty(true);
+          }}
+        />
+      ) : (
+        <RichTextEditor
+          value={conteudo}
+          onChange={(html) => {
+            setConteudo(html);
+            setDirty(true);
+          }}
+          placeholder="Conteúdo do capítulo..."
+        />
+      )}
     </div>
   );
 }

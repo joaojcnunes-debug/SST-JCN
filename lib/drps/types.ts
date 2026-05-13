@@ -83,6 +83,30 @@ export interface DrpsMonitoramento {
  * Texto padrao do relatorio DRPS — capitulos globais (intro/metodologia/etc)
  * que entram no PDF. Nao vinculado a empresa/relatorio.
  */
+/**
+ * Caixa de texto posicionada livremente sobre a imagem de fundo (capa).
+ * Posicoes em percentual (0-100) para manter o layout em qualquer escala.
+ */
+export interface CaixaTexto {
+  id: string;
+  /** Posicao X em % da largura da pagina (0-100, canto sup esq do texto). */
+  x: number;
+  /** Posicao Y em % da altura da pagina (0-100). */
+  y: number;
+  /** Largura em % (opcional; default 40). */
+  w?: number;
+  /** Tamanho da fonte em px (default 14). */
+  fontSize?: number;
+  /** Alinhamento horizontal do texto dentro da caixa. */
+  align?: "left" | "center" | "right";
+  /** Texto em negrito. */
+  bold?: boolean;
+  /** Cor do texto em hex (default #ffffff). */
+  color?: string;
+  /** Texto da caixa (suporta variaveis {{xxx}}). */
+  conteudo: string;
+}
+
 export interface DrpsTextoPadraoCapitulo {
   id_capitulo: string;
   ordem: number;
@@ -90,6 +114,8 @@ export interface DrpsTextoPadraoCapitulo {
   conteudo: string | null;
   /** URL publica da imagem de fundo. Se setada, vira pagina inteira no PDF. */
   bg_imagem_url: string | null;
+  /** Caixas de texto posicionadas sobre a bg (so usadas quando ha bg). */
+  caixas_texto: CaixaTexto[] | null;
   ativo: boolean;
   created_at: string;
   updated_at: string | null;
