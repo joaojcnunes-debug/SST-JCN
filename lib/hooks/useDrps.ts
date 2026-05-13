@@ -521,6 +521,7 @@ export function useDrpsSalvarCapitulo() {
       conteudo?: string | null;
       ordem?: number;
       ativo?: boolean;
+      bg_imagem_url?: string | null;
     }) => {
       const supabase = createSupabaseBrowserClient();
       const { id_capitulo, ...rest } = args;

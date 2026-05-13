@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Plus,
   Save,
@@ -8,10 +8,15 @@ import {
   ChevronUp,
   ChevronDown,
   BookOpen,
+  ImageIcon,
+  X,
+  Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import RichTextEditor from "@/components/drps/RichTextEditor";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   useDrpsTextoPadrao,
   useDrpsCriarCapitulo,
@@ -187,19 +192,57 @@ function CapituloCard({
   indice: number;
   total: number;
   salvando: boolean;
-  onSalvar: (patch: { titulo?: string; conteudo?: string | null }) => void;
+  onSalvar: (patch: {
+    titulo?: string;
+    conteudo?: string | null;
+    bg_imagem_url?: string | null;
+  }) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
 }) {
   const [titulo, setTitulo] = useState(capitulo.titulo);
   const [conteudo, setConteudo] = useState(capitulo.conteudo ?? "");
   const [dirty, setDirty] = useState(false);
+  const [enviandoBg, setEnviandoBg] = useState(false);
+  const bgInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setTitulo(capitulo.titulo);
     setConteudo(capitulo.conteudo ?? "");
     setDirty(false);
   }, [capitulo.id_capitulo, capitulo.titulo, capitulo.conteudo]);
+
+  async function enviarBg(file: File) {
+    if (enviandoBg) return;
+    setEnviandoBg(true);
+    const loadingId = toast.loading("Enviando imagem de fundo...");
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const ext = file.name.split(".").pop() ?? "png";
+      const path = `drps-texto-padrao/bg-${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("fotos")
+        .upload(path, file, {
+          cacheControl: "31536000",
+          upsert: false,
+          contentType: file.type || undefined,
+        });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      if (!pub?.publicUrl) throw new Error("URL pública não retornada");
+      onSalvar({ bg_imagem_url: pub.publicUrl });
+      toast.success("Imagem de fundo definida", { id: loadingId });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Falha no upload";
+      toast.error(msg, { id: loadingId });
+    } finally {
+      setEnviandoBg(false);
+    }
+  }
+
+  function removerBg() {
+    onSalvar({ bg_imagem_url: null });
+  }
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -258,6 +301,63 @@ function CapituloCard({
           <Trash2 className="size-4" />
         </button>
       </div>
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          Imagem de fundo (capa):
+        </span>
+        {capitulo.bg_imagem_url ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={capitulo.bg_imagem_url}
+              alt="Fundo"
+              className="h-10 w-16 rounded border border-gray-300 object-cover"
+            />
+            <span className="text-[10px] text-gray-600">
+              Este capítulo sai como página inteira no PDF.
+            </span>
+            <button
+              type="button"
+              onClick={removerBg}
+              disabled={salvando}
+              className="ml-auto inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-red-50 hover:text-red-alert disabled:opacity-50"
+            >
+              <X className="size-3.5" /> Remover
+            </button>
+          </>
+        ) : (
+          <span className="text-[11px] italic text-gray-500">
+            Sem imagem (capítulo em fluxo normal).
+          </span>
+        )}
+        <input
+          ref={bgInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) enviarBg(f);
+            if (bgInputRef.current) bgInputRef.current.value = "";
+          }}
+        />
+        {!capitulo.bg_imagem_url && (
+          <button
+            type="button"
+            onClick={() => bgInputRef.current?.click()}
+            disabled={enviandoBg || salvando}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-2 py-1 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+          >
+            {enviandoBg ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <ImageIcon className="size-3.5" />
+            )}
+            Enviar imagem
+          </button>
+        )}
+      </div>
+
       <RichTextEditor
         value={conteudo}
         onChange={(html) => {

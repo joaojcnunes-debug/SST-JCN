@@ -88,6 +88,8 @@ export interface DrpsTextoPadraoCapitulo {
   ordem: number;
   titulo: string;
   conteudo: string | null;
+  /** URL publica da imagem de fundo. Se setada, vira pagina inteira no PDF. */
+  bg_imagem_url: string | null;
   ativo: boolean;
   created_at: string;
   updated_at: string | null;

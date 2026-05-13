@@ -226,6 +226,8 @@ export default function AnalisePage({
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .drps-print-container { padding: 0 !important; box-shadow: none !important; border: none !important; }
           .drps-capitulos { break-after: page; }
+          .drps-capitulo--capa { break-before: page; break-after: page; }
+          .drps-capitulo--capa:first-child { break-before: auto; }
           .drps-setor-bloco { break-before: page; }
           .drps-setor-bloco:first-child { break-before: auto; }
           .drps-tabela tr, .drps-tabela td, .drps-tabela th { break-inside: avoid; }
@@ -262,6 +264,34 @@ export default function AnalisePage({
         }
         .drps-capitulo {
           margin-bottom: 18px;
+        }
+        .drps-capitulo--capa {
+          position: relative;
+          min-height: calc(297mm - 2.4cm);
+          padding: 1.5cm;
+          margin: -1.5rem -1.5rem 0 -1.5rem;
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+          color: inherit;
+          overflow: hidden;
+        }
+        .drps-capitulo--capa .drps-capitulo-titulo {
+          display: none;
+        }
+        .drps-capitulo--capa .drps-capitulo-conteudo {
+          position: relative;
+          z-index: 1;
+        }
+        @media print {
+          .drps-capitulo--capa {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+          }
+          .drps-capitulo--capa .drps-capitulo-conteudo {
+            padding: 1.2cm;
+          }
         }
         .drps-capitulo-titulo {
           font-size: 14px;
@@ -515,21 +545,41 @@ export default function AnalisePage({
           <div className="drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
             {capitulos.length > 0 && (
               <section className="drps-capitulos mb-6">
-                {capitulos.map((c) => (
-                  <article key={c.id_capitulo} className="drps-capitulo">
-                    <h2 className="drps-capitulo-titulo">
-                      {substituirVariaveisTexto(c.titulo, valoresVars)}
-                    </h2>
-                    {c.conteudo && (
-                      <div
-                        className="drps-capitulo-conteudo"
-                        dangerouslySetInnerHTML={{
-                          __html: substituirVariaveis(c.conteudo, valoresVars),
-                        }}
-                      />
-                    )}
-                  </article>
-                ))}
+                {capitulos.map((c) => {
+                  const ehCapa = !!c.bg_imagem_url;
+                  return (
+                    <article
+                      key={c.id_capitulo}
+                      className={
+                        ehCapa
+                          ? "drps-capitulo drps-capitulo--capa"
+                          : "drps-capitulo"
+                      }
+                      style={
+                        ehCapa
+                          ? { backgroundImage: `url(${c.bg_imagem_url})` }
+                          : undefined
+                      }
+                    >
+                      {!ehCapa && (
+                        <h2 className="drps-capitulo-titulo">
+                          {substituirVariaveisTexto(c.titulo, valoresVars)}
+                        </h2>
+                      )}
+                      {c.conteudo && (
+                        <div
+                          className="drps-capitulo-conteudo"
+                          dangerouslySetInnerHTML={{
+                            __html: substituirVariaveis(
+                              c.conteudo,
+                              valoresVars
+                            ),
+                          }}
+                        />
+                      )}
+                    </article>
+                  );
+                })}
               </section>
             )}
 
