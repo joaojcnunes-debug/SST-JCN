@@ -265,9 +265,15 @@ export default function AnalisePage({
   return (
     <div className="space-y-4">
       <style>{`
+        .drps-print-container {
+          font-family: var(--font-sans), Inter, system-ui, sans-serif;
+          color: #111827;
+          font-size: 11px;
+          line-height: 1.55;
+        }
         @media print {
-          @page { size: A4; margin: 1.2cm; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          @page { size: A4; margin: 1.4cm 1.2cm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; }
           .drps-print-container { padding: 0 !important; box-shadow: none !important; border: none !important; }
           .drps-capitulos { break-after: page; }
           .drps-capitulo--capa { break-before: page; break-after: page; }
@@ -279,35 +285,49 @@ export default function AnalisePage({
         .drps-tabela {
           border-collapse: collapse;
           width: 100%;
+          font-size: 11px;
         }
         .drps-tabela td, .drps-tabela th {
-          border: 1px solid #999;
-          padding: 6px 8px;
-          vertical-align: middle;
+          border: 1px solid #cbd5e1;
+          padding: 7px 10px;
+          vertical-align: top;
         }
         .drps-label {
-          background: #d4edda;
+          background: #f0f9f4;
           font-weight: 600;
           color: #1e4d28;
-          font-size: 11px;
+          font-size: 10.5px;
+          letter-spacing: 0.02em;
+          width: 30%;
         }
         .drps-header-section {
           background: #d4edda;
           color: #1e4d28;
           font-weight: 700;
           text-align: center;
-          font-size: 12px;
+          font-size: 11.5px;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          padding: 8px 10px;
         }
         .drps-title {
-          background: #006B54;
+          background: linear-gradient(180deg, #006B54 0%, #00563f 100%);
           color: white;
           font-weight: 700;
-          font-size: 14px;
+          font-size: 13px;
           text-align: center;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          padding: 10px 12px;
         }
         .drps-capitulo {
-          margin-bottom: 18px;
+          margin-bottom: 22px;
+        }
+        .drps-setor-bloco {
+          margin-bottom: 24px;
+        }
+        .drps-setor-bloco .drps-tabela + .drps-tabela {
+          margin-top: 0;
         }
         .drps-capitulo--capa {
           position: relative;
@@ -412,18 +432,31 @@ export default function AnalisePage({
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-            <div className="text-xs text-gray-600">
-              {setor === "Todos" ? (
-                <>
-                  Relatório consolidado:{" "}
-                  <strong>{setoresParaRelatorio.length} setor(es)</strong>
-                </>
+          <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur print:hidden">
+            <div className="flex items-center gap-3 text-xs text-gray-600">
+              <span>
+                {setor === "Todos" ? (
+                  <>
+                    Relatório consolidado:{" "}
+                    <strong>{setoresParaRelatorio.length} setor(es)</strong>
+                  </>
+                ) : (
+                  <>
+                    Setor: <strong>{setor}</strong> ·{" "}
+                    {relatoriosPorSetor[0]?.totalRespondentes ?? 0} respondente(s)
+                  </>
+                )}
+              </span>
+              {dirty ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+                  <span className="size-1.5 rounded-full bg-amber-500" />
+                  Alterações não salvas
+                </span>
               ) : (
-                <>
-                  Setor: <strong>{setor}</strong> ·{" "}
-                  {relatoriosPorSetor[0]?.totalRespondentes ?? 0} respondente(s)
-                </>
+                <span className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2 py-0.5 text-[10px] font-medium text-verde-primary">
+                  <CheckCircle2 className="size-3" />
+                  Salvo
+                </span>
               )}
             </div>
             <div className="flex flex-wrap gap-2">
@@ -431,7 +464,7 @@ export default function AnalisePage({
                 type="button"
                 onClick={() => salvarCampos()}
                 disabled={!dirty || salvar.isPending || !relatorio}
-                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 <Save className="size-3.5" />
                 {salvar.isPending ? "Salvando..." : "Salvar"}
@@ -440,7 +473,7 @@ export default function AnalisePage({
                 type="button"
                 onClick={() => salvarCampos({ status: "CONCLUIDO" })}
                 disabled={salvar.isPending || !relatorio}
-                className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-2 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-1.5 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
               >
                 <CheckCircle2 className="size-3.5" />
                 {relatorio?.status === "CONCLUIDO"
@@ -451,9 +484,9 @@ export default function AnalisePage({
                 type="button"
                 onClick={() => window.print()}
                 disabled={!podeImprimir}
-                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
               >
-                <Printer className="size-4" /> Gerar PDF
+                <Printer className="size-3.5" /> Gerar PDF
               </button>
             </div>
           </div>
@@ -653,17 +686,19 @@ function BlocoSetor({
         <tbody>
           <tr>
             <td className="drps-title" colSpan={4}>
-              DRPS — DIAGNÓSTICO DE RISCOS PSICOSSOCIAIS
-              {drpsRel && (
-                <span className="ml-3 text-[10px] font-normal opacity-90">
-                  · Rev. {drpsRel.revisao}
-                </span>
-              )}
-              {ehConsolidado && (
-                <span className="ml-3 text-[10px] font-normal opacity-90">
-                  · Página {indice} de {total}
-                </span>
-              )}
+              <div className="flex items-center justify-center gap-3">
+                <span>DRPS — Diagnóstico de Riscos Psicossociais</span>
+                {drpsRel && (
+                  <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold tracking-wide">
+                    Rev. {drpsRel.revisao}
+                  </span>
+                )}
+                {ehConsolidado && (
+                  <span className="text-[10px] font-normal opacity-80">
+                    {indice}/{total}
+                  </span>
+                )}
+              </div>
             </td>
           </tr>
           <tr>
