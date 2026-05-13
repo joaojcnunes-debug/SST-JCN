@@ -17,7 +17,14 @@ import {
   listarSetores,
 } from "@/lib/drps/calculos";
 import { TOPICOS } from "@/lib/drps/topicos";
-import { formatCNPJ } from "@/lib/utils";
+import {
+  formatCNPJ,
+  formatCPF,
+  formatCEI,
+  formatCAEPF,
+  formatCNO,
+} from "@/lib/utils";
+import type { Empresa } from "@/lib/supabase/types";
 import type {
   DrpsProbabilidade,
   DrpsRelatorio,
@@ -183,8 +190,7 @@ export default function AnalisePage({
                 key={r.setor}
                 relatorio={r}
                 drpsRel={relatorio ?? null}
-                empresa={empresa?.nome_empresa ?? "—"}
-                cnpj={empresa?.cnpj ? formatCNPJ(empresa.cnpj) : "—"}
+                empresa={empresa ?? null}
                 indice={idx + 1}
                 total={relatoriosPorSetor.length}
                 ehConsolidado={setor === "Todos"}
@@ -206,19 +212,39 @@ function BlocoSetor({
   relatorio,
   drpsRel,
   empresa,
-  cnpj,
   indice,
   total,
   ehConsolidado,
 }: {
   relatorio: SetorRelatorio;
   drpsRel: DrpsRelatorio | null;
-  empresa: string;
-  cnpj: string;
+  empresa: Empresa | null;
   indice: number;
   total: number;
   ehConsolidado: boolean;
 }) {
+  const identificadores: { label: string; valor: string }[] = [];
+  if (empresa?.cnpj) {
+    identificadores.push({ label: "CNPJ", valor: formatCNPJ(empresa.cnpj) });
+  }
+  if (empresa?.cpf) {
+    identificadores.push({ label: "CPF", valor: formatCPF(empresa.cpf) });
+  }
+  if (empresa?.cei) {
+    identificadores.push({ label: "CEI", valor: formatCEI(empresa.cei) });
+  }
+  if (empresa?.caepf) {
+    identificadores.push({
+      label: "CAEPF",
+      valor: formatCAEPF(empresa.caepf),
+    });
+  }
+  if (empresa?.cno) {
+    identificadores.push({ label: "CNO", valor: formatCNO(empresa.cno) });
+  }
+  if (identificadores.length === 0) {
+    identificadores.push({ label: "CNPJ", valor: "—" });
+  }
   return (
     <section className="drps-setor-bloco mb-4">
       <table className="drps-tabela mb-0">
@@ -254,8 +280,8 @@ function BlocoSetor({
             </td>
           </tr>
           <tr>
-            <td className="drps-label">CNPJ</td>
-            <td>{cnpj}</td>
+            <td className="drps-label">{identificadores[0].label}</td>
+            <td>{identificadores[0].valor}</td>
             <td className="drps-label">Data da Elaboração</td>
             <td>
               {drpsRel?.data_elaboracao
@@ -265,9 +291,15 @@ function BlocoSetor({
                 : ""}
             </td>
           </tr>
+          {identificadores.slice(1).map((ident) => (
+            <tr key={ident.label}>
+              <td className="drps-label">{ident.label}</td>
+              <td colSpan={3}>{ident.valor}</td>
+            </tr>
+          ))}
           <tr>
             <td className="drps-label">Empresa</td>
-            <td colSpan={3}>{empresa}</td>
+            <td colSpan={3}>{empresa?.nome_empresa ?? "—"}</td>
           </tr>
           <tr>
             <td className="drps-label">Setor</td>

@@ -68,6 +68,10 @@ export interface Empresa {
   nome_empresa: string;
   razao_social: string | null;
   cnpj: string | null;
+  cpf: string | null;
+  cei: string | null;
+  caepf: string | null;
+  cno: string | null;
   grau_risco: number | null;
   status: StatusEmpresa | null;
   observacao: string | null;

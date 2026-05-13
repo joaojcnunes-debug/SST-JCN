@@ -8,7 +8,16 @@ import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import NivelBadge from "@/components/riscos/NivelBadge";
-import { fmtData, fmtDataHora, formatCNPJ, parseMedidas } from "@/lib/utils";
+import {
+  fmtData,
+  fmtDataHora,
+  formatCNPJ,
+  formatCPF,
+  formatCEI,
+  formatCAEPF,
+  formatCNO,
+  parseMedidas,
+} from "@/lib/utils";
 import { NIVEIS_RISCO, NIVEL_CONFIG } from "@/lib/constants";
 import type { EpiEpc, NivelRisco, PaeContato } from "@/lib/supabase/types";
 
@@ -148,7 +157,15 @@ export default function PgrPage({ params }: Props) {
               </h1>
               <p className="text-xs text-gray-600">
                 {empresa?.razao_social && <>{empresa.razao_social} · </>}
-                CNPJ: {formatCNPJ(empresa?.cnpj)}
+                {[
+                  empresa?.cnpj && `CNPJ: ${formatCNPJ(empresa.cnpj)}`,
+                  empresa?.cpf && `CPF: ${formatCPF(empresa.cpf)}`,
+                  empresa?.cei && `CEI: ${formatCEI(empresa.cei)}`,
+                  empresa?.caepf && `CAEPF: ${formatCAEPF(empresa.caepf)}`,
+                  empresa?.cno && `CNO: ${formatCNO(empresa.cno)}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "Sem identificador cadastrado"}
               </p>
             </div>
           </div>

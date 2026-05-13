@@ -26,6 +26,10 @@ import {
   fmtData,
   fmtDataHora,
   formatCNPJ,
+  formatCPF,
+  formatCEI,
+  formatCAEPF,
+  formatCNO,
   parseMedidas,
 } from "@/lib/utils";
 import { NIVEL_CONFIG } from "@/lib/constants";
@@ -198,9 +202,17 @@ export default function RelatorioChabraPage({ params }: Props) {
                 <p className="text-sm font-bold uppercase tracking-wide text-verde-dark">
                   {empresa?.nome_empresa ?? "—"}
                 </p>
-                <p className="mt-1 text-xs text-gray-700">
-                  CNPJ: {formatCNPJ(empresa?.cnpj)}
-                </p>
+                <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-700">
+                  {empresa?.cnpj && (
+                    <span>CNPJ: {formatCNPJ(empresa.cnpj)}</span>
+                  )}
+                  {empresa?.cpf && <span>CPF: {formatCPF(empresa.cpf)}</span>}
+                  {empresa?.cei && <span>CEI: {formatCEI(empresa.cei)}</span>}
+                  {empresa?.caepf && (
+                    <span>CAEPF: {formatCAEPF(empresa.caepf)}</span>
+                  )}
+                  {empresa?.cno && <span>CNO: {formatCNO(empresa.cno)}</span>}
+                </div>
               </div>
 
               <p className="mt-6 text-sm text-gray-700">
@@ -252,8 +264,24 @@ export default function RelatorioChabraPage({ params }: Props) {
               RELATÓRIO DE INSPEÇÃO SST
             </h2>
             <p className="text-[11px] text-gray-600">
-              <strong>{empresa?.nome_empresa}</strong> · CNPJ{" "}
-              {formatCNPJ(empresa?.cnpj)} · Inspeção de {dataInspFmt}
+              <strong>{empresa?.nome_empresa}</strong>
+              {empresa?.cnpj && <> · CNPJ {formatCNPJ(empresa.cnpj)}</>}
+              {!empresa?.cnpj && empresa?.cpf && (
+                <> · CPF {formatCPF(empresa.cpf)}</>
+              )}
+              {!empresa?.cnpj && !empresa?.cpf && empresa?.cei && (
+                <> · CEI {formatCEI(empresa.cei)}</>
+              )}
+              {!empresa?.cnpj &&
+                !empresa?.cpf &&
+                !empresa?.cei &&
+                empresa?.caepf && <> · CAEPF {formatCAEPF(empresa.caepf)}</>}
+              {!empresa?.cnpj &&
+                !empresa?.cpf &&
+                !empresa?.cei &&
+                !empresa?.caepf &&
+                empresa?.cno && <> · CNO {formatCNO(empresa.cno)}</>}
+              {" · "}Inspeção de {dataInspFmt}
             </p>
           </header>
 
@@ -267,7 +295,21 @@ export default function RelatorioChabraPage({ params }: Props) {
               {empresa?.razao_social && (
                 <Item label="Razão Social" value={empresa.razao_social} />
               )}
-              <Item label="CNPJ" value={formatCNPJ(empresa?.cnpj)} />
+              {empresa?.cnpj && (
+                <Item label="CNPJ" value={formatCNPJ(empresa.cnpj)} />
+              )}
+              {empresa?.cpf && (
+                <Item label="CPF" value={formatCPF(empresa.cpf)} />
+              )}
+              {empresa?.cei && (
+                <Item label="CEI" value={formatCEI(empresa.cei)} />
+              )}
+              {empresa?.caepf && (
+                <Item label="CAEPF" value={formatCAEPF(empresa.caepf)} />
+              )}
+              {empresa?.cno && (
+                <Item label="CNO" value={formatCNO(empresa.cno)} />
+              )}
               <Item
                 label="Data da Inspeção"
                 value={`${dataInspFmt}${

@@ -9,7 +9,13 @@ import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
 import EmpresaForm from "@/components/empresas/EmpresaForm";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
-import { formatCNPJ } from "@/lib/utils";
+import {
+  formatCNPJ,
+  formatCPF,
+  formatCEI,
+  formatCAEPF,
+  formatCNO,
+} from "@/lib/utils";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { fmtData } from "@/lib/utils";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
@@ -64,9 +70,22 @@ export default function EmpresaDetalhePage({ params }: Props) {
               {empresa.razao_social && (
                 <p className="text-sm text-gray-600">{empresa.razao_social}</p>
               )}
-              <p className="mt-1 text-xs text-gray-500">
-                CNPJ: {formatCNPJ(empresa.cnpj)}
-              </p>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
+                {empresa.cnpj && (
+                  <span>CNPJ: {formatCNPJ(empresa.cnpj)}</span>
+                )}
+                {empresa.cpf && <span>CPF: {formatCPF(empresa.cpf)}</span>}
+                {empresa.cei && <span>CEI: {formatCEI(empresa.cei)}</span>}
+                {empresa.caepf && (
+                  <span>CAEPF: {formatCAEPF(empresa.caepf)}</span>
+                )}
+                {empresa.cno && <span>CNO: {formatCNO(empresa.cno)}</span>}
+                {!empresa.cnpj &&
+                  !empresa.cpf &&
+                  !empresa.cei &&
+                  !empresa.caepf &&
+                  !empresa.cno && <span>Sem identificador cadastrado</span>}
+              </div>
             </div>
           </div>
           <div className="flex flex-col items-start gap-2 md:items-end">

@@ -121,3 +121,38 @@ export function formatCNPJ(cnpj: string | null | undefined): string {
     "$1.$2.$3/$4-$5"
   );
 }
+
+/** Formata CPF: 11 digitos -> 000.000.000-00. */
+export function formatCPF(cpf: string | null | undefined): string {
+  if (!cpf) return "—";
+  const digits = cpf.replace(/\D/g, "");
+  if (digits.length !== 11) return cpf;
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+}
+
+/** Formata CEI (Cadastro Especifico INSS): 12 digitos -> 00.000.00000/00. */
+export function formatCEI(cei: string | null | undefined): string {
+  if (!cei) return "—";
+  const digits = cei.replace(/\D/g, "");
+  if (digits.length !== 12) return cei;
+  return digits.replace(/(\d{2})(\d{3})(\d{5})(\d{2})/, "$1.$2.$3/$4");
+}
+
+/** Formata CAEPF: 14 digitos -> 000.000.000/000-00. */
+export function formatCAEPF(caepf: string | null | undefined): string {
+  if (!caepf) return "—";
+  const digits = caepf.replace(/\D/g, "");
+  if (digits.length !== 14) return caepf;
+  return digits.replace(
+    /(\d{3})(\d{3})(\d{3})(\d{3})(\d{2})/,
+    "$1.$2.$3/$4-$5"
+  );
+}
+
+/** Formata CNO (Cadastro Nacional de Obras): 12 digitos -> 00.000.00000/00. */
+export function formatCNO(cno: string | null | undefined): string {
+  if (!cno) return "—";
+  const digits = cno.replace(/\D/g, "");
+  if (digits.length !== 12) return cno;
+  return digits.replace(/(\d{2})(\d{3})(\d{5})(\d{2})/, "$1.$2.$3/$4");
+}

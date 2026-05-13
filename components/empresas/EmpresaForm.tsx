@@ -29,6 +29,10 @@ export default function EmpresaForm({
     nome_empresa: "",
     razao_social: "",
     cnpj: "",
+    cpf: "",
+    cei: "",
+    caepf: "",
+    cno: "",
     status: "Ativo" as "Ativo" | "Inativa",
     observacao: "",
   });
@@ -39,6 +43,10 @@ export default function EmpresaForm({
         nome_empresa: empresa?.nome_empresa ?? "",
         razao_social: empresa?.razao_social ?? "",
         cnpj: empresa?.cnpj ?? "",
+        cpf: empresa?.cpf ?? "",
+        cei: empresa?.cei ?? "",
+        caepf: empresa?.caepf ?? "",
+        cno: empresa?.cno ?? "",
         status: (empresa?.status as "Ativo" | "Inativa") ?? "Ativo",
         observacao: empresa?.observacao ?? "",
       });
@@ -52,6 +60,10 @@ export default function EmpresaForm({
         nome_empresa: form.nome_empresa.trim(),
         razao_social: form.razao_social.trim() || null,
         cnpj: form.cnpj.replace(/\D/g, "") || null,
+        cpf: form.cpf.replace(/\D/g, "") || null,
+        cei: form.cei.replace(/\D/g, "") || null,
+        caepf: form.caepf.replace(/\D/g, "") || null,
+        cno: form.cno.replace(/\D/g, "") || null,
         status: form.status,
         observacao: form.observacao.trim() || null,
         updated_at: new Date().toISOString(),
@@ -137,6 +149,55 @@ export default function EmpresaForm({
             />
           </div>
         </div>
+
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+            Identificadores alternativos (opcionais)
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div>
+              <label className="text-xs font-medium text-gray-700">CPF</label>
+              <input
+                type="text"
+                value={form.cpf}
+                onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+                placeholder="000.000.000-00"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-700">CEI</label>
+              <input
+                type="text"
+                value={form.cei}
+                onChange={(e) => setForm({ ...form, cei: e.target.value })}
+                placeholder="00.000.00000/00"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-700">CAEPF</label>
+              <input
+                type="text"
+                value={form.caepf}
+                onChange={(e) => setForm({ ...form, caepf: e.target.value })}
+                placeholder="000.000.000/000-00"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-700">CNO</label>
+              <input
+                type="text"
+                value={form.cno}
+                onChange={(e) => setForm({ ...form, cno: e.target.value })}
+                placeholder="00.000.00000/00"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+          </div>
+        </div>
+
         <div>
           <label className="text-sm font-medium text-gray-700">Status</label>
           <select
