@@ -362,163 +362,6 @@ export default function AnalisePage({
         <DrpsFiltro idRelatorio={idRelatorio} />
       </div>
 
-      <div className="print:hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-gray-900">
-            Diagnóstico Descritivo
-          </h2>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => salvarCampos()}
-              disabled={!dirty || salvar.isPending || !relatorio}
-              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              <Save className="size-3.5" />
-              {salvar.isPending ? "Salvando..." : "Salvar"}
-            </button>
-            <button
-              type="button"
-              onClick={() => salvarCampos({ status: "CONCLUIDO" })}
-              disabled={salvar.isPending || !relatorio}
-              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
-            >
-              <CheckCircle2 className="size-3.5" />
-              {relatorio?.status === "CONCLUIDO"
-                ? "Concluído"
-                : "Concluir Análise e Avaliação"}
-            </button>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Possíveis Agravos à Saúde Mental
-            </h3>
-            <p className="mb-2 text-[10px] italic text-gray-500">
-              Marque os agravos aplicáveis e adicione outros manualmente.
-            </p>
-            <div className="space-y-1">
-              {AGRAVOS_OPCOES.map((opt) => (
-                <label
-                  key={opt}
-                  className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-0.5 text-xs hover:bg-gray-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={agravosSel.includes(opt)}
-                    onChange={() => toggleAgravo(opt)}
-                    className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
-                  />
-                  <span className="text-gray-800">{opt}</span>
-                </label>
-              ))}
-            </div>
-            {agravosExtras.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {agravosExtras.map((e, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2 rounded bg-amber-50 px-2 py-1 text-xs"
-                  >
-                    <span className="flex-1 text-gray-800">{e}</span>
-                    <button
-                      type="button"
-                      onClick={() => removerAgravoExtra(i)}
-                      className="text-gray-400 hover:text-red-600"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="mt-2 flex gap-1.5">
-              <input
-                type="text"
-                value={novoAgravo}
-                onChange={(e) => setNovoAgravo(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && adicionarAgravo()}
-                placeholder="Adicionar outro agravo..."
-                className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
-              />
-              <button
-                type="button"
-                onClick={adicionarAgravo}
-                disabled={!novoAgravo.trim()}
-                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                <Plus className="size-3.5" />
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Medidas de Controle Existentes
-            </h3>
-            <p className="mb-2 text-[10px] italic text-gray-500">
-              Marque as medidas que a empresa já adota e adicione outras
-              manualmente.
-            </p>
-            <div className="space-y-1">
-              {MEDIDAS_EXISTENTES_OPCOES.map((opt) => (
-                <label
-                  key={opt}
-                  className="flex cursor-pointer items-start gap-2 rounded px-1.5 py-0.5 text-xs hover:bg-gray-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={medidasSel.includes(opt)}
-                    onChange={() => toggleMedida(opt)}
-                    className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
-                  />
-                  <span className="text-gray-800">{opt}</span>
-                </label>
-              ))}
-            </div>
-            {medidasExtras.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {medidasExtras.map((e, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-2 rounded bg-amber-50 px-2 py-1 text-xs"
-                  >
-                    <span className="flex-1 text-gray-800">{e}</span>
-                    <button
-                      type="button"
-                      onClick={() => removerMedidaExtra(i)}
-                      className="text-gray-400 hover:text-red-600"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="mt-2 flex gap-1.5">
-              <input
-                type="text"
-                value={novaMedida}
-                onChange={(e) => setNovaMedida(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && adicionarMedida()}
-                placeholder="Adicionar outra medida..."
-                className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
-              />
-              <button
-                type="button"
-                onClick={adicionarMedida}
-                disabled={!novaMedida.trim()}
-                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                <Plus className="size-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {respondentes.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 print:hidden">
           Nenhum respondente importado neste relatório.
@@ -539,14 +382,36 @@ export default function AnalisePage({
                 </>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              disabled={!podeImprimir}
-              className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
-            >
-              <Printer className="size-4" /> Gerar PDF
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => salvarCampos()}
+                disabled={!dirty || salvar.isPending || !relatorio}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Save className="size-3.5" />
+                {salvar.isPending ? "Salvando..." : "Salvar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => salvarCampos({ status: "CONCLUIDO" })}
+                disabled={salvar.isPending || !relatorio}
+                className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-2 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+              >
+                <CheckCircle2 className="size-3.5" />
+                {relatorio?.status === "CONCLUIDO"
+                  ? "Concluído"
+                  : "Concluir Análise"}
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                disabled={!podeImprimir}
+                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+              >
+                <Printer className="size-4" /> Gerar PDF
+              </button>
+            </div>
           </div>
 
           <div className="drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
@@ -638,6 +503,26 @@ export default function AnalisePage({
                     },
                   });
                 }}
+                editor={
+                  idx === 0
+                    ? {
+                        agravosSel,
+                        agravosExtras,
+                        medidasSel,
+                        medidasExtras,
+                        novoAgravo,
+                        novaMedida,
+                        toggleAgravo,
+                        toggleMedida,
+                        adicionarAgravo,
+                        adicionarMedida,
+                        removerAgravoExtra,
+                        removerMedidaExtra,
+                        setNovoAgravo,
+                        setNovaMedida,
+                      }
+                    : null
+                }
               />
             ))}
 
@@ -652,6 +537,23 @@ export default function AnalisePage({
   );
 }
 
+interface BlocoEditorProps {
+  agravosSel: string[];
+  agravosExtras: string[];
+  medidasSel: string[];
+  medidasExtras: string[];
+  novoAgravo: string;
+  novaMedida: string;
+  toggleAgravo: (item: string) => void;
+  toggleMedida: (item: string) => void;
+  adicionarAgravo: () => void;
+  adicionarMedida: () => void;
+  removerAgravoExtra: (i: number) => void;
+  removerMedidaExtra: (i: number) => void;
+  setNovoAgravo: (v: string) => void;
+  setNovaMedida: (v: string) => void;
+}
+
 function BlocoSetor({
   relatorio,
   drpsRel,
@@ -661,6 +563,7 @@ function BlocoSetor({
   ehConsolidado,
   conclusao,
   onSalvarConclusao,
+  editor,
 }: {
   relatorio: SetorRelatorio;
   drpsRel: DrpsRelatorio | null;
@@ -670,6 +573,7 @@ function BlocoSetor({
   ehConsolidado: boolean;
   conclusao: string;
   onSalvarConclusao: (texto: string) => void;
+  editor: BlocoEditorProps | null;
 }) {
   const [textoLocal, setTextoLocal] = useState(conclusao);
 
@@ -776,8 +680,31 @@ function BlocoSetor({
                 riscos psicossociais não forem identificados e controlados.
               </div>
             </td>
-            <td colSpan={3} className="whitespace-pre-wrap align-top">
-              {drpsRel?.agravos_saude_mental ?? ""}
+            <td colSpan={3} className="align-top">
+              {editor ? (
+                <>
+                  <div className="print:hidden">
+                    <MultiSelectInline
+                      opcoes={AGRAVOS_OPCOES}
+                      selecionados={editor.agravosSel}
+                      extras={editor.agravosExtras}
+                      novoValor={editor.novoAgravo}
+                      onToggle={editor.toggleAgravo}
+                      onAdd={editor.adicionarAgravo}
+                      onRemoveExtra={editor.removerAgravoExtra}
+                      onNovoValor={editor.setNovoAgravo}
+                      placeholder="Adicionar outro agravo..."
+                    />
+                  </div>
+                  <div className="hidden whitespace-pre-wrap print:block">
+                    {drpsRel?.agravos_saude_mental ?? ""}
+                  </div>
+                </>
+              ) : (
+                <div className="whitespace-pre-wrap">
+                  {drpsRel?.agravos_saude_mental ?? ""}
+                </div>
+              )}
             </td>
           </tr>
           <tr>
@@ -788,8 +715,31 @@ function BlocoSetor({
                 psicossociais.
               </div>
             </td>
-            <td colSpan={3} className="whitespace-pre-wrap align-top">
-              {drpsRel?.medidas_existentes ?? ""}
+            <td colSpan={3} className="align-top">
+              {editor ? (
+                <>
+                  <div className="print:hidden">
+                    <MultiSelectInline
+                      opcoes={MEDIDAS_EXISTENTES_OPCOES}
+                      selecionados={editor.medidasSel}
+                      extras={editor.medidasExtras}
+                      novoValor={editor.novaMedida}
+                      onToggle={editor.toggleMedida}
+                      onAdd={editor.adicionarMedida}
+                      onRemoveExtra={editor.removerMedidaExtra}
+                      onNovoValor={editor.setNovaMedida}
+                      placeholder="Adicionar outra medida..."
+                    />
+                  </div>
+                  <div className="hidden whitespace-pre-wrap print:block">
+                    {drpsRel?.medidas_existentes ?? ""}
+                  </div>
+                </>
+              ) : (
+                <div className="whitespace-pre-wrap">
+                  {drpsRel?.medidas_existentes ?? ""}
+                </div>
+              )}
             </td>
           </tr>
           <tr>
@@ -911,5 +861,85 @@ function BlocoSetor({
         </tbody>
       </table>
     </section>
+  );
+}
+
+function MultiSelectInline({
+  opcoes,
+  selecionados,
+  extras,
+  novoValor,
+  onToggle,
+  onAdd,
+  onRemoveExtra,
+  onNovoValor,
+  placeholder,
+}: {
+  opcoes: string[];
+  selecionados: string[];
+  extras: string[];
+  novoValor: string;
+  onToggle: (item: string) => void;
+  onAdd: () => void;
+  onRemoveExtra: (i: number) => void;
+  onNovoValor: (v: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <div>
+      <div className="grid gap-x-3 gap-y-0.5 sm:grid-cols-2">
+        {opcoes.map((opt) => (
+          <label
+            key={opt}
+            className="flex cursor-pointer items-start gap-1.5 rounded px-1 py-0.5 text-[11px] hover:bg-gray-50"
+          >
+            <input
+              type="checkbox"
+              checked={selecionados.includes(opt)}
+              onChange={() => onToggle(opt)}
+              className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+            />
+            <span className="text-gray-800">{opt}</span>
+          </label>
+        ))}
+      </div>
+      {extras.length > 0 && (
+        <div className="mt-1.5 space-y-1">
+          {extras.map((e, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-2 rounded bg-amber-50 px-2 py-1 text-[11px]"
+            >
+              <span className="flex-1 text-gray-800">{e}</span>
+              <button
+                type="button"
+                onClick={() => onRemoveExtra(i)}
+                className="text-gray-400 hover:text-red-600"
+              >
+                <X className="size-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-1.5 flex gap-1.5">
+        <input
+          type="text"
+          value={novoValor}
+          onChange={(e) => onNovoValor(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && onAdd()}
+          placeholder={placeholder}
+          className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-[11px] focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+        />
+        <button
+          type="button"
+          onClick={onAdd}
+          disabled={!novoValor.trim()}
+          className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          <Plus className="size-3" />
+        </button>
+      </div>
+    </div>
   );
 }
