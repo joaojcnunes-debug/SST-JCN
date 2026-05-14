@@ -13,9 +13,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen">
       <Sidebar />
-      <div className="md:pl-[220px]">
+      <div className="md:pl-[220px] print:pl-0">
         <Topbar />
-        <main className="px-4 py-6 md:px-6">{children}</main>
+        <main className="px-4 py-6 md:px-6 print:p-0">{children}</main>
       </div>
     </div>
   );
