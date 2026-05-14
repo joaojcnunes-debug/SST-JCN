@@ -8,7 +8,11 @@ import {
   X,
   CheckCircle2,
   ChevronDown,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import { useDrpsStore } from "@/lib/drps/store";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -658,10 +662,65 @@ function BlocoSetor({
   editor: BlocoEditorProps;
 }) {
   const [textoLocal, setTextoLocal] = useState(conclusao);
+  const [gerandoIA, setGerandoIA] = useState(false);
 
   useEffect(() => {
     setTextoLocal(conclusao);
   }, [conclusao]);
+
+  async function gerarConclusaoIA() {
+    if (relatorio.topicos.length === 0) {
+      toast.error("Sem tópicos avaliados — não é possível gerar conclusão.");
+      return;
+    }
+    setGerandoIA(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase.functions.invoke(
+        "gerar-conclusao-drps-ia",
+        {
+          body: {
+            empresa: empresa
+              ? { nome: empresa.nome_empresa, cnpj: empresa.cnpj ?? null }
+              : null,
+            setor: {
+              nome: relatorio.setor,
+              funcoes: relatorio.funcoes || null,
+              totalRespondentes: relatorio.totalRespondentes,
+            },
+            ehConsolidado,
+            responsavelTecnico: drpsRel?.responsavel_tecnico ?? null,
+            crp: drpsRel?.crp ?? null,
+            topicos: relatorio.topicos.map((t) => ({
+              nome: t.nome.replace(/^Tópico \d+ - /, ""),
+              fonteGeradora: t.fonteGeradora,
+              gravidade: t.classificacaoGravidade.texto,
+              probabilidade: t.classificacaoProbabilidade,
+              matriz: t.matriz,
+            })),
+            agravos: drpsRel?.agravos_por_setor?.[relatorio.setor] ?? null,
+            medidasExistentes:
+              drpsRel?.medidas_por_setor?.[relatorio.setor] ?? null,
+            textoAtual: textoLocal || null,
+          },
+        }
+      );
+      if (error) throw error;
+      const novoTexto = (data as { data?: { conclusao?: string } } | null)?.data
+        ?.conclusao;
+      if (!novoTexto) throw new Error("Resposta vazia da IA");
+      setTextoLocal(novoTexto);
+      onSalvarConclusao(novoTexto);
+      toast.success("Conclusão gerada pela IA — revise antes de assinar.");
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Erro ao gerar conclusão com IA"
+      );
+    } finally {
+      setGerandoIA(false);
+    }
+  }
+
   const identificadores: { label: string; valor: string }[] = [];
   if (empresa?.cnpj) {
     identificadores.push({ label: "CNPJ", valor: formatCNPJ(empresa.cnpj) });
@@ -900,7 +959,25 @@ function BlocoSetor({
       <table className="drps-tabela mt-2">
         <tbody>
           <tr>
-            <td className="drps-header-section">Conclusão</td>
+            <td className="drps-header-section">
+              <div className="flex items-center justify-between gap-2">
+                <span>Conclusão</span>
+                <button
+                  type="button"
+                  onClick={gerarConclusaoIA}
+                  disabled={gerandoIA || relatorio.topicos.length === 0}
+                  title="Gerar conclusão técnica com IA a partir dos tópicos avaliados, agravos e medidas existentes"
+                  className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2 py-1 text-[10px] font-semibold normal-case tracking-normal text-white shadow-sm hover:bg-verde-accent disabled:opacity-50 print:hidden"
+                >
+                  {gerandoIA ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="size-3" />
+                  )}
+                  {gerandoIA ? "Gerando..." : "Gerar com IA"}
+                </button>
+              </div>
+            </td>
           </tr>
           <tr>
             <td className="align-top">
@@ -911,7 +988,7 @@ function BlocoSetor({
                   if (textoLocal !== conclusao) onSalvarConclusao(textoLocal);
                 }}
                 rows={4}
-                placeholder="Conclusão do psicólogo para o setor — clique para editar."
+                placeholder="Conclusão do psicólogo para o setor — clique para editar ou use 'Gerar com IA'."
                 className="w-full border-0 bg-transparent p-0 text-[11px] leading-relaxed text-gray-900 focus:outline-none focus:ring-0 resize-none print:hidden"
               />
               <div
