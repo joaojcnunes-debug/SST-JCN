@@ -11,6 +11,7 @@ import {
   Users,
   Cog,
   Boxes,
+  FlaskConical,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
@@ -76,6 +77,14 @@ const CARDS: HubCardCfg[] = [
     description: "Máquinas e equipamentos internos da Chabra",
     icon: <Boxes className="size-12" />,
     accent: "#2563EB",
+  },
+  {
+    modulo: "analise_quimicos",
+    href: "/analise-quimicos",
+    title: "Análise de Químicos Chabra",
+    description: "Análise quantitativa de agentes químicos e FISPQ",
+    icon: <FlaskConical className="size-12" />,
+    accent: "#0EA5E9",
   },
 ];
 
