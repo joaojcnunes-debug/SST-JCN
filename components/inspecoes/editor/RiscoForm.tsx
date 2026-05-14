@@ -2144,24 +2144,28 @@ function FonteBlocoLista({
       </div>
 
       {sugestoesDisponiveis.length > 0 && (
-        <div className="mb-2 rounded-md border border-sky-100 bg-white p-2">
-          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sky-700">
-            Sugestões do modelo — clique para adicionar
-          </p>
-          <div className="flex flex-wrap gap-1.5">
+        <div className="mb-2">
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-sky-700">
+            Sugestões do catálogo ({sugestoesDisponiveis.length})
+          </label>
+          <select
+            value=""
+            onChange={(ev) => {
+              const txt = ev.target.value;
+              if (txt && !items.includes(txt)) {
+                onChange([...items, txt]);
+              }
+              ev.target.value = "";
+            }}
+            className="w-full rounded-md border border-sky-300 bg-white px-2 py-1.5 text-sm text-gray-900"
+          >
+            <option value="">— Selecione uma fonte para adicionar —</option>
             {sugestoesDisponiveis.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => onChange([...items, s])}
-                className="inline-flex items-center gap-1 rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[11px] text-sky-800 transition-colors hover:bg-sky-100"
-                title="Adicionar esta fonte"
-              >
-                <Plus className="size-3" />
+              <option key={s} value={s}>
                 {s}
-              </button>
+              </option>
             ))}
-          </div>
+          </select>
         </div>
       )}
 
