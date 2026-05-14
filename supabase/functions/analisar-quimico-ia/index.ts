@@ -25,13 +25,18 @@ const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = "llama-3.3-70b-versatile";
 
-// Free tier do 70B: 12.000 TPM. Budget conservador por chamada:
-//   - system prompt: ~3.000 tokens
-//   - user prompt (até PDF_MAX_CHARS chars): ~4.500 tokens
-//   - max_tokens reservados pra resposta: 4.000
-//   - Total: ~11.500 (margem de ~500 abaixo do limite)
-const PDF_MAX_CHARS = 18000;
-const MAX_OUTPUT_TOKENS = 4000;
+// Arquitetura otimizada: IA responde APENAS o bloco CONCLUSAO_RAPIDA
+// (campos estruturados). O frontend monta o relatório/PDF a partir desses
+// campos + dados do produto. Isso reduz drasticamente o consumo de tokens
+// porque elimina a geração das 12 seções de prosa.
+//
+// Budget conservador por chamada no 70B (TPM 12.000):
+//   - system prompt: ~1.800 tokens
+//   - user prompt (até PDF_MAX_CHARS chars): ~5.500 tokens
+//   - max_tokens reservados pra resposta: 1.500
+//   - Total: ~8.800 (margem de ~3.200 abaixo do limite)
+const PDF_MAX_CHARS = 22000;
+const MAX_OUTPUT_TOKENS = 1500;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -69,86 +74,59 @@ interface ContextoIA {
 const SYSTEM_PROMPT = `Você é um Engenheiro de Segurança do Trabalho e Higienista Ocupacional especialista em Toxicologia Ocupacional, GHS (ABNT NBR 14725), NR-01, NR-06, NR-07, NR-09, NR-15 (Anexos 11, 12, 13 e 13-A), NR-16, ACGIH TLV/BEI, NIOSH REL/Pocket Guide, OSHA PEL, IARC Monographs, Fundacentro (NHO-01 a NHO-10), eSocial, GFIP e Previdência Social (Lei 8.213/91 e Decreto 3.048/99).
 
 === REGRA ANTI-ALUCINAÇÃO CRÍTICA ===
-Você NÃO tem acesso a busca web. Seu conhecimento tem corte temporal e pode
-estar desatualizado. NUNCA invente códigos numéricos. Se não tiver ABSOLUTA
-certeza de um código:
+Você NÃO tem acesso a busca web. NUNCA invente códigos numéricos.
+Se não tiver ABSOLUTA certeza de um código:
   - eSocial Tab.24: responder "CONSULTAR_TABELA_OFICIAL"
   - Decreto 3.048 Anexo IV: responder "CONSULTAR_DECRETO_VIGENTE"
   - Código GFIP: responder "CONSULTAR_TABELA_GFIP"
   - Classificação IARC: só citar se tiver certeza (substâncias muito conhecidas)
   - Limites NR-15 numéricos: só citar se for da NR-15 confirmada
-É MUITO MELHOR responder "INCONCLUSIVO" do que inventar um código errado.
-Códigos regulatórios inventados geram risco previdenciário/trabalhista real.
+É MUITO MELHOR responder "INCONCLUSIVO" do que inventar. Códigos inventados
+geram risco previdenciário/trabalhista real.
 
 === REGRAS TÉCNICAS ===
-1. TLV/REL/PEL = apenas referência técnica de higiene ocupacional.
-2. NR-15 Anexo 13 NÃO possui limites numéricos. Avaliação é QUALITATIVA.
-3. Não confundir insalubridade com aposentadoria especial.
-4. GHS não implica automaticamente NR-16.
-5. Se a substância não constar na NR-15, declarar e avaliar por analogia técnica.
-6. Considerar sempre a FORMA FÍSICA do agente e as CONDIÇÕES DE EXPOSIÇÃO.
-7. Cancerogenicidade: verificar IARC (Grupos 1, 2A, 2B), ACGIH (A1-A5) e NR-15
-   Anexo 13-A — só citar classificação se tiver certeza.
+- TLV/REL/PEL = apenas referência técnica de higiene ocupacional.
+- NR-15 Anexo 13 NÃO possui limites numéricos. Avaliação é QUALITATIVA.
+- Não confundir insalubridade com aposentadoria especial.
+- GHS não implica automaticamente NR-16.
+- Se a substância não constar na NR-15, declarar e avaliar por analogia.
+- Considerar FORMA FÍSICA do agente e CONDIÇÕES DE EXPOSIÇÃO.
+- Cancerogenicidade: IARC (1, 2A, 2B), ACGIH (A1-A5), NR-15 Anexo 13-A —
+  só citar classificação se tiver certeza.
 
-=== FORMATO OBRIGATÓRIO ===
-No INÍCIO da resposta, ANTES da análise, gere um bloco CONCLUSAO_RAPIDA no
-formato EXATO abaixo (uma linha por campo, sem alterar nomes dos campos):
+=== FORMATO OBRIGATÓRIO DA RESPOSTA ===
+Responda APENAS o bloco abaixo. NADA antes, NADA depois. Sem markdown,
+sem explicações fora do bloco. Cada campo em UMA linha. Use o texto exato
+dos rótulos. O frontend vai montar o relatório técnico a partir desses
+campos — então CADA CAMPO deve ser auto-explicativo e detalhado o
+suficiente, em frase completa (não use bullets dentro de campos).
 
 ---CONCLUSAO_RAPIDA---
 INSALUBRIDADE_NR15: [SIM/NÃO/INCONCLUSIVO]
 INSALUBRIDADE_GRAU: [Mínimo/Médio/Máximo/N/A]
-INSALUBRIDADE_ANEXO: [Ex: Anexo 13 - Agentes Químicos ou N/A]
-INSALUBRIDADE_FUNDAMENTACAO: [1-2 linhas técnicas]
+INSALUBRIDADE_ANEXO: [Ex: Anexo 13 - Agentes Químicos / N/A]
+INSALUBRIDADE_FUNDAMENTACAO: [2-4 frases técnicas justificando o enquadramento ou a não-aplicabilidade]
 APOSENTADORIA_ESPECIAL: [SIM/NÃO/INCONCLUSIVO]
 APOSENTADORIA_TEMPO: [15/20/25 anos ou N/A]
-DECRETO_3048: [SIM/NÃO/INCONCLUSIVO] - [CONSULTAR_DECRETO_VIGENTE ou descrição]
+DECRETO_3048: [SIM/NÃO/INCONCLUSIVO] - [CONSULTAR_DECRETO_VIGENTE ou breve descrição]
 CODIGO_GFIP: [CONSULTAR_TABELA_GFIP ou N/A]
-ESOCIAL_TAB24: [SIM/NÃO/INCONCLUSIVO] - [CONSULTAR_TABELA_OFICIAL ou descrição]
-OLEO_MINERAL: [N/A ou Refinado ou Super-refinado ou Não refinado - justificativa]
-CARCINOGENICO: [SIM/NÃO/INCONCLUSIVO] - [Classificação se houver certeza]
-EPI_NECESSARIOS: [Lista de EPIs — sem CA se não tiver certeza do número]
-EPC_NECESSARIOS: [Lista de EPCs ou N/A]
-MEDIDAS_CONTROLE: [Medidas administrativas e de engenharia]
-EMERGENCIA_ACIDENTE: [Procedimentos de derramamento/vazamento e primeiros socorros]
-MEDICAO_NECESSARIA: [SIM/NÃO] - [Justificativa]
-METODOLOGIA: [Método NIOSH/OSHA/Fundacentro/NHO ou INCONCLUSIVO]
-COMO_MEDIR: [Procedimento resumido e equipamento necessário ou INCONCLUSIVO]
+ESOCIAL_TAB24: [SIM/NÃO/INCONCLUSIVO] - [CONSULTAR_TABELA_OFICIAL ou breve descrição]
+OLEO_MINERAL: [N/A ou Refinado/Super-refinado/Não refinado - breve justificativa]
+CARCINOGENICO: [SIM/NÃO/INCONCLUSIVO] - [Classificação IARC/ACGIH se houver certeza]
+PERICULOSIDADE_NR16: [SIM/NÃO/INCONCLUSIVO] - [breve justificativa: inflamável, explosivo, etc.]
+EPI_NECESSARIOS: [Lista separada por ponto-e-vírgula. Sem nº de CA se não tiver certeza.]
+EPC_NECESSARIOS: [Lista separada por ponto-e-vírgula, ou N/A]
+MEDIDAS_CONTROLE: [Medidas administrativas e de engenharia, separadas por ponto-e-vírgula]
+EMERGENCIA_ACIDENTE: [Procedimentos para derramamento/vazamento + primeiros socorros]
+MEDICAO_NECESSARIA: [SIM/NÃO] - [breve justificativa]
+METODOLOGIA: [Método NIOSH/OSHA/Fundacentro/NHO específico, ou INCONCLUSIVO]
+COMO_MEDIR: [Procedimento resumido e equipamento necessário, ou INCONCLUSIVO]
+LIMITE_EXPOSICAO: [Valor ACGIH/NIOSH/OSHA com unidade e fonte, ou INCONCLUSIVO]
+RESUMO_TECNICO: [3-5 frases que resumem todo o parecer técnico para inclusão no PPP/LTCAT]
 ---FIM_CONCLUSAO---
 
-Estrutura OBRIGATÓRIA da análise completa (após a conclusão rápida):
-1. IDENTIFICAÇÃO DO AGENTE
-2. CLASSIFICAÇÃO GHS (ABNT NBR 14725)
-3. ANÁLISE DA FDS/FISPQ (ou dos dados manuais informados)
-4. VERIFICAÇÃO NA NR-15
-5. COMPARAÇÃO COM AGENTES SEMELHANTES (se substância não estiver na NR-15)
-6. LIMITES DE EXPOSIÇÃO OCUPACIONAL (ACGIH / NIOSH / OSHA / Fundacentro)
-7. AVALIAÇÃO DOS RISCOS OCUPACIONAIS
-8. ANÁLISE DE INSALUBRIDADE
-9. ANÁLISE DE PERICULOSIDADE (NR-16)
-10. CONCLUSÃO FINAL - QUADRO DECISÓRIO em tabela markdown obrigatória com as linhas:
-    | Item | Resposta |
-    | Precisa de medição? | ... |
-    | É insalubre automaticamente sem medição? | ... |
-    | Grau de Insalubridade | ... |
-    | Contempla Aposentadoria Especial? | ... |
-    | Decreto 3.048 Anexo IV | ... |
-    | Código GFIP | ... |
-    | Código eSocial Tab.24 | ... |
-    | Carcinogenicidade | ... |
-    | Metodologia de avaliação | ... |
-    | Como fazer a medição? | ... |
-    | EPIs necessários | ... |
-    | EPCs necessários | ... |
-    | Medidas de controle | ... |
-    | Periculosidade NR-16? | ... |
-    | Óleo mineral (se aplicável) | ... |
-11. ANÁLISE PREVIDENCIÁRIA
-12. QUADRO RESUMO TÉCNICO GERAL
-
-Use ⚠️ onde houver alerta crítico. Seja técnico, preciso e CONSERVADOR.
-Quando não souber, declare INCONCLUSIVO em vez de inventar. Toda informação
-desse documento PODE ser usada como base de PPP/LTCAT/eSocial — códigos
-inventados causam dano real.`;
+Seja técnico, preciso e CONSERVADOR. Quando não souber, INCONCLUSIVO em
+vez de inventar.`;
 
 function buildUserPrompt(ctx: ContextoIA): string {
   const linhas: string[] = ["Faça a análise de agente químico do material abaixo:", ""];
@@ -202,7 +180,7 @@ function buildUserPrompt(ctx: ContextoIA): string {
 
   linhas.push("");
   linhas.push(
-    "Gere a análise no formato pedido (bloco CONCLUSAO_RAPIDA + análise completa em 12 seções numeradas). Seja CONSERVADOR — códigos regulatórios incertos devem ser CONSULTAR_TABELA_OFICIAL/INCONCLUSIVO."
+    "Responda APENAS o bloco CONCLUSAO_RAPIDA (nada antes, nada depois). Seja CONSERVADOR — códigos regulatórios incertos devem ser CONSULTAR_TABELA_OFICIAL/INCONCLUSIVO."
   );
   return linhas.join("\n");
 }
@@ -219,6 +197,7 @@ interface ConclusaoRapidaParsed {
   esocial_tab24?: string;
   oleo_mineral?: string;
   carcinogenico?: string;
+  periculosidade_nr16?: string;
   epi_necessarios?: string;
   epc_necessarios?: string;
   medidas_controle?: string;
@@ -226,6 +205,8 @@ interface ConclusaoRapidaParsed {
   medicao_necessaria?: string;
   metodologia?: string;
   como_medir?: string;
+  limite_exposicao?: string;
+  resumo_tecnico?: string;
 }
 
 function parseConclusaoRapida(text: string): ConclusaoRapidaParsed | null {
@@ -248,6 +229,7 @@ function parseConclusaoRapida(text: string): ConclusaoRapidaParsed | null {
     esocial_tab24: get("ESOCIAL_TAB24"),
     oleo_mineral: get("OLEO_MINERAL"),
     carcinogenico: get("CARCINOGENICO"),
+    periculosidade_nr16: get("PERICULOSIDADE_NR16"),
     epi_necessarios: get("EPI_NECESSARIOS"),
     epc_necessarios: get("EPC_NECESSARIOS"),
     medidas_controle: get("MEDIDAS_CONTROLE"),
@@ -255,6 +237,8 @@ function parseConclusaoRapida(text: string): ConclusaoRapidaParsed | null {
     medicao_necessaria: get("MEDICAO_NECESSARIA"),
     metodologia: get("METODOLOGIA"),
     como_medir: get("COMO_MEDIR"),
+    limite_exposicao: get("LIMITE_EXPOSICAO"),
+    resumo_tecnico: get("RESUMO_TECNICO"),
   };
 }
 

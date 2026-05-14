@@ -506,6 +506,7 @@ export interface ConclusaoRapidaQuimico {
   esocial_tab24?: string;
   oleo_mineral?: string;
   carcinogenico?: string;
+  periculosidade_nr16?: string;
   epi_necessarios?: string;
   epc_necessarios?: string;
   medidas_controle?: string;
@@ -513,6 +514,8 @@ export interface ConclusaoRapidaQuimico {
   medicao_necessaria?: string;
   metodologia?: string;
   como_medir?: string;
+  limite_exposicao?: string;
+  resumo_tecnico?: string;
 }
 
 export type ModoAnaliseQuimico = "PDF" | "Manual";
