@@ -30,13 +30,17 @@ const MODEL = "llama-3.3-70b-versatile";
 // campos + dados do produto. Isso reduz drasticamente o consumo de tokens
 // porque elimina a geração das 12 seções de prosa.
 //
-// Budget conservador por chamada no 70B (TPM 12.000):
+// Budget MUITO conservador por chamada no 70B (TPM 12.000, TPD 100.000):
 //   - system prompt: ~1.800 tokens
-//   - user prompt (até PDF_MAX_CHARS chars): ~5.500 tokens
-//   - max_tokens reservados pra resposta: 1.500
-//   - Total: ~8.800 (margem de ~3.200 abaixo do limite)
-const PDF_MAX_CHARS = 22000;
-const MAX_OUTPUT_TOKENS = 1500;
+//   - user prompt (até PDF_MAX_CHARS chars): ~3.000 tokens
+//   - max_tokens reservados pra resposta: 1.000
+//   - Total: ~5.800 (margem de ~6.200 abaixo do TPM)
+//
+// Com 5.800 tokens/chamada cabem ~17 análises/dia no TPD do 70B
+// (vs ~11 no budget anterior). PDFs longos sao truncados em 12k chars
+// (primeiras 3-4 paginas — suficiente p/ identificacao + GHS + composicao).
+const PDF_MAX_CHARS = 12000;
+const MAX_OUTPUT_TOKENS = 1000;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
