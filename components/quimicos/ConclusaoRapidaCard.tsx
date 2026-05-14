@@ -28,6 +28,21 @@ function badgeColor(val: string | undefined): {
   return { bg: "#fef9c3", color: "#854d0e", border: "#fde68a" };
 }
 
+/**
+ * Converte os tokens-sentinela usados pela IA (ex: "CONSULTAR_TABELA_OFICIAL")
+ * em texto legível pro usuário final. Mantém a semântica de "não sei, vai na
+ * tabela oficial" mas remove o visual de placeholder técnico.
+ */
+function humanize(value: string | undefined): string {
+  if (!value) return "—";
+  return value
+    .replace(/CONSULTAR_TABELA_OFICIAL/gi, "Consultar tabela oficial")
+    .replace(/CONSULTAR_DECRETO_VIGENTE/gi, "Consultar decreto vigente")
+    .replace(/CONSULTAR_TABELA_GFIP/gi, "Consultar tabela GFIP")
+    .replace(/\bINCONCLUSIVO\b/g, "Inconclusivo")
+    .replace(/\bN\/A\b/g, "N/A");
+}
+
 function Badge({ label, value }: { label: string; value: string | undefined }) {
   const c = badgeColor(value);
   return (
@@ -42,10 +57,10 @@ function Badge({ label, value }: { label: string; value: string | undefined }) {
         {label}
       </p>
       <p
-        className="mt-0.5 text-sm font-semibold leading-tight"
+        className="mt-0.5 break-words text-sm font-semibold leading-tight"
         style={{ color: c.color }}
       >
-        {value || "—"}
+        {humanize(value)}
       </p>
     </div>
   );
@@ -72,8 +87,8 @@ function Card({
         {icon}
         {title}
       </div>
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
-        {content}
+      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800">
+        {humanize(content)}
       </p>
     </div>
   );

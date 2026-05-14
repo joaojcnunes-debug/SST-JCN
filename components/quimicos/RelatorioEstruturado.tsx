@@ -222,19 +222,36 @@ function DataGrid({ items }: { items: DataItem[] }) {
   );
 }
 
+/**
+ * Converte tokens-sentinela da IA em texto legível pro usuário final.
+ * Mantém o mesmo significado mas tira o visual de placeholder técnico.
+ */
+function humanize(value: string): string {
+  return value
+    .replace(/CONSULTAR_TABELA_OFICIAL/gi, "Consultar tabela oficial")
+    .replace(/CONSULTAR_DECRETO_VIGENTE/gi, "Consultar decreto vigente")
+    .replace(/CONSULTAR_TABELA_GFIP/gi, "Consultar tabela GFIP")
+    .replace(/\bINCONCLUSIVO\b/g, "Inconclusivo");
+}
+
 function formatValor(value: string | null | undefined, destaque?: boolean) {
   if (!value) return <span className="text-gray-400">—</span>;
-  const v = value.trim();
-  if (!destaque) return <span className="text-gray-900">{v}</span>;
+  const v = humanize(value.trim());
+  if (!destaque) {
+    return <span className="break-words text-gray-900">{v}</span>;
+  }
 
   const upper = v.toUpperCase();
   let cor = "text-gray-900";
   if (upper.startsWith("SIM")) cor = "text-emerald-700";
   else if (upper.startsWith("NÃO") || upper.startsWith("NAO")) cor = "text-red-700";
-  else if (upper.includes("INCONCLUSIVO") || upper.includes("CONSULTAR"))
+  else if (
+    upper.includes("INCONCLUSIVO") ||
+    upper.includes("CONSULTAR")
+  )
     cor = "text-amber-700";
 
-  return <span className={cor}>{v}</span>;
+  return <span className={`break-words ${cor}`}>{v}</span>;
 }
 
 function Fundamentacao({ texto }: { texto?: string }) {
@@ -244,7 +261,7 @@ function Fundamentacao({ texto }: { texto?: string }) {
       <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700">
         Fundamentação
       </p>
-      <p className="mt-1 leading-relaxed">{texto}</p>
+      <p className="mt-1 leading-relaxed break-words">{humanize(texto)}</p>
     </div>
   );
 }
@@ -255,16 +272,17 @@ function Bloco({ texto, destacar }: { texto?: string; destacar?: boolean }) {
       <p className="text-sm italic text-gray-400">Não informado pela análise.</p>
     );
   }
+  const conteudo = humanize(texto);
   if (destacar) {
     return (
-      <div className="rounded-md border-l-4 border-verde-primary bg-verde-light/30 p-3 text-sm leading-relaxed text-gray-900">
-        {texto}
+      <div className="rounded-md border-l-4 border-verde-primary bg-verde-light/30 p-3 text-sm leading-relaxed text-gray-900 break-words">
+        {conteudo}
       </div>
     );
   }
   return (
-    <p className="text-sm leading-relaxed text-gray-900 whitespace-pre-wrap">
-      {texto}
+    <p className="text-sm leading-relaxed text-gray-900 whitespace-pre-wrap break-words">
+      {conteudo}
     </p>
   );
 }
@@ -289,7 +307,10 @@ function CardLista({
   };
 
   // Quebra por ; ou bullet pra virar lista, se houver
-  const itens = texto.split(/[;•]\s*/).filter((s) => s.trim().length > 0);
+  const itens = texto
+    .split(/[;•]\s*/)
+    .map((s) => humanize(s.trim()))
+    .filter((s) => s.length > 0);
 
   return (
     <div className={`rounded-md border p-3 text-sm ${cores[cor]}`}>
@@ -297,13 +318,13 @@ function CardLista({
         {titulo}
       </p>
       {itens.length > 1 ? (
-        <ul className="ml-4 list-disc space-y-0.5 leading-relaxed">
+        <ul className="ml-4 list-disc space-y-0.5 leading-relaxed break-words">
           {itens.map((it, i) => (
-            <li key={i}>{it.trim()}</li>
+            <li key={i}>{it}</li>
           ))}
         </ul>
       ) : (
-        <p className="leading-relaxed">{texto}</p>
+        <p className="leading-relaxed break-words">{humanize(texto)}</p>
       )}
     </div>
   );
