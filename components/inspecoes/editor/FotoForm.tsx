@@ -7,7 +7,7 @@ import Modal from "@/components/ui/Modal";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { CATEGORIAS_FOTO } from "@/lib/constants";
-import type { CategoriaFoto, Foto } from "@/lib/supabase/types";
+import type { CategoriaFoto, Foto, Setor } from "@/lib/supabase/types";
 import { useUserStore } from "@/lib/store";
 
 interface Props {
@@ -15,6 +15,7 @@ interface Props {
   onClose: () => void;
   idInspecao: string;
   idEmpresa: string;
+  setores: Setor[];
   foto?: Foto | null;
 }
 
@@ -23,6 +24,7 @@ export default function FotoForm({
   onClose,
   idInspecao,
   idEmpresa,
+  setores,
   foto,
 }: Props) {
   const qc = useQueryClient();
@@ -30,6 +32,7 @@ export default function FotoForm({
   const isEdit = !!foto;
 
   const [categoria, setCategoria] = useState<CategoriaFoto>("Geral");
+  const [idSetor, setIdSetor] = useState<string>("");
   const [legenda, setLegenda] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
@@ -37,6 +40,7 @@ export default function FotoForm({
   useEffect(() => {
     if (open) {
       setCategoria((foto?.categoria as CategoriaFoto) ?? "Geral");
+      setIdSetor(foto?.id_setor ?? "");
       setLegenda(foto?.legenda ?? "");
       setFile(null);
       setProgress(0);
@@ -50,7 +54,11 @@ export default function FotoForm({
       if (isEdit && foto) {
         const { error } = await supabase
           .from("fotos")
-          .update({ categoria, legenda: legenda.trim() || null } as never)
+          .update({
+            categoria,
+            id_setor: idSetor || null,
+            legenda: legenda.trim() || null,
+          } as never)
           .eq("id_foto", foto.id_foto);
         if (error) throw error;
         return;
@@ -74,6 +82,7 @@ export default function FotoForm({
         id_foto: gerarId("FOTO"),
         id_inspecao: idInspecao,
         id_empresa: idEmpresa,
+        id_setor: idSetor || null,
         categoria,
         legenda: legenda.trim() || null,
         arquivo_foto: pub.publicUrl,
@@ -136,6 +145,27 @@ export default function FotoForm({
               </option>
             ))}
           </select>
+        </div>
+        <div>
+          <label className={lblCls}>Setor de destino</label>
+          <select
+            value={idSetor}
+            onChange={(e) => setIdSetor(e.target.value)}
+            className={inputCls}
+          >
+            <option value="">— Sem setor específico —</option>
+            {setores.map((s) => (
+              <option key={s.id_setor} value={s.id_setor}>
+                {s.setor_ghe}
+              </option>
+            ))}
+          </select>
+          {setores.length === 0 && (
+            <p className="mt-1 text-xs text-amber-700">
+              Nenhum setor cadastrado nesta inspeção — cadastre na aba Setores
+              para vincular a foto.
+            </p>
+          )}
         </div>
         <div>
           <label className={lblCls}>Legenda</label>

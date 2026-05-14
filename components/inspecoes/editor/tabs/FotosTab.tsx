@@ -8,12 +8,13 @@ import FotoForm from "../FotoForm";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { CATEGORIAS_FOTO, CATEGORIA_FOTO_ICONE } from "@/lib/constants";
-import type { CategoriaFoto, Foto } from "@/lib/supabase/types";
+import type { CategoriaFoto, Foto, Setor } from "@/lib/supabase/types";
 
 interface Props {
   idInspecao: string;
   idEmpresa: string;
   fotos: Foto[];
+  setores: Setor[];
   readOnly?: boolean;
 }
 
@@ -21,6 +22,7 @@ export default function FotosTab({
   idInspecao,
   idEmpresa,
   fotos,
+  setores,
   readOnly,
 }: Props) {
   const qc = useQueryClient();
@@ -148,6 +150,7 @@ export default function FotosTab({
         onClose={() => setFormOpen(false)}
         idInspecao={idInspecao}
         idEmpresa={idEmpresa}
+        setores={setores}
         foto={editing}
       />
       <ConfirmDialog

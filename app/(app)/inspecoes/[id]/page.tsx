@@ -315,6 +315,7 @@ export default function InspecaoEditorPage({ params }: Props) {
               idInspecao={id}
               idEmpresa={inspecao.id_empresa}
               fotos={fotos}
+              setores={setores}
               readOnly={readOnly}
             />
           )}
