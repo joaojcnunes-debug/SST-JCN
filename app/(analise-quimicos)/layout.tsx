@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { FlaskConical } from "lucide-react";
+import { FlaskConical, Plus, History } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -12,6 +12,8 @@ const sections: NavSection[] = [
     label: "Análise de Químicos",
     items: [
       { href: "/analise-quimicos", label: "Visão geral", icon: FlaskConical },
+      { href: "/analise-quimicos/nova", label: "Nova análise", icon: Plus },
+      { href: "/analise-quimicos/historico", label: "Histórico", icon: History },
     ],
   },
 ];
@@ -32,9 +34,9 @@ export default function AnaliseQuimicosLayout({
         logoHref="/analise-quimicos"
         sections={sections}
       />
-      <div className="md:pl-[220px]">
+      <div className="md:pl-[220px] print:pl-0">
         <ModuleTopbar title="Análise de Químicos Chabra" />
-        <main className="px-4 py-6 md:px-6">{children}</main>
+        <main className="px-4 py-6 md:px-6 print:p-0">{children}</main>
       </div>
     </div>
   );

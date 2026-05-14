@@ -483,6 +483,61 @@ export interface Configuracao {
   updated_by: string | null;
 }
 
+// ---- Análise de Químicos ----
+
+export interface CondicoesUsoQuimico {
+  atividade?: string | null;
+  frequencia?: string | null;
+  duracao?: string | null;
+  ventilacao?: string | null;
+  geracao_nevoa_vapor?: string | null;
+  epis_utilizados?: string | null;
+}
+
+export interface ConclusaoRapidaQuimico {
+  insalubridade_nr15?: string;
+  insalubridade_grau?: string;
+  insalubridade_anexo?: string;
+  insalubridade_fundamentacao?: string;
+  aposentadoria_especial?: string;
+  aposentadoria_tempo?: string;
+  decreto_3048?: string;
+  codigo_gfip?: string;
+  esocial_tab24?: string;
+  oleo_mineral?: string;
+  carcinogenico?: string;
+  epi_necessarios?: string;
+  epc_necessarios?: string;
+  medidas_controle?: string;
+  emergencia_acidente?: string;
+  medicao_necessaria?: string;
+  metodologia?: string;
+  como_medir?: string;
+}
+
+export type ModoAnaliseQuimico = "PDF" | "Manual";
+
+export interface AnaliseQuimico {
+  id_analise: string;
+  id_empresa: string | null;
+  titulo: string;
+  nome_quimico: string | null;
+  numero_cas: string | null;
+  formula_quimica: string | null;
+  forma_fisica: string | null;
+  concentracao: string | null;
+  modo: ModoAnaliseQuimico;
+  fonte_arquivo: string | null;
+  texto_extraido: string | null;
+  condicoes_uso: CondicoesUsoQuimico | null;
+  resultado_texto: string;
+  conclusao_rapida: ConclusaoRapidaQuimico | null;
+  usuario_email: string | null;
+  usuario_nome: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
 // Schema esperado pelo @supabase/ssr / supabase-js (Database genérico).
 type TableShape<T> = {
   Row: T;
@@ -521,6 +576,7 @@ export interface Database {
       triagens_tipo: TableShape<TriagemTipoRisco>;
       triagens_opcao: TableShape<TriagemOpcao>;
       triagens_modelo: TableShape<TriagemModeloRel>;
+      analises_quimicos: TableShape<AnaliseQuimico>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
