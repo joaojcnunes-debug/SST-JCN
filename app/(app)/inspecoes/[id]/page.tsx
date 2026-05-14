@@ -20,6 +20,7 @@ import {
   Sticker,
   Siren,
   GraduationCap,
+  ClipboardEdit,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -186,6 +187,13 @@ export default function InspecaoEditorPage({ params }: Props) {
               title="PGR / Inventário de Riscos (NR-1)"
             >
               <FileText className="size-4" /> PGR
+            </Link>
+            <Link
+              href={`/inspecoes/${id}/ficha`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              title="Gerar ficha em branco para preenchimento em campo"
+            >
+              <ClipboardEdit className="size-4" /> Ficha em Branco
             </Link>
             {canEdit && (
               <button

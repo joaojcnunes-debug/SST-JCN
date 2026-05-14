@@ -7,6 +7,7 @@ import {
   PlusCircle,
   BarChart3,
   Target,
+  ClipboardEdit,
 } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import SidebarShell, { type NavSection } from "./SidebarShell";
@@ -20,6 +21,7 @@ const PRINCIPAL = [
 
 const ACOES = [
   { href: "/inspecoes/nova", label: "Nova Inspeção", icon: PlusCircle },
+  { href: "/inspecoes/ficha", label: "Ficha em Branco", icon: ClipboardEdit },
   { href: "/acoes", label: "Plano de Ação", icon: Target },
 ];
 
