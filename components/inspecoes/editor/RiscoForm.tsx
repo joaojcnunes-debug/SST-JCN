@@ -457,15 +457,14 @@ export default function RiscoForm({
 
     if (isEdit) return; // em edit, não sobrescreve listas existentes
 
-    const fontes: string[] = [];
+    // Fonte Geradora: NÃO autopreencher — usuário escolhe quais aplicar
+    // a partir dos chips de sugestão no FonteBlocoLista. EPI/EPC/medidas
+    // continuam autopreenchidos como antes.
     const epis: EpiPendente[] = [];
     const adotadas: string[] = [];
     const recomendadas: string[] = [];
     for (const i of itensModelo) {
       switch (i.categoria) {
-        case "fonte_geradora":
-          fontes.push(i.texto);
-          break;
         case "epi_utilizado":
           epis.push({ tipo: "EPI", descricao: i.texto, ca: null, recomendado: "Não" });
           break;
@@ -488,7 +487,6 @@ export default function RiscoForm({
     }
     setForm((f) => ({
       ...f,
-      fontes_geradoras_lista: fontes,
       epis_pendentes: epis,
       medidas_adotadas_lista: adotadas,
       medidas_recomendadas_lista: recomendadas,
@@ -882,11 +880,14 @@ export default function RiscoForm({
               return (
                 <p className="mt-1 text-[11px] text-verde-primary">
                   ✓ Modelo &ldquo;{modeloSelecionado.agente}&rdquo;{" "}
-                  {isEdit ? "vinculado" : "aplicado"}: {nFonte} fonte(s),{" "}
+                  {isEdit ? "vinculado" : "aplicado"}:{" "}
                   {nEpiUti + nEpiRec} EPI(s), {nEpcUti + nEpcRec} EPC(s),{" "}
                   {nMedAdo + nMedRec} medida(s)
                   {nPerg > 0 ? `, ${nPerg} pergunta(s)` : ""}
-                  {!isEdit && " — edite à vontade"}.
+                  {nFonte > 0 && !isEdit
+                    ? ` · ${nFonte} fonte(s) sugerida(s) — selecione abaixo`
+                    : ""}
+                  {!isEdit && nFonte === 0 && " — edite à vontade"}.
                 </p>
               );
             })()}
@@ -2124,6 +2125,8 @@ function FonteBlocoLista({
     setEditingIdx(null);
   }
 
+  const sugestoesDisponiveis = sugestoes.filter((s) => !items.includes(s));
+
   return (
     <section className="rounded-lg border border-sky-200 bg-sky-50/30 p-3">
       <div className="mb-2 flex items-baseline justify-between gap-2">
@@ -2139,6 +2142,28 @@ function FonteBlocoLista({
           {items.length}
         </span>
       </div>
+
+      {sugestoesDisponiveis.length > 0 && (
+        <div className="mb-2 rounded-md border border-sky-100 bg-white p-2">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sky-700">
+            Sugestões do modelo — clique para adicionar
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {sugestoesDisponiveis.map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => onChange([...items, s])}
+                className="inline-flex items-center gap-1 rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[11px] text-sky-800 transition-colors hover:bg-sky-100"
+                title="Adicionar esta fonte"
+              >
+                <Plus className="size-3" />
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {items.length > 0 && (
         <ul className="mb-2 divide-y divide-gray-100 rounded-md bg-white">
