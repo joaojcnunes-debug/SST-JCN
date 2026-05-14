@@ -1,4 +1,4 @@
-// Edge Function — Análise de Agentes Químicos via Groq (Llama 3.3 70B-versatile).
+// Edge Function — Análise de Agentes Químicos via Groq (Llama 3.1 8B-instant).
 //
 // Recebe texto extraído de FDS/FISPQ (modo PDF) ou campos manuais e devolve:
 //   {
@@ -6,16 +6,17 @@
 //     conclusao: <objeto estruturado parseado do bloco CONCLUSAO_RAPIDA>
 //   }
 //
-// IMPORTANTE — modelo escolhido por exceção:
-// As outras duas funções de IA (gerar-acao-ia, gerar-conclusao-drps-ia) usam
-// o 8B-instant. ESTA usa 70B porque o 8B free tem TPM 6k que não cabe um
-// PDF de FISPQ inteiro + system prompt + resposta longa. O 70B tem 12k TPM
-// (cabe) e melhor qualidade técnica pra raciocínio regulatório, em troca
-// de um limite diário menor (~100k TPD = ~8 análises/dia).
+// MODELO: 8B-instant. Mesma quota das outras duas funções (gerar-acao-ia,
+// gerar-conclusao-drps-ia), MAS a refatoração pra responder só CONCLUSAO_RAPIDA
+// + truncagem agressiva do PDF (12k chars) + max_tokens 1000 deixou cada
+// chamada em ~5.800 tokens, dentro do TPM 6.000 do 8B free.
 //
-// Modelo SEM web search → instrução rígida de NÃO inventar códigos
-// regulatórios (eSocial Tab.24, Decreto 3.048 Anexo IV, GFIP, IARC).
-// Quando incerto, devolver "CONSULTAR_TABELA_OFICIAL".
+// TPD do 8B: 500.000 (vs 100k do 70B) → comporta ~80 analises/dia.
+//
+// Trade-off: 8B tem qualidade técnica menor que 70B em raciocínio regulatório.
+// O prompt anti-alucinação reforça "NÃO inventar códigos eSocial/Decreto/GFIP"
+// — quando incerto, devolver "CONSULTAR_TABELA_OFICIAL". Revisão humana
+// obrigatória antes de uso oficial (banner no UI).
 //
 // DEPLOY: supabase functions deploy analisar-quimico-ia
 
@@ -23,22 +24,21 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "llama-3.3-70b-versatile";
+const MODEL = "llama-3.1-8b-instant";
 
 // Arquitetura otimizada: IA responde APENAS o bloco CONCLUSAO_RAPIDA
 // (campos estruturados). O frontend monta o relatório/PDF a partir desses
 // campos + dados do produto. Isso reduz drasticamente o consumo de tokens
 // porque elimina a geração das 12 seções de prosa.
 //
-// Budget MUITO conservador por chamada no 70B (TPM 12.000, TPD 100.000):
+// Budget por chamada no 8B (TPM 6.000, TPD 500.000):
 //   - system prompt: ~1.800 tokens
 //   - user prompt (até PDF_MAX_CHARS chars): ~3.000 tokens
 //   - max_tokens reservados pra resposta: 1.000
-//   - Total: ~5.800 (margem de ~6.200 abaixo do TPM)
+//   - Total: ~5.800 (margem ~200 abaixo do TPM 6.000)
 //
-// Com 5.800 tokens/chamada cabem ~17 análises/dia no TPD do 70B
-// (vs ~11 no budget anterior). PDFs longos sao truncados em 12k chars
-// (primeiras 3-4 paginas — suficiente p/ identificacao + GHS + composicao).
+// PDFs longos sao truncados em 12k chars (primeiras 3-4 paginas — geralmente
+// cobrindo seções 1-4 da FISPQ: identificacao, GHS, composicao, perigos).
 const PDF_MAX_CHARS = 12000;
 const MAX_OUTPUT_TOKENS = 1000;
 
