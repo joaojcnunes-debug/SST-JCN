@@ -1,4 +1,4 @@
-// Edge Function — Análise de Agentes Químicos via Groq (Llama 3.1 8B-instant).
+// Edge Function — Análise de Agentes Químicos via Groq (Llama 3.3 70B-versatile).
 //
 // Recebe texto extraído de FDS/FISPQ (modo PDF) ou campos manuais e devolve:
 //   {
@@ -6,8 +6,15 @@
 //     conclusao: <objeto estruturado parseado do bloco CONCLUSAO_RAPIDA>
 //   }
 //
-// IMPORTANTE: Modelo 8B SEM web search → instrução rígida de NÃO inventar
-// códigos regulatórios (eSocial Tab.24, Decreto 3.048 Anexo IV, GFIP, IARC).
+// IMPORTANTE — modelo escolhido por exceção:
+// As outras duas funções de IA (gerar-acao-ia, gerar-conclusao-drps-ia) usam
+// o 8B-instant. ESTA usa 70B porque o 8B free tem TPM 6k que não cabe um
+// PDF de FISPQ inteiro + system prompt + resposta longa. O 70B tem 12k TPM
+// (cabe) e melhor qualidade técnica pra raciocínio regulatório, em troca
+// de um limite diário menor (~100k TPD = ~8 análises/dia).
+//
+// Modelo SEM web search → instrução rígida de NÃO inventar códigos
+// regulatórios (eSocial Tab.24, Decreto 3.048 Anexo IV, GFIP, IARC).
 // Quando incerto, devolver "CONSULTAR_TABELA_OFICIAL".
 //
 // DEPLOY: supabase functions deploy analisar-quimico-ia
@@ -16,7 +23,15 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "llama-3.1-8b-instant";
+const MODEL = "llama-3.3-70b-versatile";
+
+// Free tier do 70B: 12.000 TPM. Budget conservador por chamada:
+//   - system prompt: ~3.000 tokens
+//   - user prompt (até PDF_MAX_CHARS chars): ~4.500 tokens
+//   - max_tokens reservados pra resposta: 4.000
+//   - Total: ~11.500 (margem de ~500 abaixo do limite)
+const PDF_MAX_CHARS = 18000;
+const MAX_OUTPUT_TOKENS = 4000;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -143,13 +158,17 @@ function buildUserPrompt(ctx: ContextoIA): string {
   if (ctx.modo === "PDF" && ctx.texto_documento) {
     linhas.push("");
     linhas.push("=== TEXTO EXTRAÍDO DA FDS/FISPQ ===");
-    // Limita o texto a ~40k chars pra caber no contexto do 8B (~128k tokens
-    // total mas conservador). PDFs de FISPQ normalmente são 3-8 páginas.
-    const texto = ctx.texto_documento.slice(0, 40000);
+    // Limita texto pra caber em TPM do 70B free tier (12k tokens/min).
+    // FISPQs grandes (>30k chars) são truncadas — IA recebe o início que
+    // tipicamente cobre seções 1-9 (identificação, hazards, composição,
+    // primeiros socorros, controles de exposição, propriedades).
+    const texto = ctx.texto_documento.slice(0, PDF_MAX_CHARS);
     linhas.push(texto);
-    if (ctx.texto_documento.length > 40000) {
+    if (ctx.texto_documento.length > PDF_MAX_CHARS) {
       linhas.push("");
-      linhas.push("[NOTA: Documento truncado pra limite de contexto. Analise com base no que foi enviado.]");
+      linhas.push(
+        `[NOTA: Documento truncado em ${PDF_MAX_CHARS} caracteres (de ${ctx.texto_documento.length}). Analise com base no que foi enviado e indique se faltar informação crítica.]`
+      );
     }
     linhas.push("=== FIM DO DOCUMENTO ===");
   } else if (ctx.modo === "Manual" && ctx.dados_manuais) {
@@ -289,7 +308,7 @@ Deno.serve(async (req: Request) => {
         ],
         // Baixa temperatura pra reduzir invenção de códigos
         temperature: 0.2,
-        max_tokens: 6000,
+        max_tokens: MAX_OUTPUT_TOKENS,
       }),
     });
 
