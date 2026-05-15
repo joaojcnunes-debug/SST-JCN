@@ -19,16 +19,7 @@ import {
   useExcluirAnaliseQuimico,
 } from "@/lib/hooks/useAnalisesQuimicos";
 import ConclusaoRapidaCard from "@/components/quimicos/ConclusaoRapidaCard";
-import AnaliseRenderer from "@/components/quimicos/AnaliseRenderer";
 import RelatorioEstruturado from "@/components/quimicos/RelatorioEstruturado";
-
-/** Retorna true se o resultado_texto tem prosa ALÉM do bloco CONCLUSAO_RAPIDA. */
-function temTextoLivre(resultado: string): boolean {
-  const semBloco = resultado
-    .replace(/---CONCLUSAO_RAPIDA---[\s\S]*?---FIM_CONCLUSAO---/g, "")
-    .trim();
-  return semBloco.length > 50;
-}
 
 export default function AnaliseDetalhePage({
   params,
@@ -214,18 +205,6 @@ export default function AnaliseDetalhePage({
         </h2>
         <RelatorioEstruturado analise={analise} empresa={empresa ?? null} />
       </section>
-
-      {/* Fallback pra análises antigas: se o resultado_texto tiver conteúdo
-          além do bloco CONCLUSAO_RAPIDA (ex: análises geradas antes da
-          migração pro relatório estruturado), exibe esse texto livre. */}
-      {temTextoLivre(analise.resultado_texto) && (
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border-0 print:shadow-none print:p-2">
-          <h2 className="mb-3 text-base font-bold text-verde-primary">
-            Texto Adicional da Análise (histórico)
-          </h2>
-          <AnaliseRenderer texto={analise.resultado_texto} />
-        </section>
-      )}
 
       {/* Rodapé pra impressão */}
       <p className="text-center text-[9px] text-gray-500 print:mt-4">
