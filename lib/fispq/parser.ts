@@ -74,58 +74,121 @@ function primeiroMatch(
 
 /**
  * Tenta extrair componentes vinculados (nome + CAS + concentração) da
- * seção 3 da FISPQ. Cada linha que tem um CAS é tratada como um
- * componente; o texto antes do CAS vira o nome, e qualquer "%" próximo
- * vira a concentração.
+ * seção 3 da FISPQ.
  *
- * É heurístico — FISPQs variam muito em formato. Mas pra a maioria das
- * planilhas de composição funciona bem.
+ * FISPQs reais variam muito de formato:
+ *   FORMATO A (1 linha):  "Tolueno   108-88-3   60%"
+ *   FORMATO B (multi-linha):
+ *      "2-Butanone"
+ *      "Número CAS: 78-93-3    Número CE: ...    80-84.9%"
+ *
+ * Estratégia: pra cada CAS encontrado, olha:
+ *   - LINHAS ANTERIORES (até 3) pra achar o nome (pula linhas de cabeçalho,
+ *     linhas só com %, linhas com outro CAS)
+ *   - LINHA ATUAL + ±1 pra achar a concentração
+ *
+ * Se nome NÃO foi achado nas linhas anteriores, tenta extrair do início
+ * da própria linha (FORMATO A).
  */
 function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimico[] {
   if (!secao3) return [];
 
+  const linhas = secao3.split(/\n/).map((l) => l.trim());
   const componentes: ComponenteQuimico[] = [];
-  const linhas = secao3.split(/\n/);
 
-  for (const raw of linhas) {
-    const linha = raw.trim();
-    if (linha.length < 5) continue;
+  // Padrões de linhas que NÃO podem ser nome de químico
+  const ehCabecalho = (s: string): boolean => {
+    if (s.length < 2 || s.length > 100) return true;
+    if (!/[a-zA-ZÀ-ÿ]/.test(s)) return true; // só números/símbolos
+    // Cabeçalhos comuns da seção 3
+    if (/^(seção|section|capítulo)\b/i.test(s)) return true;
+    if (/^\d+\.\d/.test(s)) return true; // "3.1.", "3.2."
+    if (/^(misturas?|substância|composição|composition|classificação|classification|identificação)\b/i.test(s)) return true;
+    // Frases H, pictogramas, advertências
+    if (/^h\d{3}\b/i.test(s)) return true;
+    if (/(GHS|pictograma|advertência|hazard\s+statement)/i.test(s)) return true;
+    // Linhas só com CAS ou só com %
+    if (/^(número\s+cas|cas\s*[:#]|cas\s*n[°º]?)/i.test(s)) return true;
+    if (/^(número\s+ce|ce\s*[:#])/i.test(s)) return true;
+    if (/^(número\s+(de\s+)?registo|reach\b)/i.test(s)) return true;
+    if (/^\d+\s*[-–,.]?\s*\d*\s*%/.test(s)) return true;
+    if (/^\d{2,7}-\d{2}-\d\b/.test(s)) return true;
+    return false;
+  };
 
-    // Procura CAS na linha
+  for (let i = 0; i < linhas.length; i++) {
+    const linha = linhas[i];
+    if (!linha) continue;
     const casMatch = linha.match(/\b(\d{2,7}-\d{2}-\d)\b/);
     if (!casMatch) continue;
 
-    // Procura concentração (% ou range com %)
-    const concMatch = linha.match(
-      /(\d+(?:[,.]\d+)?(?:\s*[-–]\s*\d+(?:[,.]\d+)?)?\s*%)/
-    );
-    const concentracao = concMatch ? concMatch[0].replace(/\s+/g, "") : undefined;
+    const cas = casMatch[1];
 
-    // Tudo antes do CAS é candidato a nome
+    // ----- Procura nome do componente -----
+    // 1) Primeiro tenta extrair do início da MESMA linha (FORMATO A)
+    let nome: string | undefined;
     const idxCas = linha.indexOf(casMatch[0]);
-    let nome: string | undefined = linha.slice(0, idxCas).trim();
-
-    // Remove lixo do início (números de tabela, traços, asteriscos, %)
-    nome = nome
+    const prefixo = linha
+      .slice(0, idxCas)
       .replace(/^[\d.*•\-\s]+/, "")
-      .replace(/\d+(?:[,.]\d+)?\s*%\s*$/, "") // remove %% no fim do nome se tiver
+      .replace(/(número\s+cas|cas\s*n[°º]?|cas\s*[:#])\s*$/i, "")
+      .replace(/[:#\-]\s*$/, "")
       .trim();
-
-    // Nome deve ter algumas letras pra ser válido
-    if (!nome || !/[a-zA-ZÀ-ÿ]/.test(nome)) {
-      nome = undefined;
-    } else if (nome.length > 120) {
-      nome = nome.slice(0, 120) + "...";
+    if (prefixo && /[a-zA-ZÀ-ÿ]/.test(prefixo) && prefixo.length <= 80 && !ehCabecalho(prefixo)) {
+      nome = prefixo;
     }
 
-    componentes.push({
-      cas: casMatch[1],
-      nome,
-      concentracao,
-    });
+    // 2) Se não achou na linha, olha linhas ANTERIORES (até 4 voltando)
+    if (!nome) {
+      for (let back = 1; back <= 4 && i - back >= 0; back++) {
+        const candidato = linhas[i - back];
+        if (!candidato) continue;
+        if (ehCabecalho(candidato)) continue;
+        nome = candidato;
+        break;
+      }
+    }
+
+    // ----- Procura concentração (na linha atual + ±2) -----
+    let concentracao: string | undefined;
+    for (let off = 0; off <= 2 && !concentracao; off++) {
+      for (const dir of [0, -1, 1]) {
+        const idx = i + dir * off;
+        if (idx < 0 || idx >= linhas.length) continue;
+        const target = linhas[idx];
+        if (!target) continue;
+        const concMatch = target.match(
+          /(\d+(?:[,.]\d+)?(?:\s*[-–]\s*\d+(?:[,.]\d+)?)?\s*%)/
+        );
+        if (concMatch) {
+          concentracao = concMatch[0].replace(/\s+/g, "");
+          break;
+        }
+      }
+    }
+
+    // ----- Limpa o nome: se trouxe % junto, separa -----
+    // FISPQs frequentemente tem "2-Butanone     80-84.9%" na mesma linha;
+    // pdfjs extrai isso colado. Extrai o % pra concentracao se ainda não
+    // foi achado, e tira do nome.
+    if (nome) {
+      const concNoNome = nome.match(
+        /(\d+(?:[,.]\d+)?(?:\s*[-–]\s*\d+(?:[,.]\d+)?)?\s*%)/
+      );
+      if (concNoNome) {
+        if (!concentracao) concentracao = concNoNome[0].replace(/\s+/g, "");
+        nome = nome.replace(concNoNome[0], "").trim();
+      }
+      // Limpa lixo final (vírgulas, dois-pontos, hyphens órfãos)
+      nome = nome.replace(/[,;:\-–\s]+$/, "").trim();
+      if (!nome || !/[a-zA-ZÀ-ÿ]/.test(nome)) nome = undefined;
+      else if (nome.length > 120) nome = nome.slice(0, 120) + "...";
+    }
+
+    componentes.push({ cas, nome, concentracao });
   }
 
-  // Remove duplicados (mesmo CAS aparecendo várias vezes)
+  // Remove duplicados (mesmo CAS aparecendo várias vezes) — mantem 1ª ocorrência
   const vistos = new Set<string>();
   const unicos: ComponenteQuimico[] = [];
   for (const c of componentes) {
@@ -134,20 +197,28 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
       unicos.push(c);
     }
   }
-  return unicos.slice(0, 12); // teto de segurança
+  return unicos.slice(0, 12);
 }
 
 /**
  * Divide o texto em seções numeradas (1..16) procurando markers.
  * FISPQs ABNT NBR 14725 sempre têm 16 seções.
+ *
+ * Aceita variações:
+ *   - "SEÇÃO 1: Identificação"
+ *   - "Seção 1 - Identificação"
+ *   - "1. IDENTIFICAÇÃO" (sem palavra "seção")
+ *   - "Section 3" (em inglês)
+ *   - "3.2. Misturas" → conta como início da seção 3 também
  */
 function dividirEmSecoes(texto: string): Map<number, string> {
   const secoes = new Map<number, string>();
 
-  // Padrões que indicam início de seção numerada:
-  //   "SEÇÃO 1", "Seção 1", "1. IDENTIFICAÇÃO", "1 - IDENTIFICAÇÃO"
+  // Padrões que indicam início de seção numerada (no início de linha).
+  // Aceita só `.` ou `:` como separador (NÃO dash) pra evitar conflito com
+  // nomes químicos tipo "2-Butanone" ou "1,1,2-Tricloroetano".
   const markerRegex =
-    /(?:^|\n)\s*(?:SEÇÃO|Seção|Section)?\s*(\d{1,2})\s*[.\-:]\s+([A-ZÀ-Ÿ][^\n]{4,120})/g;
+    /(?:^|\n)\s*(?:SEÇÃO|Seção|Section)?\s*(\d{1,2})(?:\.\d+)?\s*[.:]\s*([A-ZÀ-Ÿa-zà-ÿ][^\n]{3,120})/g;
 
   const matches = [...texto.matchAll(markerRegex)];
 
@@ -162,7 +233,15 @@ function dividirEmSecoes(texto: string): Map<number, string> {
   for (let i = 0; i < valid.length; i++) {
     const num = parseInt(valid[i][1], 10);
     const startIdx = (valid[i].index ?? 0) + valid[i][0].length;
-    const endIdx = i + 1 < valid.length ? valid[i + 1].index ?? texto.length : texto.length;
+    // Procura próximo marker que seja de OUTRA seção numérica
+    let endIdx = texto.length;
+    for (let j = i + 1; j < valid.length; j++) {
+      const proxNum = parseInt(valid[j][1], 10);
+      if (proxNum !== num) {
+        endIdx = valid[j].index ?? texto.length;
+        break;
+      }
+    }
     const conteudo = texto.slice(startIdx, endIdx).trim();
 
     // Só guarda se não tinha (primeira ocorrência) e tem conteúdo razoável
@@ -185,12 +264,45 @@ export function parseFispq(texto: string): FispqExtracted {
   };
 
   // ----- Nome do produto -----
+  // Tenta vários padrões comuns em FISPQs brasileiras e internacionais.
+  // Também tenta achar o nome em formato "Nome do produto\nValor" (com
+  // o valor na linha de baixo).
   result.nome_produto = primeiroMatch(texto, [
-    /(?:Nome\s+(?:do\s+|comercial\s+do\s+)?produto)\s*[:\-]\s*([^\n]+)/i,
-    /(?:Identificação\s+do\s+produto)\s*[:\-]\s*([^\n]+)/i,
-    /(?:Nome\s+da\s+substância)\s*[:\-]\s*([^\n]+)/i,
-    /(?:Product\s+name)\s*[:\-]\s*([^\n]+)/i,
+    // Formato "Nome: X" na mesma linha
+    /(?:^|\n)\s*(?:Nome\s+(?:do\s+|comercial\s+do\s+)?produto)\s*[:\-]\s*([^\n]+)/i,
+    /(?:^|\n)\s*(?:Identificador\s+do\s+produto)\s*[:\-]\s*([^\n]+)/i,
+    /(?:^|\n)\s*(?:Identificação\s+do\s+produto)\s*[:\-]\s*([^\n]+)/i,
+    /(?:^|\n)\s*(?:Designação\s+comercial)\s*[:\-]\s*([^\n]+)/i,
+    /(?:^|\n)\s*(?:Nome\s+comercial)\s*[:\-]\s*([^\n]+)/i,
+    /(?:^|\n)\s*(?:Nome\s+da\s+substância)\s*[:\-]\s*([^\n]+)/i,
+    /(?:^|\n)\s*(?:Nome\s+da\s+mistura)\s*[:\-]\s*([^\n]+)/i,
+    /(?:^|\n)\s*(?:Nome\s+químico)\s*[:\-]\s*([^\n]+)/i,
+    /(?:^|\n)\s*(?:Product\s+name)\s*[:\-]\s*([^\n]+)/i,
+    /(?:^|\n)\s*(?:Trade\s+name)\s*[:\-]\s*([^\n]+)/i,
+    // Formato "Nome do produto\nValor" (label e valor em linhas separadas)
+    /(?:Nome\s+(?:do\s+|comercial\s+do\s+)?produto|Identificador\s+do\s+produto|Designação\s+comercial)\s*\n\s*([A-ZÀ-Ÿa-zà-ÿ][^\n]{2,80})/i,
+    /(?:Product\s+name|Trade\s+name)\s*\n\s*([A-Za-z][^\n]{2,80})/i,
   ]);
+
+  // Fallback: pega a seção 1 e tenta achar o nome dentro dela
+  if (!result.nome_produto) {
+    const secoes = dividirEmSecoes(texto);
+    const s1 = secoes.get(1) ?? "";
+    // Procura linha que comece com texto razoável (ex. nome do produto
+    // pode estar logo após o título da seção 1, sem rótulo)
+    const linhas1 = s1.split(/\n/).map((l) => l.trim());
+    for (const linha of linhas1) {
+      if (!linha) continue;
+      if (linha.length < 3 || linha.length > 100) continue;
+      if (!/[a-zA-ZÀ-ÿ]/.test(linha)) continue;
+      // Pula linhas que parecem ser labels/cabeçalho
+      if (/^(seção|section|\d+\.|identific|nome|product|trade)\b/i.test(linha)) continue;
+      // Pula linhas com dados óbvios de não-nome
+      if (/(cnpj|telefone|endereço|address|phone|emergência|email|@)/i.test(linha)) continue;
+      result.nome_produto = linha;
+      break;
+    }
+  }
 
   // ----- Fabricante / Fornecedor -----
   result.fabricante = primeiroMatch(
