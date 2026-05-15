@@ -66,11 +66,14 @@ export interface GerarAnaliseInput {
   id_empresa: string | null;
   empresa_nome: string | null;
 
-  // Modo PDF
+  // Modo PDF: texto bruto extraído (audit) + contexto compacto pra IA
   texto_documento?: string | null;
   fonte_arquivo?: string | null;
+  /** Snippets resumidos das seções 2/8/11 da FISPQ + CAS/H/GHS extraídos.
+   *  Substitui o envio do PDF inteiro à IA — economiza ~3-5k tokens. */
+  contexto_fispq?: string | null;
 
-  // Modo Manual
+  // Dados do produto (preenchido manualmente OU pelo parser FISPQ revisado)
   nome_produto?: string | null;
   nome_quimico?: string | null;
   numero_cas?: string | null;
@@ -97,21 +100,22 @@ export function useGerarAnaliseQuimico() {
     mutationFn: async (input: GerarAnaliseInput): Promise<AnaliseQuimico> => {
       const supabase = createSupabaseBrowserClient();
 
-      // 1) Chama IA
+      // 1) Chama IA — sempre manda os dados do produto como "dados_manuais"
+      // (mesmo no modo PDF, porque o usuário revisou o que o parser extraiu).
+      // No modo PDF, anexamos um `contexto_fispq` curto com os snippets das
+      // seções 2/8/11. Isso é MUITO mais leve que mandar o PDF inteiro.
+      const dadosProduto = {
+        nome_produto: input.nome_produto ?? null,
+        nome_quimico: input.nome_quimico ?? null,
+        numero_cas: input.numero_cas ?? null,
+        formula_quimica: input.formula_quimica ?? null,
+        forma_fisica: input.forma_fisica ?? null,
+        concentracao: input.concentracao ?? null,
+      };
       const payloadIA = {
         modo: input.modo,
-        texto_documento: input.texto_documento ?? null,
-        dados_manuais:
-          input.modo === "Manual"
-            ? {
-                nome_produto: input.nome_produto ?? null,
-                nome_quimico: input.nome_quimico ?? null,
-                numero_cas: input.numero_cas ?? null,
-                formula_quimica: input.formula_quimica ?? null,
-                forma_fisica: input.forma_fisica ?? null,
-                concentracao: input.concentracao ?? null,
-              }
-            : null,
+        dados_manuais: dadosProduto,
+        contexto_fispq: input.contexto_fispq ?? null,
         condicoes_uso: input.condicoes_uso ?? null,
         empresa_nome: input.empresa_nome ?? null,
       };

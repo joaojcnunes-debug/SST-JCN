@@ -3,12 +3,19 @@
 import { useState, useRef } from "react";
 import { Upload, FileText, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { parseFispq, type FispqExtracted } from "@/lib/fispq/parser";
+
+export interface PdfArquivo {
+  nome: string;
+  texto: string;
+  parsed: FispqExtracted;
+}
 
 interface PdfDropzoneProps {
-  /** Arquivo selecionado (depois de carregar e extrair texto). */
-  file: { nome: string; texto: string } | null;
+  /** Arquivo selecionado (depois de carregar, extrair texto e parsear). */
+  file: PdfArquivo | null;
   /** Callback chamado quando um arquivo é carregado com sucesso. */
-  onChange: (file: { nome: string; texto: string } | null) => void;
+  onChange: (file: PdfArquivo | null) => void;
   disabled?: boolean;
 }
 
@@ -62,8 +69,12 @@ export default function PdfDropzone({
         return;
       }
 
-      onChange({ nome: f.name, texto: texto.trim() });
-      toast.success(`Texto extraído (${pdf.numPages} página(s))`);
+      const textoLimpo = texto.trim();
+      const parsed = parseFispq(textoLimpo);
+      onChange({ nome: f.name, texto: textoLimpo, parsed });
+      toast.success(
+        `Texto extraído (${pdf.numPages} página${pdf.numPages > 1 ? "s" : ""}) · parser confiança ${parsed.confianca}`
+      );
     } catch (e) {
       toast.error(
         e instanceof Error ? `Falha ao ler PDF: ${e.message}` : "Falha ao ler PDF"

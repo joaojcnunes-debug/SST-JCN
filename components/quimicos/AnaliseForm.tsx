@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { FlaskConical, FileText, Pencil, Loader2, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
-import PdfDropzone from "./PdfDropzone";
+import PdfDropzone, { type PdfArquivo } from "./PdfDropzone";
+import FispqReview from "./FispqReview";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useGerarAnaliseQuimico } from "@/lib/hooks/useAnalisesQuimicos";
+import { montarContextoFispq, type FispqExtracted } from "@/lib/fispq/parser";
 import type { CondicoesUsoQuimico } from "@/lib/supabase/types";
 
 type Modo = "PDF" | "Manual";
@@ -49,9 +51,8 @@ export default function AnaliseForm() {
   const { data: empresas = [] } = useEmpresas();
   const [modo, setModo] = useState<Modo>("PDF");
   const [idEmpresa, setIdEmpresa] = useState<string | null>(null);
-  const [pdfFile, setPdfFile] = useState<{ nome: string; texto: string } | null>(
-    null
-  );
+  const [pdfFile, setPdfFile] = useState<PdfArquivo | null>(null);
+  const [fispqDados, setFispqDados] = useState<FispqExtracted | null>(null);
   const [dados, setDados] = useState<DadosManuais>(DADOS_INIT);
   const [condicoes, setCondicoes] = useState<CondicoesUsoQuimico>(CONDICOES_INIT);
   const [showCondicoes, setShowCondicoes] = useState(false);
@@ -60,22 +61,49 @@ export default function AnaliseForm() {
 
   const empresaSel = empresas.find((e) => e.id_empresa === idEmpresa) ?? null;
 
+  // Quando upload do PDF acontece, pre-popula os dados FispqReview
+  function handlePdfChange(novo: PdfArquivo | null) {
+    setPdfFile(novo);
+    setFispqDados(novo ? novo.parsed : null);
+  }
+
   function handleSubmit() {
-    if (modo === "PDF" && !pdfFile) {
-      toast.error("Faça upload de um PDF antes de analisar");
-      return;
-    }
-    if (modo === "Manual" && !dados.nome_produto.trim() && !dados.nome_quimico.trim()) {
-      toast.error("Informe ao menos o Nome do Produto ou Nome Químico");
-      return;
+    // PDF mode: usa dados revisados do FispqReview
+    if (modo === "PDF") {
+      if (!pdfFile || !fispqDados) {
+        toast.error("Faça upload de um PDF antes de analisar");
+        return;
+      }
+      if (!fispqDados.nome_produto?.trim() && !fispqDados.nome_quimico?.trim()) {
+        toast.error(
+          "Os dados do produto estão vazios. Preencha pelo menos Nome do Produto ou Nome Químico antes de analisar."
+        );
+        return;
+      }
+    } else {
+      // Manual mode
+      if (!dados.nome_produto.trim() && !dados.nome_quimico.trim()) {
+        toast.error("Informe ao menos o Nome do Produto ou Nome Químico");
+        return;
+      }
     }
 
-    const titulo =
-      modo === "Manual"
-        ? dados.nome_produto.trim() ||
-          dados.nome_quimico.trim() ||
+    // Monta título
+    const titulo = (() => {
+      if (modo === "PDF" && fispqDados) {
+        return (
+          fispqDados.nome_produto ||
+          fispqDados.nome_quimico ||
+          pdfFile?.nome.replace(/\.pdf$/i, "") ||
           "Análise química"
-        : pdfFile?.nome.replace(/\.pdf$/i, "") || "Análise química";
+        );
+      }
+      return (
+        dados.nome_produto.trim() ||
+        dados.nome_quimico.trim() ||
+        "Análise química"
+      );
+    })();
 
     // Limpa condições vazias
     const condClean: CondicoesUsoQuimico | null = (() => {
@@ -91,21 +119,43 @@ export default function AnaliseForm() {
       return temAlgo ? c : null;
     })();
 
+    // Monta payload pra mutation
+    const payloadDados =
+      modo === "PDF" && fispqDados
+        ? {
+            nome_produto: fispqDados.nome_produto?.trim() || null,
+            nome_quimico: fispqDados.nome_quimico?.trim() || null,
+            numero_cas: fispqDados.numero_cas?.trim() || null,
+            formula_quimica: fispqDados.formula_quimica?.trim() || null,
+            forma_fisica: fispqDados.forma_fisica?.trim() || null,
+            concentracao: fispqDados.concentracao?.trim() || null,
+          }
+        : {
+            nome_produto: dados.nome_produto.trim() || null,
+            nome_quimico: dados.nome_quimico.trim() || null,
+            numero_cas: dados.numero_cas.trim() || null,
+            formula_quimica: dados.formula_quimica.trim() || null,
+            forma_fisica: dados.forma_fisica.trim() || null,
+            concentracao: dados.concentracao.trim() || null,
+          };
+
+    // Contexto FISPQ compacto (só no modo PDF, com snippets de seções relevantes)
+    const contextoFispq =
+      modo === "PDF" && fispqDados ? montarContextoFispq(fispqDados) : null;
+
     gerar.mutate(
       {
         modo,
         titulo,
         id_empresa: idEmpresa,
         empresa_nome: empresaSel?.nome_empresa ?? null,
+        // No modo PDF nao mandamos mais o texto inteiro - usamos os dados
+        // extraidos + snippets curtos das secoes relevantes (contexto_fispq).
+        // Mantemos o texto bruto so para gravar em texto_extraido (auditoria).
         texto_documento: modo === "PDF" ? pdfFile?.texto ?? null : null,
         fonte_arquivo: modo === "PDF" ? pdfFile?.nome ?? null : null,
-        nome_produto: modo === "Manual" ? dados.nome_produto.trim() || null : null,
-        nome_quimico: modo === "Manual" ? dados.nome_quimico.trim() || null : null,
-        numero_cas: modo === "Manual" ? dados.numero_cas.trim() || null : null,
-        formula_quimica:
-          modo === "Manual" ? dados.formula_quimica.trim() || null : null,
-        forma_fisica: modo === "Manual" ? dados.forma_fisica.trim() || null : null,
-        concentracao: modo === "Manual" ? dados.concentracao.trim() || null : null,
+        contexto_fispq: contextoFispq,
+        ...payloadDados,
         condicoes_uso: condClean,
       },
       {
@@ -165,15 +215,27 @@ export default function AnaliseForm() {
         </div>
       </div>
 
-      {/* Modo PDF */}
+      {/* Modo PDF: upload → revisão dos dados extraídos */}
       {modo === "PDF" && (
-        <div>
-          <label className={lblCls}>Arquivo da FDS/FISPQ</label>
-          <PdfDropzone
-            file={pdfFile}
-            onChange={setPdfFile}
-            disabled={gerar.isPending}
-          />
+        <div className="space-y-4">
+          <div>
+            <label className={lblCls}>Arquivo da FDS/FISPQ</label>
+            <PdfDropzone
+              file={pdfFile}
+              onChange={handlePdfChange}
+              disabled={gerar.isPending}
+            />
+          </div>
+
+          {fispqDados && (
+            <div className="rounded-xl border-2 border-sky-200 bg-sky-50/30 p-4">
+              <FispqReview
+                dados={fispqDados}
+                onChange={setFispqDados}
+                disabled={gerar.isPending}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -393,7 +455,7 @@ export default function AnaliseForm() {
           {gerar.isPending ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Analisando produto... (10-30s)
+              Analisando produto... (5-15s)
             </>
           ) : (
             <>

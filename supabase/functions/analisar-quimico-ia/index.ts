@@ -1,22 +1,24 @@
 // Edge Function — Análise de Agentes Químicos via Groq (Llama 3.1 8B-instant).
 //
-// Recebe texto extraído de FDS/FISPQ (modo PDF) ou campos manuais e devolve:
-//   {
-//     resultado: <texto completo da análise>,
-//     conclusao: <objeto estruturado parseado do bloco CONCLUSAO_RAPIDA>
-//   }
+// ARQUITETURA (Opção A — parser local + IA só pro raciocínio):
+//   1. Front extrai texto do PDF via pdfjs-dist
+//   2. Front parseia FISPQ via lib/fispq/parser.ts (regex local — sem IA):
+//      - nome_produto, nome_quimico, CAS, fórmula, forma física, concentração
+//      - frases H, pictogramas GHS
+//      - snippets de seções 2/8/11 (perigos, exposição, toxicologia)
+//   3. Usuário REVISA o que foi extraído (corrige erros do parser)
+//   4. Esta Edge Function recebe dados_manuais + contexto_fispq compacto
+//   5. IA responde JSON estruturado com 21 campos de conclusão
 //
-// MODELO: 8B-instant. Mesma quota das outras duas funções (gerar-acao-ia,
-// gerar-conclusao-drps-ia), MAS a refatoração pra responder só CONCLUSAO_RAPIDA
-// + truncagem agressiva do PDF (12k chars) + max_tokens 1000 deixou cada
-// chamada em ~5.800 tokens, dentro do TPM 6.000 do 8B free.
+// Por que não mandamos o PDF inteiro pra IA?
+//   - PDFs de FISPQ têm 15-50k chars (4-12k tokens)
+//   - O 8B free tem TPM 6.000 — não cabe
+//   - O parser local extrai só o que importa pra NR-15 → ~600 tokens
+//   - Usuário tem chance de corrigir antes de mandar → reduz alucinação
 //
-// TPD do 8B: 500.000 (vs 100k do 70B) → comporta ~80 analises/dia.
-//
-// Trade-off: 8B tem qualidade técnica menor que 70B em raciocínio regulatório.
-// O prompt anti-alucinação reforça "NÃO inventar códigos eSocial/Decreto/GFIP"
-// — quando incerto, devolver "CONSULTAR_TABELA_OFICIAL". Revisão humana
-// obrigatória antes de uso oficial (banner no UI).
+// MODELO: 8B-instant. JSON mode (response_format) força resposta válida.
+// Anti-alucinação no prompt: códigos eSocial/Decreto/GFIP incertos viram
+// "Consultar tabela oficial" em vez de inventar.
 //
 // DEPLOY: supabase functions deploy analisar-quimico-ia
 
@@ -31,17 +33,17 @@ const MODEL = "llama-3.1-8b-instant";
 // campos + dados do produto. Isso reduz drasticamente o consumo de tokens
 // porque elimina a geração das 12 seções de prosa.
 //
-// Budget MUITO conservador no 8B (TPM 6.000, TPD 500.000):
+// Budget no 8B free tier (TPM 6.000, TPD 500.000):
 //   - system prompt: ~2.000 tokens (JSON schema completo)
-//   - user prompt (até PDF_MAX_CHARS chars): ~2.000 tokens
+//   - user prompt (dados_manuais + contexto_fispq compacto): ~600-1.500 tokens
 //   - max_tokens reservados pra resposta: 800
-//   - Total: ~4.800 (margem ~1.200 abaixo do TPM)
+//   - Total típico: ~3.500-4.500 tokens (folga MUITO confortável)
 //
-// PDFs longos sao truncados em 7k chars (primeiras 2 paginas da FISPQ —
-// tipicamente cobrindo Identificacao + Composicao + classificacao GHS).
-// Tokens/min do 8B free e' apertado pra FISPQs grandes — se precisar mais
-// contexto da FISPQ, considerar upgrade Groq Dev Tier ou 70B.
-const PDF_MAX_CHARS = 7000;
+// O `contexto_fispq` é gerado client-side pelo parser FISPQ (lib/fispq/parser.ts)
+// e contém só os snippets das seções 2/8/11 + frases H/GHS — tipicamente
+// 1.500-2.000 chars (~400-600 tokens). MUITO mais leve que mandar o PDF
+// inteiro pra IA.
+const PDF_MAX_CHARS = 8000;
 const MAX_OUTPUT_TOKENS = 800;
 
 const CORS = {
@@ -71,8 +73,16 @@ interface DadosManuais {
 
 interface ContextoIA {
   modo: "PDF" | "Manual";
-  texto_documento?: string | null; // texto extraído do PDF (modo PDF)
-  dados_manuais?: DadosManuais | null; // modo Manual
+  /** Dados do produto: vem sempre preenchido (no modo PDF, vem do parser FISPQ
+   *  revisado pelo usuário; no modo Manual, vem do form direto). */
+  dados_manuais?: DadosManuais | null;
+  /** Snippets compactos da FISPQ (seções 2/8/11 + frases H/GHS).
+   *  Só populado no modo PDF, depois que o parser extraiu. Tem ~1-2k tokens
+   *  em vez dos 4-6k que o PDF inteiro consumiria. */
+  contexto_fispq?: string | null;
+  /** [LEGADO] texto bruto extraído do PDF — não é mais usado pela IA, mas
+   *  ainda aceito por compatibilidade. */
+  texto_documento?: string | null;
   condicoes_uso?: CondicoesUso | null;
   empresa_nome?: string | null;
 }
@@ -132,29 +142,18 @@ quando não se aplicar).
 Seja técnico, preciso e CONSERVADOR. Quando não souber, "Inconclusivo".`;
 
 function buildUserPrompt(ctx: ContextoIA): string {
-  const linhas: string[] = ["Faça a análise de agente químico do material abaixo:", ""];
+  const linhas: string[] = [
+    "Faça a análise de agente químico abaixo. Os dados do produto foram extraídos da FISPQ e revisados pelo usuário — confie neles.",
+    "",
+  ];
 
   if (ctx.empresa_nome) linhas.push(`Empresa: ${ctx.empresa_nome}`);
 
-  if (ctx.modo === "PDF" && ctx.texto_documento) {
+  // Dados do produto (sempre presente — vem do parser FISPQ revisado OU do
+  // form manual).
+  if (ctx.dados_manuais) {
     linhas.push("");
-    linhas.push("=== TEXTO EXTRAÍDO DA FDS/FISPQ ===");
-    // Limita texto pra caber em TPM do 70B free tier (12k tokens/min).
-    // FISPQs grandes (>30k chars) são truncadas — IA recebe o início que
-    // tipicamente cobre seções 1-9 (identificação, hazards, composição,
-    // primeiros socorros, controles de exposição, propriedades).
-    const texto = ctx.texto_documento.slice(0, PDF_MAX_CHARS);
-    linhas.push(texto);
-    if (ctx.texto_documento.length > PDF_MAX_CHARS) {
-      linhas.push("");
-      linhas.push(
-        `[NOTA: Documento truncado em ${PDF_MAX_CHARS} caracteres (de ${ctx.texto_documento.length}). Analise com base no que foi enviado e indique se faltar informação crítica.]`
-      );
-    }
-    linhas.push("=== FIM DO DOCUMENTO ===");
-  } else if (ctx.modo === "Manual" && ctx.dados_manuais) {
-    linhas.push("");
-    linhas.push("=== DADOS INFORMADOS MANUALMENTE ===");
+    linhas.push("=== DADOS DO PRODUTO (revisados) ===");
     const d = ctx.dados_manuais;
     if (d.nome_produto) linhas.push(`Nome do Produto: ${d.nome_produto}`);
     if (d.nome_quimico) linhas.push(`Nome Químico: ${d.nome_quimico}`);
@@ -162,12 +161,30 @@ function buildUserPrompt(ctx: ContextoIA): string {
     if (d.formula_quimica) linhas.push(`Fórmula Química: ${d.formula_quimica}`);
     if (d.forma_fisica) linhas.push(`Forma Física: ${d.forma_fisica}`);
     if (d.concentracao) linhas.push(`Concentração: ${d.concentracao}`);
-    linhas.push("=== FIM DOS DADOS ===");
+    linhas.push("=== FIM ===");
+  }
+
+  // Contexto FISPQ compacto (só presente no modo PDF). Contém:
+  // - Frases H, pictogramas GHS, CAS de componentes adicionais
+  // - Snippets curtos das seções 2 (perigos), 8 (exposição), 11 (toxicologia)
+  // Tipicamente 1-2k tokens — muito menor que o PDF inteiro.
+  if (ctx.contexto_fispq && ctx.contexto_fispq.trim().length > 0) {
+    linhas.push("");
+    linhas.push("=== CONTEXTO ADICIONAL EXTRAÍDO DA FISPQ ===");
+    linhas.push(ctx.contexto_fispq.slice(0, PDF_MAX_CHARS));
+    linhas.push("=== FIM ===");
   }
 
   if (ctx.condicoes_uso) {
     const c = ctx.condicoes_uso;
-    const temAlgo = !!(c.atividade || c.frequencia || c.duracao || c.ventilacao || c.geracao_nevoa_vapor || c.epis_utilizados);
+    const temAlgo = !!(
+      c.atividade ||
+      c.frequencia ||
+      c.duracao ||
+      c.ventilacao ||
+      c.geracao_nevoa_vapor ||
+      c.epis_utilizados
+    );
     if (temAlgo) {
       linhas.push("");
       linhas.push("=== CONDIÇÕES DE USO ===");
@@ -286,16 +303,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    if (body.modo === "PDF" && !body.texto_documento?.trim()) {
+    // Tanto PDF quanto Manual agora exigem dados_manuais preenchidos
+    // (no modo PDF, vem do parser FISPQ revisado pelo usuário).
+    if (
+      !body.dados_manuais?.nome_produto?.trim() &&
+      !body.dados_manuais?.nome_quimico?.trim()
+    ) {
       return new Response(
-        JSON.stringify({ error: "Modo PDF requer 'texto_documento' não vazio" }),
-        { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (body.modo === "Manual" && (!body.dados_manuais?.nome_produto && !body.dados_manuais?.nome_quimico)) {
-      return new Response(
-        JSON.stringify({ error: "Modo Manual requer pelo menos 'nome_produto' ou 'nome_quimico'" }),
+        JSON.stringify({
+          error:
+            "Dados do produto vazios. Informe pelo menos 'nome_produto' ou 'nome_quimico'.",
+        }),
         { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
