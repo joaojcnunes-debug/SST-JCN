@@ -10,6 +10,7 @@ import type {
   ConclusaoRapidaQuimico,
   ModoAnaliseQuimico,
 } from "@/lib/supabase/types";
+import type { AgenteReferencia } from "@/lib/quimicos/base_referencia";
 
 async function fetchLista(empresasVinculadas: string[] | null) {
   const supabase = createSupabaseBrowserClient();
@@ -72,6 +73,11 @@ export interface GerarAnaliseInput {
   /** Snippets resumidos das seções 2/8/11 da FISPQ + CAS/H/GHS extraídos.
    *  Substitui o envio do PDF inteiro à IA — economiza ~3-5k tokens. */
   contexto_fispq?: string | null;
+  /** Agente encontrado na base local de referência (lib/quimicos/base_referencia.ts).
+   *  Quando presente, contém os dados regulatórios DETERMINÍSTICOS (insalubridade,
+   *  eSocial, Decreto, IARC, etc.) que a IA NÃO deve contradizer — só preencher
+   *  os campos que faltam (EPIs, medidas, fundamentação). */
+  dados_base?: AgenteReferencia | null;
 
   // Dados do produto (preenchido manualmente OU pelo parser FISPQ revisado)
   nome_produto?: string | null;
@@ -116,6 +122,7 @@ export function useGerarAnaliseQuimico() {
         modo: input.modo,
         dados_manuais: dadosProduto,
         contexto_fispq: input.contexto_fispq ?? null,
+        dados_base: input.dados_base ?? null,
         condicoes_uso: input.condicoes_uso ?? null,
         empresa_nome: input.empresa_nome ?? null,
       };

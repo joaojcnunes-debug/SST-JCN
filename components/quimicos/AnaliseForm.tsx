@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FlaskConical, FileText, Pencil, Loader2, Sparkles } from "lucide-react";
+import {
+  FlaskConical,
+  FileText,
+  Pencil,
+  Loader2,
+  Sparkles,
+  CheckCircle2,
+  Database,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import PdfDropzone, { type PdfArquivo } from "./PdfDropzone";
@@ -10,6 +18,7 @@ import FispqReview from "./FispqReview";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useGerarAnaliseQuimico } from "@/lib/hooks/useAnalisesQuimicos";
 import { montarContextoFispq, type FispqExtracted } from "@/lib/fispq/parser";
+import { buscarAgente, resumirAgente } from "@/lib/quimicos/lookup";
 import type { CondicoesUsoQuimico } from "@/lib/supabase/types";
 
 type Modo = "PDF" | "Manual";
@@ -60,6 +69,19 @@ export default function AnaliseForm() {
   const gerar = useGerarAnaliseQuimico();
 
   const empresaSel = empresas.find((e) => e.id_empresa === idEmpresa) ?? null;
+
+  // ----- Lookup determinístico na base de referência -----
+  // Roda sempre que CAS ou nome do produto/químico mudarem. Se acharmos
+  // um match, mostramos um banner pro usuário E mandamos pra IA como
+  // "ground truth" (não pode contradizer).
+  const dadosBase = useMemo(() => {
+    const cas = modo === "PDF" ? fispqDados?.numero_cas : dados.numero_cas;
+    const nome =
+      modo === "PDF"
+        ? fispqDados?.nome_quimico || fispqDados?.nome_produto
+        : dados.nome_quimico || dados.nome_produto;
+    return buscarAgente({ cas, nome });
+  }, [modo, fispqDados, dados.numero_cas, dados.nome_quimico, dados.nome_produto]);
 
   // Quando upload do PDF acontece, pre-popula os dados FispqReview
   function handlePdfChange(novo: PdfArquivo | null) {
@@ -155,6 +177,9 @@ export default function AnaliseForm() {
         texto_documento: modo === "PDF" ? pdfFile?.texto ?? null : null,
         fonte_arquivo: modo === "PDF" ? pdfFile?.nome ?? null : null,
         contexto_fispq: contextoFispq,
+        // Dados da BASE LOCAL — campos regulatórios determinísticos. A IA
+        // recebe esses dados como "ground truth" e não pode contradizer.
+        dados_base: dadosBase?.agente ?? null,
         ...payloadDados,
         condicoes_uso: condClean,
       },
@@ -435,12 +460,37 @@ export default function AnaliseForm() {
         )}
       </div>
 
-      {/* Aviso */}
+      {/* Banner — Encontrado na base de referência */}
+      {dadosBase && (
+        <div className="flex items-start gap-2 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">
+          <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-600" />
+          <div className="flex-1">
+            <p className="font-semibold">
+              <Database className="inline size-3.5 mr-1" />
+              Encontrado na base de referência Chabra
+              {dadosBase.fonte === "cas" ? " (por CAS)" : " (por nome)"}
+            </p>
+            <p className="mt-0.5 text-xs">
+              <strong>{dadosBase.agente.agente}</strong>
+              {" — "}
+              {resumirAgente(dadosBase.agente)}
+            </p>
+            <p className="mt-1 text-[11px] text-emerald-700">
+              Os campos regulatórios (insalubridade, grau, eSocial, Decreto,
+              IARC) virão da nossa base oficial — a IA só vai preencher EPIs,
+              medidas de controle, emergência e fundamentação técnica.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Aviso geral */}
       <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
         <p>
           <strong>⚠️ Lembrete:</strong> a IA usa modelo open-source sem busca
-          web. Códigos eSocial, Decreto 3.048 e GFIP devem ser confirmados em
-          tabela oficial antes de emissão de PPP/LTCAT.
+          web. Para químicos fora da base interna, códigos eSocial, Decreto
+          3.048 e GFIP devem ser confirmados em tabela oficial antes de emissão
+          de PPP/LTCAT.
         </p>
       </div>
 

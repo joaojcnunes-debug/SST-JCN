@@ -71,6 +71,25 @@ interface DadosManuais {
   concentracao?: string | null;
 }
 
+interface DadosBase {
+  agente?: string | null;
+  cas?: string | null;
+  lt_mg_m3?: number | null;
+  lt_ppm?: number | null;
+  grau_nr15?: string | null;
+  teto?: boolean | null;
+  pele?: boolean | null;
+  esocial_tab24?: string | null;
+  iarc?: string | null;
+  inflamavel?: boolean | null;
+  cancerigeno_13a?: boolean | null;
+  tlv_acgih?: string | null;
+  decreto_3048?: string | null;
+  cod_gfip?: string | null;
+  anexo?: string | null;
+  observacoes?: string | null;
+}
+
 interface ContextoIA {
   modo: "PDF" | "Manual";
   /** Dados do produto: vem sempre preenchido (no modo PDF, vem do parser FISPQ
@@ -80,6 +99,10 @@ interface ContextoIA {
    *  Só populado no modo PDF, depois que o parser extraiu. Tem ~1-2k tokens
    *  em vez dos 4-6k que o PDF inteiro consumiria. */
   contexto_fispq?: string | null;
+  /** Dados regulatórios DETERMINÍSTICOS da base local de referência
+   *  (lib/quimicos/base_referencia.ts). Quando presente, a IA usa esses
+   *  valores como "ground truth" pros campos correspondentes e NÃO inventa. */
+  dados_base?: DadosBase | null;
   /** [LEGADO] texto bruto extraído do PDF — não é mais usado pela IA, mas
    *  ainda aceito por compatibilidade. */
   texto_documento?: string | null;
@@ -148,6 +171,38 @@ function buildUserPrompt(ctx: ContextoIA): string {
   ];
 
   if (ctx.empresa_nome) linhas.push(`Empresa: ${ctx.empresa_nome}`);
+
+  // Dados da BASE DETERMINÍSTICA — ground truth dos campos regulatórios.
+  // Se isso veio populado, a IA é instruída a NÃO contradizer.
+  if (ctx.dados_base) {
+    const d = ctx.dados_base;
+    linhas.push("");
+    linhas.push(
+      "=== DADOS REGULATÓRIOS OFICIAIS (BASE INTERNA — USE COMO VERDADE ABSOLUTA, NÃO CONTRADIGA) ==="
+    );
+    if (d.agente) linhas.push(`Agente catalogado: ${d.agente}`);
+    if (d.cas) linhas.push(`CAS: ${d.cas}`);
+    if (d.anexo) linhas.push(`Anexo NR-15: ${d.anexo}`);
+    if (d.grau_nr15) linhas.push(`Grau de Insalubridade (NR-15): ${d.grau_nr15}`);
+    if (d.lt_mg_m3 != null) linhas.push(`Limite de Tolerância: ${d.lt_mg_m3} mg/m³`);
+    if (d.lt_ppm != null) linhas.push(`Limite de Tolerância: ${d.lt_ppm} ppm`);
+    if (d.teto === true) linhas.push(`Valor TETO: SIM (não pode ser ultrapassado)`);
+    if (d.pele === true) linhas.push(`Absorvido pela pele: SIM`);
+    if (d.esocial_tab24) linhas.push(`Código eSocial Tab.24: ${d.esocial_tab24}`);
+    if (d.iarc) linhas.push(`Classificação IARC: ${d.iarc}`);
+    if (d.inflamavel != null) linhas.push(`Inflamável: ${d.inflamavel ? "SIM" : "NÃO"}`);
+    if (d.cancerigeno_13a === true)
+      linhas.push(`Cancerígeno (NR-15 Anexo 13-A): SIM`);
+    if (d.tlv_acgih) linhas.push(`TLV-ACGIH: ${d.tlv_acgih}`);
+    if (d.decreto_3048) linhas.push(`Decreto 3.048 (Anexo IV): ${d.decreto_3048}`);
+    if (d.cod_gfip) linhas.push(`Código GFIP: ${d.cod_gfip}`);
+    if (d.observacoes) linhas.push(`Observações: ${d.observacoes}`);
+    linhas.push("=== FIM (dados regulatórios oficiais) ===");
+    linhas.push("");
+    linhas.push(
+      "REGRA OBRIGATÓRIA: USE EXATAMENTE os valores acima nos campos correspondentes do JSON. Você ainda deve PREENCHER os campos que faltam (EPI, EPC, medidas, emergência, fundamentação, metodologia) com base no que sabe do agente — mas NUNCA contradiga os dados oficiais acima."
+    );
+  }
 
   // Dados do produto (sempre presente — vem do parser FISPQ revisado OU do
   // form manual).
@@ -358,6 +413,46 @@ Deno.serve(async (req: Request) => {
     }
 
     const conclusao = parseConclusaoRapida(content);
+
+    // Camada de defesa: se a base local tem dados regulatórios, eles
+    // SEMPRE prevalecem sobre o que a IA respondeu (zero alucinação nos
+    // campos catalogados).
+    if (conclusao && body.dados_base) {
+      const d = body.dados_base;
+      if (d.grau_nr15) {
+        conclusao.insalubridade_nr15 =
+          d.grau_nr15 === "Asfixiante simples" ? "Inconclusivo" : "SIM";
+        conclusao.insalubridade_grau = d.grau_nr15;
+      }
+      if (d.anexo) conclusao.insalubridade_anexo = d.anexo;
+      if (d.esocial_tab24) {
+        conclusao.esocial_tab24 = `Código ${d.esocial_tab24}`;
+      }
+      if (d.decreto_3048) {
+        conclusao.decreto_3048 = `Anexo IV código ${d.decreto_3048}`;
+      }
+      if (d.cod_gfip) conclusao.codigo_gfip = d.cod_gfip;
+      if (d.iarc) {
+        conclusao.carcinogenico = `SIM - IARC ${d.iarc}${
+          d.cancerigeno_13a ? " (NR-15 Anexo 13-A)" : ""
+        }`;
+      } else if (d.cancerigeno_13a) {
+        conclusao.carcinogenico = "SIM - NR-15 Anexo 13-A";
+      }
+      if (d.inflamavel === true && !conclusao.periculosidade_nr16) {
+        conclusao.periculosidade_nr16 = "SIM - inflamável (NR-16 Anexo 2)";
+      }
+      if (d.tlv_acgih) {
+        const lt = d.lt_ppm != null
+          ? `${d.lt_ppm} ppm`
+          : d.lt_mg_m3 != null
+          ? `${d.lt_mg_m3} mg/m³`
+          : null;
+        conclusao.limite_exposicao = lt
+          ? `LT NR-15: ${lt} · ACGIH: ${d.tlv_acgih}`
+          : `ACGIH: ${d.tlv_acgih}`;
+      }
+    }
 
     return new Response(
       JSON.stringify({
