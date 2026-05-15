@@ -9,6 +9,7 @@ import type {
   CondicoesUsoQuimico,
   ConclusaoRapidaQuimico,
   ModoAnaliseQuimico,
+  ComponenteQuimico,
 } from "@/lib/supabase/types";
 import type { AgenteReferencia } from "@/lib/quimicos/base_referencia";
 
@@ -78,6 +79,9 @@ export interface GerarAnaliseInput {
    *  eSocial, Decreto, IARC, etc.) que a IA NÃO deve contradizer — só preencher
    *  os campos que faltam (EPIs, medidas, fundamentação). */
   dados_base?: AgenteReferencia | null;
+  /** Componentes da mistura (modo Manual com 2+ químicos). No PDF, fica null
+   *  — os dados singulares já são suficientes. */
+  componentes?: ComponenteQuimico[] | null;
 
   // Dados do produto (preenchido manualmente OU pelo parser FISPQ revisado)
   nome_produto?: string | null;
@@ -123,6 +127,7 @@ export function useGerarAnaliseQuimico() {
         dados_manuais: dadosProduto,
         contexto_fispq: input.contexto_fispq ?? null,
         dados_base: input.dados_base ?? null,
+        componentes: input.componentes ?? null,
         condicoes_uso: input.condicoes_uso ?? null,
         empresa_nome: input.empresa_nome ?? null,
       };

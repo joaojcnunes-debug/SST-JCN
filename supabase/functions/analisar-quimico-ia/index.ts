@@ -71,6 +71,13 @@ interface DadosManuais {
   concentracao?: string | null;
 }
 
+interface ComponenteQuimico {
+  nome_quimico?: string | null;
+  numero_cas?: string | null;
+  formula_quimica?: string | null;
+  concentracao?: string | null;
+}
+
 interface DadosBase {
   agente?: string | null;
   cas?: string | null;
@@ -103,6 +110,10 @@ interface ContextoIA {
    *  (lib/quimicos/base_referencia.ts). Quando presente, a IA usa esses
    *  valores como "ground truth" pros campos correspondentes e NÃO inventa. */
   dados_base?: DadosBase | null;
+  /** Lista de componentes químicos (modo Manual com mistura). Quando
+   *  presente, cada componente é mostrado à IA pra ela considerar todos
+   *  no parecer técnico. */
+  componentes?: ComponenteQuimico[] | null;
   /** [LEGADO] texto bruto extraído do PDF — não é mais usado pela IA, mas
    *  ainda aceito por compatibilidade. */
   texto_documento?: string | null;
@@ -217,6 +228,27 @@ function buildUserPrompt(ctx: ContextoIA): string {
     if (d.forma_fisica) linhas.push(`Forma Física: ${d.forma_fisica}`);
     if (d.concentracao) linhas.push(`Concentração: ${d.concentracao}`);
     linhas.push("=== FIM ===");
+  }
+
+  // Componentes da mistura (modo Manual com 2+ químicos). Lista cada
+  // componente individualmente pra IA considerar todos no parecer.
+  if (ctx.componentes && ctx.componentes.length > 1) {
+    linhas.push("");
+    linhas.push(
+      `=== MISTURA — ${ctx.componentes.length} COMPONENTES QUÍMICOS ===`
+    );
+    linhas.push(
+      "O produto é uma mistura. Analise considerando o conjunto e destaque o pior caso (componente de maior risco)."
+    );
+    ctx.componentes.forEach((c, i) => {
+      const partes: string[] = [];
+      if (c.nome_quimico) partes.push(`nome: ${c.nome_quimico}`);
+      if (c.numero_cas) partes.push(`CAS: ${c.numero_cas}`);
+      if (c.formula_quimica) partes.push(`fórmula: ${c.formula_quimica}`);
+      if (c.concentracao) partes.push(`concentração: ${c.concentracao}`);
+      linhas.push(`Componente ${i + 1}: ${partes.join(" · ")}`);
+    });
+    linhas.push("=== FIM (mistura) ===");
   }
 
   // Contexto FISPQ compacto (só presente no modo PDF). Contém:

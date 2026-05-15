@@ -10,6 +10,8 @@ import {
   Sparkles,
   CheckCircle2,
   Database,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
@@ -19,25 +21,28 @@ import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useGerarAnaliseQuimico } from "@/lib/hooks/useAnalisesQuimicos";
 import { montarContextoFispq, type FispqExtracted } from "@/lib/fispq/parser";
 import { buscarAgente, resumirAgente } from "@/lib/quimicos/lookup";
-import type { CondicoesUsoQuimico } from "@/lib/supabase/types";
+import type {
+  CondicoesUsoQuimico,
+  ComponenteQuimico,
+} from "@/lib/supabase/types";
 
 type Modo = "PDF" | "Manual";
 
+/** Dados gerais do produto no modo Manual. Componentes ficam separados. */
 interface DadosManuais {
   nome_produto: string;
-  nome_quimico: string;
-  numero_cas: string;
-  formula_quimica: string;
   forma_fisica: string;
-  concentracao: string;
 }
 
 const DADOS_INIT: DadosManuais = {
   nome_produto: "",
+  forma_fisica: "",
+};
+
+const COMPONENTE_VAZIO: ComponenteQuimico = {
   nome_quimico: "",
   numero_cas: "",
   formula_quimica: "",
-  forma_fisica: "",
   concentracao: "",
 };
 
@@ -63,6 +68,9 @@ export default function AnaliseForm() {
   const [pdfFile, setPdfFile] = useState<PdfArquivo | null>(null);
   const [fispqDados, setFispqDados] = useState<FispqExtracted | null>(null);
   const [dados, setDados] = useState<DadosManuais>(DADOS_INIT);
+  const [componentes, setComponentes] = useState<ComponenteQuimico[]>([
+    { ...COMPONENTE_VAZIO },
+  ]);
   const [condicoes, setCondicoes] = useState<CondicoesUsoQuimico>(CONDICOES_INIT);
   const [showCondicoes, setShowCondicoes] = useState(false);
 
@@ -75,13 +83,21 @@ export default function AnaliseForm() {
   // um match, mostramos um banner pro usuário E mandamos pra IA como
   // "ground truth" (não pode contradizer).
   const dadosBase = useMemo(() => {
-    const cas = modo === "PDF" ? fispqDados?.numero_cas : dados.numero_cas;
-    const nome =
-      modo === "PDF"
-        ? fispqDados?.nome_quimico || fispqDados?.nome_produto
-        : dados.nome_quimico || dados.nome_produto;
-    return buscarAgente({ cas, nome });
-  }, [modo, fispqDados, dados.numero_cas, dados.nome_quimico, dados.nome_produto]);
+    if (modo === "PDF") {
+      return buscarAgente({
+        cas: fispqDados?.numero_cas,
+        nome: fispqDados?.nome_quimico || fispqDados?.nome_produto,
+      });
+    }
+    // Modo Manual: tenta cada componente (1 ou mais), retorna o primeiro
+    // que casar na base. Prioridade pelo CAS, fallback no nome.
+    for (const c of componentes) {
+      const hit = buscarAgente({ cas: c.numero_cas, nome: c.nome_quimico });
+      if (hit) return hit;
+    }
+    // Fallback: nome do produto inteiro
+    return buscarAgente({ cas: null, nome: dados.nome_produto });
+  }, [modo, fispqDados, componentes, dados.nome_produto]);
 
   // Quando upload do PDF acontece, pre-popula os dados FispqReview
   function handlePdfChange(novo: PdfArquivo | null) {
@@ -103,12 +119,30 @@ export default function AnaliseForm() {
         return;
       }
     } else {
-      // Manual mode
-      if (!dados.nome_produto.trim() && !dados.nome_quimico.trim()) {
-        toast.error("Informe ao menos o Nome do Produto ou Nome Químico");
+      // Manual mode: pelo menos o nome do produto OU 1 componente com nome
+      const algumComponente = componentes.some(
+        (c) => (c.nome_quimico ?? "").trim()
+      );
+      if (!dados.nome_produto.trim() && !algumComponente) {
+        toast.error(
+          "Informe o Nome do Produto ou pelo menos 1 componente com Nome Químico"
+        );
         return;
       }
     }
+
+    // Limpa componentes (remove os totalmente vazios + trim)
+    const componentesLimpos: ComponenteQuimico[] = componentes
+      .map((c) => ({
+        nome_quimico: (c.nome_quimico ?? "").trim() || null,
+        numero_cas: (c.numero_cas ?? "").trim() || null,
+        formula_quimica: (c.formula_quimica ?? "").trim() || null,
+        concentracao: (c.concentracao ?? "").trim() || null,
+      }))
+      .filter(
+        (c) =>
+          c.nome_quimico || c.numero_cas || c.formula_quimica || c.concentracao
+      );
 
     // Monta título
     const titulo = (() => {
@@ -122,7 +156,7 @@ export default function AnaliseForm() {
       }
       return (
         dados.nome_produto.trim() ||
-        dados.nome_quimico.trim() ||
+        componentesLimpos[0]?.nome_quimico ||
         "Análise química"
       );
     })();
@@ -141,25 +175,41 @@ export default function AnaliseForm() {
       return temAlgo ? c : null;
     })();
 
-    // Monta payload pra mutation
-    const payloadDados =
-      modo === "PDF" && fispqDados
-        ? {
-            nome_produto: fispqDados.nome_produto?.trim() || null,
-            nome_quimico: fispqDados.nome_quimico?.trim() || null,
-            numero_cas: fispqDados.numero_cas?.trim() || null,
-            formula_quimica: fispqDados.formula_quimica?.trim() || null,
-            forma_fisica: fispqDados.forma_fisica?.trim() || null,
-            concentracao: fispqDados.concentracao?.trim() || null,
-          }
-        : {
-            nome_produto: dados.nome_produto.trim() || null,
-            nome_quimico: dados.nome_quimico.trim() || null,
-            numero_cas: dados.numero_cas.trim() || null,
-            formula_quimica: dados.formula_quimica.trim() || null,
-            forma_fisica: dados.forma_fisica.trim() || null,
-            concentracao: dados.concentracao.trim() || null,
-          };
+    // Monta payload pra mutation.
+    // Modo Manual: 1º componente vai pros campos singulares (compat); todos
+    // vão no array `componentes` que o IA usa.
+    const payloadDados = (() => {
+      if (modo === "PDF" && fispqDados) {
+        return {
+          nome_produto: fispqDados.nome_produto?.trim() || null,
+          nome_quimico: fispqDados.nome_quimico?.trim() || null,
+          numero_cas: fispqDados.numero_cas?.trim() || null,
+          formula_quimica: fispqDados.formula_quimica?.trim() || null,
+          forma_fisica: fispqDados.forma_fisica?.trim() || null,
+          concentracao: fispqDados.concentracao?.trim() || null,
+        };
+      }
+      // Manual mode
+      const primeiro = componentesLimpos[0];
+      const juntar = (k: keyof ComponenteQuimico): string | null => {
+        const vals = componentesLimpos
+          .map((c) => c[k])
+          .filter((v): v is string => !!v);
+        if (vals.length === 0) return null;
+        if (vals.length === 1) return vals[0];
+        return vals.join("; ");
+      };
+      return {
+        nome_produto: dados.nome_produto.trim() || null,
+        nome_quimico: juntar("nome_quimico") ?? primeiro?.nome_quimico ?? null,
+        numero_cas: juntar("numero_cas") ?? primeiro?.numero_cas ?? null,
+        formula_quimica:
+          juntar("formula_quimica") ?? primeiro?.formula_quimica ?? null,
+        forma_fisica: dados.forma_fisica.trim() || null,
+        concentracao:
+          juntar("concentracao") ?? primeiro?.concentracao ?? null,
+      };
+    })();
 
     // Contexto FISPQ compacto (só no modo PDF, com snippets de seções relevantes)
     const contextoFispq =
@@ -180,6 +230,9 @@ export default function AnaliseForm() {
         // Dados da BASE LOCAL — campos regulatórios determinísticos. A IA
         // recebe esses dados como "ground truth" e não pode contradizer.
         dados_base: dadosBase?.agente ?? null,
+        // Array de componentes (modo Manual com mistura). No PDF, fica vazio
+        // — o parser já preenche os campos singulares.
+        componentes: modo === "Manual" ? componentesLimpos : null,
         ...payloadDados,
         condicoes_uso: condClean,
       },
@@ -264,95 +317,184 @@ export default function AnaliseForm() {
         </div>
       )}
 
-      {/* Modo Manual */}
+      {/* Modo Manual: dados gerais do produto + array de componentes químicos */}
       {modo === "Manual" && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div>
-            <label className={lblCls}>
-              Nome do Produto <span className="text-red-alert">*</span>
-            </label>
-            <input
-              type="text"
-              value={dados.nome_produto}
-              onChange={(e) =>
-                setDados((d) => ({ ...d, nome_produto: e.target.value }))
-              }
-              className={inputCls}
-              placeholder="Ex: Tíner para esmalte"
-              disabled={gerar.isPending}
-            />
+        <div className="space-y-4">
+          {/* Dados gerais (uma instância por análise) */}
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div>
+              <label className={lblCls}>
+                Nome do Produto <span className="text-red-alert">*</span>
+              </label>
+              <input
+                type="text"
+                value={dados.nome_produto}
+                onChange={(e) =>
+                  setDados((d) => ({ ...d, nome_produto: e.target.value }))
+                }
+                className={inputCls}
+                placeholder="Ex: Tíner para esmalte (produto comercial)"
+                disabled={gerar.isPending}
+              />
+            </div>
+            <div>
+              <label className={lblCls}>Forma Física (do produto)</label>
+              <select
+                value={dados.forma_fisica}
+                onChange={(e) =>
+                  setDados((d) => ({ ...d, forma_fisica: e.target.value }))
+                }
+                className={inputCls}
+                disabled={gerar.isPending}
+              >
+                <option value="">—</option>
+                <option value="Líquido">Líquido</option>
+                <option value="Sólido">Sólido</option>
+                <option value="Gás">Gás</option>
+                <option value="Vapor">Vapor</option>
+                <option value="Aerossol">Aerossol</option>
+                <option value="Pó">Pó</option>
+                <option value="Pasta">Pasta</option>
+              </select>
+            </div>
           </div>
-          <div>
-            <label className={lblCls}>Nome Químico</label>
-            <input
-              type="text"
-              value={dados.nome_quimico}
-              onChange={(e) =>
-                setDados((d) => ({ ...d, nome_quimico: e.target.value }))
+
+          {/* Componentes químicos — 1 ou mais (mistura) */}
+          <div className="rounded-lg border border-sky-200 bg-sky-50/30 p-3">
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-sky-800">
+                  Componentes Químicos
+                </p>
+                <p className="text-[11px] text-gray-600">
+                  Adicione um por componente da mistura (ex: tíner pode ter
+                  tolueno + acetona + xileno).
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800">
+                {componentes.length}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {componentes.map((c, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-md border border-sky-100 bg-white p-3"
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-sky-700">
+                      Componente {idx + 1}
+                    </p>
+                    {componentes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setComponentes((arr) =>
+                            arr.filter((_, i) => i !== idx)
+                          )
+                        }
+                        disabled={gerar.isPending}
+                        className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert disabled:opacity-50"
+                        title="Remover componente"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <div>
+                      <label className={lblCls}>Nome Químico</label>
+                      <input
+                        type="text"
+                        value={c.nome_quimico ?? ""}
+                        onChange={(e) =>
+                          setComponentes((arr) =>
+                            arr.map((it, i) =>
+                              i === idx
+                                ? { ...it, nome_quimico: e.target.value }
+                                : it
+                            )
+                          )
+                        }
+                        className={inputCls}
+                        placeholder="Ex: Tolueno"
+                        disabled={gerar.isPending}
+                      />
+                    </div>
+                    <div>
+                      <label className={lblCls}>Número CAS</label>
+                      <input
+                        type="text"
+                        value={c.numero_cas ?? ""}
+                        onChange={(e) =>
+                          setComponentes((arr) =>
+                            arr.map((it, i) =>
+                              i === idx
+                                ? { ...it, numero_cas: e.target.value }
+                                : it
+                            )
+                          )
+                        }
+                        className={inputCls}
+                        placeholder="Ex: 108-88-3"
+                        disabled={gerar.isPending}
+                      />
+                    </div>
+                    <div>
+                      <label className={lblCls}>Fórmula Química</label>
+                      <input
+                        type="text"
+                        value={c.formula_quimica ?? ""}
+                        onChange={(e) =>
+                          setComponentes((arr) =>
+                            arr.map((it, i) =>
+                              i === idx
+                                ? { ...it, formula_quimica: e.target.value }
+                                : it
+                            )
+                          )
+                        }
+                        className={inputCls}
+                        placeholder="Ex: C7H8"
+                        disabled={gerar.isPending}
+                      />
+                    </div>
+                    <div>
+                      <label className={lblCls}>Concentração</label>
+                      <input
+                        type="text"
+                        value={c.concentracao ?? ""}
+                        onChange={(e) =>
+                          setComponentes((arr) =>
+                            arr.map((it, i) =>
+                              i === idx
+                                ? { ...it, concentracao: e.target.value }
+                                : it
+                            )
+                          )
+                        }
+                        className={inputCls}
+                        placeholder="Ex: 60%, 25-50%, > 90% peso"
+                        disabled={gerar.isPending}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setComponentes((arr) => [...arr, { ...COMPONENTE_VAZIO }])
               }
-              className={inputCls}
-              placeholder="Ex: Tolueno"
               disabled={gerar.isPending}
-            />
-          </div>
-          <div>
-            <label className={lblCls}>Número CAS</label>
-            <input
-              type="text"
-              value={dados.numero_cas}
-              onChange={(e) =>
-                setDados((d) => ({ ...d, numero_cas: e.target.value }))
-              }
-              className={inputCls}
-              placeholder="Ex: 108-88-3"
-              disabled={gerar.isPending}
-            />
-          </div>
-          <div>
-            <label className={lblCls}>Fórmula Química</label>
-            <input
-              type="text"
-              value={dados.formula_quimica}
-              onChange={(e) =>
-                setDados((d) => ({ ...d, formula_quimica: e.target.value }))
-              }
-              className={inputCls}
-              placeholder="Ex: C7H8"
-              disabled={gerar.isPending}
-            />
-          </div>
-          <div>
-            <label className={lblCls}>Forma Física</label>
-            <select
-              value={dados.forma_fisica}
-              onChange={(e) =>
-                setDados((d) => ({ ...d, forma_fisica: e.target.value }))
-              }
-              className={inputCls}
-              disabled={gerar.isPending}
+              className="mt-2 inline-flex items-center gap-1 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
             >
-              <option value="">—</option>
-              <option value="Líquido">Líquido</option>
-              <option value="Sólido">Sólido</option>
-              <option value="Gás">Gás</option>
-              <option value="Vapor">Vapor</option>
-              <option value="Aerossol">Aerossol</option>
-              <option value="Pó">Pó</option>
-              <option value="Pasta">Pasta</option>
-            </select>
-          </div>
-          <div>
-            <label className={lblCls}>Concentração</label>
-            <input
-              type="text"
-              value={dados.concentracao}
-              onChange={(e) =>
-                setDados((d) => ({ ...d, concentracao: e.target.value }))
-              }
-              className={inputCls}
-              placeholder="Ex: 100%, 50 ppm, > 90% peso"
-              disabled={gerar.isPending}
-            />
+              <Plus className="size-3.5" />
+              Adicionar componente
+            </button>
           </div>
         </div>
       )}

@@ -485,6 +485,15 @@ export interface Configuracao {
 
 // ---- Análise de Químicos ----
 
+/** Um componente químico de uma mistura/produto.
+ *  Modo Manual pode ter 1 ou vários (ex: tíner = tolueno + acetona + xileno). */
+export interface ComponenteQuimico {
+  nome_quimico?: string | null;
+  numero_cas?: string | null;
+  formula_quimica?: string | null;
+  concentracao?: string | null;
+}
+
 export interface CondicoesUsoQuimico {
   atividade?: string | null;
   frequencia?: string | null;
