@@ -31,16 +31,18 @@ const MODEL = "llama-3.1-8b-instant";
 // campos + dados do produto. Isso reduz drasticamente o consumo de tokens
 // porque elimina a geração das 12 seções de prosa.
 //
-// Budget por chamada no 8B (TPM 6.000, TPD 500.000):
-//   - system prompt: ~1.800 tokens
-//   - user prompt (até PDF_MAX_CHARS chars): ~3.000 tokens
-//   - max_tokens reservados pra resposta: 1.000
-//   - Total: ~5.800 (margem ~200 abaixo do TPM 6.000)
+// Budget MUITO conservador no 8B (TPM 6.000, TPD 500.000):
+//   - system prompt: ~2.000 tokens (JSON schema completo)
+//   - user prompt (até PDF_MAX_CHARS chars): ~2.000 tokens
+//   - max_tokens reservados pra resposta: 800
+//   - Total: ~4.800 (margem ~1.200 abaixo do TPM)
 //
-// PDFs longos sao truncados em 12k chars (primeiras 3-4 paginas — geralmente
-// cobrindo seções 1-4 da FISPQ: identificacao, GHS, composicao, perigos).
-const PDF_MAX_CHARS = 12000;
-const MAX_OUTPUT_TOKENS = 1000;
+// PDFs longos sao truncados em 7k chars (primeiras 2 paginas da FISPQ —
+// tipicamente cobrindo Identificacao + Composicao + classificacao GHS).
+// Tokens/min do 8B free e' apertado pra FISPQs grandes — se precisar mais
+// contexto da FISPQ, considerar upgrade Groq Dev Tier ou 70B.
+const PDF_MAX_CHARS = 7000;
+const MAX_OUTPUT_TOKENS = 800;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
