@@ -3,6 +3,41 @@
 import type { AnaliseQuimico, Empresa } from "@/lib/supabase/types";
 
 /**
+ * Reconstroi a lista de componentes a partir dos campos singulares que
+ * o backend guarda separados por "; ". Útil pra exibir como tabela.
+ *
+ * Ex: nome_quimico = "Tolueno; Acetona; Xileno"
+ *     numero_cas   = "108-88-3; 67-64-1; 1330-20-7"
+ *  → 3 componentes alinhados.
+ */
+function reconstruirComponentes(a: AnaliseQuimico) {
+  const split = (s: string | null): string[] => {
+    if (!s) return [];
+    // Separa por "; " ou ";" — tolera ambos
+    return s.split(/;\s*/).map((x) => x.trim()).filter(Boolean);
+  };
+
+  const nomes = split(a.nome_quimico);
+  const cass = split(a.numero_cas);
+  const formulas = split(a.formula_quimica);
+  const concs = split(a.concentracao);
+
+  const max = Math.max(nomes.length, cass.length, formulas.length, concs.length);
+  if (max <= 1) return null; // só 1 (ou nenhum) componente — não vira tabela
+
+  const linhas = [];
+  for (let i = 0; i < max; i++) {
+    linhas.push({
+      nome: nomes[i] || null,
+      cas: cass[i] || null,
+      formula: formulas[i] || null,
+      concentracao: concs[i] || null,
+    });
+  }
+  return linhas;
+}
+
+/**
  * Relatório técnico estruturado da Análise de Químicos.
  *
  * Em vez de pedir pra IA gerar 12 seções de prosa (caro em tokens), a IA
@@ -24,6 +59,7 @@ export default function RelatorioEstruturado({
   empresa: Empresa | null;
 }) {
   const c = analise.conclusao_rapida ?? {};
+  const componentes = reconstruirComponentes(analise);
 
   return (
     <article className="space-y-5">
@@ -34,13 +70,80 @@ export default function RelatorioEstruturado({
             { label: "Empresa", value: empresa?.nome_empresa },
             { label: "CNPJ", value: empresa?.cnpj },
             { label: "Produto / Título da análise", value: analise.titulo },
-            { label: "Nome químico", value: analise.nome_quimico },
-            { label: "Número CAS", value: analise.numero_cas },
-            { label: "Fórmula química", value: analise.formula_quimica },
             { label: "Forma física", value: analise.forma_fisica },
-            { label: "Concentração", value: analise.concentracao },
+            // Quando há vários componentes, esses 4 campos são exibidos
+            // na tabela abaixo (vinculados por linha). No DataGrid mostramos
+            // só os singulares como fallback (1 componente).
+            ...(componentes
+              ? []
+              : [
+                  { label: "Nome químico", value: analise.nome_quimico },
+                  { label: "Número CAS", value: analise.numero_cas },
+                  { label: "Fórmula química", value: analise.formula_quimica },
+                  { label: "Concentração", value: analise.concentracao },
+                ]),
           ]}
         />
+
+        {/* Tabela de componentes (mistura) — linhas vinculadas */}
+        {componentes && (
+          <div className="mt-2">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-600">
+              Componentes da mistura ({componentes.length})
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr>
+                    <th className="border border-verde-border bg-verde-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+                      #
+                    </th>
+                    <th className="border border-verde-border bg-verde-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+                      Nome Químico
+                    </th>
+                    <th className="border border-verde-border bg-verde-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+                      Número CAS
+                    </th>
+                    <th className="border border-verde-border bg-verde-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+                      Fórmula
+                    </th>
+                    <th className="border border-verde-border bg-verde-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+                      Concentração
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {componentes.map((row, idx) => (
+                    <tr
+                      key={idx}
+                      className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                    >
+                      <td className="border border-gray-200 px-2 py-1.5 text-xs font-semibold text-gray-600">
+                        {idx + 1}
+                      </td>
+                      <td className="border border-gray-200 px-2 py-1.5 text-sm text-gray-900">
+                        {row.nome ?? <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="border border-gray-200 px-2 py-1.5 font-mono text-sm text-gray-900">
+                        {row.cas ?? <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="border border-gray-200 px-2 py-1.5 text-sm text-gray-900">
+                        {row.formula ?? (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="border border-gray-200 px-2 py-1.5 text-sm text-gray-900">
+                        {row.concentracao ?? (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </Secao>
 
       {/* 2. CONDIÇÕES DE USO */}

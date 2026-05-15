@@ -73,6 +73,71 @@ function primeiroMatch(
 }
 
 /**
+ * Tenta extrair componentes vinculados (nome + CAS + concentração) da
+ * seção 3 da FISPQ. Cada linha que tem um CAS é tratada como um
+ * componente; o texto antes do CAS vira o nome, e qualquer "%" próximo
+ * vira a concentração.
+ *
+ * É heurístico — FISPQs variam muito em formato. Mas pra a maioria das
+ * planilhas de composição funciona bem.
+ */
+function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimico[] {
+  if (!secao3) return [];
+
+  const componentes: ComponenteQuimico[] = [];
+  const linhas = secao3.split(/\n/);
+
+  for (const raw of linhas) {
+    const linha = raw.trim();
+    if (linha.length < 5) continue;
+
+    // Procura CAS na linha
+    const casMatch = linha.match(/\b(\d{2,7}-\d{2}-\d)\b/);
+    if (!casMatch) continue;
+
+    // Procura concentração (% ou range com %)
+    const concMatch = linha.match(
+      /(\d+(?:[,.]\d+)?(?:\s*[-–]\s*\d+(?:[,.]\d+)?)?\s*%)/
+    );
+    const concentracao = concMatch ? concMatch[0].replace(/\s+/g, "") : undefined;
+
+    // Tudo antes do CAS é candidato a nome
+    const idxCas = linha.indexOf(casMatch[0]);
+    let nome: string | undefined = linha.slice(0, idxCas).trim();
+
+    // Remove lixo do início (números de tabela, traços, asteriscos, %)
+    nome = nome
+      .replace(/^[\d.*•\-\s]+/, "")
+      .replace(/\d+(?:[,.]\d+)?\s*%\s*$/, "") // remove %% no fim do nome se tiver
+      .trim();
+
+    // Nome deve ter algumas letras pra ser válido
+    if (!nome || !/[a-zA-ZÀ-ÿ]/.test(nome)) {
+      nome = undefined;
+    } else if (nome.length > 120) {
+      nome = nome.slice(0, 120) + "...";
+    }
+
+    componentes.push({
+      cas: casMatch[1],
+      nome,
+      concentracao,
+    });
+  }
+
+  // Remove duplicados (mesmo CAS aparecendo várias vezes)
+  const vistos = new Set<string>();
+  const unicos: ComponenteQuimico[] = [];
+  for (const c of componentes) {
+    if (!vistos.has(c.cas)) {
+      vistos.add(c.cas);
+      unicos.push(c);
+    }
+  }
+  return unicos.slice(0, 12); // teto de segurança
+}
+
+/**
  * Divide o texto em seções numeradas (1..16) procurando markers.
  * FISPQs ABNT NBR 14725 sempre têm 16 seções.
  */
@@ -138,14 +203,30 @@ export function parseFispq(texto: string): FispqExtracted {
     150
   );
 
-  // ----- CAS numbers (todos os encontrados) -----
-  // Formato CAS: 1-7 dígitos / 2 dígitos / 1 dígito (ex: 108-88-3 = Tolueno)
-  const casMatches = [...texto.matchAll(/\b(\d{2,7}-\d{2}-\d)\b/g)];
-  if (casMatches.length > 0) {
-    const unicos = [...new Set(casMatches.map((m) => m[1]))];
-    result.numero_cas = unicos[0];
-    if (unicos.length > 1) {
-      result.cas_componentes = unicos.slice(1, 8).map((cas) => ({ cas }));
+  // ----- Componentes (nome + CAS + concentração vinculados) -----
+  // Estratégia: primeiro tenta extrair da Seção 3 (composição) — vai ter
+  // nome + CAS + concentração ligados. Se não achar nada, faz fallback pro
+  // método antigo (pega TODOS os CAS soltos no documento).
+  const secoes = dividirEmSecoes(texto);
+  const componentesS3 = extrairComponentesDeSecao3(secoes.get(3));
+
+  if (componentesS3.length > 0) {
+    // Achamos na Seção 3 — usa o 1º como "principal"
+    result.numero_cas = componentesS3[0].cas;
+    if (componentesS3[0].nome) result.nome_quimico = componentesS3[0].nome;
+    if (componentesS3[0].concentracao)
+      result.concentracao = componentesS3[0].concentracao;
+    // Demais ficam em cas_componentes
+    result.cas_componentes = componentesS3.slice(1);
+  } else {
+    // Fallback: pega todos CAS soltos no documento (método antigo)
+    const casMatches = [...texto.matchAll(/\b(\d{2,7}-\d{2}-\d)\b/g)];
+    if (casMatches.length > 0) {
+      const unicos = [...new Set(casMatches.map((m) => m[1]))];
+      result.numero_cas = unicos[0];
+      if (unicos.length > 1) {
+        result.cas_componentes = unicos.slice(1, 8).map((cas) => ({ cas }));
+      }
     }
   }
 
@@ -204,7 +285,7 @@ export function parseFispq(texto: string): FispqExtracted {
   );
 
   // ----- Snippets das seções relevantes pra NR-15 -----
-  const secoes = dividirEmSecoes(texto);
+  // (variavel `secoes` ja' foi calculada acima pra extrair componentes)
   const truncar = (s: string | undefined, max: number): string | undefined => {
     if (!s) return undefined;
     const limpo = s.replace(/\s+/g, " ").trim();

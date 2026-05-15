@@ -1,7 +1,13 @@
 "use client";
 
-import { CheckCircle2, AlertTriangle, FileText } from "lucide-react";
-import type { FispqExtracted } from "@/lib/fispq/parser";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  FileText,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import type { FispqExtracted, ComponenteQuimico } from "@/lib/fispq/parser";
 
 interface FispqReviewProps {
   dados: FispqExtracted;
@@ -18,17 +24,61 @@ const inputCls =
  * UI pra usuário revisar/corrigir os dados extraídos da FISPQ ANTES de
  * mandar pra IA. Tudo é editável — se o parser errou, o usuário corrige.
  *
- * Princípio: a IA só recebe dados que o usuário CONFIRMOU. Reduz alucinação
- * (a IA não está inferindo nada do PDF) e reduz tokens (mandamos campos
- * estruturados em vez do PDF inteiro).
+ * Mudança importante: componentes da mistura ficam em TABELA editável
+ * (1 linha por componente, com nome + CAS + fórmula + concentração
+ * visualmente ligados).
  */
 export default function FispqReview({
   dados,
   onChange,
   disabled,
 }: FispqReviewProps) {
-  const patch = (campo: keyof FispqExtracted, valor: string | undefined) => {
+  const patch = (campo: keyof FispqExtracted, valor: unknown) => {
     onChange({ ...dados, [campo]: valor });
+  };
+
+  // Lista TODOS os componentes (principal + adicionais) num único array
+  // pra render. O 1º item é o "principal" (numero_cas/nome_quimico/etc.),
+  // os demais vêm de cas_componentes.
+  const componentes: ComponenteQuimico[] = [
+    {
+      cas: dados.numero_cas || "",
+      nome: dados.nome_quimico,
+      concentracao: dados.concentracao,
+    },
+    ...(dados.cas_componentes ?? []),
+  ];
+
+  const setComponente = (idx: number, patch: Partial<ComponenteQuimico>) => {
+    const novos = componentes.map((c, i) =>
+      i === idx ? { ...c, ...patch } : c
+    );
+    aplicarComponentes(novos);
+  };
+
+  const adicionarComponente = () => {
+    aplicarComponentes([
+      ...componentes,
+      { cas: "", nome: undefined, concentracao: undefined },
+    ]);
+  };
+
+  const removerComponente = (idx: number) => {
+    aplicarComponentes(componentes.filter((_, i) => i !== idx));
+  };
+
+  /** Sincroniza o array `componentes` de volta em dados.numero_cas /
+   *  nome_quimico / concentracao (principal) + dados.cas_componentes (resto). */
+  const aplicarComponentes = (lista: ComponenteQuimico[]) => {
+    const sem = lista.filter((c) => c.cas || c.nome || c.concentracao);
+    const [principal, ...resto] = sem.length > 0 ? sem : [{ cas: "" }];
+    onChange({
+      ...dados,
+      numero_cas: principal?.cas || undefined,
+      nome_quimico: principal?.nome || undefined,
+      concentracao: principal?.concentracao || undefined,
+      cas_componentes: resto.length > 0 ? resto : undefined,
+    });
   };
 
   const confiancaInfo = {
@@ -67,7 +117,7 @@ export default function FispqReview({
         </div>
       </div>
 
-      {/* Campos editáveis principais */}
+      {/* Dados gerais do produto (1 por análise) */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
           <label className={lblCls}>
@@ -84,37 +134,13 @@ export default function FispqReview({
         </div>
 
         <div>
-          <label className={lblCls}>Nome Químico</label>
-          <input
-            type="text"
-            value={dados.nome_quimico ?? ""}
-            onChange={(e) => patch("nome_quimico", e.target.value)}
-            className={inputCls}
-            placeholder="Ex: Tolueno"
-            disabled={disabled}
-          />
-        </div>
-
-        <div>
-          <label className={lblCls}>Número CAS (principal)</label>
-          <input
-            type="text"
-            value={dados.numero_cas ?? ""}
-            onChange={(e) => patch("numero_cas", e.target.value)}
-            className={inputCls}
-            placeholder="Ex: 108-88-3"
-            disabled={disabled}
-          />
-        </div>
-
-        <div>
-          <label className={lblCls}>Fórmula Química</label>
+          <label className={lblCls}>Fórmula Química (do produto)</label>
           <input
             type="text"
             value={dados.formula_quimica ?? ""}
             onChange={(e) => patch("formula_quimica", e.target.value)}
             className={inputCls}
-            placeholder="Ex: C7H8"
+            placeholder="Ex: C7H8 (opcional)"
             disabled={disabled}
           />
         </div>
@@ -139,29 +165,118 @@ export default function FispqReview({
         </div>
 
         <div>
-          <label className={lblCls}>Concentração</label>
+          <label className={lblCls}>Fabricante</label>
           <input
             type="text"
-            value={dados.concentracao ?? ""}
-            onChange={(e) => patch("concentracao", e.target.value)}
+            value={dados.fabricante ?? ""}
+            onChange={(e) => patch("fabricante", e.target.value || undefined)}
             className={inputCls}
-            placeholder="Ex: 100%, 50 ppm, > 90% peso"
+            placeholder="(extraído da FISPQ)"
             disabled={disabled}
           />
         </div>
       </div>
 
-      {/* CAS componentes (somente leitura) */}
-      {dados.cas_componentes && dados.cas_componentes.length > 0 && (
-        <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-          <p className={lblCls + " mb-1"}>
-            Componentes adicionais detectados (CAS)
-          </p>
-          <p className="text-sm text-gray-800">
-            {dados.cas_componentes.map((c) => c.cas).join(" · ")}
-          </p>
+      {/* Componentes — tabela editável */}
+      <div className="rounded-lg border border-sky-200 bg-sky-50/30 p-3">
+        <div className="mb-2 flex items-baseline justify-between gap-2">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-sky-800">
+              Componentes Químicos
+            </p>
+            <p className="text-[11px] text-gray-600">
+              Cada linha = um componente da mistura. Nome, CAS e concentração
+              ficam ligados visualmente.
+            </p>
+          </div>
+          <span className="shrink-0 rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-800">
+            {componentes.length}
+          </span>
         </div>
-      )}
+
+        <div className="overflow-x-auto rounded-md border border-sky-100 bg-white">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-sky-100/60 text-left text-[10px] font-bold uppercase tracking-wider text-sky-800">
+                <th className="px-2 py-1.5">Nome Químico</th>
+                <th className="px-2 py-1.5 w-[160px]">Número CAS</th>
+                <th className="px-2 py-1.5 w-[140px]">Concentração</th>
+                <th className="px-2 py-1.5 w-[40px]"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {componentes.map((c, idx) => (
+                <tr
+                  key={idx}
+                  className={
+                    idx % 2 === 0 ? "bg-white" : "bg-sky-50/30"
+                  }
+                >
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="text"
+                      value={c.nome ?? ""}
+                      onChange={(e) =>
+                        setComponente(idx, { nome: e.target.value || undefined })
+                      }
+                      className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none"
+                      placeholder={idx === 0 ? "Ex: Tolueno" : ""}
+                      disabled={disabled}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="text"
+                      value={c.cas}
+                      onChange={(e) => setComponente(idx, { cas: e.target.value })}
+                      className="w-full rounded border border-gray-200 px-2 py-1 font-mono text-sm focus:border-verde-primary focus:outline-none"
+                      placeholder={idx === 0 ? "Ex: 108-88-3" : ""}
+                      disabled={disabled}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="text"
+                      value={c.concentracao ?? ""}
+                      onChange={(e) =>
+                        setComponente(idx, {
+                          concentracao: e.target.value || undefined,
+                        })
+                      }
+                      className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none"
+                      placeholder={idx === 0 ? "Ex: 60%" : ""}
+                      disabled={disabled}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    {componentes.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removerComponente(idx)}
+                        disabled={disabled}
+                        className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert disabled:opacity-50"
+                        title="Remover componente"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <button
+          type="button"
+          onClick={adicionarComponente}
+          disabled={disabled}
+          className="mt-2 inline-flex items-center gap-1 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+        >
+          <Plus className="size-3.5" />
+          Adicionar componente
+        </button>
+      </div>
 
       {/* GHS — Frases H + Pictogramas */}
       {((dados.frases_h && dados.frases_h.length > 0) ||

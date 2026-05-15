@@ -230,9 +230,33 @@ export default function AnaliseForm() {
         // Dados da BASE LOCAL — campos regulatórios determinísticos. A IA
         // recebe esses dados como "ground truth" e não pode contradizer.
         dados_base: dadosBase?.agente ?? null,
-        // Array de componentes (modo Manual com mistura). No PDF, fica vazio
-        // — o parser já preenche os campos singulares.
-        componentes: modo === "Manual" ? componentesLimpos : null,
+        // Array de componentes (mistura). No PDF, vem do parser/review;
+        // no Manual, vem do form múltiplo.
+        componentes:
+          modo === "PDF" && fispqDados
+            ? [
+                // 1o componente vem do principal (numero_cas/nome_quimico)
+                ...(fispqDados.numero_cas || fispqDados.nome_quimico
+                  ? [
+                      {
+                        nome_quimico: fispqDados.nome_quimico ?? null,
+                        numero_cas: fispqDados.numero_cas ?? null,
+                        formula_quimica: fispqDados.formula_quimica ?? null,
+                        concentracao: fispqDados.concentracao ?? null,
+                      },
+                    ]
+                  : []),
+                // Adicionais vêm de cas_componentes
+                ...(fispqDados.cas_componentes ?? []).map((c) => ({
+                  nome_quimico: c.nome ?? null,
+                  numero_cas: c.cas ?? null,
+                  formula_quimica: null,
+                  concentracao: c.concentracao ?? null,
+                })),
+              ]
+            : componentesLimpos.length > 0
+            ? componentesLimpos
+            : null,
         ...payloadDados,
         condicoes_uso: condClean,
       },
