@@ -52,14 +52,44 @@ export default function PdfDropzone({
       const buffer = await f.arrayBuffer();
       const pdf = await pdfjs.getDocument({ data: buffer }).promise;
 
+      // Extração preservando quebras de linha. pdfjs-dist por padrão junta
+      // tudo numa linha — péssimo pro parser FISPQ. Usamos `hasEOL` (quando
+      // presente) + heurística de mudança de posição Y pra inferir linhas.
       let texto = "";
       for (let p = 1; p <= pdf.numPages; p++) {
         const page = await pdf.getPage(p);
         const content = await page.getTextContent();
-        const linha = content.items
-          .map((item) => ("str" in item ? item.str : ""))
-          .join(" ");
-        texto += `\n=== Página ${p} ===\n${linha}\n`;
+        let pageText = "";
+        let lastY: number | null = null;
+        for (const item of content.items) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const it = item as any;
+          if (typeof it.str !== "string") continue;
+
+          const y: number | undefined = it.transform?.[5];
+
+          // Insere \n se a posição Y mudou significativamente (>= 5 unidades)
+          // — indica início de nova linha visual no PDF.
+          if (
+            lastY !== null &&
+            y !== undefined &&
+            Math.abs(y - lastY) > 5
+          ) {
+            pageText += "\n";
+          }
+
+          pageText += it.str;
+
+          // pdfjs-dist 3+ tem `hasEOL` que indica fim de linha lógico.
+          if (it.hasEOL) {
+            pageText += "\n";
+          } else {
+            pageText += " ";
+          }
+
+          if (y !== undefined) lastY = y;
+        }
+        texto += `\n=== Página ${p} ===\n${pageText}\n`;
       }
 
       if (!texto.trim()) {
