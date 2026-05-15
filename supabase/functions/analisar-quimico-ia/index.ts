@@ -106,13 +106,16 @@ interface ContextoIA {
    *  Só populado no modo PDF, depois que o parser extraiu. Tem ~1-2k tokens
    *  em vez dos 4-6k que o PDF inteiro consumiria. */
   contexto_fispq?: string | null;
-  /** Dados regulatórios DETERMINÍSTICOS da base local de referência
-   *  (lib/quimicos/base_referencia.ts). Quando presente, a IA usa esses
-   *  valores como "ground truth" pros campos correspondentes e NÃO inventa. */
+  /** Agente "representativo" — pior caso agregado da mistura. A IA usa
+   *  esses valores como "ground truth" pros campos correspondentes e NÃO
+   *  inventa. (Para 1 componente, é igual ao componente em si.) */
   dados_base?: DadosBase | null;
-  /** Lista de componentes químicos (modo Manual com mistura). Quando
-   *  presente, cada componente é mostrado à IA pra ela considerar todos
-   *  no parecer técnico. */
+  /** Lista de TODOS os componentes catalogados na base de referência
+   *  (com seus dados regulatórios). A IA recebe cada um pra fundamentar
+   *  o parecer citando componente por componente. */
+  dados_base_componentes?: DadosBase[] | null;
+  /** Lista de componentes químicos submetidos (toda a mistura — catalogados
+   *  ou não). Mostra a IA todos pra ela considerar no parecer técnico. */
   componentes?: ComponenteQuimico[] | null;
   /** [LEGADO] texto bruto extraído do PDF — não é mais usado pela IA, mas
    *  ainda aceito por compatibilidade. */
@@ -183,24 +186,60 @@ function buildUserPrompt(ctx: ContextoIA): string {
 
   if (ctx.empresa_nome) linhas.push(`Empresa: ${ctx.empresa_nome}`);
 
-  // Dados da BASE DETERMINÍSTICA — ground truth dos campos regulatórios.
-  // Se isso veio populado, a IA é instruída a NÃO contradizer.
+  // Lista detalhada dos componentes catalogados (pior caso + cada um) — vem da
+  // base local. Se 2+ estão catalogados, listamos todos individualmente E o
+  // "agregado pior caso" como ground-truth pros campos regulatórios principais.
+  const ehMistura =
+    !!ctx.dados_base_componentes && ctx.dados_base_componentes.length > 1;
+
+  if (ehMistura && ctx.dados_base_componentes) {
+    linhas.push("");
+    linhas.push(
+      `=== COMPONENTES CATALOGADOS NA BASE OFICIAL (${ctx.dados_base_componentes.length} de ${ctx.componentes?.length ?? "?"}) ===`
+    );
+    linhas.push(
+      "Use estes dados — NÃO INVENTE. Cada componente tem seus próprios códigos regulatórios. Cite cada um na fundamentação."
+    );
+    ctx.dados_base_componentes.forEach((d, i) => {
+      const partes: string[] = [];
+      if (d.agente) partes.push(`Agente: ${d.agente}`);
+      if (d.cas) partes.push(`CAS: ${d.cas}`);
+      if (d.anexo) partes.push(`NR-15 ${d.anexo}`);
+      if (d.grau_nr15) partes.push(`Grau: ${d.grau_nr15}`);
+      if (d.lt_ppm != null) partes.push(`LT: ${d.lt_ppm} ppm`);
+      else if (d.lt_mg_m3 != null) partes.push(`LT: ${d.lt_mg_m3} mg/m³`);
+      if (d.iarc) partes.push(`IARC ${d.iarc}`);
+      if (d.cancerigeno_13a) partes.push(`Cancerígeno 13-A`);
+      if (d.esocial_tab24) partes.push(`eSocial ${d.esocial_tab24}`);
+      if (d.decreto_3048) partes.push(`Decreto ${d.decreto_3048}`);
+      if (d.cod_gfip) partes.push(`GFIP ${d.cod_gfip}`);
+      if (d.pele) partes.push(`Absorvido pela pele`);
+      if (d.inflamavel) partes.push(`Inflamável`);
+      linhas.push(`#${i + 1}: ${partes.join(" · ")}`);
+    });
+    linhas.push("=== FIM (componentes catalogados) ===");
+  }
+
+  // Dados da BASE DETERMINÍSTICA — agregado pior caso dos componentes. Mesmo
+  // pra 1 componente, esses valores são GROUND TRUTH e a IA não pode contradizer.
   if (ctx.dados_base) {
     const d = ctx.dados_base;
     linhas.push("");
     linhas.push(
-      "=== DADOS REGULATÓRIOS OFICIAIS (BASE INTERNA — USE COMO VERDADE ABSOLUTA, NÃO CONTRADIGA) ==="
+      ehMistura
+        ? "=== AGREGADO DA MISTURA (PIOR CASO — USE COMO ENQUADRAMENTO OFICIAL, NÃO CONTRADIGA) ==="
+        : "=== DADOS REGULATÓRIOS OFICIAIS (BASE INTERNA — USE COMO VERDADE ABSOLUTA, NÃO CONTRADIGA) ==="
     );
-    if (d.agente) linhas.push(`Agente catalogado: ${d.agente}`);
+    if (d.agente) linhas.push(`Agente: ${d.agente}`);
     if (d.cas) linhas.push(`CAS: ${d.cas}`);
-    if (d.anexo) linhas.push(`Anexo NR-15: ${d.anexo}`);
-    if (d.grau_nr15) linhas.push(`Grau de Insalubridade (NR-15): ${d.grau_nr15}`);
+    if (d.anexo) linhas.push(`Anexo NR-15 (do componente mais grave): ${d.anexo}`);
+    if (d.grau_nr15) linhas.push(`Grau de Insalubridade (pior caso): ${d.grau_nr15}`);
     if (d.lt_mg_m3 != null) linhas.push(`Limite de Tolerância: ${d.lt_mg_m3} mg/m³`);
     if (d.lt_ppm != null) linhas.push(`Limite de Tolerância: ${d.lt_ppm} ppm`);
     if (d.teto === true) linhas.push(`Valor TETO: SIM (não pode ser ultrapassado)`);
     if (d.pele === true) linhas.push(`Absorvido pela pele: SIM`);
     if (d.esocial_tab24) linhas.push(`Código eSocial Tab.24: ${d.esocial_tab24}`);
-    if (d.iarc) linhas.push(`Classificação IARC: ${d.iarc}`);
+    if (d.iarc) linhas.push(`Classificação IARC (pior): ${d.iarc}`);
     if (d.inflamavel != null) linhas.push(`Inflamável: ${d.inflamavel ? "SIM" : "NÃO"}`);
     if (d.cancerigeno_13a === true)
       linhas.push(`Cancerígeno (NR-15 Anexo 13-A): SIM`);
@@ -208,10 +247,12 @@ function buildUserPrompt(ctx: ContextoIA): string {
     if (d.decreto_3048) linhas.push(`Decreto 3.048 (Anexo IV): ${d.decreto_3048}`);
     if (d.cod_gfip) linhas.push(`Código GFIP: ${d.cod_gfip}`);
     if (d.observacoes) linhas.push(`Observações: ${d.observacoes}`);
-    linhas.push("=== FIM (dados regulatórios oficiais) ===");
+    linhas.push("=== FIM ===");
     linhas.push("");
     linhas.push(
-      "REGRA OBRIGATÓRIA: USE EXATAMENTE os valores acima nos campos correspondentes do JSON. Você ainda deve PREENCHER os campos que faltam (EPI, EPC, medidas, emergência, fundamentação, metodologia) com base no que sabe do agente — mas NUNCA contradiga os dados oficiais acima."
+      ehMistura
+        ? "REGRA OBRIGATÓRIA: O enquadramento NR-15 e a aposentadoria especial seguem o pior caso (componente mais grave). Na fundamentação, CITE cada componente catalogado individualmente e justifique o pior caso. Preencha EPIs, medidas e emergência considerando TODOS os componentes."
+        : "REGRA OBRIGATÓRIA: USE EXATAMENTE os valores acima nos campos correspondentes do JSON. Você ainda deve PREENCHER os campos que faltam (EPI, EPC, medidas, emergência, fundamentação, metodologia) com base no que sabe do agente — mas NUNCA contradiga os dados oficiais acima."
     );
   }
 
@@ -448,9 +489,13 @@ Deno.serve(async (req: Request) => {
 
     // Camada de defesa: se a base local tem dados regulatórios, eles
     // SEMPRE prevalecem sobre o que a IA respondeu (zero alucinação nos
-    // campos catalogados).
+    // campos catalogados). Strings que contém ":" são tratadas como já
+    // formatadas pelo client (mistura — "Tolueno: 09.01.001; Xileno: ...").
     if (conclusao && body.dados_base) {
       const d = body.dados_base;
+      const ehMisturaFmt = (s: string | null | undefined) =>
+        !!s && s.includes(":");
+
       if (d.grau_nr15) {
         conclusao.insalubridade_nr15 =
           d.grau_nr15 === "Asfixiante simples" ? "Inconclusivo" : "SIM";
@@ -458,10 +503,14 @@ Deno.serve(async (req: Request) => {
       }
       if (d.anexo) conclusao.insalubridade_anexo = d.anexo;
       if (d.esocial_tab24) {
-        conclusao.esocial_tab24 = `Código ${d.esocial_tab24}`;
+        conclusao.esocial_tab24 = ehMisturaFmt(d.esocial_tab24)
+          ? d.esocial_tab24
+          : `Código ${d.esocial_tab24}`;
       }
       if (d.decreto_3048) {
-        conclusao.decreto_3048 = `Anexo IV código ${d.decreto_3048}`;
+        conclusao.decreto_3048 = ehMisturaFmt(d.decreto_3048)
+          ? d.decreto_3048
+          : `Anexo IV código ${d.decreto_3048}`;
       }
       if (d.cod_gfip) conclusao.codigo_gfip = d.cod_gfip;
       if (d.iarc) {
@@ -475,14 +524,19 @@ Deno.serve(async (req: Request) => {
         conclusao.periculosidade_nr16 = "SIM - inflamável (NR-16 Anexo 2)";
       }
       if (d.tlv_acgih) {
-        const lt = d.lt_ppm != null
-          ? `${d.lt_ppm} ppm`
-          : d.lt_mg_m3 != null
-          ? `${d.lt_mg_m3} mg/m³`
-          : null;
-        conclusao.limite_exposicao = lt
-          ? `LT NR-15: ${lt} · ACGIH: ${d.tlv_acgih}`
-          : `ACGIH: ${d.tlv_acgih}`;
+        if (ehMisturaFmt(d.tlv_acgih)) {
+          conclusao.limite_exposicao = `ACGIH (por componente): ${d.tlv_acgih}`;
+        } else {
+          const lt =
+            d.lt_ppm != null
+              ? `${d.lt_ppm} ppm`
+              : d.lt_mg_m3 != null
+              ? `${d.lt_mg_m3} mg/m³`
+              : null;
+          conclusao.limite_exposicao = lt
+            ? `LT NR-15: ${lt} · ACGIH: ${d.tlv_acgih}`
+            : `ACGIH: ${d.tlv_acgih}`;
+        }
       }
     }
 

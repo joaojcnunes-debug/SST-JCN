@@ -74,13 +74,17 @@ export interface GerarAnaliseInput {
   /** Snippets resumidos das seções 2/8/11 da FISPQ + CAS/H/GHS extraídos.
    *  Substitui o envio do PDF inteiro à IA — economiza ~3-5k tokens. */
   contexto_fispq?: string | null;
-  /** Agente encontrado na base local de referência (lib/quimicos/base_referencia.ts).
-   *  Quando presente, contém os dados regulatórios DETERMINÍSTICOS (insalubridade,
-   *  eSocial, Decreto, IARC, etc.) que a IA NÃO deve contradizer — só preencher
-   *  os campos que faltam (EPIs, medidas, fundamentação). */
+  /** Agente "representativo" da mistura — pior caso agregado dos componentes
+   *  catalogados. Quando presente, contém os dados regulatórios DETERMINÍSTICOS
+   *  (insalubridade, eSocial, Decreto, IARC, etc.) que a IA NÃO deve contradizer
+   *  — só preencher os campos que faltam (EPIs, medidas, fundamentação). */
   dados_base?: AgenteReferencia | null;
-  /** Componentes da mistura (modo Manual com 2+ químicos). No PDF, fica null
-   *  — os dados singulares já são suficientes. */
+  /** Lista de TODOS os componentes da mistura catalogados na base. A IA recebe
+   *  cada um separadamente pra poder fundamentar o parecer citando cada componente
+   *  individualmente. */
+  dados_base_componentes?: AgenteReferencia[] | null;
+  /** Componentes da mistura (modo Manual com 2+ químicos). No PDF, vem do
+   *  parser FISPQ (principal + cas_componentes). */
   componentes?: ComponenteQuimico[] | null;
 
   // Dados do produto (preenchido manualmente OU pelo parser FISPQ revisado)
@@ -127,6 +131,7 @@ export function useGerarAnaliseQuimico() {
         dados_manuais: dadosProduto,
         contexto_fispq: input.contexto_fispq ?? null,
         dados_base: input.dados_base ?? null,
+        dados_base_componentes: input.dados_base_componentes ?? null,
         componentes: input.componentes ?? null,
         condicoes_uso: input.condicoes_uso ?? null,
         empresa_nome: input.empresa_nome ?? null,

@@ -21,7 +21,11 @@ import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useGerarAnaliseQuimico } from "@/lib/hooks/useAnalisesQuimicos";
 import { useBaseReferenciaQuimicosMerged } from "@/lib/hooks/useBaseReferenciaQuimicos";
 import { montarContextoFispq, type FispqExtracted } from "@/lib/fispq/parser";
-import { buscarAgente, resumirAgente } from "@/lib/quimicos/lookup";
+import {
+  buscarComponentes,
+  piorCasoMistura,
+  resumirAgente,
+} from "@/lib/quimicos/lookup";
 import type {
   CondicoesUsoQuimico,
   ComponenteQuimico,
@@ -80,32 +84,62 @@ export default function AnaliseForm() {
 
   const empresaSel = empresas.find((e) => e.id_empresa === idEmpresa) ?? null;
 
+  // ----- Lista de componentes consolidada (modo PDF: principal + adicionais) -----
+  const componentesMistura = useMemo(() => {
+    if (modo === "PDF" && fispqDados) {
+      const lista: Array<{ nome: string | null; cas: string | null; concentracao: string | null }> = [];
+      if (fispqDados.numero_cas || fispqDados.nome_quimico) {
+        lista.push({
+          nome: fispqDados.nome_quimico ?? null,
+          cas: fispqDados.numero_cas ?? null,
+          concentracao: fispqDados.concentracao ?? null,
+        });
+      }
+      for (const c of fispqDados.cas_componentes ?? []) {
+        lista.push({
+          nome: c.nome ?? null,
+          cas: c.cas ?? null,
+          concentracao: c.concentracao ?? null,
+        });
+      }
+      return lista;
+    }
+    return componentes.map((c) => ({
+      nome: c.nome_quimico ?? null,
+      cas: c.numero_cas ?? null,
+      concentracao: c.concentracao ?? null,
+    }));
+  }, [modo, fispqDados, componentes]);
+
   // ----- Lookup determinístico na base de referência -----
-  // Roda sempre que CAS ou nome do produto/químico mudarem. Se acharmos
-  // um match, mostramos um banner pro usuário E mandamos pra IA como
-  // "ground truth" (não pode contradizer).
+  // Procura TODOS os componentes da mistura na base. Se 2+ casarem, agrega
+  // pior caso pra mandar pra IA como "ground truth".
+  const hitsBase = useMemo(
+    () =>
+      buscarComponentes(
+        componentesMistura.map((c) => ({ cas: c.cas, nome: c.nome })),
+        baseRef
+      ),
+    [componentesMistura, baseRef]
+  );
+
   const dadosBase = useMemo(() => {
-    if (modo === "PDF") {
-      return buscarAgente(
-        {
-          cas: fispqDados?.numero_cas,
-          nome: fispqDados?.nome_quimico || fispqDados?.nome_produto,
-        },
+    if (hitsBase.length > 0) return piorCasoMistura(hitsBase);
+    // Fallback final: nome do produto inteiro (Manual mode)
+    if (modo === "Manual" && dados.nome_produto.trim()) {
+      const hit = buscarComponentes(
+        [{ cas: null, nome: dados.nome_produto }],
         baseRef
       );
+      return piorCasoMistura(hit);
     }
-    // Modo Manual: tenta cada componente (1 ou mais), retorna o primeiro
-    // que casar na base. Prioridade pelo CAS, fallback no nome.
-    for (const c of componentes) {
-      const hit = buscarAgente(
-        { cas: c.numero_cas, nome: c.nome_quimico },
-        baseRef
-      );
-      if (hit) return hit;
-    }
-    // Fallback: nome do produto inteiro
-    return buscarAgente({ cas: null, nome: dados.nome_produto }, baseRef);
-  }, [modo, fispqDados, componentes, dados.nome_produto, baseRef]);
+    return null;
+  }, [hitsBase, modo, dados.nome_produto, baseRef]);
+
+  const dadosBaseLista = useMemo(
+    () => hitsBase.map((h) => h.agente),
+    [hitsBase]
+  );
 
   // Quando upload do PDF acontece, pre-popula os dados FispqReview
   function handlePdfChange(novo: PdfArquivo | null) {
@@ -184,17 +218,45 @@ export default function AnaliseForm() {
     })();
 
     // Monta payload pra mutation.
-    // Modo Manual: 1º componente vai pros campos singulares (compat); todos
-    // vão no array `componentes` que o IA usa.
+    // Para misturas (2+ componentes), os campos singulares (nome_quimico,
+    // numero_cas, formula_quimica, concentracao) viram strings "; "-joined
+    // que o RelatorioEstruturado reconstrói como tabela.
     const payloadDados = (() => {
       if (modo === "PDF" && fispqDados) {
+        // Junta principal + cas_componentes adicionais
+        const todos = [
+          ...(fispqDados.numero_cas || fispqDados.nome_quimico
+            ? [
+                {
+                  nome: fispqDados.nome_quimico ?? null,
+                  cas: fispqDados.numero_cas ?? null,
+                  formula: fispqDados.formula_quimica ?? null,
+                  concentracao: fispqDados.concentracao ?? null,
+                },
+              ]
+            : []),
+          ...(fispqDados.cas_componentes ?? []).map((c) => ({
+            nome: c.nome ?? null,
+            cas: c.cas ?? null,
+            formula: null as string | null,
+            concentracao: c.concentracao ?? null,
+          })),
+        ];
+        const joinKey = (k: "nome" | "cas" | "formula" | "concentracao") => {
+          const vals = todos
+            .map((c) => c[k])
+            .filter((v): v is string => !!v && v.trim().length > 0);
+          if (vals.length === 0) return null;
+          if (vals.length === 1) return vals[0];
+          return vals.join("; ");
+        };
         return {
           nome_produto: fispqDados.nome_produto?.trim() || null,
-          nome_quimico: fispqDados.nome_quimico?.trim() || null,
-          numero_cas: fispqDados.numero_cas?.trim() || null,
-          formula_quimica: fispqDados.formula_quimica?.trim() || null,
+          nome_quimico: joinKey("nome"),
+          numero_cas: joinKey("cas"),
+          formula_quimica: joinKey("formula"),
           forma_fisica: fispqDados.forma_fisica?.trim() || null,
-          concentracao: fispqDados.concentracao?.trim() || null,
+          concentracao: joinKey("concentracao"),
         };
       }
       // Manual mode
@@ -237,7 +299,12 @@ export default function AnaliseForm() {
         contexto_fispq: contextoFispq,
         // Dados da BASE LOCAL — campos regulatórios determinísticos. A IA
         // recebe esses dados como "ground truth" e não pode contradizer.
-        dados_base: dadosBase?.agente ?? null,
+        // `dados_base` = pior-caso da mistura (agregado).
+        // `dados_base_componentes` = lista completa, item a item — pra IA
+        //  poder citar cada componente individualmente na fundamentação.
+        dados_base: dadosBase ?? null,
+        dados_base_componentes:
+          dadosBaseLista.length > 0 ? dadosBaseLista : null,
         // Array de componentes (mistura). No PDF, vem do parser/review;
         // no Manual, vem do form múltiplo.
         componentes:
@@ -634,25 +701,35 @@ export default function AnaliseForm() {
         )}
       </div>
 
-      {/* Banner — Encontrado na base de referência */}
-      {dadosBase && (
+      {/* Banner — Encontrado(s) na base de referência */}
+      {hitsBase.length > 0 && (
         <div className="flex items-start gap-2 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">
           <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-600" />
           <div className="flex-1">
             <p className="font-semibold">
               <Database className="inline size-3.5 mr-1" />
-              Encontrado na base de referência Chabra
-              {dadosBase.fonte === "cas" ? " (por CAS)" : " (por nome)"}
+              {hitsBase.length === 1
+                ? "Encontrado na base de referência Chabra"
+                : `${hitsBase.length} componentes encontrados na base de referência Chabra`}
             </p>
-            <p className="mt-0.5 text-xs">
-              <strong>{dadosBase.agente.agente}</strong>
-              {" — "}
-              {resumirAgente(dadosBase.agente)}
-            </p>
+            <ul className="mt-1 space-y-0.5 text-xs">
+              {hitsBase.map((h, i) => (
+                <li key={i}>
+                  <strong>{h.agente.agente}</strong>
+                  <span className="text-emerald-700">
+                    {" "}
+                    ({h.fonte === "cas" ? "por CAS" : "por nome"})
+                  </span>
+                  {" — "}
+                  {resumirAgente(h.agente)}
+                </li>
+              ))}
+            </ul>
             <p className="mt-1 text-[11px] text-emerald-700">
-              Os campos regulatórios (insalubridade, grau, eSocial, Decreto,
-              IARC) virão da nossa base oficial — a IA só vai preencher EPIs,
-              medidas de controle, emergência e fundamentação técnica.
+              {hitsBase.length === 1
+                ? "Os campos regulatórios (insalubridade, grau, eSocial, Decreto, IARC) virão da nossa base oficial."
+                : "Os campos regulatórios virão da base oficial — em mistura, o pior caso é o critério de enquadramento, e os códigos eSocial/Decreto/GFIP são listados por componente."}{" "}
+              A IA só preenche EPIs, medidas, emergência e fundamentação técnica.
             </p>
           </div>
         </div>

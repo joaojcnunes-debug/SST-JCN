@@ -102,6 +102,136 @@ export function totalEntradasBase(base: Base = BASE_REFERENCIA): number {
   return base.filter((a) => !a.is_alias).length;
 }
 
+// =====================================================
+// Mistura — múltiplos componentes
+// =====================================================
+
+const GRAU_RANK: Record<string, number> = {
+  Máximo: 3,
+  Médio: 2,
+  Mínimo: 1,
+  "Asfixiante simples": 0,
+};
+
+const IARC_RANK: Record<string, number> = {
+  "Grupo 1": 5,
+  "Grupo 2A": 4,
+  "Grupo 2B": 3,
+  "Grupo 3": 2,
+  "Grupo 4": 1,
+};
+
+export interface ComponenteHit {
+  /** Componente original com nome+CAS submetido pelo usuário. */
+  entrada: { nome?: string | null; cas?: string | null };
+  agente: AgenteReferencia;
+  fonte: "cas" | "nome";
+}
+
+/**
+ * Procura cada componente da lista na base — devolve só os que casaram.
+ * Componentes que não estão catalogados são ignorados (silenciosamente).
+ */
+export function buscarComponentes(
+  componentes: Array<{ nome?: string | null; cas?: string | null }>,
+  base: Base = BASE_REFERENCIA
+): ComponenteHit[] {
+  const hits: ComponenteHit[] = [];
+  const vistos = new Set<string>();
+  for (const c of componentes) {
+    const hit = buscarAgente({ cas: c.cas, nome: c.nome }, base);
+    if (!hit) continue;
+    // Dedup pela identidade do agente (CAS + agente)
+    const key = `${hit.agente.cas ?? ""}|${hit.agente.agente}`;
+    if (vistos.has(key)) continue;
+    vistos.add(key);
+    hits.push({ entrada: c, agente: hit.agente, fonte: hit.fonte });
+  }
+  return hits;
+}
+
+/**
+ * Dado um conjunto de agentes catalogados (componentes de uma mistura),
+ * calcula o "agente representativo" que reúne o pior caso de cada campo
+ * regulatório. Esse é o objeto enviado à IA como ground-truth quando há
+ * múltiplos componentes catalogados.
+ *
+ * Regras:
+ *   - grau_nr15: pior grau entre os componentes (Máximo > Médio > Mínimo)
+ *   - anexo: do componente que define o pior grau
+ *   - cancerigeno_13a / inflamavel / pele / teto: any() — TRUE se ALGUM for
+ *   - iarc: pior grupo (1 > 2A > 2B > 3 > 4)
+ *   - esocial_tab24 / decreto_3048 / cod_gfip / tlv_acgih: lista todos
+ *     prefixados com nome do componente (`Tolueno: 09.01.001; Xileno: 09.01.022`)
+ *   - lt_mg_m3 / lt_ppm: do componente que define o pior grau (o mais crítico)
+ *   - observacoes: concatena tudo
+ */
+export function piorCasoMistura(
+  hits: ComponenteHit[]
+): AgenteReferencia | null {
+  if (hits.length === 0) return null;
+  if (hits.length === 1) return hits[0].agente;
+
+  // Componente "pior" pelo grau de insalubridade
+  const piorPorGrau = hits.reduce((acc, h) => {
+    const rankAcc = acc?.agente.grau_nr15
+      ? GRAU_RANK[acc.agente.grau_nr15] ?? -1
+      : -1;
+    const rankCur = h.agente.grau_nr15
+      ? GRAU_RANK[h.agente.grau_nr15] ?? -1
+      : -1;
+    return rankCur > rankAcc ? h : acc;
+  }, hits[0]);
+
+  // Pior IARC entre os componentes
+  let piorIarc: AgenteReferencia["iarc"] | null = null;
+  for (const h of hits) {
+    if (!h.agente.iarc) continue;
+    const rA = piorIarc ? IARC_RANK[piorIarc] ?? -1 : -1;
+    const rC = IARC_RANK[h.agente.iarc] ?? -1;
+    if (rC > rA) piorIarc = h.agente.iarc;
+  }
+
+  const fmtPorComponente = (
+    campo: keyof Pick<
+      AgenteReferencia,
+      "esocial_tab24" | "decreto_3048" | "cod_gfip" | "tlv_acgih"
+    >
+  ): string | null => {
+    const vals = hits
+      .map((h) => {
+        const v = h.agente[campo];
+        return v ? `${h.agente.agente}: ${v}` : null;
+      })
+      .filter((s): s is string => !!s);
+    if (vals.length === 0) return null;
+    return vals.join("; ");
+  };
+
+  return {
+    agente: hits.map((h) => h.agente.agente).join(" + "),
+    cas: piorPorGrau.agente.cas,
+    lt_mg_m3: piorPorGrau.agente.lt_mg_m3,
+    lt_ppm: piorPorGrau.agente.lt_ppm,
+    grau_nr15: piorPorGrau.agente.grau_nr15,
+    teto: hits.some((h) => h.agente.teto === true),
+    pele: hits.some((h) => h.agente.pele === true),
+    esocial_tab24: fmtPorComponente("esocial_tab24"),
+    iarc: piorIarc,
+    inflamavel: hits.some((h) => h.agente.inflamavel === true),
+    cancerigeno_13a: hits.some((h) => h.agente.cancerigeno_13a === true),
+    tlv_acgih: fmtPorComponente("tlv_acgih"),
+    decreto_3048: fmtPorComponente("decreto_3048"),
+    cod_gfip: fmtPorComponente("cod_gfip"),
+    anexo: piorPorGrau.agente.anexo,
+    observacoes: hits
+      .map((h) => h.agente.observacoes)
+      .filter((o): o is string => !!o)
+      .join(" | ") || null,
+    is_alias: false,
+  };
+}
+
 /**
  * Converte um agente da base num resumo legível pra exibir no UI.
  * Ex: "Insalubridade: Grau Máximo (Anexo 11) · eSocial 09.01.001 · IARC Grupo 2B"
