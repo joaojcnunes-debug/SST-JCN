@@ -72,6 +72,58 @@ function primeiroMatch(
   return undefined;
 }
 
+// Rótulos de campos de FISPQ — usados pra strippar quando pdfjs junta
+// label+valor numa linha só (layout em colunas/tabela).
+const LABEL_PRODUTO_PATTERNS = [
+  /^Nome\s+(?:do\s+|comercial\s+do\s+)?produto\s*[:\-]?\s*/i,
+  /^Identificador\s+do\s+produto\s*[:\-]?\s*/i,
+  /^Identificação\s+do\s+produto\s*[:\-]?\s*/i,
+  /^Designação\s+comercial\s*[:\-]?\s*/i,
+  /^Nome\s+comercial\s*[:\-]?\s*/i,
+  /^Nome\s+da\s+(?:substância|mistura)\s*[:\-]?\s*/i,
+  /^(?:Product|Trade)\s+name\s*[:\-]?\s*/i,
+];
+
+const LABEL_COMPONENTE_PATTERNS = [
+  /^Nome\s+(?:químico|da\s+substância|do\s+ingrediente|do\s+componente)\s*[:\-]?\s*/i,
+  /^Identificação\s+química\s*[:\-]?\s*/i,
+  /^(?:Chemical|Component|Ingredient)\s+name\s*[:\-]?\s*/i,
+  /^Número\s+(?:CAS|CE|de\s+registo)\s*[:\-]?\s*/i,
+  /^(?:CAS|CE|EC|REACH)\s*(?:n[°º.]?|number|no\.?)?\s*[:\-]?\s*/i,
+  /^Concentração\s*(?:\(%\))?\s*[:\-]?\s*/i,
+  /^Concentration\s*(?:\(%\))?\s*[:\-]?\s*/i,
+];
+
+/** Remove rótulo de prefixo se a string começa com um. */
+function stripLabel(s: string | undefined, patterns: RegExp[]): string | undefined {
+  if (!s) return s;
+  let cleaned = s.trim();
+  // Aplica em loop pq pode ter múltiplos rótulos concatenados
+  // (ex.: "Nome do produto Identificador do produto MC-2BK106")
+  for (let i = 0; i < 3; i++) {
+    let changed = false;
+    for (const pat of patterns) {
+      const next = cleaned.replace(pat, "");
+      if (next !== cleaned) {
+        cleaned = next.trim();
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  return cleaned || undefined;
+}
+
+/** Verdadeiro se a string é só palavra(s) de cabeçalho/rótulo (sem dado real). */
+function ehSoRotulo(s: string | undefined): boolean {
+  if (!s) return true;
+  const trimmed = s.trim();
+  if (!trimmed) return true;
+  // Rótulos puros: "Número", "Nome", "CAS", "Concentração" etc.
+  const rotuloPuro = /^(?:número|nome|cas|ce|ec|reach|concentração|concentration|component|ingredient|chemical|substance|substância|mistura|produto|product|trade|identificação|identificador|designação)(?:\s+(?:químico|comercial|cas|ce|do\s+produto|da\s+substância|da\s+mistura|name|number))?\s*[:\-#]?\s*$/i;
+  return rotuloPuro.test(trimmed);
+}
+
 /**
  * Tenta extrair componentes vinculados (nome + CAS + concentração) da
  * seção 3 da FISPQ.
@@ -100,6 +152,8 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
   const ehCabecalho = (s: string): boolean => {
     if (s.length < 2 || s.length > 100) return true;
     if (!/[a-zA-ZÀ-ÿ]/.test(s)) return true; // só números/símbolos
+    // Rótulo puro (Número, Nome, CAS, Concentração...)
+    if (ehSoRotulo(s)) return true;
     // Cabeçalhos comuns da seção 3
     if (/^(seção|section|capítulo)\b/i.test(s)) return true;
     if (/^\d+\.\d/.test(s)) return true; // "3.1.", "3.2."
@@ -128,12 +182,14 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
     // 1) Primeiro tenta extrair do início da MESMA linha (FORMATO A)
     let nome: string | undefined;
     const idxCas = linha.indexOf(casMatch[0]);
-    const prefixo = linha
+    let prefixo = linha
       .slice(0, idxCas)
       .replace(/^[\d.*•\-\s]+/, "")
       .replace(/(número\s+cas|cas\s*n[°º]?|cas\s*[:#])\s*$/i, "")
       .replace(/[:#\-]\s*$/, "")
       .trim();
+    // Strippa rótulos no INÍCIO do prefixo (ex.: "Nome químico 2-Butanone" → "2-Butanone")
+    prefixo = stripLabel(prefixo, LABEL_COMPONENTE_PATTERNS) ?? "";
     if (prefixo && /[a-zA-ZÀ-ÿ]/.test(prefixo) && prefixo.length <= 80 && !ehCabecalho(prefixo)) {
       nome = prefixo;
     }
@@ -144,7 +200,10 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
         const candidato = linhas[i - back];
         if (!candidato) continue;
         if (ehCabecalho(candidato)) continue;
-        nome = candidato;
+        // Tenta strippar rótulos da linha candidata
+        const candidatoLimpo = stripLabel(candidato, LABEL_COMPONENTE_PATTERNS);
+        if (!candidatoLimpo || ehCabecalho(candidatoLimpo)) continue;
+        nome = candidatoLimpo;
         break;
       }
     }
@@ -179,10 +238,17 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
         if (!concentracao) concentracao = concNoNome[0].replace(/\s+/g, "");
         nome = nome.replace(concNoNome[0], "").trim();
       }
+      // Strippa rótulos novamente (defesa em profundidade)
+      nome = stripLabel(nome, LABEL_COMPONENTE_PATTERNS);
       // Limpa lixo final (vírgulas, dois-pontos, hyphens órfãos)
-      nome = nome.replace(/[,;:\-–\s]+$/, "").trim();
-      if (!nome || !/[a-zA-ZÀ-ÿ]/.test(nome)) nome = undefined;
-      else if (nome.length > 120) nome = nome.slice(0, 120) + "...";
+      if (nome) {
+        nome = nome.replace(/[,;:\-–\s]+$/, "").trim();
+        if (!nome || !/[a-zA-ZÀ-ÿ]/.test(nome) || ehSoRotulo(nome)) {
+          nome = undefined;
+        } else if (nome.length > 120) {
+          nome = nome.slice(0, 120) + "...";
+        }
+      }
     }
 
     componentes.push({ cas, nome, concentracao });
@@ -293,14 +359,33 @@ export function parseFispq(texto: string): FispqExtracted {
     const linhas1 = s1.split(/\n/).map((l) => l.trim());
     for (const linha of linhas1) {
       if (!linha) continue;
-      if (linha.length < 3 || linha.length > 100) continue;
+      if (linha.length < 3 || linha.length > 150) continue;
       if (!/[a-zA-ZÀ-ÿ]/.test(linha)) continue;
-      // Pula linhas que parecem ser labels/cabeçalho
-      if (/^(seção|section|\d+\.|identific|nome|product|trade)\b/i.test(linha)) continue;
       // Pula linhas com dados óbvios de não-nome
       if (/(cnpj|telefone|endereço|address|phone|emergência|email|@)/i.test(linha)) continue;
+      // Se a linha começa com rótulo "Nome do produto X" (sem `:` ou `-`),
+      // tira o rótulo e usa o resto. Acontece com PDFs em colunas onde
+      // pdfjs junta rótulo+valor na mesma linha sem separador.
+      const stripped = stripLabel(linha, LABEL_PRODUTO_PATTERNS);
+      if (stripped && stripped !== linha && stripped.length >= 3 && !ehSoRotulo(stripped)) {
+        result.nome_produto = stripped;
+        break;
+      }
+      // Pula linhas que parecem ser cabeçalho de seção
+      if (/^(seção|section|\d+\.|identific|nome|product|trade)\b/i.test(linha)) continue;
       result.nome_produto = linha;
       break;
+    }
+  }
+
+  // Defesa em profundidade: se chegou um valor com rótulo grudado (ex.:
+  // "Nome do produto MC-2BK106"), strippa o rótulo aqui também.
+  if (result.nome_produto) {
+    const limpo = stripLabel(result.nome_produto, LABEL_PRODUTO_PATTERNS);
+    if (limpo && !ehSoRotulo(limpo)) {
+      result.nome_produto = limpo;
+    } else if (!limpo || ehSoRotulo(limpo)) {
+      result.nome_produto = undefined;
     }
   }
 
