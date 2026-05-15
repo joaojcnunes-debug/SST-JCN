@@ -44,7 +44,9 @@ const MODEL = "llama-3.1-8b-instant";
 // 1.500-2.000 chars (~400-600 tokens). MUITO mais leve que mandar o PDF
 // inteiro pra IA.
 const PDF_MAX_CHARS = 8000;
-const MAX_OUTPUT_TOKENS = 800;
+// 1000 tokens cabe folgadamente no TPM 6.000 do 8B free e dá espaço pro
+// resumo_tecnico (parecer formal de 8-14 frases) sem cortar os outros campos.
+const MAX_OUTPUT_TOKENS = 1000;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -173,7 +175,7 @@ quando não se aplicar).
   "metodologia": "Método NIOSH/OSHA/Fundacentro/NHO específico | Inconclusivo",
   "como_medir": "Procedimento resumido e equipamento necessário | Inconclusivo",
   "limite_exposicao": "Valor com unidade e fonte (ex: '50 ppm - ACGIH TLV-TWA') | Inconclusivo",
-  "resumo_tecnico": "3-5 frases que resumem todo o parecer para inclusão no PPP/LTCAT"
+  "resumo_tecnico": "PARECER TÉCNICO formal de 1-2 parágrafos (8-14 frases) próprio pra inclusão em PPP/LTCAT/PGR. Use linguagem técnica formal, sem floreio. Estrutura obrigatória: (1) identifique o agente/mistura citando produto, componentes catalogados e CAS de cada um; (2) enquadramento NR-15 com grau, anexo aplicável e limite de tolerância; (3) enquadramento NR-16 se inflamável/explosivo; (4) enquadramento previdenciário (aposentadoria especial, código Decreto 3.048 Anexo IV, código eSocial S-2240 Tab.24); (5) carcinogenicidade conforme IARC e NR-15 Anexo 13-A se aplicável; (6) conclusão objetiva sobre necessidade de monitoramento, medidas de controle e EPI prioritários. Em mistura, CITE individualmente cada componente catalogado. Não invente códigos — se incerto, escreva 'consultar tabela oficial'."
 }
 
 Seja técnico, preciso e CONSERVADOR. Quando não souber, "Inconclusivo".`;

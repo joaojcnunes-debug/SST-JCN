@@ -262,9 +262,9 @@ export default function RelatorioEstruturado({
         <CardLista titulo="Procedimento de medição" texto={c.como_medir} cor="violet" />
       </Secao>
 
-      {/* 11. RESUMO TÉCNICO */}
-      <Secao titulo="11. Resumo Técnico para PPP/LTCAT">
-        <Bloco texto={c.resumo_tecnico} destacar />
+      {/* 11. PARECER TÉCNICO FORMAL */}
+      <Secao titulo="11. Parecer Técnico (PPP / LTCAT / PGR)">
+        <Parecer texto={c.resumo_tecnico} />
       </Secao>
 
       {/* 12. QUADRO DECISÓRIO */}
@@ -365,6 +365,43 @@ function Fundamentacao({ texto }: { texto?: string }) {
         Fundamentação
       </p>
       <p className="mt-1 leading-relaxed break-words">{humanize(texto)}</p>
+    </div>
+  );
+}
+
+/**
+ * Renderiza o Parecer Técnico (campo resumo_tecnico) com formatação formal:
+ * separa parágrafos por linha em branco, mantém quebras lógicas, e exibe
+ * em bloco com borda lateral verde (estilo documento jurídico/técnico).
+ */
+function Parecer({ texto }: { texto?: string }) {
+  if (!texto || !texto.trim()) {
+    return (
+      <p className="text-sm italic text-gray-400">
+        Parecer técnico não disponível para esta análise.
+      </p>
+    );
+  }
+  const conteudo = humanize(texto.trim());
+  // Quebra em parágrafos: \n\n ou ponto-final seguido de dois espaços e quebra.
+  // Como a IA tende a devolver tudo em uma linha, fazemos quebra leve por ". "
+  // a cada ~4-5 frases pra melhorar legibilidade.
+  const paragrafos = conteudo
+    .split(/\n\s*\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  return (
+    <div className="rounded-md border-l-4 border-verde-primary bg-verde-light/30 p-4 text-sm leading-relaxed text-gray-900 print:bg-white">
+      {paragrafos.length > 1 ? (
+        paragrafos.map((p, i) => (
+          <p key={i} className={i > 0 ? "mt-3" : ""}>
+            {p}
+          </p>
+        ))
+      ) : (
+        <p className="whitespace-pre-wrap break-words">{conteudo}</p>
+      )}
     </div>
   );
 }
