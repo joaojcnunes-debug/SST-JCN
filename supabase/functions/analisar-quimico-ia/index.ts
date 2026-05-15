@@ -79,58 +79,55 @@ const SYSTEM_PROMPT = `Você é um Engenheiro de Segurança do Trabalho e Higien
 
 === REGRA ANTI-ALUCINAÇÃO CRÍTICA ===
 Você NÃO tem acesso a busca web. NUNCA invente códigos numéricos.
-Se não tiver ABSOLUTA certeza de um código:
-  - eSocial Tab.24: responder "CONSULTAR_TABELA_OFICIAL"
-  - Decreto 3.048 Anexo IV: responder "CONSULTAR_DECRETO_VIGENTE"
-  - Código GFIP: responder "CONSULTAR_TABELA_GFIP"
-  - Classificação IARC: só citar se tiver certeza (substâncias muito conhecidas)
-  - Limites NR-15 numéricos: só citar se for da NR-15 confirmada
-É MUITO MELHOR responder "INCONCLUSIVO" do que inventar. Códigos inventados
+Se não tiver ABSOLUTA certeza:
+  - eSocial Tab.24 → "Consultar tabela oficial"
+  - Decreto 3.048 Anexo IV → "Consultar decreto vigente"
+  - GFIP → "Consultar tabela GFIP"
+  - Classificação IARC → só citar se tiver certeza
+  - Limites NR-15 numéricos → só citar se for da NR-15 confirmada
+MELHOR responder "Inconclusivo" do que inventar. Códigos inventados
 geram risco previdenciário/trabalhista real.
 
 === REGRAS TÉCNICAS ===
-- TLV/REL/PEL = apenas referência técnica de higiene ocupacional.
-- NR-15 Anexo 13 NÃO possui limites numéricos. Avaliação é QUALITATIVA.
+- TLV/REL/PEL = apenas referência técnica.
+- NR-15 Anexo 13 NÃO possui limites numéricos (avaliação qualitativa).
 - Não confundir insalubridade com aposentadoria especial.
 - GHS não implica automaticamente NR-16.
-- Se a substância não constar na NR-15, declarar e avaliar por analogia.
-- Considerar FORMA FÍSICA do agente e CONDIÇÕES DE EXPOSIÇÃO.
-- Cancerogenicidade: IARC (1, 2A, 2B), ACGIH (A1-A5), NR-15 Anexo 13-A —
-  só citar classificação se tiver certeza.
+- Substância fora da NR-15 → avaliar por analogia.
+- Considerar FORMA FÍSICA e CONDIÇÕES DE EXPOSIÇÃO.
+- Carcinogenicidade: IARC (1, 2A, 2B), ACGIH (A1-A5), NR-15 Anexo 13-A.
 
-=== FORMATO OBRIGATÓRIO DA RESPOSTA ===
-Responda APENAS o bloco abaixo. NADA antes, NADA depois. Sem markdown,
-sem explicações fora do bloco. Cada campo em UMA linha. Use o texto exato
-dos rótulos. O frontend vai montar o relatório técnico a partir desses
-campos — então CADA CAMPO deve ser auto-explicativo e detalhado o
-suficiente, em frase completa (não use bullets dentro de campos).
+=== FORMATO DE RESPOSTA ===
+Responda APENAS um objeto JSON válido com EXATAMENTE estas chaves
+(em minúsculas e snake_case). Sem markdown, sem texto fora do JSON.
+Cada valor é uma string em frase completa (não use null, use a string "N/A"
+quando não se aplicar).
 
----CONCLUSAO_RAPIDA---
-INSALUBRIDADE_NR15: [SIM/NÃO/INCONCLUSIVO]
-INSALUBRIDADE_GRAU: [Mínimo/Médio/Máximo/N/A]
-INSALUBRIDADE_ANEXO: [Ex: Anexo 13 - Agentes Químicos / N/A]
-INSALUBRIDADE_FUNDAMENTACAO: [2-4 frases técnicas justificando o enquadramento ou a não-aplicabilidade]
-APOSENTADORIA_ESPECIAL: [SIM/NÃO/INCONCLUSIVO]
-APOSENTADORIA_TEMPO: [15/20/25 anos ou N/A]
-DECRETO_3048: [SIM/NÃO/INCONCLUSIVO] - [CONSULTAR_DECRETO_VIGENTE ou breve descrição]
-CODIGO_GFIP: [CONSULTAR_TABELA_GFIP ou N/A]
-ESOCIAL_TAB24: [SIM/NÃO/INCONCLUSIVO] - [CONSULTAR_TABELA_OFICIAL ou breve descrição]
-OLEO_MINERAL: [N/A ou Refinado/Super-refinado/Não refinado - breve justificativa]
-CARCINOGENICO: [SIM/NÃO/INCONCLUSIVO] - [Classificação IARC/ACGIH se houver certeza]
-PERICULOSIDADE_NR16: [SIM/NÃO/INCONCLUSIVO] - [breve justificativa: inflamável, explosivo, etc.]
-EPI_NECESSARIOS: [Lista separada por ponto-e-vírgula. Sem nº de CA se não tiver certeza.]
-EPC_NECESSARIOS: [Lista separada por ponto-e-vírgula, ou N/A]
-MEDIDAS_CONTROLE: [Medidas administrativas e de engenharia, separadas por ponto-e-vírgula]
-EMERGENCIA_ACIDENTE: [Procedimentos para derramamento/vazamento + primeiros socorros]
-MEDICAO_NECESSARIA: [SIM/NÃO] - [breve justificativa]
-METODOLOGIA: [Método NIOSH/OSHA/Fundacentro/NHO específico, ou INCONCLUSIVO]
-COMO_MEDIR: [Procedimento resumido e equipamento necessário, ou INCONCLUSIVO]
-LIMITE_EXPOSICAO: [Valor ACGIH/NIOSH/OSHA com unidade e fonte, ou INCONCLUSIVO]
-RESUMO_TECNICO: [3-5 frases que resumem todo o parecer técnico para inclusão no PPP/LTCAT]
----FIM_CONCLUSAO---
+{
+  "insalubridade_nr15": "SIM | NÃO | Inconclusivo",
+  "insalubridade_grau": "Mínimo | Médio | Máximo | N/A",
+  "insalubridade_anexo": "Ex: Anexo 13 - Agentes Químicos | N/A",
+  "insalubridade_fundamentacao": "2-4 frases técnicas justificando o enquadramento ou a não-aplicabilidade",
+  "aposentadoria_especial": "SIM | NÃO | Inconclusivo",
+  "aposentadoria_tempo": "15 anos | 20 anos | 25 anos | N/A",
+  "decreto_3048": "SIM/NÃO/Inconclusivo - breve descrição (use 'Consultar decreto vigente' se incerto)",
+  "codigo_gfip": "código numérico SOMENTE se 100% certo, senão 'Consultar tabela GFIP' ou 'N/A'",
+  "esocial_tab24": "SIM/NÃO/Inconclusivo - breve descrição (use 'Consultar tabela oficial' se incerto)",
+  "oleo_mineral": "N/A | Refinado | Super-refinado | Não refinado - breve justificativa",
+  "carcinogenico": "SIM/NÃO/Inconclusivo - classificação IARC/ACGIH se houver certeza",
+  "periculosidade_nr16": "SIM/NÃO/Inconclusivo - breve justificativa (inflamável, explosivo, etc.)",
+  "epi_necessarios": "Lista separada por ponto-e-vírgula. Sem nº de CA se não tiver certeza.",
+  "epc_necessarios": "Lista separada por ponto-e-vírgula | N/A",
+  "medidas_controle": "Medidas administrativas e de engenharia, separadas por ponto-e-vírgula",
+  "emergencia_acidente": "Procedimentos de derramamento/vazamento + primeiros socorros",
+  "medicao_necessaria": "SIM/NÃO - breve justificativa",
+  "metodologia": "Método NIOSH/OSHA/Fundacentro/NHO específico | Inconclusivo",
+  "como_medir": "Procedimento resumido e equipamento necessário | Inconclusivo",
+  "limite_exposicao": "Valor com unidade e fonte (ex: '50 ppm - ACGIH TLV-TWA') | Inconclusivo",
+  "resumo_tecnico": "3-5 frases que resumem todo o parecer para inclusão no PPP/LTCAT"
+}
 
-Seja técnico, preciso e CONSERVADOR. Quando não souber, INCONCLUSIVO em
-vez de inventar.`;
+Seja técnico, preciso e CONSERVADOR. Quando não souber, "Inconclusivo".`;
 
 function buildUserPrompt(ctx: ContextoIA): string {
   const linhas: string[] = ["Faça a análise de agente químico do material abaixo:", ""];
@@ -184,7 +181,7 @@ function buildUserPrompt(ctx: ContextoIA): string {
 
   linhas.push("");
   linhas.push(
-    "Responda APENAS o bloco CONCLUSAO_RAPIDA (nada antes, nada depois). Seja CONSERVADOR — códigos regulatórios incertos devem ser CONSULTAR_TABELA_OFICIAL/INCONCLUSIVO."
+    "Responda APENAS um objeto JSON válido com as chaves especificadas. Sem markdown, sem texto fora do JSON. Seja CONSERVADOR — códigos regulatórios incertos devem ser 'Consultar tabela oficial' ou 'Inconclusivo'."
   );
   return linhas.join("\n");
 }
@@ -213,36 +210,55 @@ interface ConclusaoRapidaParsed {
   resumo_tecnico?: string;
 }
 
+/**
+ * Parseia a resposta da IA (que agora vem em JSON puro graças ao
+ * response_format: { type: 'json_object' }). Tolerante a chaves UPPERCASE
+ * ou snake_case minúsculo — caso algum modelo devolva uma variação.
+ */
 function parseConclusaoRapida(text: string): ConclusaoRapidaParsed | null {
-  const m = text.match(/---CONCLUSAO_RAPIDA---([\s\S]*?)---FIM_CONCLUSAO---/);
-  if (!m) return null;
-  const block = m[1];
-  const get = (key: string): string | undefined => {
-    const r = block.match(new RegExp(`${key}:\\s*(.+)`));
-    return r ? r[1].trim() : undefined;
+  let raw: Record<string, unknown>;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    // Fallback: tenta extrair um bloco JSON dentro de markdown ```json...```
+    const m = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (!m) return null;
+    try {
+      raw = JSON.parse(m[1].trim());
+    } catch {
+      return null;
+    }
+  }
+
+  const get = (k: string): string | undefined => {
+    const v = raw[k] ?? raw[k.toUpperCase()] ?? raw[k.toLowerCase()];
+    if (v == null) return undefined;
+    const s = String(v).trim();
+    return s.length > 0 ? s : undefined;
   };
+
   return {
-    insalubridade_nr15: get("INSALUBRIDADE_NR15"),
-    insalubridade_grau: get("INSALUBRIDADE_GRAU"),
-    insalubridade_anexo: get("INSALUBRIDADE_ANEXO"),
-    insalubridade_fundamentacao: get("INSALUBRIDADE_FUNDAMENTACAO"),
-    aposentadoria_especial: get("APOSENTADORIA_ESPECIAL"),
-    aposentadoria_tempo: get("APOSENTADORIA_TEMPO"),
-    decreto_3048: get("DECRETO_3048"),
-    codigo_gfip: get("CODIGO_GFIP"),
-    esocial_tab24: get("ESOCIAL_TAB24"),
-    oleo_mineral: get("OLEO_MINERAL"),
-    carcinogenico: get("CARCINOGENICO"),
-    periculosidade_nr16: get("PERICULOSIDADE_NR16"),
-    epi_necessarios: get("EPI_NECESSARIOS"),
-    epc_necessarios: get("EPC_NECESSARIOS"),
-    medidas_controle: get("MEDIDAS_CONTROLE"),
-    emergencia_acidente: get("EMERGENCIA_ACIDENTE"),
-    medicao_necessaria: get("MEDICAO_NECESSARIA"),
-    metodologia: get("METODOLOGIA"),
-    como_medir: get("COMO_MEDIR"),
-    limite_exposicao: get("LIMITE_EXPOSICAO"),
-    resumo_tecnico: get("RESUMO_TECNICO"),
+    insalubridade_nr15: get("insalubridade_nr15"),
+    insalubridade_grau: get("insalubridade_grau"),
+    insalubridade_anexo: get("insalubridade_anexo"),
+    insalubridade_fundamentacao: get("insalubridade_fundamentacao"),
+    aposentadoria_especial: get("aposentadoria_especial"),
+    aposentadoria_tempo: get("aposentadoria_tempo"),
+    decreto_3048: get("decreto_3048"),
+    codigo_gfip: get("codigo_gfip"),
+    esocial_tab24: get("esocial_tab24"),
+    oleo_mineral: get("oleo_mineral"),
+    carcinogenico: get("carcinogenico"),
+    periculosidade_nr16: get("periculosidade_nr16"),
+    epi_necessarios: get("epi_necessarios"),
+    epc_necessarios: get("epc_necessarios"),
+    medidas_controle: get("medidas_controle"),
+    emergencia_acidente: get("emergencia_acidente"),
+    medicao_necessaria: get("medicao_necessaria"),
+    metodologia: get("metodologia"),
+    como_medir: get("como_medir"),
+    limite_exposicao: get("limite_exposicao"),
+    resumo_tecnico: get("resumo_tecnico"),
   };
 }
 
@@ -294,6 +310,10 @@ Deno.serve(async (req: Request) => {
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: buildUserPrompt(body) },
         ],
+        // JSON mode: força o modelo a devolver JSON válido. Indispensável
+        // pro 8B-instant — sem isso, ele invariavelmente quebra o formato
+        // estruturado. Mesmo padrão usado nas outras 2 funções de IA.
+        response_format: { type: "json_object" },
         // Baixa temperatura pra reduzir invenção de códigos
         temperature: 0.2,
         max_tokens: MAX_OUTPUT_TOKENS,
