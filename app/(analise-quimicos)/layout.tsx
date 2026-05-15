@@ -1,23 +1,15 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { FlaskConical, Plus, History, Database } from "lucide-react";
-import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
+import SidebarShell, {
+  type NavSection,
+  type NavItem,
+} from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRequireModule } from "@/lib/hooks/useRequireModule";
-
-const sections: NavSection[] = [
-  {
-    label: "Análise de Químicos",
-    items: [
-      { href: "/analise-quimicos", label: "Visão geral", icon: FlaskConical },
-      { href: "/analise-quimicos/nova", label: "Nova análise", icon: Plus },
-      { href: "/analise-quimicos/historico", label: "Histórico", icon: History },
-      { href: "/analise-quimicos/base", label: "Base de referência", icon: Database },
-    ],
-  },
-];
+import { useUserStore } from "@/lib/store";
 
 export default function AnaliseQuimicosLayout({
   children,
@@ -26,6 +18,24 @@ export default function AnaliseQuimicosLayout({
 }) {
   useAuth();
   useRequireModule("analise_quimicos");
+  const user = useUserStore((s) => s.user);
+
+  const sections = useMemo<NavSection[]>(() => {
+    const items: NavItem[] = [
+      { href: "/analise-quimicos", label: "Visão geral", icon: FlaskConical },
+      { href: "/analise-quimicos/nova", label: "Nova análise", icon: Plus },
+      { href: "/analise-quimicos/historico", label: "Histórico", icon: History },
+    ];
+    // Base de referência: só Admin vê e edita.
+    if (user?.perfil === "Admin") {
+      items.push({
+        href: "/analise-quimicos/base",
+        label: "Base de referência",
+        icon: Database,
+      });
+    }
+    return [{ label: "Análise de Químicos", items }];
+  }, [user?.perfil]);
 
   return (
     <div className="min-h-screen">

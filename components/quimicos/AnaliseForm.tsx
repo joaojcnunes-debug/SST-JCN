@@ -19,6 +19,7 @@ import PdfDropzone, { type PdfArquivo } from "./PdfDropzone";
 import FispqReview from "./FispqReview";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useGerarAnaliseQuimico } from "@/lib/hooks/useAnalisesQuimicos";
+import { useBaseReferenciaQuimicosMerged } from "@/lib/hooks/useBaseReferenciaQuimicos";
 import { montarContextoFispq, type FispqExtracted } from "@/lib/fispq/parser";
 import { buscarAgente, resumirAgente } from "@/lib/quimicos/lookup";
 import type {
@@ -75,6 +76,7 @@ export default function AnaliseForm() {
   const [showCondicoes, setShowCondicoes] = useState(false);
 
   const gerar = useGerarAnaliseQuimico();
+  const baseRef = useBaseReferenciaQuimicosMerged();
 
   const empresaSel = empresas.find((e) => e.id_empresa === idEmpresa) ?? null;
 
@@ -84,20 +86,26 @@ export default function AnaliseForm() {
   // "ground truth" (não pode contradizer).
   const dadosBase = useMemo(() => {
     if (modo === "PDF") {
-      return buscarAgente({
-        cas: fispqDados?.numero_cas,
-        nome: fispqDados?.nome_quimico || fispqDados?.nome_produto,
-      });
+      return buscarAgente(
+        {
+          cas: fispqDados?.numero_cas,
+          nome: fispqDados?.nome_quimico || fispqDados?.nome_produto,
+        },
+        baseRef
+      );
     }
     // Modo Manual: tenta cada componente (1 ou mais), retorna o primeiro
     // que casar na base. Prioridade pelo CAS, fallback no nome.
     for (const c of componentes) {
-      const hit = buscarAgente({ cas: c.numero_cas, nome: c.nome_quimico });
+      const hit = buscarAgente(
+        { cas: c.numero_cas, nome: c.nome_quimico },
+        baseRef
+      );
       if (hit) return hit;
     }
     // Fallback: nome do produto inteiro
-    return buscarAgente({ cas: null, nome: dados.nome_produto });
-  }, [modo, fispqDados, componentes, dados.nome_produto]);
+    return buscarAgente({ cas: null, nome: dados.nome_produto }, baseRef);
+  }, [modo, fispqDados, componentes, dados.nome_produto, baseRef]);
 
   // Quando upload do PDF acontece, pre-popula os dados FispqReview
   function handlePdfChange(novo: PdfArquivo | null) {
