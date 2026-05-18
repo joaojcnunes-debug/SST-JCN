@@ -40,7 +40,7 @@ import {
   useExcluirItemConformidadeExtra,
 } from "@/lib/hooks/useRelatoriosConformidade";
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
-import { useCanEdit, useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
 import type {
   RelatorioConformidade,
   RelatorioConformidadeItem,
@@ -56,7 +56,7 @@ export default function DetalheConformidadePage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const isAdmin = useIsAdmin();
+  const canDelete = useCanDelete();
   const canEdit = useCanEdit();
   const { data, isLoading, error } = useRelatorioConformidade(id);
   const { data: empresa } = useEmpresa(data?.relatorio.id_empresa ?? null);
@@ -252,13 +252,13 @@ export default function DetalheConformidadePage({
               <ShieldCheck className="size-4" /> Finalizar
             </button>
           )}
-          {isAdmin && (
+          {canDelete && (
             <button
               type="button"
               onClick={handleExcluir}
               disabled={excluir.isPending}
               className="inline-flex items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-              title="Apagar relatório (somente Admin)"
+              title="Apagar relatório"
             >
               <Trash2 className="size-4" />
             </button>

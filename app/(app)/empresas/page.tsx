@@ -9,14 +9,15 @@ import EmpresaCard from "@/components/empresas/EmpresaCard";
 import EmpresaForm from "@/components/empresas/EmpresaForm";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { useIsAdmin, useCanEdit } from "@/lib/hooks/useUsuario";
+import { useCanCreate, useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Empresa } from "@/lib/supabase/types";
 
 export default function EmpresasPage() {
   const { data: empresas = [], isLoading, error } = useEmpresas();
   const canEdit = useCanEdit();
-  const isAdmin = useIsAdmin();
+  const canCreate = useCanCreate();
+  const canDelete = useCanDelete();
   const qc = useQueryClient();
   const [busca, setBusca] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -67,7 +68,7 @@ export default function EmpresasPage() {
             className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
           />
         </div>
-        {(isAdmin || canEdit) && (
+        {canCreate && (
           <button
             type="button"
             onClick={() => {
@@ -125,7 +126,7 @@ export default function EmpresasPage() {
                 setEditing(empresa);
                 setFormOpen(true);
               }}
-              onDelete={isAdmin ? setConfirmDel : undefined}
+              onDelete={canDelete ? setConfirmDel : undefined}
             />
           ))}
         </div>

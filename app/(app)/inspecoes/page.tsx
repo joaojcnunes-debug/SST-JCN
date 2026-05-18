@@ -14,7 +14,7 @@ import Pagination from "@/components/ui/Pagination";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
-import { useCanEdit, useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useCanCreate, useCanDelete } from "@/lib/hooks/useUsuario";
 import { usePagination } from "@/lib/hooks/usePagination";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -48,8 +48,8 @@ function InspecoesInner() {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const canEdit = useCanEdit();
-  const isAdmin = useIsAdmin();
+  const canCreate = useCanCreate();
+  const canDelete = useCanDelete();
   const qc = useQueryClient();
   const [confirmDel, setConfirmDel] = useState<Inspecao | null>(null);
 
@@ -145,7 +145,7 @@ function InspecoesInner() {
               Consolidado
             </Link>
           )}
-          {canEdit && (
+          {canCreate && (
             <Link
               href={
                 empresaId
@@ -239,7 +239,7 @@ function InspecoesInner() {
                   <InspecaoRow
                     key={i.id_inspecao}
                     insp={i}
-                    onDelete={isAdmin ? setConfirmDel : undefined}
+                    onDelete={canDelete ? setConfirmDel : undefined}
                   />
                 ))}
               </tbody>

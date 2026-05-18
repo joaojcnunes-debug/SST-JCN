@@ -5,10 +5,10 @@ import Link from "next/link";
 import { AlertTriangle, Search, ArrowLeft, Plus } from "lucide-react";
 import { useRelatoriosNaoConformidade } from "@/lib/hooks/useRelatoriosNaoConformidade";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
-import { useCanEdit } from "@/lib/hooks/useUsuario";
+import { useCanCreate } from "@/lib/hooks/useUsuario";
 
 export default function HistoricoNaoConformidadePage() {
-  const canEdit = useCanEdit();
+  const canCreate = useCanCreate();
   const { data: relatorios = [], isLoading } = useRelatoriosNaoConformidade();
   const { data: empresas = [] } = useEmpresas();
 
@@ -45,7 +45,7 @@ export default function HistoricoNaoConformidadePage() {
         >
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
-        {canEdit && (
+        {canCreate && (
           <Link
             href="/relatorio-nao-conformidade/novo"
             className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700"

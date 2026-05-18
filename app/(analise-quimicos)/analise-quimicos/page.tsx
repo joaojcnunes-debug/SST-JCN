@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { FlaskConical, Plus, History, AlertTriangle, Sparkles } from "lucide-react";
 import { useAnalisesQuimicos } from "@/lib/hooks/useAnalisesQuimicos";
-import { useCanEdit } from "@/lib/hooks/useUsuario";
+import { useCanCreate } from "@/lib/hooks/useUsuario";
 
 export default function AnaliseQuimicosOverviewPage() {
-  const canEdit = useCanEdit();
+  const canCreate = useCanCreate();
   const { data: analises = [], isLoading } = useAnalisesQuimicos();
 
   const total = analises.length;
@@ -44,8 +44,8 @@ export default function AnaliseQuimicosOverviewPage() {
       </div>
 
       {/* Ações principais */}
-      <div className={`grid grid-cols-1 gap-4 ${canEdit ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
-        {canEdit && (
+      <div className={`grid grid-cols-1 gap-4 ${canCreate ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
+        {canCreate && (
           <Link
             href="/analise-quimicos/nova"
             className="group flex flex-col gap-2 rounded-xl border-2 border-sky-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md"

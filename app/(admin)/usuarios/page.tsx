@@ -32,6 +32,19 @@ import { ROTULO_MODULO, TODOS_MODULOS } from "@/lib/supabase/types";
 
 const PERFIS: PerfilUsuario[] = ["Admin", "Tecnico", "Visualizador"];
 
+/**
+ * Defaults granulares por perfil (V45+). Admin sempre tudo; Técnico cria
+ * e edita mas não exclui; Visualizador read-only.
+ */
+function defaultPerm(
+  perfil: PerfilUsuario,
+  acao: "criar" | "editar" | "excluir"
+): boolean {
+  if (perfil === "Admin") return true;
+  if (perfil === "Tecnico") return acao !== "excluir";
+  return false; // Visualizador
+}
+
 function useUsuarios() {
   return useQuery({
     queryKey: ["usuarios"],
@@ -279,23 +292,54 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     ativo_sistema: true,
     empresas_vinculadas: [] as string[],
     modulos_permitidos: [...TODOS_MODULOS] as ModuloPermitido[],
+    // V45: permissões granulares — Admin contorna estes flags, mas a UI
+    // mantém eles marcados pra clareza.
+    pode_criar: true,
+    pode_editar: true,
+    pode_excluir: false,
   });
 
   useEffect(() => {
     if (open) {
+      const perfilDoUser = usuario?.perfil ?? "Tecnico";
       setForm({
         nome: usuario?.nome ?? "",
         email: usuario?.email ?? "",
         senha: "",
         cargo: usuario?.cargo ?? "",
-        perfil: usuario?.perfil ?? "Tecnico",
+        perfil: perfilDoUser,
         ativo_sistema: usuario?.ativo_sistema ?? true,
         empresas_vinculadas: usuario?.empresas_vinculadas ?? [],
         modulos_permitidos:
           usuario?.modulos_permitidos ?? [...TODOS_MODULOS],
+        // Se o usuário já existe, respeita o que está no banco.
+        // Pra criação, usa defaults por perfil.
+        pode_criar:
+          usuario?.pode_criar ?? defaultPerm(perfilDoUser, "criar"),
+        pode_editar:
+          usuario?.pode_editar ?? defaultPerm(perfilDoUser, "editar"),
+        pode_excluir:
+          usuario?.pode_excluir ?? defaultPerm(perfilDoUser, "excluir"),
       });
     }
   }, [open, usuario]);
+
+  // Quando o admin troca o perfil, reaplica os defaults granulares (só se
+  // for criação — em edição, mantém o que o admin já configurou pra não
+  // perder ajustes manuais)
+  function aplicarDefaultsPerfil(novoPerfil: PerfilUsuario) {
+    setForm((f) => ({
+      ...f,
+      perfil: novoPerfil,
+      ...(isEdit
+        ? {}
+        : {
+            pode_criar: defaultPerm(novoPerfil, "criar"),
+            pode_editar: defaultPerm(novoPerfil, "editar"),
+            pode_excluir: defaultPerm(novoPerfil, "excluir"),
+          }),
+    }));
+  }
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -346,6 +390,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             empresas_vinculadas:
               form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
             modulos_permitidos: form.modulos_permitidos,
+            pode_criar: form.pode_criar,
+            pode_editar: form.pode_editar,
+            pode_excluir: form.pode_excluir,
           } as never)
           .eq("id_usuario", usuario.id_usuario);
         if (error) throw error;
@@ -412,6 +459,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         empresas_vinculadas:
           form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
         modulos_permitidos: form.modulos_permitidos,
+        pode_criar: form.pode_criar,
+        pode_editar: form.pode_editar,
+        pode_excluir: form.pode_excluir,
       };
       const { error: errInsert } = await supabase
         .from("usuarios")
@@ -542,7 +592,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             <select
               value={form.perfil}
               onChange={(e) =>
-                setForm({ ...form, perfil: e.target.value as PerfilUsuario })
+                aplicarDefaultsPerfil(e.target.value as PerfilUsuario)
               }
               className={inputCls}
             >
@@ -554,6 +604,61 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             </select>
           </Field>
         </div>
+
+        {/* Permissões granulares (V45+). Admin tem tudo por padrão (e
+            contorna esses flags no código) — mas o checkbox aparece pra
+            clareza visual. Visualizador começa sem nada; admin pode
+            habilitar individualmente. */}
+        <Field label="Permissões">
+          <p className="mt-0.5 text-[11px] text-gray-500">
+            O perfil define defaults. Admin contorna estes flags. Visualizador
+            só pode criar/editar/excluir o que estiver marcado aqui.
+          </p>
+          <div className="mt-1 grid grid-cols-1 gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 sm:grid-cols-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.pode_criar}
+                onChange={(e) =>
+                  setForm({ ...form, pode_criar: e.target.checked })
+                }
+                disabled={form.perfil === "Admin"}
+                className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary disabled:opacity-50"
+              />
+              <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
+                Pode <strong>criar</strong>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.pode_editar}
+                onChange={(e) =>
+                  setForm({ ...form, pode_editar: e.target.checked })
+                }
+                disabled={form.perfil === "Admin"}
+                className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary disabled:opacity-50"
+              />
+              <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
+                Pode <strong>editar</strong>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.pode_excluir}
+                onChange={(e) =>
+                  setForm({ ...form, pode_excluir: e.target.checked })
+                }
+                disabled={form.perfil === "Admin"}
+                className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary disabled:opacity-50"
+              />
+              <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
+                Pode <strong>excluir</strong>
+              </span>
+            </label>
+          </div>
+        </Field>
 
         {form.perfil === "Tecnico" && (
           <Field

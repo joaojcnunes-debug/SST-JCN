@@ -23,7 +23,7 @@ import RelatorioEstruturado from "@/components/quimicos/RelatorioEstruturado";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import { montarValoresEmpresa } from "@/lib/textos-padrao/variaveis";
-import { useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useCanDelete } from "@/lib/hooks/useUsuario";
 
 export default function AnaliseDetalhePage({
   params,
@@ -32,7 +32,7 @@ export default function AnaliseDetalhePage({
 }) {
   const { id } = use(params);
   const router = useRouter();
-  const isAdmin = useIsAdmin();
+  const canDelete = useCanDelete();
   const { data: analise, isLoading, error } = useAnaliseQuimico(id);
   const { data: empresa } = useEmpresa(analise?.id_empresa ?? null);
   const excluir = useExcluirAnaliseQuimico();
@@ -96,13 +96,13 @@ export default function AnaliseDetalhePage({
           >
             <Printer className="size-4" /> Imprimir / PDF
           </button>
-          {isAdmin && (
+          {canDelete && (
             <button
               type="button"
               onClick={handleExcluir}
               disabled={excluir.isPending}
               className="inline-flex items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-              title="Excluir análise (somente Admin)"
+              title="Excluir análise"
             >
               <Trash2 className="size-4" /> Excluir
             </button>

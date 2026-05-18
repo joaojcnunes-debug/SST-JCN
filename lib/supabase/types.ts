@@ -489,6 +489,12 @@ export interface Usuario {
   ativo_sistema: boolean;
   empresas_vinculadas: string[];
   modulos_permitidos?: ModuloPermitido[];
+  /** Permissão granular pra criar relatórios/itens. Admin contorna. */
+  pode_criar?: boolean;
+  /** Permissão granular pra editar dados em geral. Admin contorna. */
+  pode_editar?: boolean;
+  /** Permissão granular pra excluir relatórios/análises top-level. Admin contorna. */
+  pode_excluir?: boolean;
   senha_hash?: string | null;
   created_at?: string;
 }

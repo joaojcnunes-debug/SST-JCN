@@ -11,10 +11,10 @@ import {
   Plus,
 } from "lucide-react";
 import { useAnalisesQuimicos } from "@/lib/hooks/useAnalisesQuimicos";
-import { useCanEdit } from "@/lib/hooks/useUsuario";
+import { useCanCreate } from "@/lib/hooks/useUsuario";
 
 export default function HistoricoAnalisesPage() {
-  const canEdit = useCanEdit();
+  const canCreate = useCanCreate();
   const { data: analises = [], isLoading } = useAnalisesQuimicos();
   const [q, setQ] = useState("");
 
@@ -41,7 +41,7 @@ export default function HistoricoAnalisesPage() {
         >
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
-        {canEdit && (
+        {canCreate && (
           <Link
             href="/analise-quimicos/nova"
             className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"

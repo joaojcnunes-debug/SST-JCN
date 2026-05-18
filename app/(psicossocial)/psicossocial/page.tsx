@@ -13,7 +13,7 @@ import {
   useDrpsRelatorios,
 } from "@/lib/hooks/useDrps";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
-import { useCanEdit, useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useCanCreate, useCanDelete } from "@/lib/hooks/useUsuario";
 import { fmtData } from "@/lib/utils";
 import type { DrpsRelatorio, StatusRelatorio } from "@/lib/drps/types";
 
@@ -35,8 +35,8 @@ const STATUS_VARIANT: Record<
 };
 
 export default function DrpsListaPage() {
-  const isAdmin = useIsAdmin();
-  const canEdit = useCanEdit();
+  const canDelete = useCanDelete();
+  const canCreate = useCanCreate();
   const [idEmpresa, setIdEmpresa] = useState<string | null>(null);
   const { data: empresa } = useEmpresa(idEmpresa);
   const { data: relatorios = [], isLoading } = useDrpsRelatorios(idEmpresa);
@@ -66,7 +66,7 @@ export default function DrpsListaPage() {
           <div className="flex-1">
             <EmpresaSelect value={idEmpresa} onChange={setIdEmpresa} modulo="psicossocial" />
           </div>
-          {canEdit && (
+          {canCreate && (
             <button
               type="button"
               onClick={() => setNovaEmpresaOpen(true)}
@@ -89,7 +89,7 @@ export default function DrpsListaPage() {
               <strong>{relatorios.length}</strong> relatório(s) de{" "}
               <strong>{empresa?.nome_empresa ?? "—"}</strong>
             </p>
-            {canEdit && (
+            {canCreate && (
               <Link
                 href={`/psicossocial/novo?empresa=${idEmpresa}`}
                 className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
@@ -175,12 +175,12 @@ export default function DrpsListaPage() {
                           >
                             <ArrowRight className="size-4" />
                           </Link>
-                          {isAdmin && (
+                          {canDelete && (
                             <button
                               type="button"
                               onClick={() => setConfirmExcluir(r)}
                               className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
-                              title="Excluir relatório (somente Admin)"
+                              title="Excluir relatório"
                             >
                               <Trash2 className="size-4" />
                             </button>

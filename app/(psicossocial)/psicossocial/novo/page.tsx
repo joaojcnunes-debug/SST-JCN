@@ -6,7 +6,7 @@ import { ArrowLeft, Sparkles, Loader2 } from "lucide-react";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import { useDrpsCriarRelatorio, useDrpsRelatorios } from "@/lib/hooks/useDrps";
 import { useUserStore } from "@/lib/store";
-import { useRequireEdit } from "@/lib/hooks/useUsuario";
+import { useRequireCreate } from "@/lib/hooks/useUsuario";
 
 export default function NovoRelatorioDrpsPage() {
   return (
@@ -17,7 +17,7 @@ export default function NovoRelatorioDrpsPage() {
 }
 
 function Inner() {
-  useRequireEdit("/psicossocial");
+  useRequireCreate("/psicossocial");
   const router = useRouter();
   const params = useSearchParams();
   const user = useUserStore((s) => s.user);
