@@ -80,6 +80,8 @@ export interface CriarRelatorioConformidadeInput {
   nr_codigo: string;
   setor: string | null;
   responsavel: string | null;
+  responsavel_empresa: string | null;
+  cidade: string | null;
   data_inspecao: string | null;
 }
 
@@ -101,6 +103,8 @@ export function useCriarRelatorioConformidade() {
         nr_titulo: checklist.titulo,
         setor: input.setor,
         responsavel: input.responsavel,
+        responsavel_empresa: input.responsavel_empresa,
+        cidade: input.cidade,
         data_inspecao: input.data_inspecao,
         observacoes_gerais: null,
         status: "RASCUNHO",
@@ -184,6 +188,8 @@ export function useAtualizarRelatorioConformidade() {
       id_relatorio: string;
       setor?: string | null;
       responsavel?: string | null;
+      responsavel_empresa?: string | null;
+      cidade?: string | null;
       data_inspecao?: string | null;
       observacoes_gerais?: string | null;
       status?: StatusRelatorioConformidade;
@@ -194,6 +200,9 @@ export function useAtualizarRelatorioConformidade() {
       };
       if (params.setor !== undefined) patch.setor = params.setor;
       if (params.responsavel !== undefined) patch.responsavel = params.responsavel;
+      if (params.responsavel_empresa !== undefined)
+        patch.responsavel_empresa = params.responsavel_empresa;
+      if (params.cidade !== undefined) patch.cidade = params.cidade;
       if (params.data_inspecao !== undefined)
         patch.data_inspecao = params.data_inspecao;
       if (params.observacoes_gerais !== undefined)

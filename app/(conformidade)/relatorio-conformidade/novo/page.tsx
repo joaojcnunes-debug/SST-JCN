@@ -21,6 +21,8 @@ function NovoConformidadeInner() {
   const [idEmpresa, setIdEmpresa] = useState<string | null>(null);
   const [setor, setSetor] = useState("");
   const [responsavel, setResponsavel] = useState("");
+  const [responsavelEmpresa, setResponsavelEmpresa] = useState("");
+  const [cidade, setCidade] = useState("");
   const [dataInspecao, setDataInspecao] = useState(() => {
     const hoje = new Date();
     return hoje.toISOString().slice(0, 10);
@@ -54,6 +56,8 @@ function NovoConformidadeInner() {
         nr_codigo: nrCodigo,
         setor: setor.trim() || null,
         responsavel: responsavel.trim() || null,
+        responsavel_empresa: responsavelEmpresa.trim() || null,
+        cidade: cidade.trim() || null,
         data_inspecao: dataInspecao || null,
       },
       {
@@ -142,12 +146,34 @@ function NovoConformidadeInner() {
             />
           </div>
           <div>
-            <label className={lblCls}>Responsável técnico</label>
+            <label className={lblCls}>Responsável técnico (Chabra)</label>
             <input
               type="text"
               value={responsavel}
               onChange={(e) => setResponsavel(e.target.value)}
-              placeholder="Nome do responsável"
+              placeholder="Quem assina pela Chabra"
+              className={inputCls}
+              disabled={criar.isPending}
+            />
+          </div>
+          <div>
+            <label className={lblCls}>Responsável da empresa</label>
+            <input
+              type="text"
+              value={responsavelEmpresa}
+              onChange={(e) => setResponsavelEmpresa(e.target.value)}
+              placeholder="Quem acompanhou a auditoria"
+              className={inputCls}
+              disabled={criar.isPending}
+            />
+          </div>
+          <div>
+            <label className={lblCls}>Cidade</label>
+            <input
+              type="text"
+              value={cidade}
+              onChange={(e) => setCidade(e.target.value)}
+              placeholder="Ex: Catanduva - SP"
               className={inputCls}
               disabled={criar.isPending}
             />

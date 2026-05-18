@@ -578,7 +578,12 @@ export interface RelatorioConformidade {
   nr_codigo: string;
   nr_titulo: string;
   setor: string | null;
+  /** Responsável técnico Chabra (quem assina a auditoria pelo prestador). */
   responsavel: string | null;
+  /** Pessoa do lado da empresa que acompanhou a auditoria e co-assina o relatório. */
+  responsavel_empresa: string | null;
+  /** Cidade da auditoria, usada na linha de fechamento ("Cidade, dd de mês de YYYY"). */
+  cidade: string | null;
   data_inspecao: string | null;
   observacoes_gerais: string | null;
   status: StatusRelatorioConformidade;

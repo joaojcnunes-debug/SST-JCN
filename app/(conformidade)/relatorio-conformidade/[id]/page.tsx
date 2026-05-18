@@ -28,6 +28,7 @@ import {
   useRemoverFotoItemConformidade,
 } from "@/lib/hooks/useRelatoriosConformidade";
 import type {
+  RelatorioConformidade,
   RelatorioConformidadeItem,
   SituacaoConformidade,
 } from "@/lib/supabase/types";
@@ -203,9 +204,14 @@ export default function DetalheConformidadePage({
           <DataItem label="CNPJ" value={empresa?.cnpj ?? "—"} />
           <DataItem label="Setor / Local" value={relatorio.setor ?? "—"} />
           <DataItem
-            label="Responsável técnico"
+            label="Responsável técnico (Chabra)"
             value={relatorio.responsavel ?? "—"}
           />
+          <DataItem
+            label="Responsável da empresa"
+            value={relatorio.responsavel_empresa ?? "—"}
+          />
+          <DataItem label="Cidade" value={relatorio.cidade ?? "—"} />
           <DataItem
             label="Data da inspeção"
             value={
@@ -221,6 +227,16 @@ export default function DetalheConformidadePage({
             value={new Date(relatorio.created_at).toLocaleString("pt-BR")}
           />
         </div>
+
+        {/* Edição rápida dos campos do cabeçalho (só em RASCUNHO) */}
+        {!finalizado && (
+          <EditarCabecalho
+            relatorio={relatorio}
+            onSalvar={(patch) =>
+              atualizarRelatorio.mutate({ id_relatorio: id, ...patch })
+            }
+          />
+        )}
       </section>
 
       {/* Resumo */}
@@ -311,6 +327,9 @@ export default function DetalheConformidadePage({
           }
         />
       </section>
+
+      {/* Bloco de Assinaturas — cidade/data + linhas pros assinantes */}
+      <BlocoAssinaturas relatorio={relatorio} />
 
       {/* Rodapé pra impressão */}
       <p className="text-center text-[9px] text-gray-500 print:mt-4">
@@ -702,6 +721,211 @@ function SitButton({
       {icon}
       {label}
     </button>
+  );
+}
+
+const MESES_PT = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+/** Formata data ISO (yyyy-mm-dd) para "dd de mês de yyyy" em português. */
+function formatarDataExtenso(iso: string | null): string {
+  if (!iso) return "____ de ___________ de ______";
+  const d = new Date(iso + "T00:00");
+  if (isNaN(d.getTime())) return iso;
+  return `${d.getDate()} de ${MESES_PT[d.getMonth()]} de ${d.getFullYear()}`;
+}
+
+/**
+ * Bloco final do relatório: linha "Cidade, dd de mês de yyyy" alinhada à
+ * esquerda + duas linhas de assinatura (Responsável Técnico / Responsável da
+ * Empresa). Renderiza na tela E no print. Em print, evita quebra entre o
+ * cabeçalho de data e as assinaturas (break-inside-avoid).
+ */
+function BlocoAssinaturas({
+  relatorio,
+}: {
+  relatorio: RelatorioConformidade;
+}) {
+  const cidade = relatorio.cidade?.trim() || "_____________________";
+  const dataExtenso = formatarDataExtenso(relatorio.data_inspecao);
+  const responsavelTecnico = relatorio.responsavel?.trim() || "";
+  const responsavelEmpresa = relatorio.responsavel_empresa?.trim() || "";
+
+  return (
+    <section className="break-inside-avoid rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border-0 print:shadow-none print:mt-8 print:p-2">
+      {/* Cidade, data — esquerda */}
+      <p className="text-sm text-gray-900 print:text-[13px]">
+        {cidade}, {dataExtenso}.
+      </p>
+
+      {/* Linhas de assinatura — 2 colunas no print, stack no mobile */}
+      <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 print:mt-16 print:gap-12">
+        <Assinatura
+          nome={responsavelTecnico}
+          cargo="Responsável Técnico"
+          subtitulo="Chabra Saúde e Segurança do Trabalho"
+        />
+        <Assinatura
+          nome={responsavelEmpresa}
+          cargo="Responsável pela Empresa"
+          subtitulo={null}
+        />
+      </div>
+    </section>
+  );
+}
+
+function Assinatura({
+  nome,
+  cargo,
+  subtitulo,
+}: {
+  nome: string;
+  cargo: string;
+  subtitulo: string | null;
+}) {
+  return (
+    <div className="text-center">
+      <div className="border-t border-gray-900" />
+      <p className="mt-1 text-sm font-semibold text-gray-900 print:text-[13px]">
+        {nome || "_____________________________"}
+      </p>
+      <p className="text-xs text-gray-700 print:text-[11px]">{cargo}</p>
+      {subtitulo && (
+        <p className="text-[11px] text-gray-500 print:text-[10px]">
+          {subtitulo}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Edição rápida dos campos do cabeçalho (setor, responsável técnico,
+ * responsável empresa, cidade, data). Aparece só em RASCUNHO. Salva
+ * no blur do input.
+ */
+function EditarCabecalho({
+  relatorio,
+  onSalvar,
+}: {
+  relatorio: RelatorioConformidade;
+  onSalvar: (patch: {
+    setor?: string | null;
+    responsavel?: string | null;
+    responsavel_empresa?: string | null;
+    cidade?: string | null;
+    data_inspecao?: string | null;
+  }) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [setor, setSetor] = useState(relatorio.setor ?? "");
+  const [responsavel, setResponsavel] = useState(relatorio.responsavel ?? "");
+  const [respEmpresa, setRespEmpresa] = useState(
+    relatorio.responsavel_empresa ?? ""
+  );
+  const [cidade, setCidade] = useState(relatorio.cidade ?? "");
+  const [dataInsp, setDataInsp] = useState(relatorio.data_inspecao ?? "");
+
+  if (!aberto) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAberto(true)}
+        className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:underline print:hidden"
+      >
+        Editar dados do cabeçalho →
+      </button>
+    );
+  }
+
+  const lblCls =
+    "text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-0.5 block";
+  const inputCls =
+    "w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500";
+
+  return (
+    <div className="mt-4 grid grid-cols-1 gap-3 rounded-md border border-teal-200 bg-teal-50/30 p-3 sm:grid-cols-2 print:hidden">
+      <div>
+        <label className={lblCls}>Setor / Local</label>
+        <input
+          type="text"
+          value={setor}
+          onChange={(e) => setSetor(e.target.value)}
+          onBlur={() => onSalvar({ setor: setor.trim() || null })}
+          className={inputCls}
+          placeholder="Ex: Produção"
+        />
+      </div>
+      <div>
+        <label className={lblCls}>Responsável técnico (Chabra)</label>
+        <input
+          type="text"
+          value={responsavel}
+          onChange={(e) => setResponsavel(e.target.value)}
+          onBlur={() => onSalvar({ responsavel: responsavel.trim() || null })}
+          className={inputCls}
+          placeholder="Quem assina pela Chabra"
+        />
+      </div>
+      <div>
+        <label className={lblCls}>Responsável da empresa</label>
+        <input
+          type="text"
+          value={respEmpresa}
+          onChange={(e) => setRespEmpresa(e.target.value)}
+          onBlur={() =>
+            onSalvar({ responsavel_empresa: respEmpresa.trim() || null })
+          }
+          className={inputCls}
+          placeholder="Quem acompanhou pelo cliente"
+        />
+      </div>
+      <div>
+        <label className={lblCls}>Cidade</label>
+        <input
+          type="text"
+          value={cidade}
+          onChange={(e) => setCidade(e.target.value)}
+          onBlur={() => onSalvar({ cidade: cidade.trim() || null })}
+          className={inputCls}
+          placeholder="Ex: Catanduva - SP"
+        />
+      </div>
+      <div>
+        <label className={lblCls}>Data da inspeção</label>
+        <input
+          type="date"
+          value={dataInsp}
+          onChange={(e) => setDataInsp(e.target.value)}
+          onBlur={() =>
+            onSalvar({ data_inspecao: dataInsp || null })
+          }
+          className={inputCls}
+        />
+      </div>
+      <div className="flex items-end justify-end">
+        <button
+          type="button"
+          onClick={() => setAberto(false)}
+          className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+        >
+          Fechar edição
+        </button>
+      </div>
+    </div>
   );
 }
 
