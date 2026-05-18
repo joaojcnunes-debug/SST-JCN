@@ -14,6 +14,8 @@ import {
   Variable,
   FileText,
   RectangleHorizontal,
+  FilePlus2,
+  AlignLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -31,6 +33,7 @@ import {
 import {
   type ModuloTextoPadrao,
   type OrientacaoPagina,
+  type QuebraPagina,
   type TextoPadraoCapitulo,
   MODULO_CONFIGS,
 } from "@/lib/textos-padrao/types";
@@ -240,6 +243,7 @@ function CapituloCard({
     bg_imagem_url?: string | null;
     caixas_texto?: CaixaTexto[] | null;
     orientacao?: OrientacaoPagina;
+    quebra_pagina?: QuebraPagina;
   }) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
@@ -355,47 +359,104 @@ function CapituloCard({
           <Trash2 className="size-4" />
         </button>
       </div>
-      {/* Orientação da página */}
-      <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-          Orientação no PDF:
-        </span>
-        <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
-          <button
-            type="button"
-            onClick={() =>
-              capitulo.orientacao !== "retrato" &&
-              onSalvar({ orientacao: "retrato" })
-            }
-            disabled={salvando}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
-              capitulo.orientacao === "retrato"
-                ? "bg-verde-primary text-white"
-                : "bg-white text-gray-600 hover:bg-gray-50"
-            } disabled:opacity-50`}
-          >
-            <FileText className="size-3.5" /> Retrato
-          </button>
-          <button
-            type="button"
-            onClick={() =>
-              capitulo.orientacao !== "paisagem" &&
-              onSalvar({ orientacao: "paisagem" })
-            }
-            disabled={salvando}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
-              capitulo.orientacao === "paisagem"
-                ? "bg-verde-primary text-white"
-                : "bg-white text-gray-600 hover:bg-gray-50"
-            } disabled:opacity-50`}
-          >
-            <RectangleHorizontal className="size-3.5" /> Paisagem
-          </button>
+      {/* Orientação da página + Quebra de página */}
+      <div className="mb-2 flex flex-wrap items-center gap-3 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            Orientação:
+          </span>
+          <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
+            <button
+              type="button"
+              onClick={() =>
+                capitulo.orientacao !== "retrato" &&
+                onSalvar({ orientacao: "retrato" })
+              }
+              disabled={salvando}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
+                capitulo.orientacao === "retrato"
+                  ? "bg-verde-primary text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              } disabled:opacity-50`}
+            >
+              <FileText className="size-3.5" /> Retrato
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                capitulo.orientacao !== "paisagem" &&
+                onSalvar({ orientacao: "paisagem" })
+              }
+              disabled={salvando}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
+                capitulo.orientacao === "paisagem"
+                  ? "bg-verde-primary text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              } disabled:opacity-50`}
+            >
+              <RectangleHorizontal className="size-3.5" /> Paisagem
+            </button>
+          </div>
         </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            Início:
+          </span>
+          <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
+            <button
+              type="button"
+              onClick={() =>
+                capitulo.quebra_pagina !== "nova" &&
+                onSalvar({ quebra_pagina: "nova" })
+              }
+              disabled={salvando || !!capitulo.bg_imagem_url}
+              title={
+                capitulo.bg_imagem_url
+                  ? "Capítulo com capa sempre é nova página"
+                  : "Inicia em uma nova página"
+              }
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
+                capitulo.quebra_pagina === "nova" || capitulo.bg_imagem_url
+                  ? "bg-verde-primary text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              } disabled:opacity-50`}
+            >
+              <FilePlus2 className="size-3.5" /> Nova página
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                capitulo.quebra_pagina !== "continua" &&
+                onSalvar({ quebra_pagina: "continua" })
+              }
+              disabled={salvando || !!capitulo.bg_imagem_url || indice === 0}
+              title={
+                capitulo.bg_imagem_url
+                  ? "Capítulo com capa sempre é nova página"
+                  : indice === 0
+                  ? "O primeiro capítulo precisa começar em nova página"
+                  : "Continua na página do capítulo anterior"
+              }
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
+                capitulo.quebra_pagina === "continua" && !capitulo.bg_imagem_url
+                  ? "bg-verde-primary text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              } disabled:opacity-50`}
+            >
+              <AlignLeft className="size-3.5" /> Continuação
+            </button>
+          </div>
+        </div>
+
         <span className="text-[10px] italic text-gray-500">
-          {capitulo.orientacao === "paisagem"
-            ? "Página A4 horizontal — útil pra tabelas/gráficos largos."
-            : "Página A4 vertical — padrão ABNT."}
+          {capitulo.bg_imagem_url
+            ? "Capa: página inteira"
+            : capitulo.quebra_pagina === "continua"
+            ? "Continua na mesma folha do capítulo anterior."
+            : capitulo.orientacao === "paisagem"
+            ? "A4 horizontal em folha nova."
+            : "A4 vertical em folha nova (ABNT)."}
         </span>
       </div>
 

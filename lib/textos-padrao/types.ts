@@ -8,6 +8,9 @@ export type ModuloTextoPadrao = "sst" | "conformidade" | "analise_quimicos";
 
 export type OrientacaoPagina = "retrato" | "paisagem";
 
+/** Quebra de página antes do capítulo. 'continua' = segue na mesma página do anterior. */
+export type QuebraPagina = "nova" | "continua";
+
 export interface TextoPadraoCapitulo {
   id_capitulo: string;
   modulo: ModuloTextoPadrao;
@@ -20,6 +23,8 @@ export interface TextoPadraoCapitulo {
   caixas_texto: CaixaTexto[] | null;
   /** Orientação da página deste capítulo no PDF. */
   orientacao: OrientacaoPagina;
+  /** Inicia nova página ou continua na anterior. Ignorado se for capa. */
+  quebra_pagina: QuebraPagina;
   ativo: boolean;
   created_at: string;
   updated_at: string | null;

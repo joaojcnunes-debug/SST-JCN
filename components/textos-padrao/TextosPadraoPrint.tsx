@@ -50,13 +50,22 @@ export default function TextosPadraoPrint({
           size: A4 landscape;
           margin: 2cm 3cm 3cm 2cm;
         }
+        /* Comportamento padrão: cada capítulo numa página própria (nova).
+           Capítulos marcados como 'continua' grudam no anterior. */
         .textos-padrao-capitulo {
-          margin-bottom: 22px;
-          page-break-after: always;
+          margin-bottom: 18pt;
           page-break-inside: auto;
+        }
+        .textos-padrao-capitulo--nova-pagina {
+          page-break-before: always;
+        }
+        .textos-padrao-capitulo--continua {
+          page-break-before: auto;
+          margin-top: 16pt;
         }
         .textos-padrao-capitulo--retrato { page: textopadrao-retrato; }
         .textos-padrao-capitulo--paisagem { page: textopadrao-paisagem; }
+        /* Último capítulo: quebra antes da seção principal do relatório */
         .textos-padrao-capitulo:last-child {
           page-break-after: ${posicao === "antes" ? "always" : "auto"};
         }
@@ -143,9 +152,14 @@ export default function TextosPadraoPrint({
         }
       `}</style>
 
-      {capitulos.map((c) => {
+      {capitulos.map((c, idx) => {
         const ehCapa = !!c.bg_imagem_url;
         const orientacao = c.orientacao ?? "retrato";
+        // Primeiro capítulo: sempre nova página (não tem o que continuar).
+        // Capa: sempre nova página (ocupa folha inteira).
+        // Demais: respeita `quebra_pagina` ('nova' | 'continua').
+        const novaPagina =
+          idx === 0 || ehCapa || (c.quebra_pagina ?? "nova") === "nova";
         const conteudoSubstituido = substituirVariaveis(c.conteudo, valores);
         const tituloSubstituido = substituirVariaveisTexto(c.titulo, valores);
         const classes = [
@@ -153,6 +167,9 @@ export default function TextosPadraoPrint({
           orientacao === "paisagem"
             ? "textos-padrao-capitulo--paisagem"
             : "textos-padrao-capitulo--retrato",
+          novaPagina
+            ? "textos-padrao-capitulo--nova-pagina"
+            : "textos-padrao-capitulo--continua",
           ehCapa ? "textos-padrao-capitulo--capa" : "",
         ]
           .filter(Boolean)
