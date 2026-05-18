@@ -8,8 +8,10 @@ import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import { useCriarRelatorioNaoConformidade } from "@/lib/hooks/useRelatoriosNaoConformidade";
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
+import { useRequireEdit } from "@/lib/hooks/useUsuario";
 
 export default function NovoNaoConformidadePage() {
+  useRequireEdit("/relatorio-nao-conformidade");
   const router = useRouter();
   const [titulo, setTitulo] = useState("");
   const [nrCodigo, setNrCodigo] = useState<string>("");

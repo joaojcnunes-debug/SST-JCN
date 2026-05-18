@@ -11,8 +11,10 @@ import {
 import { useRelatoriosConformidade } from "@/lib/hooks/useRelatoriosConformidade";
 import { listarNRs } from "@/lib/conformidade/checklists";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 
 export default function HistoricoConformidadePage() {
+  const canEdit = useCanEdit();
   const { data: relatorios = [], isLoading } = useRelatoriosConformidade();
   const { data: empresas = [] } = useEmpresas();
   const nrs = useMemo(() => listarNRs(), []);
@@ -53,12 +55,14 @@ export default function HistoricoConformidadePage() {
         >
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
-        <Link
-          href="/relatorio-conformidade/novo"
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
-        >
-          <Plus className="size-4" /> Novo relatório
-        </Link>
+        {canEdit && (
+          <Link
+            href="/relatorio-conformidade/novo"
+            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+          >
+            <Plus className="size-4" /> Novo relatório
+          </Link>
+        )}
       </div>
 
       <div>

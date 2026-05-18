@@ -40,7 +40,7 @@ import {
   useExcluirItemConformidadeExtra,
 } from "@/lib/hooks/useRelatoriosConformidade";
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
-import { useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useCanEdit, useIsAdmin } from "@/lib/hooks/useUsuario";
 import type {
   RelatorioConformidade,
   RelatorioConformidadeItem,
@@ -57,6 +57,7 @@ export default function DetalheConformidadePage({
   const { id } = use(params);
   const router = useRouter();
   const isAdmin = useIsAdmin();
+  const canEdit = useCanEdit();
   const { data, isLoading, error } = useRelatorioConformidade(id);
   const { data: empresa } = useEmpresa(data?.relatorio.id_empresa ?? null);
 
@@ -97,7 +98,9 @@ export default function DetalheConformidadePage({
   }
 
   const { relatorio, itens } = data;
+  // "bloqueado" = relatório finalizado OU Visualizador (não pode editar).
   const finalizado = relatorio.status === "FINALIZADO";
+  const bloqueado = finalizado || !canEdit;
 
   // Valores das variáveis dos textos padrão deste módulo
   const valoresTextosPadrao: Record<string, string> = {
@@ -229,7 +232,7 @@ export default function DetalheConformidadePage({
           >
             <Printer className="size-4" /> Imprimir / PDF
           </button>
-          {finalizado ? (
+          {canEdit && finalizado && (
             <button
               type="button"
               onClick={handleReabrir}
@@ -238,7 +241,8 @@ export default function DetalheConformidadePage({
             >
               Reabrir
             </button>
-          ) : (
+          )}
+          {canEdit && !finalizado && (
             <button
               type="button"
               onClick={handleFinalizar}
@@ -326,8 +330,8 @@ export default function DetalheConformidadePage({
           />
         </div>
 
-        {/* Edição rápida dos campos do cabeçalho (só em RASCUNHO) */}
-        {!finalizado && (
+        {/* Edição rápida dos campos do cabeçalho (só em RASCUNHO e quem pode editar) */}
+        {!bloqueado && (
           <EditarCabecalho
             relatorio={relatorio}
             onSalvar={(patch) =>
@@ -353,7 +357,7 @@ export default function DetalheConformidadePage({
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-700 print:text-base">
             Itens do Checklist ({itens.length})
           </h2>
-          {!finalizado && (
+          {!bloqueado && (
             <div className="flex flex-wrap items-center gap-2 print:hidden">
               <button
                 type="button"
@@ -387,7 +391,7 @@ export default function DetalheConformidadePage({
             <ItemRow
               key={item.id_item}
               item={item}
-              bloqueado={finalizado}
+              bloqueado={bloqueado}
               onChangeSituacao={(situacao) =>
                 atualizarItem.mutate({
                   id_relatorio: id,
@@ -462,7 +466,7 @@ export default function DetalheConformidadePage({
         </label>
         <ObservacoesGerais
           value={relatorio.observacoes_gerais ?? ""}
-          disabled={finalizado}
+          disabled={bloqueado}
           onSave={(v) =>
             atualizarRelatorio.mutate({
               id_relatorio: id,

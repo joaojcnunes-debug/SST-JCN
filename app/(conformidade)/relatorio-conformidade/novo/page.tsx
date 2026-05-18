@@ -8,8 +8,10 @@ import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
 import { useCriarRelatorioConformidade } from "@/lib/hooks/useRelatoriosConformidade";
+import { useRequireEdit } from "@/lib/hooks/useUsuario";
 
 function NovoConformidadeInner() {
+  useRequireEdit("/relatorio-conformidade");
   const router = useRouter();
   const searchParams = useSearchParams();
   const nrPreselecionada = searchParams.get("nr");

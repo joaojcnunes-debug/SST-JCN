@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { ArrowLeft, FlaskConical } from "lucide-react";
 import AnaliseForm from "@/components/quimicos/AnaliseForm";
+import { useRequireEdit } from "@/lib/hooks/useUsuario";
 
 export default function NovaAnalisePage() {
+  useRequireEdit("/analise-quimicos");
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <Link

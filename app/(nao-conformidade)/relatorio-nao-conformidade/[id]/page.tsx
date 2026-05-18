@@ -38,7 +38,7 @@ import {
   MAX_FOTOS_POR_NC,
 } from "@/lib/hooks/useRelatoriosNaoConformidade";
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
-import { useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useCanEdit, useIsAdmin } from "@/lib/hooks/useUsuario";
 import type {
   CriticidadeNC,
   RelatorioNaoConformidade,
@@ -56,6 +56,7 @@ export default function DetalheNaoConformidadePage({
   const { id } = use(params);
   const router = useRouter();
   const isAdmin = useIsAdmin();
+  const canEdit = useCanEdit();
   const { data, isLoading, error } = useRelatorioNaoConformidade(id);
   const { data: empresa } = useEmpresa(data?.relatorio.id_empresa ?? null);
 
@@ -94,7 +95,11 @@ export default function DetalheNaoConformidadePage({
   }
 
   const { relatorio, itens } = data;
+  // "bloqueado" = relatório finalizado OU usuário é Visualizador (não pode editar).
+  // Mantém `finalizado` puro pra renderização de badges; usa `bloqueado` pra
+  // gating de inputs/botões.
   const finalizado = relatorio.status === "FINALIZADO";
+  const bloqueado = finalizado || !canEdit;
 
   // Resumo por criticidade
   const ncsAlta = itens.filter((i) => i.criticidade === "ALTA").length;
@@ -217,7 +222,7 @@ export default function DetalheNaoConformidadePage({
           >
             <Printer className="size-4" /> Imprimir / PDF
           </button>
-          {finalizado ? (
+          {canEdit && finalizado && (
             <button
               type="button"
               onClick={handleReabrir}
@@ -226,7 +231,8 @@ export default function DetalheNaoConformidadePage({
             >
               Reabrir
             </button>
-          ) : (
+          )}
+          {canEdit && !finalizado && (
             <button
               type="button"
               onClick={handleFinalizar}
@@ -322,7 +328,7 @@ export default function DetalheNaoConformidadePage({
           />
         </div>
 
-        {!finalizado && (
+        {!bloqueado && (
           <EditarCabecalho
             relatorio={relatorio}
             onSalvar={(patch) =>
@@ -353,7 +359,7 @@ export default function DetalheNaoConformidadePage({
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-700 print:text-base">
             Não Conformidades ({itens.length})
           </h2>
-          {!finalizado && (
+          {!bloqueado && (
             <div className="flex flex-wrap items-center gap-2 print:hidden">
               {relatorio.nr_codigo && (
                 <button
@@ -386,8 +392,14 @@ export default function DetalheNaoConformidadePage({
 
         {itens.length === 0 ? (
           <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-sm text-gray-500 print:hidden">
-            Nenhuma NC registrada. Clique em <strong>Adicionar NC</strong> para
-            começar.
+            {bloqueado
+              ? "Nenhuma NC registrada neste relatório."
+              : (
+                <>
+                  Nenhuma NC registrada. Clique em{" "}
+                  <strong>Adicionar NC</strong> para começar.
+                </>
+              )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -396,7 +408,7 @@ export default function DetalheNaoConformidadePage({
                 key={item.id_item}
                 item={item}
                 ordem={idx + 1}
-                bloqueado={finalizado}
+                bloqueado={bloqueado}
                 onPatch={(patch) =>
                   atualizarItem.mutate({
                     id_relatorio: id,
@@ -472,7 +484,7 @@ export default function DetalheNaoConformidadePage({
         </label>
         <ObservacoesGerais
           value={relatorio.observacoes_gerais ?? ""}
-          disabled={finalizado}
+          disabled={bloqueado}
           onSave={(v) =>
             atualizarRelatorio.mutate({
               id_relatorio: id,

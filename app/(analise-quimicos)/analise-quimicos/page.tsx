@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { FlaskConical, Plus, History, AlertTriangle, Sparkles } from "lucide-react";
 import { useAnalisesQuimicos } from "@/lib/hooks/useAnalisesQuimicos";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 
 export default function AnaliseQuimicosOverviewPage() {
+  const canEdit = useCanEdit();
   const { data: analises = [], isLoading } = useAnalisesQuimicos();
 
   const total = analises.length;
@@ -42,30 +44,32 @@ export default function AnaliseQuimicosOverviewPage() {
       </div>
 
       {/* Ações principais */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Link
-          href="/analise-quimicos/nova"
-          className="group flex flex-col gap-2 rounded-xl border-2 border-sky-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
-              <Plus className="size-6" />
+      <div className={`grid grid-cols-1 gap-4 ${canEdit ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
+        {canEdit && (
+          <Link
+            href="/analise-quimicos/nova"
+            className="group flex flex-col gap-2 rounded-xl border-2 border-sky-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
+                <Plus className="size-6" />
+              </div>
+              <div>
+                <p className="text-base font-bold text-gray-900">Nova Análise</p>
+                <p className="text-xs text-gray-500">
+                  Upload de PDF ou entrada manual
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-base font-bold text-gray-900">Nova Análise</p>
-              <p className="text-xs text-gray-500">
-                Upload de PDF ou entrada manual
-              </p>
-            </div>
-          </div>
-          <p className="mt-1 text-xs text-gray-600">
-            Faça upload da FDS/FISPQ ou preencha os dados do produto manualmente.
-            A IA gera parecer técnico em ~10-30 segundos.
-          </p>
-          <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-sky-600 group-hover:text-sky-700">
-            Começar <Sparkles className="size-3" />
-          </span>
-        </Link>
+            <p className="mt-1 text-xs text-gray-600">
+              Faça upload da FDS/FISPQ ou preencha os dados do produto manualmente.
+              A IA gera parecer técnico em ~10-30 segundos.
+            </p>
+            <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-sky-600 group-hover:text-sky-700">
+              Começar <Sparkles className="size-3" />
+            </span>
+          </Link>
+        )}
 
         <Link
           href="/analise-quimicos/historico"

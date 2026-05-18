@@ -13,7 +13,7 @@ import {
   useDrpsRelatorios,
 } from "@/lib/hooks/useDrps";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
-import { useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useCanEdit, useIsAdmin } from "@/lib/hooks/useUsuario";
 import { fmtData } from "@/lib/utils";
 import type { DrpsRelatorio, StatusRelatorio } from "@/lib/drps/types";
 
@@ -36,6 +36,7 @@ const STATUS_VARIANT: Record<
 
 export default function DrpsListaPage() {
   const isAdmin = useIsAdmin();
+  const canEdit = useCanEdit();
   const [idEmpresa, setIdEmpresa] = useState<string | null>(null);
   const { data: empresa } = useEmpresa(idEmpresa);
   const { data: relatorios = [], isLoading } = useDrpsRelatorios(idEmpresa);
@@ -65,13 +66,15 @@ export default function DrpsListaPage() {
           <div className="flex-1">
             <EmpresaSelect value={idEmpresa} onChange={setIdEmpresa} modulo="psicossocial" />
           </div>
-          <button
-            type="button"
-            onClick={() => setNovaEmpresaOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-md border border-verde-primary bg-white px-3 py-2 text-sm font-semibold text-verde-primary shadow-sm hover:bg-verde-light"
-          >
-            <Building2 className="size-4" /> Nova Empresa
-          </button>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setNovaEmpresaOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-verde-primary bg-white px-3 py-2 text-sm font-semibold text-verde-primary shadow-sm hover:bg-verde-light"
+            >
+              <Building2 className="size-4" /> Nova Empresa
+            </button>
+          )}
         </div>
       </div>
 
@@ -86,12 +89,14 @@ export default function DrpsListaPage() {
               <strong>{relatorios.length}</strong> relatório(s) de{" "}
               <strong>{empresa?.nome_empresa ?? "—"}</strong>
             </p>
-            <Link
-              href={`/psicossocial/novo?empresa=${idEmpresa}`}
-              className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
-            >
-              <Plus className="size-4" /> Novo Relatório
-            </Link>
+            {canEdit && (
+              <Link
+                href={`/psicossocial/novo?empresa=${idEmpresa}`}
+                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+              >
+                <Plus className="size-4" /> Novo Relatório
+              </Link>
+            )}
           </div>
 
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">

@@ -13,8 +13,10 @@ import {
 } from "lucide-react";
 import { useRelatoriosNaoConformidade } from "@/lib/hooks/useRelatoriosNaoConformidade";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 
 export default function VisaoGeralNaoConformidadePage() {
+  const canEdit = useCanEdit();
   const { data: relatorios = [], isLoading } = useRelatoriosNaoConformidade();
   const { data: empresas = [] } = useEmpresas();
 
@@ -38,12 +40,14 @@ export default function VisaoGeralNaoConformidadePage() {
         >
           <ArrowLeft className="size-3.5" /> Voltar ao início
         </Link>
-        <Link
-          href="/relatorio-nao-conformidade/novo"
-          className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700"
-        >
-          <Plus className="size-4" /> Novo relatório
-        </Link>
+        {canEdit && (
+          <Link
+            href="/relatorio-nao-conformidade/novo"
+            className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-700"
+          >
+            <Plus className="size-4" /> Novo relatório
+          </Link>
+        )}
       </div>
 
       <div>
