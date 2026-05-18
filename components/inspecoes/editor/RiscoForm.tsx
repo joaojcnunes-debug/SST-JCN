@@ -2450,11 +2450,11 @@ function MedidaBloco({
       )}
 
       {items.length > 0 && (
-        <ul className="mb-2 divide-y divide-gray-100 rounded-md bg-white">
+        <ul className="mb-2 divide-y divide-gray-200 overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
           {items.map((it, idx) => {
             const editando = editingIdx === idx;
             return (
-              <li key={idx} className="flex items-center gap-2 px-2 py-1.5">
+              <li key={idx} className="flex items-center gap-2 px-3 py-2">
                 {editando ? (
                   <>
                     <input
@@ -2525,7 +2525,7 @@ function MedidaBloco({
           value={novo}
           onChange={(ev) => setNovo(ev.target.value)}
           placeholder={placeholder}
-          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
+          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm"
           onKeyDown={(ev) => {
             if (ev.key === "Enter") {
               ev.preventDefault();
