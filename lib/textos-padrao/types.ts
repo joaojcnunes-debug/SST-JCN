@@ -6,6 +6,8 @@ import type { CaixaTexto } from "@/lib/drps/types";
 
 export type ModuloTextoPadrao = "sst" | "conformidade" | "analise_quimicos";
 
+export type OrientacaoPagina = "retrato" | "paisagem";
+
 export interface TextoPadraoCapitulo {
   id_capitulo: string;
   modulo: ModuloTextoPadrao;
@@ -16,6 +18,8 @@ export interface TextoPadraoCapitulo {
   bg_imagem_url: string | null;
   /** Caixas posicionadas sobre a bg (só usadas quando há bg). */
   caixas_texto: CaixaTexto[] | null;
+  /** Orientação da página deste capítulo no PDF. */
+  orientacao: OrientacaoPagina;
   ativo: boolean;
   created_at: string;
   updated_at: string | null;

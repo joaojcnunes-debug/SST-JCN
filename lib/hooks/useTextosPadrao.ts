@@ -6,6 +6,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import type {
   ModuloTextoPadrao,
+  OrientacaoPagina,
   TextoPadraoCapitulo,
 } from "@/lib/textos-padrao/types";
 import type { CaixaTexto } from "@/lib/drps/types";
@@ -74,6 +75,7 @@ export function useSalvarCapituloTexto(modulo: ModuloTextoPadrao) {
       ativo?: boolean;
       bg_imagem_url?: string | null;
       caixas_texto?: CaixaTexto[] | null;
+      orientacao?: OrientacaoPagina;
     }) => {
       const supabase = createSupabaseBrowserClient();
       const { id_capitulo, ...rest } = args;

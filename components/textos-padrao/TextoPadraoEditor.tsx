@@ -12,6 +12,8 @@ import {
   X,
   Loader2,
   Variable,
+  FileText,
+  RectangleHorizontal,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -28,6 +30,7 @@ import {
 } from "@/lib/hooks/useTextosPadrao";
 import {
   type ModuloTextoPadrao,
+  type OrientacaoPagina,
   type TextoPadraoCapitulo,
   MODULO_CONFIGS,
 } from "@/lib/textos-padrao/types";
@@ -236,6 +239,7 @@ function CapituloCard({
     conteudo?: string | null;
     bg_imagem_url?: string | null;
     caixas_texto?: CaixaTexto[] | null;
+    orientacao?: OrientacaoPagina;
   }) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
@@ -351,6 +355,50 @@ function CapituloCard({
           <Trash2 className="size-4" />
         </button>
       </div>
+      {/* Orientação da página */}
+      <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          Orientação no PDF:
+        </span>
+        <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
+          <button
+            type="button"
+            onClick={() =>
+              capitulo.orientacao !== "retrato" &&
+              onSalvar({ orientacao: "retrato" })
+            }
+            disabled={salvando}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
+              capitulo.orientacao === "retrato"
+                ? "bg-verde-primary text-white"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            } disabled:opacity-50`}
+          >
+            <FileText className="size-3.5" /> Retrato
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              capitulo.orientacao !== "paisagem" &&
+              onSalvar({ orientacao: "paisagem" })
+            }
+            disabled={salvando}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
+              capitulo.orientacao === "paisagem"
+                ? "bg-verde-primary text-white"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            } disabled:opacity-50`}
+          >
+            <RectangleHorizontal className="size-3.5" /> Paisagem
+          </button>
+        </div>
+        <span className="text-[10px] italic text-gray-500">
+          {capitulo.orientacao === "paisagem"
+            ? "Página A4 horizontal — útil pra tabelas/gráficos largos."
+            : "Página A4 vertical — padrão ABNT."}
+        </span>
+      </div>
+
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
           Imagem de fundo (capa):

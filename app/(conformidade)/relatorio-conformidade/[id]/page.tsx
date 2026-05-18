@@ -407,9 +407,10 @@ export default function DetalheConformidadePage({
 
       <style jsx global>{`
         @media print {
+          /* Padrão ABNT NBR 14724 — A4 com margens 3cm sup/esq, 2cm inf/dir */
           @page {
             size: A4;
-            margin: 1.4cm 1.2cm;
+            margin: 3cm 2cm 2cm 3cm;
           }
         }
       `}</style>

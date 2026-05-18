@@ -37,21 +37,42 @@ export default function TextosPadraoPrint({
   return (
     <section className="textos-padrao-capitulos hidden print:block">
       <style>{`
+        /* === Padrão ABNT NBR 14724 ===
+           - Papel: A4 (210 x 297 mm)
+           - Margens: 3cm superior + 3cm esquerda, 2cm inferior + 2cm direita
+           - Fonte: 12pt (corpo), 1.5 entrelinhas, texto justificado
+        */
+        @page textopadrao-retrato {
+          size: A4 portrait;
+          margin: 3cm 2cm 2cm 3cm;
+        }
+        @page textopadrao-paisagem {
+          size: A4 landscape;
+          margin: 2cm 3cm 3cm 2cm;
+        }
         .textos-padrao-capitulo {
           margin-bottom: 22px;
           page-break-after: always;
+          page-break-inside: auto;
         }
+        .textos-padrao-capitulo--retrato { page: textopadrao-retrato; }
+        .textos-padrao-capitulo--paisagem { page: textopadrao-paisagem; }
         .textos-padrao-capitulo:last-child {
           page-break-after: ${posicao === "antes" ? "always" : "auto"};
         }
+        /* Capa full-page: respeita orientação do @page named */
         .textos-padrao-capitulo--capa {
           position: relative;
-          margin: 0;
+          margin: -3cm -2cm -2cm -3cm;
           padding: 0;
-          height: calc(297mm - 2.8cm - 1mm);
-          min-height: calc(297mm - 2.8cm - 1mm);
-          max-height: calc(297mm - 2.8cm - 1mm);
+          height: 297mm;
+          width: 210mm;
           overflow: hidden;
+        }
+        .textos-padrao-capitulo--paisagem.textos-padrao-capitulo--capa {
+          margin: -2cm -3cm -3cm -2cm;
+          height: 210mm;
+          width: 297mm;
         }
         .textos-padrao-capitulo-bg-img {
           position: absolute;
@@ -69,38 +90,44 @@ export default function TextosPadraoPrint({
           position: absolute;
           z-index: 1;
         }
+        /* Tipografia ABNT */
         .textos-padrao-capitulo-titulo {
-          font-size: 14px;
+          font-size: 14pt;
           font-weight: 700;
           color: #1e4d28;
           border-bottom: 2px solid #006B54;
           padding-bottom: 4px;
-          margin-bottom: 8px;
+          margin-bottom: 12pt;
         }
         .textos-padrao-capitulo-conteudo {
-          font-size: 11px;
+          font-size: 12pt;
           color: #1f2937;
-          line-height: 1.55;
+          line-height: 1.5;
+          text-align: justify;
         }
-        .textos-padrao-capitulo-conteudo p { margin: 0 0 8px 0; }
-        .textos-padrao-capitulo-conteudo h1 { font-size: 16px; font-weight: 700; color: #1e4d28; margin: 12px 0 6px; }
-        .textos-padrao-capitulo-conteudo h2 { font-size: 14px; font-weight: 700; color: #1e4d28; margin: 10px 0 6px; }
-        .textos-padrao-capitulo-conteudo h3 { font-size: 12px; font-weight: 700; color: #1e4d28; margin: 8px 0 4px; }
+        .textos-padrao-capitulo-conteudo p {
+          margin: 0 0 12pt 0;
+          text-indent: 1.25cm;
+          text-align: justify;
+        }
+        .textos-padrao-capitulo-conteudo h1 { font-size: 14pt; font-weight: 700; color: #1e4d28; margin: 18pt 0 6pt; }
+        .textos-padrao-capitulo-conteudo h2 { font-size: 13pt; font-weight: 700; color: #1e4d28; margin: 14pt 0 6pt; }
+        .textos-padrao-capitulo-conteudo h3 { font-size: 12pt; font-weight: 700; color: #1e4d28; margin: 12pt 0 4pt; }
         .textos-padrao-capitulo-conteudo ul,
-        .textos-padrao-capitulo-conteudo ol { margin: 0 0 8px 20px; padding: 0; }
-        .textos-padrao-capitulo-conteudo li { margin: 2px 0; }
+        .textos-padrao-capitulo-conteudo ol { margin: 0 0 12pt 1.25cm; padding: 0; }
+        .textos-padrao-capitulo-conteudo li { margin: 2pt 0; }
         .textos-padrao-capitulo-conteudo a { color: #006B54; text-decoration: underline; }
         .textos-padrao-capitulo-conteudo img {
           max-width: 100%;
           height: auto;
           border-radius: 4px;
-          margin: 8px 0;
+          margin: 8pt 0;
         }
         .textos-padrao-capitulo-conteudo table {
           border-collapse: collapse;
           width: 100%;
-          margin: 8px 0;
-          font-size: 10px;
+          margin: 12pt 0;
+          font-size: 10pt;
         }
         .textos-padrao-capitulo-conteudo th,
         .textos-padrao-capitulo-conteudo td {
@@ -118,17 +145,20 @@ export default function TextosPadraoPrint({
 
       {capitulos.map((c) => {
         const ehCapa = !!c.bg_imagem_url;
+        const orientacao = c.orientacao ?? "retrato";
         const conteudoSubstituido = substituirVariaveis(c.conteudo, valores);
         const tituloSubstituido = substituirVariaveisTexto(c.titulo, valores);
+        const classes = [
+          "textos-padrao-capitulo",
+          orientacao === "paisagem"
+            ? "textos-padrao-capitulo--paisagem"
+            : "textos-padrao-capitulo--retrato",
+          ehCapa ? "textos-padrao-capitulo--capa" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
         return (
-          <article
-            key={c.id_capitulo}
-            className={
-              ehCapa
-                ? "textos-padrao-capitulo textos-padrao-capitulo--capa"
-                : "textos-padrao-capitulo"
-            }
-          >
+          <article key={c.id_capitulo} className={classes}>
             {ehCapa && c.bg_imagem_url && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
