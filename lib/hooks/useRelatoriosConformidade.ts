@@ -127,8 +127,8 @@ export function useCriarRelatorioConformidade() {
           ordem: idx + 1,
           situacao: "PENDENTE",
           observacao: null,
-          foto_url: null,
-          foto_storage_path: null,
+          foto_urls: [],
+          foto_storage_paths: [],
           created_at: new Date().toISOString(),
           updated_at: null,
         })
@@ -219,13 +219,17 @@ export function useAtualizarRelatorioConformidade() {
   });
 }
 
+/** Limite máximo de fotos por item (UI). Manter coerente com o front. */
+export const MAX_FOTOS_POR_ITEM = 8;
+
 /**
- * Upload de foto para um item do checklist. Salva no bucket `fotos` do
- * Supabase Storage (mesmo bucket das inspeções) em
- * `conformidade/{id_relatorio}/{id_item}.{ext}` e grava a URL pública no
- * item.
+ * Adiciona UMA foto ao item. Anexa ao final dos arrays `foto_urls` e
+ * `foto_storage_paths` (não substitui). Bucket: `fotos`, path:
+ * `conformidade/{id_relatorio}/{id_item}-{sufixo}.{ext}`.
  *
- * Se o item já tinha uma foto, o arquivo antigo é apagado primeiro.
+ * Recebe os arrays atuais pra evitar race condition quando o usuário
+ * sobe 2+ fotos rapidamente em sequência (cada chamada vê o estado mais
+ * recente vindo do componente).
  */
 export function useUploadFotoItemConformidade() {
   const qc = useQueryClient();
@@ -234,32 +238,39 @@ export function useUploadFotoItemConformidade() {
       id_relatorio: string;
       id_item: string;
       file: File;
-      fotoAntigaPath?: string | null;
+      fotos_urls_atuais: string[];
+      fotos_paths_atuais: string[];
     }) => {
       const supabase = createSupabaseBrowserClient();
 
-      // Remove a antiga primeiro (se houver)
-      if (params.fotoAntigaPath) {
-        await supabase.storage.from("fotos").remove([params.fotoAntigaPath]);
+      if (params.fotos_paths_atuais.length >= MAX_FOTOS_POR_ITEM) {
+        throw new Error(
+          `Limite de ${MAX_FOTOS_POR_ITEM} fotos por item atingido.`
+        );
       }
 
       const ext = (params.file.name.split(".").pop() ?? "jpg").toLowerCase();
-      // Sufixo aleatório evita problema de cache CDN ao trocar a foto
       const sufixo = Math.random().toString(36).slice(2, 8);
       const path = `conformidade/${params.id_relatorio}/${params.id_item}-${sufixo}.${ext}`;
 
       const { error: upErr } = await supabase.storage
         .from("fotos")
-        .upload(path, params.file, { upsert: false, contentType: params.file.type });
+        .upload(path, params.file, {
+          upsert: false,
+          contentType: params.file.type,
+        });
       if (upErr) throw upErr;
 
       const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
 
+      const novasUrls = [...params.fotos_urls_atuais, pub.publicUrl];
+      const novosPaths = [...params.fotos_paths_atuais, path];
+
       const { error: updateErr } = await supabase
         .from("relatorios_conformidade_itens")
         .update({
-          foto_url: pub.publicUrl,
-          foto_storage_path: path,
+          foto_urls: novasUrls,
+          foto_storage_paths: novosPaths,
           updated_at: new Date().toISOString(),
         } as never)
         .eq("id_item", params.id_item);
@@ -273,6 +284,10 @@ export function useUploadFotoItemConformidade() {
   });
 }
 
+/**
+ * Remove UMA foto específica do item (pelo storage_path). Atualiza os arrays
+ * mantendo os outros itens na mesma ordem.
+ */
 export function useRemoverFotoItemConformidade() {
   const qc = useQueryClient();
   return useMutation({
@@ -280,17 +295,26 @@ export function useRemoverFotoItemConformidade() {
       id_relatorio: string;
       id_item: string;
       foto_storage_path: string;
+      fotos_urls_atuais: string[];
+      fotos_paths_atuais: string[];
     }) => {
       const supabase = createSupabaseBrowserClient();
 
-      // Apaga do storage (best-effort — não trava se arquivo já tiver sumido)
+      // Apaga do storage (best-effort)
       await supabase.storage.from("fotos").remove([params.foto_storage_path]);
+
+      // Filtra mantendo o pareamento URL ↔ path
+      const idx = params.fotos_paths_atuais.indexOf(params.foto_storage_path);
+      const novosPaths = params.fotos_paths_atuais.filter(
+        (_, i) => i !== idx
+      );
+      const novasUrls = params.fotos_urls_atuais.filter((_, i) => i !== idx);
 
       const { error } = await supabase
         .from("relatorios_conformidade_itens")
         .update({
-          foto_url: null,
-          foto_storage_path: null,
+          foto_urls: novasUrls,
+          foto_storage_paths: novosPaths,
           updated_at: new Date().toISOString(),
         } as never)
         .eq("id_item", params.id_item);

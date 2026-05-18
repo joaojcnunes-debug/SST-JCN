@@ -261,7 +261,8 @@ export default function DetalheConformidadePage({
                     id_relatorio: id,
                     id_item: item.id_item,
                     file,
-                    fotoAntigaPath: item.foto_storage_path,
+                    fotos_urls_atuais: item.foto_urls,
+                    fotos_paths_atuais: item.foto_storage_paths,
                   },
                   {
                     onSuccess: () => toast.success("Foto enviada"),
@@ -270,14 +271,15 @@ export default function DetalheConformidadePage({
                   }
                 );
               }}
-              onRemoverFoto={() => {
-                if (!item.foto_storage_path) return;
+              onRemoverFoto={(path) => {
                 if (!window.confirm("Remover esta foto?")) return;
                 removerFoto.mutate(
                   {
                     id_relatorio: id,
                     id_item: item.id_item,
-                    foto_storage_path: item.foto_storage_path,
+                    foto_storage_path: path,
+                    fotos_urls_atuais: item.foto_urls,
+                    fotos_paths_atuais: item.foto_storage_paths,
                   },
                   {
                     onSuccess: () => toast.success("Foto removida"),
@@ -440,7 +442,7 @@ function ItemRow({
   onChangeSituacao: (s: SituacaoConformidade) => void;
   onChangeObservacao: (obs: string) => void;
   onUploadFoto: (file: File) => void;
-  onRemoverFoto: () => void;
+  onRemoverFoto: (storagePath: string) => void;
   onAmpliarFoto: (url: string) => void;
   uploadEmAndamento: boolean;
 }) {
@@ -458,6 +460,11 @@ function ItemRow({
         return "border-amber-200 bg-amber-50/30";
     }
   }, [item.situacao]);
+
+  const fotoUrls = item.foto_urls ?? [];
+  const fotoPaths = item.foto_storage_paths ?? [];
+  const temFotos = fotoUrls.length > 0;
+  const limiteAtingido = fotoPaths.length >= 8;
 
   return (
     <div className={`rounded-lg border p-3 print:break-inside-avoid ${corBorda}`}>
@@ -502,7 +509,7 @@ function ItemRow({
           disabled={bloqueado}
         />
 
-        {/* Botão de adicionar/trocar foto */}
+        {/* Botão de adicionar foto (múltiplas) */}
         {!bloqueado && (
           <>
             <input
@@ -520,16 +527,22 @@ function ItemRow({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={uploadEmAndamento}
+              disabled={uploadEmAndamento || limiteAtingido}
               className="inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-white px-2.5 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:opacity-50"
-              title={item.foto_url ? "Trocar foto" : "Adicionar foto"}
+              title={
+                limiteAtingido
+                  ? "Limite de 8 fotos por item"
+                  : "Adicionar foto"
+              }
             >
               {uploadEmAndamento ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <Camera className="size-4" />
               )}
-              {item.foto_url ? "Trocar foto" : "Foto"}
+              {temFotos
+                ? `Adicionar foto (${fotoUrls.length})`
+                : "Adicionar foto"}
             </button>
           </>
         )}
@@ -553,9 +566,42 @@ function ItemRow({
         </span>
       </div>
 
-      {/* Observação */}
+      {/* Fotos anexadas — grid 2 colunas centralizado quando 2+, single quando 1 */}
+      {temFotos && (
+        <div className="mt-3 flex justify-center">
+          <div
+            className={
+              fotoUrls.length === 1
+                ? "flex justify-center"
+                : "grid grid-cols-2 gap-3 print:gap-2"
+            }
+          >
+            {fotoUrls.map((url, idx) => {
+              const path = fotoPaths[idx];
+              return (
+                <FotoThumb
+                  key={`${url}-${idx}`}
+                  url={url}
+                  itemCodigo={item.item_codigo}
+                  onAmpliar={onAmpliarFoto}
+                  onRemover={
+                    !bloqueado && path
+                      ? () => onRemoverFoto(path)
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Observação — fica ABAIXO das fotos */}
       {(item.observacao || !bloqueado) && (
-        <div className="mt-2">
+        <div className="mt-3">
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500 print:text-[11px]">
+            Observação
+          </label>
           <textarea
             value={obs}
             onChange={(e) => {
@@ -570,41 +616,50 @@ function ItemRow({
             }}
             placeholder={bloqueado ? "" : "Observação (opcional)"}
             disabled={bloqueado}
-            rows={1}
-            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-gray-50 disabled:text-gray-600 print:resize-none print:border-gray-300"
+            rows={2}
+            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-gray-50 disabled:text-gray-600 print:resize-none print:border-gray-300"
           />
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Foto anexada */}
-      {item.foto_url && (
-        <div className="mt-2">
-          <div className="group relative inline-block">
-            <button
-              type="button"
-              onClick={() => onAmpliarFoto(item.foto_url!)}
-              className="block overflow-hidden rounded-md border border-gray-300 print:border-gray-400"
-              title="Ampliar"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item.foto_url}
-                alt={`Foto do item ${item.item_codigo}`}
-                className="h-32 w-auto max-w-[280px] object-cover print:max-h-48 print:max-w-[300px]"
-              />
-            </button>
-            {!bloqueado && (
-              <button
-                type="button"
-                onClick={onRemoverFoto}
-                className="absolute -right-2 -top-2 rounded-full bg-white p-1 text-red-600 shadow-md ring-1 ring-red-200 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 print:hidden"
-                title="Remover foto"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
+function FotoThumb({
+  url,
+  itemCodigo,
+  onAmpliar,
+  onRemover,
+}: {
+  url: string;
+  itemCodigo: string;
+  onAmpliar: (url: string) => void;
+  onRemover?: () => void;
+}) {
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        onClick={() => onAmpliar(url)}
+        className="block overflow-hidden rounded-md border border-gray-300 print:border-gray-400"
+        title="Ampliar"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={`Foto do item ${itemCodigo}`}
+          className="h-36 w-44 object-cover sm:h-40 sm:w-52 print:h-40 print:w-48"
+        />
+      </button>
+      {onRemover && (
+        <button
+          type="button"
+          onClick={onRemover}
+          className="absolute -right-2 -top-2 rounded-full bg-white p-1 text-red-600 shadow-md ring-1 ring-red-200 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 print:hidden"
+          title="Remover foto"
+        >
+          <X className="size-3.5" />
+        </button>
       )}
     </div>
   );

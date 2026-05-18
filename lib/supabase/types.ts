@@ -598,10 +598,10 @@ export interface RelatorioConformidadeItem {
   ordem: number;
   situacao: SituacaoConformidade;
   observacao: string | null;
-  /** URL pública da foto anexada ao item (Supabase Storage, bucket `fotos`). */
-  foto_url: string | null;
-  /** Path do arquivo no bucket — necessário pra deletar. */
-  foto_storage_path: string | null;
+  /** URLs públicas das fotos do item (Supabase Storage, bucket `fotos`). */
+  foto_urls: string[];
+  /** Paths dos arquivos no bucket — pareados 1:1 com `foto_urls`, na mesma ordem. */
+  foto_storage_paths: string[];
   created_at: string;
   updated_at: string | null;
 }
