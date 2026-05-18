@@ -2418,36 +2418,39 @@ function MedidaBloco({
         </span>
       </div>
 
-      {/* Dropdown de sugestões do catálogo/modelo — clique único adiciona
-          o item à lista. Itens já adicionados saem do dropdown pra evitar
-          duplicar. Mesmo padrão do FonteBlocoLista. */}
-      {sugestoesDisponiveis.length > 0 && (
-        <div className="mb-2">
-          <label
-            className={`mb-1 block text-[10px] font-semibold uppercase tracking-wider ${cfg.text}`}
-          >
-            Sugestões do catálogo ({sugestoesDisponiveis.length})
-          </label>
-          <select
-            value=""
-            onChange={(ev) => {
-              const txt = ev.target.value;
-              if (txt && !items.includes(txt)) {
-                onChange([...items, txt]);
-              }
-              ev.target.value = "";
-            }}
-            className={`w-full rounded-md border ${cfg.border} bg-white px-2 py-1.5 text-sm text-gray-900`}
-          >
-            <option value="">— Selecione uma medida para adicionar —</option>
-            {sugestoesDisponiveis.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+      {/* Dropdown de sugestões do catálogo/modelo — sempre visível pra
+          dar UI consistente entre tipos de risco. Quando o catálogo do
+          tipo está vazio, fica desabilitado com placeholder informativo. */}
+      <div className="mb-2">
+        <label
+          className={`mb-1 block text-[10px] font-semibold uppercase tracking-wider ${cfg.text}`}
+        >
+          Sugestões do catálogo ({sugestoesDisponiveis.length})
+        </label>
+        <select
+          value=""
+          disabled={sugestoesDisponiveis.length === 0}
+          onChange={(ev) => {
+            const txt = ev.target.value;
+            if (txt && !items.includes(txt)) {
+              onChange([...items, txt]);
+            }
+            ev.target.value = "";
+          }}
+          className={`w-full rounded-md border ${cfg.border} bg-white px-2 py-1.5 text-sm text-gray-900 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400`}
+        >
+          <option value="">
+            {sugestoesDisponiveis.length === 0
+              ? "— Sem sugestões no catálogo deste tipo (cadastre em Configurações → Tipos de Risco) —"
+              : "— Selecione uma medida para adicionar —"}
+          </option>
+          {sugestoesDisponiveis.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {items.length > 0 && (
         <ul className="mb-2 divide-y divide-gray-200 overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
