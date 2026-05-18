@@ -2366,6 +2366,11 @@ function MedidaBloco({
   const [editText, setEditText] = useState("");
   const datalistId = `cat-medida-${ordem}`;
 
+  // Sugestões do catálogo/modelo que ainda não foram inseridas neste risco.
+  // Dropdown mostra essas pra clique-único; itens já adicionados saem da
+  // lista pra evitar duplicar.
+  const sugestoesDisponiveis = sugestoes.filter((s) => !items.includes(s));
+
   function handleAdd() {
     const txt = novo.trim();
     if (!txt) {
@@ -2412,6 +2417,37 @@ function MedidaBloco({
           {items.length}
         </span>
       </div>
+
+      {/* Dropdown de sugestões do catálogo/modelo — clique único adiciona
+          o item à lista. Itens já adicionados saem do dropdown pra evitar
+          duplicar. Mesmo padrão do FonteBlocoLista. */}
+      {sugestoesDisponiveis.length > 0 && (
+        <div className="mb-2">
+          <label
+            className={`mb-1 block text-[10px] font-semibold uppercase tracking-wider ${cfg.text}`}
+          >
+            Sugestões do catálogo ({sugestoesDisponiveis.length})
+          </label>
+          <select
+            value=""
+            onChange={(ev) => {
+              const txt = ev.target.value;
+              if (txt && !items.includes(txt)) {
+                onChange([...items, txt]);
+              }
+              ev.target.value = "";
+            }}
+            className={`w-full rounded-md border ${cfg.border} bg-white px-2 py-1.5 text-sm text-gray-900`}
+          >
+            <option value="">— Selecione uma medida para adicionar —</option>
+            {sugestoesDisponiveis.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {items.length > 0 && (
         <ul className="mb-2 divide-y divide-gray-100 rounded-md bg-white">
