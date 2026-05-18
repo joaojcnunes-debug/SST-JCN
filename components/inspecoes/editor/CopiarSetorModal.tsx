@@ -320,6 +320,7 @@ export default function CopiarSetorModal({
                     setIdInspecaoDestino(null);
                   }}
                   placeholder="Buscar empresa..."
+                  modulo="sst"
                 />
               </div>
             </div>

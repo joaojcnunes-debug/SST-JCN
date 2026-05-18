@@ -66,6 +66,19 @@ export type CategoriaFoto =
   | "Extintor"
   | "Geral";
 
+export type ModuloEmpresa =
+  | "sst"
+  | "psicossocial"
+  | "conformidade"
+  | "analise_quimicos";
+
+export const MODULOS_EMPRESA: Array<{ value: ModuloEmpresa; label: string }> = [
+  { value: "sst", label: "Painel SST (Inspeções)" },
+  { value: "psicossocial", label: "Psicossocial" },
+  { value: "conformidade", label: "Relatório de Conformidade" },
+  { value: "analise_quimicos", label: "Análise de Químicos" },
+];
+
 export interface Empresa {
   id_empresa: string;
   nome_empresa: string;
@@ -78,6 +91,8 @@ export interface Empresa {
   grau_risco: number | null;
   status: StatusEmpresa | null;
   observacao: string | null;
+  /** Lista de módulos em que a empresa está habilitada (aparece nos selects). */
+  modulos_habilitados: ModuloEmpresa[];
   created_at: string;
   updated_at: string | null;
 }

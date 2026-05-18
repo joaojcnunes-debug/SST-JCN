@@ -356,6 +356,7 @@ export default function AnaliseForm() {
           onChange={setIdEmpresa}
           placeholder="Análise geral (sem empresa) ou selecione..."
           disabled={gerar.isPending}
+          modulo="analise_quimicos"
         />
       </div>
 

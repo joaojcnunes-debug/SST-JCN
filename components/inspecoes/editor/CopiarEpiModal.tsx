@@ -176,6 +176,7 @@ export default function CopiarEpiModal({ open, onClose, epi }: Props) {
                   setIdRiscoDestino("");
                 }}
                 placeholder="Buscar empresa..."
+                modulo="sst"
               />
             </div>
           </div>

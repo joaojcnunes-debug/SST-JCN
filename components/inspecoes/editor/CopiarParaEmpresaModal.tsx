@@ -236,6 +236,7 @@ export default function CopiarParaEmpresaModal({
             value={destinoId}
             onChange={setDestinoId}
             placeholder="Selecione a empresa destino..."
+            modulo="sst"
           />
           {destinoId === idEmpresaOrigem && (
             <p className="mt-1 text-xs text-red-alert">

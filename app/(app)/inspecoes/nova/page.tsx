@@ -313,6 +313,7 @@ function NovaInspecaoInner() {
             <EmpresaSelect
               value={empresaDestinoId}
               onChange={setEmpresaDestinoId}
+              modulo="sst"
             />
             <div className="flex justify-end">
               <button
@@ -387,6 +388,7 @@ function NovaInspecaoInner() {
                       setInspBaseId(null);
                     }}
                     placeholder="Buscar empresa de origem..."
+                    modulo="sst"
                   />
                 </div>
                 {empresaOrigemId && (

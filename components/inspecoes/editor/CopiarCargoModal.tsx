@@ -196,6 +196,7 @@ export default function CopiarCargoModal({
                       setIdSetorDestino("");
                     }}
                     placeholder="Buscar empresa..."
+                    modulo="sst"
                   />
                 </div>
               </div>

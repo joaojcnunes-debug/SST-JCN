@@ -132,7 +132,7 @@ function InspecoesInner() {
           <label className="text-xs font-medium uppercase tracking-wider text-gray-500">
             Empresa
           </label>
-          <EmpresaSelect value={empresaId} onChange={setEmpresaId} />
+          <EmpresaSelect value={empresaId} onChange={setEmpresaId} modulo="sst" />
         </div>
         <div className="flex gap-2">
           {empresaId && (

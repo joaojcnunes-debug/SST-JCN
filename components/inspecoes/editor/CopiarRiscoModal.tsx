@@ -302,6 +302,7 @@ export default function CopiarRiscoModal({
                       setIdCargoDestino("");
                     }}
                     placeholder="Buscar empresa..."
+                    modulo="sst"
                   />
                 </div>
               </div>

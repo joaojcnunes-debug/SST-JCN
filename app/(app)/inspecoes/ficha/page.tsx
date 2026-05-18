@@ -77,7 +77,7 @@ export default function FichaSelecionarPage() {
           <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">
             Empresa
           </label>
-          <EmpresaSelect value={idEmpresa} onChange={setIdEmpresa} />
+          <EmpresaSelect value={idEmpresa} onChange={setIdEmpresa} modulo="sst" />
         </div>
 
         {idEmpresa && (

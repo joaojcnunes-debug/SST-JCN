@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { ChevronDown, Search, X, Building2 } from "lucide-react";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { cn, formatCNPJ } from "@/lib/utils";
+import type { ModuloEmpresa } from "@/lib/supabase/types";
 
 interface EmpresaSelectProps {
   value: string | null;
@@ -11,6 +12,8 @@ interface EmpresaSelectProps {
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  /** Quando informado, filtra apenas empresas habilitadas neste módulo. */
+  modulo?: ModuloEmpresa;
 }
 
 export default function EmpresaSelect({
@@ -19,8 +22,9 @@ export default function EmpresaSelect({
   placeholder = "Selecione uma empresa...",
   className,
   disabled,
+  modulo,
 }: EmpresaSelectProps) {
-  const { data: empresas = [], isLoading } = useEmpresas();
+  const { data: empresas = [], isLoading } = useEmpresas(modulo);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);

@@ -125,6 +125,7 @@ function NovoConformidadeInner() {
             onChange={setIdEmpresa}
             placeholder="Selecione a empresa auditada..."
             disabled={criar.isPending}
+            modulo="conformidade"
           />
         </div>
 

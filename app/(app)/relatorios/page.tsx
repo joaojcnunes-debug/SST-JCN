@@ -72,7 +72,7 @@ function RelatoriosInner() {
             Empresa
           </label>
           <div className="mt-1 max-w-xl">
-            <EmpresaSelect value={empresaId} onChange={setEmpresaId} />
+            <EmpresaSelect value={empresaId} onChange={setEmpresaId} modulo="sst" />
           </div>
         </div>
       </header>

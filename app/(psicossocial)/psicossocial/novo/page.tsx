@@ -83,7 +83,7 @@ function Inner() {
             <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">
               Empresa <span className="text-red-alert">*</span>
             </label>
-            <EmpresaSelect value={idEmpresa} onChange={setIdEmpresa} />
+            <EmpresaSelect value={idEmpresa} onChange={setIdEmpresa} modulo="psicossocial" />
           </div>
 
           {idEmpresa && (
