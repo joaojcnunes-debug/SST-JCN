@@ -6,6 +6,7 @@ import { ArrowLeft, Printer } from "lucide-react";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import {
   formatCNPJ,
   formatCPF,
@@ -175,6 +176,17 @@ export default function FichaInspecaoPage({ params }: Props) {
       </div>
 
       <div className="ficha-print rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <RelatorioPrintHeader
+          titulo="Ficha de Inspeção SST · NR-01"
+          subtitulo={empresa?.nome_empresa ?? null}
+          terciario={
+            inspecao.data_inspecao
+              ? `Inspeção: ${new Date(
+                  inspecao.data_inspecao + "T00:00:00"
+                ).toLocaleDateString("pt-BR")}`
+              : null
+          }
+        />
         <div className="ficha-titulo">
           Ficha de Inspeção SST · NR-01
         </div>

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import {
   useRelatorioConformidade,
   useAtualizarItemConformidade,
@@ -176,6 +177,19 @@ export default function DetalheConformidadePage({
           </button>
         </div>
       </div>
+
+      {/* Logo Chabra (print + tela) */}
+      <RelatorioPrintHeader
+        titulo={`Relatório de Conformidade — ${relatorio.nr_codigo}`}
+        subtitulo={empresa?.nome_empresa ?? null}
+        terciario={
+          relatorio.data_inspecao
+            ? new Date(relatorio.data_inspecao + "T00:00").toLocaleDateString(
+                "pt-BR"
+              )
+            : null
+        }
+      />
 
       {/* Cabeçalho */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border-0 print:shadow-none print:p-2">

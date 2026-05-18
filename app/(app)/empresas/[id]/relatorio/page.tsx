@@ -9,6 +9,7 @@ import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import NivelBadge from "@/components/riscos/NivelBadge";
+import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fmtData, formatCNPJ } from "@/lib/utils";
 import { NIVEIS_RISCO, NIVEL_CONFIG } from "@/lib/constants";
@@ -102,6 +103,12 @@ export default function RelatorioConsolidadoPage({ params }: Props) {
       </div>
 
       <article className="space-y-6 rounded-xl border border-gray-200 bg-white p-6 print:border-0 print:p-0 print:shadow-none">
+        <RelatorioPrintHeader
+          titulo="Relatório Consolidado por Empresa"
+          subtitulo={empresa?.nome_empresa ?? null}
+          terciario={empresa?.cnpj ? `CNPJ: ${formatCNPJ(empresa.cnpj)}` : null}
+        />
+
         {/* Header */}
         <header className="flex items-start gap-3 border-b border-gray-200 pb-4">
           <div className="flex size-12 items-center justify-center rounded-xl bg-verde-primary text-white">

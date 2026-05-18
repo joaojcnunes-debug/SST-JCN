@@ -14,6 +14,7 @@ import {
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
+import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import { useDrpsStore } from "@/lib/drps/store";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import {
@@ -500,6 +501,16 @@ export default function AnalisePage({
           </div>
 
           <div className="drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
+            {/* Logo Chabra (só aparece quando NÃO há capítulos com capa próprios) */}
+            {capitulos.length === 0 && (
+              <RelatorioPrintHeader
+                titulo="Diagnóstico de Riscos Psicossociais (DRPS)"
+                subtitulo={empresa?.nome_empresa ?? null}
+                terciario={
+                  setor !== "Todos" ? `Setor: ${setor}` : "Consolidado por setor"
+                }
+              />
+            )}
             {capitulos.length > 0 && (
               <section className="drps-capitulos mb-6 hidden print:block">
                 {capitulos.map((c) => {

@@ -20,6 +20,7 @@ import {
 } from "@/lib/hooks/useAnalisesQuimicos";
 import ConclusaoRapidaCard from "@/components/quimicos/ConclusaoRapidaCard";
 import RelatorioEstruturado from "@/components/quimicos/RelatorioEstruturado";
+import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 
 export default function AnaliseDetalhePage({
   params,
@@ -101,6 +102,13 @@ export default function AnaliseDetalhePage({
           </button>
         </div>
       </div>
+
+      {/* Logo Chabra (print + tela) */}
+      <RelatorioPrintHeader
+        titulo="Análise de Agente Químico"
+        subtitulo={analise.titulo}
+        terciario={empresa?.nome_empresa ?? null}
+      />
 
       {/* Cabeçalho do relatório (visível no print) */}
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm print:border-0 print:shadow-none">
