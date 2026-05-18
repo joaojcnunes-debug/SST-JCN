@@ -22,6 +22,11 @@ import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import NivelBadge from "@/components/riscos/NivelBadge";
+import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
+import {
+  montarValoresEmpresa,
+  formatarDataBR,
+} from "@/lib/textos-padrao/variaveis";
 import {
   fmtData,
   fmtDataHora,
@@ -253,6 +258,19 @@ export default function RelatorioChabraPage({ params }: Props) {
             Segurança do Trabalho
           </p>
         </section>
+
+        {/* Textos Padrão (capítulos cadastrados em /texto-padrao) —
+            aparecem após a capa, antes da página 2 de identificação. */}
+        <TextosPadraoPrint
+          modulo="sst"
+          valores={{
+            ...montarValoresEmpresa(empresa ?? null),
+            data_inspecao: formatarDataBR(inspecao.data_inspecao),
+            revisao: String(inspecao.revisao ?? ""),
+            responsavel: inspecao.responsavel ?? "",
+          }}
+          posicao="antes"
+        />
 
         {/* ============================================================
             PÁGINA 2: Identificação + Resumo Geral

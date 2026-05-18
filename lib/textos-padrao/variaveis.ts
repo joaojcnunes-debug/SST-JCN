@@ -4,6 +4,14 @@
 // Cada módulo (SST, Conformidade, Análise Químicos) tem seu próprio conjunto
 // de variáveis disponíveis. A interseção (campos da empresa) está em comum.
 
+import {
+  formatCNPJ,
+  formatCPF,
+  formatCEI,
+  formatCAEPF,
+  formatCNO,
+} from "@/lib/utils";
+import type { Empresa } from "@/lib/supabase/types";
 import type { ModuloTextoPadrao } from "./types";
 
 export interface VariavelDef {
@@ -86,4 +94,35 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+/** Formata data ISO (yyyy-mm-dd) para "dd/mm/yyyy". String vazia se inválido. */
+export function formatarDataBR(iso: string | null | undefined): string {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso.length === 10 ? iso + "T00:00:00" : iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("pt-BR");
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Monta o subconjunto comum de variáveis (dados da empresa + data atual).
+ * Cada módulo combina isso com suas variáveis específicas.
+ */
+export function montarValoresEmpresa(
+  empresa: Empresa | null | undefined
+): Record<string, string> {
+  return {
+    empresa_nome: empresa?.nome_empresa ?? "",
+    empresa_razao_social: empresa?.razao_social ?? "",
+    cnpj: empresa?.cnpj ? formatCNPJ(empresa.cnpj) : "",
+    cpf: empresa?.cpf ? formatCPF(empresa.cpf) : "",
+    cei: empresa?.cei ? formatCEI(empresa.cei) : "",
+    caepf: empresa?.caepf ? formatCAEPF(empresa.caepf) : "",
+    cno: empresa?.cno ? formatCNO(empresa.cno) : "",
+    data_atual: new Date().toLocaleDateString("pt-BR"),
+  };
 }

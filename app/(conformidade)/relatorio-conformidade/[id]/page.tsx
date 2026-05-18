@@ -20,6 +20,11 @@ import {
 import toast from "react-hot-toast";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
+import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
+import {
+  montarValoresEmpresa,
+  formatarDataBR,
+} from "@/lib/textos-padrao/variaveis";
 import {
   useRelatorioConformidade,
   useAtualizarItemConformidade,
@@ -81,6 +86,18 @@ export default function DetalheConformidadePage({
 
   const { relatorio, itens } = data;
   const finalizado = relatorio.status === "FINALIZADO";
+
+  // Valores das variáveis dos textos padrão deste módulo
+  const valoresTextosPadrao: Record<string, string> = {
+    ...montarValoresEmpresa(empresa),
+    responsavel: relatorio.responsavel ?? "",
+    responsavel_empresa: relatorio.responsavel_empresa ?? "",
+    cidade: relatorio.cidade ?? "",
+    nr_codigo: relatorio.nr_codigo,
+    nr_titulo: relatorio.nr_titulo,
+    setor: relatorio.setor ?? "",
+    data_inspecao: formatarDataBR(relatorio.data_inspecao),
+  };
 
   function handleExcluir() {
     if (
@@ -255,6 +272,13 @@ export default function DetalheConformidadePage({
 
       {/* Resumo */}
       <ResumoConformidade itens={itens} />
+
+      {/* Textos Padrão — só aparecem no print, antes dos itens */}
+      <TextosPadraoPrint
+        modulo="conformidade"
+        valores={valoresTextosPadrao}
+        posicao="antes"
+      />
 
       {/* Lista de itens do checklist */}
       <section className="space-y-2">

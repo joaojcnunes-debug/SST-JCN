@@ -21,6 +21,8 @@ import {
 import ConclusaoRapidaCard from "@/components/quimicos/ConclusaoRapidaCard";
 import RelatorioEstruturado from "@/components/quimicos/RelatorioEstruturado";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
+import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
+import { montarValoresEmpresa } from "@/lib/textos-padrao/variaveis";
 
 export default function AnaliseDetalhePage({
   params,
@@ -204,6 +206,20 @@ export default function AnaliseDetalhePage({
         </h2>
         <ConclusaoRapidaCard conclusao={analise.conclusao_rapida} />
       </section>
+
+      {/* Textos Padrão — capítulos cadastrados no /texto-padrao do módulo.
+          Só aparecem no print, antes do relatório técnico estruturado. */}
+      <TextosPadraoPrint
+        modulo="analise_quimicos"
+        valores={{
+          ...montarValoresEmpresa(empresa ?? null),
+          titulo: analise.titulo,
+          nome_quimico: analise.nome_quimico ?? "",
+          numero_cas: analise.numero_cas ?? "",
+          responsavel: analise.usuario_nome ?? "",
+        }}
+        posicao="antes"
+      />
 
       {/* Relatório técnico estruturado (gerado pelo programa a partir dos
           campos da CONCLUSAO_RAPIDA) */}
