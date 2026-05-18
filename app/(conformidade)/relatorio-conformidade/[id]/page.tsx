@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useMemo, useState } from "react";
+import { use, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -14,6 +14,8 @@ import {
   Loader2,
   ShieldCheck,
   AlertCircle,
+  Camera,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -22,11 +24,15 @@ import {
   useAtualizarItemConformidade,
   useAtualizarRelatorioConformidade,
   useExcluirRelatorioConformidade,
+  useUploadFotoItemConformidade,
+  useRemoverFotoItemConformidade,
 } from "@/lib/hooks/useRelatoriosConformidade";
 import type {
   RelatorioConformidadeItem,
   SituacaoConformidade,
 } from "@/lib/supabase/types";
+
+const MAX_FOTO_MB = 8;
 
 export default function DetalheConformidadePage({
   params,
@@ -41,6 +47,10 @@ export default function DetalheConformidadePage({
   const atualizarItem = useAtualizarItemConformidade();
   const atualizarRelatorio = useAtualizarRelatorioConformidade();
   const excluir = useExcluirRelatorioConformidade();
+  const uploadFoto = useUploadFotoItemConformidade();
+  const removerFoto = useRemoverFotoItemConformidade();
+
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -241,6 +251,43 @@ export default function DetalheConformidadePage({
                   observacao,
                 })
               }
+              onUploadFoto={(file) => {
+                if (file.size > MAX_FOTO_MB * 1024 * 1024) {
+                  toast.error(`Arquivo maior que ${MAX_FOTO_MB} MB`);
+                  return;
+                }
+                uploadFoto.mutate(
+                  {
+                    id_relatorio: id,
+                    id_item: item.id_item,
+                    file,
+                    fotoAntigaPath: item.foto_storage_path,
+                  },
+                  {
+                    onSuccess: () => toast.success("Foto enviada"),
+                    onError: (e: Error) =>
+                      toast.error(e.message || "Falha ao enviar foto"),
+                  }
+                );
+              }}
+              onRemoverFoto={() => {
+                if (!item.foto_storage_path) return;
+                if (!window.confirm("Remover esta foto?")) return;
+                removerFoto.mutate(
+                  {
+                    id_relatorio: id,
+                    id_item: item.id_item,
+                    foto_storage_path: item.foto_storage_path,
+                  },
+                  {
+                    onSuccess: () => toast.success("Foto removida"),
+                    onError: (e: Error) =>
+                      toast.error(e.message || "Falha ao remover"),
+                  }
+                );
+              }}
+              onAmpliarFoto={(url) => setLightbox(url)}
+              uploadEmAndamento={uploadFoto.isPending}
             />
           ))}
         </div>
@@ -272,6 +319,32 @@ export default function DetalheConformidadePage({
           : `Criado em ${new Date(relatorio.created_at).toLocaleString("pt-BR")}`}
         {relatorio.usuario_nome ? ` · ${relatorio.usuario_nome}` : ""}
       </p>
+
+      {/* Lightbox de foto */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 print:hidden"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            type="button"
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightbox(null);
+            }}
+          >
+            <X className="size-5" />
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox}
+            alt="Foto ampliada"
+            className="max-h-[90vh] max-w-[90vw] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       <style jsx global>{`
         @media print {
@@ -357,14 +430,23 @@ function ItemRow({
   bloqueado,
   onChangeSituacao,
   onChangeObservacao,
+  onUploadFoto,
+  onRemoverFoto,
+  onAmpliarFoto,
+  uploadEmAndamento,
 }: {
   item: RelatorioConformidadeItem;
   bloqueado: boolean;
   onChangeSituacao: (s: SituacaoConformidade) => void;
   onChangeObservacao: (obs: string) => void;
+  onUploadFoto: (file: File) => void;
+  onRemoverFoto: () => void;
+  onAmpliarFoto: (url: string) => void;
+  uploadEmAndamento: boolean;
 }) {
   const [obs, setObs] = useState(item.observacao ?? "");
   const [obsDirty, setObsDirty] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const corBorda = useMemo(() => {
     switch (item.situacao) {
@@ -419,6 +501,39 @@ function ItemRow({
           onClick={() => onChangeSituacao("PENDENTE")}
           disabled={bloqueado}
         />
+
+        {/* Botão de adicionar/trocar foto */}
+        {!bloqueado && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onUploadFoto(f);
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadEmAndamento}
+              className="inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-white px-2.5 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50 disabled:opacity-50"
+              title={item.foto_url ? "Trocar foto" : "Adicionar foto"}
+            >
+              {uploadEmAndamento ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Camera className="size-4" />
+              )}
+              {item.foto_url ? "Trocar foto" : "Foto"}
+            </button>
+          </>
+        )}
+
         {bloqueado && (
           <span className="ml-auto inline-flex items-center gap-1 text-xs text-gray-500">
             <Lock className="size-3" /> Finalizado
@@ -458,6 +573,37 @@ function ItemRow({
             rows={1}
             className="w-full rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-gray-50 disabled:text-gray-600 print:resize-none print:border-gray-300"
           />
+        </div>
+      )}
+
+      {/* Foto anexada */}
+      {item.foto_url && (
+        <div className="mt-2">
+          <div className="group relative inline-block">
+            <button
+              type="button"
+              onClick={() => onAmpliarFoto(item.foto_url!)}
+              className="block overflow-hidden rounded-md border border-gray-300 print:border-gray-400"
+              title="Ampliar"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={item.foto_url}
+                alt={`Foto do item ${item.item_codigo}`}
+                className="h-32 w-auto max-w-[280px] object-cover print:max-h-48 print:max-w-[300px]"
+              />
+            </button>
+            {!bloqueado && (
+              <button
+                type="button"
+                onClick={onRemoverFoto}
+                className="absolute -right-2 -top-2 rounded-full bg-white p-1 text-red-600 shadow-md ring-1 ring-red-200 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 print:hidden"
+                title="Remover foto"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

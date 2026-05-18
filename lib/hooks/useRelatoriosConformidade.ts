@@ -127,6 +127,8 @@ export function useCriarRelatorioConformidade() {
           ordem: idx + 1,
           situacao: "PENDENTE",
           observacao: null,
+          foto_url: null,
+          foto_storage_path: null,
           created_at: new Date().toISOString(),
           updated_at: null,
         })
@@ -213,6 +215,90 @@ export function useAtualizarRelatorioConformidade() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
       qc.invalidateQueries({ queryKey: KEY_LISTA });
+    },
+  });
+}
+
+/**
+ * Upload de foto para um item do checklist. Salva no bucket `fotos` do
+ * Supabase Storage (mesmo bucket das inspeções) em
+ * `conformidade/{id_relatorio}/{id_item}.{ext}` e grava a URL pública no
+ * item.
+ *
+ * Se o item já tinha uma foto, o arquivo antigo é apagado primeiro.
+ */
+export function useUploadFotoItemConformidade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      id_relatorio: string;
+      id_item: string;
+      file: File;
+      fotoAntigaPath?: string | null;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+
+      // Remove a antiga primeiro (se houver)
+      if (params.fotoAntigaPath) {
+        await supabase.storage.from("fotos").remove([params.fotoAntigaPath]);
+      }
+
+      const ext = (params.file.name.split(".").pop() ?? "jpg").toLowerCase();
+      // Sufixo aleatório evita problema de cache CDN ao trocar a foto
+      const sufixo = Math.random().toString(36).slice(2, 8);
+      const path = `conformidade/${params.id_relatorio}/${params.id_item}-${sufixo}.${ext}`;
+
+      const { error: upErr } = await supabase.storage
+        .from("fotos")
+        .upload(path, params.file, { upsert: false, contentType: params.file.type });
+      if (upErr) throw upErr;
+
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+
+      const { error: updateErr } = await supabase
+        .from("relatorios_conformidade_itens")
+        .update({
+          foto_url: pub.publicUrl,
+          foto_storage_path: path,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id_item", params.id_item);
+      if (updateErr) throw updateErr;
+
+      return { foto_url: pub.publicUrl, path };
+    },
+    onSuccess: (_d, params) => {
+      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
+    },
+  });
+}
+
+export function useRemoverFotoItemConformidade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      id_relatorio: string;
+      id_item: string;
+      foto_storage_path: string;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+
+      // Apaga do storage (best-effort — não trava se arquivo já tiver sumido)
+      await supabase.storage.from("fotos").remove([params.foto_storage_path]);
+
+      const { error } = await supabase
+        .from("relatorios_conformidade_itens")
+        .update({
+          foto_url: null,
+          foto_storage_path: null,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id_item", params.id_item);
+      if (error) throw error;
+      return params;
+    },
+    onSuccess: (_d, params) => {
+      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
   });
 }
