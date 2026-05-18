@@ -1,7 +1,13 @@
 "use client";
 
 import { type ReactNode, useMemo } from "react";
-import { FlaskConical, Plus, History, Database } from "lucide-react";
+import {
+  FlaskConical,
+  Plus,
+  History,
+  Database,
+  FileEdit,
+} from "lucide-react";
 import SidebarShell, {
   type NavSection,
   type NavItem,
@@ -34,7 +40,19 @@ export default function AnaliseQuimicosLayout({
         icon: Database,
       });
     }
-    return [{ label: "Análise de Químicos", items }];
+    return [
+      { label: "Análise de Químicos", items },
+      {
+        label: "Configuração",
+        items: [
+          {
+            href: "/analise-quimicos/texto-padrao",
+            label: "Texto Padrão",
+            icon: FileEdit,
+          },
+        ],
+      },
+    ];
   }, [user?.perfil]);
 
   return (

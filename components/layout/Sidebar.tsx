@@ -8,6 +8,7 @@ import {
   BarChart3,
   Target,
   ClipboardEdit,
+  FileEdit,
 } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import SidebarShell, { type NavSection } from "./SidebarShell";
@@ -25,6 +26,10 @@ const ACOES = [
   { href: "/acoes", label: "Plano de Ação", icon: Target },
 ];
 
+const CONFIGURACAO = [
+  { href: "/texto-padrao", label: "Texto Padrão", icon: FileEdit },
+];
+
 export default function Sidebar() {
   const user = useUserStore((s) => s.user);
   const canEdit = user?.perfil === "Admin" || user?.perfil === "Tecnico";
@@ -33,6 +38,7 @@ export default function Sidebar() {
     { label: "Principal", items: PRINCIPAL },
   ];
   if (canEdit) sections.push({ label: "Ações", items: ACOES });
+  if (canEdit) sections.push({ label: "Configuração", items: CONFIGURACAO });
 
   return (
     <SidebarShell
