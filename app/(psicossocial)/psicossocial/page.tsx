@@ -13,6 +13,7 @@ import {
   useDrpsRelatorios,
 } from "@/lib/hooks/useDrps";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import { useIsAdmin } from "@/lib/hooks/useUsuario";
 import { fmtData } from "@/lib/utils";
 import type { DrpsRelatorio, StatusRelatorio } from "@/lib/drps/types";
 
@@ -34,6 +35,7 @@ const STATUS_VARIANT: Record<
 };
 
 export default function DrpsListaPage() {
+  const isAdmin = useIsAdmin();
   const [idEmpresa, setIdEmpresa] = useState<string | null>(null);
   const { data: empresa } = useEmpresa(idEmpresa);
   const { data: relatorios = [], isLoading } = useDrpsRelatorios(idEmpresa);
@@ -168,14 +170,16 @@ export default function DrpsListaPage() {
                           >
                             <ArrowRight className="size-4" />
                           </Link>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmExcluir(r)}
-                            className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
-                            title="Excluir"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmExcluir(r)}
+                              className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                              title="Excluir relatório (somente Admin)"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
