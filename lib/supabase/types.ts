@@ -626,6 +626,12 @@ export interface RelatorioNaoConformidade {
   id_relatorio: string;
   id_empresa: string;
   titulo: string;
+  /** NR vinculada ao relatório (opcional). Quando setada, libera o
+   *  quick-pick de itens do catálogo na tela de detalhe. */
+  nr_codigo: string | null;
+  /** Snapshot do título da NR no momento em que foi vinculada (catálogo
+   *  pode mudar; relatório fica congelado). */
+  nr_titulo: string | null;
   setor: string | null;
   /** Responsável técnico Chabra (quem assina pelo prestador). */
   responsavel: string | null;
@@ -647,6 +653,9 @@ export interface RelatorioNaoConformidadeItem {
   id_item: string;
   id_relatorio: string;
   ordem: number;
+  /** Quando a NC veio do quick-pick de uma NR, guarda o código do item
+   *  no catálogo (ex: "12.5.10"). NCs adicionadas livremente ficam null. */
+  item_codigo_origem: string | null;
   /** Descrição da NC encontrada (texto livre, obrigatório). */
   descricao: string;
   /** Norma violada — texto livre ("NR-12 12.5.10" / "ISO 9001 §5.2"). */

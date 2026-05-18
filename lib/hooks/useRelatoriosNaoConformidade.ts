@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
+import { getChecklistNR } from "@/lib/conformidade/checklists";
 import type {
   CriticidadeNC,
   RelatorioNaoConformidade,
@@ -79,6 +80,8 @@ export function useRelatorioNaoConformidade(id: string | null | undefined) {
 export interface CriarRelatorioNaoConformidadeInput {
   id_empresa: string;
   titulo: string;
+  /** NR opcional. Se setada, o título da NR vem do catálogo. */
+  nr_codigo: string | null;
   setor: string | null;
   responsavel: string | null;
   responsavel_empresa: string | null;
@@ -94,10 +97,24 @@ export function useCriarRelatorioNaoConformidade() {
     mutationFn: async (input: CriarRelatorioNaoConformidadeInput) => {
       const supabase = createSupabaseBrowserClient();
       const id_relatorio = gerarId("RNC");
+
+      // Snapshot do título da NR (catálogo é a única fonte; guarda pra
+      // sobreviver a mudanças futuras no catálogo)
+      let nr_titulo: string | null = null;
+      if (input.nr_codigo) {
+        const checklist = getChecklistNR(input.nr_codigo);
+        if (!checklist) {
+          throw new Error(`NR não encontrada: ${input.nr_codigo}`);
+        }
+        nr_titulo = checklist.titulo;
+      }
+
       const row: RelatorioNaoConformidade = {
         id_relatorio,
         id_empresa: input.id_empresa,
         titulo: input.titulo,
+        nr_codigo: input.nr_codigo,
+        nr_titulo,
         setor: input.setor,
         responsavel: input.responsavel,
         responsavel_empresa: input.responsavel_empresa,
@@ -130,6 +147,9 @@ export function useAtualizarRelatorioNaoConformidade() {
     mutationFn: async (params: {
       id_relatorio: string;
       titulo?: string;
+      /** Passe null pra desvincular a NR. Quando trocar de NR, o título é
+       *  re-snapshotado do catálogo. */
+      nr_codigo?: string | null;
       setor?: string | null;
       responsavel?: string | null;
       responsavel_empresa?: string | null;
@@ -143,6 +163,18 @@ export function useAtualizarRelatorioNaoConformidade() {
         updated_at: new Date().toISOString(),
       };
       if (params.titulo !== undefined) patch.titulo = params.titulo;
+      if (params.nr_codigo !== undefined) {
+        patch.nr_codigo = params.nr_codigo;
+        if (params.nr_codigo) {
+          const checklist = getChecklistNR(params.nr_codigo);
+          if (!checklist) {
+            throw new Error(`NR não encontrada: ${params.nr_codigo}`);
+          }
+          patch.nr_titulo = checklist.titulo;
+        } else {
+          patch.nr_titulo = null;
+        }
+      }
       if (params.setor !== undefined) patch.setor = params.setor;
       if (params.responsavel !== undefined)
         patch.responsavel = params.responsavel;
@@ -202,7 +234,10 @@ export function useAdicionarItemNC() {
     mutationFn: async (params: {
       id_relatorio: string;
       ordem: number;
+      /** Pré-preenchimento opcional (usado pelo quick-pick de NR). */
       descricao?: string;
+      norma_violada?: string | null;
+      item_codigo_origem?: string | null;
     }) => {
       const supabase = createSupabaseBrowserClient();
       const id_item = gerarId("NCI");
@@ -210,8 +245,9 @@ export function useAdicionarItemNC() {
         id_item,
         id_relatorio: params.id_relatorio,
         ordem: params.ordem,
+        item_codigo_origem: params.item_codigo_origem ?? null,
         descricao: params.descricao ?? "",
-        norma_violada: null,
+        norma_violada: params.norma_violada ?? null,
         criticidade: "MEDIA",
         causa_raiz: null,
         acao_corretiva: null,

@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, AlertTriangle, ListChecks } from "lucide-react";
 import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import { useCriarRelatorioNaoConformidade } from "@/lib/hooks/useRelatoriosNaoConformidade";
+import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
 
 export default function NovoNaoConformidadePage() {
   const router = useRouter();
   const [titulo, setTitulo] = useState("");
+  const [nrCodigo, setNrCodigo] = useState<string>("");
   const [idEmpresa, setIdEmpresa] = useState<string | null>(null);
   const [setor, setSetor] = useState("");
   const [responsavel, setResponsavel] = useState("");
@@ -20,6 +22,12 @@ export default function NovoNaoConformidadePage() {
     const hoje = new Date();
     return hoje.toISOString().slice(0, 10);
   });
+
+  const nrs = useMemo(() => listarNRs(), []);
+  const checklistPreview = useMemo(
+    () => (nrCodigo ? getChecklistNR(nrCodigo) : null),
+    [nrCodigo]
+  );
 
   const criar = useCriarRelatorioNaoConformidade();
 
@@ -36,6 +44,7 @@ export default function NovoNaoConformidadePage() {
       {
         id_empresa: idEmpresa,
         titulo: titulo.trim(),
+        nr_codigo: nrCodigo || null,
         setor: setor.trim() || null,
         responsavel: responsavel.trim() || null,
         responsavel_empresa: responsavelEmpresa.trim() || null,
@@ -91,6 +100,35 @@ export default function NovoNaoConformidadePage() {
             className={inputCls}
             disabled={criar.isPending}
           />
+        </div>
+
+        <div>
+          <label className={lblCls}>
+            NR vinculada{" "}
+            <span className="font-normal normal-case text-gray-400">
+              (opcional — libera quick-pick de itens do checklist)
+            </span>
+          </label>
+          <select
+            value={nrCodigo}
+            onChange={(e) => setNrCodigo(e.target.value)}
+            className={inputCls}
+            disabled={criar.isPending}
+          >
+            <option value="">— Sem NR vinculada (NCs 100% livres) —</option>
+            {nrs.map((nr) => (
+              <option key={nr.codigo} value={nr.codigo}>
+                {nr.codigo} — {nr.titulo}
+              </option>
+            ))}
+          </select>
+          {checklistPreview && (
+            <p className="mt-1 inline-flex items-center gap-1 text-xs text-red-700">
+              <ListChecks className="size-3" />
+              {checklistPreview.itens.length} itens disponíveis pra inserção
+              rápida no detalhe.
+            </p>
+          )}
         </div>
 
         <div>

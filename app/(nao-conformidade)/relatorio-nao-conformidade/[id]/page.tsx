@@ -15,6 +15,8 @@ import {
   X,
   Plus,
   ShieldAlert,
+  ListChecks,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -35,6 +37,7 @@ import {
   useRemoverFotoItemNC,
   MAX_FOTOS_POR_NC,
 } from "@/lib/hooks/useRelatoriosNaoConformidade";
+import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
 import type {
   CriticidadeNC,
   RelatorioNaoConformidade,
@@ -63,6 +66,7 @@ export default function DetalheNaoConformidadePage({
   const removerFoto = useRemoverFotoItemNC();
 
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [pickerAberto, setPickerAberto] = useState(false);
 
   if (isLoading) {
     return (
@@ -164,6 +168,35 @@ export default function DetalheNaoConformidadePage({
     );
   }
 
+  /**
+   * Insere uma NC pré-preenchida a partir de um item do catálogo da NR.
+   * Descrição vem do título do item (mais detalhamento se houver), e
+   * `norma_violada` vira "NR-XX item.codigo". `item_codigo_origem` guarda
+   * rastreabilidade pra UI mostrar quais já foram adicionados.
+   */
+  function handleInserirDoChecklist(itemCodigo: string, itemTitulo: string, itemDescricao: string | null) {
+    if (!relatorio.nr_codigo) return;
+    const descricao = itemDescricao
+      ? `${itemTitulo}\n\n${itemDescricao}`
+      : itemTitulo;
+    const norma = `${relatorio.nr_codigo} item ${itemCodigo}`;
+    adicionarItem.mutate(
+      {
+        id_relatorio: id,
+        ordem: itens.length + 1,
+        descricao,
+        norma_violada: norma,
+        item_codigo_origem: itemCodigo,
+      },
+      {
+        onSuccess: () =>
+          toast.success(`NC inserida (${relatorio.nr_codigo} ${itemCodigo})`),
+        onError: (e: Error) =>
+          toast.error(e.message || "Falha ao inserir NC"),
+      }
+    );
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-4 print:max-w-none print:space-y-2">
       {/* Topo — ações (oculta no print) */}
@@ -251,6 +284,14 @@ export default function DetalheNaoConformidadePage({
         <div className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <DataItem label="Empresa" value={empresa?.nome_empresa ?? "—"} />
           <DataItem label="CNPJ" value={empresa?.cnpj ?? "—"} />
+          <DataItem
+            label="NR vinculada"
+            value={
+              relatorio.nr_codigo
+                ? `${relatorio.nr_codigo} — ${relatorio.nr_titulo ?? ""}`
+                : "—"
+            }
+          />
           <DataItem label="Setor / Local" value={relatorio.setor ?? "—"} />
           <DataItem
             label="Responsável técnico (Chabra)"
@@ -309,19 +350,33 @@ export default function DetalheNaoConformidadePage({
             Não Conformidades ({itens.length})
           </h2>
           {!finalizado && (
-            <button
-              type="button"
-              onClick={handleAdicionarItem}
-              disabled={adicionarItem.isPending}
-              className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50 print:hidden"
-            >
-              {adicionarItem.isPending ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <Plus className="size-3" />
+            <div className="flex flex-wrap items-center gap-2 print:hidden">
+              {relatorio.nr_codigo && (
+                <button
+                  type="button"
+                  onClick={() => setPickerAberto(true)}
+                  disabled={adicionarItem.isPending}
+                  className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                  title={`Inserir NC a partir do checklist ${relatorio.nr_codigo}`}
+                >
+                  <ListChecks className="size-3" />
+                  Inserir do checklist {relatorio.nr_codigo}
+                </button>
               )}
-              Adicionar NC
-            </button>
+              <button
+                type="button"
+                onClick={handleAdicionarItem}
+                disabled={adicionarItem.isPending}
+                className="inline-flex items-center gap-1 rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {adicionarItem.isPending ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Plus className="size-3" />
+                )}
+                Adicionar NC
+              </button>
+            </div>
           )}
         </div>
 
@@ -434,6 +489,23 @@ export default function DetalheNaoConformidadePage({
           : `Criado em ${new Date(relatorio.created_at).toLocaleString("pt-BR")}`}
         {relatorio.usuario_nome ? ` · ${relatorio.usuario_nome}` : ""}
       </p>
+
+      {/* Picker do checklist da NR — só aparece se há NR vinculada */}
+      {pickerAberto && relatorio.nr_codigo && (
+        <ChecklistPicker
+          nrCodigo={relatorio.nr_codigo}
+          codigosJaInseridos={
+            new Set(
+              itens
+                .map((i) => i.item_codigo_origem)
+                .filter((c): c is string => !!c)
+            )
+          }
+          onInserir={handleInserirDoChecklist}
+          onFechar={() => setPickerAberto(false)}
+          inserindo={adicionarItem.isPending}
+        />
+      )}
 
       {lightbox && (
         <div
@@ -1104,6 +1176,7 @@ function EditarCabecalho({
   relatorio: RelatorioNaoConformidade;
   onSalvar: (patch: {
     titulo?: string;
+    nr_codigo?: string | null;
     setor?: string | null;
     responsavel?: string | null;
     responsavel_empresa?: string | null;
@@ -1111,6 +1184,7 @@ function EditarCabecalho({
     data_inspecao?: string | null;
   }) => void;
 }) {
+  const nrsDisponiveis = useMemo(() => listarNRs(), []);
   const [aberto, setAberto] = useState(false);
   const [titulo, setTitulo] = useState(relatorio.titulo);
   const [setor, setSetor] = useState(relatorio.setor ?? "");
@@ -1152,6 +1226,28 @@ function EditarCabecalho({
           }}
           className={inputCls}
         />
+      </div>
+      <div className="sm:col-span-2">
+        <label className={lblCls}>
+          NR vinculada{" "}
+          <span className="font-normal normal-case text-gray-400">
+            (opcional)
+          </span>
+        </label>
+        <select
+          value={relatorio.nr_codigo ?? ""}
+          onChange={(e) =>
+            onSalvar({ nr_codigo: e.target.value || null })
+          }
+          className={inputCls}
+        >
+          <option value="">— Sem NR vinculada —</option>
+          {nrsDisponiveis.map((nr) => (
+            <option key={nr.codigo} value={nr.codigo}>
+              {nr.codigo} — {nr.titulo}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label className={lblCls}>Setor / Local</label>
@@ -1251,5 +1347,187 @@ function ObservacoesGerais({
       rows={3}
       className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:bg-gray-50 print:resize-none"
     />
+  );
+}
+
+/**
+ * Modal pra inserção rápida de NCs a partir do catálogo da NR vinculada.
+ * Cada item pode ser inserido individualmente (clique no "+"); itens já
+ * inseridos no relatório aparecem desabilitados (identificados via
+ * `item_codigo_origem`). O modal continua aberto após cada inserção pra
+ * permitir múltiplas inserções sem reabrir.
+ */
+function ChecklistPicker({
+  nrCodigo,
+  codigosJaInseridos,
+  onInserir,
+  onFechar,
+  inserindo,
+}: {
+  nrCodigo: string;
+  codigosJaInseridos: Set<string>;
+  onInserir: (
+    itemCodigo: string,
+    itemTitulo: string,
+    itemDescricao: string | null
+  ) => void;
+  onFechar: () => void;
+  inserindo: boolean;
+}) {
+  const checklist = useMemo(() => getChecklistNR(nrCodigo), [nrCodigo]);
+  const [busca, setBusca] = useState("");
+
+  const itensFiltrados = useMemo(() => {
+    if (!checklist) return [];
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return checklist.itens;
+    return checklist.itens.filter(
+      (it) =>
+        it.codigo.toLowerCase().includes(termo) ||
+        it.titulo.toLowerCase().includes(termo) ||
+        (it.descricao ?? "").toLowerCase().includes(termo)
+    );
+  }, [checklist, busca]);
+
+  if (!checklist) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:hidden"
+        onClick={onFechar}
+      >
+        <div
+          className="rounded-lg bg-white p-6 text-sm text-red-700"
+          onClick={(e) => e.stopPropagation()}
+        >
+          NR {nrCodigo} não encontrada no catálogo.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:hidden"
+      onClick={onFechar}
+    >
+      <div
+        className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Cabeçalho */}
+        <div className="flex items-start justify-between gap-3 border-b border-gray-200 p-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-red-700">
+              Inserir NC do checklist
+            </p>
+            <h2 className="mt-0.5 text-lg font-bold text-gray-900">
+              {checklist.codigo} — {checklist.titulo}
+            </h2>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Clique em um item pra criá-lo como NC com descrição e norma
+              violada já pré-preenchidas. {codigosJaInseridos.size} de{" "}
+              {checklist.itens.length} já inseridos.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onFechar}
+            className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
+            title="Fechar"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        {/* Busca */}
+        <div className="border-b border-gray-100 px-4 py-3">
+          <input
+            type="text"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar por código ou texto do item..."
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+            autoFocus
+          />
+        </div>
+
+        {/* Lista */}
+        <ul className="flex-1 divide-y divide-gray-100 overflow-y-auto">
+          {itensFiltrados.length === 0 && (
+            <li className="p-6 text-center text-sm text-gray-500">
+              Nenhum item encontrado.
+            </li>
+          )}
+          {itensFiltrados.map((it) => {
+            const jaInserido = codigosJaInseridos.has(it.codigo);
+            return (
+              <li
+                key={it.codigo}
+                className={`flex items-start gap-3 p-3 ${
+                  jaInserido ? "bg-gray-50" : "hover:bg-red-50/40"
+                }`}
+              >
+                <span className="mt-0.5 inline-block min-w-[3.5rem] rounded bg-red-100 px-1.5 py-0.5 text-center font-mono text-[11px] font-bold text-red-800">
+                  {it.codigo}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`text-sm font-semibold ${
+                      jaInserido ? "text-gray-500 line-through" : "text-gray-900"
+                    }`}
+                  >
+                    {it.titulo}
+                  </p>
+                  {it.descricao && (
+                    <p
+                      className={`mt-0.5 text-xs ${
+                        jaInserido ? "text-gray-400" : "text-gray-600"
+                      }`}
+                    >
+                      {it.descricao}
+                    </p>
+                  )}
+                </div>
+                {jaInserido ? (
+                  <span
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700"
+                    title="Esta NC já foi inserida no relatório"
+                  >
+                    <Check className="size-3" /> Inserida
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onInserir(it.codigo, it.titulo, it.descricao ?? null)
+                    }
+                    disabled={inserindo}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md bg-red-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {inserindo ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <Plus className="size-3" />
+                    )}
+                    Inserir
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
+        {/* Rodapé */}
+        <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 text-right">
+          <button
+            type="button"
+            onClick={onFechar}
+            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
