@@ -550,6 +550,43 @@ export interface AnaliseQuimico {
   updated_at: string | null;
 }
 
+// =====================================================
+// Módulo Relatório de Conformidade NR
+// =====================================================
+
+export type SituacaoConformidade = "CONFORME" | "NAO_APLICAVEL" | "PENDENTE";
+export type StatusRelatorioConformidade = "RASCUNHO" | "FINALIZADO";
+
+export interface RelatorioConformidade {
+  id_relatorio: string;
+  id_empresa: string;
+  nr_codigo: string;
+  nr_titulo: string;
+  setor: string | null;
+  responsavel: string | null;
+  data_inspecao: string | null;
+  observacoes_gerais: string | null;
+  status: StatusRelatorioConformidade;
+  finalizado_em: string | null;
+  usuario_email: string | null;
+  usuario_nome: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface RelatorioConformidadeItem {
+  id_item: string;
+  id_relatorio: string;
+  item_codigo: string;
+  item_titulo: string;
+  item_descricao: string | null;
+  ordem: number;
+  situacao: SituacaoConformidade;
+  observacao: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
 // Schema esperado pelo @supabase/ssr / supabase-js (Database genérico).
 type TableShape<T> = {
   Row: T;
