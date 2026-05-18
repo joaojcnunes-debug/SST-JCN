@@ -605,6 +605,13 @@ export interface RelatorioConformidadeItem {
   ordem: number;
   situacao: SituacaoConformidade;
   observacao: string | null;
+  /**
+   * Origem do item (v44+):
+   *   - `null` → snapshot do checklist da NR principal do relatório (imutável)
+   *   - `"LIVRE"` → item adicionado livremente pelo auditor (título/desc editáveis)
+   *   - `"NR-XX"` → cross-ref: snapshot do catálogo de outra NR (imutável)
+   */
+  item_nr_origem: string | null;
   /** URLs públicas das fotos do item (Supabase Storage, bucket `fotos`). */
   foto_urls: string[];
   /** Paths dos arquivos no bucket — pareados 1:1 com `foto_urls`, na mesma ordem. */

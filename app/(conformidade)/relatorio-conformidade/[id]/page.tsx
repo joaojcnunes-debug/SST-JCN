@@ -16,6 +16,10 @@ import {
   AlertCircle,
   Camera,
   X,
+  Plus,
+  ListChecks,
+  Pencil,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -32,7 +36,10 @@ import {
   useExcluirRelatorioConformidade,
   useUploadFotoItemConformidade,
   useRemoverFotoItemConformidade,
+  useAdicionarItemConformidadeExtra,
+  useExcluirItemConformidadeExtra,
 } from "@/lib/hooks/useRelatoriosConformidade";
+import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
 import type {
   RelatorioConformidade,
   RelatorioConformidadeItem,
@@ -56,8 +63,11 @@ export default function DetalheConformidadePage({
   const excluir = useExcluirRelatorioConformidade();
   const uploadFoto = useUploadFotoItemConformidade();
   const removerFoto = useRemoverFotoItemConformidade();
+  const adicionarExtra = useAdicionarItemConformidadeExtra();
+  const excluirExtra = useExcluirItemConformidadeExtra();
 
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [crossRefAberto, setCrossRefAberto] = useState(false);
 
   if (isLoading) {
     return (
@@ -145,6 +155,59 @@ export default function DetalheConformidadePage({
       }
     );
   }
+
+  function handleAdicionarLivre() {
+    adicionarExtra.mutate(
+      { id_relatorio: id, ordem: itens.length + 1, tipo: "LIVRE" },
+      {
+        onSuccess: () => toast.success("Item livre adicionado — edite o título"),
+        onError: (e: Error) => toast.error(e.message || "Falha"),
+      }
+    );
+  }
+
+  function handleInserirCrossRef(nrOrigem: string, itemCodigo: string) {
+    adicionarExtra.mutate(
+      {
+        id_relatorio: id,
+        ordem: itens.length + 1,
+        tipo: "CROSS_REF",
+        nr_origem: nrOrigem,
+        item_codigo: itemCodigo,
+      },
+      {
+        onSuccess: () => toast.success(`${nrOrigem} ${itemCodigo} inserido`),
+        onError: (e: Error) => toast.error(e.message || "Falha"),
+      }
+    );
+  }
+
+  function handleExcluirItemExtra(idItem: string) {
+    if (!window.confirm("Apagar este item adicionado? A ação não pode ser desfeita.")) {
+      return;
+    }
+    excluirExtra.mutate(
+      { id_relatorio: id, id_item: idItem },
+      {
+        onSuccess: () => toast.success("Item removido"),
+        onError: (e: Error) => toast.error(e.message || "Falha"),
+      }
+    );
+  }
+
+  // Códigos de itens cross-ref já inseridos, agrupados por NR origem (pra
+  // marcar como "já inseridos" no picker e evitar duplicar).
+  const codigosJaInseridosPorNR = (() => {
+    const map = new Map<string, Set<string>>();
+    for (const it of itens) {
+      if (it.item_nr_origem && it.item_nr_origem !== "LIVRE") {
+        const set = map.get(it.item_nr_origem) ?? new Set<string>();
+        set.add(it.item_codigo);
+        map.set(it.item_nr_origem, set);
+      }
+    }
+    return map;
+  })();
 
   return (
     <div className="mx-auto max-w-4xl space-y-4 print:max-w-none print:space-y-2">
@@ -282,9 +345,39 @@ export default function DetalheConformidadePage({
 
       {/* Lista de itens do checklist */}
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-700 print:text-base">
-          Itens do Checklist ({itens.length})
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-700 print:text-base">
+            Itens do Checklist ({itens.length})
+          </h2>
+          {!finalizado && (
+            <div className="flex flex-wrap items-center gap-2 print:hidden">
+              <button
+                type="button"
+                onClick={() => setCrossRefAberto(true)}
+                disabled={adicionarExtra.isPending}
+                className="inline-flex items-center gap-1 rounded-md border border-teal-300 bg-white px-2.5 py-1 text-xs font-semibold text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+                title="Inserir item de outra NR (cross-reference)"
+              >
+                <ListChecks className="size-3" />
+                Inserir de outra NR
+              </button>
+              <button
+                type="button"
+                onClick={handleAdicionarLivre}
+                disabled={adicionarExtra.isPending}
+                className="inline-flex items-center gap-1 rounded-md bg-teal-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+                title="Adicionar item livre (não está no catálogo)"
+              >
+                {adicionarExtra.isPending ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Plus className="size-3" />
+                )}
+                Adicionar item livre
+              </button>
+            </div>
+          )}
+        </div>
         <div className="space-y-2">
           {itens.map((item) => (
             <ItemRow
@@ -305,6 +398,15 @@ export default function DetalheConformidadePage({
                   observacao,
                 })
               }
+              onChangeTituloDescricao={(titulo, descricao) =>
+                atualizarItem.mutate({
+                  id_relatorio: id,
+                  id_item: item.id_item,
+                  item_titulo: titulo,
+                  item_descricao: descricao,
+                })
+              }
+              onExcluir={() => handleExcluirItemExtra(item.id_item)}
               onUploadFoto={(file) => {
                 if (file.size > MAX_FOTO_MB * 1024 * 1024) {
                   toast.error(`Arquivo maior que ${MAX_FOTO_MB} MB`);
@@ -378,6 +480,17 @@ export default function DetalheConformidadePage({
           : `Criado em ${new Date(relatorio.created_at).toLocaleString("pt-BR")}`}
         {relatorio.usuario_nome ? ` · ${relatorio.usuario_nome}` : ""}
       </p>
+
+      {/* Cross-ref picker — inserir item de outra NR */}
+      {crossRefAberto && (
+        <CrossRefPicker
+          nrPrincipal={relatorio.nr_codigo}
+          codigosJaInseridosPorNR={codigosJaInseridosPorNR}
+          onInserir={handleInserirCrossRef}
+          onFechar={() => setCrossRefAberto(false)}
+          inserindo={adicionarExtra.isPending}
+        />
+      )}
 
       {/* Lightbox de foto */}
       {lightbox && (
@@ -490,6 +603,8 @@ function ItemRow({
   bloqueado,
   onChangeSituacao,
   onChangeObservacao,
+  onChangeTituloDescricao,
+  onExcluir,
   onUploadFoto,
   onRemoverFoto,
   onAmpliarFoto,
@@ -499,6 +614,10 @@ function ItemRow({
   bloqueado: boolean;
   onChangeSituacao: (s: SituacaoConformidade) => void;
   onChangeObservacao: (obs: string) => void;
+  /** Só usado pra itens livres (item_nr_origem === 'LIVRE'). */
+  onChangeTituloDescricao: (titulo: string, descricao: string | null) => void;
+  /** Apaga item extra (livre/cross-ref). Snapshot principal não chama. */
+  onExcluir: () => void;
   onUploadFoto: (file: File) => void;
   onRemoverFoto: (storagePath: string) => void;
   onAmpliarFoto: (url: string) => void;
@@ -507,6 +626,17 @@ function ItemRow({
   const [obs, setObs] = useState(item.observacao ?? "");
   const [obsDirty, setObsDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Edit mode pro título/descrição (só itens livres)
+  const ehLivre = item.item_nr_origem === "LIVRE";
+  const ehCrossRef =
+    !!item.item_nr_origem && item.item_nr_origem !== "LIVRE";
+  const ehExtra = ehLivre || ehCrossRef; // pode ser apagado
+  const [editandoTitulo, setEditandoTitulo] = useState(
+    ehLivre && !item.item_titulo // abre auto quando criado vazio
+  );
+  const [tituloLocal, setTituloLocal] = useState(item.item_titulo);
+  const [descricaoLocal, setDescricaoLocal] = useState(item.item_descricao ?? "");
 
   const corBorda = useMemo(() => {
     switch (item.situacao) {
@@ -527,17 +657,122 @@ function ItemRow({
   return (
     <div className={`rounded-lg border p-3 print:break-inside-avoid ${corBorda}`}>
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 inline-block min-w-[3rem] rounded bg-teal-100 px-1.5 py-0.5 text-center font-mono text-[11px] font-bold text-teal-800">
+        <span
+          className={`mt-0.5 inline-block min-w-[3rem] rounded px-1.5 py-0.5 text-center font-mono text-[11px] font-bold ${
+            ehLivre
+              ? "bg-purple-100 text-purple-800"
+              : ehCrossRef
+              ? "bg-sky-100 text-sky-800"
+              : "bg-teal-100 text-teal-800"
+          }`}
+        >
           {item.item_codigo}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-900">
-            {item.item_titulo}
-          </p>
-          {item.item_descricao && (
-            <p className="mt-0.5 text-xs text-gray-600">{item.item_descricao}</p>
+          {editandoTitulo && ehLivre && !bloqueado ? (
+            <div className="space-y-1.5">
+              <input
+                type="text"
+                value={tituloLocal}
+                onChange={(e) => setTituloLocal(e.target.value)}
+                placeholder="Título do item (ex: 'Trabalho em altura sem ancoragem')"
+                className="w-full rounded-md border border-purple-300 bg-white px-2 py-1 text-sm font-semibold text-gray-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                autoFocus
+              />
+              <textarea
+                value={descricaoLocal}
+                onChange={(e) => setDescricaoLocal(e.target.value)}
+                placeholder="Detalhamento (opcional)"
+                rows={2}
+                className="w-full rounded-md border border-purple-200 bg-white px-2 py-1 text-xs text-gray-700 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const titulo = tituloLocal.trim();
+                    if (!titulo) {
+                      toast.error("Informe um título");
+                      return;
+                    }
+                    onChangeTituloDescricao(
+                      titulo,
+                      descricaoLocal.trim() || null
+                    );
+                    setEditandoTitulo(false);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md bg-purple-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-purple-700"
+                >
+                  <Check className="size-3" /> Salvar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTituloLocal(item.item_titulo);
+                    setDescricaoLocal(item.item_descricao ?? "");
+                    setEditandoTitulo(false);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="text-sm font-semibold text-gray-900">
+                  {item.item_titulo || (
+                    <span className="italic text-purple-500">
+                      (sem título — clique no lápis pra editar)
+                    </span>
+                  )}
+                </p>
+                {ehLivre && (
+                  <span
+                    className="rounded-full bg-purple-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-700"
+                    title="Item adicionado livremente — não vem do catálogo"
+                  >
+                    Livre
+                  </span>
+                )}
+                {ehCrossRef && (
+                  <span
+                    className="rounded-full bg-sky-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-700"
+                    title={`Item importado do catálogo da ${item.item_nr_origem}`}
+                  >
+                    {item.item_nr_origem}
+                  </span>
+                )}
+                {ehLivre && !bloqueado && (
+                  <button
+                    type="button"
+                    onClick={() => setEditandoTitulo(true)}
+                    className="rounded p-0.5 text-purple-600 hover:bg-purple-100 print:hidden"
+                    title="Editar título/descrição"
+                  >
+                    <Pencil className="size-3" />
+                  </button>
+                )}
+              </div>
+              {item.item_descricao && (
+                <p className="mt-0.5 text-xs text-gray-600">
+                  {item.item_descricao}
+                </p>
+              )}
+            </>
           )}
         </div>
+        {ehExtra && !bloqueado && !editandoTitulo && (
+          <button
+            type="button"
+            onClick={onExcluir}
+            className="rounded-md p-1 text-red-600 hover:bg-red-100 print:hidden"
+            title="Apagar este item"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        )}
       </div>
 
       {/* Botões de situação */}
@@ -1001,5 +1236,194 @@ function ObservacoesGerais({
       rows={3}
       className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-gray-50 print:resize-none"
     />
+  );
+}
+
+/**
+ * Modal de cross-reference: escolhe uma NR diferente da principal e
+ * insere itens do catálogo dessa NR como itens do relatório atual.
+ * O modal permanece aberto após cada inserção pra inserir múltiplos.
+ * Itens já inseridos (rastreio via `item_codigo + item_nr_origem`) ficam
+ * desabilitados.
+ */
+function CrossRefPicker({
+  nrPrincipal,
+  codigosJaInseridosPorNR,
+  onInserir,
+  onFechar,
+  inserindo,
+}: {
+  nrPrincipal: string;
+  codigosJaInseridosPorNR: Map<string, Set<string>>;
+  onInserir: (nrOrigem: string, itemCodigo: string) => void;
+  onFechar: () => void;
+  inserindo: boolean;
+}) {
+  const nrsDisponiveis = useMemo(
+    () => listarNRs().filter((nr) => nr.codigo !== nrPrincipal),
+    [nrPrincipal]
+  );
+  const [nrEscolhida, setNrEscolhida] = useState<string>("");
+  const [busca, setBusca] = useState("");
+
+  const checklist = useMemo(
+    () => (nrEscolhida ? getChecklistNR(nrEscolhida) : null),
+    [nrEscolhida]
+  );
+  const jaInseridos = nrEscolhida
+    ? codigosJaInseridosPorNR.get(nrEscolhida) ?? new Set<string>()
+    : new Set<string>();
+
+  const itensFiltrados = useMemo(() => {
+    if (!checklist) return [];
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return checklist.itens;
+    return checklist.itens.filter(
+      (it) =>
+        it.codigo.toLowerCase().includes(termo) ||
+        it.titulo.toLowerCase().includes(termo) ||
+        (it.descricao ?? "").toLowerCase().includes(termo)
+    );
+  }, [checklist, busca]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:hidden"
+      onClick={onFechar}
+    >
+      <div
+        className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-gray-200 p-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
+              Inserir item de outra NR
+            </p>
+            <h2 className="mt-0.5 text-lg font-bold text-gray-900">
+              Cross-reference
+            </h2>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Auditando {nrPrincipal} mas precisa marcar item de outra norma?
+              Selecione abaixo e insira.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onFechar}
+            className="rounded-md p-1 text-gray-500 hover:bg-gray-100"
+            title="Fechar"
+          >
+            <X className="size-5" />
+          </button>
+        </div>
+
+        <div className="space-y-2 border-b border-gray-100 px-4 py-3">
+          <select
+            value={nrEscolhida}
+            onChange={(e) => {
+              setNrEscolhida(e.target.value);
+              setBusca("");
+            }}
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            autoFocus
+          >
+            <option value="">— Selecione a NR de origem —</option>
+            {nrsDisponiveis.map((nr) => (
+              <option key={nr.codigo} value={nr.codigo}>
+                {nr.codigo} — {nr.titulo}
+              </option>
+            ))}
+          </select>
+          {checklist && (
+            <input
+              type="text"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar item por código ou texto..."
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
+            />
+          )}
+        </div>
+
+        <ul className="flex-1 divide-y divide-gray-100 overflow-y-auto">
+          {!checklist && (
+            <li className="p-6 text-center text-sm text-gray-500">
+              Escolha uma NR pra ver seus itens.
+            </li>
+          )}
+          {checklist && itensFiltrados.length === 0 && (
+            <li className="p-6 text-center text-sm text-gray-500">
+              Nenhum item encontrado.
+            </li>
+          )}
+          {checklist &&
+            itensFiltrados.map((it) => {
+              const ja = jaInseridos.has(it.codigo);
+              return (
+                <li
+                  key={it.codigo}
+                  className={`flex items-start gap-3 p-3 ${
+                    ja ? "bg-gray-50" : "hover:bg-teal-50/40"
+                  }`}
+                >
+                  <span className="mt-0.5 inline-block min-w-[3.5rem] rounded bg-sky-100 px-1.5 py-0.5 text-center font-mono text-[11px] font-bold text-sky-800">
+                    {it.codigo}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={`text-sm font-semibold ${
+                        ja ? "text-gray-500 line-through" : "text-gray-900"
+                      }`}
+                    >
+                      {it.titulo}
+                    </p>
+                    {it.descricao && (
+                      <p
+                        className={`mt-0.5 text-xs ${
+                          ja ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
+                        {it.descricao}
+                      </p>
+                    )}
+                  </div>
+                  {ja ? (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                      <Check className="size-3" /> Inserido
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onInserir(checklist.codigo, it.codigo)
+                      }
+                      disabled={inserindo}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md bg-teal-600 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-teal-700 disabled:opacity-50"
+                    >
+                      {inserindo ? (
+                        <Loader2 className="size-3 animate-spin" />
+                      ) : (
+                        <Plus className="size-3" />
+                      )}
+                      Inserir
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+        </ul>
+
+        <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 text-right">
+          <button
+            type="button"
+            onClick={onFechar}
+            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

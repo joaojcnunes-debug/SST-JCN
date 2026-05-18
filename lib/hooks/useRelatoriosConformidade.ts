@@ -120,7 +120,8 @@ export function useCriarRelatorioConformidade() {
         .insert(row as never);
       if (errRel) throw errRel;
 
-      // Snapshot dos itens do checklist da NR no momento da criação
+      // Snapshot dos itens do checklist da NR no momento da criação.
+      // `item_nr_origem = null` = veio do checklist principal (imutável).
       const itens: RelatorioConformidadeItem[] = checklist.itens.map(
         (it, idx) => ({
           id_item: gerarId("RCI"),
@@ -131,6 +132,7 @@ export function useCriarRelatorioConformidade() {
           ordem: idx + 1,
           situacao: "PENDENTE",
           observacao: null,
+          item_nr_origem: null,
           foto_urls: [],
           foto_storage_paths: [],
           created_at: new Date().toISOString(),
@@ -159,6 +161,10 @@ export function useAtualizarItemConformidade() {
       id_item: string;
       situacao?: SituacaoConformidade;
       observacao?: string | null;
+      /** Apenas pra itens livres (item_nr_origem === 'LIVRE'). UI controla
+       *  o gating; o hook só passa o patch adiante. */
+      item_titulo?: string;
+      item_descricao?: string | null;
     }) => {
       const supabase = createSupabaseBrowserClient();
       const patch: Partial<RelatorioConformidadeItem> = {
@@ -166,6 +172,9 @@ export function useAtualizarItemConformidade() {
       };
       if (params.situacao !== undefined) patch.situacao = params.situacao;
       if (params.observacao !== undefined) patch.observacao = params.observacao;
+      if (params.item_titulo !== undefined) patch.item_titulo = params.item_titulo;
+      if (params.item_descricao !== undefined)
+        patch.item_descricao = params.item_descricao;
 
       const { error } = await supabase
         .from("relatorios_conformidade_itens")
@@ -224,6 +233,134 @@ export function useAtualizarRelatorioConformidade() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
       qc.invalidateQueries({ queryKey: KEY_LISTA });
+    },
+  });
+}
+
+// ============================================================
+// Itens extras (v44+) — livre + cross-ref de outras NRs
+// ============================================================
+
+/**
+ * Adiciona um item extra ao relatório.
+ *   - Livre: passe `tipo: 'LIVRE'`. Cria com título/desc em branco (auditor edita).
+ *   - Cross-ref: passe `tipo: 'CROSS_REF'`, `nr_origem` e `item_codigo` —
+ *     título/descrição são snapshotados do catálogo dessa outra NR.
+ *
+ * Ambos entram com `situacao = 'PENDENTE'` e `ordem` no final da lista.
+ */
+export function useAdicionarItemConformidadeExtra() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      params:
+        | {
+            id_relatorio: string;
+            ordem: number;
+            tipo: "LIVRE";
+          }
+        | {
+            id_relatorio: string;
+            ordem: number;
+            tipo: "CROSS_REF";
+            nr_origem: string; // ex "NR-17"
+            item_codigo: string; // ex "17.2.5"
+          }
+    ) => {
+      const supabase = createSupabaseBrowserClient();
+      const id_item = gerarId("RCI");
+
+      let row: RelatorioConformidadeItem;
+      if (params.tipo === "LIVRE") {
+        // Código interno único pra esse item livre (não conflita com catálogo)
+        const sufixo = Math.random().toString(36).slice(2, 6).toUpperCase();
+        row = {
+          id_item,
+          id_relatorio: params.id_relatorio,
+          item_codigo: `LIVRE-${sufixo}`,
+          item_titulo: "",
+          item_descricao: null,
+          ordem: params.ordem,
+          situacao: "PENDENTE",
+          observacao: null,
+          item_nr_origem: "LIVRE",
+          foto_urls: [],
+          foto_storage_paths: [],
+          created_at: new Date().toISOString(),
+          updated_at: null,
+        };
+      } else {
+        const checklist = getChecklistNR(params.nr_origem);
+        if (!checklist) {
+          throw new Error(`NR não encontrada: ${params.nr_origem}`);
+        }
+        const it = checklist.itens.find((x) => x.codigo === params.item_codigo);
+        if (!it) {
+          throw new Error(
+            `Item ${params.item_codigo} não encontrado em ${params.nr_origem}`
+          );
+        }
+        row = {
+          id_item,
+          id_relatorio: params.id_relatorio,
+          item_codigo: it.codigo,
+          item_titulo: it.titulo,
+          item_descricao: it.descricao ?? null,
+          ordem: params.ordem,
+          situacao: "PENDENTE",
+          observacao: null,
+          item_nr_origem: params.nr_origem,
+          foto_urls: [],
+          foto_storage_paths: [],
+          created_at: new Date().toISOString(),
+          updated_at: null,
+        };
+      }
+
+      const { error } = await supabase
+        .from("relatorios_conformidade_itens")
+        .insert(row as never);
+      if (error) throw error;
+      return row;
+    },
+    onSuccess: (row) => {
+      qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_relatorio) });
+    },
+  });
+}
+
+/**
+ * Apaga um item do relatório. Só faz sentido pra itens com `item_nr_origem`
+ * não-null (livres ou cross-ref). Itens do checklist principal são imutáveis
+ * — pra "remover", o auditor marca NÃO APLICÁVEL. A UI controla o gating.
+ *
+ * Limpa as fotos do storage antes de remover o item (best-effort).
+ */
+export function useExcluirItemConformidadeExtra() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { id_relatorio: string; id_item: string }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { data: itemAtual } = await supabase
+        .from("relatorios_conformidade_itens")
+        .select("foto_storage_paths")
+        .eq("id_item", params.id_item)
+        .single();
+      const paths =
+        (itemAtual as { foto_storage_paths: string[] } | null)
+          ?.foto_storage_paths ?? [];
+      if (paths.length > 0) {
+        await supabase.storage.from("fotos").remove(paths);
+      }
+      const { error } = await supabase
+        .from("relatorios_conformidade_itens")
+        .delete()
+        .eq("id_item", params.id_item);
+      if (error) throw error;
+      return params;
+    },
+    onSuccess: (params) => {
+      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
   });
 }
