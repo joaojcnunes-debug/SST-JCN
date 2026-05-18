@@ -70,12 +70,14 @@ export type ModuloEmpresa =
   | "sst"
   | "psicossocial"
   | "conformidade"
+  | "nao_conformidade"
   | "analise_quimicos";
 
 export const MODULOS_EMPRESA: Array<{ value: ModuloEmpresa; label: string }> = [
   { value: "sst", label: "Painel SST (Inspeções)" },
   { value: "psicossocial", label: "Psicossocial" },
   { value: "conformidade", label: "Relatório de Conformidade" },
+  { value: "nao_conformidade", label: "Relatório de Não Conformidade" },
   { value: "analise_quimicos", label: "Análise de Químicos" },
 ];
 
@@ -606,6 +608,59 @@ export interface RelatorioConformidadeItem {
   /** URLs públicas das fotos do item (Supabase Storage, bucket `fotos`). */
   foto_urls: string[];
   /** Paths dos arquivos no bucket — pareados 1:1 com `foto_urls`, na mesma ordem. */
+  foto_storage_paths: string[];
+  created_at: string;
+  updated_at: string | null;
+}
+
+// --- Relatório de Não Conformidade (RNC) ---
+// Diferente do Conformidade NR (checklist por norma), o RNC é uma lista
+// aberta de NCs encontradas em campo. Cada item descreve um desvio livre,
+// com criticidade, causa raiz, ação corretiva e prazo.
+
+export type CriticidadeNC = "ALTA" | "MEDIA" | "BAIXA";
+export type StatusTratativaNC = "ABERTA" | "EM_TRATAMENTO" | "ENCERRADA";
+export type StatusRelatorioNC = "RASCUNHO" | "FINALIZADO";
+
+export interface RelatorioNaoConformidade {
+  id_relatorio: string;
+  id_empresa: string;
+  titulo: string;
+  setor: string | null;
+  /** Responsável técnico Chabra (quem assina pelo prestador). */
+  responsavel: string | null;
+  /** Pessoa do lado da empresa que acompanhou a auditoria. */
+  responsavel_empresa: string | null;
+  /** Cidade da auditoria, usada na linha de fechamento. */
+  cidade: string | null;
+  data_inspecao: string | null;
+  observacoes_gerais: string | null;
+  status: StatusRelatorioNC;
+  finalizado_em: string | null;
+  usuario_email: string | null;
+  usuario_nome: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface RelatorioNaoConformidadeItem {
+  id_item: string;
+  id_relatorio: string;
+  ordem: number;
+  /** Descrição da NC encontrada (texto livre, obrigatório). */
+  descricao: string;
+  /** Norma violada — texto livre ("NR-12 12.5.10" / "ISO 9001 §5.2"). */
+  norma_violada: string | null;
+  criticidade: CriticidadeNC;
+  causa_raiz: string | null;
+  acao_corretiva: string | null;
+  /** Prazo pra encerrar a NC (ISO yyyy-mm-dd). */
+  prazo: string | null;
+  /** Quem é responsável pela tratativa do lado da empresa. */
+  responsavel_tratativa: string | null;
+  status_tratativa: StatusTratativaNC;
+  /** Evidência fotográfica — múltiplas fotos. */
+  foto_urls: string[];
   foto_storage_paths: string[];
   created_at: string;
   updated_at: string | null;

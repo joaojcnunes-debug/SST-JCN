@@ -52,6 +52,16 @@ export const VARIAVEIS_POR_MODULO: Record<ModuloTextoPadrao, VariavelDef[]> = {
     { chave: "responsavel_empresa", rotulo: "Responsável da empresa", exemplo: "Maria Silva" },
     { chave: "data_inspecao", rotulo: "Data da auditoria", exemplo: "15/05/2026" },
   ],
+  nao_conformidade: [
+    ...VARIAVEIS_EMPRESA,
+    ...VARIAVEIS_DATA_RESPONSAVEL,
+    { chave: "titulo", rotulo: "Título do relatório", exemplo: "Auditoria pré-NR-12 jan/2026" },
+    { chave: "setor", rotulo: "Setor auditado", exemplo: "Produção" },
+    { chave: "responsavel_empresa", rotulo: "Responsável da empresa", exemplo: "Maria Silva" },
+    { chave: "data_inspecao", rotulo: "Data da auditoria", exemplo: "15/05/2026" },
+    { chave: "total_ncs", rotulo: "Total de NCs encontradas", exemplo: "7" },
+    { chave: "total_ncs_alta", rotulo: "NCs de criticidade ALTA", exemplo: "2" },
+  ],
   analise_quimicos: [
     ...VARIAVEIS_EMPRESA,
     ...VARIAVEIS_DATA_RESPONSAVEL,

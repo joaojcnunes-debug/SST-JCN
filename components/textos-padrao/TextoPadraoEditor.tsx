@@ -582,6 +582,23 @@ const TEMPLATES_POR_MODULO: Record<
         '<p style="text-align: justify">Os itens marcados como CONFORMES atendem aos requisitos da norma; itens NÃO APLICÁVEIS foram avaliados quanto à pertinência ao setor auditado. Recomenda-se manutenção das condições verificadas e reavaliação periódica.</p>',
     },
   ],
+  nao_conformidade: [
+    {
+      titulo: "1. Introdução",
+      conteudo:
+        '<p style="text-align: justify">Este Relatório de Não Conformidade ({{titulo}}) registra as não conformidades observadas durante a auditoria realizada na empresa <strong>{{empresa_nome}}</strong> (CNPJ {{cnpj}}), no setor {{setor}}, em {{data_inspecao}}. Cada item descreve a evidência encontrada, a norma violada, criticidade e ação corretiva proposta.</p>',
+    },
+    {
+      titulo: "2. Metodologia",
+      conteudo:
+        '<p style="text-align: justify">A inspeção foi conduzida por meio de observação direta dos postos de trabalho, entrevistas com os trabalhadores e análise documental dos programas de segurança vigentes. As não conformidades foram classificadas em três níveis — ALTA, MÉDIA e BAIXA — segundo risco à integridade do trabalhador e prazo para regularização.</p>',
+    },
+    {
+      titulo: "3. Considerações Finais",
+      conteudo:
+        '<p style="text-align: justify">Recomenda-se que a empresa cumpra os prazos estabelecidos para cada não conformidade. As NCs de criticidade <strong>ALTA</strong> demandam ação imediata, sob pena de paralisação da atividade ou imposição de medidas legais. Reavaliação prevista após o tratamento das pendências.</p>',
+    },
+  ],
   analise_quimicos: [
     {
       titulo: "1. Introdução",

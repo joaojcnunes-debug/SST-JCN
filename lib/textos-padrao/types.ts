@@ -4,7 +4,11 @@
 
 import type { CaixaTexto } from "@/lib/drps/types";
 
-export type ModuloTextoPadrao = "sst" | "conformidade" | "analise_quimicos";
+export type ModuloTextoPadrao =
+  | "sst"
+  | "conformidade"
+  | "nao_conformidade"
+  | "analise_quimicos";
 
 export type OrientacaoPagina = "retrato" | "paisagem";
 
@@ -55,6 +59,13 @@ export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
     descricao:
       "Capítulos reutilizáveis para os Relatórios de Conformidade NR. Inclua introdução, fundamentação legal, considerações finais — com variáveis dinâmicas.",
     destino: "Aparecem nos Relatórios de Conformidade (NR-24, NR-17 etc).",
+  },
+  nao_conformidade: {
+    modulo: "nao_conformidade",
+    titulo: "Texto Padrão — Não Conformidade",
+    descricao:
+      "Capítulos reutilizáveis para os Relatórios de Não Conformidade (RNC). Inclua introdução, base metodológica e considerações sobre o plano de ação.",
+    destino: "Aparecem nos Relatórios de Não Conformidade.",
   },
   analise_quimicos: {
     modulo: "analise_quimicos",
