@@ -9,6 +9,7 @@ import {
   Target,
   ClipboardEdit,
   FileEdit,
+  Settings,
 } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import SidebarShell, { type NavSection } from "./SidebarShell";
@@ -26,19 +27,31 @@ const ACOES = [
   { href: "/acoes", label: "Plano de Ação", icon: Target },
 ];
 
-const CONFIGURACAO = [
+const CONFIGURACAO_BASE = [
   { href: "/texto-padrao", label: "Texto Padrão", icon: FileEdit },
+];
+
+const CONFIGURACAO_ADMIN = [
+  { href: "/config", label: "Configurações", icon: Settings },
 ];
 
 export default function Sidebar() {
   const user = useUserStore((s) => s.user);
   const canEdit = user?.perfil === "Admin" || user?.perfil === "Tecnico";
+  const isAdmin = user?.perfil === "Admin";
 
   const sections: NavSection[] = [
     { label: "Principal", items: PRINCIPAL },
   ];
   if (canEdit) sections.push({ label: "Ações", items: ACOES });
-  if (canEdit) sections.push({ label: "Configuração", items: CONFIGURACAO });
+  if (canEdit) {
+    sections.push({
+      label: "Configuração",
+      items: isAdmin
+        ? [...CONFIGURACAO_BASE, ...CONFIGURACAO_ADMIN]
+        : CONFIGURACAO_BASE,
+    });
+  }
 
   return (
     <SidebarShell
