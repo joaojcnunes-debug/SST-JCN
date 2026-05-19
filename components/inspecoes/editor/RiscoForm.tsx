@@ -2491,68 +2491,45 @@ function MedidaBloco({
             )}
 
             <div
-              className={`space-y-2 bg-gray-50 p-2 ${
+              className={`bg-gray-50 p-2 ${
                 items.length > 0 ? "border-t border-gray-200" : ""
               }`}
             >
-              <div>
-                <label
-                  className={`mb-1 block text-[10px] font-semibold uppercase tracking-wider ${cfg.text}`}
-                >
-                  Do catálogo ({disponiveis.length})
-                </label>
-                <select
-                  value=""
-                  disabled={disponiveis.length === 0}
-                  onChange={(ev) => {
-                    const txt = ev.target.value;
-                    if (txt && !items.includes(txt)) {
-                      onChange([...items, txt]);
+              <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+                <input
+                  type="text"
+                  list={
+                    disponiveis.length > 0 ? `medida-cat-${ordem}` : undefined
+                  }
+                  value={novo}
+                  onChange={(ev) => setNovo(ev.target.value)}
+                  placeholder={
+                    disponiveis.length > 0
+                      ? `Selecione do catálogo (${disponiveis.length}) ou digite manualmente`
+                      : placeholder
+                  }
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                  onKeyDown={(ev) => {
+                    if (ev.key === "Enter") {
+                      ev.preventDefault();
+                      handleAdd();
                     }
-                    ev.target.value = "";
                   }}
-                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                />
+                {disponiveis.length > 0 && (
+                  <datalist id={`medida-cat-${ordem}`}>
+                    {disponiveis.map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAdd}
+                  className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
                 >
-                  <option value="">
-                    {disponiveis.length === 0
-                      ? sugestoes.length === 0
-                        ? "— Sem sugestões no catálogo deste tipo —"
-                        : "— Todas as sugestões já foram adicionadas —"
-                      : "— Selecione uma medida para adicionar —"}
-                  </option>
-                  {disponiveis.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                  Ou adicionar manualmente
-                </label>
-                <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-                  <input
-                    type="text"
-                    value={novo}
-                    onChange={(ev) => setNovo(ev.target.value)}
-                    placeholder={placeholder}
-                    className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
-                    onKeyDown={(ev) => {
-                      if (ev.key === "Enter") {
-                        ev.preventDefault();
-                        handleAdd();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAdd}
-                    className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
-                  >
-                    <Plus className="size-3.5" /> Adicionar
-                  </button>
-                </div>
+                  <Plus className="size-3.5" /> Adicionar
+                </button>
               </div>
             </div>
           </div>
