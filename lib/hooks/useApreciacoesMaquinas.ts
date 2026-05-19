@@ -11,6 +11,9 @@ import type {
   SituacaoApreciacaoItem,
   StatusApreciacao,
   RiscoResidual,
+  NivelRisco,
+  Acao5W2H,
+  AcaoPrioridade,
 } from "@/lib/supabase/types";
 
 const KEY_LISTA = ["apreciacoes-maquinas"] as const;
@@ -146,6 +149,10 @@ export function useCriarApreciacaoMaquina() {
         situacao: "PENDENTE",
         observacao: null,
         recomendacao: null,
+        probabilidade: null,
+        severidade: null,
+        nivel_risco_calculado: null,
+        id_matriz: null,
         foto_urls: [],
         foto_storage_paths: [],
         created_at: new Date().toISOString(),
@@ -271,6 +278,10 @@ export function useAtualizarItemApreciacao() {
       situacao?: SituacaoApreciacaoItem;
       observacao?: string | null;
       recomendacao?: string | null;
+      probabilidade?: string | null;
+      severidade?: string | null;
+      nivel_risco_calculado?: NivelRisco | null;
+      id_matriz?: string | null;
     }) => {
       const supabase = createSupabaseBrowserClient();
       const patch: Partial<ApreciacaoMaquinaItem> = {
@@ -280,6 +291,12 @@ export function useAtualizarItemApreciacao() {
       if (params.observacao !== undefined) patch.observacao = params.observacao;
       if (params.recomendacao !== undefined)
         patch.recomendacao = params.recomendacao;
+      if (params.probabilidade !== undefined)
+        patch.probabilidade = params.probabilidade;
+      if (params.severidade !== undefined) patch.severidade = params.severidade;
+      if (params.nivel_risco_calculado !== undefined)
+        patch.nivel_risco_calculado = params.nivel_risco_calculado;
+      if (params.id_matriz !== undefined) patch.id_matriz = params.id_matriz;
 
       const { error } = await supabase
         .from("apreciacoes_maquinas_itens")
@@ -382,6 +399,10 @@ export function useAdicionarItemLivreApreciacao() {
         situacao: "PENDENTE",
         observacao: null,
         recomendacao: null,
+        probabilidade: null,
+        severidade: null,
+        nivel_risco_calculado: null,
+        id_matriz: null,
         foto_urls: [],
         foto_storage_paths: [],
         created_at: new Date().toISOString(),
@@ -434,6 +455,156 @@ export function useExcluirItemApreciacao() {
     },
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+    },
+  });
+}
+
+// ============================================================
+// Plano de Ação 5W2H — geração a partir dos itens NAO_CONFORME
+// ============================================================
+
+const KEY_ACOES_APRECIACAO = (id_apreciacao: string) =>
+  ["acoes-apreciacao", id_apreciacao] as const;
+
+/**
+ * Mapeia o nível de risco do Painel SST (Trivial..Muito Alto) para a
+ * prioridade do plano 5W2H. Crítico só atinge "Critica" em Muito Alto.
+ */
+function prioridadePorNivel(nivel: NivelRisco | null): AcaoPrioridade {
+  switch (nivel) {
+    case "Muito Alto":
+      return "Critica";
+    case "Alto":
+      return "Alta";
+    case "Moderado":
+      return "Media";
+    case "Baixo":
+    case "Trivial":
+    case null:
+    default:
+      return "Baixa";
+  }
+}
+
+/**
+ * Lista as ações 5W2H vinculadas a uma apreciação — segue qualquer item
+ * da apreciação como origem.
+ */
+export function useAcoesDaApreciacao(id_apreciacao: string | null | undefined) {
+  return useQuery({
+    queryKey: KEY_ACOES_APRECIACAO(id_apreciacao ?? ""),
+    enabled: !!id_apreciacao,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      // Primeiro pega os IDs dos itens dessa apreciação
+      const { data: itens, error: e1 } = await supabase
+        .from("apreciacoes_maquinas_itens")
+        .select("id_item")
+        .eq("id_apreciacao", id_apreciacao!);
+      if (e1) throw e1;
+      const ids = ((itens ?? []) as { id_item: string }[]).map(
+        (i) => i.id_item
+      );
+      if (ids.length === 0) return [] as Acao5W2H[];
+      // Depois pega as ações vinculadas
+      const { data, error } = await supabase
+        .from("acoes_5w2h")
+        .select("*")
+        .in("id_apreciacao_item", ids)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as Acao5W2H[];
+    },
+  });
+}
+
+export interface GerarPlano5W2HResult {
+  criadas: number;
+  ignoradas: number;
+}
+
+/**
+ * Gera ações 5W2H pendentes a partir dos itens NAO_CONFORME da apreciação.
+ * Idempotente: itens que JÁ têm ação vinculada são ignorados — rodar de
+ * novo só cria pra itens novos. Prioridade mapeada de `nivel_risco_calculado`.
+ *
+ * Auditor revisa/edita prazo/responsável depois no Painel SST → /acoes.
+ */
+export function useGerarPlano5W2HApreciacao() {
+  const qc = useQueryClient();
+  const user = useUserStore((s) => s.user);
+  return useMutation({
+    mutationFn: async (params: {
+      apreciacao: ApreciacaoMaquina;
+      itens: ApreciacaoMaquinaItem[];
+    }): Promise<GerarPlano5W2HResult> => {
+      const supabase = createSupabaseBrowserClient();
+      const naoConforme = params.itens.filter(
+        (i) => i.situacao === "NAO_CONFORME"
+      );
+      if (naoConforme.length === 0) {
+        return { criadas: 0, ignoradas: 0 };
+      }
+
+      // Quais itens já têm ação? Idempotência
+      const idsItens = naoConforme.map((i) => i.id_item);
+      const { data: existentes, error: eExist } = await supabase
+        .from("acoes_5w2h")
+        .select("id_apreciacao_item")
+        .in("id_apreciacao_item", idsItens);
+      if (eExist) throw eExist;
+      const jaVinculados = new Set(
+        ((existentes ?? []) as { id_apreciacao_item: string | null }[])
+          .map((r) => r.id_apreciacao_item)
+          .filter((s): s is string => !!s)
+      );
+
+      const novos = naoConforme.filter((i) => !jaVinculados.has(i.id_item));
+      if (novos.length === 0) {
+        return { criadas: 0, ignoradas: naoConforme.length };
+      }
+
+      const setorTexto = params.apreciacao.setor
+        ? `${params.apreciacao.setor} (NR-12)`
+        : "Apreciação NR-12";
+
+      const linhas: Acao5W2H[] = novos.map((it) => ({
+        id_acao: gerarId("ACAO"),
+        id_empresa: params.apreciacao.id_empresa,
+        id_setor: null,
+        id_risco: null,
+        id_inspecao: null,
+        id_apreciacao_item: it.id_item,
+        what_acao:
+          `${it.item_codigo} — ${it.item_titulo}`.slice(0, 240),
+        why_justificativa: it.observacao,
+        where_local: setorTexto,
+        when_prazo: null,
+        who_responsavel: params.apreciacao.responsavel_empresa,
+        how_metodo: it.recomendacao,
+        how_much_custo: null,
+        status: "Pendente",
+        prioridade: prioridadePorNivel(it.nivel_risco_calculado),
+        data_conclusao: null,
+        observacoes: `Originado da Apreciação NR-12 ${params.apreciacao.id_apreciacao}`,
+        created_by: user?.email ?? null,
+      }));
+
+      const { error } = await supabase
+        .from("acoes_5w2h")
+        .insert(linhas as never);
+      if (error) throw error;
+
+      return {
+        criadas: novos.length,
+        ignoradas: naoConforme.length - novos.length,
+      };
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({
+        queryKey: KEY_ACOES_APRECIACAO(vars.apreciacao.id_apreciacao),
+      });
+      qc.invalidateQueries({ queryKey: ["acoes-5w2h"] });
     },
   });
 }

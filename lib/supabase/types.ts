@@ -437,6 +437,8 @@ export interface Acao5W2H {
   id_setor: string | null;
   id_risco: string | null;
   id_inspecao: string | null;
+  /** V49: FK opcional pro item da Apreciação NR-12 que originou a ação. */
+  id_apreciacao_item: string | null;
   what_acao: string;
   why_justificativa: string | null;
   where_local: string | null;
@@ -673,6 +675,14 @@ export interface ApreciacaoMaquinaItem {
   situacao: SituacaoApreciacaoItem;
   observacao: string | null;
   recomendacao: string | null;
+  /** Probabilidade da matriz ativa (snapshot do label, ex: "Improvável"). */
+  probabilidade: string | null;
+  /** Severidade da matriz ativa (snapshot do label, ex: "Moderada"). */
+  severidade: string | null;
+  /** Nível calculado via `calcularNivelComMatriz` (NivelRisco do Painel SST). */
+  nivel_risco_calculado: NivelRisco | null;
+  /** FK da matriz usada — snapshot pra preservar avaliação se a matriz mudar. */
+  id_matriz: string | null;
   foto_urls: string[];
   foto_storage_paths: string[];
   created_at: string;

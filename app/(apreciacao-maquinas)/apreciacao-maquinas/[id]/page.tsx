@@ -17,6 +17,9 @@ import {
   Plus,
   Printer,
   Sparkles,
+  Wand2,
+  ListTodo,
+  ExternalLink,
   X as IconX,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -26,12 +29,15 @@ import {
   useExcluirApreciacaoMaquina,
   useAdicionarItemLivreApreciacao,
   useGerarParecerApreciacaoIA,
+  useGerarPlano5W2HApreciacao,
+  useAcoesDaApreciacao,
 } from "@/lib/hooks/useApreciacoesMaquinas";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useMaquina } from "@/lib/hooks/useInventarioMaquinas";
 import { useCanEdit, useCanDelete } from "@/lib/hooks/useUsuario";
 import ItemApreciacaoCard from "@/components/apreciacao-maquinas/ItemApreciacaoCard";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
+import { cn } from "@/lib/utils";
 import {
   CATEGORIAS_NR12_LABELS,
   CATEGORIAS_NR12_ORDEM,
@@ -41,7 +47,25 @@ import {
   RISCO_RESIDUAL_LABELS,
   type RiscoResidual,
   type ApreciacaoMaquinaItem,
+  type NivelRisco,
 } from "@/lib/supabase/types";
+
+/** Mapeia NivelRisco (matriz Painel SST) pra RiscoResidual (Apreciação). */
+const NIVEL_PARA_RISCO_RESIDUAL: Record<NivelRisco, RiscoResidual> = {
+  Trivial: "BAIXO",
+  Baixo: "BAIXO",
+  Moderado: "MEDIO",
+  Alto: "ALTO",
+  "Muito Alto": "CRITICO",
+};
+
+const ORDEM_NIVEL: NivelRisco[] = [
+  "Trivial",
+  "Baixo",
+  "Moderado",
+  "Alto",
+  "Muito Alto",
+];
 
 export default function DetalheApreciacaoPage() {
   const params = useParams<{ id: string }>();
@@ -55,6 +79,8 @@ export default function DetalheApreciacaoPage() {
   const excluir = useExcluirApreciacaoMaquina();
   const adicionarLivre = useAdicionarItemLivreApreciacao();
   const gerarParecerIA = useGerarParecerApreciacaoIA();
+  const gerarPlano = useGerarPlano5W2HApreciacao();
+  const { data: acoesLaudo = [] } = useAcoesDaApreciacao(id);
   const { data: maquinaVinculada } = useMaquina(
     data?.apreciacao.id_maquina ?? null
   );
@@ -272,6 +298,56 @@ export default function DetalheApreciacaoPage() {
       toast.error(
         err instanceof Error ? err.message : "Falha ao gerar parecer"
       );
+    }
+  }
+
+  /** Sugere risco_residual baseado no MAX nível dos itens NAO_CONFORME. */
+  function handleSugerirRiscoResidual() {
+    const niveis = itens
+      .filter((i) => i.situacao === "NAO_CONFORME" && i.nivel_risco_calculado)
+      .map((i) => i.nivel_risco_calculado as NivelRisco);
+    if (niveis.length === 0) {
+      toast.error(
+        "Avalie probabilidade × severidade nos itens NAO_CONFORME antes de sugerir"
+      );
+      return;
+    }
+    let maxIdx = 0;
+    for (const n of niveis) {
+      const idx = ORDEM_NIVEL.indexOf(n);
+      if (idx > maxIdx) maxIdx = idx;
+    }
+    const sugerido = NIVEL_PARA_RISCO_RESIDUAL[ORDEM_NIVEL[maxIdx]];
+    setRiscoResidual(sugerido);
+    toast.success(
+      `Risco residual sugerido: ${RISCO_RESIDUAL_LABELS[sugerido]} (max nível: ${ORDEM_NIVEL[maxIdx]})`
+    );
+  }
+
+  async function handleGerarPlano5W2H() {
+    if (!apreciacao) return;
+    const naoConforme = itens.filter((i) => i.situacao === "NAO_CONFORME");
+    if (naoConforme.length === 0) {
+      toast.error("Nenhum item NAO_CONFORME — sem ações pra gerar");
+      return;
+    }
+    try {
+      const { criadas, ignoradas } = await gerarPlano.mutateAsync({
+        apreciacao,
+        itens,
+      });
+      if (criadas === 0) {
+        toast(`Todas as ${ignoradas} NCs já têm plano. Nada novo gerado.`, {
+          icon: "ℹ️",
+        });
+      } else {
+        toast.success(
+          `${criadas} ação(ões) criada(s)${ignoradas > 0 ? ` · ${ignoradas} já existiam` : ""}`
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Falha ao gerar plano de ação");
     }
   }
 
@@ -739,24 +815,36 @@ export default function DetalheApreciacaoPage() {
           />
         </Campo>
         <Campo label="Risco residual" htmlFor="risco">
-          <select
-            id="risco"
-            value={riscoResidual}
-            onChange={(e) =>
-              setRiscoResidual(e.target.value as RiscoResidual | "")
-            }
-            disabled={readOnly}
-            className={inputClass}
-          >
-            <option value="">— Não classificado —</option>
-            {(Object.keys(RISCO_RESIDUAL_LABELS) as RiscoResidual[]).map(
-              (r) => (
-                <option key={r} value={r}>
-                  {RISCO_RESIDUAL_LABELS[r]}
-                </option>
-              )
+          <div className="flex gap-2">
+            <select
+              id="risco"
+              value={riscoResidual}
+              onChange={(e) =>
+                setRiscoResidual(e.target.value as RiscoResidual | "")
+              }
+              disabled={readOnly}
+              className={cn(inputClass, "flex-1")}
+            >
+              <option value="">— Não classificado —</option>
+              {(Object.keys(RISCO_RESIDUAL_LABELS) as RiscoResidual[]).map(
+                (r) => (
+                  <option key={r} value={r}>
+                    {RISCO_RESIDUAL_LABELS[r]}
+                  </option>
+                )
+              )}
+            </select>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={handleSugerirRiscoResidual}
+                title="Sugerir baseado no MAX nível dos itens NAO_CONFORME"
+                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100 print:hidden"
+              >
+                <Wand2 className="size-3.5" /> Sugerir
+              </button>
             )}
-          </select>
+          </div>
         </Campo>
         {!readOnly && (
           <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
@@ -781,6 +869,97 @@ export default function DetalheApreciacaoPage() {
             >
               <CheckCircle2 className="size-4" /> Finalizar apreciação
             </button>
+          </div>
+        )}
+      </section>
+
+      {/* Seção: Plano de Ação 5W2H (vinculado ao Painel SST) */}
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3 print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
+            <ListTodo className="size-4" /> Plano de Ação 5W2H
+          </h2>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={handleGerarPlano5W2H}
+              disabled={gerarPlano.isPending}
+              title="Cria ações pendentes no Painel SST a partir dos itens NAO_CONFORME (idempotente)"
+              className="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 print:hidden"
+            >
+              {gerarPlano.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Plus className="size-3.5" />
+              )}
+              Gerar plano de ação
+            </button>
+          )}
+        </div>
+        {!readOnly && (
+          <p className="rounded-md border border-emerald-100 bg-emerald-50/40 px-2 py-1.5 text-[11px] text-emerald-800 print:hidden">
+            <ListTodo className="mr-1 inline size-3" />
+            Cria uma ação 5W2H pendente para cada item NAO_CONFORME. A
+            prioridade é mapeada do nível de risco calculado. Edite prazos e
+            responsáveis no Painel SST → /acoes. Idempotente: rodar de novo só
+            cria pra NCs sem ação ainda.
+          </p>
+        )}
+
+        {acoesLaudo.length === 0 ? (
+          <p className="rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-4 text-center text-xs text-gray-500">
+            Nenhuma ação vinculada a esta apreciação ainda.
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            <p className="text-[11px] text-gray-600">
+              <strong>{acoesLaudo.length}</strong> ação(ões) vinculada(s) a esta
+              apreciação:
+            </p>
+            <ul className="divide-y divide-gray-100 rounded-md border border-gray-200">
+              {acoesLaudo.map((a) => (
+                <li
+                  key={a.id_acao}
+                  className="flex items-start gap-2 px-3 py-2 text-xs"
+                >
+                  <span
+                    className={cn(
+                      "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold",
+                      a.prioridade === "Critica" &&
+                        "bg-red-100 text-red-700",
+                      a.prioridade === "Alta" &&
+                        "bg-orange-100 text-orange-700",
+                      a.prioridade === "Media" &&
+                        "bg-amber-100 text-amber-700",
+                      a.prioridade === "Baixa" &&
+                        "bg-emerald-100 text-emerald-700"
+                    )}
+                  >
+                    {a.prioridade}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium text-gray-900">
+                      {a.what_acao}
+                    </p>
+                    <p className="text-[10px] text-gray-500">
+                      Status: {a.status}
+                      {a.who_responsavel
+                        ? ` · Resp.: ${a.who_responsavel}`
+                        : ""}
+                      {a.when_prazo
+                        ? ` · Prazo: ${new Date(a.when_prazo + "T00:00").toLocaleDateString("pt-BR")}`
+                        : ""}
+                    </p>
+                  </div>
+                  <Link
+                    href={`/acoes?empresa=${a.id_empresa}`}
+                    className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-semibold text-blue-600 hover:underline print:hidden"
+                  >
+                    Abrir <ExternalLink className="size-2.5" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </section>

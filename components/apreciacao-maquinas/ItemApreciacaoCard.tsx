@@ -20,12 +20,23 @@ import {
   useExcluirItemApreciacao,
   MAX_FOTOS_POR_ITEM_APR,
 } from "@/lib/hooks/useApreciacoesMaquinas";
+import { useMatrizAtiva } from "@/lib/hooks/useV3";
+import { calcularNivelComMatriz } from "@/lib/calc";
 import {
   SITUACAO_APRECIACAO_LABELS,
   type ApreciacaoMaquinaItem,
+  type NivelRisco,
   type SituacaoApreciacaoItem,
 } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+
+const NIVEL_CORES: Record<NivelRisco, string> = {
+  Trivial: "bg-blue-100 text-blue-700 border-blue-300",
+  Baixo: "bg-emerald-100 text-emerald-700 border-emerald-300",
+  Moderado: "bg-amber-100 text-amber-700 border-amber-300",
+  Alto: "bg-orange-100 text-orange-700 border-orange-300",
+  "Muito Alto": "bg-red-100 text-red-700 border-red-300",
+};
 
 const SITUACAO_CORES: Record<SituacaoApreciacaoItem, string> = {
   CONFORME: "bg-emerald-100 text-emerald-700 border-emerald-300",
@@ -69,10 +80,26 @@ export default function ItemApreciacaoCard({
   const uploadFoto = useUploadFotoItemApreciacao();
   const removerFoto = useRemoverFotoItemApreciacao();
   const excluirItem = useExcluirItemApreciacao();
+  const { data: matrizAtiva } = useMatrizAtiva();
   const fileRef = useRef<HTMLInputElement>(null);
   const [confirmandoExcluir, setConfirmandoExcluir] = useState(false);
 
   const ehLivre = item.item_origem === "LIVRE";
+  const ehNaoConforme = item.situacao === "NAO_CONFORME";
+
+  function handleProbSev(prob: string | null, sev: string | null) {
+    if (disabled) return;
+    const nivel = calcularNivelComMatriz(prob, sev, matrizAtiva);
+    atualizar.mutate({
+      id_apreciacao: item.id_apreciacao,
+      id_item: item.id_item,
+      probabilidade: prob,
+      severidade: sev,
+      // Quando ainda não escolheu os dois, mantém null (não polui o agregado)
+      nivel_risco_calculado: prob && sev ? nivel : null,
+      id_matriz: prob && sev && matrizAtiva ? matrizAtiva.id_matriz : null,
+    });
+  }
 
   const [observacao, setObservacao] = useState(item.observacao ?? "");
   const [recomendacao, setRecomendacao] = useState(item.recomendacao ?? "");
@@ -270,6 +297,80 @@ export default function ItemApreciacaoCard({
       >
         Situação: {SITUACAO_APRECIACAO_LABELS[item.situacao]}
       </div>
+
+      {/* Avaliação de risco — só pra NAO_CONFORME, usa matriz ativa do Painel SST */}
+      {ehNaoConforme && matrizAtiva && (
+        <div className="rounded-md border border-orange-200 bg-orange-50/40 p-2">
+          <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-orange-700">
+            Avaliação de risco (matriz: {matrizAtiva.nome})
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <label className="block">
+              <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wider text-gray-600">
+                Probabilidade
+              </span>
+              <select
+                value={item.probabilidade ?? ""}
+                onChange={(e) =>
+                  handleProbSev(e.target.value || null, item.severidade)
+                }
+                disabled={disabled}
+                className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 print:hidden"
+              >
+                <option value="">—</option>
+                {matrizAtiva.probabilidades.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+              {/* Versão print: só o valor */}
+              <span className="hidden text-xs font-medium text-gray-800 print:inline">
+                {item.probabilidade || "—"}
+              </span>
+            </label>
+            <label className="block">
+              <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wider text-gray-600">
+                Severidade
+              </span>
+              <select
+                value={item.severidade ?? ""}
+                onChange={(e) =>
+                  handleProbSev(item.probabilidade, e.target.value || null)
+                }
+                disabled={disabled}
+                className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 print:hidden"
+              >
+                <option value="">—</option>
+                {matrizAtiva.severidades.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+              <span className="hidden text-xs font-medium text-gray-800 print:inline">
+                {item.severidade || "—"}
+              </span>
+            </label>
+            <div className="flex items-end">
+              {item.nivel_risco_calculado ? (
+                <span
+                  className={cn(
+                    "inline-flex w-full items-center justify-center rounded-md border px-2 py-1 text-xs font-bold",
+                    NIVEL_CORES[item.nivel_risco_calculado]
+                  )}
+                >
+                  Nível: {item.nivel_risco_calculado}
+                </span>
+              ) : (
+                <span className="text-[10px] italic text-gray-400">
+                  Selecione probabilidade e severidade
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Observação */}
       <div>
