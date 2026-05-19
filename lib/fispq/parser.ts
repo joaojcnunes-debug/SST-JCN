@@ -120,8 +120,71 @@ function ehSoRotulo(s: string | undefined): boolean {
   const trimmed = s.trim();
   if (!trimmed) return true;
   // Rótulos puros: "Número", "Nome", "CAS", "Concentração" etc.
-  const rotuloPuro = /^(?:número|nome|cas|ce|ec|reach|concentração|concentration|component|ingredient|chemical|substance|substância|mistura|produto|product|trade|identificação|identificador|designação)(?:\s+(?:químico|comercial|cas|ce|do\s+produto|da\s+substância|da\s+mistura|name|number))?\s*[:\-#]?\s*$/i;
+  const rotuloPuro = /^(?:número|nome|cas|ce|ec|reach|concentração|concentration|component|ingredient|chemical|substance|substância|mistura|produto|product|trade|identificação|identificador|designação|endereço|telefone|fax|email|e-mail|cnpj|cep|fabricante|fornecedor|manufacturer|supplier|address|phone)(?:\s+(?:químico|comercial|cas|ce|do\s+produto|da\s+substância|da\s+mistura|da\s+empresa|name|number))?\s*[:\-#]?\s*$/i;
   return rotuloPuro.test(trimmed);
+}
+
+/**
+ * Detecta linhas que são cabeçalhos/labels de seções da FISPQ (NÃO podem
+ * ser nome de produto nem nome de componente). Cobre seções 1-16 e
+ * sub-seções típicas (1.1 Identificação do produto, 1.2 Usos recomendados,
+ * 3.1 Substância, 3.2 Mistura, etc.).
+ */
+const FISPQ_HEADER_PATTERNS: RegExp[] = [
+  // Section 1 sub-headers
+  /^principais?\s+usos?\b/i,
+  /^usos?\s+(recomendados?|identificados?|relevantes?)\b/i,
+  /^recomendações?\s+de\s+uso\b/i,
+  /^restriçõe?s?\s+de\s+uso\b/i,
+  /^restriçõe?s?\s+recomendadas?\b/i,
+  /^uso\s+(industrial|profissional|do\s+produto)\b/i,
+  // Identification labels
+  /^identificação\s+(do|da|de)\b/i,
+  /^identificador\b/i,
+  // Company / contact labels
+  /^(fabricante|fornecedor|distribuidor|importador|empresa)\b\s*[:\-]?\s*$/i,
+  /^(endereço|telefone|fax|e-?mail|cnpj|cep|site|website|contato)\b/i,
+  /^(manufacturer|supplier|address|phone|email)\b/i,
+  // Emergency
+  /^(emergência|emergency|telefone\s+de\s+emergência)\b/i,
+  // Section 9 leak (physical properties)
+  /^(estado\s+físico|forma\s+física|aparência|aspecto|cor|odor|p\.?\s*ebulição|p\.?\s*fusão)\b\s*[:\-]?\s*$/i,
+  // Section 2 / 3 / 8 labels that might appear before a CAS
+  /^(composição|composition|misturas?|substâncias?)\b\s*[:\-]?\s*$/i,
+  /^(classificação|classification)\b/i,
+  /^(perigos?|hazard)\b/i,
+];
+
+/**
+ * Verdadeiro se a linha bate em algum padrão de header conhecido de FISPQ.
+ * Use junto com `ehSoRotulo` pra filtrar lixo antes de aceitar texto como
+ * nome de produto / componente.
+ */
+function ehHeaderFispq(s: string | undefined): boolean {
+  if (!s) return true;
+  const trimmed = s.trim();
+  if (!trimmed) return true;
+  for (const pat of FISPQ_HEADER_PATTERNS) {
+    if (pat.test(trimmed)) return true;
+  }
+  return false;
+}
+
+/**
+ * Limpa um valor extraído cortando-o no primeiro rótulo subsequente
+ * (Endereço, Telefone, CNPJ, etc.). Útil quando pdfjs concatena
+ * colunas e a regex captura "Acme Corp Endereço: Rua X" — queremos
+ * só "Acme Corp".
+ */
+function cortarNoProximoLabel(s: string | undefined): string | undefined {
+  if (!s) return s;
+  const labels = /\b(endereço|telefone|fax|e-?mail|cnpj|cep|site|website|contato|address|phone|manufacturer|supplier)\s*[:\-]/i;
+  const m = s.match(labels);
+  if (m && m.index !== undefined) {
+    const cortado = s.slice(0, m.index).trim();
+    return cortado || undefined;
+  }
+  return s;
 }
 
 /**
@@ -152,12 +215,15 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
   const ehCabecalho = (s: string): boolean => {
     if (s.length < 2 || s.length > 100) return true;
     if (!/[a-zA-ZÀ-ÿ]/.test(s)) return true; // só números/símbolos
-    // Rótulo puro (Número, Nome, CAS, Concentração...)
+    // Rótulo puro (Número, Nome, CAS, Concentração, Endereço, Fabricante...)
     if (ehSoRotulo(s)) return true;
-    // Cabeçalhos comuns da seção 3
+    // Headers genéricos de FISPQ (Principais usos, Identificação, Endereço,
+    // Estado físico, etc.) — cobre seções 1, 2, 8 e 9 que costumam vazar
+    // na seção 3 quando pdfjs concatena colunas.
+    if (ehHeaderFispq(s)) return true;
+    // Cabeçalhos numerados / título de seção
     if (/^(seção|section|capítulo)\b/i.test(s)) return true;
     if (/^\d+\.\d/.test(s)) return true; // "3.1.", "3.2."
-    if (/^(misturas?|substância|composição|composition|classificação|classification|identificação)\b/i.test(s)) return true;
     // Frases H, pictogramas, advertências
     if (/^h\d{3}\b/i.test(s)) return true;
     if (/(GHS|pictograma|advertência|hazard\s+statement)/i.test(s)) return true;
@@ -363,11 +429,19 @@ export function parseFispq(texto: string): FispqExtracted {
       if (!/[a-zA-ZÀ-ÿ]/.test(linha)) continue;
       // Pula linhas com dados óbvios de não-nome
       if (/(cnpj|telefone|endereço|address|phone|emergência|email|@)/i.test(linha)) continue;
+      // Pula sub-headers de FISPQ (Principais usos, Identificação, etc.)
+      if (ehHeaderFispq(linha)) continue;
       // Se a linha começa com rótulo "Nome do produto X" (sem `:` ou `-`),
       // tira o rótulo e usa o resto. Acontece com PDFs em colunas onde
       // pdfjs junta rótulo+valor na mesma linha sem separador.
       const stripped = stripLabel(linha, LABEL_PRODUTO_PATTERNS);
-      if (stripped && stripped !== linha && stripped.length >= 3 && !ehSoRotulo(stripped)) {
+      if (
+        stripped &&
+        stripped !== linha &&
+        stripped.length >= 3 &&
+        !ehSoRotulo(stripped) &&
+        !ehHeaderFispq(stripped)
+      ) {
         result.nome_produto = stripped;
         break;
       }
@@ -379,12 +453,13 @@ export function parseFispq(texto: string): FispqExtracted {
   }
 
   // Defesa em profundidade: se chegou um valor com rótulo grudado (ex.:
-  // "Nome do produto MC-2BK106"), strippa o rótulo aqui também.
+  // "Nome do produto MC-2BK106"), strippa o rótulo aqui também e
+  // descarta se sobrar só header.
   if (result.nome_produto) {
     const limpo = stripLabel(result.nome_produto, LABEL_PRODUTO_PATTERNS);
-    if (limpo && !ehSoRotulo(limpo)) {
+    if (limpo && !ehSoRotulo(limpo) && !ehHeaderFispq(limpo)) {
       result.nome_produto = limpo;
-    } else if (!limpo || ehSoRotulo(limpo)) {
+    } else {
       result.nome_produto = undefined;
     }
   }
@@ -399,6 +474,18 @@ export function parseFispq(texto: string): FispqExtracted {
     ],
     150
   );
+
+  // Limpa fabricante: corta no próximo label (caso pdfjs grude
+  // "Acme Corp Endereço: Rua X") e descarta se o que sobrou for só
+  // rótulo ("Endereço:", "Telefone:" etc.) sem dado real.
+  if (result.fabricante) {
+    const cortado = cortarNoProximoLabel(result.fabricante);
+    if (cortado && !ehSoRotulo(cortado) && !ehHeaderFispq(cortado)) {
+      result.fabricante = cortado;
+    } else {
+      result.fabricante = undefined;
+    }
+  }
 
   // ----- Componentes (nome + CAS + concentração vinculados) -----
   // Estratégia: primeiro tenta extrair da Seção 3 (composição) — vai ter
@@ -450,13 +537,30 @@ export function parseFispq(texto: string): FispqExtracted {
   );
 
   // ----- Forma física / Estado -----
+  // Tenta primeiro com separador `:` ou `-`, depois com `\s+` (colunas
+  // sem separador), e por fim faz fallback procurando palavras-chave
+  // diretamente na seção 9 (Propriedades físico-químicas).
   result.forma_fisica = primeiroMatch(
     texto,
     [
       /(?:Forma\s+física|Estado\s+físico|Aspecto|Physical\s+state)\s*[:\-]\s*([^\n.]+)/i,
+      /(?:Forma\s+física|Estado\s+físico|Aspecto|Physical\s+state)\s*\n\s*([A-ZÀ-Ÿa-zà-ÿ][^\n.]{2,60})/i,
+      // Sem separador (colunas) — captura a primeira palavra "líquido/sólido/gás/etc"
+      /(?:Forma\s+física|Estado\s+físico|Aspecto)\s+(Líquido|Sólido|Gás|Vapor|Aerossol|Pó|Pasta|Granulado|Cristalino)\b/i,
     ],
     80
   );
+
+  // Fallback: procura palavra-chave na seção 9
+  if (!result.forma_fisica) {
+    const s9 = secoes.get(9);
+    if (s9) {
+      const m = s9.match(
+        /\b(L[ií]quido|S[óo]lido|G[áa]s(?:oso)?|Vapor|Aeross?ol|P[óo]\b|Pasta|Granulado|Cristalino)\b/i
+      );
+      if (m) result.forma_fisica = m[1];
+    }
+  }
 
   // Normaliza forma física pros valores do select
   if (result.forma_fisica) {
@@ -466,7 +570,7 @@ export function parseFispq(texto: string): FispqExtracted {
     else if (lower.includes("gás") || lower.includes("gas")) result.forma_fisica = "Gás";
     else if (lower.includes("vapor")) result.forma_fisica = "Vapor";
     else if (lower.includes("aerossol") || lower.includes("aerosol")) result.forma_fisica = "Aerossol";
-    else if (lower.includes("pó") || lower.includes("pó")) result.forma_fisica = "Pó";
+    else if (lower.includes("pó") || lower === "po") result.forma_fisica = "Pó";
     else if (lower.includes("past")) result.forma_fisica = "Pasta";
     // senão mantém o texto original
   }
