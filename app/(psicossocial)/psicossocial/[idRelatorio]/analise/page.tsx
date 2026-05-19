@@ -227,6 +227,10 @@ export default function AnalisePage({
       if (a) agravosMap[s] = a;
       if (m) medidasMap[s] = m;
     }
+    // V54: ao concluir, carimba `data_conclusao` automaticamente. Se já
+    // estiver concluído (re-clique), preserva o timestamp anterior.
+    const concluindoAgora =
+      extrasArg?.status === "CONCLUIDO" && relatorio.status !== "CONCLUIDO";
     salvar.mutate(
       {
         id_relatorio: idRelatorio,
@@ -234,6 +238,9 @@ export default function AnalisePage({
         agravos_por_setor: agravosMap,
         medidas_por_setor: medidasMap,
         ...(extrasArg?.status ? { status: extrasArg.status } : {}),
+        ...(concluindoAgora
+          ? { data_conclusao: new Date().toISOString() }
+          : {}),
       },
       { onSuccess: () => setDirty(false) }
     );
