@@ -69,6 +69,18 @@ export const VARIAVEIS_POR_MODULO: Record<ModuloTextoPadrao, VariavelDef[]> = {
     { chave: "nome_quimico", rotulo: "Nome químico", exemplo: "2-Butanone; Ethanol" },
     { chave: "numero_cas", rotulo: "Número CAS", exemplo: "78-93-3" },
   ],
+  apreciacao_maquinas: [
+    ...VARIAVEIS_EMPRESA,
+    ...VARIAVEIS_DATA_RESPONSAVEL,
+    { chave: "titulo", rotulo: "Título do laudo", exemplo: "Apreciação Prensa Hidráulica" },
+    { chave: "maquina_nome", rotulo: "Nome da máquina", exemplo: "Prensa Hidráulica 50t" },
+    { chave: "setor", rotulo: "Setor", exemplo: "Produção" },
+    { chave: "responsavel_empresa", rotulo: "Responsável da empresa", exemplo: "Maria Silva" },
+    { chave: "data_apreciacao", rotulo: "Data da apreciação", exemplo: "15/05/2026" },
+    { chave: "total_itens", rotulo: "Total de itens avaliados", exemplo: "37" },
+    { chave: "total_nao_conforme", rotulo: "Itens não conformes", exemplo: "8" },
+    { chave: "risco_residual", rotulo: "Risco residual final", exemplo: "ALTO" },
+  ],
 };
 
 /** Substitui {{chave}} em HTML, com escape; chaves desconhecidas ficam literais. */

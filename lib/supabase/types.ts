@@ -662,6 +662,36 @@ export interface ApreciacaoMaquina {
   updated_at: string | null;
 }
 
+export type StatusAcaoApreciacao =
+  | "Pendente"
+  | "Em Andamento"
+  | "Concluida"
+  | "Cancelada";
+
+export type PrioridadeAcaoApreciacao = "Baixa" | "Media" | "Alta" | "Critica";
+
+export interface ApreciacaoAcao {
+  id_acao: string;
+  id_apreciacao: string;
+  /** Item NAO_CONFORME que originou a ação. NULL quando é ação geral do laudo. */
+  id_item: string | null;
+  ordem: number;
+  what_acao: string;
+  why_justificativa: string | null;
+  where_local: string | null;
+  when_prazo: string | null; // ISO date
+  who_responsavel: string | null;
+  how_metodo: string | null;
+  how_much_custo: string | null;
+  status: StatusAcaoApreciacao;
+  prioridade: PrioridadeAcaoApreciacao;
+  data_conclusao: string | null;
+  observacoes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
 export interface ApreciacaoMaquinaItem {
   id_item: string;
   id_apreciacao: string;
@@ -846,6 +876,7 @@ export interface Database {
       inventario_maquinas: TableShape<Maquina>;
       apreciacoes_maquinas: TableShape<ApreciacaoMaquina>;
       apreciacoes_maquinas_itens: TableShape<ApreciacaoMaquinaItem>;
+      apreciacao_acoes: TableShape<ApreciacaoAcao>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

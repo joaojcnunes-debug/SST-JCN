@@ -616,4 +616,21 @@ const TEMPLATES_POR_MODULO: Record<
         '<p style="text-align: justify">O parecer é informativo e não substitui avaliação ambiental quantitativa. Recomenda-se medição de exposição quando indicado e revisão sempre que houver alteração na composição do produto ou nas condições de uso.</p>',
     },
   ],
+  apreciacao_maquinas: [
+    {
+      titulo: "1. Introdução",
+      conteudo:
+        '<p style="text-align: justify">Este laudo de Apreciação NR-12 foi elaborado para a máquina <strong>{{maquina_nome}}</strong>, localizada no setor {{setor}} da empresa <strong>{{empresa_nome}}</strong> (CNPJ {{cnpj}}), em {{data_apreciacao}}. A avaliação seguiu o checklist regulatório da NR-12 com {{total_itens}} itens, sendo {{total_nao_conforme}} classificados como Não Conformes.</p>',
+    },
+    {
+      titulo: "2. Fundamentação Legal",
+      conteudo:
+        '<p style="text-align: justify">A apreciação foi conduzida com base na <strong>NR-12 — Segurança no Trabalho em Máquinas e Equipamentos</strong> (Portaria SIT 197/2010 com atualizações posteriores), complementada por <strong>ISO 12100</strong> (princípios gerais de projeto para segurança), <strong>ISO 13849</strong> (segurança em sistemas de comando) e <strong>NBR NM 272</strong> (distâncias de segurança para proteção dos membros superiores e inferiores).</p>',
+    },
+    {
+      titulo: "3. Considerações Finais",
+      conteudo:
+        '<p style="text-align: justify">O presente parecer não substitui a análise de risco específica exigida pelo item 12.131 da NR-12 nem dispensa a capacitação obrigatória dos operadores. Recomenda-se reavaliação periódica e sempre que houver modificação significativa na máquina ou no processo. Risco residual final apurado: <strong>{{risco_residual}}</strong>.</p>',
+    },
+  ],
 };

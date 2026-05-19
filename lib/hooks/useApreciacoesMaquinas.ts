@@ -8,12 +8,13 @@ import { CATALOGO_NR12 } from "@/lib/apreciacao-maquinas/catalogo-nr12";
 import type {
   ApreciacaoMaquina,
   ApreciacaoMaquinaItem,
+  ApreciacaoAcao,
   SituacaoApreciacaoItem,
   StatusApreciacao,
+  StatusAcaoApreciacao,
+  PrioridadeAcaoApreciacao,
   RiscoResidual,
   NivelRisco,
-  Acao5W2H,
-  AcaoPrioridade,
 } from "@/lib/supabase/types";
 
 const KEY_LISTA = ["apreciacoes-maquinas"] as const;
@@ -460,17 +461,16 @@ export function useExcluirItemApreciacao() {
 }
 
 // ============================================================
-// Plano de Ação 5W2H — geração a partir dos itens NAO_CONFORME
+// Plano de Ação — STANDALONE da apreciação (não vincula com Painel SST)
 // ============================================================
 
-const KEY_ACOES_APRECIACAO = (id_apreciacao: string) =>
-  ["acoes-apreciacao", id_apreciacao] as const;
+const KEY_ACOES = (id_apreciacao: string) =>
+  ["apreciacao-acoes", id_apreciacao] as const;
 
-/**
- * Mapeia o nível de risco do Painel SST (Trivial..Muito Alto) para a
- * prioridade do plano 5W2H. Crítico só atinge "Critica" em Muito Alto.
- */
-function prioridadePorNivel(nivel: NivelRisco | null): AcaoPrioridade {
+/** Mapeia nível de risco do Painel SST → prioridade da ação da apreciação. */
+function prioridadePorNivel(
+  nivel: NivelRisco | null
+): PrioridadeAcaoApreciacao {
   switch (nivel) {
     case "Muito Alto":
       return "Critica";
@@ -486,58 +486,154 @@ function prioridadePorNivel(nivel: NivelRisco | null): AcaoPrioridade {
   }
 }
 
-/**
- * Lista as ações 5W2H vinculadas a uma apreciação — segue qualquer item
- * da apreciação como origem.
- */
-export function useAcoesDaApreciacao(id_apreciacao: string | null | undefined) {
+/** Lista as ações da apreciação, ordenadas por `ordem`. */
+export function useAcoesApreciacao(id_apreciacao: string | null | undefined) {
   return useQuery({
-    queryKey: KEY_ACOES_APRECIACAO(id_apreciacao ?? ""),
+    queryKey: KEY_ACOES(id_apreciacao ?? ""),
     enabled: !!id_apreciacao,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
-      // Primeiro pega os IDs dos itens dessa apreciação
-      const { data: itens, error: e1 } = await supabase
-        .from("apreciacoes_maquinas_itens")
-        .select("id_item")
-        .eq("id_apreciacao", id_apreciacao!);
-      if (e1) throw e1;
-      const ids = ((itens ?? []) as { id_item: string }[]).map(
-        (i) => i.id_item
-      );
-      if (ids.length === 0) return [] as Acao5W2H[];
-      // Depois pega as ações vinculadas
       const { data, error } = await supabase
-        .from("acoes_5w2h")
+        .from("apreciacao_acoes")
         .select("*")
-        .in("id_apreciacao_item", ids)
-        .order("created_at", { ascending: false });
+        .eq("id_apreciacao", id_apreciacao!)
+        .order("ordem", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as Acao5W2H[];
+      return (data ?? []) as unknown as ApreciacaoAcao[];
     },
   });
 }
 
-export interface GerarPlano5W2HResult {
+export interface CriarAcaoApreciacaoInput {
+  id_apreciacao: string;
+  /** Item NAO_CONFORME que originou. Null = ação geral do laudo. */
+  id_item?: string | null;
+  ordem: number;
+  what_acao: string;
+  why_justificativa?: string | null;
+  where_local?: string | null;
+  when_prazo?: string | null;
+  who_responsavel?: string | null;
+  how_metodo?: string | null;
+  how_much_custo?: string | null;
+  prioridade?: PrioridadeAcaoApreciacao;
+}
+
+export function useCriarAcaoApreciacao() {
+  const qc = useQueryClient();
+  const user = useUserStore((s) => s.user);
+  return useMutation({
+    mutationFn: async (input: CriarAcaoApreciacaoInput) => {
+      const supabase = createSupabaseBrowserClient();
+      const row: ApreciacaoAcao = {
+        id_acao: gerarId("AAC"),
+        id_apreciacao: input.id_apreciacao,
+        id_item: input.id_item ?? null,
+        ordem: input.ordem,
+        what_acao: input.what_acao,
+        why_justificativa: input.why_justificativa ?? null,
+        where_local: input.where_local ?? null,
+        when_prazo: input.when_prazo ?? null,
+        who_responsavel: input.who_responsavel ?? null,
+        how_metodo: input.how_metodo ?? null,
+        how_much_custo: input.how_much_custo ?? null,
+        status: "Pendente",
+        prioridade: input.prioridade ?? "Media",
+        data_conclusao: null,
+        observacoes: null,
+        created_by: user?.email ?? null,
+        created_at: new Date().toISOString(),
+        updated_at: null,
+      };
+      const { error } = await supabase
+        .from("apreciacao_acoes")
+        .insert(row as never);
+      if (error) throw error;
+      return row;
+    },
+    onSuccess: (row) => {
+      qc.invalidateQueries({ queryKey: KEY_ACOES(row.id_apreciacao) });
+    },
+  });
+}
+
+export function useAtualizarAcaoApreciacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      id_apreciacao: string;
+      id_acao: string;
+      what_acao?: string;
+      why_justificativa?: string | null;
+      where_local?: string | null;
+      when_prazo?: string | null;
+      who_responsavel?: string | null;
+      how_metodo?: string | null;
+      how_much_custo?: string | null;
+      status?: StatusAcaoApreciacao;
+      prioridade?: PrioridadeAcaoApreciacao;
+      data_conclusao?: string | null;
+      observacoes?: string | null;
+      ordem?: number;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { id_apreciacao, id_acao, ...rest } = params;
+      const patch: Partial<ApreciacaoAcao> = {
+        ...rest,
+        updated_at: new Date().toISOString(),
+      };
+      if (params.status === "Concluida" && !params.data_conclusao) {
+        patch.data_conclusao = new Date().toISOString().slice(0, 10);
+      }
+      const { error } = await supabase
+        .from("apreciacao_acoes")
+        .update(patch as never)
+        .eq("id_acao", id_acao);
+      if (error) throw error;
+      return { id_apreciacao, id_acao };
+    },
+    onSuccess: ({ id_apreciacao }) => {
+      qc.invalidateQueries({ queryKey: KEY_ACOES(id_apreciacao) });
+    },
+  });
+}
+
+export function useExcluirAcaoApreciacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { id_apreciacao: string; id_acao: string }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("apreciacao_acoes")
+        .delete()
+        .eq("id_acao", params.id_acao);
+      if (error) throw error;
+      return params;
+    },
+    onSuccess: (params) => {
+      qc.invalidateQueries({ queryKey: KEY_ACOES(params.id_apreciacao) });
+    },
+  });
+}
+
+export interface GerarPlanoResult {
   criadas: number;
   ignoradas: number;
 }
 
 /**
- * Gera ações 5W2H pendentes a partir dos itens NAO_CONFORME da apreciação.
- * Idempotente: itens que JÁ têm ação vinculada são ignorados — rodar de
- * novo só cria pra itens novos. Prioridade mapeada de `nivel_risco_calculado`.
- *
- * Auditor revisa/edita prazo/responsável depois no Painel SST → /acoes.
+ * Gera ações pendentes a partir dos itens NAO_CONFORME da apreciação.
+ * Idempotente: itens que JÁ têm ação vinculada são ignorados (por `id_item`).
+ * Prioridade mapeada de `nivel_risco_calculado`.
  */
-export function useGerarPlano5W2HApreciacao() {
+export function useGerarPlanoApreciacao() {
   const qc = useQueryClient();
   const user = useUserStore((s) => s.user);
   return useMutation({
     mutationFn: async (params: {
       apreciacao: ApreciacaoMaquina;
       itens: ApreciacaoMaquinaItem[];
-    }): Promise<GerarPlano5W2HResult> => {
+    }): Promise<GerarPlanoResult> => {
       const supabase = createSupabaseBrowserClient();
       const naoConforme = params.itens.filter(
         (i) => i.situacao === "NAO_CONFORME"
@@ -546,17 +642,22 @@ export function useGerarPlano5W2HApreciacao() {
         return { criadas: 0, ignoradas: 0 };
       }
 
-      // Quais itens já têm ação? Idempotência
-      const idsItens = naoConforme.map((i) => i.id_item);
+      // Quais itens da apreciação JÁ têm ação? (idempotência)
       const { data: existentes, error: eExist } = await supabase
-        .from("acoes_5w2h")
-        .select("id_apreciacao_item")
-        .in("id_apreciacao_item", idsItens);
+        .from("apreciacao_acoes")
+        .select("id_item, ordem")
+        .eq("id_apreciacao", params.apreciacao.id_apreciacao);
       if (eExist) throw eExist;
+      const linhasExistentes =
+        (existentes ?? []) as { id_item: string | null; ordem: number }[];
       const jaVinculados = new Set(
-        ((existentes ?? []) as { id_apreciacao_item: string | null }[])
-          .map((r) => r.id_apreciacao_item)
+        linhasExistentes
+          .map((r) => r.id_item)
           .filter((s): s is string => !!s)
+      );
+      const maxOrdem = linhasExistentes.reduce(
+        (m, r) => (r.ordem > m ? r.ordem : m),
+        -1
       );
 
       const novos = naoConforme.filter((i) => !jaVinculados.has(i.id_item));
@@ -568,15 +669,12 @@ export function useGerarPlano5W2HApreciacao() {
         ? `${params.apreciacao.setor} (NR-12)`
         : "Apreciação NR-12";
 
-      const linhas: Acao5W2H[] = novos.map((it) => ({
-        id_acao: gerarId("ACAO"),
-        id_empresa: params.apreciacao.id_empresa,
-        id_setor: null,
-        id_risco: null,
-        id_inspecao: null,
-        id_apreciacao_item: it.id_item,
-        what_acao:
-          `${it.item_codigo} — ${it.item_titulo}`.slice(0, 240),
+      const linhas: ApreciacaoAcao[] = novos.map((it, idx) => ({
+        id_acao: gerarId("AAC"),
+        id_apreciacao: params.apreciacao.id_apreciacao,
+        id_item: it.id_item,
+        ordem: maxOrdem + 1 + idx,
+        what_acao: `${it.item_codigo} — ${it.item_titulo}`.slice(0, 240),
         why_justificativa: it.observacao,
         where_local: setorTexto,
         when_prazo: null,
@@ -586,12 +684,14 @@ export function useGerarPlano5W2HApreciacao() {
         status: "Pendente",
         prioridade: prioridadePorNivel(it.nivel_risco_calculado),
         data_conclusao: null,
-        observacoes: `Originado da Apreciação NR-12 ${params.apreciacao.id_apreciacao}`,
+        observacoes: null,
         created_by: user?.email ?? null,
+        created_at: new Date().toISOString(),
+        updated_at: null,
       }));
 
       const { error } = await supabase
-        .from("acoes_5w2h")
+        .from("apreciacao_acoes")
         .insert(linhas as never);
       if (error) throw error;
 
@@ -602,9 +702,8 @@ export function useGerarPlano5W2HApreciacao() {
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({
-        queryKey: KEY_ACOES_APRECIACAO(vars.apreciacao.id_apreciacao),
+        queryKey: KEY_ACOES(vars.apreciacao.id_apreciacao),
       });
-      qc.invalidateQueries({ queryKey: ["acoes-5w2h"] });
     },
   });
 }
@@ -655,6 +754,48 @@ export function useGerarParecerApreciacaoIA() {
       if (error) throw error;
       const payload = (data as { data?: ParecerIAOutput } | null)?.data;
       if (!payload?.conclusao_tecnica) {
+        throw new Error("Resposta inválida da IA — tente novamente");
+      }
+      return payload;
+    },
+  });
+}
+
+// ============================================================
+// IA — análise de foto (vision) pra gerar observação técnica
+// ============================================================
+
+export interface AnalisarFotoIAInput {
+  foto_urls: string[];
+  item_codigo: string;
+  item_titulo: string;
+  item_descricao?: string | null;
+  categoria?: string | null;
+  textoAtual?: string | null;
+}
+
+export interface AnalisarFotoIAOutput {
+  observacao: string;
+}
+
+/**
+ * Invoca a edge function `analisar-foto-apreciacao-ia` (Groq vision) com
+ * as URLs públicas das fotos + contexto do requisito NR-12. Retorna uma
+ * observação técnica descritiva pra preencher o campo do item.
+ */
+export function useAnalisarFotoApreciacaoIA() {
+  return useMutation({
+    mutationFn: async (
+      input: AnalisarFotoIAInput
+    ): Promise<AnalisarFotoIAOutput> => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase.functions.invoke(
+        "analisar-foto-apreciacao-ia",
+        { body: input }
+      );
+      if (error) throw error;
+      const payload = (data as { data?: AnalisarFotoIAOutput } | null)?.data;
+      if (!payload?.observacao) {
         throw new Error("Resposta inválida da IA — tente novamente");
       }
       return payload;

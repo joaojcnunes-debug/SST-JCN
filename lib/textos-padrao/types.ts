@@ -8,7 +8,8 @@ export type ModuloTextoPadrao =
   | "sst"
   | "conformidade"
   | "nao_conformidade"
-  | "analise_quimicos";
+  | "analise_quimicos"
+  | "apreciacao_maquinas";
 
 export type OrientacaoPagina = "retrato" | "paisagem";
 
@@ -73,5 +74,12 @@ export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
     descricao:
       "Capítulos reutilizáveis para as análises de produtos químicos. Pode incluir disclaimers, metodologia, normas aplicáveis.",
     destino: "Aparecem no relatório de Análise de Químicos.",
+  },
+  apreciacao_maquinas: {
+    modulo: "apreciacao_maquinas",
+    titulo: "Texto Padrão — Apreciação de Máquinas (NR-12)",
+    descricao:
+      "Capítulos reutilizáveis para os laudos de Apreciação NR-12: introdução, fundamentação legal (ISOs 12100/13849), metodologia, considerações finais.",
+    destino: "Aparecem no PDF do laudo da Apreciação NR-12, após a conclusão técnica.",
   },
 };

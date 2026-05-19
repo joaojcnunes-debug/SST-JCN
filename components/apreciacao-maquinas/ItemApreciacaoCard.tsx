@@ -12,12 +12,14 @@ import {
   Trash2,
   Sparkles,
 } from "lucide-react";
+/* Sparkles é usado em dois lugares (badge LIVRE + botão analisar foto IA). */
 import toast from "react-hot-toast";
 import {
   useAtualizarItemApreciacao,
   useUploadFotoItemApreciacao,
   useRemoverFotoItemApreciacao,
   useExcluirItemApreciacao,
+  useAnalisarFotoApreciacaoIA,
   MAX_FOTOS_POR_ITEM_APR,
 } from "@/lib/hooks/useApreciacoesMaquinas";
 import { useMatrizAtiva } from "@/lib/hooks/useV3";
@@ -80,6 +82,7 @@ export default function ItemApreciacaoCard({
   const uploadFoto = useUploadFotoItemApreciacao();
   const removerFoto = useRemoverFotoItemApreciacao();
   const excluirItem = useExcluirItemApreciacao();
+  const analisarFoto = useAnalisarFotoApreciacaoIA();
   const { data: matrizAtiva } = useMatrizAtiva();
   const fileRef = useRef<HTMLInputElement>(null);
   const [confirmandoExcluir, setConfirmandoExcluir] = useState(false);
@@ -188,6 +191,34 @@ export default function ItemApreciacaoCard({
     } catch (err) {
       console.error(err);
       toast.error("Falha ao excluir item");
+    }
+  }
+
+  async function handleAnalisarFotoIA() {
+    if (item.foto_urls.length === 0) return;
+    try {
+      const { observacao: nova } = await analisarFoto.mutateAsync({
+        foto_urls: item.foto_urls,
+        item_codigo: item.item_codigo,
+        item_titulo: item.item_titulo,
+        item_descricao: item.item_descricao,
+        categoria: item.item_categoria,
+        textoAtual: observacao.trim() || null,
+      });
+      setObservacao(nova);
+      // Salva imediatamente — o debounce de auto-save também salvaria, mas
+      // o usuário espera ver o texto persistido logo após gerar pela IA.
+      atualizar.mutate({
+        id_apreciacao: item.id_apreciacao,
+        id_item: item.id_item,
+        observacao: nova,
+      });
+      toast.success("Observação gerada — revise antes de finalizar");
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        err instanceof Error ? err.message : "Falha ao analisar foto"
+      );
     }
   }
 
@@ -372,39 +403,7 @@ export default function ItemApreciacaoCard({
         </div>
       )}
 
-      {/* Observação */}
-      <div>
-        <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-          Observação técnica
-        </label>
-        <textarea
-          rows={2}
-          value={observacao}
-          onChange={(e) => setObservacao(e.target.value)}
-          disabled={disabled}
-          placeholder="O que foi observado em campo..."
-          className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50"
-        />
-      </div>
-
-      {/* Recomendação (só relevante se NAO_CONFORME, mas sempre habilitado) */}
-      {(item.situacao === "NAO_CONFORME" || recomendacao) && (
-        <div>
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-red-600">
-            Recomendação / ação corretiva
-          </label>
-          <textarea
-            rows={2}
-            value={recomendacao}
-            onChange={(e) => setRecomendacao(e.target.value)}
-            disabled={disabled}
-            placeholder="Ação corretiva sugerida..."
-            className="w-full rounded-md border border-red-200 bg-red-50/30 px-2 py-1.5 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:bg-gray-50"
-          />
-        </div>
-      )}
-
-      {/* Fotos */}
+      {/* Fotos — agora ANTES da observação pra dar contexto visual */}
       <div>
         <div className="mb-1 flex items-center justify-between">
           <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
@@ -468,6 +467,56 @@ export default function ItemApreciacaoCard({
           </div>
         )}
       </div>
+
+      {/* Observação técnica — agora DEPOIS das fotos, com IA opcional */}
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            Observação técnica
+          </label>
+          {!disabled && item.foto_urls.length > 0 && (
+            <button
+              type="button"
+              onClick={handleAnalisarFotoIA}
+              disabled={analisarFoto.isPending}
+              title="IA analisa as fotos e propõe descrição técnica"
+              className="inline-flex items-center gap-1 rounded-md border border-purple-300 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 hover:bg-purple-100 disabled:opacity-50 print:hidden"
+            >
+              {analisarFoto.isPending ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <Sparkles className="size-3" />
+              )}
+              {analisarFoto.isPending ? "Analisando..." : "Analisar foto com IA"}
+            </button>
+          )}
+        </div>
+        <textarea
+          rows={3}
+          value={observacao}
+          onChange={(e) => setObservacao(e.target.value)}
+          disabled={disabled}
+          placeholder="O que foi observado em campo (ou clique 'Analisar foto com IA' acima se tiver foto)..."
+          className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50"
+        />
+      </div>
+
+      {/* Recomendação (só relevante se NAO_CONFORME, mas sempre habilitado) */}
+      {(item.situacao === "NAO_CONFORME" || recomendacao) && (
+        <div>
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-red-600">
+            Recomendação / ação corretiva
+          </label>
+          <textarea
+            rows={2}
+            value={recomendacao}
+            onChange={(e) => setRecomendacao(e.target.value)}
+            disabled={disabled}
+            placeholder="Ação corretiva sugerida..."
+            className="w-full rounded-md border border-red-200 bg-red-50/30 px-2 py-1.5 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:bg-gray-50"
+          />
+        </div>
+      )}
     </div>
   );
 }

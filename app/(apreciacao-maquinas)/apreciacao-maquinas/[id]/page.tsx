@@ -19,7 +19,6 @@ import {
   Sparkles,
   Wand2,
   ListTodo,
-  ExternalLink,
   X as IconX,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -29,9 +28,13 @@ import {
   useExcluirApreciacaoMaquina,
   useAdicionarItemLivreApreciacao,
   useGerarParecerApreciacaoIA,
-  useGerarPlano5W2HApreciacao,
-  useAcoesDaApreciacao,
 } from "@/lib/hooks/useApreciacoesMaquinas";
+import PlanoAcaoTable from "@/components/apreciacao-maquinas/PlanoAcaoTable";
+import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
+import {
+  montarValoresEmpresa,
+  formatarDataBR,
+} from "@/lib/textos-padrao/variaveis";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useMaquina } from "@/lib/hooks/useInventarioMaquinas";
 import { useCanEdit, useCanDelete } from "@/lib/hooks/useUsuario";
@@ -79,8 +82,6 @@ export default function DetalheApreciacaoPage() {
   const excluir = useExcluirApreciacaoMaquina();
   const adicionarLivre = useAdicionarItemLivreApreciacao();
   const gerarParecerIA = useGerarParecerApreciacaoIA();
-  const gerarPlano = useGerarPlano5W2HApreciacao();
-  const { data: acoesLaudo = [] } = useAcoesDaApreciacao(id);
   const { data: maquinaVinculada } = useMaquina(
     data?.apreciacao.id_maquina ?? null
   );
@@ -125,13 +126,13 @@ export default function DetalheApreciacaoPage() {
     setObservacoes(apreciacao.observacoes_gerais ?? "");
   }, [apreciacao]);
 
-  const empresaNome = useMemo(() => {
-    if (!apreciacao) return "";
+  const empresa = useMemo(() => {
+    if (!apreciacao) return null;
     return (
-      empresas.find((e) => e.id_empresa === apreciacao.id_empresa)
-        ?.nome_empresa ?? "—"
+      empresas.find((e) => e.id_empresa === apreciacao.id_empresa) ?? null
     );
   }, [empresas, apreciacao]);
+  const empresaNome = empresa?.nome_empresa ?? "—";
 
   // Agrupa itens por categoria preservando a ordem definida no catálogo
   const itensPorCategoria = useMemo(() => {
@@ -322,33 +323,6 @@ export default function DetalheApreciacaoPage() {
     toast.success(
       `Risco residual sugerido: ${RISCO_RESIDUAL_LABELS[sugerido]} (max nível: ${ORDEM_NIVEL[maxIdx]})`
     );
-  }
-
-  async function handleGerarPlano5W2H() {
-    if (!apreciacao) return;
-    const naoConforme = itens.filter((i) => i.situacao === "NAO_CONFORME");
-    if (naoConforme.length === 0) {
-      toast.error("Nenhum item NAO_CONFORME — sem ações pra gerar");
-      return;
-    }
-    try {
-      const { criadas, ignoradas } = await gerarPlano.mutateAsync({
-        apreciacao,
-        itens,
-      });
-      if (criadas === 0) {
-        toast(`Todas as ${ignoradas} NCs já têm plano. Nada novo gerado.`, {
-          icon: "ℹ️",
-        });
-      } else {
-        toast.success(
-          `${criadas} ação(ões) criada(s)${ignoradas > 0 ? ` · ${ignoradas} já existiam` : ""}`
-        );
-      }
-    } catch (err) {
-      console.error(err);
-      toast.error("Falha ao gerar plano de ação");
-    }
   }
 
   async function handleExcluir() {
@@ -873,96 +847,40 @@ export default function DetalheApreciacaoPage() {
         )}
       </section>
 
-      {/* Seção: Plano de Ação 5W2H (vinculado ao Painel SST) */}
+      {/* Seção: Plano de Ação — standalone da apreciação */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3 print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
-            <ListTodo className="size-4" /> Plano de Ação 5W2H
-          </h2>
-          {!readOnly && (
-            <button
-              type="button"
-              onClick={handleGerarPlano5W2H}
-              disabled={gerarPlano.isPending}
-              title="Cria ações pendentes no Painel SST a partir dos itens NAO_CONFORME (idempotente)"
-              className="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50 print:hidden"
-            >
-              {gerarPlano.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Plus className="size-3.5" />
-              )}
-              Gerar plano de ação
-            </button>
-          )}
-        </div>
-        {!readOnly && (
-          <p className="rounded-md border border-emerald-100 bg-emerald-50/40 px-2 py-1.5 text-[11px] text-emerald-800 print:hidden">
-            <ListTodo className="mr-1 inline size-3" />
-            Cria uma ação 5W2H pendente para cada item NAO_CONFORME. A
-            prioridade é mapeada do nível de risco calculado. Edite prazos e
-            responsáveis no Painel SST → /acoes. Idempotente: rodar de novo só
-            cria pra NCs sem ação ainda.
-          </p>
-        )}
-
-        {acoesLaudo.length === 0 ? (
-          <p className="rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-4 text-center text-xs text-gray-500">
-            Nenhuma ação vinculada a esta apreciação ainda.
-          </p>
-        ) : (
-          <div className="space-y-1.5">
-            <p className="text-[11px] text-gray-600">
-              <strong>{acoesLaudo.length}</strong> ação(ões) vinculada(s) a esta
-              apreciação:
-            </p>
-            <ul className="divide-y divide-gray-100 rounded-md border border-gray-200">
-              {acoesLaudo.map((a) => (
-                <li
-                  key={a.id_acao}
-                  className="flex items-start gap-2 px-3 py-2 text-xs"
-                >
-                  <span
-                    className={cn(
-                      "shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold",
-                      a.prioridade === "Critica" &&
-                        "bg-red-100 text-red-700",
-                      a.prioridade === "Alta" &&
-                        "bg-orange-100 text-orange-700",
-                      a.prioridade === "Media" &&
-                        "bg-amber-100 text-amber-700",
-                      a.prioridade === "Baixa" &&
-                        "bg-emerald-100 text-emerald-700"
-                    )}
-                  >
-                    {a.prioridade}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-gray-900">
-                      {a.what_acao}
-                    </p>
-                    <p className="text-[10px] text-gray-500">
-                      Status: {a.status}
-                      {a.who_responsavel
-                        ? ` · Resp.: ${a.who_responsavel}`
-                        : ""}
-                      {a.when_prazo
-                        ? ` · Prazo: ${new Date(a.when_prazo + "T00:00").toLocaleDateString("pt-BR")}`
-                        : ""}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/acoes?empresa=${a.id_empresa}`}
-                    className="inline-flex shrink-0 items-center gap-0.5 text-[10px] font-semibold text-blue-600 hover:underline print:hidden"
-                  >
-                    Abrir <ExternalLink className="size-2.5" />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
+          <ListTodo className="size-4" /> Plano de Ação
+        </h2>
+        <PlanoAcaoTable
+          idApreciacao={apreciacao.id_apreciacao}
+          apreciacao={apreciacao}
+          itens={itens}
+          readOnly={readOnly}
+        />
       </section>
+
+      {/* Textos Padrão — só no print, renderiza capítulos cadastrados */}
+      <TextosPadraoPrint
+        modulo="apreciacao_maquinas"
+        valores={{
+          ...montarValoresEmpresa(empresa),
+          titulo: apreciacao.titulo ?? "",
+          maquina_nome: maquinaNome,
+          setor: apreciacao.setor ?? "",
+          responsavel: apreciacao.responsavel ?? "",
+          responsavel_empresa: apreciacao.responsavel_empresa ?? "",
+          cidade: apreciacao.cidade ?? "",
+          data_apreciacao: formatarDataBR(apreciacao.data_apreciacao),
+          data_atual: new Date().toLocaleDateString("pt-BR"),
+          total_itens: String(itens.length),
+          total_nao_conforme: String(
+            itens.filter((i) => i.situacao === "NAO_CONFORME").length
+          ),
+          risco_residual: apreciacao.risco_residual ?? "",
+        }}
+        posicao="depois"
+      />
 
       {/* Bloco de assinatura — só no print */}
       <section className="hidden print:block print:break-inside-avoid print:mt-6">
