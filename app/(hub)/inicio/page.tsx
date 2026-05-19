@@ -19,6 +19,7 @@ import {
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
+import { useCanCreate } from "@/lib/hooks/useUsuario";
 import { useHomeStats, type ModuloStats, type AtividadeItem } from "@/lib/hooks/useHomeStats";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -102,6 +103,56 @@ const NOMES_MODULOS: Record<ModuloPermitido, string> = {
   analise_quimicos: "Análise Químicos",
 };
 
+interface QuickActionCfg {
+  modulo: ModuloPermitido;
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  accent: string;
+}
+
+/** Ações rápidas — atalhos para criar registros novos nos módulos.
+ *  Cada ação só aparece se o usuário tiver `pode_criar` E o módulo
+ *  estiver na lista de permitidos. Psicossocial aponta pro hub do módulo
+ *  porque o /novo precisa de empresa selecionada. */
+const QUICK_ACTIONS: QuickActionCfg[] = [
+  {
+    modulo: "painel",
+    href: "/inspecoes/nova",
+    label: "Nova Inspeção",
+    icon: <Shield className="size-4" />,
+    accent: "#00835A",
+  },
+  {
+    modulo: "conformidade",
+    href: "/relatorio-conformidade/novo",
+    label: "Novo Relatório NR",
+    icon: <CheckCircle2 className="size-4" />,
+    accent: "#0D9488",
+  },
+  {
+    modulo: "nao_conformidade",
+    href: "/relatorio-nao-conformidade/novo",
+    label: "Novo RNC",
+    icon: <AlertTriangle className="size-4" />,
+    accent: "#DC2626",
+  },
+  {
+    modulo: "analise_quimicos",
+    href: "/analise-quimicos/nova",
+    label: "Nova Análise Química",
+    icon: <FlaskConical className="size-4" />,
+    accent: "#0EA5E9",
+  },
+  {
+    modulo: "psicossocial",
+    href: "/psicossocial",
+    label: "Iniciar DRPS",
+    icon: <Brain className="size-4" />,
+    accent: "#7C3AED",
+  },
+];
+
 function saudacaoPorHorario(d: Date): string {
   const h = d.getHours();
   if (h < 12) return "Bom dia";
@@ -158,16 +209,32 @@ export default function InicioPage() {
   const logout = useUserStore((s) => s.logout);
   const { data: configs } = useConfiguracoes();
   const stats = useHomeStats();
+  const canCreate = useCanCreate();
 
   const isAdmin = user?.perfil === "Admin";
-  const cards = CARDS.filter((c) => {
-    if (!user) return false;
-    const permitidos = user.modulos_permitidos ?? [];
-    return permitidos.includes(c.modulo);
-  });
+  const modulosPermitidos = new Set(user?.modulos_permitidos ?? []);
+
+  // Cards visíveis ordenados por pendência (estável: sobe quem tem trabalho
+  // pendente, mantém ordem original entre empates pra não bagunçar memória
+  // muscular do usuário).
+  const cards = CARDS.filter((c) => modulosPermitidos.has(c.modulo))
+    .map((c, idx) => ({
+      cfg: c,
+      pendente: statsPorModulo(stats, c.modulo)?.pendente ?? 0,
+      idx,
+    }))
+    .sort((a, b) => {
+      if (b.pendente !== a.pendente) return b.pendente - a.pendente;
+      return a.idx - b.idx;
+    })
+    .map((x) => x.cfg);
+
+  // Quick Actions filtradas por permissão (canCreate) + módulos permitidos.
+  const quickActions = canCreate
+    ? QUICK_ACTIONS.filter((a) => modulosPermitidos.has(a.modulo))
+    : [];
 
   // Atividade recente filtrada por módulos permitidos do usuário
-  const modulosPermitidos = new Set(user?.modulos_permitidos ?? []);
   const atividadeFiltrada = stats.atividadeRecente.filter((a) =>
     modulosPermitidos.has(a.modulo)
   );
@@ -281,6 +348,10 @@ export default function InicioPage() {
           </div>
         ) : (
           <>
+            {quickActions.length > 0 && (
+              <QuickActionsBloco actions={quickActions} />
+            )}
+
             <div
               className={cn(
                 "grid w-full gap-6 grid-cols-1",
@@ -422,6 +493,33 @@ function HubCard({
         />
       </div>
     </Link>
+  );
+}
+
+/** Bloco "Ações Rápidas" — atalhos pra criação nos módulos.
+ *  Só renderiza pra quem tem `pode_criar`. Botões em linha horizontal com
+ *  wrap em telas pequenas. */
+function QuickActionsBloco({ actions }: { actions: QuickActionCfg[] }) {
+  return (
+    <div className="mb-8 flex w-full max-w-6xl flex-wrap items-center justify-center gap-2 sm:gap-3">
+      {actions.map((a) => (
+        <Link
+          key={a.modulo}
+          href={a.href}
+          className="group flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-lg"
+        >
+          <span
+            className="flex size-7 items-center justify-center rounded-full text-white shadow-sm transition-colors"
+            style={{ backgroundColor: a.accent }}
+          >
+            {a.icon}
+          </span>
+          <span className="transition-colors group-hover:text-gray-900">
+            {a.label}
+          </span>
+        </Link>
+      ))}
+    </div>
   );
 }
 
