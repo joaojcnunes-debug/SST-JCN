@@ -248,6 +248,9 @@ function InspecoesInner() {
               <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
                   <th className="px-4 py-2.5 text-left font-medium">ID</th>
+                  {!empresaId && (
+                    <th className="px-4 py-2.5 text-left font-medium">Empresa</th>
+                  )}
                   <th className="px-4 py-2.5 text-center font-medium">Rev.</th>
                   <th className="px-4 py-2.5 text-left font-medium">Data</th>
                   <th className="px-4 py-2.5 text-left font-medium">Responsável</th>
@@ -261,6 +264,7 @@ function InspecoesInner() {
                     key={i.id_inspecao}
                     insp={i}
                     onDelete={canDelete ? setConfirmDel : undefined}
+                    showEmpresa={!empresaId}
                   />
                 ))}
               </tbody>

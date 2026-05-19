@@ -108,7 +108,7 @@ export function useInspecoesByEmpresa(idEmpresa: string | null | undefined) {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("inspecoes")
-        .select("*")
+        .select("*, empresas(nome_empresa)")
         .eq("id_empresa", idEmpresa!)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -126,7 +126,7 @@ export function useInspecoesByTecnico(tecnico: string) {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("inspecoes")
-        .select("*")
+        .select("*, empresas(nome_empresa)")
         .ilike("responsavel", `%${termo}%`)
         .neq("status", "DELETADA")
         .order("created_at", { ascending: false });

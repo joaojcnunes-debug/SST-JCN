@@ -9,16 +9,23 @@ import type { Inspecao } from "@/lib/supabase/types";
 export default function InspecaoRow({
   insp,
   onDelete,
+  showEmpresa,
 }: {
   insp: Inspecao;
   /** Quando setado, mostra botão de excluir. Use só para Admin. */
   onDelete?: (insp: Inspecao) => void;
+  showEmpresa?: boolean;
 }) {
   return (
     <tr className="hover:bg-gray-50">
       <td className="px-4 py-2.5 font-mono text-xs text-gray-600">
         {insp.id_inspecao}
       </td>
+      {showEmpresa && (
+        <td className="px-4 py-2.5 text-gray-700">
+          {insp.empresas?.nome_empresa ?? "—"}
+        </td>
+      )}
       <td className="px-4 py-2.5 text-center text-gray-700">{insp.revisao}</td>
       <td className="px-4 py-2.5 text-gray-600">{fmtData(insp.data_inspecao)}</td>
       <td className="px-4 py-2.5 text-gray-700">{insp.responsavel ?? "—"}</td>

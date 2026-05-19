@@ -112,6 +112,7 @@ export interface Inspecao {
   usuario: string | null;
   created_at: string;
   updated_at: string | null;
+  empresas?: { nome_empresa: string } | null;
 }
 
 export interface Setor {
