@@ -44,9 +44,11 @@ const MODEL = "llama-3.1-8b-instant";
 // 1.500-2.000 chars (~400-600 tokens). MUITO mais leve que mandar o PDF
 // inteiro pra IA.
 const PDF_MAX_CHARS = 8000;
-// 1000 tokens cabe folgadamente no TPM 6.000 do 8B free e dá espaço pro
-// resumo_tecnico (parecer formal de 8-14 frases) sem cortar os outros campos.
-const MAX_OUTPUT_TOKENS = 1000;
+// 700 tokens é suficiente com resumo_tecnico de 4-6 frases (não 8-14
+// como antes) e fundamentações concisas. Economiza ~30% de output sem
+// cortar campos. Total típico por call: ~2.5-3.5k tokens (vs 3.5-4.5k
+// na versão anterior).
+const MAX_OUTPUT_TOKENS = 700;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -126,212 +128,167 @@ interface ContextoIA {
   empresa_nome?: string | null;
 }
 
-const SYSTEM_PROMPT = `Você é um Engenheiro de Segurança do Trabalho e Higienista Ocupacional especialista em Toxicologia Ocupacional, GHS (ABNT NBR 14725), NR-01, NR-06, NR-07, NR-09, NR-15 (Anexos 11, 12, 13 e 13-A), NR-16, ACGIH TLV/BEI, NIOSH REL/Pocket Guide, OSHA PEL, IARC Monographs, Fundacentro (NHO-01 a NHO-10), eSocial, GFIP e Previdência Social (Lei 8.213/91 e Decreto 3.048/99).
+const SYSTEM_PROMPT = `Você é Engenheiro de Segurança do Trabalho e Higienista Ocupacional especialista em GHS (ABNT NBR 14725), NR-15, NR-16, IARC, eSocial e Previdência (Decreto 3.048).
 
-=== REGRA ANTI-ALUCINAÇÃO CRÍTICA ===
-Você NÃO tem acesso a busca web. NUNCA invente códigos numéricos.
-Se não tiver ABSOLUTA certeza:
-  - eSocial Tab.24 → "Consultar tabela oficial"
-  - Decreto 3.048 Anexo IV → "Consultar decreto vigente"
-  - GFIP → "Consultar tabela GFIP"
-  - Classificação IARC → só citar se tiver certeza
-  - Limites NR-15 numéricos → só citar se for da NR-15 confirmada
-MELHOR responder "Inconclusivo" do que inventar. Códigos inventados
-geram risco previdenciário/trabalhista real.
-
-=== REGRAS TÉCNICAS ===
-- TLV/REL/PEL = apenas referência técnica.
-- NR-15 Anexo 13 NÃO possui limites numéricos (avaliação qualitativa).
-- Não confundir insalubridade com aposentadoria especial.
-- GHS não implica automaticamente NR-16.
-- Substância fora da NR-15 → avaliar por analogia.
-- Considerar FORMA FÍSICA e CONDIÇÕES DE EXPOSIÇÃO.
+REGRAS:
+- NÃO invente códigos. Sem ABSOLUTA certeza: use "Consultar tabela oficial" / "Inconclusivo".
+- NR-15 Anexo 13: avaliação qualitativa (sem limites numéricos).
 - Carcinogenicidade: IARC (1, 2A, 2B), ACGIH (A1-A5), NR-15 Anexo 13-A.
+- Insalubridade ≠ aposentadoria especial. GHS ≠ NR-16.
+- Considere forma física + condições de exposição.
 
-=== FORMATO DE RESPOSTA ===
-Responda APENAS um objeto JSON válido com EXATAMENTE estas chaves
-(em minúsculas e snake_case). Sem markdown, sem texto fora do JSON.
-Cada valor é uma string em frase completa (não use null, use a string "N/A"
-quando não se aplicar).
+FORMATO: APENAS JSON válido (snake_case, sem markdown). Use "N/A" quando não aplicável (não null).
 
-{
-  "insalubridade_nr15": "SIM | NÃO | Inconclusivo",
-  "insalubridade_grau": "Mínimo | Médio | Máximo | N/A",
-  "insalubridade_anexo": "Ex: Anexo 13 - Agentes Químicos | N/A",
-  "insalubridade_fundamentacao": "2-4 frases técnicas justificando o enquadramento ou a não-aplicabilidade",
-  "aposentadoria_especial": "SIM | NÃO | Inconclusivo",
-  "aposentadoria_tempo": "15 anos | 20 anos | 25 anos | N/A",
-  "decreto_3048": "SIM/NÃO/Inconclusivo - breve descrição (use 'Consultar decreto vigente' se incerto)",
-  "codigo_gfip": "código numérico SOMENTE se 100% certo, senão 'Consultar tabela GFIP' ou 'N/A'",
-  "esocial_tab24": "SIM/NÃO/Inconclusivo - breve descrição (use 'Consultar tabela oficial' se incerto)",
-  "oleo_mineral": "N/A | Refinado | Super-refinado | Não refinado - breve justificativa",
-  "carcinogenico": "SIM/NÃO/Inconclusivo - classificação IARC/ACGIH se houver certeza",
-  "periculosidade_nr16": "SIM/NÃO/Inconclusivo - breve justificativa (inflamável, explosivo, etc.)",
-  "epi_necessarios": "Lista separada por ponto-e-vírgula. Sem nº de CA se não tiver certeza.",
-  "epc_necessarios": "Lista separada por ponto-e-vírgula | N/A",
-  "medidas_controle": "Medidas administrativas e de engenharia, separadas por ponto-e-vírgula",
-  "emergencia_acidente": "Procedimentos de derramamento/vazamento + primeiros socorros",
-  "medicao_necessaria": "SIM/NÃO - breve justificativa",
-  "metodologia": "Método NIOSH/OSHA/Fundacentro/NHO específico | Inconclusivo",
-  "como_medir": "Procedimento resumido e equipamento necessário | Inconclusivo",
-  "limite_exposicao": "Valor com unidade e fonte (ex: '50 ppm - ACGIH TLV-TWA') | Inconclusivo",
-  "resumo_tecnico": "PARECER TÉCNICO formal de 1-2 parágrafos (8-14 frases) próprio pra inclusão em PPP/LTCAT/PGR. Use linguagem técnica formal, sem floreio. Estrutura obrigatória: (1) identifique o agente/mistura citando produto, componentes catalogados e CAS de cada um; (2) enquadramento NR-15 com grau, anexo aplicável e limite de tolerância; (3) enquadramento NR-16 se inflamável/explosivo; (4) enquadramento previdenciário (aposentadoria especial, código Decreto 3.048 Anexo IV, código eSocial S-2240 Tab.24); (5) carcinogenicidade conforme IARC e NR-15 Anexo 13-A se aplicável; (6) conclusão objetiva sobre necessidade de monitoramento, medidas de controle e EPI prioritários. Em mistura, CITE individualmente cada componente catalogado. Não invente códigos — se incerto, escreva 'consultar tabela oficial'."
-}
+NÃO REPITA dados já listados nos campos estruturados. As fundamentações são RACIOCÍNIO técnico, não listagem de componentes — esses já estão nos cards.
 
-Seja técnico, preciso e CONSERVADOR. Quando não souber, "Inconclusivo".`;
+Chaves (string):
+- insalubridade_nr15: "SIM" | "NÃO" | "Inconclusivo"
+- insalubridade_grau: "Mínimo" | "Médio" | "Máximo" | "N/A"
+- insalubridade_anexo: ex. "Anexo 13 - Agentes Químicos" | "N/A"
+- insalubridade_fundamentacao: 2 frases justificando o enquadramento (sem repetir componentes)
+- aposentadoria_especial: "SIM" | "NÃO" | "Inconclusivo"
+- aposentadoria_tempo: "15 anos" | "20 anos" | "25 anos" | "N/A"
+- decreto_3048: breve descrição ou "Consultar decreto vigente"
+- codigo_gfip: código se 100% certo, senão "Consultar tabela GFIP"
+- esocial_tab24: breve descrição ou "Consultar tabela oficial"
+- oleo_mineral: "N/A" | "Refinado" | "Super-refinado" | "Não refinado" + breve
+- carcinogenico: "SIM/NÃO/Inconclusivo" + IARC/ACGIH se certo
+- periculosidade_nr16: "SIM/NÃO/Inconclusivo" + breve justificativa
+- epi_necessarios: lista por ";". Sem CA se incerto.
+- epc_necessarios: lista por ";" | "N/A"
+- medidas_controle: medidas adm/eng por ";"
+- emergencia_acidente: vazamento + primeiros socorros (1 frase cada)
+- medicao_necessaria: "SIM/NÃO" + breve
+- metodologia: método NIOSH/OSHA/Fundacentro/NHO | "Inconclusivo"
+- como_medir: procedimento + equipamento (1 frase) | "Inconclusivo"
+- limite_exposicao: "valor + unidade - fonte" | "Inconclusivo"
+- resumo_tecnico: PARECER técnico formal de 4-6 frases pra PPP/LTCAT. Estrutura: (1) enquadramento NR-15 (grau + anexo + LT do pior caso); (2) previdenciário (aposentadoria + Decreto + eSocial); (3) NR-16/carcinogenicidade se aplicar; (4) conclusão objetiva (monitoramento, EPIs prioritários). NÃO liste componentes — esses já estão nos campos estruturados. Foque em REASONING.
+
+CONSERVADOR. Sem certeza → "Inconclusivo".`;
 
 function buildUserPrompt(ctx: ContextoIA): string {
   const linhas: string[] = [
-    "Faça a análise de agente químico abaixo. Os dados do produto foram extraídos da FISPQ e revisados pelo usuário — confie neles.",
+    "Análise de agente químico. Dados do produto vêm da FISPQ revisada — confie.",
     "",
   ];
 
   if (ctx.empresa_nome) linhas.push(`Empresa: ${ctx.empresa_nome}`);
 
-  // Lista detalhada dos componentes catalogados (pior caso + cada um) — vem da
-  // base local. Se 2+ estão catalogados, listamos todos individualmente E o
-  // "agregado pior caso" como ground-truth pros campos regulatórios principais.
   const ehMistura =
     !!ctx.dados_base_componentes && ctx.dados_base_componentes.length > 1;
+  const temBase = !!ctx.dados_base || !!ctx.dados_base_componentes;
 
-  if (ehMistura && ctx.dados_base_componentes) {
-    linhas.push("");
-    linhas.push(
-      `=== COMPONENTES CATALOGADOS NA BASE OFICIAL (${ctx.dados_base_componentes.length} de ${ctx.componentes?.length ?? "?"}) ===`
-    );
-    linhas.push(
-      "Use estes dados — NÃO INVENTE. Cada componente tem seus próprios códigos regulatórios. Cite cada um na fundamentação."
-    );
-    ctx.dados_base_componentes.forEach((d, i) => {
-      const partes: string[] = [];
-      if (d.agente) partes.push(`Agente: ${d.agente}`);
-      if (d.cas) partes.push(`CAS: ${d.cas}`);
-      if (d.anexo) partes.push(`NR-15 ${d.anexo}`);
-      if (d.grau_nr15) partes.push(`Grau: ${d.grau_nr15}`);
-      if (d.lt_ppm != null) partes.push(`LT: ${d.lt_ppm} ppm`);
-      else if (d.lt_mg_m3 != null) partes.push(`LT: ${d.lt_mg_m3} mg/m³`);
-      if (d.iarc) partes.push(`IARC ${d.iarc}`);
-      if (d.cancerigeno_13a) partes.push(`Cancerígeno 13-A`);
-      if (d.esocial_tab24) partes.push(`eSocial ${d.esocial_tab24}`);
-      if (d.decreto_3048) partes.push(`Decreto ${d.decreto_3048}`);
-      if (d.cod_gfip) partes.push(`GFIP ${d.cod_gfip}`);
-      if (d.pele) partes.push(`Absorvido pela pele`);
-      if (d.inflamavel) partes.push(`Inflamável`);
-      linhas.push(`#${i + 1}: ${partes.join(" · ")}`);
-    });
-    linhas.push("=== FIM (componentes catalogados) ===");
+  // === Bloco produto: identificação mínima (1 linha)
+  if (ctx.dados_manuais) {
+    const d = ctx.dados_manuais;
+    const partes: string[] = [];
+    if (d.nome_produto) partes.push(`produto="${d.nome_produto}"`);
+    if (d.forma_fisica) partes.push(`forma=${d.forma_fisica}`);
+    if (partes.length > 0) linhas.push(`Produto: ${partes.join(" · ")}`);
   }
 
-  // Dados da BASE DETERMINÍSTICA — agregado pior caso dos componentes. Mesmo
-  // pra 1 componente, esses valores são GROUND TRUTH e a IA não pode contradizer.
+  // === Componentes catalogados (uma linha por item, formato pipe-separated)
+  // SUBSTITUI o bloco "MISTURA" — esses dados já cobrem nome+CAS+regulatorio.
+  if (ctx.dados_base_componentes && ctx.dados_base_componentes.length > 0) {
+    linhas.push("");
+    linhas.push(`CATÁLOGO (${ctx.dados_base_componentes.length} componente(s) — ground truth, NÃO contradizer):`);
+    ctx.dados_base_componentes.forEach((d) => {
+      const p: string[] = [];
+      if (d.agente && d.cas) p.push(`${d.agente} (${d.cas})`);
+      else if (d.agente) p.push(d.agente);
+      else if (d.cas) p.push(`CAS ${d.cas}`);
+      if (d.anexo) p.push(d.anexo);
+      if (d.grau_nr15) p.push(`grau ${d.grau_nr15}`);
+      if (d.lt_ppm != null) p.push(`LT ${d.lt_ppm}ppm`);
+      else if (d.lt_mg_m3 != null) p.push(`LT ${d.lt_mg_m3}mg/m³`);
+      if (d.iarc) p.push(`IARC ${d.iarc}`);
+      if (d.cancerigeno_13a) p.push("13-A");
+      if (d.esocial_tab24) p.push(`eSoc ${d.esocial_tab24}`);
+      if (d.decreto_3048) p.push(`Dec ${d.decreto_3048}`);
+      if (d.cod_gfip) p.push(`GFIP ${d.cod_gfip}`);
+      if (d.pele) p.push("pele");
+      if (d.inflamavel) p.push("inflamável");
+      linhas.push(`- ${p.join(" | ")}`);
+    });
+  }
+
+  // === Componentes NÃO catalogados (modo Manual ou PDF com químicos fora da base)
+  // Só lista se há componentes ALÉM dos catalogados — evita duplicação.
+  if (ctx.componentes && ctx.componentes.length > 0) {
+    const casCatalogados = new Set(
+      (ctx.dados_base_componentes ?? [])
+        .map((d) => d.cas)
+        .filter((c): c is string => !!c)
+    );
+    const naoCatalogados = ctx.componentes.filter(
+      (c) => !c.numero_cas || !casCatalogados.has(c.numero_cas)
+    );
+    if (naoCatalogados.length > 0) {
+      linhas.push("");
+      linhas.push(`NÃO CATALOGADOS (${naoCatalogados.length}) — analise por analogia:`);
+      naoCatalogados.forEach((c) => {
+        const p: string[] = [];
+        if (c.nome_quimico) p.push(c.nome_quimico);
+        if (c.numero_cas) p.push(`CAS ${c.numero_cas}`);
+        if (c.concentracao) p.push(c.concentracao);
+        linhas.push(`- ${p.join(" | ")}`);
+      });
+    }
+  }
+
+  // === Agregado pior caso — só campos que a IA precisa ativar nos cards.
+  // Compactado: 1 linha. Os componentes individuais já estão no CATÁLOGO acima.
   if (ctx.dados_base) {
     const d = ctx.dados_base;
-    linhas.push("");
-    linhas.push(
-      ehMistura
-        ? "=== AGREGADO DA MISTURA (PIOR CASO — USE COMO ENQUADRAMENTO OFICIAL, NÃO CONTRADIGA) ==="
-        : "=== DADOS REGULATÓRIOS OFICIAIS (BASE INTERNA — USE COMO VERDADE ABSOLUTA, NÃO CONTRADIGA) ==="
-    );
-    if (d.agente) linhas.push(`Agente: ${d.agente}`);
-    if (d.cas) linhas.push(`CAS: ${d.cas}`);
-    if (d.anexo) linhas.push(`Anexo NR-15 (do componente mais grave): ${d.anexo}`);
-    if (d.grau_nr15) linhas.push(`Grau de Insalubridade (pior caso): ${d.grau_nr15}`);
-    if (d.lt_mg_m3 != null) linhas.push(`Limite de Tolerância: ${d.lt_mg_m3} mg/m³`);
-    if (d.lt_ppm != null) linhas.push(`Limite de Tolerância: ${d.lt_ppm} ppm`);
-    if (d.teto === true) linhas.push(`Valor TETO: SIM (não pode ser ultrapassado)`);
-    if (d.pele === true) linhas.push(`Absorvido pela pele: SIM`);
-    if (d.esocial_tab24) linhas.push(`Código eSocial Tab.24: ${d.esocial_tab24}`);
-    if (d.iarc) linhas.push(`Classificação IARC (pior): ${d.iarc}`);
-    if (d.inflamavel != null) linhas.push(`Inflamável: ${d.inflamavel ? "SIM" : "NÃO"}`);
-    if (d.cancerigeno_13a === true)
-      linhas.push(`Cancerígeno (NR-15 Anexo 13-A): SIM`);
-    if (d.tlv_acgih) linhas.push(`TLV-ACGIH: ${d.tlv_acgih}`);
-    if (d.decreto_3048) linhas.push(`Decreto 3.048 (Anexo IV): ${d.decreto_3048}`);
-    if (d.cod_gfip) linhas.push(`Código GFIP: ${d.cod_gfip}`);
-    if (d.observacoes) linhas.push(`Observações: ${d.observacoes}`);
-    linhas.push("=== FIM ===");
-    linhas.push("");
-    linhas.push(
-      ehMistura
-        ? "REGRA OBRIGATÓRIA: O enquadramento NR-15 e a aposentadoria especial seguem o pior caso (componente mais grave). Na fundamentação, CITE cada componente catalogado individualmente e justifique o pior caso. Preencha EPIs, medidas e emergência considerando TODOS os componentes."
-        : "REGRA OBRIGATÓRIA: USE EXATAMENTE os valores acima nos campos correspondentes do JSON. Você ainda deve PREENCHER os campos que faltam (EPI, EPC, medidas, emergência, fundamentação, metodologia) com base no que sabe do agente — mas NUNCA contradiga os dados oficiais acima."
-    );
+    const p: string[] = [];
+    if (d.grau_nr15) p.push(`grau ${d.grau_nr15}`);
+    if (d.anexo) p.push(d.anexo);
+    if (d.lt_ppm != null) p.push(`LT ${d.lt_ppm}ppm`);
+    else if (d.lt_mg_m3 != null) p.push(`LT ${d.lt_mg_m3}mg/m³`);
+    if (d.iarc) p.push(`IARC ${d.iarc}`);
+    if (d.cancerigeno_13a) p.push("13-A");
+    if (d.inflamavel) p.push("inflamável");
+    if (d.teto) p.push("TETO");
+    if (d.pele) p.push("pele");
+    if (p.length > 0) {
+      linhas.push("");
+      linhas.push(`PIOR CASO: ${p.join(" · ")}`);
+    }
   }
 
-  // Dados do produto (sempre presente — vem do parser FISPQ revisado OU do
-  // form manual).
-  if (ctx.dados_manuais) {
-    linhas.push("");
-    linhas.push("=== DADOS DO PRODUTO (revisados) ===");
-    const d = ctx.dados_manuais;
-    if (d.nome_produto) linhas.push(`Nome do Produto: ${d.nome_produto}`);
-    if (d.nome_quimico) linhas.push(`Nome Químico: ${d.nome_quimico}`);
-    if (d.numero_cas) linhas.push(`Número CAS: ${d.numero_cas}`);
-    if (d.formula_quimica) linhas.push(`Fórmula Química: ${d.formula_quimica}`);
-    if (d.forma_fisica) linhas.push(`Forma Física: ${d.forma_fisica}`);
-    if (d.concentracao) linhas.push(`Concentração: ${d.concentracao}`);
-    linhas.push("=== FIM ===");
-  }
-
-  // Componentes da mistura (modo Manual com 2+ químicos). Lista cada
-  // componente individualmente pra IA considerar todos no parecer.
-  if (ctx.componentes && ctx.componentes.length > 1) {
-    linhas.push("");
-    linhas.push(
-      `=== MISTURA — ${ctx.componentes.length} COMPONENTES QUÍMICOS ===`
-    );
-    linhas.push(
-      "O produto é uma mistura. Analise considerando o conjunto e destaque o pior caso (componente de maior risco)."
-    );
-    ctx.componentes.forEach((c, i) => {
-      const partes: string[] = [];
-      if (c.nome_quimico) partes.push(`nome: ${c.nome_quimico}`);
-      if (c.numero_cas) partes.push(`CAS: ${c.numero_cas}`);
-      if (c.formula_quimica) partes.push(`fórmula: ${c.formula_quimica}`);
-      if (c.concentracao) partes.push(`concentração: ${c.concentracao}`);
-      linhas.push(`Componente ${i + 1}: ${partes.join(" · ")}`);
-    });
-    linhas.push("=== FIM (mistura) ===");
-  }
-
-  // Contexto FISPQ compacto (só presente no modo PDF). Contém:
-  // - Frases H, pictogramas GHS, CAS de componentes adicionais
-  // - Snippets curtos das seções 2 (perigos), 8 (exposição), 11 (toxicologia)
-  // Tipicamente 1-2k tokens — muito menor que o PDF inteiro.
+  // === Contexto FISPQ (snippets seções 2/8/11). Encolhe MUITO quando há
+  // base — a base já tem os dados regulatórios, só precisamos do contexto
+  // toxicológico/exposição extra. Sem base: pode mandar até PDF_MAX_CHARS.
   if (ctx.contexto_fispq && ctx.contexto_fispq.trim().length > 0) {
+    const maxChars = temBase ? 1500 : PDF_MAX_CHARS;
     linhas.push("");
-    linhas.push("=== CONTEXTO ADICIONAL EXTRAÍDO DA FISPQ ===");
-    linhas.push(ctx.contexto_fispq.slice(0, PDF_MAX_CHARS));
-    linhas.push("=== FIM ===");
+    linhas.push("FISPQ snippets (perigos/exposição/toxicologia):");
+    linhas.push(ctx.contexto_fispq.slice(0, maxChars));
   }
 
+  // === Condições de uso
   if (ctx.condicoes_uso) {
     const c = ctx.condicoes_uso;
-    const temAlgo = !!(
-      c.atividade ||
-      c.frequencia ||
-      c.duracao ||
-      c.ventilacao ||
-      c.geracao_nevoa_vapor ||
-      c.epis_utilizados
-    );
-    if (temAlgo) {
+    const p: string[] = [];
+    if (c.atividade) p.push(`atividade=${c.atividade}`);
+    if (c.frequencia) p.push(`freq=${c.frequencia}`);
+    if (c.duracao) p.push(`duração=${c.duracao}`);
+    if (c.ventilacao) p.push(`vent=${c.ventilacao}`);
+    if (c.geracao_nevoa_vapor) p.push(`névoa=${c.geracao_nevoa_vapor}`);
+    if (c.epis_utilizados) p.push(`EPIs=${c.epis_utilizados}`);
+    if (p.length > 0) {
       linhas.push("");
-      linhas.push("=== CONDIÇÕES DE USO ===");
-      if (c.atividade) linhas.push(`Atividade/Processo: ${c.atividade}`);
-      if (c.frequencia) linhas.push(`Frequência de exposição: ${c.frequencia}`);
-      if (c.duracao) linhas.push(`Duração por turno: ${c.duracao}`);
-      if (c.ventilacao) linhas.push(`Tipo de ventilação: ${c.ventilacao}`);
-      if (c.geracao_nevoa_vapor) linhas.push(`Geração de névoa/vapor: ${c.geracao_nevoa_vapor}`);
-      if (c.epis_utilizados) linhas.push(`EPIs já utilizados: ${c.epis_utilizados}`);
-      linhas.push("=== FIM ===");
+      linhas.push(`Uso: ${p.join(" · ")}`);
     }
   }
 
   linhas.push("");
   linhas.push(
-    "Responda APENAS um objeto JSON válido com as chaves especificadas. Sem markdown, sem texto fora do JSON. Seja CONSERVADOR — códigos regulatórios incertos devem ser 'Consultar tabela oficial' ou 'Inconclusivo'."
+    ehMistura
+      ? "Mistura: enquadramento pelo pior caso. Foque em REASONING — não liste componentes (já estão no CATÁLOGO acima)."
+      : "Use os valores do CATÁLOGO/PIOR CASO exatamente como vieram."
   );
+  linhas.push("Responda APENAS JSON com as chaves especificadas. Conservador.");
   return linhas.join("\n");
 }
 
