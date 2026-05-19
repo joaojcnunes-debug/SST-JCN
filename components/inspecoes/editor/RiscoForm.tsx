@@ -2403,152 +2403,156 @@ function MedidaBloco({
         </span>
       </div>
 
-      {/* Lista dos itens já no risco (catálogo + manuais misturados),
-          em uma caixa branca acima. Cada um com edit/delete e badge
-          indicando origem. */}
-      {items.length > 0 && (
-        <ul className="mb-2 divide-y divide-gray-200 overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
-          {items.map((it, idx) => {
-            const editando = editingIdx === idx;
-            const doCatalogo = sugestoes.includes(it);
-            return (
-              <li key={idx} className="flex items-center gap-2 px-3 py-2">
-                {editando ? (
-                  <>
-                    <input
-                      type="text"
-                      value={editText}
-                      onChange={(ev) => setEditText(ev.target.value)}
-                      className="flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
-                      autoFocus
-                      onKeyDown={(ev) => {
-                        if (ev.key === "Enter") {
-                          ev.preventDefault();
-                          salvarEdit(idx);
-                        }
-                        if (ev.key === "Escape") {
-                          ev.preventDefault();
-                          setEditingIdx(null);
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => salvarEdit(idx)}
-                      className="rounded p-1 text-verde-primary hover:bg-verde-light"
-                      title="Salvar"
-                    >
-                      <Check className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingIdx(null)}
-                      className="rounded p-1 text-gray-400 hover:bg-gray-100"
-                      title="Cancelar"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 text-sm text-gray-900">{it}</span>
-                    <span
-                      className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
-                        doCatalogo
-                          ? cfg.tag
-                          : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {doCatalogo ? "Catálogo" : "Manual"}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => abrirEdit(idx, it)}
-                      className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
-                      title="Editar"
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDel(idx)}
-                      className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
-                      title="Remover"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {/* Caixa de adicionar: enumlist (select) com as opções do catálogo
-          + input manual. Selecionar uma opção do select adiciona ao
-          risco e remove ela do select. Manual é digitar + Adicionar. */}
+      {/* Caixa unificada: lista de itens no topo + select enumlist do
+          catálogo + input manual, tudo dentro de UM container. */}
       {(() => {
         const disponiveis = sugestoes.filter((s) => !items.includes(s));
         return (
-          <div className="space-y-2 rounded-md border border-gray-200 bg-white p-2 shadow-sm">
-            <div>
-              <label
-                className={`mb-1 block text-[10px] font-semibold uppercase tracking-wider ${cfg.text}`}
-              >
-                Do catálogo ({disponiveis.length})
-              </label>
-              <select
-                value=""
-                disabled={disponiveis.length === 0}
-                onChange={(ev) => {
-                  const txt = ev.target.value;
-                  if (txt && !items.includes(txt)) {
-                    onChange([...items, txt]);
-                  }
-                  ev.target.value = "";
-                }}
-                className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
-              >
-                <option value="">
-                  {disponiveis.length === 0
-                    ? sugestoes.length === 0
-                      ? "— Sem sugestões no catálogo deste tipo —"
-                      : "— Todas as sugestões já foram adicionadas —"
-                    : "— Selecione uma medida para adicionar —"}
-                </option>
-                {disponiveis.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-                Ou adicionar manualmente
-              </label>
-              <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-                <input
-                  type="text"
-                  value={novo}
-                  onChange={(ev) => setNovo(ev.target.value)}
-                  placeholder={placeholder}
-                  className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
-                  onKeyDown={(ev) => {
-                    if (ev.key === "Enter") {
-                      ev.preventDefault();
-                      handleAdd();
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleAdd}
-                  className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
+          <div className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
+            {items.length > 0 && (
+              <ul className="divide-y divide-gray-100">
+                {items.map((it, idx) => {
+                  const editando = editingIdx === idx;
+                  const doCatalogo = sugestoes.includes(it);
+                  return (
+                    <li key={idx} className="flex items-center gap-2 px-3 py-2">
+                      {editando ? (
+                        <>
+                          <input
+                            type="text"
+                            value={editText}
+                            onChange={(ev) => setEditText(ev.target.value)}
+                            className="flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                            autoFocus
+                            onKeyDown={(ev) => {
+                              if (ev.key === "Enter") {
+                                ev.preventDefault();
+                                salvarEdit(idx);
+                              }
+                              if (ev.key === "Escape") {
+                                ev.preventDefault();
+                                setEditingIdx(null);
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => salvarEdit(idx)}
+                            className="rounded p-1 text-verde-primary hover:bg-verde-light"
+                            title="Salvar"
+                          >
+                            <Check className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingIdx(null)}
+                            className="rounded p-1 text-gray-400 hover:bg-gray-100"
+                            title="Cancelar"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="flex-1 text-sm text-gray-900">
+                            {it}
+                          </span>
+                          <span
+                            className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                              doCatalogo
+                                ? cfg.tag
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {doCatalogo ? "Catálogo" : "Manual"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => abrirEdit(idx, it)}
+                            className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                            title="Editar"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDel(idx)}
+                            className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                            title="Remover"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <div
+              className={`space-y-2 bg-gray-50 p-2 ${
+                items.length > 0 ? "border-t border-gray-200" : ""
+              }`}
+            >
+              <div>
+                <label
+                  className={`mb-1 block text-[10px] font-semibold uppercase tracking-wider ${cfg.text}`}
                 >
-                  <Plus className="size-3.5" /> Adicionar
-                </button>
+                  Do catálogo ({disponiveis.length})
+                </label>
+                <select
+                  value=""
+                  disabled={disponiveis.length === 0}
+                  onChange={(ev) => {
+                    const txt = ev.target.value;
+                    if (txt && !items.includes(txt)) {
+                      onChange([...items, txt]);
+                    }
+                    ev.target.value = "";
+                  }}
+                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  <option value="">
+                    {disponiveis.length === 0
+                      ? sugestoes.length === 0
+                        ? "— Sem sugestões no catálogo deste tipo —"
+                        : "— Todas as sugestões já foram adicionadas —"
+                      : "— Selecione uma medida para adicionar —"}
+                  </option>
+                  {disponiveis.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                  Ou adicionar manualmente
+                </label>
+                <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+                  <input
+                    type="text"
+                    value={novo}
+                    onChange={(ev) => setNovo(ev.target.value)}
+                    placeholder={placeholder}
+                    className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                    onKeyDown={(ev) => {
+                      if (ev.key === "Enter") {
+                        ev.preventDefault();
+                        handleAdd();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAdd}
+                    className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
+                  >
+                    <Plus className="size-3.5" /> Adicionar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
