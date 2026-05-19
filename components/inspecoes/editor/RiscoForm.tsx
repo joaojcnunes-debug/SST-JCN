@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { Plus, Trash2, Upload, Pencil, Check, X, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Upload, Pencil, Check, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import SetorMultiSelect from "./SetorMultiSelect";
@@ -2364,7 +2364,6 @@ function MedidaBloco({
   const [novo, setNovo] = useState("");
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
-  const [listaAberta, setListaAberta] = useState(false);
   const datalistId = `cat-medida-${ordem}`;
 
   function handleAdd() {
@@ -2414,200 +2413,120 @@ function MedidaBloco({
         </span>
       </div>
 
-      {/* Caixa: trigger de lista suspensa esconde os checkboxes por
-          padrão. O usuário abre a lista pra marcar/desmarcar sugestões
-          do catálogo (multi-seleção) e ver os itens manuais. Input pra
-          adicionar manual fica sempre visível no rodapé. */}
-      {(() => {
-        const itensManuais = items
-          .map((it, idx) => ({ texto: it, idx }))
-          .filter(({ texto }) => !sugestoes.includes(texto));
-        const temAlgo = sugestoes.length > 0 || itensManuais.length > 0;
-        const marcadasCatalogo = sugestoes.filter((s) =>
-          items.includes(s)
-        ).length;
-        const resumoTrigger =
-          items.length === 0
-            ? "Selecionar medidas do catálogo ou adicionar manual..."
-            : `${items.length} medida(s) selecionada(s)${
-                sugestoes.length > 0
-                  ? ` — ${marcadasCatalogo}/${sugestoes.length} do catálogo`
-                  : ""
-              }`;
-        return (
-          <div className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
-            <button
-              type="button"
-              onClick={() => setListaAberta((a) => !a)}
-              disabled={!temAlgo}
-              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
-              title={
-                temAlgo
-                  ? listaAberta
-                    ? "Recolher lista"
-                    : "Abrir lista"
-                  : "Sem itens — adicione manualmente abaixo"
-              }
-            >
-              <span className="truncate">{resumoTrigger}</span>
-              <ChevronDown
-                className={`size-4 shrink-0 transition-transform ${
-                  listaAberta ? "rotate-180" : ""
-                }`}
-              />
-            </button>
-
-            {listaAberta && temAlgo && (
-              <ul className="max-h-72 divide-y divide-gray-100 overflow-y-auto border-t border-gray-200">
-                {sugestoes.map((s) => {
-                  const marcada = items.includes(s);
-                  return (
-                    <li
-                      key={`sug:${s}`}
-                      className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50"
+      {/* Lista de itens já adicionados ao risco (clean). Sugestões do
+          catálogo aparecem como autocomplete nativo (datalist) no
+          input abaixo — "lista suspensa" que abre ao clicar/digitar. */}
+      {items.length > 0 && (
+        <ul className="mb-2 divide-y divide-gray-200 overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
+          {items.map((it, idx) => {
+            const editando = editingIdx === idx;
+            const doCatalogo = sugestoes.includes(it);
+            return (
+              <li key={idx} className="flex items-center gap-2 px-3 py-2">
+                {editando ? (
+                  <>
+                    <input
+                      type="text"
+                      value={editText}
+                      onChange={(ev) => setEditText(ev.target.value)}
+                      className="flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                      autoFocus
+                      onKeyDown={(ev) => {
+                        if (ev.key === "Enter") {
+                          ev.preventDefault();
+                          salvarEdit(idx);
+                        }
+                        if (ev.key === "Escape") {
+                          ev.preventDefault();
+                          setEditingIdx(null);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => salvarEdit(idx)}
+                      className="rounded p-1 text-verde-primary hover:bg-verde-light"
+                      title="Salvar"
                     >
-                      <input
-                        type="checkbox"
-                        checked={marcada}
-                        onChange={() => {
-                          if (marcada) {
-                            onChange(items.filter((i) => i !== s));
-                          } else {
-                            onChange([...items, s]);
-                          }
-                        }}
-                        className="size-4 shrink-0 rounded border-gray-300 text-verde-primary focus:ring-verde-primary"
-                      />
-                      <span
-                        className={`flex-1 text-sm ${
-                          marcada ? "text-gray-900" : "text-gray-600"
-                        }`}
-                      >
-                        {s}
-                      </span>
+                      <Check className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingIdx(null)}
+                      className="rounded p-1 text-gray-400 hover:bg-gray-100"
+                      title="Cancelar"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm text-gray-900">{it}</span>
+                    {doCatalogo && (
                       <span
                         className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${cfg.tag}`}
                       >
                         Catálogo
                       </span>
-                    </li>
-                  );
-                })}
-                {itensManuais.map(({ texto, idx }) => {
-                  const editando = editingIdx === idx;
-                  return (
-                    <li
-                      key={`man:${idx}`}
-                      className="flex items-center gap-2 px-3 py-2"
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => abrirEdit(idx, it)}
+                      className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                      title="Editar"
                     >
-                      <input
-                        type="checkbox"
-                        checked
-                        onChange={() => handleDel(idx)}
-                        className="size-4 shrink-0 rounded border-gray-300 text-verde-primary focus:ring-verde-primary"
-                        title="Desmarcar para remover"
-                      />
-                      {editando ? (
-                        <>
-                          <input
-                            type="text"
-                            value={editText}
-                            onChange={(ev) => setEditText(ev.target.value)}
-                            className="flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
-                            autoFocus
-                            onKeyDown={(ev) => {
-                              if (ev.key === "Enter") {
-                                ev.preventDefault();
-                                salvarEdit(idx);
-                              }
-                              if (ev.key === "Escape") {
-                                ev.preventDefault();
-                                setEditingIdx(null);
-                              }
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => salvarEdit(idx)}
-                            className="rounded p-1 text-verde-primary hover:bg-verde-light"
-                            title="Salvar"
-                          >
-                            <Check className="size-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingIdx(null)}
-                            className="rounded p-1 text-gray-400 hover:bg-gray-100"
-                            title="Cancelar"
-                          >
-                            <X className="size-3.5" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="flex-1 text-sm text-gray-900">
-                            {texto}
-                          </span>
-                          <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-600">
-                            Manual
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => abrirEdit(idx, texto)}
-                            className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
-                            title="Editar"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDel(idx)}
-                            className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
-                            title="Remover"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        </>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+                      <Pencil className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDel(idx)}
+                      className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                      title="Remover"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
-            <div className="grid grid-cols-[1fr_auto] items-center gap-2 border-t border-gray-200 bg-gray-50 p-2">
-              <input
-                type="text"
-                list={sugestoes.length > 0 ? datalistId : undefined}
-                value={novo}
-                onChange={(ev) => setNovo(ev.target.value)}
-                placeholder={placeholder}
-                className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
-                onKeyDown={(ev) => {
-                  if (ev.key === "Enter") {
-                    ev.preventDefault();
-                    handleAdd();
-                  }
-                }}
-              />
-              {sugestoes.length > 0 && (
-                <datalist id={datalistId}>
-                  {sugestoes.map((s) => (
-                    <option key={s} value={s} />
-                  ))}
-                </datalist>
-              )}
-              <button
-                type="button"
-                onClick={handleAdd}
-                className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
-              >
-                <Plus className="size-3.5" /> Adicionar
-              </button>
-            </div>
-          </div>
-        );
-      })()}
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+        <input
+          type="text"
+          list={sugestoes.length > 0 ? datalistId : undefined}
+          value={novo}
+          onChange={(ev) => setNovo(ev.target.value)}
+          placeholder={
+            sugestoes.length > 0
+              ? `${placeholder} (clique para ver ${sugestoes.length} sugestões)`
+              : placeholder
+          }
+          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+          onKeyDown={(ev) => {
+            if (ev.key === "Enter") {
+              ev.preventDefault();
+              handleAdd();
+            }
+          }}
+        />
+        {sugestoes.length > 0 && (
+          <datalist id={datalistId}>
+            {sugestoes.map((s) => (
+              <option key={s} value={s} />
+            ))}
+          </datalist>
+        )}
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
+        >
+          <Plus className="size-3.5" /> Adicionar
+        </button>
+      </div>
     </div>
   );
 }
