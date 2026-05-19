@@ -33,7 +33,10 @@ import {
 import {
   type ModuloTextoPadrao,
   type OrientacaoPagina,
+  type PosicaoPdf,
   type QuebraPagina,
+  POSICAO_PDF_LABELS,
+  POSICAO_PDF_ORDEM,
   type TextoPadraoCapitulo,
   MODULO_CONFIGS,
 } from "@/lib/textos-padrao/types";
@@ -244,6 +247,7 @@ function CapituloCard({
     caixas_texto?: CaixaTexto[] | null;
     orientacao?: OrientacaoPagina;
     quebra_pagina?: QuebraPagina;
+    posicao_pdf?: PosicaoPdf;
   }) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
@@ -458,6 +462,27 @@ function CapituloCard({
             ? "A4 horizontal em folha nova."
             : "A4 vertical em folha nova (ABNT)."}
         </span>
+
+        {/* V53: Posição no PDF (onde o capítulo entra no fluxo do relatório) */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            Posição no PDF:
+          </span>
+          <select
+            value={capitulo.posicao_pdf ?? "inicio"}
+            onChange={(e) =>
+              onSalvar({ posicao_pdf: e.target.value as PosicaoPdf })
+            }
+            disabled={salvando}
+            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary disabled:opacity-50"
+          >
+            {POSICAO_PDF_ORDEM.map((p) => (
+              <option key={p} value={p}>
+                {POSICAO_PDF_LABELS[p]}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">

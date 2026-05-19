@@ -115,6 +115,33 @@ export interface CaixaTexto {
   conteudo: string;
 }
 
+/** V53: Posição do capítulo no PDF do DRPS (mesmos valores da tabela genérica). */
+export type DrpsPosicaoPdf =
+  | "inicio"
+  | "apos_sumario"
+  | "apos_setores"
+  | "apos_conclusao"
+  | "apos_medidas"
+  | "fim";
+
+export const DRPS_POSICAO_PDF_LABELS: Record<DrpsPosicaoPdf, string> = {
+  inicio: "Início — antes do sumário (capa, dedicatória)",
+  apos_sumario: "Após o sumário (introdução, metodologia)",
+  apos_setores: "Após a análise por setor (antes da conclusão geral)",
+  apos_conclusao: "Após a conclusão geral (antes do plano)",
+  apos_medidas: "Após medidas/monitoramento/revisão",
+  fim: "Fim do PDF (considerações finais)",
+};
+
+export const DRPS_POSICAO_PDF_ORDEM: DrpsPosicaoPdf[] = [
+  "inicio",
+  "apos_sumario",
+  "apos_setores",
+  "apos_conclusao",
+  "apos_medidas",
+  "fim",
+];
+
 export interface DrpsTextoPadraoCapitulo {
   id_capitulo: string;
   ordem: number;
@@ -124,6 +151,8 @@ export interface DrpsTextoPadraoCapitulo {
   bg_imagem_url: string | null;
   /** Caixas de texto posicionadas sobre a bg (so usadas quando ha bg). */
   caixas_texto: CaixaTexto[] | null;
+  /** V53: posição do capítulo no PDF do relatório DRPS. */
+  posicao_pdf: DrpsPosicaoPdf;
   ativo: boolean;
   created_at: string;
   updated_at: string | null;

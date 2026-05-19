@@ -15,6 +15,8 @@ import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
+import DrpsSumarioPrint from "@/components/drps/DrpsSumarioPrint";
+import DrpsRelatorioExtrasPrint from "@/components/drps/DrpsRelatorioExtrasPrint";
 import { useDrpsStore } from "@/lib/drps/store";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
@@ -513,68 +515,30 @@ export default function AnalisePage({
                 }
               />
             )}
-            {capitulos.length > 0 && (
-              <section className="drps-capitulos mb-6 hidden print:block">
-                {capitulos.map((c) => {
-                  const ehCapa = !!c.bg_imagem_url;
-                  return (
-                    <article
-                      key={c.id_capitulo}
-                      className={
-                        ehCapa
-                          ? "drps-capitulo drps-capitulo--capa"
-                          : "drps-capitulo"
-                      }
-                    >
-                      {ehCapa && c.bg_imagem_url && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={c.bg_imagem_url}
-                          alt=""
-                          className="drps-capitulo-bg-img"
-                        />
-                      )}
-                      {!ehCapa && (
-                        <h2 className="drps-capitulo-titulo">
-                          {substituirVariaveisTexto(c.titulo, valoresVars)}
-                        </h2>
-                      )}
-                      {ehCapa && c.caixas_texto && c.caixas_texto.length > 0 ? (
-                        c.caixas_texto.map((cx) => (
-                          <div
-                            key={cx.id}
-                            className="drps-caixa-texto"
-                            style={{
-                              position: "absolute",
-                              left: `${cx.x}%`,
-                              top: `${cx.y}%`,
-                              width: `${cx.w ?? 40}%`,
-                              fontSize: cx.fontSize ?? 16,
-                              fontWeight: cx.bold ? 700 : 400,
-                              color: cx.color ?? "#ffffff",
-                              textAlign: cx.align ?? "left",
-                              whiteSpace: "pre-wrap",
-                              lineHeight: 1.3,
-                            }}
-                          >
-                            {substituirVariaveisTexto(cx.conteudo, valoresVars)}
-                          </div>
-                        ))
-                      ) : c.conteudo ? (
-                        <div
-                          className="drps-capitulo-conteudo"
-                          dangerouslySetInnerHTML={{
-                            __html: substituirVariaveis(
-                              c.conteudo,
-                              valoresVars
-                            ),
-                          }}
-                        />
-                      ) : null}
-                    </article>
-                  );
-                })}
-              </section>
+            {/* Texto padrão — posição "inicio" (capa, dedicatória) */}
+            {renderCapitulosPosicao(
+              capitulos,
+              "inicio",
+              valoresVars,
+              "drps-capitulos-inicio"
+            )}
+
+            {/* Sumário (TOC) — só no print */}
+            <DrpsSumarioPrint
+              setores={relatoriosPorSetor.map((r) => r.setor)}
+              valores={valoresVars}
+              temConclusaoGeral={!!relatorio?.conclusao_geral}
+              temMedidas={true}
+              temMonitoramento={true}
+              temRevisao={true}
+            />
+
+            {/* Texto padrão — posição "apos_sumario" (intro, metodologia) */}
+            {renderCapitulosPosicao(
+              capitulos,
+              "apos_sumario",
+              valoresVars,
+              "drps-capitulos-apos-sumario"
             )}
 
             {relatoriosPorSetor.map((r, idx) => (
@@ -626,6 +590,74 @@ export default function AnalisePage({
               />
             ))}
 
+            {/* Texto padrão — posição "apos_setores" */}
+            {renderCapitulosPosicao(
+              capitulos,
+              "apos_setores",
+              valoresVars,
+              "drps-capitulos-apos-setores"
+            )}
+
+            {/* Conclusão Geral — só no print quando preenchida */}
+            {relatorio?.conclusao_geral && (
+              <section className="drps-conclusao-geral-print hidden print:block">
+                <style>{`
+                  .drps-conclusao-geral-print {
+                    page-break-before: always;
+                    font-family: 'Times New Roman', Times, serif;
+                  }
+                  .drps-conclusao-geral-print h2 {
+                    font-size: 16pt;
+                    font-weight: 700;
+                    color: #1e4d28;
+                    border-bottom: 2px solid #006B54;
+                    padding-bottom: 6px;
+                    margin: 0 0 14pt 0;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                  }
+                  .drps-conclusao-geral-print p {
+                    font-size: 12pt;
+                    line-height: 1.6;
+                    text-align: justify;
+                    color: #1f2937;
+                    margin: 0 0 12pt 0;
+                    text-indent: 1.25cm;
+                    white-space: pre-wrap;
+                  }
+                `}</style>
+                <h2>Conclusão Geral</h2>
+                <p>{relatorio.conclusao_geral}</p>
+              </section>
+            )}
+
+            {/* Texto padrão — posição "apos_conclusao" */}
+            {renderCapitulosPosicao(
+              capitulos,
+              "apos_conclusao",
+              valoresVars,
+              "drps-capitulos-apos-conclusao"
+            )}
+
+            {/* Extras: Medidas / Monitoramento / Revisão */}
+            <DrpsRelatorioExtrasPrint idRelatorio={idRelatorio} />
+
+            {/* Texto padrão — posição "apos_medidas" */}
+            {renderCapitulosPosicao(
+              capitulos,
+              "apos_medidas",
+              valoresVars,
+              "drps-capitulos-apos-medidas"
+            )}
+
+            {/* Texto padrão — posição "fim" (considerações finais) */}
+            {renderCapitulosPosicao(
+              capitulos,
+              "fim",
+              valoresVars,
+              "drps-capitulos-fim"
+            )}
+
             <p className="mt-6 text-center text-[9px] text-gray-500">
               Documento gerado pelo Painel SST Chabra em{" "}
               {new Date().toLocaleDateString("pt-BR")}
@@ -634,6 +666,81 @@ export default function AnalisePage({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Renderiza apenas os capítulos de texto padrão da posição informada.
+ * Substitui variáveis nos títulos e conteúdos. Mantém o mesmo CSS/estilo
+ * do bloco principal `.drps-capitulos`.
+ */
+function renderCapitulosPosicao(
+  capitulos: import("@/lib/drps/types").DrpsTextoPadraoCapitulo[],
+  posicao: import("@/lib/drps/types").DrpsPosicaoPdf,
+  valoresVars: Record<string, string>,
+  className: string
+) {
+  const filtrados = capitulos.filter(
+    (c) => (c.posicao_pdf ?? "inicio") === posicao
+  );
+  if (filtrados.length === 0) return null;
+  return (
+    <section className={`${className} drps-capitulos mb-6 hidden print:block`}>
+      {filtrados.map((c) => {
+        const ehCapa = !!c.bg_imagem_url;
+        return (
+          <article
+            key={c.id_capitulo}
+            className={
+              ehCapa ? "drps-capitulo drps-capitulo--capa" : "drps-capitulo"
+            }
+          >
+            {ehCapa && c.bg_imagem_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={c.bg_imagem_url}
+                alt=""
+                className="drps-capitulo-bg-img"
+              />
+            )}
+            {!ehCapa && (
+              <h2 className="drps-capitulo-titulo">
+                {substituirVariaveisTexto(c.titulo, valoresVars)}
+              </h2>
+            )}
+            {ehCapa && c.caixas_texto && c.caixas_texto.length > 0 ? (
+              c.caixas_texto.map((cx) => (
+                <div
+                  key={cx.id}
+                  className="drps-caixa-texto"
+                  style={{
+                    position: "absolute",
+                    left: `${cx.x}%`,
+                    top: `${cx.y}%`,
+                    width: `${cx.w ?? 40}%`,
+                    fontSize: cx.fontSize ?? 16,
+                    fontWeight: cx.bold ? 700 : 400,
+                    color: cx.color ?? "#ffffff",
+                    textAlign: cx.align ?? "left",
+                    whiteSpace: "pre-wrap",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {substituirVariaveisTexto(cx.conteudo, valoresVars)}
+                </div>
+              ))
+            ) : c.conteudo ? (
+              <div
+                className="drps-capitulo-conteudo"
+                dangerouslySetInnerHTML={{
+                  __html: substituirVariaveis(c.conteudo, valoresVars),
+                }}
+              />
+            ) : null}
+          </article>
+        );
+      })}
+    </section>
   );
 }
 

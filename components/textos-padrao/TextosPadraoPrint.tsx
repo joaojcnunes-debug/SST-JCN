@@ -1,7 +1,7 @@
 "use client";
 
 import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
-import type { ModuloTextoPadrao } from "@/lib/textos-padrao/types";
+import type { ModuloTextoPadrao, PosicaoPdf } from "@/lib/textos-padrao/types";
 import {
   substituirVariaveis,
   substituirVariaveisTexto,
@@ -11,8 +11,12 @@ interface Props {
   modulo: ModuloTextoPadrao;
   /** Mapa chave → valor de variável (`{{empresa_nome}}` etc) já preenchido. */
   valores: Record<string, string>;
-  /** Posição lógica no relatório — só pra page-break inteligente. */
-  posicao?: "antes" | "depois";
+  /**
+   * Filtro por posição no PDF (V53). Quando passado, renderiza só os
+   * capítulos com `posicao_pdf` igual a este valor. O `posicao_pdf` legado
+   * dos módulos antigos que ainda usam "antes"/"depois" cai no fallback abaixo.
+   */
+  posicao?: PosicaoPdf | "antes" | "depois";
 }
 
 /**
@@ -30,7 +34,17 @@ export default function TextosPadraoPrint({
   valores,
   posicao = "antes",
 }: Props) {
-  const { data: capitulos = [] } = useTextosPadrao(modulo);
+  const { data: capitulosTodos = [] } = useTextosPadrao(modulo);
+
+  // V53: filtra por posição se for uma das novas (inicio/apos_setores/etc).
+  // Para os módulos antigos ("antes"/"depois"), mantém o comportamento legado
+  // de renderizar TODOS os capítulos (single drop point).
+  const ehPosicaoLegado = posicao === "antes" || posicao === "depois";
+  const capitulos = ehPosicaoLegado
+    ? capitulosTodos
+    : capitulosTodos.filter(
+        (c) => (c.posicao_pdf ?? "inicio") === posicao
+      );
 
   if (capitulos.length === 0) return null;
 
@@ -65,9 +79,11 @@ export default function TextosPadraoPrint({
         }
         .textos-padrao-capitulo--retrato { page: textopadrao-retrato; }
         .textos-padrao-capitulo--paisagem { page: textopadrao-paisagem; }
-        /* Último capítulo: quebra antes da seção principal do relatório */
+        /* Último capítulo: quebra após pra abrir a próxima seção numa página
+           nova. Vale pra todos os modos ("antes"/"depois" legados e as
+           posições V53). */
         .textos-padrao-capitulo:last-child {
-          page-break-after: ${posicao === "antes" ? "always" : "auto"};
+          page-break-after: always;
         }
         /* Capa full-page: respeita orientação do @page named */
         .textos-padrao-capitulo--capa {

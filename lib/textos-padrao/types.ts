@@ -16,6 +16,33 @@ export type OrientacaoPagina = "retrato" | "paisagem";
 /** Quebra de página antes do capítulo. 'continua' = segue na mesma página do anterior. */
 export type QuebraPagina = "nova" | "continua";
 
+/** Posição lógica do capítulo no PDF final do relatório (V53). */
+export type PosicaoPdf =
+  | "inicio"
+  | "apos_sumario"
+  | "apos_setores"
+  | "apos_conclusao"
+  | "apos_medidas"
+  | "fim";
+
+export const POSICAO_PDF_LABELS: Record<PosicaoPdf, string> = {
+  inicio: "Início — antes do sumário (capa, dedicatória)",
+  apos_sumario: "Após o sumário (introdução, metodologia)",
+  apos_setores: "Após a análise por setor (antes da conclusão geral)",
+  apos_conclusao: "Após a conclusão geral (antes do plano)",
+  apos_medidas: "Após medidas/monitoramento/revisão",
+  fim: "Fim do PDF (considerações finais)",
+};
+
+export const POSICAO_PDF_ORDEM: PosicaoPdf[] = [
+  "inicio",
+  "apos_sumario",
+  "apos_setores",
+  "apos_conclusao",
+  "apos_medidas",
+  "fim",
+];
+
 export interface TextoPadraoCapitulo {
   id_capitulo: string;
   modulo: ModuloTextoPadrao;
@@ -30,6 +57,8 @@ export interface TextoPadraoCapitulo {
   orientacao: OrientacaoPagina;
   /** Inicia nova página ou continua na anterior. Ignorado se for capa. */
   quebra_pagina: QuebraPagina;
+  /** V53: posição do capítulo no PDF do relatório. */
+  posicao_pdf: PosicaoPdf;
   ativo: boolean;
   created_at: string;
   updated_at: string | null;

@@ -25,7 +25,14 @@ import {
   useDrpsSalvarCapitulo,
   useDrpsExcluirCapitulo,
 } from "@/lib/hooks/useDrps";
-import type { DrpsTextoPadraoCapitulo } from "@/lib/drps/types";
+import type {
+  DrpsPosicaoPdf,
+  DrpsTextoPadraoCapitulo,
+} from "@/lib/drps/types";
+import {
+  DRPS_POSICAO_PDF_LABELS,
+  DRPS_POSICAO_PDF_ORDEM,
+} from "@/lib/drps/types";
 
 const TEMPLATE_INICIAL: { titulo: string; conteudo: string }[] = [
   {
@@ -199,6 +206,7 @@ function CapituloCard({
     conteudo?: string | null;
     bg_imagem_url?: string | null;
     caixas_texto?: CaixaTexto[] | null;
+    posicao_pdf?: DrpsPosicaoPdf;
   }) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
@@ -314,6 +322,26 @@ function CapituloCard({
           <Trash2 className="size-4" />
         </button>
       </div>
+      <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          Posição no PDF:
+        </span>
+        <select
+          value={capitulo.posicao_pdf ?? "inicio"}
+          onChange={(e) =>
+            onSalvar({ posicao_pdf: e.target.value as DrpsPosicaoPdf })
+          }
+          disabled={salvando}
+          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary disabled:opacity-50"
+        >
+          {DRPS_POSICAO_PDF_ORDEM.map((p) => (
+            <option key={p} value={p}>
+              {DRPS_POSICAO_PDF_LABELS[p]}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
           Imagem de fundo (capa):

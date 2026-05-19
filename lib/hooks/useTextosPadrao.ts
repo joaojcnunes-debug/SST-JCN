@@ -7,6 +7,7 @@ import { gerarId } from "@/lib/utils";
 import type {
   ModuloTextoPadrao,
   OrientacaoPagina,
+  PosicaoPdf,
   QuebraPagina,
   TextoPadraoCapitulo,
 } from "@/lib/textos-padrao/types";
@@ -78,6 +79,7 @@ export function useSalvarCapituloTexto(modulo: ModuloTextoPadrao) {
       caixas_texto?: CaixaTexto[] | null;
       orientacao?: OrientacaoPagina;
       quebra_pagina?: QuebraPagina;
+      posicao_pdf?: PosicaoPdf;
     }) => {
       const supabase = createSupabaseBrowserClient();
       const { id_capitulo, ...rest } = args;
