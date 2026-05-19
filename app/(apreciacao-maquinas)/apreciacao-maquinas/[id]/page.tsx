@@ -14,17 +14,22 @@ import {
   RotateCcw,
   ClipboardList,
   FileText,
+  Plus,
+  Printer,
+  X as IconX,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   useApreciacaoMaquina,
   useAtualizarApreciacaoMaquina,
   useExcluirApreciacaoMaquina,
+  useAdicionarItemLivreApreciacao,
 } from "@/lib/hooks/useApreciacoesMaquinas";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useMaquina } from "@/lib/hooks/useInventarioMaquinas";
 import { useCanEdit, useCanDelete } from "@/lib/hooks/useUsuario";
 import ItemApreciacaoCard from "@/components/apreciacao-maquinas/ItemApreciacaoCard";
+import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import {
   CATEGORIAS_NR12_LABELS,
   CATEGORIAS_NR12_ORDEM,
@@ -46,6 +51,7 @@ export default function DetalheApreciacaoPage() {
   const { data: empresas = [] } = useEmpresas();
   const atualizar = useAtualizarApreciacaoMaquina();
   const excluir = useExcluirApreciacaoMaquina();
+  const adicionarLivre = useAdicionarItemLivreApreciacao();
   const { data: maquinaVinculada } = useMaquina(
     data?.apreciacao.id_maquina ?? null
   );
@@ -66,6 +72,14 @@ export default function DetalheApreciacaoPage() {
   const [observacoes, setObservacoes] = useState("");
 
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
+
+  // Form "Adicionar item livre"
+  const [livreOpen, setLivreOpen] = useState(false);
+  const [livreCategoria, setLivreCategoria] = useState<CategoriaNR12>(
+    "PROCEDIMENTOS"
+  );
+  const [livreTitulo, setLivreTitulo] = useState("");
+  const [livreDescricao, setLivreDescricao] = useState("");
 
   // Sincroniza estado quando carrega
   useEffect(() => {
@@ -184,6 +198,37 @@ export default function DetalheApreciacaoPage() {
     }
   }
 
+  // Próximo índice pra `LIVRE-{N}` — conta itens livres existentes e pega +1
+  const proximoIndiceLivre = useMemo(
+    () => itens.filter((i) => i.item_origem === "LIVRE").length + 1,
+    [itens]
+  );
+
+  async function handleAdicionarLivre() {
+    if (!id) return;
+    if (!livreTitulo.trim()) {
+      toast.error("Título do item é obrigatório");
+      return;
+    }
+    try {
+      await adicionarLivre.mutateAsync({
+        id_apreciacao: id,
+        categoria: livreCategoria,
+        titulo: livreTitulo.trim(),
+        descricao: livreDescricao.trim() || null,
+        ordem: itens.length, // último
+        proximoIndiceLivre,
+      });
+      toast.success("Item livre adicionado");
+      setLivreTitulo("");
+      setLivreDescricao("");
+      setLivreOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Falha ao adicionar item");
+    }
+  }
+
   async function handleExcluir() {
     if (!id) return;
     try {
@@ -227,25 +272,47 @@ export default function DetalheApreciacaoPage() {
     maquinaVinculada?.nome ?? apreciacao.maquina_descricao ?? "Máquina";
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-4xl space-y-6 print:max-w-none print:space-y-3">
+      {/* Topo — ações (oculta no print) */}
+      <div className="flex items-center justify-between print:hidden">
         <Link
           href="/apreciacao-maquinas"
           className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-verde-primary"
         >
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
-        <span
-          className={`rounded-full px-3 py-1 text-xs font-bold ${
-            finalizada
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-amber-100 text-amber-700"
-          }`}
-        >
-          {finalizada ? "Finalizada" : "Rascunho"}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            <Printer className="size-4" /> Imprimir / PDF
+          </button>
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-bold ${
+              finalizada
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-amber-100 text-amber-700"
+            }`}
+          >
+            {finalizada ? "Finalizada" : "Rascunho"}
+          </span>
+        </div>
       </div>
+
+      {/* Cabeçalho de impressão (visível em tela também, discreto) */}
+      <RelatorioPrintHeader
+        titulo={`Apreciação NR-12 — ${maquinaNome}`}
+        subtitulo={empresaNome}
+        terciario={
+          apreciacao.data_apreciacao
+            ? new Date(
+                apreciacao.data_apreciacao + "T00:00"
+              ).toLocaleDateString("pt-BR")
+            : null
+        }
+      />
 
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
@@ -263,12 +330,12 @@ export default function DetalheApreciacaoPage() {
       </div>
 
       {finalizada && !canEdit && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 print:hidden">
           Esta apreciação está finalizada — visualização somente leitura.
         </div>
       )}
       {finalizada && canEdit && (
-        <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+        <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800 print:hidden">
           <span>
             Apreciação finalizada em{" "}
             {apreciacao.finalizado_em &&
@@ -287,7 +354,7 @@ export default function DetalheApreciacaoPage() {
       )}
 
       {/* Resumo de progresso */}
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm print:border print:border-gray-300 print:shadow-none print:p-2">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-600">
           Progresso do checklist
         </p>
@@ -344,7 +411,7 @@ export default function DetalheApreciacaoPage() {
       </div>
 
       {/* Seção: Dados Gerais */}
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
           <FileText className="size-4" /> Dados Gerais
         </h2>
@@ -430,7 +497,7 @@ export default function DetalheApreciacaoPage() {
           />
         </Campo>
         {!readOnly && (
-          <div className="mt-3 flex justify-end">
+          <div className="mt-3 flex justify-end print:hidden">
             <button
               type="button"
               onClick={handleSalvarCabecalho}
@@ -454,8 +521,11 @@ export default function DetalheApreciacaoPage() {
           <ClipboardList className="size-4" /> Checklist NR-12
         </h2>
         {itensPorCategoria.map((grupo) => (
-          <div key={grupo.categoria} className="space-y-2">
-            <h3 className="rounded-md bg-orange-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-orange-700">
+          <div
+            key={grupo.categoria}
+            className="space-y-2 print:break-inside-avoid"
+          >
+            <h3 className="rounded-md bg-orange-50 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-orange-700 print:bg-transparent print:border-b print:border-orange-300 print:rounded-none print:text-orange-900">
               {grupo.label}{" "}
               <span className="text-orange-500/70">({grupo.itens.length})</span>
             </h3>
@@ -470,10 +540,107 @@ export default function DetalheApreciacaoPage() {
             </div>
           </div>
         ))}
+
+        {/* Form Adicionar item livre — só na tela quando rascunho */}
+        {!readOnly && (
+          <div className="rounded-lg border-2 border-dashed border-purple-200 bg-purple-50/30 p-3 print:hidden">
+            {livreOpen ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold uppercase tracking-wider text-purple-700">
+                    Novo item livre — fora do catálogo NR-12
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setLivreOpen(false)}
+                    className="rounded p-1 text-gray-400 hover:bg-gray-100"
+                  >
+                    <IconX className="size-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <label className="block sm:col-span-1">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                      Categoria
+                    </span>
+                    <select
+                      value={livreCategoria}
+                      onChange={(e) =>
+                        setLivreCategoria(e.target.value as CategoriaNR12)
+                      }
+                      className={inputClass}
+                    >
+                      {CATEGORIAS_NR12_ORDEM.map((c) => (
+                        <option key={c} value={c}>
+                          {CATEGORIAS_NR12_LABELS[c]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block sm:col-span-2">
+                    <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                      Título *
+                    </span>
+                    <input
+                      type="text"
+                      value={livreTitulo}
+                      onChange={(e) => setLivreTitulo(e.target.value)}
+                      placeholder="Ex: Falta de calço de bloqueio nas rodas"
+                      className={inputClass}
+                    />
+                  </label>
+                </div>
+                <label className="block">
+                  <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+                    Descrição (opcional)
+                  </span>
+                  <textarea
+                    rows={2}
+                    value={livreDescricao}
+                    onChange={(e) => setLivreDescricao(e.target.value)}
+                    placeholder="Contexto adicional, normas relacionadas..."
+                    className={inputClass}
+                  />
+                </label>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLivreOpen(false)}
+                    className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAdicionarLivre}
+                    disabled={adicionarLivre.isPending}
+                    className="inline-flex items-center gap-1 rounded-md bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {adicionarLivre.isPending ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : (
+                      <Plus className="size-3" />
+                    )}
+                    Adicionar item
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setLivreOpen(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-purple-700 hover:bg-purple-100"
+              >
+                <Plus className="size-4" /> Adicionar item livre (fora do
+                catálogo)
+              </button>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Seção: Conclusão Técnica */}
-      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3 print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
         <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
           <CheckCircle2 className="size-4" /> Conclusão Técnica
         </h2>
@@ -520,7 +687,7 @@ export default function DetalheApreciacaoPage() {
           </select>
         </Campo>
         {!readOnly && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2 print:hidden">
             <button
               type="button"
               onClick={handleSalvarConclusao}
@@ -546,9 +713,34 @@ export default function DetalheApreciacaoPage() {
         )}
       </section>
 
+      {/* Bloco de assinatura — só no print */}
+      <section className="hidden print:block print:break-inside-avoid print:mt-6">
+        <div className="grid grid-cols-2 gap-12 pt-8">
+          <div className="border-t border-gray-400 pt-2 text-center text-xs">
+            <p className="font-semibold">
+              {apreciacao.responsavel || "Responsável técnico (Chabra)"}
+            </p>
+            <p className="text-[10px] text-gray-600">Responsável técnico</p>
+          </div>
+          <div className="border-t border-gray-400 pt-2 text-center text-xs">
+            <p className="font-semibold">
+              {apreciacao.responsavel_empresa ||
+                "Responsável pela empresa avaliada"}
+            </p>
+            <p className="text-[10px] text-gray-600">
+              Responsável pela empresa
+            </p>
+          </div>
+        </div>
+        <p className="mt-8 text-center text-[9px] text-gray-500">
+          Apreciação NR-12 gerada por Chabra — Segurança e Saúde do Trabalho ·{" "}
+          {new Date().toLocaleDateString("pt-BR")}
+        </p>
+      </section>
+
       {/* Zona de perigo */}
       {canDelete && (
-        <div className="rounded-xl border border-red-200 bg-red-50/50 p-4">
+        <div className="rounded-xl border border-red-200 bg-red-50/50 p-4 print:hidden">
           <h2 className="text-sm font-bold text-red-700">Zona de perigo</h2>
           <p className="mt-1 text-xs text-red-700/80">
             Excluir esta apreciação remove o cabeçalho, todos os itens do

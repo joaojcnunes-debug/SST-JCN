@@ -9,12 +9,15 @@ import {
   Upload,
   X,
   Loader2,
+  Trash2,
+  Sparkles,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   useAtualizarItemApreciacao,
   useUploadFotoItemApreciacao,
   useRemoverFotoItemApreciacao,
+  useExcluirItemApreciacao,
   MAX_FOTOS_POR_ITEM_APR,
 } from "@/lib/hooks/useApreciacoesMaquinas";
 import {
@@ -65,7 +68,11 @@ export default function ItemApreciacaoCard({
   const atualizar = useAtualizarItemApreciacao();
   const uploadFoto = useUploadFotoItemApreciacao();
   const removerFoto = useRemoverFotoItemApreciacao();
+  const excluirItem = useExcluirItemApreciacao();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(false);
+
+  const ehLivre = item.item_origem === "LIVRE";
 
   const [observacao, setObservacao] = useState(item.observacao ?? "");
   const [recomendacao, setRecomendacao] = useState(item.recomendacao ?? "");
@@ -144,6 +151,19 @@ export default function ItemApreciacaoCard({
     }
   }
 
+  async function handleExcluirItem() {
+    try {
+      await excluirItem.mutateAsync({
+        id_apreciacao: item.id_apreciacao,
+        id_item: item.id_item,
+      });
+      toast.success("Item livre excluído");
+    } catch (err) {
+      console.error(err);
+      toast.error("Falha ao excluir item");
+    }
+  }
+
   const corBorda = SITUACAO_CORES[item.situacao].split(" ")[2] ?? "border-gray-200";
 
   return (
@@ -155,23 +175,70 @@ export default function ItemApreciacaoCard({
     >
       {/* Cabeçalho do item */}
       <div className="flex items-start gap-3">
-        <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-gray-600">
+        <span
+          className={cn(
+            "shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-bold",
+            ehLivre
+              ? "bg-purple-100 text-purple-700"
+              : "bg-gray-100 text-gray-600"
+          )}
+        >
           {item.item_codigo}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-gray-900">
-            {item.item_titulo}
-          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <p className="text-sm font-semibold text-gray-900">
+              {item.item_titulo}
+            </p>
+            {ehLivre && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-purple-700">
+                <Sparkles className="size-2.5" />
+                Livre
+              </span>
+            )}
+          </div>
           {item.item_descricao && (
             <p className="mt-0.5 text-xs text-gray-500">
               {item.item_descricao}
             </p>
           )}
         </div>
+        {ehLivre && !disabled && (
+          <div className="shrink-0 print:hidden">
+            {confirmandoExcluir ? (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleExcluirItem}
+                  disabled={excluirItem.isPending}
+                  className="rounded-md bg-red-600 px-2 py-1 text-[10px] font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {excluirItem.isPending ? "..." : "Excluir"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmandoExcluir(false)}
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1 text-[10px] font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmandoExcluir(true)}
+                title="Excluir item livre"
+                className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Botões de situação */}
-      <div className="flex flex-wrap gap-1.5">
+      {/* Botões de situação — só na tela */}
+      <div className="flex flex-wrap gap-1.5 print:hidden">
         {ORDEM_SITUACAO.map((s) => {
           const ativo = item.situacao === s;
           return (
@@ -192,6 +259,16 @@ export default function ItemApreciacaoCard({
             </button>
           );
         })}
+      </div>
+
+      {/* Versão print da situação — texto compacto */}
+      <div
+        className={cn(
+          "hidden items-center gap-1 rounded border px-2 py-1 text-xs font-bold print:inline-flex",
+          SITUACAO_CORES[item.situacao]
+        )}
+      >
+        Situação: {SITUACAO_APRECIACAO_LABELS[item.situacao]}
       </div>
 
       {/* Observação */}
@@ -234,7 +311,7 @@ export default function ItemApreciacaoCard({
             {MAX_FOTOS_POR_ITEM_APR})
           </label>
           {!disabled && item.foto_urls.length < MAX_FOTOS_POR_ITEM_APR && (
-            <>
+            <div className="print:hidden">
               <input
                 ref={fileRef}
                 type="file"
@@ -256,7 +333,7 @@ export default function ItemApreciacaoCard({
                 )}
                 Adicionar
               </button>
-            </>
+            </div>
           )}
         </div>
         {item.foto_urls.length > 0 && (
@@ -280,7 +357,7 @@ export default function ItemApreciacaoCard({
                       handleRemoverFoto(item.foto_storage_paths[idx])
                     }
                     disabled={removerFoto.isPending}
-                    className="absolute right-0.5 top-0.5 rounded-full bg-red-600/80 p-0.5 text-white hover:bg-red-700 disabled:opacity-50"
+                    className="absolute right-0.5 top-0.5 rounded-full bg-red-600/80 p-0.5 text-white hover:bg-red-700 disabled:opacity-50 print:hidden"
                   >
                     <X className="size-3" />
                   </button>

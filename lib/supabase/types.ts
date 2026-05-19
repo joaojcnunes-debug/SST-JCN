@@ -667,6 +667,8 @@ export interface ApreciacaoMaquinaItem {
   item_categoria: string;
   item_titulo: string;
   item_descricao: string | null;
+  /** NULL = snapshot do catálogo NR-12. "LIVRE" = adicionado manualmente. */
+  item_origem: string | null;
   ordem: number;
   situacao: SituacaoApreciacaoItem;
   observacao: string | null;

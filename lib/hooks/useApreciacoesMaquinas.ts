@@ -133,7 +133,7 @@ export function useCriarApreciacaoMaquina() {
         .insert(cabecalho as never);
       if (e1) throw e1;
 
-      // Snapshot dos itens do catálogo
+      // Snapshot dos itens do catálogo (item_origem = null marca "veio do catálogo")
       const itens: ApreciacaoMaquinaItem[] = CATALOGO_NR12.map((it, idx) => ({
         id_item: gerarId("APRI"),
         id_apreciacao,
@@ -141,6 +141,7 @@ export function useCriarApreciacaoMaquina() {
         item_categoria: it.categoria,
         item_titulo: it.titulo,
         item_descricao: it.descricao ?? null,
+        item_origem: null,
         ordem: idx,
         situacao: "PENDENTE",
         observacao: null,
@@ -343,6 +344,95 @@ export function useUploadFotoItemApreciacao() {
       return { foto_url: pub.publicUrl, path };
     },
     onSuccess: (_d, params) => {
+      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+    },
+  });
+}
+
+/**
+ * Adiciona um item LIVRE à apreciação — quando o auditor encontra algo
+ * relevante que não está no catálogo NR-12. Recebe categoria + título +
+ * descrição opcional. Código gerado como "LIVRE-{N}" onde N é o próximo
+ * índice sequencial de itens livres já presentes na apreciação.
+ */
+export function useAdicionarItemLivreApreciacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      id_apreciacao: string;
+      categoria: string;
+      titulo: string;
+      descricao?: string | null;
+      /** Ordem do item (geralmente último do array + 1). */
+      ordem: number;
+      /** Contagem atual de itens livres pra gerar o próximo código LIVRE-N. */
+      proximoIndiceLivre: number;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const id_item = gerarId("APRI");
+      const row: ApreciacaoMaquinaItem = {
+        id_item,
+        id_apreciacao: params.id_apreciacao,
+        item_codigo: `LIVRE-${params.proximoIndiceLivre}`,
+        item_categoria: params.categoria,
+        item_titulo: params.titulo,
+        item_descricao: params.descricao ?? null,
+        item_origem: "LIVRE",
+        ordem: params.ordem,
+        situacao: "PENDENTE",
+        observacao: null,
+        recomendacao: null,
+        foto_urls: [],
+        foto_storage_paths: [],
+        created_at: new Date().toISOString(),
+        updated_at: null,
+      };
+      const { error } = await supabase
+        .from("apreciacoes_maquinas_itens")
+        .insert(row as never);
+      if (error) throw error;
+      return row;
+    },
+    onSuccess: (row) => {
+      qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_apreciacao) });
+    },
+  });
+}
+
+/**
+ * Exclui um item da apreciação. Só faz sentido pra itens LIVRES — itens do
+ * catálogo (item_origem = null) devem ser avaliados como NAO_APLICAVEL ao
+ * invés de excluídos, pra preservar o snapshot regulatório. A UI deve gatear
+ * isso; aqui o hook aceita qualquer id_item por simplicidade.
+ */
+export function useExcluirItemApreciacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      id_apreciacao: string;
+      id_item: string;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      // Limpa fotos do storage primeiro (best-effort)
+      const { data: itemAtual } = await supabase
+        .from("apreciacoes_maquinas_itens")
+        .select("foto_storage_paths")
+        .eq("id_item", params.id_item)
+        .single();
+      const paths =
+        (itemAtual as { foto_storage_paths: string[] } | null)
+          ?.foto_storage_paths ?? [];
+      if (paths.length > 0) {
+        await supabase.storage.from("fotos").remove(paths);
+      }
+      const { error } = await supabase
+        .from("apreciacoes_maquinas_itens")
+        .delete()
+        .eq("id_item", params.id_item);
+      if (error) throw error;
+      return params;
+    },
+    onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
     },
   });
