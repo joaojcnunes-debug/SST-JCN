@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   FlaskConical,
@@ -146,6 +146,63 @@ export default function AnaliseForm() {
     setPdfFile(novo);
     setFispqDados(novo ? novo.parsed : null);
   }
+
+  // Auto-preenche nomes de componentes via base Chabra: ao subir um PDF,
+  // varre cada CAS extraído e, se bater na base, sobrescreve o `nome`
+  // com o nome canônico (ex.: "Tolueno", "Álcool etílico"). Só roda uma
+  // vez por PDF (controlado por enrichedKeyRef) pra não atropelar edições
+  // que o usuário fizer depois. Se o parser não achou nome do produto,
+  // adota o canônico como sugestão também.
+  const enrichedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!fispqDados || baseRef.length === 0) return;
+    const chave = fispqDados.texto_completo;
+    if (enrichedKeyRef.current === chave) return;
+    enrichedKeyRef.current = chave;
+
+    const buscarCanonico = (
+      cas: string | undefined,
+      nome: string | undefined | null
+    ): string | undefined => {
+      if (!cas) return nome ?? undefined;
+      const hits = buscarComponentes(
+        [{ cas, nome: nome ?? null }],
+        baseRef
+      );
+      return hits.length > 0 ? hits[0].agente.agente : nome ?? undefined;
+    };
+
+    const novoNomeQuimico = buscarCanonico(
+      fispqDados.numero_cas,
+      fispqDados.nome_quimico
+    );
+    const novosComponentes = (fispqDados.cas_componentes ?? []).map((c) => ({
+      ...c,
+      nome: buscarCanonico(c.cas, c.nome),
+    }));
+
+    // Nome do produto: se o parser não achou, sugere o canônico do
+    // principal (caso só um componente bateu). Não sobrescreve valor
+    // existente — produto comercial costuma ser diferente do químico.
+    const novoNomeProduto =
+      fispqDados.nome_produto?.trim() || novoNomeQuimico;
+
+    const mudou =
+      novoNomeQuimico !== fispqDados.nome_quimico ||
+      novoNomeProduto !== fispqDados.nome_produto ||
+      novosComponentes.some(
+        (c, i) => c.nome !== (fispqDados.cas_componentes?.[i]?.nome)
+      );
+
+    if (mudou) {
+      setFispqDados({
+        ...fispqDados,
+        nome_quimico: novoNomeQuimico,
+        nome_produto: novoNomeProduto,
+        cas_componentes: novosComponentes,
+      });
+    }
+  }, [fispqDados, baseRef]);
 
   function handleSubmit() {
     // PDF mode: usa dados revisados do FispqReview
