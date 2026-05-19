@@ -12,7 +12,7 @@ import InspecaoRow from "@/components/inspecoes/InspecaoRow";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import Pagination from "@/components/ui/Pagination";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
+import { useInspecoesByEmpresa, useInspecoesByTecnico } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useCanCreate, useCanDelete } from "@/lib/hooks/useUsuario";
 import { usePagination } from "@/lib/hooks/usePagination";
@@ -88,7 +88,12 @@ function InspecoesInner() {
   }, [empresaId]);
 
   const { data: empresa } = useEmpresa(empresaId);
-  const { data: inspecoes = [], isLoading } = useInspecoesByEmpresa(empresaId);
+  const { data: inspecoesByEmpresa = [], isLoading: loadingEmpresa } = useInspecoesByEmpresa(empresaId);
+  const { data: inspecoesByTecnico = [], isLoading: loadingTecnico } = useInspecoesByTecnico(empresaId ? "" : buscaTecnico);
+
+  // Se empresa selecionada: usa dados da empresa; senão usa busca por técnico
+  const inspecoes = empresaId ? inspecoesByEmpresa : inspecoesByTecnico;
+  const isLoading = empresaId ? loadingEmpresa : loadingTecnico;
 
   const lista = useMemo(() => {
     // Por padrão, ocultar inspeções DELETADA da lista visual.
@@ -166,22 +171,20 @@ function InspecoesInner() {
         </div>
       </div>
 
+      <div className="relative max-w-xs">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Buscar por técnico..."
+          value={buscaTecnico}
+          onChange={(e) => setBuscaTecnico(e.target.value)}
+          className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+        />
+      </div>
+
       {empresaId && empresa && (
         <div className="rounded-lg border border-verde-border bg-verde-light px-4 py-2 text-sm text-verde-dark">
           Mostrando inspeções de <strong>{empresa.nome_empresa}</strong>
-        </div>
-      )}
-
-      {empresaId && (
-        <div className="relative max-w-xs">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Filtrar por técnico..."
-            value={buscaTecnico}
-            onChange={(e) => setBuscaTecnico(e.target.value)}
-            className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-          />
         </div>
       )}
 
@@ -221,14 +224,14 @@ function InspecoesInner() {
       )}
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        {!empresaId ? (
+        {!empresaId && buscaTecnico.trim().length < 2 ? (
           <div className="flex flex-col items-center justify-center p-12 text-center">
             <ClipboardList className="size-10 text-gray-400" />
             <p className="mt-3 text-sm font-medium text-gray-900">
-              Selecione uma empresa
+              Selecione uma empresa ou busque pelo técnico
             </p>
             <p className="text-xs text-gray-500">
-              Escolha uma empresa para ver suas inspeções
+              Digite ao menos 2 caracteres no campo acima para buscar por técnico
             </p>
           </div>
         ) : isLoading ? (

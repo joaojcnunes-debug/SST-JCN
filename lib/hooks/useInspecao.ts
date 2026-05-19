@@ -116,3 +116,22 @@ export function useInspecoesByEmpresa(idEmpresa: string | null | undefined) {
     },
   });
 }
+
+export function useInspecoesByTecnico(tecnico: string) {
+  const termo = tecnico.trim();
+  return useQuery({
+    queryKey: ["inspecoes-tecnico", termo],
+    enabled: termo.length >= 2,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("inspecoes")
+        .select("*")
+        .ilike("responsavel", `%${termo}%`)
+        .neq("status", "DELETADA")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as Inspecao[];
+    },
+  });
+}
