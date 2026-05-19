@@ -224,20 +224,35 @@ function cortarNoProximoLabel(s: string | undefined): string | undefined {
  * estava faltando.
  */
 function extrairConcentracao(target: string): string | undefined {
-  // Tira CAS da linha pra evitar falso positivo
-  const limpa = target.replace(/\b\d{2,7}-\d{2}-\d\b/g, "");
-  // Padrão 1: range com `%` opcional no final
+  // Tira CAS e CE/EC da linha pra evitar falso positivo:
+  //   - CAS: `\d{2,7}-\d{2}-\d` (ex: 64-17-5, 100-41-4)
+  //   - CE/EC: `\d{3}-\d{3}-\d` (ex: 200-578-6, 205-500-4)
+  const limpa = target
+    .replace(/\b\d{2,7}-\d{2}-\d\b/g, "")
+    .replace(/\b\d{3}-\d{3}-\d\b/g, "");
+
+  // Padrão 1: range COM `%` (ex: "10-15%", "21,5-30%")
   let m = limpa.match(
-    /(\d{1,3}(?:[,.]\d+)?\s*[-–]\s*\d{1,3}(?:[,.]\d+)?\s*%?)/
+    /(\d{1,3}(?:[,.]\d+)?\s*[-–]\s*\d{1,3}(?:[,.]\d+)?\s*%)/
   );
   if (!m) {
-    // Padrão 2: valor único com `%` obrigatório (sem range)
+    // Padrão 2: range SEM `%` mas com decimal em AMBOS os números
+    // (ex: "21,750-36,250", "3,150 - 5,250"). Exigir decimal evita
+    // capturar segmentos de CE/CAS residuais como "200-578" que NÃO
+    // têm vírgula. Concentrações ABNT vêm com decimal separator quase
+    // sempre — se for inteiro puro sem %, é provável CAS/CE/REACH.
+    m = limpa.match(
+      /(\d{1,3}[,.]\d+\s*[-–]\s*\d{1,3}[,.]\d+)/
+    );
+  }
+  if (!m) {
+    // Padrão 3: valor único com `%` obrigatório
     m = limpa.match(/(\d{1,3}(?:[,.]\d+)?\s*%)/);
   }
   if (!m) return undefined;
   let val = m[1].replace(/\s+/g, "");
-  // Heurística: se não tem `%` mas é um range, assume que é concentração
-  // (a coluna da tabela ABNT já indica `(%)` no cabeçalho).
+  // Heurística: se não tem `%` mas é range, assume concentração
+  // (cabeçalho da coluna ABNT diz `(%)`).
   if (!val.includes("%")) val = val + "%";
   return val;
 }
@@ -305,9 +320,15 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
     const idxCas = linha.indexOf(casMatch[0]);
     let prefixo = linha
       .slice(0, idxCas)
-      .replace(/^[\d.*•\-\s]+/, "")
+      // Strippa bullets de lista (1), 1., *, •, "1 -") mas PRESERVA
+      // locators químicos (1,3,5-, 2-, 1,1-) — não strippa "1," nem
+      // "1-" seguido de letra.
+      .replace(
+        /^(?:\d+\)\s*|\d+\.\s+|\d+:\s+|\d+\s+[-–]\s+|\*+\s*|•+\s*|[-–]\s+)/,
+        ""
+      )
       .replace(/(número\s+cas|cas\s*n[°º]?|cas\s*[:#])\s*$/i, "")
-      .replace(/[:#\-]\s*$/, "")
+      .replace(/[:#]\s*$/, "")
       .trim();
     // Strippa rótulos no INÍCIO do prefixo (ex.: "Nome químico 2-Butanone" → "2-Butanone")
     prefixo = stripLabel(prefixo, LABEL_COMPONENTE_PATTERNS) ?? "";
