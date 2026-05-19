@@ -3,6 +3,7 @@
 import { useMemo, use } from "react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import { useDrpsStore } from "@/lib/drps/store";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
   useDrpsProbabilidades,
   useDrpsRelatorio,
@@ -30,6 +31,7 @@ export default function ResumoPage({
 }) {
   const { idRelatorio } = use(params);
   const setor = useDrpsStore((s) => s.setor);
+  const canEdit = useCanEdit();
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
   const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
@@ -62,7 +64,7 @@ export default function ResumoPage({
     [topicos, mapaProb]
   );
 
-  const podeEditar = setor !== "Todos" && relatorio !== null;
+  const podeEditar = setor !== "Todos" && relatorio !== null && canEdit;
 
   return (
     <div className="space-y-4">

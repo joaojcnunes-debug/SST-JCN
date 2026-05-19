@@ -17,6 +17,7 @@ import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import { useDrpsStore } from "@/lib/drps/store";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
   useDrpsProbabilidades,
   useDrpsRelatorio,
@@ -112,6 +113,7 @@ export default function AnalisePage({
 }) {
   const { idRelatorio } = use(params);
   const setor = useDrpsStore((s) => s.setor);
+  const canEdit = useCanEdit();
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
   const { data: empresa } = useEmpresa(relatorio?.id_empresa);
   const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
@@ -472,8 +474,8 @@ export default function AnalisePage({
               <button
                 type="button"
                 onClick={() => salvarCampos()}
-                disabled={!dirty || salvar.isPending || !relatorio}
-                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                disabled={!canEdit || !dirty || salvar.isPending || !relatorio}
+                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Save className="size-3.5" />
                 {salvar.isPending ? "Salvando..." : "Salvar"}
@@ -481,8 +483,8 @@ export default function AnalisePage({
               <button
                 type="button"
                 onClick={() => salvarCampos({ status: "CONCLUIDO" })}
-                disabled={salvar.isPending || !relatorio}
-                className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-1.5 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+                disabled={!canEdit || salvar.isPending || !relatorio}
+                className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-1.5 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <CheckCircle2 className="size-3.5" />
                 {relatorio?.status === "CONCLUIDO"
@@ -584,11 +586,12 @@ export default function AnalisePage({
                 indice={idx + 1}
                 total={relatoriosPorSetor.length}
                 ehConsolidado={setor === "Todos"}
+                canEdit={canEdit}
                 conclusao={
                   relatorio?.conclusoes_por_setor?.[r.setor] ?? ""
                 }
                 onSalvarConclusao={(texto) => {
-                  if (!relatorio) return;
+                  if (!relatorio || !canEdit) return;
                   const atual = relatorio.conclusoes_por_setor ?? {};
                   salvar.mutate({
                     id_relatorio: idRelatorio,
@@ -658,6 +661,7 @@ function BlocoSetor({
   indice,
   total,
   ehConsolidado,
+  canEdit,
   conclusao,
   onSalvarConclusao,
   editor,
@@ -668,6 +672,7 @@ function BlocoSetor({
   indice: number;
   total: number;
   ehConsolidado: boolean;
+  canEdit: boolean;
   conclusao: string;
   onSalvarConclusao: (texto: string) => void;
   editor: BlocoEditorProps;
@@ -846,6 +851,7 @@ function BlocoSetor({
                   onRemoveExtra={editor.removerAgravoExtra}
                   onNovoValor={editor.setNovoAgravo}
                   placeholder="Adicionar outro agravo..."
+                  disabled={!canEdit}
                 />
               </div>
               <div className="hidden whitespace-pre-wrap print:block">
@@ -873,6 +879,7 @@ function BlocoSetor({
                   onRemoveExtra={editor.removerMedidaExtra}
                   onNovoValor={editor.setNovaMedida}
                   placeholder="Adicionar outra medida..."
+                  disabled={!canEdit}
                 />
               </div>
               <div className="hidden whitespace-pre-wrap print:block">
@@ -976,9 +983,11 @@ function BlocoSetor({
                 <button
                   type="button"
                   onClick={gerarConclusaoIA}
-                  disabled={gerandoIA || relatorio.topicos.length === 0}
+                  disabled={
+                    !canEdit || gerandoIA || relatorio.topicos.length === 0
+                  }
                   title="Gerar conclusão técnica com IA a partir dos tópicos avaliados, agravos e medidas existentes"
-                  className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2 py-1 text-[10px] font-semibold normal-case tracking-normal text-white shadow-sm hover:bg-verde-accent disabled:opacity-50 print:hidden"
+                  className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2 py-1 text-[10px] font-semibold normal-case tracking-normal text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50 print:hidden"
                 >
                   {gerandoIA ? (
                     <Loader2 className="size-3 animate-spin" />
@@ -996,11 +1005,17 @@ function BlocoSetor({
                 value={textoLocal}
                 onChange={(e) => setTextoLocal(e.target.value)}
                 onBlur={() => {
-                  if (textoLocal !== conclusao) onSalvarConclusao(textoLocal);
+                  if (canEdit && textoLocal !== conclusao)
+                    onSalvarConclusao(textoLocal);
                 }}
+                disabled={!canEdit}
                 rows={4}
-                placeholder="Conclusão do psicólogo para o setor — clique para editar ou use 'Gerar com IA'."
-                className="w-full border-0 bg-transparent p-0 text-[11px] leading-relaxed text-gray-900 focus:outline-none focus:ring-0 resize-none print:hidden"
+                placeholder={
+                  canEdit
+                    ? "Conclusão do psicólogo para o setor — clique para editar ou use 'Gerar com IA'."
+                    : "Você não tem permissão para editar a conclusão."
+                }
+                className="w-full border-0 bg-transparent p-0 text-[11px] leading-relaxed text-gray-900 focus:outline-none focus:ring-0 resize-none disabled:cursor-not-allowed print:hidden"
               />
               <div
                 className="hidden whitespace-pre-wrap text-[11px] leading-relaxed text-gray-900 print:block"
@@ -1030,6 +1045,7 @@ function MultiSelectInline({
   onRemoveExtra,
   onNovoValor,
   placeholder,
+  disabled = false,
 }: {
   opcoes: string[];
   selecionados: string[];
@@ -1040,6 +1056,7 @@ function MultiSelectInline({
   onRemoveExtra: (i: number) => void;
   onNovoValor: (v: string) => void;
   placeholder: string;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -1062,7 +1079,8 @@ function MultiSelectInline({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-2 py-1.5 text-left text-[11px] hover:bg-gray-50"
+        disabled={disabled}
+        className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-2 py-1.5 text-left text-[11px] hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-60"
       >
         <span className={total === 0 ? "text-gray-400" : "text-gray-700"}>
           {total === 0
@@ -1146,14 +1164,15 @@ function MultiSelectInline({
           value={novoValor}
           onChange={(e) => onNovoValor(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onAdd()}
+          disabled={disabled}
           placeholder={placeholder}
-          className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-[11px] focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+          className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-[11px] focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:cursor-not-allowed disabled:bg-gray-50"
         />
         <button
           type="button"
           onClick={onAdd}
-          disabled={!novoValor.trim()}
-          className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          disabled={disabled || !novoValor.trim()}
+          className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="size-3" />
         </button>

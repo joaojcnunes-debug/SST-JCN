@@ -19,6 +19,7 @@ import {
   useDrpsRelatorio,
   useDrpsRespondentes,
 } from "@/lib/hooks/useDrps";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { listarSetores, parsearTexto } from "@/lib/drps/calculos";
 import type { DrpsRespondente } from "@/lib/drps/types";
 
@@ -28,6 +29,7 @@ export default function DadosPage({
   params: Promise<{ idRelatorio: string }>;
 }) {
   const { idRelatorio } = use(params);
+  const canEdit = useCanEdit();
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
   const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
   const importar = useDrpsImportar();
@@ -143,7 +145,8 @@ export default function DadosPage({
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              disabled={!canEdit}
+              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Upload className="size-3.5" /> Upload CSV
             </button>
@@ -152,9 +155,14 @@ export default function DadosPage({
         <textarea
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
+          disabled={!canEdit}
           rows={8}
-          placeholder="Cole aqui o conteúdo copiado do Google Sheets (incluindo a linha de cabeçalho)..."
-          className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-xs focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          placeholder={
+            canEdit
+              ? "Cole aqui o conteúdo copiado do Google Sheets (incluindo a linha de cabeçalho)..."
+              : "Você não tem permissão para importar dados."
+          }
+          className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-xs focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:cursor-not-allowed disabled:bg-gray-50"
         />
 
         {previa && (
@@ -264,9 +272,12 @@ export default function DadosPage({
             type="button"
             onClick={onProcessar}
             disabled={
-              importar.isPending || !previa || previa.linhas.length === 0
+              !canEdit ||
+              importar.isPending ||
+              !previa ||
+              previa.linhas.length === 0
             }
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ClipboardPaste className="size-3.5" />
             {importar.isPending
@@ -282,13 +293,15 @@ export default function DadosPage({
             <h2 className="text-sm font-semibold text-gray-900">
               Respondentes importados
             </h2>
-            <button
-              type="button"
-              onClick={() => setConfirmLimpar(true)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-alert hover:bg-red-50"
-            >
-              <Trash2 className="size-3.5" /> Remover tudo
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setConfirmLimpar(true)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-alert hover:bg-red-50"
+              >
+                <Trash2 className="size-3.5" /> Remover tudo
+              </button>
+            )}
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

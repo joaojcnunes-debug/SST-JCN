@@ -6,6 +6,7 @@ import {
   useDrpsRelatorio,
   useDrpsSalvarRelatorio,
 } from "@/lib/hooks/useDrps";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 import type { StatusRelatorio } from "@/lib/drps/types";
 
 interface Form {
@@ -34,6 +35,7 @@ export default function MetadadosPage({
   params: Promise<{ idRelatorio: string }>;
 }) {
   const { idRelatorio } = use(params);
+  const canEdit = useCanEdit();
   const { data: relatorio, isLoading } = useDrpsRelatorio(idRelatorio);
   const salvar = useDrpsSalvarRelatorio();
 
@@ -86,6 +88,7 @@ export default function MetadadosPage({
                     status: e.target.value as StatusRelatorio,
                   })
                 }
+                disabled={!canEdit}
                 className={inputCls}
               >
                 {STATUS_OPCOES.map((s) => (
@@ -102,6 +105,7 @@ export default function MetadadosPage({
                 onChange={(e) =>
                   setForm({ ...form, data_elaboracao: e.target.value })
                 }
+                disabled={!canEdit}
                 className={inputCls}
               />
             </Field>
@@ -117,6 +121,7 @@ export default function MetadadosPage({
                 onChange={(e) =>
                   setForm({ ...form, responsavel_tecnico: e.target.value })
                 }
+                disabled={!canEdit}
                 className={inputCls}
               />
             </Field>
@@ -125,6 +130,7 @@ export default function MetadadosPage({
                 type="text"
                 value={form.crp}
                 onChange={(e) => setForm({ ...form, crp: e.target.value })}
+                disabled={!canEdit}
                 className={inputCls}
               />
             </Field>
@@ -135,8 +141,8 @@ export default function MetadadosPage({
           <button
             type="button"
             onClick={onSubmit}
-            disabled={salvar.isPending || !relatorio}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-60"
+            disabled={!canEdit || salvar.isPending || !relatorio}
+            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Save className="size-4" />
             {salvar.isPending ? "Salvando..." : "Salvar Metadados"}

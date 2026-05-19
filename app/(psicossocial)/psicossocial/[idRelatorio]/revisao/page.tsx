@@ -7,6 +7,7 @@ import {
   useDrpsRevisao,
   useDrpsSalvarRevisao,
 } from "@/lib/hooks/useDrps";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 
 const ACOES_OBRIGATORIAS: Array<{ id: string; texto: string }> = [
   {
@@ -51,6 +52,7 @@ export default function RevisaoPage({
   params: Promise<{ idRelatorio: string }>;
 }) {
   const { idRelatorio } = use(params);
+  const canEdit = useCanEdit();
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
   const { data: revisao, isLoading } = useDrpsRevisao(idRelatorio);
   const salvar = useDrpsSalvarRevisao();
@@ -107,8 +109,8 @@ export default function RevisaoPage({
         <button
           type="button"
           onClick={onSalvar}
-          disabled={!dirty || salvar.isPending || !relatorio}
-          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+          disabled={!canEdit || !dirty || salvar.isPending || !relatorio}
+          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Save className="size-4" />
           {salvar.isPending ? "Salvando..." : "Salvar Revisão"}
@@ -129,7 +131,8 @@ export default function RevisaoPage({
                 type="checkbox"
                 checked={!!checklist[a.id]}
                 onChange={() => toggle(setChecklist, a.id)}
-                className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                disabled={!canEdit}
+                className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30 disabled:cursor-not-allowed"
               />
               <span className="text-sm text-gray-800">{a.texto}</span>
             </label>
@@ -151,7 +154,8 @@ export default function RevisaoPage({
                 type="checkbox"
                 checked={!!equipe[m.id]}
                 onChange={() => toggle(setEquipe, m.id)}
-                className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                disabled={!canEdit}
+                className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30 disabled:cursor-not-allowed"
               />
               <span className="text-sm text-gray-800">{m.texto}</span>
             </label>
@@ -167,9 +171,10 @@ export default function RevisaoPage({
             setAnotacoes(e.target.value);
             setDirty(true);
           }}
+          disabled={!canEdit}
           rows={6}
           placeholder="Registros, observações, próximos passos..."
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:cursor-not-allowed disabled:bg-gray-50"
         />
       </div>
     </div>

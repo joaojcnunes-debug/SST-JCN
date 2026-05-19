@@ -7,6 +7,7 @@ import {
   useDrpsRelatorio,
   useDrpsSalvarPlanoMedidas,
 } from "@/lib/hooks/useDrps";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { MEDIDAS_CONTROLE, MESES } from "@/lib/drps/topicos";
 import type { MedidaPlano } from "@/lib/drps/types";
 
@@ -26,6 +27,7 @@ export default function MedidasPage({
   params: Promise<{ idRelatorio: string }>;
 }) {
   const { idRelatorio } = use(params);
+  const canEdit = useCanEdit();
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
   const anoAtual = new Date().getFullYear();
   const [ano, setAno] = useState(anoAtual);
@@ -118,8 +120,8 @@ export default function MedidasPage({
         <button
           type="button"
           onClick={onSalvar}
-          disabled={!dirty || salvar.isPending || !relatorio}
-          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+          disabled={!canEdit || !dirty || salvar.isPending || !relatorio}
+          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Save className="size-4" />
           {salvar.isPending ? "Salvando..." : "Salvar Plano"}
@@ -161,10 +163,11 @@ export default function MedidasPage({
                         <button
                           type="button"
                           onClick={() => toggleMes(acao, i)}
+                          disabled={!canEdit}
                           className={
                             m
-                              ? "flex size-7 mx-auto items-center justify-center rounded bg-verde-primary text-white hover:bg-verde-accent"
-                              : "flex size-7 mx-auto items-center justify-center rounded border border-gray-300 hover:bg-gray-100"
+                              ? "flex size-7 mx-auto items-center justify-center rounded bg-verde-primary text-white hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-60"
+                              : "flex size-7 mx-auto items-center justify-center rounded border border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                           }
                         >
                           {m && <Check className="size-3.5" />}
@@ -178,8 +181,9 @@ export default function MedidasPage({
                         onChange={(e) =>
                           setResponsavel(acao, e.target.value)
                         }
+                        disabled={!canEdit}
                         placeholder="—"
-                        className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none"
+                        className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
                       />
                     </td>
                   </tr>

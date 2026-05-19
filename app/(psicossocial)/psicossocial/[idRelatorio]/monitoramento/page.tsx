@@ -3,6 +3,7 @@
 import { useMemo, use } from "react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import { useDrpsStore } from "@/lib/drps/store";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
   useDrpsMonitoramento,
   useDrpsProbabilidades,
@@ -56,6 +57,7 @@ export default function MonitoramentoPage({
 }) {
   const { idRelatorio } = use(params);
   const setor = useDrpsStore((s) => s.setor);
+  const canEdit = useCanEdit();
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
   const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
@@ -194,7 +196,7 @@ export default function MonitoramentoPage({
               <tbody className="divide-y divide-gray-100">
                 {topicosComMatriz.map((t) => {
                   const m = getMonit(t.idx);
-                  const podeEditar = setor !== "Todos";
+                  const podeEditar = setor !== "Todos" && canEdit;
                   return (
                     <tr key={t.idx} className="hover:bg-gray-50">
                       <td className="px-2 py-1.5 font-medium text-gray-800">
