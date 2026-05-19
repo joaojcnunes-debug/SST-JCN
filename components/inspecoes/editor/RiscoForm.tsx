@@ -1923,148 +1923,189 @@ function EpiBloco({
         </span>
       </div>
 
-      {lista.length > 0 && (
-        <ul className="mb-2 divide-y divide-gray-100 rounded-md bg-white">
-          {lista.map((e) => {
-            const editando = editingKey === e.key;
-            return (
-              <li
-                key={e.key}
-                className="flex items-center gap-2 px-2 py-1.5"
-              >
-                {editando ? (
-                  <>
-                    <div className="grid flex-1 grid-cols-[1fr_120px] gap-2">
-                      <input
-                        type="text"
-                        value={editFields.descricao}
-                        onChange={(ev) =>
-                          setEditFields({
-                            ...editFields,
-                            descricao: ev.target.value,
-                          })
-                        }
-                        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
-                        autoFocus
-                        onKeyDown={(ev) => {
-                          if (ev.key === "Enter") {
-                            ev.preventDefault();
-                            salvarEdit(e.key, e.localIdx);
-                          }
-                          if (ev.key === "Escape") {
-                            ev.preventDefault();
-                            setEditingKey(null);
-                          }
-                        }}
-                      />
-                      <input
-                        type="text"
-                        value={editFields.ca}
-                        onChange={(ev) =>
-                          setEditFields({ ...editFields, ca: ev.target.value })
-                        }
-                        placeholder="CA"
-                        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => salvarEdit(e.key, e.localIdx)}
-                      disabled={updateServer.isPending}
-                      className="rounded p-1 text-verde-primary hover:bg-verde-light disabled:opacity-50"
-                      title="Salvar"
+      {/* Caixa unificada: itens no topo + combobox (descrição + CA) +
+          botão Adicionar no rodapé. Mesmo padrão do MedidaBloco/Fonte. */}
+      {(() => {
+        const descricoesNoRisco = new Set(
+          lista.map((e) => e.descricao.toLowerCase())
+        );
+        const disponiveis = sugestoes.filter(
+          (s) => !descricoesNoRisco.has(s.toLowerCase())
+        );
+        return (
+          <div className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
+            {lista.length > 0 && (
+              <ul className="divide-y divide-gray-100">
+                {lista.map((e) => {
+                  const editando = editingKey === e.key;
+                  const doCatalogo = sugestoes.some(
+                    (s) => s.toLowerCase() === e.descricao.toLowerCase()
+                  );
+                  return (
+                    <li
+                      key={e.key}
+                      className="flex items-center gap-2 px-3 py-2"
                     >
-                      <Check className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingKey(null)}
-                      className="rounded p-1 text-gray-400 hover:bg-gray-100"
-                      title="Cancelar"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex flex-1 flex-wrap items-center gap-2 text-sm">
-                      <span className="font-medium text-gray-900">
-                        {e.descricao}
-                      </span>
-                      {e.ca && (
-                        <span className="text-xs text-gray-500">
-                          CA: {e.ca}
-                        </span>
+                      {editando ? (
+                        <>
+                          <div className="grid flex-1 grid-cols-[1fr_120px] gap-2">
+                            <input
+                              type="text"
+                              value={editFields.descricao}
+                              onChange={(ev) =>
+                                setEditFields({
+                                  ...editFields,
+                                  descricao: ev.target.value,
+                                })
+                              }
+                              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                              autoFocus
+                              onKeyDown={(ev) => {
+                                if (ev.key === "Enter") {
+                                  ev.preventDefault();
+                                  salvarEdit(e.key, e.localIdx);
+                                }
+                                if (ev.key === "Escape") {
+                                  ev.preventDefault();
+                                  setEditingKey(null);
+                                }
+                              }}
+                            />
+                            <input
+                              type="text"
+                              value={editFields.ca}
+                              onChange={(ev) =>
+                                setEditFields({
+                                  ...editFields,
+                                  ca: ev.target.value,
+                                })
+                              }
+                              placeholder="CA"
+                              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => salvarEdit(e.key, e.localIdx)}
+                            disabled={updateServer.isPending}
+                            className="rounded p-1 text-verde-primary hover:bg-verde-light disabled:opacity-50"
+                            title="Salvar"
+                          >
+                            <Check className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingKey(null)}
+                            className="rounded p-1 text-gray-400 hover:bg-gray-100"
+                            title="Cancelar"
+                          >
+                            <X className="size-3.5" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex flex-1 flex-wrap items-center gap-2 text-sm">
+                            <span className="font-medium text-gray-900">
+                              {e.descricao}
+                            </span>
+                            {e.ca && (
+                              <span className="text-xs text-gray-500">
+                                CA: {e.ca}
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                              doCatalogo
+                                ? cfg.tag
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {doCatalogo ? "Catálogo" : "Manual"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              abrirEdit({
+                                key: e.key,
+                                descricao: e.descricao,
+                                ca: e.ca,
+                              })
+                            }
+                            className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                            title="Editar"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDel(e.key, e.localIdx)}
+                            className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                            title="Remover"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </>
                       )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        abrirEdit({
-                          key: e.key,
-                          descricao: e.descricao,
-                          ca: e.ca,
-                        })
-                      }
-                      className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
-                      title="Editar"
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDel(e.key, e.localIdx)}
-                      className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
-                      title="Remover"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
 
-      <div className="grid grid-cols-[1fr_120px_auto] items-center gap-2">
-        <input
-          type="text"
-          list={sugestoes.length > 0 ? datalistId : undefined}
-          value={novo.descricao}
-          onChange={(ev) => setNovo({ ...novo, descricao: ev.target.value })}
-          placeholder={`Descrição do ${tipoFixo}`}
-          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
-          onKeyDown={(ev) => {
-            if (ev.key === "Enter") {
-              ev.preventDefault();
-              handleAdd();
-            }
-          }}
-        />
-        {sugestoes.length > 0 && (
-          <datalist id={datalistId}>
-            {sugestoes.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
-        )}
-        <input
-          type="text"
-          value={novo.ca}
-          onChange={(ev) => setNovo({ ...novo, ca: ev.target.value })}
-          placeholder="CA"
-          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
-        />
-        <button
-          type="button"
-          onClick={handleAdd}
-          disabled={addServer.isPending}
-          className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent disabled:opacity-50"
-        >
-          <Plus className="size-3.5" /> Adicionar
-        </button>
-      </div>
+            <div
+              className={`bg-gray-50 p-2 ${
+                lista.length > 0 ? "border-t border-gray-200" : ""
+              }`}
+            >
+              <div className="grid grid-cols-[1fr_120px_auto] items-center gap-2">
+                <input
+                  type="text"
+                  list={disponiveis.length > 0 ? datalistId : undefined}
+                  value={novo.descricao}
+                  onChange={(ev) =>
+                    setNovo({ ...novo, descricao: ev.target.value })
+                  }
+                  placeholder={
+                    disponiveis.length > 0
+                      ? `Selecione do catálogo (${disponiveis.length}) ou digite manualmente`
+                      : `Descrição do ${tipoFixo}`
+                  }
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                  onKeyDown={(ev) => {
+                    if (ev.key === "Enter") {
+                      ev.preventDefault();
+                      handleAdd();
+                    }
+                  }}
+                />
+                {disponiveis.length > 0 && (
+                  <datalist id={datalistId}>
+                    {disponiveis.map((s) => (
+                      <option key={s} value={s} />
+                    ))}
+                  </datalist>
+                )}
+                <input
+                  type="text"
+                  value={novo.ca}
+                  onChange={(ev) => setNovo({ ...novo, ca: ev.target.value })}
+                  placeholder="CA"
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                />
+                <button
+                  type="button"
+                  onClick={handleAdd}
+                  disabled={addServer.isPending}
+                  className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent disabled:opacity-50"
+                >
+                  <Plus className="size-3.5" /> Adicionar
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -2116,7 +2157,7 @@ function FonteBlocoLista({
     setEditingIdx(null);
   }
 
-  const sugestoesDisponiveis = sugestoes.filter((s) => !items.includes(s));
+  const disponiveis = sugestoes.filter((s) => !items.includes(s));
 
   return (
     <section className="rounded-lg border border-sky-200 bg-sky-50/30 p-3">
@@ -2134,130 +2175,128 @@ function FonteBlocoLista({
         </span>
       </div>
 
-      {sugestoesDisponiveis.length > 0 && (
-        <div className="mb-2">
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-sky-700">
-            Sugestões do catálogo ({sugestoesDisponiveis.length})
-          </label>
-          <select
-            value=""
-            onChange={(ev) => {
-              const txt = ev.target.value;
-              if (txt && !items.includes(txt)) {
-                onChange([...items, txt]);
-              }
-              ev.target.value = "";
-            }}
-            className="w-full rounded-md border border-sky-300 bg-white px-2 py-1.5 text-sm text-gray-900"
-          >
-            <option value="">— Selecione uma fonte para adicionar —</option>
-            {sugestoesDisponiveis.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {items.length > 0 && (
-        <ul className="mb-2 divide-y divide-gray-100 rounded-md bg-white">
-          {items.map((it, idx) => {
-            const editando = editingIdx === idx;
-            return (
-              <li key={idx} className="flex items-center gap-2 px-2 py-1.5">
-                {editando ? (
-                  <>
-                    <input
-                      type="text"
-                      value={editText}
-                      onChange={(ev) => setEditText(ev.target.value)}
-                      className="flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
-                      autoFocus
-                      onKeyDown={(ev) => {
-                        if (ev.key === "Enter") {
-                          ev.preventDefault();
-                          salvarEdit(idx);
-                        }
-                        if (ev.key === "Escape") {
-                          ev.preventDefault();
-                          setEditingIdx(null);
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => salvarEdit(idx)}
-                      className="rounded p-1 text-verde-primary hover:bg-verde-light"
-                      title="Salvar"
-                    >
-                      <Check className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingIdx(null)}
-                      className="rounded p-1 text-gray-400 hover:bg-gray-100"
-                      title="Cancelar"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 text-sm text-gray-900">{it}</span>
-                    <button
-                      type="button"
-                      onClick={() => abrirEdit(idx, it)}
-                      className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
-                      title="Editar"
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDel(idx)}
-                      className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
-                      title="Remover"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-        <input
-          type="text"
-          list={sugestoes.length > 0 ? datalistId : undefined}
-          value={novo}
-          onChange={(ev) => setNovo(ev.target.value)}
-          placeholder="Ex: Compressor industrial em operação"
-          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm"
-          onKeyDown={(ev) => {
-            if (ev.key === "Enter") {
-              ev.preventDefault();
-              handleAdd();
-            }
-          }}
-        />
-        {sugestoes.length > 0 && (
-          <datalist id={datalistId}>
-            {sugestoes.map((s) => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
+      {/* Caixa unificada: itens no topo + combobox (input + datalist) +
+          botão Adicionar no rodapé. Mesmo padrão do MedidaBloco. */}
+      <div className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
+        {items.length > 0 && (
+          <ul className="divide-y divide-gray-100">
+            {items.map((it, idx) => {
+              const editando = editingIdx === idx;
+              const doCatalogo = sugestoes.includes(it);
+              return (
+                <li key={idx} className="flex items-center gap-2 px-3 py-2">
+                  {editando ? (
+                    <>
+                      <input
+                        type="text"
+                        value={editText}
+                        onChange={(ev) => setEditText(ev.target.value)}
+                        className="flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                        autoFocus
+                        onKeyDown={(ev) => {
+                          if (ev.key === "Enter") {
+                            ev.preventDefault();
+                            salvarEdit(idx);
+                          }
+                          if (ev.key === "Escape") {
+                            ev.preventDefault();
+                            setEditingIdx(null);
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => salvarEdit(idx)}
+                        className="rounded p-1 text-verde-primary hover:bg-verde-light"
+                        title="Salvar"
+                      >
+                        <Check className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingIdx(null)}
+                        className="rounded p-1 text-gray-400 hover:bg-gray-100"
+                        title="Cancelar"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm text-gray-900">{it}</span>
+                      <span
+                        className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                          doCatalogo
+                            ? "bg-sky-100 text-sky-800"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {doCatalogo ? "Catálogo" : "Manual"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => abrirEdit(idx, it)}
+                        className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                        title="Editar"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDel(idx)}
+                        className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                        title="Remover"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         )}
-        <button
-          type="button"
-          onClick={handleAdd}
-          className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
+
+        <div
+          className={`bg-gray-50 p-2 ${
+            items.length > 0 ? "border-t border-gray-200" : ""
+          }`}
         >
-          <Plus className="size-3.5" /> Adicionar
-        </button>
+          <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+            <input
+              type="text"
+              list={disponiveis.length > 0 ? datalistId : undefined}
+              value={novo}
+              onChange={(ev) => setNovo(ev.target.value)}
+              placeholder={
+                disponiveis.length > 0
+                  ? `Selecione do catálogo (${disponiveis.length}) ou digite manualmente`
+                  : "Ex: Compressor industrial em operação"
+              }
+              className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+              onKeyDown={(ev) => {
+                if (ev.key === "Enter") {
+                  ev.preventDefault();
+                  handleAdd();
+                }
+              }}
+            />
+            {disponiveis.length > 0 && (
+              <datalist id={datalistId}>
+                {disponiveis.map((s) => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+            )}
+            <button
+              type="button"
+              onClick={handleAdd}
+              className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
+            >
+              <Plus className="size-3.5" /> Adicionar
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );
