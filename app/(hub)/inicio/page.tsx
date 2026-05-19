@@ -71,7 +71,7 @@ const CARDS: HubCardCfg[] = [
     modulo: "apreciacao_maquinas",
     href: "/apreciacao-maquinas",
     title: "Apreciação de Máquinas",
-    description: "Avaliação técnica de máquinas conforme NR-12",
+    description: "Laudo NR-12: checklist por categoria, fotos por item, conclusão técnica",
     icon: <Cog className="size-12" />,
     accent: "#EA580C",
   },
@@ -157,6 +157,13 @@ const QUICK_ACTIONS: QuickActionCfg[] = [
     label: "Nova Máquina",
     icon: <Boxes className="size-4" />,
     accent: "#2563EB",
+  },
+  {
+    modulo: "apreciacao_maquinas",
+    href: "/apreciacao-maquinas/nova",
+    label: "Nova Apreciação NR-12",
+    icon: <Cog className="size-4" />,
+    accent: "#EA580C",
   },
 ];
 
@@ -414,8 +421,10 @@ function statsPorModulo(
       return data.analise_quimicos;
     case "inventario_maquinas":
       return data.inventario_maquinas;
+    case "apreciacao_maquinas":
+      return data.apreciacao_maquinas;
     default:
-      return undefined; // Apreciação ainda sem dados
+      return undefined;
   }
 }
 

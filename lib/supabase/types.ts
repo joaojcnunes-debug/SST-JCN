@@ -612,6 +612,72 @@ export interface Maquina {
 }
 
 // =====================================================
+// Módulo Apreciação de Máquinas (NR-12)
+// =====================================================
+
+export type StatusApreciacao = "RASCUNHO" | "FINALIZADO";
+export type SituacaoApreciacaoItem =
+  | "CONFORME"
+  | "NAO_CONFORME"
+  | "NAO_APLICAVEL"
+  | "PENDENTE";
+export type RiscoResidual = "BAIXO" | "MEDIO" | "ALTO" | "CRITICO";
+
+export const SITUACAO_APRECIACAO_LABELS: Record<SituacaoApreciacaoItem, string> = {
+  CONFORME: "Conforme",
+  NAO_CONFORME: "Não conforme",
+  NAO_APLICAVEL: "Não aplicável",
+  PENDENTE: "Pendente",
+};
+
+export const RISCO_RESIDUAL_LABELS: Record<RiscoResidual, string> = {
+  BAIXO: "Baixo",
+  MEDIO: "Médio",
+  ALTO: "Alto",
+  CRITICO: "Crítico",
+};
+
+export interface ApreciacaoMaquina {
+  id_apreciacao: string;
+  id_empresa: string;
+  id_maquina: string | null;
+  maquina_descricao: string | null;
+  titulo: string | null;
+  setor: string | null;
+  responsavel: string | null;
+  responsavel_empresa: string | null;
+  cidade: string | null;
+  data_apreciacao: string | null;
+  conclusao_tecnica: string | null;
+  recomendacoes: string | null;
+  risco_residual: RiscoResidual | null;
+  status: StatusApreciacao;
+  finalizado_em: string | null;
+  observacoes_gerais: string | null;
+  usuario_email: string | null;
+  usuario_nome: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ApreciacaoMaquinaItem {
+  id_item: string;
+  id_apreciacao: string;
+  item_codigo: string;
+  item_categoria: string;
+  item_titulo: string;
+  item_descricao: string | null;
+  ordem: number;
+  situacao: SituacaoApreciacaoItem;
+  observacao: string | null;
+  recomendacao: string | null;
+  foto_urls: string[];
+  foto_storage_paths: string[];
+  created_at: string;
+  updated_at: string | null;
+}
+
+// =====================================================
 // Módulo Relatório de Conformidade NR
 // =====================================================
 
@@ -766,6 +832,8 @@ export interface Database {
       triagens_modelo: TableShape<TriagemModeloRel>;
       analises_quimicos: TableShape<AnaliseQuimico>;
       inventario_maquinas: TableShape<Maquina>;
+      apreciacoes_maquinas: TableShape<ApreciacaoMaquina>;
+      apreciacoes_maquinas_itens: TableShape<ApreciacaoMaquinaItem>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

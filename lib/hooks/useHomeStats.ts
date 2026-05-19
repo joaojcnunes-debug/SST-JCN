@@ -9,6 +9,7 @@ import type {
   RelatorioNaoConformidade,
   AnaliseQuimico,
   Maquina,
+  ApreciacaoMaquina,
   ModuloPermitido,
 } from "@/lib/supabase/types";
 import type { DrpsRelatorio } from "@/lib/drps/types";
@@ -42,6 +43,7 @@ export interface HomeStatsData {
   nao_conformidade?: ModuloStats;
   analise_quimicos?: ModuloStats;
   inventario_maquinas?: ModuloStats;
+  apreciacao_maquinas?: ModuloStats;
   atividadeRecente: AtividadeItem[];
   isLoading: boolean;
 }
@@ -229,13 +231,35 @@ export function useHomeStats(): HomeStatsData {
     },
   });
 
+  // === Apreciações NR-12 ===
+  const apreciacoesQ = useQuery({
+    queryKey: ["home-stats-apreciacao-maquinas", empresasVinculadas],
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("apreciacoes_maquinas")
+        .select(
+          "id_apreciacao, id_empresa, titulo, maquina_descricao, status, created_at, updated_at"
+        )
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .limit(200);
+      if (empresasVinculadas) {
+        q = q.in("id_empresa", empresasVinculadas);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as ApreciacaoMaquina[];
+    },
+  });
+
   const isLoading =
     inspecoesQ.isLoading ||
     conformidadeQ.isLoading ||
     ncQ.isLoading ||
     quimicosQ.isLoading ||
     psicoQ.isLoading ||
-    maquinasQ.isLoading;
+    maquinasQ.isLoading ||
+    apreciacoesQ.isLoading;
 
   // === Stats por módulo ===
   const painel = inspecoesQ.data ? calcStats(inspecoesQ.data) : undefined;
@@ -250,6 +274,9 @@ export function useHomeStats(): HomeStatsData {
         pendente: maquinasQ.data.filter((m) => m.status === "MANUTENCAO").length,
         recente: maquinasQ.data.filter((m) => ehRecente(dataRow(m))).length,
       }
+    : undefined;
+  const apreciacao_maquinas = apreciacoesQ.data
+    ? calcStats(apreciacoesQ.data)
     : undefined;
 
   // === Atividade Recente (top 8 do agregado) ===
@@ -311,6 +338,18 @@ export function useHomeStats(): HomeStatsData {
       data: dataRow(r),
     });
   }
+  for (const r of apreciacoesQ.data ?? []) {
+    atividade.push({
+      modulo: "apreciacao_maquinas",
+      titulo:
+        r.titulo ||
+        r.maquina_descricao ||
+        `Apreciação ${r.id_apreciacao.slice(-6)}`,
+      href: `/apreciacao-maquinas/${r.id_apreciacao}`,
+      status: r.status,
+      data: dataRow(r),
+    });
+  }
 
   atividade.sort((a, b) => b.data.localeCompare(a.data));
   const atividadeRecente = atividade.slice(0, 8);
@@ -322,6 +361,7 @@ export function useHomeStats(): HomeStatsData {
     nao_conformidade,
     analise_quimicos,
     inventario_maquinas,
+    apreciacao_maquinas,
     atividadeRecente,
     isLoading,
   };
