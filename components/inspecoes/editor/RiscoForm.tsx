@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { Plus, Trash2, Upload, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, Upload, Pencil, Check, X, ChevronDown } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import SetorMultiSelect from "./SetorMultiSelect";
@@ -2364,6 +2364,7 @@ function MedidaBloco({
   const [novo, setNovo] = useState("");
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
+  const [listaAberta, setListaAberta] = useState(false);
   const datalistId = `cat-medida-${ordem}`;
 
   function handleAdd() {
@@ -2413,19 +2414,51 @@ function MedidaBloco({
         </span>
       </div>
 
-      {/* Caixa unificada multi-seleção: sugestões do catálogo viram
-          checkboxes (marcar/desmarcar adiciona/remove do risco) e itens
-          inseridos manualmente aparecem na mesma lista, sempre marcados,
-          com botões de editar/remover. Input manual fica fixo no rodapé. */}
+      {/* Caixa: trigger de lista suspensa esconde os checkboxes por
+          padrão. O usuário abre a lista pra marcar/desmarcar sugestões
+          do catálogo (multi-seleção) e ver os itens manuais. Input pra
+          adicionar manual fica sempre visível no rodapé. */}
       {(() => {
         const itensManuais = items
           .map((it, idx) => ({ texto: it, idx }))
           .filter(({ texto }) => !sugestoes.includes(texto));
         const temAlgo = sugestoes.length > 0 || itensManuais.length > 0;
+        const marcadasCatalogo = sugestoes.filter((s) =>
+          items.includes(s)
+        ).length;
+        const resumoTrigger =
+          items.length === 0
+            ? "Selecionar medidas do catálogo ou adicionar manual..."
+            : `${items.length} medida(s) selecionada(s)${
+                sugestoes.length > 0
+                  ? ` — ${marcadasCatalogo}/${sugestoes.length} do catálogo`
+                  : ""
+              }`;
         return (
           <div className="overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
-            {temAlgo && (
-              <ul className="max-h-72 divide-y divide-gray-100 overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setListaAberta((a) => !a)}
+              disabled={!temAlgo}
+              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
+              title={
+                temAlgo
+                  ? listaAberta
+                    ? "Recolher lista"
+                    : "Abrir lista"
+                  : "Sem itens — adicione manualmente abaixo"
+              }
+            >
+              <span className="truncate">{resumoTrigger}</span>
+              <ChevronDown
+                className={`size-4 shrink-0 transition-transform ${
+                  listaAberta ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {listaAberta && temAlgo && (
+              <ul className="max-h-72 divide-y divide-gray-100 overflow-y-auto border-t border-gray-200">
                 {sugestoes.map((s) => {
                   const marcada = items.includes(s);
                   return (
