@@ -226,9 +226,9 @@ export default function AnaliseForm() {
   }, [fispqDados, baseRef]);
 
   // Fallback IA: depois do enrichment via base, se ainda faltar
-  // nome_produto / fabricante / forma_fisica, manda um snippet curto pra
-  // IA extrair só esses campos. Roda 1x por PDF (controlado por
-  // iaFallbackKeyRef pelo texto_completo).
+  // nome_produto / fabricante / forma_fisica OU se houver componentes
+  // sem nome/concentração, manda um snippet curto pra IA preencher.
+  // Roda 1x por PDF (controlado por iaFallbackKeyRef pelo texto_completo).
   const iaFallbackKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!fispqDados) return;
@@ -237,24 +237,43 @@ export default function AnaliseForm() {
     if (enrichedKeyRef.current !== fispqDados.texto_completo) return;
     if (iaFallbackKeyRef.current === fispqDados.texto_completo) return;
 
+    // Top-level faltantes
     const faltantes: CampoFispqFaltante[] = [];
     if (!fispqDados.nome_produto?.trim()) faltantes.push("nome_produto");
     if (!fispqDados.fabricante?.trim()) faltantes.push("fabricante");
     if (!fispqDados.forma_fisica?.trim()) faltantes.push("forma_fisica");
-    if (faltantes.length === 0) {
+
+    // Componentes pendentes — CAS sem nome OU sem concentração.
+    // Inclui o principal (numero_cas) se ele se encaixar.
+    const pendentes: string[] = [];
+    if (
+      fispqDados.numero_cas &&
+      (!fispqDados.nome_quimico?.trim() || !fispqDados.concentracao?.trim())
+    ) {
+      pendentes.push(fispqDados.numero_cas);
+    }
+    for (const c of fispqDados.cas_componentes ?? []) {
+      if (c.cas && (!c.nome?.trim() || !c.concentracao?.trim())) {
+        pendentes.push(c.cas);
+      }
+    }
+
+    if (faltantes.length === 0 && pendentes.length === 0) {
       iaFallbackKeyRef.current = fispqDados.texto_completo;
       return;
     }
 
-    // Snippet enviado: primeiros 3.5kb do texto bruto (cobre seção 1, 2,
-    // início da 3 — onde os campos faltantes costumam estar). Snippets das
-    // seções 2/8/11 já estão truncados pelo parser, mas o texto completo
-    // tem mais contexto que pode ajudar.
-    const snippet = fispqDados.texto_completo.slice(0, 3500);
+    // Snippet enviado: 4kb do texto bruto (cobre seções 1, 2, 3 — onde
+    // os campos faltantes e a tabela de composição costumam estar).
+    const snippet = fispqDados.texto_completo.slice(0, 4000);
 
     iaFallbackKeyRef.current = fispqDados.texto_completo; // marca antes pra não disparar 2x
 
-    extrairCamposFispqViaIA({ snippet, campos_faltantes: faltantes })
+    extrairCamposFispqViaIA({
+      snippet,
+      campos_faltantes: faltantes.length > 0 ? faltantes : undefined,
+      componentes_pendentes: pendentes.length > 0 ? pendentes : undefined,
+    })
       .then((extras) => {
         // Atualiza só os campos que vieram preenchidos. Se a IA também
         // não conseguiu (devolveu null), mantém vazio — usuário preenche
@@ -289,6 +308,44 @@ export default function AnaliseForm() {
             merged.forma_fisica = extras.forma_fisica;
             novasFontes.forma_fisica = "ia";
           }
+
+          // Merge dos componentes preenchidos pela IA
+          if (extras.componentes && extras.componentes.length > 0) {
+            const byCas = new Map(
+              extras.componentes
+                .filter((c) => c.cas)
+                .map((c) => [c.cas, c])
+            );
+            // Principal
+            if (prev.numero_cas && byCas.has(prev.numero_cas)) {
+              const ext = byCas.get(prev.numero_cas)!;
+              if (ext.nome && !prev.nome_quimico?.trim()) {
+                merged.nome_quimico = ext.nome;
+                novasFontes.nome_quimico = "ia";
+              }
+              if (ext.concentracao && !prev.concentracao?.trim()) {
+                merged.concentracao = ext.concentracao;
+                novasFontes.concentracao = "ia";
+              }
+            }
+            // Secundários
+            if (prev.cas_componentes && prev.cas_componentes.length > 0) {
+              merged.cas_componentes = prev.cas_componentes.map((c) => {
+                const ext = byCas.get(c.cas);
+                if (!ext) return c;
+                const novo = { ...c };
+                if (ext.nome && !c.nome?.trim()) {
+                  novo.nome = ext.nome;
+                  novo.fonte_nome = "ia";
+                }
+                if (ext.concentracao && !c.concentracao?.trim()) {
+                  novo.concentracao = ext.concentracao;
+                }
+                return novo;
+              });
+            }
+          }
+
           merged._fontes = novasFontes;
           return merged;
         });

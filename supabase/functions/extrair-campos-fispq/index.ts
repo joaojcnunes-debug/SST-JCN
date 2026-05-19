@@ -31,20 +31,30 @@ const CORS = {
 
 type Campo = "nome_produto" | "fabricante" | "forma_fisica";
 
+interface ComponenteExtraido {
+  cas: string;
+  nome?: string | null;
+  concentracao?: string | null;
+}
+
 interface ExtrairCamposBody {
-  /** Trecho relevante da FISPQ — tipicamente seção 1 + 9 do parser, max ~3kb. */
+  /** Trecho relevante da FISPQ — tipicamente seção 1 + 3 + 9 do parser, max ~4kb. */
   snippet: string;
-  /** Quais campos a IA deve tentar extrair. */
-  campos_faltantes: Campo[];
+  /** Campos top-level que faltam (pelo menos um deve estar preenchido). */
+  campos_faltantes?: Campo[];
+  /** CAS de componentes da Seção 3 que ficaram sem nome ou sem concentração;
+   *  a IA tenta encontrar nome + concentração na tabela de composição. */
+  componentes_pendentes?: string[];
 }
 
 interface ExtrairCamposResponse {
   nome_produto?: string | null;
   fabricante?: string | null;
   forma_fisica?: string | null;
+  componentes?: ComponenteExtraido[];
 }
 
-const SNIPPET_MAX = 4000;
+const SNIPPET_MAX = 4500;
 
 const SYSTEM_PROMPT = `Você extrai dados estruturados de FISPQs (Fichas de Informações de Segurança de Produto Químico, formato ABNT NBR 14725).
 
@@ -54,22 +64,40 @@ Regras:
 - NUNCA invente. Se não está claramente no texto, devolva null.
 - "nome_produto": o nome comercial/identificador do produto (Seção 1.1). Tipicamente uma string curta como "Solvente XYZ", "Tinta Acrílica Branca", "MC-2BK106". Não é uma descrição de uso — frases como "Principais usos recomendados para a..." NÃO são nome de produto.
 - "fabricante": razão social da empresa fabricante/fornecedora (Seção 1.3). Não inclua endereço, telefone, CNPJ — só o nome da empresa.
-- "forma_fisica": uma das opções: "Líquido", "Sólido", "Gás", "Vapor", "Aerossol", "Pó", "Pasta", "Granulado", "Cristalino". Vem da Seção 9 (Propriedades físico-químicas, campo Estado físico/Forma física/Aspecto). Normalize pra essas opções.`;
+- "forma_fisica": uma das opções: "Líquido", "Sólido", "Gás", "Vapor", "Aerossol", "Pó", "Pasta", "Granulado", "Cristalino". Vem da Seção 9 (Propriedades físico-químicas, campo Estado físico/Forma física/Aspecto). Normalize pra essas opções.
+- "componentes": pra cada CAS solicitado, encontre o nome do componente e a faixa de concentração na Seção 3 (Composição/Informações dos Ingredientes). Devolva array no formato: [{"cas": "64-17-5", "nome": "Álcool etílico", "concentracao": "21,750-36,250%"}]. Concentração: inclua o % no final mesmo se a tabela do PDF não tiver (o cabeçalho da coluna costuma indicar "(%)"). Se não achar o componente, devolva null nos campos nome/concentracao mas mantenha o cas.`;
 
 function buildUserPrompt(body: ExtrairCamposBody): string {
-  const campos = body.campos_faltantes
-    .map((c) => `- "${c}"`)
-    .join("\n");
-  const snippet = body.snippet.slice(0, SNIPPET_MAX);
-  return `Extraia os seguintes campos da FISPQ abaixo:
+  const partes: string[] = [];
+  const campos = body.campos_faltantes ?? [];
+  const componentes = body.componentes_pendentes ?? [];
 
-${campos}
+  if (campos.length > 0) {
+    partes.push(`Extraia os seguintes campos top-level da FISPQ:`);
+    for (const c of campos) partes.push(`- "${c}"`);
+    partes.push("");
+  }
 
-Devolva JSON com exatamente essas chaves (null se não conseguir).
+  if (componentes.length > 0) {
+    partes.push(
+      `Pra cada um dos seguintes CAS (Seção 3 da FISPQ), encontre o NOME do componente e a CONCENTRAÇÃO (faixa em %, formato "X,XX-Y,YY%"):`
+    );
+    for (const cas of componentes) partes.push(`- ${cas}`);
+    partes.push(
+      `Devolva no array "componentes" com o formato: [{"cas": "...", "nome": "...", "concentracao": "..."}]`
+    );
+    partes.push("");
+  }
 
-=== TRECHO DA FISPQ ===
-${snippet}
-=== FIM ===`;
+  partes.push(
+    `Devolva JSON com as chaves solicitadas (null nos campos que não conseguir extrair).`
+  );
+  partes.push("");
+  partes.push(`=== TRECHO DA FISPQ ===`);
+  partes.push(body.snippet.slice(0, SNIPPET_MAX));
+  partes.push(`=== FIM ===`);
+
+  return partes.join("\n");
 }
 
 function parsearResposta(content: string): ExtrairCamposResponse {
@@ -91,10 +119,25 @@ function parsearResposta(content: string): ExtrairCamposResponse {
       return null;
     return s;
   };
+  const componentes: ComponenteExtraido[] = [];
+  if (Array.isArray(obj.componentes)) {
+    for (const item of obj.componentes) {
+      if (!item || typeof item !== "object") continue;
+      const rec = item as Record<string, unknown>;
+      const cas = typeof rec.cas === "string" ? rec.cas.trim() : "";
+      if (!cas) continue;
+      componentes.push({
+        cas,
+        nome: limpar(rec.nome),
+        concentracao: limpar(rec.concentracao),
+      });
+    }
+  }
   return {
     nome_produto: limpar(obj.nome_produto),
     fabricante: limpar(obj.fabricante),
     forma_fisica: limpar(obj.forma_fisica),
+    componentes: componentes.length > 0 ? componentes : undefined,
   };
 }
 
@@ -119,12 +162,18 @@ Deno.serve(async (req: Request) => {
         { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
-    if (
-      !Array.isArray(body.campos_faltantes) ||
-      body.campos_faltantes.length === 0
-    ) {
+    const temCampos =
+      Array.isArray(body.campos_faltantes) &&
+      body.campos_faltantes.length > 0;
+    const temComponentes =
+      Array.isArray(body.componentes_pendentes) &&
+      body.componentes_pendentes.length > 0;
+    if (!temCampos && !temComponentes) {
       return new Response(
-        JSON.stringify({ error: "Payload inválido: 'campos_faltantes' obrigatório." }),
+        JSON.stringify({
+          error:
+            "Payload inválido: 'campos_faltantes' ou 'componentes_pendentes' obrigatório.",
+        }),
         { status: 400, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
@@ -143,7 +192,7 @@ Deno.serve(async (req: Request) => {
         ],
         response_format: { type: "json_object" },
         temperature: 0.1,
-        max_tokens: 200,
+        max_tokens: 600,
       }),
     });
 

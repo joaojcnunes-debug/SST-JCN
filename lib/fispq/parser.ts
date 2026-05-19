@@ -211,6 +211,38 @@ function cortarNoProximoLabel(s: string | undefined): string | undefined {
 }
 
 /**
+ * Extrai concentração de uma string. Aceita:
+ *   - "60%"                     (valor simples com %)
+ *   - "10-15%" ou "10 - 15 %"   (range com %)
+ *   - "21,750 - 36,250"         (range sem % — comum em tabela ABNT
+ *     onde o cabeçalho da coluna já diz "(%)")
+ *
+ * Remove CAS da string antes de buscar — evita confundir "100-41-4"
+ * com um range "100-41".
+ *
+ * Retorna o valor já normalizado (sem espaços) com `%` no final se
+ * estava faltando.
+ */
+function extrairConcentracao(target: string): string | undefined {
+  // Tira CAS da linha pra evitar falso positivo
+  const limpa = target.replace(/\b\d{2,7}-\d{2}-\d\b/g, "");
+  // Padrão 1: range com `%` opcional no final
+  let m = limpa.match(
+    /(\d{1,3}(?:[,.]\d+)?\s*[-–]\s*\d{1,3}(?:[,.]\d+)?\s*%?)/
+  );
+  if (!m) {
+    // Padrão 2: valor único com `%` obrigatório (sem range)
+    m = limpa.match(/(\d{1,3}(?:[,.]\d+)?\s*%)/);
+  }
+  if (!m) return undefined;
+  let val = m[1].replace(/\s+/g, "");
+  // Heurística: se não tem `%` mas é um range, assume que é concentração
+  // (a coluna da tabela ABNT já indica `(%)` no cabeçalho).
+  if (!val.includes("%")) val = val + "%";
+  return val;
+}
+
+/**
  * Tenta extrair componentes vinculados (nome + CAS + concentração) da
  * seção 3 da FISPQ.
  *
@@ -298,6 +330,9 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
     }
 
     // ----- Procura concentração (na linha atual + ±2) -----
+    // Aceita: "60%", "10-15%", "21,750 - 36,250" (sem % — comum em tabelas
+    // ABNT onde o cabeçalho da coluna já diz "(%)"). Remove CAS da linha
+    // antes de buscar pra evitar "100-41-4" virar range "100-41".
     let concentracao: string | undefined;
     for (let off = 0; off <= 2 && !concentracao; off++) {
       for (const dir of [0, -1, 1]) {
@@ -305,23 +340,18 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
         if (idx < 0 || idx >= linhas.length) continue;
         const target = linhas[idx];
         if (!target) continue;
-        const concMatch = target.match(
-          /(\d+(?:[,.]\d+)?(?:\s*[-–]\s*\d+(?:[,.]\d+)?)?\s*%)/
-        );
-        if (concMatch) {
-          concentracao = concMatch[0].replace(/\s+/g, "");
-          break;
-        }
+        concentracao = extrairConcentracao(target);
+        if (concentracao) break;
       }
     }
 
-    // ----- Limpa o nome: se trouxe % junto, separa -----
+    // ----- Limpa o nome: se trouxe % ou range junto, separa -----
     // FISPQs frequentemente tem "2-Butanone     80-84.9%" na mesma linha;
     // pdfjs extrai isso colado. Extrai o % pra concentracao se ainda não
     // foi achado, e tira do nome.
     if (nome) {
       const concNoNome = nome.match(
-        /(\d+(?:[,.]\d+)?(?:\s*[-–]\s*\d+(?:[,.]\d+)?)?\s*%)/
+        /(\d{1,3}(?:[,.]\d+)?(?:\s*[-–]\s*\d{1,3}(?:[,.]\d+)?)?\s*%)/
       );
       if (concNoNome) {
         if (!concentracao) concentracao = concNoNome[0].replace(/\s+/g, "");
