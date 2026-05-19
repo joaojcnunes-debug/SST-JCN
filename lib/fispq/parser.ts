@@ -315,9 +315,12 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
       nome = prefixo;
     }
 
-    // 2) Se não achou na linha, olha linhas ANTERIORES (até 4 voltando)
+    // 2) Se não achou na linha, olha linhas ANTERIORES (até 15 voltando).
+    // Lookback maior cobre layout em coluna onde pdfjs extrai TODOS os
+    // nomes primeiro, depois TODOS os CAS — fica até 8-10 linhas entre
+    // nome e CAS correspondente em tabelas ABNT.
     if (!nome) {
-      for (let back = 1; back <= 4 && i - back >= 0; back++) {
+      for (let back = 1; back <= 15 && i - back >= 0; back++) {
         const candidato = linhas[i - back];
         if (!candidato) continue;
         if (ehCabecalho(candidato)) continue;
@@ -400,10 +403,12 @@ function dividirEmSecoes(texto: string): Map<number, string> {
   const secoes = new Map<number, string>();
 
   // Padrões que indicam início de seção numerada (no início de linha).
-  // Aceita só `.` ou `:` como separador (NÃO dash) pra evitar conflito com
-  // nomes químicos tipo "2-Butanone" ou "1,1,2-Tricloroetano".
+  // Aceita `.`, `:`, `-`, `–` como separador. O `\s+` obrigatório depois
+  // do separador evita conflito com nomes químicos tipo "2-Butanone" ou
+  // CAS "100-41-4" (que não têm espaço depois do `-`). E o grupo de
+  // título exige começar com letra, descartando combinações com dígitos.
   const markerRegex =
-    /(?:^|\n)\s*(?:SEÇÃO|Seção|Section)?\s*(\d{1,2})(?:\.\d+)?\s*[.:]\s*([A-ZÀ-Ÿa-zà-ÿ][^\n]{3,120})/g;
+    /(?:^|\n)\s*(?:SEÇÃO|Seção|Section)?\s*(\d{1,2})(?:\.\d+)?\s*[-–.:]\s+([A-ZÀ-Ÿa-zà-ÿ][^\n]{3,120})/g;
 
   const matches = [...texto.matchAll(markerRegex)];
 

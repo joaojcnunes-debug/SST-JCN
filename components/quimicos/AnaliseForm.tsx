@@ -159,10 +159,22 @@ export default function AnaliseForm() {
   // adota o canônico como sugestão também.
   const enrichedKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!fispqDados || baseRef.length === 0) return;
+    if (!fispqDados || baseRef.length === 0) {
+      console.log("[fispq-debug] enrichment skip:", {
+        temFispq: !!fispqDados,
+        baseRefLen: baseRef.length,
+      });
+      return;
+    }
     const chave = fispqDados.texto_completo;
     if (enrichedKeyRef.current === chave) return;
     enrichedKeyRef.current = chave;
+    console.log("[fispq-debug] enrichment start:", {
+      numero_cas: fispqDados.numero_cas,
+      nome_quimico: fispqDados.nome_quimico,
+      cas_componentes_count: fispqDados.cas_componentes?.length ?? 0,
+      baseRefLen: baseRef.length,
+    });
 
     // Retorna { nome, casou } — casou=true quando o CAS bateu na base
     // (precisamos saber pra atualizar a fonte_nome do componente).
@@ -195,6 +207,15 @@ export default function AnaliseForm() {
       };
     });
 
+    console.log("[fispq-debug] enrichment result:", {
+      principal: { cas: fispqDados.numero_cas, casou: resPrincipal.casou, nome: resPrincipal.nome },
+      componentes: novosComponentes.map((c) => ({
+        cas: c.cas,
+        nome: c.nome,
+        fonte_nome: c.fonte_nome,
+      })),
+    });
+
     // Nome do produto: se o parser não achou, sugere o canônico do
     // principal (caso só um componente bateu). Não sobrescreve valor
     // existente — produto comercial costuma ser diferente do químico.
@@ -209,6 +230,11 @@ export default function AnaliseForm() {
       novosComponentes.some(
         (c, i) => c.nome !== (fispqDados.cas_componentes?.[i]?.nome)
       );
+
+    console.log("[fispq-debug] enrichment mudou?", mudou, {
+      novoNomeQuimico,
+      antigoNomeQuimico: fispqDados.nome_quimico,
+    });
 
     if (mudou) {
       setFispqDados({
