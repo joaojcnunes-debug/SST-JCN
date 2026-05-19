@@ -16,6 +16,7 @@ import {
   FileText,
   Plus,
   Printer,
+  Sparkles,
   X as IconX,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -24,6 +25,7 @@ import {
   useAtualizarApreciacaoMaquina,
   useExcluirApreciacaoMaquina,
   useAdicionarItemLivreApreciacao,
+  useGerarParecerApreciacaoIA,
 } from "@/lib/hooks/useApreciacoesMaquinas";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useMaquina } from "@/lib/hooks/useInventarioMaquinas";
@@ -52,6 +54,7 @@ export default function DetalheApreciacaoPage() {
   const atualizar = useAtualizarApreciacaoMaquina();
   const excluir = useExcluirApreciacaoMaquina();
   const adicionarLivre = useAdicionarItemLivreApreciacao();
+  const gerarParecerIA = useGerarParecerApreciacaoIA();
   const { data: maquinaVinculada } = useMaquina(
     data?.apreciacao.id_maquina ?? null
   );
@@ -226,6 +229,49 @@ export default function DetalheApreciacaoPage() {
     } catch (err) {
       console.error(err);
       toast.error("Falha ao adicionar item");
+    }
+  }
+
+  async function handleGerarParecerIA() {
+    if (!apreciacao) return;
+    // Bloqueio: precisa ter pelo menos 1 item avaliado (não-PENDENTE)
+    const itensAvaliados = itens.filter((i) => i.situacao !== "PENDENTE");
+    if (itensAvaliados.length === 0) {
+      toast.error("Avalie ao menos 1 item antes de gerar o parecer");
+      return;
+    }
+    try {
+      const result = await gerarParecerIA.mutateAsync({
+        empresa: { nome: empresaNome },
+        maquina: {
+          nome: maquinaVinculada?.nome ?? null,
+          descricao: apreciacao.maquina_descricao,
+        },
+        setor: apreciacao.setor,
+        responsavel: apreciacao.responsavel,
+        itens: itensAvaliados.map((i) => ({
+          codigo: i.item_codigo,
+          categoria: i.item_categoria,
+          titulo: i.item_titulo,
+          situacao: i.situacao,
+          observacao: i.observacao,
+          recomendacao: i.recomendacao,
+          livre: i.item_origem === "LIVRE",
+        })),
+        textoAtual: conclusao.trim() || null,
+      });
+      // Preenche os 3 campos — usuário revisa e clica "Salvar conclusão"
+      setConclusao(result.conclusao_tecnica);
+      setRecomendacoes(result.recomendacoes_finais);
+      if (result.risco_residual_sugerido) {
+        setRiscoResidual(result.risco_residual_sugerido);
+      }
+      toast.success("Parecer gerado — revise antes de salvar");
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        err instanceof Error ? err.message : "Falha ao gerar parecer"
+      );
     }
   }
 
@@ -641,9 +687,35 @@ export default function DetalheApreciacaoPage() {
 
       {/* Seção: Conclusão Técnica */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3 print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
-        <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
-          <CheckCircle2 className="size-4" /> Conclusão Técnica
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
+            <CheckCircle2 className="size-4" /> Conclusão Técnica
+          </h2>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={handleGerarParecerIA}
+              disabled={gerarParecerIA.isPending}
+              title="IA lê o checklist preenchido e propõe parecer + recomendações + risco residual"
+              className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100 disabled:opacity-50 print:hidden"
+            >
+              {gerarParecerIA.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="size-3.5" />
+              )}
+              {gerarParecerIA.isPending ? "Gerando..." : "Gerar parecer com IA"}
+            </button>
+          )}
+        </div>
+        {!readOnly && (
+          <p className="rounded-md border border-purple-100 bg-purple-50/40 px-2 py-1.5 text-[11px] text-purple-800 print:hidden">
+            <Sparkles className="mr-1 inline size-3" />
+            A IA analisa as não conformidades do checklist e propõe parecer +
+            recomendações + risco residual. Revise sempre antes de finalizar —
+            a responsabilidade técnica é do auditor.
+          </p>
+        )}
         <Campo label="Parecer técnico" htmlFor="conclusao">
           <textarea
             id="conclusao"

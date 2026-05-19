@@ -438,6 +438,59 @@ export function useExcluirItemApreciacao() {
   });
 }
 
+// ============================================================
+// IA — geração do parecer técnico
+// ============================================================
+
+export interface ParecerIAInput {
+  empresa?: { nome?: string | null } | null;
+  maquina?: { nome?: string | null; descricao?: string | null } | null;
+  setor?: string | null;
+  responsavel?: string | null;
+  itens: Array<{
+    codigo: string;
+    categoria: string;
+    titulo: string;
+    situacao: SituacaoApreciacaoItem;
+    observacao?: string | null;
+    recomendacao?: string | null;
+    livre?: boolean;
+  }>;
+  textoAtual?: string | null;
+}
+
+export interface ParecerIAOutput {
+  conclusao_tecnica: string;
+  recomendacoes_finais: string;
+  risco_residual_sugerido: RiscoResidual | null;
+}
+
+/**
+ * Chama a edge function `gerar-parecer-apreciacao-ia` (Groq) com o checklist
+ * preenchido e devolve `{ conclusao_tecnica, recomendacoes_finais,
+ * risco_residual_sugerido }`. A UI exibe pro auditor revisar e salvar.
+ *
+ * Não persiste nada — só transporta da IA pra UI. O usuário decide se
+ * aceita/edita e clica "Salvar conclusão".
+ */
+export function useGerarParecerApreciacaoIA() {
+  return useMutation({
+    mutationFn: async (input: ParecerIAInput): Promise<ParecerIAOutput> => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase.functions.invoke(
+        "gerar-parecer-apreciacao-ia",
+        { body: input }
+      );
+      if (error) throw error;
+      const payload = (data as { data?: ParecerIAOutput } | null)?.data;
+      if (!payload?.conclusao_tecnica) {
+        throw new Error("Resposta inválida da IA — tente novamente");
+      }
+      return payload;
+    },
+  });
+}
+
 export function useRemoverFotoItemApreciacao() {
   const qc = useQueryClient();
   return useMutation({
