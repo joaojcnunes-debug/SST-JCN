@@ -164,30 +164,42 @@ export default function AnaliseForm() {
     if (enrichedKeyRef.current === chave) return;
     enrichedKeyRef.current = chave;
 
+    // Retorna { nome, casou } — casou=true quando o CAS bateu na base
+    // (precisamos saber pra atualizar a fonte_nome do componente).
     const buscarCanonico = (
       cas: string | undefined,
       nome: string | undefined | null
-    ): string | undefined => {
-      if (!cas) return nome ?? undefined;
+    ): { nome: string | undefined; casou: boolean } => {
+      if (!cas) return { nome: nome ?? undefined, casou: false };
       const hits = buscarComponentes(
         [{ cas, nome: nome ?? null }],
         baseRef
       );
-      return hits.length > 0 ? hits[0].agente.agente : nome ?? undefined;
+      if (hits.length > 0) {
+        return { nome: hits[0].agente.agente, casou: true };
+      }
+      return { nome: nome ?? undefined, casou: false };
     };
 
-    const novoNomeQuimico = buscarCanonico(
+    const resPrincipal = buscarCanonico(
       fispqDados.numero_cas,
       fispqDados.nome_quimico
     );
-    const novosComponentes = (fispqDados.cas_componentes ?? []).map((c) => ({
-      ...c,
-      nome: buscarCanonico(c.cas, c.nome),
-    }));
+    const novoNomeQuimico = resPrincipal.nome;
+    const novosComponentes = (fispqDados.cas_componentes ?? []).map((c) => {
+      const r = buscarCanonico(c.cas, c.nome);
+      return {
+        ...c,
+        nome: r.nome,
+        fonte_nome: r.casou ? ("base" as const) : c.fonte_nome,
+      };
+    });
 
     // Nome do produto: se o parser não achou, sugere o canônico do
     // principal (caso só um componente bateu). Não sobrescreve valor
     // existente — produto comercial costuma ser diferente do químico.
+    const usouCanonicoComoProduto =
+      !fispqDados.nome_produto?.trim() && !!novoNomeQuimico && resPrincipal.casou;
     const novoNomeProduto =
       fispqDados.nome_produto?.trim() || novoNomeQuimico;
 
@@ -204,6 +216,11 @@ export default function AnaliseForm() {
         nome_quimico: novoNomeQuimico,
         nome_produto: novoNomeProduto,
         cas_componentes: novosComponentes,
+        _fontes: {
+          ...fispqDados._fontes,
+          ...(resPrincipal.casou && { nome_quimico: "base" as const }),
+          ...(usouCanonicoComoProduto && { nome_produto: "base" as const }),
+        },
       });
     }
   }, [fispqDados, baseRef]);
@@ -247,12 +264,14 @@ export default function AnaliseForm() {
             return prev; // PDF mudou no meio do caminho
           }
           const merged = { ...prev };
+          const novasFontes = { ...(prev._fontes ?? {}) };
           if (
             faltantes.includes("nome_produto") &&
             extras.nome_produto &&
             !prev.nome_produto?.trim()
           ) {
             merged.nome_produto = extras.nome_produto;
+            novasFontes.nome_produto = "ia";
           }
           if (
             faltantes.includes("fabricante") &&
@@ -260,6 +279,7 @@ export default function AnaliseForm() {
             !prev.fabricante?.trim()
           ) {
             merged.fabricante = extras.fabricante;
+            novasFontes.fabricante = "ia";
           }
           if (
             faltantes.includes("forma_fisica") &&
@@ -267,7 +287,9 @@ export default function AnaliseForm() {
             !prev.forma_fisica?.trim()
           ) {
             merged.forma_fisica = extras.forma_fisica;
+            novasFontes.forma_fisica = "ia";
           }
+          merged._fontes = novasFontes;
           return merged;
         });
       })

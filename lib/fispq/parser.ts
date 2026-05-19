@@ -11,10 +11,30 @@
 // parser pode ser corrigido manualmente. Princípio: "humano + parser" >
 // "IA tentando ler PDF inteiro com tokens limitados".
 
+/**
+ * Origem de um campo extraído da FISPQ — usado pra UI mostrar pro
+ * usuário o nível de confiança por campo. Marcado em cascata:
+ *   parser (regex local) → base (catálogo Chabra) → ia (fallback IA)
+ *   → manual (usuário editou).
+ */
+export type FonteCampo = "base" | "parser" | "ia" | "manual";
+
+export interface FontesCampos {
+  nome_produto?: FonteCampo;
+  fabricante?: FonteCampo;
+  formula_quimica?: FonteCampo;
+  forma_fisica?: FonteCampo;
+  nome_quimico?: FonteCampo;
+  numero_cas?: FonteCampo;
+  concentracao?: FonteCampo;
+}
+
 export interface ComponenteQuimico {
   cas: string;
   nome?: string;
   concentracao?: string;
+  /** Origem do nome deste componente (catálogo / parser / IA / manual). */
+  fonte_nome?: FonteCampo;
 }
 
 export interface FispqExtracted {
@@ -45,6 +65,9 @@ export interface FispqExtracted {
   snippet_perigos?: string;
   snippet_exposicao?: string;
   snippet_toxicologia?: string;
+
+  /** Origem de cada campo top-level (pra indicador visual no review). */
+  _fontes?: FontesCampos;
 }
 
 // =====================================================
@@ -612,6 +635,26 @@ export function parseFispq(texto: string): FispqExtracted {
   // Nome químico: se não tem, tenta usar o nome do produto
   if (!result.nome_quimico && result.nome_produto) {
     result.nome_quimico = result.nome_produto;
+  }
+
+  // Marca origem de cada campo como "parser" — etapas subsequentes
+  // (enrichment via base, fallback IA, edição manual) sobrescrevem
+  // essas fontes conforme o valor for atualizado.
+  result._fontes = {
+    nome_produto: result.nome_produto ? "parser" : undefined,
+    fabricante: result.fabricante ? "parser" : undefined,
+    formula_quimica: result.formula_quimica ? "parser" : undefined,
+    forma_fisica: result.forma_fisica ? "parser" : undefined,
+    nome_quimico: result.nome_quimico ? "parser" : undefined,
+    numero_cas: result.numero_cas ? "parser" : undefined,
+    concentracao: result.concentracao ? "parser" : undefined,
+  };
+  // Idem para componentes secundários
+  if (result.cas_componentes) {
+    result.cas_componentes = result.cas_componentes.map((c) => ({
+      ...c,
+      fonte_nome: c.nome ? "parser" : undefined,
+    }));
   }
 
   return result;

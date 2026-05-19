@@ -1,13 +1,23 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   CheckCircle2,
   AlertTriangle,
   FileText,
   Plus,
   Trash2,
+  Database,
+  Search,
+  Sparkles,
+  Pencil,
 } from "lucide-react";
-import type { FispqExtracted, ComponenteQuimico } from "@/lib/fispq/parser";
+import type {
+  FispqExtracted,
+  ComponenteQuimico,
+  FonteCampo,
+  FontesCampos,
+} from "@/lib/fispq/parser";
 
 interface FispqReviewProps {
   dados: FispqExtracted;
@@ -19,6 +29,58 @@ const lblCls =
   "text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1 block";
 const inputCls =
   "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary";
+
+/**
+ * Badge minúsculo ao lado do label indicando a ORIGEM do valor:
+ * - base   (catálogo Chabra) → verde, ícone Database — mais confiável
+ * - parser (regex local)     → âmbar, ícone Search   — heurístico
+ * - ia     (fallback Groq)   → azul,  ícone Sparkles — preencheu lacuna
+ * - manual (usuário editou)  → cinza, ícone Pencil   — humano
+ *
+ * Se o campo está vazio (fonte undefined), nada é renderizado.
+ */
+function FonteBadge({ fonte }: { fonte: FonteCampo | undefined }) {
+  if (!fonte) return null;
+  const cfg: Record<
+    FonteCampo,
+    { icon: ReactNode; cor: string; texto: string; titulo: string }
+  > = {
+    base: {
+      icon: <Database className="size-2.5" />,
+      cor: "bg-emerald-100 text-emerald-700",
+      texto: "Catálogo",
+      titulo: "Valor canônico da base de referência Chabra (CAS bateu)",
+    },
+    parser: {
+      icon: <Search className="size-2.5" />,
+      cor: "bg-amber-100 text-amber-700",
+      texto: "Parser",
+      titulo: "Extraído por regex local — revise se parecer estranho",
+    },
+    ia: {
+      icon: <Sparkles className="size-2.5" />,
+      cor: "bg-sky-100 text-sky-700",
+      texto: "IA",
+      titulo: "Preenchido pelo fallback IA (Groq) — confira",
+    },
+    manual: {
+      icon: <Pencil className="size-2.5" />,
+      cor: "bg-gray-200 text-gray-600",
+      texto: "Manual",
+      titulo: "Editado manualmente",
+    },
+  };
+  const { icon, cor, texto, titulo } = cfg[fonte];
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${cor}`}
+      title={titulo}
+    >
+      {icon}
+      {texto}
+    </span>
+  );
+}
 
 /**
  * UI pra usuário revisar/corrigir os dados extraídos da FISPQ ANTES de
@@ -33,33 +95,67 @@ export default function FispqReview({
   onChange,
   disabled,
 }: FispqReviewProps) {
+  const fontes = dados._fontes ?? {};
+
+  /** Atualiza o campo + marca a fonte como `manual` (override do usuário). */
   const patch = (campo: keyof FispqExtracted, valor: unknown) => {
-    onChange({ ...dados, [campo]: valor });
+    // Só os campos top-level rastreados em FontesCampos viram "manual".
+    const campoFonte = campo as keyof FontesCampos;
+    const ehCampoRastreado =
+      campoFonte === "nome_produto" ||
+      campoFonte === "fabricante" ||
+      campoFonte === "formula_quimica" ||
+      campoFonte === "forma_fisica" ||
+      campoFonte === "nome_quimico" ||
+      campoFonte === "numero_cas" ||
+      campoFonte === "concentracao";
+    if (ehCampoRastreado) {
+      onChange({
+        ...dados,
+        [campo]: valor,
+        _fontes: { ...fontes, [campoFonte]: "manual" },
+      });
+    } else {
+      onChange({ ...dados, [campo]: valor });
+    }
   };
 
   // Lista TODOS os componentes (principal + adicionais) num único array
   // pra render. O 1º item é o "principal" (numero_cas/nome_quimico/etc.),
-  // os demais vêm de cas_componentes.
+  // os demais vêm de cas_componentes. A fonte_nome do principal é
+  // espelhada de dados._fontes.nome_quimico pra ficar acessível na linha.
   const componentes: ComponenteQuimico[] = [
     {
       cas: dados.numero_cas || "",
       nome: dados.nome_quimico,
       concentracao: dados.concentracao,
+      fonte_nome: fontes.nome_quimico,
     },
     ...(dados.cas_componentes ?? []),
   ];
 
+  /** Edição manual de uma linha do componente — marca fonte_nome como
+   * "manual" quando o usuário muda o nome (mantém a fonte original
+   * pros campos que não foram tocados). */
   const setComponente = (idx: number, patch: Partial<ComponenteQuimico>) => {
-    const novos = componentes.map((c, i) =>
-      i === idx ? { ...c, ...patch } : c
-    );
+    const novos = componentes.map((c, i) => {
+      if (i !== idx) return c;
+      const atualizado: ComponenteQuimico = { ...c, ...patch };
+      if ("nome" in patch) atualizado.fonte_nome = "manual";
+      return atualizado;
+    });
     aplicarComponentes(novos);
   };
 
   const adicionarComponente = () => {
     aplicarComponentes([
       ...componentes,
-      { cas: "", nome: undefined, concentracao: undefined },
+      {
+        cas: "",
+        nome: undefined,
+        concentracao: undefined,
+        fonte_nome: "manual",
+      },
     ]);
   };
 
@@ -68,16 +164,22 @@ export default function FispqReview({
   };
 
   /** Sincroniza o array `componentes` de volta em dados.numero_cas /
-   *  nome_quimico / concentracao (principal) + dados.cas_componentes (resto). */
+   *  nome_quimico / concentracao (principal) + dados.cas_componentes (resto).
+   *  Propaga fonte_nome do principal pra `_fontes.nome_quimico`. */
   const aplicarComponentes = (lista: ComponenteQuimico[]) => {
     const sem = lista.filter((c) => c.cas || c.nome || c.concentracao);
     const [principal, ...resto] = sem.length > 0 ? sem : [{ cas: "" }];
+    const novasFontes: FontesCampos = {
+      ...fontes,
+      nome_quimico: principal?.fonte_nome ?? fontes.nome_quimico,
+    };
     onChange({
       ...dados,
       numero_cas: principal?.cas || undefined,
       nome_quimico: principal?.nome || undefined,
       concentracao: principal?.concentracao || undefined,
       cas_componentes: resto.length > 0 ? resto : undefined,
+      _fontes: novasFontes,
     });
   };
 
@@ -106,22 +208,30 @@ export default function FispqReview({
 
   return (
     <div className="space-y-4">
-      {/* Indicador de confiança */}
+      {/* Indicador de confiança + legenda de origem por campo */}
       <div className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${info.cor}`}>
         {info.icon}
-        <div>
+        <div className="flex-1">
           <p className="font-semibold">
             Dados extraídos da FISPQ — confiança {dados.confianca.toUpperCase()}
           </p>
           <p className="mt-0.5 text-xs">{info.texto}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] text-gray-600">
+            <span className="font-medium">Origem dos valores:</span>
+            <FonteBadge fonte="base" />
+            <FonteBadge fonte="parser" />
+            <FonteBadge fonte="ia" />
+            <FonteBadge fonte="manual" />
+          </div>
         </div>
       </div>
 
       {/* Dados gerais do produto (1 por análise) */}
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
-          <label className={lblCls}>
+          <label className={`${lblCls} flex items-center gap-1.5`}>
             Nome do Produto <span className="text-red-alert">*</span>
+            <FonteBadge fonte={fontes.nome_produto} />
           </label>
           <input
             type="text"
@@ -134,7 +244,10 @@ export default function FispqReview({
         </div>
 
         <div>
-          <label className={lblCls}>Fórmula Química (do produto)</label>
+          <label className={`${lblCls} flex items-center gap-1.5`}>
+            Fórmula Química (do produto)
+            <FonteBadge fonte={fontes.formula_quimica} />
+          </label>
           <input
             type="text"
             value={dados.formula_quimica ?? ""}
@@ -146,7 +259,10 @@ export default function FispqReview({
         </div>
 
         <div>
-          <label className={lblCls}>Forma Física</label>
+          <label className={`${lblCls} flex items-center gap-1.5`}>
+            Forma Física
+            <FonteBadge fonte={fontes.forma_fisica} />
+          </label>
           <select
             value={dados.forma_fisica ?? ""}
             onChange={(e) => patch("forma_fisica", e.target.value || undefined)}
@@ -165,7 +281,10 @@ export default function FispqReview({
         </div>
 
         <div>
-          <label className={lblCls}>Fabricante</label>
+          <label className={`${lblCls} flex items-center gap-1.5`}>
+            Fabricante
+            <FonteBadge fonte={fontes.fabricante} />
+          </label>
           <input
             type="text"
             value={dados.fabricante ?? ""}
@@ -213,16 +332,21 @@ export default function FispqReview({
                   }
                 >
                   <td className="px-2 py-1.5">
-                    <input
-                      type="text"
-                      value={c.nome ?? ""}
-                      onChange={(e) =>
-                        setComponente(idx, { nome: e.target.value || undefined })
-                      }
-                      className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none"
-                      placeholder={idx === 0 ? "Ex: Tolueno" : ""}
-                      disabled={disabled}
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={c.nome ?? ""}
+                        onChange={(e) =>
+                          setComponente(idx, {
+                            nome: e.target.value || undefined,
+                          })
+                        }
+                        className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none"
+                        placeholder={idx === 0 ? "Ex: Tolueno" : ""}
+                        disabled={disabled}
+                      />
+                      <FonteBadge fonte={c.fonte_nome} />
+                    </div>
                   </td>
                   <td className="px-2 py-1.5">
                     <input
