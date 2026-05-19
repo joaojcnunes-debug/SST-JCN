@@ -236,13 +236,12 @@ function extrairConcentracao(target: string): string | undefined {
     /(\d{1,3}(?:[,.]\d+)?\s*[-–]\s*\d{1,3}(?:[,.]\d+)?\s*%)/
   );
   if (!m) {
-    // Padrão 2: range SEM `%` mas com decimal em AMBOS os números
-    // (ex: "21,750-36,250", "3,150 - 5,250"). Exigir decimal evita
-    // capturar segmentos de CE/CAS residuais como "200-578" que NÃO
-    // têm vírgula. Concentrações ABNT vêm com decimal separator quase
-    // sempre — se for inteiro puro sem %, é provável CAS/CE/REACH.
+    // Padrão 2: range SEM `%` mas com decimal em AMBOS os números.
+    // `\d{1,4}` no decimal limita capacidade da regex, e `(?!\d)` no
+    // final impede capturar concatenação tipo "21,750-36,25021,000"
+    // como se fosse uma única string "21,750-36,25021".
     m = limpa.match(
-      /(\d{1,3}[,.]\d+\s*[-–]\s*\d{1,3}[,.]\d+)/
+      /(\d{1,3}[,.]\d{1,4}\s*[-–]\s*\d{1,3}[,.]\d{1,4})(?!\d)/
     );
   }
   if (!m) {
@@ -255,6 +254,50 @@ function extrairConcentracao(target: string): string | undefined {
   // (cabeçalho da coluna ABNT diz `(%)`).
   if (!val.includes("%")) val = val + "%";
   return val;
+}
+
+/**
+ * Extrai TODAS as concentrações encontradas no texto, na ORDEM em
+ * que aparecem. Usado como fallback column-major: se a seção 3 do PDF
+ * tem layout em coluna (todos os CAS empilhados, depois todas as
+ * concentrações), o lookup ±N por linha não encontra. Aqui pegamos a
+ * lista completa e pareamos por índice com os componentes.
+ */
+function extrairTodasConcentracoes(texto: string): string[] {
+  // Strippa CAS e CE primeiro pra evitar falsos positivos
+  const limpa = texto
+    .replace(/\b\d{2,7}-\d{2}-\d\b/g, " ")
+    .replace(/\b\d{3}-\d{3}-\d\b/g, " ");
+  const resultados: string[] = [];
+  // Padrão 1: range com `%`
+  const padraoComPercent =
+    /\d{1,3}(?:[,.]\d+)?\s*[-–]\s*\d{1,3}(?:[,.]\d+)?\s*%/g;
+  // Padrão 2: range com decimal em ambos
+  const padraoDecimal =
+    /\d{1,3}[,.]\d{1,4}\s*[-–]\s*\d{1,3}[,.]\d{1,4}(?!\d)/g;
+
+  // Coleta todos os matches com posição pra ordenar depois
+  const itens: Array<{ idx: number; val: string }> = [];
+  for (const m of limpa.matchAll(padraoComPercent)) {
+    if (m.index !== undefined) {
+      itens.push({ idx: m.index, val: m[0].replace(/\s+/g, "") });
+    }
+  }
+  // Marca regiões já cobertas pra padrão 2 não duplicar
+  const cobertos = new Set<number>();
+  for (const it of itens) {
+    for (let k = it.idx; k < it.idx + it.val.length; k++) cobertos.add(k);
+  }
+  for (const m of limpa.matchAll(padraoDecimal)) {
+    if (m.index === undefined) continue;
+    if (cobertos.has(m.index)) continue;
+    let val = m[0].replace(/\s+/g, "");
+    if (!val.includes("%")) val = val + "%";
+    itens.push({ idx: m.index, val });
+  }
+  itens.sort((a, b) => a.idx - b.idx);
+  for (const it of itens) resultados.push(it.val);
+  return resultados;
 }
 
 /**
@@ -353,12 +396,14 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
       }
     }
 
-    // ----- Procura concentração (na linha atual + ±2) -----
+    // ----- Procura concentração (na linha atual + ±5) -----
     // Aceita: "60%", "10-15%", "21,750 - 36,250" (sem % — comum em tabelas
-    // ABNT onde o cabeçalho da coluna já diz "(%)"). Remove CAS da linha
-    // antes de buscar pra evitar "100-41-4" virar range "100-41".
+    // ABNT onde o cabeçalho da coluna já diz "(%)"). Remove CAS e CE da
+    // linha antes de buscar pra evitar falsos positivos. Range maior
+    // (±5) cobre layout em coluna onde pdfjs separa CAS e concentração
+    // em mais linhas.
     let concentracao: string | undefined;
-    for (let off = 0; off <= 2 && !concentracao; off++) {
+    for (let off = 0; off <= 5 && !concentracao; off++) {
       for (const dir of [0, -1, 1]) {
         const idx = i + dir * off;
         if (idx < 0 || idx >= linhas.length) continue;
@@ -406,6 +451,24 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
       unicos.push(c);
     }
   }
+
+  // ----- Fallback column-major pra concentração -----
+  // Se sobraram componentes sem concentração e a quantidade de concs
+  // encontradas globalmente na seção 3 bate com a quantidade de
+  // componentes, pareia por índice (assume tabela com 1 conc por
+  // componente, na mesma ordem). Cobre layout pdfjs em coluna.
+  const semConc = unicos.filter((c) => !c.concentracao).length;
+  if (semConc > 0) {
+    const todasConcs = extrairTodasConcentracoes(secao3);
+    if (todasConcs.length === unicos.length) {
+      for (let k = 0; k < unicos.length; k++) {
+        if (!unicos[k].concentracao && todasConcs[k]) {
+          unicos[k].concentracao = todasConcs[k];
+        }
+      }
+    }
+  }
+
   return unicos.slice(0, 12);
 }
 
