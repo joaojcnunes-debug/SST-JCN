@@ -548,6 +548,10 @@ export interface ConclusaoRapidaQuimico {
   como_medir?: string;
   limite_exposicao?: string;
   resumo_tecnico?: string;
+  /** Origem da análise: "template" = gerada client-side a partir da base
+   *  Chabra (sem IA); "ia" = chamada à edge function Groq. Análises antigas
+   *  sem essa marca são tratadas como "ia" pela UI (fallback). */
+  _fonte?: "template" | "ia";
 }
 
 export type ModoAnaliseQuimico = "PDF" | "Manual";

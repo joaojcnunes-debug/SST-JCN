@@ -12,6 +12,7 @@ import type {
   ComponenteQuimico,
 } from "@/lib/supabase/types";
 import type { AgenteReferencia } from "@/lib/quimicos/base_referencia";
+import { gerarConclusaoTemplate } from "@/lib/quimicos/gerarTemplate";
 
 /**
  * Fallback de extração de campos via IA — chama a edge function
@@ -139,11 +140,35 @@ export interface GerarAnaliseInput {
 }
 
 /**
+ * Avalia se TODOS os componentes submetidos estão catalogados na base
+ * Chabra. Quando sim, podemos pular a IA e gerar a conclusão via
+ * template client-side (campos regulatórios da base + prosa templatizada
+ * por forma física/flags).
+ */
+function todosCatalogados(
+  componentes: ComponenteQuimico[] | null | undefined,
+  catalogados: AgenteReferencia[] | null | undefined
+): boolean {
+  if (!componentes || componentes.length === 0) return false;
+  if (!catalogados || catalogados.length === 0) return false;
+  const setCatalogados = new Set(
+    catalogados
+      .map((d) => d.cas)
+      .filter((c): c is string => !!c)
+  );
+  return componentes.every((c) => !!c.numero_cas && setCatalogados.has(c.numero_cas));
+}
+
+/**
  * Mutation que:
- *  1. Chama a Edge Function `analisar-quimico-ia` com os dados do produto.
- *  2. Recebe `{ resultado, conclusao }` da IA.
- *  3. Persiste em `analises_quimicos` (com vínculo de empresa/usuário).
+ *  1. SE todos os componentes catalogados → gera Conclusão via TEMPLATE
+ *     client-side (sem chamada IA — economiza tokens, é instantâneo).
+ *  2. SENÃO chama a Edge Function `analisar-quimico-ia` com os dados.
+ *  3. Persiste em `analises_quimicos`.
  *  4. Devolve o registro recém-criado.
+ *
+ * O resultado_texto carrega um JSON serializado da conclusao + um marcador
+ * `_fonte` ("template" ou "ia") que a UI usa pra mostrar badge de origem.
  */
 export function useGerarAnaliseQuimico() {
   const qc = useQueryClient();
@@ -153,10 +178,6 @@ export function useGerarAnaliseQuimico() {
     mutationFn: async (input: GerarAnaliseInput): Promise<AnaliseQuimico> => {
       const supabase = createSupabaseBrowserClient();
 
-      // 1) Chama IA — sempre manda os dados do produto como "dados_manuais"
-      // (mesmo no modo PDF, porque o usuário revisou o que o parser extraiu).
-      // No modo PDF, anexamos um `contexto_fispq` curto com os snippets das
-      // seções 2/8/11. Isso é MUITO mais leve que mandar o PDF inteiro.
       const dadosProduto = {
         nome_produto: input.nome_produto ?? null,
         nome_quimico: input.nome_quimico ?? null,
@@ -165,27 +186,57 @@ export function useGerarAnaliseQuimico() {
         forma_fisica: input.forma_fisica ?? null,
         concentracao: input.concentracao ?? null,
       };
-      const payloadIA = {
-        modo: input.modo,
-        dados_manuais: dadosProduto,
-        contexto_fispq: input.contexto_fispq ?? null,
-        dados_base: input.dados_base ?? null,
-        dados_base_componentes: input.dados_base_componentes ?? null,
-        componentes: input.componentes ?? null,
-        condicoes_uso: input.condicoes_uso ?? null,
-        empresa_nome: input.empresa_nome ?? null,
-      };
 
-      const { data: iaData, error: iaErr } = await supabase.functions.invoke(
-        "analisar-quimico-ia",
-        { body: payloadIA }
-      );
-      if (iaErr) throw iaErr;
-      const iaResult = (iaData as {
-        data?: { resultado?: string; conclusao?: ConclusaoRapidaQuimico | null };
-      } | null)?.data;
-      if (!iaResult?.resultado) {
-        throw new Error("Resposta vazia da IA — tente novamente em alguns segundos");
+      // ===== Decisão template vs IA =====
+      const usarTemplate =
+        !!input.dados_base &&
+        !!input.dados_base_componentes &&
+        input.dados_base_componentes.length > 0 &&
+        todosCatalogados(input.componentes, input.dados_base_componentes);
+
+      let conclusao: ConclusaoRapidaQuimico | null = null;
+      let resultadoTexto = "";
+
+      if (usarTemplate) {
+        // === Caminho TEMPLATE: gera client-side, zero token na IA ===
+        conclusao = {
+          ...gerarConclusaoTemplate({
+            dadosBase: input.dados_base!,
+            componentes: input.dados_base_componentes!,
+            formaFisica: input.forma_fisica,
+            condicoesUso: input.condicoes_uso,
+          }),
+          _fonte: "template",
+        };
+        resultadoTexto = JSON.stringify(conclusao, null, 2);
+      } else {
+        // === Caminho IA: chama edge function como antes ===
+        const payloadIA = {
+          modo: input.modo,
+          dados_manuais: dadosProduto,
+          contexto_fispq: input.contexto_fispq ?? null,
+          dados_base: input.dados_base ?? null,
+          dados_base_componentes: input.dados_base_componentes ?? null,
+          componentes: input.componentes ?? null,
+          condicoes_uso: input.condicoes_uso ?? null,
+          empresa_nome: input.empresa_nome ?? null,
+        };
+
+        const { data: iaData, error: iaErr } = await supabase.functions.invoke(
+          "analisar-quimico-ia",
+          { body: payloadIA }
+        );
+        if (iaErr) throw iaErr;
+        const iaResult = (iaData as {
+          data?: { resultado?: string; conclusao?: ConclusaoRapidaQuimico | null };
+        } | null)?.data;
+        if (!iaResult?.resultado) {
+          throw new Error("Resposta vazia da IA — tente novamente em alguns segundos");
+        }
+        conclusao = iaResult.conclusao
+          ? { ...iaResult.conclusao, _fonte: "ia" }
+          : null;
+        resultadoTexto = iaResult.resultado;
       }
 
       // 2) Persiste em analises_quimicos
@@ -206,8 +257,8 @@ export function useGerarAnaliseQuimico() {
             ? (input.texto_documento ?? "").slice(0, 60000)
             : null,
         condicoes_uso: input.condicoes_uso ?? null,
-        resultado_texto: iaResult.resultado,
-        conclusao_rapida: iaResult.conclusao ?? null,
+        resultado_texto: resultadoTexto,
+        conclusao_rapida: conclusao,
         usuario_email: user?.email ?? null,
         usuario_nome: user?.nome ?? null,
         created_at: new Date().toISOString(),

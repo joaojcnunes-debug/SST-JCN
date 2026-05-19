@@ -12,6 +12,8 @@ import {
   Siren,
   Microscope,
   Ruler,
+  Database,
+  Sparkles,
 } from "lucide-react";
 import type { ConclusaoRapidaQuimico } from "@/lib/supabase/types";
 
@@ -113,23 +115,42 @@ export default function ConclusaoRapidaCard({
     );
   }
 
+  const fonteTemplate = conclusao._fonte === "template";
+
   return (
     <div className="space-y-4">
-      {/* Aviso anti-alucinação */}
-      <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
-        <AlertTriangle className="size-4 shrink-0 mt-0.5" />
-        <div>
-          <p className="font-semibold">
-            Resultado gerado por IA — revisão obrigatória antes de uso oficial
-          </p>
-          <p className="mt-0.5">
-            Códigos eSocial, Decreto 3.048, GFIP e classificações IARC devem
-            ser confirmados nas tabelas oficiais vigentes antes de emissão de
-            PPP/LTCAT/eSocial S-2240. A IA pode marcar como{" "}
-            <em>CONSULTAR_TABELA_OFICIAL</em> quando não tiver certeza.
-          </p>
+      {/* Aviso de origem + revisão */}
+      {fonteTemplate ? (
+        <div className="flex items-start gap-2 rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-xs text-emerald-900">
+          <Database className="size-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">
+              Análise gerada a partir da Base de Referência Chabra (sem IA)
+            </p>
+            <p className="mt-0.5">
+              Todos os componentes deste produto estão catalogados — os campos
+              regulatórios vêm direto da base oficial e a prosa é templatizada
+              por forma física. Análise determinística e instantânea. Mesmo
+              assim, revise antes de emissão de PPP/LTCAT/eSocial S-2240.
+            </p>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+          <Sparkles className="size-4 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold">
+              Resultado gerado por IA — revisão obrigatória antes de uso oficial
+            </p>
+            <p className="mt-0.5">
+              Códigos eSocial, Decreto 3.048, GFIP e classificações IARC devem
+              ser confirmados nas tabelas oficiais vigentes antes de emissão de
+              PPP/LTCAT/eSocial S-2240. A IA pode marcar como{" "}
+              <em>CONSULTAR_TABELA_OFICIAL</em> quando não tiver certeza.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Grid de badges */}
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 lg:grid-cols-5">
