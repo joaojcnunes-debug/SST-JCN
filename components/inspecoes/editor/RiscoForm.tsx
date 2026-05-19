@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { Plus, Trash2, Upload, Pencil, Check, X } from "lucide-react";
+import { Plus, Trash2, Upload, Pencil, Check, X, ChevronDown } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import SetorMultiSelect from "./SetorMultiSelect";
@@ -2364,6 +2364,7 @@ function MedidaBloco({
   const [novo, setNovo] = useState("");
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
+  const [listaAberta, setListaAberta] = useState(false);
   const datalistId = `cat-medida-${ordem}`;
 
   function handleAdd() {
@@ -2413,84 +2414,103 @@ function MedidaBloco({
         </span>
       </div>
 
-      {/* Lista de itens já adicionados ao risco (clean). Sugestões do
-          catálogo aparecem como autocomplete nativo (datalist) no
-          input abaixo — "lista suspensa" que abre ao clicar/digitar. */}
+      {/* Lista de itens já adicionados — oculta por padrão pra
+          deixar a UI limpa. Pequeno botão "Ver itens (N)" expande
+          quando o usuário precisa editar/remover. Adicionar novos é
+          feito pelo input/datalist abaixo. */}
       {items.length > 0 && (
-        <ul className="mb-2 divide-y divide-gray-200 overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
-          {items.map((it, idx) => {
-            const editando = editingIdx === idx;
-            const doCatalogo = sugestoes.includes(it);
-            return (
-              <li key={idx} className="flex items-center gap-2 px-3 py-2">
-                {editando ? (
-                  <>
-                    <input
-                      type="text"
-                      value={editText}
-                      onChange={(ev) => setEditText(ev.target.value)}
-                      className="flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
-                      autoFocus
-                      onKeyDown={(ev) => {
-                        if (ev.key === "Enter") {
-                          ev.preventDefault();
-                          salvarEdit(idx);
-                        }
-                        if (ev.key === "Escape") {
-                          ev.preventDefault();
-                          setEditingIdx(null);
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => salvarEdit(idx)}
-                      className="rounded p-1 text-verde-primary hover:bg-verde-light"
-                      title="Salvar"
-                    >
-                      <Check className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setEditingIdx(null)}
-                      className="rounded p-1 text-gray-400 hover:bg-gray-100"
-                      title="Cancelar"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 text-sm text-gray-900">{it}</span>
-                    {doCatalogo && (
-                      <span
-                        className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${cfg.tag}`}
-                      >
-                        Catálogo
-                      </span>
+        <>
+          <button
+            type="button"
+            onClick={() => setListaAberta((a) => !a)}
+            className="mb-2 inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-gray-800"
+          >
+            <ChevronDown
+              className={`size-3.5 transition-transform ${
+                listaAberta ? "rotate-180" : ""
+              }`}
+            />
+            {listaAberta ? "Ocultar" : "Ver"} itens adicionados ({items.length})
+          </button>
+          {listaAberta && (
+            <ul className="mb-2 divide-y divide-gray-200 overflow-hidden rounded-md border border-gray-200 bg-white shadow-sm">
+              {items.map((it, idx) => {
+                const editando = editingIdx === idx;
+                const doCatalogo = sugestoes.includes(it);
+                return (
+                  <li key={idx} className="flex items-center gap-2 px-3 py-2">
+                    {editando ? (
+                      <>
+                        <input
+                          type="text"
+                          value={editText}
+                          onChange={(ev) => setEditText(ev.target.value)}
+                          className="flex-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                          autoFocus
+                          onKeyDown={(ev) => {
+                            if (ev.key === "Enter") {
+                              ev.preventDefault();
+                              salvarEdit(idx);
+                            }
+                            if (ev.key === "Escape") {
+                              ev.preventDefault();
+                              setEditingIdx(null);
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => salvarEdit(idx)}
+                          className="rounded p-1 text-verde-primary hover:bg-verde-light"
+                          title="Salvar"
+                        >
+                          <Check className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingIdx(null)}
+                          className="rounded p-1 text-gray-400 hover:bg-gray-100"
+                          title="Cancelar"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1 text-sm text-gray-900">
+                          {it}
+                        </span>
+                        {doCatalogo && (
+                          <span
+                            className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${cfg.tag}`}
+                          >
+                            Catálogo
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => abrirEdit(idx, it)}
+                          className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                          title="Editar"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDel(idx)}
+                          className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                          title="Remover"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => abrirEdit(idx, it)}
-                      className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
-                      title="Editar"
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDel(idx)}
-                      className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
-                      title="Remover"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
       )}
 
       <div className="grid grid-cols-[1fr_auto] items-center gap-2">
