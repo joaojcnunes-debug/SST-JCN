@@ -17,6 +17,7 @@ import {
   Files,
   FileEdit,
   Globe,
+  CheckCircle2,
 } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
@@ -66,6 +67,11 @@ function sectionsRelatorio(idRelatorio: string): NavSection[] {
         { href: `${base}/escala`, label: "Escala", icon: ListChecks },
         { href: `${base}/resumo`, label: "Resumo por Tópico", icon: Layers },
         { href: `${base}/analise`, label: "Análise e Avaliação", icon: FileText },
+        {
+          href: `${base}/conclusao-geral`,
+          label: "Conclusão Geral",
+          icon: CheckCircle2,
+        },
       ],
     },
     {

@@ -26,6 +26,8 @@ export interface DrpsRelatorio {
   medidas_por_setor: Record<string, string> | null;
   /** Mapa setor -> texto de conclusao manuscrita pelo psicologo. */
   conclusoes_por_setor: Record<string, string> | null;
+  /** Conclusão técnica consolidada do relatório (todos os setores juntos). */
+  conclusao_geral: string | null;
   usuario_email: string | null;
   created_at: string;
   updated_at: string | null;
