@@ -17,6 +17,7 @@ import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import DrpsSumarioPrint from "@/components/drps/DrpsSumarioPrint";
 import DrpsRelatorioExtrasPrint from "@/components/drps/DrpsRelatorioExtrasPrint";
+import DrpsGestaoResumoPrint from "@/components/drps/DrpsGestaoResumoPrint";
 import { useDrpsStore } from "@/lib/drps/store";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
@@ -645,6 +646,9 @@ export default function AnalisePage({
               valoresVars,
               "drps-capitulos-apos-conclusao"
             )}
+
+            {/* Resumo executivo da gestão (página única antes do detalhamento) */}
+            <DrpsGestaoResumoPrint idRelatorio={idRelatorio} />
 
             {/* Extras: Medidas / Monitoramento / Revisão */}
             <DrpsRelatorioExtrasPrint idRelatorio={idRelatorio} />

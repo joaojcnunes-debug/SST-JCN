@@ -8,43 +8,10 @@ import {
   useDrpsSalvarRevisao,
 } from "@/lib/hooks/useDrps";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
-
-const ACOES_OBRIGATORIAS: Array<{ id: string; texto: string }> = [
-  {
-    id: "reuniao_mensal",
-    texto:
-      "Reunião mensal com gestão e RH para análise dos indicadores psicossociais",
-  },
-  {
-    id: "reaplicar_drps",
-    texto: "Reaplicação do DRPS (conforme prazo definido no monitoramento)",
-  },
-  {
-    id: "auditoria_interna",
-    texto: "Auditoria interna do sistema de gestão psicossocial",
-  },
-  {
-    id: "treinamento_lideres",
-    texto:
-      "Treinamento de líderes, gestores e RH sobre saúde mental no trabalho",
-  },
-  {
-    id: "atualizar_pgr",
-    texto: "Atualização do inventário de riscos psicossociais no PGR",
-  },
-];
-
-const EQUIPE: Array<{ id: string; texto: string }> = [
-  { id: "tst", texto: "Técnico de Segurança do Trabalho (TST)" },
-  { id: "engseg", texto: "Engenheiro de Segurança" },
-  { id: "medtrab", texto: "Médico do Trabalho" },
-  { id: "enftrab", texto: "Enfermagem do Trabalho" },
-  { id: "rh", texto: "Recursos Humanos (RH)" },
-  { id: "compras", texto: "Compras (para recursos de programas)" },
-  { id: "cipa", texto: "CIPA" },
-  { id: "sipat", texto: "SIPAT" },
-  { id: "ergonomista", texto: "Ergonomista" },
-];
+import {
+  ACOES_OBRIGATORIAS,
+  EQUIPE_REVISAO,
+} from "@/lib/drps/gestao";
 
 export default function RevisaoPage({
   params,
@@ -145,7 +112,7 @@ export default function RevisaoPage({
           Equipe multidisciplinar envolvida
         </h2>
         <div className="grid gap-2 sm:grid-cols-2">
-          {EQUIPE.map((m) => (
+          {EQUIPE_REVISAO.map((m) => (
             <label
               key={m.id}
               className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-gray-50"

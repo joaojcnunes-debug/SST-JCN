@@ -15,6 +15,10 @@ import {
   listarSetores,
 } from "@/lib/drps/calculos";
 import { MEDIDAS_CONTROLE, MESES, TOPICOS } from "@/lib/drps/topicos";
+import {
+  ACOES_OBRIGATORIAS as ACOES_REVISAO,
+  EQUIPE_REVISAO,
+} from "@/lib/drps/gestao";
 import type {
   DrpsProbabilidade,
   NivelMatriz,
@@ -295,47 +299,6 @@ export default function DrpsRelatorioExtrasPrint({
     </div>
   );
 }
-
-// ============================================================
-// Constantes inline (espelham as do revisao/page.tsx pra autonomia do print)
-// ============================================================
-
-const ACOES_REVISAO: Array<{ id: string; texto: string }> = [
-  {
-    id: "reuniao_mensal",
-    texto:
-      "Reunião mensal com gestão e RH para análise dos indicadores psicossociais",
-  },
-  {
-    id: "reaplicar_drps",
-    texto: "Reaplicação do DRPS (conforme prazo definido no monitoramento)",
-  },
-  {
-    id: "auditoria_interna",
-    texto: "Auditoria interna do sistema de gestão psicossocial",
-  },
-  {
-    id: "treinamento_lideres",
-    texto:
-      "Treinamento de líderes, gestores e RH sobre saúde mental no trabalho",
-  },
-  {
-    id: "atualizar_pgr",
-    texto: "Atualização do inventário de riscos psicossociais no PGR",
-  },
-];
-
-const EQUIPE_REVISAO: Array<{ id: string; texto: string }> = [
-  { id: "tst", texto: "Técnico de Segurança do Trabalho (TST)" },
-  { id: "engseg", texto: "Engenheiro de Segurança" },
-  { id: "medtrab", texto: "Médico do Trabalho" },
-  { id: "enftrab", texto: "Enfermagem do Trabalho" },
-  { id: "rh", texto: "Recursos Humanos (RH)" },
-  { id: "compras", texto: "Compras (para recursos de programas)" },
-  { id: "cipa", texto: "CIPA" },
-  { id: "sipat", texto: "SIPAT" },
-  { id: "ergonomista", texto: "Ergonomista" },
-];
 
 function corMatriz(m: NivelMatriz): string {
   switch (m) {

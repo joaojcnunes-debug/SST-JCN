@@ -18,6 +18,7 @@ import {
   FileEdit,
   Globe,
   CheckCircle2,
+  Gauge,
 } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
@@ -77,6 +78,7 @@ function sectionsRelatorio(idRelatorio: string): NavSection[] {
     {
       label: "Gestão",
       items: [
+        { href: `${base}/gestao`, label: "Painel de Gestão", icon: Gauge },
         { href: `${base}/medidas`, label: "Medidas de Controle", icon: ClipboardCheck },
         { href: `${base}/monitoramento`, label: "Monitoramento", icon: LineChart },
         { href: `${base}/revisao`, label: "Revisão e Melhoria", icon: ListTodo },
