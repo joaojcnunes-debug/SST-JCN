@@ -79,7 +79,7 @@ const CARDS: HubCardCfg[] = [
     modulo: "inventario_maquinas",
     href: "/inventario-maquinas",
     title: "Inventário de Equipamentos",
-    description: "Máquinas e equipamentos internos da Chabra",
+    description: "Patrimônio Chabra e máquinas das empresas clientes",
     icon: <Boxes className="size-12" />,
     accent: "#2563EB",
   },
@@ -150,6 +150,13 @@ const QUICK_ACTIONS: QuickActionCfg[] = [
     label: "Iniciar DRPS",
     icon: <Brain className="size-4" />,
     accent: "#7C3AED",
+  },
+  {
+    modulo: "inventario_maquinas",
+    href: "/inventario-maquinas/nova",
+    label: "Nova Máquina",
+    icon: <Boxes className="size-4" />,
+    accent: "#2563EB",
   },
 ];
 
@@ -405,8 +412,10 @@ function statsPorModulo(
       return data.nao_conformidade;
     case "analise_quimicos":
       return data.analise_quimicos;
+    case "inventario_maquinas":
+      return data.inventario_maquinas;
     default:
-      return undefined; // Apreciação e Inventário ainda sem dados
+      return undefined; // Apreciação ainda sem dados
   }
 }
 

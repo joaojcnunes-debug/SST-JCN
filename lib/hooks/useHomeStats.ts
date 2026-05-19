@@ -8,6 +8,7 @@ import type {
   RelatorioConformidade,
   RelatorioNaoConformidade,
   AnaliseQuimico,
+  Maquina,
   ModuloPermitido,
 } from "@/lib/supabase/types";
 import type { DrpsRelatorio } from "@/lib/drps/types";
@@ -40,6 +41,7 @@ export interface HomeStatsData {
   conformidade?: ModuloStats;
   nao_conformidade?: ModuloStats;
   analise_quimicos?: ModuloStats;
+  inventario_maquinas?: ModuloStats;
   atividadeRecente: AtividadeItem[];
   isLoading: boolean;
 }
@@ -205,12 +207,35 @@ export function useHomeStats(): HomeStatsData {
     },
   });
 
+  // === Inventário de Máquinas ===
+  const maquinasQ = useQuery({
+    queryKey: ["home-stats-inventario-maquinas", empresasVinculadas],
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("inventario_maquinas")
+        .select("id_maquina, id_empresa, nome, status, created_at, updated_at")
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .limit(200);
+      if (empresasVinculadas) {
+        // Inclui máquinas da empresa OU patrimônio Chabra (id_empresa null)
+        q = q.or(
+          `id_empresa.in.(${empresasVinculadas.join(",")}),id_empresa.is.null`
+        );
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as Maquina[];
+    },
+  });
+
   const isLoading =
     inspecoesQ.isLoading ||
     conformidadeQ.isLoading ||
     ncQ.isLoading ||
     quimicosQ.isLoading ||
-    psicoQ.isLoading;
+    psicoQ.isLoading ||
+    maquinasQ.isLoading;
 
   // === Stats por módulo ===
   const painel = inspecoesQ.data ? calcStats(inspecoesQ.data) : undefined;
@@ -218,6 +243,14 @@ export function useHomeStats(): HomeStatsData {
   const nao_conformidade = ncQ.data ? calcStats(ncQ.data) : undefined;
   const analise_quimicos = quimicosQ.data ? calcStats(quimicosQ.data) : undefined;
   const psicossocial = psicoQ.data ? calcStats(psicoQ.data) : undefined;
+  // Inventário: "pendente" = máquinas em manutenção (precisam de atenção)
+  const inventario_maquinas: ModuloStats | undefined = maquinasQ.data
+    ? {
+        total: maquinasQ.data.length,
+        pendente: maquinasQ.data.filter((m) => m.status === "MANUTENCAO").length,
+        recente: maquinasQ.data.filter((m) => ehRecente(dataRow(m))).length,
+      }
+    : undefined;
 
   // === Atividade Recente (top 8 do agregado) ===
   const atividade: AtividadeItem[] = [];
@@ -269,6 +302,15 @@ export function useHomeStats(): HomeStatsData {
       data: dataRow(r),
     });
   }
+  for (const r of maquinasQ.data ?? []) {
+    atividade.push({
+      modulo: "inventario_maquinas",
+      titulo: r.nome,
+      href: `/inventario-maquinas/${r.id_maquina}`,
+      status: r.status,
+      data: dataRow(r),
+    });
+  }
 
   atividade.sort((a, b) => b.data.localeCompare(a.data));
   const atividadeRecente = atividade.slice(0, 8);
@@ -279,6 +321,7 @@ export function useHomeStats(): HomeStatsData {
     conformidade,
     nao_conformidade,
     analise_quimicos,
+    inventario_maquinas,
     atividadeRecente,
     isLoading,
   };

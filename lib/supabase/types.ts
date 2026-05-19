@@ -578,6 +578,40 @@ export interface AnaliseQuimico {
 }
 
 // =====================================================
+// Módulo Inventário de Máquinas e Equipamentos
+// =====================================================
+
+export type StatusMaquina = "OPERANTE" | "MANUTENCAO" | "INATIVA" | "BAIXADA";
+
+export const STATUS_MAQUINA_LABELS: Record<StatusMaquina, string> = {
+  OPERANTE: "Operante",
+  MANUTENCAO: "Em manutenção",
+  INATIVA: "Inativa",
+  BAIXADA: "Baixada",
+};
+
+export interface Maquina {
+  id_maquina: string;
+  /** NULL = patrimônio interno da Chabra; preenchido = máquina de cliente. */
+  id_empresa: string | null;
+  nome: string;
+  marca: string | null;
+  modelo: string | null;
+  numero_serie: string | null;
+  ano_fabricacao: number | null;
+  numero_patrimonio: string | null;
+  localizacao: string | null;
+  status: StatusMaquina;
+  observacoes: string | null;
+  foto_url: string | null;
+  foto_storage_path: string | null;
+  usuario_email: string | null;
+  usuario_nome: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+// =====================================================
 // Módulo Relatório de Conformidade NR
 // =====================================================
 
@@ -731,6 +765,7 @@ export interface Database {
       triagens_opcao: TableShape<TriagemOpcao>;
       triagens_modelo: TableShape<TriagemModeloRel>;
       analises_quimicos: TableShape<AnaliseQuimico>;
+      inventario_maquinas: TableShape<Maquina>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
