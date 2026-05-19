@@ -13,6 +13,36 @@ import type {
 } from "@/lib/supabase/types";
 import type { AgenteReferencia } from "@/lib/quimicos/base_referencia";
 
+/**
+ * Fallback de extração de campos via IA — chama a edge function
+ * `extrair-campos-fispq` pra preencher lacunas do parser regex local.
+ *
+ * Uso: quando parser + base Chabra falharam em extrair nome_produto,
+ * fabricante ou forma_fisica de uma FISPQ. Manda um snippet curto + a
+ * lista de campos faltantes; recebe valores extraídos (ou null se a IA
+ * também não conseguir). 0-1 chamada por upload de PDF.
+ */
+export type CampoFispqFaltante = "nome_produto" | "fabricante" | "forma_fisica";
+
+export interface CamposFispqExtraidos {
+  nome_produto?: string | null;
+  fabricante?: string | null;
+  forma_fisica?: string | null;
+}
+
+export async function extrairCamposFispqViaIA(input: {
+  snippet: string;
+  campos_faltantes: CampoFispqFaltante[];
+}): Promise<CamposFispqExtraidos> {
+  const supabase = createSupabaseBrowserClient();
+  const { data, error } = await supabase.functions.invoke(
+    "extrair-campos-fispq",
+    { body: input }
+  );
+  if (error) throw error;
+  return (data ?? {}) as CamposFispqExtraidos;
+}
+
 async function fetchLista(empresasVinculadas: string[] | null) {
   const supabase = createSupabaseBrowserClient();
   let q = supabase

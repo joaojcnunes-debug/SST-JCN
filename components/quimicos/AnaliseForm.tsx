@@ -18,7 +18,11 @@ import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import PdfDropzone, { type PdfArquivo } from "./PdfDropzone";
 import FispqReview from "./FispqReview";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
-import { useGerarAnaliseQuimico } from "@/lib/hooks/useAnalisesQuimicos";
+import {
+  useGerarAnaliseQuimico,
+  extrairCamposFispqViaIA,
+  type CampoFispqFaltante,
+} from "@/lib/hooks/useAnalisesQuimicos";
 import { useBaseReferenciaQuimicosMerged } from "@/lib/hooks/useBaseReferenciaQuimicos";
 import { montarContextoFispq, type FispqExtracted } from "@/lib/fispq/parser";
 import {
@@ -203,6 +207,76 @@ export default function AnaliseForm() {
       });
     }
   }, [fispqDados, baseRef]);
+
+  // Fallback IA: depois do enrichment via base, se ainda faltar
+  // nome_produto / fabricante / forma_fisica, manda um snippet curto pra
+  // IA extrair só esses campos. Roda 1x por PDF (controlado por
+  // iaFallbackKeyRef pelo texto_completo).
+  const iaFallbackKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!fispqDados) return;
+    // Só dispara depois do enrichment pela base ter rodado (ou ter sido
+    // pulado por base vazia). Usa o mesmo `enrichedKeyRef` como guard.
+    if (enrichedKeyRef.current !== fispqDados.texto_completo) return;
+    if (iaFallbackKeyRef.current === fispqDados.texto_completo) return;
+
+    const faltantes: CampoFispqFaltante[] = [];
+    if (!fispqDados.nome_produto?.trim()) faltantes.push("nome_produto");
+    if (!fispqDados.fabricante?.trim()) faltantes.push("fabricante");
+    if (!fispqDados.forma_fisica?.trim()) faltantes.push("forma_fisica");
+    if (faltantes.length === 0) {
+      iaFallbackKeyRef.current = fispqDados.texto_completo;
+      return;
+    }
+
+    // Snippet enviado: primeiros 3.5kb do texto bruto (cobre seção 1, 2,
+    // início da 3 — onde os campos faltantes costumam estar). Snippets das
+    // seções 2/8/11 já estão truncados pelo parser, mas o texto completo
+    // tem mais contexto que pode ajudar.
+    const snippet = fispqDados.texto_completo.slice(0, 3500);
+
+    iaFallbackKeyRef.current = fispqDados.texto_completo; // marca antes pra não disparar 2x
+
+    extrairCamposFispqViaIA({ snippet, campos_faltantes: faltantes })
+      .then((extras) => {
+        // Atualiza só os campos que vieram preenchidos. Se a IA também
+        // não conseguiu (devolveu null), mantém vazio — usuário preenche
+        // manualmente.
+        setFispqDados((prev) => {
+          if (!prev || prev.texto_completo !== fispqDados.texto_completo) {
+            return prev; // PDF mudou no meio do caminho
+          }
+          const merged = { ...prev };
+          if (
+            faltantes.includes("nome_produto") &&
+            extras.nome_produto &&
+            !prev.nome_produto?.trim()
+          ) {
+            merged.nome_produto = extras.nome_produto;
+          }
+          if (
+            faltantes.includes("fabricante") &&
+            extras.fabricante &&
+            !prev.fabricante?.trim()
+          ) {
+            merged.fabricante = extras.fabricante;
+          }
+          if (
+            faltantes.includes("forma_fisica") &&
+            extras.forma_fisica &&
+            !prev.forma_fisica?.trim()
+          ) {
+            merged.forma_fisica = extras.forma_fisica;
+          }
+          return merged;
+        });
+      })
+      .catch((e: unknown) => {
+        // Silencioso: fallback é nice-to-have, não pode bloquear o fluxo.
+        // Loga pra debug mas não mostra toast.
+        console.warn("[fispq] fallback IA falhou:", e);
+      });
+  }, [fispqDados]);
 
   function handleSubmit() {
     // PDF mode: usa dados revisados do FispqReview
