@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Plus, ClipboardList, ChartBar } from "lucide-react";
+import { Plus, ClipboardList, ChartBar, Search } from "lucide-react";
 import { Suspense } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -75,6 +75,7 @@ function InspecoesInner() {
   const [empresaId, setEmpresaId] = useState<string | null>(empresaParam);
   const [filtro, setFiltro] = useState<Filtro>("Todos");
   const [ordem, setOrdem] = useState<Ordem>("recentes");
+  const [buscaTecnico, setBuscaTecnico] = useState("");
 
   // Mantém URL sincronizada para deep-linking
   useEffect(() => {
@@ -93,6 +94,10 @@ function InspecoesInner() {
     // Por padrão, ocultar inspeções DELETADA da lista visual.
     let arr = inspecoes.filter((i) => i.status !== "DELETADA");
     if (filtro !== "Todos") arr = arr.filter((i) => i.status === filtro);
+    if (buscaTecnico.trim()) {
+      const termo = buscaTecnico.trim().toLowerCase();
+      arr = arr.filter((i) => i.responsavel?.toLowerCase().includes(termo));
+    }
     arr.sort((a, b) => {
       if (ordem === "recentes")
         return (b.created_at ?? "").localeCompare(a.created_at ?? "");
@@ -101,12 +106,12 @@ function InspecoesInner() {
       return (b.revisao ?? 0) - (a.revisao ?? 0);
     });
     return arr;
-  }, [inspecoes, filtro, ordem]);
+  }, [inspecoes, filtro, ordem, buscaTecnico]);
 
   const pag = usePagination({
     data: lista,
     pageSize: 20,
-    resetKey: `${empresaId}|${filtro}|${ordem}`,
+    resetKey: `${empresaId}|${filtro}|${ordem}|${buscaTecnico}`,
   });
 
   const counts = useMemo(() => {
@@ -164,6 +169,19 @@ function InspecoesInner() {
       {empresaId && empresa && (
         <div className="rounded-lg border border-verde-border bg-verde-light px-4 py-2 text-sm text-verde-dark">
           Mostrando inspeções de <strong>{empresa.nome_empresa}</strong>
+        </div>
+      )}
+
+      {empresaId && (
+        <div className="relative max-w-xs">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Filtrar por técnico..."
+            value={buscaTecnico}
+            onChange={(e) => setBuscaTecnico(e.target.value)}
+            className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          />
         </div>
       )}
 
