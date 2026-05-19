@@ -22,6 +22,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import CapaEditor from "@/components/drps/CapaEditor";
+import PosicaoPdfStepper from "@/components/textos-padrao/PosicaoPdfStepper";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { CaixaTexto } from "@/lib/drps/types";
 import {
@@ -35,8 +36,6 @@ import {
   type OrientacaoPagina,
   type PosicaoPdf,
   type QuebraPagina,
-  POSICAO_PDF_LABELS,
-  POSICAO_PDF_ORDEM,
   type TextoPadraoCapitulo,
   MODULO_CONFIGS,
 } from "@/lib/textos-padrao/types";
@@ -91,6 +90,15 @@ export default function TextoPadraoEditor({ modulo }: Props) {
     salvar.mutate({ id_capitulo: cap.id_capitulo, ordem: outro.ordem });
     salvar.mutate({ id_capitulo: outro.id_capitulo, ordem: cap.ordem });
   }
+
+  // Contagem de capítulos por posição — passada pro Stepper como badge
+  const contagensPorPosicao = capitulos.reduce<
+    Partial<Record<PosicaoPdf, number>>
+  >((acc, c) => {
+    const p = (c.posicao_pdf ?? "inicio") as PosicaoPdf;
+    acc[p] = (acc[p] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="space-y-4">
@@ -189,6 +197,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
               total={capitulos.length}
               salvando={salvar.isPending}
               storagePrefix={`textos-padrao/${modulo}`}
+              contagensPorPosicao={contagensPorPosicao}
               onSalvar={(patch) =>
                 salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })
               }
@@ -231,6 +240,7 @@ function CapituloCard({
   total,
   salvando,
   storagePrefix,
+  contagensPorPosicao,
   onSalvar,
   onMover,
   onExcluir,
@@ -240,6 +250,7 @@ function CapituloCard({
   total: number;
   salvando: boolean;
   storagePrefix: string;
+  contagensPorPosicao: Partial<Record<PosicaoPdf, number>>;
   onSalvar: (patch: {
     titulo?: string;
     conteudo?: string | null;
@@ -463,25 +474,19 @@ function CapituloCard({
             : "A4 vertical em folha nova (ABNT)."}
         </span>
 
-        {/* V53: Posição no PDF (onde o capítulo entra no fluxo do relatório) */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Posição no PDF:
-          </span>
-          <select
-            value={capitulo.posicao_pdf ?? "inicio"}
-            onChange={(e) =>
-              onSalvar({ posicao_pdf: e.target.value as PosicaoPdf })
+        {/* V53: Posição no PDF — Stepper visual */}
+        <div className="w-full">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+            📍 Posição no Relatório
+          </p>
+          <PosicaoPdfStepper
+            valor={(capitulo.posicao_pdf ?? "inicio") as PosicaoPdf}
+            onChange={(p) =>
+              onSalvar({ posicao_pdf: p as PosicaoPdf })
             }
+            contagens={contagensPorPosicao}
             disabled={salvando}
-            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary disabled:opacity-50"
-          >
-            {POSICAO_PDF_ORDEM.map((p) => (
-              <option key={p} value={p}>
-                {POSICAO_PDF_LABELS[p]}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       </div>
 

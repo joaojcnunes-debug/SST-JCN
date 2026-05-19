@@ -29,10 +29,7 @@ import type {
   DrpsPosicaoPdf,
   DrpsTextoPadraoCapitulo,
 } from "@/lib/drps/types";
-import {
-  DRPS_POSICAO_PDF_LABELS,
-  DRPS_POSICAO_PDF_ORDEM,
-} from "@/lib/drps/types";
+import PosicaoPdfStepper from "@/components/textos-padrao/PosicaoPdfStepper";
 
 const TEMPLATE_INICIAL: { titulo: string; conteudo: string }[] = [
   {
@@ -103,6 +100,15 @@ export default function TextoPadraoPage() {
     salvar.mutate({ id_capitulo: outro.id_capitulo, ordem: cap.ordem });
   }
 
+  // Contagem de capítulos por posição — mostrada como badge no Stepper
+  const contagensPorPosicao = capitulos.reduce<
+    Partial<Record<DrpsPosicaoPdf, number>>
+  >((acc, c) => {
+    const p = (c.posicao_pdf ?? "inicio") as DrpsPosicaoPdf;
+    acc[p] = (acc[p] ?? 0) + 1;
+    return acc;
+  }, {});
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -156,6 +162,7 @@ export default function TextoPadraoPage() {
               indice={i}
               total={capitulos.length}
               salvando={salvar.isPending}
+              contagensPorPosicao={contagensPorPosicao}
               onSalvar={(patch) =>
                 salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })
               }
@@ -193,6 +200,7 @@ function CapituloCard({
   indice,
   total,
   salvando,
+  contagensPorPosicao,
   onSalvar,
   onMover,
   onExcluir,
@@ -201,6 +209,7 @@ function CapituloCard({
   indice: number;
   total: number;
   salvando: boolean;
+  contagensPorPosicao: Partial<Record<DrpsPosicaoPdf, number>>;
   onSalvar: (patch: {
     titulo?: string;
     conteudo?: string | null;
@@ -322,30 +331,36 @@ function CapituloCard({
           <Trash2 className="size-4" />
         </button>
       </div>
-      <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-          Posição no PDF:
-        </span>
-        <select
-          value={capitulo.posicao_pdf ?? "inicio"}
-          onChange={(e) =>
-            onSalvar({ posicao_pdf: e.target.value as DrpsPosicaoPdf })
-          }
-          disabled={salvando}
-          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary disabled:opacity-50"
-        >
-          {DRPS_POSICAO_PDF_ORDEM.map((p) => (
-            <option key={p} value={p}>
-              {DRPS_POSICAO_PDF_LABELS[p]}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Configurações do Capítulo — bloco unificado */}
+      <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+          Configurações do Capítulo
+        </p>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-          Imagem de fundo (capa):
-        </span>
+        {/* Posição no PDF — stepper visual */}
+        <div className="mb-4">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+            📍 Posição no Relatório
+          </p>
+          <PosicaoPdfStepper
+            valor={(capitulo.posicao_pdf ?? "inicio") as DrpsPosicaoPdf}
+            onChange={(p) =>
+              onSalvar({ posicao_pdf: p as DrpsPosicaoPdf })
+            }
+            contagens={contagensPorPosicao}
+            disabled={salvando}
+          />
+        </div>
+
+        {/* Imagem de capa */}
+        <div>
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+            🖼️ Imagem de Capa
+            <span className="text-[9px] font-normal normal-case tracking-normal text-gray-500">
+              (página inteira no PDF)
+            </span>
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
         {capitulo.bg_imagem_url ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -397,6 +412,8 @@ function CapituloCard({
             Enviar imagem
           </button>
         )}
+          </div>
+        </div>
       </div>
 
       {capitulo.bg_imagem_url ? (
