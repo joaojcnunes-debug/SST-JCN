@@ -15,6 +15,7 @@ import {
   Activity,
   Loader2,
   ArrowRight,
+  ClipboardList,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
@@ -91,6 +92,14 @@ const CARDS: HubCardCfg[] = [
     icon: <FlaskConical className="size-12" />,
     accent: "#0EA5E9",
   },
+  {
+    modulo: "aet",
+    href: "/aet",
+    title: "AET – Análise Ergonômica",
+    description: "Avaliação ergonômica dos postos de trabalho por setor (NR-17)",
+    icon: <ClipboardList className="size-12" />,
+    accent: "#B45309",
+  },
 ];
 
 const NOMES_MODULOS: Record<ModuloPermitido, string> = {
@@ -165,6 +174,13 @@ const QUICK_ACTIONS: QuickActionCfg[] = [
     label: "Nova Apreciação NR-12",
     icon: <Cog className="size-4" />,
     accent: "#EA580C",
+  },
+  {
+    modulo: "aet",
+    href: "/aet/novo",
+    label: "Nova AET",
+    icon: <ClipboardList className="size-4" />,
+    accent: "#B45309",
   },
 ];
 
