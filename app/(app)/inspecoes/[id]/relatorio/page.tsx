@@ -268,6 +268,8 @@ export default function RelatorioChabraPage({ params }: Props) {
             data_inspecao: formatarDataBR(inspecao.data_inspecao),
             revisao: String(inspecao.revisao ?? ""),
             responsavel: inspecao.responsavel ?? "",
+            carimbo: inspecao.responsavel ?? "",
+            importado: formatarDataBR(inspecao.created_at),
           }}
           posicao="antes"
         />

@@ -34,6 +34,8 @@ const VARIAVEIS_DATA_RESPONSAVEL: VariavelDef[] = [
   { chave: "data_atual", rotulo: "Data atual (geração do PDF)", exemplo: "15/05/2026" },
   { chave: "responsavel", rotulo: "Responsável técnico", exemplo: "João Jefferson" },
   { chave: "cidade", rotulo: "Cidade", exemplo: "Catanduva - SP" },
+  { chave: "carimbo", rotulo: "Carimbo do profissional (nome + título + registro)", exemplo: "João Jefferson\nEngenheiro de Segurança\nCREA 12345-SP" },
+  { chave: "importado", rotulo: "Data de importação (dd/mm/aaaa)", exemplo: "15/05/2026" },
 ];
 
 export const VARIAVEIS_POR_MODULO: Record<ModuloTextoPadrao, VariavelDef[]> = {

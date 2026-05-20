@@ -22,7 +22,7 @@ import ConclusaoRapidaCard from "@/components/quimicos/ConclusaoRapidaCard";
 import RelatorioEstruturado from "@/components/quimicos/RelatorioEstruturado";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
-import { montarValoresEmpresa } from "@/lib/textos-padrao/variaveis";
+import { montarValoresEmpresa, formatarDataBR } from "@/lib/textos-padrao/variaveis";
 import { useCanDelete } from "@/lib/hooks/useUsuario";
 
 export default function AnaliseDetalhePage({
@@ -222,6 +222,8 @@ export default function AnaliseDetalhePage({
           nome_quimico: analise.nome_quimico ?? "",
           numero_cas: analise.numero_cas ?? "",
           responsavel: analise.usuario_nome ?? "",
+          carimbo: analise.usuario_nome ?? "",
+          importado: formatarDataBR(analise.created_at),
         }}
         posicao="antes"
       />

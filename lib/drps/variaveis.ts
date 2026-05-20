@@ -32,6 +32,8 @@ export const VARIAVEIS: VariavelDef[] = [
   { chave: "revisao", rotulo: "Número da revisão", exemplo: "1" },
   { chave: "responsavel_tecnico", rotulo: "Responsável técnico (Psicólogo)", exemplo: "Sanmyou" },
   { chave: "crp", rotulo: "CRP", exemplo: "11515" },
+  { chave: "carimbo", rotulo: "Carimbo do profissional (nome + título + registro)", exemplo: "João Jefferson\nErgonomista\nCREA 12345-SP" },
+  { chave: "importado", rotulo: "Data de importação (dd/mm/aaaa)", exemplo: "15/05/2026" },
 ];
 
 function formatarDataBR(iso: string | null | undefined): string {
@@ -67,6 +69,10 @@ export function montarValoresVariaveis(
     revisao: relatorio?.revisao != null ? String(relatorio.revisao) : "",
     responsavel_tecnico: relatorio?.responsavel_tecnico ?? "",
     crp: relatorio?.crp ?? "",
+    carimbo: [relatorio?.responsavel_tecnico, relatorio?.crp ? `CRP ${relatorio.crp}` : ""]
+      .filter(Boolean)
+      .join("\n"),
+    importado: formatarDataBR(relatorio?.created_at),
   };
 }
 

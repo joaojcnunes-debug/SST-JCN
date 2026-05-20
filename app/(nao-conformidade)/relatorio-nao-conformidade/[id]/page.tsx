@@ -116,6 +116,8 @@ export default function DetalheNaoConformidadePage({
     data_inspecao: formatarDataBR(relatorio.data_inspecao),
     total_ncs: String(itens.length),
     total_ncs_alta: String(ncsAlta),
+    carimbo: relatorio.responsavel ?? "",
+    importado: formatarDataBR(relatorio.created_at),
   };
 
   function handleExcluir() {

@@ -112,6 +112,8 @@ export default function DetalheConformidadePage({
     nr_titulo: relatorio.nr_titulo,
     setor: relatorio.setor ?? "",
     data_inspecao: formatarDataBR(relatorio.data_inspecao),
+    carimbo: relatorio.responsavel ?? "",
+    importado: formatarDataBR(relatorio.created_at),
   };
 
   function handleExcluir() {

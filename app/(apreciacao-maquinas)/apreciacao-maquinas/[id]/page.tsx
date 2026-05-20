@@ -878,6 +878,8 @@ export default function DetalheApreciacaoPage() {
             itens.filter((i) => i.situacao === "NAO_CONFORME").length
           ),
           risco_residual: apreciacao.risco_residual ?? "",
+          carimbo: apreciacao.responsavel ?? "",
+          importado: formatarDataBR(apreciacao.created_at),
         }}
         posicao="depois"
       />
