@@ -153,6 +153,7 @@ export function useAetCriarCapitulo() {
       titulo: string;
       conteudo: string;
       ordem: number;
+      posicao_pdf?: string;
     }) => {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase

@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import RichTextEditor from "@/components/drps/RichTextEditor";
+import PosicaoPdfStepper, { type PosicaoPdfValor } from "@/components/textos-padrao/PosicaoPdfStepper";
 import {
   useAetTextoPadrao,
   useAetCriarCapitulo,
@@ -14,22 +15,25 @@ import {
 } from "@/lib/hooks/useAet";
 import type { AetTextoPadraoCapitulo } from "@/lib/supabase/types";
 
-const TEMPLATE_INICIAL: { titulo: string; conteudo: string }[] = [
+const TEMPLATE_INICIAL: { titulo: string; conteudo: string; posicao_pdf: PosicaoPdfValor }[] = [
   {
     titulo: "1 – Caracterização da Empresa",
     conteudo: "<p>Razão Social, CNPJ, endereço e demais dados da empresa avaliada.</p>",
+    posicao_pdf: "inicio",
   },
   {
     titulo: "2 – Introdução Geral",
     conteudo:
       "<p>A ergonomia estuda a adaptação do trabalho ao homem. Envolve tanto o ambiente físico como os aspectos organizacionais e cognitivos. A ergonomia abrange atividades de planejamento e projeto, que ocorre antes do trabalho ser realizado, e aqueles de controle e avaliação, que ocorrem durante e após o trabalho.</p>" +
       "<p>A mesma pode ser ainda caracterizada como a ocupação de pessoas qualificadas em grupos de pesquisa e formação que atuam em equipes de projeto e consultoria para responder às demandas acerca da atividade de trabalho na sociedade mediante metodologias de análises e projeto de bases científicas e devidamente inseridas num universo normativo e contratual.</p>",
+    posicao_pdf: "apos_sumario",
   },
   {
     titulo: "3 – Objetivo",
     conteudo:
       "<p>Este estudo tem como objetivo avaliar os postos de trabalho da empresa especificada, promovendo análise ergonômica das atividades e funções, sendo adotados métodos de análise aplicados para fins ergonômicos.</p>" +
       "<p><strong>BASE LEGAL:</strong> Portaria 3.214/78 do Ministério do Trabalho – NR-17</p>",
+    posicao_pdf: "apos_sumario",
   },
   {
     titulo: "4 – Metodologia",
@@ -37,12 +41,14 @@ const TEMPLATE_INICIAL: { titulo: string; conteudo: string }[] = [
       "<p>Durante o trabalho realizado, foram avaliadas todas as funções conforme sugerido pela Metodologia da AET, excluindo-se a metodologia por amostragem, uma vez que cada função de trabalho caracteriza um desenvolvimento laboral de forma diferenciada.</p>" +
       "<p>A AET tem por finalidade transformar as condições de trabalho e adaptar às características psicofisiológicas dos trabalhadores, buscando conciliar dois universos: saúde e produtividade.</p>" +
       "<p>A metodologia da AET utiliza-se de observações da situação de trabalho, análise da tarefa, entrevistas e verbalizações com os diferentes níveis hierárquicos, buscando compreender em detalhes as atividades nas suas diferentes dimensões (física, cognitiva, mental e social).</p>",
+    posicao_pdf: "apos_sumario",
   },
   {
     titulo: "5 – Levantamento, Transporte e Descarga Individual de Materiais",
     conteudo:
       "<p>Deverão ser executados de forma que o esforço físico realizado pelo trabalhador seja compatível com sua capacidade de força e não comprometa a sua saúde ou sua segurança.</p>" +
       "<p>Para manipulações ocasionais, não repetitivas, o limite de 25 quilos para homens e 15 quilos para mulheres é sugerido por vários autores, desde que observadas boas práticas para a manipulação.</p>",
+    posicao_pdf: "apos_sumario",
   },
   {
     titulo: "6 – Mobiliário dos Postos de Trabalho",
@@ -52,16 +58,19 @@ const TEMPLATE_INICIAL: { titulo: string; conteudo: string }[] = [
       "<li>O mobiliário deve prover condições para que o trabalho seja executado dentro da zona de conforto dos segmentos corporais;</li>" +
       "<li>Os comandos sejam de fácil acionamento;</li>" +
       "<li>Os assentos sejam adequados.</li></ul>",
+    posicao_pdf: "apos_sumario",
   },
   {
     titulo: "7 – Equipamentos dos Postos de Trabalho",
     conteudo:
       "<p>A análise ergonômica do trabalho leva em consideração que o mobiliário/equipamentos devem prover condições para que o trabalho seja executado dentro da zona de conforto dos segmentos corporais, em boa condição postural e livre de reflexos.</p>",
+    posicao_pdf: "apos_sumario",
   },
   {
     titulo: "8 – Condições Ambientais de Trabalho",
     conteudo:
       "<p>O estudo da exposição ocupacional dos trabalhadores aos agentes ambientais está contemplado no Programa de Gerenciamento de Riscos – PGR da empresa.</p>",
+    posicao_pdf: "apos_sumario",
   },
   {
     titulo: "11 – Organização do Trabalho",
@@ -70,11 +79,13 @@ const TEMPLATE_INICIAL: { titulo: string; conteudo: string }[] = [
       "<ul><li>As normas de produção;</li><li>O modo operatório;</li><li>A exigência de tempo;</li>" +
       "<li>A determinação do conteúdo de tempo;</li><li>O ritmo de trabalho;</li>" +
       "<li>O conteúdo das tarefas;</li><li>Horário de trabalho.</li></ul>",
+    posicao_pdf: "apos_setores",
   },
   {
     titulo: "12 – Ferramentas Biomecânicas Aplicadas",
     conteudo:
       "<p>Método OWAS: O Método OWAS (Ovako Working Posture Analysing System) foi desenvolvido na Finlândia por Karhu, Kansi e Kuorinka, entre 1974 e 1978, juntamente com o Instituto Finlandês de Saúde Ocupacional, objetivando gerar informações para melhorar os métodos de trabalho pela identificação de posturas corporais prejudiciais durante a realização das atividades.</p>",
+    posicao_pdf: "apos_setores",
   },
 ];
 
@@ -86,14 +97,23 @@ export default function AetTextoPadraoPage() {
 
   const [confirmExcluir, setConfirmExcluir] = useState<AetTextoPadraoCapitulo | null>(null);
 
+  const contagensPorPosicao = capitulos.reduce<Partial<Record<PosicaoPdfValor, number>>>(
+    (acc, c) => {
+      const p = (c.posicao_pdf ?? "inicio") as PosicaoPdfValor;
+      acc[p] = (acc[p] ?? 0) + 1;
+      return acc;
+    },
+    {}
+  );
+
   function novoCapitulo() {
-    criar.mutate({ titulo: `Seção ${capitulos.length + 1}`, conteudo: "", ordem: capitulos.length });
+    criar.mutate({ titulo: `Capítulo ${capitulos.length + 1}`, conteudo: "", ordem: capitulos.length, posicao_pdf: "inicio" });
   }
 
   function seedTemplate() {
     let ordem = capitulos.length;
     for (const tpl of TEMPLATE_INICIAL) {
-      criar.mutate({ titulo: tpl.titulo, conteudo: tpl.conteudo, ordem });
+      criar.mutate({ titulo: tpl.titulo, conteudo: tpl.conteudo, ordem, posicao_pdf: tpl.posicao_pdf });
       ordem++;
     }
   }
@@ -113,7 +133,7 @@ export default function AetTextoPadraoPage() {
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Texto Padrão</h1>
           <p className="text-sm text-gray-600">
-            Seções que compõem o laudo AET. A ordem aqui é a ordem que aparece no relatório.
+            Capítulos que compõem o laudo AET. A ordem aqui é a ordem que aparece no relatório.
             Use <strong>Carregar modelo inicial</strong> para começar com as seções da NR-17.
           </p>
         </div>
@@ -134,7 +154,7 @@ export default function AetTextoPadraoPage() {
             disabled={criar.isPending}
             className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
           >
-            <Plus className="size-4" /> Nova Seção
+            <Plus className="size-4" /> Novo Capítulo
           </button>
         </div>
       </div>
@@ -145,19 +165,20 @@ export default function AetTextoPadraoPage() {
         </div>
       ) : capitulos.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-900">
-          Nenhuma seção cadastrada ainda. Clique em{" "}
+          Nenhum capítulo cadastrado ainda. Clique em{" "}
           <strong>Carregar modelo inicial</strong> para popular com as seções padrão da NR-17
-          ou em <strong>Nova Seção</strong> para começar do zero.
+          ou em <strong>Novo Capítulo</strong> para começar do zero.
         </div>
       ) : (
         <div className="space-y-3">
           {capitulos.map((cap, i) => (
-            <SecaoCard
+            <CapituloCard
               key={cap.id_capitulo}
               capitulo={cap}
               indice={i}
               total={capitulos.length}
               salvando={salvar.isPending}
+              contagensPorPosicao={contagensPorPosicao}
               onSalvar={(patch) => salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })}
               onMover={(dir) => mover(cap, dir)}
               onExcluir={() => setConfirmExcluir(cap)}
@@ -168,10 +189,10 @@ export default function AetTextoPadraoPage() {
 
       <ConfirmDialog
         open={!!confirmExcluir}
-        title="Excluir seção?"
+        title="Excluir capítulo?"
         description={
           confirmExcluir
-            ? `A seção "${confirmExcluir.titulo}" será removida permanentemente.`
+            ? `O capítulo "${confirmExcluir.titulo}" será removido permanentemente.`
             : undefined
         }
         variant="danger"
@@ -188,11 +209,12 @@ export default function AetTextoPadraoPage() {
   );
 }
 
-function SecaoCard({
+function CapituloCard({
   capitulo,
   indice,
   total,
   salvando,
+  contagensPorPosicao,
   onSalvar,
   onMover,
   onExcluir,
@@ -201,7 +223,8 @@ function SecaoCard({
   indice: number;
   total: number;
   salvando: boolean;
-  onSalvar: (patch: { titulo?: string; conteudo?: string | null }) => void;
+  contagensPorPosicao: Partial<Record<PosicaoPdfValor, number>>;
+  onSalvar: (patch: { titulo?: string; conteudo?: string | null; posicao_pdf?: string }) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
 }) {
@@ -243,7 +266,7 @@ function SecaoCard({
           type="text"
           value={titulo}
           onChange={(e) => { setTitulo(e.target.value); setDirty(true); }}
-          placeholder="Título da seção"
+          placeholder="Título do capítulo"
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
         />
 
@@ -268,10 +291,23 @@ function SecaoCard({
         </button>
       </div>
 
+      {/* Posição no relatório */}
+      <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          Posição no Relatório
+        </p>
+        <PosicaoPdfStepper
+          valor={(capitulo.posicao_pdf ?? "inicio") as PosicaoPdfValor}
+          onChange={(p) => onSalvar({ posicao_pdf: p })}
+          contagens={contagensPorPosicao}
+          disabled={salvando}
+        />
+      </div>
+
       <RichTextEditor
         value={conteudo}
         onChange={(html) => { setConteudo(html); setDirty(true); }}
-        placeholder="Conteúdo da seção..."
+        placeholder="Conteúdo do capítulo..."
         uploadPathPrefix="aet-textos"
       />
     </div>

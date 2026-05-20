@@ -979,6 +979,7 @@ export interface AetTextoPadraoCapitulo {
   titulo: string;
   conteudo: string | null;
   ordem: number;
+  posicao_pdf: string | null;
   created_at: string;
   updated_at: string | null;
 }
