@@ -53,7 +53,6 @@ export function useAetRelatorio(id: string | null | undefined) {
 
 export function useCriarAet() {
   const qc = useQueryClient();
-  const user = useUserStore((s) => s.user);
 
   return useMutation({
     mutationFn: async (payload: {
@@ -64,12 +63,13 @@ export function useCriarAet() {
       data_elaboracao: string | null;
     }): Promise<AetRelatorio> => {
       const supabase = createSupabaseBrowserClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
       const row = {
         ...payload,
         status: "RASCUNHO" as StatusAET,
         setores: [],
         consideracoes_finais: "",
-        usuario: user?.id_usuario ?? null,
+        usuario: authUser?.id ?? null,
       };
       const { data, error } = await supabase
         .from("aet_relatorios")
