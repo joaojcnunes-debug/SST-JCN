@@ -16,6 +16,13 @@ import type {
   EsforcoOWAS,
 } from "@/lib/supabase/types";
 
+const OWAS_IMAGE: Record<string, string> = {
+  "Postura das Costas": "/owas/costas.svg",
+  "Postura dos Braços": "/owas/bracos.svg",
+  "Postura das Pernas": "/owas/pernas.svg",
+  "Esforço": "/owas/esforco.svg",
+};
+
 // ─── OWAS options ─────────────────────────────────────────────────────────────
 
 const COSTAS: { value: PosturaCostas; label: string }[] = [
@@ -291,21 +298,36 @@ function OwasGroup({
   disabled: boolean;
   onToggle: (v: number) => void;
 }) {
+  const imageSrc = OWAS_IMAGE[title];
   return (
-    <div className="rounded-md border border-gray-200 bg-gray-50 p-3 space-y-1.5">
-      <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</h4>
-      {options.map((opt) => (
-        <label key={opt.value} className={cn("flex items-center gap-2 text-xs text-gray-700", disabled && "cursor-not-allowed opacity-60")}>
-          <input
-            type="checkbox"
-            checked={selected.includes(opt.value)}
-            disabled={disabled}
-            onChange={() => onToggle(opt.value)}
-            className="size-3.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary"
-          />
-          {opt.label}
-        </label>
-      ))}
+    <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+      <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</h4>
+      <div className="flex gap-3">
+        <div className="flex-1 space-y-1.5">
+          {options.map((opt) => (
+            <label key={opt.value} className={cn("flex items-center gap-2 text-xs text-gray-700", disabled && "cursor-not-allowed opacity-60")}>
+              <input
+                type="checkbox"
+                checked={selected.includes(opt.value)}
+                disabled={disabled}
+                onChange={() => onToggle(opt.value)}
+                className="size-3.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary"
+              />
+              {opt.label}
+            </label>
+          ))}
+        </div>
+        {imageSrc && (
+          <div className="shrink-0 w-36 self-start">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={imageSrc}
+              alt={`Referência OWAS: ${title}`}
+              className="w-full h-auto rounded border border-gray-200"
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
