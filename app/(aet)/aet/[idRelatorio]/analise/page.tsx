@@ -152,7 +152,11 @@ export default function AetAnalisePage({
           >
             <span className="font-semibold text-gray-900">
               Setor {idx + 1}: {setor.nome_setor || <span className="italic text-gray-400">Sem nome</span>}
-              {setor.cargos && <span className="ml-2 text-sm font-normal text-gray-500">— {setor.cargos}</span>}
+              {setor.cargos.length > 0 && (
+                <span className="ml-2 text-sm font-normal text-gray-500">
+                  — {setor.cargos.map((c) => c.nome).filter(Boolean).join(", ")}
+                </span>
+              )}
             </span>
             {abertos.has(setor.id) ? <ChevronUp className="size-4 text-gray-400" /> : <ChevronDown className="size-4 text-gray-400" />}
           </button>

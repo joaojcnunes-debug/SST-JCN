@@ -219,7 +219,7 @@ export function setorVazio(): AetSetor {
     id: crypto.randomUUID(),
     nome_setor: "",
     maquinas_equipamentos: "",
-    cargos: "",
+    cargos: [],
     descricao_atividade: "",
     riscos: [],
     owas: { posturas_costas: [], posturas_bracos: [], posturas_pernas: [], esforco: [] },

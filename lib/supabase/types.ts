@@ -942,11 +942,16 @@ export interface AetOwas {
   esforco: EsforcoOWAS[];
 }
 
+export interface AetCargo {
+  nome: string;
+  descricao: string;
+}
+
 export interface AetSetor {
   id: string;
   nome_setor: string;
   maquinas_equipamentos: string;
-  cargos: string;
+  cargos: AetCargo[];
   descricao_atividade: string;
   riscos: AetRisco[];
   owas: AetOwas;

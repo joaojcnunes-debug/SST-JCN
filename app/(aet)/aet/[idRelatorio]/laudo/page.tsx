@@ -304,10 +304,10 @@ function SetorRiscosBlock({ setor }: { setor: AetSetor }) {
               <td className="px-2 py-1">{setor.maquinas_equipamentos.split("\n").filter(Boolean).join(", ")}</td>
             </tr>
           )}
-          {setor.cargos && (
+          {setor.cargos.length > 0 && (
             <tr className="border border-gray-300">
               <td className="px-2 py-1 font-semibold bg-gray-50">Cargos:</td>
-              <td className="px-2 py-1">{setor.cargos.split("\n").filter(Boolean).join(", ")}</td>
+              <td className="px-2 py-1">{setor.cargos.map((c) => c.nome).filter(Boolean).join(", ")}</td>
             </tr>
           )}
           {setor.descricao_atividade && (
@@ -352,11 +352,20 @@ function SetorAnaliseBlock({ setor, idx }: { setor: AetSetor; idx: number }) {
   return (
     <div className="mb-6 border border-gray-300 rounded">
       <div className="bg-gray-100 px-3 py-2 text-xs font-bold uppercase">
-        Setor {idx + 1}: {setor.nome_setor || "—"} — {setor.cargos || "—"}
+        Setor {idx + 1}: {setor.nome_setor || "—"}
+        {setor.cargos.length > 0 && (
+          <span className="font-normal"> — {setor.cargos.map((c) => c.nome).filter(Boolean).join(", ")}</span>
+        )}
       </div>
+      {/* Descrição por cargo */}
+      {setor.cargos.filter((c) => c.descricao).map((cargo, cidx) => (
+        <p key={cidx} className="border-t border-gray-100 px-3 py-1 text-xs text-gray-700">
+          <strong>{cargo.nome}:</strong> {cargo.descricao}
+        </p>
+      ))}
       {setor.descricao_atividade && (
-        <p className="px-3 py-1 text-xs text-gray-700">
-          <strong>Descrição:</strong> {setor.descricao_atividade}
+        <p className="border-t border-gray-100 px-3 py-1 text-xs text-gray-700">
+          <strong>Descrição Geral:</strong> {setor.descricao_atividade}
         </p>
       )}
 

@@ -6,7 +6,7 @@ import toast from "react-hot-toast";
 import { useAetRelatorio, useSalvarAet, setorVazio } from "@/lib/hooks/useAet";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { cn } from "@/lib/utils";
-import type { AetSetor, AetRisco, TipoRiscoAET, ClassificacaoRiscoAET } from "@/lib/supabase/types";
+import type { AetSetor, AetRisco, AetCargo, TipoRiscoAET, ClassificacaoRiscoAET } from "@/lib/supabase/types";
 
 const TIPOS_RISCO: TipoRiscoAET[] = ["Acidentes", "Ergonômico", "Físico", "Químico", "Biológico"];
 const CLASSIFICACOES: ClassificacaoRiscoAET[] = ["Trivial", "De Atenção", "Moderado", "Alto", "Crítico"];
@@ -174,30 +174,27 @@ export default function AetSetoresPage({
             {abertos.has(setor.id) && (
               <div className="border-t border-gray-100 px-5 pb-5 pt-4 space-y-4">
                 {/* Dados do setor */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-3">
                   <TextInput
                     label="Nome do Setor"
                     value={setor.nome_setor}
                     disabled={!canEdit}
                     onChange={(v) => updateSetor(setor.id, { nome_setor: v })}
                   />
-                  <TagInput
-                    label="Cargo(s)"
-                    value={setor.cargos}
+                  <CargoList
+                    cargos={setor.cargos}
                     disabled={!canEdit}
                     onChange={(v) => updateSetor(setor.id, { cargos: v })}
                   />
-                  <div className="sm:col-span-2">
-                    <TagInput
-                      label="Máquinas e Equipamentos"
-                      value={setor.maquinas_equipamentos}
-                      disabled={!canEdit}
-                      onChange={(v) => updateSetor(setor.id, { maquinas_equipamentos: v })}
-                    />
-                  </div>
-                  <div className="sm:col-span-2">
+                  <TagInput
+                    label="Máquinas e Equipamentos"
+                    value={setor.maquinas_equipamentos}
+                    disabled={!canEdit}
+                    onChange={(v) => updateSetor(setor.id, { maquinas_equipamentos: v })}
+                  />
+                  <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">
-                      Descrição da Atividade
+                      Descrição Geral da Atividade
                     </label>
                     <textarea
                       value={setor.descricao_atividade}
@@ -362,6 +359,85 @@ function TextInput({
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-50"
       />
+    </div>
+  );
+}
+
+function CargoList({
+  cargos,
+  disabled,
+  onChange,
+}: {
+  cargos: AetCargo[];
+  disabled: boolean;
+  onChange: (cargos: AetCargo[]) => void;
+}) {
+  function addCargo() {
+    onChange([...cargos, { nome: "", descricao: "" }]);
+  }
+
+  function removeCargo(idx: number) {
+    onChange(cargos.filter((_, i) => i !== idx));
+  }
+
+  function updateCargo(idx: number, patch: Partial<AetCargo>) {
+    onChange(cargos.map((c, i) => (i === idx ? { ...c, ...patch } : c)));
+  }
+
+  return (
+    <div className="sm:col-span-2">
+      <div className="mb-1.5 flex items-center justify-between">
+        <label className="text-xs font-medium text-gray-600">Cargo(s)</label>
+        {!disabled && (
+          <button
+            type="button"
+            onClick={addCargo}
+            className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Plus className="size-3" /> Cargo
+          </button>
+        )}
+      </div>
+
+      {cargos.length === 0 ? (
+        <p className="text-xs italic text-gray-400">
+          {disabled ? "Nenhum cargo cadastrado." : "Clique em \"+ Cargo\" para adicionar."}
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {cargos.map((cargo, idx) => (
+            <div key={idx} className="rounded-md border border-gray-200 bg-gray-50/70 p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={cargo.nome}
+                  disabled={disabled}
+                  onChange={(e) => updateCargo(idx, { nome: e.target.value })}
+                  placeholder="Nome do cargo"
+                  className="flex-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm font-medium focus:border-verde-primary focus:outline-none disabled:bg-white"
+                />
+                {!disabled && (
+                  <button
+                    type="button"
+                    onClick={() => removeCargo(idx)}
+                    className="text-red-400 hover:text-red-600"
+                  >
+                    <X className="size-4" />
+                  </button>
+                )}
+              </div>
+              <textarea
+                value={cargo.descricao}
+                disabled={disabled}
+                rows={2}
+                onChange={(e) => updateCargo(idx, { descricao: e.target.value })}
+                placeholder="Descrição da atividade deste cargo..."
+                className="w-full resize-none rounded-md border border-gray-300 px-2.5 py-1.5 text-xs focus:border-verde-primary focus:outline-none disabled:bg-white"
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
