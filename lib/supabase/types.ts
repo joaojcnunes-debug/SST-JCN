@@ -965,6 +965,7 @@ export interface AetRelatorio {
   status: StatusAET;
   setores: AetSetor[];
   consideracoes_finais: string;
+  textos_secoes: Record<string, string> | null;
   created_at: string;
   updated_at: string | null;
   usuario: string | null;
