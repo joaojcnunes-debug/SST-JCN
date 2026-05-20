@@ -222,26 +222,8 @@ export default function AetAnalisePage({
                   onChange={(v) => updateChecklist(setor.id, { levantamento_acima_limite: v })}
                 />
 
-                <div className="flex items-center gap-3">
-                  <span className="flex-1 text-xs text-gray-700">{owasSelects.find(s => s.slug === "posturas_forcadas_tipo")?.label ?? "Posturas forçadas ocorrem de que forma?"}</span>
-                  <select
-                    value={setor.checklist.posturas_forcadas_tipo}
-                    disabled={!canEdit}
-                    onChange={(e) =>
-                      updateChecklist(setor.id, {
-                        posturas_forcadas_tipo: e.target.value as AetChecklist["posturas_forcadas_tipo"],
-                      })
-                    }
-                    className="rounded border border-gray-300 bg-white px-2 py-1 text-xs disabled:bg-gray-50"
-                  >
-                    {selectOpts("posturas_forcadas_tipo").map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <span className="flex-1 text-xs text-gray-700">{owasSelects.find(s => s.slug === "trabalho_predominante")?.label ?? "Trabalho executado predominantemente:"}</span>
+                <div className="flex items-start gap-3">
+                  <span className="flex-1 text-xs text-gray-700">{owasSelects.find(s => s.slug === "trabalho_predominante")?.label ?? "O trabalho executado durante aos chamados decorrentes do dia-dia, são realizados preponderantemente de qual forma?"}</span>
                   <select
                     value={setor.checklist.trabalho_predominante}
                     disabled={!canEdit}
@@ -278,21 +260,56 @@ export default function AetAnalisePage({
                     <TriStateRow label={pergunta("rodizios_sistematizados")} value={setor.checklist.rodizios_sistematizados} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { rodizios_sistematizados: v })} />
                   </div>
                 </div>
+
+                <div className="border-t border-gray-200 pt-3">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Organização do Trabalho</p>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    {checklistPerguntas.find(p => p.slug === "organizacao_trabalho")?.label ?? "As normas de produção contemplando equipamentos, modo operatório, aspectos de segurança e qualidade deverão estar descritos nas instruções internas de trabalho, elaboradas pela empresa."}
+                  </p>
+                </div>
               </div>
 
-              {/* Parecer + Recomendações */}
-              <div>
-                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">
-                  Parecer Técnico / Recomendações (Seção 13)
-                </label>
-                <RichTextEditor
-                  value={setor.parecer_tecnico}
-                  onChange={(html) => updateSetor(setor.id, { parecer_tecnico: html })}
-                  onBlur={() => {/* save via button */}}
-                  readOnly={!canEdit}
-                  uploadPathPrefix="aet-analise"
-                  placeholder="Descreva o parecer técnico e as recomendações para este setor..."
-                />
+              {/* Recomendações */}
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Parecer Técnico
+                  </label>
+                  <RichTextEditor
+                    value={setor.parecer_tecnico}
+                    onChange={(html) => updateSetor(setor.id, { parecer_tecnico: html })}
+                    onBlur={() => {}}
+                    readOnly={!canEdit}
+                    uploadPathPrefix="aet-analise"
+                    placeholder="Descreva o parecer técnico para este setor..."
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Recomendações
+                  </label>
+                  <RichTextEditor
+                    value={setor.recomendacoes}
+                    onChange={(html) => updateSetor(setor.id, { recomendacoes: html })}
+                    onBlur={() => {}}
+                    readOnly={!canEdit}
+                    uploadPathPrefix="aet-analise"
+                    placeholder="Liste as recomendações para este setor..."
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Demais Condições Avaliadas
+                  </label>
+                  <RichTextEditor
+                    value={setor.demais_condicoes}
+                    onChange={(html) => updateSetor(setor.id, { demais_condicoes: html })}
+                    onBlur={() => {}}
+                    readOnly={!canEdit}
+                    uploadPathPrefix="aet-analise"
+                    placeholder="Descreva demais condições avaliadas..."
+                  />
+                </div>
               </div>
             </div>
           )}

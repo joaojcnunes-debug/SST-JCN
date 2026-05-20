@@ -931,6 +931,7 @@ export interface AetChecklistPergunta {
   slug: string;
   label: string;
   secao: string;
+  tipo?: "tristate" | "texto";
 }
 
 export type RespostaChecklist = "sim" | "nao" | "nao_aplica";
@@ -997,6 +998,7 @@ export interface AetSetor {
   fotos: string[];
   parecer_tecnico: string;
   recomendacoes: string;
+  demais_condicoes: string;
 }
 
 export interface AetRelatorio {

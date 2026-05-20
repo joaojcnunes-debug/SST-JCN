@@ -42,6 +42,7 @@ function normalizarSetor(s: unknown): AetSetor {
     ...setor,
     cargos: normalizarCargos(setor.cargos),
     checklist: normalizarChecklist(setor.checklist),
+    demais_condicoes: (setor.demais_condicoes as string) ?? "",
   } as AetSetor;
 }
 
@@ -372,14 +373,9 @@ export function useAetInicializarOwasConfig() {
 
 export const OWAS_SELECTS_PADRAO: AetOwasSelectCampo[] = [
   {
-    slug: "posturas_forcadas_tipo",
-    label: "Posturas forçadas ocorrem de que forma?",
-    opcoes: ["Ocasionais", "Eventuais", "Habituais", "Não Aplica"],
-  },
-  {
     slug: "trabalho_predominante",
-    label: "Trabalho executado predominantemente:",
-    opcoes: ["Em pé", "Sentado", "Alternando"],
+    label: "O trabalho executado durante aos chamados decorrentes do dia-dia, são realizados preponderantemente de qual forma?",
+    opcoes: ["Em pé", "Sentado", "Alternando entre postura em pé e sentado"],
   },
 ];
 
@@ -436,15 +432,16 @@ export function useAetInicializarOwasSelects() {
 // ─── Checklist — Perguntas configuráveis ─────────────────────────────────────
 
 export const CHECKLIST_PERGUNTAS_PADRAO: AetChecklistPergunta[] = [
-  { slug: "levantamento_acima_limite", secao: "Postura", label: "Há levantamento, transporte ou descarga acima do limite recomendado?" },
-  { slug: "pausas_descanso", secao: "Postura", label: "A empresa oferece pausas para descanso ou cadeiras do tipo semi-sentado?" },
-  { slug: "uso_cadeira", secao: "Postura", label: "É disponibilizado o uso de cadeira?" },
-  { slug: "cadeira_adequada", secao: "Postura", label: "A cadeira é estofada, revestida, giratória e com ajuste de altura?" },
-  { slug: "monitor", secao: "Postura", label: "A atividade usa monitor fixo sobre a mesa com regulagem de altura e inclinação?" },
-  { slug: "exigencia_levantamento", secao: "Exigência de Tempo", label: "Há registros de levantamento, transporte e descarga acima do limite na exigência de tempo?" },
-  { slug: "ritmo_por_demanda", secao: "Ritmo de Trabalho", label: "O ritmo de trabalho é determinado pela demanda?" },
-  { slug: "pausas_formais", secao: "Adoção de Rodízios", label: "Há pausas formais durante o ciclo de trabalho?" },
-  { slug: "rodizios_sistematizados", secao: "Adoção de Rodízios", label: "Há rodízios sistematizados entre os postos de trabalho?" },
+  { slug: "levantamento_acima_limite", secao: "Postura", tipo: "tristate", label: "Há registros de levantamento, transporte e descarga de materiais nesta atividade acima do limite recomendado?" },
+  { slug: "pausas_descanso", secao: "Postura", tipo: "tristate", label: "Caso a resposta anterior seja \"em pé\" a empresa oferece pausas para descanso ou disponibiliza cadeiras do tipo semi-sentado?" },
+  { slug: "uso_cadeira", secao: "Postura", tipo: "tristate", label: "Para execução das atividades do dia-dia é disponibilizado o uso de cadeira?" },
+  { slug: "cadeira_adequada", secao: "Postura", tipo: "tristate", label: "A cadeira é estofada e revestida, possui conformação de base giratória, o assento possui altura ajustável, possui ajustes de altura e inclinação, bordas do assento e apoio de coluna arredondadas e em formato anatômico?" },
+  { slug: "monitor", secao: "Postura", tipo: "tristate", label: "A Atividade necessita uso de monitor fixo sobre a mesa, caso positivo este apresenta regulagens de altura e inclinação?" },
+  { slug: "organizacao_trabalho", secao: "Organização do Trabalho", tipo: "texto", label: "As normas de produção contemplando equipamentos, modo operatório, aspectos de segurança e qualidade deverão estar descritos nas instruções internas de trabalho, elaboradas pela empresa." },
+  { slug: "exigencia_levantamento", secao: "Exigência de Tempo", tipo: "tristate", label: "Há registros de levantamento, transporte e descarga de materiais nesta atividade acima do limite recomendado?" },
+  { slug: "ritmo_por_demanda", secao: "Ritmo de Trabalho", tipo: "tristate", label: "O ritmo de trabalho é determinado pela demanda de trabalho?" },
+  { slug: "pausas_formais", secao: "Adoção de Rodízios - Ergonômico", tipo: "tristate", label: "Há pausas formais durante o ciclo de trabalho?" },
+  { slug: "rodizios_sistematizados", secao: "Adoção de Rodízios - Ergonômico", tipo: "tristate", label: "Há rodízios sistematizados entre os postos de trabalho?" },
 ];
 
 export function useAetChecklistPerguntas() {
@@ -589,5 +586,6 @@ export function setorVazio(): AetSetor {
     fotos: [],
     parecer_tecnico: "",
     recomendacoes: "",
+    demais_condicoes: "",
   };
 }

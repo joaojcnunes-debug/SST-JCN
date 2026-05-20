@@ -131,10 +131,9 @@ export default function OwasConfigPage() {
           </button>
         </div>
         <div className="space-y-6">
-          {(["Postura", "Exigência de Tempo", "Ritmo de Trabalho", "Adoção de Rodízios"] as const).map((secao) => {
-            const perguntas = (checklistPerguntas.length > 0 ? checklistPerguntas : CHECKLIST_PERGUNTAS_PADRAO).filter(
-              (p) => p.secao === secao
-            );
+          {(["Postura", "Organização do Trabalho", "Exigência de Tempo", "Ritmo de Trabalho", "Adoção de Rodízios - Ergonômico"] as const).map((secao) => {
+            const fonte = checklistPerguntas.length > 0 ? checklistPerguntas : CHECKLIST_PERGUNTAS_PADRAO;
+            const perguntas = fonte.filter((p) => p.secao === secao);
             if (perguntas.length === 0) return null;
             return (
               <div key={secao}>
@@ -425,33 +424,45 @@ function SelectCampoCard({ campo }: { campo: AetOwasSelectCampo }) {
 function PerguntaCard({ pergunta }: { pergunta: AetChecklistPergunta }) {
   const salvar = useAetSalvarChecklistPergunta();
   const [label, setLabel] = useState(pergunta.label);
+  const isTexto = pergunta.tipo === "texto";
 
   function handleSave() {
     salvar.mutate(
-      { slug: pergunta.slug, secao: pergunta.secao, label: label.trim() || pergunta.label },
-      { onSuccess: () => toast.success("Pergunta salva") }
+      { slug: pergunta.slug, secao: pergunta.secao, tipo: pergunta.tipo, label: label.trim() || pergunta.label },
+      { onSuccess: () => toast.success(isTexto ? "Texto salvo" : "Pergunta salva") }
     );
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-      <input
-        type="text"
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-      />
-      <div className="flex shrink-0 items-center gap-2">
-        <span className="text-[11px] text-gray-400">Sim / Não / N.A.</span>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={salvar.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
-        >
-          {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
-          Salvar
-        </button>
+    <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+      <div className="flex items-start gap-3">
+        {isTexto ? (
+          <textarea
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            rows={3}
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 resize-none"
+          />
+        ) : (
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          />
+        )}
+        <div className="flex shrink-0 items-center gap-2 pt-1">
+          {!isTexto && <span className="text-[11px] text-gray-400">Sim / Não / N.A.</span>}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={salvar.isPending}
+            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+          >
+            {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+            Salvar
+          </button>
+        </div>
       </div>
     </div>
   );
