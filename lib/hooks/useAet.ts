@@ -419,9 +419,10 @@ export function useAetInicializarOwasSelects() {
   return useMutation({
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
+      await supabase.from("aet_owas_select_campos").delete().neq("slug", "");
       const { error } = await supabase
         .from("aet_owas_select_campos")
-        .upsert(OWAS_SELECTS_PADRAO as never, { onConflict: "slug" });
+        .insert(OWAS_SELECTS_PADRAO as never);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-selects"] }),
@@ -482,9 +483,10 @@ export function useAetInicializarChecklistPerguntas() {
   return useMutation({
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
+      await supabase.from("aet_checklist_perguntas").delete().neq("slug", "");
       const { error } = await supabase
         .from("aet_checklist_perguntas")
-        .upsert(CHECKLIST_PERGUNTAS_PADRAO as never, { onConflict: "slug" });
+        .insert(CHECKLIST_PERGUNTAS_PADRAO as never);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-checklist-perguntas"] }),
