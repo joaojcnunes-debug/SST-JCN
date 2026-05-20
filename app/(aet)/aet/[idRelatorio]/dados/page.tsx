@@ -281,6 +281,61 @@ function CaracterizacaoCard({
           </div>
         </div>
       </div>
+
+      {/* Pré-visualização */}
+      <div className="mt-4 rounded-lg border border-dashed border-gray-300 p-4">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+          Pré-visualização — como aparece no laudo
+        </p>
+        <div className="rounded border border-gray-200 bg-white p-5 shadow-sm">
+          {/* Mini capa */}
+          <div className="mb-5 border-b border-gray-200 pb-4 text-center space-y-1">
+            <p className="text-[11px] font-bold uppercase text-gray-800">Laudo de Avaliação Ergonômica</p>
+            <p className="text-[11px] font-bold uppercase text-gray-800">AET – Análise Ergonômica do Trabalho</p>
+            <p className="text-[10px] text-gray-500">Portaria 3.214/78 - Norma Regulamentadora - 17</p>
+            <div className="mt-3 space-y-0.5 text-xs">
+              <p><strong>EMPRESA:</strong> {empresa?.nome_empresa ?? rel?.empresas?.nome_empresa ?? "—"}</p>
+              <p><strong>CNPJ:</strong> {empresa?.cnpj ?? rel?.empresas?.cnpj ?? "—"}</p>
+              <p><strong>DATA:</strong> {form.data_elaboracao ? new Date(form.data_elaboracao + "T00:00:00").toLocaleDateString("pt-BR") : "—"}</p>
+            </div>
+          </div>
+
+          {/* Seção 1 */}
+          <p className="mb-2 text-[10px] font-bold uppercase text-gray-700">
+            1 – Caracterização da Empresa Avaliada
+          </p>
+          <table className="w-full border-collapse text-xs">
+            <tbody>
+              {(
+                [
+                  ["Razão Social", empresa?.nome_empresa ?? rel?.empresas?.nome_empresa ?? "—"],
+                  ["CNPJ", empresa?.cnpj ?? rel?.empresas?.cnpj ?? "—"],
+                  ["Responsável pela Elaboração", form.responsavel_elaboracao || "—"],
+                  ["Título Profissional", form.titulo_profissional || "—"],
+                  ["Registro Profissional", form.registro_profissional || "—"],
+                  ["Data da elaboração", form.data_elaboracao ? new Date(form.data_elaboracao + "T00:00:00").toLocaleDateString("pt-BR") : "—"],
+                ] as [string, string][]
+              ).map(([k, v]) => (
+                <tr key={k} className="border border-gray-300">
+                  <td className="w-44 bg-gray-50 px-2 py-1 font-semibold text-gray-600">{k}:</td>
+                  <td className="px-2 py-1 text-gray-900">{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Mini assinatura */}
+          <div className="mt-6 text-center text-xs text-gray-600 space-y-0.5">
+            <div className="mx-auto mb-1 w-40 border-t border-gray-400" />
+            <p>Assinatura do responsável da Empresa</p>
+            <div className="mt-3 space-y-0.5">
+              <p className="font-semibold">{form.responsavel_elaboracao || "—"}</p>
+              {form.titulo_profissional && <p>{form.titulo_profissional}</p>}
+              {form.registro_profissional && <p>Registro: {form.registro_profissional}</p>}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
