@@ -980,6 +980,8 @@ export interface AetTextoPadraoCapitulo {
   conteudo: string | null;
   ordem: number;
   posicao_pdf: string | null;
+  bg_imagem_url: string | null;
+  caixas_texto: import("@/lib/drps/types").CaixaTexto[] | null;
   created_at: string;
   updated_at: string | null;
 }

@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { BookOpen, ChevronDown, ChevronUp, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { BookOpen, ChevronDown, ChevronUp, Image as ImageIcon, Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import RichTextEditor from "@/components/drps/RichTextEditor";
+import CapaEditor from "@/components/drps/CapaEditor";
 import PosicaoPdfStepper, { type PosicaoPdfValor } from "@/components/textos-padrao/PosicaoPdfStepper";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { CaixaTexto } from "@/lib/drps/types";
 import {
   useAetTextoPadrao,
   useAetCriarCapitulo,
@@ -224,23 +227,57 @@ function CapituloCard({
   total: number;
   salvando: boolean;
   contagensPorPosicao: Partial<Record<PosicaoPdfValor, number>>;
-  onSalvar: (patch: { titulo?: string; conteudo?: string | null; posicao_pdf?: string }) => void;
+  onSalvar: (patch: {
+    titulo?: string;
+    conteudo?: string | null;
+    bg_imagem_url?: string | null;
+    caixas_texto?: CaixaTexto[] | null;
+    posicao_pdf?: string;
+  }) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
 }) {
   const [titulo, setTitulo] = useState(capitulo.titulo);
   const [conteudo, setConteudo] = useState(capitulo.conteudo ?? "");
+  const [caixas, setCaixas] = useState<CaixaTexto[]>(capitulo.caixas_texto ?? []);
   const [dirty, setDirty] = useState(false);
+  const [enviandoBg, setEnviandoBg] = useState(false);
+  const bgInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setTitulo(capitulo.titulo);
     setConteudo(capitulo.conteudo ?? "");
+    setCaixas(capitulo.caixas_texto ?? []);
     setDirty(false);
-  }, [capitulo.id_capitulo, capitulo.titulo, capitulo.conteudo]);
+  }, [capitulo.id_capitulo, capitulo.titulo, capitulo.conteudo, capitulo.caixas_texto]);
+
+  async function enviarBg(file: File) {
+    if (enviandoBg) return;
+    setEnviandoBg(true);
+    const loadingId = toast.loading("Enviando imagem de fundo...");
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const ext = file.name.split(".").pop() ?? "png";
+      const path = `aet-texto-padrao/bg-${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("fotos")
+        .upload(path, file, { cacheControl: "31536000", upsert: false, contentType: file.type || undefined });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      if (!pub?.publicUrl) throw new Error("URL pública não retornada");
+      onSalvar({ bg_imagem_url: pub.publicUrl });
+      toast.success("Imagem de fundo definida", { id: loadingId });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Falha no upload";
+      toast.error(msg, { id: loadingId });
+    } finally {
+      setEnviandoBg(false);
+    }
+  }
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-start gap-2">
+      <div className="mb-2 flex items-start gap-2">
         {/* Reordenar */}
         <div className="flex flex-col gap-0.5">
           <button
@@ -273,7 +310,7 @@ function CapituloCard({
         {/* Salvar */}
         <button
           type="button"
-          onClick={() => { onSalvar({ titulo: titulo.trim(), conteudo: conteudo.trim() || null }); setDirty(false); }}
+          onClick={() => { onSalvar({ titulo: titulo.trim(), conteudo: conteudo.trim() || null, caixas_texto: caixas }); setDirty(false); }}
           disabled={!dirty || salvando || !titulo.trim()}
           className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
         >
@@ -291,25 +328,100 @@ function CapituloCard({
         </button>
       </div>
 
-      {/* Posição no relatório */}
-      <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-          Posição no Relatório
+      {/* Configurações do Capítulo */}
+      <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+        <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+          Configurações do Capítulo
         </p>
-        <PosicaoPdfStepper
-          valor={(capitulo.posicao_pdf ?? "inicio") as PosicaoPdfValor}
-          onChange={(p) => onSalvar({ posicao_pdf: p })}
-          contagens={contagensPorPosicao}
-          disabled={salvando}
-        />
+
+        {/* Posição no Relatório */}
+        <div className="mb-4">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+            📍 Posição no Relatório
+          </p>
+          <PosicaoPdfStepper
+            valor={(capitulo.posicao_pdf ?? "inicio") as PosicaoPdfValor}
+            onChange={(p) => onSalvar({ posicao_pdf: p })}
+            contagens={contagensPorPosicao}
+            disabled={salvando}
+          />
+        </div>
+
+        {/* Imagem de Capa */}
+        <div>
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+            🖼️ Imagem de Capa
+            <span className="text-[9px] font-normal normal-case tracking-normal text-gray-500">
+              (página inteira no PDF)
+            </span>
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {capitulo.bg_imagem_url ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={capitulo.bg_imagem_url}
+                  alt="Fundo"
+                  className="h-10 w-16 rounded border border-gray-300 object-cover"
+                />
+                <span className="text-[10px] text-gray-600">
+                  Este capítulo sai como página inteira no PDF.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onSalvar({ bg_imagem_url: null })}
+                  disabled={salvando}
+                  className="ml-auto inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                >
+                  <X className="size-3.5" /> Remover
+                </button>
+              </>
+            ) : (
+              <span className="text-[11px] italic text-gray-500">
+                Sem imagem (capítulo em fluxo normal).
+              </span>
+            )}
+            <input
+              ref={bgInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) enviarBg(f);
+                if (bgInputRef.current) bgInputRef.current.value = "";
+              }}
+            />
+            {!capitulo.bg_imagem_url && (
+              <button
+                type="button"
+                onClick={() => bgInputRef.current?.click()}
+                disabled={enviandoBg || salvando}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-2 py-1 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+              >
+                {enviandoBg ? <Loader2 className="size-3.5 animate-spin" /> : <ImageIcon className="size-3.5" />}
+                Enviar imagem
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      <RichTextEditor
-        value={conteudo}
-        onChange={(html) => { setConteudo(html); setDirty(true); }}
-        placeholder="Conteúdo do capítulo..."
-        uploadPathPrefix="aet-textos"
-      />
+      {/* Editor — CapaEditor quando tem imagem, RichTextEditor caso contrário */}
+      {capitulo.bg_imagem_url ? (
+        <CapaEditor
+          bgImagemUrl={capitulo.bg_imagem_url}
+          caixas={caixas}
+          onChange={(novas) => { setCaixas(novas); setDirty(true); }}
+        />
+      ) : (
+        <RichTextEditor
+          value={conteudo}
+          onChange={(html) => { setConteudo(html); setDirty(true); }}
+          placeholder="Conteúdo do capítulo..."
+          uploadPathPrefix="aet-textos"
+        />
+      )}
     </div>
   );
 }
