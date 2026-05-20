@@ -42,6 +42,7 @@ function normalizarSetor(s: unknown): AetSetor {
     ...setor,
     cargos: normalizarCargos(setor.cargos),
     checklist: normalizarChecklist(setor.checklist),
+    respostas_extras: (setor.respostas_extras as Record<string, RespostaChecklist>) ?? {},
     demais_condicoes: (setor.demais_condicoes as string) ?? "",
   } as AetSetor;
 }
@@ -494,6 +495,22 @@ export function useAetInicializarChecklistPerguntas() {
   });
 }
 
+export function useAetDeletarChecklistPergunta() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (slug: string) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("aet_checklist_perguntas")
+        .delete()
+        .eq("slug", slug);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-checklist-perguntas"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 // ─── Perfis OWAS ─────────────────────────────────────────────────────────────
 
 export function useAetPerfisOwas() {
@@ -585,6 +602,7 @@ export function setorVazio(): AetSetor {
       pausas_formais: "nao",
       rodizios_sistematizados: "nao",
     },
+    respostas_extras: {},
     fotos: [],
     parecer_tecnico: "",
     recomendacoes: "",

@@ -12,6 +12,7 @@ import {
   useSalvarAet,
   SLUG_TO_DEFAULT_IMAGE,
   SLUG_TO_OWAS_FIELD,
+  CHECKLIST_PERGUNTAS_PADRAO,
 } from "@/lib/hooks/useAet";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
@@ -32,11 +33,21 @@ export default function AetAnalisePage({
   const { data: owasSelects = [] } = useAetOwasSelects();
   const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
 
+  const SLUGS_PADRAO = new Set([
+    "levantamento_acima_limite", "trabalho_predominante", "pausas_descanso",
+    "uso_cadeira", "cadeira_adequada", "monitor", "organizacao_trabalho",
+    "exigencia_levantamento", "ritmo_por_demanda", "pausas_formais", "rodizios_sistematizados",
+  ]);
+
   const selectOpts = (slug: string): string[] =>
     owasSelects.find((s) => s.slug === slug)?.opcoes ?? [];
 
   const pergunta = (slug: string) =>
-    checklistPerguntas.find((p) => p.slug === slug)?.label ?? "";
+    checklistPerguntas.find((p) => p.slug === slug)?.label ??
+    CHECKLIST_PERGUNTAS_PADRAO.find((p) => p.slug === slug)?.label ?? "";
+
+  const perguntasCustomDaSecao = (secao: string) =>
+    checklistPerguntas.filter((p) => p.secao === secao && !SLUGS_PADRAO.has(p.slug) && p.tipo === "tristate");
 
   const [setores, setSetores] = useState<AetSetor[]>([]);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
@@ -78,6 +89,12 @@ export default function AetAnalisePage({
     const setor = setores.find((s) => s.id === setorId);
     if (!setor) return;
     updateSetor(setorId, { checklist: { ...setor.checklist, ...patch } });
+  }
+
+  function updateRespostaExtra(setorId: string, slug: string, value: RespostaChecklist) {
+    const setor = setores.find((s) => s.id === setorId);
+    if (!setor) return;
+    updateSetor(setorId, { respostas_extras: { ...(setor.respostas_extras ?? {}), [slug]: value } });
   }
 
   function aplicarPerfil(setorId: string, perfilId: string) {
@@ -242,15 +259,24 @@ export default function AetAnalisePage({
                 <TriStateRow label={pergunta("uso_cadeira")} value={setor.checklist.uso_cadeira} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { uso_cadeira: v })} />
                 <TriStateRow label={pergunta("cadeira_adequada")} value={setor.checklist.cadeira_adequada} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { cadeira_adequada: v })} />
                 <TriStateRow label={pergunta("monitor")} value={setor.checklist.monitor} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { monitor: v })} />
+                {perguntasCustomDaSecao("Postura").map((p) => (
+                  <TriStateRow key={p.slug} label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
+                ))}
 
                 <div className="mt-1 border-t border-gray-200 pt-3">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Exigência de Tempo</p>
                   <TriStateRow label={pergunta("exigencia_levantamento")} value={setor.checklist.exigencia_levantamento} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { exigencia_levantamento: v })} />
+                  {perguntasCustomDaSecao("Exigência de Tempo").map((p) => (
+                    <TriStateRow key={p.slug} label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
+                  ))}
                 </div>
 
                 <div className="border-t border-gray-200 pt-3">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Ritmo de Trabalho</p>
                   <TriStateRow label={pergunta("ritmo_por_demanda")} value={setor.checklist.ritmo_por_demanda} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { ritmo_por_demanda: v })} />
+                  {perguntasCustomDaSecao("Ritmo de Trabalho").map((p) => (
+                    <TriStateRow key={p.slug} label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
+                  ))}
                 </div>
 
                 <div className="border-t border-gray-200 pt-3">
@@ -259,6 +285,11 @@ export default function AetAnalisePage({
                   <div className="mt-2">
                     <TriStateRow label={pergunta("rodizios_sistematizados")} value={setor.checklist.rodizios_sistematizados} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { rodizios_sistematizados: v })} />
                   </div>
+                  {perguntasCustomDaSecao("Adoção de Rodízios - Ergonômico").map((p) => (
+                    <div key={p.slug} className="mt-2">
+                      <TriStateRow label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
+                    </div>
+                  ))}
                 </div>
 
                 <div className="border-t border-gray-200 pt-3">

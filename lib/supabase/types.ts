@@ -995,6 +995,7 @@ export interface AetSetor {
   riscos: AetRisco[];
   owas: AetOwas;
   checklist: AetChecklist;
+  respostas_extras: Record<string, RespostaChecklist>;
   fotos: string[];
   parecer_tecnico: string;
   recomendacoes: string;

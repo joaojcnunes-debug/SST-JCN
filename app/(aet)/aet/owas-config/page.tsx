@@ -15,6 +15,7 @@ import {
   useAetSalvarOwasCategoria,
   useAetSalvarOwasSelect,
   useAetSalvarChecklistPergunta,
+  useAetDeletarChecklistPergunta,
 } from "@/lib/hooks/useAet";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -70,6 +71,8 @@ export default function OwasConfigPage() {
   const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
   const inicializarPerguntas = useAetInicializarChecklistPerguntas();
   const [restaurando, setRestaurando] = useState(false);
+  const [addingSecao, setAddingSecao] = useState<string | null>(null);
+  const deletar = useAetDeletarChecklistPergunta();
 
   async function handleRestaurarChecklist() {
     setRestaurando(true);
@@ -155,6 +158,10 @@ export default function OwasConfigPage() {
         <div className="space-y-6">
           {CHECKLIST_ORDEM.map(({ secao, items }) => {
             const fonte = checklistPerguntas.length > 0 ? checklistPerguntas : CHECKLIST_PERGUNTAS_PADRAO;
+            const standardSlugs = new Set(items.map((i) => i.slug));
+            const customPerguntas = fonte.filter(
+              (p) => p.secao === secao && !standardSlugs.has(p.slug) && p.tipo !== "texto"
+            );
             return (
               <div key={secao}>
                 <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">{secao}</p>
@@ -167,8 +174,36 @@ export default function OwasConfigPage() {
                     }
                     const pergunta = fonte.find((p) => p.slug === item.slug);
                     if (!pergunta) return null;
-                    return <PerguntaCard key={item.slug} pergunta={pergunta} />;
+                    return (
+                      <PerguntaCard
+                        key={item.slug}
+                        pergunta={pergunta}
+                        onDelete={() => deletar.mutate(pergunta.slug)}
+                      />
+                    );
                   })}
+
+                  {customPerguntas.map((p) => (
+                    <PerguntaCard
+                      key={p.slug}
+                      pergunta={p}
+                      onDelete={() => deletar.mutate(p.slug)}
+                    />
+                  ))}
+
+                  {addingSecao === secao && (
+                    <NovaPerguntaInline secao={secao} onCancel={() => setAddingSecao(null)} />
+                  )}
+
+                  {addingSecao !== secao && (
+                    <button
+                      type="button"
+                      onClick={() => setAddingSecao(secao)}
+                      className="mt-1 inline-flex items-center gap-1 text-xs text-verde-primary hover:underline"
+                    >
+                      <Plus className="size-3.5" /> Adicionar pergunta
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -471,7 +506,13 @@ function SelectCampoCard({ campo }: { campo: AetOwasSelectCampo }) {
 
 // ─── PerguntaCard ─────────────────────────────────────────────────────────────
 
-function PerguntaCard({ pergunta }: { pergunta: AetChecklistPergunta }) {
+function PerguntaCard({
+  pergunta,
+  onDelete,
+}: {
+  pergunta: AetChecklistPergunta;
+  onDelete?: () => void;
+}) {
   const salvar = useAetSalvarChecklistPergunta();
   const [label, setLabel] = useState(pergunta.label);
   const isTexto = pergunta.tipo === "texto";
@@ -512,7 +553,70 @@ function PerguntaCard({ pergunta }: { pergunta: AetChecklistPergunta }) {
             {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
             Salvar
           </button>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="rounded-md border border-gray-200 p-2 text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+              title="Excluir pergunta"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── NovaPerguntaInline ───────────────────────────────────────────────────────
+
+function NovaPerguntaInline({ secao, onCancel }: { secao: string; onCancel: () => void }) {
+  const salvar = useAetSalvarChecklistPergunta();
+  const [label, setLabel] = useState("");
+
+  function handleSave() {
+    if (!label.trim()) return;
+    const slug = `${secao.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${Date.now()}`;
+    salvar.mutate(
+      { slug, label: label.trim(), secao, tipo: "tristate" },
+      {
+        onSuccess: () => {
+          toast.success("Pergunta adicionada");
+          onCancel();
+        },
+      }
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-verde-primary/30 bg-verde-primary/5 px-4 py-3">
+      <input
+        type="text"
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") onCancel(); }}
+        placeholder="Texto da nova pergunta..."
+        autoFocus
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+      />
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!label.trim() || salvar.isPending}
+          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+        >
+          {salvar.isPending ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+          Salvar
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50"
+        >
+          Cancelar
+        </button>
       </div>
     </div>
   );
