@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp, X } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp, X, Camera } from "lucide-react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import {
   useAetRelatorio,
@@ -64,6 +65,7 @@ export default function AetSetoresPage({
 
   const [setores, setSetores] = useState<AetSetor[]>([]);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
+  const [uploadingFoto, setUploadingFoto] = useState<string | null>(null);
 
   useEffect(() => {
     if (rel) {
@@ -173,6 +175,37 @@ export default function AetSetoresPage({
         esforco: perfil.esforco,
       },
     });
+  }
+
+  async function addFoto(setorId: string, file: File) {
+    if (uploadingFoto) return;
+    setUploadingFoto(setorId);
+    const loadId = toast.loading("Enviando foto...");
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const path = `aet-setores/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("fotos")
+        .upload(path, file, { cacheControl: "31536000", upsert: false });
+      if (error) throw error;
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      if (!pub?.publicUrl) throw new Error("URL pública não retornada");
+      const setor = setores.find((s) => s.id === setorId);
+      if (!setor) return;
+      updateSetor(setorId, { fotos: [...(setor.fotos ?? []), pub.publicUrl] });
+      toast.success("Foto adicionada", { id: loadId });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha no upload", { id: loadId });
+    } finally {
+      setUploadingFoto(null);
+    }
+  }
+
+  function removeFoto(setorId: string, url: string) {
+    const setor = setores.find((s) => s.id === setorId);
+    if (!setor) return;
+    updateSetor(setorId, { fotos: (setor.fotos ?? []).filter((f) => f !== url) });
   }
 
   function handleSave() {
@@ -364,6 +397,63 @@ export default function AetSetoresPage({
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Fotos do Setor ── */}
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Fotos do Setor (máx. 6)</h3>
+                    {canEdit && (setor.fotos ?? []).length < 6 && (
+                      <label
+                        className={cn(
+                          "inline-flex cursor-pointer items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50",
+                          uploadingFoto === setor.id && "cursor-not-allowed opacity-50"
+                        )}
+                      >
+                        {uploadingFoto === setor.id ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <Camera className="size-3" />
+                        )}
+                        Adicionar Foto
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={uploadingFoto === setor.id}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) void addFoto(setor.id, f);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  {(setor.fotos ?? []).length === 0 ? (
+                    <p className="text-xs italic text-gray-400">Nenhuma foto adicionada.</p>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {(setor.fotos ?? []).slice(0, 6).map((url, fIdx) => (
+                        <div key={fIdx} className="group relative aspect-video overflow-hidden rounded-md border border-gray-200">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={url} alt={`Foto ${fIdx + 1}`} className="h-full w-full object-cover" />
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => removeFoto(setor.id, url)}
+                              className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          )}
+                          <span className="absolute bottom-1 left-1 rounded bg-black/40 px-1 text-[10px] text-white">
+                            {fIdx + 1}/6
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -595,10 +685,8 @@ function TriStateRow({
             className={cn(
               "w-7 rounded py-0.5 text-[11px] font-semibold transition-colors",
               value === v
-                ? v === "sim" ? "bg-green-100 text-green-700 ring-1 ring-green-400"
-                  : v === "nao" ? "bg-red-100 text-red-700 ring-1 ring-red-400"
-                  : "bg-gray-200 text-gray-500 ring-1 ring-gray-400"
-                : "bg-white text-gray-300 ring-1 ring-gray-200 hover:bg-gray-50",
+                ? "bg-gray-800 text-white ring-1 ring-gray-700"
+                : "bg-white text-gray-400 ring-1 ring-gray-200 hover:bg-gray-50 hover:text-gray-700",
               disabled && "cursor-not-allowed opacity-60"
             )}
           >

@@ -4,11 +4,23 @@ import { use } from "react";
 import { Loader2, Printer, Save } from "lucide-react";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
-import { useAetRelatorio, useSalvarAet } from "@/lib/hooks/useAet";
+import {
+  useAetRelatorio,
+  useSalvarAet,
+  useAetTextoPadrao,
+  useAetChecklistPerguntas,
+  CHECKLIST_PERGUNTAS_PADRAO,
+} from "@/lib/hooks/useAet";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import { cn } from "@/lib/utils";
-import type { AetSetor, ClassificacaoRiscoAET } from "@/lib/supabase/types";
+import type {
+  AetSetor,
+  AetTextoPadraoCapitulo,
+  AetChecklistPergunta,
+  ClassificacaoRiscoAET,
+} from "@/lib/supabase/types";
+import type { CaixaTexto } from "@/lib/drps/types";
 
 const CLASS_COLOR: Record<ClassificacaoRiscoAET, string> = {
   Trivial: "bg-green-100 text-green-800",
@@ -35,6 +47,12 @@ const OWAS_ESFORCO: Record<number, string> = {
   1: "Carga ≤ 10 kg", 2: "Carga > 10 kg e ≤ 20 kg", 3: "Carga > 20 kg",
 };
 
+const SLUGS_PADRAO = new Set([
+  "levantamento_acima_limite", "trabalho_predominante", "pausas_descanso",
+  "uso_cadeira", "cadeira_adequada", "monitor", "organizacao_trabalho",
+  "exigencia_levantamento", "ritmo_por_demanda", "pausas_formais", "rodizios_sistematizados",
+]);
+
 export default function AetLaudoPage({
   params,
 }: {
@@ -45,6 +63,9 @@ export default function AetLaudoPage({
   const salvar = useSalvarAet();
   const canEdit = useCanEdit();
   const [consideracoes, setConsideracoes] = useState("");
+
+  const { data: capitulos = [] } = useAetTextoPadrao();
+  const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
 
   useEffect(() => {
     if (rel) setConsideracoes(rel.consideracoes_finais ?? "");
@@ -72,11 +93,14 @@ export default function AetLaudoPage({
     ? new Date(rel.data_elaboracao + "T00:00:00").toLocaleDateString("pt-BR")
     : "—";
   const empresa = rel.empresas;
-  const cidade = "";
+
+  const capitulosInicio = capitulos.filter((c) => !c.posicao_pdf || c.posicao_pdf === "inicio");
+  const capitulosAposSumario = capitulos.filter((c) => c.posicao_pdf === "apos_sumario");
+  const capitulosAposSetores = capitulos.filter((c) => c.posicao_pdf === "apos_setores");
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      {/* Toolbar - não imprime */}
+      {/* Toolbar */}
       <div className="flex items-center justify-between print:hidden">
         <h1 className="text-lg font-semibold text-gray-900">Laudo / Imprimir</h1>
         <button
@@ -96,7 +120,7 @@ export default function AetLaudoPage({
           <div className="text-xs text-gray-500">Chabra Saúde e Segurança do Trabalho</div>
         </div>
 
-        {/* Capa */}
+        {/* Capa dinâmica */}
         <div className="mb-10 text-center space-y-3">
           <p className="text-sm font-bold">LAUDO DE AVALIAÇÃO ERGONÔMICA</p>
           <p className="text-sm font-bold">AET – ANÁLISE ERGONÔMICA DO TRABALHO</p>
@@ -111,14 +135,18 @@ export default function AetLaudoPage({
           </div>
         </div>
 
-        {/* 1 – Caracterização */}
+        {/* Capítulos "inicio" do Texto Padrão */}
+        {capitulosInicio.map((cap) => (
+          <CapituloLaudo key={cap.id_capitulo} cap={cap} />
+        ))}
+
+        {/* Seção 1 — sempre dinâmica */}
         <Section num="1" title="CARACTERIZAÇÃO DA EMPRESA AVALIADA">
           <table className="w-full text-xs border-collapse">
             <tbody>
               {[
                 ["Razão Social", empresa?.nome_empresa ?? "—"],
                 ["CNPJ", empresa?.cnpj ?? "—"],
-                ["CNPJ", empresa?.cnpj ?? rel.empresas?.cnpj ?? "—"],
                 ["Responsável pela Elaboração", rel.responsavel_elaboracao || "—"],
                 ["Título Profissional", rel.titulo_profissional || "—"],
                 ["Registro Profissional", rel.registro_profissional || "—"],
@@ -133,53 +161,56 @@ export default function AetLaudoPage({
           </table>
         </Section>
 
-        <Section num="2" title="INTRODUÇÃO GERAL">
-          <p className="text-xs leading-relaxed text-gray-700">
-            A ergonomia estuda a adaptação do trabalho ao homem. Envolve tanto o ambiente físico como os aspectos organizacionais e cognitivos. A ergonomia abrange atividades de planejamento e projeto, que ocorre antes do trabalho ser realizado, e aqueles de controle e avaliação, que ocorrem durante e após o trabalho.
-          </p>
-        </Section>
+        {/* Capítulos "apos_sumario" ou fallback (seções 2–8) */}
+        {capitulosAposSumario.length > 0 ? (
+          capitulosAposSumario.map((cap) => (
+            <CapituloLaudo key={cap.id_capitulo} cap={cap} />
+          ))
+        ) : (
+          <>
+            <Section num="2" title="INTRODUÇÃO GERAL">
+              <p className="text-xs leading-relaxed text-gray-700">
+                A ergonomia estuda a adaptação do trabalho ao homem. Envolve tanto o ambiente físico como os aspectos organizacionais e cognitivos. A ergonomia abrange atividades de planejamento e projeto, que ocorre antes do trabalho ser realizado, e aqueles de controle e avaliação, que ocorrem durante e após o trabalho.
+              </p>
+            </Section>
+            <Section num="3" title="OBJETIVO">
+              <p className="text-xs leading-relaxed text-gray-700">
+                Este estudo tem como objetivo avaliar os postos de trabalho da empresa especificada, promovendo análise ergonômica das atividades e funções, sendo adotados métodos de análise aplicados para fins ergonômicos.
+              </p>
+              <p className="mt-1 text-xs font-medium text-gray-700">BASE LEGAL: Portaria 3.214/78 do Ministério do Trabalho – NR-17</p>
+            </Section>
+            <Section num="4" title="METODOLOGIA">
+              <p className="text-xs leading-relaxed text-gray-700">
+                Durante o trabalho realizado, foram avaliadas todas as funções conforme sugerido pela Metodologia da AET. A metodologia da AET utiliza-se de observações da situação de trabalho, análise da tarefa, entrevistas e verbalizações com os diferentes níveis hierárquicos, buscando compreender em detalhes as atividades nas suas diferentes dimensões (física, cognitiva, mental e social).
+              </p>
+            </Section>
+            <Section num="5" title="LEVANTAMENTO, TRANSPORTE E DESCARGA INDIVIDUAL DE MATERIAIS">
+              <p className="text-xs leading-relaxed text-gray-700">
+                Deverão ser executados de forma que o esforço físico realizado pelo trabalhador seja compatível com sua capacidade de força. Para manipulações ocasionais, o limite de 25 quilos para homens e 15 quilos para mulheres é sugerido, desde que observadas boas práticas para a manipulação.
+              </p>
+            </Section>
+            <Section num="6" title="MOBILIÁRIO DOS POSTOS DE TRABALHO">
+              <ul className="ml-4 list-disc text-xs text-gray-700 space-y-0.5">
+                <li>Sempre que possível o trabalho deve ser executado na posição sentada;</li>
+                <li>O mobiliário deve prover condições dentro da zona de conforto dos segmentos corporais;</li>
+                <li>Os comandos sejam de fácil acionamento;</li>
+                <li>Os assentos sejam adequados.</li>
+              </ul>
+            </Section>
+            <Section num="7" title="EQUIPAMENTOS DOS POSTOS DE TRABALHO">
+              <p className="text-xs leading-relaxed text-gray-700">
+                O mobiliário/equipamentos devem prover condições para que o trabalho seja executado dentro da zona de conforto dos segmentos corporais, em boa condição postural e livre de reflexos.
+              </p>
+            </Section>
+            <Section num="8" title="CONDIÇÕES AMBIENTAIS DE TRABALHO">
+              <p className="text-xs leading-relaxed text-gray-700">
+                O estudo da exposição ocupacional dos trabalhadores aos agentes ambientais está contemplado no Programa de Gerenciamento de Riscos – PGR da empresa.
+              </p>
+            </Section>
+          </>
+        )}
 
-        <Section num="3" title="OBJETIVO">
-          <p className="text-xs leading-relaxed text-gray-700">
-            Este estudo tem como objetivo avaliar os postos de trabalho da empresa especificada, promovendo análise ergonômica das atividades e funções, sendo adotados métodos de análise aplicados para fins ergonômicos.
-          </p>
-          <p className="mt-1 text-xs font-medium text-gray-700">BASE LEGAL: Portaria 3.214/78 do Ministério do Trabalho – NR-17</p>
-        </Section>
-
-        <Section num="4" title="METODOLOGIA">
-          <p className="text-xs leading-relaxed text-gray-700">
-            Durante o trabalho realizado, foram avaliadas todas as funções conforme sugerido pela Metodologia da AET. A metodologia da AET utiliza-se de observações da situação de trabalho, análise da tarefa, entrevistas e verbalizações com os diferentes níveis hierárquicos, buscando compreender em detalhes as atividades nas suas diferentes dimensões (física, cognitiva, mental e social).
-          </p>
-        </Section>
-
-        <Section num="5" title="LEVANTAMENTO, TRANSPORTE E DESCARGA INDIVIDUAL DE MATERIAIS">
-          <p className="text-xs leading-relaxed text-gray-700">
-            Deverão ser executados de forma que o esforço físico realizado pelo trabalhador seja compatível com sua capacidade de força. Para manipulações ocasionais, o limite de 25 quilos para homens e 15 quilos para mulheres é sugerido, desde que observadas boas práticas para a manipulação.
-          </p>
-        </Section>
-
-        <Section num="6" title="MOBILIÁRIO DOS POSTOS DE TRABALHO">
-          <ul className="ml-4 list-disc text-xs text-gray-700 space-y-0.5">
-            <li>Sempre que possível o trabalho deve ser executado na posição sentada;</li>
-            <li>O mobiliário deve prover condições dentro da zona de conforto dos segmentos corporais;</li>
-            <li>Os comandos sejam de fácil acionamento;</li>
-            <li>Os assentos sejam adequados.</li>
-          </ul>
-        </Section>
-
-        <Section num="7" title="EQUIPAMENTOS DOS POSTOS DE TRABALHO">
-          <p className="text-xs leading-relaxed text-gray-700">
-            O mobiliário/equipamentos devem prover condições para que o trabalho seja executado dentro da zona de conforto dos segmentos corporais, em boa condição postural e livre de reflexos.
-          </p>
-        </Section>
-
-        <Section num="8" title="CONDIÇÕES AMBIENTAIS DE TRABALHO">
-          <p className="text-xs leading-relaxed text-gray-700">
-            O estudo da exposição ocupacional dos trabalhadores aos agentes ambientais está contemplado no Programa de Gerenciamento de Riscos – PGR da empresa.
-          </p>
-        </Section>
-
-        {/* 9 – Agentes por setor */}
+        {/* Seção 9 — sempre dinâmica */}
         {rel.setores.length > 0 && (
           <Section num="9" title="AGENTES AMBIENTAIS PARA AS ÁREAS OPERACIONAIS">
             {rel.setores.map((setor) => (
@@ -188,36 +219,48 @@ export default function AetLaudoPage({
           </Section>
         )}
 
-        <Section num="10" title="CONFORTO EM ÁREAS ADMINISTRATIVAS">
-          <p className="text-xs leading-relaxed text-gray-700">
-            A temperatura efetiva foi avaliada utilizando um termo higrômetro eletrônico. Foi considerado o limite do índice de temperatura efetiva entre 20 a 23 ºC (item 17.5.2.1.b da NR-17). A velocidade do ar não deve ser superior a 0,75 m/s (item 17.5.2.1.c) e a umidade relativa mínima de 40% (item 17.5.2.1.d).
-          </p>
-        </Section>
-
-        <Section num="11" title="ORGANIZAÇÃO DO TRABALHO">
-          <ul className="ml-4 list-[lower-alpha] text-xs text-gray-700 space-y-0.5">
-            {["as normas de produção", "o modo operatório", "a exigência de tempo", "a determinação do conteúdo de tempo", "o ritmo de trabalho", "o conteúdo das tarefas", "horário de trabalho"].map((item) => (
-              <li key={item}>{item};</li>
-            ))}
-          </ul>
-        </Section>
-
-        <Section num="12" title="FERRAMENTAS BIOMECÂNICAS APLICADAS">
-          <p className="text-xs leading-relaxed text-gray-700">
-            <strong>Método OWAS:</strong> O Método OWAS (Ovako Working Posture Analysing System) foi desenvolvido na Finlândia por Karhu, Kansi e Kuorinka, entre 1974 e 1978, juntamente com o Instituto Finlandês de Saúde Ocupacional, objetivando gerar informações para melhorar os métodos de trabalho pela identificação de posturas corporais prejudiciais durante a realização das atividades.
-          </p>
-        </Section>
-
-        {/* 13 – Análise por setor */}
+        {/* Seção 13 — sempre dinâmica */}
         {rel.setores.length > 0 && (
           <Section num="13" title="ANÁLISES ERGONÔMICAS DO TRABALHO">
             {rel.setores.map((setor, idx) => (
-              <SetorAnaliseBlock key={setor.id} setor={setor} idx={idx} />
+              <SetorAnaliseBlock
+                key={setor.id}
+                setor={setor}
+                idx={idx}
+                checklistPerguntas={checklistPerguntas}
+              />
             ))}
           </Section>
         )}
 
-        {/* 14 – Considerações Finais */}
+        {/* Capítulos "apos_setores" ou fallback (seções 10–12) */}
+        {capitulosAposSetores.length > 0 ? (
+          capitulosAposSetores.map((cap) => (
+            <CapituloLaudo key={cap.id_capitulo} cap={cap} />
+          ))
+        ) : (
+          <>
+            <Section num="10" title="CONFORTO EM ÁREAS ADMINISTRATIVAS">
+              <p className="text-xs leading-relaxed text-gray-700">
+                A temperatura efetiva foi avaliada utilizando um termo higrômetro eletrônico. Foi considerado o limite do índice de temperatura efetiva entre 20 a 23 ºC (item 17.5.2.1.b da NR-17). A velocidade do ar não deve ser superior a 0,75 m/s (item 17.5.2.1.c) e a umidade relativa mínima de 40% (item 17.5.2.1.d).
+              </p>
+            </Section>
+            <Section num="11" title="ORGANIZAÇÃO DO TRABALHO">
+              <ul className="ml-4 list-[lower-alpha] text-xs text-gray-700 space-y-0.5">
+                {["as normas de produção", "o modo operatório", "a exigência de tempo", "a determinação do conteúdo de tempo", "o ritmo de trabalho", "o conteúdo das tarefas", "horário de trabalho"].map((item) => (
+                  <li key={item}>{item};</li>
+                ))}
+              </ul>
+            </Section>
+            <Section num="12" title="FERRAMENTAS BIOMECÂNICAS APLICADAS">
+              <p className="text-xs leading-relaxed text-gray-700">
+                <strong>Método OWAS:</strong> O Método OWAS (Ovako Working Posture Analysing System) foi desenvolvido na Finlândia por Karhu, Kansi e Kuorinka, entre 1974 e 1978, juntamente com o Instituto Finlandês de Saúde Ocupacional, objetivando gerar informações para melhorar os métodos de trabalho pela identificação de posturas corporais prejudiciais durante a realização das atividades.
+              </p>
+            </Section>
+          </>
+        )}
+
+        {/* Seção 14 — editável */}
         <Section num="14" title="CONSIDERAÇÕES FINAIS">
           <div className="print:hidden">
             <RichTextEditor
@@ -249,7 +292,6 @@ export default function AetLaudoPage({
 
         {/* Assinatura */}
         <div className="mt-10 space-y-2 text-center text-xs text-gray-600">
-          {cidade && <p>{cidade}, {dataFormatada}</p>}
           <div className="mt-6 flex justify-center">
             <div className="text-center">
               <div className="mx-auto mb-1 w-56 border-t border-gray-400" />
@@ -269,22 +311,59 @@ export default function AetLaudoPage({
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function Section({
-  num,
-  title,
-  children,
-}: {
-  num: string;
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ num, title, children }: { num: string; title: string; children: React.ReactNode }) {
   return (
     <div className="mb-6">
       <h2 className="mb-2 text-xs font-bold uppercase text-gray-800">
-        {num} – {title}
+        {num ? `${num} – ${title}` : title}
       </h2>
       <div className="space-y-2">{children}</div>
     </div>
+  );
+}
+
+function CapituloLaudo({ cap }: { cap: AetTextoPadraoCapitulo }) {
+  if (cap.bg_imagem_url) {
+    return (
+      <div
+        className="relative mb-6 overflow-hidden rounded-lg border border-gray-200 print:break-before-page print:rounded-none print:border-0"
+        style={{
+          backgroundImage: `url(${cap.bg_imagem_url})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          minHeight: "480px",
+        }}
+      >
+        {(cap.caixas_texto ?? []).map((caixa: CaixaTexto) => (
+          <div
+            key={caixa.id}
+            style={{
+              position: "absolute",
+              left: `${caixa.x}%`,
+              top: `${caixa.y}%`,
+              width: `${caixa.w ?? 40}%`,
+              fontSize: `${caixa.fontSize ?? 14}px`,
+              fontWeight: caixa.bold ? "bold" : "normal",
+              color: caixa.color ?? "#ffffff",
+              textAlign: caixa.align ?? "left",
+              whiteSpace: "pre-wrap",
+            }}
+          >
+            {caixa.conteudo}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <Section num="" title={cap.titulo}>
+      {cap.conteudo && (
+        <div
+          className="tiptap-conteudo prose prose-sm max-w-none text-xs leading-relaxed text-gray-700"
+          dangerouslySetInnerHTML={{ __html: cap.conteudo }}
+        />
+      )}
+    </Section>
   );
 }
 
@@ -342,12 +421,36 @@ function SetorRiscosBlock({ setor }: { setor: AetSetor }) {
           ))}
         </tbody>
       </table>
+      {(setor.fotos ?? []).length > 0 && (
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {(setor.fotos ?? []).slice(0, 6).map((url, i) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={i} src={url} alt={`Foto ${i + 1}`} className="h-32 w-full rounded border border-gray-200 object-cover" />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function SetorAnaliseBlock({ setor, idx }: { setor: AetSetor; idx: number }) {
+function SetorAnaliseBlock({
+  setor,
+  idx,
+  checklistPerguntas,
+}: {
+  setor: AetSetor;
+  idx: number;
+  checklistPerguntas: AetChecklistPergunta[];
+}) {
   const { owas, checklist } = setor;
+
+  const pergunta = (slug: string) =>
+    checklistPerguntas.find((p) => p.slug === slug)?.label ??
+    CHECKLIST_PERGUNTAS_PADRAO.find((p) => p.slug === slug)?.label ?? slug;
+
+  const customExtras = Object.entries(setor.respostas_extras ?? {}).filter(
+    ([slug]) => !SLUGS_PADRAO.has(slug)
+  );
 
   return (
     <div className="mb-6 border border-gray-300 rounded">
@@ -357,7 +460,7 @@ function SetorAnaliseBlock({ setor, idx }: { setor: AetSetor; idx: number }) {
           <span className="font-normal"> — {setor.cargos.map((c) => c.nome).filter(Boolean).join(", ")}</span>
         )}
       </div>
-      {/* Descrição por cargo */}
+
       {setor.cargos.filter((c) => c.descricao).map((cargo, cidx) => (
         <p key={cidx} className="border-t border-gray-100 px-3 py-1 text-xs text-gray-700">
           <strong>{cargo.nome}:</strong> {cargo.descricao}
@@ -380,31 +483,56 @@ function SetorAnaliseBlock({ setor, idx }: { setor: AetSetor; idx: number }) {
       {/* Checklist */}
       <table className="w-full text-xs border-t border-gray-200">
         <tbody>
-          <ChecklistRow label="Levantamento acima do limite recomendado?" value={checklist.levantamento_acima_limite} />
-          <tr><td colSpan={2} className="px-3 py-1 border-t border-gray-100">
-            <span className="font-medium">Posturas forçadas:</span> {checklist.posturas_forcadas_tipo}
-          </td></tr>
-          <tr><td colSpan={2} className="px-3 py-1 border-t border-gray-100">
-            <span className="font-medium">Trabalho predominante:</span> {checklist.trabalho_predominante}
-          </td></tr>
-          <ChecklistRow label="Pausas para descanso ou cadeiras semi-sentado?" value={checklist.pausas_descanso} />
-          <ChecklistRow label="Uso de cadeira disponível?" value={checklist.uso_cadeira} />
-          <ChecklistRow label="Cadeira adequada (giratória, ajustável)?" value={checklist.cadeira_adequada} />
-          <ChecklistRow label="Monitor com regulagem?" value={checklist.monitor} />
-          <ChecklistRow label="Levantamento acima do limite na exigência de tempo?" value={checklist.exigencia_levantamento} />
-          <ChecklistRow label="Ritmo determinado pela demanda?" value={checklist.ritmo_por_demanda} />
-          <ChecklistRow label="Pausas formais durante o ciclo?" value={checklist.pausas_formais} />
-          <ChecklistRow label="Rodízios sistematizados?" value={checklist.rodizios_sistematizados} />
+          <ChecklistRow label={pergunta("levantamento_acima_limite")} value={checklist.levantamento_acima_limite} />
+          <tr>
+            <td colSpan={2} className="px-3 py-1 border-t border-gray-100">
+              <span className="font-medium">Trabalho predominante:</span> {checklist.trabalho_predominante}
+            </td>
+          </tr>
+          <ChecklistRow label={pergunta("pausas_descanso")} value={checklist.pausas_descanso} />
+          <ChecklistRow label={pergunta("uso_cadeira")} value={checklist.uso_cadeira} />
+          <ChecklistRow label={pergunta("cadeira_adequada")} value={checklist.cadeira_adequada} />
+          <ChecklistRow label={pergunta("monitor")} value={checklist.monitor} />
+          <ChecklistRow label={pergunta("exigencia_levantamento")} value={checklist.exigencia_levantamento} />
+          <ChecklistRow label={pergunta("ritmo_por_demanda")} value={checklist.ritmo_por_demanda} />
+          <ChecklistRow label={pergunta("pausas_formais")} value={checklist.pausas_formais} />
+          <ChecklistRow label={pergunta("rodizios_sistematizados")} value={checklist.rodizios_sistematizados} />
+          {customExtras.map(([slug, value]) => (
+            <ChecklistRow
+              key={slug}
+              label={checklistPerguntas.find((p) => p.slug === slug)?.label ?? slug}
+              value={value}
+            />
+          ))}
         </tbody>
       </table>
 
-      {/* Parecer */}
       {setor.parecer_tecnico && (
+        <div className="border-t border-gray-200 p-3">
+          <p className="mb-1 text-xs font-bold uppercase text-gray-600">Parecer Técnico</p>
+          <div
+            className="tiptap-conteudo prose prose-sm max-w-none text-xs text-gray-700"
+            dangerouslySetInnerHTML={{ __html: setor.parecer_tecnico }}
+          />
+        </div>
+      )}
+
+      {setor.recomendacoes && (
         <div className="border-t border-gray-200 p-3">
           <p className="mb-1 text-xs font-bold uppercase text-gray-600">Recomendações</p>
           <div
             className="tiptap-conteudo prose prose-sm max-w-none text-xs text-gray-700"
-            dangerouslySetInnerHTML={{ __html: setor.parecer_tecnico }}
+            dangerouslySetInnerHTML={{ __html: setor.recomendacoes }}
+          />
+        </div>
+      )}
+
+      {setor.demais_condicoes && (
+        <div className="border-t border-gray-200 p-3">
+          <p className="mb-1 text-xs font-bold uppercase text-gray-600">Demais Condições Avaliadas</p>
+          <div
+            className="tiptap-conteudo prose prose-sm max-w-none text-xs text-gray-700"
+            dangerouslySetInnerHTML={{ __html: setor.demais_condicoes }}
           />
         </div>
       )}
@@ -426,7 +554,7 @@ function OwasRow({ label, values, map }: { label: string; values: number[]; map:
 
 function ChecklistRow({ label, value }: { label: string; value: string }) {
   const texto = value === "sim" ? "Sim" : value === "nao_aplica" ? "Não se Aplica" : "Não";
-  const cor = value === "sim" ? "text-green-700" : value === "nao_aplica" ? "text-gray-500" : "text-red-700";
+  const cor = value === "sim" ? "text-green-700" : value === "nao_aplica" ? "text-gray-500" : "text-gray-600";
   return (
     <tr className="border-t border-gray-100">
       <td className="px-3 py-1 text-gray-700">{label}</td>

@@ -43,6 +43,7 @@ function normalizarSetor(s: unknown): AetSetor {
     cargos: normalizarCargos(setor.cargos),
     checklist: normalizarChecklist(setor.checklist),
     respostas_extras: (setor.respostas_extras as Record<string, RespostaChecklist>) ?? {},
+    fotos: Array.isArray(setor.fotos) ? (setor.fotos as string[]) : [],
     demais_condicoes: (setor.demais_condicoes as string) ?? "",
   } as AetSetor;
 }
