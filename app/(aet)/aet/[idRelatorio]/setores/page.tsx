@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAetRelatorio, useSalvarAet, setorVazio } from "@/lib/hooks/useAet";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
@@ -181,14 +181,14 @@ export default function AetSetoresPage({
                     disabled={!canEdit}
                     onChange={(v) => updateSetor(setor.id, { nome_setor: v })}
                   />
-                  <TextInput
+                  <TagInput
                     label="Cargo(s)"
                     value={setor.cargos}
                     disabled={!canEdit}
                     onChange={(v) => updateSetor(setor.id, { cargos: v })}
                   />
                   <div className="sm:col-span-2">
-                    <TextInput
+                    <TagInput
                       label="Máquinas e Equipamentos"
                       value={setor.maquinas_equipamentos}
                       disabled={!canEdit}
@@ -362,6 +362,82 @@ function TextInput({
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-50"
       />
+    </div>
+  );
+}
+
+function TagInput({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  onChange: (v: string) => void;
+}) {
+  const items = value ? value.split("\n").filter((s) => s.trim().length > 0) : [];
+  const [input, setInput] = useState("");
+
+  function addItem(raw: string) {
+    const trimmed = raw.trim();
+    if (!trimmed || items.includes(trimmed)) return;
+    onChange([...items, trimmed].join("\n"));
+    setInput("");
+  }
+
+  function removeItem(idx: number) {
+    onChange(items.filter((_, i) => i !== idx).join("\n"));
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addItem(input);
+    } else if (e.key === "Backspace" && !input && items.length > 0) {
+      removeItem(items.length - 1);
+    }
+  }
+
+  return (
+    <div>
+      <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
+      <div
+        className={cn(
+          "flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-md border border-gray-300 px-2 py-1.5 focus-within:border-verde-primary focus-within:ring-2 focus-within:ring-verde-primary/20",
+          disabled && "bg-gray-50"
+        )}
+      >
+        {items.map((item, idx) => (
+          <span
+            key={idx}
+            className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2.5 py-0.5 text-xs font-medium text-verde-primary"
+          >
+            {item}
+            {!disabled && (
+              <button
+                type="button"
+                onClick={() => removeItem(idx)}
+                className="text-verde-primary/50 hover:text-verde-primary"
+              >
+                <X className="size-3" />
+              </button>
+            )}
+          </span>
+        ))}
+        {!disabled && (
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={() => { if (input.trim()) addItem(input); }}
+            className="flex-1 min-w-[100px] bg-transparent text-sm outline-none placeholder:text-gray-400"
+            placeholder={items.length === 0 ? "Digite e pressione Enter..." : "+"}
+          />
+        )}
+      </div>
     </div>
   );
 }

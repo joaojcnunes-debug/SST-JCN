@@ -301,13 +301,13 @@ function SetorRiscosBlock({ setor }: { setor: AetSetor }) {
           {setor.maquinas_equipamentos && (
             <tr className="border border-gray-300">
               <td className="px-2 py-1 font-semibold bg-gray-50">Máquinas e Equipamentos:</td>
-              <td className="px-2 py-1">{setor.maquinas_equipamentos}</td>
+              <td className="px-2 py-1">{setor.maquinas_equipamentos.split("\n").filter(Boolean).join(", ")}</td>
             </tr>
           )}
           {setor.cargos && (
             <tr className="border border-gray-300">
               <td className="px-2 py-1 font-semibold bg-gray-50">Cargos:</td>
-              <td className="px-2 py-1">{setor.cargos}</td>
+              <td className="px-2 py-1">{setor.cargos.split("\n").filter(Boolean).join(", ")}</td>
             </tr>
           )}
           {setor.descricao_atividade && (
