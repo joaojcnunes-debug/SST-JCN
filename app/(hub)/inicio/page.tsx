@@ -101,6 +101,7 @@ const NOMES_MODULOS: Record<ModuloPermitido, string> = {
   apreciacao_maquinas: "Apreciação Máquinas",
   inventario_maquinas: "Inventário",
   analise_quimicos: "Análise Químicos",
+  aet: "AET",
 };
 
 interface QuickActionCfg {

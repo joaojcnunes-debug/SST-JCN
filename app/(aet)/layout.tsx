@@ -1,0 +1,61 @@
+"use client";
+
+import { type ReactNode, useMemo } from "react";
+import { ClipboardCheck, Plus, List, Printer } from "lucide-react";
+import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
+import ModuleTopbar from "@/components/layout/ModuleTopbar";
+import { useAuth } from "@/lib/hooks/useAuth";
+import { useRequireModule } from "@/lib/hooks/useRequireModule";
+import { usePathname } from "next/navigation";
+
+export default function AetLayout({ children }: { children: ReactNode }) {
+  useAuth();
+  useRequireModule("aet");
+
+  const pathname = usePathname();
+
+  // Detecta se está dentro de um relatório específico
+  const match = pathname.match(/\/aet\/([^/]+)\//);
+  const idRelatorio = match?.[1];
+
+  const sections = useMemo<NavSection[]>(() => {
+    const base: NavSection[] = [
+      {
+        label: "AET",
+        items: [
+          { href: "/aet", label: "Laudos", icon: List },
+          { href: "/aet/novo", label: "Novo Laudo", icon: Plus },
+        ],
+      },
+    ];
+
+    if (idRelatorio) {
+      base.push({
+        label: "Laudo Atual",
+        items: [
+          { href: `/aet/${idRelatorio}/dados`, label: "Dados Gerais", icon: ClipboardCheck },
+          { href: `/aet/${idRelatorio}/setores`, label: "Setores / Riscos", icon: ClipboardCheck },
+          { href: `/aet/${idRelatorio}/analise`, label: "OWAS / Checklist", icon: ClipboardCheck },
+          { href: `/aet/${idRelatorio}/laudo`, label: "Laudo / Imprimir", icon: Printer },
+        ],
+      });
+    }
+
+    return base;
+  }, [idRelatorio]);
+
+  return (
+    <div className="min-h-screen">
+      <SidebarShell
+        title="AET"
+        subtitle="Chabra"
+        logoHref="/aet"
+        sections={sections}
+      />
+      <div className="md:pl-[220px] print:pl-0">
+        <ModuleTopbar title="AET – Análise Ergonômica do Trabalho" />
+        <main className="px-4 py-6 md:px-6 print:p-0">{children}</main>
+      </div>
+    </div>
+  );
+}

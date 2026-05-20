@@ -16,7 +16,8 @@ export type ModuloPermitido =
   | "nao_conformidade"
   | "apreciacao_maquinas"
   | "inventario_maquinas"
-  | "analise_quimicos";
+  | "analise_quimicos"
+  | "aet";
 
 export const TODOS_MODULOS: ModuloPermitido[] = [
   "painel",
@@ -26,6 +27,7 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "apreciacao_maquinas",
   "inventario_maquinas",
   "analise_quimicos",
+  "aet",
 ];
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
@@ -36,6 +38,7 @@ export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   apreciacao_maquinas: "Apreciação de Máquinas",
   inventario_maquinas: "Inventário de Equipamentos",
   analise_quimicos: "Análise de Químicos Chabra",
+  aet: "AET – Análise Ergonômica do Trabalho",
 };
 
 export type TipoRisco =
@@ -878,10 +881,92 @@ export interface Database {
       apreciacoes_maquinas: TableShape<ApreciacaoMaquina>;
       apreciacoes_maquinas_itens: TableShape<ApreciacaoMaquinaItem>;
       apreciacao_acoes: TableShape<ApreciacaoAcao>;
+      aet_relatorios: TableShape<AetRelatorio>;
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
   };
+}
+
+// ─── AET – Análise Ergonômica do Trabalho ────────────────────────────────────
+
+export type StatusAET = "RASCUNHO" | "CONCLUIDO";
+
+export type ClassificacaoRiscoAET =
+  | "Trivial"
+  | "De Atenção"
+  | "Moderado"
+  | "Alto"
+  | "Crítico";
+
+export type TipoRiscoAET =
+  | "Acidentes"
+  | "Ergonômico"
+  | "Físico"
+  | "Químico"
+  | "Biológico";
+
+export type PosturaCostas = 1 | 2 | 3 | 4;
+export type PosturaBracos = 1 | 2 | 3;
+export type PosturaPernas = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type EsforcoOWAS = 1 | 2 | 3;
+
+export interface AetRisco {
+  id: string;
+  tipo: TipoRiscoAET;
+  risco: string;
+  intensidade_concentracao: string;
+  tecnica_metodologia: string;
+  epi_ca: string;
+  epi_eficaz: string;
+  classificacao_risco: ClassificacaoRiscoAET;
+}
+
+export interface AetChecklist {
+  levantamento_acima_limite: boolean;
+  posturas_forcadas_tipo: "Ocasionais" | "Eventuais" | "Habituais" | "Não Aplica";
+  trabalho_predominante: "Em pé" | "Sentado" | "Alternando";
+  pausas_descanso: boolean;
+  uso_cadeira: boolean;
+  cadeira_adequada: boolean;
+  monitor: boolean;
+  exigencia_levantamento: boolean;
+  ritmo_por_demanda: boolean;
+  pausas_formais: boolean;
+  rodizios_sistematizados: boolean;
+}
+
+export interface AetOwas {
+  posturas_costas: PosturaCostas[];
+  posturas_bracos: PosturaBracos[];
+  posturas_pernas: PosturaPernas[];
+  esforco: EsforcoOWAS[];
+}
+
+export interface AetSetor {
+  id: string;
+  nome_setor: string;
+  maquinas_equipamentos: string;
+  cargos: string;
+  descricao_atividade: string;
+  riscos: AetRisco[];
+  owas: AetOwas;
+  checklist: AetChecklist;
+  fotos: string[];
+  parecer_tecnico: string;
+  recomendacoes: string;
+}
+
+export interface AetRelatorio {
+  id_relatorio: string;
+  id_empresa: string;
+  data_elaboracao: string | null;
+  responsavel_elaboracao: string;
+  titulo_profissional: string;
+  registro_profissional: string;
+  status: StatusAET;
+  setores: AetSetor[];
+  consideracoes_finais: string;
+  created_at: string;
+  updated_at: string | null;
+  usuario: string | null;
+  empresas?: { nome_empresa: string; cnpj: string | null } | null;
 }
