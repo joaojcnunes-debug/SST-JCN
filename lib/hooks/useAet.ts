@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import type { AetRelatorio, AetSetor, AetTextoPadraoCapitulo, StatusAET } from "@/lib/supabase/types";
@@ -165,6 +166,7 @@ export function useAetCriarCapitulo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -186,6 +188,7 @@ export function useAetSalvarCapitulo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -204,6 +207,7 @@ export function useAetExcluirCapitulo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
