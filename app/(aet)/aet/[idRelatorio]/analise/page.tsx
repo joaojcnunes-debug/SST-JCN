@@ -15,7 +15,7 @@ import {
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import { cn } from "@/lib/utils";
-import type { AetOwas, AetOwasCategoria, AetSetor, AetChecklist } from "@/lib/supabase/types";
+import type { AetOwas, AetOwasCategoria, AetSetor, AetChecklist, RespostaChecklist } from "@/lib/supabase/types";
 
 export default function AetAnalisePage({
   params,
@@ -199,19 +199,26 @@ export default function AetAnalisePage({
 
               {/* Checklist */}
               <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                  Postura / Organização do Trabalho
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Postura / Organização do Trabalho
+                  </h3>
+                  <div className="flex gap-3 text-[10px] font-semibold text-gray-400 uppercase tracking-wider pr-1">
+                    <span className="w-7 text-center">Sim</span>
+                    <span className="w-7 text-center">Não</span>
+                    <span className="w-7 text-center">N/A</span>
+                  </div>
+                </div>
 
-                <CheckRow
+                <TriStateRow
                   label="Há levantamento, transporte ou descarga acima do limite recomendado?"
-                  checked={setor.checklist.levantamento_acima_limite}
+                  value={setor.checklist.levantamento_acima_limite}
                   disabled={!canEdit}
                   onChange={(v) => updateChecklist(setor.id, { levantamento_acima_limite: v })}
                 />
 
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-700">Posturas forçadas ocorrem de que forma?</span>
+                  <span className="flex-1 text-xs text-gray-700">Posturas forçadas ocorrem de que forma?</span>
                   <select
                     value={setor.checklist.posturas_forcadas_tipo}
                     disabled={!canEdit}
@@ -229,7 +236,7 @@ export default function AetAnalisePage({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-gray-700">Trabalho executado predominantemente:</span>
+                  <span className="flex-1 text-xs text-gray-700">Trabalho executado predominantemente:</span>
                   <select
                     value={setor.checklist.trabalho_predominante}
                     disabled={!canEdit}
@@ -244,14 +251,28 @@ export default function AetAnalisePage({
                   </select>
                 </div>
 
-                <CheckRow label="A empresa oferece pausas para descanso ou cadeiras semi-sentado?" checked={setor.checklist.pausas_descanso} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_descanso: v })} />
-                <CheckRow label="É disponibilizado o uso de cadeira?" checked={setor.checklist.uso_cadeira} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { uso_cadeira: v })} />
-                <CheckRow label="A cadeira é estofada, giratória, ajustável?" checked={setor.checklist.cadeira_adequada} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { cadeira_adequada: v })} />
-                <CheckRow label="A atividade usa monitor fixo com regulagem de altura?" checked={setor.checklist.monitor} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { monitor: v })} />
-                <CheckRow label="Há levantamento acima do limite na exigência de tempo?" checked={setor.checklist.exigencia_levantamento} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { exigencia_levantamento: v })} />
-                <CheckRow label="O ritmo de trabalho é determinado pela demanda?" checked={setor.checklist.ritmo_por_demanda} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { ritmo_por_demanda: v })} />
-                <CheckRow label="Há pausas formais durante o ciclo de trabalho?" checked={setor.checklist.pausas_formais} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_formais: v })} />
-                <CheckRow label="Há rodízios sistematizados entre os postos?" checked={setor.checklist.rodizios_sistematizados} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { rodizios_sistematizados: v })} />
+                <TriStateRow label="A empresa oferece pausas para descanso ou cadeiras do tipo semi-sentado?" value={setor.checklist.pausas_descanso} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_descanso: v })} />
+                <TriStateRow label="É disponibilizado o uso de cadeira?" value={setor.checklist.uso_cadeira} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { uso_cadeira: v })} />
+                <TriStateRow label="A cadeira é estofada, revestida, giratória e com ajuste de altura?" value={setor.checklist.cadeira_adequada} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { cadeira_adequada: v })} />
+                <TriStateRow label="A atividade usa monitor fixo sobre a mesa com regulagem de altura e inclinação?" value={setor.checklist.monitor} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { monitor: v })} />
+
+                <div className="mt-1 border-t border-gray-200 pt-3">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Exigência de Tempo</p>
+                  <TriStateRow label="Há registros de levantamento, transporte e descarga acima do limite na exigência de tempo?" value={setor.checklist.exigencia_levantamento} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { exigencia_levantamento: v })} />
+                </div>
+
+                <div className="border-t border-gray-200 pt-3">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Ritmo de Trabalho</p>
+                  <TriStateRow label="O ritmo de trabalho é determinado pela demanda?" value={setor.checklist.ritmo_por_demanda} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { ritmo_por_demanda: v })} />
+                </div>
+
+                <div className="border-t border-gray-200 pt-3">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Adoção de Rodízios — Ergonômico</p>
+                  <TriStateRow label="Há pausas formais durante o ciclo de trabalho?" value={setor.checklist.pausas_formais} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_formais: v })} />
+                  <div className="mt-2">
+                    <TriStateRow label="Há rodízios sistematizados entre os postos de trabalho?" value={setor.checklist.rodizios_sistematizados} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { rodizios_sistematizados: v })} />
+                  </div>
+                </div>
               </div>
 
               {/* Parecer + Recomendações */}
@@ -331,32 +352,48 @@ function OwasGroup({
   );
 }
 
-function CheckRow({
+function TriStateRow({
   label,
-  checked,
+  value,
   disabled,
   onChange,
 }: {
   label: string;
-  checked: boolean;
+  value: RespostaChecklist;
   disabled: boolean;
-  onChange: (v: boolean) => void;
+  onChange: (v: RespostaChecklist) => void;
 }) {
+  const opts: { v: RespostaChecklist; label: string }[] = [
+    { v: "sim", label: "Sim" },
+    { v: "nao", label: "Não" },
+    { v: "nao_aplica", label: "N/A" },
+  ];
   return (
-    <label
-      className={cn(
-        "flex items-center gap-2 text-xs text-gray-700",
-        disabled && "cursor-not-allowed opacity-60"
-      )}
-    >
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(e) => onChange(e.target.checked)}
-        className="size-3.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary"
-      />
-      {label}
-    </label>
+    <div className="flex items-center gap-2">
+      <span className="flex-1 text-xs text-gray-700">{label}</span>
+      <div className="flex shrink-0 gap-1">
+        {opts.map(({ v, label: lbl }) => (
+          <button
+            key={v}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(v)}
+            className={cn(
+              "w-7 rounded py-0.5 text-[11px] font-semibold transition-colors",
+              value === v
+                ? v === "sim"
+                  ? "bg-green-100 text-green-700 ring-1 ring-green-400"
+                  : v === "nao"
+                  ? "bg-red-100 text-red-700 ring-1 ring-red-400"
+                  : "bg-gray-200 text-gray-500 ring-1 ring-gray-400"
+                : "bg-white text-gray-300 ring-1 ring-gray-200 hover:bg-gray-50",
+              disabled && "cursor-not-allowed opacity-60"
+            )}
+          >
+            {lbl}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

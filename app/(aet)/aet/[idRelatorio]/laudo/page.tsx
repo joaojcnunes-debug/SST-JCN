@@ -391,6 +391,7 @@ function SetorAnaliseBlock({ setor, idx }: { setor: AetSetor; idx: number }) {
           <ChecklistRow label="Uso de cadeira disponível?" value={checklist.uso_cadeira} />
           <ChecklistRow label="Cadeira adequada (giratória, ajustável)?" value={checklist.cadeira_adequada} />
           <ChecklistRow label="Monitor com regulagem?" value={checklist.monitor} />
+          <ChecklistRow label="Levantamento acima do limite na exigência de tempo?" value={checklist.exigencia_levantamento} />
           <ChecklistRow label="Ritmo determinado pela demanda?" value={checklist.ritmo_por_demanda} />
           <ChecklistRow label="Pausas formais durante o ciclo?" value={checklist.pausas_formais} />
           <ChecklistRow label="Rodízios sistematizados?" value={checklist.rodizios_sistematizados} />
@@ -423,11 +424,13 @@ function OwasRow({ label, values, map }: { label: string; values: number[]; map:
   );
 }
 
-function ChecklistRow({ label, value }: { label: string; value: boolean }) {
+function ChecklistRow({ label, value }: { label: string; value: string }) {
+  const texto = value === "sim" ? "Sim" : value === "nao_aplica" ? "Não se Aplica" : "Não";
+  const cor = value === "sim" ? "text-green-700" : value === "nao_aplica" ? "text-gray-500" : "text-red-700";
   return (
     <tr className="border-t border-gray-100">
       <td className="px-3 py-1 text-gray-700">{label}</td>
-      <td className="px-3 py-1 font-semibold">{value ? "Sim" : "Não"}</td>
+      <td className={`px-3 py-1 font-semibold ${cor}`}>{texto}</td>
     </tr>
   );
 }

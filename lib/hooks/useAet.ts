@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
-import type { AetCargo, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, StatusAET } from "@/lib/supabase/types";
+import type { AetCargo, AetChecklist, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, RespostaChecklist, StatusAET } from "@/lib/supabase/types";
 
 function normalizarCargos(raw: unknown): AetCargo[] {
   if (Array.isArray(raw)) return raw as AetCargo[];
@@ -13,9 +13,36 @@ function normalizarCargos(raw: unknown): AetCargo[] {
   return [];
 }
 
+function toResposta(v: unknown): RespostaChecklist {
+  if (v === true || v === "sim") return "sim";
+  if (v === "nao_aplica") return "nao_aplica";
+  return "nao";
+}
+
+function normalizarChecklist(raw: unknown): AetChecklist {
+  const c = (raw ?? {}) as Record<string, unknown>;
+  return {
+    levantamento_acima_limite: toResposta(c.levantamento_acima_limite),
+    posturas_forcadas_tipo: (c.posturas_forcadas_tipo as string) ?? "Ocasionais",
+    trabalho_predominante: (c.trabalho_predominante as string) ?? "Em pé",
+    pausas_descanso: toResposta(c.pausas_descanso),
+    uso_cadeira: toResposta(c.uso_cadeira),
+    cadeira_adequada: toResposta(c.cadeira_adequada),
+    monitor: toResposta(c.monitor),
+    exigencia_levantamento: toResposta(c.exigencia_levantamento),
+    ritmo_por_demanda: toResposta(c.ritmo_por_demanda),
+    pausas_formais: toResposta(c.pausas_formais),
+    rodizios_sistematizados: toResposta(c.rodizios_sistematizados),
+  };
+}
+
 function normalizarSetor(s: unknown): AetSetor {
   const setor = s as Record<string, unknown>;
-  return { ...setor, cargos: normalizarCargos(setor.cargos) } as AetSetor;
+  return {
+    ...setor,
+    cargos: normalizarCargos(setor.cargos),
+    checklist: normalizarChecklist(setor.checklist),
+  } as AetSetor;
 }
 
 function normalizarRelatorio(data: unknown): AetRelatorio {
@@ -485,17 +512,17 @@ export function setorVazio(): AetSetor {
     riscos: [],
     owas: { posturas_costas: [], posturas_bracos: [], posturas_pernas: [], esforco: [] },
     checklist: {
-      levantamento_acima_limite: false,
+      levantamento_acima_limite: "nao",
       posturas_forcadas_tipo: "Ocasionais",
       trabalho_predominante: "Em pé",
-      pausas_descanso: true,
-      uso_cadeira: false,
-      cadeira_adequada: false,
-      monitor: false,
-      exigencia_levantamento: false,
-      ritmo_por_demanda: true,
-      pausas_formais: true,
-      rodizios_sistematizados: false,
+      pausas_descanso: "nao",
+      uso_cadeira: "nao",
+      cadeira_adequada: "nao",
+      monitor: "nao",
+      exigencia_levantamento: "nao",
+      ritmo_por_demanda: "nao",
+      pausas_formais: "nao",
+      rodizios_sistematizados: "nao",
     },
     fotos: [],
     parecer_tecnico: "",

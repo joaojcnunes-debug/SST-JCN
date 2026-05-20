@@ -927,18 +927,20 @@ export interface AetOwasSelectCampo {
   opcoes: string[];
 }
 
+export type RespostaChecklist = "sim" | "nao" | "nao_aplica";
+
 export interface AetChecklist {
-  levantamento_acima_limite: boolean;
+  levantamento_acima_limite: RespostaChecklist;
   posturas_forcadas_tipo: string;
   trabalho_predominante: string;
-  pausas_descanso: boolean;
-  uso_cadeira: boolean;
-  cadeira_adequada: boolean;
-  monitor: boolean;
-  exigencia_levantamento: boolean;
-  ritmo_por_demanda: boolean;
-  pausas_formais: boolean;
-  rodizios_sistematizados: boolean;
+  pausas_descanso: RespostaChecklist;
+  uso_cadeira: RespostaChecklist;
+  cadeira_adequada: RespostaChecklist;
+  monitor: RespostaChecklist;
+  exigencia_levantamento: RespostaChecklist;
+  ritmo_por_demanda: RespostaChecklist;
+  pausas_formais: RespostaChecklist;
+  rodizios_sistematizados: RespostaChecklist;
 }
 
 export interface AetOwas {
