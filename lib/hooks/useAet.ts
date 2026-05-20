@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
-import type { AetCargo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, StatusAET } from "@/lib/supabase/types";
+import type { AetCargo, AetOwas, AetOwasCategoria, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, StatusAET } from "@/lib/supabase/types";
 
 function normalizarCargos(raw: unknown): AetCargo[] {
   if (Array.isArray(raw)) return raw as AetCargo[];
@@ -228,6 +228,115 @@ export function useAetExcluirCapitulo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// ─── Config OWAS Categorias ──────────────────────────────────────────────────
+
+export const SLUG_TO_OWAS_FIELD: Record<string, keyof AetOwas> = {
+  costas: "posturas_costas",
+  bracos: "posturas_bracos",
+  pernas: "posturas_pernas",
+  esforco: "esforco",
+};
+
+export const SLUG_TO_DEFAULT_IMAGE: Record<string, string> = {
+  costas: "/owas/costas.svg",
+  bracos: "/owas/bracos.svg",
+  pernas: "/owas/pernas.svg",
+  esforco: "/owas/esforco.svg",
+};
+
+export const OWAS_CATEGORIAS_PADRAO: AetOwasCategoria[] = [
+  {
+    id: "padrao-costas", slug: "costas", titulo: "Postura das Costas", imagem_url: null, ordem: 0,
+    opcoes: [
+      { value: 1, label: "1 – Ereta" },
+      { value: 2, label: "2 – Inclinada" },
+      { value: 3, label: "3 – Ereta e Torcida" },
+      { value: 4, label: "4 – Inclinada e Torcida" },
+    ],
+  },
+  {
+    id: "padrao-bracos", slug: "bracos", titulo: "Postura dos Braços", imagem_url: null, ordem: 1,
+    opcoes: [
+      { value: 1, label: "1 – Os dois braços abaixo dos ombros" },
+      { value: 2, label: "2 – Um braço no nível ou acima dos ombros" },
+      { value: 3, label: "3 – Ambos braços no nível ou acima dos ombros" },
+    ],
+  },
+  {
+    id: "padrao-pernas", slug: "pernas", titulo: "Postura das Pernas", imagem_url: null, ordem: 2,
+    opcoes: [
+      { value: 1, label: "1 – Sentado" },
+      { value: 2, label: "2 – De pé com ambas as pernas esticadas" },
+      { value: 3, label: "3 – De pé com o peso de uma das pernas esticada" },
+      { value: 4, label: "4 – De pé ou agachado com ambos os joelhos flexionados" },
+      { value: 5, label: "5 – De pé ou agachado com um dos joelhos dobrados" },
+      { value: 6, label: "6 – Ajoelhado em um ou ambos os joelhos" },
+      { value: 7, label: "7 – Andando ou se movendo" },
+    ],
+  },
+  {
+    id: "padrao-esforco", slug: "esforco", titulo: "Esforço", imagem_url: null, ordem: 3,
+    opcoes: [
+      { value: 1, label: "1 – Carga ≤ 10 kg" },
+      { value: 2, label: "2 – Carga > 10 kg e ≤ 20 kg" },
+      { value: 3, label: "3 – Carga > 20 kg" },
+    ],
+  },
+];
+
+export function useAetOwasConfig() {
+  return useQuery({
+    queryKey: ["aet-owas-config"],
+    queryFn: async () => {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data, error } = await supabase
+          .from("aet_owas_categorias")
+          .select("*")
+          .order("ordem");
+        if (error) return OWAS_CATEGORIAS_PADRAO;
+        return data.length > 0 ? (data as AetOwasCategoria[]) : OWAS_CATEGORIAS_PADRAO;
+      } catch {
+        return OWAS_CATEGORIAS_PADRAO;
+      }
+    },
+    placeholderData: OWAS_CATEGORIAS_PADRAO,
+    staleTime: 30_000,
+  });
+}
+
+export function useAetSalvarOwasCategoria() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: Partial<AetOwasCategoria> & { id: string }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("aet_owas_categorias")
+        .update(patch as never)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-config"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useAetInicializarOwasConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const rows = OWAS_CATEGORIAS_PADRAO.map(({ id: _id, ...rest }) => rest);
+      const { error } = await supabase
+        .from("aet_owas_categorias")
+        .insert(rows as never);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-config"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 }

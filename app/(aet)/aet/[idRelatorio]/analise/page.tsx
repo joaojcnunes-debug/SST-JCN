@@ -3,53 +3,18 @@
 import { useEffect, useState, use } from "react";
 import { Save, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
-import { useAetPerfisOwas, useAetRelatorio, useSalvarAet } from "@/lib/hooks/useAet";
+import {
+  useAetOwasConfig,
+  useAetPerfisOwas,
+  useAetRelatorio,
+  useSalvarAet,
+  SLUG_TO_DEFAULT_IMAGE,
+  SLUG_TO_OWAS_FIELD,
+} from "@/lib/hooks/useAet";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import { cn } from "@/lib/utils";
-import type {
-  AetSetor,
-  AetChecklist,
-  PosturaCostas,
-  PosturaBracos,
-  PosturaPernas,
-  EsforcoOWAS,
-} from "@/lib/supabase/types";
-
-const OWAS_IMAGE: Record<string, string> = {
-  "Postura das Costas": "/owas/costas.svg",
-  "Postura dos Braços": "/owas/bracos.svg",
-  "Postura das Pernas": "/owas/pernas.svg",
-  "Esforço": "/owas/esforco.svg",
-};
-
-// ─── OWAS options ─────────────────────────────────────────────────────────────
-
-const COSTAS: { value: PosturaCostas; label: string }[] = [
-  { value: 1, label: "1 – Ereta" },
-  { value: 2, label: "2 – Inclinada" },
-  { value: 3, label: "3 – Ereta e Torcida" },
-  { value: 4, label: "4 – Inclinada e Torcida" },
-];
-const BRACOS: { value: PosturaBracos; label: string }[] = [
-  { value: 1, label: "1 – Os dois braços abaixo dos ombros" },
-  { value: 2, label: "2 – Um braço no nível ou acima dos ombros" },
-  { value: 3, label: "3 – Ambos braços no nível ou acima dos ombros" },
-];
-const PERNAS: { value: PosturaPernas; label: string }[] = [
-  { value: 1, label: "1 – Sentado" },
-  { value: 2, label: "2 – De pé com ambas as pernas esticadas" },
-  { value: 3, label: "3 – De pé com o peso de uma das pernas esticada" },
-  { value: 4, label: "4 – De pé ou agachado com ambos os joelhos flexionados" },
-  { value: 5, label: "5 – De pé ou agachado com um dos joelhos dobrados" },
-  { value: 6, label: "6 – Ajoelhado em um ou ambos os joelhos" },
-  { value: 7, label: "7 – Andando ou se movendo" },
-];
-const ESFORCO: { value: EsforcoOWAS; label: string }[] = [
-  { value: 1, label: "1 – Carga ≤ 10 kg" },
-  { value: 2, label: "2 – Carga > 10 kg e ≤ 20 kg" },
-  { value: 3, label: "3 – Carga > 20 kg" },
-];
+import type { AetOwas, AetOwasCategoria, AetSetor, AetChecklist } from "@/lib/supabase/types";
 
 export default function AetAnalisePage({
   params,
@@ -60,6 +25,7 @@ export default function AetAnalisePage({
   const { data: rel, isLoading } = useAetRelatorio(idRelatorio);
   const salvar = useSalvarAet();
   const canEdit = useCanEdit();
+  const { data: owasConfig = [] } = useAetOwasConfig();
   const { data: perfisOwas = [] } = useAetPerfisOwas();
 
   const [setores, setSetores] = useState<AetSetor[]>([]);
@@ -84,18 +50,18 @@ export default function AetAnalisePage({
     setSetores((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
   }
 
-  function toggleOwas<T extends number>(
+  function toggleOwas(
     setorId: string,
-    field: "posturas_costas" | "posturas_bracos" | "posturas_pernas" | "esforco",
-    value: T
+    field: keyof AetOwas,
+    value: number
   ) {
     const setor = setores.find((s) => s.id === setorId);
     if (!setor) return;
-    const current = setor.owas[field] as T[];
+    const current = setor.owas[field] as number[];
     const next = current.includes(value)
       ? current.filter((v) => v !== value)
       : [...current, value];
-    updateSetor(setorId, { owas: { ...setor.owas, [field]: next } });
+    updateSetor(setorId, { owas: { ...setor.owas, [field]: next } as AetOwas });
   }
 
   function updateChecklist(setorId: string, patch: Partial<AetChecklist>) {
@@ -179,11 +145,15 @@ export default function AetAnalisePage({
                 </span>
               )}
             </span>
-            {abertos.has(setor.id) ? <ChevronUp className="size-4 text-gray-400" /> : <ChevronDown className="size-4 text-gray-400" />}
+            {abertos.has(setor.id) ? (
+              <ChevronUp className="size-4 text-gray-400" />
+            ) : (
+              <ChevronDown className="size-4 text-gray-400" />
+            )}
           </button>
 
           {abertos.has(setor.id) && (
-            <div className="border-t border-gray-100 px-5 pb-6 pt-4 space-y-6">
+            <div className="space-y-6 border-t border-gray-100 px-5 pb-6 pt-4">
               {/* Aplicar perfil */}
               {canEdit && perfisOwas.length > 0 && (
                 <div className="flex items-center gap-2">
@@ -207,34 +177,19 @@ export default function AetAnalisePage({
 
               {/* OWAS */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <OwasGroup
-                  title="Postura das Costas"
-                  options={COSTAS}
-                  selected={setor.owas.posturas_costas}
-                  disabled={!canEdit}
-                  onToggle={(v) => toggleOwas(setor.id, "posturas_costas", v as PosturaCostas)}
-                />
-                <OwasGroup
-                  title="Postura dos Braços"
-                  options={BRACOS}
-                  selected={setor.owas.posturas_bracos}
-                  disabled={!canEdit}
-                  onToggle={(v) => toggleOwas(setor.id, "posturas_bracos", v as PosturaBracos)}
-                />
-                <OwasGroup
-                  title="Postura das Pernas"
-                  options={PERNAS}
-                  selected={setor.owas.posturas_pernas}
-                  disabled={!canEdit}
-                  onToggle={(v) => toggleOwas(setor.id, "posturas_pernas", v as PosturaPernas)}
-                />
-                <OwasGroup
-                  title="Esforço"
-                  options={ESFORCO}
-                  selected={setor.owas.esforco}
-                  disabled={!canEdit}
-                  onToggle={(v) => toggleOwas(setor.id, "esforco", v as EsforcoOWAS)}
-                />
+                {owasConfig.map((cat) => {
+                  const field = SLUG_TO_OWAS_FIELD[cat.slug];
+                  if (!field) return null;
+                  return (
+                    <OwasGroup
+                      key={cat.id}
+                      categoria={cat}
+                      selected={(setor.owas[field] ?? []) as number[]}
+                      disabled={!canEdit}
+                      onToggle={(v) => toggleOwas(setor.id, field, v)}
+                    />
+                  );
+                })}
               </div>
 
               {/* Checklist */}
@@ -295,20 +250,18 @@ export default function AetAnalisePage({
               </div>
 
               {/* Parecer + Recomendações */}
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Parecer Técnico / Recomendações (Seção 13)
-                  </label>
-                  <RichTextEditor
-                    value={setor.parecer_tecnico}
-                    onChange={(html) => updateSetor(setor.id, { parecer_tecnico: html })}
-                    onBlur={() => {/* auto-save not needed, use Save button */}}
-                    readOnly={!canEdit}
-                    uploadPathPrefix="aet-analise"
-                    placeholder="Descreva o parecer técnico e as recomendações para este setor..."
-                  />
-                </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">
+                  Parecer Técnico / Recomendações (Seção 13)
+                </label>
+                <RichTextEditor
+                  value={setor.parecer_tecnico}
+                  onChange={(html) => updateSetor(setor.id, { parecer_tecnico: html })}
+                  onBlur={() => {/* save via button */}}
+                  readOnly={!canEdit}
+                  uploadPathPrefix="aet-analise"
+                  placeholder="Descreva o parecer técnico e as recomendações para este setor..."
+                />
               </div>
             </div>
           )}
@@ -318,29 +271,35 @@ export default function AetAnalisePage({
   );
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function OwasGroup({
-  title,
-  options,
+  categoria,
   selected,
   disabled,
   onToggle,
 }: {
-  title: string;
-  options: { value: number; label: string }[];
+  categoria: AetOwasCategoria;
   selected: number[];
   disabled: boolean;
   onToggle: (v: number) => void;
 }) {
-  const imageSrc = OWAS_IMAGE[title];
+  const imageSrc = categoria.imagem_url ?? SLUG_TO_DEFAULT_IMAGE[categoria.slug];
   return (
     <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-      <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</h4>
+      <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+        {categoria.titulo}
+      </h4>
       <div className="flex gap-3">
         <div className="flex-1 space-y-1.5">
-          {options.map((opt) => (
-            <label key={opt.value} className={cn("flex items-center gap-2 text-xs text-gray-700", disabled && "cursor-not-allowed opacity-60")}>
+          {categoria.opcoes.map((opt) => (
+            <label
+              key={opt.value}
+              className={cn(
+                "flex items-center gap-2 text-xs text-gray-700",
+                disabled && "cursor-not-allowed opacity-60"
+              )}
+            >
               <input
                 type="checkbox"
                 checked={selected.includes(opt.value)}
@@ -353,12 +312,12 @@ function OwasGroup({
           ))}
         </div>
         {imageSrc && (
-          <div className="shrink-0 w-36 self-start">
+          <div className="w-36 shrink-0 self-start">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageSrc}
-              alt={`Referência OWAS: ${title}`}
-              className="w-full h-auto rounded border border-gray-200"
+              alt={`Referência OWAS: ${categoria.titulo}`}
+              className="h-auto w-full rounded border border-gray-200"
             />
           </div>
         )}
@@ -379,7 +338,12 @@ function CheckRow({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className={cn("flex items-center gap-2 text-xs text-gray-700", disabled && "cursor-not-allowed opacity-60")}>
+    <label
+      className={cn(
+        "flex items-center gap-2 text-xs text-gray-700",
+        disabled && "cursor-not-allowed opacity-60"
+      )}
+    >
       <input
         type="checkbox"
         checked={checked}

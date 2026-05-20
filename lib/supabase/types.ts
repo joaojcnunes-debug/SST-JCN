@@ -942,6 +942,20 @@ export interface AetOwas {
   esforco: EsforcoOWAS[];
 }
 
+export interface AetOwasOpcao {
+  value: number;
+  label: string;
+}
+
+export interface AetOwasCategoria {
+  id: string;
+  slug: string;
+  titulo: string;
+  imagem_url: string | null;
+  opcoes: AetOwasOpcao[];
+  ordem: number;
+}
+
 export interface AetPerfilOwas {
   id: string;
   nome: string;

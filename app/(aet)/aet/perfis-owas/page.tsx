@@ -4,54 +4,16 @@ import { useState } from "react";
 import { Loader2, Plus, Save, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
-  useAetPerfisOwas,
+  SLUG_TO_DEFAULT_IMAGE,
   useAetCriarPerfilOwas,
-  useAetSalvarPerfilOwas,
   useAetExcluirPerfilOwas,
+  useAetOwasConfig,
+  useAetPerfisOwas,
+  useAetSalvarPerfilOwas,
 } from "@/lib/hooks/useAet";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
-import { cn } from "@/lib/utils";
-import type {
-  AetPerfilOwas,
-  PosturaCostas,
-  PosturaBracos,
-  PosturaPernas,
-  EsforcoOWAS,
-} from "@/lib/supabase/types";
-
-const OWAS_IMAGE: Record<string, string> = {
-  "Postura das Costas": "/owas/costas.svg",
-  "Postura dos Braços": "/owas/bracos.svg",
-  "Postura das Pernas": "/owas/pernas.svg",
-  "Esforço": "/owas/esforco.svg",
-};
-
-const COSTAS: { value: PosturaCostas; label: string }[] = [
-  { value: 1, label: "1 – Ereta" },
-  { value: 2, label: "2 – Inclinada" },
-  { value: 3, label: "3 – Ereta e Torcida" },
-  { value: 4, label: "4 – Inclinada e Torcida" },
-];
-const BRACOS: { value: PosturaBracos; label: string }[] = [
-  { value: 1, label: "1 – Os dois braços abaixo dos ombros" },
-  { value: 2, label: "2 – Um braço no nível ou acima dos ombros" },
-  { value: 3, label: "3 – Ambos braços no nível ou acima dos ombros" },
-];
-const PERNAS: { value: PosturaPernas; label: string }[] = [
-  { value: 1, label: "1 – Sentado" },
-  { value: 2, label: "2 – De pé com ambas as pernas esticadas" },
-  { value: 3, label: "3 – De pé com o peso de uma das pernas esticada" },
-  { value: 4, label: "4 – De pé ou agachado com ambos os joelhos flexionados" },
-  { value: 5, label: "5 – De pé ou agachado com um dos joelhos dobrados" },
-  { value: 6, label: "6 – Ajoelhado em um ou ambos os joelhos" },
-  { value: 7, label: "7 – Andando ou se movendo" },
-];
-const ESFORCO: { value: EsforcoOWAS; label: string }[] = [
-  { value: 1, label: "1 – Carga ≤ 10 kg" },
-  { value: 2, label: "2 – Carga > 10 kg e ≤ 20 kg" },
-  { value: 3, label: "3 – Carga > 20 kg" },
-];
+import type { AetOwasCategoria, AetPerfilOwas } from "@/lib/supabase/types";
 
 function perfilVazio(): Omit<AetPerfilOwas, "id" | "created_at"> {
   return {
@@ -64,7 +26,8 @@ function perfilVazio(): Omit<AetPerfilOwas, "id" | "created_at"> {
 }
 
 export default function PerfisOwasPage() {
-  const { data: perfis = [], isLoading } = useAetPerfisOwas();
+  const { data: perfis = [], isLoading: loadingPerfis } = useAetPerfisOwas();
+  const { data: categorias = [] } = useAetOwasConfig();
   const criar = useAetCriarPerfilOwas();
   const excluir = useAetExcluirPerfilOwas();
 
@@ -82,8 +45,8 @@ export default function PerfisOwasPage() {
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Perfis OWAS</h1>
           <p className="text-sm text-gray-600">
-            Cadastre perfis de posturas OWAS reutilizáveis. Na análise de cada setor,
-            selecione um perfil para preencher automaticamente os campos.
+            Cadastre perfis de posturas reutilizáveis. Na análise de cada setor,
+            selecione um perfil para preencher os campos automaticamente.
           </p>
         </div>
         <button
@@ -97,7 +60,7 @@ export default function PerfisOwasPage() {
         </button>
       </div>
 
-      {isLoading ? (
+      {loadingPerfis ? (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <LoadingSkeleton rows={3} />
         </div>
@@ -111,6 +74,7 @@ export default function PerfisOwasPage() {
             <PerfilCard
               key={perfil.id}
               perfil={perfil}
+              categorias={categorias}
               onExcluir={() => setConfirmExcluir(perfil)}
             />
           ))}
@@ -130,7 +94,10 @@ export default function PerfisOwasPage() {
         onConfirm={() => {
           if (!confirmExcluir) return;
           excluir.mutate(confirmExcluir.id, {
-            onSuccess: () => { setConfirmExcluir(null); toast.success("Perfil excluído"); },
+            onSuccess: () => {
+              setConfirmExcluir(null);
+              toast.success("Perfil excluído");
+            },
           });
         }}
         onCancel={() => setConfirmExcluir(null)}
@@ -141,31 +108,42 @@ export default function PerfisOwasPage() {
 
 // ─── PerfilCard ───────────────────────────────────────────────────────────────
 
+const SLUG_TO_FIELD: Record<string, keyof Omit<AetPerfilOwas, "id" | "nome" | "created_at">> = {
+  costas: "posturas_costas",
+  bracos: "posturas_bracos",
+  pernas: "posturas_pernas",
+  esforco: "esforco",
+};
+
 function PerfilCard({
   perfil,
+  categorias,
   onExcluir,
 }: {
   perfil: AetPerfilOwas;
+  categorias: AetOwasCategoria[];
   onExcluir: () => void;
 }) {
   const salvar = useAetSalvarPerfilOwas();
 
   const [nome, setNome] = useState(perfil.nome);
-  const [costas, setCostas] = useState<PosturaCostas[]>(perfil.posturas_costas);
-  const [bracos, setBracos] = useState<PosturaBracos[]>(perfil.posturas_bracos);
-  const [pernas, setPernas] = useState<PosturaPernas[]>(perfil.posturas_pernas);
-  const [esforco, setEsforco] = useState<EsforcoOWAS[]>(perfil.esforco);
+  const [selections, setSelections] = useState<Record<string, number[]>>({
+    costas: perfil.posturas_costas,
+    bracos: perfil.posturas_bracos,
+    pernas: perfil.posturas_pernas,
+    esforco: perfil.esforco,
+  });
 
-  function toggleVal<T extends number>(
-    current: T[],
-    value: T,
-    set: (v: T[]) => void
-  ) {
-    set(
-      current.includes(value)
-        ? current.filter((v) => v !== value)
-        : [...current, value]
-    );
+  function toggleVal(slug: string, value: number) {
+    setSelections((prev) => {
+      const current = prev[slug] ?? [];
+      return {
+        ...prev,
+        [slug]: current.includes(value)
+          ? current.filter((v) => v !== value)
+          : [...current, value],
+      };
+    });
   }
 
   function handleSave() {
@@ -173,10 +151,10 @@ function PerfilCard({
       {
         id: perfil.id,
         nome: nome.trim() || "Sem nome",
-        posturas_costas: costas,
-        posturas_bracos: bracos,
-        posturas_pernas: pernas,
-        esforco,
+        posturas_costas: (selections.costas ?? []) as AetPerfilOwas["posturas_costas"],
+        posturas_bracos: (selections.bracos ?? []) as AetPerfilOwas["posturas_bracos"],
+        posturas_pernas: (selections.pernas ?? []) as AetPerfilOwas["posturas_pernas"],
+        esforco: (selections.esforco ?? []) as AetPerfilOwas["esforco"],
       },
       { onSuccess: () => toast.success("Perfil salvo") }
     );
@@ -184,7 +162,6 @@ function PerfilCard({
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      {/* Header */}
       <div className="mb-4 flex items-center gap-3">
         <input
           type="text"
@@ -211,57 +188,45 @@ function PerfilCard({
         </button>
       </div>
 
-      {/* OWAS checkboxes */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <OwasGroupConfig
-          title="Postura das Costas"
-          options={COSTAS}
-          selected={costas}
-          onToggle={(v) => toggleVal(costas, v as PosturaCostas, setCostas)}
-        />
-        <OwasGroupConfig
-          title="Postura dos Braços"
-          options={BRACOS}
-          selected={bracos}
-          onToggle={(v) => toggleVal(bracos, v as PosturaBracos, setBracos)}
-        />
-        <OwasGroupConfig
-          title="Postura das Pernas"
-          options={PERNAS}
-          selected={pernas}
-          onToggle={(v) => toggleVal(pernas, v as PosturaPernas, setPernas)}
-        />
-        <OwasGroupConfig
-          title="Esforço"
-          options={ESFORCO}
-          selected={esforco}
-          onToggle={(v) => toggleVal(esforco, v as EsforcoOWAS, setEsforco)}
-        />
+        {categorias.map((cat) => (
+          <OwasGroupPerfil
+            key={cat.id}
+            categoria={cat}
+            selected={selections[cat.slug] ?? []}
+            onToggle={(v) => toggleVal(cat.slug, v)}
+          />
+        ))}
+        {categorias.length === 0 && (
+          <p className="col-span-2 text-xs text-gray-400">
+            Nenhuma categoria configurada. Acesse <strong>Config. OWAS</strong> para inicializar.
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
-// ─── OwasGroupConfig ──────────────────────────────────────────────────────────
+// ─── OwasGroupPerfil ──────────────────────────────────────────────────────────
 
-function OwasGroupConfig({
-  title,
-  options,
+function OwasGroupPerfil({
+  categoria,
   selected,
   onToggle,
 }: {
-  title: string;
-  options: { value: number; label: string }[];
+  categoria: AetOwasCategoria;
   selected: number[];
   onToggle: (v: number) => void;
 }) {
-  const imageSrc = OWAS_IMAGE[title];
+  const imageSrc = categoria.imagem_url ?? SLUG_TO_DEFAULT_IMAGE[categoria.slug];
   return (
     <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-      <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">{title}</h4>
+      <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+        {categoria.titulo}
+      </h4>
       <div className="flex gap-3">
         <div className="flex-1 space-y-1.5">
-          {options.map((opt) => (
+          {categoria.opcoes.map((opt) => (
             <label key={opt.value} className="flex cursor-pointer items-center gap-2 text-xs text-gray-700">
               <input
                 type="checkbox"
@@ -278,7 +243,7 @@ function OwasGroupConfig({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={imageSrc}
-              alt={`Referência OWAS: ${title}`}
+              alt={`OWAS: ${categoria.titulo}`}
               className="h-auto w-full rounded border border-gray-200"
             />
           </div>
@@ -287,3 +252,6 @@ function OwasGroupConfig({
     </div>
   );
 }
+
+// Keep SLUG_TO_FIELD in scope (referenced by PerfilCard)
+void SLUG_TO_FIELD;
