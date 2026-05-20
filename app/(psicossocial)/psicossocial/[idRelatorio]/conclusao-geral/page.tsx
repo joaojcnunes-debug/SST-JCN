@@ -11,6 +11,7 @@ import {
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import RichTextEditor from "@/components/drps/RichTextEditor";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
   useDrpsProbabilidades,
@@ -273,13 +274,12 @@ export default function ConclusaoGeralPage({
             responsabilidade técnica é do psicólogo.
           </p>
         )}
-        <textarea
-          rows={14}
+        <RichTextEditor
           value={conclusao}
-          onChange={(e) => setConclusao(e.target.value)}
-          disabled={!canEdit}
+          onChange={setConclusao}
+          readOnly={!canEdit}
+          uploadPathPrefix="drps-conclusao-geral"
           placeholder="Conclusão técnica consolidada do diagnóstico DRPS. Mencione os tópicos com maior matriz de risco entre os setores avaliados, articule com os agravos potenciais e cite as medidas de controle existentes. Cite NR-01 (item 1.5 - GRO/PGR) e NR-17 quando pertinente."
-          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary disabled:bg-gray-50 disabled:text-gray-500"
         />
         {canEdit && (
           <div className="flex justify-end">

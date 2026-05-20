@@ -46,6 +46,8 @@ interface Props {
   placeholder?: string;
   /** Nome do storage path/folder dentro do bucket 'fotos' onde gravar imagens. */
   uploadPathPrefix?: string;
+  readOnly?: boolean;
+  onBlur?: () => void;
 }
 
 export default function RichTextEditor({
@@ -53,6 +55,8 @@ export default function RichTextEditor({
   onChange,
   placeholder = "Escreva aqui...",
   uploadPathPrefix = "drps-texto-padrao",
+  readOnly = false,
+  onBlur,
 }: Props) {
   const uploadingRef = useRef(false);
 
@@ -77,8 +81,12 @@ export default function RichTextEditor({
     ],
     content: value || "",
     immediatelyRender: false,
+    editable: !readOnly,
     onUpdate: ({ editor: ed }) => {
       onChange(ed.getHTML());
+    },
+    onBlur: () => {
+      onBlur?.();
     },
     editorProps: {
       attributes: {
@@ -87,6 +95,11 @@ export default function RichTextEditor({
       },
     },
   });
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!readOnly);
+  }, [editor, readOnly]);
 
   // Atualiza editor se value mudar de fora (ex.: trocou de capítulo)
   useEffect(() => {
@@ -162,14 +175,16 @@ export default function RichTextEditor({
   }
 
   return (
-    <div className="overflow-hidden rounded-md border border-gray-300 bg-white">
-      <Toolbar
-        editor={editor}
-        onPickImage={() => inputRef.current?.click()}
-        onLink={setLink}
-        onTable={insertTable}
-        onInsertVariavel={insertVariavel}
-      />
+    <div className={cn("overflow-hidden rounded-md border bg-white", readOnly ? "border-gray-200" : "border-gray-300")}>
+      {!readOnly && (
+        <Toolbar
+          editor={editor}
+          onPickImage={() => inputRef.current?.click()}
+          onLink={setLink}
+          onTable={insertTable}
+          onInsertVariavel={insertVariavel}
+        />
+      )}
       <input
         ref={inputRef}
         type="file"

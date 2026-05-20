@@ -14,6 +14,7 @@ import {
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
+import RichTextEditor from "@/components/drps/RichTextEditor";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import DrpsSumarioPrint from "@/components/drps/DrpsSumarioPrint";
 import DrpsRelatorioExtrasPrint from "@/components/drps/DrpsRelatorioExtrasPrint";
@@ -1119,32 +1120,30 @@ function BlocoSetor({
           </tr>
           <tr>
             <td className="align-top">
-              <textarea
-                value={textoLocal}
-                onChange={(e) => setTextoLocal(e.target.value)}
-                onBlur={() => {
-                  if (canEdit && textoLocal !== conclusao)
-                    onSalvarConclusao(textoLocal);
-                }}
-                disabled={!canEdit}
-                rows={4}
-                placeholder={
-                  canEdit
-                    ? "Conclusão do psicólogo para o setor — clique para editar ou use 'Gerar com IA'."
-                    : "Você não tem permissão para editar a conclusão."
-                }
-                className="w-full border-0 bg-transparent p-0 text-[11px] leading-relaxed text-gray-900 focus:outline-none focus:ring-0 resize-none disabled:cursor-not-allowed print:hidden"
-              />
-              <div
-                className="hidden whitespace-pre-wrap text-[11px] leading-relaxed text-gray-900 print:block"
-                style={{ minHeight: 70 }}
-              >
-                {textoLocal || (
-                  <span className="italic text-gray-400">
-                    (Conclusão não preenchida)
-                  </span>
-                )}
+              <div className="print:hidden">
+                <RichTextEditor
+                  value={textoLocal}
+                  onChange={(html) => setTextoLocal(html)}
+                  onBlur={() => {
+                    if (canEdit && textoLocal !== conclusao)
+                      onSalvarConclusao(textoLocal);
+                  }}
+                  readOnly={!canEdit}
+                  uploadPathPrefix="drps-conclusao"
+                  placeholder={
+                    canEdit
+                      ? "Conclusão do psicólogo para o setor — clique para editar ou use 'Gerar com IA'."
+                      : "Você não tem permissão para editar a conclusão."
+                  }
+                />
               </div>
+              <div
+                className="tiptap-conteudo prose prose-sm max-w-none hidden text-[11px] leading-relaxed text-gray-900 print:block"
+                style={{ minHeight: 70 }}
+                dangerouslySetInnerHTML={{
+                  __html: textoLocal || "<em style=\"color:#9ca3af\">(Conclusão não preenchida)</em>",
+                }}
+              />
             </td>
           </tr>
         </tbody>
