@@ -34,6 +34,8 @@ export const VARIAVEIS: VariavelDef[] = [
   { chave: "crp", rotulo: "CRP", exemplo: "11515" },
   { chave: "carimbo", rotulo: "Carimbo do profissional (nome + título + registro)", exemplo: "João Jefferson\nErgonomista\nCREA 12345-SP" },
   { chave: "importado", rotulo: "Data de importação (dd/mm/aaaa)", exemplo: "15/05/2026" },
+  { chave: "data_carimbo_inicio", rotulo: "Período de coleta — data inicial (dd/mm/aaaa)", exemplo: "05/11/2026" },
+  { chave: "data_carimbo_fim", rotulo: "Período de coleta — data final (dd/mm/aaaa)", exemplo: "13/05/2026" },
 ];
 
 function formatarDataBR(iso: string | null | undefined): string {

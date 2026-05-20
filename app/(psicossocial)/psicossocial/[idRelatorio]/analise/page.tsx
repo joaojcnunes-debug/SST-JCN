@@ -124,10 +124,21 @@ export default function AnalisePage({
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
   const { data: capitulos = [] } = useDrpsTextoPadrao();
 
-  const valoresVars = useMemo(
-    () => montarValoresVariaveis(empresa, relatorio ?? null),
-    [empresa, relatorio]
-  );
+  const valoresVars = useMemo(() => {
+    const base = montarValoresVariaveis(empresa, relatorio ?? null);
+    const timestamps = respondentes
+      .map((r) => r.data_carimbo)
+      .filter((d): d is string => !!d)
+      .map((d) => new Date(d).getTime())
+      .filter((n) => !Number.isNaN(n));
+    const inicio = timestamps.length > 0
+      ? new Date(Math.min(...timestamps)).toLocaleDateString("pt-BR")
+      : "";
+    const fim = timestamps.length > 0
+      ? new Date(Math.max(...timestamps)).toLocaleDateString("pt-BR")
+      : "";
+    return { ...base, data_carimbo_inicio: inicio, data_carimbo_fim: fim };
+  }, [empresa, relatorio, respondentes]);
   const salvar = useDrpsSalvarRelatorio();
 
   interface SetorEditor {
