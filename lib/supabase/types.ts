@@ -927,6 +927,12 @@ export interface AetOwasSelectCampo {
   opcoes: string[];
 }
 
+export interface AetChecklistPergunta {
+  slug: string;
+  label: string;
+  secao: string;
+}
+
 export type RespostaChecklist = "sim" | "nao" | "nao_aplica";
 
 export interface AetChecklist {

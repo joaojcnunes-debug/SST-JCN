@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
-import type { AetCargo, AetChecklist, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, RespostaChecklist, StatusAET } from "@/lib/supabase/types";
+import type { AetCargo, AetChecklist, AetChecklistPergunta, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, RespostaChecklist, StatusAET } from "@/lib/supabase/types";
 
 function normalizarCargos(raw: unknown): AetCargo[] {
   if (Array.isArray(raw)) return raw as AetCargo[];
@@ -429,6 +429,68 @@ export function useAetInicializarOwasSelects() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-selects"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// ─── Checklist — Perguntas configuráveis ─────────────────────────────────────
+
+export const CHECKLIST_PERGUNTAS_PADRAO: AetChecklistPergunta[] = [
+  { slug: "levantamento_acima_limite", secao: "Postura", label: "Há levantamento, transporte ou descarga acima do limite recomendado?" },
+  { slug: "pausas_descanso", secao: "Postura", label: "A empresa oferece pausas para descanso ou cadeiras do tipo semi-sentado?" },
+  { slug: "uso_cadeira", secao: "Postura", label: "É disponibilizado o uso de cadeira?" },
+  { slug: "cadeira_adequada", secao: "Postura", label: "A cadeira é estofada, revestida, giratória e com ajuste de altura?" },
+  { slug: "monitor", secao: "Postura", label: "A atividade usa monitor fixo sobre a mesa com regulagem de altura e inclinação?" },
+  { slug: "exigencia_levantamento", secao: "Exigência de Tempo", label: "Há registros de levantamento, transporte e descarga acima do limite na exigência de tempo?" },
+  { slug: "ritmo_por_demanda", secao: "Ritmo de Trabalho", label: "O ritmo de trabalho é determinado pela demanda?" },
+  { slug: "pausas_formais", secao: "Adoção de Rodízios", label: "Há pausas formais durante o ciclo de trabalho?" },
+  { slug: "rodizios_sistematizados", secao: "Adoção de Rodízios", label: "Há rodízios sistematizados entre os postos de trabalho?" },
+];
+
+export function useAetChecklistPerguntas() {
+  return useQuery({
+    queryKey: ["aet-checklist-perguntas"],
+    queryFn: async () => {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data, error } = await supabase.from("aet_checklist_perguntas").select("*");
+        if (error) return CHECKLIST_PERGUNTAS_PADRAO;
+        return data.length > 0 ? (data as AetChecklistPergunta[]) : CHECKLIST_PERGUNTAS_PADRAO;
+      } catch {
+        return CHECKLIST_PERGUNTAS_PADRAO;
+      }
+    },
+    placeholderData: CHECKLIST_PERGUNTAS_PADRAO,
+    staleTime: 30_000,
+  });
+}
+
+export function useAetSalvarChecklistPergunta() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (pergunta: AetChecklistPergunta) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("aet_checklist_perguntas")
+        .upsert(pergunta as never, { onConflict: "slug" });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-checklist-perguntas"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useAetInicializarChecklistPerguntas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("aet_checklist_perguntas")
+        .upsert(CHECKLIST_PERGUNTAS_PADRAO as never, { onConflict: "slug" });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-checklist-perguntas"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 }

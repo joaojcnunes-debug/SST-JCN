@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import {
   useAetOwasConfig,
   useAetOwasSelects,
+  useAetChecklistPerguntas,
   useAetPerfisOwas,
   useAetRelatorio,
   useSalvarAet,
@@ -29,9 +30,13 @@ export default function AetAnalisePage({
   const { data: owasConfig = [] } = useAetOwasConfig();
   const { data: perfisOwas = [] } = useAetPerfisOwas();
   const { data: owasSelects = [] } = useAetOwasSelects();
+  const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
 
   const selectOpts = (slug: string): string[] =>
     owasSelects.find((s) => s.slug === slug)?.opcoes ?? [];
+
+  const pergunta = (slug: string) =>
+    checklistPerguntas.find((p) => p.slug === slug)?.label ?? "";
 
   const [setores, setSetores] = useState<AetSetor[]>([]);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
@@ -211,14 +216,14 @@ export default function AetAnalisePage({
                 </div>
 
                 <TriStateRow
-                  label="Há levantamento, transporte ou descarga acima do limite recomendado?"
+                  label={pergunta("levantamento_acima_limite")}
                   value={setor.checklist.levantamento_acima_limite}
                   disabled={!canEdit}
                   onChange={(v) => updateChecklist(setor.id, { levantamento_acima_limite: v })}
                 />
 
                 <div className="flex items-center gap-3">
-                  <span className="flex-1 text-xs text-gray-700">Posturas forçadas ocorrem de que forma?</span>
+                  <span className="flex-1 text-xs text-gray-700">{owasSelects.find(s => s.slug === "posturas_forcadas_tipo")?.label ?? "Posturas forçadas ocorrem de que forma?"}</span>
                   <select
                     value={setor.checklist.posturas_forcadas_tipo}
                     disabled={!canEdit}
@@ -236,7 +241,7 @@ export default function AetAnalisePage({
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className="flex-1 text-xs text-gray-700">Trabalho executado predominantemente:</span>
+                  <span className="flex-1 text-xs text-gray-700">{owasSelects.find(s => s.slug === "trabalho_predominante")?.label ?? "Trabalho executado predominantemente:"}</span>
                   <select
                     value={setor.checklist.trabalho_predominante}
                     disabled={!canEdit}
@@ -251,26 +256,26 @@ export default function AetAnalisePage({
                   </select>
                 </div>
 
-                <TriStateRow label="A empresa oferece pausas para descanso ou cadeiras do tipo semi-sentado?" value={setor.checklist.pausas_descanso} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_descanso: v })} />
-                <TriStateRow label="É disponibilizado o uso de cadeira?" value={setor.checklist.uso_cadeira} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { uso_cadeira: v })} />
-                <TriStateRow label="A cadeira é estofada, revestida, giratória e com ajuste de altura?" value={setor.checklist.cadeira_adequada} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { cadeira_adequada: v })} />
-                <TriStateRow label="A atividade usa monitor fixo sobre a mesa com regulagem de altura e inclinação?" value={setor.checklist.monitor} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { monitor: v })} />
+                <TriStateRow label={pergunta("pausas_descanso")} value={setor.checklist.pausas_descanso} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_descanso: v })} />
+                <TriStateRow label={pergunta("uso_cadeira")} value={setor.checklist.uso_cadeira} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { uso_cadeira: v })} />
+                <TriStateRow label={pergunta("cadeira_adequada")} value={setor.checklist.cadeira_adequada} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { cadeira_adequada: v })} />
+                <TriStateRow label={pergunta("monitor")} value={setor.checklist.monitor} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { monitor: v })} />
 
                 <div className="mt-1 border-t border-gray-200 pt-3">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Exigência de Tempo</p>
-                  <TriStateRow label="Há registros de levantamento, transporte e descarga acima do limite na exigência de tempo?" value={setor.checklist.exigencia_levantamento} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { exigencia_levantamento: v })} />
+                  <TriStateRow label={pergunta("exigencia_levantamento")} value={setor.checklist.exigencia_levantamento} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { exigencia_levantamento: v })} />
                 </div>
 
                 <div className="border-t border-gray-200 pt-3">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Ritmo de Trabalho</p>
-                  <TriStateRow label="O ritmo de trabalho é determinado pela demanda?" value={setor.checklist.ritmo_por_demanda} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { ritmo_por_demanda: v })} />
+                  <TriStateRow label={pergunta("ritmo_por_demanda")} value={setor.checklist.ritmo_por_demanda} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { ritmo_por_demanda: v })} />
                 </div>
 
                 <div className="border-t border-gray-200 pt-3">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Adoção de Rodízios — Ergonômico</p>
-                  <TriStateRow label="Há pausas formais durante o ciclo de trabalho?" value={setor.checklist.pausas_formais} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_formais: v })} />
+                  <TriStateRow label={pergunta("pausas_formais")} value={setor.checklist.pausas_formais} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_formais: v })} />
                   <div className="mt-2">
-                    <TriStateRow label="Há rodízios sistematizados entre os postos de trabalho?" value={setor.checklist.rodizios_sistematizados} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { rodizios_sistematizados: v })} />
+                    <TriStateRow label={pergunta("rodizios_sistematizados")} value={setor.checklist.rodizios_sistematizados} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { rodizios_sistematizados: v })} />
                   </div>
                 </div>
               </div>
