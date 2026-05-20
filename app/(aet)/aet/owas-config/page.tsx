@@ -5,17 +5,23 @@ import { Image as ImageIcon, Loader2, Plus, RefreshCw, Save, Trash2, X } from "l
 import toast from "react-hot-toast";
 import {
   SLUG_TO_DEFAULT_IMAGE,
+  OWAS_SELECTS_PADRAO,
   useAetInicializarOwasConfig,
+  useAetInicializarOwasSelects,
   useAetOwasConfig,
+  useAetOwasSelects,
   useAetSalvarOwasCategoria,
+  useAetSalvarOwasSelect,
 } from "@/lib/hooks/useAet";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import type { AetOwasCategoria, AetOwasOpcao } from "@/lib/supabase/types";
+import type { AetOwasCategoria, AetOwasOpcao, AetOwasSelectCampo } from "@/lib/supabase/types";
 
 export default function OwasConfigPage() {
   const { data: categorias = [], isLoading } = useAetOwasConfig();
   const inicializar = useAetInicializarOwasConfig();
+  const { data: selectCampos = [] } = useAetOwasSelects();
+  const inicializarSelects = useAetInicializarOwasSelects();
 
   const isPlaceholder = categorias.length > 0 && categorias[0].id.startsWith("padrao-");
 
@@ -64,6 +70,36 @@ export default function OwasConfigPage() {
           ))}
         </div>
       )}
+
+      {/* ── Campos de Seleção ── */}
+      <div className="pt-2">
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Campos de Seleção — Checklist</h2>
+            <p className="text-sm text-gray-600">
+              Configure as opções dos campos de seleção na seção de Postura / Organização do Trabalho.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              inicializarSelects.mutate(undefined, {
+                onSuccess: () => toast.success("Padrões restaurados"),
+              })
+            }
+            disabled={inicializarSelects.isPending}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {inicializarSelects.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+            Restaurar padrões
+          </button>
+        </div>
+        <div className="space-y-3">
+          {selectCampos.map((campo) => (
+            <SelectCampoCard key={campo.slug} campo={campo} />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -251,6 +287,85 @@ function CategoriaCard({
             )}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SelectCampoCard ──────────────────────────────────────────────────────────
+
+function SelectCampoCard({ campo }: { campo: AetOwasSelectCampo }) {
+  const salvar = useAetSalvarOwasSelect();
+  const [label, setLabel] = useState(campo.label);
+  const [opcoes, setOpcoes] = useState<string[]>(campo.opcoes);
+
+  function addOpcao() {
+    setOpcoes((prev) => [...prev, ""]);
+  }
+
+  function updateOpcao(idx: number, value: string) {
+    setOpcoes((prev) => prev.map((o, i) => (i === idx ? value : o)));
+  }
+
+  function removeOpcao(idx: number) {
+    setOpcoes((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function handleSave() {
+    salvar.mutate(
+      { slug: campo.slug, label: label.trim() || campo.label, opcoes: opcoes.filter(Boolean) },
+      { onSuccess: () => toast.success("Campo salvo") }
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center gap-3">
+        <input
+          type="text"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Rótulo do campo"
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+        />
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={salvar.isPending}
+          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+        >
+          {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+          Salvar
+        </button>
+      </div>
+
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">Opções</p>
+      <div className="space-y-1.5">
+        {opcoes.map((opt, idx) => (
+          <div key={idx} className="flex items-center gap-2">
+            <input
+              type="text"
+              value={opt}
+              onChange={(e) => updateOpcao(idx, e.target.value)}
+              placeholder="Opção"
+              className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs"
+            />
+            <button
+              type="button"
+              onClick={() => removeOpcao(idx)}
+              className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={addOpcao}
+          className="mt-1 inline-flex items-center gap-1 text-xs text-verde-primary hover:underline"
+        >
+          <Plus className="size-3.5" /> Adicionar opção
+        </button>
       </div>
     </div>
   );

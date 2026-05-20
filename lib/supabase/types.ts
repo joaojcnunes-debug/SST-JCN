@@ -921,10 +921,16 @@ export interface AetRisco {
   classificacao_risco: ClassificacaoRiscoAET;
 }
 
+export interface AetOwasSelectCampo {
+  slug: string;
+  label: string;
+  opcoes: string[];
+}
+
 export interface AetChecklist {
   levantamento_acima_limite: boolean;
-  posturas_forcadas_tipo: "Ocasionais" | "Eventuais" | "Habituais" | "Não Aplica";
-  trabalho_predominante: "Em pé" | "Sentado" | "Alternando";
+  posturas_forcadas_tipo: string;
+  trabalho_predominante: string;
   pausas_descanso: boolean;
   uso_cadeira: boolean;
   cadeira_adequada: boolean;

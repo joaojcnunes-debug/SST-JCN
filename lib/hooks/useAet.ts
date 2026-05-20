@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
-import type { AetCargo, AetOwas, AetOwasCategoria, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, StatusAET } from "@/lib/supabase/types";
+import type { AetCargo, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, StatusAET } from "@/lib/supabase/types";
 
 function normalizarCargos(raw: unknown): AetCargo[] {
   if (Array.isArray(raw)) return raw as AetCargo[];
@@ -337,6 +337,71 @@ export function useAetInicializarOwasConfig() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-config"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// ─── Config OWAS — Campos de Seleção ─────────────────────────────────────────
+
+export const OWAS_SELECTS_PADRAO: AetOwasSelectCampo[] = [
+  {
+    slug: "posturas_forcadas_tipo",
+    label: "Posturas forçadas ocorrem de que forma?",
+    opcoes: ["Ocasionais", "Eventuais", "Habituais", "Não Aplica"],
+  },
+  {
+    slug: "trabalho_predominante",
+    label: "Trabalho executado predominantemente:",
+    opcoes: ["Em pé", "Sentado", "Alternando"],
+  },
+];
+
+export function useAetOwasSelects() {
+  return useQuery({
+    queryKey: ["aet-owas-selects"],
+    queryFn: async () => {
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data, error } = await supabase
+          .from("aet_owas_select_campos")
+          .select("*");
+        if (error) return OWAS_SELECTS_PADRAO;
+        return data.length > 0 ? (data as AetOwasSelectCampo[]) : OWAS_SELECTS_PADRAO;
+      } catch {
+        return OWAS_SELECTS_PADRAO;
+      }
+    },
+    placeholderData: OWAS_SELECTS_PADRAO,
+    staleTime: 30_000,
+  });
+}
+
+export function useAetSalvarOwasSelect() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (campo: AetOwasSelectCampo) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("aet_owas_select_campos")
+        .upsert(campo as never, { onConflict: "slug" });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-selects"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useAetInicializarOwasSelects() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("aet_owas_select_campos")
+        .upsert(OWAS_SELECTS_PADRAO as never, { onConflict: "slug" });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-selects"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 }

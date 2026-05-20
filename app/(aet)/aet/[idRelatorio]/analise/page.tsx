@@ -5,6 +5,7 @@ import { Save, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   useAetOwasConfig,
+  useAetOwasSelects,
   useAetPerfisOwas,
   useAetRelatorio,
   useSalvarAet,
@@ -27,6 +28,10 @@ export default function AetAnalisePage({
   const canEdit = useCanEdit();
   const { data: owasConfig = [] } = useAetOwasConfig();
   const { data: perfisOwas = [] } = useAetPerfisOwas();
+  const { data: owasSelects = [] } = useAetOwasSelects();
+
+  const selectOpts = (slug: string): string[] =>
+    owasSelects.find((s) => s.slug === slug)?.opcoes ?? [];
 
   const [setores, setSetores] = useState<AetSetor[]>([]);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
@@ -217,7 +222,7 @@ export default function AetAnalisePage({
                     }
                     className="rounded border border-gray-300 bg-white px-2 py-1 text-xs disabled:bg-gray-50"
                   >
-                    {["Ocasionais", "Eventuais", "Habituais", "Não Aplica"].map((o) => (
+                    {selectOpts("posturas_forcadas_tipo").map((o) => (
                       <option key={o}>{o}</option>
                     ))}
                   </select>
@@ -235,7 +240,7 @@ export default function AetAnalisePage({
                     }
                     className="rounded border border-gray-300 bg-white px-2 py-1 text-xs disabled:bg-gray-50"
                   >
-                    {["Em pé", "Sentado", "Alternando"].map((o) => <option key={o}>{o}</option>)}
+                    {selectOpts("trabalho_predominante").map((o) => <option key={o}>{o}</option>)}
                   </select>
                 </div>
 
