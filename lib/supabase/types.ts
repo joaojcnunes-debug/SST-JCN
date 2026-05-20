@@ -882,6 +882,7 @@ export interface Database {
       apreciacoes_maquinas_itens: TableShape<ApreciacaoMaquinaItem>;
       apreciacao_acoes: TableShape<ApreciacaoAcao>;
       aet_relatorios: TableShape<AetRelatorio>;
+      aet_textos_padrao: TableShape<AetTextoPadraoCapitulo>;
     };
   };
 }
@@ -962,6 +963,7 @@ export interface AetRelatorio {
   responsavel_elaboracao: string;
   titulo_profissional: string;
   registro_profissional: string;
+  endereco_empresa: string | null;
   status: StatusAET;
   setores: AetSetor[];
   consideracoes_finais: string;
@@ -970,4 +972,13 @@ export interface AetRelatorio {
   updated_at: string | null;
   usuario: string | null;
   empresas?: { nome_empresa: string; cnpj: string | null } | null;
+}
+
+export interface AetTextoPadraoCapitulo {
+  id_capitulo: string;
+  titulo: string;
+  conteudo: string | null;
+  ordem: number;
+  created_at: string;
+  updated_at: string | null;
 }

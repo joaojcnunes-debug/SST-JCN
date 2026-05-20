@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useMemo } from "react";
-import { ClipboardCheck, Plus, List, Printer } from "lucide-react";
+import { BookOpen, ClipboardCheck, List, Plus, Printer } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -14,7 +14,6 @@ export default function AetLayout({ children }: { children: ReactNode }) {
 
   const pathname = usePathname();
 
-  // Detecta se está dentro de um relatório específico
   const match = pathname.match(/\/aet\/([^/]+)\//);
   const idRelatorio = match?.[1];
 
@@ -27,13 +26,18 @@ export default function AetLayout({ children }: { children: ReactNode }) {
           { href: "/aet/novo", label: "Novo Laudo", icon: Plus },
         ],
       },
+      {
+        label: "Configuração",
+        items: [
+          { href: "/aet/texto-padrao", label: "Texto Padrão", icon: BookOpen },
+        ],
+      },
     ];
 
     if (idRelatorio) {
       base.push({
         label: "Laudo Atual",
         items: [
-          { href: `/aet/${idRelatorio}/dados`, label: "Dados Gerais", icon: ClipboardCheck },
           { href: `/aet/${idRelatorio}/setores`, label: "Setores / Riscos", icon: ClipboardCheck },
           { href: `/aet/${idRelatorio}/analise`, label: "OWAS / Checklist", icon: ClipboardCheck },
           { href: `/aet/${idRelatorio}/laudo`, label: "Laudo / Imprimir", icon: Printer },

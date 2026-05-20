@@ -3,9 +3,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
-import type { AetRelatorio, AetSetor, StatusAET } from "@/lib/supabase/types";
+import type { AetRelatorio, AetSetor, AetTextoPadraoCapitulo, StatusAET } from "@/lib/supabase/types";
 
-// ─── Queries ─────────────────────────────────────────────────────────────────
+// ─── Relatorios ───────────────────────────────────────────────────────────────
 
 export function useAetRelatorios(empresaId?: string | null) {
   const user = useUserStore((s) => s.user);
@@ -49,8 +49,6 @@ export function useAetRelatorio(id: string | null | undefined) {
   });
 }
 
-// ─── Mutations ────────────────────────────────────────────────────────────────
-
 export function useCriarAet() {
   const qc = useQueryClient();
 
@@ -60,6 +58,7 @@ export function useCriarAet() {
       responsavel_elaboracao: string;
       titulo_profissional: string;
       registro_profissional: string;
+      endereco_empresa: string;
       data_elaboracao: string | null;
     }): Promise<AetRelatorio> => {
       const supabase = createSupabaseBrowserClient();
@@ -124,6 +123,86 @@ export function useExcluirAet() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-relatorios"] });
+    },
+  });
+}
+
+// ─── Texto Padrão ─────────────────────────────────────────────────────────────
+
+export function useAetTextoPadrao() {
+  return useQuery({
+    queryKey: ["aet-textos-padrao"],
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("aet_textos_padrao")
+        .select("*")
+        .order("ordem");
+      if (error) throw error;
+      return (data ?? []) as unknown as AetTextoPadraoCapitulo[];
+    },
+  });
+}
+
+export function useAetCriarCapitulo() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      titulo: string;
+      conteudo: string;
+      ordem: number;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("aet_textos_padrao")
+        .insert(payload as never)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as unknown as AetTextoPadraoCapitulo;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
+    },
+  });
+}
+
+export function useAetSalvarCapitulo() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id_capitulo,
+      ...patch
+    }: Partial<AetTextoPadraoCapitulo> & { id_capitulo: string }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("aet_textos_padrao")
+        .update({ ...patch, updated_at: new Date().toISOString() } as never)
+        .eq("id_capitulo", id_capitulo);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
+    },
+  });
+}
+
+export function useAetExcluirCapitulo() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id_capitulo: string) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("aet_textos_padrao")
+        .delete()
+        .eq("id_capitulo", id_capitulo);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
     },
   });
 }
