@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
+import { use } from "react";
 
 export default function AetRelatorioRoot({
   params,
 }: {
-  params: { idRelatorio: string };
+  params: Promise<{ idRelatorio: string }>;
 }) {
-  redirect(`/aet/${params.idRelatorio}/dados`);
+  const { idRelatorio } = use(params);
+  redirect(`/aet/${idRelatorio}/dados`);
 }
