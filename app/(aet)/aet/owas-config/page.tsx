@@ -5,7 +5,6 @@ import { Image as ImageIcon, Loader2, Plus, RefreshCw, Save, Trash2, X } from "l
 import toast from "react-hot-toast";
 import {
   SLUG_TO_DEFAULT_IMAGE,
-  OWAS_SELECTS_PADRAO,
   CHECKLIST_PERGUNTAS_PADRAO,
   useAetInicializarOwasConfig,
   useAetInicializarOwasSelects,
@@ -21,6 +20,48 @@ import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { AetChecklistPergunta, AetOwasCategoria, AetOwasOpcao, AetOwasSelectCampo } from "@/lib/supabase/types";
 
+type ItemOrdem = { tipo: "pergunta" | "select"; slug: string };
+type SecaoOrdem = { secao: string; items: ItemOrdem[] };
+
+const CHECKLIST_ORDEM: SecaoOrdem[] = [
+  {
+    secao: "Postura",
+    items: [
+      { tipo: "pergunta", slug: "levantamento_acima_limite" },
+      { tipo: "select",   slug: "trabalho_predominante" },
+      { tipo: "pergunta", slug: "pausas_descanso" },
+      { tipo: "pergunta", slug: "uso_cadeira" },
+      { tipo: "pergunta", slug: "cadeira_adequada" },
+      { tipo: "pergunta", slug: "monitor" },
+    ],
+  },
+  {
+    secao: "Organização do Trabalho",
+    items: [{ tipo: "pergunta", slug: "organizacao_trabalho" }],
+  },
+  {
+    secao: "Exigência de Tempo",
+    items: [{ tipo: "pergunta", slug: "exigencia_levantamento" }],
+  },
+  {
+    secao: "Ritmo de Trabalho",
+    items: [{ tipo: "pergunta", slug: "ritmo_por_demanda" }],
+  },
+  {
+    secao: "Adoção de Rodízios — Ergonômico",
+    items: [
+      { tipo: "pergunta", slug: "pausas_formais" },
+      { tipo: "pergunta", slug: "rodizios_sistematizados" },
+    ],
+  },
+];
+
+const RECOMENDACOES_CAMPOS = [
+  "Parecer Técnico",
+  "Recomendações",
+  "Demais Condições Avaliadas",
+];
+
 export default function OwasConfigPage() {
   const { data: categorias = [], isLoading } = useAetOwasConfig();
   const inicializar = useAetInicializarOwasConfig();
@@ -28,6 +69,20 @@ export default function OwasConfigPage() {
   const inicializarSelects = useAetInicializarOwasSelects();
   const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
   const inicializarPerguntas = useAetInicializarChecklistPerguntas();
+  const [restaurando, setRestaurando] = useState(false);
+
+  async function handleRestaurarChecklist() {
+    setRestaurando(true);
+    try {
+      await inicializarSelects.mutateAsync(undefined);
+      await inicializarPerguntas.mutateAsync(undefined);
+      toast.success("Padrões restaurados");
+    } catch {
+      toast.error("Erro ao restaurar padrões");
+    } finally {
+      setRestaurando(false);
+    }
+  }
 
   const isPlaceholder = categorias.length > 0 && categorias[0].id.startsWith("padrao-");
 
@@ -77,75 +132,70 @@ export default function OwasConfigPage() {
         </div>
       )}
 
-      {/* ── Campos de Seleção ── */}
+      {/* ── Checklist: Perguntas e Campos ── */}
       <div className="pt-2">
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">Campos de Seleção — Checklist</h2>
+            <h2 className="text-base font-semibold text-gray-900">Checklist — Perguntas e Campos</h2>
             <p className="text-sm text-gray-600">
-              Configure as opções dos campos de seleção na seção de Postura / Organização do Trabalho.
+              Edite os textos e opções de todos os campos do checklist ergonômico.
             </p>
           </div>
           <button
             type="button"
-            onClick={() =>
-              inicializarSelects.mutate(undefined, {
-                onSuccess: () => toast.success("Padrões restaurados"),
-              })
-            }
-            disabled={inicializarSelects.isPending}
+            onClick={handleRestaurarChecklist}
+            disabled={restaurando}
             className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
-            {inicializarSelects.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+            {restaurando ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
             Restaurar padrões
           </button>
         </div>
-        <div className="space-y-3">
-          {selectCampos.map((campo) => (
-            <SelectCampoCard key={campo.slug} campo={campo} />
-          ))}
-        </div>
-      </div>
 
-      {/* ── Perguntas Sim / Não / N.A. ── */}
-      <div className="pt-2">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">Perguntas — Sim / Não / N.A.</h2>
-            <p className="text-sm text-gray-600">
-              Edite o texto das perguntas respondidas com Sim, Não ou Não se Aplica no checklist.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() =>
-              inicializarPerguntas.mutate(undefined, {
-                onSuccess: () => toast.success("Padrões restaurados"),
-              })
-            }
-            disabled={inicializarPerguntas.isPending}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            {inicializarPerguntas.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-            Restaurar padrões
-          </button>
-        </div>
         <div className="space-y-6">
-          {(["Postura", "Organização do Trabalho", "Exigência de Tempo", "Ritmo de Trabalho", "Adoção de Rodízios - Ergonômico"] as const).map((secao) => {
+          {CHECKLIST_ORDEM.map(({ secao, items }) => {
             const fonte = checklistPerguntas.length > 0 ? checklistPerguntas : CHECKLIST_PERGUNTAS_PADRAO;
-            const perguntas = fonte.filter((p) => p.secao === secao);
-            if (perguntas.length === 0) return null;
             return (
               <div key={secao}>
                 <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">{secao}</p>
                 <div className="space-y-2">
-                  {perguntas.map((pergunta) => (
-                    <PerguntaCard key={pergunta.slug} pergunta={pergunta} />
-                  ))}
+                  {items.map((item) => {
+                    if (item.tipo === "select") {
+                      const campo = selectCampos.find((c) => c.slug === item.slug);
+                      if (!campo) return null;
+                      return <SelectCampoCard key={item.slug} campo={campo} />;
+                    }
+                    const pergunta = fonte.find((p) => p.slug === item.slug);
+                    if (!pergunta) return null;
+                    return <PerguntaCard key={item.slug} pergunta={pergunta} />;
+                  })}
                 </div>
               </div>
             );
           })}
+        </div>
+      </div>
+
+      {/* ── Recomendações ── */}
+      <div className="pt-2">
+        <div className="mb-3">
+          <h2 className="text-base font-semibold text-gray-900">Recomendações</h2>
+          <p className="text-sm text-gray-600">
+            Campos de texto rico preenchidos por setor na análise ergonômica.
+          </p>
+        </div>
+        <div className="space-y-2">
+          {RECOMENDACOES_CAMPOS.map((label) => (
+            <div
+              key={label}
+              className="flex items-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3"
+            >
+              <span className="flex-1 text-sm font-medium text-gray-600">{label}</span>
+              <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-400">
+                Rich text — livre por setor
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
