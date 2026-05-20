@@ -4,7 +4,27 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
-import type { AetRelatorio, AetSetor, AetTextoPadraoCapitulo, StatusAET } from "@/lib/supabase/types";
+import type { AetCargo, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, StatusAET } from "@/lib/supabase/types";
+
+function normalizarCargos(raw: unknown): AetCargo[] {
+  if (Array.isArray(raw)) return raw as AetCargo[];
+  if (typeof raw === "string" && raw.trim())
+    return raw.split("\n").filter(Boolean).map((nome) => ({ nome, descricao: "" }));
+  return [];
+}
+
+function normalizarSetor(s: unknown): AetSetor {
+  const setor = s as Record<string, unknown>;
+  return { ...setor, cargos: normalizarCargos(setor.cargos) } as AetSetor;
+}
+
+function normalizarRelatorio(data: unknown): AetRelatorio {
+  const rel = data as Record<string, unknown>;
+  return {
+    ...rel,
+    setores: Array.isArray(rel.setores) ? rel.setores.map(normalizarSetor) : [],
+  } as AetRelatorio;
+}
 
 // ─── Relatorios ───────────────────────────────────────────────────────────────
 
@@ -28,7 +48,7 @@ export function useAetRelatorios(empresaId?: string | null) {
 
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as unknown as AetRelatorio[];
+      return (data ?? []).map(normalizarRelatorio);
     },
   });
 }
@@ -45,7 +65,7 @@ export function useAetRelatorio(id: string | null | undefined) {
         .eq("id_relatorio", id!)
         .single();
       if (error) throw error;
-      return data as unknown as AetRelatorio;
+      return normalizarRelatorio(data);
     },
   });
 }
