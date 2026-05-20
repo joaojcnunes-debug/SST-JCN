@@ -29,16 +29,6 @@ export function useAuth() {
         return;
       }
 
-      // Refaz a busca quando o perfil persistido for de uma versão antiga
-      // do schema (sem modulos_permitidos), para evitar bloqueio indevido.
-      if (
-        user &&
-        user.email === authUser.email &&
-        user.modulos_permitidos !== undefined
-      ) {
-        return;
-      }
-
       const { data: perfil } = await supabase
         .from("usuarios")
         .select("*")
