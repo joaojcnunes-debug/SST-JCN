@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { Save, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
-import { useAetRelatorio, useSalvarAet } from "@/lib/hooks/useAet";
+import { useAetPerfisOwas, useAetRelatorio, useSalvarAet } from "@/lib/hooks/useAet";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import { cn } from "@/lib/utils";
@@ -60,6 +60,7 @@ export default function AetAnalisePage({
   const { data: rel, isLoading } = useAetRelatorio(idRelatorio);
   const salvar = useSalvarAet();
   const canEdit = useCanEdit();
+  const { data: perfisOwas = [] } = useAetPerfisOwas();
 
   const [setores, setSetores] = useState<AetSetor[]>([]);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
@@ -101,6 +102,19 @@ export default function AetAnalisePage({
     const setor = setores.find((s) => s.id === setorId);
     if (!setor) return;
     updateSetor(setorId, { checklist: { ...setor.checklist, ...patch } });
+  }
+
+  function aplicarPerfil(setorId: string, perfilId: string) {
+    const perfil = perfisOwas.find((p) => p.id === perfilId);
+    if (!perfil) return;
+    updateSetor(setorId, {
+      owas: {
+        posturas_costas: perfil.posturas_costas,
+        posturas_bracos: perfil.posturas_bracos,
+        posturas_pernas: perfil.posturas_pernas,
+        esforco: perfil.esforco,
+      },
+    });
   }
 
   function handleSave() {
@@ -170,6 +184,27 @@ export default function AetAnalisePage({
 
           {abertos.has(setor.id) && (
             <div className="border-t border-gray-100 px-5 pb-6 pt-4 space-y-6">
+              {/* Aplicar perfil */}
+              {canEdit && perfisOwas.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">Aplicar perfil OWAS:</span>
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) aplicarPerfil(setor.id, e.target.value);
+                      e.target.value = "";
+                    }}
+                    className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-verde-primary focus:outline-none"
+                  >
+                    <option value="" disabled>Selecionar perfil...</option>
+                    {perfisOwas.map((p) => (
+                      <option key={p.id} value={p.id}>{p.nome}</option>
+                    ))}
+                  </select>
+                  <span className="text-[10px] text-gray-400">Preenche os campos OWAS abaixo</span>
+                </div>
+              )}
+
               {/* OWAS */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <OwasGroup

@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
-import type { AetCargo, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, StatusAET } from "@/lib/supabase/types";
+import type { AetCargo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, StatusAET } from "@/lib/supabase/types";
 
 function normalizarCargos(raw: unknown): AetCargo[] {
   if (Array.isArray(raw)) return raw as AetCargo[];
@@ -228,6 +228,73 @@ export function useAetExcluirCapitulo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+// ─── Perfis OWAS ─────────────────────────────────────────────────────────────
+
+export function useAetPerfisOwas() {
+  return useQuery({
+    queryKey: ["aet-perfis-owas"],
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("aet_perfis_owas")
+        .select("*")
+        .order("nome");
+      if (error) throw error;
+      return (data ?? []) as AetPerfilOwas[];
+    },
+  });
+}
+
+export function useAetCriarPerfilOwas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: Omit<AetPerfilOwas, "id" | "created_at">) => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("aet_perfis_owas")
+        .insert(payload as never)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as AetPerfilOwas;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-perfis-owas"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useAetSalvarPerfilOwas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...patch }: Partial<AetPerfilOwas> & { id: string }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("aet_perfis_owas")
+        .update(patch as never)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-perfis-owas"] }),
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useAetExcluirPerfilOwas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("aet_perfis_owas")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-perfis-owas"] }),
     onError: (e: Error) => toast.error(e.message),
   });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useMemo } from "react";
-import { BookOpen, ClipboardCheck, List, Plus, Printer } from "lucide-react";
+import { BookOpen, ClipboardCheck, List, Plus, Printer, Settings2 } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -30,6 +30,7 @@ export default function AetLayout({ children }: { children: ReactNode }) {
         label: "Configuração",
         items: [
           { href: "/aet/texto-padrao", label: "Texto Padrão", icon: BookOpen },
+          { href: "/aet/perfis-owas", label: "Perfis OWAS", icon: Settings2 },
         ],
       },
     ];

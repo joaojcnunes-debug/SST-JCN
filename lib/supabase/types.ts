@@ -942,6 +942,16 @@ export interface AetOwas {
   esforco: EsforcoOWAS[];
 }
 
+export interface AetPerfilOwas {
+  id: string;
+  nome: string;
+  posturas_costas: PosturaCostas[];
+  posturas_bracos: PosturaBracos[];
+  posturas_pernas: PosturaPernas[];
+  esforco: EsforcoOWAS[];
+  created_at: string;
+}
+
 export interface AetCargo {
   nome: string;
   descricao: string;
