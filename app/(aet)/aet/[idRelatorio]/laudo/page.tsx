@@ -93,13 +93,23 @@ export default function AetLaudoPage({
   const salvar = useSalvarAet();
   const canEdit = useCanEdit();
   const [consideracoes, setConsideracoes] = useState("");
+  const [responsavel, setResponsavel] = useState("");
+  const [tituloProfissional, setTituloProfissional] = useState("");
+  const [registroProfissional, setRegistroProfissional] = useState("");
+  const [dataElaboracao, setDataElaboracao] = useState("");
 
   const { data: capitulos = [] } = useAetTextoPadrao();
   const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
   const { data: owasConfig = [] } = useAetOwasConfig();
 
   useEffect(() => {
-    if (rel) setConsideracoes(rel.consideracoes_finais ?? "");
+    if (rel) {
+      setConsideracoes(rel.consideracoes_finais ?? "");
+      setResponsavel(rel.responsavel_elaboracao ?? "");
+      setTituloProfissional(rel.titulo_profissional ?? "");
+      setRegistroProfissional(rel.registro_profissional ?? "");
+      setDataElaboracao(rel.data_elaboracao ?? "");
+    }
   }, [rel]);
 
   function handleSaveConsideracoes() {
@@ -107,6 +117,24 @@ export default function AetLaudoPage({
       { id: idRelatorio, patch: { consideracoes_finais: consideracoes } },
       {
         onSuccess: () => toast.success("Considerações salvas"),
+        onError: (e: Error) => toast.error(e.message),
+      }
+    );
+  }
+
+  function handleSaveDados() {
+    salvar.mutate(
+      {
+        id: idRelatorio,
+        patch: {
+          responsavel_elaboracao: responsavel,
+          titulo_profissional: tituloProfissional,
+          registro_profissional: registroProfissional,
+          data_elaboracao: dataElaboracao || null,
+        },
+      },
+      {
+        onSuccess: () => toast.success("Dados salvos"),
         onError: (e: Error) => toast.error(e.message),
       }
     );
@@ -120,8 +148,8 @@ export default function AetLaudoPage({
     );
   }
 
-  const dataFormatada = rel.data_elaboracao
-    ? new Date(rel.data_elaboracao + "T00:00:00").toLocaleDateString("pt-BR")
+  const dataFormatada = dataElaboracao
+    ? new Date(dataElaboracao + "T00:00:00").toLocaleDateString("pt-BR")
     : "—";
   const empresa = rel.empresas;
 
@@ -142,6 +170,65 @@ export default function AetLaudoPage({
           <Printer className="size-4" /> Imprimir
         </button>
       </div>
+
+      {/* Dados do Laudo — oculto na impressão */}
+      {canEdit && (
+        <div className="print:hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500">Dados do Laudo</h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Responsável pela Elaboração</label>
+              <input
+                type="text"
+                value={responsavel}
+                onChange={(e) => setResponsavel(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+                placeholder="Nome do responsável"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Título Profissional</label>
+              <input
+                type="text"
+                value={tituloProfissional}
+                onChange={(e) => setTituloProfissional(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+                placeholder="Ex: Ergonomista, Engenheiro de Segurança..."
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Registro Profissional</label>
+              <input
+                type="text"
+                value={registroProfissional}
+                onChange={(e) => setRegistroProfissional(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+                placeholder="CRA / CREA / CRF..."
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Data de Elaboração</label>
+              <input
+                type="date"
+                value={dataElaboracao}
+                onChange={(e) => setDataElaboracao(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={handleSaveDados}
+              disabled={salvar.isPending}
+              className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-4 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+            >
+              {salvar.isPending ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+              Salvar Dados
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ═══ DOCUMENTO ═══ */}
       <div
@@ -342,10 +429,10 @@ export default function AetLaudoPage({
             </div>
             <div className="flex-1">
               <div className="mx-auto mb-2 w-56 border-t border-gray-400" />
-              <p className="font-semibold text-gray-800">{rel.responsavel_elaboracao || "Responsável Técnico"}</p>
-              {rel.titulo_profissional && <p className="text-gray-600">{rel.titulo_profissional}</p>}
-              {rel.registro_profissional && (
-                <p className="text-gray-500">Registro: {rel.registro_profissional}</p>
+              <p className="font-semibold text-gray-800">{responsavel || "Responsável Técnico"}</p>
+              {tituloProfissional && <p className="text-gray-600">{tituloProfissional}</p>}
+              {registroProfissional && (
+                <p className="text-gray-500">Registro: {registroProfissional}</p>
               )}
             </div>
           </div>
