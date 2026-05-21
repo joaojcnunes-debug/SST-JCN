@@ -220,7 +220,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
         </div>
       ) : capitulosFiltrados.length === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
-          Nenhum capítulo encontrado para <strong>"{busca}"</strong>.
+          Nenhum capítulo encontrado para <strong>&ldquo;{busca}&rdquo;</strong>.
         </div>
       ) : (
         <div className="space-y-3">
