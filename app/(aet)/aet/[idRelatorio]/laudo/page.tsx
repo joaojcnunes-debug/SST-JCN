@@ -174,27 +174,6 @@ export default function AetLaudoPage({
           <CapituloLaudo key={cap.id_capitulo} cap={cap} />
         ))}
 
-        {/* ── Seção 1 ── */}
-        <Section num="1" title="Caracterização da Empresa Avaliada">
-          <table className="w-full border-collapse text-xs">
-            <tbody>
-              {[
-                ["Razão Social", empresa?.nome_empresa ?? "—"],
-                ["CNPJ", empresa?.cnpj ?? "—"],
-                ["Responsável pela Elaboração", rel.responsavel_elaboracao || "—"],
-                ["Título Profissional", rel.titulo_profissional || "—"],
-                ["Registro Profissional", rel.registro_profissional || "—"],
-                ["Data da Elaboração", dataFormatada],
-              ].map(([k, v]) => (
-                <tr key={k} className="border border-gray-200">
-                  <td className="w-52 bg-gray-50 px-3 py-1.5 font-semibold text-gray-700">{k}:</td>
-                  <td className="px-3 py-1.5 text-gray-700">{v}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Section>
-
         {/* Capítulos apos_sumario ou fallback 2–8 */}
         {capitulosAposSumario.length > 0 ? (
           capitulosAposSumario.map((cap) => <CapituloLaudo key={cap.id_capitulo} cap={cap} />)
