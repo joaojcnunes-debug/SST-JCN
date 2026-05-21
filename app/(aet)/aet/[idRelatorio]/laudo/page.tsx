@@ -9,7 +9,10 @@ import {
   useSalvarAet,
   useAetTextoPadrao,
   useAetChecklistPerguntas,
+  useAetOwasConfig,
   CHECKLIST_PERGUNTAS_PADRAO,
+  SLUG_TO_DEFAULT_IMAGE,
+  SLUG_TO_OWAS_FIELD,
 } from "@/lib/hooks/useAet";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
@@ -18,6 +21,7 @@ import type {
   AetSetor,
   AetTextoPadraoCapitulo,
   AetChecklistPergunta,
+  AetOwasCategoria,
   ClassificacaoRiscoAET,
 } from "@/lib/supabase/types";
 import type { CaixaTexto } from "@/lib/drps/types";
@@ -92,6 +96,7 @@ export default function AetLaudoPage({
 
   const { data: capitulos = [] } = useAetTextoPadrao();
   const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
+  const { data: owasConfig = [] } = useAetOwasConfig();
 
   useEffect(() => {
     if (rel) setConsideracoes(rel.consideracoes_finais ?? "");
@@ -291,6 +296,7 @@ export default function AetLaudoPage({
                   setor={setor}
                   idx={idx}
                   checklistPerguntas={checklistPerguntas}
+                  owasConfig={owasConfig}
                 />
               ))}
             </div>
@@ -562,10 +568,12 @@ function SetorAnaliseBlock({
   setor,
   idx,
   checklistPerguntas,
+  owasConfig,
 }: {
   setor: AetSetor;
   idx: number;
   checklistPerguntas: AetChecklistPergunta[];
+  owasConfig: AetOwasCategoria[];
 }) {
   const { owas, checklist } = setor;
 
@@ -574,7 +582,13 @@ function SetorAnaliseBlock({
     CHECKLIST_PERGUNTAS_PADRAO.find((p) => p.slug === slug)?.label ??
     slug;
 
-  const temOwas = OWAS_ROWS.some((r) => (owas[r.field] ?? []).length > 0);
+  const temOwas =
+    owasConfig.length > 0
+      ? owasConfig.some((cat) => {
+          const field = SLUG_TO_OWAS_FIELD[cat.slug];
+          return field && (owas[field] ?? []).length > 0;
+        })
+      : OWAS_ROWS.some((r) => (owas[r.field] ?? []).length > 0);
 
   const customExtras = Object.entries(setor.respostas_extras ?? {}).filter(
     ([slug]) => !SLUGS_PADRAO.has(slug)
@@ -635,55 +649,82 @@ function SetorAnaliseBlock({
           </div>
         )}
 
-        {/* OWAS */}
+        {/* OWAS — cards idênticos ao setores/page.tsx */}
         {temOwas && (
           <div className="px-4 py-3">
             <p
               className="mb-2 text-[10px] font-bold uppercase tracking-wider"
               style={{ color: "#9ca3af" }}
             >
-              OWAS — Posturas e Esforços Observados
+              OWAS — Análise de Posturas
             </p>
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th
-                    className="w-28 border border-gray-200 px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: "#4b5563" }}
-                  >
-                    Segmento
-                  </th>
-                  <th
-                    className="border border-gray-200 px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: "#4b5563" }}
-                  >
-                    Posturas / Esforços Registrados
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {OWAS_ROWS.map(({ label, field, opcoes }) => {
-                  const selected = (owas[field] ?? []) as number[];
-                  if (selected.length === 0) return null;
-                  return (
-                    <tr key={field} className="even:bg-gray-50">
-                      <td
-                        className="border border-gray-100 px-3 py-1.5 font-semibold"
-                        style={{ color: "#374151" }}
-                      >
-                        {label}
-                      </td>
-                      <td
-                        className="border border-gray-100 px-3 py-1.5"
-                        style={{ color: "#374151" }}
-                      >
-                        {selected.map((v) => opcoes[v] ?? String(v)).join("  ·  ")}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="grid grid-cols-2 gap-3">
+              {owasConfig.map((cat) => {
+                const field = SLUG_TO_OWAS_FIELD[cat.slug];
+                if (!field) return null;
+                const selected = (owas[field] ?? []) as number[];
+                const imageSrc = cat.imagem_url ?? SLUG_TO_DEFAULT_IMAGE[cat.slug];
+                return (
+                  <div key={cat.id} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                    <h4
+                      className="mb-2 text-[11px] font-bold uppercase tracking-wider"
+                      style={{ color: "#6b7280" }}
+                    >
+                      {cat.titulo}
+                    </h4>
+                    <div className="flex gap-3">
+                      <div className="flex-1 space-y-1.5">
+                        {cat.opcoes.map((opt) => {
+                          const checked = selected.includes(opt.value);
+                          return (
+                            <div key={opt.value} className="flex items-start gap-2">
+                              <span
+                                className={cn(
+                                  "mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border",
+                                  checked
+                                    ? "border-gray-700 bg-gray-700"
+                                    : "border-gray-300 bg-white"
+                                )}
+                              >
+                                {checked && (
+                                  <svg
+                                    viewBox="0 0 10 8"
+                                    className="h-2 w-2"
+                                    fill="none"
+                                    stroke="white"
+                                    strokeWidth="1.8"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <path d="M1 4l2.5 2.5L9 1" />
+                                  </svg>
+                                )}
+                              </span>
+                              <span
+                                className="text-xs leading-snug"
+                                style={{ color: checked ? "#111827" : "#9ca3af" }}
+                              >
+                                {opt.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {imageSrc && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <div className="w-32 shrink-0 self-start">
+                          <img
+                            src={imageSrc}
+                            alt={`Referência OWAS: ${cat.titulo}`}
+                            className="h-auto w-full rounded border border-gray-200"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
