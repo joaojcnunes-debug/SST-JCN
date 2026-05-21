@@ -102,6 +102,7 @@ export default function AetLaudoPage({
   const [tituloProfissional, setTituloProfissional] = useState("");
   const [registroProfissional, setRegistroProfissional] = useState("");
   const [dataElaboracao, setDataElaboracao] = useState("");
+  const [enderecoEmpresa, setEnderecoEmpresa] = useState("");
 
   const { data: capitulos = [] } = useAetTextoPadrao();
   const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
@@ -114,6 +115,7 @@ export default function AetLaudoPage({
       setTituloProfissional(rel.titulo_profissional ?? "");
       setRegistroProfissional(rel.registro_profissional ?? "");
       setDataElaboracao(rel.data_elaboracao ?? "");
+      setEnderecoEmpresa(rel.endereco_empresa ?? "");
     }
   }, [rel]);
 
@@ -136,6 +138,7 @@ export default function AetLaudoPage({
           titulo_profissional: tituloProfissional,
           registro_profissional: registroProfissional,
           data_elaboracao: dataElaboracao || null,
+          endereco_empresa: enderecoEmpresa || null,
         },
       },
       {
@@ -168,6 +171,7 @@ export default function AetLaudoPage({
     titulo_profissional: tituloProfissional,
     registro_profissional: registroProfissional,
     data_elaboracao: dataElaboracao,
+    endereco_empresa: enderecoEmpresa,
   });
 
   return (
@@ -226,6 +230,16 @@ export default function AetLaudoPage({
                 value={dataElaboracao}
                 onChange={(e) => setDataElaboracao(e.target.value)}
                 className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-gray-600">Endereço da Empresa</label>
+              <input
+                type="text"
+                value={enderecoEmpresa}
+                onChange={(e) => setEnderecoEmpresa(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+                placeholder="Rua, nº, bairro, cidade - UF"
               />
             </div>
           </div>

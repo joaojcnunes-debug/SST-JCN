@@ -39,18 +39,20 @@ export function montarValoresAet(
     titulo_profissional: string;
     registro_profissional: string;
     data_elaboracao: string;
+    endereco_empresa: string;
   }>
 ): Record<string, string> {
   const nome = overrides?.responsavel_elaboracao ?? rel.responsavel_elaboracao ?? "";
   const titulo = overrides?.titulo_profissional ?? rel.titulo_profissional ?? "";
   const registro = overrides?.registro_profissional ?? rel.registro_profissional ?? "";
   const dataElab = overrides?.data_elaboracao ?? rel.data_elaboracao ?? "";
+  const endereco = overrides?.endereco_empresa ?? rel.endereco_empresa ?? "";
   const carimbo = [nome, titulo, registro].filter(Boolean).join("\n");
 
   return {
     empresa_nome: rel.empresas?.nome_empresa ?? "",
     cnpj: rel.empresas?.cnpj ?? "",
-    endereco_empresa: rel.endereco_empresa ?? "",
+    endereco_empresa: endereco,
     responsavel_tecnico: nome,
     titulo_profissional: titulo,
     registro_profissional: registro,
