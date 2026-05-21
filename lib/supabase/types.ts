@@ -1026,6 +1026,10 @@ export interface AetTextoPadraoCapitulo {
   conteudo: string | null;
   ordem: number;
   posicao_pdf: string | null;
+  /** Orientação da página no PDF: 'retrato' | 'paisagem'. Requer coluna DB. */
+  orientacao: string | null;
+  /** Quebra de página antes do capítulo: 'nova' | 'continua'. Requer coluna DB. */
+  quebra_pagina: string | null;
   bg_imagem_url: string | null;
   caixas_texto: import("@/lib/drps/types").CaixaTexto[] | null;
   created_at: string;

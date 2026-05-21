@@ -16,6 +16,7 @@ import {
   RectangleHorizontal,
   FilePlus2,
   AlignLeft,
+  Search,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -63,6 +64,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
   const [confirmExcluir, setConfirmExcluir] =
     useState<TextoPadraoCapitulo | null>(null);
   const [mostrarVars, setMostrarVars] = useState(false);
+  const [busca, setBusca] = useState("");
 
   function novoCapitulo() {
     const ordem = capitulos.length;
@@ -91,7 +93,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
     salvar.mutate({ id_capitulo: outro.id_capitulo, ordem: cap.ordem });
   }
 
-  // Contagem de capítulos por posição — passada pro Stepper como badge
+  // Contagem de capítulos por posição — passada pro Stepper como badge (usa lista completa)
   const contagensPorPosicao = capitulos.reduce<
     Partial<Record<PosicaoPdf, number>>
   >((acc, c) => {
@@ -99,6 +101,12 @@ export default function TextoPadraoEditor({ modulo }: Props) {
     acc[p] = (acc[p] ?? 0) + 1;
     return acc;
   }, {});
+
+  const capitulosFiltrados = busca.trim()
+    ? capitulos.filter((c) =>
+        c.titulo.toLowerCase().includes(busca.trim().toLowerCase())
+      )
+    : capitulos;
 
   return (
     <div className="space-y-4">
@@ -177,6 +185,29 @@ export default function TextoPadraoEditor({ modulo }: Props) {
         </div>
       )}
 
+      {/* Busca por título */}
+      {capitulos.length >= 3 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar capítulo por título..."
+            className="w-full rounded-md border border-gray-300 bg-white py-2 pl-8 pr-3 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+          />
+          {busca && (
+            <button
+              type="button"
+              onClick={() => setBusca("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:text-gray-600"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <LoadingSkeleton rows={3} />
@@ -187,13 +218,22 @@ export default function TextoPadraoEditor({ modulo }: Props) {
           <strong>Carregar modelo inicial</strong> para popular com sugestões
           ou em <strong>Novo Capítulo</strong> para começar do zero.
         </div>
+      ) : capitulosFiltrados.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+          Nenhum capítulo encontrado para <strong>"{busca}"</strong>.
+        </div>
       ) : (
         <div className="space-y-3">
-          {capitulos.map((cap, i) => (
+          {busca && (
+            <p className="text-xs text-gray-500">
+              {capitulosFiltrados.length} de {capitulos.length} capítulo{capitulos.length !== 1 ? "s" : ""}
+            </p>
+          )}
+          {capitulosFiltrados.map((cap) => (
             <CapituloCard
               key={cap.id_capitulo}
               capitulo={cap}
-              indice={i}
+              indice={capitulos.findIndex((c) => c.id_capitulo === cap.id_capitulo)}
               total={capitulos.length}
               salvando={salvar.isPending}
               storagePrefix={`textos-padrao/${modulo}`}

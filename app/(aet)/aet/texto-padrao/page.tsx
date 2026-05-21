@@ -1,7 +1,23 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, ChevronDown, ChevronUp, Image as ImageIcon, Loader2, Plus, Save, Trash2, X } from "lucide-react";
+import {
+  AlignLeft,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  FilePlus2,
+  FileText,
+  Image as ImageIcon,
+  Loader2,
+  Plus,
+  RectangleHorizontal,
+  Save,
+  Search,
+  Trash2,
+  Variable,
+  X,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
@@ -17,11 +33,14 @@ import {
   useAetExcluirCapitulo,
 } from "@/lib/hooks/useAet";
 import type { AetTextoPadraoCapitulo } from "@/lib/supabase/types";
+import { VARIAVEIS_AET } from "@/lib/textos-padrao/variaveis-aet";
+
+// ─── Template inicial NR-17 ───────────────────────────────────────────────────
 
 const TEMPLATE_INICIAL: { titulo: string; conteudo: string; posicao_pdf: PosicaoPdfValor }[] = [
   {
     titulo: "1 – Caracterização da Empresa",
-    conteudo: "<p>Razão Social, CNPJ, endereço e demais dados da empresa avaliada.</p>",
+    conteudo: "<p>Razão Social: <strong>{{empresa_nome}}</strong> — CNPJ: {{cnpj}}</p><p>Endereço: {{endereco_empresa}}</p>",
     posicao_pdf: "inicio",
   },
   {
@@ -92,6 +111,8 @@ const TEMPLATE_INICIAL: { titulo: string; conteudo: string; posicao_pdf: Posicao
   },
 ];
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function AetTextoPadraoPage() {
   const { data: capitulos = [], isLoading } = useAetTextoPadrao();
   const criar = useAetCriarCapitulo();
@@ -99,6 +120,8 @@ export default function AetTextoPadraoPage() {
   const excluir = useAetExcluirCapitulo();
 
   const [confirmExcluir, setConfirmExcluir] = useState<AetTextoPadraoCapitulo | null>(null);
+  const [mostrarVars, setMostrarVars] = useState(false);
+  const [busca, setBusca] = useState("");
 
   const contagensPorPosicao = capitulos.reduce<Partial<Record<PosicaoPdfValor, number>>>(
     (acc, c) => {
@@ -109,8 +132,17 @@ export default function AetTextoPadraoPage() {
     {}
   );
 
+  const capitulosFiltrados = busca.trim()
+    ? capitulos.filter((c) => c.titulo.toLowerCase().includes(busca.trim().toLowerCase()))
+    : capitulos;
+
   function novoCapitulo() {
-    criar.mutate({ titulo: `Capítulo ${capitulos.length + 1}`, conteudo: "", ordem: capitulos.length, posicao_pdf: "inicio" });
+    criar.mutate({
+      titulo: `Capítulo ${capitulos.length + 1}`,
+      conteudo: "",
+      ordem: capitulos.length,
+      posicao_pdf: "inicio",
+    });
   }
 
   function seedTemplate() {
@@ -132,15 +164,26 @@ export default function AetTextoPadraoPage() {
 
   return (
     <div className="space-y-4">
+      {/* Cabeçalho */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Texto Padrão</h1>
-          <p className="text-sm text-gray-600">
-            Capítulos que compõem o laudo AET. A ordem aqui é a ordem que aparece no relatório.
-            Use <strong>Carregar modelo inicial</strong> para começar com as seções da NR-17.
+          <h1 className="text-xl font-semibold text-gray-900">Texto Padrão — AET</h1>
+          <p className="max-w-2xl text-sm text-gray-600">
+            Capítulos reutilizáveis para o laudo de Análise Ergonômica do Trabalho (NR-17).
+            Use variáveis como <code className="rounded bg-gray-100 px-1 text-xs">{"{{empresa_nome}}"}</code> para
+            preenchimento automático na geração do PDF.
           </p>
+          <p className="mt-1 text-xs italic text-teal-700">Aparecem no laudo AET conforme a posição configurada.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setMostrarVars((v) => !v)}
+            className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            <Variable className="size-4" />
+            {mostrarVars ? "Ocultar variáveis" : "Variáveis disponíveis"}
+          </button>
           {capitulos.length === 0 && !isLoading && (
             <button
               type="button"
@@ -162,6 +205,67 @@ export default function AetTextoPadraoPage() {
         </div>
       </div>
 
+      {/* Painel de variáveis */}
+      {mostrarVars && (
+        <div className="rounded-xl border border-sky-200 bg-sky-50/40 p-3">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-sky-700">
+            Variáveis disponíveis — AET
+          </p>
+          <p className="mb-2 text-xs text-gray-600">
+            Insira no conteúdo do capítulo as marcações abaixo. Elas serão substituídas pelos
+            valores reais do relatório ao gerar o PDF.
+          </p>
+          <div className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2 lg:grid-cols-3">
+            {VARIAVEIS_AET.map((v) => (
+              <div
+                key={v.chave}
+                className="flex items-center justify-between gap-2 rounded border border-sky-100 bg-white px-2 py-1"
+              >
+                <div className="min-w-0 flex-1">
+                  <code className="text-[11px] text-sky-700">{`{{${v.chave}}}`}</code>
+                  <p className="text-[10px] text-gray-600">{v.rotulo}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(`{{${v.chave}}}`);
+                    toast.success(`{{${v.chave}}} copiado`);
+                  }}
+                  className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 hover:bg-sky-200"
+                  title="Copiar"
+                >
+                  Copiar
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Busca */}
+      {capitulos.length >= 3 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar capítulo por título..."
+            className="w-full rounded-md border border-gray-300 bg-white py-2 pl-8 pr-3 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+          />
+          {busca && (
+            <button
+              type="button"
+              onClick={() => setBusca("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:text-gray-600"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Lista de capítulos */}
       {isLoading ? (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <LoadingSkeleton rows={3} />
@@ -172,13 +276,22 @@ export default function AetTextoPadraoPage() {
           <strong>Carregar modelo inicial</strong> para popular com as seções padrão da NR-17
           ou em <strong>Novo Capítulo</strong> para começar do zero.
         </div>
+      ) : capitulosFiltrados.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+          Nenhum capítulo encontrado para <strong>"{busca}"</strong>.
+        </div>
       ) : (
         <div className="space-y-3">
-          {capitulos.map((cap, i) => (
+          {busca && (
+            <p className="text-xs text-gray-500">
+              {capitulosFiltrados.length} de {capitulos.length} capítulo{capitulos.length !== 1 ? "s" : ""}
+            </p>
+          )}
+          {capitulosFiltrados.map((cap, i) => (
             <CapituloCard
               key={cap.id_capitulo}
               capitulo={cap}
-              indice={i}
+              indice={capitulos.findIndex((c) => c.id_capitulo === cap.id_capitulo)}
               total={capitulos.length}
               salvando={salvar.isPending}
               contagensPorPosicao={contagensPorPosicao}
@@ -212,6 +325,8 @@ export default function AetTextoPadraoPage() {
   );
 }
 
+// ─── CapituloCard ─────────────────────────────────────────────────────────────
+
 function CapituloCard({
   capitulo,
   indice,
@@ -227,13 +342,7 @@ function CapituloCard({
   total: number;
   salvando: boolean;
   contagensPorPosicao: Partial<Record<PosicaoPdfValor, number>>;
-  onSalvar: (patch: {
-    titulo?: string;
-    conteudo?: string | null;
-    bg_imagem_url?: string | null;
-    caixas_texto?: CaixaTexto[] | null;
-    posicao_pdf?: string;
-  }) => void;
+  onSalvar: (patch: Partial<Omit<AetTextoPadraoCapitulo, "id_capitulo" | "created_at" | "updated_at">>) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
 }) {
@@ -275,16 +384,20 @@ function CapituloCard({
     }
   }
 
+  const orientacao = capitulo.orientacao ?? "retrato";
+  const quebraPagina = capitulo.quebra_pagina ?? "nova";
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      {/* Linha do título */}
       <div className="mb-2 flex items-start gap-2">
-        {/* Reordenar */}
         <div className="flex flex-col gap-0.5">
           <button
             type="button"
             onClick={() => onMover("up")}
             disabled={indice === 0}
             className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
+            title="Mover para cima"
           >
             <ChevronUp className="size-4" />
           </button>
@@ -293,12 +406,12 @@ function CapituloCard({
             onClick={() => onMover("down")}
             disabled={indice === total - 1}
             className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
+            title="Mover para baixo"
           >
             <ChevronDown className="size-4" />
           </button>
         </div>
 
-        {/* Título */}
         <input
           type="text"
           value={titulo}
@@ -307,10 +420,13 @@ function CapituloCard({
           className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
         />
 
-        {/* Salvar */}
         <button
           type="button"
-          onClick={() => { onSalvar({ titulo: titulo.trim(), conteudo: conteudo.trim() || null, caixas_texto: caixas }); setDirty(false); }}
+          onClick={() => {
+            if (!titulo.trim()) { toast.error("O título não pode estar vazio"); return; }
+            onSalvar({ titulo: titulo.trim(), conteudo: conteudo.trim() || null, caixas_texto: caixas });
+            setDirty(false);
+          }}
           disabled={!dirty || salvando || !titulo.trim()}
           className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
         >
@@ -318,24 +434,104 @@ function CapituloCard({
           Salvar
         </button>
 
-        {/* Excluir */}
         <button
           type="button"
           onClick={onExcluir}
-          className="rounded-md border border-gray-300 bg-white p-2 text-gray-500 hover:bg-red-50 hover:text-red-600"
+          className="rounded-md border border-gray-300 bg-white p-2 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+          title="Excluir capítulo"
         >
           <Trash2 className="size-4" />
         </button>
       </div>
 
-      {/* Configurações do Capítulo */}
-      <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
-        <p className="mb-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-          Configurações do Capítulo
-        </p>
+      {/* Configurações: orientação, quebra_pagina, posição, imagem */}
+      <div className="mb-2 flex flex-wrap items-center gap-3 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
+        {/* Orientação */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            Orientação:
+          </span>
+          <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
+            <button
+              type="button"
+              onClick={() => orientacao !== "retrato" && onSalvar({ orientacao: "retrato" })}
+              disabled={salvando}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                orientacao === "retrato"
+                  ? "bg-verde-primary text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <FileText className="size-3.5" /> Retrato
+            </button>
+            <button
+              type="button"
+              onClick={() => orientacao !== "paisagem" && onSalvar({ orientacao: "paisagem" })}
+              disabled={salvando}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                orientacao === "paisagem"
+                  ? "bg-verde-primary text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <RectangleHorizontal className="size-3.5" /> Paisagem
+            </button>
+          </div>
+        </div>
 
-        {/* Posição no Relatório */}
-        <div className="mb-4">
+        {/* Início da página */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            Início:
+          </span>
+          <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
+            <button
+              type="button"
+              onClick={() => quebraPagina !== "nova" && onSalvar({ quebra_pagina: "nova" })}
+              disabled={salvando || !!capitulo.bg_imagem_url}
+              title={capitulo.bg_imagem_url ? "Capa sempre é nova página" : "Inicia em nova página"}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                quebraPagina === "nova" || capitulo.bg_imagem_url
+                  ? "bg-verde-primary text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <FilePlus2 className="size-3.5" /> Nova página
+            </button>
+            <button
+              type="button"
+              onClick={() => quebraPagina !== "continua" && onSalvar({ quebra_pagina: "continua" })}
+              disabled={salvando || !!capitulo.bg_imagem_url || indice === 0}
+              title={
+                capitulo.bg_imagem_url
+                  ? "Capa sempre é nova página"
+                  : indice === 0
+                  ? "O primeiro capítulo precisa começar em nova página"
+                  : "Continua na página do capítulo anterior"
+              }
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                quebraPagina === "continua" && !capitulo.bg_imagem_url
+                  ? "bg-verde-primary text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              <AlignLeft className="size-3.5" /> Continuação
+            </button>
+          </div>
+        </div>
+
+        <span className="text-[10px] italic text-gray-500">
+          {capitulo.bg_imagem_url
+            ? "Capa: página inteira"
+            : quebraPagina === "continua"
+            ? "Continua na mesma folha do capítulo anterior."
+            : orientacao === "paisagem"
+            ? "A4 horizontal em folha nova."
+            : "A4 vertical em folha nova (ABNT)."}
+        </span>
+
+        {/* Posição no PDF */}
+        <div className="w-full">
           <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
             📍 Posição no Relatório
           </p>
@@ -346,68 +542,59 @@ function CapituloCard({
             disabled={salvando}
           />
         </div>
-
-        {/* Imagem de Capa */}
-        <div>
-          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
-            🖼️ Imagem de Capa
-            <span className="text-[9px] font-normal normal-case tracking-normal text-gray-500">
-              (página inteira no PDF)
-            </span>
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            {capitulo.bg_imagem_url ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={capitulo.bg_imagem_url}
-                  alt="Fundo"
-                  className="h-10 w-16 rounded border border-gray-300 object-cover"
-                />
-                <span className="text-[10px] text-gray-600">
-                  Este capítulo sai como página inteira no PDF.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onSalvar({ bg_imagem_url: null })}
-                  disabled={salvando}
-                  className="ml-auto inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                >
-                  <X className="size-3.5" /> Remover
-                </button>
-              </>
-            ) : (
-              <span className="text-[11px] italic text-gray-500">
-                Sem imagem (capítulo em fluxo normal).
-              </span>
-            )}
-            <input
-              ref={bgInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) enviarBg(f);
-                if (bgInputRef.current) bgInputRef.current.value = "";
-              }}
-            />
-            {!capitulo.bg_imagem_url && (
-              <button
-                type="button"
-                onClick={() => bgInputRef.current?.click()}
-                disabled={enviandoBg || salvando}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-2 py-1 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
-              >
-                {enviandoBg ? <Loader2 className="size-3.5 animate-spin" /> : <ImageIcon className="size-3.5" />}
-                Enviar imagem
-              </button>
-            )}
-          </div>
-        </div>
       </div>
 
-      {/* Editor — CapaEditor quando tem imagem, RichTextEditor caso contrário */}
+      {/* Imagem de capa */}
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          Imagem de fundo (capa):
+        </span>
+        {capitulo.bg_imagem_url ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={capitulo.bg_imagem_url}
+              alt="Fundo"
+              className="h-10 w-16 rounded border border-gray-300 object-cover"
+            />
+            <span className="text-[10px] text-gray-600">Este capítulo sai como página inteira no PDF.</span>
+            <button
+              type="button"
+              onClick={() => onSalvar({ bg_imagem_url: null })}
+              disabled={salvando}
+              className="ml-auto inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-red-50 hover:text-red-alert disabled:opacity-50"
+            >
+              <X className="size-3.5" /> Remover
+            </button>
+          </>
+        ) : (
+          <span className="text-[11px] italic text-gray-500">Sem imagem (capítulo em fluxo normal).</span>
+        )}
+        <input
+          ref={bgInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) enviarBg(f);
+            if (bgInputRef.current) bgInputRef.current.value = "";
+          }}
+        />
+        {!capitulo.bg_imagem_url && (
+          <button
+            type="button"
+            onClick={() => bgInputRef.current?.click()}
+            disabled={enviandoBg || salvando}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-2 py-1 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+          >
+            {enviandoBg ? <Loader2 className="size-3.5 animate-spin" /> : <ImageIcon className="size-3.5" />}
+            Enviar imagem
+          </button>
+        )}
+      </div>
+
+      {/* Editor de conteúdo */}
       {capitulo.bg_imagem_url ? (
         <CapaEditor
           bgImagemUrl={capitulo.bg_imagem_url}
@@ -418,7 +605,7 @@ function CapituloCard({
         <RichTextEditor
           value={conteudo}
           onChange={(html) => { setConteudo(html); setDirty(true); }}
-          placeholder="Conteúdo do capítulo..."
+          placeholder="Conteúdo do capítulo... use {{empresa_nome}}, {{responsavel_tecnico}} etc."
           uploadPathPrefix="aet-textos"
         />
       )}

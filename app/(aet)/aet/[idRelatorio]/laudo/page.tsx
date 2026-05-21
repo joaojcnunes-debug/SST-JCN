@@ -17,6 +17,11 @@ import {
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import { cn } from "@/lib/utils";
+import {
+  substituirVariaveis,
+  substituirVariaveisTexto,
+} from "@/lib/textos-padrao/variaveis";
+import { montarValoresAet } from "@/lib/textos-padrao/variaveis-aet";
 import type {
   AetSetor,
   AetTextoPadraoCapitulo,
@@ -157,6 +162,14 @@ export default function AetLaudoPage({
   const capitulosAposSumario = capitulos.filter((c) => c.posicao_pdf === "apos_sumario");
   const capitulosAposSetores = capitulos.filter((c) => c.posicao_pdf === "apos_setores");
 
+  // Valores para substituição de variáveis nos capítulos de texto padrão
+  const valoresCapitulos = montarValoresAet(rel, {
+    responsavel_elaboracao: responsavel,
+    titulo_profissional: tituloProfissional,
+    registro_profissional: registroProfissional,
+    data_elaboracao: dataElaboracao,
+  });
+
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       {/* Toolbar */}
@@ -258,12 +271,12 @@ export default function AetLaudoPage({
 
         {/* Capítulos inicio */}
         {capitulosInicio.map((cap) => (
-          <CapituloLaudo key={cap.id_capitulo} cap={cap} />
+          <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />
         ))}
 
         {/* Capítulos apos_sumario ou fallback 2–8 */}
         {capitulosAposSumario.length > 0 ? (
-          capitulosAposSumario.map((cap) => <CapituloLaudo key={cap.id_capitulo} cap={cap} />)
+          capitulosAposSumario.map((cap) => <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />)
         ) : (
           <>
             <Section num="2" title="Introdução Geral">
@@ -351,7 +364,7 @@ export default function AetLaudoPage({
 
         {/* Capítulos apos_setores ou fallback 10–12 */}
         {capitulosAposSetores.length > 0 ? (
-          capitulosAposSetores.map((cap) => <CapituloLaudo key={cap.id_capitulo} cap={cap} />)
+          capitulosAposSetores.map((cap) => <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />)
         ) : (
           <>
             <Section num="10" title="Conforto em Áreas Administrativas">
@@ -466,7 +479,13 @@ function RichBlock({ html }: { html: string }) {
   );
 }
 
-function CapituloLaudo({ cap }: { cap: AetTextoPadraoCapitulo }) {
+function CapituloLaudo({
+  cap,
+  valores = {},
+}: {
+  cap: AetTextoPadraoCapitulo;
+  valores?: Record<string, string>;
+}) {
   if (cap.bg_imagem_url) {
     return (
       <div
@@ -493,15 +512,15 @@ function CapituloLaudo({ cap }: { cap: AetTextoPadraoCapitulo }) {
               whiteSpace: "pre-wrap",
             }}
           >
-            {caixa.conteudo}
+            {substituirVariaveisTexto(caixa.conteudo, valores)}
           </div>
         ))}
       </div>
     );
   }
   return (
-    <Section num="" title={cap.titulo}>
-      {cap.conteudo && <RichBlock html={cap.conteudo} />}
+    <Section num="" title={substituirVariaveisTexto(cap.titulo, valores)}>
+      {cap.conteudo && <RichBlock html={substituirVariaveis(cap.conteudo, valores)} />}
     </Section>
   );
 }
