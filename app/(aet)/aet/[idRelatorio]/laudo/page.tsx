@@ -167,26 +167,6 @@ export default function AetLaudoPage({
           <p className="text-[10px] text-gray-500">
             Portaria 3.214/78 — Norma Regulamentadora n.º 17
           </p>
-          <div className="mx-auto mt-6 inline-block rounded-lg border border-gray-200 bg-gray-50 px-8 py-4 text-left">
-            <table className="text-xs">
-              <tbody>
-                {[
-                  ["Empresa", empresa?.nome_empresa ?? "—"],
-                  ["CNPJ", empresa?.cnpj ?? "—"],
-                  ...(rel.setores.length > 0
-                    ? [["Setor(es)", rel.setores.map((s) => s.nome_setor).filter(Boolean).join(" | ") || "—"]]
-                    : []),
-                  ["Data de Elaboração", dataFormatada],
-                  ["Responsável", rel.responsavel_elaboracao || "—"],
-                ].map(([k, v]) => (
-                  <tr key={k}>
-                    <td className="py-0.5 pr-4 font-semibold text-gray-600">{k}:</td>
-                    <td className="py-0.5 text-gray-800">{v}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
 
         {/* Capítulos inicio */}
