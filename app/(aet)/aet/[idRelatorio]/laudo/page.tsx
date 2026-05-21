@@ -405,14 +405,6 @@ function Section({ num, title, children }: { num: string; title: string; childre
   );
 }
 
-function SubLabel({ title }: { title: string }) {
-  return (
-    <p className="mb-1.5 mt-4 border-b border-gray-200 pb-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-400">
-      {title}
-    </p>
-  );
-}
-
 function RichBlock({ html }: { html: string }) {
   return (
     <div
@@ -588,6 +580,26 @@ function SetorAnaliseBlock({
     ([slug]) => !SLUGS_PADRAO.has(slug)
   );
 
+  const extrasDeSecao = (secao: string) =>
+    customExtras.filter(
+      ([slug]) => checklistPerguntas.find((p) => p.slug === slug)?.secao === secao
+    );
+
+  const extrasAdocao = customExtras.filter(([slug]) =>
+    (checklistPerguntas.find((p) => p.slug === slug)?.secao ?? "").startsWith("Adoção")
+  );
+
+  const extrasSemSecao = customExtras.filter(([slug]) => {
+    const secao = checklistPerguntas.find((p) => p.slug === slug)?.secao ?? "";
+    return (
+      secao !== "Postura" &&
+      secao !== "Exigência de Tempo" &&
+      secao !== "Ritmo de Trabalho" &&
+      !secao.startsWith("Adoção") &&
+      secao !== "Organização do Trabalho"
+    );
+  });
+
   return (
     <div className="overflow-hidden rounded border border-gray-300">
       {/* Header */}
@@ -602,22 +614,22 @@ function SetorAnaliseBlock({
         )}
       </div>
 
-      <div className="space-y-0 divide-y divide-gray-100">
+      <div className="divide-y divide-gray-100">
 
         {/* Descrição geral + cargos */}
         {(setor.descricao_atividade || setor.cargos.some((c) => c.descricao)) && (
           <div className="px-4 py-3">
             {setor.descricao_atividade && (
-              <p className="mb-1 text-xs text-gray-700">
-                <strong className="text-gray-800">Atividade geral:</strong>{" "}
+              <p className="mb-1 text-xs" style={{ color: "#374151" }}>
+                <strong style={{ color: "#1f2937" }}>Atividade geral:</strong>{" "}
                 {setor.descricao_atividade}
               </p>
             )}
             {setor.cargos
               .filter((c) => c.descricao)
               .map((cargo, i) => (
-                <p key={i} className="text-xs text-gray-700">
-                  <strong className="text-gray-800">{cargo.nome}:</strong> {cargo.descricao}
+                <p key={i} className="text-xs" style={{ color: "#374151" }}>
+                  <strong style={{ color: "#1f2937" }}>{cargo.nome}:</strong> {cargo.descricao}
                 </p>
               ))}
           </div>
@@ -626,14 +638,25 @@ function SetorAnaliseBlock({
         {/* OWAS */}
         {temOwas && (
           <div className="px-4 py-3">
-            <SubLabel title="OWAS — Posturas e Esforços Observados" />
+            <p
+              className="mb-2 text-[10px] font-bold uppercase tracking-wider"
+              style={{ color: "#9ca3af" }}
+            >
+              OWAS — Posturas e Esforços Observados
+            </p>
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="border border-gray-200 px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-600 w-28">
+                  <th
+                    className="w-28 border border-gray-200 px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: "#4b5563" }}
+                  >
                     Segmento
                   </th>
-                  <th className="border border-gray-200 px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                  <th
+                    className="border border-gray-200 px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: "#4b5563" }}
+                  >
                     Posturas / Esforços Registrados
                   </th>
                 </tr>
@@ -644,10 +667,16 @@ function SetorAnaliseBlock({
                   if (selected.length === 0) return null;
                   return (
                     <tr key={field} className="even:bg-gray-50">
-                      <td className="border border-gray-100 px-3 py-1.5 font-semibold text-gray-700">
+                      <td
+                        className="border border-gray-100 px-3 py-1.5 font-semibold"
+                        style={{ color: "#374151" }}
+                      >
                         {label}
                       </td>
-                      <td className="border border-gray-100 px-3 py-1.5 text-gray-700">
+                      <td
+                        className="border border-gray-100 px-3 py-1.5"
+                        style={{ color: "#374151" }}
+                      >
                         {selected.map((v) => opcoes[v] ?? String(v)).join("  ·  ")}
                       </td>
                     </tr>
@@ -658,137 +687,113 @@ function SetorAnaliseBlock({
           </div>
         )}
 
-        {/* Checklist */}
+        {/* Checklist — layout idêntico ao da página de setores */}
         <div className="px-4 py-3">
-          <SubLabel title="Checklist Ergonômico" />
-          <table className="w-full border-collapse text-xs">
-            <tbody>
-              {/* ── Postura ── */}
-              <SectionHeaderRow title="Postura" />
-              <CRow label={pergunta("levantamento_acima_limite")} value={checklist.levantamento_acima_limite} />
-              <SelectRow label={pergunta("trabalho_predominante")} value={checklist.trabalho_predominante} />
-              <CRow label={pergunta("pausas_descanso")} value={checklist.pausas_descanso} />
-              <CRow label={pergunta("uso_cadeira")} value={checklist.uso_cadeira} />
-              <CRow label={pergunta("cadeira_adequada")} value={checklist.cadeira_adequada} />
-              <CRow label={pergunta("monitor")} value={checklist.monitor} />
-              {customExtras
-                .filter(([slug]) =>
-                  checklistPerguntas.find((p) => p.slug === slug)?.secao === "Postura"
-                )
-                .map(([slug, value]) => (
-                  <CRow
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2.5">
+            <p
+              className="text-xs font-bold uppercase tracking-wider"
+              style={{ color: "#6b7280" }}
+            >
+              Checklist Ergonômico
+            </p>
+
+            {/* Postura */}
+            <CheckSep title="Postura" />
+            <CheckRow label={pergunta("levantamento_acima_limite")} value={checklist.levantamento_acima_limite} />
+            <CheckSelect label={pergunta("trabalho_predominante")} value={checklist.trabalho_predominante} />
+            <CheckRow label={pergunta("pausas_descanso")} value={checklist.pausas_descanso} />
+            <CheckRow label={pergunta("uso_cadeira")} value={checklist.uso_cadeira} />
+            <CheckRow label={pergunta("cadeira_adequada")} value={checklist.cadeira_adequada} />
+            <CheckRow label={pergunta("monitor")} value={checklist.monitor} />
+            {extrasDeSecao("Postura").map(([slug, val]) => (
+              <CheckRow
+                key={slug}
+                label={checklistPerguntas.find((p) => p.slug === slug)?.label ?? slug}
+                value={val}
+              />
+            ))}
+
+            {/* Exigência de Tempo */}
+            <CheckSep title="Exigência de Tempo" />
+            <CheckRow label={pergunta("exigencia_levantamento")} value={checklist.exigencia_levantamento} />
+            {extrasDeSecao("Exigência de Tempo").map(([slug, val]) => (
+              <CheckRow
+                key={slug}
+                label={checklistPerguntas.find((p) => p.slug === slug)?.label ?? slug}
+                value={val}
+              />
+            ))}
+
+            {/* Ritmo de Trabalho */}
+            <CheckSep title="Ritmo de Trabalho" />
+            <CheckRow label={pergunta("ritmo_por_demanda")} value={checklist.ritmo_por_demanda} />
+            {extrasDeSecao("Ritmo de Trabalho").map(([slug, val]) => (
+              <CheckRow
+                key={slug}
+                label={checklistPerguntas.find((p) => p.slug === slug)?.label ?? slug}
+                value={val}
+              />
+            ))}
+
+            {/* Adoção de Rodízios */}
+            <CheckSep title="Adoção de Rodízios — Ergonômico" />
+            <CheckRow label={pergunta("pausas_formais")} value={checklist.pausas_formais} />
+            <CheckRow label={pergunta("rodizios_sistematizados")} value={checklist.rodizios_sistematizados} />
+            {extrasAdocao.map(([slug, val]) => (
+              <CheckRow
+                key={slug}
+                label={checklistPerguntas.find((p) => p.slug === slug)?.label ?? slug}
+                value={val}
+              />
+            ))}
+
+            {/* Organização do Trabalho */}
+            <CheckSep title="Organização do Trabalho" />
+            <p className="text-xs italic leading-relaxed" style={{ color: "#4b5563" }}>
+              {pergunta("organizacao_trabalho")}
+            </p>
+
+            {/* Perguntas adicionais */}
+            {extrasSemSecao.length > 0 && (
+              <>
+                <CheckSep title="Perguntas Adicionais" />
+                {extrasSemSecao.map(([slug, val]) => (
+                  <CheckRow
                     key={slug}
                     label={checklistPerguntas.find((p) => p.slug === slug)?.label ?? slug}
-                    value={value}
+                    value={val}
                   />
                 ))}
-
-              {/* ── Exigência de Tempo ── */}
-              <SectionHeaderRow title="Exigência de Tempo" />
-              <CRow label={pergunta("exigencia_levantamento")} value={checklist.exigencia_levantamento} />
-              {customExtras
-                .filter(([slug]) =>
-                  checklistPerguntas.find((p) => p.slug === slug)?.secao === "Exigência de Tempo"
-                )
-                .map(([slug, value]) => (
-                  <CRow
-                    key={slug}
-                    label={checklistPerguntas.find((p) => p.slug === slug)?.label ?? slug}
-                    value={value}
-                  />
-                ))}
-
-              {/* ── Ritmo de Trabalho ── */}
-              <SectionHeaderRow title="Ritmo de Trabalho" />
-              <CRow label={pergunta("ritmo_por_demanda")} value={checklist.ritmo_por_demanda} />
-              {customExtras
-                .filter(([slug]) =>
-                  checklistPerguntas.find((p) => p.slug === slug)?.secao === "Ritmo de Trabalho"
-                )
-                .map(([slug, value]) => (
-                  <CRow
-                    key={slug}
-                    label={checklistPerguntas.find((p) => p.slug === slug)?.label ?? slug}
-                    value={value}
-                  />
-                ))}
-
-              {/* ── Adoção de Rodízios ── */}
-              <SectionHeaderRow title="Adoção de Rodízios — Ergonômico" />
-              <CRow label={pergunta("pausas_formais")} value={checklist.pausas_formais} />
-              <CRow label={pergunta("rodizios_sistematizados")} value={checklist.rodizios_sistematizados} />
-              {customExtras
-                .filter(([slug]) =>
-                  checklistPerguntas
-                    .find((p) => p.slug === slug)
-                    ?.secao?.startsWith("Adoção")
-                )
-                .map(([slug, value]) => (
-                  <CRow
-                    key={slug}
-                    label={checklistPerguntas.find((p) => p.slug === slug)?.label ?? slug}
-                    value={value}
-                  />
-                ))}
-
-              {/* ── Organização do Trabalho ── */}
-              <SectionHeaderRow title="Organização do Trabalho" />
-              <tr>
-                <td colSpan={2} className="px-3 py-1.5 text-xs italic text-gray-600">
-                  {pergunta("organizacao_trabalho")}
-                </td>
-              </tr>
-
-              {/* ── Perguntas adicionais sem seção mapeada ── */}
-              {customExtras.filter(([slug]) => {
-                const secao = checklistPerguntas.find((p) => p.slug === slug)?.secao ?? "";
-                return (
-                  secao !== "Postura" &&
-                  secao !== "Exigência de Tempo" &&
-                  secao !== "Ritmo de Trabalho" &&
-                  !secao.startsWith("Adoção") &&
-                  secao !== "Organização do Trabalho"
-                );
-              }).length > 0 && (
-                <>
-                  <SectionHeaderRow title="Perguntas Adicionais" />
-                  {customExtras
-                    .filter(([slug]) => {
-                      const secao = checklistPerguntas.find((p) => p.slug === slug)?.secao ?? "";
-                      return (
-                        secao !== "Postura" &&
-                        secao !== "Exigência de Tempo" &&
-                        secao !== "Ritmo de Trabalho" &&
-                        !secao.startsWith("Adoção") &&
-                        secao !== "Organização do Trabalho"
-                      );
-                    })
-                    .map(([slug, value]) => (
-                      <CRow
-                        key={slug}
-                        label={checklistPerguntas.find((p) => p.slug === slug)?.label ?? slug}
-                        value={value}
-                      />
-                    ))}
-                </>
-              )}
-            </tbody>
-          </table>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Fotos */}
         {(setor.fotos ?? []).length > 0 && (
           <div className="px-4 py-3">
-            <SubLabel title="Registros Fotográficos" />
+            <p
+              className="mb-2 text-[10px] font-bold uppercase tracking-wider"
+              style={{ color: "#9ca3af" }}
+            >
+              Registros Fotográficos
+            </p>
             <div className="grid grid-cols-3 gap-2">
               {(setor.fotos ?? []).slice(0, 6).map((url, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <div
                   key={i}
-                  src={url}
-                  alt={`Foto ${i + 1}`}
-                  className="h-40 w-full rounded border border-gray-200 object-cover"
-                />
+                  className="relative aspect-video overflow-hidden rounded-md border border-gray-200"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt={`Foto ${i + 1}`}
+                    className="h-full w-full object-cover"
+                  />
+                  <span className="absolute bottom-1 left-1 rounded bg-black/40 px-1 text-[10px] text-white">
+                    {i + 1}/{(setor.fotos ?? []).length}
+                  </span>
+                </div>
               ))}
             </div>
           </div>
@@ -797,7 +802,12 @@ function SetorAnaliseBlock({
         {/* Parecer Técnico */}
         {setor.parecer_tecnico && (
           <div className="px-4 py-3">
-            <SubLabel title="Parecer Técnico" />
+            <p
+              className="mb-1.5 text-[10px] font-bold uppercase tracking-wider"
+              style={{ color: "#9ca3af" }}
+            >
+              Parecer Técnico
+            </p>
             <RichBlock html={setor.parecer_tecnico} />
           </div>
         )}
@@ -805,7 +815,12 @@ function SetorAnaliseBlock({
         {/* Recomendações */}
         {setor.recomendacoes && (
           <div className="px-4 py-3">
-            <SubLabel title="Recomendações" />
+            <p
+              className="mb-1.5 text-[10px] font-bold uppercase tracking-wider"
+              style={{ color: "#9ca3af" }}
+            >
+              Recomendações
+            </p>
             <RichBlock html={setor.recomendacoes} />
           </div>
         )}
@@ -813,7 +828,12 @@ function SetorAnaliseBlock({
         {/* Demais Condições */}
         {setor.demais_condicoes && (
           <div className="px-4 py-3">
-            <SubLabel title="Demais Condições Avaliadas" />
+            <p
+              className="mb-1.5 text-[10px] font-bold uppercase tracking-wider"
+              style={{ color: "#9ca3af" }}
+            >
+              Demais Condições Avaliadas
+            </p>
             <RichBlock html={setor.demais_condicoes} />
           </div>
         )}
@@ -822,48 +842,56 @@ function SetorAnaliseBlock({
   );
 }
 
-// ─── Table row helpers ────────────────────────────────────────────────────────
+// ─── Checklist row helpers (layout idêntico ao setores/page.tsx) ──────────────
 
-function SectionHeaderRow({ title }: { title: string }) {
+function CheckSep({ title }: { title: string }) {
   return (
-    <tr>
-      <td
-        colSpan={2}
-        className="bg-gray-100 px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-gray-500"
+    <div className="border-t border-gray-200 pt-2.5 first:border-t-0 first:pt-0">
+      <p
+        className="mb-1.5 text-[10px] font-bold uppercase tracking-wider"
+        style={{ color: "#9ca3af" }}
       >
         {title}
-      </td>
-    </tr>
+      </p>
+    </div>
   );
 }
 
-function CRow({ label, value }: { label: string; value: string }) {
-  const isNa = value === "nao_aplica";
+function CheckRow({ label, value }: { label: string; value: string }) {
   const isSim = value === "sim";
-  const badge = isSim
-    ? "bg-green-100 text-green-800"
-    : isNa
-    ? "bg-gray-100 text-gray-500"
-    : "bg-gray-100 text-gray-500";
-  const texto = isSim ? "SIM" : isNa ? "N/A" : "NÃO";
-
+  const isNa = value === "nao_aplica";
+  const texto = isSim ? "Sim" : isNa ? "N/A" : "Não";
   return (
-    <tr className="border-b border-gray-50">
-      <td className="px-3 py-1.5 text-xs text-gray-700">{label}</td>
-      <td className="w-14 px-3 py-1.5 text-right">
-        <span className={cn("rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wide", badge)}>
-          {texto}
-        </span>
-      </td>
-    </tr>
+    <div className="flex items-center gap-2">
+      <span className="flex-1 text-xs leading-snug" style={{ color: "#374151" }}>
+        {label}
+      </span>
+      <span
+        className={cn(
+          "shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold",
+          isSim
+            ? "bg-gray-800 text-white"
+            : "bg-white ring-1 ring-gray-200"
+        )}
+        style={!isSim ? { color: "#9ca3af" } : undefined}
+      >
+        {texto}
+      </span>
+    </div>
   );
 }
 
-function SelectRow({ label, value }: { label: string; value: string }) {
+function CheckSelect({ label, value }: { label: string; value: string }) {
   return (
-    <tr className="border-b border-gray-50">
-      <td className="px-3 py-1.5 text-xs text-gray-700">{label}</td>
-      <td className="w-40 px-3 py-1.5 text-right text-xs font-semibold text-gray-700">{value || "—"}</td>
-    </tr>
+    <div className="flex items-center gap-2">
+      <span className="flex-1 text-xs leading-snug" style={{ color: "#374151" }}>
+        {label}
+      </span>
+      <span
+        className="shrink-0 rounded px-2 py-0.5 text-[10px] font-semibold bg-gray-800 text-white"
+      >
+        {value || "—"}
+      </span>
+    </div>
   );
 }
