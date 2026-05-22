@@ -202,6 +202,7 @@ export default function AetLaudoPage({
   const capitulosInicio = capitulos.filter((c) => !c.posicao_pdf || c.posicao_pdf === "inicio");
   const capitulosAposSumario = capitulos.filter((c) => c.posicao_pdf === "apos_sumario");
   const capitulosAposSetores = capitulos.filter((c) => c.posicao_pdf === "apos_setores");
+  const temCapa = capitulosInicio.some((c) => !!c.bg_imagem_url);
 
   // Valores para substituição de variáveis nos capítulos de texto padrão
   const valoresCapitulos = montarValoresAet(rel, {
@@ -398,7 +399,6 @@ export default function AetLaudoPage({
             height: calc(297mm - 3cm - 2cm) !important;
             min-height: calc(297mm - 3cm - 2cm) !important;
             max-height: calc(297mm - 3cm - 2cm) !important;
-            break-before: page !important;
             break-after: page !important;
             margin: 0 !important;
             -webkit-print-color-adjust: exact;
@@ -413,16 +413,18 @@ export default function AetLaudoPage({
         id="laudo-aet"
         className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
-        {/* Cabeçalho padronizado (logo + título) — visível em tela e no print */}
-        <RelatorioPrintHeader
-          titulo="Laudo de Avaliação Ergonômica — AET"
-          subtitulo={empresa?.nome_empresa ?? null}
-          terciario={
-            empresa?.cnpj
-              ? `CNPJ: ${empresa.cnpj}${enderecoEmpresa ? ` · ${enderecoEmpresa}` : ""}`
-              : enderecoEmpresa || null
-          }
-        />
+        {/* Cabeçalho padronizado — oculto no print quando há capa (a capa ocupa a página 1) */}
+        <div className={temCapa ? "print:hidden" : ""}>
+          <RelatorioPrintHeader
+            titulo="Laudo de Avaliação Ergonômica — AET"
+            subtitulo={empresa?.nome_empresa ?? null}
+            terciario={
+              empresa?.cnpj
+                ? `CNPJ: ${empresa.cnpj}${enderecoEmpresa ? ` · ${enderecoEmpresa}` : ""}`
+                : enderecoEmpresa || null
+            }
+          />
+        </div>
 
         {/* Separador de tela (oculto no print — já temos o header acima) */}
         <div className="print:hidden mb-6 flex items-center justify-between border-b border-gray-300 pb-3">
