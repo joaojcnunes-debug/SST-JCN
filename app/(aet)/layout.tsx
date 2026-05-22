@@ -1,7 +1,16 @@
 "use client";
 
 import { type ReactNode, useMemo } from "react";
-import { BookOpen, ClipboardCheck, LayoutDashboard, List, Plus, Printer, Settings2, Sliders } from "lucide-react";
+import {
+  BookOpen,
+  ClipboardCheck,
+  LayoutDashboard,
+  List,
+  Plus,
+  Printer,
+  Settings2,
+  Sliders,
+} from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -22,17 +31,17 @@ export default function AetLayout({ children }: { children: ReactNode }) {
       {
         label: "AET",
         items: [
-          { href: "/aet/dashboard", label: "Dashboard", icon: LayoutDashboard },
+          { href: "/aet/dashboard", label: "Dashboard", icon: LayoutDashboard, variant: "dashboard" },
           { href: "/aet", label: "Laudos", icon: List },
-          { href: "/aet/novo", label: "Novo Laudo", icon: Plus },
+          { href: "/aet/novo", label: "Novo Laudo", icon: Plus, variant: "action" },
         ],
       },
       {
         label: "Configuração",
         items: [
-          { href: "/aet/texto-padrao", label: "Texto Padrão", icon: BookOpen },
-          { href: "/aet/owas-config", label: "Config. OWAS", icon: Sliders },
-          { href: "/aet/perfis-owas", label: "Perfis OWAS", icon: Settings2 },
+          { href: "/aet/texto-padrao", label: "Texto Padrão", icon: BookOpen, variant: "config" },
+          { href: "/aet/owas-config", label: "Config. OWAS", icon: Sliders, variant: "config" },
+          { href: "/aet/perfis-owas", label: "Perfis OWAS", icon: Settings2, variant: "config" },
         ],
       },
     ];
@@ -42,7 +51,7 @@ export default function AetLayout({ children }: { children: ReactNode }) {
         label: "Laudo Atual",
         items: [
           { href: `/aet/${idRelatorio}/setores`, label: "Setores / Riscos", icon: ClipboardCheck },
-          { href: `/aet/${idRelatorio}/laudo`, label: "Laudo / Imprimir", icon: Printer },
+          { href: `/aet/${idRelatorio}/laudo`, label: "Laudo / Imprimir", icon: Printer, variant: "report" },
         ],
       });
     }
