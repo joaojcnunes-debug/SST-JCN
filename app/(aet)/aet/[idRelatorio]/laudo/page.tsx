@@ -395,35 +395,30 @@ export default function AetLaudoPage({
           body { font-size: 12pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .aet-section { page-break-inside: avoid; }
           .aet-section-break { page-break-before: always; }
-          /* Capa — seção isolada hidden print:block, igual ao psicossocial */
+          /* Capa no print: página inteira, sem borda/radius */
           .aet-capitulo--capa {
-            position: relative;
             height: calc(297mm - 3cm - 2cm - 1mm) !important;
             min-height: calc(297mm - 3cm - 2cm - 1mm) !important;
             max-height: calc(297mm - 3cm - 2cm - 1mm) !important;
+            width: 100% !important;
             break-after: page !important;
             margin: 0 !important;
             padding: 0 !important;
-            overflow: hidden;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
+            border-radius: 0 !important;
           }
-          .aet-capitulo-bg-img {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            object-position: center;
-            z-index: 0;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          .aet-caixa-texto { position: relative; z-index: 1; }
         }
-        /* Preview de tela da capa */
-        .aet-capa { min-height: 480px; }
-        .aet-capa-img {
+        /* Capa — tela: altura fixa, arredondada, margem abaixo */
+        .aet-capitulo--capa {
+          position: relative;
+          height: 480px;
+          min-height: 480px;
+          overflow: hidden;
+          border-radius: 12px;
+          margin-bottom: 1.5rem;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .aet-capitulo-bg-img {
           position: absolute;
           inset: 0;
           width: 100%;
@@ -431,12 +426,15 @@ export default function AetLaudoPage({
           object-fit: cover;
           object-position: center;
           z-index: 0;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
+        .aet-caixa-texto { position: relative; z-index: 1; }
       `}</style>
 
-      {/* ═══ CAPA PRINT-ONLY — seção isolada antes do header (igual ao psicossocial) ═══ */}
+      {/* ═══ CAPA — visível na tela e no print (seção única, sem duplicação) ═══ */}
       {temCapa && (
-        <div className="hidden print:block">
+        <div>
           {capitulosInicio
             .filter((c) => !!c.bg_imagem_url)
             .map((cap) => (
@@ -714,33 +712,8 @@ function CapituloLaudo({
   valores?: Record<string, string>;
 }) {
   if (cap.bg_imagem_url) {
-    // Print: renderizado na seção hidden print:block antes do header (igual psicossocial)
-    // Tela: preview abaixo do header
-    return (
-      <div className="print:hidden aet-capa relative mb-6 overflow-hidden rounded-lg border border-gray-200">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={cap.bg_imagem_url} alt="" className="aet-capa-img" />
-        {(cap.caixas_texto ?? []).map((caixa: CaixaTexto) => (
-          <div
-            key={caixa.id}
-            style={{
-              position: "absolute",
-              left: `${caixa.x}%`,
-              top: `${caixa.y}%`,
-              width: `${caixa.w ?? 40}%`,
-              fontSize: `${caixa.fontSize ?? 14}px`,
-              fontWeight: caixa.bold ? "bold" : "normal",
-              color: caixa.color ?? "#ffffff",
-              textAlign: caixa.align ?? "left",
-              whiteSpace: "pre-wrap",
-              zIndex: 1,
-            }}
-          >
-            {substituirVariaveisTexto(caixa.conteudo, valores)}
-          </div>
-        ))}
-      </div>
-    );
+    // Capa renderizada na seção antes de #laudo-aet (visível na tela e no print)
+    return null;
   }
   return (
     <Section num="" title={substituirVariaveisTexto(cap.titulo, valores)}>
