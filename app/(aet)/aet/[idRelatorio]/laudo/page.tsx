@@ -421,19 +421,6 @@ export default function AetLaudoPage({
           <span className="text-[10px] text-gray-400">{dataFormatada}</span>
         </div>
 
-        {/* Capa */}
-        <div className="mb-10 space-y-2 text-center">
-          <p className="text-base font-bold uppercase tracking-widest text-gray-800">
-            Laudo de Avaliação Ergonômica
-          </p>
-          <p className="text-sm font-bold uppercase tracking-wider text-gray-700">
-            AET — Análise Ergonômica do Trabalho
-          </p>
-          <p className="text-[10px] text-gray-500">
-            Portaria 3.214/78 — Norma Regulamentadora n.º 17
-          </p>
-        </div>
-
         {/* Capítulos inicio */}
         {capitulosInicio.map((cap) => (
           <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />
