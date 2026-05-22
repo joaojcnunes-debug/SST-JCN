@@ -369,6 +369,14 @@ export default function DetalheApreciacaoPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 print:max-w-none print:space-y-3">
+      {/* CSS de impressão — ABNT NBR 14724 */}
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 3cm 2cm 2cm 3cm; }
+          body { font-size: 12pt; line-height: 1.5; }
+        }
+      `}</style>
+
       {/* Topo — ações (oculta no print) */}
       <div className="flex items-center justify-between print:hidden">
         <Link

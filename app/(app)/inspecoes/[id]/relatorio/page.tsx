@@ -175,8 +175,11 @@ export default function RelatorioChabraPage({ params }: Props) {
       {/* CSS de impressão */}
       <style>{`
         @media print {
-          @page { size: A4 portrait; margin: 0; }
-          body { font-size: 10pt; }
+          /* Capa (primeira página): full-bleed sem margem */
+          @page :first { size: A4 portrait; margin: 0; }
+          /* Demais páginas: margens ABNT NBR 14724 */
+          @page { size: A4 portrait; margin: 3cm 2cm 2cm 3cm; }
+          body { font-size: 10pt; line-height: 1.4; }
           .capa-page { page-break-after: always; min-height: 100vh; }
           .secao-setor { page-break-inside: avoid; }
           .risco-card { page-break-inside: avoid; }

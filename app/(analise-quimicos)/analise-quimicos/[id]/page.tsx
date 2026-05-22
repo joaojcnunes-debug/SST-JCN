@@ -237,6 +237,26 @@ export default function AnaliseDetalhePage({
         <RelatorioEstruturado analise={analise} empresa={empresa ?? null} />
       </section>
 
+      {/* Bloco de assinatura — só no print */}
+      <section className="hidden print:block print:break-inside-avoid print:mt-8">
+        <div className="grid grid-cols-2 gap-12 pt-8">
+          <div className="border-t border-gray-400 pt-2 text-center text-xs">
+            <p className="font-semibold">
+              {analise.usuario_nome || "Responsável técnico (Chabra)"}
+            </p>
+            <p className="text-[10px] text-gray-600">Responsável técnico</p>
+          </div>
+          <div className="border-t border-gray-400 pt-2 text-center text-xs">
+            <p className="font-semibold text-gray-400">
+              ___________________________
+            </p>
+            <p className="text-[10px] text-gray-600">
+              Responsável pela empresa
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Rodapé pra impressão */}
       <p className="text-center text-[9px] text-gray-500 print:mt-4">
         Análise gerada por IA · Chabra — Segurança e Saúde do Trabalho ·{" "}
@@ -251,6 +271,7 @@ export default function AnaliseDetalhePage({
             size: A4;
             margin: 3cm 2cm 2cm 3cm;
           }
+          body { font-size: 12pt; line-height: 1.5; }
         }
       `}</style>
     </div>

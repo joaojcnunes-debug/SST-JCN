@@ -34,6 +34,7 @@ import {
   substituirVariaveisTexto,
 } from "@/lib/textos-padrao/variaveis";
 import { montarValoresAet } from "@/lib/textos-padrao/variaveis-aet";
+import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import type {
   AetSetor,
   AetTextoPadraoCapitulo,
@@ -386,15 +387,36 @@ export default function AetLaudoPage({
         <div className="h-px flex-1 bg-gray-200" />
       </div>
 
+      {/* CSS de impressão AET — ABNT NBR 14724 */}
+      <style>{`
+        @media print {
+          @page { size: A4; margin: 3cm 2cm 2cm 3cm; }
+          body { font-size: 12pt; line-height: 1.5; }
+          .aet-section { page-break-inside: avoid; }
+          .aet-section-break { page-break-before: always; }
+        }
+      `}</style>
+
       {/* ═══ DOCUMENTO ═══ */}
       <div
         id="laudo-aet"
         className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
-        {/* Topo */}
-        <div className="mb-6 flex items-center justify-between border-b border-gray-300 pb-3">
+        {/* Cabeçalho padronizado (logo + título) — visível em tela e no print */}
+        <RelatorioPrintHeader
+          titulo="Laudo de Avaliação Ergonômica — AET"
+          subtitulo={empresa?.nome_empresa ?? null}
+          terciario={
+            empresa?.cnpj
+              ? `CNPJ: ${empresa.cnpj}${enderecoEmpresa ? ` · ${enderecoEmpresa}` : ""}`
+              : enderecoEmpresa || null
+          }
+        />
+
+        {/* Separador de tela (oculto no print — já temos o header acima) */}
+        <div className="print:hidden mb-6 flex items-center justify-between border-b border-gray-300 pb-3">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-            Chabra Saúde e Segurança do Trabalho
+            Documento técnico — uso interno e regulatório
           </span>
           <span className="text-[10px] text-gray-400">{dataFormatada}</span>
         </div>
@@ -593,6 +615,11 @@ export default function AetLaudoPage({
             </div>
           </div>
         </div>
+
+        {/* Rodapé */}
+        <p className="mt-8 text-center text-[9px] text-gray-400">
+          Laudo AET gerado em {new Date().toLocaleDateString("pt-BR")} · Chabra Saúde e Segurança do Trabalho · Portaria 3.214/78 — NR-17
+        </p>
       </div>
     </div>
   );

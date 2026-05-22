@@ -32,12 +32,19 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Print styles para o relatório */
+/* Print styles — base global */
 @media print {
   .no-print { display: none !important; }
-  body { background: white !important; }
+  body {
+    background: white !important;
+    /* Garante que cores de fundo e badges renderizem no PDF */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   .print-break { page-break-after: always; }
   .print-avoid-break { page-break-inside: avoid; }
+  /* Remove decorações de tela que vazam na impressão */
+  * { text-decoration-skip-ink: auto; }
 }
 
 /* TipTap rich text editor — estilos visuais do conteudo */
