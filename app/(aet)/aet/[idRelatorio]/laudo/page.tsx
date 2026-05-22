@@ -1101,18 +1101,19 @@ function SetorAnaliseBlock({
 
         {/* Fotos */}
         {(setor.fotos ?? []).length > 0 && (
-          <div className="px-4 py-3">
+          <div className="px-4 py-3 text-center">
             <p
               className="mb-2 text-[10px] font-bold uppercase tracking-wider"
               style={{ color: "#9ca3af" }}
             >
               Registros Fotográficos
             </p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="flex flex-wrap justify-center gap-3">
               {(setor.fotos ?? []).slice(0, 6).map((url, i) => (
                 <div
                   key={i}
-                  className="relative aspect-video overflow-hidden rounded-md border border-gray-200"
+                  className="relative w-40 shrink-0 overflow-hidden rounded-md border border-gray-200"
+                  style={{ aspectRatio: "16/9" }}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
