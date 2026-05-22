@@ -1,7 +1,19 @@
 "use client";
 
 import { use } from "react";
-import { Loader2, Printer, Save } from "lucide-react";
+import {
+  Activity,
+  AlertTriangle,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  Clock,
+  FileText,
+  Loader2,
+  Printer,
+  Save,
+  Users,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import {
@@ -39,6 +51,18 @@ const CLASS_COLOR: Record<ClassificacaoRiscoAET, string> = {
   Moderado: "bg-orange-100 text-orange-800",
   Alto: "bg-red-100 text-red-800",
   Crítico: "bg-red-200 text-red-900",
+};
+
+const CLASS_ORDER: ClassificacaoRiscoAET[] = [
+  "Trivial", "De Atenção", "Moderado", "Alto", "Crítico",
+];
+
+const DASH_RISK_COLOR: Record<ClassificacaoRiscoAET, string> = {
+  Trivial: "text-green-300",
+  "De Atenção": "text-yellow-300",
+  Moderado: "text-orange-300",
+  Alto: "text-red-300",
+  Crítico: "text-red-200",
 };
 
 const OWAS_ROWS: {
@@ -161,6 +185,19 @@ export default function AetLaudoPage({
     : "—";
   const empresa = rel.empresas;
 
+  // ── Stats dashboard ──────────────────────────────────────────────────────
+  const totalSetores = rel.setores.length;
+  const totalRiscos = rel.setores.reduce((acc, s) => acc + s.riscos.length, 0);
+  const totalCargos = rel.setores.reduce((acc, s) => acc + s.cargos.length, 0);
+  const todasClassif = rel.setores.flatMap((s) =>
+    s.riscos.map((r) => r.classificacao_risco)
+  );
+  const classificacaoMax = todasClassif.reduce<ClassificacaoRiscoAET | null>(
+    (max, c) =>
+      !max || CLASS_ORDER.indexOf(c) > CLASS_ORDER.indexOf(max) ? c : max,
+    null
+  );
+
   const capitulosInicio = capitulos.filter((c) => !c.posicao_pdf || c.posicao_pdf === "inicio");
   const capitulosAposSumario = capitulos.filter((c) => c.posicao_pdf === "apos_sumario");
   const capitulosAposSetores = capitulos.filter((c) => c.posicao_pdf === "apos_setores");
@@ -175,23 +212,106 @@ export default function AetLaudoPage({
   });
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between print:hidden">
-        <h1 className="text-lg font-semibold text-gray-900">Laudo / Imprimir</h1>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
-        >
-          <Printer className="size-4" /> Imprimir
-        </button>
+    <div className="space-y-0">
+
+      {/* ═══ HEADER DASHBOARD (print:hidden) ═══ */}
+      <div className="print:hidden rounded-2xl bg-gradient-to-br from-verde-dark via-verde-primary to-verde-accent p-6 shadow-xl mb-5">
+        {/* Topo: empresa + status + botão */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-white/50">
+              Laudo de Avaliação Ergonômica — NR-17
+            </p>
+            <h1 className="mt-1 text-xl font-bold text-white">
+              {empresa?.nome_empresa || "Empresa"}
+            </h1>
+            {empresa?.cnpj && (
+              <p className="mt-0.5 text-xs text-white/60">CNPJ: {empresa.cnpj}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Badge de status */}
+            <span className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
+              rel.status === "CONCLUIDO"
+                ? "bg-green-400/20 text-green-100"
+                : "bg-white/15 text-white/80"
+            )}>
+              {rel.status === "CONCLUIDO"
+                ? <CheckCircle2 className="size-3" />
+                : <Clock className="size-3" />}
+              {rel.status === "CONCLUIDO" ? "Concluído" : "Rascunho"}
+            </span>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition-colors hover:bg-white/30"
+            >
+              <Printer className="size-4" /> Gerar Laudo
+            </button>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
+            <div className="mb-1 flex items-center gap-1.5 text-white/60">
+              <Building2 className="size-3.5" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider">Setores</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{totalSetores}</p>
+            <p className="text-[10px] text-white/50">
+              {totalSetores === 1 ? "setor analisado" : "setores analisados"}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
+            <div className="mb-1 flex items-center gap-1.5 text-white/60">
+              <AlertTriangle className="size-3.5" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider">Riscos</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{totalRiscos}</p>
+            <p className="text-[10px] text-white/50">
+              {totalRiscos === 1 ? "risco mapeado" : "riscos mapeados"}
+            </p>
+          </div>
+
+          <div className="rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
+            <div className="mb-1 flex items-center gap-1.5 text-white/60">
+              <Activity className="size-3.5" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider">Classificação</span>
+            </div>
+            <p className={cn("text-base font-bold leading-tight", classificacaoMax ? DASH_RISK_COLOR[classificacaoMax] : "text-white")}>
+              {classificacaoMax || "—"}
+            </p>
+            <p className="text-[10px] text-white/50">nível mais crítico</p>
+          </div>
+
+          <div className="rounded-xl bg-white/10 px-4 py-3 backdrop-blur">
+            <div className="mb-1 flex items-center gap-1.5 text-white/60">
+              <Users className="size-3.5" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider">Cargos</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{totalCargos}</p>
+            <p className="text-[10px] text-white/50">
+              {totalCargos === 1 ? "cargo avaliado" : "cargos avaliados"}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Dados do Laudo — oculto na impressão */}
+      {/* ═══ DADOS DO LAUDO (print:hidden) ═══ */}
       {canEdit && (
-        <div className="print:hidden rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-gray-500">Dados do Laudo</h2>
+        <div className="print:hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm mb-5">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-verde-light">
+              <FileText className="size-4 text-verde-primary" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-gray-900">Dados do Laudo</h2>
+              <p className="text-[11px] text-gray-500">Responsável técnico, registro e data de elaboração</p>
+            </div>
+          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Responsável pela Elaboração</label>
@@ -199,7 +319,7 @@ export default function AetLaudoPage({
                 type="text"
                 value={responsavel}
                 onChange={(e) => setResponsavel(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
                 placeholder="Nome do responsável"
               />
             </div>
@@ -209,7 +329,7 @@ export default function AetLaudoPage({
                 type="text"
                 value={tituloProfissional}
                 onChange={(e) => setTituloProfissional(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
                 placeholder="Ex: Ergonomista, Engenheiro de Segurança..."
               />
             </div>
@@ -219,7 +339,7 @@ export default function AetLaudoPage({
                 type="text"
                 value={registroProfissional}
                 onChange={(e) => setRegistroProfissional(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
                 placeholder="CRA / CREA / CRF..."
               />
             </div>
@@ -229,7 +349,7 @@ export default function AetLaudoPage({
                 type="date"
                 value={dataElaboracao}
                 onChange={(e) => setDataElaboracao(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
               />
             </div>
             <div className="sm:col-span-2">
@@ -238,29 +358,38 @@ export default function AetLaudoPage({
                 type="text"
                 value={enderecoEmpresa}
                 onChange={(e) => setEnderecoEmpresa(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
                 placeholder="Rua, nº, bairro, cidade - UF"
               />
             </div>
           </div>
-          <div className="flex justify-end">
+          <div className="mt-4 flex justify-end">
             <button
               type="button"
               onClick={handleSaveDados}
               disabled={salvar.isPending}
-              className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-4 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-4 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
             >
-              {salvar.isPending ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+              {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
               Salvar Dados
             </button>
           </div>
         </div>
       )}
 
+      {/* Divisor "Prévia do Documento" (print:hidden) */}
+      <div className="print:hidden mb-4 flex items-center gap-3">
+        <div className="h-px flex-1 bg-gray-200" />
+        <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+          <FileText className="size-3" /> Prévia do Documento
+        </span>
+        <div className="h-px flex-1 bg-gray-200" />
+      </div>
+
       {/* ═══ DOCUMENTO ═══ */}
       <div
         id="laudo-aet"
-        className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none"
+        className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
         {/* Topo */}
         <div className="mb-6 flex items-center justify-between border-b border-gray-300 pb-3">
