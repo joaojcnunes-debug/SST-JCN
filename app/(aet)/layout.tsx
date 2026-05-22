@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode, useMemo } from "react";
-import { BookOpen, ClipboardCheck, List, Plus, Printer, Settings2, Sliders } from "lucide-react";
+import { BookOpen, ClipboardCheck, LayoutDashboard, List, Plus, Printer, Settings2, Sliders } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -22,6 +22,7 @@ export default function AetLayout({ children }: { children: ReactNode }) {
       {
         label: "AET",
         items: [
+          { href: "/aet/dashboard", label: "Dashboard", icon: LayoutDashboard },
           { href: "/aet", label: "Laudos", icon: List },
           { href: "/aet/novo", label: "Novo Laudo", icon: Plus },
         ],
