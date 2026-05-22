@@ -395,16 +395,20 @@ export default function AetLaudoPage({
           body { font-size: 12pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .aet-section { page-break-inside: avoid; }
           .aet-section-break { page-break-before: always; }
-          .aet-capa {
-            height: calc(297mm - 3cm - 2cm) !important;
-            min-height: calc(297mm - 3cm - 2cm) !important;
-            max-height: calc(297mm - 3cm - 2cm) !important;
+          /* Capa — seção isolada hidden print:block, igual ao psicossocial */
+          .aet-capitulo--capa {
+            position: relative;
+            height: calc(297mm - 3cm - 2cm - 1mm) !important;
+            min-height: calc(297mm - 3cm - 2cm - 1mm) !important;
+            max-height: calc(297mm - 3cm - 2cm - 1mm) !important;
             break-after: page !important;
             margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          .aet-capa-img {
+          .aet-capitulo-bg-img {
             position: absolute;
             inset: 0;
             width: 100%;
@@ -415,7 +419,9 @@ export default function AetLaudoPage({
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
+          .aet-caixa-texto { position: relative; z-index: 1; }
         }
+        /* Preview de tela da capa */
         .aet-capa { min-height: 480px; }
         .aet-capa-img {
           position: absolute;
@@ -428,23 +434,54 @@ export default function AetLaudoPage({
         }
       `}</style>
 
+      {/* ═══ CAPA PRINT-ONLY — seção isolada antes do header (igual ao psicossocial) ═══ */}
+      {temCapa && (
+        <div className="hidden print:block">
+          {capitulosInicio
+            .filter((c) => !!c.bg_imagem_url)
+            .map((cap) => (
+              <div key={cap.id_capitulo} className="aet-capitulo--capa">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={cap.bg_imagem_url!} alt="" className="aet-capitulo-bg-img" />
+                {(cap.caixas_texto ?? []).map((caixa: CaixaTexto) => (
+                  <div
+                    key={caixa.id}
+                    className="aet-caixa-texto"
+                    style={{
+                      position: "absolute",
+                      left: `${caixa.x}%`,
+                      top: `${caixa.y}%`,
+                      width: `${caixa.w ?? 40}%`,
+                      fontSize: `${caixa.fontSize ?? 14}px`,
+                      fontWeight: caixa.bold ? "bold" : "normal",
+                      color: caixa.color ?? "#ffffff",
+                      textAlign: caixa.align ?? "left",
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {substituirVariaveisTexto(caixa.conteudo, valoresCapitulos)}
+                  </div>
+                ))}
+              </div>
+            ))}
+        </div>
+      )}
+
       {/* ═══ DOCUMENTO ═══ */}
       <div
         id="laudo-aet"
         className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
-        {/* Cabeçalho padronizado — oculto no print quando há capa (a capa ocupa a página 1) */}
-        <div className={temCapa ? "print:hidden" : ""}>
-          <RelatorioPrintHeader
-            titulo="Laudo de Avaliação Ergonômica — AET"
-            subtitulo={empresa?.nome_empresa ?? null}
-            terciario={
-              empresa?.cnpj
-                ? `CNPJ: ${empresa.cnpj}${enderecoEmpresa ? ` · ${enderecoEmpresa}` : ""}`
-                : enderecoEmpresa || null
-            }
-          />
-        </div>
+        {/* Cabeçalho — sempre visível no print (página 2 quando há capa) */}
+        <RelatorioPrintHeader
+          titulo="Laudo de Avaliação Ergonômica — AET"
+          subtitulo={empresa?.nome_empresa ?? null}
+          terciario={
+            empresa?.cnpj
+              ? `CNPJ: ${empresa.cnpj}${enderecoEmpresa ? ` · ${enderecoEmpresa}` : ""}`
+              : enderecoEmpresa || null
+          }
+        />
 
         {/* Separador de tela (oculto no print — já temos o header acima) */}
         <div className="print:hidden mb-6 flex items-center justify-between border-b border-gray-300 pb-3">
@@ -677,8 +714,10 @@ function CapituloLaudo({
   valores?: Record<string, string>;
 }) {
   if (cap.bg_imagem_url) {
+    // Print: renderizado na seção hidden print:block antes do header (igual psicossocial)
+    // Tela: preview abaixo do header
     return (
-      <div className="aet-capa relative mb-6 overflow-hidden rounded-lg border border-gray-200 print:rounded-none print:border-0">
+      <div className="print:hidden aet-capa relative mb-6 overflow-hidden rounded-lg border border-gray-200">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={cap.bg_imagem_url} alt="" className="aet-capa-img" />
         {(cap.caixas_texto ?? []).map((caixa: CaixaTexto) => (
