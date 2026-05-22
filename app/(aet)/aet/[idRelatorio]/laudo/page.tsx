@@ -404,8 +404,28 @@ export default function AetLaudoPage({
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
+          .aet-capa-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            z-index: 0;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
         }
         .aet-capa { min-height: 480px; }
+        .aet-capa-img {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center;
+          z-index: 0;
+        }
       `}</style>
 
       {/* ═══ DOCUMENTO ═══ */}
@@ -658,14 +678,9 @@ function CapituloLaudo({
 }) {
   if (cap.bg_imagem_url) {
     return (
-      <div
-        className="aet-capa relative mb-6 overflow-hidden rounded-lg border border-gray-200 print:rounded-none print:border-0"
-        style={{
-          backgroundImage: `url(${cap.bg_imagem_url})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
+      <div className="aet-capa relative mb-6 overflow-hidden rounded-lg border border-gray-200 print:rounded-none print:border-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={cap.bg_imagem_url} alt="" className="aet-capa-img" />
         {(cap.caixas_texto ?? []).map((caixa: CaixaTexto) => (
           <div
             key={caixa.id}
@@ -679,6 +694,7 @@ function CapituloLaudo({
               color: caixa.color ?? "#ffffff",
               textAlign: caixa.align ?? "left",
               whiteSpace: "pre-wrap",
+              zIndex: 1,
             }}
           >
             {substituirVariaveisTexto(caixa.conteudo, valores)}
