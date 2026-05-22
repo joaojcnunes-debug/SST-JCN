@@ -392,14 +392,15 @@ export default function AetLaudoPage({
       <style>{`
         @media print {
           @page { size: A4; margin: 3cm 2cm 2cm 3cm; }
+          @page :first { margin: 0; }
           body { font-size: 12pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .aet-section { page-break-inside: avoid; }
           .aet-section-break { page-break-before: always; }
-          /* Capa no print: página inteira, sem borda/radius */
+          /* Capa no print: full-bleed (1ª página sem margens) */
           .aet-capitulo--capa {
-            height: calc(297mm - 3cm - 2cm - 1mm) !important;
-            min-height: calc(297mm - 3cm - 2cm - 1mm) !important;
-            max-height: calc(297mm - 3cm - 2cm - 1mm) !important;
+            height: 297mm !important;
+            min-height: 297mm !important;
+            max-height: 297mm !important;
             width: 100% !important;
             break-after: page !important;
             margin: 0 !important;
