@@ -391,10 +391,21 @@ export default function AetLaudoPage({
       <style>{`
         @media print {
           @page { size: A4; margin: 3cm 2cm 2cm 3cm; }
-          body { font-size: 12pt; line-height: 1.5; }
+          body { font-size: 12pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .aet-section { page-break-inside: avoid; }
           .aet-section-break { page-break-before: always; }
+          .aet-capa {
+            height: calc(297mm - 3cm - 2cm) !important;
+            min-height: calc(297mm - 3cm - 2cm) !important;
+            max-height: calc(297mm - 3cm - 2cm) !important;
+            break-before: page !important;
+            break-after: page !important;
+            margin: 0 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
         }
+        .aet-capa { min-height: 480px; }
       `}</style>
 
       {/* ═══ DOCUMENTO ═══ */}
@@ -646,12 +657,11 @@ function CapituloLaudo({
   if (cap.bg_imagem_url) {
     return (
       <div
-        className="relative mb-6 overflow-hidden rounded-lg border border-gray-200 print:break-before-page print:rounded-none print:border-0"
+        className="aet-capa relative mb-6 overflow-hidden rounded-lg border border-gray-200 print:rounded-none print:border-0"
         style={{
           backgroundImage: `url(${cap.bg_imagem_url})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          minHeight: "480px",
         }}
       >
         {(cap.caixas_texto ?? []).map((caixa: CaixaTexto) => (
