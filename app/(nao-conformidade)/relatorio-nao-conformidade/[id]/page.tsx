@@ -527,6 +527,9 @@ export default function DetalheNaoConformidadePage({
 
       {lightbox && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Visualizar foto"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 print:hidden"
           onClick={() => setLightbox(null)}
         >
@@ -1427,8 +1430,11 @@ function ChecklistPicker({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 print:hidden"
       onClick={onFechar}
+      aria-hidden="true"
     >
       <div
+        role="dialog"
+        aria-modal="true"
         className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >

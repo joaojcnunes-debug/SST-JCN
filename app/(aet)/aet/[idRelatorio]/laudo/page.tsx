@@ -973,8 +973,8 @@ function SetorAnaliseBlock({
                         })}
                       </div>
                       {imageSrc && (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <div className="w-32 shrink-0 self-start">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={imageSrc}
                             alt={`Referência OWAS: ${cat.titulo}`}

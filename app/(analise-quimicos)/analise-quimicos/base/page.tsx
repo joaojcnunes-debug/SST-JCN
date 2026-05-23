@@ -508,8 +508,8 @@ function EditModal({ row, onClose }: EditModalProps) {
     "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" aria-hidden="true">
+      <div role="dialog" aria-modal="true" aria-label={ehNovo ? "Novo agente" : "Editar agente"} className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-5 py-3">
           <h2 className="text-lg font-semibold text-gray-900">
             {ehNovo ? "Novo agente" : "Editar agente"}
