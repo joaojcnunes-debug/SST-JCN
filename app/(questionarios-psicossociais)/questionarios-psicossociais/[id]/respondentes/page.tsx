@@ -31,9 +31,10 @@ import {
 import { useQpsTipos } from "@/lib/hooks/useQuestionarios";
 import { parsearQpsCsv } from "@/lib/qps/parsearCsv";
 import {
-  gerarModeloCsvQps,
+  gerarModeloExcelQps,
   gerarGuiaFormsQps,
   triggerDownload,
+  triggerDownloadBuffer,
 } from "@/lib/qps/gerarModeloCsv";
 import type { QpsCategoria, QpsPergunta, QpsRespondente, QpsTipo } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
@@ -295,10 +296,10 @@ function ImportacaoCsvCard({
     }
   }
 
-  function handleBaixarCsv() {
-    const { conteudo, nomeArquivo } = gerarModeloCsvQps(perguntasOrdenadas, tipo);
-    triggerDownload(conteudo, nomeArquivo, "text/csv");
-    toast.success("Modelo CSV baixado");
+  function handleBaixarModelo() {
+    const { buffer, nomeArquivo } = gerarModeloExcelQps(perguntasOrdenadas, categorias, tipo);
+    triggerDownloadBuffer(buffer, nomeArquivo, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    toast.success("Modelo Excel baixado");
   }
 
   function handleBaixarGuia() {
@@ -335,11 +336,11 @@ function ImportacaoCsvCard({
           </button>
           <button
             type="button"
-            onClick={handleBaixarCsv}
-            title="Baixar modelo de planilha CSV com o cabeçalho correto e 3 linhas de exemplo"
+            onClick={handleBaixarModelo}
+            title="Baixar modelo de planilha Excel (.xlsx) com cabeçalho correto e exemplos"
             className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
           >
-            <FileDown className="size-3.5" /> Modelo CSV
+            <FileDown className="size-3.5" /> Modelo Excel
           </button>
           <input
             ref={fileRef}

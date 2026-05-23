@@ -1,13 +1,7 @@
 // Gera modelos para facilitar a configuração do Google Forms e a importação de CSV.
 
+import * as XLSX from "xlsx";
 import type { QpsPergunta, QpsCategoria, QpsTipo } from "@/lib/supabase/types";
-
-function escaparCsv(v: string): string {
-  if (v.includes(",") || v.includes('"') || v.includes("\n") || v.includes("\r")) {
-    return `"${v.replace(/"/g, '""')}"`;
-  }
-  return v;
-}
 
 function slugify(s: string) {
   return s
@@ -19,12 +13,13 @@ function slugify(s: string) {
     .slice(0, 40);
 }
 
-// ─── CSV modelo (para importar no Google Sheets como folha de resposta) ────────
+// ─── Excel modelo (.xlsx) ──────────────────────────────────────────────────────
 
-export function gerarModeloCsvQps(
+export function gerarModeloExcelQps(
   perguntasOrdenadas: QpsPergunta[],
+  categorias: QpsCategoria[],
   tipo: QpsTipo
-): { conteudo: string; nomeArquivo: string } {
+): { buffer: ArrayBuffer; nomeArquivo: string } {
   const mid = Math.round((tipo.escala_min + tipo.escala_max) / 2);
 
   const cabecalho = [
@@ -32,40 +27,45 @@ export function gerarModeloCsvQps(
     "Setor",
     "Cargo",
     ...perguntasOrdenadas.map((p, i) => `P${i + 1}: ${p.texto}`),
-  ]
-    .map(escaparCsv)
-    .join(",");
+  ];
 
   const exemplos = [
-    [
-      "01/01/2024 09:00:00",
-      "Administrativo",
-      "Analista",
-      ...perguntasOrdenadas.map(() => String(tipo.escala_max)),
-    ],
-    [
-      "01/01/2024 09:10:00",
-      "Operacional",
-      "Operador",
-      ...perguntasOrdenadas.map(() => String(mid)),
-    ],
-    [
-      "01/01/2024 09:20:00",
-      "Comercial",
-      "Gerente",
-      ...perguntasOrdenadas.map(() => String(tipo.escala_min)),
-    ],
+    ["01/01/2024 09:00:00", "Administrativo", "Analista", ...perguntasOrdenadas.map(() => tipo.escala_max)],
+    ["01/01/2024 09:10:00", "Operacional",    "Operador", ...perguntasOrdenadas.map(() => mid)],
+    ["01/01/2024 09:20:00", "Comercial",      "Gerente",  ...perguntasOrdenadas.map(() => tipo.escala_min)],
   ];
 
-  const linhas = [
-    cabecalho,
-    ...exemplos.map((r) => r.map(escaparCsv).join(",")),
-  ];
+  const wb = XLSX.utils.book_new();
 
-  return {
-    conteudo: linhas.join("\r\n"),
-    nomeArquivo: `modelo-qps-${slugify(tipo.nome)}.csv`,
-  };
+  // Aba 1 — planilha de importação
+  const wsImport = XLSX.utils.aoa_to_sheet([cabecalho, ...exemplos]);
+  wsImport["!cols"] = [
+    { wch: 22 }, // carimbo
+    { wch: 20 }, // setor
+    { wch: 18 }, // cargo
+    ...perguntasOrdenadas.map(() => ({ wch: 10 })),
+  ];
+  XLSX.utils.book_append_sheet(wb, wsImport, "Respostas");
+
+  // Aba 2 — referência das perguntas por categoria
+  const refLinhas: (string | number)[][] = [
+    ["Nº Coluna", "Categoria", "Pergunta", "Lógica", `Escala ${tipo.escala_min}–${tipo.escala_max}`],
+  ];
+  const catsOrdenadas = [...categorias].sort((a, b) => a.ordem - b.ordem);
+  let numCol = 4;
+  for (const cat of catsOrdenadas) {
+    const pergs = perguntasOrdenadas.filter((p) => p.id_categoria === cat.id_categoria);
+    for (const p of pergs) {
+      refLinhas.push([numCol, cat.nome, p.texto, p.logica, ""]);
+      numCol++;
+    }
+  }
+  const wsRef = XLSX.utils.aoa_to_sheet(refLinhas);
+  wsRef["!cols"] = [{ wch: 10 }, { wch: 26 }, { wch: 60 }, { wch: 12 }, { wch: 14 }];
+  XLSX.utils.book_append_sheet(wb, wsRef, "Referência Perguntas");
+
+  const buffer = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
+  return { buffer, nomeArquivo: `modelo-importacao-${slugify(tipo.nome)}.xlsx` };
 }
 
 // ─── Guia TXT (instruções para configurar o Google Forms) ─────────────────────
@@ -133,7 +133,7 @@ export function gerarGuiaFormsQps(
   };
 }
 
-// ─── Utilitário de download no browser ────────────────────────────────────────
+// ─── Utilitários de download no browser ───────────────────────────────────────
 
 export function triggerDownload(
   conteudo: string,
@@ -142,6 +142,18 @@ export function triggerDownload(
 ): void {
   const bom = mimeType.includes("csv") ? "﻿" : "";
   const blob = new Blob([bom + conteudo], { type: `${mimeType};charset=utf-8` });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export function triggerDownloadBuffer(buffer: ArrayBuffer, nomeArquivo: string, mimeType: string): void {
+  const blob = new Blob([buffer], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
