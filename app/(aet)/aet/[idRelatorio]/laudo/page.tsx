@@ -559,10 +559,17 @@ export default function AetLaudoPage({
               if (cap.tipo === "fixo") {
                 let content: React.ReactNode = null;
 
+                const introFixo = cap.conteudo ? (
+                  <p className="mb-4 text-xs leading-relaxed text-gray-700 border-l-2 border-gray-300 pl-3">
+                    {cap.conteudo}
+                  </p>
+                ) : null;
+
                 switch (cap.slug_fixo) {
                   case "aet_agentes_ambientais":
                     content = rel.setores.length > 0 ? (
                       <Section num="9" title="Agentes Ambientais para as Áreas Operacionais">
+                        {introFixo}
                         <div className="space-y-5">
                           {rel.setores.map((setor, idx) => (
                             <SetorRiscosBlock key={setor.id} setor={setor} idx={idx} />
@@ -575,6 +582,7 @@ export default function AetLaudoPage({
                   case "aet_analise_ergonomica":
                     content = rel.setores.length > 0 ? (
                       <Section num="13" title="Análises Ergonômicas do Trabalho">
+                        {introFixo}
                         <div className="space-y-8">
                           {rel.setores.map((setor, idx) => (
                             <SetorAnaliseBlock
@@ -597,14 +605,19 @@ export default function AetLaudoPage({
 
                   case "aet_psicossocial":
                     content = fatoresPsi.length > 0 ? (
-                      <PsicossocialSections
-                        fatoresPsi={fatoresPsi}
-                        fatoresConfig={fatoresConfig}
-                        semaforo={semaforo}
-                        qpsMeta={qpsMeta ?? null}
-                        zonaFromMedia={zonaFromMedia}
-                        nivelPgrFromZona={nivelPgrFromZona}
-                      />
+                      <>
+                        {introFixo && (
+                          <div className="mb-4">{introFixo}</div>
+                        )}
+                        <PsicossocialSections
+                          fatoresPsi={fatoresPsi}
+                          fatoresConfig={fatoresConfig}
+                          semaforo={semaforo}
+                          qpsMeta={qpsMeta ?? null}
+                          zonaFromMedia={zonaFromMedia}
+                          nivelPgrFromZona={nivelPgrFromZona}
+                        />
+                      </>
                     ) : null;
                     break;
 

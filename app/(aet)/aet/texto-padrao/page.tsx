@@ -18,6 +18,7 @@ import {
   RectangleHorizontal,
   Save,
   Search,
+  Sparkles,
   Trash2,
   Variable,
   X,
@@ -388,6 +389,13 @@ export default function AetTextoPadraoPage() {
 
 // ─── Card de capítulo SISTEMA (fixo) ─────────────────────────────────────────
 
+const SLUGS_COM_IA = new Set([
+  "aet_agentes_ambientais",
+  "aet_analise_ergonomica",
+  "aet_psicossocial",
+  "aet_consideracoes_finais",
+]);
+
 function FixoCard({
   capitulo,
   indice,
@@ -407,6 +415,40 @@ function FixoCard({
 }) {
   const descricao = capitulo.slug_fixo ? SLUG_DESCRICAO[capitulo.slug_fixo] : null;
   const orientacao = capitulo.orientacao ?? "retrato";
+  const temIA = capitulo.slug_fixo ? SLUGS_COM_IA.has(capitulo.slug_fixo) : false;
+  const [conteudo, setConteudo] = useState(capitulo.conteudo ?? "");
+  const [expandido, setExpandido] = useState(false);
+  const [gerandoIA, setGerandoIA] = useState(false);
+  const [dirtyConteudo, setDirtyConteudo] = useState(false);
+
+  useEffect(() => {
+    setConteudo(capitulo.conteudo ?? "");
+    setDirtyConteudo(false);
+  }, [capitulo.id_capitulo, capitulo.conteudo]);
+
+  async function gerarIA() {
+    if (!capitulo.slug_fixo) return;
+    setGerandoIA(true);
+    try {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.functions.invoke("gerar-intro-capitulo-aet-ia", {
+        body: {
+          slug_fixo: capitulo.slug_fixo,
+          textoAtual: conteudo || null,
+        },
+      });
+      if (error) throw error;
+      const intro: string = data?.data?.intro ?? data?.intro ?? "";
+      if (!intro) { toast.error("IA não retornou texto"); return; }
+      setConteudo(intro);
+      setDirtyConteudo(true);
+      setExpandido(true);
+    } catch {
+      toast.error("Erro ao gerar com IA");
+    } finally {
+      setGerandoIA(false);
+    }
+  }
 
   return (
     <div className={cn(
@@ -499,6 +541,76 @@ function FixoCard({
             </span>
           )}
         </p>
+      )}
+
+      {/* Área de texto introdutório + IA */}
+      {temIA && (
+        <div className="mt-2 pl-16">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={gerarIA}
+              disabled={gerandoIA || salvando}
+              className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {gerandoIA ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+              {gerandoIA ? "Gerando…" : conteudo ? "Regerar com IA" : "Gerar com IA"}
+            </button>
+            {conteudo && !expandido && (
+              <button
+                type="button"
+                onClick={() => setExpandido(true)}
+                className="text-[11px] text-blue-600 hover:underline"
+              >
+                Ver texto gerado
+              </button>
+            )}
+            {conteudo && expandido && (
+              <button
+                type="button"
+                onClick={() => setExpandido(false)}
+                className="text-[11px] text-blue-600 hover:underline"
+              >
+                Recolher
+              </button>
+            )}
+          </div>
+
+          {expandido && (
+            <div className="mt-2 space-y-1.5">
+              <textarea
+                value={conteudo}
+                onChange={(e) => { setConteudo(e.target.value); setDirtyConteudo(true); }}
+                rows={4}
+                placeholder="Parágrafo introdutório gerado pela IA (aparece antes do conteúdo automático no laudo)..."
+                className="w-full rounded-md border border-blue-200 bg-white px-3 py-2 text-xs leading-relaxed text-gray-700 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-300/30"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSalvar({ conteudo: conteudo.trim() || null });
+                    setDirtyConteudo(false);
+                  }}
+                  disabled={!dirtyConteudo || salvando}
+                  className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {salvando ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
+                  Salvar texto
+                </button>
+                {conteudo && (
+                  <button
+                    type="button"
+                    onClick={() => { setConteudo(""); setDirtyConteudo(true); }}
+                    className="text-[11px] text-gray-500 hover:text-red-600"
+                  >
+                    Remover texto
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
