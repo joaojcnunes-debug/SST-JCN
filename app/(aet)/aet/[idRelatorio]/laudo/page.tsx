@@ -25,6 +25,8 @@ import {
   useAet13FatoresSemaforo,
   useAetLaudoQpsMeta,
   useAetLaudoFatoresPsi,
+  useAetQpsRespostas,
+  useAet13FatoresPerguntas,
   zonaFromMedia,
   nivelPgrFromZona,
   SEMAFORO_DEFAULT,
@@ -47,6 +49,12 @@ import type {
   AetChecklistPergunta,
   AetOwasCategoria,
   ClassificacaoRiscoAET,
+  Aet13FatorConfig,
+  Aet13FatorPergunta,
+  Aet13FatorSemaforo,
+  AetLaudoFatorPsi,
+  AetLaudoQpsResposta,
+  ZonaPsi,
 } from "@/lib/supabase/types";
 import type { CaixaTexto } from "@/lib/drps/types";
 
@@ -117,6 +125,32 @@ const SLUGS_PADRAO = new Set([
   "exigencia_levantamento", "ritmo_por_demanda", "pausas_formais", "rodizios_sistematizados",
 ]);
 
+const ZONA_PRINT: Record<string, string> = {
+  verde: "#E8F5E9", amarela: "#FFF9C4", laranja: "#FFE0B2", vermelha: "#FFEBEE",
+};
+const ZONA_TEXT: Record<string, string> = {
+  verde: "#1B5E20", amarela: "#F57F17", laranja: "#E65100", vermelha: "#C62828",
+};
+
+function calcMediaSetor(
+  perguntas: Aet13FatorPergunta[],
+  respostas: AetLaudoQpsResposta[],
+  idSetor: string,
+  codigoFator: string
+): number | null {
+  const rSetor = respostas.filter(
+    (r) => r.id_setor === idSetor && r.codigo_fator === codigoFator
+  );
+  if (rSetor.length === 0) return null;
+  const scores = rSetor.map((r) => {
+    const perg = perguntas.find(
+      (p) => p.codigo_fator === codigoFator && p.ordem === r.pergunta_ordem
+    );
+    return perg?.logica === "direta" ? 6 - r.resposta : r.resposta;
+  });
+  return scores.reduce((a, b) => a + b, 0) / scores.length;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AetLaudoPage({
@@ -142,6 +176,8 @@ export default function AetLaudoPage({
   const { data: semaforo = SEMAFORO_DEFAULT } = useAet13FatoresSemaforo();
   const { data: qpsMeta } = useAetLaudoQpsMeta(idRelatorio);
   const { data: fatoresPsi = [] } = useAetLaudoFatoresPsi(idRelatorio);
+  const { data: qpsRespostas = [] } = useAetQpsRespostas(idRelatorio);
+  const { data: fatoresPerguntas = [] } = useAet13FatoresPerguntas();
 
   useEffect(() => {
     if (rel) {
@@ -587,6 +623,11 @@ export default function AetLaudoPage({
                   idx={idx}
                   checklistPerguntas={checklistPerguntas}
                   owasConfig={owasConfig}
+                  fatoresConfig={fatoresConfig}
+                  fatoresPerguntas={fatoresPerguntas}
+                  qpsRespostas={qpsRespostas}
+                  fatoresPsi={fatoresPsi}
+                  semaforo={semaforo}
                 />
               ))}
             </div>
@@ -712,12 +753,6 @@ export default function AetLaudoPage({
                       ? fp.zona
                       : zonaFromMedia(fp.media);
                     const prazoSem = semaforo.find((s) => s.id === zona);
-                    const ZONA_PRINT: Record<string, string> = {
-                      verde: "#E8F5E9", amarela: "#FFF9C4", laranja: "#FFE0B2", vermelha: "#FFEBEE",
-                    };
-                    const ZONA_TEXT: Record<string, string> = {
-                      verde: "#1B5E20", amarela: "#F57F17", laranja: "#E65100", vermelha: "#C62828",
-                    };
                     return (
                       <tr key={fp.codigo_fator} className="border-b border-gray-100">
                         <td className="px-3 py-2 font-mono font-bold text-gray-700">{fp.codigo_fator}</td>
@@ -1047,11 +1082,21 @@ function SetorAnaliseBlock({
   idx,
   checklistPerguntas,
   owasConfig,
+  fatoresConfig,
+  fatoresPerguntas,
+  qpsRespostas,
+  fatoresPsi,
+  semaforo,
 }: {
   setor: AetSetor;
   idx: number;
   checklistPerguntas: AetChecklistPergunta[];
   owasConfig: AetOwasCategoria[];
+  fatoresConfig: Aet13FatorConfig[];
+  fatoresPerguntas: Aet13FatorPergunta[];
+  qpsRespostas: AetLaudoQpsResposta[];
+  fatoresPsi: AetLaudoFatorPsi[];
+  semaforo: Aet13FatorSemaforo[];
 }) {
   const { owas, checklist } = setor;
 
@@ -1357,6 +1402,115 @@ function SetorAnaliseBlock({
             <RichBlock html={setor.demais_condicoes} />
           </div>
         )}
+
+        {/* Fatores Psicossociais — por setor */}
+        {(() => {
+          const psiRows = fatoresConfig
+            .filter((f) => f.codigo !== "F13")
+            .map((f) => {
+              const media = calcMediaSetor(fatoresPerguntas, qpsRespostas, setor.id, f.codigo);
+              if (media === null) return null;
+              const zona: ZonaPsi | null = zonaFromMedia(media);
+              return { f, media, zona };
+            })
+            .filter((x): x is { f: Aet13FatorConfig; media: number; zona: ZonaPsi | null } => x !== null);
+
+          const f13 = fatoresPsi.find((fp) => fp.codigo_fator === "F13" && fp.avaliado && fp.zona);
+
+          if (psiRows.length === 0 && !f13) return null;
+
+          return (
+            <div className="px-4 py-3">
+              <p
+                className="mb-2 text-[10px] font-bold uppercase tracking-wider"
+                style={{ color: "#9ca3af" }}
+              >
+                Fatores Psicossociais — QPS
+              </p>
+              <table className="w-full border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-100">
+                    {["Cód.", "Fator", "Média", "Zona", "Nível PGR"].map((h) => (
+                      <th
+                        key={h}
+                        className="border border-gray-200 px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-600"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {psiRows.map(({ f, media, zona }) => (
+                    <tr key={f.codigo} className="border-b border-gray-100 even:bg-gray-50">
+                      <td className="border border-gray-100 px-2 py-1 font-mono font-bold text-gray-700">{f.codigo}</td>
+                      <td className="border border-gray-100 px-2 py-1 text-gray-800">{f.nome}</td>
+                      <td className="border border-gray-100 px-2 py-1 text-center text-gray-700">{media.toFixed(2)}</td>
+                      <td className="border border-gray-100 px-2 py-1">
+                        {zona ? (
+                          <span
+                            className="rounded px-2 py-0.5 text-[10px] font-bold"
+                            style={{ background: ZONA_PRINT[zona], color: ZONA_TEXT[zona] }}
+                          >
+                            {zona.charAt(0).toUpperCase() + zona.slice(1)}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td className="border border-gray-100 px-2 py-1 text-gray-700">{nivelPgrFromZona(zona)}</td>
+                    </tr>
+                  ))}
+                  {f13 && (
+                    <tr className="border-b border-gray-100 even:bg-gray-50">
+                      <td className="border border-gray-100 px-2 py-1 font-mono font-bold text-gray-700">F13</td>
+                      <td className="border border-gray-100 px-2 py-1 text-gray-800">
+                        {fatoresConfig.find((fc) => fc.codigo === "F13")?.nome ?? "Proteção da segurança física"}
+                      </td>
+                      <td className="border border-gray-100 px-2 py-1 text-center text-gray-700">—</td>
+                      <td className="border border-gray-100 px-2 py-1">
+                        {f13.zona ? (
+                          <span
+                            className="rounded px-2 py-0.5 text-[10px] font-bold"
+                            style={{ background: ZONA_PRINT[f13.zona], color: ZONA_TEXT[f13.zona] }}
+                          >
+                            {f13.zona.charAt(0).toUpperCase() + f13.zona.slice(1)}
+                          </span>
+                        ) : "—"}
+                      </td>
+                      <td className="border border-gray-100 px-2 py-1 text-gray-700">{nivelPgrFromZona(f13.zona)}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              {/* Observações por fator (se houver) */}
+              {psiRows.some(({ f }) => {
+                const fp = fatoresPsi.find((p) => p.codigo_fator === f.codigo);
+                return fp?.observacao || fp?.pergunta_critica;
+              }) && (
+                <div className="mt-2 space-y-2">
+                  {psiRows.map(({ f }) => {
+                    const fp = fatoresPsi.find((p) => p.codigo_fator === f.codigo);
+                    if (!fp?.observacao && !fp?.pergunta_critica) return null;
+                    return (
+                      <div key={f.codigo} className="rounded border border-gray-200 p-2">
+                        <p className="mb-1 text-[10px] font-bold text-gray-700">
+                          {f.codigo} — {f.nome}
+                        </p>
+                        {fp.pergunta_critica && (
+                          <p className="text-[11px] italic text-gray-600">
+                            &ldquo;{fp.pergunta_critica}&rdquo;
+                          </p>
+                        )}
+                        {fp.observacao && (
+                          <p className="mt-1 text-[11px] leading-relaxed text-gray-700">{fp.observacao}</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
