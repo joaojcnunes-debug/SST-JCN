@@ -16,6 +16,7 @@ import {
   Loader2,
   ArrowRight,
   ClipboardList,
+  BookOpen,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
@@ -100,6 +101,14 @@ const CARDS: HubCardCfg[] = [
     icon: <ClipboardList className="size-12" />,
     accent: "#B45309",
   },
+  {
+    modulo: "questionarios_psicossociais",
+    href: "/questionarios-psicossociais",
+    title: "Questionários Psicossociais",
+    description: "Aplicação de questionários DRPS, matriz de risco por setor e planos de ação (NR-01)",
+    icon: <BookOpen className="size-12" />,
+    accent: "#6366F1",
+  },
 ];
 
 const NOMES_MODULOS: Record<ModuloPermitido, string> = {
@@ -111,6 +120,7 @@ const NOMES_MODULOS: Record<ModuloPermitido, string> = {
   inventario_maquinas: "Inventário",
   analise_quimicos: "Análise Químicos",
   aet: "AET",
+  questionarios_psicossociais: "Questionários DRPS",
 };
 
 interface QuickActionCfg {
@@ -181,6 +191,13 @@ const QUICK_ACTIONS: QuickActionCfg[] = [
     label: "Nova AET",
     icon: <ClipboardList className="size-4" />,
     accent: "#B45309",
+  },
+  {
+    modulo: "questionarios_psicossociais",
+    href: "/questionarios-psicossociais/nova",
+    label: "Nova Aplicação DRPS",
+    icon: <BookOpen className="size-4" />,
+    accent: "#6366F1",
   },
 ];
 

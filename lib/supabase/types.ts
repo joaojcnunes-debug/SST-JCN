@@ -17,7 +17,8 @@ export type ModuloPermitido =
   | "apreciacao_maquinas"
   | "inventario_maquinas"
   | "analise_quimicos"
-  | "aet";
+  | "aet"
+  | "questionarios_psicossociais";
 
 export const TODOS_MODULOS: ModuloPermitido[] = [
   "painel",
@@ -28,6 +29,7 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "inventario_maquinas",
   "analise_quimicos",
   "aet",
+  "questionarios_psicossociais",
 ];
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
@@ -39,7 +41,88 @@ export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   inventario_maquinas: "Inventário de Equipamentos",
   analise_quimicos: "Análise de Químicos Chabra",
   aet: "AET – Análise Ergonômica do Trabalho",
+  questionarios_psicossociais: "Questionários Psicossociais / DRPS",
 };
+
+// ─── QPS — Questionários Psicossociais ───────────────────────────────────────
+
+export interface QpsTipo {
+  id_tipo: string;
+  nome: string;
+  descricao: string | null;
+  instrucoes: string | null;
+  escala_min: number;
+  escala_max: number;
+  ativo: boolean;
+  criado_em: string;
+}
+
+export interface QpsCategoria {
+  id_categoria: string;
+  id_tipo: string;
+  nome: string;
+  descricao: string | null;
+  ordem: number;
+}
+
+export interface QpsPergunta {
+  id_pergunta: string;
+  id_categoria: string;
+  texto: string;
+  logica: "direta" | "invertida";
+  ordem: number;
+  ativo: boolean;
+}
+
+export type StatusQpsAplicacao = "RASCUNHO" | "EM_ANDAMENTO" | "CONCLUIDO" | "DELETADO";
+
+export interface QpsAplicacao {
+  id_aplicacao: string;
+  id_tipo: string;
+  id_empresa: string;
+  titulo: string;
+  status: StatusQpsAplicacao;
+  responsavel: string | null;
+  periodo_inicio: string | null;
+  periodo_fim: string | null;
+  usuario_email: string | null;
+  usuario_nome: string | null;
+  criado_em: string;
+  atualizado_em: string | null;
+}
+
+export interface QpsRespondente {
+  id_respondente: string;
+  id_aplicacao: string;
+  setor: string;
+  cargo: string | null;
+  respostas: Record<string, number>;
+  lote: string | null;
+  importado_em: string;
+}
+
+export interface QpsProbabilidade {
+  id_aplicacao: string;
+  setor: string;
+  id_categoria: string;
+  probabilidade: 1 | 2 | 3;
+  atualizado_em: string;
+}
+
+export type StatusQpsPlano = "PENDENTE" | "EM_ANDAMENTO" | "CONCLUIDO" | "CANCELADO";
+
+export interface QpsPlanoAcao {
+  id_plano: string;
+  id_aplicacao: string;
+  setor: string | null;
+  id_categoria: string | null;
+  descricao: string;
+  responsavel: string | null;
+  prazo: string | null;
+  status: StatusQpsPlano;
+  criado_em: string;
+  atualizado_em: string | null;
+}
 
 export type TipoRisco =
   | "Acidente"
