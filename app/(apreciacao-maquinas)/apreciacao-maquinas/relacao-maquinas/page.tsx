@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState } from "react";
 import {
   List,
   Plus,
@@ -63,11 +63,6 @@ function parseBool(v: string): boolean | null {
   if (v === "true") return true;
   if (v === "false") return false;
   return null;
-}
-function fmtBool(v: boolean | null | undefined): string {
-  if (v === true) return "Sim";
-  if (v === false) return "Não";
-  return "—";
 }
 
 // ─── Estado inicial do form ──────────────────────────────────────────────────
@@ -314,10 +309,10 @@ export default function RelacaoMaquinasPage() {
 
       {/* Stats */}
       <div className="no-print grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Total cadastrado" valor={stats.total} cor="orange" />
-        <StatCard label="Em operação" valor={stats.operantes} cor="emerald" />
-        <StatCard label="Em manutenção" valor={stats.manutencao} cor="amber" />
-        <StatCard label="Necessita adequação NR-12" valor={stats.necessitaAdequacao} cor="red" />
+        <StatCard label="Total cadastrado" valor={stats.total} />
+        <StatCard label="Em operação" valor={stats.operantes} />
+        <StatCard label="Em manutenção" valor={stats.manutencao} />
+        <StatCard label="Necessita adequação NR-12" valor={stats.necessitaAdequacao} />
       </div>
 
       {/* Filtros */}
@@ -801,13 +796,7 @@ export default function RelacaoMaquinasPage() {
 
 // ─── Componentes auxiliares ──────────────────────────────────────────────────
 
-function StatCard({ label, valor, cor }: { label: string; valor: number; cor: "orange" | "emerald" | "amber" | "red" }) {
-  const cores: Record<string, string> = {
-    orange: "border-orange-200 bg-orange-50 text-orange-700",
-    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    amber: "border-amber-200 bg-amber-50 text-amber-700",
-    red: "border-red-200 bg-red-50 text-red-700",
-  };
+function StatCard({ label, valor }: { label: string; valor: number }) {
   return (
     <div className="rounded-lg border bg-white p-4 shadow-sm">
       <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{label}</p>

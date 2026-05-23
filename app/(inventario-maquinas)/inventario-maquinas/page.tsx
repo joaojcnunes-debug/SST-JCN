@@ -25,6 +25,7 @@ const STATUS_CORES: Record<StatusMaquina, string> = {
   MANUTENCAO: "bg-amber-100 text-amber-700",
   INATIVA: "bg-gray-200 text-gray-700",
   BAIXADA: "bg-red-100 text-red-700",
+  RESERVA: "bg-blue-100 text-blue-700",
 };
 
 export default function InventarioMaquinasPage() {
@@ -48,6 +49,7 @@ export default function InventarioMaquinasPage() {
       MANUTENCAO: 0,
       INATIVA: 0,
       BAIXADA: 0,
+      RESERVA: 0,
     };
     maquinas.forEach((m) => {
       acc[m.status] += 1;
