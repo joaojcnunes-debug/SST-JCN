@@ -675,6 +675,12 @@ export default function AetLaudoPage({
                           : ""}
                       </td>
                     </tr>
+                    {qpsMeta.tecnico_aplicador && (
+                      <tr className="border border-gray-200">
+                        <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Técnico Aplicador</td>
+                        <td className="px-3 py-1.5 text-gray-700" colSpan={3}>{qpsMeta.tecnico_aplicador}</td>
+                      </tr>
+                    )}
                     {qpsMeta.observacao_geral && (
                       <tr className="border border-gray-200">
                         <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Observação</td>

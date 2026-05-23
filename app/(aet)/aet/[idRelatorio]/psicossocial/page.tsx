@@ -30,11 +30,10 @@ import type {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const MODOS_APLICACAO = [
+const FORMAS_COLETA = [
   "Presencial — papel",
-  "Presencial — digital",
-  "Remoto — link",
-  "Híbrido",
+  "Presencial — tablet/digital",
+  "Híbrido (parte presencial, parte digital)",
 ];
 
 const ZONA_LABEL: Record<ZonaPsi, string> = {
@@ -86,6 +85,7 @@ export default function PsicossocialPage({
     periodo_inicio: null,
     periodo_fim: null,
     modo_aplicacao: null,
+    tecnico_aplicador: null,
     observacao_geral: null,
   });
 
@@ -98,6 +98,7 @@ export default function PsicossocialPage({
         periodo_inicio: qpsMeta.periodo_inicio,
         periodo_fim: qpsMeta.periodo_fim,
         modo_aplicacao: qpsMeta.modo_aplicacao,
+        tecnico_aplicador: qpsMeta.tecnico_aplicador,
         observacao_geral: qpsMeta.observacao_geral,
       });
     }
@@ -319,10 +320,10 @@ export default function PsicossocialPage({
             />
           </div>
 
-          {/* Modo de aplicação */}
+          {/* Forma de coleta */}
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">
-              Modo de Aplicação
+              Forma de Coleta
             </label>
             <select
               value={meta.modo_aplicacao ?? ""}
@@ -332,12 +333,28 @@ export default function PsicossocialPage({
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
             >
               <option value="">Selecione…</option>
-              {MODOS_APLICACAO.map((m) => (
-                <option key={m} value={m}>
-                  {m}
+              {FORMAS_COLETA.map((f) => (
+                <option key={f} value={f}>
+                  {f}
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* Técnico aplicador */}
+          <div className="sm:col-span-2 lg:col-span-3">
+            <label className="mb-1 block text-xs font-medium text-gray-600">
+              Técnico Aplicador
+            </label>
+            <input
+              type="text"
+              value={meta.tecnico_aplicador ?? ""}
+              onChange={(e) =>
+                setMeta((m) => ({ ...m, tecnico_aplicador: e.target.value || null }))
+              }
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+              placeholder="Nome do técnico ou engenheiro que conduziu a aplicação"
+            />
           </div>
         </div>
 

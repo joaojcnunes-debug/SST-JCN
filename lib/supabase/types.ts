@@ -1222,6 +1222,7 @@ export interface AetLaudoQpsMeta {
   periodo_inicio: string | null;
   periodo_fim: string | null;
   modo_aplicacao: string | null;
+  tecnico_aplicador: string | null;
   observacao_geral: string | null;
   updated_at?: string;
 }
