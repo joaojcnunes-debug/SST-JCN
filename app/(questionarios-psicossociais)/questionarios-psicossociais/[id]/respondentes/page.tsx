@@ -11,6 +11,8 @@ import {
   Upload,
   ClipboardPaste,
   AlertTriangle,
+  FileDown,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -28,7 +30,12 @@ import {
 } from "@/lib/hooks/useQuestionarios";
 import { useQpsTipos } from "@/lib/hooks/useQuestionarios";
 import { parsearQpsCsv } from "@/lib/qps/parsearCsv";
-import type { QpsCategoria, QpsPergunta, QpsRespondente } from "@/lib/supabase/types";
+import {
+  gerarModeloCsvQps,
+  gerarGuiaFormsQps,
+  triggerDownload,
+} from "@/lib/qps/gerarModeloCsv";
+import type { QpsCategoria, QpsPergunta, QpsRespondente, QpsTipo } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
 export default function RespondentesPage({ params }: { params: Promise<{ id: string }> }) {
@@ -129,6 +136,8 @@ export default function RespondentesPage({ params }: { params: Promise<{ id: str
         <ImportacaoCsvCard
           idAplicacao={id}
           perguntasOrdenadas={perguntasOrdenadas}
+          categorias={categorias}
+          tipo={tipo}
           escalaMin={tipo.escala_min}
           escalaMax={tipo.escala_max}
           nPerguntas={perguntasOrdenadas.length}
@@ -242,12 +251,16 @@ export default function RespondentesPage({ params }: { params: Promise<{ id: str
 function ImportacaoCsvCard({
   idAplicacao,
   perguntasOrdenadas,
+  categorias,
+  tipo,
   escalaMin,
   escalaMax,
   nPerguntas,
 }: {
   idAplicacao: string;
-  perguntasOrdenadas: { id_pergunta: string }[];
+  perguntasOrdenadas: QpsPergunta[];
+  categorias: QpsCategoria[];
+  tipo: QpsTipo;
   escalaMin: number;
   escalaMax: number;
   nPerguntas: number;
@@ -282,11 +295,23 @@ function ImportacaoCsvCard({
     }
   }
 
+  function handleBaixarCsv() {
+    const { conteudo, nomeArquivo } = gerarModeloCsvQps(perguntasOrdenadas, tipo);
+    triggerDownload(conteudo, nomeArquivo, "text/csv");
+    toast.success("Modelo CSV baixado");
+  }
+
+  function handleBaixarGuia() {
+    const { conteudo, nomeArquivo } = gerarGuiaFormsQps(perguntasOrdenadas, categorias, tipo);
+    triggerDownload(conteudo, nomeArquivo, "text/plain");
+    toast.success("Guia de configuração baixado");
+  }
+
   const totalEsperado = nPerguntas + 3; // carimbo + setor + cargo + N perguntas
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold text-gray-900">
             Importar via CSV / Google Forms
@@ -299,7 +324,23 @@ function ImportacaoCsvCard({
             ({totalEsperado} colunas, escala {escalaMin}–{escalaMax})
           </p>
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleBaixarGuia}
+            title="Guia com a ordem das perguntas para configurar o Google Forms"
+            className="flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+          >
+            <FileText className="size-3.5" /> Guia Forms
+          </button>
+          <button
+            type="button"
+            onClick={handleBaixarCsv}
+            title="Baixar modelo de planilha CSV com o cabeçalho correto e 3 linhas de exemplo"
+            className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+          >
+            <FileDown className="size-3.5" /> Modelo CSV
+          </button>
           <input
             ref={fileRef}
             type="file"
