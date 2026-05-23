@@ -1237,7 +1237,6 @@ export interface AetLaudoQpsResposta {
 }
 
 export interface AetLaudoFatorPsi {
-  id: string;
   id_relatorio: string;
   codigo_fator: string;
   avaliado: boolean;

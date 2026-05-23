@@ -878,7 +878,7 @@ export function useAetLaudoFatoresPsi(idRelatorio: string | null) {
 export function useAetSalvarFatorPsi() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (row: Omit<AetLaudoFatorPsi, "id" | "updated_at"> & { id?: string }) => {
+    mutationFn: async (row: Omit<AetLaudoFatorPsi, "updated_at">) => {
       const sb = createSupabaseBrowserClient();
       const { error } = await sb
         .from("aet_laudo_fatores_psi")
