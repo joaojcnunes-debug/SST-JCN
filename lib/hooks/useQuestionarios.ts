@@ -461,6 +461,50 @@ export function useDeleteQpsRespondente() {
   });
 }
 
+export function useImportarQpsLote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      idAplicacao,
+      linhas,
+    }: {
+      idAplicacao: string;
+      linhas: Array<{ setor: string; cargo: string | null; respostas: Record<string, number> }>;
+    }) => {
+      const sb = qpsDb();
+      const lote = crypto.randomUUID();
+      const rows = linhas.map((l) => ({
+        id_aplicacao: idAplicacao,
+        setor: l.setor,
+        cargo: l.cargo,
+        respostas: l.respostas,
+        lote,
+      }));
+      const { error } = await sb.from("qps_respondentes").insert(rows);
+      if (error) throw error;
+      return { count: rows.length, lote };
+    },
+    onSuccess: (_d, vars) =>
+      qc.invalidateQueries({ queryKey: ["qps-respondentes", vars.idAplicacao] }),
+  });
+}
+
+export function useLimparQpsRespondentes() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (idAplicacao: string) => {
+      const sb = qpsDb();
+      const { error } = await sb
+        .from("qps_respondentes")
+        .delete()
+        .eq("id_aplicacao", idAplicacao);
+      if (error) throw error;
+    },
+    onSuccess: (_d, idAplicacao) =>
+      qc.invalidateQueries({ queryKey: ["qps-respondentes", idAplicacao] }),
+  });
+}
+
 // ─── Probabilidades (ajuste manual da matriz) ─────────────────────────────────
 
 export function useQpsProbabilidades(idAplicacao: string | null | undefined) {
