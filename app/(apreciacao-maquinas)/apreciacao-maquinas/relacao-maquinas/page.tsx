@@ -11,12 +11,7 @@ import {
   X,
   Save,
   Loader2,
-  ChevronDown,
-  ChevronUp,
   Copy,
-  AlertTriangle,
-  CheckCircle2,
-  Info,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -29,7 +24,7 @@ import {
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useCanCreate, useCanEdit, useCanDelete } from "@/lib/hooks/useUsuario";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
-import { cn, gerarId } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
   STATUS_MAQUINA_LABELS,
   GRAU_RISCO_MAQUINA_LABELS,
