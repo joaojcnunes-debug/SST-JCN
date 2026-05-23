@@ -342,6 +342,7 @@ export default function AetTextoPadraoPage() {
                   salvando={salvar.isPending}
                   onMover={(dir) => mover(cap, dir)}
                   onToggleMostrar={() => toggleMostrar(cap)}
+                  onSalvar={(patch) => salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })}
                 />
               );
             }
@@ -394,6 +395,7 @@ function FixoCard({
   salvando,
   onMover,
   onToggleMostrar,
+  onSalvar,
 }: {
   capitulo: AetTextoPadraoCapitulo;
   indice: number;
@@ -401,8 +403,11 @@ function FixoCard({
   salvando: boolean;
   onMover: (dir: "up" | "down") => void;
   onToggleMostrar: () => void;
+  onSalvar: (patch: Partial<Omit<AetTextoPadraoCapitulo, "id_capitulo" | "created_at" | "updated_at">>) => void;
 }) {
   const descricao = capitulo.slug_fixo ? SLUG_DESCRICAO[capitulo.slug_fixo] : null;
+  const orientacao = capitulo.orientacao ?? "retrato";
+
   return (
     <div className={cn(
       "rounded-xl border bg-blue-50/60 p-3 shadow-sm",
@@ -439,6 +444,34 @@ function FixoCard({
         {/* Título */}
         <p className="flex-1 text-sm font-semibold text-gray-800">{capitulo.titulo}</p>
 
+        {/* Orientação */}
+        <div className="inline-flex overflow-hidden rounded-md border border-blue-200 bg-white shrink-0">
+          <button
+            type="button"
+            onClick={() => orientacao !== "retrato" && onSalvar({ orientacao: "retrato" })}
+            disabled={salvando}
+            title="Página retrato (vertical)"
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+              orientacao === "retrato" ? "bg-blue-600 text-white" : "bg-white text-gray-500 hover:bg-blue-50"
+            )}
+          >
+            <FileText className="size-3" /> Retrato
+          </button>
+          <button
+            type="button"
+            onClick={() => orientacao !== "paisagem" && onSalvar({ orientacao: "paisagem" })}
+            disabled={salvando}
+            title="Página paisagem (horizontal)"
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+              orientacao === "paisagem" ? "bg-blue-600 text-white" : "bg-white text-gray-500 hover:bg-blue-50"
+            )}
+          >
+            <RectangleHorizontal className="size-3" /> Paisagem
+          </button>
+        </div>
+
         {/* Toggle visibilidade */}
         <button
           type="button"
@@ -458,7 +491,14 @@ function FixoCard({
       </div>
 
       {descricao && (
-        <p className="mt-1.5 pl-16 text-[11px] italic text-blue-700/80">{descricao}</p>
+        <p className="mt-1.5 pl-16 text-[11px] italic text-blue-700/80">
+          {descricao}
+          {orientacao === "paisagem" && (
+            <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 not-italic">
+              A4 horizontal
+            </span>
+          )}
+        </p>
       )}
     </div>
   );

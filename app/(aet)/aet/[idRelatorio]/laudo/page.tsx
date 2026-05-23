@@ -447,11 +447,15 @@ export default function AetLaudoPage({
       {/* CSS de impressão AET — ABNT NBR 14724 */}
       <style>{`
         @media print {
-          @page { size: A4; margin: 3cm 2cm 2cm 3cm; }
+          @page { size: A4 portrait; margin: 3cm 2cm 2cm 3cm; }
           @page :first { margin: 0; }
+          @page aet-landscape { size: A4 landscape; margin: 2cm 1.5cm 2cm 1.5cm; }
+          @page aet-portrait  { size: A4 portrait;  margin: 3cm 2cm 2cm 3cm; }
           body { font-size: 12pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .aet-section { page-break-inside: avoid; }
           .aet-section-break { page-break-before: always; }
+          .aet-orientacao-paisagem { page: aet-landscape; break-before: page; }
+          .aet-orientacao-retrato  { page: aet-portrait;  break-before: page; }
           /* Capa no print: full-bleed (1ª página sem margens) */
           .aet-capitulo--capa {
             height: 297mm !important;
@@ -549,12 +553,16 @@ export default function AetLaudoPage({
           /* Modo v56: ordem global unificada — cada capítulo renderizado por slug */
           <>
             {capitulosOrdenados.map((cap) => {
-              if (cap.tipo === "fixo") {
-                switch (cap.slug_fixo) {
+              const oClass =
+                cap.orientacao === "paisagem" ? "aet-orientacao-paisagem" : "aet-orientacao-retrato";
 
+              if (cap.tipo === "fixo") {
+                let content: React.ReactNode = null;
+
+                switch (cap.slug_fixo) {
                   case "aet_agentes_ambientais":
-                    return rel.setores.length > 0 ? (
-                      <Section key={cap.id_capitulo} num="9" title="Agentes Ambientais para as Áreas Operacionais">
+                    content = rel.setores.length > 0 ? (
+                      <Section num="9" title="Agentes Ambientais para as Áreas Operacionais">
                         <div className="space-y-5">
                           {rel.setores.map((setor, idx) => (
                             <SetorRiscosBlock key={setor.id} setor={setor} idx={idx} />
@@ -562,10 +570,11 @@ export default function AetLaudoPage({
                         </div>
                       </Section>
                     ) : null;
+                    break;
 
                   case "aet_analise_ergonomica":
-                    return rel.setores.length > 0 ? (
-                      <Section key={cap.id_capitulo} num="13" title="Análises Ergonômicas do Trabalho">
+                    content = rel.setores.length > 0 ? (
+                      <Section num="13" title="Análises Ergonômicas do Trabalho">
                         <div className="space-y-8">
                           {rel.setores.map((setor, idx) => (
                             <SetorAnaliseBlock
@@ -584,11 +593,11 @@ export default function AetLaudoPage({
                         </div>
                       </Section>
                     ) : null;
+                    break;
 
                   case "aet_psicossocial":
-                    return fatoresPsi.length > 0 ? (
+                    content = fatoresPsi.length > 0 ? (
                       <PsicossocialSections
-                        key={cap.id_capitulo}
                         fatoresPsi={fatoresPsi}
                         fatoresConfig={fatoresConfig}
                         semaforo={semaforo}
@@ -597,11 +606,11 @@ export default function AetLaudoPage({
                         nivelPgrFromZona={nivelPgrFromZona}
                       />
                     ) : null;
+                    break;
 
                   case "aet_consideracoes_finais":
-                    return (
+                    content = (
                       <ConsideracoesFinaisSection
-                        key={cap.id_capitulo}
                         consideracoes={consideracoes}
                         setConsideracoes={setConsideracoes}
                         canEdit={canEdit}
@@ -609,22 +618,32 @@ export default function AetLaudoPage({
                         onSave={handleSaveConsideracoes}
                       />
                     );
+                    break;
 
                   case "aet_assinatura":
-                    return (
+                    content = (
                       <AssinaturaSection
-                        key={cap.id_capitulo}
                         responsavel={responsavel}
                         tituloProfissional={tituloProfissional}
                         registroProfissional={registroProfissional}
                       />
                     );
+                    break;
 
                   default:
-                    return null;
+                    content = null;
                 }
+
+                return content ? (
+                  <div key={cap.id_capitulo} className={oClass}>{content}</div>
+                ) : null;
               }
-              return <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />;
+
+              return (
+                <div key={cap.id_capitulo} className={oClass}>
+                  <CapituloLaudo cap={cap} valores={valoresCapitulos} />
+                </div>
+              );
             })}
           </>
         ) : (
