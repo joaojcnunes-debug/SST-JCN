@@ -135,3 +135,93 @@ export function useInspecoesByTecnico(tecnico: string) {
     },
   });
 }
+
+// ─── Paginação server-side para a listagem principal ────────────────────────
+
+export type FiltroInspecao = "Todos" | "RASCUNHO" | "EM_ANDAMENTO" | "CONCLUIDA";
+export type OrdemInspecao = "recentes" | "antigas" | "revisao";
+
+interface InspecoesPaginadasParams {
+  idEmpresa: string | null;
+  tecnico: string;
+  filtro: FiltroInspecao;
+  ordem: OrdemInspecao;
+  page: number;
+  pageSize: number;
+}
+
+function buildBaseQuery(
+  supabase: ReturnType<typeof createSupabaseBrowserClient>,
+  idEmpresa: string | null,
+  tecnico: string
+) {
+  let q = supabase
+    .from("inspecoes")
+    .select("*, empresas(nome_empresa)", { count: "exact" })
+    .neq("status", "DELETADA");
+  if (idEmpresa) {
+    q = q.eq("id_empresa", idEmpresa);
+  } else if (tecnico.trim().length >= 2) {
+    q = q.ilike("responsavel", `%${tecnico.trim()}%`);
+  }
+  return q;
+}
+
+export function useInspecoesPaginadas({
+  idEmpresa,
+  tecnico,
+  filtro,
+  ordem,
+  page,
+  pageSize,
+}: InspecoesPaginadasParams) {
+  const enabled = !!idEmpresa || tecnico.trim().length >= 2;
+
+  const lista = useQuery({
+    queryKey: ["inspecoes-lista", idEmpresa, tecnico, filtro, ordem, page, pageSize],
+    enabled,
+    placeholderData: (prev) => prev,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = buildBaseQuery(supabase, idEmpresa, tecnico);
+      if (filtro !== "Todos") q = q.eq("status", filtro);
+      if (ordem === "recentes") q = q.order("created_at", { ascending: false });
+      else if (ordem === "antigas") q = q.order("created_at", { ascending: true });
+      else q = q.order("revisao", { ascending: false }).order("created_at", { ascending: false });
+      const from = (page - 1) * pageSize;
+      q = q.range(from, from + pageSize - 1);
+      const { data, error, count } = await q;
+      if (error) throw error;
+      return { items: (data ?? []) as unknown as Inspecao[], total: count ?? 0 };
+    },
+  });
+
+  // Contagens por status — busca só a coluna status (leve) para os filtros.
+  const counts = useQuery({
+    queryKey: ["inspecoes-counts", idEmpresa, tecnico],
+    enabled,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("inspecoes")
+        .select("status")
+        .neq("status", "DELETADA");
+      if (idEmpresa) q = q.eq("id_empresa", idEmpresa);
+      else if (tecnico.trim().length >= 2) q = q.ilike("responsavel", `%${tecnico.trim()}%`);
+      const { data, error } = await q;
+      if (error) throw error;
+      const acc: Record<FiltroInspecao, number> = {
+        Todos: 0, RASCUNHO: 0, EM_ANDAMENTO: 0, CONCLUIDA: 0,
+      };
+      for (const row of (data ?? []) as Array<{ status: string }>) {
+        acc.Todos++;
+        const s = row.status as FiltroInspecao;
+        if (s === "RASCUNHO" || s === "EM_ANDAMENTO" || s === "CONCLUIDA") acc[s]++;
+      }
+      return acc;
+    },
+  });
+
+  return { lista, counts };
+}

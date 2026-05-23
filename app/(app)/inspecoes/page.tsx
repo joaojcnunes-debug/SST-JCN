@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { Plus, ClipboardList, ChartBar, Search } from "lucide-react";
@@ -12,25 +12,27 @@ import InspecaoRow from "@/components/inspecoes/InspecaoRow";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import Pagination from "@/components/ui/Pagination";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { useInspecoesByEmpresa, useInspecoesByTecnico } from "@/lib/hooks/useInspecao";
+import {
+  useInspecoesPaginadas,
+  type FiltroInspecao,
+  type OrdemInspecao,
+} from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useCanCreate, useCanDelete } from "@/lib/hooks/useUsuario";
-import { usePagination } from "@/lib/hooks/usePagination";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Inspecao } from "@/lib/supabase/types";
 
-type Filtro = "Todos" | "RASCUNHO" | "EM_ANDAMENTO" | "CONCLUIDA";
-type Ordem = "recentes" | "antigas" | "revisao";
+const PAGE_SIZE = 20;
 
-const FILTROS: { value: Filtro; label: string }[] = [
+const FILTROS: { value: FiltroInspecao; label: string }[] = [
   { value: "Todos", label: "Todos" },
   { value: "RASCUNHO", label: "Rascunho" },
   { value: "EM_ANDAMENTO", label: "Em Andamento" },
   { value: "CONCLUIDA", label: "Concluídas" },
 ];
 
-const ORDENS: { value: Ordem; label: string }[] = [
+const ORDENS: { value: OrdemInspecao; label: string }[] = [
   { value: "recentes", label: "Mais recentes" },
   { value: "antigas", label: "Mais antigas" },
   { value: "revisao", label: "Por revisão" },
@@ -56,7 +58,6 @@ function InspecoesInner() {
   const delInsp = useMutation({
     mutationFn: async (insp: Inspecao) => {
       const supabase = createSupabaseBrowserClient();
-      // Soft delete: marca como DELETADA (a lista já filtra esse status)
       const { error } = await supabase
         .from("inspecoes")
         .update({ status: "DELETADA", updated_at: new Date().toISOString() } as never)
@@ -65,19 +66,26 @@ function InspecoesInner() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inspecoes"] });
+      qc.invalidateQueries({ queryKey: ["inspecoes-lista"] });
+      qc.invalidateQueries({ queryKey: ["inspecoes-counts"] });
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Inspeção excluída");
       setConfirmDel(null);
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
   const empresaParam = params.get("empresa");
   const [empresaId, setEmpresaId] = useState<string | null>(empresaParam);
-  const [filtro, setFiltro] = useState<Filtro>("Todos");
-  const [ordem, setOrdem] = useState<Ordem>("recentes");
+  const [filtro, setFiltro] = useState<FiltroInspecao>("Todos");
+  const [ordem, setOrdem] = useState<OrdemInspecao>("recentes");
   const [buscaTecnico, setBuscaTecnico] = useState("");
+  const [page, setPage] = useState(1);
 
-  // Mantém URL sincronizada para deep-linking
+  // Reseta para página 1 quando qualquer filtro muda
+  useEffect(() => { setPage(1); }, [empresaId, filtro, ordem, buscaTecnico]);
+
+  // Sincroniza empresa na URL para deep-linking
   useEffect(() => {
     const sp = new URLSearchParams(params.toString());
     if (empresaId) sp.set("empresa", empresaId);
@@ -88,52 +96,23 @@ function InspecoesInner() {
   }, [empresaId]);
 
   const { data: empresa } = useEmpresa(empresaId);
-  const { data: inspecoesByEmpresa = [], isLoading: loadingEmpresa } = useInspecoesByEmpresa(empresaId);
-  const { data: inspecoesByTecnico = [], isLoading: loadingTecnico } = useInspecoesByTecnico(empresaId ? "" : buscaTecnico);
-
-  // Se empresa selecionada: usa dados da empresa; senão usa busca por técnico
-  const inspecoes = empresaId ? inspecoesByEmpresa : inspecoesByTecnico;
-  const isLoading = empresaId ? loadingEmpresa : loadingTecnico;
-
-  const lista = useMemo(() => {
-    // Por padrão, ocultar inspeções DELETADA da lista visual.
-    let arr = inspecoes.filter((i) => i.status !== "DELETADA");
-    if (filtro !== "Todos") arr = arr.filter((i) => i.status === filtro);
-    if (buscaTecnico.trim()) {
-      const termo = buscaTecnico.trim().toLowerCase();
-      arr = arr.filter((i) => i.responsavel?.toLowerCase().includes(termo));
-    }
-    arr.sort((a, b) => {
-      if (ordem === "recentes")
-        return (b.created_at ?? "").localeCompare(a.created_at ?? "");
-      if (ordem === "antigas")
-        return (a.created_at ?? "").localeCompare(b.created_at ?? "");
-      return (b.revisao ?? 0) - (a.revisao ?? 0);
-    });
-    return arr;
-  }, [inspecoes, filtro, ordem, buscaTecnico]);
-
-  const pag = usePagination({
-    data: lista,
-    pageSize: 20,
-    resetKey: `${empresaId}|${filtro}|${ordem}|${buscaTecnico}`,
+  const { lista, counts } = useInspecoesPaginadas({
+    idEmpresa: empresaId,
+    tecnico: buscaTecnico,
+    filtro,
+    ordem,
+    page,
+    pageSize: PAGE_SIZE,
   });
 
-  const counts = useMemo(() => {
-    const visiveis = inspecoes.filter((i) => i.status !== "DELETADA");
-    const acc: Record<Filtro, number> = {
-      Todos: visiveis.length,
-      RASCUNHO: 0,
-      EM_ANDAMENTO: 0,
-      CONCLUIDA: 0,
-    };
-    for (const i of visiveis) {
-      if (i.status === "RASCUNHO" || i.status === "EM_ANDAMENTO" || i.status === "CONCLUIDA") {
-        acc[i.status]++;
-      }
-    }
-    return acc;
-  }, [inspecoes]);
+  const items = lista.data?.items ?? [];
+  const total = lista.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const isLoading = lista.isLoading;
+  const isFetching = lista.isFetching;
+  const countData = counts.data;
+
+  const enabled = !!empresaId || buscaTecnico.trim().length >= 2;
 
   return (
     <div className="space-y-4">
@@ -157,11 +136,7 @@ function InspecoesInner() {
           )}
           {canCreate && (
             <Link
-              href={
-                empresaId
-                  ? `/inspecoes/nova?empresa=${empresaId}`
-                  : "/inspecoes/nova"
-              }
+              href={empresaId ? `/inspecoes/nova?empresa=${empresaId}` : "/inspecoes/nova"}
               className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
             >
               <Plus className="size-4" />
@@ -203,28 +178,28 @@ function InspecoesInner() {
               )}
             >
               {f.label}
-              <span className="ml-1.5 opacity-75">({counts[f.value]})</span>
+              {countData && (
+                <span className="ml-1.5 opacity-75">({countData[f.value]})</span>
+              )}
             </button>
           ))}
           <div className="ml-auto flex items-center gap-2">
             <label className="text-xs text-gray-500">Ordenar:</label>
             <select
               value={ordem}
-              onChange={(e) => setOrdem(e.target.value as Ordem)}
+              onChange={(e) => setOrdem(e.target.value as OrdemInspecao)}
               className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
             >
               {ORDENS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
+                <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
           </div>
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        {!empresaId && buscaTecnico.trim().length < 2 ? (
+      <div className={cn("overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm", isFetching && "opacity-70 transition-opacity")}>
+        {!enabled ? (
           <div className="flex flex-col items-center justify-center p-12 text-center">
             <ClipboardList className="size-10 text-gray-400" />
             <p className="mt-3 text-sm font-medium text-gray-900">
@@ -238,7 +213,7 @@ function InspecoesInner() {
           <div className="p-4">
             <LoadingSkeleton rows={6} />
           </div>
-        ) : lista.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="p-12 text-center text-sm text-gray-500">
             Nenhuma inspeção {filtro !== "Todos" ? "nesse status" : "encontrada"}.
           </div>
@@ -259,7 +234,7 @@ function InspecoesInner() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {pag.pageItems.map((i) => (
+                {items.map((i) => (
                   <InspecaoRow
                     key={i.id_inspecao}
                     insp={i}
@@ -269,13 +244,13 @@ function InspecoesInner() {
                 ))}
               </tbody>
             </table>
-            {pag.showPagination && (
+            {total > PAGE_SIZE && (
               <Pagination
-                page={pag.page}
-                totalPages={pag.totalPages}
-                totalItems={pag.totalItems}
-                pageSize={pag.pageSize}
-                onChange={pag.setPage}
+                page={page}
+                totalPages={totalPages}
+                totalItems={total}
+                pageSize={PAGE_SIZE}
+                onChange={setPage}
               />
             )}
           </div>
