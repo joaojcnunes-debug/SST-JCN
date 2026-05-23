@@ -40,9 +40,18 @@ import {
 import { parsearExcelQps, gerarTemplateExcel } from "@/lib/qps/parsearExcel";
 import type { TipoExcel } from "@/lib/qps/parsearExcel";
 import type { QpsTipo, QpsCategoria, QpsPergunta } from "@/lib/supabase/types";
+import { useUserStore } from "@/lib/store";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 export default function TiposPage() {
+  const router = useRouter();
+  const user = useUserStore((s) => s.user);
+  useEffect(() => {
+    if (user && user.perfil !== "Admin") router.replace("/questionarios-psicossociais");
+  }, [user, router]);
+
   const { data: tipos = [], isLoading } = useQpsTipos();
   const [expandido, setExpandido] = useState<string | null>(null);
   const [showNovoTipo, setShowNovoTipo] = useState(false);

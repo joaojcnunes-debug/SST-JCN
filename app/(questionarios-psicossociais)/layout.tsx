@@ -15,12 +15,15 @@ import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell"
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRequireModule } from "@/lib/hooks/useRequireModule";
+import { useUserStore } from "@/lib/store";
 import { usePathname } from "next/navigation";
 
 export default function QuestionariosLayout({ children }: { children: ReactNode }) {
   useAuth();
   useRequireModule("questionarios_psicossociais");
 
+  const user = useUserStore((s) => s.user);
+  const isAdmin = user?.perfil === "Admin";
   const pathname = usePathname();
   const match = pathname.match(/\/questionarios-psicossociais\/([^/]+)/);
   const idAplicacao = match?.[1];
@@ -44,23 +47,27 @@ export default function QuestionariosLayout({ children }: { children: ReactNode 
           },
         ],
       },
-      {
-        label: "Configuração",
-        items: [
-          {
-            href: "/questionarios-psicossociais/tipos",
-            label: "Tipos e Perguntas",
-            icon: Settings2,
-            variant: "config",
-          },
-          {
-            href: "/questionarios-psicossociais/como-funciona",
-            label: "Metodologia",
-            icon: BookOpen,
-            variant: "config",
-          },
-        ],
-      },
+      ...(isAdmin
+        ? [
+            {
+              label: "Configuração",
+              items: [
+                {
+                  href: "/questionarios-psicossociais/tipos",
+                  label: "Tipos e Perguntas",
+                  icon: Settings2,
+                  variant: "config" as const,
+                },
+                {
+                  href: "/questionarios-psicossociais/como-funciona",
+                  label: "Metodologia",
+                  icon: BookOpen,
+                  variant: "config" as const,
+                },
+              ],
+            },
+          ]
+        : []),
     ];
 
     if (isIdPage) {

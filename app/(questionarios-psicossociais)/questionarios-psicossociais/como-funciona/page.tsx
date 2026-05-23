@@ -13,9 +13,18 @@ import {
   Layers,
   Calculator,
 } from "lucide-react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useUserStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 export default function ComoFuncionaPage() {
+  const router = useRouter();
+  const user = useUserStore((s) => s.user);
+  useEffect(() => {
+    if (user && user.perfil !== "Admin") router.replace("/questionarios-psicossociais");
+  }, [user, router]);
+
   return (
     <div className="mx-auto max-w-4xl space-y-8 pb-12">
       {/* Cabeçalho */}
