@@ -146,11 +146,20 @@ export default function AetTextoPadraoPage() {
   }
 
   function seedTemplate() {
+    const titulosExistentes = new Set(capitulos.map((c) => c.titulo.trim().toLowerCase()));
+    const novas = TEMPLATE_INICIAL.filter(
+      (tpl) => !titulosExistentes.has(tpl.titulo.trim().toLowerCase())
+    );
+    if (novas.length === 0) {
+      toast("Todos os capítulos padrão já estão cadastrados.", { icon: "ℹ️" });
+      return;
+    }
     let ordem = capitulos.length;
-    for (const tpl of TEMPLATE_INICIAL) {
+    for (const tpl of novas) {
       criar.mutate({ titulo: tpl.titulo, conteudo: tpl.conteudo, ordem, posicao_pdf: tpl.posicao_pdf });
       ordem++;
     }
+    toast.success(`${novas.length} seção(ões) padrão adicionada(s).`);
   }
 
   function mover(cap: AetTextoPadraoCapitulo, direcao: "up" | "down") {
@@ -184,14 +193,16 @@ export default function AetTextoPadraoPage() {
             <Variable className="size-4" />
             {mostrarVars ? "Ocultar variáveis" : "Variáveis disponíveis"}
           </button>
-          {capitulos.length === 0 && !isLoading && (
+          {!isLoading && (
             <button
               type="button"
               onClick={seedTemplate}
               disabled={criar.isPending}
               className="inline-flex items-center gap-2 rounded-md border border-verde-primary bg-white px-3 py-2 text-sm font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+              title="Adiciona as seções padrão NR-17 que ainda não existem — não duplica as já cadastradas"
             >
-              <BookOpen className="size-4" /> Carregar modelo inicial
+              <BookOpen className="size-4" />
+              {capitulos.length === 0 ? "Carregar modelo inicial" : "Adicionar seções padrão"}
             </button>
           )}
           <button
