@@ -560,31 +560,32 @@ export default function PsicossocialPage({
                                   </span>
                                 </div>
 
-                                {/* Botões 1-5 */}
-                                <div className="flex gap-1.5">
+                                {/* Botões escala */}
+                                <div className="grid grid-cols-5 gap-1.5">
                                   {ESCALA.map((v) => (
                                     <button
                                       key={v}
                                       type="button"
                                       onClick={() => handleResposta(fator.codigo, p.ordem, v)}
-                                      title={`${v} — ${ESCALA_LABEL[v]}`}
                                       className={cn(
-                                        "flex h-9 flex-1 items-center justify-center rounded-lg border text-sm font-bold transition-all",
+                                        "flex flex-col items-center justify-center gap-0.5 rounded-lg border py-2 px-1 text-center transition-all",
                                         respostaAtual === v
                                           ? "border-[#006B54] bg-[#006B54] text-white shadow-sm"
-                                          : "border-gray-200 bg-white text-gray-400 hover:border-gray-300 hover:text-gray-700"
+                                          : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700"
                                       )}
                                     >
-                                      {v}
+                                      <span className={cn(
+                                        "text-[10px] font-bold tabular-nums",
+                                        respostaAtual === v ? "text-white/70" : "text-gray-400"
+                                      )}>
+                                        {v}
+                                      </span>
+                                      <span className="text-[10px] font-medium leading-tight">
+                                        {ESCALA_LABEL[v]}
+                                      </span>
                                     </button>
                                   ))}
                                 </div>
-
-                                {respostaAtual !== null && (
-                                  <p className="mt-1.5 text-[10px] text-gray-400">
-                                    {respostaAtual} — {ESCALA_LABEL[respostaAtual]}
-                                  </p>
-                                )}
                               </div>
                             );
                           })}
