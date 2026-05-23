@@ -1165,15 +1165,24 @@ export interface AetTextoPadraoCapitulo {
   titulo: string;
   conteudo: string | null;
   ordem: number;
+  /** Posição legada — substituída por ordem_global na v56. Mantida para retrocompatibilidade. */
   posicao_pdf: string | null;
-  /** Orientação da página no PDF: 'retrato' | 'paisagem'. Requer coluna DB. */
+  /** Orientação da página no PDF: 'retrato' | 'paisagem'. */
   orientacao: string | null;
-  /** Quebra de página antes do capítulo: 'nova' | 'continua'. Requer coluna DB. */
+  /** Quebra de página antes do capítulo: 'nova' | 'continua'. */
   quebra_pagina: string | null;
   bg_imagem_url: string | null;
   caixas_texto: import("@/lib/drps/types").CaixaTexto[] | null;
   created_at: string;
   updated_at: string | null;
+  /** 'fixo' = capítulo gerado pelo sistema; 'editavel' = texto livre do usuário. */
+  tipo: "fixo" | "editavel";
+  /** Identificador do capítulo fixo. Null para capítulos editáveis. */
+  slug_fixo: string | null;
+  /** Se false, o capítulo não aparece no laudo impresso. */
+  mostrar: boolean;
+  /** Ordem global unificada entre capítulos fixos e editáveis. */
+  ordem_global: number | null;
 }
 
 // ─── AET — 13 Fatores Psicossociais ──────────────────────────────────────────

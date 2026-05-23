@@ -204,11 +204,15 @@ export function useAetCriarCapitulo() {
       conteudo: string;
       ordem: number;
       posicao_pdf?: string;
+      tipo?: "fixo" | "editavel";
+      slug_fixo?: string | null;
+      mostrar?: boolean;
+      ordem_global?: number | null;
     }) => {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("aet_textos_padrao")
-        .insert(payload as never)
+        .insert({ tipo: "editavel", mostrar: true, ...payload } as never)
         .select()
         .single();
       if (error) throw error;
@@ -240,6 +244,44 @@ export function useAetSalvarCapitulo() {
       qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useAetSeedCapitulosFixos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (capitulos: AetTextoPadraoCapitulo[]) => {
+      const supabase = createSupabaseBrowserClient();
+      const FIXOS: { titulo: string; slug_fixo: string; ordem_global: number }[] = [
+        { titulo: "Agentes Ambientais por Setor",       slug_fixo: "aet_agentes_ambientais",    ordem_global: 2000 },
+        { titulo: "Análise Ergonômica do Trabalho",     slug_fixo: "aet_analise_ergonomica",    ordem_global: 2500 },
+        { titulo: "Fatores Psicossociais (QPS)",        slug_fixo: "aet_psicossocial",          ordem_global: 4000 },
+        { titulo: "Considerações Finais",               slug_fixo: "aet_consideracoes_finais",  ordem_global: 5000 },
+        { titulo: "Assinatura do Responsável Técnico",  slug_fixo: "aet_assinatura",            ordem_global: 5500 },
+      ];
+      const existentes = new Set(capitulos.map((c) => c.slug_fixo).filter(Boolean));
+      const novas = FIXOS.filter((f) => !existentes.has(f.slug_fixo));
+      if (novas.length === 0) return 0;
+      const rows = novas.map((f) => ({
+        titulo: f.titulo,
+        conteudo: null,
+        tipo: "fixo" as const,
+        slug_fixo: f.slug_fixo,
+        ordem_global: f.ordem_global,
+        mostrar: true,
+        ordem: 0,
+        posicao_pdf: null,
+      }));
+      const { error } = await supabase.from("aet_textos_padrao").insert(rows as never);
+      if (error) throw error;
+      return novas.length;
+    },
+    onSuccess: (n) => {
+      qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
+      if (n === 0) toast("Todos os capítulos do sistema já estão cadastrados.", { icon: "ℹ️" });
+      else toast.success(`${n} capítulo(s) do sistema adicionado(s).`);
+    },
+    onError: () => toast.error("Erro ao adicionar capítulos do sistema"),
   });
 }
 

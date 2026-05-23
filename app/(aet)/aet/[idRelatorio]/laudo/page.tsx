@@ -245,10 +245,20 @@ export default function AetLaudoPage({
     null
   );
 
+  // ── Modo novo (v56): usa ordem_global e capítulos fixos semeados ──────────────
+  const temCapitulosFixos = capitulos.some((c) => c.tipo === "fixo");
+
+  const capitulosOrdenados = [...capitulos]
+    .filter((c) => c.mostrar !== false)
+    .sort((a, b) => (a.ordem_global ?? a.ordem * 10) - (b.ordem_global ?? b.ordem * 10));
+
+  // Legado: grupos por posicao_pdf (usado quando não há capítulos fixos no banco)
   const capitulosInicio = capitulos.filter((c) => !c.posicao_pdf || c.posicao_pdf === "inicio");
   const capitulosAposSumario = capitulos.filter((c) => c.posicao_pdf === "apos_sumario");
   const capitulosAposSetores = capitulos.filter((c) => c.posicao_pdf === "apos_setores");
-  const temCapa = capitulosInicio.some((c) => !!c.bg_imagem_url);
+
+  const capas = (temCapitulosFixos ? capitulosOrdenados : capitulosInicio).filter((c) => !!c.bg_imagem_url);
+  const temCapa = capas.length > 0;
 
   // Valores para substituição de variáveis nos capítulos de texto padrão
   const valoresCapitulos = montarValoresAet(rel, {
@@ -482,9 +492,7 @@ export default function AetLaudoPage({
       {/* ═══ CAPA — visível na tela e no print (seção única, sem duplicação) ═══ */}
       {temCapa && (
         <div>
-          {capitulosInicio
-            .filter((c) => !!c.bg_imagem_url)
-            .map((cap) => (
+          {capas.map((cap) => (
               <div key={cap.id_capitulo} className="aet-capitulo--capa">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={cap.bg_imagem_url!} alt="" className="aet-capitulo-bg-img" />
@@ -536,391 +544,236 @@ export default function AetLaudoPage({
           <span className="text-[10px] text-gray-400">{dataFormatada}</span>
         </div>
 
-        {/* Capítulos inicio */}
-        {capitulosInicio.map((cap) => (
-          <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />
-        ))}
-
-        {/* Capítulos apos_sumario ou fallback 2–8 */}
-        {capitulosAposSumario.length > 0 ? (
-          capitulosAposSumario.map((cap) => <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />)
-        ) : (
+        {/* ── RENDERIZAÇÃO PRINCIPAL ────────────────────────────────────────────── */}
+        {temCapitulosFixos ? (
+          /* Modo v56: ordem global unificada — cada capítulo renderizado por slug */
           <>
-            <Section num="2" title="Introdução Geral">
-              <p className="text-xs leading-relaxed text-gray-700">
-                A ergonomia estuda a adaptação do trabalho ao homem. Envolve tanto o ambiente físico como os aspectos
-                organizacionais e cognitivos. A ergonomia abrange atividades de planejamento e projeto, que ocorre antes
-                do trabalho ser realizado, e aqueles de controle e avaliação, que ocorrem durante e após o trabalho.
-              </p>
-            </Section>
-            <Section num="3" title="Objetivo">
-              <p className="text-xs leading-relaxed text-gray-700">
-                Este estudo tem como objetivo avaliar os postos de trabalho da empresa especificada, promovendo análise
-                ergonômica das atividades e funções, sendo adotados métodos de análise aplicados para fins ergonômicos.
-              </p>
-              <p className="text-xs font-semibold text-gray-700">
-                BASE LEGAL: Portaria 3.214/78 do Ministério do Trabalho – NR-17
-              </p>
-            </Section>
-            <Section num="4" title="Metodologia">
-              <p className="text-xs leading-relaxed text-gray-700">
-                Durante o trabalho realizado, foram avaliadas todas as funções conforme sugerido pela Metodologia da
-                AET. A metodologia utiliza-se de observações da situação de trabalho, análise da tarefa, entrevistas e
-                verbalizações com os diferentes níveis hierárquicos, buscando compreender em detalhes as atividades nas
-                suas diferentes dimensões (física, cognitiva, mental e social).
-              </p>
-            </Section>
-            <Section num="5" title="Levantamento, Transporte e Descarga Individual de Materiais">
-              <p className="text-xs leading-relaxed text-gray-700">
-                Deverão ser executados de forma que o esforço físico realizado pelo trabalhador seja compatível com sua
-                capacidade de força e não comprometa a sua saúde ou segurança. Para manipulações ocasionais, o limite
-                de 25 kg para homens e 15 kg para mulheres é sugerido, desde que observadas boas práticas para a
-                manipulação.
-              </p>
-            </Section>
-            <Section num="6" title="Mobiliário dos Postos de Trabalho">
-              <ul className="ml-4 list-disc space-y-0.5 text-xs text-gray-700">
-                <li>Sempre que possível o trabalho deve ser executado na posição sentada;</li>
-                <li>O mobiliário deve prover condições dentro da zona de conforto dos segmentos corporais;</li>
-                <li>Os comandos sejam de fácil acionamento;</li>
-                <li>Os assentos sejam adequados.</li>
-              </ul>
-            </Section>
-            <Section num="7" title="Equipamentos dos Postos de Trabalho">
-              <p className="text-xs leading-relaxed text-gray-700">
-                O mobiliário/equipamentos devem prover condições para que o trabalho seja executado dentro da zona de
-                conforto dos segmentos corporais, em boa condição postural e livre de reflexos.
-              </p>
-            </Section>
-            <Section num="8" title="Condições Ambientais de Trabalho">
-              <p className="text-xs leading-relaxed text-gray-700">
-                O estudo da exposição ocupacional dos trabalhadores aos agentes ambientais está contemplado no Programa
-                de Gerenciamento de Riscos – PGR da empresa.
-              </p>
-            </Section>
+            {capitulosOrdenados.map((cap) => {
+              if (cap.tipo === "fixo") {
+                switch (cap.slug_fixo) {
+
+                  case "aet_agentes_ambientais":
+                    return rel.setores.length > 0 ? (
+                      <Section key={cap.id_capitulo} num="9" title="Agentes Ambientais para as Áreas Operacionais">
+                        <div className="space-y-5">
+                          {rel.setores.map((setor, idx) => (
+                            <SetorRiscosBlock key={setor.id} setor={setor} idx={idx} />
+                          ))}
+                        </div>
+                      </Section>
+                    ) : null;
+
+                  case "aet_analise_ergonomica":
+                    return rel.setores.length > 0 ? (
+                      <Section key={cap.id_capitulo} num="13" title="Análises Ergonômicas do Trabalho">
+                        <div className="space-y-8">
+                          {rel.setores.map((setor, idx) => (
+                            <SetorAnaliseBlock
+                              key={setor.id}
+                              setor={setor}
+                              idx={idx}
+                              checklistPerguntas={checklistPerguntas}
+                              owasConfig={owasConfig}
+                              fatoresConfig={fatoresConfig}
+                              fatoresPerguntas={fatoresPerguntas}
+                              qpsRespostas={qpsRespostas}
+                              fatoresPsi={fatoresPsi}
+                              semaforo={semaforo}
+                            />
+                          ))}
+                        </div>
+                      </Section>
+                    ) : null;
+
+                  case "aet_psicossocial":
+                    return fatoresPsi.length > 0 ? (
+                      <PsicossocialSections
+                        key={cap.id_capitulo}
+                        fatoresPsi={fatoresPsi}
+                        fatoresConfig={fatoresConfig}
+                        semaforo={semaforo}
+                        qpsMeta={qpsMeta ?? null}
+                        zonaFromMedia={zonaFromMedia}
+                        nivelPgrFromZona={nivelPgrFromZona}
+                      />
+                    ) : null;
+
+                  case "aet_consideracoes_finais":
+                    return (
+                      <ConsideracoesFinaisSection
+                        key={cap.id_capitulo}
+                        consideracoes={consideracoes}
+                        setConsideracoes={setConsideracoes}
+                        canEdit={canEdit}
+                        isPending={salvar.isPending}
+                        onSave={handleSaveConsideracoes}
+                      />
+                    );
+
+                  case "aet_assinatura":
+                    return (
+                      <AssinaturaSection
+                        key={cap.id_capitulo}
+                        responsavel={responsavel}
+                        tituloProfissional={tituloProfissional}
+                        registroProfissional={registroProfissional}
+                      />
+                    );
+
+                  default:
+                    return null;
+                }
+              }
+              return <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />;
+            })}
           </>
-        )}
-
-        {/* ── Seção 9 — Agentes por setor ── */}
-        {rel.setores.length > 0 && (
-          <Section num="9" title="Agentes Ambientais para as Áreas Operacionais">
-            <div className="space-y-5">
-              {rel.setores.map((setor, idx) => (
-                <SetorRiscosBlock key={setor.id} setor={setor} idx={idx} />
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* ── Seção 13 — Análise por setor ── */}
-        {rel.setores.length > 0 && (
-          <Section num="13" title="Análises Ergonômicas do Trabalho">
-            <div className="space-y-8">
-              {rel.setores.map((setor, idx) => (
-                <SetorAnaliseBlock
-                  key={setor.id}
-                  setor={setor}
-                  idx={idx}
-                  checklistPerguntas={checklistPerguntas}
-                  owasConfig={owasConfig}
-                  fatoresConfig={fatoresConfig}
-                  fatoresPerguntas={fatoresPerguntas}
-                  qpsRespostas={qpsRespostas}
-                  fatoresPsi={fatoresPsi}
-                  semaforo={semaforo}
-                />
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {/* Capítulos apos_setores ou fallback 10–12 */}
-        {capitulosAposSetores.length > 0 ? (
-          capitulosAposSetores.map((cap) => <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />)
         ) : (
+          /* Modo legado: posicao_pdf + seções hardcoded com fallback */
           <>
-            <Section num="10" title="Conforto em Áreas Administrativas">
-              <p className="text-xs leading-relaxed text-gray-700">
-                A temperatura efetiva foi avaliada utilizando um termo higrômetro eletrônico. Foram considerados os
-                limites: temperatura efetiva entre 20 a 23 ºC (NR-17, item 17.5.2.1.b), velocidade do ar não superior
-                a 0,75 m/s (item 17.5.2.1.c) e umidade relativa mínima de 40% (item 17.5.2.1.d).
-              </p>
-            </Section>
-            <Section num="11" title="Organização do Trabalho">
-              <p className="mb-1 text-xs text-gray-700">Na análise foram levados em consideração:</p>
-              <ul className="ml-4 list-[lower-alpha] space-y-0.5 text-xs text-gray-700">
-                {[
-                  "as normas de produção",
-                  "o modo operatório",
-                  "a exigência de tempo",
-                  "a determinação do conteúdo de tempo",
-                  "o ritmo de trabalho",
-                  "o conteúdo das tarefas",
-                  "horário de trabalho",
-                ].map((item) => (
-                  <li key={item}>{item};</li>
-                ))}
-              </ul>
-            </Section>
-            <Section num="12" title="Ferramentas Biomecânicas Aplicadas">
-              <p className="text-xs leading-relaxed text-gray-700">
-                <strong>Método OWAS</strong> (Ovako Working Posture Analysing System) — desenvolvido na Finlândia por
-                Karhu, Kansi e Kuorinka (1974–1978), juntamente com o Instituto Finlandês de Saúde Ocupacional.
-                Objetiva gerar informações para melhorar os métodos de trabalho por meio da identificação de posturas
-                corporais prejudiciais durante a realização das atividades.
-              </p>
-            </Section>
-          </>
-        )}
+            {capitulosInicio.map((cap) => (
+              <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />
+            ))}
 
-        {/* ── Seções 14-19 — Fatores Psicossociais (apenas se houver dados) ── */}
-        {fatoresPsi.length > 0 && (
-          <>
-            <Section num="14" title="Avaliação dos Fatores Psicossociais">
-              <p className="text-xs leading-relaxed text-gray-700">
-                Esta seção apresenta os resultados da avaliação dos 13 Fatores Psicossociais do Trabalho, realizada
-                com base em Questionário Psicossocial (QPS) aplicado conforme os requisitos da NR-01 (Gerenciamento
-                de Riscos Ocupacionais) e referenciais como Copsoq, DRPS/MTE e literatura especializada em saúde
-                mental do trabalho.
-              </p>
-            </Section>
+            {capitulosAposSumario.length > 0 ? (
+              capitulosAposSumario.map((cap) => <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />)
+            ) : (
+              <>
+                <Section num="2" title="Introdução Geral">
+                  <p className="text-xs leading-relaxed text-gray-700">
+                    A ergonomia estuda a adaptação do trabalho ao homem. Envolve tanto o ambiente físico como os aspectos
+                    organizacionais e cognitivos. A ergonomia abrange atividades de planejamento e projeto, que ocorre antes
+                    do trabalho ser realizado, e aqueles de controle e avaliação, que ocorrem durante e após o trabalho.
+                  </p>
+                </Section>
+                <Section num="3" title="Objetivo">
+                  <p className="text-xs leading-relaxed text-gray-700">
+                    Este estudo tem como objetivo avaliar os postos de trabalho da empresa especificada, promovendo análise
+                    ergonômica das atividades e funções, sendo adotados métodos de análise aplicados para fins ergonômicos.
+                  </p>
+                  <p className="text-xs font-semibold text-gray-700">BASE LEGAL: Portaria 3.214/78 do Ministério do Trabalho – NR-17</p>
+                </Section>
+                <Section num="4" title="Metodologia">
+                  <p className="text-xs leading-relaxed text-gray-700">
+                    Durante o trabalho realizado, foram avaliadas todas as funções conforme sugerido pela Metodologia da AET.
+                    A metodologia utiliza-se de observações da situação de trabalho, análise da tarefa, entrevistas e
+                    verbalizações com os diferentes níveis hierárquicos, buscando compreender em detalhes as atividades nas
+                    suas diferentes dimensões (física, cognitiva, mental e social).
+                  </p>
+                </Section>
+                <Section num="5" title="Levantamento, Transporte e Descarga Individual de Materiais">
+                  <p className="text-xs leading-relaxed text-gray-700">
+                    Deverão ser executados de forma que o esforço físico realizado pelo trabalhador seja compatível com sua
+                    capacidade de força e não comprometa a sua saúde ou segurança. Para manipulações ocasionais, o limite
+                    de 25 kg para homens e 15 kg para mulheres é sugerido, desde que observadas boas práticas para a
+                    manipulação.
+                  </p>
+                </Section>
+                <Section num="6" title="Mobiliário dos Postos de Trabalho">
+                  <ul className="ml-4 list-disc space-y-0.5 text-xs text-gray-700">
+                    <li>Sempre que possível o trabalho deve ser executado na posição sentada;</li>
+                    <li>O mobiliário deve prover condições dentro da zona de conforto dos segmentos corporais;</li>
+                    <li>Os comandos sejam de fácil acionamento;</li>
+                    <li>Os assentos sejam adequados.</li>
+                  </ul>
+                </Section>
+                <Section num="7" title="Equipamentos dos Postos de Trabalho">
+                  <p className="text-xs leading-relaxed text-gray-700">
+                    O mobiliário/equipamentos devem prover condições para que o trabalho seja executado dentro da zona de
+                    conforto dos segmentos corporais, em boa condição postural e livre de reflexos.
+                  </p>
+                </Section>
+                <Section num="8" title="Condições Ambientais de Trabalho">
+                  <p className="text-xs leading-relaxed text-gray-700">
+                    O estudo da exposição ocupacional dos trabalhadores aos agentes ambientais está contemplado no Programa
+                    de Gerenciamento de Riscos – PGR da empresa.
+                  </p>
+                </Section>
+              </>
+            )}
 
-            {qpsMeta && (
-              <Section num="15" title="Dados da Aplicação do QPS">
-                <table className="w-full border-collapse text-xs">
-                  <tbody>
-                    <tr className="border border-gray-200">
-                      <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">N.º Respondentes</td>
-                      <td className="px-3 py-1.5 text-gray-700">{qpsMeta.n_respondentes ?? "—"}</td>
-                      <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Total Elegível</td>
-                      <td className="px-3 py-1.5 text-gray-700">{qpsMeta.total_elegivel ?? "—"}</td>
-                    </tr>
-                    <tr className="border border-gray-200">
-                      <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">% Adesão</td>
-                      <td className="px-3 py-1.5 text-gray-700">
-                        {qpsMeta.n_respondentes && qpsMeta.total_elegivel
-                          ? `${Math.round((qpsMeta.n_respondentes / qpsMeta.total_elegivel) * 100)}%`
-                          : "—"}
-                      </td>
-                      <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Modo de Aplicação</td>
-                      <td className="px-3 py-1.5 text-gray-700">{qpsMeta.modo_aplicacao ?? "—"}</td>
-                    </tr>
-                    <tr className="border border-gray-200">
-                      <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Período</td>
-                      <td className="px-3 py-1.5 text-gray-700" colSpan={3}>
-                        {qpsMeta.periodo_inicio
-                          ? new Date(qpsMeta.periodo_inicio + "T00:00:00").toLocaleDateString("pt-BR")
-                          : "—"}
-                        {qpsMeta.periodo_fim
-                          ? ` a ${new Date(qpsMeta.periodo_fim + "T00:00:00").toLocaleDateString("pt-BR")}`
-                          : ""}
-                      </td>
-                    </tr>
-                    {qpsMeta.tecnico_aplicador && (
-                      <tr className="border border-gray-200">
-                        <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Técnico Aplicador</td>
-                        <td className="px-3 py-1.5 text-gray-700" colSpan={3}>{qpsMeta.tecnico_aplicador}</td>
-                      </tr>
-                    )}
-                    {qpsMeta.observacao_geral && (
-                      <tr className="border border-gray-200">
-                        <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Observação</td>
-                        <td className="px-3 py-1.5 text-gray-700" colSpan={3}>{qpsMeta.observacao_geral}</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+            {rel.setores.length > 0 && (
+              <Section num="9" title="Agentes Ambientais para as Áreas Operacionais">
+                <div className="space-y-5">
+                  {rel.setores.map((setor, idx) => <SetorRiscosBlock key={setor.id} setor={setor} idx={idx} />)}
+                </div>
               </Section>
             )}
 
-            <Section num="16" title="Resultado por Fator — Classificação Geral">
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gray-700 text-white">
-                    <th className="px-3 py-2 text-left font-semibold">Cód.</th>
-                    <th className="px-3 py-2 text-left font-semibold">Fator</th>
-                    <th className="px-3 py-2 text-center font-semibold">Média</th>
-                    <th className="px-3 py-2 text-center font-semibold">% Risco</th>
-                    <th className="px-3 py-2 text-left font-semibold">Zona</th>
-                    <th className="px-3 py-2 text-left font-semibold">Nível PGR</th>
-                    <th className="px-3 py-2 text-left font-semibold">Prazo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fatoresPsi.filter((fp) => fp.avaliado).map((fp) => {
-                    const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
-                    const zona = fp.codigo_fator === "F13"
-                      ? fp.zona
-                      : zonaFromMedia(fp.media);
-                    const prazoSem = semaforo.find((s) => s.id === zona);
-                    return (
-                      <tr key={fp.codigo_fator} className="border-b border-gray-100">
-                        <td className="px-3 py-2 font-mono font-bold text-gray-700">{fp.codigo_fator}</td>
-                        <td className="px-3 py-2 text-gray-800">{cfg?.nome ?? fp.codigo_fator}</td>
-                        <td className="px-3 py-2 text-center text-gray-700">
-                          {fp.codigo_fator === "F13" ? "—" : fp.media != null ? fp.media.toFixed(2) : "—"}
-                        </td>
-                        <td className="px-3 py-2 text-center text-gray-700">
-                          {fp.pct_zona_risco != null ? `${fp.pct_zona_risco.toFixed(1)}%` : "—"}
-                        </td>
-                        <td className="px-3 py-2">
-                          {zona ? (
-                            <span
-                              className="rounded px-2 py-0.5 text-[10px] font-bold"
-                              style={{ background: ZONA_PRINT[zona] ?? "#f3f4f6", color: ZONA_TEXT[zona] ?? "#374151" }}
-                            >
-                              {zona.charAt(0).toUpperCase() + zona.slice(1)}
-                            </span>
-                          ) : "—"}
-                        </td>
-                        <td className="px-3 py-2 text-gray-700">{nivelPgrFromZona(zona)}</td>
-                        <td className="px-3 py-2 text-gray-700">{prazoSem?.prazo_texto ?? "—"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </Section>
+            {rel.setores.length > 0 && (
+              <Section num="13" title="Análises Ergonômicas do Trabalho">
+                <div className="space-y-8">
+                  {rel.setores.map((setor, idx) => (
+                    <SetorAnaliseBlock
+                      key={setor.id}
+                      setor={setor}
+                      idx={idx}
+                      checklistPerguntas={checklistPerguntas}
+                      owasConfig={owasConfig}
+                      fatoresConfig={fatoresConfig}
+                      fatoresPerguntas={fatoresPerguntas}
+                      qpsRespostas={qpsRespostas}
+                      fatoresPsi={fatoresPsi}
+                      semaforo={semaforo}
+                    />
+                  ))}
+                </div>
+              </Section>
+            )}
 
-            <Section num="17" title="Análise Detalhada por Fator">
-              <div className="space-y-4">
-                {fatoresPsi.filter((fp) => fp.avaliado && (fp.observacao || fp.pergunta_critica)).map((fp) => {
-                  const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
-                  return (
-                    <div key={fp.codigo_fator} className="rounded border border-gray-200 overflow-hidden">
-                      <div className="bg-gray-700 px-4 py-2">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-white">
-                          {fp.codigo_fator} — {cfg?.nome ?? fp.codigo_fator}
-                        </p>
-                      </div>
-                      <div className="p-3 space-y-2">
-                        {fp.pergunta_critica && (
-                          <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-0.5">
-                              Pergunta Crítica
-                            </p>
-                            <p className="text-xs text-gray-700 italic">&ldquo;{fp.pergunta_critica}&rdquo;</p>
-                          </div>
-                        )}
-                        {fp.observacao && (
-                          <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-0.5">
-                              Análise
-                            </p>
-                            <p className="text-xs text-gray-700 leading-relaxed">{fp.observacao}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Section>
+            {capitulosAposSetores.length > 0 ? (
+              capitulosAposSetores.map((cap) => <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />)
+            ) : (
+              <>
+                <Section num="10" title="Conforto em Áreas Administrativas">
+                  <p className="text-xs leading-relaxed text-gray-700">
+                    A temperatura efetiva foi avaliada utilizando um termo higrômetro eletrônico. Foram considerados os
+                    limites: temperatura efetiva entre 20 a 23 ºC (NR-17, item 17.5.2.1.b), velocidade do ar não superior
+                    a 0,75 m/s (item 17.5.2.1.c) e umidade relativa mínima de 40% (item 17.5.2.1.d).
+                  </p>
+                </Section>
+                <Section num="11" title="Organização do Trabalho">
+                  <p className="mb-1 text-xs text-gray-700">Na análise foram levados em consideração:</p>
+                  <ul className="ml-4 list-[lower-alpha] space-y-0.5 text-xs text-gray-700">
+                    {["as normas de produção","o modo operatório","a exigência de tempo","a determinação do conteúdo de tempo","o ritmo de trabalho","o conteúdo das tarefas","horário de trabalho"].map((item) => (
+                      <li key={item}>{item};</li>
+                    ))}
+                  </ul>
+                </Section>
+                <Section num="12" title="Ferramentas Biomecânicas Aplicadas">
+                  <p className="text-xs leading-relaxed text-gray-700">
+                    <strong>Método OWAS</strong> (Ovako Working Posture Analysing System) — desenvolvido na Finlândia por
+                    Karhu, Kansi e Kuorinka (1974–1978), juntamente com o Instituto Finlandês de Saúde Ocupacional.
+                  </p>
+                </Section>
+              </>
+            )}
 
-            <Section num="18" title="Perigos e Possíveis Danos por Fator">
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gray-700 text-white">
-                    <th className="px-3 py-2 text-left font-semibold">Cód.</th>
-                    <th className="px-3 py-2 text-left font-semibold">Perigos Típicos</th>
-                    <th className="px-3 py-2 text-left font-semibold">Possíveis Danos</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fatoresPsi.filter((fp) => fp.avaliado).map((fp) => {
-                    const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
-                    return (
-                      <tr key={fp.codigo_fator} className="border-b border-gray-100">
-                        <td className="px-3 py-2 font-mono font-bold text-gray-700 align-top">{fp.codigo_fator}</td>
-                        <td className="px-3 py-2 text-gray-700 leading-relaxed align-top">{cfg?.perigos_tipicos ?? "—"}</td>
-                        <td className="px-3 py-2 text-gray-700 leading-relaxed align-top">{cfg?.possiveis_danos ?? "—"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </Section>
+            {fatoresPsi.length > 0 && (
+              <PsicossocialSections
+                fatoresPsi={fatoresPsi}
+                fatoresConfig={fatoresConfig}
+                semaforo={semaforo}
+                qpsMeta={qpsMeta ?? null}
+                zonaFromMedia={zonaFromMedia}
+                nivelPgrFromZona={nivelPgrFromZona}
+              />
+            )}
 
-            <Section num="19" title="Plano de Ação Recomendado">
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gray-700 text-white">
-                    <th className="px-3 py-2 text-left font-semibold">Cód.</th>
-                    <th className="px-3 py-2 text-left font-semibold">Foco / Ação Recomendada</th>
-                    <th className="px-3 py-2 text-left font-semibold">Responsável</th>
-                    <th className="px-3 py-2 text-left font-semibold">Prazo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {fatoresPsi.filter((fp) => fp.avaliado).map((fp) => {
-                    const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
-                    return (
-                      <tr key={fp.codigo_fator} className="border-b border-gray-100">
-                        <td className="px-3 py-2 font-mono font-bold text-gray-700 align-top">{fp.codigo_fator}</td>
-                        <td className="px-3 py-2 text-gray-700 leading-relaxed align-top">
-                          <p className="font-semibold text-gray-800 mb-0.5">{cfg?.foco_plano ?? "—"}</p>
-                          <p>{cfg?.acao_plano ?? "—"}</p>
-                        </td>
-                        <td className="px-3 py-2 text-gray-700 align-top">{cfg?.responsavel_plano ?? "—"}</td>
-                        <td className="px-3 py-2 text-gray-700 align-top">{cfg?.prazo_plano ?? "—"}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </Section>
+            <ConsideracoesFinaisSection
+              consideracoes={consideracoes}
+              setConsideracoes={setConsideracoes}
+              canEdit={canEdit}
+              isPending={salvar.isPending}
+              onSave={handleSaveConsideracoes}
+            />
+
+            <AssinaturaSection
+              responsavel={responsavel}
+              tituloProfissional={tituloProfissional}
+              registroProfissional={registroProfissional}
+            />
           </>
         )}
-
-        {/* ── Seção 20 — Considerações Finais ── */}
-        <Section num="20" title="Considerações Finais">
-          <div className="print:hidden">
-            <RichTextEditor
-              value={consideracoes}
-              onChange={setConsideracoes}
-              readOnly={!canEdit}
-              uploadPathPrefix="aet-consideracoes"
-              placeholder="Considerações finais do laudo AET..."
-            />
-            {canEdit && (
-              <button
-                type="button"
-                onClick={handleSaveConsideracoes}
-                disabled={salvar.isPending}
-                className="mt-2 inline-flex items-center gap-1 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
-              >
-                {salvar.isPending ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
-                Salvar
-              </button>
-            )}
-          </div>
-          <div
-            className="tiptap-conteudo prose prose-sm hidden max-w-none text-xs leading-relaxed text-gray-700 print:block"
-            dangerouslySetInnerHTML={{
-              __html:
-                consideracoes ||
-                "<p>A preocupação dos setores avaliados em obter para seus colaboradores o conhecimento ergonômico e investir em qualidade de trabalho é fundamental para a busca por melhor produtividade com saúde e qualidade no trabalho.</p>",
-            }}
-          />
-        </Section>
-
-        {/* Assinatura */}
-        <div className="mt-14 border-t border-gray-200 pt-8">
-          <div className="flex items-start justify-around gap-8 text-center text-xs text-gray-600">
-            <div className="flex-1">
-              <div className="mx-auto mb-2 w-56 border-t border-gray-400" />
-              <p className="text-gray-600">Assinatura do Responsável pela Empresa</p>
-            </div>
-            <div className="flex-1">
-              <div className="mx-auto mb-2 w-56 border-t border-gray-400" />
-              <p className="font-semibold text-gray-800">{responsavel || "Responsável Técnico"}</p>
-              {tituloProfissional && <p className="text-gray-600">{tituloProfissional}</p>}
-              {registroProfissional && (
-                <p className="text-gray-500">Registro: {registroProfissional}</p>
-              )}
-            </div>
-          </div>
-        </div>
 
         {/* Rodapé */}
         <p className="mt-8 text-center text-[9px] text-gray-400">
@@ -1566,6 +1419,235 @@ function CheckSelect({ label, value }: { label: string; value: string }) {
       >
         {value || "—"}
       </span>
+    </div>
+  );
+}
+
+// ─── Seções 14-19 — Fatores Psicossociais (QPS) ──────────────────────────────
+
+function PsicossocialSections({
+  fatoresPsi,
+  fatoresConfig,
+  semaforo: _semaforo,
+  qpsMeta,
+  zonaFromMedia: _zonaFromMedia,
+  nivelPgrFromZona,
+}: {
+  fatoresPsi: AetLaudoFatorPsi[];
+  fatoresConfig: Aet13FatorConfig[];
+  semaforo: Aet13FatorSemaforo[];
+  qpsMeta: import("@/lib/supabase/types").AetLaudoQpsMeta | null;
+  zonaFromMedia: (m: number | null) => ZonaPsi | null;
+  nivelPgrFromZona: (z: ZonaPsi | null) => string;
+}) {
+  const fatoresAvaliados = fatoresPsi.filter((f) => f.avaliado);
+  const comAnalise = fatoresAvaliados.filter((f) => f.observacao || f.pergunta_critica);
+
+  return (
+    <>
+      <Section num="14" title="Avaliação dos Fatores Psicossociais — QPS Nordic">
+        <p className="text-xs leading-relaxed text-gray-700">
+          A avaliação dos fatores psicossociais foi realizada por meio do instrumento QPS Nordic
+          (Questionário de Fatores Psicossociais no Trabalho), desenvolvido pelos institutos
+          nórdicos de saúde ocupacional e adaptado à realidade brasileira. O instrumento contempla
+          13 fatores relacionados às condições psicossociais do trabalho, classificados em zonas
+          de risco: verde (baixo), amarela (moderado), laranja (elevado) e vermelha (crítico).
+        </p>
+      </Section>
+
+      {qpsMeta && (qpsMeta.n_respondentes || qpsMeta.periodo_inicio || qpsMeta.modo_aplicacao || qpsMeta.tecnico_aplicador) && (
+        <Section num="15" title="Dados da Aplicação">
+          <table className="w-full border-collapse text-xs">
+            <tbody>
+              {qpsMeta.n_respondentes != null && (
+                <tr className="border-b border-gray-100">
+                  <td className="w-48 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Respondentes</td>
+                  <td className="px-3 py-1.5 text-gray-700">
+                    {qpsMeta.n_respondentes}
+                    {qpsMeta.total_elegivel ? ` de ${qpsMeta.total_elegivel} elegíveis` : ""}
+                  </td>
+                </tr>
+              )}
+              {(qpsMeta.periodo_inicio || qpsMeta.periodo_fim) && (
+                <tr className="border-b border-gray-100">
+                  <td className="w-48 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Período</td>
+                  <td className="px-3 py-1.5 text-gray-700">
+                    {qpsMeta.periodo_inicio
+                      ? new Date(qpsMeta.periodo_inicio + "T00:00:00").toLocaleDateString("pt-BR")
+                      : "—"}
+                    {qpsMeta.periodo_fim
+                      ? ` a ${new Date(qpsMeta.periodo_fim + "T00:00:00").toLocaleDateString("pt-BR")}`
+                      : ""}
+                  </td>
+                </tr>
+              )}
+              {qpsMeta.modo_aplicacao && (
+                <tr className="border-b border-gray-100">
+                  <td className="w-48 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Modo de Aplicação</td>
+                  <td className="px-3 py-1.5 text-gray-700">{qpsMeta.modo_aplicacao}</td>
+                </tr>
+              )}
+              {qpsMeta.tecnico_aplicador && (
+                <tr className="border-b border-gray-100">
+                  <td className="w-48 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Técnico Aplicador</td>
+                  <td className="px-3 py-1.5 text-gray-700">{qpsMeta.tecnico_aplicador}</td>
+                </tr>
+              )}
+              {qpsMeta.observacao_geral && (
+                <tr>
+                  <td className="w-48 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Observações</td>
+                  <td className="px-3 py-1.5 text-gray-700">{qpsMeta.observacao_geral}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </Section>
+      )}
+
+      <Section num="16" title="Resultado Geral por Fator">
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr className="bg-gray-100">
+              {["Cód.", "Fator", "Média", "Zona de Risco", "Nível PGR"].map((h) => (
+                <th key={h} className="border border-gray-200 px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-gray-600">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {fatoresAvaliados.map((fp) => {
+              const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
+              return (
+                <tr key={fp.codigo_fator} className="border-b border-gray-100 even:bg-gray-50">
+                  <td className="border border-gray-100 px-2 py-1 font-mono font-bold text-gray-700">{fp.codigo_fator}</td>
+                  <td className="border border-gray-100 px-2 py-1 text-gray-800">{cfg?.nome ?? fp.codigo_fator}</td>
+                  <td className="border border-gray-100 px-2 py-1 text-center text-gray-700">
+                    {fp.codigo_fator === "F13" ? "—" : fp.media != null ? fp.media.toFixed(2) : "—"}
+                  </td>
+                  <td className="border border-gray-100 px-2 py-1">
+                    {fp.zona ? (
+                      <span className="rounded px-2 py-0.5 text-[10px] font-bold" style={{ background: ZONA_PRINT[fp.zona], color: ZONA_TEXT[fp.zona] }}>
+                        {fp.zona.charAt(0).toUpperCase() + fp.zona.slice(1)}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  <td className="border border-gray-100 px-2 py-1 text-gray-700">{nivelPgrFromZona(fp.zona)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Section>
+
+      {comAnalise.length > 0 && (
+        <Section num="17" title="Análise Detalhada por Fator">
+          <div className="space-y-4">
+            {comAnalise.map((fp) => {
+              const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
+              return (
+                <div key={fp.codigo_fator} className="rounded border border-gray-200 p-3">
+                  <div className="mb-2 flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold text-gray-500">{fp.codigo_fator}</span>
+                    <span className="text-[11px] font-bold text-gray-700">{cfg?.nome ?? fp.codigo_fator}</span>
+                    {fp.zona && (
+                      <span className="rounded px-1.5 py-0.5 text-[9px] font-bold" style={{ background: ZONA_PRINT[fp.zona], color: ZONA_TEXT[fp.zona] }}>
+                        {fp.zona.charAt(0).toUpperCase() + fp.zona.slice(1)}
+                      </span>
+                    )}
+                  </div>
+                  {fp.pergunta_critica && (
+                    <p className="mb-1 text-xs italic text-gray-600">
+                      &ldquo;{fp.pergunta_critica}&rdquo;
+                    </p>
+                  )}
+                  {fp.observacao && (
+                    <p className="text-xs leading-relaxed text-gray-700">{fp.observacao}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+      )}
+    </>
+  );
+}
+
+// ─── Seção 20 — Considerações Finais ─────────────────────────────────────────
+
+function ConsideracoesFinaisSection({
+  consideracoes,
+  setConsideracoes,
+  canEdit,
+  isPending,
+  onSave,
+}: {
+  consideracoes: string;
+  setConsideracoes: (v: string) => void;
+  canEdit: boolean;
+  isPending: boolean;
+  onSave: () => void;
+}) {
+  return (
+    <Section num="20" title="Considerações Finais">
+      {canEdit ? (
+        <div className="space-y-3">
+          <RichTextEditor
+            value={consideracoes}
+            onChange={setConsideracoes}
+            placeholder="Insira as considerações finais do laudo..."
+          />
+          <div className="print:hidden flex justify-end">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={isPending}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-4 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+            >
+              {isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+              Salvar Considerações
+            </button>
+          </div>
+          {consideracoes && (
+            <div className="hidden print:block">
+              <RichBlock html={consideracoes} />
+            </div>
+          )}
+        </div>
+      ) : (
+        consideracoes ? <RichBlock html={consideracoes} /> : (
+          <p className="text-xs italic text-gray-400">Sem considerações finais registradas.</p>
+        )
+      )}
+    </Section>
+  );
+}
+
+// ─── Assinatura do Responsável Técnico ───────────────────────────────────────
+
+function AssinaturaSection({
+  responsavel,
+  tituloProfissional,
+  registroProfissional,
+}: {
+  responsavel: string;
+  tituloProfissional: string;
+  registroProfissional: string;
+}) {
+  if (!responsavel && !tituloProfissional && !registroProfissional) return null;
+  return (
+    <div className="mt-12 flex flex-col items-center gap-1 border-t border-gray-300 pt-6 text-center">
+      <div className="mb-2 h-px w-48 bg-gray-700" />
+      {responsavel && (
+        <p className="text-xs font-bold text-gray-800">{responsavel}</p>
+      )}
+      {tituloProfissional && (
+        <p className="text-xs text-gray-600">{tituloProfissional}</p>
+      )}
+      {registroProfissional && (
+        <p className="text-xs text-gray-500">{registroProfissional}</p>
+      )}
     </div>
   );
 }
