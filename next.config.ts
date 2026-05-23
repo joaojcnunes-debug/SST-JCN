@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   // Silencia o aviso "multiple lockfiles detected" — força este projeto
   // como raiz mesmo quando há um lockfile no diretório pai.
   outputFileTracingRoot: path.join(__dirname),
+  transpilePackages: ["xlsx"],
   images: {
     remotePatterns: [
       // Permite servir fotos do Supabase Storage.
