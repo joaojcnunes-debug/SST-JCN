@@ -430,21 +430,26 @@ function FixoCard({
     if (!capitulo.slug_fixo) return;
     setGerandoIA(true);
     try {
-      const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb.functions.invoke("gerar-intro-capitulo-aet-ia", {
-        body: {
+      const res = await fetch("/api/gerar-intro-capitulo-aet-ia", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           slug_fixo: capitulo.slug_fixo,
           textoAtual: conteudo || null,
-        },
+        }),
       });
-      if (error) throw error;
-      const intro: string = data?.data?.intro ?? data?.intro ?? "";
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(`IA: ${json.error ?? "Erro desconhecido"}`);
+        return;
+      }
+      const intro: string = json.data?.intro ?? json.intro ?? "";
       if (!intro) { toast.error("IA não retornou texto"); return; }
       setConteudo(intro);
       setDirtyConteudo(true);
       setExpandido(true);
-    } catch {
-      toast.error("Erro ao gerar com IA");
+    } catch (err) {
+      toast.error(`IA: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setGerandoIA(false);
     }

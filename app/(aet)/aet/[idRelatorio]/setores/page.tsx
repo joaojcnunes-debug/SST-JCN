@@ -77,10 +77,11 @@ export default function AetSetoresPage({
     const key = `${setorId}:${campo}`;
     setGerandoIA(key);
     try {
-      const sb = createSupabaseBrowserClient();
       const empresa = rel?.empresas as { nome_empresa?: string } | null;
-      const { data, error } = await sb.functions.invoke("gerar-analise-setor-aet-ia", {
-        body: {
+      const res = await fetch("/api/gerar-analise-setor-aet-ia", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           campo,
           empresa_nome: empresa?.nome_empresa ?? null,
           setor_nome: setor.nome_setor || "Setor",
@@ -95,14 +96,18 @@ export default function AetSetoresPage({
           })),
           checklist: setor.checklist as unknown as Record<string, string>,
           textoAtual: (setor[campo] as string) || null,
-        },
+        }),
       });
-      if (error) throw error;
-      const texto: string = data?.data?.texto ?? data?.texto ?? "";
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(`IA: ${json.error ?? "Erro desconhecido"}`);
+        return;
+      }
+      const texto: string = json.data?.texto ?? json.texto ?? "";
       if (!texto) { toast.error("IA não retornou texto"); return; }
       updateSetor(setorId, { [campo]: texto });
-    } catch {
-      toast.error("Erro ao gerar com IA");
+    } catch (err) {
+      toast.error(`IA: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setGerandoIA(null);
     }
