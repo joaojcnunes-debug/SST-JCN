@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
-import type { Maquina, StatusMaquina } from "@/lib/supabase/types";
+import type { Maquina, StatusMaquina, GrauRiscoMaquina } from "@/lib/supabase/types";
 
 const KEY_LISTA = (vinculos: string[] | null) =>
   ["inventario-maquinas", vinculos] as const;
@@ -66,14 +66,51 @@ export function useMaquina(id: string | null | undefined) {
 
 export interface MaquinaInput {
   id_empresa: string | null;
+  // Identificação
   nome: string;
+  tipo: string | null;
+  categoria: string | null;
+  codigo_interno: string | null;
+  tag: string | null;
   marca: string | null;
   modelo: string | null;
   numero_serie: string | null;
   ano_fabricacao: number | null;
   numero_patrimonio: string | null;
-  localizacao: string | null;
   status: StatusMaquina;
+  // Localização
+  unidade: string | null;
+  setor: string | null;
+  linha_processo: string | null;
+  area: string | null;
+  responsavel_setor: string | null;
+  operacao_executada: string | null;
+  localizacao: string | null;
+  // Capacidade
+  capacidade_operacional: string | null;
+  producao_estimada: string | null;
+  potencia: string | null;
+  tensao: string | null;
+  pressao: string | null;
+  capacidade_carga: string | null;
+  velocidade: string | null;
+  dimensoes: string | null;
+  finalidade: string | null;
+  descricao_tecnica: string | null;
+  // Segurança
+  protecao_fixa: boolean | null;
+  protecao_movel: boolean | null;
+  intertravamento: boolean | null;
+  botao_emergencia: boolean | null;
+  sistema_bloqueio: boolean | null;
+  possui_manual: boolean | null;
+  possui_diagrama_eletrico: boolean | null;
+  aterramento: boolean | null;
+  sinalizacao: boolean | null;
+  necessita_adequacao_nr12: boolean | null;
+  grau_risco: GrauRiscoMaquina | null;
+  observacoes_tecnicas: string | null;
+  // Meta
   observacoes: string | null;
   foto_url: string | null;
   foto_storage_path: string | null;

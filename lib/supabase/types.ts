@@ -587,27 +587,84 @@ export interface AnaliseQuimico {
 // Módulo Inventário de Máquinas e Equipamentos
 // =====================================================
 
-export type StatusMaquina = "OPERANTE" | "MANUTENCAO" | "INATIVA" | "BAIXADA";
+export type StatusMaquina =
+  | "OPERANTE"
+  | "MANUTENCAO"
+  | "INATIVA"
+  | "BAIXADA"
+  | "RESERVA";
 
 export const STATUS_MAQUINA_LABELS: Record<StatusMaquina, string> = {
-  OPERANTE: "Operante",
+  OPERANTE: "Em operação",
   MANUTENCAO: "Em manutenção",
-  INATIVA: "Inativa",
+  INATIVA: "Desativada",
   BAIXADA: "Baixada",
+  RESERVA: "Reserva",
+};
+
+export type GrauRiscoMaquina = "BAIXO" | "MEDIO" | "ALTO" | "CRITICO";
+
+export const GRAU_RISCO_MAQUINA_LABELS: Record<GrauRiscoMaquina, string> = {
+  BAIXO: "Baixo",
+  MEDIO: "Médio",
+  ALTO: "Alto",
+  CRITICO: "Crítico",
 };
 
 export interface Maquina {
   id_maquina: string;
   /** NULL = patrimônio interno da Chabra; preenchido = máquina de cliente. */
   id_empresa: string | null;
+
+  // ── Identificação ──────────────────────────────────────────
   nome: string;
-  marca: string | null;
+  tipo: string | null;
+  categoria: string | null;
+  codigo_interno: string | null;
+  tag: string | null;
+  marca: string | null; // fabricante
   modelo: string | null;
   numero_serie: string | null;
   ano_fabricacao: number | null;
   numero_patrimonio: string | null;
-  localizacao: string | null;
   status: StatusMaquina;
+
+  // ── Localização e Processo ─────────────────────────────────
+  unidade: string | null;
+  setor: string | null;
+  linha_processo: string | null;
+  area: string | null;
+  responsavel_setor: string | null;
+  operacao_executada: string | null;
+  localizacao: string | null; // campo legado mantido
+
+  // ── Capacidade e Finalidade ────────────────────────────────
+  capacidade_operacional: string | null;
+  producao_estimada: string | null;
+  potencia: string | null;
+  tensao: string | null;
+  pressao: string | null;
+  capacidade_carga: string | null;
+  velocidade: string | null;
+  dimensoes: string | null;
+  finalidade: string | null;
+  descricao_tecnica: string | null;
+
+  // ── Segurança e Conformidade ───────────────────────────────
+  protecao_fixa: boolean | null;
+  protecao_movel: boolean | null;
+  intertravamento: boolean | null;
+  botao_emergencia: boolean | null;
+  sistema_bloqueio: boolean | null;
+  possui_manual: boolean | null;
+  possui_diagrama_eletrico: boolean | null;
+  aterramento: boolean | null;
+  sinalizacao: boolean | null;
+  necessita_adequacao_nr12: boolean | null;
+  grau_risco: GrauRiscoMaquina | null;
+  observacoes_tecnicas: string | null;
+
+  // ── Meta ───────────────────────────────────────────────────
   observacoes: string | null;
   foto_url: string | null;
   foto_storage_path: string | null;
