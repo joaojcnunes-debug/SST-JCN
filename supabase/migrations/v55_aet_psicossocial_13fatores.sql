@@ -90,7 +90,7 @@ CREATE POLICY "admin pode gerir 13fatores_semaforo"
 -- ── 4. Metadados da Aplicação QPS ────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS aet_laudo_qps_meta (
-  id_relatorio       text PRIMARY KEY REFERENCES aet_relatorios(id_relatorio) ON DELETE CASCADE,
+  id_relatorio       uuid PRIMARY KEY REFERENCES aet_relatorios(id_relatorio) ON DELETE CASCADE,
   n_respondentes     integer,
   total_elegivel     integer,
   periodo_inicio     date,
@@ -114,7 +114,7 @@ CREATE POLICY "autenticado pode gravar laudo_qps_meta"
 -- ── 5. Avaliação por Fator (por Laudo) ───────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS aet_laudo_fatores_psi (
-  id_relatorio      text NOT NULL REFERENCES aet_relatorios(id_relatorio) ON DELETE CASCADE,
+  id_relatorio      uuid NOT NULL REFERENCES aet_relatorios(id_relatorio) ON DELETE CASCADE,
   codigo_fator      text NOT NULL REFERENCES aet_13fatores_config(codigo) ON DELETE CASCADE,
   avaliado          boolean NOT NULL DEFAULT false,
   media             numeric(4,2),
@@ -139,8 +139,8 @@ CREATE POLICY "autenticado pode gravar laudo_fatores_psi"
 -- ── 6. Respostas individuais por Setor / Fator / Pergunta ────────────────────
 
 CREATE TABLE IF NOT EXISTS aet_laudo_qps_respostas (
-  id_relatorio    text NOT NULL REFERENCES aet_relatorios(id_relatorio) ON DELETE CASCADE,
-  id_setor        text NOT NULL,
+  id_relatorio    uuid NOT NULL REFERENCES aet_relatorios(id_relatorio) ON DELETE CASCADE,
+  id_setor        uuid NOT NULL,
   codigo_fator    text NOT NULL REFERENCES aet_13fatores_config(codigo) ON DELETE CASCADE,
   pergunta_ordem  integer NOT NULL,
   resposta        integer NOT NULL CHECK (resposta BETWEEN 1 AND 5),
