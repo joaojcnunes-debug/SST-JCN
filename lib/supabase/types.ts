@@ -1227,6 +1227,15 @@ export interface AetLaudoQpsMeta {
   updated_at?: string;
 }
 
+export interface AetLaudoQpsResposta {
+  id_relatorio: string;
+  id_setor: string;
+  codigo_fator: string;
+  pergunta_ordem: number;
+  resposta: number;
+  updated_at?: string;
+}
+
 export interface AetLaudoFatorPsi {
   id: string;
   id_relatorio: string;

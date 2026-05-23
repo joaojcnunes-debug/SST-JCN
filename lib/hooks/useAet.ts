@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
-import type { Aet13FatorConfig, Aet13FatorPergunta, Aet13FatorSemaforo, AetCargo, AetChecklist, AetChecklistPergunta, AetLaudoFatorPsi, AetLaudoQpsMeta, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, RespostaChecklist, StatusAET, ZonaPsi } from "@/lib/supabase/types";
+import type { Aet13FatorConfig, Aet13FatorPergunta, Aet13FatorSemaforo, AetCargo, AetChecklist, AetChecklistPergunta, AetLaudoFatorPsi, AetLaudoQpsMeta, AetLaudoQpsResposta, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, RespostaChecklist, StatusAET, ZonaPsi } from "@/lib/supabase/types";
 
 function normalizarCargos(raw: unknown): AetCargo[] {
   if (Array.isArray(raw)) return raw as AetCargo[];
@@ -889,5 +889,40 @@ export function useAetSalvarFatorPsi() {
       qc.invalidateQueries({ queryKey: ["aet-laudo-fatores-psi", v.id_relatorio] });
     },
     onError: () => toast.error("Erro ao salvar fator"),
+  });
+}
+
+// ─── QPS Respostas por Setor ──────────────────────────────────────────────────
+
+export function useAetQpsRespostas(idRelatorio: string | null) {
+  return useQuery({
+    queryKey: ["aet-qps-respostas", idRelatorio],
+    enabled: !!idRelatorio,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("aet_laudo_qps_respostas")
+        .select("*")
+        .eq("id_relatorio", idRelatorio!);
+      if (error) throw error;
+      return (data ?? []) as AetLaudoQpsResposta[];
+    },
+  });
+}
+
+export function useAetSalvarQpsResposta() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (row: AetLaudoQpsResposta) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb
+        .from("aet_laudo_qps_respostas")
+        .upsert(row as never, { onConflict: "id_relatorio,id_setor,codigo_fator,pergunta_ordem" });
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["aet-qps-respostas", v.id_relatorio] });
+    },
+    onError: () => toast.error("Erro ao salvar resposta"),
   });
 }
