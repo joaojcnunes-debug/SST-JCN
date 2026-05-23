@@ -2,6 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { TipoExcel } from "@/lib/qps/parsearExcel";
 import type {
   QpsTipo,
   QpsCategoria,
@@ -628,5 +629,120 @@ export function useDeleteQpsPlano() {
     },
     onSuccess: (_d, vars) =>
       qc.invalidateQueries({ queryKey: ["qps-planos", vars.idAplicacao] }),
+  });
+}
+
+// ─── Importação em lote via Excel ─────────────────────────────────────────────
+
+export function useImportarExcelQps() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (tipos: TipoExcel[]) => {
+      const sb = qpsDb();
+      let totalPerguntas = 0;
+      let totalTiposCriados = 0;
+      let totalCatsCriadas = 0;
+
+      for (const tipoData of tipos) {
+        // 1. Find or create Tipo by name (case-insensitive)
+        const { data: existentes } = await sb
+          .from("qps_tipos")
+          .select("id_tipo")
+          .ilike("nome", tipoData.nomeSheet)
+          .limit(1);
+
+        let idTipo: string;
+        if (existentes?.length > 0) {
+          idTipo = existentes[0].id_tipo;
+        } else {
+          const { data: novo, error } = await sb
+            .from("qps_tipos")
+            .insert({ nome: tipoData.nomeSheet, escala_min: 1, escala_max: 5, ativo: true })
+            .select("id_tipo")
+            .single();
+          if (error) throw error;
+          idTipo = novo.id_tipo;
+          totalTiposCriados++;
+        }
+
+        // 2. Load existing categorias for this tipo
+        const { data: catsExistentes } = await sb
+          .from("qps_categorias")
+          .select("id_categoria, nome, ordem")
+          .eq("id_tipo", idTipo);
+
+        const catMapNome = new Map<string, string>();
+        let maxOrdemCat = 0;
+        for (const c of catsExistentes ?? []) {
+          catMapNome.set(c.nome.toLowerCase().trim(), c.id_categoria);
+          if (c.ordem > maxOrdemCat) maxOrdemCat = c.ordem;
+        }
+
+        // 3. Create missing categorias
+        const catIdMap = new Map<string, string>();
+        for (const catNome of tipoData.categorias) {
+          const key = catNome.toLowerCase().trim();
+          if (catMapNome.has(key)) {
+            catIdMap.set(catNome, catMapNome.get(key)!);
+          } else {
+            maxOrdemCat++;
+            const { data: nova, error } = await sb
+              .from("qps_categorias")
+              .insert({ id_tipo: idTipo, nome: catNome, ordem: maxOrdemCat })
+              .select("id_categoria")
+              .single();
+            if (error) throw error;
+            catIdMap.set(catNome, nova.id_categoria);
+            catMapNome.set(key, nova.id_categoria);
+            totalCatsCriadas++;
+          }
+        }
+
+        // 4. Get current max ordem per categoria
+        const allCatIds = [...catIdMap.values()];
+        const { data: pergsExistentes } = await sb
+          .from("qps_perguntas")
+          .select("id_categoria, ordem")
+          .in("id_categoria", allCatIds);
+
+        const maxOrdPerg = new Map<string, number>();
+        for (const p of pergsExistentes ?? []) {
+          const cur = maxOrdPerg.get(p.id_categoria) ?? 0;
+          if (p.ordem > cur) maxOrdPerg.set(p.id_categoria, p.ordem);
+        }
+
+        // 5. Build and insert pergunta rows
+        const pergRows = [];
+        const localOrdem = new Map<string, number>();
+        for (const perg of tipoData.perguntas) {
+          const idCategoria = catIdMap.get(perg.categoria);
+          if (!idCategoria) continue;
+          const base = maxOrdPerg.get(idCategoria) ?? 0;
+          const local = localOrdem.get(idCategoria) ?? 0;
+          localOrdem.set(idCategoria, local + 1);
+          pergRows.push({
+            id_categoria: idCategoria,
+            texto: perg.texto,
+            logica: perg.logica,
+            ordem: base + local + 1,
+            ativo: true,
+          });
+        }
+
+        if (pergRows.length > 0) {
+          const { error } = await sb.from("qps_perguntas").insert(pergRows);
+          if (error) throw error;
+          totalPerguntas += pergRows.length;
+        }
+      }
+
+      return { totalPerguntas, totalTiposCriados, totalCatsCriadas };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["qps-tipos"] });
+      qc.invalidateQueries({ queryKey: ["qps-categorias"] });
+      qc.invalidateQueries({ queryKey: ["qps-perguntas"] });
+      qc.invalidateQueries({ queryKey: ["qps-all-perguntas"] });
+    },
   });
 }

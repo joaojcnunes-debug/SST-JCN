@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Settings2,
   Plus,
@@ -11,8 +11,13 @@ import {
   Trash2,
   Check,
   X,
+  FileSpreadsheet,
+  Download,
+  Upload,
+  Info,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import Modal from "@/components/ui/Modal";
 import {
   useQpsTipos,
   useCreateQpsTipo,
@@ -25,7 +30,10 @@ import {
   useCreateQpsPergunta,
   useUpdateQpsPergunta,
   useDeleteQpsPergunta,
+  useImportarExcelQps,
 } from "@/lib/hooks/useQuestionarios";
+import { parsearExcelQps, gerarTemplateExcel } from "@/lib/qps/parsearExcel";
+import type { TipoExcel } from "@/lib/qps/parsearExcel";
 import type { QpsTipo, QpsCategoria, QpsPergunta } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
@@ -33,10 +41,11 @@ export default function TiposPage() {
   const { data: tipos = [], isLoading } = useQpsTipos();
   const [expandido, setExpandido] = useState<string | null>(null);
   const [showNovoTipo, setShowNovoTipo] = useState(false);
+  const [showImportar, setShowImportar] = useState(false);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
             <Settings2 className="size-5 text-indigo-600" />
@@ -46,16 +55,28 @@ export default function TiposPage() {
             Gerencie os tipos de questionário, suas categorias e perguntas
           </p>
         </div>
-        <button
-          onClick={() => setShowNovoTipo(true)}
-          className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-        >
-          <Plus className="size-4" /> Novo Tipo
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowImportar(true)}
+            className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+          >
+            <FileSpreadsheet className="size-4" /> Importar Excel
+          </button>
+          <button
+            onClick={() => setShowNovoTipo(true)}
+            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          >
+            <Plus className="size-4" /> Novo Tipo
+          </button>
+        </div>
       </div>
 
       {showNovoTipo && (
         <NovoTipoForm onClose={() => setShowNovoTipo(false)} />
+      )}
+
+      {showImportar && (
+        <ImportarExcelModal onClose={() => setShowImportar(false)} />
       )}
 
       {isLoading ? (
@@ -702,5 +723,265 @@ function PerguntaItem({
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Modal de importação Excel ────────────────────────────────────────────────
+
+function ImportarExcelModal({ onClose }: { onClose: () => void }) {
+  const [tipos, setTipos] = useState<TipoExcel[]>([]);
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [erroArq, setErroArq] = useState<string | null>(null);
+  const [expandidoSheet, setExpandidoSheet] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const importar = useImportarExcelQps();
+
+  function handleFile(file: File) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const buffer = e.target?.result as ArrayBuffer;
+        const parsed = parsearExcelQps(buffer);
+        if (parsed.length === 0) {
+          setErroArq("Nenhuma aba com dados encontrada. Verifique a estrutura do arquivo.");
+          return;
+        }
+        setTipos(parsed);
+        setSelecionados(new Set(parsed.map((t) => t.nomeSheet)));
+        setErroArq(null);
+      } catch {
+        setErroArq("Erro ao ler o arquivo. Confirme que é um .xlsx válido.");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function toggleTipo(nome: string) {
+    setSelecionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(nome)) next.delete(nome);
+      else next.add(nome);
+      return next;
+    });
+  }
+
+  async function handleImportar() {
+    const lista = tipos.filter((t) => selecionados.has(t.nomeSheet));
+    if (lista.length === 0) { toast.error("Selecione ao menos uma aba"); return; }
+    try {
+      const r = await importar.mutateAsync(lista);
+      const msg = [
+        `${r.totalPerguntas} pergunta(s) importada(s)`,
+        r.totalTiposCriados > 0 ? `${r.totalTiposCriados} tipo(s) criado(s)` : null,
+        r.totalCatsCriadas > 0 ? `${r.totalCatsCriadas} categoria(s) criada(s)` : null,
+      ].filter(Boolean).join(" · ");
+      toast.success(msg);
+      onClose();
+    } catch {
+      toast.error("Erro ao importar. Verifique os dados e tente novamente.");
+    }
+  }
+
+  function baixarTemplate() {
+    const buf = gerarTemplateExcel();
+    const blob = new Blob([buf], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "template-qps-perguntas.xlsx";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const totalPergsSelecionadas = tipos
+    .filter((t) => selecionados.has(t.nomeSheet))
+    .reduce((acc, t) => acc + t.perguntas.length, 0);
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Importar Perguntas via Excel"
+      size="lg"
+      footer={
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={baixarTemplate}
+            className="flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:underline"
+          >
+            <Download className="size-3.5" /> Baixar template de exemplo
+          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleImportar}
+              disabled={importar.isPending || selecionados.size === 0 || tipos.length === 0}
+              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {importar.isPending && <Loader2 className="size-4 animate-spin" />}
+              Importar {totalPergsSelecionadas > 0 ? `${totalPergsSelecionadas} pergunta(s)` : ""}
+            </button>
+          </div>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        {/* Instrução */}
+        <div className="flex items-start gap-2 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">
+          <Info className="mt-0.5 size-4 shrink-0" />
+          <div>
+            <strong>Estrutura esperada:</strong> cada <strong>aba</strong> vira um Tipo.
+            Cada <strong>linha</strong> é uma pergunta com 3 colunas:
+            <span className="ml-1 font-mono">Categoria | Pergunta | Lógica</span>.
+            A coluna Lógica aceita <em>direta</em> ou <em>invertida</em> (opcional — padrão: direta).
+          </div>
+        </div>
+
+        {/* Upload */}
+        <div
+          className="flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 px-6 py-8 text-center hover:border-emerald-300 hover:bg-emerald-50/30"
+          onClick={() => fileRef.current?.click()}
+        >
+          <FileSpreadsheet className="size-10 text-emerald-500" />
+          <div>
+            <p className="text-sm font-semibold text-gray-700">
+              {tipos.length > 0
+                ? `${tipos.length} aba(s) encontrada(s) — clique para trocar o arquivo`
+                : "Clique para selecionar o arquivo Excel"}
+            </p>
+            <p className="mt-0.5 text-xs text-gray-400">Aceita .xlsx e .xls</p>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
+            className="flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Upload className="size-3.5" /> Selecionar arquivo
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFile(f);
+            }}
+          />
+        </div>
+
+        {erroArq && (
+          <p className="rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+            {erroArq}
+          </p>
+        )}
+
+        {/* Preview das abas */}
+        {tipos.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              Abas encontradas — selecione quais importar:
+            </p>
+            {tipos.map((tipo) => {
+              const sel = selecionados.has(tipo.nomeSheet);
+              const aberto = expandidoSheet === tipo.nomeSheet;
+
+              return (
+                <div
+                  key={tipo.nomeSheet}
+                  className={cn(
+                    "rounded-lg border",
+                    sel ? "border-emerald-200 bg-emerald-50/40" : "border-gray-200 bg-gray-50 opacity-60"
+                  )}
+                >
+                  <div className="flex items-center gap-3 px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={sel}
+                      onChange={() => toggleTipo(tipo.nomeSheet)}
+                      className="size-4 rounded accent-emerald-600"
+                    />
+                    <div
+                      className="flex flex-1 cursor-pointer items-center gap-2"
+                      onClick={() => setExpandidoSheet(aberto ? null : tipo.nomeSheet)}
+                    >
+                      <FileSpreadsheet className="size-4 shrink-0 text-emerald-600" />
+                      <span className="flex-1 text-sm font-semibold text-gray-800">
+                        {tipo.nomeSheet}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {tipo.categorias.length} categoria(s) · {tipo.perguntas.length} pergunta(s)
+                        {tipo.erros.length > 0 && (
+                          <span className="ml-2 font-semibold text-amber-600">
+                            ⚠ {tipo.erros.length} aviso(s)
+                          </span>
+                        )}
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          "size-3.5 text-gray-400 transition-transform",
+                          aberto && "rotate-180"
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {aberto && (
+                    <div className="border-t border-gray-100 px-4 pb-3 pt-2 text-xs">
+                      {tipo.categorias.map((cat) => {
+                        const pergs = tipo.perguntas.filter((p) => p.categoria === cat);
+                        return (
+                          <div key={cat} className="mb-2">
+                            <p className="mb-1 font-semibold text-indigo-700 uppercase tracking-wide text-[10px]">
+                              {cat}
+                            </p>
+                            <ul className="space-y-0.5 pl-3">
+                              {pergs.map((p, i) => (
+                                <li key={i} className="flex items-start gap-2 text-gray-700">
+                                  <span className="shrink-0 text-gray-400">{i + 1}.</span>
+                                  <span className="flex-1">{p.texto}</span>
+                                  <span
+                                    className={cn(
+                                      "shrink-0 rounded px-1 py-0.5 text-[10px] font-semibold",
+                                      p.logica === "direta"
+                                        ? "bg-orange-100 text-orange-600"
+                                        : "bg-green-100 text-green-600"
+                                    )}
+                                  >
+                                    {p.logica === "direta" ? "Dir" : "Inv"}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })}
+                      {tipo.erros.length > 0 && (
+                        <div className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-amber-800">
+                          <p className="font-semibold">Avisos:</p>
+                          <ul className="mt-1 list-disc pl-4">
+                            {tipo.erros.map((e, i) => <li key={i}>{e}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }
