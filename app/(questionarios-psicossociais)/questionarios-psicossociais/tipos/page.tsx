@@ -374,7 +374,13 @@ function TipoCard({
           ) : (
             <div className="space-y-2">
               {categorias.map((cat) => (
-                <CategoriaItem key={cat.id_categoria} cat={cat} idTipo={tipo.id_tipo} />
+                <CategoriaItem
+                    key={cat.id_categoria}
+                    cat={cat}
+                    idTipo={tipo.id_tipo}
+                    escalaMin={tipo.escala_min}
+                    escalaMax={tipo.escala_max}
+                  />
               ))}
             </div>
           )}
@@ -447,7 +453,17 @@ function NovaCategoriaForm({
 
 // ─── Item de categoria com perguntas ─────────────────────────────────────────
 
-function CategoriaItem({ cat, idTipo }: { cat: QpsCategoria; idTipo: string }) {
+function CategoriaItem({
+  cat,
+  idTipo,
+  escalaMin,
+  escalaMax,
+}: {
+  cat: QpsCategoria;
+  idTipo: string;
+  escalaMin: number;
+  escalaMax: number;
+}) {
   const [aberta, setAberta] = useState(false);
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(cat.nome);
@@ -563,6 +579,8 @@ function CategoriaItem({ cat, idTipo }: { cat: QpsCategoria; idTipo: string }) {
                   pergunta={p}
                   idx={idx + 1}
                   idCategoria={cat.id_categoria}
+                  escalaMin={escalaMin}
+                  escalaMax={escalaMax}
                 />
               ))}
             </div>
@@ -643,19 +661,38 @@ function NovaPerguntaForm({
 
 // ─── Item de pergunta ─────────────────────────────────────────────────────────
 
+function labelsEscalaUi(min: number, max: number): string[] {
+  const n = max - min + 1;
+  if (n === 2) return ["Não", "Sim"];
+  if (n === 3) return ["Baixo", "Médio", "Alto"];
+  if (n === 4) return ["Nunca", "Às vezes", "Frequentemente", "Sempre"];
+  if (n === 5) return ["Nunca", "Raramente", "Às vezes", "Frequentemente", "Sempre"];
+  if (n === 6) return ["Nunca", "Raramente", "Às vezes", "Frequentemente", "Muito freq.", "Sempre"];
+  if (n === 7) return ["Discordo total.", "Discordo muito", "Discordo", "Neutro", "Concordo", "Concordo muito", "Concordo total."];
+  return Array.from({ length: n }, (_, i) =>
+    i === 0 ? "Mín" : i === n - 1 ? "Máx" : String(min + i)
+  );
+}
+
 function PerguntaItem({
   pergunta,
   idx,
   idCategoria,
+  escalaMin,
+  escalaMax,
 }: {
   pergunta: QpsPergunta;
   idx: number;
   idCategoria: string;
+  escalaMin: number;
+  escalaMax: number;
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(pergunta.texto);
   const atualizar = useUpdateQpsPergunta();
   const deletar = useDeleteQpsPergunta();
+
+  const labels = labelsEscalaUi(escalaMin, escalaMax);
 
   async function salvar() {
     if (!texto.trim()) return;
@@ -683,25 +720,26 @@ function PerguntaItem({
   }
 
   return (
-    <div className="flex items-start gap-2 rounded px-2 py-1.5 hover:bg-gray-50">
-      <span className="mt-0.5 shrink-0 text-[11px] font-bold text-gray-400 w-4">{idx}.</span>
-      {editando ? (
-        <div className="flex flex-1 flex-col gap-1.5">
-          <textarea
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            autoFocus
-            rows={2}
-            className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-          <div className="flex gap-2">
-            <button onClick={salvar} className="text-xs font-medium text-green-600 hover:underline">Salvar</button>
-            <button onClick={() => { setTexto(pergunta.texto); setEditando(false); }} className="text-xs text-gray-400 hover:text-gray-600">Cancelar</button>
+    <div className="rounded px-2 py-2 hover:bg-gray-50">
+      <div className="flex items-start gap-2">
+        <span className="mt-0.5 shrink-0 text-[11px] font-bold text-gray-400 w-4">{idx}.</span>
+        {editando ? (
+          <div className="flex flex-1 flex-col gap-1.5">
+            <textarea
+              value={texto}
+              onChange={(e) => setTexto(e.target.value)}
+              autoFocus
+              rows={2}
+              className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+            <div className="flex gap-2">
+              <button onClick={salvar} className="text-xs font-medium text-green-600 hover:underline">Salvar</button>
+              <button onClick={() => { setTexto(pergunta.texto); setEditando(false); }} className="text-xs text-gray-400 hover:text-gray-600">Cancelar</button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <p className="flex-1 text-xs text-gray-700 leading-relaxed">{pergunta.texto}</p>
-      )}
+        ) : (
+          <p className="flex-1 text-xs text-gray-700 leading-relaxed">{pergunta.texto}</p>
+        )}
       <span
         className={cn(
           "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold",
@@ -720,6 +758,35 @@ function PerguntaItem({
           <button onClick={handleDeletar} className="rounded p-0.5 text-gray-300 hover:bg-red-50 hover:text-red-500">
             <Trash2 className="size-3" />
           </button>
+        </div>
+      )}
+      </div>
+
+      {/* Escala de resposta */}
+      {!editando && (
+        <div className="mt-1.5 ml-6 flex flex-wrap gap-1">
+          {Array.from({ length: escalaMax - escalaMin + 1 }, (_, i) => {
+            const val = escalaMin + i;
+            const label = labels[i] ?? String(val);
+            const isMin = i === 0;
+            const isMax = i === escalaMax - escalaMin;
+            return (
+              <span
+                key={val}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                  isMin
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : isMax
+                    ? "border-indigo-200 bg-indigo-50 text-indigo-700"
+                    : "border-gray-200 bg-white text-gray-500"
+                )}
+              >
+                <span className="font-bold">{val}</span>
+                <span className="opacity-75">{label}</span>
+              </span>
+            );
+          })}
         </div>
       )}
     </div>
