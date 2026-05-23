@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp, X, Camera } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp, X, Camera, Sparkles } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import {
@@ -66,6 +66,47 @@ export default function AetSetoresPage({
   const [setores, setSetores] = useState<AetSetor[]>([]);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
   const [uploadingFoto, setUploadingFoto] = useState<string | null>(null);
+  const [gerandoIA, setGerandoIA] = useState<string | null>(null); // "setorId:campo"
+
+  async function gerarTextoIA(
+    setorId: string,
+    campo: "parecer_tecnico" | "recomendacoes" | "demais_condicoes"
+  ) {
+    const setor = setores.find((s) => s.id === setorId);
+    if (!setor) return;
+    const key = `${setorId}:${campo}`;
+    setGerandoIA(key);
+    try {
+      const sb = createSupabaseBrowserClient();
+      const empresa = rel?.empresas as { nome_empresa?: string } | null;
+      const { data, error } = await sb.functions.invoke("gerar-analise-setor-aet-ia", {
+        body: {
+          campo,
+          empresa_nome: empresa?.nome_empresa ?? null,
+          setor_nome: setor.nome_setor || "Setor",
+          cargos: setor.cargos.map((c) => c.nome).filter(Boolean),
+          descricao_atividade: setor.descricao_atividade ?? null,
+          maquinas_equipamentos: setor.maquinas_equipamentos ?? null,
+          riscos: setor.riscos.map((r) => ({
+            tipo: r.tipo,
+            risco: r.risco,
+            classificacao: r.classificacao_risco,
+            intensidade: r.intensidade_concentracao ?? null,
+          })),
+          checklist: setor.checklist as unknown as Record<string, string>,
+          textoAtual: (setor[campo] as string) || null,
+        },
+      });
+      if (error) throw error;
+      const texto: string = data?.data?.texto ?? data?.texto ?? "";
+      if (!texto) { toast.error("IA não retornou texto"); return; }
+      updateSetor(setorId, { [campo]: texto });
+    } catch {
+      toast.error("Erro ao gerar com IA");
+    } finally {
+      setGerandoIA(null);
+    }
+  }
 
   useEffect(() => {
     if (rel) {
@@ -565,41 +606,44 @@ export default function AetSetoresPage({
                   </div>
                 </div>
 
-                {/* ── Recomendações ── */}
+                {/* ── Parecer, Recomendações, Demais Condições ── */}
                 <div className="space-y-4">
-                  <div>
-                    <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">Parecer Técnico</label>
-                    <RichTextEditor
-                      value={setor.parecer_tecnico}
-                      onChange={(html) => updateSetor(setor.id, { parecer_tecnico: html })}
-                      onBlur={() => {}}
-                      readOnly={!canEdit}
-                      uploadPathPrefix="aet-analise"
-                      placeholder="Descreva o parecer técnico para este setor..."
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">Recomendações</label>
-                    <RichTextEditor
-                      value={setor.recomendacoes}
-                      onChange={(html) => updateSetor(setor.id, { recomendacoes: html })}
-                      onBlur={() => {}}
-                      readOnly={!canEdit}
-                      uploadPathPrefix="aet-analise"
-                      placeholder="Liste as recomendações para este setor..."
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">Demais Condições Avaliadas</label>
-                    <RichTextEditor
-                      value={setor.demais_condicoes}
-                      onChange={(html) => updateSetor(setor.id, { demais_condicoes: html })}
-                      onBlur={() => {}}
-                      readOnly={!canEdit}
-                      uploadPathPrefix="aet-analise"
-                      placeholder="Descreva demais condições avaliadas..."
-                    />
-                  </div>
+                  {(
+                    [
+                      { campo: "parecer_tecnico", label: "Parecer Técnico", placeholder: "Descreva o parecer técnico para este setor..." },
+                      { campo: "recomendacoes", label: "Recomendações", placeholder: "Liste as recomendações para este setor..." },
+                      { campo: "demais_condicoes", label: "Demais Condições Avaliadas", placeholder: "Descreva demais condições avaliadas..." },
+                    ] as const
+                  ).map(({ campo, label, placeholder }) => {
+                    const key = `${setor.id}:${campo}`;
+                    const gerando = gerandoIA === key;
+                    return (
+                      <div key={campo}>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{label}</label>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => gerarTextoIA(setor.id, campo)}
+                              disabled={!!gerandoIA}
+                              className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 px-2 py-1 text-[11px] font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {gerando ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
+                              {gerando ? "Gerando…" : "Gerar com IA"}
+                            </button>
+                          )}
+                        </div>
+                        <RichTextEditor
+                          value={setor[campo] as string}
+                          onChange={(html) => updateSetor(setor.id, { [campo]: html })}
+                          onBlur={() => {}}
+                          readOnly={!canEdit}
+                          uploadPathPrefix="aet-analise"
+                          placeholder={placeholder}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
 
               </div>
