@@ -15,9 +15,14 @@ import {
   Download,
   Upload,
   Info,
+  FileText,
+  FileDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { gerarWordTipo, gerarExcelExportTipo, slugifyExport } from "@/lib/qps/exportarTipo";
+import { triggerDownloadBuffer } from "@/lib/qps/gerarModeloCsv";
 import {
   useQpsTipos,
   useCreateQpsTipo,
@@ -224,6 +229,18 @@ function NovoTipoForm({ onClose }: { onClose: () => void }) {
 
 // ─── Card de tipo (accordion) ─────────────────────────────────────────────────
 
+async function fetchDadosTipo(idTipo: string) {
+  const sb = createSupabaseBrowserClient() as ReturnType<typeof createSupabaseBrowserClient> & Record<string, unknown>;
+  const { data: cats } = await (sb as any).from("qps_categorias").select("*").eq("id_tipo", idTipo).order("ordem");
+  const catIds = ((cats ?? []) as { id_categoria: string }[]).map((c) => c.id_categoria);
+  let pergs: unknown[] = [];
+  if (catIds.length > 0) {
+    const { data } = await (sb as any).from("qps_perguntas").select("*").in("id_categoria", catIds).eq("ativo", true).order("ordem");
+    pergs = data ?? [];
+  }
+  return { categorias: (cats ?? []) as import("@/lib/supabase/types").QpsCategoria[], perguntas: pergs as import("@/lib/supabase/types").QpsPergunta[] };
+}
+
 function TipoCard({
   tipo,
   aberto,
@@ -237,6 +254,8 @@ function TipoCard({
   const [editando, setEditando] = useState(false);
   const [nome, setNome] = useState(tipo.nome);
   const [showNovaCategoria, setShowNovaCategoria] = useState(false);
+  const [baixandoWord, setBaixandoWord] = useState(false);
+  const [exportandoExcel, setExportandoExcel] = useState(false);
 
   const { data: categorias = [], isLoading: loadingCats } = useQpsCategorias(
     aberto ? tipo.id_tipo : null
@@ -259,6 +278,39 @@ function TipoCard({
       setEditando(false);
     } catch {
       toast.error("Erro ao salvar");
+    }
+  }
+
+  async function handleDownloadWord() {
+    setBaixandoWord(true);
+    try {
+      const { categorias: cats, perguntas: pergs } = await fetchDadosTipo(tipo.id_tipo);
+      const blob = await gerarWordTipo(tipo, cats, pergs);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slugifyExport(tipo.nome)}.docx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Documento Word baixado");
+    } catch {
+      toast.error("Erro ao gerar Word");
+    } finally {
+      setBaixandoWord(false);
+    }
+  }
+
+  async function handleExportExcel() {
+    setExportandoExcel(true);
+    try {
+      const { categorias: cats, perguntas: pergs } = await fetchDadosTipo(tipo.id_tipo);
+      const buf = gerarExcelExportTipo(tipo, cats, pergs);
+      triggerDownloadBuffer(buf, `exportar-${slugifyExport(tipo.nome)}.xlsx`, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      toast.success("Exportado — pode reimportar via Importar Excel");
+    } catch {
+      toast.error("Erro ao exportar");
+    } finally {
+      setExportandoExcel(false);
     }
   }
 
@@ -316,6 +368,22 @@ function TipoCard({
           <span className="text-xs text-gray-400">
             Escala {tipo.escala_min}–{tipo.escala_max}
           </span>
+          <button
+            onClick={handleDownloadWord}
+            disabled={baixandoWord}
+            title="Baixar em Word (.docx)"
+            className="rounded p-1 text-gray-400 hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50"
+          >
+            {baixandoWord ? <Loader2 className="size-3.5 animate-spin" /> : <FileText className="size-3.5" />}
+          </button>
+          <button
+            onClick={handleExportExcel}
+            disabled={exportandoExcel}
+            title="Exportar para reimportar (.xlsx)"
+            className="rounded p-1 text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-50"
+          >
+            {exportandoExcel ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
+          </button>
           <button
             onClick={() => setEditando(true)}
             className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
