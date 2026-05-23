@@ -438,7 +438,11 @@ function FixoCard({
         },
       });
       if (error) {
-        const msg = (error as { message?: string })?.message ?? JSON.stringify(error);
+        let msg = (error as { message?: string })?.message ?? "Erro desconhecido";
+        try {
+          const ctx = (error as { context?: Response })?.context;
+          if (ctx) { const b = await ctx.json(); if (b?.error) msg = b.error; }
+        } catch { /* ignora */ }
         toast.error(`IA: ${msg}`);
         return;
       }
