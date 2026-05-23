@@ -229,13 +229,16 @@ function NovoTipoForm({ onClose }: { onClose: () => void }) {
 
 // ─── Card de tipo (accordion) ─────────────────────────────────────────────────
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SbAny = { from: (table: string) => any };
+
 async function fetchDadosTipo(idTipo: string) {
-  const sb = createSupabaseBrowserClient() as ReturnType<typeof createSupabaseBrowserClient> & Record<string, unknown>;
-  const { data: cats } = await (sb as any).from("qps_categorias").select("*").eq("id_tipo", idTipo).order("ordem");
+  const sb = createSupabaseBrowserClient() as unknown as SbAny;
+  const { data: cats } = await sb.from("qps_categorias").select("*").eq("id_tipo", idTipo).order("ordem");
   const catIds = ((cats ?? []) as { id_categoria: string }[]).map((c) => c.id_categoria);
   let pergs: unknown[] = [];
   if (catIds.length > 0) {
-    const { data } = await (sb as any).from("qps_perguntas").select("*").in("id_categoria", catIds).eq("ativo", true).order("ordem");
+    const { data } = await sb.from("qps_perguntas").select("*").in("id_categoria", catIds).eq("ativo", true).order("ordem");
     pergs = data ?? [];
   }
   return { categorias: (cats ?? []) as import("@/lib/supabase/types").QpsCategoria[], perguntas: pergs as import("@/lib/supabase/types").QpsPergunta[] };

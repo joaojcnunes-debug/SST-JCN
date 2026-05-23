@@ -6,7 +6,6 @@ import {
   Packer,
   Paragraph,
   TextRun,
-  HeadingLevel,
   BorderStyle,
 } from "docx";
 import type { QpsTipo, QpsCategoria, QpsPergunta } from "@/lib/supabase/types";
