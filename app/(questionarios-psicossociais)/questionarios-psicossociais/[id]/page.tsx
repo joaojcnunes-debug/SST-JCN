@@ -234,6 +234,9 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
 
       {/* Detalhes */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <InfoCard label="Tipo de Questionário" destaque>
+          {tipoNome}
+        </InfoCard>
         <InfoCard label="Responsável">
           {editandoResponsavel ? (
             <div className="flex items-center gap-1">
@@ -290,17 +293,38 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
 
 function InfoCard({
   label,
+  destaque,
   children,
 }: {
   label: string;
+  destaque?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+    <div
+      className={cn(
+        "rounded-xl border p-4 shadow-sm",
+        destaque
+          ? "border-indigo-200 bg-indigo-50"
+          : "border-gray-200 bg-white"
+      )}
+    >
+      <p
+        className={cn(
+          "mb-1 text-xs font-semibold uppercase tracking-wide",
+          destaque ? "text-indigo-400" : "text-gray-400"
+        )}
+      >
         {label}
       </p>
-      <div className="text-sm font-medium text-gray-800">{children}</div>
+      <div
+        className={cn(
+          "text-sm font-medium",
+          destaque ? "text-indigo-800" : "text-gray-800"
+        )}
+      >
+        {children}
+      </div>
     </div>
   );
 }
