@@ -11,30 +11,83 @@ import {
 } from "@/lib/hooks/useInventarioMaquinas";
 import {
   STATUS_MAQUINA_LABELS,
+  GRAU_RISCO_MAQUINA_LABELS,
   type Maquina,
   type StatusMaquina,
+  type GrauRiscoMaquina,
 } from "@/lib/supabase/types";
+import { cn } from "@/lib/utils";
 
-const STATUS_OPCOES: StatusMaquina[] = [
-  "OPERANTE",
-  "MANUTENCAO",
-  "INATIVA",
-  "BAIXADA",
-  "RESERVA",
+const BOOL_OPTS = [
+  { value: "", label: "— Não informado —" },
+  { value: "true", label: "Sim" },
+  { value: "false", label: "Não" },
 ];
 
+function parseBool(v: string): boolean | null {
+  if (v === "true") return true;
+  if (v === "false") return false;
+  return null;
+}
+
+function initialForm(m?: Maquina): MaquinaInput {
+  return {
+    id_empresa: m?.id_empresa ?? null,
+    nome: m?.nome ?? "",
+    tipo: m?.tipo ?? null,
+    categoria: m?.categoria ?? null,
+    codigo_interno: m?.codigo_interno ?? null,
+    tag: m?.tag ?? null,
+    marca: m?.marca ?? null,
+    modelo: m?.modelo ?? null,
+    numero_serie: m?.numero_serie ?? null,
+    ano_fabricacao: m?.ano_fabricacao ?? null,
+    numero_patrimonio: m?.numero_patrimonio ?? null,
+    status: m?.status ?? "OPERANTE",
+    unidade: m?.unidade ?? null,
+    setor: m?.setor ?? null,
+    linha_processo: m?.linha_processo ?? null,
+    area: m?.area ?? null,
+    responsavel_setor: m?.responsavel_setor ?? null,
+    operacao_executada: m?.operacao_executada ?? null,
+    localizacao: m?.localizacao ?? null,
+    capacidade_operacional: m?.capacidade_operacional ?? null,
+    producao_estimada: m?.producao_estimada ?? null,
+    potencia: m?.potencia ?? null,
+    tensao: m?.tensao ?? null,
+    pressao: m?.pressao ?? null,
+    capacidade_carga: m?.capacidade_carga ?? null,
+    velocidade: m?.velocidade ?? null,
+    dimensoes: m?.dimensoes ?? null,
+    finalidade: m?.finalidade ?? null,
+    descricao_tecnica: m?.descricao_tecnica ?? null,
+    protecao_fixa: m?.protecao_fixa ?? null,
+    protecao_movel: m?.protecao_movel ?? null,
+    intertravamento: m?.intertravamento ?? null,
+    botao_emergencia: m?.botao_emergencia ?? null,
+    sistema_bloqueio: m?.sistema_bloqueio ?? null,
+    possui_manual: m?.possui_manual ?? null,
+    possui_diagrama_eletrico: m?.possui_diagrama_eletrico ?? null,
+    aterramento: m?.aterramento ?? null,
+    sinalizacao: m?.sinalizacao ?? null,
+    necessita_adequacao_nr12: m?.necessita_adequacao_nr12 ?? null,
+    grau_risco: m?.grau_risco ?? null,
+    observacoes_tecnicas: m?.observacoes_tecnicas ?? null,
+    observacoes: m?.observacoes ?? null,
+    foto_url: m?.foto_url ?? null,
+    foto_storage_path: m?.foto_storage_path ?? null,
+  };
+}
+
 interface MaquinaFormProps {
-  /** Quando presente, modo edição. Quando undefined, modo criação. */
   inicial?: Maquina;
-  /** ID estável da máquina pra upload de foto. No modo criação, gerar antes
-   *  de chamar o form (o caller passa o `id_maquina` que vai ser usado no insert). */
   idMaquina: string;
   disabled?: boolean;
-  /** Chamado quando o usuário clica Salvar. Recebe o input já validado. */
   onSubmit: (input: MaquinaInput) => Promise<void>;
-  /** Texto do botão de submit. Default: "Salvar". */
   submitLabel?: string;
 }
+
+const ABAS = ["Identificação", "Localização", "Capacidade", "Segurança"] as const;
 
 export default function MaquinaForm({
   inicial,
@@ -46,45 +99,18 @@ export default function MaquinaForm({
   const { data: empresas = [] } = useEmpresas();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [nome, setNome] = useState(inicial?.nome ?? "");
-  const [idEmpresa, setIdEmpresa] = useState<string>(inicial?.id_empresa ?? "");
-  const [marca, setMarca] = useState(inicial?.marca ?? "");
-  const [modelo, setModelo] = useState(inicial?.modelo ?? "");
-  const [numeroSerie, setNumeroSerie] = useState(inicial?.numero_serie ?? "");
-  const [anoFabricacao, setAnoFabricacao] = useState<string>(
-    inicial?.ano_fabricacao?.toString() ?? ""
-  );
-  const [numeroPatrimonio, setNumeroPatrimonio] = useState(
-    inicial?.numero_patrimonio ?? ""
-  );
-  const [localizacao, setLocalizacao] = useState(inicial?.localizacao ?? "");
-  const [status, setStatus] = useState<StatusMaquina>(
-    inicial?.status ?? "OPERANTE"
-  );
-  const [observacoes, setObservacoes] = useState(inicial?.observacoes ?? "");
-  const [fotoUrl, setFotoUrl] = useState<string | null>(inicial?.foto_url ?? null);
-  const [fotoPath, setFotoPath] = useState<string | null>(
-    inicial?.foto_storage_path ?? null
-  );
+  const [form, setForm] = useState<MaquinaInput>(() => initialForm(inicial));
+  const [abaAtiva, setAbaAtiva] = useState<0 | 1 | 2 | 3>(0);
   const [uploading, setUploading] = useState(false);
   const [salvando, setSalvando] = useState(false);
 
-  // Reinicia estado quando inicial muda (caso da edição que carrega async).
   useEffect(() => {
-    if (!inicial) return;
-    setNome(inicial.nome);
-    setIdEmpresa(inicial.id_empresa ?? "");
-    setMarca(inicial.marca ?? "");
-    setModelo(inicial.modelo ?? "");
-    setNumeroSerie(inicial.numero_serie ?? "");
-    setAnoFabricacao(inicial.ano_fabricacao?.toString() ?? "");
-    setNumeroPatrimonio(inicial.numero_patrimonio ?? "");
-    setLocalizacao(inicial.localizacao ?? "");
-    setStatus(inicial.status);
-    setObservacoes(inicial.observacoes ?? "");
-    setFotoUrl(inicial.foto_url ?? null);
-    setFotoPath(inicial.foto_storage_path ?? null);
+    if (inicial) setForm(initialForm(inicial));
   }, [inicial]);
+
+  function setF(key: keyof MaquinaInput, value: unknown) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
 
   async function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -95,13 +121,12 @@ export default function MaquinaForm({
     }
     setUploading(true);
     try {
-      // Se já tinha foto anterior com path diferente, remove primeiro.
-      if (fotoPath && !fotoPath.endsWith(file.name)) {
-        await removerFotoMaquinaStorage(fotoPath);
+      if (form.foto_storage_path && !form.foto_storage_path.endsWith(file.name)) {
+        await removerFotoMaquinaStorage(form.foto_storage_path);
       }
       const { publicUrl, storagePath } = await uploadFotoMaquina(idMaquina, file);
-      setFotoUrl(publicUrl);
-      setFotoPath(storagePath);
+      setF("foto_url", publicUrl);
+      setF("foto_storage_path", storagePath);
     } catch (err) {
       console.error(err);
       toast.error("Falha ao enviar foto.");
@@ -112,281 +137,318 @@ export default function MaquinaForm({
   }
 
   async function handleRemoverFoto() {
-    if (!fotoPath) {
-      setFotoUrl(null);
-      return;
+    if (form.foto_storage_path) {
+      try {
+        await removerFotoMaquinaStorage(form.foto_storage_path);
+      } catch {
+        // segue mesmo assim
+      }
     }
-    try {
-      await removerFotoMaquinaStorage(fotoPath);
-    } catch {
-      // Se falhar, segue mesmo assim — o usuário quer remover do form.
-    }
-    setFotoUrl(null);
-    setFotoPath(null);
+    setF("foto_url", null);
+    setF("foto_storage_path", null);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!nome.trim()) {
+    if (!form.nome.trim()) {
       toast.error("Informe o nome da máquina.");
-      return;
-    }
-    const anoNum = anoFabricacao.trim() ? parseInt(anoFabricacao, 10) : null;
-    if (anoFabricacao.trim() && (Number.isNaN(anoNum) || anoNum! < 1900)) {
-      toast.error("Ano de fabricação inválido.");
       return;
     }
     setSalvando(true);
     try {
-      await onSubmit({
-        id_empresa: idEmpresa || null,
-        nome: nome.trim(),
-        tipo: null,
-        categoria: null,
-        codigo_interno: null,
-        tag: null,
-        marca: marca.trim() || null,
-        modelo: modelo.trim() || null,
-        numero_serie: numeroSerie.trim() || null,
-        ano_fabricacao: anoNum,
-        numero_patrimonio: numeroPatrimonio.trim() || null,
-        status,
-        unidade: null,
-        setor: null,
-        linha_processo: null,
-        area: null,
-        responsavel_setor: null,
-        operacao_executada: null,
-        localizacao: localizacao.trim() || null,
-        capacidade_operacional: null,
-        producao_estimada: null,
-        potencia: null,
-        tensao: null,
-        pressao: null,
-        capacidade_carga: null,
-        velocidade: null,
-        dimensoes: null,
-        finalidade: null,
-        descricao_tecnica: null,
-        protecao_fixa: null,
-        protecao_movel: null,
-        intertravamento: null,
-        botao_emergencia: null,
-        sistema_bloqueio: null,
-        possui_manual: null,
-        possui_diagrama_eletrico: null,
-        aterramento: null,
-        sinalizacao: null,
-        necessita_adequacao_nr12: null,
-        grau_risco: null,
-        observacoes_tecnicas: null,
-        observacoes: observacoes.trim() || null,
-        foto_url: fotoUrl,
-        foto_storage_path: fotoPath,
-      });
+      await onSubmit({ ...form, nome: form.nome.trim() });
     } finally {
       setSalvando(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Foto */}
-      <div className="flex items-start gap-4">
-        <div className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-          {fotoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={fotoUrl}
-              alt="Foto da máquina"
-              className="size-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <ImageOff className="size-8 text-gray-300" />
-          )}
-        </div>
-        <div className="flex flex-col gap-2">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            disabled={disabled || uploading}
-            onChange={handleFotoChange}
-          />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            disabled={disabled || uploading}
-            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            {uploading ? (
-              <Loader2 className="size-4 animate-spin" />
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Foto + Empresa */}
+      <div className="flex flex-wrap items-start gap-6">
+        {/* Foto */}
+        <div className="flex items-start gap-3">
+          <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+            {form.foto_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={form.foto_url} alt="Foto" className="size-full object-cover" referrerPolicy="no-referrer" />
             ) : (
-              <Upload className="size-4" />
+              <ImageOff className="size-7 text-gray-300" />
             )}
-            {fotoUrl ? "Trocar foto" : "Enviar foto"}
-          </button>
-          {fotoUrl && !disabled && (
+          </div>
+          <div className="flex flex-col gap-1.5 pt-1">
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" disabled={disabled || uploading} onChange={handleFotoChange} />
             <button
               type="button"
-              onClick={handleRemoverFoto}
-              className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+              onClick={() => fileRef.current?.click()}
+              disabled={disabled || uploading}
+              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
-              <X className="size-3" /> Remover foto
+              {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+              {form.foto_url ? "Trocar foto" : "Enviar foto"}
             </button>
-          )}
-          <p className="text-[11px] text-gray-500">Até 5 MB · JPG/PNG/WebP</p>
+            {form.foto_url && !disabled && (
+              <button
+                type="button"
+                onClick={handleRemoverFoto}
+                className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
+              >
+                <X className="size-3" /> Remover
+              </button>
+            )}
+            <p className="text-[11px] text-gray-400">Até 5 MB · JPG/PNG/WebP</p>
+          </div>
+        </div>
+
+        {/* Empresa */}
+        <div className="min-w-[220px] flex-1">
+          <Campo label="Empresa">
+            <select
+              value={form.id_empresa ?? ""}
+              onChange={(e) => setF("id_empresa", e.target.value || null)}
+              disabled={disabled}
+              className={inputClass}
+            >
+              <option value="">Patrimônio interno Chabra</option>
+              {empresas.map((e) => (
+                <option key={e.id_empresa} value={e.id_empresa}>{e.nome_empresa}</option>
+              ))}
+            </select>
+          </Campo>
         </div>
       </div>
 
-      {/* Grid de campos */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Campo label="Nome *" htmlFor="nome">
-          <input
-            id="nome"
-            type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            disabled={disabled}
-            required
-            placeholder="Ex: Furadeira de bancada"
-            className={inputClass}
-          />
-        </Campo>
-
-        <Campo label="Empresa" htmlFor="empresa">
-          <select
-            id="empresa"
-            value={idEmpresa}
-            onChange={(e) => setIdEmpresa(e.target.value)}
-            disabled={disabled}
-            className={inputClass}
-          >
-            <option value="">Patrimônio interno Chabra</option>
-            {empresas.map((e) => (
-              <option key={e.id_empresa} value={e.id_empresa}>
-                {e.nome_empresa}
-              </option>
-            ))}
-          </select>
-        </Campo>
-
-        <Campo label="Marca" htmlFor="marca">
-          <input
-            id="marca"
-            type="text"
-            value={marca}
-            onChange={(e) => setMarca(e.target.value)}
-            disabled={disabled}
-            className={inputClass}
-          />
-        </Campo>
-
-        <Campo label="Modelo" htmlFor="modelo">
-          <input
-            id="modelo"
-            type="text"
-            value={modelo}
-            onChange={(e) => setModelo(e.target.value)}
-            disabled={disabled}
-            className={inputClass}
-          />
-        </Campo>
-
-        <Campo label="Nº de série" htmlFor="serie">
-          <input
-            id="serie"
-            type="text"
-            value={numeroSerie}
-            onChange={(e) => setNumeroSerie(e.target.value)}
-            disabled={disabled}
-            className={inputClass}
-          />
-        </Campo>
-
-        <Campo label="Ano de fabricação" htmlFor="ano">
-          <input
-            id="ano"
-            type="number"
-            min={1900}
-            max={2100}
-            value={anoFabricacao}
-            onChange={(e) => setAnoFabricacao(e.target.value)}
-            disabled={disabled}
-            placeholder="Ex: 2018"
-            className={inputClass}
-          />
-        </Campo>
-
-        <Campo label="Nº de patrimônio" htmlFor="patrimonio">
-          <input
-            id="patrimonio"
-            type="text"
-            value={numeroPatrimonio}
-            onChange={(e) => setNumeroPatrimonio(e.target.value)}
-            disabled={disabled}
-            placeholder="Código interno"
-            className={inputClass}
-          />
-        </Campo>
-
-        <Campo label="Localização" htmlFor="local">
-          <input
-            id="local"
-            type="text"
-            value={localizacao}
-            onChange={(e) => setLocalizacao(e.target.value)}
-            disabled={disabled}
-            placeholder="Ex: Galpão A, Sala 3"
-            className={inputClass}
-          />
-        </Campo>
-
-        <Campo label="Status" htmlFor="status">
-          <select
-            id="status"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as StatusMaquina)}
-            disabled={disabled}
-            className={inputClass}
-          >
-            {STATUS_OPCOES.map((s) => (
-              <option key={s} value={s}>
-                {STATUS_MAQUINA_LABELS[s]}
-              </option>
-            ))}
-          </select>
-        </Campo>
+      {/* Abas */}
+      <div className="border-b border-gray-200">
+        <div className="flex gap-0">
+          {ABAS.map((aba, i) => (
+            <button
+              key={aba}
+              type="button"
+              onClick={() => setAbaAtiva(i as 0 | 1 | 2 | 3)}
+              className={cn(
+                "px-4 py-2 text-xs font-semibold transition-colors",
+                abaAtiva === i
+                  ? "border-b-2 border-blue-500 text-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              )}
+            >
+              {aba}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <Campo label="Observações" htmlFor="obs">
-        <textarea
-          id="obs"
-          rows={3}
-          value={observacoes}
-          onChange={(e) => setObservacoes(e.target.value)}
-          disabled={disabled}
-          placeholder="Histórico, defeitos conhecidos, manutenções pendentes..."
-          className={inputClass}
-        />
-      </Campo>
+      {/* ABA 0: Identificação */}
+      {abaAtiva === 0 && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Campo label="Nome da máquina / equipamento *">
+              <input type="text" value={form.nome} onChange={(e) => setF("nome", e.target.value)} disabled={disabled} required placeholder="Ex: Furadeira de bancada" className={inputClass} />
+            </Campo>
+            <Campo label="Status">
+              <select value={form.status} onChange={(e) => setF("status", e.target.value as StatusMaquina)} disabled={disabled} className={inputClass}>
+                {(Object.keys(STATUS_MAQUINA_LABELS) as StatusMaquina[]).map((s) => (
+                  <option key={s} value={s}>{STATUS_MAQUINA_LABELS[s]}</option>
+                ))}
+              </select>
+            </Campo>
+            <Campo label="Tipo">
+              <input type="text" value={form.tipo ?? ""} onChange={(e) => setF("tipo", e.target.value || null)} disabled={disabled} placeholder="Ex: Prensa, Torno, Compressor..." className={inputClass} />
+            </Campo>
+            <Campo label="Categoria">
+              <input type="text" value={form.categoria ?? ""} onChange={(e) => setF("categoria", e.target.value || null)} disabled={disabled} placeholder="Ex: Máquina de produção, Auxiliar..." className={inputClass} />
+            </Campo>
+            <Campo label="Código interno">
+              <input type="text" value={form.codigo_interno ?? ""} onChange={(e) => setF("codigo_interno", e.target.value || null)} disabled={disabled} placeholder="Ex: MAQ-001" className={inputClass} />
+            </Campo>
+            <Campo label="TAG">
+              <input type="text" value={form.tag ?? ""} onChange={(e) => setF("tag", e.target.value || null)} disabled={disabled} placeholder="Ex: EQ-2024-001" className={inputClass} />
+            </Campo>
+            <Campo label="Fabricante / Marca">
+              <input type="text" value={form.marca ?? ""} onChange={(e) => setF("marca", e.target.value || null)} disabled={disabled} placeholder="Ex: Schuler, Romi..." className={inputClass} />
+            </Campo>
+            <Campo label="Modelo">
+              <input type="text" value={form.modelo ?? ""} onChange={(e) => setF("modelo", e.target.value || null)} disabled={disabled} placeholder="Ex: PH-200T" className={inputClass} />
+            </Campo>
+            <Campo label="Nº de série">
+              <input type="text" value={form.numero_serie ?? ""} onChange={(e) => setF("numero_serie", e.target.value || null)} disabled={disabled} className={inputClass} />
+            </Campo>
+            <Campo label="Ano de fabricação">
+              <input type="number" value={form.ano_fabricacao ?? ""} onChange={(e) => setF("ano_fabricacao", e.target.value ? Number(e.target.value) : null)} disabled={disabled} min={1900} max={new Date().getFullYear()} placeholder="Ex: 2018" className={inputClass} />
+            </Campo>
+            <Campo label="Nº de patrimônio">
+              <input type="text" value={form.numero_patrimonio ?? ""} onChange={(e) => setF("numero_patrimonio", e.target.value || null)} disabled={disabled} placeholder="Código interno" className={inputClass} />
+            </Campo>
+          </div>
+          <Campo label="Observações gerais">
+            <textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setF("observacoes", e.target.value || null)} disabled={disabled} placeholder="Histórico, defeitos conhecidos, manutenções pendentes..." className={inputClass} />
+          </Campo>
+        </div>
+      )}
 
-      <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={disabled || salvando || uploading}
-          className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {salvando ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <Save className="size-4" />
-          )}
-          {submitLabel}
-        </button>
-      </div>
+      {/* ABA 1: Localização */}
+      {abaAtiva === 1 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Campo label="Unidade">
+            <input type="text" value={form.unidade ?? ""} onChange={(e) => setF("unidade", e.target.value || null)} disabled={disabled} placeholder="Ex: Planta I, Filial SP" className={inputClass} />
+          </Campo>
+          <Campo label="Setor">
+            <input type="text" value={form.setor ?? ""} onChange={(e) => setF("setor", e.target.value || null)} disabled={disabled} placeholder="Ex: Estamparia, Montagem" className={inputClass} />
+          </Campo>
+          <Campo label="Linha / Processo">
+            <input type="text" value={form.linha_processo ?? ""} onChange={(e) => setF("linha_processo", e.target.value || null)} disabled={disabled} placeholder="Ex: Linha 3 — Conformação" className={inputClass} />
+          </Campo>
+          <Campo label="Área">
+            <input type="text" value={form.area ?? ""} onChange={(e) => setF("area", e.target.value || null)} disabled={disabled} placeholder="Ex: Área produtiva, Almoxarifado" className={inputClass} />
+          </Campo>
+          <Campo label="Responsável pelo setor">
+            <input type="text" value={form.responsavel_setor ?? ""} onChange={(e) => setF("responsavel_setor", e.target.value || null)} disabled={disabled} className={inputClass} />
+          </Campo>
+          <Campo label="Localização física">
+            <input type="text" value={form.localizacao ?? ""} onChange={(e) => setF("localizacao", e.target.value || null)} disabled={disabled} placeholder="Ex: Galpão A, Sala 3" className={inputClass} />
+          </Campo>
+          <div className="sm:col-span-2">
+            <Campo label="Operação executada">
+              <textarea rows={3} value={form.operacao_executada ?? ""} onChange={(e) => setF("operacao_executada", e.target.value || null)} disabled={disabled} placeholder="Descreva a operação realizada pela máquina neste setor/processo..." className={inputClass} />
+            </Campo>
+          </div>
+        </div>
+      )}
+
+      {/* ABA 2: Capacidade */}
+      {abaAtiva === 2 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Campo label="Capacidade operacional">
+            <input type="text" value={form.capacidade_operacional ?? ""} onChange={(e) => setF("capacidade_operacional", e.target.value || null)} disabled={disabled} placeholder="Ex: 200 ton, 500 L/h" className={inputClass} />
+          </Campo>
+          <Campo label="Produção estimada">
+            <input type="text" value={form.producao_estimada ?? ""} onChange={(e) => setF("producao_estimada", e.target.value || null)} disabled={disabled} placeholder="Ex: 1200 peças/turno" className={inputClass} />
+          </Campo>
+          <Campo label="Potência">
+            <input type="text" value={form.potencia ?? ""} onChange={(e) => setF("potencia", e.target.value || null)} disabled={disabled} placeholder="Ex: 15 kW, 20 CV" className={inputClass} />
+          </Campo>
+          <Campo label="Tensão">
+            <input type="text" value={form.tensao ?? ""} onChange={(e) => setF("tensao", e.target.value || null)} disabled={disabled} placeholder="Ex: 380V trifásico" className={inputClass} />
+          </Campo>
+          <Campo label="Pressão">
+            <input type="text" value={form.pressao ?? ""} onChange={(e) => setF("pressao", e.target.value || null)} disabled={disabled} placeholder="Ex: 8 bar, 120 PSI" className={inputClass} />
+          </Campo>
+          <Campo label="Capacidade de carga">
+            <input type="text" value={form.capacidade_carga ?? ""} onChange={(e) => setF("capacidade_carga", e.target.value || null)} disabled={disabled} placeholder="Ex: 5 ton, 200 kg" className={inputClass} />
+          </Campo>
+          <Campo label="Velocidade">
+            <input type="text" value={form.velocidade ?? ""} onChange={(e) => setF("velocidade", e.target.value || null)} disabled={disabled} placeholder="Ex: 1450 RPM, 0–80 m/min" className={inputClass} />
+          </Campo>
+          <Campo label="Dimensões (C × L × A)">
+            <input type="text" value={form.dimensoes ?? ""} onChange={(e) => setF("dimensoes", e.target.value || null)} disabled={disabled} placeholder="Ex: 3,2m × 1,8m × 2,5m" className={inputClass} />
+          </Campo>
+          <div className="sm:col-span-2">
+            <Campo label="Finalidade">
+              <textarea rows={2} value={form.finalidade ?? ""} onChange={(e) => setF("finalidade", e.target.value || null)} disabled={disabled} placeholder="Descreva a finalidade principal..." className={inputClass} />
+            </Campo>
+          </div>
+          <div className="sm:col-span-2">
+            <Campo label="Descrição técnica da operação">
+              <textarea rows={3} value={form.descricao_tecnica ?? ""} onChange={(e) => setF("descricao_tecnica", e.target.value || null)} disabled={disabled} placeholder="Descreva detalhadamente como a máquina opera, ciclos, interações com operador..." className={inputClass} />
+            </Campo>
+          </div>
+        </div>
+      )}
+
+      {/* ABA 3: Segurança */}
+      {abaAtiva === 3 && (
+        <div className="space-y-5">
+          <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-4">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-blue-700">Dispositivos de segurança</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {([
+                ["protecao_fixa", "Proteção fixa"],
+                ["protecao_movel", "Proteção móvel"],
+                ["intertravamento", "Intertravamento"],
+                ["botao_emergencia", "Botão de emergência"],
+                ["sistema_bloqueio", "Sistema de bloqueio"],
+                ["aterramento", "Aterramento"],
+                ["sinalizacao", "Sinalização"],
+              ] as [keyof MaquinaInput, string][]).map(([key, label]) => (
+                <Campo key={key} label={label}>
+                  <select
+                    value={form[key] === null || form[key] === undefined ? "" : String(form[key])}
+                    onChange={(e) => setF(key, parseBool(e.target.value))}
+                    disabled={disabled}
+                    className={inputClass}
+                  >
+                    {BOOL_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </Campo>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-gray-50/40 p-4">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-600">Documentação técnica</p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {([
+                ["possui_manual", "Manual da máquina"],
+                ["possui_diagrama_eletrico", "Diagrama elétrico"],
+              ] as [keyof MaquinaInput, string][]).map(([key, label]) => (
+                <Campo key={key} label={label}>
+                  <select
+                    value={form[key] === null || form[key] === undefined ? "" : String(form[key])}
+                    onChange={(e) => setF(key, parseBool(e.target.value))}
+                    disabled={disabled}
+                    className={inputClass}
+                  >
+                    {BOOL_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </Campo>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-red-100 bg-red-50/40 p-4">
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider text-red-700">Avaliação de conformidade NR-12</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Campo label="Grau de risco">
+                <select value={form.grau_risco ?? ""} onChange={(e) => setF("grau_risco", (e.target.value as GrauRiscoMaquina) || null)} disabled={disabled} className={inputClass}>
+                  <option value="">— Não avaliado —</option>
+                  {(Object.keys(GRAU_RISCO_MAQUINA_LABELS) as GrauRiscoMaquina[]).map((g) => (
+                    <option key={g} value={g}>{GRAU_RISCO_MAQUINA_LABELS[g]}</option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo label="Necessita adequação NR-12?">
+                <select
+                  value={form.necessita_adequacao_nr12 === null || form.necessita_adequacao_nr12 === undefined ? "" : String(form.necessita_adequacao_nr12)}
+                  onChange={(e) => setF("necessita_adequacao_nr12", parseBool(e.target.value))}
+                  disabled={disabled}
+                  className={inputClass}
+                >
+                  {BOOL_OPTS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </Campo>
+            </div>
+            <div className="mt-3">
+              <Campo label="Observações técnicas de segurança">
+                <textarea rows={3} value={form.observacoes_tecnicas ?? ""} onChange={(e) => setF("observacoes_tecnicas", e.target.value || null)} disabled={disabled} placeholder="Pendências de adequação, riscos identificados, ações necessárias..." className={inputClass} />
+              </Campo>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!disabled && (
+        <div className="flex justify-end border-t border-gray-100 pt-4">
+          <button
+            type="submit"
+            disabled={salvando || uploading}
+            className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            {submitLabel}
+          </button>
+        </div>
+      )}
     </form>
   );
 }
@@ -394,18 +456,10 @@ export default function MaquinaForm({
 const inputClass =
   "w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500";
 
-function Campo({
-  label,
-  htmlFor,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  children: React.ReactNode;
-}) {
+function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label htmlFor={htmlFor} className="block">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-600">
+    <label className="block">
+      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-600">
         {label}
       </span>
       {children}
