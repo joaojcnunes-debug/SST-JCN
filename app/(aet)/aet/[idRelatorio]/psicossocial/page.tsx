@@ -733,13 +733,13 @@ export default function PsicossocialPage({
                             <label className="mb-1 block text-xs font-medium text-gray-600">
                               Pergunta Crítica
                             </label>
-                            <input
-                              type="text"
+                            <textarea
+                              rows={2}
                               value={perguntasCriticas[fator.codigo] ?? ""}
                               onChange={(e) =>
                                 setPerguntasCriticas((prev) => ({ ...prev, [fator.codigo]: e.target.value }))
                               }
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-y"
                               placeholder="Pergunta com pior score neste fator…"
                             />
                           </div>
@@ -770,7 +770,7 @@ export default function PsicossocialPage({
                             onChange={(e) =>
                               setObservacoes((prev) => ({ ...prev, [fator.codigo]: e.target.value }))
                             }
-                            className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                            className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                             placeholder="Análise, contexto e achados relevantes…"
                           />
                         </div>
