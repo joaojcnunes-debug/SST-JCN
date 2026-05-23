@@ -18,6 +18,34 @@ import type {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function qpsDb() { return createSupabaseBrowserClient() as any; }
 
+// ─── Todas as perguntas de um tipo (busca categorias + perguntas em sequência) ─
+
+export function useQpsAllPerguntas(idTipo: string | null | undefined) {
+  return useQuery({
+    queryKey: ["qps-all-perguntas", idTipo],
+    enabled: !!idTipo,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<QpsPergunta[]> => {
+      const sb = qpsDb();
+      const { data: cats, error: catsErr } = await sb
+        .from("qps_categorias")
+        .select("id_categoria")
+        .eq("id_tipo", idTipo!);
+      if (catsErr) throw catsErr;
+      const ids = (cats ?? []).map((c: { id_categoria: string }) => c.id_categoria);
+      if (ids.length === 0) return [];
+      const { data, error } = await sb
+        .from("qps_perguntas")
+        .select("*")
+        .in("id_categoria", ids)
+        .eq("ativo", true)
+        .order("ordem");
+      if (error) throw error;
+      return (data ?? []) as QpsPergunta[];
+    },
+  });
+}
+
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
 export function useQpsTipos() {
