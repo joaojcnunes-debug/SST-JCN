@@ -13,7 +13,7 @@ import {
   useAetLaudoFatoresPsi,
   useAetSalvarFatorPsi,
   useAetQpsRespostas,
-  useAetSalvarQpsResposta,
+  useAetSalvarRespostasFator,
   zonaFromMedia,
   nivelPgrFromZona,
   SEMAFORO_DEFAULT,
@@ -66,22 +66,26 @@ const ZONA_BORDER_L: Record<ZonaPsi, string> = {
   vermelha: "#ef4444",
 };
 
-// ─── Calculation helper ───────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+// Key composta para indexar respostas locais
+function rKey(idSetor: string, codigoFator: string, ordem: number) {
+  return `${idSetor}|${codigoFator}|${ordem}`;
+}
 
 function calcularMediaFator(
   perguntas: Aet13FatorPergunta[],
-  respostasSetor: AetLaudoQpsResposta[],
+  localRespostas: Record<string, number>,
+  idSetor: string,
   codigoFator: string
 ): number | null {
   const pFator = perguntas.filter((p) => p.codigo_fator === codigoFator);
   if (pFator.length === 0) return null;
   const scores: number[] = [];
   for (const p of pFator) {
-    const r = respostasSetor.find(
-      (res) => res.codigo_fator === codigoFator && res.pergunta_ordem === p.ordem
-    );
+    const r = localRespostas[rKey(idSetor, codigoFator, p.ordem)];
     if (r == null) continue;
-    scores.push(p.logica === "direta" ? 6 - r.resposta : r.resposta);
+    scores.push(p.logica === "direta" ? 6 - r : r);
   }
   if (scores.length === 0) return null;
   return Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100;
@@ -102,16 +106,20 @@ export default function PsicossocialPage({
   const { data: semaforo = SEMAFORO_DEFAULT } = useAet13FatoresSemaforo();
   const { data: qpsMeta, isLoading: loadingMeta } = useAetLaudoQpsMeta(idRelatorio);
   const { data: fatoresPsi = [] } = useAetLaudoFatoresPsi(idRelatorio);
-  const { data: todasRespostas = [] } = useAetQpsRespostas(idRelatorio);
+  const { data: respostasDB = [] } = useAetQpsRespostas(idRelatorio);
 
   const salvarMeta = useAetSalvarQpsMeta();
   const salvarFator = useAetSalvarFatorPsi();
-  const salvarResposta = useAetSalvarQpsResposta();
+  const salvarRespostas = useAetSalvarRespostasFator();
 
   // ─── State ────────────────────────────────────────────────────────────────
 
   const [setorAtivo, setSetorAtivo] = useState<string | null>(null);
   const [abertos, setAbertos] = useState<Record<string, boolean>>({});
+
+  // Respostas locais — só vão ao DB quando o técnico clicar "Salvar Fxx"
+  const [localRespostas, setLocalRespostas] = useState<Record<string, number>>({});
+
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [perguntasCriticas, setPerguntasCriticas] = useState<Record<string, string>>({});
   const [zonasManuais, setZonasManuais] = useState<Record<string, ZonaPsi | null>>({});
@@ -128,12 +136,14 @@ export default function PsicossocialPage({
     observacao_geral: null,
   });
 
+  // Init setor ativo
   useEffect(() => {
     if (rel?.setores.length && !setorAtivo) {
       setSetorAtivo(rel.setores[0].id);
     }
   }, [rel, setorAtivo]);
 
+  // Init meta
   useEffect(() => {
     if (qpsMeta) {
       setMeta({
@@ -149,6 +159,19 @@ export default function PsicossocialPage({
     }
   }, [qpsMeta, idRelatorio]);
 
+  // Popula estado local com respostas salvas no banco
+  useEffect(() => {
+    if (respostasDB.length === 0) return;
+    setLocalRespostas((prev) => {
+      const next = { ...prev };
+      for (const r of respostasDB) {
+        next[rKey(r.id_setor, r.codigo_fator, r.pergunta_ordem)] = r.resposta;
+      }
+      return next;
+    });
+  }, [respostasDB]);
+
+  // Init observacoes / perguntasCriticas / zonasManuais
   useEffect(() => {
     const obs: Record<string, string> = {};
     const pc: Record<string, string> = {};
@@ -172,7 +195,6 @@ export default function PsicossocialPage({
 
   const setores = rel?.setores ?? [];
   const setorAtivoObj = setores.find((s) => s.id === setorAtivo);
-  const respostasSetor = todasRespostas.filter((r) => r.id_setor === setorAtivo);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
@@ -184,45 +206,61 @@ export default function PsicossocialPage({
     }
   }
 
-  async function handleResposta(codigoFator: string, perguntaOrdem: number, value: number) {
+  // Atualiza apenas o estado local — sem chamada ao banco
+  function handleResposta(codigoFator: string, perguntaOrdem: number, value: number) {
     if (!setorAtivo) return;
-    try {
-      await salvarResposta.mutateAsync({
-        id_relatorio: idRelatorio,
-        id_setor: setorAtivo,
-        codigo_fator: codigoFator,
-        pergunta_ordem: perguntaOrdem,
-        resposta: value,
-      });
-    } catch {
-      // handled in hook
-    }
+    setLocalRespostas((prev) => ({
+      ...prev,
+      [rKey(setorAtivo, codigoFator, perguntaOrdem)]: value,
+    }));
   }
 
   async function handleSalvarFator(codigoFator: string) {
+    if (!setorAtivo) return;
     const isF13 = codigoFator === "F13";
+
+    // Monta as linhas de respostas para este fator no setor ativo
+    const perguntasFator = perguntas.filter((p) => p.codigo_fator === codigoFator);
+    const rows: AetLaudoQpsResposta[] = perguntasFator
+      .map((p) => {
+        const resposta = localRespostas[rKey(setorAtivo, codigoFator, p.ordem)];
+        if (resposta == null) return null;
+        return {
+          id_relatorio: idRelatorio,
+          id_setor: setorAtivo,
+          codigo_fator: codigoFator,
+          pergunta_ordem: p.ordem,
+          resposta,
+        };
+      })
+      .filter((r): r is AetLaudoQpsResposta => r !== null);
+
     const mediaCalc = isF13
       ? null
-      : calcularMediaFator(perguntas, respostasSetor, codigoFator);
+      : calcularMediaFator(perguntas, localRespostas, setorAtivo, codigoFator);
     const zona = isF13
       ? (zonasManuais[codigoFator] ?? null)
       : zonaFromMedia(mediaCalc);
 
     setSalvandoFator(codigoFator);
     try {
-      await salvarFator.mutateAsync({
-        id_relatorio: idRelatorio,
-        codigo_fator: codigoFator,
-        avaliado: true,
-        media: mediaCalc,
-        pct_zona_risco: null,
-        pergunta_critica: perguntasCriticas[codigoFator] || null,
-        observacao: observacoes[codigoFator] || null,
-        zona,
-      });
+      // Salva respostas e meta do fator em paralelo
+      await Promise.all([
+        rows.length > 0 ? salvarRespostas.mutateAsync(rows) : Promise.resolve(),
+        salvarFator.mutateAsync({
+          id_relatorio: idRelatorio,
+          codigo_fator: codigoFator,
+          avaliado: true,
+          media: mediaCalc,
+          pct_zona_risco: null,
+          pergunta_critica: perguntasCriticas[codigoFator] || null,
+          observacao: observacoes[codigoFator] || null,
+          zona,
+        }),
+      ]);
       toast.success(`Fator ${codigoFator} salvo`);
     } catch {
-      // handled in hook
+      // handled in hooks
     } finally {
       setSalvandoFator(null);
     }
@@ -391,7 +429,7 @@ export default function PsicossocialPage({
             {/* Tabs de setor */}
             <div className="flex flex-wrap gap-2">
               {setores.map((s) => {
-                const temRespostas = todasRespostas.some((r) => r.id_setor === s.id);
+                const temRespostas = respostasDB.some((r) => r.id_setor === s.id);
                 const ativo = setorAtivo === s.id;
                 return (
                   <button
@@ -430,14 +468,16 @@ export default function PsicossocialPage({
             {fatores.map((fator) => {
               const isF13 = fator.codigo === "F13";
               const perguntasFator = perguntas.filter((p) => p.codigo_fator === fator.codigo);
-              const mediaCalc = isF13
+              const mediaCalc = isF13 || !setorAtivo
                 ? null
-                : calcularMediaFator(perguntas, respostasSetor, fator.codigo);
+                : calcularMediaFator(perguntas, localRespostas, setorAtivo, fator.codigo);
               const zonaCalc = isF13
                 ? (zonasManuais[fator.codigo] ?? null)
                 : zonaFromMedia(mediaCalc);
               const prazoSem = semaforo.find((s) => s.id === zonaCalc);
-              const respondidas = respostasSetor.filter((r) => r.codigo_fator === fator.codigo).length;
+              const respondidas = setorAtivo
+                ? perguntasFator.filter((p) => localRespostas[rKey(setorAtivo, fator.codigo, p.ordem)] != null).length
+                : 0;
               const aberto = abertos[fator.codigo] ?? false;
 
               return (
@@ -461,7 +501,6 @@ export default function PsicossocialPage({
 
                     <span className="flex-1 font-semibold text-gray-900 text-sm">{fator.nome}</span>
 
-                    {/* Progresso */}
                     {!isF13 && (
                       <span className={cn(
                         "shrink-0 text-xs tabular-nums",
@@ -473,14 +512,12 @@ export default function PsicossocialPage({
                       </span>
                     )}
 
-                    {/* Média */}
                     {!isF13 && mediaCalc !== null && (
                       <span className="shrink-0 font-mono text-sm font-bold text-gray-800">
                         {mediaCalc.toFixed(2)}
                       </span>
                     )}
 
-                    {/* Zona badge */}
                     {zonaCalc && (
                       <span className={cn(
                         "hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
@@ -502,7 +539,6 @@ export default function PsicossocialPage({
                       <p className="text-xs text-gray-500 leading-relaxed">{fator.descricao}</p>
 
                       {isF13 ? (
-                        /* F13: apenas zona manual */
                         <div>
                           <label className="mb-1 block text-xs font-medium text-gray-600">
                             Classificação (baseada no PGR)
@@ -524,16 +560,15 @@ export default function PsicossocialPage({
                           </select>
                         </div>
                       ) : (
-                        /* F01–F12: perguntas 1-5 */
                         <div className="space-y-3">
                           <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                            Perguntas — Escala 1 (Nunca) a 5 (Sempre)
+                            Perguntas — clique para selecionar e salve ao final
                           </p>
 
                           {perguntasFator.map((p, i) => {
-                            const respostaAtual = respostasSetor.find(
-                              (r) => r.codigo_fator === fator.codigo && r.pergunta_ordem === p.ordem
-                            )?.resposta ?? null;
+                            const respostaAtual = setorAtivo
+                              ? (localRespostas[rKey(setorAtivo, fator.codigo, p.ordem)] ?? null)
+                              : null;
 
                             return (
                               <div
@@ -560,7 +595,6 @@ export default function PsicossocialPage({
                                   </span>
                                 </div>
 
-                                {/* Botões escala */}
                                 <div className="grid grid-cols-5 gap-1.5">
                                   {ESCALA.map((v) => (
                                     <button
@@ -619,7 +653,7 @@ export default function PsicossocialPage({
                         </div>
                       )}
 
-                      {/* Pergunta crítica + Observação */}
+                      {/* Pergunta crítica + Observação + Salvar */}
                       <div className="space-y-3 border-t border-gray-100 pt-4">
                         {!isF13 && (
                           <div>
@@ -701,14 +735,16 @@ export default function PsicossocialPage({
                 {fatores.map((fator) => {
                   const isF13 = fator.codigo === "F13";
                   const perguntasFator = perguntas.filter((p) => p.codigo_fator === fator.codigo);
-                  const mediaCalc = isF13
+                  const mediaCalc = isF13 || !setorAtivo
                     ? null
-                    : calcularMediaFator(perguntas, respostasSetor, fator.codigo);
+                    : calcularMediaFator(perguntas, localRespostas, setorAtivo, fator.codigo);
                   const zonaCalc = isF13
                     ? (zonasManuais[fator.codigo] ?? null)
                     : zonaFromMedia(mediaCalc);
                   const prazoSem = semaforo.find((s) => s.id === zonaCalc);
-                  const respondidas = respostasSetor.filter((r) => r.codigo_fator === fator.codigo).length;
+                  const respondidas = setorAtivo
+                    ? perguntasFator.filter((p) => localRespostas[rKey(setorAtivo, fator.codigo, p.ordem)] != null).length
+                    : 0;
 
                   return (
                     <tr key={fator.codigo} className="hover:bg-gray-50/50">

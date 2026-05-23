@@ -910,19 +910,21 @@ export function useAetQpsRespostas(idRelatorio: string | null) {
   });
 }
 
-export function useAetSalvarQpsResposta() {
+export function useAetSalvarRespostasFator() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (row: AetLaudoQpsResposta) => {
+    mutationFn: async (rows: AetLaudoQpsResposta[]) => {
+      if (rows.length === 0) return;
       const sb = createSupabaseBrowserClient();
       const { error } = await sb
         .from("aet_laudo_qps_respostas")
-        .upsert(row as never, { onConflict: "id_relatorio,id_setor,codigo_fator,pergunta_ordem" });
+        .upsert(rows as never, { onConflict: "id_relatorio,id_setor,codigo_fator,pergunta_ordem" });
       if (error) throw error;
     },
-    onSuccess: (_d, v) => {
-      qc.invalidateQueries({ queryKey: ["aet-qps-respostas", v.id_relatorio] });
+    onSuccess: (_d, rows) => {
+      if (rows.length > 0)
+        qc.invalidateQueries({ queryKey: ["aet-qps-respostas", rows[0].id_relatorio] });
     },
-    onError: () => toast.error("Erro ao salvar resposta"),
+    onError: () => toast.error("Erro ao salvar respostas"),
   });
 }
