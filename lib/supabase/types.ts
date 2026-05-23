@@ -1175,3 +1175,66 @@ export interface AetTextoPadraoCapitulo {
   created_at: string;
   updated_at: string | null;
 }
+
+// ─── AET — 13 Fatores Psicossociais ──────────────────────────────────────────
+
+export type ZonaPsi = "verde" | "amarela" | "laranja" | "vermelha";
+
+export interface Aet13FatorConfig {
+  codigo: string;           // F01–F13
+  nome: string;
+  descricao: string | null;
+  perigos_tipicos: string | null;
+  possiveis_danos: string | null;
+  foco_plano: string | null;
+  acao_plano: string | null;
+  responsavel_plano: string | null;
+  prazo_plano: string | null;
+  ordem: number;
+  updated_at?: string;
+}
+
+export interface Aet13FatorPergunta {
+  id: string;
+  codigo_fator: string;
+  texto: string;
+  logica: "direta" | "invertida";
+  ordem: number;
+  updated_at?: string;
+}
+
+export interface Aet13FatorSemaforo {
+  id: ZonaPsi;
+  label: string;
+  min_score: number | null;
+  max_score: number | null;
+  nivel_pgr: string;
+  prazo_texto: string;
+  cor_fundo: string;
+  cor_texto: string;
+  updated_at?: string;
+}
+
+export interface AetLaudoQpsMeta {
+  id_relatorio: string;
+  n_respondentes: number | null;
+  total_elegivel: number | null;
+  periodo_inicio: string | null;
+  periodo_fim: string | null;
+  modo_aplicacao: string | null;
+  observacao_geral: string | null;
+  updated_at?: string;
+}
+
+export interface AetLaudoFatorPsi {
+  id: string;
+  id_relatorio: string;
+  codigo_fator: string;
+  avaliado: boolean;
+  media: number | null;
+  pct_zona_risco: number | null;
+  pergunta_critica: string | null;
+  observacao: string | null;
+  zona: ZonaPsi | null;
+  updated_at?: string;
+}

@@ -3,6 +3,7 @@
 import { type ReactNode, useMemo } from "react";
 import {
   BookOpen,
+  Brain,
   ClipboardCheck,
   LayoutDashboard,
   List,
@@ -10,21 +11,26 @@ import {
   Printer,
   Settings2,
   Sliders,
+  Users,
 } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRequireModule } from "@/lib/hooks/useRequireModule";
+import { useUserStore } from "@/lib/store";
 import { usePathname } from "next/navigation";
 
 export default function AetLayout({ children }: { children: ReactNode }) {
   useAuth();
   useRequireModule("aet");
 
+  const user = useUserStore((s) => s.user);
+  const isAdmin = user?.perfil === "Admin";
   const pathname = usePathname();
 
   const match = pathname.match(/\/aet\/([^/]+)\//);
   const idRelatorio = match?.[1];
+  const isConfigPage = ["dashboard", "novo", "texto-padrao", "owas-config", "perfis-owas", "13fatores-config"].includes(idRelatorio ?? "");
 
   const sections = useMemo<NavSection[]>(() => {
     const base: NavSection[] = [
@@ -36,28 +42,34 @@ export default function AetLayout({ children }: { children: ReactNode }) {
           { href: "/aet/novo", label: "Novo Laudo", icon: Plus, variant: "action" },
         ],
       },
-      {
-        label: "Configuração",
-        items: [
-          { href: "/aet/texto-padrao", label: "Texto Padrão", icon: BookOpen, variant: "config" },
-          { href: "/aet/owas-config", label: "Config. OWAS", icon: Sliders, variant: "config" },
-          { href: "/aet/perfis-owas", label: "Perfis OWAS", icon: Settings2, variant: "config" },
-        ],
-      },
+      ...(isAdmin
+        ? [
+            {
+              label: "Configuração",
+              items: [
+                { href: "/aet/texto-padrao",      label: "Texto Padrão",       icon: BookOpen,  variant: "config" as const },
+                { href: "/aet/owas-config",       label: "Config. OWAS",       icon: Sliders,   variant: "config" as const },
+                { href: "/aet/perfis-owas",       label: "Perfis OWAS",        icon: Users,     variant: "config" as const },
+                { href: "/aet/13fatores-config",  label: "Config. 13 Fatores", icon: Brain,     variant: "config" as const },
+              ],
+            },
+          ]
+        : []),
     ];
 
-    if (idRelatorio) {
+    if (idRelatorio && !isConfigPage) {
       base.push({
         label: "Laudo Atual",
         items: [
-          { href: `/aet/${idRelatorio}/setores`, label: "Setores / Riscos", icon: ClipboardCheck },
-          { href: `/aet/${idRelatorio}/laudo`, label: "Laudo / Imprimir", icon: Printer, variant: "report" },
+          { href: `/aet/${idRelatorio}/setores`,      label: "Setores / Riscos",  icon: ClipboardCheck },
+          { href: `/aet/${idRelatorio}/psicossocial`, label: "13 Fatores PSI",    icon: Brain, variant: "config" as const },
+          { href: `/aet/${idRelatorio}/laudo`,        label: "Laudo / Imprimir",  icon: Printer, variant: "report" as const },
         ],
       });
     }
 
     return base;
-  }, [idRelatorio]);
+  }, [idRelatorio, isConfigPage, isAdmin]);
 
   return (
     <div className="min-h-screen">

@@ -21,6 +21,13 @@ import {
   useAetTextoPadrao,
   useAetChecklistPerguntas,
   useAetOwasConfig,
+  useAet13FatoresConfig,
+  useAet13FatoresSemaforo,
+  useAetLaudoQpsMeta,
+  useAetLaudoFatoresPsi,
+  zonaFromMedia,
+  nivelPgrFromZona,
+  SEMAFORO_DEFAULT,
   CHECKLIST_PERGUNTAS_PADRAO,
   SLUG_TO_DEFAULT_IMAGE,
   SLUG_TO_OWAS_FIELD,
@@ -131,6 +138,10 @@ export default function AetLaudoPage({
   const { data: capitulos = [] } = useAetTextoPadrao();
   const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
   const { data: owasConfig = [] } = useAetOwasConfig();
+  const { data: fatoresConfig = [] } = useAet13FatoresConfig();
+  const { data: semaforo = SEMAFORO_DEFAULT } = useAet13FatoresSemaforo();
+  const { data: qpsMeta } = useAetLaudoQpsMeta(idRelatorio);
+  const { data: fatoresPsi = [] } = useAetLaudoFatoresPsi(idRelatorio);
 
   useEffect(() => {
     if (rel) {
@@ -621,8 +632,207 @@ export default function AetLaudoPage({
           </>
         )}
 
-        {/* ── Seção 14 — Considerações Finais ── */}
-        <Section num="14" title="Considerações Finais">
+        {/* ── Seções 14-19 — Fatores Psicossociais (apenas se houver dados) ── */}
+        {fatoresPsi.length > 0 && (
+          <>
+            <Section num="14" title="Avaliação dos Fatores Psicossociais">
+              <p className="text-xs leading-relaxed text-gray-700">
+                Esta seção apresenta os resultados da avaliação dos 13 Fatores Psicossociais do Trabalho, realizada
+                com base em Questionário Psicossocial (QPS) aplicado conforme os requisitos da NR-01 (Gerenciamento
+                de Riscos Ocupacionais) e referenciais como Copsoq, DRPS/MTE e literatura especializada em saúde
+                mental do trabalho.
+              </p>
+            </Section>
+
+            {qpsMeta && (
+              <Section num="15" title="Dados da Aplicação do QPS">
+                <table className="w-full border-collapse text-xs">
+                  <tbody>
+                    <tr className="border border-gray-200">
+                      <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">N.º Respondentes</td>
+                      <td className="px-3 py-1.5 text-gray-700">{qpsMeta.n_respondentes ?? "—"}</td>
+                      <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Total Elegível</td>
+                      <td className="px-3 py-1.5 text-gray-700">{qpsMeta.total_elegivel ?? "—"}</td>
+                    </tr>
+                    <tr className="border border-gray-200">
+                      <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">% Adesão</td>
+                      <td className="px-3 py-1.5 text-gray-700">
+                        {qpsMeta.n_respondentes && qpsMeta.total_elegivel
+                          ? `${Math.round((qpsMeta.n_respondentes / qpsMeta.total_elegivel) * 100)}%`
+                          : "—"}
+                      </td>
+                      <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Modo de Aplicação</td>
+                      <td className="px-3 py-1.5 text-gray-700">{qpsMeta.modo_aplicacao ?? "—"}</td>
+                    </tr>
+                    <tr className="border border-gray-200">
+                      <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Período</td>
+                      <td className="px-3 py-1.5 text-gray-700" colSpan={3}>
+                        {qpsMeta.periodo_inicio
+                          ? new Date(qpsMeta.periodo_inicio + "T00:00:00").toLocaleDateString("pt-BR")
+                          : "—"}
+                        {qpsMeta.periodo_fim
+                          ? ` a ${new Date(qpsMeta.periodo_fim + "T00:00:00").toLocaleDateString("pt-BR")}`
+                          : ""}
+                      </td>
+                    </tr>
+                    {qpsMeta.observacao_geral && (
+                      <tr className="border border-gray-200">
+                        <td className="w-44 bg-gray-50 px-3 py-1.5 font-semibold text-gray-600">Observação</td>
+                        <td className="px-3 py-1.5 text-gray-700" colSpan={3}>{qpsMeta.observacao_geral}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </Section>
+            )}
+
+            <Section num="16" title="Resultado por Fator — Classificação Geral">
+              <table className="w-full border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-700 text-white">
+                    <th className="px-3 py-2 text-left font-semibold">Cód.</th>
+                    <th className="px-3 py-2 text-left font-semibold">Fator</th>
+                    <th className="px-3 py-2 text-center font-semibold">Média</th>
+                    <th className="px-3 py-2 text-center font-semibold">% Risco</th>
+                    <th className="px-3 py-2 text-left font-semibold">Zona</th>
+                    <th className="px-3 py-2 text-left font-semibold">Nível PGR</th>
+                    <th className="px-3 py-2 text-left font-semibold">Prazo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fatoresPsi.filter((fp) => fp.avaliado).map((fp) => {
+                    const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
+                    const zona = fp.codigo_fator === "F13"
+                      ? fp.zona
+                      : zonaFromMedia(fp.media);
+                    const prazoSem = semaforo.find((s) => s.id === zona);
+                    const ZONA_PRINT: Record<string, string> = {
+                      verde: "#E8F5E9", amarela: "#FFF9C4", laranja: "#FFE0B2", vermelha: "#FFEBEE",
+                    };
+                    const ZONA_TEXT: Record<string, string> = {
+                      verde: "#1B5E20", amarela: "#F57F17", laranja: "#E65100", vermelha: "#C62828",
+                    };
+                    return (
+                      <tr key={fp.codigo_fator} className="border-b border-gray-100">
+                        <td className="px-3 py-2 font-mono font-bold text-gray-700">{fp.codigo_fator}</td>
+                        <td className="px-3 py-2 text-gray-800">{cfg?.nome ?? fp.codigo_fator}</td>
+                        <td className="px-3 py-2 text-center text-gray-700">
+                          {fp.codigo_fator === "F13" ? "—" : fp.media != null ? fp.media.toFixed(2) : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-center text-gray-700">
+                          {fp.pct_zona_risco != null ? `${fp.pct_zona_risco.toFixed(1)}%` : "—"}
+                        </td>
+                        <td className="px-3 py-2">
+                          {zona ? (
+                            <span
+                              className="rounded px-2 py-0.5 text-[10px] font-bold"
+                              style={{ background: ZONA_PRINT[zona] ?? "#f3f4f6", color: ZONA_TEXT[zona] ?? "#374151" }}
+                            >
+                              {zona.charAt(0).toUpperCase() + zona.slice(1)}
+                            </span>
+                          ) : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-gray-700">{nivelPgrFromZona(zona)}</td>
+                        <td className="px-3 py-2 text-gray-700">{prazoSem?.prazo_texto ?? "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </Section>
+
+            <Section num="17" title="Análise Detalhada por Fator">
+              <div className="space-y-4">
+                {fatoresPsi.filter((fp) => fp.avaliado && (fp.observacao || fp.pergunta_critica)).map((fp) => {
+                  const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
+                  return (
+                    <div key={fp.codigo_fator} className="rounded border border-gray-200 overflow-hidden">
+                      <div className="bg-gray-700 px-4 py-2">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-white">
+                          {fp.codigo_fator} — {cfg?.nome ?? fp.codigo_fator}
+                        </p>
+                      </div>
+                      <div className="p-3 space-y-2">
+                        {fp.pergunta_critica && (
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-0.5">
+                              Pergunta Crítica
+                            </p>
+                            <p className="text-xs text-gray-700 italic">&ldquo;{fp.pergunta_critica}&rdquo;</p>
+                          </div>
+                        )}
+                        {fp.observacao && (
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-0.5">
+                              Análise
+                            </p>
+                            <p className="text-xs text-gray-700 leading-relaxed">{fp.observacao}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Section>
+
+            <Section num="18" title="Perigos e Possíveis Danos por Fator">
+              <table className="w-full border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-700 text-white">
+                    <th className="px-3 py-2 text-left font-semibold">Cód.</th>
+                    <th className="px-3 py-2 text-left font-semibold">Perigos Típicos</th>
+                    <th className="px-3 py-2 text-left font-semibold">Possíveis Danos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fatoresPsi.filter((fp) => fp.avaliado).map((fp) => {
+                    const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
+                    return (
+                      <tr key={fp.codigo_fator} className="border-b border-gray-100">
+                        <td className="px-3 py-2 font-mono font-bold text-gray-700 align-top">{fp.codigo_fator}</td>
+                        <td className="px-3 py-2 text-gray-700 leading-relaxed align-top">{cfg?.perigos_tipicos ?? "—"}</td>
+                        <td className="px-3 py-2 text-gray-700 leading-relaxed align-top">{cfg?.possiveis_danos ?? "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </Section>
+
+            <Section num="19" title="Plano de Ação Recomendado">
+              <table className="w-full border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-700 text-white">
+                    <th className="px-3 py-2 text-left font-semibold">Cód.</th>
+                    <th className="px-3 py-2 text-left font-semibold">Foco / Ação Recomendada</th>
+                    <th className="px-3 py-2 text-left font-semibold">Responsável</th>
+                    <th className="px-3 py-2 text-left font-semibold">Prazo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fatoresPsi.filter((fp) => fp.avaliado).map((fp) => {
+                    const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
+                    return (
+                      <tr key={fp.codigo_fator} className="border-b border-gray-100">
+                        <td className="px-3 py-2 font-mono font-bold text-gray-700 align-top">{fp.codigo_fator}</td>
+                        <td className="px-3 py-2 text-gray-700 leading-relaxed align-top">
+                          <p className="font-semibold text-gray-800 mb-0.5">{cfg?.foco_plano ?? "—"}</p>
+                          <p>{cfg?.acao_plano ?? "—"}</p>
+                        </td>
+                        <td className="px-3 py-2 text-gray-700 align-top">{cfg?.responsavel_plano ?? "—"}</td>
+                        <td className="px-3 py-2 text-gray-700 align-top">{cfg?.prazo_plano ?? "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </Section>
+          </>
+        )}
+
+        {/* ── Seção 20 — Considerações Finais ── */}
+        <Section num="20" title="Considerações Finais">
           <div className="print:hidden">
             <RichTextEditor
               value={consideracoes}

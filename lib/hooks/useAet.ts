@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
-import type { AetCargo, AetChecklist, AetChecklistPergunta, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, RespostaChecklist, StatusAET } from "@/lib/supabase/types";
+import type { Aet13FatorConfig, Aet13FatorPergunta, Aet13FatorSemaforo, AetCargo, AetChecklist, AetChecklistPergunta, AetLaudoFatorPsi, AetLaudoQpsMeta, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, RespostaChecklist, StatusAET, ZonaPsi } from "@/lib/supabase/types";
 
 function normalizarCargos(raw: unknown): AetCargo[] {
   if (Array.isArray(raw)) return raw as AetCargo[];
@@ -610,4 +610,284 @@ export function setorVazio(): AetSetor {
     recomendacoes: "",
     demais_condicoes: "",
   };
+}
+
+// ─── 13 Fatores PSI — Defaults ────────────────────────────────────────────────
+
+export const FATORES_DEFAULT: Aet13FatorConfig[] = [
+  { codigo: "F01", ordem: 1, nome: "Cultura organizacional", descricao: "Conjunto de valores, crenças e práticas compartilhadas — confiança, honestidade, justiça.", perigos_tipicos: "Regras aplicadas de forma desigual; falta de transparência; valores declarados x praticados.", possiveis_danos: "Desmotivação, conflitos, síndrome de burnout, rotatividade elevada.", foco_plano: "Cultura organizacional", acao_plano: "Publicar e disseminar código de conduta. Diagnóstico anual de clima. Aplicação equânime de regras. Rituais que reforcem valores.", responsavel_plano: "RH + Direção", prazo_plano: "120 dias" },
+  { codigo: "F02", ordem: 2, nome: "Suporte psicológico e social", descricao: "Rede de apoio formal e informal que reconhece a saúde mental.", perigos_tipicos: "Ausência de PAE; lideranças sem preparo para acolher; estigma sobre saúde mental.", possiveis_danos: "Depressão, ansiedade, isolamento, absenteísmo.", foco_plano: "Suporte psicológico e social", acao_plano: "Implantar PAE com atendimento psicológico sigiloso. Capacitar lideranças em primeiros socorros psicológicos.", responsavel_plano: "SESMT + RH", prazo_plano: "90 dias" },
+  { codigo: "F03", ordem: 3, nome: "Liderança clara e expectativas", descricao: "Liderança que comunica e define metas factíveis.", perigos_tipicos: "Metas confusas; mudanças sem comunicação prévia; ausência de feedback.", possiveis_danos: "Ansiedade, erro humano, perda de produtividade.", foco_plano: "Liderança clara", acao_plano: "Formalizar descrição de cargos. Onboarding estruturado. Comunicação de mudanças com 7 dias de antecedência. Reuniões semanais de alinhamento.", responsavel_plano: "Gestão + RH", prazo_plano: "90 dias" },
+  { codigo: "F04", ordem: 4, nome: "Civilidade e respeito", descricao: "Trabalhadores respeitosos uns com os outros e com clientes.", perigos_tipicos: "Microagressões; comentários depreciativos; diferenças de tratamento.", possiveis_danos: "Trauma psicológico, queda de desempenho, pedidos de demissão.", foco_plano: "Civilidade e respeito", acao_plano: "Código de conduta atualizado. Workshops sobre respeito e diversidade. Protocolo de mediação. Tolerância zero para microagressões.", responsavel_plano: "RH + CIPA", prazo_plano: "180 dias" },
+  { codigo: "F05", ordem: 5, nome: "Demandas psicológicas", descricao: "Equilíbrio entre exigências cognitivas/emocionais e capacidade.", perigos_tipicos: "Volume de trabalho excessivo; prazos impossíveis; trabalho emocional intenso.", possiveis_danos: "Burnout, doenças cardiovasculares, distúrbios de sono.", foco_plano: "Demandas psicológicas", acao_plano: "Medir objetivamente a carga. Ajustar metas. Garantir pausas conforme NR-17. Redesenhar processos para reduzir picos.", responsavel_plano: "Gestão + SESMT", prazo_plano: "60 dias" },
+  { codigo: "F06", ordem: 6, nome: "Crescimento e desenvolvimento", descricao: "Apoio para desenvolver habilidades.", perigos_tipicos: "Ausência de plano de carreira; trabalho repetitivo sem aprendizado.", possiveis_danos: "Desmotivação, estagnação, turnover.", foco_plano: "Crescimento e desenvolvimento", acao_plano: "Plano de capacitação anual. Mentoria interna. Trilhas de carreira documentadas. PDI.", responsavel_plano: "RH", prazo_plano: "180 dias" },
+  { codigo: "F07", ordem: 7, nome: "Reconhecimento e recompensa", descricao: "Reconhecimento adequado e apreciação justa.", perigos_tipicos: "Ausência de feedback positivo; critérios de promoção opacos.", possiveis_danos: "Desmotivação, ressentimento, queda de engajamento.", foco_plano: "Reconhecimento e recompensa", acao_plano: "Ritual mensal de feedback (1:1). Capacitar lideranças em feedback. Programa de reconhecimento simbólico. Revisar critérios de progressão.", responsavel_plano: "RH", prazo_plano: "120 dias" },
+  { codigo: "F08", ordem: 8, nome: "Envolvimento e influência", descricao: "Trabalhadores incluídos em discussões e decisões.", perigos_tipicos: "Centralização excessiva; decisões top-down sem consulta.", possiveis_danos: "Alienação, baixo engajamento, resistência a mudanças.", foco_plano: "Envolvimento e influência", acao_plano: "Reuniões periódicas para co-construção de metas. Ampliar margem de decisão. Canal de sugestões com retorno em 15 dias.", responsavel_plano: "Gestão", prazo_plano: "90 dias" },
+  { codigo: "F09", ordem: 9, nome: "Gestão de carga de trabalho", descricao: "Quantidade compatível com jornada, pessoas e recursos.", perigos_tipicos: "Subdimensionamento de equipe; horas extras habituais; picos sem redistribuição.", possiveis_danos: "Exaustão física e mental, acidentes, absenteísmo.", foco_plano: "Gestão de carga de trabalho", acao_plano: "Revisar dimensionamento da equipe. Política de horas extras com limite mensal. Banco de horas transparente. Redistribuir picos.", responsavel_plano: "RH + Gestão", prazo_plano: "60 dias" },
+  { codigo: "F10", ordem: 10, nome: "Engajamento", descricao: "Conexão e motivação com o trabalho.", perigos_tipicos: "Falta de propósito percebido; baixo pertencimento.", possiveis_danos: "Presenteísmo, baixa qualidade, turnover.", foco_plano: "Engajamento", acao_plano: "Pesquisa de engajamento semestral. Reuniões de devolutiva. Plano de ação participativo. Reconhecimento de contribuições.", responsavel_plano: "RH", prazo_plano: "180 dias" },
+  { codigo: "F11", ordem: 11, nome: "Equilíbrio (trabalho-vida)", descricao: "Reconhecimento da necessidade de equilíbrio.", perigos_tipicos: "Contato fora do horário; cobrança por WhatsApp; férias interrompidas.", possiveis_danos: "Burnout, conflitos familiares, doenças psicossomáticas.", foco_plano: "Equilíbrio trabalho-vida", acao_plano: "Política de direito à desconexão. Vedar contato fora do horário (exceto emergência). Banir cobranças por WhatsApp pessoal. Respeitar férias.", responsavel_plano: "RH + Jurídico", prazo_plano: "30 dias" },
+  { codigo: "F12", ordem: 12, nome: "Proteção psicológica", descricao: "Segurança psicológica para reportar problemas (inclui assédio).", perigos_tipicos: "Assédio moral/sexual; ausência de canal de denúncia; retaliação a denunciantes.", possiveis_danos: "TEPT, depressão grave, adoecimento coletivo.", foco_plano: "Proteção psicológica", acao_plano: "Canal de denúncia sigiloso e independente (Lei 14.457/2022). Treinar CIPA. Proteção a denunciantes. Tolerância zero ao assédio.", responsavel_plano: "Compliance + RH + CIPA", prazo_plano: "30 dias" },
+  { codigo: "F13", ordem: 13, nome: "Proteção da segurança física", descricao: "Proteção contra perigos físicos.", perigos_tipicos: "Riscos físicos, químicos, biológicos e ergonômicos do ambiente de trabalho.", possiveis_danos: "Acidentes, doenças ocupacionais, lesões musculoesqueléticas.", foco_plano: "Segurança física", acao_plano: "Implementar/atualizar plano dos riscos ergonômicos físicos do PGR. Manter EPC/EPI. Treinamentos. Inspeções periódicas.", responsavel_plano: "SESMT", prazo_plano: "Conforme PGR" },
+];
+
+export const PERGUNTAS_DEFAULT: Omit<Aet13FatorPergunta, "id" | "updated_at">[] = [
+  { codigo_fator: "F03", texto: "Você recebe instruções claras sobre a sua responsabilidade no trabalho?", logica: "invertida", ordem: 1 },
+  { codigo_fator: "F03", texto: "A comunicação da empresa ajuda você a entender o que é esperado do seu trabalho?", logica: "invertida", ordem: 2 },
+  { codigo_fator: "F03", texto: "Você recebe orientações adequadas quando ocorrem mudanças no trabalho?", logica: "invertida", ordem: 3 },
+  { codigo_fator: "F03", texto: "Quando necessário, você recebe orientação da liderança para executar o seu trabalho?", logica: "invertida", ordem: 4 },
+  { codigo_fator: "F01", texto: "As orientações e regras da empresa facilitam a execução das atividades?", logica: "invertida", ordem: 5 },
+  { codigo_fator: "F01", texto: "As regras da empresa são aplicadas da mesma forma para todos?", logica: "invertida", ordem: 6 },
+  { codigo_fator: "F01", texto: "Os setores conseguem trabalhar em conjunto de forma adequada?", logica: "invertida", ordem: 7 },
+  { codigo_fator: "F01", texto: "As informações entre os setores ajudam na rotina de trabalho?", logica: "invertida", ordem: 8 },
+  { codigo_fator: "F02", texto: "Você se sente confortável para pedir esclarecimentos e ajuda quando não entende suas funções ou tarefas?", logica: "invertida", ordem: 9 },
+  { codigo_fator: "F02", texto: "Você sente que pode contar com seus colegas em momentos de dificuldade?", logica: "invertida", ordem: 10 },
+  { codigo_fator: "F02", texto: "Existe apoio da liderança para lidar com desafios relacionados ao trabalho?", logica: "invertida", ordem: 11 },
+  { codigo_fator: "F02", texto: "Quando necessário, os colaboradores conseguem buscar apoio nos canais da empresa?", logica: "invertida", ordem: 12 },
+  { codigo_fator: "F04", texto: "Situações de desrespeito acontecem no ambiente de trabalho?", logica: "direta", ordem: 13 },
+  { codigo_fator: "F04", texto: "O relacionamento no ambiente de trabalho ocorre de forma respeitosa?", logica: "invertida", ordem: 14 },
+  { codigo_fator: "F04", texto: "Você percebe respeito na comunicação entre as pessoas na equipe?", logica: "invertida", ordem: 15 },
+  { codigo_fator: "F04", texto: "A liderança mantém um relacionamento profissional adequado com a equipe?", logica: "invertida", ordem: 16 },
+  { codigo_fator: "F05", texto: "A quantidade de atividades costuma ocupar adequadamente a sua jornada?", logica: "invertida", ordem: 17 },
+  { codigo_fator: "F05", texto: "Ao final da jornada, você costuma se sentir cansado mentalmente?", logica: "direta", ordem: 18 },
+  { codigo_fator: "F06", texto: "Você consegue utilizar os seus conhecimentos nas atividades do dia a dia?", logica: "invertida", ordem: 19 },
+  { codigo_fator: "F07", texto: "A liderança reconhece o trabalho realizado pelos colaboradores?", logica: "invertida", ordem: 20 },
+  { codigo_fator: "F07", texto: "Você recebe feedback construtivo sobre o seu trabalho com regularidade?", logica: "invertida", ordem: 21 },
+  { codigo_fator: "F08", texto: "Você consegue realizar suas atividades com certa independência?", logica: "invertida", ordem: 22 },
+  { codigo_fator: "F08", texto: "A equipe consegue opinar sobre melhorias no trabalho?", logica: "invertida", ordem: 23 },
+  { codigo_fator: "F08", texto: "A rotina do trabalho permite boa comunicação entre equipe e liderança?", logica: "invertida", ordem: 24 },
+  { codigo_fator: "F08", texto: "O acompanhamento da liderança ajuda na realização do trabalho?", logica: "invertida", ordem: 25 },
+  { codigo_fator: "F09", texto: "Você consegue concluir suas atividades dentro do horário de trabalho?", logica: "invertida", ordem: 26 },
+  { codigo_fator: "F09", texto: "A quantidade de pessoas no setor é suficiente para o trabalho do dia a dia?", logica: "invertida", ordem: 27 },
+  { codigo_fator: "F10", texto: "Você se sente tranquilo em relação ao seu trabalho na empresa?", logica: "invertida", ordem: 28 },
+  { codigo_fator: "F11", texto: "Você precisa estender a sua jornada para concluir as atividades?", logica: "direta", ordem: 29 },
+  { codigo_fator: "F12", texto: "Você se sente à vontade para comunicar situações inadequadas no ambiente de trabalho?", logica: "invertida", ordem: 30 },
+  { codigo_fator: "F12", texto: "Existe um canal seguro e sigiloso para denunciar assédio na empresa?", logica: "invertida", ordem: 31 },
+  { codigo_fator: "F12", texto: "Quando situações inadequadas são relatadas, você percebe que são tratadas pela empresa?", logica: "invertida", ordem: 32 },
+  { codigo_fator: "F12", texto: "Conflitos entre colegas dificultam o trabalho do dia a dia?", logica: "direta", ordem: 33 },
+  { codigo_fator: "F12", texto: "Os conflitos no trabalho costumam ser tratados de forma adequada?", logica: "invertida", ordem: 34 },
+  { codigo_fator: "F12", texto: "Alguma situação no trabalho já causou desconforto emocional para você?", logica: "direta", ordem: 35 },
+];
+
+export const SEMAFORO_DEFAULT: Aet13FatorSemaforo[] = [
+  { id: "verde",   label: "Verde — Satisfatório",  min_score: 4.0,  max_score: null, nivel_pgr: "Trivial",  prazo_texto: "Monitoramento", cor_fundo: "#E8F5E9", cor_texto: "#1B5E20" },
+  { id: "amarela", label: "Amarela — Atenção",     min_score: 3.0,  max_score: 3.99, nivel_pgr: "Moderado", prazo_texto: "180 dias",      cor_fundo: "#FFF9C4", cor_texto: "#F57F17" },
+  { id: "laranja", label: "Laranja — Elevado",     min_score: 2.0,  max_score: 2.99, nivel_pgr: "Alto",     prazo_texto: "90 dias",       cor_fundo: "#FFE0B2", cor_texto: "#E65100" },
+  { id: "vermelha",label: "Vermelha — Crítico",    min_score: null, max_score: 1.99, nivel_pgr: "Crítico",  prazo_texto: "30 dias",       cor_fundo: "#FFEBEE", cor_texto: "#C62828" },
+];
+
+export function zonaFromMedia(media: number | null): ZonaPsi | null {
+  if (media === null) return null;
+  if (media >= 4.0) return "verde";
+  if (media >= 3.0) return "amarela";
+  if (media >= 2.0) return "laranja";
+  return "vermelha";
+}
+
+export function nivelPgrFromZona(zona: ZonaPsi | null): string {
+  if (zona === "vermelha") return "Crítico";
+  if (zona === "laranja")  return "Alto";
+  if (zona === "amarela")  return "Moderado";
+  if (zona === "verde")    return "Trivial";
+  return "—";
+}
+
+// ─── 13 Fatores PSI — Hooks: Config ──────────────────────────────────────────
+
+export function useAet13FatoresConfig() {
+  return useQuery({
+    queryKey: ["aet-13fatores-config"],
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("aet_13fatores_config")
+        .select("*")
+        .order("ordem");
+      if (error) throw error;
+      if (!data || data.length === 0) return FATORES_DEFAULT;
+      return data as Aet13FatorConfig[];
+    },
+  });
+}
+
+export function useAet13FatoresSalvarConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (fatores: Aet13FatorConfig[]) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.from("aet_13fatores_config").upsert(fatores as never, { onConflict: "codigo" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["aet-13fatores-config"] });
+      toast.success("Configuração salva");
+    },
+    onError: () => toast.error("Erro ao salvar"),
+  });
+}
+
+export function useAet13FatoresRestaurarConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.from("aet_13fatores_config").upsert(FATORES_DEFAULT as never, { onConflict: "codigo" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["aet-13fatores-config"] });
+      toast.success("Padrão restaurado");
+    },
+    onError: () => toast.error("Erro ao restaurar"),
+  });
+}
+
+export function useAet13FatoresPerguntas() {
+  return useQuery({
+    queryKey: ["aet-13fatores-perguntas"],
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("aet_13fatores_perguntas")
+        .select("*")
+        .order("ordem");
+      if (error) throw error;
+      if (!data || data.length === 0) return PERGUNTAS_DEFAULT.map((p, i) => ({ ...p, id: String(i), updated_at: undefined })) as Aet13FatorPergunta[];
+      return data as Aet13FatorPergunta[];
+    },
+  });
+}
+
+export function useAet13FatoresSalvarPerguntas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (perguntas: Omit<Aet13FatorPergunta, "updated_at">[]) => {
+      const sb = createSupabaseBrowserClient();
+      // Delete all and re-insert to handle reordering
+      await sb.from("aet_13fatores_perguntas").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      const rows = perguntas.map(({ id: _id, ...p }, i) => ({ ...p, ordem: i + 1 }));
+      const { error } = await sb.from("aet_13fatores_perguntas").insert(rows as never);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["aet-13fatores-perguntas"] });
+      toast.success("Perguntas salvas");
+    },
+    onError: () => toast.error("Erro ao salvar perguntas"),
+  });
+}
+
+export function useAet13FatoresRestaurarPerguntas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      await sb.from("aet_13fatores_perguntas").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      const { error } = await sb.from("aet_13fatores_perguntas").insert(PERGUNTAS_DEFAULT as never);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["aet-13fatores-perguntas"] });
+      toast.success("Perguntas restauradas ao padrão");
+    },
+    onError: () => toast.error("Erro ao restaurar"),
+  });
+}
+
+export function useAet13FatoresSemaforo() {
+  return useQuery({
+    queryKey: ["aet-13fatores-semaforo"],
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.from("aet_13fatores_semaforo").select("*");
+      if (error) throw error;
+      if (!data || data.length === 0) return SEMAFORO_DEFAULT;
+      return data as Aet13FatorSemaforo[];
+    },
+  });
+}
+
+export function useAet13FatoresSalvarSemaforo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: Aet13FatorSemaforo[]) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.from("aet_13fatores_semaforo").upsert(rows as never, { onConflict: "id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["aet-13fatores-semaforo"] });
+      toast.success("Semáforo salvo");
+    },
+    onError: () => toast.error("Erro ao salvar semáforo"),
+  });
+}
+
+// ─── 13 Fatores PSI — Hooks: Laudo ───────────────────────────────────────────
+
+export function useAetLaudoQpsMeta(idRelatorio: string | null) {
+  return useQuery({
+    queryKey: ["aet-laudo-qps-meta", idRelatorio],
+    enabled: !!idRelatorio,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data } = await sb
+        .from("aet_laudo_qps_meta")
+        .select("*")
+        .eq("id_relatorio", idRelatorio!)
+        .maybeSingle();
+      return (data ?? null) as AetLaudoQpsMeta | null;
+    },
+  });
+}
+
+export function useAetSalvarQpsMeta() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (meta: AetLaudoQpsMeta) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb
+        .from("aet_laudo_qps_meta")
+        .upsert(meta as never, { onConflict: "id_relatorio" });
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["aet-laudo-qps-meta", v.id_relatorio] });
+      toast.success("Metadados QPS salvos");
+    },
+    onError: () => toast.error("Erro ao salvar"),
+  });
+}
+
+export function useAetLaudoFatoresPsi(idRelatorio: string | null) {
+  return useQuery({
+    queryKey: ["aet-laudo-fatores-psi", idRelatorio],
+    enabled: !!idRelatorio,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("aet_laudo_fatores_psi")
+        .select("*")
+        .eq("id_relatorio", idRelatorio!)
+        .order("codigo_fator");
+      if (error) throw error;
+      return (data ?? []) as AetLaudoFatorPsi[];
+    },
+  });
+}
+
+export function useAetSalvarFatorPsi() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (row: Omit<AetLaudoFatorPsi, "id" | "updated_at"> & { id?: string }) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb
+        .from("aet_laudo_fatores_psi")
+        .upsert(row as never, { onConflict: "id_relatorio,codigo_fator" });
+      if (error) throw error;
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["aet-laudo-fatores-psi", v.id_relatorio] });
+    },
+    onError: () => toast.error("Erro ao salvar fator"),
+  });
 }
