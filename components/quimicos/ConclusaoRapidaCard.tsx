@@ -2,10 +2,6 @@
 
 import {
   AlertTriangle,
-  ShieldCheck,
-  Skull,
-  Stethoscope,
-  Activity,
   HardHat,
   Factory,
   Settings,

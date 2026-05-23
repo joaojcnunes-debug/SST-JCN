@@ -185,7 +185,6 @@ export default function AnalisePage({
     }
     setEditores(novos);
     setDirty(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [relatorio, respondentes]);
 
   function getEditor(s: string): SetorEditor {

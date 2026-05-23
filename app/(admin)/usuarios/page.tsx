@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   Lock,
   Trash2,
-  KeyRound,
 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import Badge from "@/components/ui/Badge";

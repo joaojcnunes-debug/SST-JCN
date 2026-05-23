@@ -360,7 +360,8 @@ export function useAetInicializarOwasConfig() {
   return useMutation({
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
-      const rows = OWAS_CATEGORIAS_PADRAO.map(({ id: _id, ...rest }) => rest);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const rows = OWAS_CATEGORIAS_PADRAO.map(({ id: _, ...rest }) => rest);
       const { error } = await supabase
         .from("aet_owas_categorias")
         .insert(rows as never);

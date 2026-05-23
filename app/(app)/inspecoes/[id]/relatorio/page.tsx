@@ -11,11 +11,6 @@ import {
   Camera,
   Briefcase,
   ShieldCheck,
-  ShieldAlert,
-  Activity,
-  Clock,
-  Wrench,
-  ListChecks,
 } from "lucide-react";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";

@@ -355,40 +355,6 @@ export default function RiscoForm({
   );
 
   /**
-   * V8: liga/desliga um modelo via triagem (multi-select).
-   *
-   * Regras:
-   *   - 0 marcados: comportamento livre (usuário digita agente).
-   *   - 1 marcado: aplica o modelo (autofill agente/fonte/EPIs/medidas).
-   *   - 2+ marcados: limpa agente/modelo (cada um vira 1 risco no save).
-   */
-  function toggleModeloTriagem(idModelo: string) {
-    const isChecked = form.triagem_modelos_ids.includes(idModelo);
-    const novaLista = isChecked
-      ? form.triagem_modelos_ids.filter((x) => x !== idModelo)
-      : [...form.triagem_modelos_ids, idModelo];
-
-    if (novaLista.length === 1) {
-      const m = modelos.find((x) => x.id_modelo === novaLista[0]);
-      setForm((f) => ({
-        ...f,
-        triagem_modelos_ids: novaLista,
-        id_modelo: novaLista[0],
-        agente: m?.agente ?? "",
-      }));
-      return;
-    }
-
-    // 0 ou 2+: limpa modelo/agente, só atualiza a lista
-    setForm((f) => ({
-      ...f,
-      triagem_modelos_ids: novaLista,
-      id_modelo: "",
-      agente: novaLista.length === 0 ? f.agente : "",
-    }));
-  }
-
-  /**
    * Reage ao input do campo Agente: se o texto bater com o nome de
    * algum modelo (case-insensitive), aplica o kit do modelo. Senão,
    * fica em modo livre (id_modelo zerado).

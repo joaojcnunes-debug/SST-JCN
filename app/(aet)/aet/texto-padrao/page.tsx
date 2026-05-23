@@ -287,7 +287,7 @@ export default function AetTextoPadraoPage() {
               {capitulosFiltrados.length} de {capitulos.length} capítulo{capitulos.length !== 1 ? "s" : ""}
             </p>
           )}
-          {capitulosFiltrados.map((cap, i) => (
+          {capitulosFiltrados.map((cap) => (
             <CapituloCard
               key={cap.id_capitulo}
               capitulo={cap}

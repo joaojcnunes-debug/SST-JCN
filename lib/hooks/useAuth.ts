@@ -12,7 +12,6 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
  */
 export function useAuth() {
   const router = useRouter();
-  const user = useUserStore((s) => s.user);
   const setUser = useUserStore((s) => s.setUser);
 
   useEffect(() => {
