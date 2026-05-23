@@ -1,7 +1,8 @@
 "use client";
 
 import { use, useState, useEffect } from "react";
-import { Brain, ChevronDown, ChevronUp, Loader2, Save } from "lucide-react";
+import { Brain, ChevronDown, ChevronUp, Loader2, Save, Sparkles } from "lucide-react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
 import {
   useAetRelatorio,
@@ -73,6 +74,27 @@ function rKey(idSetor: string, codigoFator: string, ordem: number) {
   return `${idSetor}|${codigoFator}|${ordem}`;
 }
 
+function perguntaCriticaAuto(
+  perguntas: Aet13FatorPergunta[],
+  localRespostas: Record<string, number>,
+  idSetor: string,
+  codigoFator: string
+): string | null {
+  const pFator = perguntas.filter((p) => p.codigo_fator === codigoFator);
+  let worstScore = Infinity;
+  let worstTexto: string | null = null;
+  for (const p of pFator) {
+    const r = localRespostas[rKey(idSetor, codigoFator, p.ordem)];
+    if (r == null) continue;
+    const score = p.logica === "direta" ? 6 - r : r;
+    if (score < worstScore) {
+      worstScore = score;
+      worstTexto = p.texto;
+    }
+  }
+  return worstTexto;
+}
+
 function calcularMediaFator(
   perguntas: Aet13FatorPergunta[],
   localRespostas: Record<string, number>,
@@ -124,6 +146,7 @@ export default function PsicossocialPage({
   const [perguntasCriticas, setPerguntasCriticas] = useState<Record<string, string>>({});
   const [zonasManuais, setZonasManuais] = useState<Record<string, ZonaPsi | null>>({});
   const [salvandoFator, setSalvandoFator] = useState<string | null>(null);
+  const [gerandoObsIA, setGerandoObsIA] = useState<string | null>(null);
 
   const [meta, setMeta] = useState<Omit<AetLaudoQpsMeta, "updated_at">>({
     id_relatorio: idRelatorio,
@@ -170,6 +193,22 @@ export default function PsicossocialPage({
       return next;
     });
   }, [respostasDB]);
+
+  // Auto-fill Pergunta Crítica quando localRespostas muda (só preenche se vazio)
+  useEffect(() => {
+    if (!setorAtivo || perguntas.length === 0) return;
+    setPerguntasCriticas((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const fator of fatores) {
+        if (fator.codigo === "F13") continue;
+        if (prev[fator.codigo]) continue; // não sobrescreve o que o usuário digitou
+        const auto = perguntaCriticaAuto(perguntas, localRespostas, setorAtivo, fator.codigo);
+        if (auto) { next[fator.codigo] = auto; changed = true; }
+      }
+      return changed ? next : prev;
+    });
+  }, [localRespostas, setorAtivo, fatores, perguntas]);
 
   // Init observacoes / perguntasCriticas / zonasManuais
   useEffect(() => {
@@ -263,6 +302,40 @@ export default function PsicossocialPage({
       // handled in hooks
     } finally {
       setSalvandoFator(null);
+    }
+  }
+
+  async function gerarObsIA(codigoFator: string) {
+    if (!setorAtivo) return;
+    const fatorObj = fatores.find((f) => f.codigo === codigoFator);
+    if (!fatorObj) return;
+    const mediaCalc = calcularMediaFator(perguntas, localRespostas, setorAtivo, codigoFator);
+    const zona = zonaFromMedia(mediaCalc);
+    setGerandoObsIA(codigoFator);
+    try {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.functions.invoke("gerar-observacao-psi-ia", {
+        body: {
+          empresa: rel?.empresas && "nome_empresa" in (rel.empresas as object)
+            ? { nome: (rel.empresas as { nome_empresa: string }).nome_empresa }
+            : null,
+          setor: { nome: setorAtivoObj?.nome_setor ?? "Setor" },
+          fator: { codigo: codigoFator, nome: fatorObj.nome, descricao: fatorObj.descricao },
+          media: mediaCalc,
+          zona,
+          nivel_pgr: nivelPgrFromZona(zona),
+          pergunta_critica: perguntasCriticas[codigoFator] || null,
+          textoAtual: observacoes[codigoFator] || null,
+        },
+      });
+      if (error) throw error;
+      const obs = data?.data?.observacao ?? data?.observacao ?? "";
+      if (obs) setObservacoes((prev) => ({ ...prev, [codigoFator]: obs }));
+      else toast.error("IA não retornou texto");
+    } catch {
+      toast.error("Erro ao gerar com IA");
+    } finally {
+      setGerandoObsIA(null);
     }
   }
 
@@ -673,9 +746,24 @@ export default function PsicossocialPage({
                         )}
 
                         <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-600">
-                            Observação / Análise
-                          </label>
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <label className="text-xs font-medium text-gray-600">
+                              Observação / Análise
+                            </label>
+                            {!isF13 && (
+                              <button
+                                type="button"
+                                onClick={() => gerarObsIA(fator.codigo)}
+                                disabled={gerandoObsIA === fator.codigo}
+                                className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {gerandoObsIA === fator.codigo
+                                  ? <Loader2 className="size-3 animate-spin" />
+                                  : <Sparkles className="size-3" />}
+                                {gerandoObsIA === fator.codigo ? "Gerando…" : "Gerar com IA"}
+                              </button>
+                            )}
+                          </div>
                           <textarea
                             rows={3}
                             value={observacoes[fator.codigo] ?? ""}
