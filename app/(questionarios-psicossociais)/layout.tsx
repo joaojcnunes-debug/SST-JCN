@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   BarChart2,
   ListChecks,
+  BookOpen,
 } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
@@ -23,7 +24,7 @@ export default function QuestionariosLayout({ children }: { children: ReactNode 
   const pathname = usePathname();
   const match = pathname.match(/\/questionarios-psicossociais\/([^/]+)/);
   const idAplicacao = match?.[1];
-  const isIdPage = idAplicacao && idAplicacao !== "nova" && idAplicacao !== "tipos";
+  const isIdPage = idAplicacao && idAplicacao !== "nova" && idAplicacao !== "tipos" && idAplicacao !== "como-funciona";
 
   const sections = useMemo<NavSection[]>(() => {
     const base: NavSection[] = [
@@ -50,6 +51,12 @@ export default function QuestionariosLayout({ children }: { children: ReactNode 
             href: "/questionarios-psicossociais/tipos",
             label: "Tipos e Perguntas",
             icon: Settings2,
+            variant: "config",
+          },
+          {
+            href: "/questionarios-psicossociais/como-funciona",
+            label: "Metodologia",
+            icon: BookOpen,
             variant: "config",
           },
         ],
