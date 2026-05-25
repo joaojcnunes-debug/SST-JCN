@@ -19,6 +19,7 @@ import {
   Globe,
   CheckCircle2,
   Gauge,
+  FlaskConical,
 } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
@@ -46,6 +47,11 @@ const SECTIONS_LISTA: NavSection[] = [
   {
     label: "Referência",
     items: [
+      {
+        href: "/psicossocial/metodologia",
+        label: "Metodologia Aplicada",
+        icon: FlaskConical,
+      },
       {
         href: "/psicossocial/criterios",
         label: "Critérios de Probabilidade",
@@ -113,6 +119,7 @@ function extrairIdRelatorio(pathname: string): string | null {
     "novo",
     "ajuda",
     "criterios",
+    "metodologia",
     "texto-padrao",
     "dashboard-geral",
   ]);
