@@ -51,6 +51,7 @@ export default function AepNovoPage() {
             value={empresaId}
             onChange={setEmpresaId}
             modulo="aep"
+            allowAll
             placeholder="Selecione a empresa..."
           />
         </div>
