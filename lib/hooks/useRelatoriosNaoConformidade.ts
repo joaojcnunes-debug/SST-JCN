@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
@@ -138,6 +139,7 @@ export function useCriarRelatorioNaoConformidade() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
+    onError: (e: Error) => toast.error(`Erro ao criar relatório: ${e.message}`),
   });
 }
 
@@ -203,6 +205,7 @@ export function useAtualizarRelatorioNaoConformidade() {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -221,6 +224,7 @@ export function useExcluirRelatorioNaoConformidade() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
+    onError: (e: Error) => toast.error(`Erro ao excluir: ${e.message}`),
   });
 }
 
@@ -268,6 +272,7 @@ export function useAdicionarItemNC() {
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_relatorio) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -316,6 +321,7 @@ export function useAtualizarItemNC() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -349,6 +355,7 @@ export function useExcluirItemNC() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -405,6 +412,7 @@ export function useUploadFotoItemNC() {
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -440,5 +448,6 @@ export function useRemoverFotoItemNC() {
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }

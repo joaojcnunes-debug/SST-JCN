@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import {
@@ -87,6 +88,7 @@ export function useInicializarBaseQuimicos() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
+    onError: (e: Error) => toast.error(`Erro ao inicializar base: ${e.message}`),
   });
 }
 
@@ -108,6 +110,7 @@ export function useUpsertAgenteReferencia() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -126,6 +129,7 @@ export function useDeleteAgenteReferencia() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
+    onError: (e: Error) => toast.error(`Erro ao excluir: ${e.message}`),
   });
 }
 
@@ -144,6 +148,7 @@ export function useCriarAgenteReferencia() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
+    onError: (e: Error) => toast.error(`Erro ao criar: ${e.message}`),
   });
 }
 
@@ -161,5 +166,6 @@ export function useApagarTudoBase() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
+    onError: (e: Error) => toast.error(`Erro ao apagar base: ${e.message}`),
   });
 }

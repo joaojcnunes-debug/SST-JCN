@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
@@ -150,6 +151,7 @@ export function useCriarRelatorioConformidade() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
+    onError: (e: Error) => toast.error(`Erro ao criar relatório: ${e.message}`),
   });
 }
 
@@ -187,6 +189,7 @@ export function useAtualizarItemConformidade() {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -234,6 +237,7 @@ export function useAtualizarRelatorioConformidade() {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -326,6 +330,7 @@ export function useAdicionarItemConformidadeExtra() {
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_relatorio) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -362,6 +367,7 @@ export function useExcluirItemConformidadeExtra() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -427,6 +433,7 @@ export function useUploadFotoItemConformidade() {
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -470,6 +477,7 @@ export function useRemoverFotoItemConformidade() {
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -488,5 +496,6 @@ export function useExcluirRelatorioConformidade() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
+    onError: (e: Error) => toast.error(`Erro ao excluir: ${e.message}`),
   });
 }

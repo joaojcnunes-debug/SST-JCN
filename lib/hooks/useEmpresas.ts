@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Empresa, ModuloEmpresa } from "@/lib/supabase/types";
 import { useUserStore } from "@/lib/store";
@@ -77,5 +78,6 @@ export function useAtualizarEmpresa() {
       qc.invalidateQueries({ queryKey: ["empresa", variables.id_empresa] });
       qc.invalidateQueries({ queryKey: ["empresas"] });
     },
+    onError: (e: Error) => toast.error(`Erro ao atualizar empresa: ${e.message}`),
   });
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
@@ -170,6 +171,7 @@ export function useCriarApreciacaoMaquina() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
+    onError: (e: Error) => toast.error(`Erro ao criar: ${e.message}`),
   });
 }
 
@@ -234,6 +236,7 @@ export function useAtualizarApreciacaoMaquina() {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -263,6 +266,7 @@ export function useExcluirApreciacaoMaquina() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
+    onError: (e: Error) => toast.error(`Erro ao excluir: ${e.message}`),
   });
 }
 
@@ -309,6 +313,7 @@ export function useAtualizarItemApreciacao() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -364,6 +369,7 @@ export function useUploadFotoItemApreciacao() {
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -418,6 +424,7 @@ export function useAdicionarItemLivreApreciacao() {
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_apreciacao) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -457,6 +464,7 @@ export function useExcluirItemApreciacao() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -554,6 +562,7 @@ export function useCriarAcaoApreciacao() {
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: KEY_ACOES(row.id_apreciacao) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -595,6 +604,7 @@ export function useAtualizarAcaoApreciacao() {
     onSuccess: ({ id_apreciacao }) => {
       qc.invalidateQueries({ queryKey: KEY_ACOES(id_apreciacao) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -613,6 +623,7 @@ export function useExcluirAcaoApreciacao() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_ACOES(params.id_apreciacao) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -705,6 +716,7 @@ export function useGerarPlanoApreciacao() {
         queryKey: KEY_ACOES(vars.apreciacao.id_apreciacao),
       });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
@@ -835,5 +847,6 @@ export function useRemoverFotoItemApreciacao() {
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
     },
+    onError: (e: Error) => toast.error(e.message),
   });
 }

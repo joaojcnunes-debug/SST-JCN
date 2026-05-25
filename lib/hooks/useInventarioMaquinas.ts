@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
@@ -146,6 +147,7 @@ export function useCriarMaquina() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventario-maquinas"] });
     },
+    onError: (e: Error) => toast.error(`Erro ao criar: ${e.message}`),
   });
 }
 
@@ -166,6 +168,7 @@ export function useAtualizarMaquina() {
       qc.invalidateQueries({ queryKey: ["inventario-maquinas"] });
       qc.invalidateQueries({ queryKey: KEY_ITEM(params.id_maquina) });
     },
+    onError: (e: Error) => toast.error(`Erro ao atualizar: ${e.message}`),
   });
 }
 
@@ -196,6 +199,7 @@ export function useExcluirMaquina() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventario-maquinas"] });
     },
+    onError: (e: Error) => toast.error(`Erro ao excluir: ${e.message}`),
   });
 }
 
