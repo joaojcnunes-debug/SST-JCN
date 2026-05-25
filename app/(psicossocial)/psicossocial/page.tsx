@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Plus, FileText, Trash2, ArrowRight, Building2 } from "lucide-react";
+import { Plus, FileText, Trash2, ArrowRight, Building2, Pencil } from "lucide-react";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import EmpresaForm from "@/components/empresas/EmpresaForm";
 import Badge from "@/components/ui/Badge";
@@ -43,7 +43,8 @@ export default function DrpsListaPage() {
   const [confirmExcluir, setConfirmExcluir] = useState<DrpsRelatorio | null>(
     null
   );
-  const [novaEmpresaOpen, setNovaEmpresaOpen] = useState(false);
+  const [novaEmpresaOpen,   setNovaEmpresaOpen]   = useState(false);
+  const [editarEmpresaOpen, setEditarEmpresaOpen] = useState(false);
   const excluir = useDrpsExcluirRelatorio();
 
   return (
@@ -66,6 +67,16 @@ export default function DrpsListaPage() {
           <div className="flex-1">
             <EmpresaSelect value={idEmpresa} onChange={setIdEmpresa} modulo="psicossocial" />
           </div>
+          {idEmpresa && empresa && (
+            <button
+              type="button"
+              onClick={() => setEditarEmpresaOpen(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
+              title="Editar cadastro da empresa"
+            >
+              <Pencil className="size-4" /> Editar Empresa
+            </button>
+          )}
           {canCreate && (
             <button
               type="button"
@@ -200,6 +211,12 @@ export default function DrpsListaPage() {
         open={novaEmpresaOpen}
         onClose={() => setNovaEmpresaOpen(false)}
         onCreated={(id) => setIdEmpresa(id)}
+      />
+
+      <EmpresaForm
+        open={editarEmpresaOpen}
+        empresa={empresa}
+        onClose={() => setEditarEmpresaOpen(false)}
       />
 
       <ConfirmDialog
