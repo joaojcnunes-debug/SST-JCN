@@ -1,17 +1,39 @@
+"use client";
+
+import { Printer } from "lucide-react";
+
 export default function MetodologiaPage() {
   return (
+    <>
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 2cm 1.8cm 2cm 2cm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+
     <div className="mx-auto max-w-5xl space-y-8">
 
       {/* Cabeçalho */}
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900">
-          Metodologia Aplicada — DRPS
-        </h1>
-        <p className="mt-1 text-sm text-gray-600">
-          Diagnóstico de Riscos Psicossociais conforme NR-01 (GRO/PGR). Descreve como
-          o questionário é estruturado, como a pontuação é calculada, como a probabilidade
-          é definida e como a matriz de risco gera o nível final por tópico.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900">
+            Metodologia Aplicada — DRPS
+          </h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Diagnóstico de Riscos Psicossociais conforme NR-01 (GRO/PGR). Descreve como
+            o questionário é estruturado, como a pontuação é calculada, como a probabilidade
+            é definida e como a matriz de risco gera o nível final por tópico.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="no-print inline-flex shrink-0 items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700"
+        >
+          <Printer className="size-4" /> Imprimir
+        </button>
       </div>
 
       {/* 1. Fundamentação Legal */}
@@ -304,6 +326,7 @@ export default function MetodologiaPage() {
       </Section>
 
     </div>
+    </>
   );
 }
 
