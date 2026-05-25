@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, use } from "react";
+import { useMemo, use, useEffect, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Check, Loader2 } from "lucide-react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import MatrizRisco from "@/components/drps/MatrizRisco";
 import { useDrpsStore } from "@/lib/drps/store";
@@ -19,7 +20,10 @@ import {
   useDrpsProbabilidades,
   useDrpsRelatorio,
   useDrpsRespondentes,
+  useDrpsSalvarRelatorio,
 } from "@/lib/hooks/useDrps";
+import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
   aplicarMatriz,
   calcularResumoCompleto,
@@ -27,7 +31,13 @@ import {
   filtrarPorSetor,
 } from "@/lib/drps/calculos";
 import { TOPICOS } from "@/lib/drps/topicos";
-import type { NivelMatriz } from "@/lib/drps/types";
+import type { NivelMatriz, StatusRelatorio } from "@/lib/drps/types";
+
+const STATUS_OPCOES: { v: StatusRelatorio; label: string; cls: string }[] = [
+  { v: "RASCUNHO",     label: "Rascunho",      cls: "bg-gray-100 text-gray-700" },
+  { v: "EM_ANDAMENTO", label: "Em andamento",  cls: "bg-blue-100 text-blue-700" },
+  { v: "CONCLUIDO",    label: "Concluído",      cls: "bg-green-100 text-green-700" },
+];
 
 const NIVEIS: NivelMatriz[] = ["Baixo", "Médio", "Alto", "Crítico"];
 
@@ -37,10 +47,45 @@ export default function DashboardPage({
   params: Promise<{ idRelatorio: string }>;
 }) {
   const { idRelatorio } = use(params);
-  const setor = useDrpsStore((s) => s.setor);
+  const setor    = useDrpsStore((s) => s.setor);
+  const canEdit  = useCanEdit();
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
-  const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
+  const { data: empresa   } = useEmpresa(relatorio?.id_empresa);
+  const { data: respondentes  = [] } = useDrpsRespondentes(idRelatorio);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
+  const salvar = useDrpsSalvarRelatorio();
+
+  const [responsavel, setResponsavel] = useState("");
+  const [crp,         setCrp]         = useState("");
+  const [data,        setData]        = useState("");
+  const [status,      setStatus]      = useState<StatusRelatorio>("EM_ANDAMENTO");
+  const [dirty,       setDirty]       = useState(false);
+
+  useEffect(() => {
+    if (!relatorio) return;
+    setResponsavel(relatorio.responsavel_tecnico ?? "");
+    setCrp(relatorio.crp         ?? "");
+    setData(relatorio.data_elaboracao ?? "");
+    setStatus(relatorio.status);
+    setDirty(false);
+  }, [relatorio]);
+
+  function handleSalvar() {
+    if (!relatorio) return;
+    salvar.mutate(
+      {
+        id_relatorio: idRelatorio,
+        id_empresa:   relatorio.id_empresa,
+        responsavel_tecnico: responsavel.trim() || null,
+        crp:          crp.trim()  || null,
+        data_elaboracao: data     || null,
+        status,
+      },
+      { onSuccess: () => setDirty(false) }
+    );
+  }
+
+  const statusAtual = STATUS_OPCOES.find((s) => s.v === status);
 
   const filtrados = useMemo(
     () => filtrarPorSetor(respondentes, setor),
@@ -103,6 +148,98 @@ export default function DashboardPage({
 
   return (
     <div className="space-y-4">
+      {/* ── Barra de metadados inline ─────────────────────────── */}
+      <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+
+          {/* Empresa + revisão */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm font-bold text-gray-900">
+              {empresa?.nome_empresa ?? "—"}
+            </span>
+            {relatorio && (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+                Rev. {relatorio.revisao}
+              </span>
+            )}
+          </div>
+
+          <div className="h-4 w-px bg-gray-200 shrink-0 hidden sm:block" />
+
+          {/* Status */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Status</span>
+            <select
+              value={status}
+              disabled={!canEdit}
+              onChange={(e) => { setStatus(e.target.value as StatusRelatorio); setDirty(true); }}
+              className={`rounded-full border-0 px-2 py-0.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:cursor-default ${statusAtual?.cls ?? ""}`}
+            >
+              {STATUS_OPCOES.map((s) => (
+                <option key={s.v} value={s.v}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="h-4 w-px bg-gray-200 shrink-0 hidden sm:block" />
+
+          {/* Data */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Data</span>
+            <input
+              type="date"
+              value={data}
+              disabled={!canEdit}
+              onChange={(e) => { setData(e.target.value); setDirty(true); }}
+              className="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            />
+          </div>
+
+          <div className="h-4 w-px bg-gray-200 shrink-0 hidden sm:block" />
+
+          {/* Responsável */}
+          <div className="flex flex-1 items-center gap-1.5 min-w-[180px]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Responsável</span>
+            <input
+              type="text"
+              value={responsavel}
+              disabled={!canEdit}
+              onChange={(e) => { setResponsavel(e.target.value); setDirty(true); }}
+              placeholder="Nome do psicólogo"
+              className="flex-1 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            />
+          </div>
+
+          {/* CRP */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">CRP</span>
+            <input
+              type="text"
+              value={crp}
+              disabled={!canEdit}
+              onChange={(e) => { setCrp(e.target.value); setDirty(true); }}
+              placeholder="00/00000"
+              className="w-24 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            />
+          </div>
+
+          {/* Botão salvar */}
+          {canEdit && dirty && (
+            <button
+              type="button"
+              onClick={handleSalvar}
+              disabled={salvar.isPending}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50 shrink-0"
+            >
+              {salvar.isPending
+                ? <Loader2 className="size-3 animate-spin" />
+                : <Check className="size-3" />}
+              Salvar
+            </button>
+          )}
+        </div>
+      </div>
+
       <div>
         <h1 className="text-xl font-semibold text-gray-900">
           Painel Resumo NR-1
