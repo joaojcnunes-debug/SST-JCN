@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Sparkles,
   Loader2,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -20,7 +21,7 @@ import DrpsSumarioPrint from "@/components/drps/DrpsSumarioPrint";
 import DrpsRelatorioExtrasPrint from "@/components/drps/DrpsRelatorioExtrasPrint";
 import DrpsGestaoResumoPrint from "@/components/drps/DrpsGestaoResumoPrint";
 import { useDrpsStore } from "@/lib/drps/store";
-import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import { useAtualizarEmpresa, useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
   useDrpsProbabilidades,
@@ -56,6 +57,7 @@ import type { Empresa } from "@/lib/supabase/types";
 import type {
   DrpsProbabilidade,
   DrpsRelatorio,
+  StatusRelatorio,
   TopicoComMatriz,
 } from "@/lib/drps/types";
 
@@ -110,6 +112,12 @@ function serializeMultiSelect(
   return all.map((s) => `• ${s}`).join("\n");
 }
 
+const STATUS_OPCOES: { v: StatusRelatorio; label: string; cls: string }[] = [
+  { v: "RASCUNHO",     label: "Rascunho",      cls: "bg-gray-100 text-gray-700" },
+  { v: "EM_ANDAMENTO", label: "Em andamento",  cls: "bg-blue-100 text-blue-700" },
+  { v: "CONCLUIDO",    label: "Concluído",      cls: "bg-green-100 text-green-700" },
+];
+
 export default function AnalisePage({
   params,
 }: {
@@ -139,7 +147,68 @@ export default function AnalisePage({
       : "";
     return { ...base, data_carimbo_inicio: inicio, data_carimbo_fim: fim };
   }, [empresa, relatorio, respondentes]);
-  const salvar = useDrpsSalvarRelatorio();
+  const salvar        = useDrpsSalvarRelatorio();
+  const salvarEmpresa = useAtualizarEmpresa();
+
+  // ── Metadata bar state ──────────────────────────────────────────────────
+  const [metaResponsavel, setMetaResponsavel] = useState("");
+  const [metaCrp,         setMetaCrp]         = useState("");
+  const [metaData,        setMetaData]        = useState("");
+  const [metaStatus,      setMetaStatus]      = useState<StatusRelatorio>("EM_ANDAMENTO");
+  const [metaCnpj,        setMetaCnpj]        = useState("");
+  const [metaDirty,       setMetaDirty]       = useState(false);
+
+  useEffect(() => {
+    if (!relatorio) return;
+    setMetaResponsavel(relatorio.responsavel_tecnico ?? "");
+    setMetaCrp(relatorio.crp ?? "");
+    setMetaData(relatorio.data_elaboracao ?? "");
+    setMetaStatus(relatorio.status);
+    setMetaDirty(false);
+  }, [relatorio]);
+
+  useEffect(() => {
+    if (!empresa) return;
+    setMetaCnpj(empresa.cnpj ?? "");
+  }, [empresa]);
+
+  const metaStatusAtual = STATUS_OPCOES.find((s) => s.v === metaStatus);
+
+  function handleSalvarMeta() {
+    if (!relatorio) return;
+    const promises: Promise<void>[] = [];
+
+    promises.push(
+      new Promise<void>((resolve, reject) => {
+        salvar.mutate(
+          {
+            id_relatorio: idRelatorio,
+            id_empresa:   relatorio.id_empresa,
+            responsavel_tecnico: metaResponsavel.trim() || null,
+            crp:          metaCrp.trim()  || null,
+            data_elaboracao: metaData     || null,
+            status: metaStatus,
+          },
+          { onSuccess: () => resolve(), onError: (e) => reject(e) }
+        );
+      })
+    );
+
+    const cnpjAtual = empresa?.cnpj ?? "";
+    if (metaCnpj.trim() !== cnpjAtual && relatorio.id_empresa) {
+      promises.push(
+        new Promise<void>((resolve, reject) => {
+          salvarEmpresa.mutate(
+            { id_empresa: relatorio.id_empresa, cnpj: metaCnpj.trim() || null },
+            { onSuccess: () => resolve(), onError: (e) => reject(e) }
+          );
+        })
+      );
+    }
+
+    Promise.all(promises).then(() => setMetaDirty(false)).catch(() => {});
+  }
+  // ────────────────────────────────────────────────────────────────────────
 
   interface SetorEditor {
     agravosSel: string[];
@@ -442,6 +511,113 @@ export default function AnalisePage({
           text-align: left;
         }
       `}</style>
+
+      {/* ── Barra de metadados inline ─────────────────────────── */}
+      <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm print:hidden">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+
+          {/* Empresa + revisão */}
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-sm font-bold text-gray-900">
+              {empresa?.nome_empresa ?? "—"}
+            </span>
+            {relatorio && (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+                Rev. {relatorio.revisao}
+              </span>
+            )}
+          </div>
+
+          <div className="h-4 w-px bg-gray-200 shrink-0 hidden sm:block" />
+
+          {/* CNPJ */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">CNPJ</span>
+            <input
+              type="text"
+              value={metaCnpj}
+              disabled={!canEdit}
+              onChange={(e) => { setMetaCnpj(e.target.value); setMetaDirty(true); }}
+              placeholder="00.000.000/0000-00"
+              className="w-36 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            />
+          </div>
+
+          <div className="h-4 w-px bg-gray-200 shrink-0 hidden sm:block" />
+
+          {/* Status */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Status</span>
+            <select
+              value={metaStatus}
+              disabled={!canEdit}
+              onChange={(e) => { setMetaStatus(e.target.value as StatusRelatorio); setMetaDirty(true); }}
+              className={`rounded-full border-0 px-2 py-0.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:cursor-default ${metaStatusAtual?.cls ?? ""}`}
+            >
+              {STATUS_OPCOES.map((s) => (
+                <option key={s.v} value={s.v}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="h-4 w-px bg-gray-200 shrink-0 hidden sm:block" />
+
+          {/* Data */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Data</span>
+            <input
+              type="date"
+              value={metaData}
+              disabled={!canEdit}
+              onChange={(e) => { setMetaData(e.target.value); setMetaDirty(true); }}
+              className="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            />
+          </div>
+
+          <div className="h-4 w-px bg-gray-200 shrink-0 hidden sm:block" />
+
+          {/* Responsável */}
+          <div className="flex flex-1 items-center gap-1.5 min-w-[180px]">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Responsável</span>
+            <input
+              type="text"
+              value={metaResponsavel}
+              disabled={!canEdit}
+              onChange={(e) => { setMetaResponsavel(e.target.value); setMetaDirty(true); }}
+              placeholder="Nome do psicólogo"
+              className="flex-1 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            />
+          </div>
+
+          {/* CRP */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">CRP</span>
+            <input
+              type="text"
+              value={metaCrp}
+              disabled={!canEdit}
+              onChange={(e) => { setMetaCrp(e.target.value); setMetaDirty(true); }}
+              placeholder="00/00000"
+              className="w-24 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            />
+          </div>
+
+          {/* Botão salvar */}
+          {canEdit && metaDirty && (
+            <button
+              type="button"
+              onClick={handleSalvarMeta}
+              disabled={salvar.isPending || salvarEmpresa.isPending}
+              className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50 shrink-0"
+            >
+              {(salvar.isPending || salvarEmpresa.isPending)
+                ? <Loader2 className="size-3 animate-spin" />
+                : <Check className="size-3" />}
+              Salvar
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="print:hidden">
         <h1 className="text-xl font-semibold text-gray-900">

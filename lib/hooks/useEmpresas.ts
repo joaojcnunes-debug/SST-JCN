@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Empresa, ModuloEmpresa } from "@/lib/supabase/types";
 import { useUserStore } from "@/lib/store";
@@ -57,6 +57,25 @@ export function useEmpresa(id: string | null | undefined) {
         .single();
       if (error) throw error;
       return data as unknown as Empresa;
+    },
+  });
+}
+
+export function useAtualizarEmpresa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { id_empresa: string } & Partial<Empresa>) => {
+      const { id_empresa, ...patch } = payload;
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("empresas")
+        .update(patch as never)
+        .eq("id_empresa", id_empresa);
+      if (error) throw error;
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["empresa", variables.id_empresa] });
+      qc.invalidateQueries({ queryKey: ["empresas"] });
     },
   });
 }

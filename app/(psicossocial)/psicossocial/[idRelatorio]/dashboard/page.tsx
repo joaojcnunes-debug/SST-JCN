@@ -22,7 +22,7 @@ import {
   useDrpsRespondentes,
   useDrpsSalvarRelatorio,
 } from "@/lib/hooks/useDrps";
-import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import { useAtualizarEmpresa, useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
   aplicarMatriz,
@@ -53,12 +53,14 @@ export default function DashboardPage({
   const { data: empresa   } = useEmpresa(relatorio?.id_empresa);
   const { data: respondentes  = [] } = useDrpsRespondentes(idRelatorio);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
-  const salvar = useDrpsSalvarRelatorio();
+  const salvar        = useDrpsSalvarRelatorio();
+  const salvarEmpresa = useAtualizarEmpresa();
 
   const [responsavel, setResponsavel] = useState("");
   const [crp,         setCrp]         = useState("");
   const [data,        setData]        = useState("");
   const [status,      setStatus]      = useState<StatusRelatorio>("EM_ANDAMENTO");
+  const [cnpj,        setCnpj]        = useState("");
   const [dirty,       setDirty]       = useState(false);
 
   useEffect(() => {
@@ -70,19 +72,42 @@ export default function DashboardPage({
     setDirty(false);
   }, [relatorio]);
 
+  useEffect(() => {
+    if (!empresa) return;
+    setCnpj(empresa.cnpj ?? "");
+  }, [empresa]);
+
   function handleSalvar() {
     if (!relatorio) return;
-    salvar.mutate(
-      {
-        id_relatorio: idRelatorio,
-        id_empresa:   relatorio.id_empresa,
-        responsavel_tecnico: responsavel.trim() || null,
-        crp:          crp.trim()  || null,
-        data_elaboracao: data     || null,
-        status,
-      },
-      { onSuccess: () => setDirty(false) }
-    );
+    const promises: Promise<unknown>[] = [];
+
+    const salvarRelPromise = new Promise<void>((resolve, reject) => {
+      salvar.mutate(
+        {
+          id_relatorio: idRelatorio,
+          id_empresa:   relatorio.id_empresa,
+          responsavel_tecnico: responsavel.trim() || null,
+          crp:          crp.trim()  || null,
+          data_elaboracao: data     || null,
+          status,
+        },
+        { onSuccess: () => resolve(), onError: (e) => reject(e) }
+      );
+    });
+    promises.push(salvarRelPromise);
+
+    const cnpjAtual = empresa?.cnpj ?? "";
+    if (cnpj.trim() !== cnpjAtual && relatorio.id_empresa) {
+      const salvarEmpPromise = new Promise<void>((resolve, reject) => {
+        salvarEmpresa.mutate(
+          { id_empresa: relatorio.id_empresa, cnpj: cnpj.trim() || null },
+          { onSuccess: () => resolve(), onError: (e) => reject(e) }
+        );
+      });
+      promises.push(salvarEmpPromise);
+    }
+
+    Promise.all(promises).then(() => setDirty(false)).catch(() => {});
   }
 
   const statusAtual = STATUS_OPCOES.find((s) => s.v === status);
@@ -166,6 +191,21 @@ export default function DashboardPage({
 
           <div className="h-4 w-px bg-gray-200 shrink-0 hidden sm:block" />
 
+          {/* CNPJ */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">CNPJ</span>
+            <input
+              type="text"
+              value={cnpj}
+              disabled={!canEdit}
+              onChange={(e) => { setCnpj(e.target.value); setDirty(true); }}
+              placeholder="00.000.000/0000-00"
+              className="w-36 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+            />
+          </div>
+
+          <div className="h-4 w-px bg-gray-200 shrink-0 hidden sm:block" />
+
           {/* Status */}
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Status</span>
@@ -228,10 +268,10 @@ export default function DashboardPage({
             <button
               type="button"
               onClick={handleSalvar}
-              disabled={salvar.isPending}
+              disabled={salvar.isPending || salvarEmpresa.isPending}
               className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50 shrink-0"
             >
-              {salvar.isPending
+              {(salvar.isPending || salvarEmpresa.isPending)
                 ? <Loader2 className="size-3 animate-spin" />
                 : <Check className="size-3" />}
               Salvar
