@@ -18,6 +18,7 @@ export type ModuloPermitido =
   | "inventario_maquinas"
   | "analise_quimicos"
   | "aet"
+  | "aep"
   | "questionarios_psicossociais";
 
 export const TODOS_MODULOS: ModuloPermitido[] = [
@@ -29,6 +30,7 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "inventario_maquinas",
   "analise_quimicos",
   "aet",
+  "aep",
   "questionarios_psicossociais",
 ];
 
@@ -41,6 +43,7 @@ export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   inventario_maquinas: "Inventário de Equipamentos",
   analise_quimicos: "Análise de Químicos Chabra",
   aet: "AET – Análise Ergonômica do Trabalho",
+  aep: "AEP – Análise Ergonômica Preliminar",
   questionarios_psicossociais: "Questionários Psicossociais / DRPS",
 };
 
@@ -157,7 +160,8 @@ export type ModuloEmpresa =
   | "psicossocial"
   | "conformidade"
   | "nao_conformidade"
-  | "analise_quimicos";
+  | "analise_quimicos"
+  | "aep";
 
 export const MODULOS_EMPRESA: Array<{ value: ModuloEmpresa; label: string }> = [
   { value: "sst", label: "Painel SST (Inspeções)" },
@@ -165,6 +169,7 @@ export const MODULOS_EMPRESA: Array<{ value: ModuloEmpresa; label: string }> = [
   { value: "conformidade", label: "Relatório de Conformidade" },
   { value: "nao_conformidade", label: "Relatório de Não Conformidade" },
   { value: "analise_quimicos", label: "Análise de Químicos" },
+  { value: "aep", label: "AEP – Análise Ergonômica Preliminar" },
 ];
 
 export interface Empresa {
@@ -1023,8 +1028,104 @@ export interface Database {
       apreciacao_acoes: TableShape<ApreciacaoAcao>;
       aet_relatorios: TableShape<AetRelatorio>;
       aet_textos_padrao: TableShape<AetTextoPadraoCapitulo>;
+      aep_relatorios: TableShape<AepRelatorio>;
+      aep_textos_padrao: TableShape<AepTextoPadraoCapitulo>;
     };
   };
+}
+
+// ─── AEP – Análise Ergonômica Preliminar ─────────────────────────────────────
+
+export type StatusAEP = "RASCUNHO" | "CONCLUIDO";
+
+export interface AepRisco {
+  id: string;
+  tipo: TipoRiscoAET;
+  risco: string;
+  classificacao_risco: ClassificacaoRiscoAET;
+  medida_preventiva: string;
+}
+
+export interface AepChecklistFisica {
+  postura: RespostaChecklist;
+  repetitividade: RespostaChecklist;
+  levantamento_carga: RespostaChecklist;
+  mobiliario: RespostaChecklist;
+  esforco_fisico: RespostaChecklist;
+  iluminacao: RespostaChecklist;
+  ruido: RespostaChecklist;
+  vibracao: RespostaChecklist;
+  desconforto_termico: RespostaChecklist;
+}
+
+export interface AepChecklistCognitiva {
+  atencao_continua: RespostaChecklist;
+  sobrecarga_mental: RespostaChecklist;
+  pressao_psicologica: RespostaChecklist;
+  excesso_informacoes: RespostaChecklist;
+  ritmo_mental: RespostaChecklist;
+}
+
+export interface AepChecklistOrganizacional {
+  metas: RespostaChecklist;
+  pausas: RespostaChecklist;
+  jornada_extensiva: RespostaChecklist;
+  pressao_hierarquica: RespostaChecklist;
+  sobrecarga_operacional: RespostaChecklist;
+  deficit_equipe: RespostaChecklist;
+  conflito_organizacional: RespostaChecklist;
+}
+
+export interface AepSetor {
+  id: string;
+  nome_setor: string;
+  unidade: string;
+  ghe: string;
+  cargo: string;
+  funcao: string;
+  jornada: string;
+  qtd_expostos: number;
+  descricao_atividade: string;
+  riscos: AepRisco[];
+  checklist_fisica: AepChecklistFisica;
+  checklist_cognitiva: AepChecklistCognitiva;
+  checklist_organizacional: AepChecklistOrganizacional;
+  parecer_tecnico: string;
+  recomendacoes: string;
+  necessita_aet: boolean;
+}
+
+export interface AepRelatorio {
+  id_relatorio: string;
+  id_empresa: string;
+  status: StatusAEP;
+  setores: AepSetor[];
+  responsavel_elaboracao: string;
+  titulo_profissional: string;
+  registro_profissional: string;
+  data_elaboracao: string | null;
+  endereco_empresa: string | null;
+  conclusao: string;
+  usuario: string | null;
+  created_at: string;
+  updated_at: string | null;
+  empresas?: { nome_empresa: string; cnpj: string | null } | null;
+}
+
+export interface AepTextoPadraoCapitulo {
+  id_capitulo: string;
+  titulo: string;
+  conteudo: string | null;
+  tipo: "fixo" | "editavel";
+  slug_fixo: string | null;
+  mostrar: boolean;
+  ordem: number;
+  ordem_global: number | null;
+  orientacao: string | null;
+  bg_imagem_url: string | null;
+  caixas_texto: import("@/lib/drps/types").CaixaTexto[] | null;
+  created_at: string;
+  updated_at: string | null;
 }
 
 // ─── AET – Análise Ergonômica do Trabalho ────────────────────────────────────

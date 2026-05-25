@@ -1,0 +1,553 @@
+"use client";
+
+import { use, useEffect, useState } from "react";
+import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import {
+  useAepRelatorio,
+  useSalvarAep,
+  setorVazioAep,
+  riscoVazioAep,
+  calcNecessitaAet,
+  CLASS_COLOR_AEP,
+  TIPOS_RISCO_AEP,
+  CLASSIFICACOES_AEP,
+} from "@/lib/hooks/useAep";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
+import { cn } from "@/lib/utils";
+import type {
+  AepSetor,
+  AepRisco,
+  AepChecklistFisica,
+  AepChecklistCognitiva,
+  AepChecklistOrganizacional,
+  ClassificacaoRiscoAET,
+  RespostaChecklist,
+  TipoRiscoAET,
+} from "@/lib/supabase/types";
+
+// ─── Tristate ─────────────────────────────────────────────────────────────────
+
+function Tristate({
+  label,
+  value,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: RespostaChecklist;
+  onChange: (v: RespostaChecklist) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+      <span className="text-xs text-gray-700">{label}</span>
+      <div className="flex gap-1 shrink-0">
+        {(["sim", "nao", "nao_aplica"] as RespostaChecklist[]).map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(opt)}
+            className={cn(
+              "rounded px-2 py-0.5 text-[10px] font-semibold transition",
+              value === opt
+                ? opt === "sim"
+                  ? "bg-red-500 text-white"
+                  : opt === "nao"
+                  ? "bg-green-500 text-white"
+                  : "bg-gray-400 text-white"
+                : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-100"
+            )}
+          >
+            {opt === "sim" ? "Sim" : opt === "nao" ? "Não" : "N/A"}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Bloco de checklist ───────────────────────────────────────────────────────
+
+function ChecklistBloco({
+  titulo,
+  cor,
+  itens,
+  valores,
+  onChange,
+  disabled,
+}: {
+  titulo: string;
+  cor: string;
+  itens: { key: string; label: string }[];
+  valores: Record<string, RespostaChecklist>;
+  onChange: (patch: Record<string, RespostaChecklist>) => void;
+  disabled?: boolean;
+}) {
+  const positivos = itens.filter((i) => valores[i.key] === "sim").length;
+  return (
+    <div className="rounded-xl border border-gray-200 overflow-hidden">
+      <div className={cn("px-4 py-2.5 font-semibold text-sm flex items-center justify-between", cor)}>
+        <span>{titulo}</span>
+        {positivos > 0 && (
+          <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs font-bold text-red-600">
+            {positivos} alerta{positivos > 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+      <div className="divide-y divide-gray-100 p-2 space-y-1">
+        {itens.map(({ key, label }) => (
+          <Tristate
+            key={key}
+            label={label}
+            value={valores[key]}
+            onChange={(v) => onChange({ [key]: v })}
+            disabled={disabled}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Itens dos checklists ─────────────────────────────────────────────────────
+
+const ITENS_FISICA: { key: keyof AepChecklistFisica; label: string }[] = [
+  { key: "postura",             label: "Posturas inadequadas / forçadas" },
+  { key: "repetitividade",      label: "Movimentos repetitivos" },
+  { key: "levantamento_carga",  label: "Levantamento / transporte de cargas" },
+  { key: "mobiliario",          label: "Mobiliário inadequado" },
+  { key: "esforco_fisico",      label: "Esforço físico elevado" },
+  { key: "iluminacao",          label: "Iluminação inadequada" },
+  { key: "ruido",               label: "Ruído / ambiente sonoro adverso" },
+  { key: "vibracao",            label: "Vibração (corpo inteiro / mãos e braços)" },
+  { key: "desconforto_termico", label: "Desconforto térmico" },
+];
+
+const ITENS_COGNITIVA: { key: keyof AepChecklistCognitiva; label: string }[] = [
+  { key: "atencao_continua",    label: "Atenção contínua / concentração elevada" },
+  { key: "sobrecarga_mental",   label: "Sobrecarga mental / complexidade da tarefa" },
+  { key: "pressao_psicologica", label: "Pressão psicológica / cobrança excessiva" },
+  { key: "excesso_informacoes", label: "Excesso de informações simultâneas" },
+  { key: "ritmo_mental",        label: "Ritmo mental acelerado" },
+];
+
+const ITENS_ORGANIZACIONAL: { key: keyof AepChecklistOrganizacional; label: string }[] = [
+  { key: "metas",                  label: "Metas agressivas / inatingíveis" },
+  { key: "pausas",                 label: "Ausência ou insuficiência de pausas" },
+  { key: "jornada_extensiva",      label: "Jornada extensiva / horas extras frequentes" },
+  { key: "pressao_hierarquica",    label: "Pressão hierárquica / assédio moral" },
+  { key: "sobrecarga_operacional", label: "Sobrecarga operacional" },
+  { key: "deficit_equipe",         label: "Déficit de equipe / trabalho solitário" },
+  { key: "conflito_organizacional", label: "Conflito organizacional / falta de suporte" },
+];
+
+// ─── Página principal ─────────────────────────────────────────────────────────
+
+export default function AepSetoresPage({
+  params,
+}: {
+  params: Promise<{ idRelatorio: string }>;
+}) {
+  const { idRelatorio } = use(params);
+  const { data: rel, isLoading } = useAepRelatorio(idRelatorio);
+  const salvar = useSalvarAep();
+  const canEdit = useCanEdit();
+
+  const [setores, setSetores] = useState<AepSetor[]>([]);
+  const [abertos, setAbertos] = useState<Set<string>>(new Set());
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    if (rel) {
+      setSetores(rel.setores ?? []);
+      if (rel.setores?.length) setAbertos(new Set([rel.setores[0].id]));
+    }
+  }, [rel]);
+
+  function toggle(id: string) {
+    setAbertos((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function addSetor() {
+    const novo = setorVazioAep();
+    setSetores((s) => [...s, novo]);
+    setAbertos((prev) => new Set([...prev, novo.id]));
+  }
+
+  function removeSetor(id: string) {
+    setSetores((s) => s.filter((x) => x.id !== id));
+  }
+
+  function updateSetor(id: string, patch: Partial<AepSetor>) {
+    setSetores((s) =>
+      s.map((x) => {
+        if (x.id !== id) return x;
+        const updated = { ...x, ...patch };
+        updated.necessita_aet = calcNecessitaAet(updated);
+        return updated;
+      })
+    );
+  }
+
+  function addRisco(setorId: string) {
+    const novo = riscoVazioAep();
+    updateSetor(setorId, {
+      riscos: [...(setores.find((s) => s.id === setorId)?.riscos ?? []), novo],
+    });
+  }
+
+  function updateRisco(setorId: string, riscoId: string, patch: Partial<AepRisco>) {
+    const setor = setores.find((s) => s.id === setorId);
+    if (!setor) return;
+    updateSetor(setorId, {
+      riscos: setor.riscos.map((r) => (r.id === riscoId ? { ...r, ...patch } : r)),
+    });
+  }
+
+  function removeRisco(setorId: string, riscoId: string) {
+    const setor = setores.find((s) => s.id === setorId);
+    if (!setor) return;
+    updateSetor(setorId, { riscos: setor.riscos.filter((r) => r.id !== riscoId) });
+  }
+
+  async function handleSalvar() {
+    setSalvando(true);
+    try {
+      await salvar.mutateAsync({ id: idRelatorio, setores: setores as unknown as AepSetor[] });
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="size-6 animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  const empresa = rel?.empresas as { nome_empresa?: string } | null;
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900">Setores / Triagem Ergonômica</h1>
+          <p className="text-sm text-gray-500">{empresa?.nome_empresa}</p>
+        </div>
+        {canEdit && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={addSetor}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+            >
+              <Plus className="size-4" /> Adicionar setor
+            </button>
+            <button
+              type="button"
+              onClick={handleSalvar}
+              disabled={salvando}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              Salvar
+            </button>
+          </div>
+        )}
+      </div>
+
+      {setores.length === 0 && (
+        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
+          <p className="text-sm text-gray-500">Nenhum setor cadastrado.</p>
+          {canEdit && (
+            <button
+              onClick={addSetor}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              <Plus className="size-4" /> Adicionar setor
+            </button>
+          )}
+        </div>
+      )}
+
+      {setores.map((setor, idx) => {
+        const open = abertos.has(setor.id);
+        const aletaFisica = Object.values(setor.checklist_fisica).filter((v) => v === "sim").length;
+        const alertaCog = Object.values(setor.checklist_cognitiva).filter((v) => v === "sim").length;
+        const alertaOrg = Object.values(setor.checklist_organizacional).filter((v) => v === "sim").length;
+        const totalAlertas = aletaFisica + alertaCog + alertaOrg;
+
+        return (
+          <div key={setor.id} className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            {/* Header */}
+            <div
+              className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50"
+              onClick={() => toggle(setor.id)}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="shrink-0 flex size-6 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+                  {idx + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">
+                    {setor.nome_setor || "Setor sem nome"}
+                  </p>
+                  {setor.cargo && <p className="text-xs text-gray-500 truncate">{setor.cargo}</p>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {setor.necessita_aet && (
+                  <span className="flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold text-orange-700">
+                    <AlertTriangle className="size-3" /> AET
+                  </span>
+                )}
+                {totalAlertas > 0 && (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-600">
+                    {totalAlertas} alerta{totalAlertas > 1 ? "s" : ""}
+                  </span>
+                )}
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removeSetor(setor.id); }}
+                    className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                )}
+                {open ? <ChevronUp className="size-4 text-gray-400" /> : <ChevronDown className="size-4 text-gray-400" />}
+              </div>
+            </div>
+
+            {open && (
+              <div className="border-t border-gray-100 p-4 space-y-5">
+
+                {/* ── Identificação ─────────────────────────────────── */}
+                <section>
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    Identificação
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {[
+                      { key: "nome_setor",   label: "Setor *",              placeholder: "Nome do setor" },
+                      { key: "unidade",      label: "Unidade",              placeholder: "Unidade / filial" },
+                      { key: "ghe",          label: "GHE",                  placeholder: "Grupo Homogêneo de Exposição" },
+                      { key: "cargo",        label: "Cargo",                placeholder: "Cargo principal" },
+                      { key: "funcao",       label: "Função",               placeholder: "Função exercida" },
+                      { key: "jornada",      label: "Jornada",              placeholder: "Ex: 8h/dia, 44h/semana" },
+                    ].map(({ key, label, placeholder }) => (
+                      <div key={key}>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
+                        <input
+                          type="text"
+                          disabled={!canEdit}
+                          value={(setor as unknown as Record<string, unknown>)[key] as string ?? ""}
+                          onChange={(e) => updateSetor(setor.id, { [key]: e.target.value })}
+                          placeholder={placeholder}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                        />
+                      </div>
+                    ))}
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">Qtd. expostos</label>
+                      <input
+                        type="number"
+                        min={0}
+                        disabled={!canEdit}
+                        value={setor.qtd_expostos || ""}
+                        onChange={(e) => updateSetor(setor.id, { qtd_expostos: Number(e.target.value) })}
+                        placeholder="0"
+                        className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Descrição das atividades</label>
+                    <textarea
+                      disabled={!canEdit}
+                      value={setor.descricao_atividade}
+                      onChange={(e) => updateSetor(setor.id, { descricao_atividade: e.target.value })}
+                      rows={2}
+                      placeholder="Descreva as principais atividades realizadas..."
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                    />
+                  </div>
+                </section>
+
+                {/* ── Triagem Ergonômica ────────────────────────────── */}
+                <section>
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    Triagem Ergonômica
+                  </h3>
+                  <div className="grid gap-3 lg:grid-cols-3">
+                    <ChecklistBloco
+                      titulo="Ergonomia Física"
+                      cor="bg-blue-50 text-blue-800"
+                      itens={ITENS_FISICA}
+                      valores={setor.checklist_fisica as unknown as Record<string, RespostaChecklist>}
+                      onChange={(p) => updateSetor(setor.id, { checklist_fisica: { ...setor.checklist_fisica, ...p } as AepChecklistFisica })}
+                      disabled={!canEdit}
+                    />
+                    <ChecklistBloco
+                      titulo="Ergonomia Cognitiva"
+                      cor="bg-purple-50 text-purple-800"
+                      itens={ITENS_COGNITIVA}
+                      valores={setor.checklist_cognitiva as unknown as Record<string, RespostaChecklist>}
+                      onChange={(p) => updateSetor(setor.id, { checklist_cognitiva: { ...setor.checklist_cognitiva, ...p } as AepChecklistCognitiva })}
+                      disabled={!canEdit}
+                    />
+                    <ChecklistBloco
+                      titulo="Ergonomia Organizacional"
+                      cor="bg-amber-50 text-amber-800"
+                      itens={ITENS_ORGANIZACIONAL}
+                      valores={setor.checklist_organizacional as unknown as Record<string, RespostaChecklist>}
+                      onChange={(p) => updateSetor(setor.id, { checklist_organizacional: { ...setor.checklist_organizacional, ...p } as AepChecklistOrganizacional })}
+                      disabled={!canEdit}
+                    />
+                  </div>
+                </section>
+
+                {/* ── Matriz de Riscos ──────────────────────────────── */}
+                <section>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                      Matriz de Riscos
+                    </h3>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => addRisco(setor.id)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                      >
+                        <Plus className="size-3" /> Risco
+                      </button>
+                    )}
+                  </div>
+
+                  {setor.riscos.length === 0 ? (
+                    <p className="text-xs text-gray-400 italic">Nenhum risco identificado.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {setor.riscos.map((risco) => (
+                        <div key={risco.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 rounded-lg border border-gray-100 bg-gray-50 p-2 sm:grid-cols-[140px_1fr_160px_180px_auto]">
+                          <select
+                            disabled={!canEdit}
+                            value={risco.tipo}
+                            onChange={(e) => updateRisco(setor.id, risco.id, { tipo: e.target.value as TipoRiscoAET })}
+                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+                          >
+                            {TIPOS_RISCO_AEP.map((t) => (
+                              <option key={t}>{t}</option>
+                            ))}
+                          </select>
+                          <input
+                            disabled={!canEdit}
+                            type="text"
+                            value={risco.risco}
+                            onChange={(e) => updateRisco(setor.id, risco.id, { risco: e.target.value })}
+                            placeholder="Agente / risco"
+                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+                          />
+                          <select
+                            disabled={!canEdit}
+                            value={risco.classificacao_risco}
+                            onChange={(e) => updateRisco(setor.id, risco.id, { classificacao_risco: e.target.value as ClassificacaoRiscoAET })}
+                            className={`rounded border px-2 py-1 text-xs font-semibold focus:outline-none disabled:bg-gray-50 ${CLASS_COLOR_AEP[risco.classificacao_risco]}`}
+                          >
+                            {CLASSIFICACOES_AEP.map((c) => (
+                              <option key={c}>{c}</option>
+                            ))}
+                          </select>
+                          <input
+                            disabled={!canEdit}
+                            type="text"
+                            value={risco.medida_preventiva}
+                            onChange={(e) => updateRisco(setor.id, risco.id, { medida_preventiva: e.target.value })}
+                            placeholder="Medida preventiva"
+                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+                          />
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => removeRisco(setor.id, risco.id)}
+                              className="rounded p-1 text-gray-400 hover:text-red-500"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+
+                {/* ── Indicador AET ─────────────────────────────────── */}
+                {setor.necessita_aet && (
+                  <div className="flex items-start gap-2 rounded-xl border border-orange-200 bg-orange-50 p-3">
+                    <AlertTriangle className="size-4 shrink-0 text-orange-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-orange-800">
+                        Este setor requer elaboração de AET completa
+                      </p>
+                      <p className="text-xs text-orange-700 mt-0.5">
+                        Foram identificados riscos Alto ou Crítico, ou múltiplos riscos Moderados. Recomenda-se aprofundamento pela Análise Ergonômica do Trabalho (NR-17).
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Parecer e Recomendações ───────────────────────── */}
+                <section className="grid gap-3 lg:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-gray-700">Parecer Técnico Preliminar</label>
+                    <textarea
+                      disabled={!canEdit}
+                      value={setor.parecer_tecnico}
+                      onChange={(e) => updateSetor(setor.id, { parecer_tecnico: e.target.value })}
+                      rows={4}
+                      placeholder="Descreva o parecer técnico preliminar para este setor..."
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-gray-700">Recomendações</label>
+                    <textarea
+                      disabled={!canEdit}
+                      value={setor.recomendacoes}
+                      onChange={(e) => updateSetor(setor.id, { recomendacoes: e.target.value })}
+                      rows={4}
+                      placeholder="Liste as recomendações ergonômicas preliminares..."
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                    />
+                  </div>
+                </section>
+
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {setores.length > 0 && canEdit && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleSalvar}
+            disabled={salvando}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            Salvar tudo
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

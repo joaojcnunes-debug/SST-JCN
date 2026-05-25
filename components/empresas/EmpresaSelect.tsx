@@ -14,6 +14,8 @@ interface EmpresaSelectProps {
   disabled?: boolean;
   /** Quando informado, filtra apenas empresas habilitadas neste módulo. */
   modulo?: ModuloEmpresa;
+  /** Ignora o filtro de módulo e exibe todas as empresas. */
+  allowAll?: boolean;
 }
 
 export default function EmpresaSelect({
@@ -23,8 +25,9 @@ export default function EmpresaSelect({
   className,
   disabled,
   modulo,
+  allowAll,
 }: EmpresaSelectProps) {
-  const { data: empresas = [], isLoading } = useEmpresas(modulo);
+  const { data: empresas = [], isLoading } = useEmpresas(allowAll ? undefined : modulo);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);

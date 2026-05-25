@@ -120,6 +120,7 @@ const NOMES_MODULOS: Record<ModuloPermitido, string> = {
   inventario_maquinas: "Inventário",
   analise_quimicos: "Análise Químicos",
   aet: "AET",
+  aep: "AEP",
   questionarios_psicossociais: "Questionários DRPS",
 };
 

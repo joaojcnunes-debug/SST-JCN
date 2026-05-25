@@ -149,7 +149,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    let parsed: { texto?: unknown };
+    let parsed: Record<string, unknown>;
     try { parsed = JSON.parse(content); }
     catch {
       return new Response(
@@ -158,7 +158,13 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const texto = typeof parsed?.texto === "string" ? parsed.texto.trim() : "";
+    // aceita "texto", "text" ou o primeiro valor string do objeto
+    const texto = (
+      typeof parsed?.texto === "string" ? parsed.texto :
+      typeof parsed?.text  === "string" ? parsed.text  :
+      Object.values(parsed).find((v) => typeof v === "string") as string | undefined ?? ""
+    ).trim();
+
     if (!texto) {
       return new Response(
         JSON.stringify({ error: "Campo 'texto' ausente", raw: content.slice(0, 400) }),
