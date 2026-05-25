@@ -1,11 +1,10 @@
 import { redirect } from "next/navigation";
-import { use } from "react";
 
-export default function AetRelatorioRoot({
+export default async function AetRelatorioRoot({
   params,
 }: {
   params: Promise<{ idRelatorio: string }>;
 }) {
-  const { idRelatorio } = use(params);
+  const { idRelatorio } = await params;
   redirect(`/aet/${idRelatorio}/dados`);
 }

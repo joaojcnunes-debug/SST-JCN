@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
@@ -275,6 +276,7 @@ export function useGerarAnaliseQuimico() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["analises-quimicos"] });
     },
+    onError: (e: Error) => toast.error(e.message ?? "Erro ao gerar análise"),
   });
 }
 
@@ -294,5 +296,6 @@ export function useExcluirAnaliseQuimico() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["analises-quimicos"] });
     },
+    onError: (e: Error) => toast.error(`Erro ao excluir: ${e.message}`),
   });
 }

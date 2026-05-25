@@ -132,6 +132,7 @@ export function useCriarAet() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-relatorios"] });
     },
+    onError: (e: Error) => toast.error(`Erro ao criar: ${e.message}`),
   });
 }
 
@@ -156,7 +157,9 @@ export function useSalvarAet() {
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({ queryKey: ["aet-relatorio", id] });
       qc.invalidateQueries({ queryKey: ["aet-relatorios"] });
+      toast.success("Salvo com sucesso!");
     },
+    onError: (e: Error) => toast.error(`Erro ao salvar: ${e.message}`),
   });
 }
 
@@ -175,6 +178,7 @@ export function useExcluirAet() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-relatorios"] });
     },
+    onError: (e: Error) => toast.error(`Erro ao excluir: ${e.message}`),
   });
 }
 
