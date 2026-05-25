@@ -16,6 +16,7 @@ import {
   Loader2,
   ArrowRight,
   ClipboardList,
+  ClipboardCheck,
   BookOpen,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -100,6 +101,14 @@ const CARDS: HubCardCfg[] = [
     description: "Avaliação ergonômica dos postos de trabalho por setor (NR-17)",
     icon: <ClipboardList className="size-12" />,
     accent: "#B45309",
+  },
+  {
+    modulo: "aep",
+    href: "/aep",
+    title: "AEP – Análise Ergonômica Preliminar",
+    description: "Triagem ergonômica por setor com indicação de necessidade de AET (NR-17)",
+    icon: <ClipboardCheck className="size-12" />,
+    accent: "#059669",
   },
   {
     modulo: "questionarios_psicossociais",
@@ -192,6 +201,13 @@ const QUICK_ACTIONS: QuickActionCfg[] = [
     label: "Nova AET",
     icon: <ClipboardList className="size-4" />,
     accent: "#B45309",
+  },
+  {
+    modulo: "aep",
+    href: "/aep/novo",
+    label: "Nova AEP",
+    icon: <ClipboardCheck className="size-4" />,
+    accent: "#059669",
   },
   {
     modulo: "questionarios_psicossociais",
