@@ -1,8 +1,10 @@
 "use client";
 
-import { use, useRef } from "react";
+import { use, useMemo } from "react";
 import { Printer, AlertTriangle } from "lucide-react";
 import { useAepRelatorio, useAepTextoPadrao, CLASS_COLOR_AEP, riscoMaximoSetor } from "@/lib/hooks/useAep";
+import { montarValoresAep } from "@/lib/textos-padrao/variaveis-aep";
+import { substituirVariaveis } from "@/lib/textos-padrao/variaveis";
 import type { AepSetor, AepChecklistFisica, AepChecklistCognitiva, AepChecklistOrganizacional } from "@/lib/supabase/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -205,6 +207,11 @@ export default function AepLaudoPage({
   const setoresComAet = rel?.setores.filter((s) => s.necessita_aet) ?? [];
   const totalRiscos = rel?.setores.reduce((a, s) => a + s.riscos.length, 0) ?? 0;
 
+  const valoresVars = useMemo(
+    () => (rel ? montarValoresAep(rel) : {}),
+    [rel]
+  );
+
   const capitulosOrdenados = [...capitulos].sort((a, b) => (a.ordem_global ?? 0) - (b.ordem_global ?? 0));
   const capitulosAntes = capitulosOrdenados.filter((c) => c.mostrar && c.tipo === "editavel" && (c.ordem_global ?? 0) < 2000);
   const capitulosDepois = capitulosOrdenados.filter((c) => c.mostrar && c.tipo === "editavel" && (c.ordem_global ?? 0) >= 2000);
@@ -263,7 +270,7 @@ export default function AepLaudoPage({
         {/* Capítulos editáveis antes das seções fixas */}
         {capitulosAntes.map((cap) => (
           <Section key={cap.id_capitulo} titulo={cap.titulo}>
-            {cap.conteudo && <RichBlock html={cap.conteudo} />}
+            {cap.conteudo && <RichBlock html={substituirVariaveis(cap.conteudo, valoresVars)} />}
           </Section>
         ))}
 
@@ -301,7 +308,7 @@ export default function AepLaudoPage({
         {/* Capítulos editáveis após as seções fixas */}
         {capitulosDepois.filter((c) => c.slug_fixo === null).map((cap) => (
           <Section key={cap.id_capitulo} titulo={cap.titulo}>
-            {cap.conteudo && <RichBlock html={cap.conteudo} />}
+            {cap.conteudo && <RichBlock html={substituirVariaveis(cap.conteudo, valoresVars)} />}
           </Section>
         ))}
 

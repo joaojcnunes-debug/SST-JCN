@@ -275,6 +275,7 @@ export function useSalvarAep() {
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["aep-relatorio", vars.id] });
       qc.invalidateQueries({ queryKey: ["aep-relatorios"] });
+      toast.success("Salvo com sucesso!");
     },
     onError: (e: Error) => toast.error(`Erro ao salvar: ${e.message}`),
   });

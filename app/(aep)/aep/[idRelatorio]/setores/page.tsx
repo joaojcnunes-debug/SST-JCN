@@ -219,6 +219,8 @@ export default function AepSetoresPage({
     setSalvando(true);
     try {
       await salvar.mutateAsync({ id: idRelatorio, setores: setores as unknown as AepSetor[] });
+    } catch {
+      // erro já tratado pelo hook
     } finally {
       setSalvando(false);
     }

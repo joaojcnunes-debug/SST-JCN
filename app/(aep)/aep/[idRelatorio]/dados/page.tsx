@@ -39,16 +39,20 @@ export default function AepDadosPage({
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
-    await salvar.mutateAsync({
-      id: idRelatorio,
-      responsavel_elaboracao: responsavel.trim(),
-      titulo_profissional:    titulo.trim(),
-      registro_profissional:  registro.trim(),
-      data_elaboracao:        data || null,
-      endereco_empresa:       endereco.trim() || null,
-      conclusao:              conclusao.trim(),
-      status,
-    });
+    try {
+      await salvar.mutateAsync({
+        id: idRelatorio,
+        responsavel_elaboracao: responsavel.trim(),
+        titulo_profissional:    titulo.trim(),
+        registro_profissional:  registro.trim(),
+        data_elaboracao:        data || null,
+        endereco_empresa:       endereco.trim() || null,
+        conclusao:              conclusao.trim(),
+        status,
+      });
+    } catch {
+      // erro já tratado pelo hook
+    }
   }
 
   const empresa = rel?.empresas as { nome_empresa?: string; cnpj?: string | null } | null;
@@ -65,7 +69,7 @@ export default function AepDadosPage({
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center gap-3">
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push("/aep")}
           className="rounded-lg p-2 hover:bg-gray-100"
         >
           <ArrowLeft className="size-4 text-gray-600" />

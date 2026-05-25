@@ -9,7 +9,6 @@ import {
   List,
   Plus,
   Printer,
-  Settings2,
 } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
