@@ -32,6 +32,7 @@ import type {
   GrauNR15,
   IarcGrupo,
 } from "@/lib/quimicos/base_referencia";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const ANEXOS: Array<{ value: "todos" | AnexoNR15; label: string }> = [
   { value: "todos", label: "Todos os anexos" },
@@ -118,6 +119,7 @@ export default function BaseReferenciaPage() {
 
   const [editando, setEditando] = useState<AgenteReferenciaRow | null>(null);
   const [criando, setCriando] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ title: string; desc?: string; fn: () => void | Promise<void> } | null>(null);
 
   const itens = linhas ?? [];
 
@@ -151,40 +153,34 @@ export default function BaseReferenciaPage() {
   }
   if (user.perfil !== "Admin") return null;
 
-  async function handleInicializar() {
-    if (
-      !window.confirm(
-        "Inicializar a base com os 267 agentes padrão da Chabra? Isso só funciona se a tabela estiver vazia."
-      )
-    ) {
-      return;
-    }
-    try {
-      const total = await inicializar.mutateAsync();
-      toast.success(`${total} agentes carregados na base.`);
-    } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Falha ao inicializar a base"
-      );
-    }
+  function handleInicializar() {
+    setPendingAction({
+      title: "Inicializar base de referência",
+      desc: "Importar os 267 agentes padrão da Chabra? Isso só funciona se a tabela estiver vazia.",
+      fn: async () => {
+        try {
+          const total = await inicializar.mutateAsync();
+          toast.success(`${total} agentes carregados na base.`);
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Falha ao inicializar a base");
+        }
+      },
+    });
   }
 
-  async function handleDelete(row: AgenteReferenciaRow) {
-    if (
-      !window.confirm(
-        `Apagar "${row.agente}" da base? Esta ação não pode ser desfeita.`
-      )
-    ) {
-      return;
-    }
-    try {
-      await deletar.mutateAsync(row.id);
-      toast.success("Agente removido");
-    } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Falha ao remover agente"
-      );
-    }
+  function handleDelete(row: AgenteReferenciaRow) {
+    setPendingAction({
+      title: "Apagar agente",
+      desc: `Apagar "${row.agente}" da base? Esta ação não pode ser desfeita.`,
+      fn: async () => {
+        try {
+          await deletar.mutateAsync(row.id);
+          toast.success("Agente removido");
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Falha ao remover agente");
+        }
+      },
+    });
   }
 
   return (
@@ -428,6 +424,22 @@ export default function BaseReferenciaPage() {
         <EditModal
           row={null}
           onClose={() => setCriando(false)}
+        />
+      )}
+
+      {pendingAction && (
+        <ConfirmDialog
+          open
+          title={pendingAction.title}
+          description={pendingAction.desc}
+          variant="danger"
+          confirmLabel="Confirmar"
+          loading={inicializar.isPending || deletar.isPending}
+          onCancel={() => setPendingAction(null)}
+          onConfirm={() => {
+            void pendingAction.fn();
+            setPendingAction(null);
+          }}
         />
       )}
     </div>

@@ -1,13 +1,19 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
     () =>
       new QueryClient({
+        queryCache: new QueryCache({
+          onError: (error) => {
+            toast.error(`Erro ao carregar dados: ${(error as Error).message}`);
+          },
+        }),
         defaultOptions: {
           queries: {
             staleTime: 5 * 60 * 1000,

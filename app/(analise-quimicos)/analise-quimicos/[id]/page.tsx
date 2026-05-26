@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -24,6 +24,7 @@ import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import { montarValoresEmpresa, formatarDataBR } from "@/lib/textos-padrao/variaveis";
 import { useCanDelete } from "@/lib/hooks/useUsuario";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function AnaliseDetalhePage({
   params,
@@ -36,6 +37,7 @@ export default function AnaliseDetalhePage({
   const { data: analise, isLoading, error } = useAnaliseQuimico(id);
   const { data: empresa } = useEmpresa(analise?.id_empresa ?? null);
   const excluir = useExcluirAnaliseQuimico();
+  const [confirmExcluirOpen, setConfirmExcluirOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -63,19 +65,7 @@ export default function AnaliseDetalhePage({
 
   function handleExcluir() {
     if (!analise) return;
-    if (
-      !window.confirm(
-        `Excluir a análise "${analise.titulo}"? Esta ação não pode ser desfeita.`
-      )
-    )
-      return;
-    excluir.mutate(analise.id_analise, {
-      onSuccess: () => {
-        toast.success("Análise excluída");
-        router.push("/analise-quimicos/historico");
-      },
-      onError: (e: Error) => toast.error(e.message),
-    });
+    setConfirmExcluirOpen(true);
   }
 
   return (
@@ -263,6 +253,26 @@ export default function AnaliseDetalhePage({
         {new Date(analise.created_at).toLocaleString("pt-BR")} · Revisão técnica
         obrigatória antes de uso oficial.
       </p>
+
+      <ConfirmDialog
+        open={confirmExcluirOpen}
+        title="Excluir análise"
+        description={`Excluir a análise "${analise.titulo}"? Esta ação não pode ser desfeita.`}
+        variant="danger"
+        confirmLabel="Excluir"
+        loading={excluir.isPending}
+        onCancel={() => setConfirmExcluirOpen(false)}
+        onConfirm={() => {
+          excluir.mutate(analise.id_analise, {
+            onSuccess: () => {
+              toast.success("Análise excluída");
+              router.push("/analise-quimicos/historico");
+            },
+            onError: (e: Error) => toast.error(e.message),
+          });
+          setConfirmExcluirOpen(false);
+        }}
+      />
 
       <style jsx global>{`
         @media print {

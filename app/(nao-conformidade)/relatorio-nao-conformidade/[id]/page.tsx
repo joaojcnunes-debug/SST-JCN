@@ -39,6 +39,7 @@ import {
 } from "@/lib/hooks/useRelatoriosNaoConformidade";
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
 import { useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type {
   CriticidadeNC,
   RelatorioNaoConformidade,
@@ -70,6 +71,7 @@ export default function DetalheNaoConformidadePage({
 
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [pickerAberto, setPickerAberto] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ title: string; desc?: string; fn: () => void } | null>(null);
 
   if (isLoading) {
     return (
@@ -121,39 +123,36 @@ export default function DetalheNaoConformidadePage({
   };
 
   function handleExcluir() {
-    if (
-      !window.confirm(
-        `Apagar o relatório "${relatorio.titulo}"? Esta ação não pode ser desfeita.`
-      )
-    ) {
-      return;
-    }
-    excluir.mutate(id, {
-      onSuccess: () => {
-        toast.success("Relatório apagado");
-        router.push("/relatorio-nao-conformidade");
-      },
-      onError: (e: Error) => toast.error(e.message || "Falha ao apagar"),
+    setPendingAction({
+      title: "Apagar relatório",
+      desc: `Apagar o relatório "${relatorio.titulo}"? Esta ação não pode ser desfeita.`,
+      fn: () => excluir.mutate(id, {
+        onSuccess: () => {
+          toast.success("Relatório apagado");
+          router.push("/relatorio-nao-conformidade");
+        },
+        onError: (e: Error) => toast.error(e.message || "Falha ao apagar"),
+      }),
     });
   }
 
   function handleFinalizar() {
-    if (itens.length === 0) {
-      if (
-        !window.confirm(
-          "Nenhuma NC registrada. Finalizar mesmo assim (vai gerar um relatório vazio)?"
-        )
-      ) {
-        return;
-      }
-    }
-    atualizarRelatorio.mutate(
+    const doFinalizar = () => atualizarRelatorio.mutate(
       { id_relatorio: id, status: "FINALIZADO" },
       {
         onSuccess: () => toast.success("Relatório finalizado"),
         onError: (e: Error) => toast.error(e.message || "Falha"),
       }
     );
+    if (itens.length === 0) {
+      setPendingAction({
+        title: "Finalizar relatório",
+        desc: "Nenhuma NC registrada. Finalizar mesmo assim (vai gerar um relatório vazio)?",
+        fn: doFinalizar,
+      });
+      return;
+    }
+    doFinalizar();
   }
 
   function handleReabrir() {
@@ -419,20 +418,17 @@ export default function DetalheNaoConformidadePage({
                   })
                 }
                 onExcluir={() => {
-                  if (
-                    !window.confirm(
-                      `Apagar esta NC (#${idx + 1})? A ação não pode ser desfeita.`
-                    )
-                  )
-                    return;
-                  excluirItem.mutate(
-                    { id_relatorio: id, id_item: item.id_item },
-                    {
-                      onSuccess: () => toast.success("NC apagada"),
-                      onError: (e: Error) =>
-                        toast.error(e.message || "Falha ao apagar"),
-                    }
-                  );
+                  setPendingAction({
+                    title: `Apagar NC #${idx + 1}`,
+                    desc: "Apagar esta não conformidade? A ação não pode ser desfeita.",
+                    fn: () => excluirItem.mutate(
+                      { id_relatorio: id, id_item: item.id_item },
+                      {
+                        onSuccess: () => toast.success("NC apagada"),
+                        onError: (e: Error) => toast.error(e.message || "Falha ao apagar"),
+                      }
+                    ),
+                  });
                 }}
                 onUploadFoto={(file) => {
                   if (file.size > MAX_FOTO_MB * 1024 * 1024) {
@@ -455,21 +451,23 @@ export default function DetalheNaoConformidadePage({
                   );
                 }}
                 onRemoverFoto={(path) => {
-                  if (!window.confirm("Remover esta foto?")) return;
-                  removerFoto.mutate(
-                    {
-                      id_relatorio: id,
-                      id_item: item.id_item,
-                      foto_storage_path: path,
-                      fotos_urls_atuais: item.foto_urls,
-                      fotos_paths_atuais: item.foto_storage_paths,
-                    },
-                    {
-                      onSuccess: () => toast.success("Foto removida"),
-                      onError: (e: Error) =>
-                        toast.error(e.message || "Falha ao remover"),
-                    }
-                  );
+                  setPendingAction({
+                    title: "Remover foto",
+                    desc: "Remover esta foto? A ação não pode ser desfeita.",
+                    fn: () => removerFoto.mutate(
+                      {
+                        id_relatorio: id,
+                        id_item: item.id_item,
+                        foto_storage_path: path,
+                        fotos_urls_atuais: item.foto_urls,
+                        fotos_paths_atuais: item.foto_storage_paths,
+                      },
+                      {
+                        onSuccess: () => toast.success("Foto removida"),
+                        onError: (e: Error) => toast.error(e.message || "Falha ao remover"),
+                      }
+                    ),
+                  });
                 }}
                 onAmpliarFoto={(url) => setLightbox(url)}
                 uploadEmAndamento={uploadFoto.isPending}
@@ -507,6 +505,22 @@ export default function DetalheNaoConformidadePage({
           : `Criado em ${new Date(relatorio.created_at).toLocaleString("pt-BR")}`}
         {relatorio.usuario_nome ? ` · ${relatorio.usuario_nome}` : ""}
       </p>
+
+      {pendingAction && (
+        <ConfirmDialog
+          open
+          title={pendingAction.title}
+          description={pendingAction.desc}
+          variant="danger"
+          confirmLabel="Confirmar"
+          loading={excluir.isPending || excluirItem.isPending || removerFoto.isPending || atualizarRelatorio.isPending}
+          onCancel={() => setPendingAction(null)}
+          onConfirm={() => {
+            pendingAction.fn();
+            setPendingAction(null);
+          }}
+        />
+      )}
 
       {/* Picker do checklist da NR — só aparece se há NR vinculada */}
       {pickerAberto && relatorio.nr_codigo && (

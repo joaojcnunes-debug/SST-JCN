@@ -41,6 +41,7 @@ import {
 } from "@/lib/hooks/useRelatoriosConformidade";
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
 import { useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type {
   RelatorioConformidade,
   RelatorioConformidadeItem,
@@ -71,6 +72,7 @@ export default function DetalheConformidadePage({
 
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [crossRefAberto, setCrossRefAberto] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{ title: string; desc?: string; fn: () => void } | null>(null);
 
   if (isLoading) {
     return (
@@ -117,40 +119,37 @@ export default function DetalheConformidadePage({
   };
 
   function handleExcluir() {
-    if (
-      !window.confirm(
-        `Apagar o relatório de ${relatorio.nr_codigo}? Esta ação não pode ser desfeita.`
-      )
-    ) {
-      return;
-    }
-    excluir.mutate(id, {
-      onSuccess: () => {
-        toast.success("Relatório apagado");
-        router.push("/relatorio-conformidade");
-      },
-      onError: (e: Error) => toast.error(e.message || "Falha ao apagar"),
+    setPendingAction({
+      title: "Apagar relatório",
+      desc: `Apagar o relatório de ${relatorio.nr_codigo}? Esta ação não pode ser desfeita.`,
+      fn: () => excluir.mutate(id, {
+        onSuccess: () => {
+          toast.success("Relatório apagado");
+          router.push("/relatorio-conformidade");
+        },
+        onError: (e: Error) => toast.error(e.message || "Falha ao apagar"),
+      }),
     });
   }
 
   function handleFinalizar() {
     const pendentes = itens.filter((i) => i.situacao === "PENDENTE").length;
-    if (pendentes > 0) {
-      if (
-        !window.confirm(
-          `Existem ${pendentes} item(ns) ainda PENDENTE(S). Finalizar mesmo assim?`
-        )
-      ) {
-        return;
-      }
-    }
-    atualizarRelatorio.mutate(
+    const doFinalizar = () => atualizarRelatorio.mutate(
       { id_relatorio: id, status: "FINALIZADO" },
       {
         onSuccess: () => toast.success("Relatório finalizado"),
         onError: (e: Error) => toast.error(e.message || "Falha"),
       }
     );
+    if (pendentes > 0) {
+      setPendingAction({
+        title: "Finalizar relatório",
+        desc: `Existem ${pendentes} item(ns) ainda PENDENTE(S). Finalizar mesmo assim?`,
+        fn: doFinalizar,
+      });
+      return;
+    }
+    doFinalizar();
   }
 
   function handleReabrir() {
@@ -190,16 +189,17 @@ export default function DetalheConformidadePage({
   }
 
   function handleExcluirItemExtra(idItem: string) {
-    if (!window.confirm("Apagar este item adicionado? A ação não pode ser desfeita.")) {
-      return;
-    }
-    excluirExtra.mutate(
-      { id_relatorio: id, id_item: idItem },
-      {
-        onSuccess: () => toast.success("Item removido"),
-        onError: (e: Error) => toast.error(e.message || "Falha"),
-      }
-    );
+    setPendingAction({
+      title: "Apagar item",
+      desc: "Apagar este item adicionado? A ação não pode ser desfeita.",
+      fn: () => excluirExtra.mutate(
+        { id_relatorio: id, id_item: idItem },
+        {
+          onSuccess: () => toast.success("Item removido"),
+          onError: (e: Error) => toast.error(e.message || "Falha"),
+        }
+      ),
+    });
   }
 
   // Códigos de itens cross-ref já inseridos, agrupados por NR origem (pra
@@ -438,21 +438,23 @@ export default function DetalheConformidadePage({
                 );
               }}
               onRemoverFoto={(path) => {
-                if (!window.confirm("Remover esta foto?")) return;
-                removerFoto.mutate(
-                  {
-                    id_relatorio: id,
-                    id_item: item.id_item,
-                    foto_storage_path: path,
-                    fotos_urls_atuais: item.foto_urls,
-                    fotos_paths_atuais: item.foto_storage_paths,
-                  },
-                  {
-                    onSuccess: () => toast.success("Foto removida"),
-                    onError: (e: Error) =>
-                      toast.error(e.message || "Falha ao remover"),
-                  }
-                );
+                setPendingAction({
+                  title: "Remover foto",
+                  desc: "Remover esta foto? A ação não pode ser desfeita.",
+                  fn: () => removerFoto.mutate(
+                    {
+                      id_relatorio: id,
+                      id_item: item.id_item,
+                      foto_storage_path: path,
+                      fotos_urls_atuais: item.foto_urls,
+                      fotos_paths_atuais: item.foto_storage_paths,
+                    },
+                    {
+                      onSuccess: () => toast.success("Foto removida"),
+                      onError: (e: Error) => toast.error(e.message || "Falha ao remover"),
+                    }
+                  ),
+                });
               }}
               onAmpliarFoto={(url) => setLightbox(url)}
               uploadEmAndamento={uploadFoto.isPending}
@@ -490,6 +492,22 @@ export default function DetalheConformidadePage({
           : `Criado em ${new Date(relatorio.created_at).toLocaleString("pt-BR")}`}
         {relatorio.usuario_nome ? ` · ${relatorio.usuario_nome}` : ""}
       </p>
+
+      {pendingAction && (
+        <ConfirmDialog
+          open
+          title={pendingAction.title}
+          description={pendingAction.desc}
+          variant="danger"
+          confirmLabel="Confirmar"
+          loading={excluir.isPending || excluirExtra.isPending || removerFoto.isPending || atualizarRelatorio.isPending}
+          onCancel={() => setPendingAction(null)}
+          onConfirm={() => {
+            pendingAction.fn();
+            setPendingAction(null);
+          }}
+        />
+      )}
 
       {/* Cross-ref picker — inserir item de outra NR */}
       {crossRefAberto && (
