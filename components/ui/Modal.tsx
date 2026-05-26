@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -11,11 +12,6 @@ interface ModalProps {
   children: ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
   footer?: ReactNode;
-  /**
-   * Se true, clicar no fundo escuro fecha o modal. Default `false` —
-   * evita fechamento acidental quando o usuário está preenchendo um
-   * formulário. X e Esc continuam fechando direto.
-   */
   closeOnBackdrop?: boolean;
 }
 
@@ -42,7 +38,6 @@ export default function Modal({
   const prevFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useRef(`modal-title-${Math.random().toString(36).slice(2)}`);
 
-  // Captura o elemento focado antes de abrir e restaura ao fechar
   useEffect(() => {
     if (open) {
       prevFocusRef.current = document.activeElement as HTMLElement;
@@ -51,23 +46,30 @@ export default function Modal({
     }
   }, [open]);
 
-  // Escape + scroll lock + focus trap
   useEffect(() => {
     if (!open || !dialogRef.current) return;
     const dialog = dialogRef.current;
 
-    // Foca o primeiro elemento interativo ao abrir
+    // Foca o primeiro input (não o botão X) ao abrir
+    const inputs = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        'input:not([disabled]), textarea:not([disabled])'
+      )
+    );
     const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
-    focusable[0]?.focus();
+    (inputs[0] ?? focusable[0])?.focus();
 
     document.body.style.overflow = "hidden";
 
+    // Listener no dialog em capture — roda antes de qualquer listener
+    // no document (Tiptap/ProseMirror), impedindo que o editor intercepte
+    // teclas digitadas nos inputs do modal.
     const onKey = (e: KeyboardEvent) => {
-      // Bubble phase no dialog: o evento já chegou ao input-alvo e agora
-      // sobe pela árvore. stopImmediatePropagation aqui impede que listeners
-      // no document (Tiptap / ProseMirror) vejam o evento, sem bloquear a
-      // digitação no input.
-      e.stopImmediatePropagation();
+      // Impede que o evento chegue ao document/window após sair do modal.
+      // Como este listener está no dialog em capture, ele roda ANTES dos
+      // listeners de bubble do document, mas DEPOIS que o input-alvo
+      // já recebeu e processou o evento.
+      e.stopPropagation();
 
       if (e.key === "Escape") { onClose(); return; }
       if (e.key !== "Tab") return;
@@ -82,18 +84,18 @@ export default function Modal({
       }
     };
 
-    // bubble (false) no dialog — o evento chega ao input primeiro,
-    // depois sobe até aqui onde é interceptado antes de alcançar o document.
-    dialog.addEventListener("keydown", onKey, false);
+    // Bubble no dialog — o evento passa pelo input antes de chegar aqui.
+    // stopPropagation impede que suba para document (onde Tiptap escuta).
+    dialog.addEventListener("keydown", onKey);
     return () => {
-      dialog.removeEventListener("keydown", onKey, false);
+      dialog.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 animate-in fade-in"
       onClick={closeOnBackdrop ? onClose : undefined}
@@ -132,6 +134,7 @@ export default function Modal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
