@@ -13,7 +13,6 @@ import {
   Cog,
   Boxes,
   FlaskConical,
-  Activity,
   Loader2,
   ArrowRight,
   ArrowLeft,
@@ -24,8 +23,7 @@ import {
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
-import { useCanCreate } from "@/lib/hooks/useUsuario";
-import { useHomeStats, type ModuloStats, type AtividadeItem } from "@/lib/hooks/useHomeStats";
+import { useHomeStats, type ModuloStats } from "@/lib/hooks/useHomeStats";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { ModuloPermitido } from "@/lib/supabase/types";
@@ -162,103 +160,6 @@ const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; ic
   },
 };
 
-const NOMES_MODULOS: Record<ModuloPermitido, string> = {
-  painel: "Painel SST",
-  psicossocial: "DRPS",
-  conformidade: "Conformidade NR",
-  nao_conformidade: "Não Conformidade",
-  apreciacao_maquinas: "Apreciação Máquinas",
-  inventario_maquinas: "Inventário",
-  analise_quimicos: "Análise Químicos",
-  aet: "AET",
-  aep: "AEP",
-  questionarios_psicossociais: "Questionários DRPS",
-};
-
-interface QuickActionCfg {
-  modulo: ModuloPermitido;
-  href: string;
-  label: string;
-  icon: React.ReactNode;
-  accent: string;
-}
-
-/** Ações rápidas — atalhos para criar registros novos nos módulos.
- *  Cada ação só aparece se o usuário tiver `pode_criar` E o módulo
- *  estiver na lista de permitidos. Psicossocial aponta pro hub do módulo
- *  porque o /novo precisa de empresa selecionada. */
-const QUICK_ACTIONS: QuickActionCfg[] = [
-  {
-    modulo: "painel",
-    href: "/inspecoes/nova",
-    label: "Nova Inspeção",
-    icon: <Shield className="size-4" />,
-    accent: "#00835A",
-  },
-  {
-    modulo: "conformidade",
-    href: "/relatorio-conformidade/novo",
-    label: "Novo Relatório NR",
-    icon: <CheckCircle2 className="size-4" />,
-    accent: "#0D9488",
-  },
-  {
-    modulo: "nao_conformidade",
-    href: "/relatorio-nao-conformidade/novo",
-    label: "Novo RNC",
-    icon: <AlertTriangle className="size-4" />,
-    accent: "#DC2626",
-  },
-  {
-    modulo: "analise_quimicos",
-    href: "/analise-quimicos/nova",
-    label: "Nova Análise Química",
-    icon: <FlaskConical className="size-4" />,
-    accent: "#0EA5E9",
-  },
-  {
-    modulo: "psicossocial",
-    href: "/psicossocial",
-    label: "Iniciar DRPS",
-    icon: <Brain className="size-4" />,
-    accent: "#7C3AED",
-  },
-  {
-    modulo: "inventario_maquinas",
-    href: "/inventario-maquinas/nova",
-    label: "Nova Máquina",
-    icon: <Boxes className="size-4" />,
-    accent: "#2563EB",
-  },
-  {
-    modulo: "apreciacao_maquinas",
-    href: "/apreciacao-maquinas/nova",
-    label: "Nova Apreciação NR-12",
-    icon: <Cog className="size-4" />,
-    accent: "#EA580C",
-  },
-  {
-    modulo: "aet",
-    href: "/aet/novo",
-    label: "Nova AET",
-    icon: <ClipboardList className="size-4" />,
-    accent: "#B45309",
-  },
-  {
-    modulo: "aep",
-    href: "/aep/novo",
-    label: "Nova AEP",
-    icon: <ClipboardCheck className="size-4" />,
-    accent: "#059669",
-  },
-  {
-    modulo: "questionarios_psicossociais",
-    href: "/questionarios-psicossociais/nova",
-    label: "Nova Aplicação DRPS",
-    icon: <BookOpen className="size-4" />,
-    accent: "#6366F1",
-  },
-];
 
 function saudacaoPorHorario(d: Date): string {
   const h = d.getHours();
@@ -316,7 +217,6 @@ export default function InicioPage() {
   const logout = useUserStore((s) => s.logout);
   const { data: configs } = useConfiguracoes();
   const stats = useHomeStats();
-  const canCreate = useCanCreate();
 
   const isAdmin = user?.perfil === "Admin";
   const modulosPermitidos = new Set(user?.modulos_permitidos ?? []);
@@ -334,16 +234,6 @@ export default function InicioPage() {
       return a.idx - b.idx;
     })
     .map((x) => x.cfg);
-
-  // Quick Actions filtradas por permissão (canCreate) + módulos permitidos.
-  const quickActions = canCreate
-    ? QUICK_ACTIONS.filter((a) => modulosPermitidos.has(a.modulo))
-    : [];
-
-  // Atividade recente filtrada por módulos permitidos do usuário
-  const atividadeFiltrada = stats.atividadeRecente.filter((a) =>
-    modulosPermitidos.has(a.modulo)
-  );
 
   const temCards = cardsDisponiveis.length > 0;
 
@@ -458,113 +348,87 @@ export default function InicioPage() {
           </div>
         ) : categoriaAtiva === null ? (
           /* ── Nível 1: seleção de categoria ── */
-          <>
-            {quickActions.length > 0 && (
-              <QuickActionsBloco actions={quickActions} />
+          <div
+            className={cn(
+              "grid w-full gap-5",
+              "grid-cols-1",
+              CATEGORIES.filter((c) => cardsDisponiveis.some((d) => d.categoria === c.id)).length === 2 && "sm:grid-cols-2 max-w-3xl",
+              CATEGORIES.filter((c) => cardsDisponiveis.some((d) => d.categoria === c.id)).length >= 3 && "sm:grid-cols-2 lg:grid-cols-3 max-w-5xl",
             )}
-
-            <div
-              className={cn(
-                "grid w-full gap-5",
-                "grid-cols-1",
-                CATEGORIES.filter((c) => cardsDisponiveis.some((d) => d.categoria === c.id)).length === 2 && "sm:grid-cols-2 max-w-3xl",
-                CATEGORIES.filter((c) => cardsDisponiveis.some((d) => d.categoria === c.id)).length >= 3 && "sm:grid-cols-2 lg:grid-cols-3 max-w-5xl",
-              )}
-            >
-              {CATEGORIES.map((cat) => {
-                const catCards = cardsDisponiveis.filter((c) => c.categoria === cat.id);
-                if (catCards.length === 0) return null;
-                const cfg = CATEGORY_CONFIG[cat.id];
-                return (
-                  <CategoryCard
-                    key={cat.id}
-                    label={cat.label}
-                    icon={cfg.icon}
-                    descricao={cfg.descricao}
-                    accent={cfg.accent}
-                    totalModulos={catCards.length}
-                    pendentes={catCards.reduce(
-                      (sum, c) => sum + (statsPorModulo(stats, c.modulo)?.pendente ?? 0),
-                      0
-                    )}
-                    isLoading={stats.isLoading}
-                    onClick={() => setCategoriaAtiva(cat.id)}
-                  />
-                );
-              })}
-            </div>
-
-            {(stats.isLoading || atividadeFiltrada.length > 0) && (
-              <AtividadeRecenteBloco
-                itens={atividadeFiltrada}
-                isLoading={stats.isLoading}
-              />
-            )}
-          </>
+          >
+            {CATEGORIES.map((cat) => {
+              const catCards = cardsDisponiveis.filter((c) => c.categoria === cat.id);
+              if (catCards.length === 0) return null;
+              const cfg = CATEGORY_CONFIG[cat.id];
+              return (
+                <CategoryCard
+                  key={cat.id}
+                  label={cat.label}
+                  icon={cfg.icon}
+                  descricao={cfg.descricao}
+                  accent={cfg.accent}
+                  totalModulos={catCards.length}
+                  pendentes={catCards.reduce(
+                    (sum, c) => sum + (statsPorModulo(stats, c.modulo)?.pendente ?? 0),
+                    0
+                  )}
+                  isLoading={stats.isLoading}
+                  onClick={() => setCategoriaAtiva(cat.id)}
+                />
+              );
+            })}
+          </div>
         ) : (
           /* ── Nível 2: módulos da categoria selecionada ── */
-          <>
-            {quickActions.length > 0 && (
-              <QuickActionsBloco actions={quickActions} />
-            )}
+          <div className="w-full max-w-6xl">
+            {/* Botão voltar */}
+            <button
+              type="button"
+              onClick={() => setCategoriaAtiva(null)}
+              className="mb-6 flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition-all hover:bg-white/25"
+            >
+              <ArrowLeft className="size-4" />
+              Voltar às categorias
+            </button>
 
-            <div className="w-full max-w-6xl">
-              {/* Botão voltar */}
-              <button
-                type="button"
-                onClick={() => setCategoriaAtiva(null)}
-                className="mb-6 flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition-all hover:bg-white/25"
-              >
-                <ArrowLeft className="size-4" />
-                Voltar às categorias
-              </button>
-
-              {/* Cabeçalho da categoria */}
-              <div className="mb-6 flex items-center gap-3">
-                <div className="h-px flex-1 bg-white/20" />
-                <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 backdrop-blur">
-                  <span className="text-white/70">
-                    {CATEGORIES.find((c) => c.id === categoriaAtiva)?.icon}
-                  </span>
-                  <span className="text-xs font-bold uppercase tracking-widest text-white/80">
-                    {CATEGORIES.find((c) => c.id === categoriaAtiva)?.label}
-                  </span>
-                </div>
-                <div className="h-px flex-1 bg-white/20" />
+            {/* Cabeçalho da categoria */}
+            <div className="mb-6 flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/20" />
+              <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 backdrop-blur">
+                <span className="text-white/70">
+                  {CATEGORIES.find((c) => c.id === categoriaAtiva)?.icon}
+                </span>
+                <span className="text-xs font-bold uppercase tracking-widest text-white/80">
+                  {CATEGORIES.find((c) => c.id === categoriaAtiva)?.label}
+                </span>
               </div>
-
-              {/* Cards dos módulos */}
-              {(() => {
-                const catCards = cardsDisponiveis.filter((c) => c.categoria === categoriaAtiva);
-                return (
-                  <div
-                    className={cn(
-                      "grid gap-5",
-                      catCards.length === 1 && "grid-cols-1 max-w-sm mx-auto",
-                      catCards.length === 2 && "grid-cols-1 sm:grid-cols-2",
-                      catCards.length >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-                    )}
-                  >
-                    {catCards.map((c) => (
-                      <HubCard
-                        key={c.modulo}
-                        {...c}
-                        stats={statsPorModulo(stats, c.modulo)}
-                        isLoadingStats={stats.isLoading}
-                      />
-                    ))}
-                  </div>
-                );
-              })()}
+              <div className="h-px flex-1 bg-white/20" />
             </div>
 
-            {(stats.isLoading || atividadeFiltrada.length > 0) && (
-              <AtividadeRecenteBloco
-                itens={atividadeFiltrada}
-                isLoading={stats.isLoading}
-              />
-            )}
-          </>
+            {/* Cards dos módulos */}
+            {(() => {
+              const catCards = cardsDisponiveis.filter((c) => c.categoria === categoriaAtiva);
+              return (
+                <div
+                  className={cn(
+                    "grid gap-5",
+                    catCards.length === 1 && "grid-cols-1 max-w-sm mx-auto",
+                    catCards.length === 2 && "grid-cols-1 sm:grid-cols-2",
+                    catCards.length >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+                  )}
+                >
+                  {catCards.map((c) => (
+                    <HubCard
+                      key={c.modulo}
+                      {...c}
+                      stats={statsPorModulo(stats, c.modulo)}
+                      isLoadingStats={stats.isLoading}
+                    />
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
         )}
 
         <p className="mt-10 text-center text-xs text-white/50">
@@ -759,87 +623,3 @@ function CategoryCard({
   );
 }
 
-/** Bloco "Ações Rápidas" — atalhos pra criação nos módulos.
- *  Só renderiza pra quem tem `pode_criar`. Botões em linha horizontal com
- *  wrap em telas pequenas. */
-function QuickActionsBloco({ actions }: { actions: QuickActionCfg[] }) {
-  return (
-    <div className="mb-8 flex w-full max-w-6xl flex-wrap items-center justify-center gap-2 sm:gap-3">
-      {actions.map((a) => (
-        <Link
-          key={a.modulo}
-          href={a.href}
-          className="group flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white shadow-sm backdrop-blur transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-lg"
-        >
-          <span
-            className="flex size-7 items-center justify-center rounded-full text-white shadow-sm transition-colors"
-            style={{ backgroundColor: a.accent }}
-          >
-            {a.icon}
-          </span>
-          <span className="transition-colors group-hover:text-gray-900">
-            {a.label}
-          </span>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
-/** Bloco "Atividade Recente" — top 8 registros agregados dos módulos. */
-function AtividadeRecenteBloco({
-  itens,
-  isLoading,
-}: {
-  itens: AtividadeItem[];
-  isLoading: boolean;
-}) {
-  return (
-    <section className="mt-12 w-full max-w-6xl rounded-2xl bg-white/95 p-5 shadow-xl backdrop-blur">
-      <div className="mb-3 flex items-center gap-2">
-        <Activity className="size-5 text-verde-primary" />
-        <h2 className="text-base font-bold text-gray-900">Atividade Recente</h2>
-        <span className="ml-auto text-xs text-gray-500">
-          Últimos {itens.length} de todos os módulos liberados
-        </span>
-      </div>
-
-      {isLoading ? (
-        <div className="flex items-center gap-2 px-2 py-6 text-sm text-gray-500">
-          <Loader2 className="size-4 animate-spin" /> Carregando atividade...
-        </div>
-      ) : itens.length === 0 ? (
-        <p className="px-2 py-6 text-center text-sm text-gray-500">
-          Nenhuma atividade recente nos módulos liberados.
-        </p>
-      ) : (
-        <ul className="divide-y divide-gray-100">
-          {itens.map((item, idx) => (
-            <li key={idx}>
-              <Link
-                href={item.href}
-                className="flex items-center gap-3 px-2 py-2.5 hover:bg-gray-50"
-              >
-                <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600">
-                  {NOMES_MODULOS[item.modulo] ?? item.modulo}
-                </span>
-                <span className="flex-1 truncate text-sm text-gray-800">
-                  {item.titulo}
-                </span>
-                {item.status && (
-                  <span className="hidden text-[10px] uppercase text-gray-400 sm:inline">
-                    {item.status}
-                  </span>
-                )}
-                <span className="shrink-0 text-xs text-gray-500">
-                  {diferencaTexto(item.data)}
-                </span>
-                <ArrowRight className="size-3.5 shrink-0 text-gray-400" />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
