@@ -455,8 +455,9 @@ export default function AetLaudoPage({
           body { font-size: 12pt; line-height: 1.5; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .aet-section { page-break-inside: avoid; }
           .aet-section-break { page-break-before: always; }
-          .aet-orientacao-paisagem { page: aet-landscape; break-before: page; }
-          .aet-orientacao-retrato  { page: aet-portrait;  break-before: page; }
+          .aet-orientacao-paisagem { page: aet-landscape; }
+          .aet-orientacao-retrato  { page: aet-portrait; }
+          .aet-nova-pagina { break-before: page; }
           /* Capa no print: full-bleed (1ª página sem margens) */
           .aet-capitulo--capa {
             height: 297mm !important;
@@ -554,8 +555,10 @@ export default function AetLaudoPage({
           /* Modo v56: ordem global unificada — cada capítulo renderizado por slug */
           <>
             {capitulosOrdenados.map((cap) => {
-              const oClass =
-                cap.orientacao === "paisagem" ? "aet-orientacao-paisagem" : "aet-orientacao-retrato";
+              const oClass = cn(
+                cap.orientacao === "paisagem" ? "aet-orientacao-paisagem" : "aet-orientacao-retrato",
+                cap.quebra_pagina !== "continua" && "aet-nova-pagina"
+              );
 
               if (cap.tipo === "fixo") {
                 let content: React.ReactNode = null;
