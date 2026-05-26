@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -15,6 +16,7 @@ import {
   Activity,
   Loader2,
   ArrowRight,
+  ArrowLeft,
   ClipboardList,
   ClipboardCheck,
   BookOpen,
@@ -141,6 +143,24 @@ const CATEGORIES: { id: Categoria; label: string; icon: React.ReactNode }[] = [
   { id: "psicossocial", label: "NR — Fatores Psicossocial",  icon: <Brain className="size-4" /> },
   { id: "interno",      label: "Chabra Sistema Interno",     icon: <Boxes className="size-4" /> },
 ];
+
+const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; icon: React.ReactNode }> = {
+  seguranca: {
+    descricao: "Inspeções, conformidade NR, laudos NR-12, ergonomia e análise de agentes químicos",
+    accent: "#00835A",
+    icon: <Shield className="size-12" />,
+  },
+  psicossocial: {
+    descricao: "Diagnóstico de riscos psicossociais, questionários DRPS e planos de ação (NR-01)",
+    accent: "#7C3AED",
+    icon: <Brain className="size-12" />,
+  },
+  interno: {
+    descricao: "Patrimônio Chabra, inventário de equipamentos e sistemas de gestão interna",
+    accent: "#2563EB",
+    icon: <Boxes className="size-12" />,
+  },
+};
 
 const NOMES_MODULOS: Record<ModuloPermitido, string> = {
   painel: "Painel SST",
@@ -300,6 +320,7 @@ export default function InicioPage() {
 
   const isAdmin = user?.perfil === "Admin";
   const modulosPermitidos = new Set(user?.modulos_permitidos ?? []);
+  const [categoriaAtiva, setCategoriaAtiva] = useState<Categoria | null>(null);
 
   // Cards visíveis ordenados por pendência dentro de cada categoria.
   const cardsDisponiveis = CARDS.filter((c) => modulosPermitidos.has(c.modulo))
@@ -413,7 +434,9 @@ export default function InicioPage() {
           </p>
           {temCards && (
             <p className="mt-3 text-sm text-white/80 sm:text-base">
-              Escolha o sistema que deseja acessar
+              {categoriaAtiva
+                ? CATEGORIES.find((c) => c.id === categoriaAtiva)?.label
+                : "Selecione uma área para acessar"}
             </p>
           )}
         </div>
@@ -433,51 +456,106 @@ export default function InicioPage() {
               Admin: <span className="font-mono">suporte.ti@chabra.com.br</span>
             </p>
           </div>
-        ) : (
+        ) : categoriaAtiva === null ? (
+          /* ── Nível 1: seleção de categoria ── */
           <>
             {quickActions.length > 0 && (
               <QuickActionsBloco actions={quickActions} />
             )}
 
-            <div className="w-full max-w-6xl space-y-10">
+            <div
+              className={cn(
+                "grid w-full gap-5",
+                "grid-cols-1",
+                CATEGORIES.filter((c) => cardsDisponiveis.some((d) => d.categoria === c.id)).length === 2 && "sm:grid-cols-2 max-w-3xl",
+                CATEGORIES.filter((c) => cardsDisponiveis.some((d) => d.categoria === c.id)).length >= 3 && "sm:grid-cols-2 lg:grid-cols-3 max-w-5xl",
+              )}
+            >
               {CATEGORIES.map((cat) => {
                 const catCards = cardsDisponiveis.filter((c) => c.categoria === cat.id);
                 if (catCards.length === 0) return null;
+                const cfg = CATEGORY_CONFIG[cat.id];
                 return (
-                  <section key={cat.id}>
-                    {/* Cabeçalho da categoria */}
-                    <div className="mb-5 flex items-center gap-3">
-                      <div className="h-px flex-1 bg-white/20" />
-                      <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 backdrop-blur">
-                        <span className="text-white/70">{cat.icon}</span>
-                        <span className="text-xs font-bold uppercase tracking-widest text-white/80">
-                          {cat.label}
-                        </span>
-                      </div>
-                      <div className="h-px flex-1 bg-white/20" />
-                    </div>
-
-                    {/* Grid de cards da categoria */}
-                    <div
-                      className={cn(
-                        "grid gap-5",
-                        catCards.length === 1 && "grid-cols-1 max-w-sm mx-auto",
-                        catCards.length === 2 && "grid-cols-1 sm:grid-cols-2",
-                        catCards.length >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
-                      )}
-                    >
-                      {catCards.map((c) => (
-                        <HubCard
-                          key={c.modulo}
-                          {...c}
-                          stats={statsPorModulo(stats, c.modulo)}
-                          isLoadingStats={stats.isLoading}
-                        />
-                      ))}
-                    </div>
-                  </section>
+                  <CategoryCard
+                    key={cat.id}
+                    label={cat.label}
+                    icon={cfg.icon}
+                    descricao={cfg.descricao}
+                    accent={cfg.accent}
+                    totalModulos={catCards.length}
+                    pendentes={catCards.reduce(
+                      (sum, c) => sum + (statsPorModulo(stats, c.modulo)?.pendente ?? 0),
+                      0
+                    )}
+                    isLoading={stats.isLoading}
+                    onClick={() => setCategoriaAtiva(cat.id)}
+                  />
                 );
               })}
+            </div>
+
+            {(stats.isLoading || atividadeFiltrada.length > 0) && (
+              <AtividadeRecenteBloco
+                itens={atividadeFiltrada}
+                isLoading={stats.isLoading}
+              />
+            )}
+          </>
+        ) : (
+          /* ── Nível 2: módulos da categoria selecionada ── */
+          <>
+            {quickActions.length > 0 && (
+              <QuickActionsBloco actions={quickActions} />
+            )}
+
+            <div className="w-full max-w-6xl">
+              {/* Botão voltar */}
+              <button
+                type="button"
+                onClick={() => setCategoriaAtiva(null)}
+                className="mb-6 flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition-all hover:bg-white/25"
+              >
+                <ArrowLeft className="size-4" />
+                Voltar às categorias
+              </button>
+
+              {/* Cabeçalho da categoria */}
+              <div className="mb-6 flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/20" />
+                <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 backdrop-blur">
+                  <span className="text-white/70">
+                    {CATEGORIES.find((c) => c.id === categoriaAtiva)?.icon}
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-white/80">
+                    {CATEGORIES.find((c) => c.id === categoriaAtiva)?.label}
+                  </span>
+                </div>
+                <div className="h-px flex-1 bg-white/20" />
+              </div>
+
+              {/* Cards dos módulos */}
+              {(() => {
+                const catCards = cardsDisponiveis.filter((c) => c.categoria === categoriaAtiva);
+                return (
+                  <div
+                    className={cn(
+                      "grid gap-5",
+                      catCards.length === 1 && "grid-cols-1 max-w-sm mx-auto",
+                      catCards.length === 2 && "grid-cols-1 sm:grid-cols-2",
+                      catCards.length >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+                    )}
+                  >
+                    {catCards.map((c) => (
+                      <HubCard
+                        key={c.modulo}
+                        {...c}
+                        stats={statsPorModulo(stats, c.modulo)}
+                        isLoadingStats={stats.isLoading}
+                      />
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {(stats.isLoading || atividadeFiltrada.length > 0) && (
@@ -605,6 +683,79 @@ function HubCard({
         />
       </div>
     </Link>
+  );
+}
+
+function CategoryCard({
+  label,
+  icon,
+  descricao,
+  accent,
+  totalModulos,
+  pendentes,
+  isLoading,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  descricao: string;
+  accent: string;
+  totalModulos: number;
+  pendentes: number;
+  isLoading: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full flex-col gap-4 rounded-2xl bg-white p-6 text-left shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
+    >
+      <div className="flex items-start gap-4">
+        <div
+          className="flex size-16 shrink-0 items-center justify-center rounded-2xl text-white shadow-md transition-transform group-hover:scale-105"
+          style={{ backgroundColor: accent }}
+        >
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-gray-900">{label}</h2>
+          <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
+            {descricao}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex min-h-[40px] items-center gap-2 border-t border-gray-100 pt-3 text-xs">
+        {isLoading ? (
+          <span className="flex items-center gap-1.5 text-gray-400">
+            <Loader2 className="size-3 animate-spin" /> Carregando...
+          </span>
+        ) : (
+          <>
+            <span
+              className="rounded-full px-2 py-0.5 font-semibold text-white"
+              style={{ backgroundColor: accent }}
+            >
+              {totalModulos} módulo{totalModulos !== 1 && "s"}
+            </span>
+            {pendentes > 0 && (
+              <span className="text-amber-700">
+                <span className="font-semibold">{pendentes}</span>
+                {" pendente"}{pendentes !== 1 && "s"}
+              </span>
+            )}
+            {pendentes === 0 && (
+              <span className="text-gray-500">Tudo em dia</span>
+            )}
+          </>
+        )}
+        <ArrowRight
+          className="ml-auto size-4 text-gray-400 transition-transform group-hover:translate-x-1"
+          style={{ color: accent }}
+        />
+      </div>
+    </button>
   );
 }
 
