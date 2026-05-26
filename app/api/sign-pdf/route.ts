@@ -82,6 +82,7 @@ export async function POST(req: NextRequest) {
       name: usuario.nome ?? usuario.email ?? "",
       location: "Brasil",
       contactInfo: usuario.email ?? "",
+      signatureLength: 32768, // espaço para certificados ICP-Brasil com cadeia completa
     });
 
     // Serializa o PDF com o placeholder
