@@ -14,18 +14,34 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
   const user = useUserStore((s) => s.user);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  // Armazena bytes do PDF em memória no momento da seleção para evitar
+  // ERR_UPLOAD_FILE_CHANGED quando o arquivo é aberto em outro programa
+  // entre a seleção e o envio.
+  const [pdfBytes, setPdfBytes] = useState<ArrayBuffer | null>(null);
+  const [pdfNome, setPdfNome] = useState<string>("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   function reset() {
-    setPdfFile(null);
+    setPdfBytes(null);
+    setPdfNome("");
     setPassword("");
     setShowPass(false);
     setErro(null);
     if (fileRef.current) fileRef.current.value = "";
+  }
+
+  async function handleFileSelect(file: File) {
+    try {
+      const buf = await file.arrayBuffer();
+      setPdfBytes(buf);
+      setPdfNome(file.name);
+      setErro(null);
+    } catch {
+      setErro("Erro ao ler o arquivo. Tente selecionar novamente.");
+    }
   }
 
   function handleClose() {
@@ -34,7 +50,7 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
   }
 
   async function handleAssinar() {
-    if (!pdfFile || !password) {
+    if (!pdfBytes || !password) {
       setErro("Selecione o PDF e informe a senha do certificado.");
       return;
     }
@@ -43,7 +59,8 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
 
     try {
       const form = new FormData();
-      form.append("pdf", pdfFile);
+      // Usa os bytes já lidos em memória — imune a ERR_UPLOAD_FILE_CHANGED
+      form.append("pdf", new Blob([pdfBytes], { type: "application/pdf" }), pdfNome);
       form.append("password", password);
 
       const res = await fetch("/api/sign-pdf", { method: "POST", body: form });
@@ -104,14 +121,15 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
           >
             <FileUp className="size-5 shrink-0 text-gray-400" />
             <span className="truncate text-gray-500">
-              {pdfFile ? pdfFile.name : "Clique para selecionar o PDF"}
+              {pdfNome || "Clique para selecionar o PDF"}
             </span>
-            {pdfFile && (
+            {pdfBytes && (
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setPdfFile(null);
+                  setPdfBytes(null);
+                  setPdfNome("");
                   if (fileRef.current) fileRef.current.value = "";
                 }}
                 className="ml-auto rounded p-0.5 text-gray-400 hover:text-red-500"
@@ -125,7 +143,10 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
             type="file"
             accept="application/pdf"
             className="hidden"
-            onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFileSelect(f);
+            }}
           />
         </div>
 
@@ -179,7 +200,7 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
           <button
             type="button"
             onClick={handleAssinar}
-            disabled={loading || !pdfFile || !password}
+            disabled={loading || !pdfBytes || !password}
             className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
           >
             {loading ? (
