@@ -440,15 +440,6 @@ export default function AetLaudoPage({
         </div>
       )}
 
-      {/* Divisor "Prévia do Documento" (print:hidden) */}
-      <div className="print:hidden mb-4 flex items-center gap-3">
-        <div className="h-px flex-1 bg-gray-200" />
-        <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-          <FileText className="size-3" /> Prévia do Documento
-        </span>
-        <div className="h-px flex-1 bg-gray-200" />
-      </div>
-
       {/* CSS de impressão AET — ABNT NBR 14724 */}
       <style>{`
         @media print {
@@ -494,42 +485,43 @@ export default function AetLaudoPage({
         .aet-caixa-texto { position: absolute; z-index: 1; }
       `}</style>
 
-      {/* ═══ CAPA — visível na tela e no print (seção única, sem duplicação) ═══ */}
-      {temCapa && (
-        <div>
-          {capas.map((cap) => (
-            <div
-              key={cap.id_capitulo}
-              className="aet-capitulo--capa"
-              style={{ backgroundImage: `url(${cap.bg_imagem_url})` }}
-            >
-              {(cap.caixas_texto ?? []).map((caixa: CaixaTexto) => (
-                <div
-                  key={caixa.id}
-                  className="aet-caixa-texto"
-                  style={{
-                    left: `${caixa.x}%`,
-                    top: `${caixa.y}%`,
-                    width: `${caixa.w ?? 40}%`,
-                    fontSize: `${caixa.fontSize ?? 14}px`,
-                    fontWeight: caixa.bold ? "bold" : "normal",
-                    color: caixa.color ?? "#ffffff",
-                    textAlign: caixa.align ?? "left",
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {substituirVariaveisTexto(caixa.conteudo, valoresCapitulos)}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* ═══ CAPA + DOCUMENTO — ocultos na tela, visíveis apenas no print ═══ */}
+      <div className="hidden print:block">
+
+        {/* CAPA */}
+        {temCapa && capas.map((cap) => (
+          <div
+            key={cap.id_capitulo}
+            className="aet-capitulo--capa"
+            style={{ backgroundImage: `url(${cap.bg_imagem_url})` }}
+          >
+            {(cap.caixas_texto ?? []).map((caixa: CaixaTexto) => (
+              <div
+                key={caixa.id}
+                className="aet-caixa-texto"
+                style={{
+                  left: `${caixa.x}%`,
+                  top: `${caixa.y}%`,
+                  width: `${caixa.w ?? 40}%`,
+                  fontSize: `${caixa.fontSize ?? 14}px`,
+                  fontWeight: caixa.bold ? "bold" : "normal",
+                  color: caixa.color ?? "#ffffff",
+                  textAlign: caixa.align ?? "left",
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {substituirVariaveisTexto(caixa.conteudo, valoresCapitulos)}
+              </div>
+            ))}
+          </div>
+        ))}
+
+      </div>
 
       {/* ═══ DOCUMENTO ═══ */}
       <div
         id="laudo-aet"
-        className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none"
+        className="hidden print:block"
       >
         {/* Cabeçalho — sempre visível no print (página 2 quando há capa) */}
         <RelatorioPrintHeader
