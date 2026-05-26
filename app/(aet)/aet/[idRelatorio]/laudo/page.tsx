@@ -472,6 +472,9 @@ export default function AetLaudoPage({
             margin: 0 !important;
             padding: 0 !important;
             border-radius: 0 !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
           }
         }
         /* Capa — tela: altura fixa, arredondada, margem abaixo */
@@ -482,51 +485,44 @@ export default function AetLaudoPage({
           overflow: hidden;
           border-radius: 12px;
           margin-bottom: 1.5rem;
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
-        .aet-capitulo-bg-img {
-          position: absolute;
-          inset: 0;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          object-position: center;
-          z-index: 0;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        .aet-caixa-texto { position: relative; z-index: 1; }
+        .aet-caixa-texto { position: absolute; z-index: 1; }
       `}</style>
 
       {/* ═══ CAPA — visível na tela e no print (seção única, sem duplicação) ═══ */}
       {temCapa && (
         <div>
           {capas.map((cap) => (
-              <div key={cap.id_capitulo} className="aet-capitulo--capa">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={cap.bg_imagem_url!} alt="" className="aet-capitulo-bg-img" />
-                {(cap.caixas_texto ?? []).map((caixa: CaixaTexto) => (
-                  <div
-                    key={caixa.id}
-                    className="aet-caixa-texto"
-                    style={{
-                      position: "absolute",
-                      left: `${caixa.x}%`,
-                      top: `${caixa.y}%`,
-                      width: `${caixa.w ?? 40}%`,
-                      fontSize: `${caixa.fontSize ?? 14}px`,
-                      fontWeight: caixa.bold ? "bold" : "normal",
-                      color: caixa.color ?? "#ffffff",
-                      textAlign: caixa.align ?? "left",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {substituirVariaveisTexto(caixa.conteudo, valoresCapitulos)}
-                  </div>
-                ))}
-              </div>
-            ))}
+            <div
+              key={cap.id_capitulo}
+              className="aet-capitulo--capa"
+              style={{ backgroundImage: `url(${cap.bg_imagem_url})` }}
+            >
+              {(cap.caixas_texto ?? []).map((caixa: CaixaTexto) => (
+                <div
+                  key={caixa.id}
+                  className="aet-caixa-texto"
+                  style={{
+                    left: `${caixa.x}%`,
+                    top: `${caixa.y}%`,
+                    width: `${caixa.w ?? 40}%`,
+                    fontSize: `${caixa.fontSize ?? 14}px`,
+                    fontWeight: caixa.bold ? "bold" : "normal",
+                    color: caixa.color ?? "#ffffff",
+                    textAlign: caixa.align ?? "left",
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {substituirVariaveisTexto(caixa.conteudo, valoresCapitulos)}
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       )}
 
