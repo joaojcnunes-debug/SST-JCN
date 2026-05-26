@@ -302,8 +302,10 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     // Assinatura digital
     assinatura_url: null as string | null,
     tipo_certificado: null as "A1" | "A3" | null,
+    certificado_pfx_path: null as string | null,
   });
   const [uploadingAssinatura, setUploadingAssinatura] = useState(false);
+  const [uploadingPfx, setUploadingPfx] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -328,6 +330,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           usuario?.pode_excluir ?? defaultPerm(perfilDoUser, "excluir"),
         assinatura_url: usuario?.assinatura_url ?? null,
         tipo_certificado: usuario?.tipo_certificado ?? null,
+        certificado_pfx_path: usuario?.certificado_pfx_path ?? null,
       });
     }
   }, [open, usuario]);
@@ -403,6 +406,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             pode_excluir: form.pode_excluir,
             assinatura_url: form.assinatura_url,
             tipo_certificado: form.tipo_certificado,
+            certificado_pfx_path: form.certificado_pfx_path,
           } as never)
           .eq("id_usuario", usuario.id_usuario);
         if (error) throw error;
@@ -474,6 +478,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         pode_excluir: form.pode_excluir,
         assinatura_url: form.assinatura_url,
         tipo_certificado: form.tipo_certificado,
+        certificado_pfx_path: form.certificado_pfx_path,
       };
       const { error: errInsert } = await supabase
         .from("usuarios")
@@ -530,6 +535,35 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
       toast.error(err instanceof Error ? err.message : "Erro ao enviar");
     } finally {
       setUploadingAssinatura(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleUploadPfx(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. Máximo 5 MB.");
+      return;
+    }
+    setUploadingPfx(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const path = `pfx_${Date.now()}_${Math.random().toString(36).slice(2)}.pfx`;
+      // Remove certificado anterior, se houver
+      if (form.certificado_pfx_path) {
+        await supabase.storage.from("certificados").remove([form.certificado_pfx_path]);
+      }
+      const { error } = await supabase.storage
+        .from("certificados")
+        .upload(path, file, { upsert: false });
+      if (error) throw error;
+      setForm((f) => ({ ...f, certificado_pfx_path: path }));
+      toast.success("Certificado A1 enviado");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao enviar certificado");
+    } finally {
+      setUploadingPfx(false);
       e.target.value = "";
     }
   }
@@ -847,6 +881,55 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               </label>
             ))}
           </div>
+
+          {/* Upload do .pfx — só aparece quando A1 selecionado */}
+          {form.tipo_certificado === "A1" && (
+            <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-blue-700">
+                Arquivo do Certificado A1 (.pfx / .p12)
+              </p>
+              {form.certificado_pfx_path ? (
+                <div className="flex items-center gap-2 text-sm text-green-700">
+                  <BadgeCheck className="size-4" />
+                  <span>Certificado cadastrado</span>
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, certificado_pfx_path: null }))}
+                    className="ml-auto rounded p-0.5 text-gray-400 hover:text-red-500"
+                    title="Remover certificado"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-blue-600">Nenhum arquivo cadastrado</p>
+              )}
+              <label
+                className={cn(
+                  "mt-2 inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700",
+                  uploadingPfx && "pointer-events-none opacity-50"
+                )}
+              >
+                <Upload className="size-4" />
+                {uploadingPfx
+                  ? "Enviando..."
+                  : form.certificado_pfx_path
+                  ? "Trocar arquivo"
+                  : "Enviar .pfx / .p12"}
+                <input
+                  type="file"
+                  accept=".pfx,.p12"
+                  disabled={uploadingPfx}
+                  onChange={handleUploadPfx}
+                  className="hidden"
+                />
+              </label>
+              <p className="mt-1.5 text-[10px] text-blue-500">
+                O arquivo é armazenado em bucket privado e nunca fica público.
+                A senha nunca é salva — será solicitada no momento da assinatura.
+              </p>
+            </div>
+          )}
         </Field>
 
         <label className="flex items-center gap-2 text-sm">

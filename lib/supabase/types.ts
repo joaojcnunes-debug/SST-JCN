@@ -595,6 +595,8 @@ export interface Usuario {
   assinatura_url?: string | null;
   /** Tipo de certificado digital vinculado: A1 (software) ou A3 (token/hardware). */
   tipo_certificado?: "A1" | "A3" | null;
+  /** Path do arquivo .pfx no bucket privado `certificados`. Só preenchido quando tipo_certificado = 'A1'. */
+  certificado_pfx_path?: string | null;
 }
 
 export interface Configuracao {

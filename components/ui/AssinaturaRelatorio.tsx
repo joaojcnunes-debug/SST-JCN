@@ -2,6 +2,7 @@
 
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
+import BotaoAssinarPdf from "@/components/ui/BotaoAssinarPdf";
 
 /**
  * Componente de assinatura para relatórios.
@@ -61,8 +62,13 @@ export default function AssinaturaRelatorio({
         </div>
       )}
 
+      {/* ── Botão assinar com A1 (tela apenas) ── */}
+      <div className="mt-4 flex justify-end print:hidden">
+        <BotaoAssinarPdf />
+      </div>
+
       {/* ── Bloco final de assinatura ── */}
-      <div className="mt-16 border-t border-gray-200 pt-8 print:mt-12">
+      <div className="mt-8 border-t border-gray-200 pt-8 print:mt-12">
         <p className="mb-6 text-center text-xs font-medium uppercase tracking-widest text-gray-400">
           Assinaturas
         </p>
