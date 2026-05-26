@@ -46,6 +46,7 @@ import type {
   RelatorioNaoConformidadeItem,
   StatusTratativaNC,
 } from "@/lib/supabase/types";
+import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 
 const MAX_FOTO_MB = 8;
 
@@ -495,7 +496,9 @@ export default function DetalheNaoConformidadePage({
       </section>
 
       {/* Bloco de Assinaturas */}
-      <BlocoAssinaturas relatorio={relatorio} />
+      <AssinaturaRelatorio
+        nomeResponsavel={relatorio.responsavel ?? undefined}
+      />
 
       <p className="text-center text-[9px] text-gray-500 print:mt-4">
         Relatório de Não Conformidade gerado por Chabra — Segurança e Saúde do

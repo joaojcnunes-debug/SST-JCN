@@ -591,6 +591,10 @@ export interface Usuario {
   pode_excluir?: boolean;
   senha_hash?: string | null;
   created_at?: string;
+  /** URL pública da imagem de assinatura do técnico (Storage bucket fotos). */
+  assinatura_url?: string | null;
+  /** Tipo de certificado digital vinculado: A1 (software) ou A3 (token/hardware). */
+  tipo_certificado?: "A1" | "A3" | null;
 }
 
 export interface Configuracao {

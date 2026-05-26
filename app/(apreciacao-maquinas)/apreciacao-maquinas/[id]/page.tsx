@@ -41,6 +41,7 @@ import { useCanEdit, useCanDelete } from "@/lib/hooks/useUsuario";
 import ItemApreciacaoCard from "@/components/apreciacao-maquinas/ItemApreciacaoCard";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import { cn } from "@/lib/utils";
+import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import {
   CATEGORIAS_NR12_LABELS,
   CATEGORIAS_NR12_ORDEM,
@@ -892,30 +893,12 @@ export default function DetalheApreciacaoPage() {
         posicao="depois"
       />
 
-      {/* Bloco de assinatura — só no print */}
-      <section className="hidden print:block print:break-inside-avoid print:mt-6">
-        <div className="grid grid-cols-2 gap-12 pt-8">
-          <div className="border-t border-gray-400 pt-2 text-center text-xs">
-            <p className="font-semibold">
-              {apreciacao.responsavel || "Responsável técnico (Chabra)"}
-            </p>
-            <p className="text-[10px] text-gray-600">Responsável técnico</p>
-          </div>
-          <div className="border-t border-gray-400 pt-2 text-center text-xs">
-            <p className="font-semibold">
-              {apreciacao.responsavel_empresa ||
-                "Responsável pela empresa avaliada"}
-            </p>
-            <p className="text-[10px] text-gray-600">
-              Responsável pela empresa
-            </p>
-          </div>
-        </div>
-        <p className="mt-8 text-center text-[9px] text-gray-500">
-          Apreciação NR-12 gerada por Chabra — Segurança e Saúde do Trabalho ·{" "}
-          {new Date().toLocaleDateString("pt-BR")}
-        </p>
-      </section>
+      {/* Bloco de assinatura */}
+      <div className="print:break-inside-avoid">
+        <AssinaturaRelatorio
+          nomeResponsavel={apreciacao.responsavel ?? undefined}
+        />
+      </div>
 
       {/* Zona de perigo */}
       {canDelete && (

@@ -3,6 +3,7 @@
 import { use, useMemo } from "react";
 import { Printer, AlertTriangle } from "lucide-react";
 import { useAepRelatorio, useAepTextoPadrao, CLASS_COLOR_AEP, riscoMaximoSetor } from "@/lib/hooks/useAep";
+import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import { montarValoresAep } from "@/lib/textos-padrao/variaveis-aep";
 import { substituirVariaveis } from "@/lib/textos-padrao/variaveis";
 import type { AepSetor, AepChecklistFisica, AepChecklistCognitiva, AepChecklistOrganizacional } from "@/lib/supabase/types";
@@ -320,16 +321,10 @@ export default function AepLaudoPage({
         )}
 
         {/* Assinatura */}
-        {rel.responsavel_elaboracao && (
-          <div className="mt-12 border-t border-gray-200 pt-6 print:mt-8">
-            <div className="mx-auto max-w-xs text-center">
-              <div className="mb-2 h-px bg-gray-400" />
-              <p className="font-semibold text-gray-800">{rel.responsavel_elaboracao}</p>
-              {rel.titulo_profissional && <p className="text-xs text-gray-600">{rel.titulo_profissional}</p>}
-              {rel.registro_profissional && <p className="text-xs text-gray-500">{rel.registro_profissional}</p>}
-            </div>
-          </div>
-        )}
+        <AssinaturaRelatorio
+          nomeResponsavel={rel.responsavel_elaboracao ?? undefined}
+          cargoResponsavel={rel.titulo_profissional ?? undefined}
+        />
       </div>
     </>
   );

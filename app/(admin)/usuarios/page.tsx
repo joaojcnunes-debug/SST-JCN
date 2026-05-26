@@ -11,6 +11,9 @@ import {
   ShieldCheck,
   Lock,
   Trash2,
+  Upload,
+  X,
+  BadgeCheck,
 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import Badge from "@/components/ui/Badge";
@@ -296,7 +299,11 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     pode_criar: true,
     pode_editar: true,
     pode_excluir: false,
+    // Assinatura digital
+    assinatura_url: null as string | null,
+    tipo_certificado: null as "A1" | "A3" | null,
   });
+  const [uploadingAssinatura, setUploadingAssinatura] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -319,6 +326,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           usuario?.pode_editar ?? defaultPerm(perfilDoUser, "editar"),
         pode_excluir:
           usuario?.pode_excluir ?? defaultPerm(perfilDoUser, "excluir"),
+        assinatura_url: usuario?.assinatura_url ?? null,
+        tipo_certificado: usuario?.tipo_certificado ?? null,
       });
     }
   }, [open, usuario]);
@@ -392,6 +401,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             pode_criar: form.pode_criar,
             pode_editar: form.pode_editar,
             pode_excluir: form.pode_excluir,
+            assinatura_url: form.assinatura_url,
+            tipo_certificado: form.tipo_certificado,
           } as never)
           .eq("id_usuario", usuario.id_usuario);
         if (error) throw error;
@@ -461,6 +472,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         pode_criar: form.pode_criar,
         pode_editar: form.pode_editar,
         pode_excluir: form.pode_excluir,
+        assinatura_url: form.assinatura_url,
+        tipo_certificado: form.tipo_certificado,
       };
       const { error: errInsert } = await supabase
         .from("usuarios")
@@ -493,6 +506,33 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  async function handleUploadAssinatura(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error("Imagem muito grande. Máximo 3 MB.");
+      return;
+    }
+    setUploadingAssinatura(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const ext = file.name.split(".").pop() ?? "png";
+      const path = `assinaturas/assin_${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("fotos")
+        .upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      setForm((f) => ({ ...f, assinatura_url: pub.publicUrl }));
+      toast.success("Assinatura enviada");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao enviar");
+    } finally {
+      setUploadingAssinatura(false);
+      e.target.value = "";
+    }
+  }
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -714,6 +754,98 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             permanecem acessíveis a qualquer Admin, mesmo sem acesso a esses
             módulos.
           </p>
+        </Field>
+
+        {/* ── Assinatura digital ─────────────────────────────────── */}
+        <Field label="Assinatura do Técnico">
+          <p className="mt-0.5 text-[11px] text-gray-500">
+            Imagem usada como rubrica em todas as páginas dos relatórios e como
+            assinatura no bloco final. Recomendado: PNG transparente, fundo branco.
+          </p>
+
+          {/* Preview */}
+          {form.assinatura_url ? (
+            <div className="mt-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={form.assinatura_url}
+                alt="Assinatura"
+                className="max-h-14 max-w-[180px] object-contain"
+              />
+              <button
+                type="button"
+                onClick={() => setForm((f) => ({ ...f, assinatura_url: null }))}
+                className="ml-auto rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                title="Remover assinatura"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : (
+            <p className="mt-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-xs italic text-gray-400">
+              Nenhuma assinatura cadastrada.
+            </p>
+          )}
+
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <label
+              className={cn(
+                "inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-verde-accent",
+                uploadingAssinatura && "opacity-50 pointer-events-none"
+              )}
+            >
+              <Upload className="size-4" />
+              {uploadingAssinatura
+                ? "Enviando..."
+                : form.assinatura_url
+                ? "Trocar imagem"
+                : "Enviar imagem"}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                disabled={uploadingAssinatura}
+                onChange={handleUploadAssinatura}
+                className="hidden"
+              />
+            </label>
+          </div>
+        </Field>
+
+        {/* Certificado digital */}
+        <Field label="Certificado Digital">
+          <p className="mt-0.5 text-[11px] text-gray-500">
+            Tipo de certificado do técnico responsável. Aparece como selo nos
+            relatórios assinados.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-3">
+            {(["A1", "A3", null] as const).map((tipo) => (
+              <label
+                key={String(tipo)}
+                className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm hover:border-verde-primary"
+              >
+                <input
+                  type="radio"
+                  name="tipo_certificado"
+                  checked={form.tipo_certificado === tipo}
+                  onChange={() =>
+                    setForm((f) => ({ ...f, tipo_certificado: tipo }))
+                  }
+                  className="text-verde-primary focus:ring-verde-primary/30"
+                />
+                {tipo === null ? (
+                  <span className="text-gray-500">Nenhum</span>
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    <BadgeCheck className="size-4 text-blue-500" />
+                    <strong>Certificado {tipo}</strong>
+                    <span className="text-xs text-gray-400">
+                      {tipo === "A1" ? "(software / arquivo)" : "(token / hardware)"}
+                    </span>
+                  </span>
+                )}
+              </label>
+            ))}
+          </div>
         </Field>
 
         <label className="flex items-center gap-2 text-sm">

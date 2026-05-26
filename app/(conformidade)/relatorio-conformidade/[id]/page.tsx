@@ -42,6 +42,7 @@ import {
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
 import { useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import type {
   RelatorioConformidade,
   RelatorioConformidadeItem,
@@ -480,8 +481,10 @@ export default function DetalheConformidadePage({
         />
       </section>
 
-      {/* Bloco de Assinaturas — cidade/data + linhas pros assinantes */}
-      <BlocoAssinaturas relatorio={relatorio} />
+      {/* Bloco de Assinaturas */}
+      <AssinaturaRelatorio
+        nomeResponsavel={relatorio.responsavel ?? undefined}
+      />
 
       {/* Rodapé pra impressão */}
       <p className="text-center text-[9px] text-gray-500 print:mt-4">

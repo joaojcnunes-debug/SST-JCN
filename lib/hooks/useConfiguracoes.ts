@@ -19,6 +19,8 @@ export interface Configs {
   tempos_exposicao: string[];
   tecnicas: string[];
   logo_url: string;
+  /** URL pública da imagem de assinatura da empresa (Storage bucket fotos). */
+  assinatura_empresa_url: string;
 }
 
 const DEFAULTS: Configs = {
@@ -29,6 +31,7 @@ const DEFAULTS: Configs = {
   tempos_exposicao: TEMPOS_EXPOSICAO_DEFAULT,
   tecnicas: TECNICAS_DEFAULT,
   logo_url: "",
+  assinatura_empresa_url: "",
 };
 
 export function useConfiguracoes() {
@@ -51,9 +54,9 @@ export function useConfiguracoes() {
         const key = row.chave as keyof Configs;
         if (key in DEFAULTS) {
           // logo_url é string; o resto é array.
-          if (key === "logo_url") {
-            out.logo_url =
-              typeof row.valor === "string" ? row.valor : DEFAULTS.logo_url;
+          if (key === "logo_url" || key === "assinatura_empresa_url") {
+            out[key] =
+              typeof row.valor === "string" ? row.valor : DEFAULTS[key];
           } else if (Array.isArray(row.valor)) {
             (out[key] as string[]) = row.valor as string[];
           }

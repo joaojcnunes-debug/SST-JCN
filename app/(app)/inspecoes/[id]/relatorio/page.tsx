@@ -12,6 +12,7 @@ import {
   Briefcase,
   ShieldCheck,
 } from "lucide-react";
+import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
@@ -592,6 +593,8 @@ export default function RelatorioChabraPage({ params }: Props) {
               ))}
             </div>
           )}
+
+          <AssinaturaRelatorio />
 
           <p className="mt-8 text-center text-[10px] text-gray-400">
             Documento gerado em {fmtDataHora(new Date())} · Painel SST Chabra

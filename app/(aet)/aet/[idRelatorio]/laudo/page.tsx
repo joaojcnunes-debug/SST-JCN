@@ -14,6 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import toast from "react-hot-toast";
 import {
   useAetRelatorio,
@@ -1667,19 +1668,10 @@ function AssinaturaSection({
   tituloProfissional: string;
   registroProfissional: string;
 }) {
-  if (!responsavel && !tituloProfissional && !registroProfissional) return null;
   return (
-    <div className="mt-12 flex flex-col items-center gap-1 border-t border-gray-300 pt-6 text-center">
-      <div className="mb-2 h-px w-48 bg-gray-700" />
-      {responsavel && (
-        <p className="text-xs font-bold text-gray-800">{responsavel}</p>
-      )}
-      {tituloProfissional && (
-        <p className="text-xs text-gray-600">{tituloProfissional}</p>
-      )}
-      {registroProfissional && (
-        <p className="text-xs text-gray-500">{registroProfissional}</p>
-      )}
-    </div>
+    <AssinaturaRelatorio
+      nomeResponsavel={responsavel ?? undefined}
+      cargoResponsavel={tituloProfissional ?? undefined}
+    />
   );
 }

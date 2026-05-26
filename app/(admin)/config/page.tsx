@@ -39,7 +39,8 @@ type TabKey =
   | "listas"
   | "probsev"
   | "niveis"
-  | "logo";
+  | "logo"
+  | "assinatura";
 
 export default function ConfigPage() {
   const router = useRouter();
@@ -66,6 +67,7 @@ export default function ConfigPage() {
     { key: "probsev" as TabKey, label: "Probabilidade & Severidade (legado)", icon: Activity },
     { key: "niveis" as TabKey, label: "Níveis", icon: BarChart3 },
     { key: "logo" as TabKey, label: "Logo da Empresa", icon: ImageIcon },
+    { key: "assinatura" as TabKey, label: "Assinatura da Empresa", icon: Upload },
   ];
 
   if (isLoading || !configs) return <LoadingSkeleton rows={8} />;
@@ -122,6 +124,8 @@ export default function ConfigPage() {
           {tab === "niveis" && <NiveisView />}
 
           {tab === "logo" && <LogoUpload configs={configs} />}
+
+          {tab === "assinatura" && <AssinaturaEmpresaUpload configs={configs} />}
         </div>
       </div>
     </div>
@@ -477,6 +481,103 @@ function LogoUpload({ configs }: { configs: Configs }) {
           <button
             type="button"
             onClick={() => save.mutate({ chave: "logo_url", valor: "" })}
+            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Remover
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// =============================================================
+// Upload de assinatura da empresa
+// =============================================================
+
+function AssinaturaEmpresaUpload({ configs }: { configs: Configs }) {
+  const save = useSaveConfig();
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error("Imagem muito grande. Máximo 3 MB.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const ext = file.name.split(".").pop() ?? "png";
+      const path = `assinaturas/empresa_${gerarId("EMP")}.${ext}`;
+      const { error } = await supabase.storage
+        .from("fotos")
+        .upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      save.mutate({ chave: "assinatura_empresa_url", valor: pub.publicUrl });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro";
+      toast.error(msg);
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  return (
+    <section className="space-y-4">
+      <h2 className="text-base font-semibold text-gray-800">
+        Assinatura da Empresa
+      </h2>
+      <p className="text-sm text-gray-600">
+        Esta assinatura aparece no bloco final de todos os relatórios, ao lado
+        da assinatura do técnico responsável. Recomendado: PNG transparente,
+        proporção 3:1, mín. 300×100px.
+      </p>
+
+      {configs.assinatura_empresa_url ? (
+        <div className="rounded-lg border border-gray-200 bg-white p-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={configs.assinatura_empresa_url}
+            alt="Assinatura da empresa"
+            className="max-h-24 max-w-md object-contain"
+          />
+        </div>
+      ) : (
+        <p className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-500">
+          Nenhuma assinatura da empresa configurada.
+        </p>
+      )}
+
+      <div className="flex items-center gap-2">
+        <label
+          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-sm font-medium text-white hover:bg-verde-accent ${
+            uploading ? "opacity-50 pointer-events-none" : ""
+          }`}
+        >
+          <Upload className="size-4" />
+          {uploading
+            ? "Enviando..."
+            : configs.assinatura_empresa_url
+            ? "Trocar assinatura"
+            : "Enviar assinatura"}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            disabled={uploading}
+            onChange={handleFile}
+            className="hidden"
+          />
+        </label>
+        {configs.assinatura_empresa_url && (
+          <button
+            type="button"
+            onClick={() =>
+              save.mutate({ chave: "assinatura_empresa_url", valor: "" })
+            }
             className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Remover
