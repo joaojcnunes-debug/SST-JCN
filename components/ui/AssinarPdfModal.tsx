@@ -153,7 +153,9 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
             </button>
           </div>
           <p className="mt-1 text-[11px] text-gray-400">
-            A senha nunca é armazenada — usada apenas para assinar este documento.
+            É a senha que você definiu ao emitir o certificado na Autoridade
+            Certificadora (Serasa, Certisign, Valid, etc.). Não é a senha do
+            sistema. Nunca é armazenada.
           </p>
         </div>
 

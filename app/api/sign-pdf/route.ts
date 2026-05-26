@@ -99,14 +99,17 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    const msgL = msg.toLowerCase();
     const isSenhaErrada =
-      msg.toLowerCase().includes("password") ||
-      msg.toLowerCase().includes("mac verify") ||
-      msg.toLowerCase().includes("passphrase");
+      msgL.includes("password") ||
+      msgL.includes("mac") ||
+      msgL.includes("passphrase") ||
+      msgL.includes("invalid") ||
+      msgL.includes("failed to load");
     return NextResponse.json(
       {
         error: isSenhaErrada
-          ? "Senha do certificado incorreta"
+          ? "Senha do certificado incorreta. Use a senha que você definiu ao emitir o certificado A1 junto à Autoridade Certificadora (Serasa, Certisign, etc.)."
           : `Erro ao assinar: ${msg}`,
       },
       { status: 400 }
