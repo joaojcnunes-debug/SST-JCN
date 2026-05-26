@@ -63,8 +63,10 @@ export default function Modal({
     document.body.style.overflow = "hidden";
 
     const onKey = (e: KeyboardEvent) => {
-      // Intercepta na fase de captura antes que editores de texto (Tiptap etc.)
-      // registrados no document/bubble vejam o evento.
+      // Bubble phase no dialog: o evento já chegou ao input-alvo e agora
+      // sobe pela árvore. stopImmediatePropagation aqui impede que listeners
+      // no document (Tiptap / ProseMirror) vejam o evento, sem bloquear a
+      // digitação no input.
       e.stopImmediatePropagation();
 
       if (e.key === "Escape") { onClose(); return; }
@@ -80,10 +82,11 @@ export default function Modal({
       }
     };
 
-    // capture: true — roda antes dos listeners de bubble (RichTextEditor, Tiptap, etc.)
-    document.addEventListener("keydown", onKey, true);
+    // bubble (false) no dialog — o evento chega ao input primeiro,
+    // depois sobe até aqui onde é interceptado antes de alcançar o document.
+    dialog.addEventListener("keydown", onKey, false);
     return () => {
-      document.removeEventListener("keydown", onKey, true);
+      dialog.removeEventListener("keydown", onKey, false);
       document.body.style.overflow = "";
     };
   }, [open, onClose]);
