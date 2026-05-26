@@ -814,8 +814,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         {/* Certificado digital */}
         <Field label="Certificado Digital">
           <p className="mt-0.5 text-[11px] text-gray-500">
-            Tipo de certificado do técnico responsável. Aparece como selo nos
-            relatórios assinados.
+            Selecione o tipo de certificado ICP-Brasil do técnico. A seleção
+            aparece como selo de identificação nos relatórios — não é necessário
+            enviar nenhum arquivo aqui.
           </p>
           <div className="mt-2 flex flex-wrap gap-3">
             {(["A1", "A3", null] as const).map((tipo) => (
@@ -839,7 +840,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                     <BadgeCheck className="size-4 text-blue-500" />
                     <strong>Certificado {tipo}</strong>
                     <span className="text-xs text-gray-400">
-                      {tipo === "A1" ? "(software / arquivo)" : "(token / hardware)"}
+                      {tipo === "A1" ? "ICP-Brasil · software" : "ICP-Brasil · token/hardware"}
                     </span>
                   </span>
                 )}
