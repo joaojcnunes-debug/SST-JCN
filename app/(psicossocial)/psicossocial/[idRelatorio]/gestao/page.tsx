@@ -10,6 +10,7 @@ import {
   TrendingUp,
   ArrowRight,
 } from "lucide-react";
+import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import {
   useDrpsMonitoramento,
   useDrpsPlanoMedidas,
@@ -192,6 +193,8 @@ export default function GestaoPage({
 
       {/* Versão print do quadro — mesma usada no PDF completo do relatório */}
       <DrpsGestaoResumoPrint idRelatorio={idRelatorio} />
+
+      <AssinaturaRelatorio />
     </>
   );
 }

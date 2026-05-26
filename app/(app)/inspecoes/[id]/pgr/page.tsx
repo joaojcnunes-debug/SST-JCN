@@ -3,6 +3,7 @@
 import { use, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer, Shield } from "lucide-react";
+import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
@@ -531,6 +532,8 @@ export default function PgrPage({ params }: Props) {
             </p>
           </section>
         )}
+
+        <AssinaturaRelatorio />
 
         {/* RODAPÉ */}
         <footer className="border-t border-gray-200 pt-2 text-center text-[10px] text-gray-500 print-avoid-break">

@@ -3,6 +3,7 @@
 import { use, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer, Building2, ClipboardList } from "lucide-react";
+import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import { useQuery } from "@tanstack/react-query";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
@@ -301,6 +302,8 @@ export default function RelatorioConsolidadoPage({ params }: Props) {
             </section>
           </>
         )}
+
+        <AssinaturaRelatorio />
       </article>
     </div>
   );

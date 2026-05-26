@@ -18,6 +18,7 @@ import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import DrpsSumarioPrint from "@/components/drps/DrpsSumarioPrint";
+import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import DrpsRelatorioExtrasPrint from "@/components/drps/DrpsRelatorioExtrasPrint";
 import DrpsGestaoResumoPrint from "@/components/drps/DrpsGestaoResumoPrint";
 import { useDrpsStore } from "@/lib/drps/store";
@@ -855,6 +856,10 @@ export default function AnalisePage({
               valoresVars,
               "drps-capitulos-fim"
             )}
+
+            <AssinaturaRelatorio
+              nomeResponsavel={relatorio?.responsavel_tecnico ?? undefined}
+            />
 
             <p className="mt-6 text-center text-[9px] text-gray-500">
               Documento gerado pelo Painel SST Chabra em{" "}

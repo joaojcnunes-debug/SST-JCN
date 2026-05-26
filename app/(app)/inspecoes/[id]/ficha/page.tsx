@@ -3,6 +3,7 @@
 import { use, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Printer } from "lucide-react";
+import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
@@ -566,24 +567,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         </div>
 
         {/* ASSINATURAS */}
-        <div className="ficha-secao mt-4">
-          <table className="ficha-tabela">
-            <tbody>
-              <tr>
-                <td style={{ height: 60, textAlign: "center" }}>
-                  ___________________________________________
-                  <br />
-                  Técnico de Segurança do Trabalho
-                </td>
-                <td style={{ height: 60, textAlign: "center" }}>
-                  ___________________________________________
-                  <br />
-                  Responsável pela Empresa
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <AssinaturaRelatorio />
 
         <p className="mt-4 text-center text-[9px] text-gray-500">
           Painel SST Chabra · Ficha de Inspeção em Branco · gerado em{" "}
