@@ -36,7 +36,7 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   painel: "Painel SST",
-  psicossocial: "Psicossocial",
+  psicossocial: "DRPS – Diagnóstico de Riscos Psicossociais",
   conformidade: "Relatório de Conformidade",
   nao_conformidade: "Relatório de Não Conformidade",
   apreciacao_maquinas: "Apreciação de Máquinas",

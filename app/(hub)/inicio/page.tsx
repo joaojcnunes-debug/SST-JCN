@@ -144,7 +144,7 @@ const CATEGORIES: { id: Categoria; label: string; icon: React.ReactNode }[] = [
 
 const NOMES_MODULOS: Record<ModuloPermitido, string> = {
   painel: "Painel SST",
-  psicossocial: "Psicossocial",
+  psicossocial: "DRPS",
   conformidade: "Conformidade NR",
   nao_conformidade: "Não Conformidade",
   apreciacao_maquinas: "Apreciação Máquinas",
