@@ -460,7 +460,7 @@ export default function AetLaudoPage({
           .aet-section { page-break-inside: avoid; }
           .aet-section-break { page-break-before: always; }
           .aet-orientacao-paisagem { page: aet-landscape; }
-          .aet-orientacao-retrato  { page: aet-portrait; }
+          .aet-orientacao-retrato  { /* sem page: aet-portrait — usa @page padrão (mesmas config); evita transição de página nomeada que gerava página em branco */ }
           .aet-nova-pagina { break-before: page; }
           /* Capa no print: full-bleed (1ª página sem margens) */
           .aet-capitulo--capa {
