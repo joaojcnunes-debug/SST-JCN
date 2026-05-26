@@ -1,11 +1,12 @@
 /**
  * Captura o conteúdo do elemento <main> da página atual como PDF (A4).
- * Usa html2canvas para renderizar o DOM e jsPDF para gerar o arquivo.
+ * Usa html-to-image (SVG foreignObject) para renderizar o DOM — suporta
+ * CSS moderno incluindo oklch() do Tailwind v4 — e jsPDF para o arquivo.
  * Elementos com a classe print:hidden são ocultados temporariamente.
  */
 export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
-  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-    import("html2canvas"),
+  const [{ toCanvas }, { default: jsPDF }] = await Promise.all([
+    import("html-to-image"),
     import("jspdf"),
   ]);
 
@@ -21,14 +22,12 @@ export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
   });
 
   try {
-    const canvas = await html2canvas(el, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: false,
+    const canvas = await toCanvas(el, {
       backgroundColor: "#ffffff",
-      logging: false,
-      // Força largura desktop para layout consistente
-      windowWidth: Math.max(el.scrollWidth, 1200),
+      pixelRatio: 2,
+      // Evita erros de CORS em imagens externas (logos, assinaturas)
+      skipFonts: false,
+      fetchRequestInit: { mode: "cors" },
     });
 
     // Dimensões A4 em mm com margem de 10 mm
@@ -60,8 +59,8 @@ export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
       const ctx = slice.getContext("2d")!;
       ctx.drawImage(
         canvas,
-        0, yPx, canvas.width, sliceH,   // fonte
-        0, 0,   canvas.width, sliceH    // destino
+        0, yPx, canvas.width, sliceH,  // fonte
+        0, 0,   canvas.width, sliceH   // destino
       );
 
       pdf.addImage(
