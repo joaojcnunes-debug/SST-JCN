@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { BadgeCheck, ShieldCheck } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -113,6 +114,27 @@ export default function AssinaturaRelatorio({
                   alt="Assinatura do responsável"
                   className="max-h-16 max-w-[200px] object-contain"
                 />
+              ) : certificado === "A1" ? (
+                /* Selo visual para assinatura digital A1 — sem imagem mas com cert. */
+                <div className="mb-1 flex flex-col items-center gap-0.5 rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-center">
+                  <BadgeCheck className="size-6 text-blue-600" />
+                  <span className="text-[10px] font-semibold text-blue-700 leading-tight">
+                    Assinatura Digital
+                  </span>
+                  <span className="text-[9px] text-blue-500 leading-tight">
+                    Certificado A1 · ICP-Brasil
+                  </span>
+                </div>
+              ) : certificado === "A3" ? (
+                <div className="mb-1 flex flex-col items-center gap-0.5 rounded-md border border-purple-200 bg-purple-50 px-4 py-2 text-center">
+                  <ShieldCheck className="size-6 text-purple-600" />
+                  <span className="text-[10px] font-semibold text-purple-700 leading-tight">
+                    Assinatura Digital
+                  </span>
+                  <span className="text-[9px] text-purple-500 leading-tight">
+                    Certificado A3 · ICP-Brasil
+                  </span>
+                </div>
               ) : (
                 <span className="text-xs italic text-gray-300">
                   (sem assinatura cadastrada)
