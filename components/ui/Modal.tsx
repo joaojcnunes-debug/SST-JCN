@@ -63,6 +63,10 @@ export default function Modal({
     document.body.style.overflow = "hidden";
 
     const onKey = (e: KeyboardEvent) => {
+      // Intercepta na fase de captura antes que editores de texto (Tiptap etc.)
+      // registrados no document/bubble vejam o evento.
+      e.stopImmediatePropagation();
+
       if (e.key === "Escape") { onClose(); return; }
       if (e.key !== "Tab") return;
       const els = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
@@ -76,9 +80,10 @@ export default function Modal({
       }
     };
 
-    document.addEventListener("keydown", onKey);
+    // capture: true — roda antes dos listeners de bubble (RichTextEditor, Tiptap, etc.)
+    document.addEventListener("keydown", onKey, true);
     return () => {
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey, true);
       document.body.style.overflow = "";
     };
   }, [open, onClose]);
