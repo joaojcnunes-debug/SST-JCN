@@ -28,6 +28,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { ModuloPermitido } from "@/lib/supabase/types";
 
+type Categoria = "seguranca" | "psicossocial" | "interno";
+
 interface HubCardCfg {
   modulo: ModuloPermitido;
   href: string;
@@ -35,9 +37,11 @@ interface HubCardCfg {
   description: string;
   icon: React.ReactNode;
   accent: string;
+  categoria: Categoria;
 }
 
 const CARDS: HubCardCfg[] = [
+  // ── Segurança do Trabalho ──────────────────────────────────────────
   {
     modulo: "painel",
     href: "/dashboard",
@@ -45,14 +49,7 @@ const CARDS: HubCardCfg[] = [
     description: "Inspeções, riscos, ações 5W2H, treinamentos e relatórios",
     icon: <Shield className="size-12" />,
     accent: "#00835A",
-  },
-  {
-    modulo: "psicossocial",
-    href: "/psicossocial",
-    title: "Psicossocial",
-    description: "Gestão de riscos psicossociais e IAPAT",
-    icon: <Brain className="size-12" />,
-    accent: "#7C3AED",
+    categoria: "seguranca",
   },
   {
     modulo: "conformidade",
@@ -61,6 +58,7 @@ const CARDS: HubCardCfg[] = [
     description: "Itens em conformidade por empresa, setor e NR",
     icon: <CheckCircle2 className="size-12" />,
     accent: "#0D9488",
+    categoria: "seguranca",
   },
   {
     modulo: "nao_conformidade",
@@ -69,6 +67,7 @@ const CARDS: HubCardCfg[] = [
     description: "Itens em não conformidade e tratativas pendentes",
     icon: <AlertTriangle className="size-12" />,
     accent: "#DC2626",
+    categoria: "seguranca",
   },
   {
     modulo: "apreciacao_maquinas",
@@ -77,14 +76,7 @@ const CARDS: HubCardCfg[] = [
     description: "Laudo NR-12: checklist por categoria, fotos por item, conclusão técnica",
     icon: <Cog className="size-12" />,
     accent: "#EA580C",
-  },
-  {
-    modulo: "inventario_maquinas",
-    href: "/inventario-maquinas",
-    title: "Inventário de Equipamentos",
-    description: "Patrimônio Chabra e máquinas das empresas clientes",
-    icon: <Boxes className="size-12" />,
-    accent: "#2563EB",
+    categoria: "seguranca",
   },
   {
     modulo: "analise_quimicos",
@@ -93,6 +85,7 @@ const CARDS: HubCardCfg[] = [
     description: "Análise quantitativa de agentes químicos e FISPQ",
     icon: <FlaskConical className="size-12" />,
     accent: "#0EA5E9",
+    categoria: "seguranca",
   },
   {
     modulo: "aet",
@@ -101,6 +94,7 @@ const CARDS: HubCardCfg[] = [
     description: "Avaliação ergonômica dos postos de trabalho por setor (NR-17)",
     icon: <ClipboardList className="size-12" />,
     accent: "#B45309",
+    categoria: "seguranca",
   },
   {
     modulo: "aep",
@@ -109,6 +103,17 @@ const CARDS: HubCardCfg[] = [
     description: "Triagem ergonômica por setor com indicação de necessidade de AET (NR-17)",
     icon: <ClipboardCheck className="size-12" />,
     accent: "#059669",
+    categoria: "seguranca",
+  },
+  // ── NR — Fatores Psicossocial ──────────────────────────────────────
+  {
+    modulo: "psicossocial",
+    href: "/psicossocial",
+    title: "DRPS – Diagnóstico de Riscos Psicossociais",
+    description: "Gestão de riscos psicossociais, IAPAT e relatórios por empresa",
+    icon: <Brain className="size-12" />,
+    accent: "#7C3AED",
+    categoria: "psicossocial",
   },
   {
     modulo: "questionarios_psicossociais",
@@ -117,7 +122,24 @@ const CARDS: HubCardCfg[] = [
     description: "Aplicação de questionários DRPS, matriz de risco por setor e planos de ação (NR-01)",
     icon: <BookOpen className="size-12" />,
     accent: "#6366F1",
+    categoria: "psicossocial",
   },
+  // ── Chabra Sistema Interno ─────────────────────────────────────────
+  {
+    modulo: "inventario_maquinas",
+    href: "/inventario-maquinas",
+    title: "Inventário de Equipamentos",
+    description: "Patrimônio Chabra e máquinas das empresas clientes",
+    icon: <Boxes className="size-12" />,
+    accent: "#2563EB",
+    categoria: "interno",
+  },
+];
+
+const CATEGORIES: { id: Categoria; label: string; icon: React.ReactNode }[] = [
+  { id: "seguranca",    label: "Segurança do Trabalho",      icon: <Shield className="size-4" /> },
+  { id: "psicossocial", label: "NR — Fatores Psicossocial",  icon: <Brain className="size-4" /> },
+  { id: "interno",      label: "Chabra Sistema Interno",     icon: <Boxes className="size-4" /> },
 ];
 
 const NOMES_MODULOS: Record<ModuloPermitido, string> = {
@@ -279,10 +301,8 @@ export default function InicioPage() {
   const isAdmin = user?.perfil === "Admin";
   const modulosPermitidos = new Set(user?.modulos_permitidos ?? []);
 
-  // Cards visíveis ordenados por pendência (estável: sobe quem tem trabalho
-  // pendente, mantém ordem original entre empates pra não bagunçar memória
-  // muscular do usuário).
-  const cards = CARDS.filter((c) => modulosPermitidos.has(c.modulo))
+  // Cards visíveis ordenados por pendência dentro de cada categoria.
+  const cardsDisponiveis = CARDS.filter((c) => modulosPermitidos.has(c.modulo))
     .map((c, idx) => ({
       cfg: c,
       pendente: statsPorModulo(stats, c.modulo)?.pendente ?? 0,
@@ -303,6 +323,8 @@ export default function InicioPage() {
   const atividadeFiltrada = stats.atividadeRecente.filter((a) =>
     modulosPermitidos.has(a.modulo)
   );
+
+  const temCards = cardsDisponiveis.length > 0;
 
   const agora = new Date();
   const saudacao = saudacaoPorHorario(agora);
@@ -389,14 +411,14 @@ export default function InicioPage() {
           <p className="mt-1 text-sm capitalize text-white/70">
             {formatarDataExtenso(agora)}
           </p>
-          {cards.length > 0 && (
+          {temCards && (
             <p className="mt-3 text-sm text-white/80 sm:text-base">
               Escolha o sistema que deseja acessar
             </p>
           )}
         </div>
 
-        {cards.length === 0 ? (
+        {!temCards ? (
           <div className="mx-auto max-w-md rounded-2xl bg-white/10 p-6 text-center text-white backdrop-blur">
             <AlertTriangle className="mx-auto size-8 text-amber-300" />
             <p className="mt-3 font-semibold">
@@ -417,24 +439,45 @@ export default function InicioPage() {
               <QuickActionsBloco actions={quickActions} />
             )}
 
-            <div
-              className={cn(
-                "grid w-full gap-6 grid-cols-1",
-                cards.length === 1 && "max-w-sm",
-                cards.length === 2 && "max-w-3xl sm:grid-cols-2",
-                cards.length === 3 && "max-w-5xl sm:grid-cols-2 lg:grid-cols-3",
-                cards.length === 4 && "max-w-4xl sm:grid-cols-2",
-                cards.length >= 5 && "max-w-6xl sm:grid-cols-2 lg:grid-cols-3"
-              )}
-            >
-              {cards.map((c) => (
-                <HubCard
-                  key={c.modulo}
-                  {...c}
-                  stats={statsPorModulo(stats, c.modulo)}
-                  isLoadingStats={stats.isLoading}
-                />
-              ))}
+            <div className="w-full max-w-6xl space-y-10">
+              {CATEGORIES.map((cat) => {
+                const catCards = cardsDisponiveis.filter((c) => c.categoria === cat.id);
+                if (catCards.length === 0) return null;
+                return (
+                  <section key={cat.id}>
+                    {/* Cabeçalho da categoria */}
+                    <div className="mb-5 flex items-center gap-3">
+                      <div className="h-px flex-1 bg-white/20" />
+                      <div className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 backdrop-blur">
+                        <span className="text-white/70">{cat.icon}</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-white/80">
+                          {cat.label}
+                        </span>
+                      </div>
+                      <div className="h-px flex-1 bg-white/20" />
+                    </div>
+
+                    {/* Grid de cards da categoria */}
+                    <div
+                      className={cn(
+                        "grid gap-5",
+                        catCards.length === 1 && "grid-cols-1 max-w-sm mx-auto",
+                        catCards.length === 2 && "grid-cols-1 sm:grid-cols-2",
+                        catCards.length >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
+                      )}
+                    >
+                      {catCards.map((c) => (
+                        <HubCard
+                          key={c.modulo}
+                          {...c}
+                          stats={statsPorModulo(stats, c.modulo)}
+                          isLoadingStats={stats.isLoading}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
             </div>
 
             {(stats.isLoading || atividadeFiltrada.length > 0) && (
