@@ -261,6 +261,10 @@ export default function AetLaudoPage({
   const capas = (temCapitulosFixos ? capitulosOrdenados : capitulosInicio).filter((c) => !!c.bg_imagem_url);
   const temCapa = capas.length > 0;
 
+  // Índice do primeiro capítulo que não é capa — não recebe aet-nova-pagina para que
+  // o RelatorioPrintHeader e o primeiro capítulo fiquem na mesma página
+  const firstContentIdx = capitulosOrdenados.findIndex((c) => !c.bg_imagem_url);
+
   // Valores para substituição de variáveis nos capítulos de texto padrão
   const valoresCapitulos = montarValoresAet(rel, {
     responsavel_elaboracao: responsavel,
@@ -554,10 +558,15 @@ export default function AetLaudoPage({
         {temCapitulosFixos ? (
           /* Modo v56: ordem global unificada — cada capítulo renderizado por slug */
           <>
-            {capitulosOrdenados.map((cap) => {
+            {capitulosOrdenados.map((cap, mapIdx) => {
+              // Capa já renderizada fora do #laudo-aet — evita div vazio com page: aet-portrait que gera páginas em branco
+              if (cap.bg_imagem_url) return null;
+
+              // Primeiro capítulo real fica na mesma página que o RelatorioPrintHeader (sem break-before)
+              const isFirstContent = mapIdx === firstContentIdx;
               const oClass = cn(
                 cap.orientacao === "paisagem" ? "aet-orientacao-paisagem" : "aet-orientacao-retrato",
-                cap.quebra_pagina !== "continua" && "aet-nova-pagina"
+                !isFirstContent && cap.quebra_pagina !== "continua" && "aet-nova-pagina"
               );
 
               if (cap.tipo === "fixo") {
