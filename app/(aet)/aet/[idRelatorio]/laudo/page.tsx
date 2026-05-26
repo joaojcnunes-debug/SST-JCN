@@ -521,7 +521,7 @@ export default function AetLaudoPage({
       {/* ═══ DOCUMENTO ═══ */}
       <div
         id="laudo-aet"
-        className="hidden print:block"
+        className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
         {/* Cabeçalho — sempre visível no print (página 2 quando há capa) */}
         <RelatorioPrintHeader
