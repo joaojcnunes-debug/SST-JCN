@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import BotaoAssinarPdf from "@/components/ui/BotaoAssinarPdf";
 
 /**
@@ -35,8 +37,35 @@ export default function AssinaturaRelatorio({
 
   const nome = nomeResponsavel ?? user?.nome ?? "";
   const cargo = cargoResponsavel ?? user?.cargo ?? "";
-  const assinaturaUrl = user?.assinatura_url ?? null;
-  const certificado = user?.tipo_certificado ?? null;
+
+  // Quando nomeResponsavel é diferente do usuário logado, busca os dados
+  // de assinatura da pessoa indicada como responsável.
+  const isOtherUser = !!nomeResponsavel && nomeResponsavel !== user?.nome;
+  const [responsavelSig, setResponsavelSig] = useState<{
+    assinatura_url?: string | null;
+    tipo_certificado?: "A1" | "A3" | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isOtherUser || !nomeResponsavel) {
+      setResponsavelSig(null);
+      return;
+    }
+    createSupabaseBrowserClient()
+      .from("usuarios")
+      .select("assinatura_url, tipo_certificado")
+      .ilike("nome", nomeResponsavel)
+      .limit(1)
+      .then(({ data }) => setResponsavelSig(data?.[0] ?? null));
+  }, [isOtherUser, nomeResponsavel]);
+
+  const assinaturaUrl = isOtherUser
+    ? (responsavelSig?.assinatura_url ?? null)
+    : (user?.assinatura_url ?? null);
+  const certificado = isOtherUser
+    ? (responsavelSig?.tipo_certificado ?? null)
+    : (user?.tipo_certificado ?? null);
+
   const assinaturaEmpresaUrl = configs?.assinatura_empresa_url ?? null;
 
   const hoje = new Date();

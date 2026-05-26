@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { BadgeCheck, Eye, EyeOff, FileUp, Loader2, X } from "lucide-react";
+import { useState } from "react";
+import { BadgeCheck, Eye, EyeOff, FileText, Loader2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { useUserStore } from "@/lib/store";
 
@@ -10,38 +10,20 @@ interface Props {
   onClose: () => void;
 }
 
+type Step = "idle" | "gerando" | "assinando";
+
 export default function AssinarPdfModal({ open, onClose }: Props) {
   const user = useUserStore((s) => s.user);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  // Armazena bytes do PDF em memória no momento da seleção para evitar
-  // ERR_UPLOAD_FILE_CHANGED quando o arquivo é aberto em outro programa
-  // entre a seleção e o envio.
-  const [pdfBytes, setPdfBytes] = useState<ArrayBuffer | null>(null);
-  const [pdfNome, setPdfNome] = useState<string>("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [step, setStep] = useState<Step>("idle");
   const [erro, setErro] = useState<string | null>(null);
 
   function reset() {
-    setPdfBytes(null);
-    setPdfNome("");
     setPassword("");
     setShowPass(false);
     setErro(null);
-    if (fileRef.current) fileRef.current.value = "";
-  }
-
-  async function handleFileSelect(file: File) {
-    try {
-      const buf = await file.arrayBuffer();
-      setPdfBytes(buf);
-      setPdfNome(file.name);
-      setErro(null);
-    } catch {
-      setErro("Erro ao ler o arquivo. Tente selecionar novamente.");
-    }
+    setStep("idle");
   }
 
   function handleClose() {
@@ -50,17 +32,26 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
   }
 
   async function handleAssinar() {
-    if (!pdfBytes || !password) {
-      setErro("Selecione o PDF e informe a senha do certificado.");
+    if (!password) {
+      setErro("Informe a senha do certificado.");
       return;
     }
     setErro(null);
-    setLoading(true);
 
     try {
+      // Gera o PDF capturando o conteúdo atual da página
+      setStep("gerando");
+      const { gerarPdfDaPagina } = await import("@/lib/gerarPdfDaPagina");
+      const pdfBytes = await gerarPdfDaPagina();
+
+      // Envia para assinatura no servidor
+      setStep("assinando");
       const form = new FormData();
-      // Usa os bytes já lidos em memória — imune a ERR_UPLOAD_FILE_CHANGED
-      form.append("pdf", new Blob([pdfBytes], { type: "application/pdf" }), pdfNome);
+      form.append(
+        "pdf",
+        new Blob([pdfBytes], { type: "application/pdf" }),
+        "relatorio.pdf"
+      );
       form.append("password", password);
 
       const res = await fetch("/api/sign-pdf", { method: "POST", body: form });
@@ -83,9 +74,11 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao assinar");
     } finally {
-      setLoading(false);
+      setStep("idle");
     }
   }
+
+  const loading = step !== "idle";
 
   return (
     <Modal open={open} onClose={handleClose} title="Assinar PDF com Certificado A1">
@@ -99,55 +92,13 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
           </span>
         </div>
 
-        {/* Instruções */}
-        <p className="text-gray-600">
-          1. Gere o PDF do relatório usando o botão{" "}
-          <strong>Imprimir / PDF</strong> e salve o arquivo.
-          <br />
-          2. Selecione o arquivo salvo abaixo e informe a senha do certificado.
-          <br />
-          3. Clique em <strong>Assinar e Baixar</strong> — o PDF assinado será
-          baixado automaticamente.
-        </p>
-
-        {/* Upload do PDF */}
-        <div>
-          <label className="mb-1 block font-medium text-gray-700">
-            Arquivo PDF do relatório
-          </label>
-          <div
-            className="flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-3 hover:border-verde-primary hover:bg-green-50"
-            onClick={() => fileRef.current?.click()}
-          >
-            <FileUp className="size-5 shrink-0 text-gray-400" />
-            <span className="truncate text-gray-500">
-              {pdfNome || "Clique para selecionar o PDF"}
-            </span>
-            {pdfBytes && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPdfBytes(null);
-                  setPdfNome("");
-                  if (fileRef.current) fileRef.current.value = "";
-                }}
-                className="ml-auto rounded p-0.5 text-gray-400 hover:text-red-500"
-              >
-                <X className="size-4" />
-              </button>
-            )}
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/pdf"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) handleFileSelect(f);
-            }}
-          />
+        {/* Descrição do processo */}
+        <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+          <FileText className="mt-0.5 size-4 shrink-0 text-gray-400" />
+          <p className="text-xs text-gray-600">
+            O relatório será capturado automaticamente e assinado com seu
+            certificado A1. O PDF assinado será baixado em seguida.
+          </p>
         </div>
 
         {/* Senha do certificado */}
@@ -162,7 +113,8 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Senha do arquivo .pfx"
               className="w-full rounded-md border border-gray-300 px-3 py-2 pr-10 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
-              onKeyDown={(e) => e.key === "Enter" && handleAssinar()}
+              onKeyDown={(e) => e.key === "Enter" && !loading && handleAssinar()}
+              disabled={loading}
             />
             <button
               type="button"
@@ -174,9 +126,8 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
             </button>
           </div>
           <p className="mt-1 text-[11px] text-gray-400">
-            É a senha que você definiu ao emitir o certificado na Autoridade
-            Certificadora (Serasa, Certisign, Valid, etc.). Não é a senha do
-            sistema. Nunca é armazenada.
+            Senha definida ao emitir o certificado na Autoridade Certificadora
+            (Serasa, Certisign, Valid, etc.). Nunca é armazenada.
           </p>
         </div>
 
@@ -200,10 +151,14 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
           <button
             type="button"
             onClick={handleAssinar}
-            disabled={loading || !pdfBytes || !password}
+            disabled={loading || !password}
             className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
           >
-            {loading ? (
+            {step === "gerando" ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Gerando PDF...
+              </>
+            ) : step === "assinando" ? (
               <>
                 <Loader2 className="size-4 animate-spin" /> Assinando...
               </>
