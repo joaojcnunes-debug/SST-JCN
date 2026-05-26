@@ -69,7 +69,6 @@ const ZONA_BORDER_L: Record<ZonaPsi, string> = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// Key composta para indexar respostas locais
 function rKey(idSetor: string, codigoFator: string, ordem: number) {
   return `${idSetor}|${codigoFator}|${ordem}`;
 }
@@ -136,15 +135,19 @@ export default function PsicossocialPage({
 
   // ─── State ────────────────────────────────────────────────────────────────
 
-  const [setorAtivo, setSetorAtivo] = useState<string | null>(null);
+  // Setores abertos em acordeão (múltiplos simultâneos)
+  const [setoresAbertos, setSetoresAbertos] = useState<Set<string>>(new Set());
+  // Chave: `${setorId}:${codigoFator}`
   const [abertos, setAbertos] = useState<Record<string, boolean>>({});
 
-  // Respostas locais — só vão ao DB quando o técnico clicar "Salvar Fxx"
   const [localRespostas, setLocalRespostas] = useState<Record<string, number>>({});
 
+  // Keyed por codigoFator (valor único por fator no laudo — limitação do schema atual)
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [perguntasCriticas, setPerguntasCriticas] = useState<Record<string, string>>({});
   const [zonasManuais, setZonasManuais] = useState<Record<string, ZonaPsi | null>>({});
+
+  // Chave: `${setorId}:${codigoFator}`
   const [salvandoFator, setSalvandoFator] = useState<string | null>(null);
   const [gerandoObsIA, setGerandoObsIA] = useState<string | null>(null);
 
@@ -159,12 +162,12 @@ export default function PsicossocialPage({
     observacao_geral: null,
   });
 
-  // Init setor ativo
+  // Abre o primeiro setor por padrão
   useEffect(() => {
-    if (rel?.setores.length && !setorAtivo) {
-      setSetorAtivo(rel.setores[0].id);
+    if (rel?.setores.length && setoresAbertos.size === 0) {
+      setSetoresAbertos(new Set([rel.setores[0].id]));
     }
-  }, [rel, setorAtivo]);
+  }, [rel, setoresAbertos.size]);
 
   // Init meta
   useEffect(() => {
@@ -194,21 +197,23 @@ export default function PsicossocialPage({
     });
   }, [respostasDB]);
 
-  // Auto-fill Pergunta Crítica quando localRespostas muda (só preenche se vazio)
+  // Auto-fill Pergunta Crítica para todos os setores abertos
   useEffect(() => {
-    if (!setorAtivo || perguntas.length === 0) return;
+    if (perguntas.length === 0 || setoresAbertos.size === 0) return;
     setPerguntasCriticas((prev) => {
       const next = { ...prev };
       let changed = false;
-      for (const fator of fatores) {
-        if (fator.codigo === "F13") continue;
-        if (prev[fator.codigo]) continue; // não sobrescreve o que o usuário digitou
-        const auto = perguntaCriticaAuto(perguntas, localRespostas, setorAtivo, fator.codigo);
-        if (auto) { next[fator.codigo] = auto; changed = true; }
+      for (const setorId of Array.from(setoresAbertos)) {
+        for (const fator of fatores) {
+          if (fator.codigo === "F13") continue;
+          if (prev[fator.codigo]) continue;
+          const auto = perguntaCriticaAuto(perguntas, localRespostas, setorId, fator.codigo);
+          if (auto) { next[fator.codigo] = auto; changed = true; }
+        }
       }
       return changed ? next : prev;
     });
-  }, [localRespostas, setorAtivo, fatores, perguntas]);
+  }, [localRespostas, setoresAbertos, fatores, perguntas]);
 
   // Init observacoes / perguntasCriticas / zonasManuais
   useEffect(() => {
@@ -233,7 +238,6 @@ export default function PsicossocialPage({
       : null;
 
   const setores = rel?.setores ?? [];
-  const setorAtivoObj = setores.find((s) => s.id === setorAtivo);
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
 
@@ -245,28 +249,23 @@ export default function PsicossocialPage({
     }
   }
 
-  // Atualiza apenas o estado local — sem chamada ao banco
-  function handleResposta(codigoFator: string, perguntaOrdem: number, value: number) {
-    if (!setorAtivo) return;
+  function handleResposta(setorId: string, codigoFator: string, perguntaOrdem: number, value: number) {
     setLocalRespostas((prev) => ({
       ...prev,
-      [rKey(setorAtivo, codigoFator, perguntaOrdem)]: value,
+      [rKey(setorId, codigoFator, perguntaOrdem)]: value,
     }));
   }
 
-  async function handleSalvarFator(codigoFator: string) {
-    if (!setorAtivo) return;
+  async function handleSalvarFator(setorId: string, codigoFator: string) {
     const isF13 = codigoFator === "F13";
-
-    // Monta as linhas de respostas para este fator no setor ativo
     const perguntasFator = perguntas.filter((p) => p.codigo_fator === codigoFator);
     const rows: AetLaudoQpsResposta[] = perguntasFator
       .map((p) => {
-        const resposta = localRespostas[rKey(setorAtivo, codigoFator, p.ordem)];
+        const resposta = localRespostas[rKey(setorId, codigoFator, p.ordem)];
         if (resposta == null) return null;
         return {
           id_relatorio: idRelatorio,
-          id_setor: setorAtivo,
+          id_setor: setorId,
           codigo_fator: codigoFator,
           pergunta_ordem: p.ordem,
           resposta,
@@ -276,14 +275,14 @@ export default function PsicossocialPage({
 
     const mediaCalc = isF13
       ? null
-      : calcularMediaFator(perguntas, localRespostas, setorAtivo, codigoFator);
+      : calcularMediaFator(perguntas, localRespostas, setorId, codigoFator);
     const zona = isF13
       ? (zonasManuais[codigoFator] ?? null)
       : zonaFromMedia(mediaCalc);
 
-    setSalvandoFator(codigoFator);
+    const fatorKey = `${setorId}:${codigoFator}`;
+    setSalvandoFator(fatorKey);
     try {
-      // Salva respostas e meta do fator em paralelo
       await Promise.all([
         rows.length > 0 ? salvarRespostas.mutateAsync(rows) : Promise.resolve(),
         salvarFator.mutateAsync({
@@ -305,13 +304,14 @@ export default function PsicossocialPage({
     }
   }
 
-  async function gerarObsIA(codigoFator: string) {
-    if (!setorAtivo) return;
+  async function gerarObsIA(setorId: string, codigoFator: string) {
     const fatorObj = fatores.find((f) => f.codigo === codigoFator);
     if (!fatorObj) return;
-    const mediaCalc = calcularMediaFator(perguntas, localRespostas, setorAtivo, codigoFator);
+    const setorObj = setores.find((s) => s.id === setorId);
+    const mediaCalc = calcularMediaFator(perguntas, localRespostas, setorId, codigoFator);
     const zona = zonaFromMedia(mediaCalc);
-    setGerandoObsIA(codigoFator);
+    const fatorKey = `${setorId}:${codigoFator}`;
+    setGerandoObsIA(fatorKey);
     try {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb.functions.invoke("gerar-observacao-psi-ia", {
@@ -319,7 +319,7 @@ export default function PsicossocialPage({
           empresa: rel?.empresas && "nome_empresa" in (rel.empresas as object)
             ? { nome: (rel.empresas as { nome_empresa: string }).nome_empresa }
             : null,
-          setor: { nome: setorAtivoObj?.nome_setor ?? "Setor" },
+          setor: { nome: setorObj?.nome_setor ?? "Setor" },
           fator: { codigo: codigoFator, nome: fatorObj.nome, descricao: fatorObj.descricao },
           media: mediaCalc,
           zona,
@@ -339,8 +339,17 @@ export default function PsicossocialPage({
     }
   }
 
-  function toggleAberto(codigo: string) {
-    setAbertos((prev) => ({ ...prev, [codigo]: !prev[codigo] }));
+  function toggleSetor(setorId: string) {
+    setSetoresAbertos((prev) => {
+      const next = new Set(prev);
+      next.has(setorId) ? next.delete(setorId) : next.add(setorId);
+      return next;
+    });
+  }
+
+  function toggleAberto(setorId: string, codigoFator: string) {
+    const key = `${setorId}:${codigoFator}`;
+    setAbertos((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
   // ─── Loading ──────────────────────────────────────────────────────────────
@@ -487,7 +496,7 @@ export default function PsicossocialPage({
         </div>
       </section>
 
-      {/* ─── B2: Avaliação por Setor ─────────────────────────────────────────── */}
+      {/* ─── B2: Setores em acordeão ──────────────────────────────────────────── */}
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
           Avaliação por Setor
@@ -498,382 +507,384 @@ export default function PsicossocialPage({
             Nenhum setor cadastrado. Acesse <strong>Setores / Riscos</strong> para adicionar.
           </div>
         ) : (
-          <>
-            {/* Tabs de setor */}
-            <div className="flex flex-wrap gap-2">
-              {setores.map((s) => {
-                const temRespostas = respostasDB.some((r) => r.id_setor === s.id);
-                const ativo = setorAtivo === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => setSetorAtivo(s.id)}
-                    className={cn(
-                      "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
-                      ativo
-                        ? "border-[#006B54] bg-[#006B54] text-white"
-                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                    )}
-                  >
-                    {s.nome_setor || "Setor sem nome"}
-                    {temRespostas && (
-                      <span className={cn(
-                        "size-2 shrink-0 rounded-full",
-                        ativo ? "bg-white/60" : "bg-green-400"
-                      )} />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Info do setor ativo */}
-            {setorAtivoObj && (
-              <p className="text-xs text-gray-500">
-                Respondendo para: <strong className="text-gray-700">{setorAtivoObj.nome_setor}</strong>
-                {setorAtivoObj.cargos.length > 0 && (
-                  <> · {setorAtivoObj.cargos.map((c) => c.nome).filter(Boolean).join(", ")}</>
-                )}
-              </p>
-            )}
-
-            {/* Cards dos 13 fatores */}
-            {fatores.map((fator) => {
-              const isF13 = fator.codigo === "F13";
-              const perguntasFator = perguntas.filter((p) => p.codigo_fator === fator.codigo);
-              const mediaCalc = isF13 || !setorAtivo
-                ? null
-                : calcularMediaFator(perguntas, localRespostas, setorAtivo, fator.codigo);
-              const zonaCalc = isF13
-                ? (zonasManuais[fator.codigo] ?? null)
-                : zonaFromMedia(mediaCalc);
-              const prazoSem = semaforo.find((s) => s.id === zonaCalc);
-              const respondidas = setorAtivo
-                ? perguntasFator.filter((p) => localRespostas[rKey(setorAtivo, fator.codigo, p.ordem)] != null).length
-                : 0;
-              const aberto = abertos[fator.codigo] ?? false;
+          <div className="space-y-3">
+            {setores.map((setor, setorIdx) => {
+              const isOpen = setoresAbertos.has(setor.id);
+              const temRespostasSetor = respostasDB.some((r) => r.id_setor === setor.id);
 
               return (
                 <div
-                  key={fator.codigo}
-                  className="rounded-xl border bg-white shadow-sm overflow-hidden"
-                  style={zonaCalc ? { borderLeftWidth: 4, borderLeftColor: ZONA_BORDER_L[zonaCalc] } : undefined}
+                  key={setor.id}
+                  className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
                 >
-                  {/* Header */}
+                  {/* Cabeçalho do setor — clicável */}
                   <button
                     type="button"
-                    onClick={() => toggleAberto(fator.codigo)}
-                    className="flex w-full items-center gap-3 px-5 py-4 text-left"
+                    onClick={() => toggleSetor(setor.id)}
+                    className="flex w-full items-center justify-between px-5 py-4 text-left"
                   >
-                    <span
-                      className="shrink-0 rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                      style={{ background: "#006B54" }}
-                    >
-                      {fator.codigo}
+                    <span className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-900">
+                        Setor {setorIdx + 1}: {setor.nome_setor || "Sem nome"}
+                      </span>
+                      {setor.cargos.length > 0 && (
+                        <span className="text-xs text-gray-500">
+                          — {setor.cargos.map((c) => c.nome).filter(Boolean).join(", ")}
+                        </span>
+                      )}
+                      {temRespostasSetor && (
+                        <span className="size-2 shrink-0 rounded-full bg-green-400" />
+                      )}
                     </span>
-
-                    <span className="flex-1 font-semibold text-gray-900 text-sm">{fator.nome}</span>
-
-                    {!isF13 && (
-                      <span className={cn(
-                        "shrink-0 text-xs tabular-nums",
-                        respondidas === perguntasFator.length && perguntasFator.length > 0
-                          ? "text-green-600 font-semibold"
-                          : "text-gray-400"
-                      )}>
-                        {respondidas}/{perguntasFator.length}
-                      </span>
-                    )}
-
-                    {!isF13 && mediaCalc !== null && (
-                      <span className="shrink-0 font-mono text-sm font-bold text-gray-800">
-                        {mediaCalc.toFixed(2)}
-                      </span>
-                    )}
-
-                    {zonaCalc && (
-                      <span className={cn(
-                        "hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-                        ZONA_CLASS[zonaCalc]
-                      )}>
-                        <span className={cn("size-1.5 rounded-full", ZONA_DOT[zonaCalc])} />
-                        {ZONA_LABEL[zonaCalc].split(" — ")[1]}
-                      </span>
-                    )}
-
-                    {aberto
+                    {isOpen
                       ? <ChevronUp className="size-4 shrink-0 text-gray-400" />
                       : <ChevronDown className="size-4 shrink-0 text-gray-400" />}
                   </button>
 
-                  {/* Body */}
-                  {aberto && (
-                    <div className="border-t border-gray-100 px-5 py-5 space-y-5">
-                      <p className="text-xs text-gray-500 leading-relaxed">{fator.descricao}</p>
+                  {/* Conteúdo do setor: 13 fatores + resumo */}
+                  {isOpen && (
+                    <div className="border-t border-gray-100 px-4 pb-4 pt-3 space-y-3">
 
-                      {isF13 ? (
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-600">
-                            Classificação (baseada no PGR)
-                          </label>
-                          <select
-                            value={zonasManuais[fator.codigo] ?? ""}
-                            onChange={(e) =>
-                              setZonasManuais((prev) => ({
-                                ...prev,
-                                [fator.codigo]: (e.target.value as ZonaPsi) || null,
-                              }))
-                            }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                      {/* Cards dos 13 fatores deste setor */}
+                      {fatores.map((fator) => {
+                        const isF13 = fator.codigo === "F13";
+                        const perguntasFator = perguntas.filter((p) => p.codigo_fator === fator.codigo);
+                        const mediaCalc = isF13
+                          ? null
+                          : calcularMediaFator(perguntas, localRespostas, setor.id, fator.codigo);
+                        const zonaCalc = isF13
+                          ? (zonasManuais[fator.codigo] ?? null)
+                          : zonaFromMedia(mediaCalc);
+                        const prazoSem = semaforo.find((s) => s.id === zonaCalc);
+                        const respondidas = perguntasFator.filter(
+                          (p) => localRespostas[rKey(setor.id, fator.codigo, p.ordem)] != null
+                        ).length;
+                        const fatorKey = `${setor.id}:${fator.codigo}`;
+                        const aberto = abertos[fatorKey] ?? false;
+
+                        return (
+                          <div
+                            key={fator.codigo}
+                            className="rounded-xl border bg-white shadow-sm overflow-hidden"
+                            style={zonaCalc ? { borderLeftWidth: 4, borderLeftColor: ZONA_BORDER_L[zonaCalc] } : undefined}
                           >
-                            <option value="">Selecione a zona…</option>
-                            {(["verde", "amarela", "laranja", "vermelha"] as ZonaPsi[]).map((z) => (
-                              <option key={z} value={z}>{ZONA_LABEL[z]}</option>
-                            ))}
-                          </select>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                            Perguntas — clique para selecionar e salve ao final
-                          </p>
-
-                          {perguntasFator.map((p, i) => {
-                            const respostaAtual = setorAtivo
-                              ? (localRespostas[rKey(setorAtivo, fator.codigo, p.ordem)] ?? null)
-                              : null;
-
-                            return (
-                              <div
-                                key={p.id}
-                                className={cn(
-                                  "rounded-lg border p-3 transition-colors",
-                                  respostaAtual !== null
-                                    ? "border-gray-200 bg-gray-50"
-                                    : "border-dashed border-gray-200 bg-white"
-                                )}
+                            {/* Header do fator */}
+                            <button
+                              type="button"
+                              onClick={() => toggleAberto(setor.id, fator.codigo)}
+                              className="flex w-full items-center gap-3 px-5 py-4 text-left"
+                            >
+                              <span
+                                className="shrink-0 rounded-md px-2 py-0.5 text-xs font-bold text-white"
+                                style={{ background: "#006B54" }}
                               >
-                                <div className="mb-3 flex gap-2">
-                                  <span className="shrink-0 font-mono text-[10px] text-gray-400 mt-0.5">
-                                    {String(i + 1).padStart(2, "0")}
-                                  </span>
-                                  <p className="flex-1 text-xs leading-relaxed text-gray-700">{p.texto}</p>
-                                  <span className={cn(
-                                    "shrink-0 self-start rounded px-1.5 py-0.5 text-[10px] font-medium",
-                                    p.logica === "direta"
-                                      ? "bg-blue-100 text-blue-700"
-                                      : "bg-purple-100 text-purple-700"
-                                  )}>
-                                    {p.logica === "direta" ? "↑ D" : "↓ I"}
-                                  </span>
-                                </div>
+                                {fator.codigo}
+                              </span>
 
-                                <div className="grid grid-cols-5 gap-1.5">
-                                  {ESCALA.map((v) => (
-                                    <button
-                                      key={v}
-                                      type="button"
-                                      onClick={() => handleResposta(fator.codigo, p.ordem, v)}
-                                      className={cn(
-                                        "flex flex-col items-center justify-center gap-0.5 rounded-lg border py-2 px-1 text-center transition-all",
-                                        respostaAtual === v
-                                          ? "border-[#006B54] bg-[#006B54] text-white shadow-sm"
-                                          : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                                      )}
+                              <span className="flex-1 font-semibold text-gray-900 text-sm">{fator.nome}</span>
+
+                              {!isF13 && (
+                                <span className={cn(
+                                  "shrink-0 text-xs tabular-nums",
+                                  respondidas === perguntasFator.length && perguntasFator.length > 0
+                                    ? "text-green-600 font-semibold"
+                                    : "text-gray-400"
+                                )}>
+                                  {respondidas}/{perguntasFator.length}
+                                </span>
+                              )}
+
+                              {!isF13 && mediaCalc !== null && (
+                                <span className="shrink-0 font-mono text-sm font-bold text-gray-800">
+                                  {mediaCalc.toFixed(2)}
+                                </span>
+                              )}
+
+                              {zonaCalc && (
+                                <span className={cn(
+                                  "hidden sm:inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                                  ZONA_CLASS[zonaCalc]
+                                )}>
+                                  <span className={cn("size-1.5 rounded-full", ZONA_DOT[zonaCalc])} />
+                                  {ZONA_LABEL[zonaCalc].split(" — ")[1]}
+                                </span>
+                              )}
+
+                              {aberto
+                                ? <ChevronUp className="size-4 shrink-0 text-gray-400" />
+                                : <ChevronDown className="size-4 shrink-0 text-gray-400" />}
+                            </button>
+
+                            {/* Body do fator */}
+                            {aberto && (
+                              <div className="border-t border-gray-100 px-5 py-5 space-y-5">
+                                <p className="text-xs text-gray-500 leading-relaxed">{fator.descricao}</p>
+
+                                {isF13 ? (
+                                  <div>
+                                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                                      Classificação (baseada no PGR)
+                                    </label>
+                                    <select
+                                      value={zonasManuais[fator.codigo] ?? ""}
+                                      onChange={(e) =>
+                                        setZonasManuais((prev) => ({
+                                          ...prev,
+                                          [fator.codigo]: (e.target.value as ZonaPsi) || null,
+                                        }))
+                                      }
+                                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
                                     >
-                                      <span className={cn(
-                                        "text-[10px] font-bold tabular-nums",
-                                        respostaAtual === v ? "text-white/70" : "text-gray-400"
-                                      )}>
-                                        {v}
-                                      </span>
-                                      <span className="text-[10px] font-medium leading-tight">
-                                        {ESCALA_LABEL[v]}
-                                      </span>
+                                      <option value="">Selecione a zona…</option>
+                                      {(["verde", "amarela", "laranja", "vermelha"] as ZonaPsi[]).map((z) => (
+                                        <option key={z} value={z}>{ZONA_LABEL[z]}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-3">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                                      Perguntas — clique para selecionar e salve ao final
+                                    </p>
+
+                                    {perguntasFator.map((p, i) => {
+                                      const respostaAtual = localRespostas[rKey(setor.id, fator.codigo, p.ordem)] ?? null;
+
+                                      return (
+                                        <div
+                                          key={p.id}
+                                          className={cn(
+                                            "rounded-lg border p-3 transition-colors",
+                                            respostaAtual !== null
+                                              ? "border-gray-200 bg-gray-50"
+                                              : "border-dashed border-gray-200 bg-white"
+                                          )}
+                                        >
+                                          <div className="mb-3 flex gap-2">
+                                            <span className="shrink-0 font-mono text-[10px] text-gray-400 mt-0.5">
+                                              {String(i + 1).padStart(2, "0")}
+                                            </span>
+                                            <p className="flex-1 text-xs leading-relaxed text-gray-700">{p.texto}</p>
+                                            <span className={cn(
+                                              "shrink-0 self-start rounded px-1.5 py-0.5 text-[10px] font-medium",
+                                              p.logica === "direta"
+                                                ? "bg-blue-100 text-blue-700"
+                                                : "bg-purple-100 text-purple-700"
+                                            )}>
+                                              {p.logica === "direta" ? "↑ D" : "↓ I"}
+                                            </span>
+                                          </div>
+
+                                          <div className="grid grid-cols-5 gap-1.5">
+                                            {ESCALA.map((v) => (
+                                              <button
+                                                key={v}
+                                                type="button"
+                                                onClick={() => handleResposta(setor.id, fator.codigo, p.ordem, v)}
+                                                className={cn(
+                                                  "flex flex-col items-center justify-center gap-0.5 rounded-lg border py-2 px-1 text-center transition-all",
+                                                  respostaAtual === v
+                                                    ? "border-[#006B54] bg-[#006B54] text-white shadow-sm"
+                                                    : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                                                )}
+                                              >
+                                                <span className={cn(
+                                                  "text-[10px] font-bold tabular-nums",
+                                                  respostaAtual === v ? "text-white/70" : "text-gray-400"
+                                                )}>
+                                                  {v}
+                                                </span>
+                                                <span className="text-[10px] font-medium leading-tight">
+                                                  {ESCALA_LABEL[v]}
+                                                </span>
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                {/* Resultado calculado */}
+                                {!isF13 && mediaCalc !== null && (
+                                  <div className={cn(
+                                    "flex items-center gap-4 rounded-lg border p-4",
+                                    zonaCalc ? ZONA_CLASS[zonaCalc] : "border-gray-200 bg-gray-50 text-gray-700"
+                                  )}>
+                                    <div>
+                                      <p className="text-[10px] font-semibold uppercase tracking-wide opacity-60 mb-0.5">
+                                        Média calculada
+                                      </p>
+                                      <p className="text-2xl font-bold tabular-nums">{mediaCalc.toFixed(2)}</p>
+                                    </div>
+                                    {zonaCalc && (
+                                      <div className="flex-1 border-l border-current/20 pl-4">
+                                        <p className="text-sm font-bold">{ZONA_LABEL[zonaCalc]}</p>
+                                        <p className="text-xs opacity-70">
+                                          {nivelPgrFromZona(zonaCalc)} · Prazo: {prazoSem?.prazo_texto ?? "—"}
+                                        </p>
+                                      </div>
+                                    )}
+                                    <div className="text-xs opacity-60 text-right">
+                                      <p className="font-semibold">{respondidas}/{perguntasFator.length}</p>
+                                      <p>respondidas</p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Pergunta crítica + Observação + Salvar */}
+                                <div className="space-y-3 border-t border-gray-100 pt-4">
+                                  {!isF13 && (
+                                    <div>
+                                      <label className="mb-1 block text-xs font-medium text-gray-600">
+                                        Pergunta Crítica
+                                      </label>
+                                      <textarea
+                                        rows={2}
+                                        value={perguntasCriticas[fator.codigo] ?? ""}
+                                        onChange={(e) =>
+                                          setPerguntasCriticas((prev) => ({ ...prev, [fator.codigo]: e.target.value }))
+                                        }
+                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-y"
+                                        placeholder="Pergunta com pior score neste fator…"
+                                      />
+                                    </div>
+                                  )}
+
+                                  <div>
+                                    <div className="mb-1 flex items-center justify-between gap-2">
+                                      <label className="text-xs font-medium text-gray-600">
+                                        Observação / Análise
+                                      </label>
+                                      {!isF13 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => gerarObsIA(setor.id, fator.codigo)}
+                                          disabled={gerandoObsIA === fatorKey}
+                                          className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                          {gerandoObsIA === fatorKey
+                                            ? <Loader2 className="size-3 animate-spin" />
+                                            : <Sparkles className="size-3" />}
+                                          {gerandoObsIA === fatorKey ? "Gerando…" : "Gerar com IA"}
+                                        </button>
+                                      )}
+                                    </div>
+                                    <textarea
+                                      rows={3}
+                                      value={observacoes[fator.codigo] ?? ""}
+                                      onChange={(e) =>
+                                        setObservacoes((prev) => ({ ...prev, [fator.codigo]: e.target.value }))
+                                      }
+                                      className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                                      placeholder="Análise, contexto e achados relevantes…"
+                                    />
+                                  </div>
+
+                                  <div className="flex justify-end">
+                                    <button
+                                      onClick={() => handleSalvarFator(setor.id, fator.codigo)}
+                                      disabled={salvandoFator === fatorKey}
+                                      className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                                      style={{ background: "#006B54" }}
+                                    >
+                                      {salvandoFator === fatorKey
+                                        ? <Loader2 className="size-4 animate-spin" />
+                                        : <Save className="size-4" />}
+                                      Salvar {fator.codigo}
                                     </button>
-                                  ))}
+                                  </div>
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Resultado calculado */}
-                      {!isF13 && mediaCalc !== null && (
-                        <div className={cn(
-                          "flex items-center gap-4 rounded-lg border p-4",
-                          zonaCalc ? ZONA_CLASS[zonaCalc] : "border-gray-200 bg-gray-50 text-gray-700"
-                        )}>
-                          <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-wide opacity-60 mb-0.5">
-                              Média calculada
-                            </p>
-                            <p className="text-2xl font-bold tabular-nums">{mediaCalc.toFixed(2)}</p>
-                          </div>
-                          {zonaCalc && (
-                            <div className="flex-1 border-l border-current/20 pl-4">
-                              <p className="text-sm font-bold">{ZONA_LABEL[zonaCalc]}</p>
-                              <p className="text-xs opacity-70">
-                                {nivelPgrFromZona(zonaCalc)} · Prazo: {prazoSem?.prazo_texto ?? "—"}
-                              </p>
-                            </div>
-                          )}
-                          <div className="text-xs opacity-60 text-right">
-                            <p className="font-semibold">{respondidas}/{perguntasFator.length}</p>
-                            <p>respondidas</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Pergunta crítica + Observação + Salvar */}
-                      <div className="space-y-3 border-t border-gray-100 pt-4">
-                        {!isF13 && (
-                          <div>
-                            <label className="mb-1 block text-xs font-medium text-gray-600">
-                              Pergunta Crítica
-                            </label>
-                            <textarea
-                              rows={2}
-                              value={perguntasCriticas[fator.codigo] ?? ""}
-                              onChange={(e) =>
-                                setPerguntasCriticas((prev) => ({ ...prev, [fator.codigo]: e.target.value }))
-                              }
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-y"
-                              placeholder="Pergunta com pior score neste fator…"
-                            />
-                          </div>
-                        )}
-
-                        <div>
-                          <div className="mb-1 flex items-center justify-between gap-2">
-                            <label className="text-xs font-medium text-gray-600">
-                              Observação / Análise
-                            </label>
-                            {!isF13 && (
-                              <button
-                                type="button"
-                                onClick={() => gerarObsIA(fator.codigo)}
-                                disabled={gerandoObsIA === fator.codigo}
-                                className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {gerandoObsIA === fator.codigo
-                                  ? <Loader2 className="size-3 animate-spin" />
-                                  : <Sparkles className="size-3" />}
-                                {gerandoObsIA === fator.codigo ? "Gerando…" : "Gerar com IA"}
-                              </button>
                             )}
                           </div>
-                          <textarea
-                            rows={3}
-                            value={observacoes[fator.codigo] ?? ""}
-                            onChange={(e) =>
-                              setObservacoes((prev) => ({ ...prev, [fator.codigo]: e.target.value }))
-                            }
-                            className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
-                            placeholder="Análise, contexto e achados relevantes…"
-                          />
-                        </div>
+                        );
+                      })}
 
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => handleSalvarFator(fator.codigo)}
-                            disabled={salvandoFator === fator.codigo}
-                            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                            style={{ background: "#006B54" }}
-                          >
-                            {salvandoFator === fator.codigo
-                              ? <Loader2 className="size-4 animate-spin" />
-                              : <Save className="size-4" />}
-                            Salvar {fator.codigo}
-                          </button>
+                      {/* Resumo do setor */}
+                      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+                        <div className="border-b border-gray-100 px-5 py-4">
+                          <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                            Resumo — {setor.nome_setor || `Setor ${setorIdx + 1}`}
+                          </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-100 text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
+                                <th className="px-4 py-3">Cód.</th>
+                                <th className="px-4 py-3">Fator</th>
+                                <th className="px-4 py-3 text-center">Respondidas</th>
+                                <th className="px-4 py-3 text-center">Média</th>
+                                <th className="px-4 py-3">Zona</th>
+                                <th className="px-4 py-3">Nível PGR</th>
+                                <th className="px-4 py-3">Prazo</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {fatores.map((fator) => {
+                                const isF13 = fator.codigo === "F13";
+                                const perguntasFator = perguntas.filter((p) => p.codigo_fator === fator.codigo);
+                                const mediaCalc = isF13
+                                  ? null
+                                  : calcularMediaFator(perguntas, localRespostas, setor.id, fator.codigo);
+                                const zonaCalc = isF13
+                                  ? (zonasManuais[fator.codigo] ?? null)
+                                  : zonaFromMedia(mediaCalc);
+                                const prazoSem = semaforo.find((s) => s.id === zonaCalc);
+                                const respondidas = perguntasFator.filter(
+                                  (p) => localRespostas[rKey(setor.id, fator.codigo, p.ordem)] != null
+                                ).length;
+
+                                return (
+                                  <tr key={fator.codigo} className="hover:bg-gray-50/50">
+                                    <td className="px-4 py-3">
+                                      <span
+                                        className="rounded px-1.5 py-0.5 text-xs font-bold text-white"
+                                        style={{ background: "#006B54" }}
+                                      >
+                                        {fator.codigo}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 font-medium text-gray-900">{fator.nome}</td>
+                                    <td className="px-4 py-3 text-center text-gray-600 tabular-nums">
+                                      {isF13 ? "—" : `${respondidas}/${perguntasFator.length}`}
+                                    </td>
+                                    <td className="px-4 py-3 text-center font-mono font-bold text-gray-800">
+                                      {isF13 ? "—" : mediaCalc !== null ? mediaCalc.toFixed(2) : "—"}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                      {zonaCalc ? (
+                                        <span className={cn(
+                                          "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
+                                          ZONA_CLASS[zonaCalc]
+                                        )}>
+                                          <span className={cn("size-2 rounded-full", ZONA_DOT[zonaCalc])} />
+                                          {ZONA_LABEL[zonaCalc].split(" — ")[0]}
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400">—</span>
+                                      )}
+                                    </td>
+                                    <td className="px-4 py-3 text-gray-700">{nivelPgrFromZona(zonaCalc)}</td>
+                                    <td className="px-4 py-3 text-gray-600">{prazoSem?.prazo_texto ?? "—"}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
+
                     </div>
                   )}
                 </div>
               );
             })}
-          </>
+          </div>
         )}
       </section>
-
-      {/* ─── B3: Resumo do setor ativo ───────────────────────────────────────── */}
-      {setores.length > 0 && (
-        <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-100 px-5 py-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Resumo — {setorAtivoObj?.nome_setor ?? "Setor"}
-            </h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
-                  <th className="px-4 py-3">Cód.</th>
-                  <th className="px-4 py-3">Fator</th>
-                  <th className="px-4 py-3 text-center">Respondidas</th>
-                  <th className="px-4 py-3 text-center">Média</th>
-                  <th className="px-4 py-3">Zona</th>
-                  <th className="px-4 py-3">Nível PGR</th>
-                  <th className="px-4 py-3">Prazo</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {fatores.map((fator) => {
-                  const isF13 = fator.codigo === "F13";
-                  const perguntasFator = perguntas.filter((p) => p.codigo_fator === fator.codigo);
-                  const mediaCalc = isF13 || !setorAtivo
-                    ? null
-                    : calcularMediaFator(perguntas, localRespostas, setorAtivo, fator.codigo);
-                  const zonaCalc = isF13
-                    ? (zonasManuais[fator.codigo] ?? null)
-                    : zonaFromMedia(mediaCalc);
-                  const prazoSem = semaforo.find((s) => s.id === zonaCalc);
-                  const respondidas = setorAtivo
-                    ? perguntasFator.filter((p) => localRespostas[rKey(setorAtivo, fator.codigo, p.ordem)] != null).length
-                    : 0;
-
-                  return (
-                    <tr key={fator.codigo} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3">
-                        <span
-                          className="rounded px-1.5 py-0.5 text-xs font-bold text-white"
-                          style={{ background: "#006B54" }}
-                        >
-                          {fator.codigo}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{fator.nome}</td>
-                      <td className="px-4 py-3 text-center text-gray-600 tabular-nums">
-                        {isF13 ? "—" : `${respondidas}/${perguntasFator.length}`}
-                      </td>
-                      <td className="px-4 py-3 text-center font-mono font-bold text-gray-800">
-                        {isF13 ? "—" : mediaCalc !== null ? mediaCalc.toFixed(2) : "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {zonaCalc ? (
-                          <span className={cn(
-                            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold",
-                            ZONA_CLASS[zonaCalc]
-                          )}>
-                            <span className={cn("size-2 rounded-full", ZONA_DOT[zonaCalc])} />
-                            {ZONA_LABEL[zonaCalc].split(" — ")[0]}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">{nivelPgrFromZona(zonaCalc)}</td>
-                      <td className="px-4 py-3 text-gray-600">{prazoSem?.prazo_texto ?? "—"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
     </div>
   );
 }
