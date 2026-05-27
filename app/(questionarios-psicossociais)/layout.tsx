@@ -2,6 +2,7 @@
 
 import { type ReactNode, useMemo } from "react";
 import {
+  ArrowLeft,
   LayoutDashboard,
   List,
   Plus,
@@ -34,6 +35,7 @@ export default function QuestionariosLayout({ children }: { children: ReactNode 
       {
         label: "Questionários DRPS",
         items: [
+          { href: "/inicio", label: "Painel SST", icon: ArrowLeft, variant: "back" as const },
           {
             href: "/questionarios-psicossociais",
             label: "Aplicações",

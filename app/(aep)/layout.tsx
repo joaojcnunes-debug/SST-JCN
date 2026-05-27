@@ -2,6 +2,7 @@
 
 import { type ReactNode, useMemo } from "react";
 import {
+  ArrowLeft,
   BookOpen,
   ClipboardCheck,
   Info,
@@ -34,6 +35,7 @@ export default function AepLayout({ children }: { children: ReactNode }) {
       {
         label: "AEP",
         items: [
+          { href: "/inicio", label: "Painel SST", icon: ArrowLeft, variant: "back" as const },
           { href: "/aep/dashboard", label: "Dashboard",    icon: LayoutDashboard, variant: "dashboard" },
           { href: "/aep",           label: "Análises",     icon: List },
           { href: "/aep/novo",      label: "Nova Análise", icon: Plus, variant: "action" },

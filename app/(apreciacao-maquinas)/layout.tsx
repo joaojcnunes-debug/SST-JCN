@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { Cog, FileText, List } from "lucide-react";
+import { ArrowLeft, Cog, FileText, List } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -11,6 +11,7 @@ const sections: NavSection[] = [
   {
     label: "Apreciação de Máquinas",
     items: [
+      { href: "/inicio", label: "Painel SST", icon: ArrowLeft, variant: "back" as const },
       { href: "/apreciacao-maquinas", label: "Visão geral", icon: Cog },
       {
         href: "/apreciacao-maquinas/relacao-maquinas",

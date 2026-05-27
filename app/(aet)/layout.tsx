@@ -2,6 +2,7 @@
 
 import { type ReactNode, useMemo } from "react";
 import {
+  ArrowLeft,
   BookOpen,
   Brain,
   ClipboardCheck,
@@ -37,6 +38,7 @@ export default function AetLayout({ children }: { children: ReactNode }) {
       {
         label: "AET",
         items: [
+          { href: "/inicio", label: "Painel SST", icon: ArrowLeft, variant: "back" as const },
           { href: "/aet/dashboard", label: "Dashboard", icon: LayoutDashboard, variant: "dashboard" },
           { href: "/aet", label: "Laudos", icon: List },
           { href: "/aet/novo", label: "Novo Laudo", icon: Plus, variant: "action" },
