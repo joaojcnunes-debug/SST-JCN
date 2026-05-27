@@ -181,6 +181,7 @@ export default function AetLaudoPage({
       .from("usuarios")
       .select("id_usuario, nome, cargo, tipo_certificado")
       .eq("ativo_sistema", true)
+      .neq("perfil", "Visualizador")
       .order("nome")
       .then(({ data }) => {
         if (data) setProfissionais(data as Profissional[]);

@@ -118,77 +118,117 @@ export default function AssinaturaRelatorio({
           Assinaturas
         </p>
 
-        <div className="flex flex-col gap-10 sm:flex-row sm:justify-around">
-          {/* Técnico responsável */}
+        <div className="flex flex-col gap-8 sm:flex-row sm:justify-around sm:gap-6">
+          {/* ── Técnico responsável — selo estilo Adobe ── */}
           <div className="flex flex-col items-center gap-2">
-            <div className="flex h-20 w-56 items-end justify-center border-b border-gray-400 pb-1">
-              {assinaturaUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={assinaturaUrl}
-                  alt="Assinatura do responsável"
-                  className="max-h-16 max-w-[200px] object-contain"
-                />
-              ) : certificado === "A1" ? (
-                /* Selo visual para assinatura digital A1 — sem imagem mas com cert. */
-                <div className="mb-1 flex flex-col items-center gap-0.5 rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-center">
-                  <BadgeCheck className="size-6 text-blue-600" />
-                  <span className="text-[10px] font-semibold text-blue-700 leading-tight">
-                    Assinatura Digital
-                  </span>
-                  <span className="text-[9px] text-blue-500 leading-tight">
-                    Certificado A1 · ICP-Brasil
+            {assinaturaUrl || certificado ? (
+              <div className="w-72 overflow-hidden rounded border border-blue-300 bg-white shadow-sm">
+                {/* Barra de cabeçalho */}
+                <div className="flex items-center gap-1.5 bg-blue-600 px-3 py-1.5">
+                  {certificado === "A3" ? (
+                    <ShieldCheck className="size-3 text-white" />
+                  ) : (
+                    <BadgeCheck className="size-3 text-white" />
+                  )}
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white">
+                    Assinado digitalmente
+                    {certificado ? ` · Cert. ${certificado}` : ""}
                   </span>
                 </div>
-              ) : certificado === "A3" ? (
-                <div className="mb-1 flex flex-col items-center gap-0.5 rounded-md border border-purple-200 bg-purple-50 px-4 py-2 text-center">
-                  <ShieldCheck className="size-6 text-purple-600" />
-                  <span className="text-[10px] font-semibold text-purple-700 leading-tight">
-                    Assinatura Digital
-                  </span>
-                  <span className="text-[9px] text-purple-500 leading-tight">
-                    Certificado A3 · ICP-Brasil
-                  </span>
+                {/* Corpo: imagem + metadados */}
+                <div className="flex items-stretch gap-0">
+                  {/* Imagem de assinatura */}
+                  <div className="flex w-24 shrink-0 items-center justify-center border-r border-blue-100 bg-blue-50/40 p-2">
+                    {assinaturaUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={assinaturaUrl}
+                        alt="Assinatura"
+                        className="max-h-14 max-w-[80px] object-contain"
+                      />
+                    ) : certificado === "A3" ? (
+                      <ShieldCheck className="size-10 text-purple-400" />
+                    ) : (
+                      <BadgeCheck className="size-10 text-blue-400" />
+                    )}
+                  </div>
+                  {/* Metadados */}
+                  <div className="flex flex-1 flex-col justify-center gap-0.5 px-3 py-2">
+                    <p className="text-[8px] font-medium uppercase tracking-wide text-blue-500">
+                      Assinado por:
+                    </p>
+                    <p className="text-[11px] font-bold leading-tight text-gray-800">
+                      {nome}
+                    </p>
+                    {cargo && (
+                      <p className="text-[9px] text-gray-500">{cargo}</p>
+                    )}
+                    <p className="mt-1 text-[9px] text-gray-500">
+                      Data: {dataFormatada}
+                    </p>
+                    {certificado && (
+                      <p className="text-[9px] font-medium text-blue-600">
+                        ICP-Brasil · Certificado {certificado}
+                      </p>
+                    )}
+                  </div>
                 </div>
-              ) : (
+              </div>
+            ) : (
+              /* Estado vazio — campo de assinatura sem dados */
+              <div className="flex w-72 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 py-6">
                 <span className="text-xs italic text-gray-300">
                   (sem assinatura cadastrada)
                 </span>
-              )}
-            </div>
-            <p className="text-sm font-semibold text-gray-800">{nome}</p>
-            {cargo && (
-              <p className="text-xs text-gray-500">{cargo}</p>
+              </div>
             )}
-            {certificado && (
-              <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-medium text-blue-700">
-                Certificado {certificado}
-              </span>
-            )}
-            <p className="text-xs text-gray-400">{dataFormatada}</p>
+            <p className="mt-1 text-xs font-semibold text-gray-700">{nome}</p>
+            {cargo && <p className="text-[11px] text-gray-400">{cargo}</p>}
           </div>
 
-          {/* Assinatura da empresa */}
+          {/* ── Assinatura da empresa — mesmo estilo ── */}
           <div className="flex flex-col items-center gap-2">
-            <div className="flex h-20 w-56 items-end justify-center border-b border-gray-400 pb-1">
-              {assinaturaEmpresaUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={assinaturaEmpresaUrl}
-                  alt="Assinatura da empresa"
-                  className="max-h-16 max-w-[200px] object-contain"
-                />
-              ) : (
+            {assinaturaEmpresaUrl ? (
+              <div className="w-72 overflow-hidden rounded border border-gray-300 bg-white shadow-sm">
+                <div className="flex items-center gap-1.5 bg-gray-600 px-3 py-1.5">
+                  <BadgeCheck className="size-3 text-white" />
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white">
+                    Empresa responsável
+                  </span>
+                </div>
+                <div className="flex items-stretch">
+                  <div className="flex w-24 shrink-0 items-center justify-center border-r border-gray-100 bg-gray-50/60 p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={assinaturaEmpresaUrl}
+                      alt="Assinatura da empresa"
+                      className="max-h-14 max-w-[80px] object-contain"
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col justify-center gap-0.5 px-3 py-2">
+                    <p className="text-[8px] font-medium uppercase tracking-wide text-gray-400">
+                      Carimbo / Assinatura
+                    </p>
+                    <p className="text-[11px] font-bold leading-tight text-gray-800">
+                      Responsável pela Empresa
+                    </p>
+                    <p className="mt-1 text-[9px] text-gray-500">
+                      Data: {dataFormatada}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex w-72 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 py-6">
                 <span className="text-xs italic text-gray-300">
                   (sem assinatura da empresa)
                 </span>
-              )}
-            </div>
-            <p className="text-sm font-semibold text-gray-800">
+              </div>
+            )}
+            <p className="mt-1 text-xs font-semibold text-gray-700">
               Responsável pela Empresa
             </p>
-            <p className="text-xs text-gray-500">Carimbo / Assinatura</p>
-            <p className="text-xs text-gray-400">{dataFormatada}</p>
+            <p className="text-[11px] text-gray-400">Carimbo / Assinatura</p>
           </div>
         </div>
       </div>
