@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { type ReactNode } from "react";
-import { ArrowLeft, Users, Settings } from "lucide-react";
+import { Users, Settings } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -12,7 +12,6 @@ const sections: NavSection[] = [
   {
     label: "Administração",
     items: [
-      { href: "/inicio", label: "Painel SST", icon: ArrowLeft, variant: "back" as const },
       { href: "/usuarios", label: "Usuários", icon: Users },
       { href: "/config", label: "Configurações", icon: Settings },
     ],

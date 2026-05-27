@@ -3,7 +3,6 @@
 import { useMemo, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import {
-  ArrowLeft,
   LayoutDashboard,
   Upload,
   ListChecks,
@@ -31,7 +30,6 @@ const SECTIONS_LISTA: NavSection[] = [
   {
     label: "Psicossocial",
     items: [
-      { href: "/inicio", label: "Painel SST", icon: ArrowLeft, variant: "back" as const },
       { href: "/psicossocial/dashboard-geral", label: "Dashboard Geral", icon: Globe },
       { href: "/psicossocial", label: "Relatórios DRPS", icon: Files },
     ],
@@ -70,7 +68,6 @@ function sectionsRelatorio(idRelatorio: string): NavSection[] {
     {
       label: "Diagnóstico",
       items: [
-        { href: "/inicio", label: "Painel SST", icon: ArrowLeft, variant: "back" as const },
         { href: "/psicossocial/dashboard-geral", label: "Dashboard Geral", icon: Globe },
         { href: `${base}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
         { href: `${base}/dados`, label: "Dados do Forms", icon: Upload },

@@ -2,7 +2,6 @@
 
 import { type ReactNode, useMemo } from "react";
 import {
-  ArrowLeft,
   FlaskConical,
   Plus,
   History,
@@ -29,7 +28,6 @@ export default function AnaliseQuimicosLayout({
 
   const sections = useMemo<NavSection[]>(() => {
     const items: NavItem[] = [
-      { href: "/inicio", label: "Painel SST", icon: ArrowLeft, variant: "back" as const },
       { href: "/analise-quimicos", label: "Visão geral", icon: FlaskConical },
       { href: "/analise-quimicos/nova", label: "Nova análise", icon: Plus },
       { href: "/analise-quimicos/historico", label: "Histórico", icon: History },
