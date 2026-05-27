@@ -153,11 +153,17 @@ export default function DrpsSumarioPrint({
   if (itens.length === 0) return null;
 
   return (
-    <section className="drps-sumario hidden print:block">
+    <section className="drps-sumario">
       <style>{`
         .drps-sumario {
+          display: none;
           page-break-before: always;
           page-break-after: always;
+        }
+        @media print {
+          .drps-sumario {
+            display: block;
+          }
         }
         .drps-sumario-titulo {
           font-size: 16pt;
