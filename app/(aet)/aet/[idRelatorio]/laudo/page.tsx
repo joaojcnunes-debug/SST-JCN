@@ -571,9 +571,25 @@ export default function AetLaudoPage({
                     content = rel.setores.length > 0 ? (
                       <Section num="9" title="Agentes Ambientais para as Áreas Operacionais">
                         {introFixo}
-                        <div className="space-y-5">
+                        <div className="space-y-8">
                           {rel.setores.map((setor, idx) => (
-                            <SetorRiscosBlock key={setor.id} setor={setor} idx={idx} />
+                            <div key={setor.id}>
+                              <SetorRiscosBlock setor={setor} idx={idx} />
+                              <div className="mt-4">
+                                <SetorAnaliseBlock
+                                  setor={setor}
+                                  idx={idx}
+                                  hideHeader
+                                  checklistPerguntas={checklistPerguntas}
+                                  owasConfig={owasConfig}
+                                  fatoresConfig={fatoresConfig}
+                                  fatoresPerguntas={fatoresPerguntas}
+                                  qpsRespostas={qpsRespostas}
+                                  fatoresPsi={fatoresPsi}
+                                  semaforo={semaforo}
+                                />
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </Section>
@@ -586,18 +602,23 @@ export default function AetLaudoPage({
                         {introFixo}
                         <div className="space-y-8">
                           {rel.setores.map((setor, idx) => (
-                            <SetorAnaliseBlock
-                              key={setor.id}
-                              setor={setor}
-                              idx={idx}
-                              checklistPerguntas={checklistPerguntas}
-                              owasConfig={owasConfig}
-                              fatoresConfig={fatoresConfig}
-                              fatoresPerguntas={fatoresPerguntas}
-                              qpsRespostas={qpsRespostas}
-                              fatoresPsi={fatoresPsi}
-                              semaforo={semaforo}
-                            />
+                            <div key={setor.id}>
+                              <SetorRiscosBlock setor={setor} idx={idx} />
+                              <div className="mt-4">
+                                <SetorAnaliseBlock
+                                  setor={setor}
+                                  idx={idx}
+                                  hideHeader
+                                  checklistPerguntas={checklistPerguntas}
+                                  owasConfig={owasConfig}
+                                  fatoresConfig={fatoresConfig}
+                                  fatoresPerguntas={fatoresPerguntas}
+                                  qpsRespostas={qpsRespostas}
+                                  fatoresPsi={fatoresPsi}
+                                  semaforo={semaforo}
+                                />
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </Section>
@@ -724,34 +745,25 @@ export default function AetLaudoPage({
               </>
             )}
 
-            {rel.setores.length > 0 && (
-              <Section num="9" title="Agentes Ambientais para as Áreas Operacionais">
-                <div className="space-y-5">
-                  {rel.setores.map((setor, idx) => <SetorRiscosBlock key={setor.id} setor={setor} idx={idx} />)}
+            {rel.setores.length > 0 && rel.setores.map((setor, idx) => (
+              <div key={setor.id} className="mb-8">
+                <SetorRiscosBlock setor={setor} idx={idx} />
+                <div className="mt-4">
+                  <SetorAnaliseBlock
+                    setor={setor}
+                    idx={idx}
+                    hideHeader
+                    checklistPerguntas={checklistPerguntas}
+                    owasConfig={owasConfig}
+                    fatoresConfig={fatoresConfig}
+                    fatoresPerguntas={fatoresPerguntas}
+                    qpsRespostas={qpsRespostas}
+                    fatoresPsi={fatoresPsi}
+                    semaforo={semaforo}
+                  />
                 </div>
-              </Section>
-            )}
-
-            {rel.setores.length > 0 && (
-              <Section num="13" title="Análises Ergonômicas do Trabalho">
-                <div className="space-y-8">
-                  {rel.setores.map((setor, idx) => (
-                    <SetorAnaliseBlock
-                      key={setor.id}
-                      setor={setor}
-                      idx={idx}
-                      checklistPerguntas={checklistPerguntas}
-                      owasConfig={owasConfig}
-                      fatoresConfig={fatoresConfig}
-                      fatoresPerguntas={fatoresPerguntas}
-                      qpsRespostas={qpsRespostas}
-                      fatoresPsi={fatoresPsi}
-                      semaforo={semaforo}
-                    />
-                  ))}
-                </div>
-              </Section>
-            )}
+              </div>
+            ))}
 
             {capitulosAposSetores.length > 0 ? (
               capitulosAposSetores.map((cap) => <CapituloLaudo key={cap.id_capitulo} cap={cap} valores={valoresCapitulos} />)
@@ -966,6 +978,7 @@ function SetorRiscosBlock({ setor, idx }: { setor: AetSetor; idx: number }) {
 function SetorAnaliseBlock({
   setor,
   idx,
+  hideHeader,
   checklistPerguntas,
   owasConfig,
   fatoresConfig,
@@ -976,6 +989,7 @@ function SetorAnaliseBlock({
 }: {
   setor: AetSetor;
   idx: number;
+  hideHeader?: boolean;
   checklistPerguntas: AetChecklistPergunta[];
   owasConfig: AetOwasCategoria[];
   fatoresConfig: Aet13FatorConfig[];
@@ -1025,17 +1039,18 @@ function SetorAnaliseBlock({
 
   return (
     <div className="overflow-hidden rounded border border-gray-300">
-      {/* Header */}
-      <div className="bg-gray-700 px-4 py-2">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-white">
-          Setor {idx + 1}: {setor.nome_setor || "—"}
-        </p>
-        {setor.cargos.length > 0 && (
-          <p className="text-[10px] text-gray-300">
-            {setor.cargos.map((c) => c.nome).filter(Boolean).join(" · ")}
+      {!hideHeader && (
+        <div className="bg-gray-700 px-4 py-2">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-white">
+            Setor {idx + 1}: {setor.nome_setor || "—"}
           </p>
-        )}
-      </div>
+          {setor.cargos.length > 0 && (
+            <p className="text-[10px] text-gray-300">
+              {setor.cargos.map((c) => c.nome).filter(Boolean).join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="divide-y divide-gray-100">
 
