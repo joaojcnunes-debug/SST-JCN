@@ -882,7 +882,7 @@ function ItemRow({
       </div>
 
       {/* Indicador de situação no print */}
-      <div className="mt-2 hidden print:block">
+      <div className="conformidade-situacao-print mt-2">
         <span className="text-xs font-bold">
           Situação:{" "}
           {item.situacao === "CONFORME"

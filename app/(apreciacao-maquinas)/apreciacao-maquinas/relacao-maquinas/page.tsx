@@ -506,7 +506,7 @@ export default function RelacaoMaquinasPage() {
       )}
 
       {/* Rodapé de impressão */}
-      <div className="hidden print:block mt-6 text-center text-[9px] text-gray-500 border-t border-gray-200 pt-3">
+      <div className="relacao-maquinas-footer-print mt-6 text-center text-[9px] text-gray-500 border-t border-gray-200 pt-3">
         Relação de Máquinas e Equipamentos — NR-12 item 1.7 alínea &quot;a&quot; · Gerado por Chabra SST · {new Date().toLocaleDateString("pt-BR")}
       </div>
 

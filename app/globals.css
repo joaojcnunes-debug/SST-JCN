@@ -38,7 +38,10 @@ body {
 .drps-extras-print,
 .drps-capitulos,
 .drps-conclusao-geral-print,
-.aet-sumario {
+.aet-sumario,
+.textos-padrao-capitulos,
+.conformidade-situacao-print,
+.relacao-maquinas-footer-print {
   display: none;
 }
 @media print {
@@ -47,7 +50,10 @@ body {
   .drps-extras-print,
   .drps-capitulos,
   .drps-conclusao-geral-print,
-  .aet-sumario {
+  .aet-sumario,
+  .textos-padrao-capitulos,
+  .conformidade-situacao-print,
+  .relacao-maquinas-footer-print {
     display: block;
   }
 }

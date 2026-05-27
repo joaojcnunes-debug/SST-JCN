@@ -58,10 +58,11 @@ async function fetchInspecoesRecentes(): Promise<InspecaoComEmpresa[]> {
   const ids = Array.from(new Set(inspecoes.map((i) => i.id_empresa)));
   if (ids.length === 0) return [];
 
-  const { data: emps } = await supabase
+  const { data: emps, error: empsError } = await supabase
     .from("empresas")
     .select("id_empresa, nome_empresa")
     .in("id_empresa", ids);
+  if (empsError) throw empsError;
 
   const empMap = new Map(
     ((emps ?? []) as unknown as Pick<Empresa, "id_empresa" | "nome_empresa">[])

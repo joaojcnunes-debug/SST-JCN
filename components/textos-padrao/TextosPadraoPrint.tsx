@@ -49,7 +49,7 @@ export default function TextosPadraoPrint({
   if (capitulos.length === 0) return null;
 
   return (
-    <section className="textos-padrao-capitulos hidden print:block">
+    <section className="textos-padrao-capitulos">
       <style>{`
         /* === Padrão ABNT NBR 14724 ===
            - Papel: A4 (210 x 297 mm)
