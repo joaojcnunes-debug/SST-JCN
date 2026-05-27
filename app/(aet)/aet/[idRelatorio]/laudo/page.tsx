@@ -191,16 +191,6 @@ export default function AetLaudoPage({
     }
   }, [rel]);
 
-  function handleSaveConsideracoes() {
-    salvar.mutate(
-      { id: idRelatorio, patch: { consideracoes_finais: consideracoes } },
-      {
-        onSuccess: () => toast.success("Considerações salvas"),
-        onError: (e: Error) => toast.error(e.message),
-      }
-    );
-  }
-
   function handleSaveDados() {
     salvar.mutate(
       {
@@ -813,15 +803,7 @@ export default function AetLaudoPage({
                     break;
 
                   case "aet_consideracoes_finais":
-                    content = (
-                      <ConsideracoesFinaisSection
-                        consideracoes={consideracoes}
-                        setConsideracoes={setConsideracoes}
-                        canEdit={canEdit}
-                        isPending={salvar.isPending}
-                        onSave={handleSaveConsideracoes}
-                      />
-                    );
+                    content = <ConsideracoesFinaisSection consideracoes={consideracoes} />;
                     break;
 
                   case "aet_assinatura":
@@ -973,13 +955,7 @@ export default function AetLaudoPage({
               />
             )}
 
-            <ConsideracoesFinaisSection
-              consideracoes={consideracoes}
-              setConsideracoes={setConsideracoes}
-              canEdit={canEdit}
-              isPending={salvar.isPending}
-              onSave={handleSaveConsideracoes}
-            />
+            <ConsideracoesFinaisSection consideracoes={consideracoes} />
 
             <AssinaturaSection
               responsavel={responsavel}
@@ -1793,51 +1769,13 @@ function PsicossocialSections({
 
 // ─── Seção 20 — Considerações Finais ─────────────────────────────────────────
 
-function ConsideracoesFinaisSection({
-  consideracoes,
-  setConsideracoes,
-  canEdit,
-  isPending,
-  onSave,
-}: {
-  consideracoes: string;
-  setConsideracoes: (v: string) => void;
-  canEdit: boolean;
-  isPending: boolean;
-  onSave: () => void;
-}) {
+function ConsideracoesFinaisSection({ consideracoes }: { consideracoes: string }) {
   return (
     <Section num="20" title="Considerações Finais">
-      {canEdit ? (
-        <div className="space-y-3">
-          <div className="print:hidden">
-            <RichTextEditor
-              value={consideracoes}
-              onChange={setConsideracoes}
-              placeholder="Insira as considerações finais do laudo..."
-            />
-          </div>
-          <div className="print:hidden flex justify-end">
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-4 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
-            >
-              {isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
-              Salvar Considerações
-            </button>
-          </div>
-          {consideracoes && (
-            <div className="hidden print:block">
-              <RichBlock html={consideracoes} />
-            </div>
-          )}
-        </div>
+      {consideracoes ? (
+        <RichBlock html={consideracoes} />
       ) : (
-        consideracoes ? <RichBlock html={consideracoes} /> : (
-          <p className="text-xs italic text-gray-400">Sem considerações finais registradas.</p>
-        )
+        <p className="text-xs italic text-gray-400">Sem considerações finais registradas.</p>
       )}
     </Section>
   );

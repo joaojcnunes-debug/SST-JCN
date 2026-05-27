@@ -197,6 +197,7 @@ export default function AetSetoresPage({
   const [zonasManuais, setZonasManuais] = useState<Record<string, ZonaPsi | null>>({});
   const [salvandoFatorPsiKey, setSalvandoFatorPsiKey] = useState<string | null>(null);
   const [gerandoObsIA, setGerandoObsIA] = useState<string | null>(null);
+  const [consideracoes, setConsideracoes] = useState("");
 
   const [meta, setMeta] = useState<Omit<AetLaudoQpsMeta, "updated_at">>({
     id_relatorio: idRelatorio,
@@ -215,6 +216,7 @@ export default function AetSetoresPage({
     if (rel) {
       setSetores(rel.setores ?? []);
       if (rel.setores?.length) setAbertos(new Set([rel.setores[0].id]));
+      setConsideracoes(rel.consideracoes_finais ?? "");
     }
   }, [rel]);
 
@@ -468,6 +470,16 @@ export default function AetSetoresPage({
       { id: idRelatorio, patch: { setores } },
       {
         onSuccess: () => toast.success("Salvo com sucesso"),
+        onError: (e: Error) => toast.error(e.message),
+      }
+    );
+  }
+
+  function handleSalvarConsideracoes() {
+    salvar.mutate(
+      { id: idRelatorio, patch: { consideracoes_finais: consideracoes } },
+      {
+        onSuccess: () => toast.success("Considerações salvas"),
         onError: (e: Error) => toast.error(e.message),
       }
     );
@@ -1260,6 +1272,45 @@ export default function AetSetoresPage({
           </div>
         ))
       )}
+
+      {/* ── Considerações Finais (sempre o último) ── */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+          <h3 className="text-sm font-semibold text-gray-900">Considerações Finais</h3>
+          <span className="text-xs text-gray-400">Seção 20 — Laudo AET</span>
+        </div>
+        <div className="px-5 pb-5 pt-4">
+          {canEdit ? (
+            <div className="space-y-3">
+              <RichTextEditor
+                value={consideracoes}
+                onChange={setConsideracoes}
+                placeholder="Insira as considerações finais do laudo..."
+              />
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleSalvarConsideracoes}
+                  disabled={salvar.isPending}
+                  className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                >
+                  {salvar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+                  Salvar Considerações
+                </button>
+              </div>
+            </div>
+          ) : (
+            consideracoes ? (
+              <div
+                className="prose prose-xs max-w-none text-xs leading-relaxed text-gray-700 [&_a]:text-gray-700 [&_a]:no-underline [&_p]:my-1"
+                dangerouslySetInnerHTML={{ __html: consideracoes }}
+              />
+            ) : (
+              <p className="text-xs italic text-gray-400">Sem considerações finais registradas.</p>
+            )
+          )}
+        </div>
+      </div>
     </div>
   );
 }
