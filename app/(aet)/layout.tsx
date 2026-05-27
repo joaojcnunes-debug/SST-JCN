@@ -62,7 +62,6 @@ export default function AetLayout({ children }: { children: ReactNode }) {
         label: "Laudo Atual",
         items: [
           { href: `/aet/${idRelatorio}/setores`,      label: "Setores / Riscos",  icon: ClipboardCheck },
-          { href: `/aet/${idRelatorio}/psicossocial`, label: "13 Fatores PSI",    icon: Brain, variant: "config" as const },
           { href: `/aet/${idRelatorio}/laudo`,        label: "Laudo / Imprimir",  icon: Printer, variant: "report" as const },
         ],
       });
