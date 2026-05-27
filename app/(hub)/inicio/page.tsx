@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import {
   Shield,
   Brain,
@@ -211,8 +211,10 @@ function diferencaTexto(iso: string): string {
   return `há ${meses}mês${meses > 1 ? "es" : ""}`;
 }
 
-export default function InicioPage() {
+function InicioContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const categoriaAtiva = (searchParams.get("c") as Categoria) || null;
   const user = useUserStore((s) => s.user);
   const logout = useUserStore((s) => s.logout);
   const { data: configs } = useConfiguracoes();
@@ -220,7 +222,6 @@ export default function InicioPage() {
 
   const isAdmin = user?.perfil === "Admin";
   const modulosPermitidos = new Set(user?.modulos_permitidos ?? []);
-  const [categoriaAtiva, setCategoriaAtiva] = useState<Categoria | null>(null);
 
   // Cards visíveis ordenados por pendência dentro de cada categoria.
   const cardsDisponiveis = CARDS.filter((c) => modulosPermitidos.has(c.modulo))
@@ -373,7 +374,7 @@ export default function InicioPage() {
                     0
                   )}
                   isLoading={stats.isLoading}
-                  onClick={() => setCategoriaAtiva(cat.id)}
+                  onClick={() => router.push(`/inicio?c=${cat.id}`)}
                 />
               );
             })}
@@ -384,7 +385,7 @@ export default function InicioPage() {
             {/* Botão voltar */}
             <button
               type="button"
-              onClick={() => setCategoriaAtiva(null)}
+              onClick={() => router.push("/inicio")}
               className="mb-6 flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition-all hover:bg-white/25"
             >
               <ArrowLeft className="size-4" />
@@ -436,6 +437,14 @@ export default function InicioPage() {
         </p>
       </main>
     </div>
+  );
+}
+
+export default function InicioPage() {
+  return (
+    <Suspense>
+      <InicioContent />
+    </Suspense>
   );
 }
 
