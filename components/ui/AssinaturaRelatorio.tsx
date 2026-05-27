@@ -42,6 +42,7 @@ export default function AssinaturaRelatorio({
   const [sigData, setSigData] = useState<{
     assinatura_url?: string | null;
     tipo_certificado?: "A1" | "A3" | null;
+    mostrar_assinatura_imagem?: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -65,7 +66,7 @@ export default function AssinaturaRelatorio({
       // Busca por e-mail: confiável independente de variações no nome
       supabase
         .from("usuarios")
-        .select("assinatura_url, tipo_certificado")
+        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem")
         .eq("email", user.email)
         .single()
         .then(({ data }) => setSigData(data ?? null));
@@ -73,14 +74,15 @@ export default function AssinaturaRelatorio({
       // Responsável diferente do usuário logado — busca por nome (case-insensitive)
       supabase
         .from("usuarios")
-        .select("assinatura_url, tipo_certificado")
+        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem")
         .ilike("nome", (nomeResponsavel ?? "").trim())
         .limit(1)
         .then(({ data }) => setSigData(data?.[0] ?? null));
     }
   }, [nomeResponsavel, user?.email, user?.nome]);
 
-  const assinaturaUrl = sigData?.assinatura_url ?? null;
+  const mostrarImagem = sigData?.mostrar_assinatura_imagem ?? true;
+  const assinaturaUrl = mostrarImagem ? (sigData?.assinatura_url ?? null) : null;
   const certificado = sigData?.tipo_certificado ?? null;
   const assinaturaEmpresaUrl = configs?.assinatura_empresa_url ?? null;
 

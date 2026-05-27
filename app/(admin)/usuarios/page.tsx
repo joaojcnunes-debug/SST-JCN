@@ -301,6 +301,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     pode_excluir: false,
     // Assinatura digital
     assinatura_url: null as string | null,
+    mostrar_assinatura_imagem: true,
     tipo_certificado: null as "A1" | "A3" | null,
     certificado_pfx_path: null as string | null,
   });
@@ -329,6 +330,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         pode_excluir:
           usuario?.pode_excluir ?? defaultPerm(perfilDoUser, "excluir"),
         assinatura_url: usuario?.assinatura_url ?? null,
+        mostrar_assinatura_imagem: usuario?.mostrar_assinatura_imagem ?? true,
         tipo_certificado: usuario?.tipo_certificado ?? null,
         certificado_pfx_path: usuario?.certificado_pfx_path ?? null,
       });
@@ -405,6 +407,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             pode_editar: form.pode_editar,
             pode_excluir: form.pode_excluir,
             assinatura_url: form.assinatura_url,
+            mostrar_assinatura_imagem: form.mostrar_assinatura_imagem,
             tipo_certificado: form.tipo_certificado,
             certificado_pfx_path: form.certificado_pfx_path,
           } as never)
@@ -477,6 +480,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         pode_editar: form.pode_editar,
         pode_excluir: form.pode_excluir,
         assinatura_url: form.assinatura_url,
+        mostrar_assinatura_imagem: form.mostrar_assinatura_imagem,
         tipo_certificado: form.tipo_certificado,
         certificado_pfx_path: form.certificado_pfx_path,
       };
@@ -843,6 +847,34 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               />
             </label>
           </div>
+
+          {/* Flag: exibir imagem nos relatórios */}
+          <label className="mt-3 flex cursor-pointer items-center gap-2.5">
+            <div className="relative">
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={form.mostrar_assinatura_imagem}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, mostrar_assinatura_imagem: e.target.checked }))
+                }
+              />
+              <div className={cn(
+                "h-5 w-9 rounded-full transition-colors",
+                form.mostrar_assinatura_imagem ? "bg-verde-primary" : "bg-gray-300"
+              )} />
+              <div className={cn(
+                "absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform",
+                form.mostrar_assinatura_imagem ? "translate-x-4" : "translate-x-0.5"
+              )} />
+            </div>
+            <span className="text-xs text-gray-700">
+              Exibir imagem de assinatura nos relatórios
+            </span>
+            <span className="text-[10px] text-gray-400">
+              (desative para usar apenas o selo do certificado digital)
+            </span>
+          </label>
         </Field>
 
         {/* Certificado digital */}
