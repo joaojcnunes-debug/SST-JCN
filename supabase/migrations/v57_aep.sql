@@ -7,7 +7,7 @@
 
 CREATE TABLE IF NOT EXISTS aep_relatorios (
   id_relatorio            uuid        DEFAULT gen_random_uuid() PRIMARY KEY,
-  id_empresa              uuid        NOT NULL REFERENCES empresas(id_empresa) ON DELETE CASCADE,
+  id_empresa              text        NOT NULL REFERENCES empresas(id_empresa) ON DELETE CASCADE,
   status                  text        NOT NULL DEFAULT 'RASCUNHO'
                                       CHECK (status IN ('RASCUNHO', 'CONCLUIDO')),
   setores                 jsonb       NOT NULL DEFAULT '[]',
