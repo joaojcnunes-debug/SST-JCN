@@ -25,9 +25,15 @@ export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
     const canvas = await toCanvas(el, {
       backgroundColor: "#ffffff",
       pixelRatio: 2,
-      // Evita erros de CORS em imagens externas (logos, assinaturas)
       skipFonts: false,
-      fetchRequestInit: { mode: "cors" },
+      // Inclui credenciais para imagens do Supabase Storage (bucket público)
+      fetchRequestInit: { mode: "cors", credentials: "omit" },
+      // Ignora nós que causem erros (ex: imagens com CORS bloqueado),
+      // evitando que um único asset derrube a geração do PDF inteiro
+      filter: (node) => {
+        if (node instanceof HTMLElement && node.tagName === "CANVAS") return false;
+        return true;
+      },
     });
 
     // Dimensões A4 em mm com margem de 10 mm

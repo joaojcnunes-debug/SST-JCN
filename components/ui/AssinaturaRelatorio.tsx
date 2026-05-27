@@ -39,34 +39,49 @@ export default function AssinaturaRelatorio({
   const nome = nomeResponsavel ?? user?.nome ?? "";
   const cargo = cargoResponsavel ?? user?.cargo ?? "";
 
-  // Quando nomeResponsavel é diferente do usuário logado, busca os dados
-  // de assinatura da pessoa indicada como responsável.
-  const isOtherUser = !!nomeResponsavel && nomeResponsavel !== user?.nome;
-  const [responsavelSig, setResponsavelSig] = useState<{
+  const [sigData, setSigData] = useState<{
     assinatura_url?: string | null;
     tipo_certificado?: "A1" | "A3" | null;
   } | null>(null);
 
   useEffect(() => {
-    if (!isOtherUser || !nomeResponsavel) {
-      setResponsavelSig(null);
-      return;
+    const supabase = createSupabaseBrowserClient();
+
+    // Normaliza string para comparação: trim + lowercase + espaços simples
+    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+
+    // Considera "mesmo usuário" se o nome do responsável contém ou está contido
+    // no nome do usuário logado (cobre nomes abreviados, com/sem sobrenome extra
+    // e espaços extras que diferem do campo usuarios.nome).
+    const isSameUser =
+      !nomeResponsavel ||
+      (!!user?.nome &&
+        (norm(nomeResponsavel) === norm(user.nome) ||
+          norm(nomeResponsavel).includes(norm(user.nome)) ||
+          norm(user.nome).includes(norm(nomeResponsavel))));
+
+    if (isSameUser) {
+      if (!user?.email) return;
+      // Busca por e-mail: confiável independente de variações no nome
+      supabase
+        .from("usuarios")
+        .select("assinatura_url, tipo_certificado")
+        .eq("email", user.email)
+        .single()
+        .then(({ data }) => setSigData(data ?? null));
+    } else {
+      // Responsável diferente do usuário logado — busca por nome (case-insensitive)
+      supabase
+        .from("usuarios")
+        .select("assinatura_url, tipo_certificado")
+        .ilike("nome", (nomeResponsavel ?? "").trim())
+        .limit(1)
+        .then(({ data }) => setSigData(data?.[0] ?? null));
     }
-    createSupabaseBrowserClient()
-      .from("usuarios")
-      .select("assinatura_url, tipo_certificado")
-      .ilike("nome", nomeResponsavel)
-      .limit(1)
-      .then(({ data }) => setResponsavelSig(data?.[0] ?? null));
-  }, [isOtherUser, nomeResponsavel]);
+  }, [nomeResponsavel, user?.email, user?.nome]);
 
-  const assinaturaUrl = isOtherUser
-    ? (responsavelSig?.assinatura_url ?? null)
-    : (user?.assinatura_url ?? null);
-  const certificado = isOtherUser
-    ? (responsavelSig?.tipo_certificado ?? null)
-    : (user?.tipo_certificado ?? null);
-
+  const assinaturaUrl = sigData?.assinatura_url ?? null;
+  const certificado = sigData?.tipo_certificado ?? null;
   const assinaturaEmpresaUrl = configs?.assinatura_empresa_url ?? null;
 
   const hoje = new Date();
