@@ -274,6 +274,126 @@ export default function AetLaudoPage({
     endereco_empresa: enderecoEmpresa,
   });
 
+  // Sumário auto-calculado — derivado da estrutura do documento
+  const sumarioItems = (() => {
+    const items: { numero: string; titulo: string }[] = [];
+    let n = 0;
+
+    if (temCapitulosFixos) {
+      for (const cap of capitulosOrdenados) {
+        if (cap.bg_imagem_url) continue;
+        if (cap.tipo === "fixo") {
+          switch (cap.slug_fixo) {
+            case "aet_agentes_ambientais":
+              if (rel.setores.length > 0) {
+                n++;
+                items.push({ numero: `${n}.`, titulo: "Agentes Ambientais para as Áreas Operacionais" });
+              }
+              break;
+            case "aet_analise_ergonomica":
+              if (rel.setores.length > 0) {
+                n++;
+                items.push({ numero: `${n}.`, titulo: "Análises Ergonômicas do Trabalho" });
+              }
+              break;
+            case "aet_psicossocial":
+              if (fatoresPsi.length > 0) {
+                const fatAvaliados = fatoresPsi.filter((f) => f.avaliado);
+                const comAnalise = fatAvaliados.filter((f) => f.observacao || f.pergunta_critica);
+                n++;
+                items.push({ numero: `${n}.`, titulo: "Avaliação dos Fatores Psicossociais — QPS Nordic" });
+                if (qpsMeta && (qpsMeta.n_respondentes != null || qpsMeta.periodo_inicio || qpsMeta.modo_aplicacao || qpsMeta.tecnico_aplicador)) {
+                  n++;
+                  items.push({ numero: `${n}.`, titulo: "Dados da Aplicação" });
+                }
+                if (fatAvaliados.length > 0) {
+                  n++;
+                  items.push({ numero: `${n}.`, titulo: "Resultado Geral por Fator" });
+                }
+                if (comAnalise.length > 0) {
+                  n++;
+                  items.push({ numero: `${n}.`, titulo: "Análise Detalhada por Fator" });
+                }
+              }
+              break;
+            case "aet_consideracoes_finais":
+              n++;
+              items.push({ numero: `${n}.`, titulo: "Considerações Finais" });
+              break;
+            case "aet_assinatura":
+              break;
+          }
+        } else {
+          n++;
+          items.push({ numero: `${n}.`, titulo: substituirVariaveisTexto(cap.titulo, valoresCapitulos) });
+        }
+      }
+    } else {
+      // Modo legado
+      for (const cap of capitulosInicio.filter((c) => !c.bg_imagem_url)) {
+        n++;
+        items.push({ numero: `${n}.`, titulo: substituirVariaveisTexto(cap.titulo, valoresCapitulos) });
+      }
+      if (capitulosAposSumario.length > 0) {
+        for (const cap of capitulosAposSumario) {
+          n++;
+          items.push({ numero: `${n}.`, titulo: substituirVariaveisTexto(cap.titulo, valoresCapitulos) });
+        }
+      } else {
+        for (const titulo of [
+          "Introdução Geral", "Objetivo", "Metodologia",
+          "Levantamento, Transporte e Descarga Individual de Materiais",
+          "Mobiliário dos Postos de Trabalho", "Equipamentos dos Postos de Trabalho",
+          "Condições Ambientais de Trabalho",
+        ]) {
+          n++;
+          items.push({ numero: `${n}.`, titulo });
+        }
+      }
+      if (rel.setores.length > 0) {
+        n++;
+        items.push({ numero: `${n}.`, titulo: "Análise por Setor" });
+      }
+      if (capitulosAposSetores.length > 0) {
+        for (const cap of capitulosAposSetores) {
+          n++;
+          items.push({ numero: `${n}.`, titulo: substituirVariaveisTexto(cap.titulo, valoresCapitulos) });
+        }
+      } else if (rel.setores.length > 0) {
+        for (const titulo of [
+          "Conforto em Áreas Administrativas",
+          "Organização do Trabalho",
+          "Ferramentas Biomecânicas Aplicadas",
+        ]) {
+          n++;
+          items.push({ numero: `${n}.`, titulo });
+        }
+      }
+      if (fatoresPsi.length > 0) {
+        const fatAvaliados = fatoresPsi.filter((f) => f.avaliado);
+        const comAnalise = fatAvaliados.filter((f) => f.observacao || f.pergunta_critica);
+        n++;
+        items.push({ numero: `${n}.`, titulo: "Avaliação dos Fatores Psicossociais — QPS Nordic" });
+        if (qpsMeta && (qpsMeta.n_respondentes != null || qpsMeta.periodo_inicio || qpsMeta.modo_aplicacao || qpsMeta.tecnico_aplicador)) {
+          n++;
+          items.push({ numero: `${n}.`, titulo: "Dados da Aplicação" });
+        }
+        if (fatAvaliados.length > 0) {
+          n++;
+          items.push({ numero: `${n}.`, titulo: "Resultado Geral por Fator" });
+        }
+        if (comAnalise.length > 0) {
+          n++;
+          items.push({ numero: `${n}.`, titulo: "Análise Detalhada por Fator" });
+        }
+      }
+      n++;
+      items.push({ numero: `${n}.`, titulo: "Considerações Finais" });
+    }
+
+    return items;
+  })();
+
   return (
     <div className="space-y-0">
 
@@ -517,6 +637,55 @@ export default function AetLaudoPage({
         ))}
 
       </div>
+
+      {/* ═══ SUMÁRIO — print only ═══ */}
+      {sumarioItems.length > 0 && (
+        <section className="aet-sumario">
+          <style>{`
+            .aet-sumario {
+              font-family: 'Times New Roman', Times, serif;
+              page-break-before: always;
+              page-break-after: always;
+            }
+            .aet-sumario-titulo {
+              font-size: 16pt;
+              font-weight: 700;
+              color: #1e4d28;
+              border-bottom: 2px solid #006B54;
+              padding-bottom: 6px;
+              margin-bottom: 16pt;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+            .aet-sumario-lista {
+              list-style: none;
+              padding: 0;
+              margin: 0;
+            }
+            .aet-sumario-item {
+              font-size: 12pt;
+              line-height: 1.7;
+              color: #1f2937;
+            }
+            .aet-sumario-numero {
+              font-weight: 700;
+              margin-right: 8pt;
+              color: #006B54;
+              min-width: 24pt;
+              display: inline-block;
+            }
+          `}</style>
+          <h2 className="aet-sumario-titulo">Sumário</h2>
+          <ul className="aet-sumario-lista">
+            {sumarioItems.map((item, idx) => (
+              <li key={idx} className="aet-sumario-item">
+                <span className="aet-sumario-numero">{item.numero}</span>
+                {item.titulo}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* ═══ DOCUMENTO ═══ */}
       <div
@@ -1641,11 +1810,13 @@ function ConsideracoesFinaisSection({
     <Section num="20" title="Considerações Finais">
       {canEdit ? (
         <div className="space-y-3">
-          <RichTextEditor
-            value={consideracoes}
-            onChange={setConsideracoes}
-            placeholder="Insira as considerações finais do laudo..."
-          />
+          <div className="print:hidden">
+            <RichTextEditor
+              value={consideracoes}
+              onChange={setConsideracoes}
+              placeholder="Insira as considerações finais do laudo..."
+            />
+          </div>
           <div className="print:hidden flex justify-end">
             <button
               type="button"

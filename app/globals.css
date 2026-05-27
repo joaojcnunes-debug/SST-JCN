@@ -37,7 +37,8 @@ body {
 .drps-gestao-resumo-print,
 .drps-extras-print,
 .drps-capitulos,
-.drps-conclusao-geral-print {
+.drps-conclusao-geral-print,
+.aet-sumario {
   display: none;
 }
 @media print {
@@ -45,7 +46,8 @@ body {
   .drps-gestao-resumo-print,
   .drps-extras-print,
   .drps-capitulos,
-  .drps-conclusao-geral-print {
+  .drps-conclusao-geral-print,
+  .aet-sumario {
     display: block;
   }
 }
