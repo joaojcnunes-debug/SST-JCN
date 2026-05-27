@@ -796,7 +796,7 @@ export default function AnalisePage({
 
             {/* Conclusão Geral — só no print quando preenchida */}
             {relatorio?.conclusao_geral && (
-              <section className="drps-conclusao-geral-print hidden print:block">
+              <section className="drps-conclusao-geral-print">
                 <style>{`
                   .drps-conclusao-geral-print {
                     page-break-before: always;
@@ -888,7 +888,7 @@ function renderCapitulosPosicao(
   );
   if (filtrados.length === 0) return null;
   return (
-    <section className={`${className} drps-capitulos mb-6 hidden print:block`}>
+    <section className={`${className} drps-capitulos mb-6`}>
       {filtrados.map((c) => {
         const ehCapa = !!c.bg_imagem_url;
         return (

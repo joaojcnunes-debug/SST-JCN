@@ -32,6 +32,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Print-only sections — hidden on screen, visible on print */
+.drps-sumario,
+.drps-gestao-resumo-print,
+.drps-extras-print,
+.drps-capitulos,
+.drps-conclusao-geral-print {
+  display: none;
+}
+@media print {
+  .drps-sumario,
+  .drps-gestao-resumo-print,
+  .drps-extras-print,
+  .drps-capitulos,
+  .drps-conclusao-geral-print {
+    display: block;
+  }
+}
+
 /* Print styles — base global */
 @media print {
   .no-print { display: none !important; }

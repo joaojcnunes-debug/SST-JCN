@@ -84,7 +84,7 @@ export default function DrpsRelatorioExtrasPrint({
   const anotacoes = revisao?.anotacoes ?? "";
 
   return (
-    <div className="drps-extras-print hidden print:block">
+    <div className="drps-extras-print">
       <style>{`
         .drps-extras-print {
           font-family: 'Times New Roman', Times, serif;

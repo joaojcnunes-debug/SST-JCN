@@ -34,7 +34,7 @@ export default function DrpsGestaoResumoPrint({
   });
 
   return (
-    <section className="drps-gestao-resumo-print hidden print:block">
+    <section className="drps-gestao-resumo-print">
       <style>{`
         .drps-gestao-resumo-print {
           font-family: 'Times New Roman', Times, serif;

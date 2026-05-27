@@ -156,14 +156,8 @@ export default function DrpsSumarioPrint({
     <section className="drps-sumario">
       <style>{`
         .drps-sumario {
-          display: none;
           page-break-before: always;
           page-break-after: always;
-        }
-        @media print {
-          .drps-sumario {
-            display: block;
-          }
         }
         .drps-sumario-titulo {
           font-size: 16pt;
