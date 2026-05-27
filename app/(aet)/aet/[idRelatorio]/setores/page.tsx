@@ -198,6 +198,7 @@ export default function AetSetoresPage({
   const [salvandoFatorPsiKey, setSalvandoFatorPsiKey] = useState<string | null>(null);
   const [gerandoObsIA, setGerandoObsIA] = useState<string | null>(null);
   const [consideracoes, setConsideracoes] = useState("");
+  const [gerandoConsideracoesIA, setGerandoConsideracoesIA] = useState(false);
 
   const [meta, setMeta] = useState<Omit<AetLaudoQpsMeta, "updated_at">>({
     id_relatorio: idRelatorio,
@@ -473,6 +474,73 @@ export default function AetSetoresPage({
         onError: (e: Error) => toast.error(e.message),
       }
     );
+  }
+
+  async function gerarConsideracoesIA() {
+    if (setores.length === 0) {
+      toast.error("Adicione ao menos um setor antes de gerar com IA");
+      return;
+    }
+    setGerandoConsideracoesIA(true);
+    try {
+      const sb = createSupabaseBrowserClient();
+
+      const setoresCtx = setores.map((s) => {
+        const classMax = s.riscos
+          .map((r) => r.classificacao_risco)
+          .reduce<ClassificacaoRiscoAET | null>(
+            (max, c) => !max || CLASSIFICACOES.indexOf(c) > CLASSIFICACOES.indexOf(max) ? c : max,
+            null
+          );
+        return {
+          nome: s.nome_setor || "Setor",
+          cargos: s.cargos.map((c) => c.nome).filter(Boolean),
+          riscos: s.riscos.map((r) => ({ tipo: r.tipo, risco: r.risco, classificacao: r.classificacao_risco })),
+          classificacao_max: classMax,
+        };
+      });
+
+      const fatoresPsiCtx = fatoresPsi
+        .filter((fp) => fp.avaliado && fp.zona && fp.zona !== "verde")
+        .map((fp) => {
+          const cfg = fatores.find((f) => f.codigo === fp.codigo_fator);
+          return { codigo: fp.codigo_fator, nome: cfg?.nome ?? fp.codigo_fator, zona: fp.zona as string };
+        });
+
+      // Strip HTML para contexto limpo à IA
+      const textoAtualPlain = consideracoes
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      const { data, error } = await sb.functions.invoke("gerar-consideracoes-aet-ia", {
+        body: {
+          empresa_nome: rel?.empresas && "nome_empresa" in (rel.empresas as object)
+            ? (rel.empresas as { nome_empresa: string }).nome_empresa
+            : null,
+          setores: setoresCtx,
+          fatores_psi: fatoresPsiCtx.length > 0 ? fatoresPsiCtx : undefined,
+          textoAtual: textoAtualPlain || null,
+        },
+      });
+
+      if (error) throw error;
+      const texto: string = data?.data?.texto ?? "";
+      if (texto) {
+        const html = texto
+          .split(/\n\n+/)
+          .filter(Boolean)
+          .map((p: string) => `<p>${p.trim()}</p>`)
+          .join("");
+        setConsideracoes(html);
+      } else {
+        toast.error("IA não retornou texto");
+      }
+    } catch {
+      toast.error("Erro ao gerar com IA");
+    } finally {
+      setGerandoConsideracoesIA(false);
+    }
   }
 
   function handleSalvarConsideracoes() {
@@ -1277,7 +1345,22 @@ export default function AetSetoresPage({
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
           <h3 className="text-sm font-semibold text-gray-900">Considerações Finais</h3>
-          <span className="text-xs text-gray-400">Seção 20 — Laudo AET</span>
+          <div className="flex items-center gap-2">
+            {canEdit && (
+              <button
+                type="button"
+                onClick={gerarConsideracoesIA}
+                disabled={gerandoConsideracoesIA || setores.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-md border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-medium text-purple-700 hover:bg-purple-100 disabled:opacity-50"
+              >
+                {gerandoConsideracoesIA
+                  ? <Loader2 className="size-3.5 animate-spin" />
+                  : <Sparkles className="size-3.5" />}
+                {gerandoConsideracoesIA ? "Gerando..." : "Gerar com IA"}
+              </button>
+            )}
+            <span className="text-xs text-gray-400">Seção 20 — Laudo AET</span>
+          </div>
         </div>
         <div className="px-5 pb-5 pt-4">
           {canEdit ? (
