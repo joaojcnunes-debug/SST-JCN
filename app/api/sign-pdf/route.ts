@@ -72,13 +72,45 @@ export async function POST(req: NextRequest) {
 
   const p12Buffer = Buffer.from(await certBlob.arrayBuffer());
 
-  // Valida a senha do .pfx antecipadamente via node-forge
-  // Evita que um erro de senha seja mascarado como erro de PDF
+  // Valida senha e expiração do .pfx via node-forge antes de tentar assinar.
+  // Evita gerar PDF com assinatura inválida sem avisar o usuário.
   try {
     const p12Asn1 = forge.asn1.fromDer(
       forge.util.createBuffer(p12Buffer.toString("binary"))
     );
-    forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
+    const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, false, password);
+
+    // Extrai o certificado folha (leaf) e verifica validade temporal
+    const certBags = p12.getBags({ bagType: forge.pki.oids.certBag });
+    const bags = certBags[forge.pki.oids.certBag] ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const leafBag = bags.find((b: any) => b.cert) ?? bags[0];
+    if (leafBag?.cert) {
+      const cert = leafBag.cert;
+      const now = new Date();
+      const notAfter: Date = cert.validity.notAfter;
+      const notBefore: Date = cert.validity.notBefore;
+
+      if (now > notAfter) {
+        const venceu = notAfter.toLocaleDateString("pt-BR");
+        return NextResponse.json(
+          {
+            error: `Certificado A1 vencido em ${venceu}. Renove junto à Autoridade Certificadora que emitiu o certificado e faça o upload do novo arquivo .pfx no seu perfil.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      if (now < notBefore) {
+        const inicio = notBefore.toLocaleDateString("pt-BR");
+        return NextResponse.json(
+          {
+            error: `Certificado A1 ainda não está ativo (válido a partir de ${inicio}). Verifique o arquivo .pfx.`,
+          },
+          { status: 400 }
+        );
+      }
+    }
   } catch (pfxErr) {
     const pfxMsg = (pfxErr instanceof Error ? pfxErr.message : String(pfxErr)).toLowerCase();
     if (
