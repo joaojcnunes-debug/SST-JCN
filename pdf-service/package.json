@@ -1,0 +1,18 @@
+{
+  "name": "chabra-pdf-service",
+  "version": "1.0.0",
+  "description": "Puppeteer PDF rendering service for Painel SST Chabra",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "puppeteer": "^22.15.0"
+  }
+}

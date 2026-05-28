@@ -94,8 +94,8 @@ export default function AssinarPdfModal({
 
     try {
       setStep("gerando");
-      const { gerarPdfDaPagina } = await import("@/lib/gerarPdfDaPagina");
-      const pdfBytes = await gerarPdfDaPagina();
+      const { gerarHtmlParaPdf } = await import("@/lib/gerarHtmlParaPdf");
+      const pdfBytes = await gerarHtmlParaPdf();
 
       setStep("assinando");
       const form = new FormData();
