@@ -305,6 +305,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     tipo_certificado: null as "A1" | "A3" | null,
     certificado_pfx_path: null as string | null,
     crp: null as string | null,
+    crm: null as string | null,
+    registro_mte: null as string | null,
   });
   const [uploadingAssinatura, setUploadingAssinatura] = useState(false);
   const [uploadingPfx, setUploadingPfx] = useState(false);
@@ -335,6 +337,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         tipo_certificado: usuario?.tipo_certificado ?? null,
         certificado_pfx_path: usuario?.certificado_pfx_path ?? null,
         crp: usuario?.crp ?? null,
+        crm: usuario?.crm ?? null,
+        registro_mte: usuario?.registro_mte ?? null,
       });
     }
   }, [open, usuario]);
@@ -413,6 +417,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             tipo_certificado: form.tipo_certificado,
             certificado_pfx_path: form.certificado_pfx_path,
             crp: form.crp || null,
+            crm: form.crm || null,
+            registro_mte: form.registro_mte || null,
           } as never)
           .eq("id_usuario", usuario.id_usuario);
         if (error) throw error;
@@ -487,6 +493,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         tipo_certificado: form.tipo_certificado,
         certificado_pfx_path: form.certificado_pfx_path,
         crp: form.crp || null,
+        crm: form.crm || null,
+        registro_mte: form.registro_mte || null,
       };
       const { error: errInsert } = await supabase
         .from("usuarios")
@@ -669,12 +677,30 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               className={inputCls}
             />
           </Field>
-          <Field label="Registro Profissional (CRP / CREA / CFT...)">
+          <Field label="CRP (Psicólogos)">
             <input
               type="text"
               value={form.crp ?? ""}
               onChange={(e) => setForm({ ...form, crp: e.target.value || null })}
               placeholder="Ex: 05/41807"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="CRM (Médicos do Trabalho)">
+            <input
+              type="text"
+              value={form.crm ?? ""}
+              onChange={(e) => setForm({ ...form, crm: e.target.value || null })}
+              placeholder="Ex: 123456/SP"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Registro MTE (Técnicos de Segurança)">
+            <input
+              type="text"
+              value={form.registro_mte ?? ""}
+              onChange={(e) => setForm({ ...form, registro_mte: e.target.value || null })}
+              placeholder="Ex: 123456"
               className={inputCls}
             />
           </Field>

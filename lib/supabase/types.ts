@@ -601,6 +601,10 @@ export interface Usuario {
   mostrar_assinatura_imagem?: boolean;
   /** Registro profissional (ex: CRP para psicólogos, CREA para engenheiros). */
   crp?: string | null;
+  /** CRM — Conselho Regional de Medicina (médicos do trabalho). */
+  crm?: string | null;
+  /** Registro no MTE — Ministério do Trabalho (técnicos de segurança). */
+  registro_mte?: string | null;
 }
 
 export interface Configuracao {
