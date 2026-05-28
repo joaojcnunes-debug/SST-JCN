@@ -23,12 +23,23 @@ export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
   toHide.forEach((e) => { e.style.display = "none"; });
 
   // 2. Exibe elementos print-only (ocultos na tela mas visíveis na impressão)
-  //    Inclui: print:block, print:flex, print:table, print:inline-block
+  //    Inclui: (a) classes Tailwind print:block/flex/table/inline
+  //            (b) classes CSS customizadas do globals.css que só aparecem em @media print
   const printOnlySelectors = [
     '[class*="print:block"]',
     '[class*="print:flex"]',
     '[class*="print:table"]',
     '[class*="print:inline"]',
+    // Seções que globals.css esconde por padrão e mostra só em @media print
+    ".drps-sumario",
+    ".drps-gestao-resumo-print",
+    ".drps-extras-print",
+    ".drps-capitulos",
+    ".drps-conclusao-geral-print",
+    ".aet-sumario",
+    ".textos-padrao-capitulos",
+    ".conformidade-situacao-print",
+    ".relacao-maquinas-footer-print",
   ];
   const toShow = Array.from(
     new Set(
