@@ -782,6 +782,17 @@ function SetorBlock({
   );
 }
 
+// Textos padrão NHO-08 — usados quando a chave não está em perguntas_tipo_risco
+const QUIM_LABELS_DEFAULT: Record<string, string> = {
+  quim_q1: "Durante o uso normal, gera vapores, gases, névoas ou aerodispersóides perceptíveis?",
+  quim_q2: "O ambiente possui ventilação adequada (natural e/ou mecânica)?",
+  quim_q3: "Processo é manual, sem pulverização/atomização/pressurização?",
+  quim_q4: "Produto é utilizado diluído?",
+  quim_q5: "Há queixas de cheiro forte, mal-estar, ardência ocular ou desconforto respiratório?",
+  quim_q6: "Produto é aquecido ou submetido a processo que aumente sua volatilização?",
+  uso_processo: "Como o produto é utilizado no processo?",
+};
+
 // =========================================================================
 // RISCO CARD (estilo PDF Chabra)
 // =========================================================================
@@ -798,12 +809,12 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
       const chave = `quim_q${i}`;
       const v = risco[chave as keyof Risco] as string | null;
       if (v) {
-        const label = perguntasMap.get(chave) ?? chave;
+        const label = perguntasMap.get(chave) ?? QUIM_LABELS_DEFAULT[chave] ?? chave;
         perguntasQuim.push([label, v]);
       }
     }
     if (risco.uso_processo) {
-      const label = perguntasMap.get("uso_processo") ?? "Como o produto é utilizado no processo?";
+      const label = perguntasMap.get("uso_processo") ?? QUIM_LABELS_DEFAULT["uso_processo"];
       perguntasQuim.push([label, risco.uso_processo]);
     }
   }
@@ -930,7 +941,7 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
                 <li key={k} className="flex gap-2">
                   <span className="text-gray-400">▸</span>
                   <span className="flex-1 text-gray-700">
-                    {perguntasMap.get(k) ?? k}
+                    {perguntasMap.get(k) ?? QUIM_LABELS_DEFAULT[k] ?? k}
                   </span>
                   <strong className="shrink-0 text-gray-900">{String(v)}</strong>
                 </li>
