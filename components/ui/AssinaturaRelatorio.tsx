@@ -51,15 +51,22 @@ export default function AssinaturaRelatorio({
     // Normaliza string para comparação: trim + lowercase + espaços simples
     const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 
-    // Considera "mesmo usuário" se o nome do responsável contém ou está contido
-    // no nome do usuário logado (cobre nomes abreviados, com/sem sobrenome extra
-    // e espaços extras que diferem do campo usuarios.nome).
+    // Verifica se todas as palavras relevantes (>2 chars) de `a` estão em `b`.
+    // Cobre casos como "Sanmyo Paiva" vs "Sanmyo Michael Mendes de Paiva".
+    const wordMatch = (a: string, b: string) => {
+      const words = norm(a).split(" ").filter((w) => w.length > 2);
+      return words.length > 0 && words.every((w) => norm(b).includes(w));
+    };
+
+    // Considera "mesmo usuário" por igualdade, substring ou match de palavras
     const isSameUser =
       !nomeResponsavel ||
       (!!user?.nome &&
         (norm(nomeResponsavel) === norm(user.nome) ||
           norm(nomeResponsavel).includes(norm(user.nome)) ||
-          norm(user.nome).includes(norm(nomeResponsavel))));
+          norm(user.nome).includes(norm(nomeResponsavel)) ||
+          wordMatch(user.nome, nomeResponsavel) ||
+          wordMatch(nomeResponsavel, user.nome)));
 
     if (isSameUser) {
       if (!user?.email) return;
