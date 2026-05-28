@@ -20,6 +20,7 @@ import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import DrpsSumarioPrint from "@/components/drps/DrpsSumarioPrint";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
+import { detectRegistroTipo } from "@/lib/registro-profissional";
 import DrpsRelatorioExtrasPrint from "@/components/drps/DrpsRelatorioExtrasPrint";
 import DrpsGestaoResumoPrint from "@/components/drps/DrpsGestaoResumoPrint";
 import { useDrpsStore } from "@/lib/drps/store";
@@ -155,6 +156,7 @@ export default function AnalisePage({
   // ── Metadata bar state ──────────────────────────────────────────────────
   const [metaResponsavel, setMetaResponsavel] = useState("");
   const [metaCrp,         setMetaCrp]         = useState("");
+  const [metaCargoResponsavel, setMetaCargoResponsavel] = useState<string | null>(null);
   const [metaData,        setMetaData]        = useState("");
   const [metaStatus,      setMetaStatus]      = useState<StatusRelatorio>("EM_ANDAMENTO");
   const [metaCnpj,        setMetaCnpj]        = useState("");
@@ -583,19 +585,26 @@ export default function AnalisePage({
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Responsável</span>
             <ProfissionalSelect
               value={metaResponsavel}
-              onChange={(nome, _cargo, _cert, crpProfissional) => {
+              onChange={(nome, cargo, _cert, registro) => {
                 setMetaResponsavel(nome);
-                if (crpProfissional) setMetaCrp(crpProfissional);
+                setMetaCargoResponsavel(cargo);
+                if (registro) setMetaCrp(registro);
                 setMetaDirty(true);
+              }}
+              onMatchFound={({ cargo, registro }) => {
+                setMetaCargoResponsavel(cargo);
+                if (registro && !metaCrp) setMetaCrp(registro);
               }}
               className={`flex-1 border-gray-200 py-0.5 text-xs ${!canEdit ? "pointer-events-none opacity-60 border-transparent bg-transparent" : ""}`}
               placeholder="Selecione o psicólogo..."
             />
           </div>
 
-          {/* CRP */}
+          {/* Registro profissional — label dinâmico pelo cargo */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">CRP</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              {detectRegistroTipo(metaCargoResponsavel).label}
+            </span>
             <input
               type="text"
               value={metaCrp}
@@ -862,6 +871,8 @@ export default function AnalisePage({
 
             <AssinaturaRelatorio
               nomeResponsavel={relatorio?.responsavel_tecnico ?? undefined}
+              tabelaNome="drps_relatorios_analise"
+              docId={idRelatorio}
             />
 
             <p className="mt-6 text-center text-[9px] text-gray-500">
@@ -1099,7 +1110,7 @@ function BlocoSetor({
             </td>
             <td>{drpsRel?.responsavel_tecnico ?? ""}</td>
             <td className="drps-label" style={{ width: "10%" }}>
-              CRP
+              {detectRegistroTipo(drpsRel?.cargo_responsavel ?? metaCargoResponsavel).label}
             </td>
             <td style={{ width: "20%" }}>{drpsRel?.crp ?? ""}</td>
           </tr>

@@ -5,12 +5,20 @@ import { BadgeCheck, Eye, EyeOff, FileText, Loader2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { useUserStore } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import toast from "react-hot-toast";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   /** Email do profissional responsável — pré-seleciona no dropdown ao abrir. */
   defaultSignatoryEmail?: string;
+  /** Tabela do documento (ex: "aet_relatorios"). Quando fornecido junto com docId,
+   *  o PDF assinado é salvo no Storage em vez de ser baixado automaticamente. */
+  tabelaNome?: string;
+  /** ID do documento a ser assinado. */
+  docId?: string;
+  /** Callback chamado após assinatura bem-sucedida (com tabelaNome + docId). */
+  onAssinado?: () => void;
 }
 
 type Step = "idle" | "gerando" | "assinando";
@@ -22,7 +30,14 @@ type Signatario = {
   cargo: string | null;
 };
 
-export default function AssinarPdfModal({ open, onClose, defaultSignatoryEmail }: Props) {
+export default function AssinarPdfModal({
+  open,
+  onClose,
+  defaultSignatoryEmail,
+  tabelaNome,
+  docId,
+  onAssinado,
+}: Props) {
   const user = useUserStore((s) => s.user);
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -75,6 +90,8 @@ export default function AssinarPdfModal({ open, onClose, defaultSignatoryEmail }
     if (!emailSelecionado) { setErro("Selecione o profissional signatário."); return; }
     setErro(null);
 
+    const salvarNoServidor = !!(tabelaNome && docId);
+
     try {
       setStep("gerando");
       const { gerarPdfDaPagina } = await import("@/lib/gerarPdfDaPagina");
@@ -85,6 +102,8 @@ export default function AssinarPdfModal({ open, onClose, defaultSignatoryEmail }
       form.append("pdf", new Blob([pdfBytes], { type: "application/pdf" }), "relatorio.pdf");
       form.append("password", password);
       form.append("signatoryEmail", emailSelecionado);
+      if (tabelaNome) form.append("tabelaNome", tabelaNome);
+      if (docId) form.append("docId", docId);
 
       const res = await fetch("/api/sign-pdf", { method: "POST", body: form });
       if (!res.ok) {
@@ -92,14 +111,22 @@ export default function AssinarPdfModal({ open, onClose, defaultSignatoryEmail }
         throw new Error(body.error ?? "Erro ao assinar PDF");
       }
 
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "relatorio-assinado.pdf";
-      a.click();
-      URL.revokeObjectURL(url);
-      handleClose();
+      if (salvarNoServidor) {
+        // Novo comportamento: PDF salvo no servidor, sem download automático
+        toast.success("Documento assinado com sucesso!");
+        onAssinado?.();
+        handleClose();
+      } else {
+        // Legado: baixa o PDF assinado
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "relatorio-assinado.pdf";
+        a.click();
+        URL.revokeObjectURL(url);
+        handleClose();
+      }
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao assinar");
     } finally {
@@ -147,9 +174,9 @@ export default function AssinarPdfModal({ open, onClose, defaultSignatoryEmail }
         <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
           <FileText className="mt-0.5 size-4 shrink-0 text-gray-400" />
           <p className="text-xs text-gray-600">
-            O relatório será capturado automaticamente e assinado com o
-            certificado A1 do profissional selecionado. O PDF assinado será
-            baixado em seguida.
+            {tabelaNome && docId
+              ? "O relatório será capturado, assinado com o certificado A1 e salvo. Você poderá baixar o PDF assinado quando quiser."
+              : "O relatório será capturado automaticamente e assinado com o certificado A1 do profissional selecionado. O PDF assinado será baixado em seguida."}
           </p>
         </div>
 
@@ -209,7 +236,7 @@ export default function AssinarPdfModal({ open, onClose, defaultSignatoryEmail }
             ) : step === "assinando" ? (
               <><Loader2 className="size-4 animate-spin" /> Assinando...</>
             ) : (
-              <><BadgeCheck className="size-4" /> Assinar e Baixar</>
+              <><BadgeCheck className="size-4" /> Assinar</>
             )}
           </button>
         </div>

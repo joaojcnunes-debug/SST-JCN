@@ -7,13 +7,20 @@ import AssinarPdfModal from "@/components/ui/AssinarPdfModal";
 interface Props {
   /** Email do profissional responsável pelo documento (pré-seleção no modal). */
   defaultSignatoryEmail?: string;
+  /** Tabela do documento. Passado ao modal para salvar o PDF assinado no servidor. */
+  tabelaNome?: string;
+  /** ID do documento. Passado ao modal para salvar o PDF assinado no servidor. */
+  docId?: string;
+  /** Callback após assinatura bem-sucedida. */
+  onAssinado?: () => void;
 }
 
-/**
- * Botão "Assinar PDF A1" — abre o modal de seleção de profissional signatário.
- * Visível para qualquer usuário logado (o modal filtra quem tem cert A1 + pfx).
- */
-export default function BotaoAssinarPdf({ defaultSignatoryEmail }: Props) {
+export default function BotaoAssinarPdf({
+  defaultSignatoryEmail,
+  tabelaNome,
+  docId,
+  onAssinado,
+}: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -32,6 +39,9 @@ export default function BotaoAssinarPdf({ defaultSignatoryEmail }: Props) {
         open={open}
         onClose={() => setOpen(false)}
         defaultSignatoryEmail={defaultSignatoryEmail}
+        tabelaNome={tabelaNome}
+        docId={docId}
+        onAssinado={onAssinado}
       />
     </>
   );

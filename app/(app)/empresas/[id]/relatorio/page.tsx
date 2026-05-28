@@ -303,7 +303,7 @@ export default function RelatorioConsolidadoPage({ params }: Props) {
           </>
         )}
 
-        <AssinaturaRelatorio />
+        <AssinaturaRelatorio tabelaNome="empresas_relatorio" docId={id} />
       </article>
     </div>
   );

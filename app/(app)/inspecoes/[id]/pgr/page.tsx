@@ -533,7 +533,7 @@ export default function PgrPage({ params }: Props) {
           </section>
         )}
 
-        <AssinaturaRelatorio />
+        <AssinaturaRelatorio tabelaNome="inspecoes_pgr" docId={id} />
 
         {/* RODAPÉ */}
         <footer className="border-t border-gray-200 pt-2 text-center text-[10px] text-gray-500 print-avoid-break">

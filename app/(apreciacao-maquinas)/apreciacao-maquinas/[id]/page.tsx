@@ -895,6 +895,8 @@ export default function DetalheApreciacaoPage() {
       <div className="print:break-inside-avoid">
         <AssinaturaRelatorio
           nomeResponsavel={apreciacao.responsavel ?? undefined}
+          tabelaNome="apreciacoes_maquinas"
+          docId={id}
         />
       </div>
 

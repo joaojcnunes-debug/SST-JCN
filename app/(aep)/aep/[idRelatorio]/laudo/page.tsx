@@ -324,6 +324,8 @@ export default function AepLaudoPage({
         <AssinaturaRelatorio
           nomeResponsavel={rel.responsavel_elaboracao ?? undefined}
           cargoResponsavel={rel.titulo_profissional ?? undefined}
+          tabelaNome="aep_relatorios"
+          docId={idRelatorio}
         />
       </div>
     </>

@@ -612,7 +612,7 @@ export default function RelatorioChabraPage({ params }: Props) {
             </div>
           )}
 
-          <AssinaturaRelatorio />
+          <AssinaturaRelatorio tabelaNome="inspecoes_relatorio" docId={id} />
 
           <p className="mt-8 text-center text-[10px] text-gray-400">
             Documento gerado em {fmtDataHora(new Date())} · Painel SST Chabra

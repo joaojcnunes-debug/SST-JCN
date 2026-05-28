@@ -499,6 +499,8 @@ export default function DetalheNaoConformidadePage({
       {/* Bloco de Assinaturas */}
       <AssinaturaRelatorio
         nomeResponsavel={relatorio.responsavel ?? undefined}
+        tabelaNome="relatorios_nao_conformidade"
+        docId={id}
       />
 
       <p className="text-center text-[9px] text-gray-500 print:mt-4">

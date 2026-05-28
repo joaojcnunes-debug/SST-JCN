@@ -231,6 +231,8 @@ export default function AnaliseDetalhePage({
       {/* Bloco de assinatura */}
       <AssinaturaRelatorio
         nomeResponsavel={analise.usuario_nome ?? undefined}
+        tabelaNome="analises_quimicos"
+        docId={id}
       />
 
       {/* Rodapé pra impressão */}

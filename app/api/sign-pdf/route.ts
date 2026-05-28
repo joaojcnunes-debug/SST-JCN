@@ -25,12 +25,16 @@ export async function POST(req: NextRequest) {
   let pdfFile: File | null = null;
   let password: string | null = null;
   let signatoryEmail: string | null = null;
+  let tabelaNome: string | null = null;
+  let docId: string | null = null;
 
   try {
     const formData = await req.formData();
     pdfFile = formData.get("pdf") as File | null;
     password = formData.get("password") as string | null;
     signatoryEmail = (formData.get("signatoryEmail") as string | null) || null;
+    tabelaNome = (formData.get("tabelaNome") as string | null) || null;
+    docId = (formData.get("docId") as string | null) || null;
   } catch {
     return NextResponse.json({ error: "Requisição inválida" }, { status: 400 });
   }
@@ -171,6 +175,40 @@ export async function POST(req: NextRequest) {
     const signer = new P12Signer(p12Buffer, { passphrase: password });
     const pdfAssinado = await signpdf.sign(pdfComPlaceholder, signer);
 
+    // Se tabelaNome + docId fornecidos: salva no Storage e registra no banco
+    if (tabelaNome && docId) {
+      const pdfPath = `${tabelaNome}/${docId}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from("pdfs-assinados")
+        .upload(pdfPath, new Uint8Array(pdfAssinado), {
+          contentType: "application/pdf",
+          upsert: true,
+        });
+
+      if (uploadError) {
+        return NextResponse.json(
+          { error: "PDF assinado mas falha ao salvar no servidor. Tente novamente." },
+          { status: 500 }
+        );
+      }
+
+      await supabase
+        .from("pdfs_assinados")
+        .upsert(
+          {
+            tabela: tabelaNome,
+            doc_id: docId,
+            pdf_path: pdfPath,
+            assinado_em: new Date().toISOString(),
+            assinado_por: emailSignatario,
+          } as never,
+          { onConflict: "tabela,doc_id" }
+        );
+
+      return NextResponse.json({ success: true });
+    }
+
+    // Legado: retorna PDF binário para download direto
     return new NextResponse(new Uint8Array(pdfAssinado), {
       headers: {
         "Content-Type": "application/pdf",

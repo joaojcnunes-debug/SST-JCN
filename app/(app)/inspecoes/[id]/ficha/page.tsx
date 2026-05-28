@@ -567,7 +567,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         </div>
 
         {/* ASSINATURAS */}
-        <AssinaturaRelatorio />
+        <AssinaturaRelatorio tabelaNome="inspecoes_ficha" docId={id} />
 
         <p className="mt-4 text-center text-[9px] text-gray-500">
           Painel SST Chabra · Ficha de Inspeção em Branco · gerado em{" "}

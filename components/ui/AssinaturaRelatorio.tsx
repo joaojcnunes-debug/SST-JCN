@@ -1,44 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { BadgeCheck, ShieldCheck } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { BadgeCheck, Download, ShieldCheck } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import BotaoAssinarPdf from "@/components/ui/BotaoAssinarPdf";
+import toast from "react-hot-toast";
 
-/**
- * Componente de assinatura para relatórios.
- *
- * Renderiza dois elementos:
- * 1. RubricaPrint — imagem pequena fixada no canto inferior-direito de CADA
- *    página impressa (via CSS @media print + position:fixed). Só aparece na
- *    impressão, nunca na tela.
- * 2. BlocoAssinatura — seção visível no final do documento com a assinatura
- *    completa do técnico responsável e a assinatura da empresa, lado a lado.
- *
- * Uso: basta soltar <AssinaturaRelatorio /> no final de qualquer página de
- * relatório. O componente busca os dados do usuário logado (store) e das
- * configurações globais (empresa).
- */
 export default function AssinaturaRelatorio({
   nomeResponsavel,
   cargoResponsavel,
   dataRelatorio,
+  tabelaNome,
+  docId,
 }: {
-  /** Nome do responsável técnico (sobrescreve o nome do usuário logado). */
   nomeResponsavel?: string;
-  /** Cargo do responsável (sobrescreve o cargo do usuário logado). */
   cargoResponsavel?: string;
-  /** Data do relatório formatada (ex: "26/05/2026"). Padrão: hoje. */
   dataRelatorio?: string;
+  /** Tabela do documento (ex: "aet_relatorios"). Necessário para salvar/carregar PDF assinado. */
+  tabelaNome?: string;
+  /** ID do documento. Necessário para salvar/carregar PDF assinado. */
+  docId?: string;
 }) {
   const user = useUserStore((s) => s.user);
   const { data: configs } = useConfiguracoes();
 
   const nome = nomeResponsavel ?? user?.nome ?? "";
 
-  // Helpers de comparação de nome (usados no effect e no render)
   const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
   const wordMatch = (a: string, b: string) => {
     const words = norm(a).split(" ").filter((w) => w.length > 2);
@@ -51,7 +40,6 @@ export default function AssinaturaRelatorio({
     wordMatch(a, b) ||
     wordMatch(b, a);
 
-  // true quando o usuário logado é o responsável pelo documento
   const isLoggedUserResponsavel =
     !nomeResponsavel ||
     (!!user?.nome && nameMatches(nomeResponsavel, user.nome));
@@ -64,12 +52,16 @@ export default function AssinaturaRelatorio({
     email?: string | null;
   } | null>(null);
 
+  const [pdfAssinado, setPdfAssinado] = useState<{
+    pdf_path: string;
+    assinado_em: string;
+    assinado_por: string;
+  } | null>(null);
+
+  // Carrega dados de assinatura do profissional
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
-
-    const isSameUser = isLoggedUserResponsavel;
-
-    if (isSameUser) {
+    if (isLoggedUserResponsavel) {
       if (!user?.email) return;
       supabase
         .from("usuarios")
@@ -78,8 +70,6 @@ export default function AssinaturaRelatorio({
         .single()
         .then(({ data }) => setSigData(data ?? null));
     } else {
-      // Outro profissional: pré-filtra pelo primeiro nome via wildcard,
-      // depois escolhe o melhor match com word-match client-side.
       const firstWord = (nomeResponsavel ?? "").trim().split(/\s+/)[0];
       supabase
         .from("usuarios")
@@ -101,7 +91,37 @@ export default function AssinaturaRelatorio({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nomeResponsavel, user?.email, user?.nome, isLoggedUserResponsavel]);
 
-  // cargo: usa prop explícita > cargo do banco (profissional encontrado) > cargo do usuário logado
+  // Carrega estado do PDF assinado (se tabelaNome + docId fornecidos)
+  const carregarPdfAssinado = useCallback(() => {
+    if (!tabelaNome || !docId) return;
+    createSupabaseBrowserClient()
+      .from("pdfs_assinados")
+      .select("pdf_path, assinado_em, assinado_por")
+      .eq("tabela", tabelaNome)
+      .eq("doc_id", docId)
+      .single()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then(({ data }: { data: any }) => setPdfAssinado(data ?? null));
+  }, [tabelaNome, docId]);
+
+  useEffect(() => { carregarPdfAssinado(); }, [carregarPdfAssinado]);
+
+  async function handleBaixarPdf() {
+    if (!pdfAssinado) return;
+    const { data, error } = await createSupabaseBrowserClient()
+      .storage
+      .from("pdfs-assinados")
+      .createSignedUrl(pdfAssinado.pdf_path, 3600);
+    if (error || !data?.signedUrl) {
+      toast.error("Não foi possível gerar o link de download. Tente novamente.");
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = data.signedUrl;
+    a.download = "relatorio-assinado.pdf";
+    a.click();
+  }
+
   const cargo = cargoResponsavel ?? sigData?.cargo ?? user?.cargo ?? "";
   const mostrarImagem = sigData?.mostrar_assinatura_imagem ?? true;
   const assinaturaUrl = mostrarImagem ? (sigData?.assinatura_url ?? null) : null;
@@ -111,11 +131,13 @@ export default function AssinaturaRelatorio({
   const hoje = new Date();
   const dataFormatada =
     dataRelatorio ??
-    hoje.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
+    hoje.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
+
+  const dataAssinatura = pdfAssinado
+    ? new Date(pdfAssinado.assinado_em).toLocaleDateString("pt-BR", {
+        day: "2-digit", month: "2-digit", year: "numeric",
+      })
+    : null;
 
   return (
     <>
@@ -123,17 +145,41 @@ export default function AssinaturaRelatorio({
       {assinaturaUrl && (
         <div className="rubrica-print-fixed print:block hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={assinaturaUrl}
-            alt="Rubrica"
-            className="h-8 w-auto object-contain opacity-70"
-          />
+          <img src={assinaturaUrl} alt="Rubrica" className="h-8 w-auto object-contain opacity-70" />
         </div>
       )}
 
-      {/* ── Botão assinar com A1 — qualquer usuário pode selecionar o signatário ── */}
-      <div className="mt-4 flex justify-end print:hidden">
-        <BotaoAssinarPdf defaultSignatoryEmail={sigData?.email ?? undefined} />
+      {/* ── Barra de ações: assinar + baixar PDF ── */}
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-2 print:hidden">
+        {pdfAssinado ? (
+          <>
+            <div className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+              <BadgeCheck className="size-3.5 shrink-0" />
+              Assinado em {dataAssinatura}
+            </div>
+            <button
+              type="button"
+              onClick={handleBaixarPdf}
+              className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              <Download className="size-4" />
+              Baixar PDF Assinado
+            </button>
+            <BotaoAssinarPdf
+              defaultSignatoryEmail={sigData?.email ?? undefined}
+              tabelaNome={tabelaNome}
+              docId={docId}
+              onAssinado={carregarPdfAssinado}
+            />
+          </>
+        ) : (
+          <BotaoAssinarPdf
+            defaultSignatoryEmail={sigData?.email ?? undefined}
+            tabelaNome={tabelaNome}
+            docId={docId}
+            onAssinado={carregarPdfAssinado}
+          />
+        )}
       </div>
 
       {/* ── Bloco final de assinatura ── */}
@@ -143,11 +189,10 @@ export default function AssinaturaRelatorio({
         </p>
 
         <div className="flex flex-col gap-8 sm:flex-row sm:justify-around sm:gap-6">
-          {/* ── Técnico responsável — selo estilo Adobe ── */}
+          {/* ── Técnico responsável ── */}
           <div className="flex flex-col items-center gap-2">
             {assinaturaUrl || certificado ? (
               <div className="w-72 overflow-hidden rounded border border-blue-300 bg-white shadow-sm">
-                {/* Barra de cabeçalho */}
                 <div className="flex items-center gap-1.5 bg-blue-600 px-3 py-1.5">
                   {certificado === "A3" ? (
                     <ShieldCheck className="size-3 text-white" />
@@ -155,109 +200,71 @@ export default function AssinaturaRelatorio({
                     <BadgeCheck className="size-3 text-white" />
                   )}
                   <span className="text-[9px] font-semibold uppercase tracking-wider text-white">
-                    Assinado digitalmente
-                    {certificado ? ` · Cert. ${certificado}` : ""}
+                    Assinado digitalmente{certificado ? ` · Cert. ${certificado}` : ""}
                   </span>
                 </div>
-                {/* Corpo: imagem + metadados */}
                 <div className="flex items-stretch gap-0">
-                  {/* Imagem de assinatura */}
                   <div className="flex w-24 shrink-0 items-center justify-center border-r border-blue-100 bg-blue-50/40 p-2">
                     {assinaturaUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={assinaturaUrl}
-                        alt="Assinatura"
-                        className="max-h-14 max-w-[80px] object-contain"
-                      />
+                      <img src={assinaturaUrl} alt="Assinatura" className="max-h-14 max-w-[80px] object-contain" />
                     ) : certificado === "A3" ? (
                       <ShieldCheck className="size-10 text-purple-400" />
                     ) : (
                       <BadgeCheck className="size-10 text-blue-400" />
                     )}
                   </div>
-                  {/* Metadados */}
                   <div className="flex flex-1 flex-col justify-center gap-0.5 px-3 py-2">
-                    <p className="text-[8px] font-medium uppercase tracking-wide text-blue-500">
-                      Assinado por:
-                    </p>
-                    <p className="text-[11px] font-bold leading-tight text-gray-800">
-                      {nome}
-                    </p>
-                    {cargo && (
-                      <p className="text-[9px] text-gray-500">{cargo}</p>
-                    )}
-                    <p className="mt-1 text-[9px] text-gray-500">
-                      Data: {dataFormatada}
-                    </p>
+                    <p className="text-[8px] font-medium uppercase tracking-wide text-blue-500">Assinado por:</p>
+                    <p className="text-[11px] font-bold leading-tight text-gray-800">{nome}</p>
+                    {cargo && <p className="text-[9px] text-gray-500">{cargo}</p>}
+                    <p className="mt-1 text-[9px] text-gray-500">Data: {dataFormatada}</p>
                     {certificado && (
-                      <p className="text-[9px] font-medium text-blue-600">
-                        ICP-Brasil · Certificado {certificado}
-                      </p>
+                      <p className="text-[9px] font-medium text-blue-600">ICP-Brasil · Certificado {certificado}</p>
                     )}
                   </div>
                 </div>
               </div>
             ) : (
-              /* Estado vazio — campo de assinatura sem dados */
               <div className="flex w-72 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 py-6">
-                <span className="text-xs italic text-gray-300">
-                  (sem assinatura cadastrada)
-                </span>
+                <span className="text-xs italic text-gray-300">(sem assinatura cadastrada)</span>
               </div>
             )}
             <p className="mt-1 text-xs font-semibold text-gray-700">{nome}</p>
             {cargo && <p className="text-[11px] text-gray-400">{cargo}</p>}
           </div>
 
-          {/* ── Assinatura da empresa — mesmo estilo ── */}
+          {/* ── Assinatura da empresa ── */}
           <div className="flex flex-col items-center gap-2">
             {assinaturaEmpresaUrl ? (
               <div className="w-72 overflow-hidden rounded border border-gray-300 bg-white shadow-sm">
                 <div className="flex items-center gap-1.5 bg-gray-600 px-3 py-1.5">
                   <BadgeCheck className="size-3 text-white" />
-                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white">
-                    Empresa responsável
-                  </span>
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-white">Empresa responsável</span>
                 </div>
                 <div className="flex items-stretch">
                   <div className="flex w-24 shrink-0 items-center justify-center border-r border-gray-100 bg-gray-50/60 p-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={assinaturaEmpresaUrl}
-                      alt="Assinatura da empresa"
-                      className="max-h-14 max-w-[80px] object-contain"
-                    />
+                    <img src={assinaturaEmpresaUrl} alt="Assinatura da empresa" className="max-h-14 max-w-[80px] object-contain" />
                   </div>
                   <div className="flex flex-1 flex-col justify-center gap-0.5 px-3 py-2">
-                    <p className="text-[8px] font-medium uppercase tracking-wide text-gray-400">
-                      Carimbo / Assinatura
-                    </p>
-                    <p className="text-[11px] font-bold leading-tight text-gray-800">
-                      Responsável pela Empresa
-                    </p>
-                    <p className="mt-1 text-[9px] text-gray-500">
-                      Data: {dataFormatada}
-                    </p>
+                    <p className="text-[8px] font-medium uppercase tracking-wide text-gray-400">Carimbo / Assinatura</p>
+                    <p className="text-[11px] font-bold leading-tight text-gray-800">Responsável pela Empresa</p>
+                    <p className="mt-1 text-[9px] text-gray-500">Data: {dataFormatada}</p>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="flex w-72 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 py-6">
-                <span className="text-xs italic text-gray-300">
-                  (sem assinatura da empresa)
-                </span>
+                <span className="text-xs italic text-gray-300">(sem assinatura da empresa)</span>
               </div>
             )}
-            <p className="mt-1 text-xs font-semibold text-gray-700">
-              Responsável pela Empresa
-            </p>
+            <p className="mt-1 text-xs font-semibold text-gray-700">Responsável pela Empresa</p>
             <p className="text-[11px] text-gray-400">Carimbo / Assinatura</p>
           </div>
         </div>
       </div>
 
-      {/* CSS global para rubrica em cada página impressa */}
       <style>{`
         @media print {
           .rubrica-print-fixed {

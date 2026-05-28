@@ -194,7 +194,7 @@ export default function GestaoPage({
       {/* Versão print do quadro — mesma usada no PDF completo do relatório */}
       <DrpsGestaoResumoPrint idRelatorio={idRelatorio} />
 
-      <AssinaturaRelatorio />
+      <AssinaturaRelatorio tabelaNome="drps_relatorios_gestao" docId={idRelatorio} />
     </>
   );
 }

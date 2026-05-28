@@ -16,7 +16,8 @@ import {
 import { useState, useEffect } from "react";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import toast from "react-hot-toast";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
+import { detectRegistroTipo } from "@/lib/registro-profissional";
 import {
   useAetRelatorio,
   useSalvarAet,
@@ -171,36 +172,6 @@ export default function AetLaudoPage({
   const [dataElaboracao, setDataElaboracao] = useState("");
   const [enderecoEmpresa, setEnderecoEmpresa] = useState("");
 
-  type Profissional = { id_usuario: string; nome: string; cargo: string | null; tipo_certificado: "A1" | "A3" | null };
-  const [profissionais, setProfissionais] = useState<Profissional[]>([]);
-  const [responsavelId, setResponsavelId] = useState("");
-
-  // Carrega lista de usuários ativos para o dropdown de responsável
-  useEffect(() => {
-    createSupabaseBrowserClient()
-      .from("usuarios")
-      .select("id_usuario, nome, cargo, tipo_certificado")
-      .eq("ativo_sistema", true)
-      .neq("perfil", "Visualizador")
-      .order("nome")
-      .then(({ data }) => {
-        if (data) setProfissionais(data as Profissional[]);
-      });
-  }, []);
-
-  // Pré-seleciona o profissional salvo no relatório (match parcial de nome)
-  useEffect(() => {
-    if (!rel?.responsavel_elaboracao || profissionais.length === 0) return;
-    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-    const saved = norm(rel.responsavel_elaboracao);
-    const match = profissionais.find(
-      (p) =>
-        norm(p.nome) === saved ||
-        saved.includes(norm(p.nome)) ||
-        norm(p.nome).includes(saved)
-    );
-    if (match) setResponsavelId(match.id_usuario);
-  }, [rel?.responsavel_elaboracao, profissionais]);
 
   const { data: capitulos = [] } = useAetTextoPadrao();
   const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
@@ -520,32 +491,18 @@ export default function AetLaudoPage({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Responsável pela Elaboração</label>
-              <div className="flex items-center gap-2">
-                <select
-                  value={responsavelId}
-                  onChange={(e) => {
-                    const selected = profissionais.find((p) => p.id_usuario === e.target.value);
-                    setResponsavelId(e.target.value);
-                    if (selected) {
-                      setResponsavel(selected.nome);
-                      setTituloProfissional(selected.cargo ?? "");
-                    }
-                  }}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
-                >
-                  <option value="">Selecione o profissional...</option>
-                  {profissionais.map((p) => (
-                    <option key={p.id_usuario} value={p.id_usuario}>
-                      {p.nome}{p.tipo_certificado ? ` · Cert. ${p.tipo_certificado}` : ""}
-                    </option>
-                  ))}
-                </select>
-                {profissionais.find((p) => p.id_usuario === responsavelId)?.tipo_certificado && (
-                  <span className="shrink-0 rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
-                    {profissionais.find((p) => p.id_usuario === responsavelId)?.tipo_certificado}
-                  </span>
-                )}
-              </div>
+              <ProfissionalSelect
+                value={responsavel}
+                onChange={(nome, cargo, _cert, regValue) => {
+                  setResponsavel(nome);
+                  setTituloProfissional(cargo ?? "");
+                  if (regValue) setRegistroProfissional(regValue);
+                }}
+                onMatchFound={({ cargo, registro }) => {
+                  setTituloProfissional((prev) => prev || cargo || "");
+                  setRegistroProfissional((prev) => prev || registro || "");
+                }}
+              />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Título Profissional</label>
@@ -558,13 +515,13 @@ export default function AetLaudoPage({
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Registro Profissional</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600">{detectRegistroTipo(tituloProfissional).label}</label>
               <input
                 type="text"
                 value={registroProfissional}
                 onChange={(e) => setRegistroProfissional(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
-                placeholder="CRA / CREA / CRF..."
+                placeholder={detectRegistroTipo(tituloProfissional).placeholder}
               />
             </div>
             <div>
@@ -863,6 +820,7 @@ export default function AetLaudoPage({
                         responsavel={responsavel}
                         tituloProfissional={tituloProfissional}
                         registroProfissional={registroProfissional}
+                        idRelatorio={idRelatorio}
                       />
                     );
                     break;
@@ -1012,6 +970,7 @@ export default function AetLaudoPage({
               responsavel={responsavel}
               tituloProfissional={tituloProfissional}
               registroProfissional={registroProfissional}
+              idRelatorio={idRelatorio}
             />
           </>
         )}
@@ -1838,15 +1797,19 @@ function AssinaturaSection({
   responsavel,
   tituloProfissional,
   registroProfissional,
+  idRelatorio,
 }: {
   responsavel: string;
   tituloProfissional: string;
   registroProfissional: string;
+  idRelatorio: string;
 }) {
   return (
     <AssinaturaRelatorio
       nomeResponsavel={responsavel ?? undefined}
       cargoResponsavel={tituloProfissional ?? undefined}
+      tabelaNome="aet_relatorios"
+      docId={idRelatorio}
     />
   );
 }

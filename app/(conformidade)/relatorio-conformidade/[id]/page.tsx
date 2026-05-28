@@ -485,6 +485,8 @@ export default function DetalheConformidadePage({
       {/* Bloco de Assinaturas */}
       <AssinaturaRelatorio
         nomeResponsavel={relatorio.responsavel ?? undefined}
+        tabelaNome="relatorios_conformidade"
+        docId={id}
       />
 
       {/* Rodapé pra impressão */}
