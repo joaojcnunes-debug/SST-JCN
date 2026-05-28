@@ -144,7 +144,6 @@ export default function RiscosTab({
         <QuadroRiscoSetor
           riscos={riscos}
           setores={setores}
-          tiposOrdenados={tiposOrdenados}
           iconeDe={iconeDe}
         />
       ) : (
@@ -247,123 +246,135 @@ export default function RiscosTab({
   );
 }
 
-// ─── Quadro Risco × Setor ────────────────────────────────────────────────────
+// ─── Quadro por Setor ────────────────────────────────────────────────────────
 
 function QuadroRiscoSetor({
   riscos,
   setores,
-  tiposOrdenados,
   iconeDe,
 }: {
   riscos: Risco[];
   setores: Setor[];
-  tiposOrdenados: TipoRisco[];
   iconeDe: (tipo: string) => string;
 }) {
-  // Para cada tipo, lista de agentes únicos (preserva ordem de aparição)
-  const linhasPorTipo = useMemo(() => {
-    const result = new Map<TipoRisco, string[]>();
-    for (const tipo of tiposOrdenados) {
-      const agentes: string[] = [];
-      for (const r of riscos) {
-        if (r.tipo_risco !== tipo) continue;
-        const label = r.agente ?? r.tipo_risco;
-        if (!agentes.includes(label)) agentes.push(label);
-      }
-      if (agentes.length > 0) result.set(tipo, agentes);
-    }
-    return result;
-  }, [riscos, tiposOrdenados]);
+  const [openSetores, setOpenSetores] = useState<Record<string, boolean>>({});
 
-  // Índice rápido: (tipo, agente, id_setor) → nivel_risco
-  const nivelIndex = useMemo(() => {
-    const idx = new Map<string, NivelRisco | null>();
-    for (const r of riscos) {
-      const key = `${r.tipo_risco}|||${r.agente ?? r.tipo_risco}|||${r.id_setor ?? ""}`;
-      // Se houver duplicatas, prioriza o maior nível
-      const atual = idx.get(key);
-      const ORDEM: (NivelRisco | null)[] = [null, "Trivial", "Baixo", "Moderado", "Alto", "Muito Alto"];
-      if (!idx.has(key) || ORDEM.indexOf(r.nivel_risco) > ORDEM.indexOf(atual ?? null)) {
-        idx.set(key, r.nivel_risco);
-      }
-    }
-    return idx;
-  }, [riscos]);
-
-  if (setores.length === 0) return null;
+  // Riscos sem setor associado
+  const semSetor = useMemo(
+    () => riscos.filter((r) => !r.id_setor),
+    [riscos]
+  );
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-      <table className="min-w-full text-sm border-collapse">
-        <thead>
-          <tr className="bg-gray-50 border-b border-gray-200">
-            {/* Coluna de agente — fixa à esquerda */}
-            <th className="sticky left-0 z-10 bg-gray-50 min-w-[220px] max-w-[280px] px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 border-r border-gray-200">
-              Agente de Risco
-            </th>
-            {setores.map((s) => (
-              <th
-                key={s.id_setor}
-                className="min-w-[120px] px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 border-r border-gray-100 last:border-r-0"
-              >
-                {s.setor_ghe}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {tiposOrdenados.map((tipo) => {
-            const agentes = linhasPorTipo.get(tipo);
-            if (!agentes) return null;
-            return agentes.map((agente, idx) => (
-              <tr
-                key={`${tipo}|||${agente}`}
-                className={cn(
-                  "border-b border-gray-100 hover:bg-gray-50/50 transition-colors",
-                  idx === 0 && "border-t-2 border-t-gray-200"
-                )}
-              >
-                {/* Célula de agente */}
-                <td className="sticky left-0 z-10 bg-white px-4 py-2.5 border-r border-gray-200">
-                  {idx === 0 && (
-                    <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      {iconeDe(tipo)} {tipo}
-                    </p>
-                  )}
-                  <span className="text-xs font-medium text-gray-800 leading-tight">
-                    {agente}
-                  </span>
-                </td>
-                {/* Células por setor */}
-                {setores.map((s) => {
-                  const nivel = nivelIndex.get(`${tipo}|||${agente}|||${s.id_setor}`);
-                  return (
-                    <td
-                      key={s.id_setor}
-                      className="px-3 py-2.5 text-center border-r border-gray-100 last:border-r-0"
-                    >
-                      {nivel ? (
-                        <NivelBadge nivel={nivel} />
-                      ) : (
-                        <span className="text-gray-200 text-xs">—</span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ));
-          })}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      {setores.map((setor) => {
+        const lista = riscos.filter((r) => r.id_setor === setor.id_setor);
+        if (lista.length === 0) return null;
+        const isOpen = openSetores[setor.id_setor] ?? true;
 
-      {/* Legenda */}
-      <div className="flex flex-wrap gap-2 border-t border-gray-100 px-4 py-3 bg-gray-50/50">
-        <span className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mr-1 self-center">Nível:</span>
-        {(["Trivial", "Baixo", "Moderado", "Alto", "Muito Alto"] as NivelRisco[]).map((n) => (
-          <NivelBadge key={n} nivel={n} />
-        ))}
-        <span className="text-[10px] text-gray-400 self-center ml-2">— = não mapeado neste setor</span>
-      </div>
+        return (
+          <div
+            key={setor.id_setor}
+            className="overflow-hidden rounded-xl border border-gray-200 bg-white"
+          >
+            <button
+              type="button"
+              onClick={() =>
+                setOpenSetores((m) => ({ ...m, [setor.id_setor]: !isOpen }))
+              }
+              className="flex w-full items-center justify-between bg-gray-50 px-4 py-2.5 text-left hover:bg-gray-100"
+            >
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <ChevronDown
+                  className={cn(
+                    "size-4 text-gray-500 transition-transform",
+                    !isOpen && "-rotate-90"
+                  )}
+                />
+                {setor.setor_ghe}
+                <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-gray-600">
+                  {lista.length}
+                </span>
+              </span>
+            </button>
+
+            {isOpen && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-white text-xs uppercase text-gray-500 border-b border-gray-100">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium">Agente</th>
+                      <th className="px-4 py-2 text-left font-medium">Tipo</th>
+                      <th className="px-4 py-2 text-left font-medium">Probabilidade</th>
+                      <th className="px-4 py-2 text-left font-medium">Severidade</th>
+                      <th className="px-4 py-2 text-left font-medium">Nível</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {lista.map((r) => (
+                      <tr key={r.id_risco} className="hover:bg-gray-50">
+                        <td className="px-4 py-2.5 font-medium text-gray-800">
+                          {r.agente ?? "—"}
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-500">
+                          <span className="text-base mr-1">{iconeDe(r.tipo_risco)}</span>
+                          {r.tipo_risco}
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-500">{r.probabilidade ?? "—"}</td>
+                        <td className="px-4 py-2.5 text-gray-500">{r.severidade ?? "—"}</td>
+                        <td className="px-4 py-2.5">
+                          {r.nivel_risco ? (
+                            <NivelBadge nivel={r.nivel_risco} />
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Riscos sem setor */}
+      {semSetor.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-amber-200 bg-amber-50">
+          <div className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-amber-800">
+            Sem setor associado
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+              {semSetor.length}
+            </span>
+          </div>
+          <div className="overflow-x-auto border-t border-amber-100">
+            <table className="w-full text-sm">
+              <thead className="bg-amber-50 text-xs uppercase text-amber-600 border-b border-amber-100">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium">Agente</th>
+                  <th className="px-4 py-2 text-left font-medium">Tipo</th>
+                  <th className="px-4 py-2 text-left font-medium">Nível</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-amber-100">
+                {semSetor.map((r) => (
+                  <tr key={r.id_risco} className="hover:bg-amber-50/70">
+                    <td className="px-4 py-2.5 font-medium text-gray-800">{r.agente ?? "—"}</td>
+                    <td className="px-4 py-2.5 text-gray-500">
+                      <span className="text-base mr-1">{iconeDe(r.tipo_risco)}</span>
+                      {r.tipo_risco}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {r.nivel_risco ? <NivelBadge nivel={r.nivel_risco} /> : <span className="text-gray-400">—</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
