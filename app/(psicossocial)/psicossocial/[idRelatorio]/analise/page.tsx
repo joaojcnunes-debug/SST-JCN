@@ -876,7 +876,7 @@ export default function AnalisePage({
               docId={idRelatorio}
             />
 
-            <p className="mt-6 text-center text-[9px] text-gray-500">
+            <p className="mt-6 text-center text-[9px] text-gray-500 print:hidden">
               Documento gerado pelo Painel SST Chabra em{" "}
               {new Date().toLocaleDateString("pt-BR")}
             </p>
