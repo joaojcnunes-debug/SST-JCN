@@ -133,7 +133,7 @@ export default function DrpsListaPage() {
                     <th className="px-4 py-2.5 text-left font-medium">
                       Responsável Técnico
                     </th>
-                    <th className="px-4 py-2.5 text-left font-medium">CRP</th>
+                    <th className="px-4 py-2.5 text-left font-medium">Registro</th>
                     <th className="px-4 py-2.5 text-left font-medium">
                       Status
                     </th>

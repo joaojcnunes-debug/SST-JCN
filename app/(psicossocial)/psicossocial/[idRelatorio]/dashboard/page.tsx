@@ -15,6 +15,7 @@ import {
 import { Check, Loader2 } from "lucide-react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
+import { detectRegistroTipo } from "@/lib/registro-profissional";
 import MatrizRisco from "@/components/drps/MatrizRisco";
 import { useDrpsStore } from "@/lib/drps/store";
 import {
@@ -59,6 +60,7 @@ export default function DashboardPage({
 
   const [responsavel, setResponsavel] = useState("");
   const [crp,         setCrp]         = useState("");
+  const [cargoResponsavel, setCargoResponsavel] = useState<string | null>(null);
   const [data,        setData]        = useState("");
   const [status,      setStatus]      = useState<StatusRelatorio>("EM_ANDAMENTO");
   const [cnpj,        setCnpj]        = useState("");
@@ -243,19 +245,26 @@ export default function DashboardPage({
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Responsável</span>
             <ProfissionalSelect
               value={responsavel}
-              onChange={(nome, _cargo, _cert, crpProfissional) => {
+              onChange={(nome, cargo, _cert, registro) => {
                 setResponsavel(nome);
-                if (crpProfissional) setCrp(crpProfissional);
+                setCargoResponsavel(cargo);
+                if (registro) setCrp(registro);
                 setDirty(true);
+              }}
+              onMatchFound={({ cargo, registro }) => {
+                setCargoResponsavel(cargo);
+                if (registro && !crp) setCrp(registro);
               }}
               className={`flex-1 border-gray-200 py-0.5 text-xs ${!canEdit ? "pointer-events-none opacity-60 border-transparent bg-transparent" : ""}`}
               placeholder="Selecione o psicólogo..."
             />
           </div>
 
-          {/* CRP */}
+          {/* Registro profissional — label dinâmico pelo cargo */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">CRP</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+              {detectRegistroTipo(cargoResponsavel).label}
+            </span>
             <input
               type="text"
               value={crp}

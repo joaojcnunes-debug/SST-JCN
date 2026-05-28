@@ -16,6 +16,7 @@ import {
   BadgeCheck,
 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import { detectRegistroTipo } from "@/lib/registro-profissional";
 import Badge from "@/components/ui/Badge";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import Pagination from "@/components/ui/Pagination";
@@ -677,33 +678,30 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               className={inputCls}
             />
           </Field>
-          <Field label="CRP (Psicólogos)">
-            <input
-              type="text"
-              value={form.crp ?? ""}
-              onChange={(e) => setForm({ ...form, crp: e.target.value || null })}
-              placeholder="Ex: 05/41807"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="CRM (Médicos do Trabalho)">
-            <input
-              type="text"
-              value={form.crm ?? ""}
-              onChange={(e) => setForm({ ...form, crm: e.target.value || null })}
-              placeholder="Ex: 123456/SP"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Registro MTE (Técnicos de Segurança)">
-            <input
-              type="text"
-              value={form.registro_mte ?? ""}
-              onChange={(e) => setForm({ ...form, registro_mte: e.target.value || null })}
-              placeholder="Ex: 123456"
-              className={inputCls}
-            />
-          </Field>
+          {/* Registro profissional — campo único, label/placeholder dinâmicos pelo cargo */}
+          {(() => {
+            const reg = detectRegistroTipo(form.cargo);
+            const valor = form[reg.campo] ?? "";
+            return (
+              <Field label={reg.label}>
+                <input
+                  type="text"
+                  value={valor}
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    setForm({
+                      ...form,
+                      crp: reg.campo === "crp" ? v : null,
+                      crm: reg.campo === "crm" ? v : null,
+                      registro_mte: reg.campo === "registro_mte" ? v : null,
+                    });
+                  }}
+                  placeholder={reg.placeholder}
+                  className={inputCls}
+                />
+              </Field>
+            );
+          })()}
           <Field label="Perfil">
             <select
               value={form.perfil}

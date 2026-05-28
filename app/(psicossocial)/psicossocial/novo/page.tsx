@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Sparkles, Loader2 } from "lucide-react";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
+import { detectRegistroTipo } from "@/lib/registro-profissional";
 import { useDrpsCriarRelatorio, useDrpsRelatorios } from "@/lib/hooks/useDrps";
 import { useUserStore } from "@/lib/store";
 import { useRequireCreate } from "@/lib/hooks/useUsuario";
@@ -32,6 +33,7 @@ function Inner() {
   );
   const [responsavel, setResponsavel] = useState("");
   const [crp, setCrp] = useState("");
+  const [cargoResponsavel, setCargoResponsavel] = useState<string | null>(null);
 
   const { data: relatorios = [] } = useDrpsRelatorios(idEmpresa);
   const proximaRevisao =
@@ -113,20 +115,26 @@ function Inner() {
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <label className="text-xs font-medium text-gray-700">
-                Responsável Técnico (Psicólogo)
+                Responsável Técnico
               </label>
               <ProfissionalSelect
                 value={responsavel}
-                onChange={(nome) => setResponsavel(nome)}
+                onChange={(nome, cargo, _cert, registro) => {
+                  setResponsavel(nome);
+                  setCargoResponsavel(cargo);
+                  if (registro) setCrp(registro);
+                }}
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700">CRP</label>
+              <label className="text-xs font-medium text-gray-700">
+                {detectRegistroTipo(cargoResponsavel).label}
+              </label>
               <input
                 type="text"
                 value={crp}
                 onChange={(e) => setCrp(e.target.value)}
-                placeholder="Ex: 06/12345"
+                placeholder={detectRegistroTipo(cargoResponsavel).placeholder}
                 className={inputCls}
               />
             </div>

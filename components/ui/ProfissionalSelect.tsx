@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { detectRegistroTipo, getRegistroValue } from "@/lib/registro-profissional";
 
 type Profissional = {
   id_usuario: string;
@@ -10,55 +11,83 @@ type Profissional = {
   cargo: string | null;
   tipo_certificado: "A1" | "A3" | null;
   crp: string | null;
+  crm: string | null;
+  registro_mte: string | null;
 };
 
 /**
  * Select de profissional técnico. Carrega usuários ativos (exceto Visualizadores)
- * e ao selecionar notifica com nome + cargo + tipo_certificado + crp.
- * Pré-seleciona automaticamente quando `value` bate com um nome cadastrado
- * (comparação parcial bidirecional, insensível a maiúsculas e espaços extras).
+ * e ao selecionar notifica com nome + cargo + cert + registro profissional.
+ * Pré-seleciona automaticamente quando `value` bate com um nome cadastrado.
+ * Dispara `onMatchFound` quando a pré-seleção inicial é resolvida, permitindo
+ * que o pai obtenha o cargo/registro do profissional já salvo no relatório.
  */
 export default function ProfissionalSelect({
   value,
   onChange,
+  onMatchFound,
   className,
   placeholder = "Selecione o profissional...",
 }: {
-  /** Nome atual salvo (string livre vinda do banco). */
   value: string;
-  /** Chamado ao selecionar: (nome, cargo, tipo_certificado, crp). */
-  onChange: (nome: string, cargo: string | null, cert: "A1" | "A3" | null, crp?: string | null) => void;
+  /** (nome, cargo, cert, registro) — registro é o valor do campo mapeado pelo cargo */
+  onChange: (
+    nome: string,
+    cargo: string | null,
+    cert: "A1" | "A3" | null,
+    registro?: string | null
+  ) => void;
+  /** Dispara uma vez quando o profissional correspondente ao `value` inicial é encontrado */
+  onMatchFound?: (profissional: {
+    nome: string;
+    cargo: string | null;
+    cert: "A1" | "A3" | null;
+    registro: string | null;
+  }) => void;
   className?: string;
   placeholder?: string;
 }) {
   const [profissionais, setProfissionais] = useState<Profissional[]>([]);
   const [selectedId, setSelectedId] = useState("");
+  const [matchNotified, setMatchNotified] = useState(false);
 
   useEffect(() => {
     createSupabaseBrowserClient()
       .from("usuarios")
-      .select("id_usuario, nome, cargo, tipo_certificado, crp")
+      .select("id_usuario, nome, cargo, tipo_certificado, crp, crm, registro_mte")
       .eq("ativo_sistema", true)
       .neq("perfil", "Visualizador")
       .order("nome")
       .then(({ data }) => { if (data) setProfissionais(data as Profissional[]); });
   }, []);
 
-  // Pré-seleciona pelo nome salvo (match parcial bidirecional)
+  // Pré-seleciona pelo nome salvo (match parcial + word-match)
   useEffect(() => {
     if (!value || profissionais.length === 0) { setSelectedId(""); return; }
     const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-    const saved = norm(value);
     const wordMatch = (a: string, b: string) => {
       const words = norm(a).split(" ").filter((w) => w.length > 2);
       return words.length > 0 && words.every((w) => norm(b).includes(w));
     };
     const match = profissionais.find((p) => {
       const n = norm(p.nome);
-      return n === saved || saved.includes(n) || n.includes(saved) ||
+      const v = norm(value);
+      return n === v || v.includes(n) || n.includes(v) ||
         wordMatch(p.nome, value) || wordMatch(value, p.nome);
     });
     setSelectedId(match?.id_usuario ?? "");
+
+    // Notifica o pai com os dados do profissional encontrado (apenas uma vez)
+    if (match && !matchNotified && onMatchFound) {
+      onMatchFound({
+        nome: match.nome,
+        cargo: match.cargo,
+        cert: match.tipo_certificado,
+        registro: getRegistroValue(match) || null,
+      });
+      setMatchNotified(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, profissionais]);
 
   const selected = profissionais.find((p) => p.id_usuario === selectedId);
@@ -70,7 +99,11 @@ export default function ProfissionalSelect({
         onChange={(e) => {
           const p = profissionais.find((p) => p.id_usuario === e.target.value);
           setSelectedId(e.target.value);
-          if (p) onChange(p.nome, p.cargo, p.tipo_certificado ?? null, p.crp ?? null);
+          if (p) {
+            const reg = detectRegistroTipo(p.cargo);
+            const regValue = p[reg.campo] ?? p.crp ?? p.crm ?? p.registro_mte ?? null;
+            onChange(p.nome, p.cargo, p.tipo_certificado ?? null, regValue);
+          }
         }}
         className={cn(
           "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20",

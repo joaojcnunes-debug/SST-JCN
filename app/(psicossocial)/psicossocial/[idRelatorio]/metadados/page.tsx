@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
+import { detectRegistroTipo } from "@/lib/registro-profissional";
 import { Save } from "lucide-react";
 import {
   useDrpsRelatorio,
@@ -15,6 +16,7 @@ interface Form {
   data_elaboracao: string;
   responsavel_tecnico: string;
   crp: string;
+  cargo_responsavel: string | null;
 }
 
 const EMPTY: Form = {
@@ -22,6 +24,7 @@ const EMPTY: Form = {
   data_elaboracao: "",
   responsavel_tecnico: "",
   crp: "",
+  cargo_responsavel: null,
 };
 
 const STATUS_OPCOES: { v: StatusRelatorio; t: string }[] = [
@@ -49,6 +52,7 @@ export default function MetadadosPage({
       data_elaboracao: relatorio.data_elaboracao ?? "",
       responsavel_tecnico: relatorio.responsavel_tecnico ?? "",
       crp: relatorio.crp ?? "",
+      cargo_responsavel: null,
     });
   }, [relatorio, isLoading]);
 
@@ -115,19 +119,30 @@ export default function MetadadosPage({
 
         <Section titulo="Responsável Técnico">
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Nome do responsável técnico (Psicólogo)">
+            <Field label="Nome do responsável técnico">
               <ProfissionalSelect
                 value={form.responsavel_tecnico}
-                onChange={(nome) => setForm({ ...form, responsavel_tecnico: nome })}
+                onChange={(nome, cargo, _cert, registro) => setForm({
+                  ...form,
+                  responsavel_tecnico: nome,
+                  cargo_responsavel: cargo,
+                  crp: registro ?? form.crp,
+                })}
+                onMatchFound={({ cargo, registro }) => setForm((f) => ({
+                  ...f,
+                  cargo_responsavel: cargo,
+                  crp: registro ?? f.crp,
+                }))}
                 className={!canEdit ? "pointer-events-none opacity-60" : ""}
               />
             </Field>
-            <Field label="CRP">
+            <Field label={detectRegistroTipo(form.cargo_responsavel).label}>
               <input
                 type="text"
                 value={form.crp}
                 onChange={(e) => setForm({ ...form, crp: e.target.value })}
                 disabled={!canEdit}
+                placeholder={detectRegistroTipo(form.cargo_responsavel).placeholder}
                 className={inputCls}
               />
             </Field>

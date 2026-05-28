@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { useAepRelatorio, useSalvarAep } from "@/lib/hooks/useAep";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
+import { detectRegistroTipo } from "@/lib/registro-profissional";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import type { StatusAEP } from "@/lib/supabase/types";
 
@@ -124,7 +125,15 @@ export default function AepDadosPage({
           <label className="mb-1 block text-sm font-medium text-gray-700">Responsável pela elaboração</label>
           <ProfissionalSelect
             value={responsavel}
-            onChange={(nome, cargo) => { setResponsavel(nome); setTitulo(cargo ?? ""); }}
+            onChange={(nome, cargo, _cert, regValue) => {
+              setResponsavel(nome);
+              setTitulo(cargo ?? "");
+              if (regValue) setRegistro(regValue);
+            }}
+            onMatchFound={({ cargo, registro }) => {
+              setTitulo((prev) => prev || cargo || "");
+              setRegistro((prev) => prev || registro || "");
+            }}
             className={!canEdit ? "pointer-events-none opacity-60" : ""}
           />
         </div>
@@ -143,13 +152,13 @@ export default function AepDadosPage({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Registro profissional</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">{detectRegistroTipo(titulo).label}</label>
             <input
               type="text"
               value={registro}
               disabled={!canEdit}
               onChange={(e) => setRegistro(e.target.value)}
-              placeholder="CREA / CRQ / CFT"
+              placeholder={detectRegistroTipo(titulo).placeholder}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
             />
           </div>
