@@ -599,6 +599,8 @@ export interface Usuario {
   certificado_pfx_path?: string | null;
   /** Quando false, exibe apenas o selo do certificado digital no bloco de assinatura (ignora assinatura_url). */
   mostrar_assinatura_imagem?: boolean;
+  /** Registro profissional (ex: CRP para psicólogos, CREA para engenheiros). */
+  crp?: string | null;
 }
 
 export interface Configuracao {

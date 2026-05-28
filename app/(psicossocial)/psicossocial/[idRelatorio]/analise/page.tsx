@@ -583,7 +583,11 @@ export default function AnalisePage({
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Responsável</span>
             <ProfissionalSelect
               value={metaResponsavel}
-              onChange={(nome) => { setMetaResponsavel(nome); setMetaDirty(true); }}
+              onChange={(nome, _cargo, _cert, crpProfissional) => {
+                setMetaResponsavel(nome);
+                if (crpProfissional) setMetaCrp(crpProfissional);
+                setMetaDirty(true);
+              }}
               className={`flex-1 border-gray-200 py-0.5 text-xs ${!canEdit ? "pointer-events-none opacity-60 border-transparent bg-transparent" : ""}`}
               placeholder="Selecione o psicólogo..."
             />

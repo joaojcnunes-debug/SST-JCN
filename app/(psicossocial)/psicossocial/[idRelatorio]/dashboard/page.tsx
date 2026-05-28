@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { Check, Loader2 } from "lucide-react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import MatrizRisco from "@/components/drps/MatrizRisco";
 import { useDrpsStore } from "@/lib/drps/store";
 import {
@@ -238,15 +239,17 @@ export default function DashboardPage({
           <div className="h-4 w-px bg-gray-200 shrink-0 hidden sm:block" />
 
           {/* Responsável */}
-          <div className="flex flex-1 items-center gap-1.5 min-w-[180px]">
+          <div className="flex flex-1 items-center gap-1.5 min-w-[200px]">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Responsável</span>
-            <input
-              type="text"
+            <ProfissionalSelect
               value={responsavel}
-              disabled={!canEdit}
-              onChange={(e) => { setResponsavel(e.target.value); setDirty(true); }}
-              placeholder="Nome do psicólogo"
-              className="flex-1 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+              onChange={(nome, _cargo, _cert, crpProfissional) => {
+                setResponsavel(nome);
+                if (crpProfissional) setCrp(crpProfissional);
+                setDirty(true);
+              }}
+              className={`flex-1 border-gray-200 py-0.5 text-xs ${!canEdit ? "pointer-events-none opacity-60 border-transparent bg-transparent" : ""}`}
+              placeholder="Selecione o psicólogo..."
             />
           </div>
 
