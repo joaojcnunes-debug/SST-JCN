@@ -423,31 +423,10 @@ export default function RiscoForm({
 
     if (isEdit) return; // em edit, não sobrescreve listas existentes
 
-    // Fonte Geradora e medidas: NÃO autopreencher — usuário escolhe
-    // quais aplicar a partir do EnumList de sugestões no FonteBlocoLista
-    // / MedidaBloco. EPI/EPC continuam autopreenchidos como antes
-    // (equipamentos são concretos, raramente excluídos).
-    const epis: EpiPendente[] = [];
-    for (const i of itensModelo) {
-      switch (i.categoria) {
-        case "epi_utilizado":
-          epis.push({ tipo: "EPI", descricao: i.texto, ca: null, recomendado: "Não" });
-          break;
-        case "epi_recomendado":
-          epis.push({ tipo: "EPI", descricao: i.texto, ca: null, recomendado: "Sim" });
-          break;
-        case "epc_utilizado":
-          epis.push({ tipo: "EPC", descricao: i.texto, ca: null, recomendado: "Não" });
-          break;
-        case "epc_recomendado":
-          epis.push({ tipo: "EPC", descricao: i.texto, ca: null, recomendado: "Sim" });
-          break;
-      }
-    }
-    setForm((f) => ({
-      ...f,
-      epis_pendentes: epis,
-    }));
+    // Fonte Geradora, medidas e EPIs/EPCs: NÃO autopreencher — usuário escolhe
+    // quais aplicar a partir das sugestões do catálogo/modelo disponíveis
+    // em cada bloco (EpiBloco/MedidaBloco/FonteBlocoLista).
+    setForm((f) => ({ ...f, epis_pendentes: [] }));
   }, [
     form.id_modelo,
     itensModelo,
