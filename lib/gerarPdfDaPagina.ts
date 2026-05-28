@@ -1,14 +1,10 @@
 /**
  * Captura o conteúdo do elemento <main> da página atual como PDF (A4).
- * Usa html-to-image (SVG foreignObject) para renderizar o DOM — suporta
- * CSS moderno incluindo oklch() do Tailwind v4 — e jsPDF para o arquivo.
  *
- * Comportamento de visibilidade (simula @media print):
- *  - Oculta elementos com classe  print:hidden
- *  - Exibe   elementos com classe  print:block / flex / table / inline
- *  - Exibe   seções print-only do globals.css (.drps-sumario etc.)
- *  - Corrige margens negativas de capas (compensam @page em tela)
- *  - Detecta quebras de página naturais (.drps-sumario, .drps-setor-bloco etc.)
+ * Simula @media print injetando todas as regras de impressão dos stylesheets
+ * carregados — isso inclui print:hidden, print:block, break-before: page e
+ * qualquer regra customizada do globals.css. O resultado é idêntico ao que
+ * o browser renderizaria no modo de impressão (window.print()).
  */
 export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
   const [{ toCanvas }, { default: jsPDF }] = await Promise.all([
@@ -18,45 +14,32 @@ export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
 
   const el = (document.querySelector("main") as HTMLElement | null) ?? document.body;
 
-  // 1. Oculta elementos screen-only (print:hidden)
-  const toHide = Array.from(
-    el.querySelectorAll<HTMLElement>('[class*="print:hidden"]')
-  );
-  const origHideDisplay = toHide.map((e) => e.style.display);
-  toHide.forEach((e) => { e.style.display = "none"; });
+  // 1. Extrai todas as regras @media print dos stylesheets carregados e injeta
+  //    sem o wrapper, forçando o browser a aplicá-las imediatamente.
+  //    Isso substitui o toggle manual de print:hidden/print:block e garante
+  //    que QUALQUER regra de impressão (Tailwind, globals.css, etc.) seja aplicada.
+  const printOverride = document.createElement("style");
+  printOverride.id = "pdf-print-override";
+  const printRules: string[] = [];
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      for (const rule of Array.from(sheet.cssRules)) {
+        if (rule instanceof CSSMediaRule && rule.media.mediaText.includes("print")) {
+          for (const inner of Array.from(rule.cssRules)) {
+            printRules.push(inner.cssText);
+          }
+        }
+      }
+    } catch {
+      // Folha cross-origin (ex: Google Fonts) — ignorada silenciosamente
+    }
+  }
+  printOverride.textContent = printRules.join("\n");
+  document.head.appendChild(printOverride);
 
-  // 2. Exibe elementos print-only
-  const printOnlySelectors = [
-    '[class*="print:block"]',
-    '[class*="print:flex"]',
-    '[class*="print:table"]',
-    '[class*="print:inline"]',
-    ".drps-sumario",
-    ".drps-gestao-resumo-print",
-    ".drps-extras-print",
-    ".drps-capitulos",
-    ".drps-conclusao-geral-print",
-    ".aet-sumario",
-    ".textos-padrao-capitulos",
-    ".conformidade-situacao-print",
-    ".relacao-maquinas-footer-print",
-  ];
-  const toShow = Array.from(
-    new Set(
-      printOnlySelectors.flatMap((sel) =>
-        Array.from(el.querySelectorAll<HTMLElement>(sel))
-      )
-    )
-  ).filter((e) => getComputedStyle(e).display === "none");
-  const origShowDisplay = toShow.map((e) => e.style.display);
-  toShow.forEach((e) => { e.style.display = "block"; });
-
-  // 3. Corrige margens negativas das capas.
-  //    Em tela: margin: -1.5rem (DRPS) ou -3cm (TextosPadrao) compensam o padding
-  //    do container e o @page margin. Isso faz a capa ultrapassar os bounds do
-  //    <main> e o html-to-image corta a imagem de fundo.
-  //    Na impressão esse CSS já está em @media print { margin: 0 }, então anulamos
-  //    aqui também antes da captura.
+  // 2. Corrige margens negativas das capas.
+  //    Em tela: margin negativa compensa o padding do container e o @page margin.
+  //    No PDF essa margem corta a imagem de fundo, por isso zeramos aqui.
   const capaEls = Array.from(
     el.querySelectorAll<HTMLElement>(
       ".drps-capitulo--capa, .textos-padrao-capitulo--capa"
@@ -65,7 +48,8 @@ export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
   const origCapaMargins = capaEls.map((e) => e.style.margin);
   capaEls.forEach((e) => { e.style.margin = "0"; });
 
-  // 4. Aguarda todas as <img> carregarem antes de capturar
+  // 3. Aguarda imagens + dois frames para o layout se estabilizar com as
+  //    regras de impressão injetadas (elementos ocultos/visíveis mudam o fluxo).
   await Promise.allSettled(
     Array.from(el.querySelectorAll<HTMLImageElement>("img")).map((img) =>
       img.complete
@@ -76,28 +60,19 @@ export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
           })
     )
   );
+  await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
-  // 5. Aguarda um frame para o layout se estabilizar após as mudanças acima
-  await new Promise<void>((r) => requestAnimationFrame(() => r()));
-
-  // 6. Detecta posições Y de quebras de página naturais (antes do toCanvas
-  //    para coordenadas ainda válidas no DOM atual)
+  // 4. Detecta elementos com break-before: page.
+  //    Como o print CSS já está ativo, getComputedStyle reflete as regras de
+  //    impressão — sem precisar de seletores hardcoded por tipo de relatório.
   const mainRect = el.getBoundingClientRect();
-
-  // Seletores que no @media print têm break-before: page
-  const pageBreakSelectors = [
-    ".drps-sumario",          // sumário começa em página nova
-    ".drps-setor-bloco",      // cada setor começa em página nova
-    ".drps-gestao-resumo-print",
-    ".drps-extras-print",
-  ];
-
   const naturalBreaksCss: number[] = [];
-  for (const sel of pageBreakSelectors) {
-    el.querySelectorAll<HTMLElement>(sel).forEach((elem) => {
+  for (const elem of Array.from(el.querySelectorAll<HTMLElement>("*"))) {
+    const cs = getComputedStyle(elem);
+    if (cs.breakBefore === "page" || cs.pageBreakBefore === "always") {
       const y = Math.round(elem.getBoundingClientRect().top - mainRect.top);
-      if (y > 10) naturalBreaksCss.push(y); // ignora posições no topo
-    });
+      if (y > 10) naturalBreaksCss.push(y);
+    }
   }
   naturalBreaksCss.sort((a, b) => a - b);
 
@@ -124,7 +99,7 @@ export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
     const pageHeightPx = (A4_H - 2 * MARGIN) / pxToMm;
     const pixelRatio = canvas.width / el.offsetWidth;
 
-    // Converte posições CSS → coordenadas do canvas, mescla duplicatas próximas
+    // Converte posições CSS → coordenadas do canvas; mescla quebras muito próximas
     const breaksCv = naturalBreaksCss
       .map((y) => Math.round(y * pixelRatio))
       .filter((y) => y > 0 && y < canvas.height)
@@ -135,7 +110,7 @@ export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
 
     const segBounds = [0, ...breaksCv, canvas.height];
 
-    // Divide cada segmento em páginas A4 (slice mecânico se segmento > 1 página)
+    // Divide cada segmento em páginas A4 (slice mecânico se > 1 página)
     const pages: Array<{ y: number; h: number }> = [];
     for (let i = 0; i < segBounds.length - 1; i++) {
       let y = segBounds[i];
@@ -147,7 +122,7 @@ export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
       }
     }
 
-    // Remove páginas em branco no final (< 8 % da altura de uma página)
+    // Remove páginas em branco no final (< 8% da altura de uma página)
     while (pages.length > 1 && pages[pages.length - 1].h < pageHeightPx * 0.08) {
       pages.pop();
     }
@@ -181,8 +156,7 @@ export async function gerarPdfDaPagina(): Promise<ArrayBuffer> {
 
     return pdf.output("arraybuffer");
   } finally {
-    toHide.forEach((e, i) => { e.style.display = origHideDisplay[i]; });
-    toShow.forEach((e, i) => { e.style.display = origShowDisplay[i]; });
+    printOverride.remove();
     capaEls.forEach((e, i) => { e.style.margin = origCapaMargins[i]; });
   }
 }
