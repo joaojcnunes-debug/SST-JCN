@@ -37,6 +37,25 @@ export default function AssinaturaRelatorio({
   const { data: configs } = useConfiguracoes();
 
   const nome = nomeResponsavel ?? user?.nome ?? "";
+
+  // Helpers de comparação de nome (usados no effect e no render)
+  const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+  const wordMatch = (a: string, b: string) => {
+    const words = norm(a).split(" ").filter((w) => w.length > 2);
+    return words.length > 0 && words.every((w) => norm(b).includes(w));
+  };
+  const nameMatches = (a: string, b: string) =>
+    norm(a) === norm(b) ||
+    norm(a).includes(norm(b)) ||
+    norm(b).includes(norm(a)) ||
+    wordMatch(a, b) ||
+    wordMatch(b, a);
+
+  // true quando o usuário logado é o responsável pelo documento
+  const isLoggedUserResponsavel =
+    !nomeResponsavel ||
+    (!!user?.nome && nameMatches(nomeResponsavel, user.nome));
+
   const [sigData, setSigData] = useState<{
     assinatura_url?: string | null;
     tipo_certificado?: "A1" | "A3" | null;
@@ -47,21 +66,7 @@ export default function AssinaturaRelatorio({
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
 
-    const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-    const wordMatch = (a: string, b: string) => {
-      const words = norm(a).split(" ").filter((w) => w.length > 2);
-      return words.length > 0 && words.every((w) => norm(b).includes(w));
-    };
-    const nameMatches = (a: string, b: string) =>
-      norm(a) === norm(b) ||
-      norm(a).includes(norm(b)) ||
-      norm(b).includes(norm(a)) ||
-      wordMatch(a, b) ||
-      wordMatch(b, a);
-
-    const isSameUser =
-      !nomeResponsavel ||
-      (!!user?.nome && nameMatches(nomeResponsavel, user.nome));
+    const isSameUser = isLoggedUserResponsavel;
 
     if (isSameUser) {
       if (!user?.email) return;
@@ -92,7 +97,8 @@ export default function AssinaturaRelatorio({
           }
         });
     }
-  }, [nomeResponsavel, user?.email, user?.nome]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nomeResponsavel, user?.email, user?.nome, isLoggedUserResponsavel]);
 
   // cargo: usa prop explícita > cargo do banco (profissional encontrado) > cargo do usuário logado
   const cargo = cargoResponsavel ?? sigData?.cargo ?? user?.cargo ?? "";
@@ -124,10 +130,12 @@ export default function AssinaturaRelatorio({
         </div>
       )}
 
-      {/* ── Botão assinar com A1 (tela apenas) ── */}
-      <div className="mt-4 flex justify-end print:hidden">
-        <BotaoAssinarPdf />
-      </div>
+      {/* ── Botão assinar com A1 — só aparece quando o usuário logado é o responsável ── */}
+      {isLoggedUserResponsavel && (
+        <div className="mt-4 flex justify-end print:hidden">
+          <BotaoAssinarPdf />
+        </div>
+      )}
 
       {/* ── Bloco final de assinatura ── */}
       <div className="mt-8 border-t border-gray-200 pt-8 print:mt-12">
