@@ -2,19 +2,14 @@
 
 import { useState } from "react";
 import { BadgeCheck } from "lucide-react";
-import { useUserStore } from "@/lib/store";
 import AssinarPdfModal from "@/components/ui/AssinarPdfModal";
 
 /**
- * Botão "Assinar PDF A1" — aparece apenas quando o usuário logado tem
- * tipo_certificado === 'A1' E certificado_pfx_path cadastrado.
- * Renderiza null para os demais usuários.
+ * Botão "Assinar PDF A1" — abre o modal de seleção de profissional signatário.
+ * Visível para qualquer usuário logado (o modal filtra quem tem cert A1 + pfx).
  */
 export default function BotaoAssinarPdf() {
-  const user = useUserStore((s) => s.user);
   const [open, setOpen] = useState(false);
-
-  if (user?.tipo_certificado !== "A1" || !user?.certificado_pfx_path) return null;
 
   return (
     <>

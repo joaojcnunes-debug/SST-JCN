@@ -130,12 +130,10 @@ export default function AssinaturaRelatorio({
         </div>
       )}
 
-      {/* ── Botão assinar com A1 — só aparece quando o usuário logado é o responsável ── */}
-      {isLoggedUserResponsavel && (
-        <div className="mt-4 flex justify-end print:hidden">
-          <BotaoAssinarPdf />
-        </div>
-      )}
+      {/* ── Botão assinar com A1 — qualquer usuário pode selecionar o signatário ── */}
+      <div className="mt-4 flex justify-end print:hidden">
+        <BotaoAssinarPdf />
+      </div>
 
       {/* ── Bloco final de assinatura ── */}
       <div className="mt-8 border-t border-gray-200 pt-8 print:mt-12">

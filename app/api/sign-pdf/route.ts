@@ -21,28 +21,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const { data: rawUsuario } = await supabase
-    .from("usuarios")
-    .select("*")
-    .eq("email", user.email)
-    .single();
-
-  const usuario = rawUsuario as Usuario | null;
-
-  if (!usuario?.certificado_pfx_path) {
-    return NextResponse.json(
-      { error: "Certificado A1 não cadastrado. Solicite ao administrador." },
-      { status: 400 }
-    );
-  }
-
+  // Lê o FormData antes de qualquer outra operação
   let pdfFile: File | null = null;
   let password: string | null = null;
+  let signatoryEmail: string | null = null;
 
   try {
     const formData = await req.formData();
     pdfFile = formData.get("pdf") as File | null;
     password = formData.get("password") as string | null;
+    signatoryEmail = (formData.get("signatoryEmail") as string | null) || null;
   } catch {
     return NextResponse.json({ error: "Requisição inválida" }, { status: 400 });
   }
@@ -50,6 +38,23 @@ export async function POST(req: NextRequest) {
   if (!pdfFile || !password) {
     return NextResponse.json(
       { error: "PDF e senha são obrigatórios" },
+      { status: 400 }
+    );
+  }
+
+  // Carrega o perfil do signatário: usa o email solicitado (se informado) ou o usuário logado
+  const emailSignatario = signatoryEmail || user.email;
+  const { data: rawUsuario } = await supabase
+    .from("usuarios")
+    .select("*")
+    .eq("email", emailSignatario)
+    .single();
+
+  const usuario = rawUsuario as Usuario | null;
+
+  if (!usuario?.certificado_pfx_path) {
+    return NextResponse.json(
+      { error: "Certificado A1 não cadastrado para o profissional selecionado." },
       { status: 400 }
     );
   }

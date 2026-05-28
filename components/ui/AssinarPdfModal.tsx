@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BadgeCheck, Eye, EyeOff, FileText, Loader2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { useUserStore } from "@/lib/store";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 interface Props {
   open: boolean;
@@ -12,12 +13,43 @@ interface Props {
 
 type Step = "idle" | "gerando" | "assinando";
 
+type Signatario = {
+  id_usuario: string;
+  nome: string;
+  email: string;
+  cargo: string | null;
+};
+
 export default function AssinarPdfModal({ open, onClose }: Props) {
   const user = useUserStore((s) => s.user);
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [step, setStep] = useState<Step>("idle");
   const [erro, setErro] = useState<string | null>(null);
+
+  const [signatarios, setSignatarios] = useState<Signatario[]>([]);
+  const [emailSelecionado, setEmailSelecionado] = useState("");
+
+  // Carrega profissionais com certificado A1 e pfx cadastrado
+  useEffect(() => {
+    if (!open) return;
+    createSupabaseBrowserClient()
+      .from("usuarios")
+      .select("id_usuario, nome, email, cargo")
+      .eq("tipo_certificado", "A1")
+      .eq("ativo_sistema", true)
+      .not("certificado_pfx_path", "is", null)
+      .order("nome")
+      .then(({ data }) => {
+        const lista = (data ?? []) as Signatario[];
+        setSignatarios(lista);
+        // Pré-seleciona o usuário logado se tiver cert, senão o primeiro da lista
+        const logado = lista.find((s) => s.email === user?.email);
+        setEmailSelecionado(logado?.email ?? lista[0]?.email ?? "");
+      });
+  }, [open, user?.email]);
+
+  const signatarioAtual = signatarios.find((s) => s.email === emailSelecionado);
 
   function reset() {
     setPassword("");
@@ -32,36 +64,27 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
   }
 
   async function handleAssinar() {
-    if (!password) {
-      setErro("Informe a senha do certificado.");
-      return;
-    }
+    if (!password) { setErro("Informe a senha do certificado."); return; }
+    if (!emailSelecionado) { setErro("Selecione o profissional signatário."); return; }
     setErro(null);
 
     try {
-      // Gera o PDF capturando o conteúdo atual da página
       setStep("gerando");
       const { gerarPdfDaPagina } = await import("@/lib/gerarPdfDaPagina");
       const pdfBytes = await gerarPdfDaPagina();
 
-      // Envia para assinatura no servidor
       setStep("assinando");
       const form = new FormData();
-      form.append(
-        "pdf",
-        new Blob([pdfBytes], { type: "application/pdf" }),
-        "relatorio.pdf"
-      );
+      form.append("pdf", new Blob([pdfBytes], { type: "application/pdf" }), "relatorio.pdf");
       form.append("password", password);
+      form.append("signatoryEmail", emailSelecionado);
 
       const res = await fetch("/api/sign-pdf", { method: "POST", body: form });
-
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error ?? "Erro ao assinar PDF");
       }
 
-      // Dispara download do PDF assinado
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -69,7 +92,6 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
       a.download = "relatorio-assinado.pdf";
       a.click();
       URL.revokeObjectURL(url);
-
       handleClose();
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Erro ao assinar");
@@ -83,25 +105,48 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
   return (
     <Modal open={open} onClose={handleClose} title="Assinar PDF com Certificado A1">
       <div className="space-y-4 text-sm">
-        {/* Identificação do certificado */}
-        <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-blue-800">
-          <BadgeCheck className="size-4 shrink-0" />
-          <span>
-            Certificado A1 ICP-Brasil ·{" "}
-            <strong>{user?.nome ?? "Usuário"}</strong>
-          </span>
-        </div>
+        {/* Seleção do signatário */}
+        {signatarios.length === 0 ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 text-xs">
+            Nenhum profissional com Certificado A1 e arquivo .pfx cadastrado encontrado.
+          </div>
+        ) : (
+          <div>
+            <label className="mb-1 block font-medium text-gray-700">
+              Profissional signatário
+            </label>
+            <select
+              value={emailSelecionado}
+              onChange={(e) => setEmailSelecionado(e.target.value)}
+              disabled={loading}
+              className="w-full rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800 font-medium focus:border-blue-400 focus:outline-none disabled:opacity-60"
+            >
+              {signatarios.map((s) => (
+                <option key={s.id_usuario} value={s.email}>
+                  {s.nome}{s.cargo ? ` · ${s.cargo}` : ""}
+                </option>
+              ))}
+            </select>
+            {signatarioAtual && (
+              <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-blue-600">
+                <BadgeCheck className="size-3.5 shrink-0" />
+                Certificado A1 ICP-Brasil · <strong>{signatarioAtual.nome}</strong>
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Descrição do processo */}
+        {/* Descrição */}
         <div className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
           <FileText className="mt-0.5 size-4 shrink-0 text-gray-400" />
           <p className="text-xs text-gray-600">
-            O relatório será capturado automaticamente e assinado com seu
-            certificado A1. O PDF assinado será baixado em seguida.
+            O relatório será capturado automaticamente e assinado com o
+            certificado A1 do profissional selecionado. O PDF assinado será
+            baixado em seguida.
           </p>
         </div>
 
-        {/* Senha do certificado */}
+        {/* Senha */}
         <div>
           <label className="mb-1 block font-medium text-gray-700">
             Senha do certificado A1
@@ -131,14 +176,12 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
           </p>
         </div>
 
-        {/* Erro */}
         {erro && (
           <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">
             {erro}
           </p>
         )}
 
-        {/* Ações */}
         <div className="flex justify-end gap-2 border-t border-gray-100 pt-3">
           <button
             type="button"
@@ -151,21 +194,15 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
           <button
             type="button"
             onClick={handleAssinar}
-            disabled={loading || !password}
+            disabled={loading || !password || !emailSelecionado}
             className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
           >
             {step === "gerando" ? (
-              <>
-                <Loader2 className="size-4 animate-spin" /> Gerando PDF...
-              </>
+              <><Loader2 className="size-4 animate-spin" /> Gerando PDF...</>
             ) : step === "assinando" ? (
-              <>
-                <Loader2 className="size-4 animate-spin" /> Assinando...
-              </>
+              <><Loader2 className="size-4 animate-spin" /> Assinando...</>
             ) : (
-              <>
-                <BadgeCheck className="size-4" /> Assinar e Baixar
-              </>
+              <><BadgeCheck className="size-4" /> Assinar e Baixar</>
             )}
           </button>
         </div>
