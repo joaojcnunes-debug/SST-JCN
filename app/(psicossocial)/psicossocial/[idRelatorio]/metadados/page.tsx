@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { Save } from "lucide-react";
 import {
   useDrpsRelatorio,
@@ -115,14 +116,10 @@ export default function MetadadosPage({
         <Section titulo="Responsável Técnico">
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Nome do responsável técnico (Psicólogo)">
-              <input
-                type="text"
+              <ProfissionalSelect
                 value={form.responsavel_tecnico}
-                onChange={(e) =>
-                  setForm({ ...form, responsavel_tecnico: e.target.value })
-                }
-                disabled={!canEdit}
-                className={inputCls}
+                onChange={(nome) => setForm({ ...form, responsavel_tecnico: nome })}
+                className={!canEdit ? "pointer-events-none opacity-60" : ""}
               />
             </Field>
             <Field label="CRP">

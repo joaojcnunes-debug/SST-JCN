@@ -10,6 +10,7 @@ import { useInventarioMaquinas } from "@/lib/hooks/useInventarioMaquinas";
 import { useCriarApreciacaoMaquina } from "@/lib/hooks/useApreciacoesMaquinas";
 import { useRequireCreate } from "@/lib/hooks/useUsuario";
 import { useUserStore } from "@/lib/store";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { CATALOGO_NR12 } from "@/lib/apreciacao-maquinas/catalogo-nr12";
 
 export default function NovaApreciacaoPage() {
@@ -194,12 +195,9 @@ export default function NovaApreciacaoPage() {
             />
           </Campo>
           <Campo label="Responsável técnico (Chabra)" htmlFor="resp">
-            <input
-              id="resp"
-              type="text"
+            <ProfissionalSelect
               value={responsavel}
-              onChange={(e) => setResponsavel(e.target.value)}
-              className={inputClass}
+              onChange={(nome) => setResponsavel(nome)}
             />
           </Campo>
           <Campo label="Responsável da empresa" htmlFor="respe">

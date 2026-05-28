@@ -47,6 +47,7 @@ import type {
   StatusTratativaNC,
 } from "@/lib/supabase/types";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 
 const MAX_FOTO_MB = 8;
 
@@ -1299,12 +1300,9 @@ function EditarCabecalho({
       </div>
       <div>
         <label className={lblCls}>Responsável técnico (Chabra)</label>
-        <input
-          type="text"
+        <ProfissionalSelect
           value={responsavel}
-          onChange={(e) => setResponsavel(e.target.value)}
-          onBlur={() => onSalvar({ responsavel: responsavel.trim() || null })}
-          className={inputCls}
+          onChange={(nome) => { setResponsavel(nome); onSalvar({ responsavel: nome || null }); }}
         />
       </div>
       <div>

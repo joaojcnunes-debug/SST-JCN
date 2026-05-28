@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Sparkles, Loader2 } from "lucide-react";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { useDrpsCriarRelatorio, useDrpsRelatorios } from "@/lib/hooks/useDrps";
 import { useUserStore } from "@/lib/store";
 import { useRequireCreate } from "@/lib/hooks/useUsuario";
@@ -114,12 +115,9 @@ function Inner() {
               <label className="text-xs font-medium text-gray-700">
                 Responsável Técnico (Psicólogo)
               </label>
-              <input
-                type="text"
+              <ProfissionalSelect
                 value={responsavel}
-                onChange={(e) => setResponsavel(e.target.value)}
-                placeholder="Ex: Maria da Silva"
-                className={inputCls}
+                onChange={(nome) => setResponsavel(nome)}
               />
             </div>
             <div>

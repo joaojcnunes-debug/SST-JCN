@@ -43,6 +43,7 @@ import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
 import { useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import type {
   RelatorioConformidade,
   RelatorioConformidadeItem,
@@ -1179,13 +1180,9 @@ function EditarCabecalho({
       </div>
       <div>
         <label className={lblCls}>Responsável técnico (Chabra)</label>
-        <input
-          type="text"
+        <ProfissionalSelect
           value={responsavel}
-          onChange={(e) => setResponsavel(e.target.value)}
-          onBlur={() => onSalvar({ responsavel: responsavel.trim() || null })}
-          className={inputCls}
-          placeholder="Quem assina pela Chabra"
+          onChange={(nome) => { setResponsavel(nome); onSalvar({ responsavel: nome || null }); }}
         />
       </div>
       <div>

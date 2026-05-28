@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { useAepRelatorio, useSalvarAep } from "@/lib/hooks/useAep";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import type { StatusAEP } from "@/lib/supabase/types";
 
@@ -121,13 +122,10 @@ export default function AepDadosPage({
         {/* Responsável */}
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Responsável pela elaboração</label>
-          <input
-            type="text"
+          <ProfissionalSelect
             value={responsavel}
-            disabled={!canEdit}
-            onChange={(e) => setResponsavel(e.target.value)}
-            placeholder="Nome completo"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+            onChange={(nome, cargo) => { setResponsavel(nome); setTitulo(cargo ?? ""); }}
+            className={!canEdit ? "pointer-events-none opacity-60" : ""}
           />
         </div>
 

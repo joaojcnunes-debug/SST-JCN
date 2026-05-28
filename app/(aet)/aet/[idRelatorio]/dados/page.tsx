@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAetRelatorio, useSalvarAet } from "@/lib/hooks/useAet";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
@@ -235,12 +236,16 @@ function CaracterizacaoCard({
 
         {/* Campos editáveis */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <InputField
-            label="Responsável pela Elaboração"
-            value={form.responsavel_elaboracao}
-            disabled={!canEdit}
-            onChange={(v) => set("responsavel_elaboracao", v)}
-          />
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Responsável pela Elaboração
+            </label>
+            <ProfissionalSelect
+              value={form.responsavel_elaboracao}
+              onChange={(nome, cargo) => { set("responsavel_elaboracao", nome); set("titulo_profissional", cargo ?? ""); }}
+              className={!canEdit ? "pointer-events-none opacity-60" : ""}
+            />
+          </div>
           <InputField
             label="Título Profissional"
             value={form.titulo_profissional}

@@ -42,6 +42,7 @@ import ItemApreciacaoCard from "@/components/apreciacao-maquinas/ItemApreciacaoC
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import { cn } from "@/lib/utils";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import {
   CATEGORIAS_NR12_LABELS,
   CATEGORIAS_NR12_ORDEM,
@@ -561,13 +562,10 @@ export default function DetalheApreciacaoPage() {
             />
           </Campo>
           <Campo label="Responsável técnico (Chabra)" htmlFor="resp">
-            <input
-              id="resp"
-              type="text"
+            <ProfissionalSelect
               value={responsavel}
-              onChange={(e) => setResponsavel(e.target.value)}
-              disabled={readOnly}
-              className={inputClass}
+              onChange={(nome) => setResponsavel(nome)}
+              className={readOnly ? "pointer-events-none opacity-60" : ""}
             />
           </Campo>
           <Campo label="Responsável da empresa" htmlFor="respe">

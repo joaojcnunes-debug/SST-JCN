@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
 import { useCriarAep } from "@/lib/hooks/useAep";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 
 export default function AepNovoPage() {
   const router = useRouter();
@@ -58,13 +59,9 @@ export default function AepNovoPage() {
 
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Responsável pela elaboração *</label>
-          <input
-            type="text"
+          <ProfissionalSelect
             value={responsavel}
-            onChange={(e) => setResponsavel(e.target.value)}
-            placeholder="Nome completo"
-            required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            onChange={(nome, cargo) => { setResponsavel(nome); setTitulo(cargo ?? ""); }}
           />
         </div>
 

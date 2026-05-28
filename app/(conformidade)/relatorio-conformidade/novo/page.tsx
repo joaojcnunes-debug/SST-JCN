@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
 import { useCriarRelatorioConformidade } from "@/lib/hooks/useRelatoriosConformidade";
 import { useRequireCreate } from "@/lib/hooks/useUsuario";
@@ -149,13 +150,10 @@ function NovoConformidadeInner() {
           </div>
           <div>
             <label className={lblCls}>Responsável técnico (Chabra)</label>
-            <input
-              type="text"
+            <ProfissionalSelect
               value={responsavel}
-              onChange={(e) => setResponsavel(e.target.value)}
-              placeholder="Quem assina pela Chabra"
-              className={inputCls}
-              disabled={criar.isPending}
+              onChange={(nome) => setResponsavel(nome)}
+              className={criar.isPending ? "pointer-events-none opacity-60" : ""}
             />
           </div>
           <div>

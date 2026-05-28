@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ClipboardCheck, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { useCriarAet } from "@/lib/hooks/useAet";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 
@@ -106,12 +107,12 @@ export default function NovoAetPage() {
               <label className="mb-1 block text-xs font-medium text-gray-600">
                 Responsável pela Elaboração *
               </label>
-              <input
-                type="text"
+              <ProfissionalSelect
                 value={form.responsavel_elaboracao}
-                onChange={(e) => handleChange("responsavel_elaboracao", e.target.value)}
-                placeholder="Dr. José Henrique..."
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary"
+                onChange={(nome, cargo) => {
+                  handleChange("responsavel_elaboracao", nome);
+                  handleChange("titulo_profissional", cargo ?? "");
+                }}
               />
             </div>
 
