@@ -759,6 +759,7 @@ export default function AnalisePage({
                 total={relatoriosPorSetor.length}
                 ehConsolidado={setor === "Todos"}
                 canEdit={canEdit}
+                cargoResponsavel={metaCargoResponsavel}
                 conclusao={
                   relatorio?.conclusoes_por_setor?.[r.setor] ?? ""
                 }
@@ -989,6 +990,7 @@ function BlocoSetor({
   conclusao,
   onSalvarConclusao,
   editor,
+  cargoResponsavel,
 }: {
   relatorio: SetorRelatorio;
   drpsRel: DrpsRelatorio | null;
@@ -1000,6 +1002,7 @@ function BlocoSetor({
   conclusao: string;
   onSalvarConclusao: (texto: string) => void;
   editor: BlocoEditorProps;
+  cargoResponsavel?: string | null;
 }) {
   const [textoLocal, setTextoLocal] = useState(conclusao);
   const [gerandoIA, setGerandoIA] = useState(false);
@@ -1110,7 +1113,7 @@ function BlocoSetor({
             </td>
             <td>{drpsRel?.responsavel_tecnico ?? ""}</td>
             <td className="drps-label" style={{ width: "10%" }}>
-              {detectRegistroTipo(drpsRel?.cargo_responsavel ?? metaCargoResponsavel).label}
+              {detectRegistroTipo(cargoResponsavel).label}
             </td>
             <td style={{ width: "20%" }}>{drpsRel?.crp ?? ""}</td>
           </tr>
