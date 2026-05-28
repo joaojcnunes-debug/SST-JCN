@@ -9,6 +9,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** Email do profissional responsável — pré-seleciona no dropdown ao abrir. */
+  defaultSignatoryEmail?: string;
 }
 
 type Step = "idle" | "gerando" | "assinando";
@@ -20,7 +22,7 @@ type Signatario = {
   cargo: string | null;
 };
 
-export default function AssinarPdfModal({ open, onClose }: Props) {
+export default function AssinarPdfModal({ open, onClose, defaultSignatoryEmail }: Props) {
   const user = useUserStore((s) => s.user);
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -43,11 +45,16 @@ export default function AssinarPdfModal({ open, onClose }: Props) {
       .then(({ data }) => {
         const lista = (data ?? []) as Signatario[];
         setSignatarios(lista);
-        // Pré-seleciona o usuário logado se tiver cert, senão o primeiro da lista
+        // Prioridade: responsável do documento > usuário logado > primeiro da lista
+        const responsavel = defaultSignatoryEmail
+          ? lista.find((s) => s.email === defaultSignatoryEmail)
+          : null;
         const logado = lista.find((s) => s.email === user?.email);
-        setEmailSelecionado(logado?.email ?? lista[0]?.email ?? "");
+        setEmailSelecionado(
+          responsavel?.email ?? logado?.email ?? lista[0]?.email ?? ""
+        );
       });
-  }, [open, user?.email]);
+  }, [open, user?.email, defaultSignatoryEmail]);
 
   const signatarioAtual = signatarios.find((s) => s.email === emailSelecionado);
 

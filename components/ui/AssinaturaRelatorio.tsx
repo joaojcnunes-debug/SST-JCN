@@ -61,6 +61,7 @@ export default function AssinaturaRelatorio({
     tipo_certificado?: "A1" | "A3" | null;
     mostrar_assinatura_imagem?: boolean;
     cargo?: string | null;
+    email?: string | null;
   } | null>(null);
 
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function AssinaturaRelatorio({
       if (!user?.email) return;
       supabase
         .from("usuarios")
-        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem, cargo")
+        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem, cargo, email")
         .eq("email", user.email)
         .single()
         .then(({ data }) => setSigData(data ?? null));
@@ -82,12 +83,12 @@ export default function AssinaturaRelatorio({
       const firstWord = (nomeResponsavel ?? "").trim().split(/\s+/)[0];
       supabase
         .from("usuarios")
-        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem, cargo, nome")
+        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem, cargo, nome, email")
         .ilike("nome", `%${firstWord}%`)
         .limit(20)
         .then(({ data }) => {
           if (!data?.length) { setSigData(null); return; }
-          type Row = { nome: string; assinatura_url: string | null; tipo_certificado: "A1" | "A3" | null; mostrar_assinatura_imagem: boolean; cargo: string | null };
+          type Row = { nome: string; email: string; assinatura_url: string | null; tipo_certificado: "A1" | "A3" | null; mostrar_assinatura_imagem: boolean; cargo: string | null };
           const match = (data as Row[]).find((u) => nameMatches(u.nome, nomeResponsavel!));
           if (match) {
             const { nome: _n, ...rest } = match;
@@ -132,7 +133,7 @@ export default function AssinaturaRelatorio({
 
       {/* ── Botão assinar com A1 — qualquer usuário pode selecionar o signatário ── */}
       <div className="mt-4 flex justify-end print:hidden">
-        <BotaoAssinarPdf />
+        <BotaoAssinarPdf defaultSignatoryEmail={sigData?.email ?? undefined} />
       </div>
 
       {/* ── Bloco final de assinatura ── */}

@@ -4,11 +4,16 @@ import { useState } from "react";
 import { BadgeCheck } from "lucide-react";
 import AssinarPdfModal from "@/components/ui/AssinarPdfModal";
 
+interface Props {
+  /** Email do profissional responsável pelo documento (pré-seleção no modal). */
+  defaultSignatoryEmail?: string;
+}
+
 /**
  * Botão "Assinar PDF A1" — abre o modal de seleção de profissional signatário.
  * Visível para qualquer usuário logado (o modal filtra quem tem cert A1 + pfx).
  */
-export default function BotaoAssinarPdf() {
+export default function BotaoAssinarPdf({ defaultSignatoryEmail }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -23,7 +28,11 @@ export default function BotaoAssinarPdf() {
         Assinar PDF A1
       </button>
 
-      <AssinarPdfModal open={open} onClose={() => setOpen(false)} />
+      <AssinarPdfModal
+        open={open}
+        onClose={() => setOpen(false)}
+        defaultSignatoryEmail={defaultSignatoryEmail}
+      />
     </>
   );
 }
