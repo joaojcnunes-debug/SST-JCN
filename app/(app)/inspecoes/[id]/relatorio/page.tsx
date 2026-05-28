@@ -1,6 +1,8 @@
 "use client";
 
 import { use, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -55,6 +57,20 @@ export default function RelatorioChabraPage({ params }: Props) {
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
   const { data: configs } = useConfiguracoes();
   const iconeDe = useTipoIcone();
+
+  // Mapa chave → texto real das perguntas cadastradas no banco
+  const { data: perguntasMap = new Map<string, string>() } = useQuery({
+    queryKey: ["perguntas-todas-chaves"],
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await createSupabaseBrowserClient()
+        .from("perguntas_tipo_risco")
+        .select("chave, texto");
+      const m = new Map<string, string>();
+      for (const p of (data ?? []) as { chave: string; texto: string }[]) m.set(p.chave, p.texto);
+      return m;
+    },
+  });
 
   const ctx = useMemo(() => {
     if (!data) return null;
@@ -446,6 +462,7 @@ export default function RelatorioChabraPage({ params }: Props) {
             riscosPorTipo={ctx.riscosPorSetor.get(setor.id_setor) ?? new Map()}
             fotos={ctx.fotosPorSetor.get(setor.id_setor) ?? []}
             episPorRisco={ctx.episPorRisco}
+            perguntasMap={perguntasMap}
           />
         ))}
 
@@ -467,6 +484,7 @@ export default function RelatorioChabraPage({ params }: Props) {
             riscosPorTipo={ctx.riscosPorSetor.get("_sem_setor") ?? new Map()}
             fotos={[]}
             episPorRisco={ctx.episPorRisco}
+            perguntasMap={perguntasMap}
           />
         )}
 
@@ -615,12 +633,14 @@ function SetorBlock({
   riscosPorTipo,
   fotos,
   episPorRisco,
+  perguntasMap,
 }: {
   setor: Setor;
   cargos: Cargo[];
   riscosPorTipo: Map<string, Risco[]>;
   fotos: Foto[];
   episPorRisco: Map<string, EpiEpc[]>;
+  perguntasMap: Map<string, string>;
 }) {
   const isConforme = !setor.nao_conformidade?.trim();
   const iconeDe = useTipoIcone();
@@ -749,6 +769,7 @@ function SetorBlock({
                       key={r.id_risco}
                       risco={r}
                       epis={episPorRisco.get(r.id_risco) ?? []}
+                      perguntasMap={perguntasMap}
                     />
                   ))}
                 </div>
@@ -765,35 +786,29 @@ function SetorBlock({
 // RISCO CARD (estilo PDF Chabra)
 // =========================================================================
 
-function RiscoCard({ risco, epis }: { risco: Risco; epis: EpiEpc[] }) {
+function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]; perguntasMap: Map<string, string> }) {
   const nivel = (risco.nivel_risco ?? "Baixo") as NivelRisco;
   const cfg = NIVEL_CONFIG[nivel] ?? NIVEL_CONFIG.Baixo;
   const isIapat = risco.tipo_risco.startsWith("IAPAT");
 
-  // Coleta perguntas qualitativas (Q1-Q6 químico) preenchidas
+  // Perguntas quim_q1-q6: usa texto real do banco via perguntasMap
   const perguntasQuim: Array<[string, string]> = [];
   if (risco.tipo_risco === "Químico") {
-    const labels = [
-      "Durante o uso normal, gera vapores, gases, névoas ou aerodispersóides perceptíveis?",
-      "O ambiente possui ventilação adequada (natural e/ou mecânica)?",
-      "Processo é manual, sem pulverização/atomização/pressurização?",
-      "Produto é utilizado diluído?",
-      "Há queixas de cheiro forte, mal-estar, ardência ocular ou desconforto respiratório?",
-      "Produto é aquecido ou submetido a processo que aumente sua volatilização?",
-    ];
     for (let i = 1; i <= 6; i++) {
-      const v = risco[`quim_q${i}` as keyof Risco] as string | null;
-      if (v) perguntasQuim.push([labels[i - 1], v]);
+      const chave = `quim_q${i}`;
+      const v = risco[chave as keyof Risco] as string | null;
+      if (v) {
+        const label = perguntasMap.get(chave) ?? chave;
+        perguntasQuim.push([label, v]);
+      }
     }
     if (risco.uso_processo) {
-      perguntasQuim.push([
-        "Como o produto é utilizado no processo?",
-        risco.uso_processo,
-      ]);
+      const label = perguntasMap.get("uso_processo") ?? "Como o produto é utilizado no processo?";
+      perguntasQuim.push([label, risco.uso_processo]);
     }
   }
 
-  // Respostas customizadas (V3)
+  // Respostas customizadas (V3): usa texto real do banco via perguntasMap
   const respostasCustom = risco.respostas_custom ?? {};
 
   return (
@@ -906,15 +921,17 @@ function RiscoCard({ risco, epis }: { risco: Risco; epis: EpiEpc[] }) {
 
         {/* Respostas customizadas (V3) */}
         {Object.keys(respostasCustom).length > 0 && (
-          <div className="rounded border border-blue-200 bg-blue-50/40 p-2">
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-blue-700">
-              Perguntas customizadas
+          <div className="rounded border border-gray-200 bg-gray-50 p-2">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-700">
+              Perguntas ({Object.keys(respostasCustom).length})
             </p>
             <ul className="space-y-0.5 text-[11px]">
               {Object.entries(respostasCustom).map(([k, v]) => (
                 <li key={k} className="flex gap-2">
                   <span className="text-gray-400">▸</span>
-                  <span className="flex-1 text-gray-700">{k}</span>
+                  <span className="flex-1 text-gray-700">
+                    {perguntasMap.get(k) ?? k}
+                  </span>
                   <strong className="shrink-0 text-gray-900">{String(v)}</strong>
                 </li>
               ))}
