@@ -37,57 +37,65 @@ export default function AssinaturaRelatorio({
   const { data: configs } = useConfiguracoes();
 
   const nome = nomeResponsavel ?? user?.nome ?? "";
-  const cargo = cargoResponsavel ?? user?.cargo ?? "";
-
   const [sigData, setSigData] = useState<{
     assinatura_url?: string | null;
     tipo_certificado?: "A1" | "A3" | null;
     mostrar_assinatura_imagem?: boolean;
+    cargo?: string | null;
   } | null>(null);
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
 
-    // Normaliza string para comparação: trim + lowercase + espaços simples
     const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-
-    // Verifica se todas as palavras relevantes (>2 chars) de `a` estão em `b`.
-    // Cobre casos como "Sanmyo Paiva" vs "Sanmyo Michael Mendes de Paiva".
     const wordMatch = (a: string, b: string) => {
       const words = norm(a).split(" ").filter((w) => w.length > 2);
       return words.length > 0 && words.every((w) => norm(b).includes(w));
     };
+    const nameMatches = (a: string, b: string) =>
+      norm(a) === norm(b) ||
+      norm(a).includes(norm(b)) ||
+      norm(b).includes(norm(a)) ||
+      wordMatch(a, b) ||
+      wordMatch(b, a);
 
-    // Considera "mesmo usuário" por igualdade, substring ou match de palavras
     const isSameUser =
       !nomeResponsavel ||
-      (!!user?.nome &&
-        (norm(nomeResponsavel) === norm(user.nome) ||
-          norm(nomeResponsavel).includes(norm(user.nome)) ||
-          norm(user.nome).includes(norm(nomeResponsavel)) ||
-          wordMatch(user.nome, nomeResponsavel) ||
-          wordMatch(nomeResponsavel, user.nome)));
+      (!!user?.nome && nameMatches(nomeResponsavel, user.nome));
 
     if (isSameUser) {
       if (!user?.email) return;
-      // Busca por e-mail: confiável independente de variações no nome
       supabase
         .from("usuarios")
-        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem")
+        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem, cargo")
         .eq("email", user.email)
         .single()
         .then(({ data }) => setSigData(data ?? null));
     } else {
-      // Responsável diferente do usuário logado — busca por nome (case-insensitive)
+      // Outro profissional: pré-filtra pelo primeiro nome via wildcard,
+      // depois escolhe o melhor match com word-match client-side.
+      const firstWord = (nomeResponsavel ?? "").trim().split(/\s+/)[0];
       supabase
         .from("usuarios")
-        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem")
-        .ilike("nome", (nomeResponsavel ?? "").trim())
-        .limit(1)
-        .then(({ data }) => setSigData(data?.[0] ?? null));
+        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem, cargo, nome")
+        .ilike("nome", `%${firstWord}%`)
+        .limit(20)
+        .then(({ data }) => {
+          if (!data?.length) { setSigData(null); return; }
+          type Row = { nome: string; assinatura_url: string | null; tipo_certificado: "A1" | "A3" | null; mostrar_assinatura_imagem: boolean; cargo: string | null };
+          const match = (data as Row[]).find((u) => nameMatches(u.nome, nomeResponsavel!));
+          if (match) {
+            const { nome: _n, ...rest } = match;
+            setSigData(rest);
+          } else {
+            setSigData(null);
+          }
+        });
     }
   }, [nomeResponsavel, user?.email, user?.nome]);
 
+  // cargo: usa prop explícita > cargo do banco (profissional encontrado) > cargo do usuário logado
+  const cargo = cargoResponsavel ?? sigData?.cargo ?? user?.cargo ?? "";
   const mostrarImagem = sigData?.mostrar_assinatura_imagem ?? true;
   const assinaturaUrl = mostrarImagem ? (sigData?.assinatura_url ?? null) : null;
   const certificado = sigData?.tipo_certificado ?? null;
