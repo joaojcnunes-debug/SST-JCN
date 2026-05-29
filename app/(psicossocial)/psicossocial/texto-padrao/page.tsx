@@ -84,6 +84,14 @@ export default function TextoPadraoPage() {
   const seedFixos  = useDrpsSeedCapitulosFixos();
 
   const [confirmExcluir, setConfirmExcluir] = useState<DrpsTextoPadraoCapitulo | null>(null);
+  const [seededRef, setSeededRef] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && !seededRef && capitulos.filter((c) => c.tipo === "fixo").length === 0) {
+      setSeededRef(true);
+      seedFixos.mutate();
+    }
+  }, [isLoading, capitulos, seededRef, seedFixos]);
 
   const capitulosFixos     = capitulos.filter((c) => c.tipo === "fixo");
   const capitulosEditaveis = capitulos.filter((c) => c.tipo !== "fixo");
