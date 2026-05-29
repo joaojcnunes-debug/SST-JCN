@@ -10,6 +10,7 @@ interface Props {
   label?: string;
   className?: string;
   disabled?: boolean;
+  title?: string;
   tabelaNome?: string;
   docId?: string;
   defaultSignatoryEmail?: string;
@@ -37,6 +38,7 @@ export default function BotaoGerarPdf({
   label = "Gerar PDF",
   className,
   disabled,
+  title,
   tabelaNome,
   docId,
   defaultSignatoryEmail,
@@ -94,6 +96,7 @@ export default function BotaoGerarPdf({
         type="button"
         onClick={handleGerar}
         disabled={disabled || step === "gerando"}
+        title={title}
         className={className}
       >
         {step === "gerando" ? (

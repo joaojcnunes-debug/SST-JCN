@@ -146,7 +146,9 @@ export function calcularTopico(
   const perguntas: PerguntaCalculada[] = t.perguntas.map((p, i) => {
     const colIdx = t.colunaInicio + i;
     const { media, n } = mediaColuna(respondentesFiltrados, colIdx);
-    const corrigida = pontuacaoCorrigida(media, p.logica);
+    // n === 0: sem respondentes para esta coluna — não aplica inversão para
+    // evitar que perguntas invertidas com média 0 resultem em gravidade 4 (Alta).
+    const corrigida = n === 0 ? 0 : pontuacaoCorrigida(media, p.logica);
     return {
       texto: p.texto,
       logica: p.logica,

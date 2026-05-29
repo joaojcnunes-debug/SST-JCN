@@ -107,8 +107,8 @@ export default function ConclusaoGeralPage({
         const piorMat = piorMatriz(pior.matriz, t.matriz);
         if (piorMat === t.matriz && piorMat !== pior.matriz) pior = t;
       }
-      return pior ?? porSetor[0][idx];
-    });
+      return pior ?? porSetor[0]?.[idx] ?? null;
+    }).filter((t): t is TopicoComMatriz => t !== null);
   }, [respondentes, setores, probabilidades]);
 
   const stats = useMemo(() => {

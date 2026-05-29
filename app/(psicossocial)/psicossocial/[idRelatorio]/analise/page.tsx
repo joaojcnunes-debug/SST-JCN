@@ -708,8 +708,9 @@ export default function AnalisePage({
               <BotaoGerarPdf
                 tabelaNome="drps_relatorios_analise"
                 docId={idRelatorio}
-                disabled={!podeImprimir}
-                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+                disabled={!podeImprimir || dirty}
+                title={dirty ? "Salve as alterações antes de gerar o PDF" : undefined}
+                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
                 registrarPdf={{
                   modulo: "drps",
                   tipoDocumento: "Diagnóstico de Riscos Psicossociais",
