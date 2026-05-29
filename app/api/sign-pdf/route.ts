@@ -46,6 +46,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // SEC-02: apenas Admin pode assinar em nome de outro profissional
+  if (signatoryEmail && signatoryEmail !== user.email) {
+    const { data: rawPerfil } = await supabase
+      .from("usuarios")
+      .select("perfil")
+      .eq("email", user.email)
+      .single();
+    const perfilLogado = rawPerfil as { perfil: string } | null;
+    if (perfilLogado?.perfil !== "Admin") {
+      return NextResponse.json(
+        { error: "Sem permissão para assinar em nome de outro profissional." },
+        { status: 403 }
+      );
+    }
+  }
+
   // Carrega o perfil do signatário: usa o email solicitado (se informado) ou o usuário logado
   const emailSignatario = signatoryEmail || user.email;
   const { data: rawUsuario } = await supabase

@@ -1,7 +1,6 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { Usuario } from "./supabase/types";
 
 interface UserState {
@@ -10,13 +9,8 @@ interface UserState {
   logout: () => void;
 }
 
-export const useUserStore = create<UserState>()(
-  persist(
-    (set) => ({
-      user: null,
-      setUser: (u) => set({ user: u }),
-      logout: () => set({ user: null }),
-    }),
-    { name: "painel-sst-user" }
-  )
-);
+export const useUserStore = create<UserState>()((set) => ({
+  user: null,
+  setUser: (u) => set({ user: u }),
+  logout: () => set({ user: null }),
+}));

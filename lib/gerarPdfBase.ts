@@ -143,10 +143,12 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
 
   naturalBreaksCss.sort((a, b) => a - b);
 
+  const PIXEL_RATIO = 2;
+
   try {
     const canvas = await toCanvas(el, {
       backgroundColor: "#ffffff",
-      pixelRatio: 2,
+      pixelRatio: PIXEL_RATIO,
       skipFonts: false,
       fetchRequestInit: { mode: "cors", credentials: "omit" },
       filter: (node) => {
@@ -157,7 +159,7 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
 
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
-    const pixelRatio = canvas.width / el.offsetWidth;
+    const pixelRatio = PIXEL_RATIO;
     const pxToMm = contentW / canvas.width;
     const pageHeightPx = (A4_H - MT - MB) / pxToMm;
 
@@ -247,6 +249,9 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
         contentW,
         sliceH * pxToMm
       );
+      // PDF-01: libera GPU memory do canvas temporário após cada página
+      slice.width = 0;
+      slice.height = 0;
     }
 
     return pdf.output("arraybuffer");

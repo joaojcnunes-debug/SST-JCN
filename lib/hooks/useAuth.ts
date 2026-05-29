@@ -30,7 +30,7 @@ export function useAuth() {
 
       const { data: perfil } = await supabase
         .from("usuarios")
-        .select("*")
+        .select("id_usuario, nome, email, cargo, perfil, ativo_sistema, empresas_vinculadas, modulos_permitidos, pode_criar, pode_editar, pode_excluir, created_at, assinatura_url, tipo_certificado, certificado_pfx_path, mostrar_assinatura_imagem, crp, crm, registro_mte")
         .eq("email", authUser.email)
         .single();
 

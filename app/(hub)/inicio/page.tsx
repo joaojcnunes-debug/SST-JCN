@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
 import {
   Shield,
   Brain,
@@ -238,8 +238,13 @@ function InicioContent() {
 
   const temCards = cardsDisponiveis.length > 0;
 
-  const agora = new Date();
-  const saudacao = saudacaoPorHorario(agora);
+  const [saudacao, setSaudacao] = useState("");
+  const [agora, setAgora] = useState<Date | null>(null);
+  useEffect(() => {
+    const now = new Date();
+    setSaudacao(saudacaoPorHorario(now));
+    setAgora(now);
+  }, []);
   const primeiroNome = user?.nome ? user.nome.split(" ")[0] : "";
 
   async function handleLogout() {
@@ -321,7 +326,7 @@ function InicioContent() {
             {primeiroNome ? `, ${primeiroNome}` : ""}
           </h1>
           <p className="mt-1 text-sm capitalize text-white/70">
-            {formatarDataExtenso(agora)}
+            {agora ? formatarDataExtenso(agora) : null}
           </p>
           {temCards && (
             <p className="mt-3 text-sm text-white/80 sm:text-base">

@@ -167,7 +167,7 @@ export default function ConclusaoGeralPage({
               probabilidade: t.classificacaoProbabilidade,
               matriz: t.matriz,
             })),
-            agravos: relatorio.agravos_saude_mental ?? null,
+            agravos: relatorio.agravos_por_setor ?? null,
             medidasExistentes: relatorio.medidas_existentes ?? null,
             textoAtual: conclusao.trim() || null,
           },

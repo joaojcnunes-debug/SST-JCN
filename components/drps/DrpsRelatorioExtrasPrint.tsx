@@ -231,12 +231,12 @@ export default function DrpsRelatorioExtrasPrint({
                   </tr>
                 </thead>
                 <tbody>
-                  {grupo.topicos.map((t: TopicoComMatriz, idx) => {
+                  {grupo.topicos.map((t: TopicoComMatriz) => {
                     const mon = monitoramentos.find(
-                      (m) => m.setor === grupo.setor && m.topico_idx === idx
+                      (m) => m.setor === grupo.setor && m.topico_idx === t.idx
                     );
                     return (
-                      <tr key={idx}>
+                      <tr key={t.idx}>
                         <td>{t.nome.replace(/^Tópico \d+ - /, "")}</td>
                         <td>
                           <span

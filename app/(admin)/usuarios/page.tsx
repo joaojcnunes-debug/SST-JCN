@@ -426,83 +426,44 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         return;
       }
 
-      // Criação: usa signUp() oficial do Supabase Auth.
-      //
-      // Pré-requisito: "Confirm email" deve estar DESABILITADO no projeto
-      // (Authentication → Providers → Email → "Confirm email" off). Com
-      // isso, signUp cria o usuário JÁ CONFIRMADO sem disparar e-mail —
-      // sem rate limit do SMTP free tier.
-      //
-      // Por que essa abordagem em vez de RPC direto em auth.users:
-      // o schema interno de auth.users/identities muda entre versões do
-      // Supabase Auth, e o login (signInWithPassword) requer registros
-      // exatos. Usar signUp passa pelo endpoint oficial que sempre cria
-      // tudo certo.
       if (!form.senha || form.senha.length < 6) {
         throw new Error("A senha deve ter pelo menos 6 caracteres");
       }
 
-      const emailNorm = form.email.trim().toLowerCase();
-
-      // Salva sessão atual pra restaurar (signUp pode trocar a sessão ativa).
-      const { data: { session: sessaoAdmin } } = await supabase.auth.getSession();
-
-      const { error: errAuth } = await supabase.auth.signUp({
-        email: emailNorm,
-        password: form.senha,
-      });
-      if (errAuth) {
-        // Restaura sessão antes de propagar o erro.
-        if (sessaoAdmin) {
-          await supabase.auth.setSession({
-            access_token: sessaoAdmin.access_token,
-            refresh_token: sessaoAdmin.refresh_token,
-          });
+      // AUTH-01: criação via Edge Function service_role — a sessão do admin
+      // nunca é substituída (sem signUp() client-side).
+      const { data: fnData, error: fnErr } = await supabase.functions.invoke(
+        "criar-usuario-admin",
+        {
+          body: {
+            email: form.email.trim().toLowerCase(),
+            senha: form.senha,
+            id_usuario: gerarId("USR"),
+            nome: form.nome.trim(),
+            cargo: form.cargo.trim() || null,
+            perfil: form.perfil,
+            ativo_sistema: form.ativo_sistema,
+            empresas_vinculadas:
+              form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
+            modulos_permitidos: form.modulos_permitidos,
+            pode_criar: form.pode_criar,
+            pode_editar: form.pode_editar,
+            pode_excluir: form.pode_excluir,
+            assinatura_url: form.assinatura_url,
+            mostrar_assinatura_imagem: form.mostrar_assinatura_imagem,
+            tipo_certificado: form.tipo_certificado,
+            certificado_pfx_path: form.certificado_pfx_path,
+            crp: form.crp || null,
+            crm: form.crm || null,
+            registro_mte: form.registro_mte || null,
+          },
         }
+      );
+      if (fnErr || !(fnData as { ok?: boolean } | null)?.ok) {
         throw new Error(
-          errAuth.message ===
-          "User already registered"
-            ? "E-mail já cadastrado"
-            : errAuth.message
-        );
-      }
-
-      // Restaura sessão do Admin (signUp logou como o novo usuário).
-      if (sessaoAdmin) {
-        await supabase.auth.setSession({
-          access_token: sessaoAdmin.access_token,
-          refresh_token: sessaoAdmin.refresh_token,
-        });
-      }
-
-      // Insere o registro em public.usuarios.
-      const insertRow = {
-        id_usuario: gerarId("USR"),
-        nome: form.nome.trim(),
-        email: emailNorm,
-        cargo: form.cargo.trim() || null,
-        perfil: form.perfil,
-        ativo_sistema: form.ativo_sistema,
-        empresas_vinculadas:
-          form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
-        modulos_permitidos: form.modulos_permitidos,
-        pode_criar: form.pode_criar,
-        pode_editar: form.pode_editar,
-        pode_excluir: form.pode_excluir,
-        assinatura_url: form.assinatura_url,
-        mostrar_assinatura_imagem: form.mostrar_assinatura_imagem,
-        tipo_certificado: form.tipo_certificado,
-        certificado_pfx_path: form.certificado_pfx_path,
-        crp: form.crp || null,
-        crm: form.crm || null,
-        registro_mte: form.registro_mte || null,
-      };
-      const { error: errInsert } = await supabase
-        .from("usuarios")
-        .insert(insertRow as never);
-      if (errInsert) {
-        throw new Error(
-          `Usuário criado no Auth mas falhou ao salvar perfil: ${errInsert.message}`
+          (fnData as { error?: string } | null)?.error ??
+            fnErr?.message ??
+            "Falha ao criar usuário"
         );
       }
 
@@ -514,7 +475,6 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             email: form.email.trim().toLowerCase(),
             nome: form.nome.trim(),
             perfil: form.perfil,
-            senha: form.senha,
           },
         });
       } catch (e) {

@@ -59,6 +59,47 @@ const TEXT_COLOR: Record<NavItemVariant, string> = {
   back: "text-white/48",
 };
 
+function NavItemView({
+  href,
+  label,
+  icon: Icon,
+  variant = "default",
+  pathname,
+  setMobileOpen,
+}: NavItem & { pathname: string; setMobileOpen: (v: boolean) => void }) {
+  const active =
+    pathname === href ||
+    (href !== "/dashboard" && pathname.startsWith(href + "/")) ||
+    (href === "/inspecoes" &&
+      pathname.startsWith("/inspecoes") &&
+      !pathname.startsWith("/inspecoes/nova"));
+
+  return (
+    <Link
+      href={href}
+      onClick={() => setMobileOpen(false)}
+      className={cn(
+        "group relative flex items-center gap-2.5 rounded-lg px-3 py-[7px]",
+        "text-sm font-medium transition-all duration-150",
+        active
+          ? "bg-white/[0.16] text-white shadow-sm"
+          : cn(TEXT_COLOR[variant], "hover:bg-white/[0.09] hover:text-white hover:translate-x-0.5")
+      )}
+    >
+      {active && (
+        <span className="absolute left-0 top-[18%] h-[64%] w-[3px] rounded-r-full bg-verde-accent" />
+      )}
+      <Icon
+        className={cn(
+          "size-[15px] shrink-0 transition-colors duration-150",
+          active ? "text-white" : ICON_COLOR[variant]
+        )}
+      />
+      <span className="truncate leading-snug">{label}</span>
+    </Link>
+  );
+}
+
 export default function SidebarShell({
   title,
   subtitle = "Chabra",
@@ -82,42 +123,6 @@ export default function SidebarShell({
     toast.success("Sessão encerrada");
     router.replace("/login");
   }
-
-  const NavItemView = ({ href, label, icon: Icon, variant = "default" }: NavItem) => {
-    const active =
-      pathname === href ||
-      (href !== "/dashboard" && pathname.startsWith(href + "/")) ||
-      (href === "/inspecoes" &&
-        pathname.startsWith("/inspecoes") &&
-        !pathname.startsWith("/inspecoes/nova"));
-
-    return (
-      <Link
-        href={href}
-        onClick={() => setMobileOpen(false)}
-        className={cn(
-          "group relative flex items-center gap-2.5 rounded-lg px-3 py-[7px]",
-          "text-sm font-medium transition-all duration-150",
-          active
-            ? "bg-white/[0.16] text-white shadow-sm"
-            : cn(TEXT_COLOR[variant], "hover:bg-white/[0.09] hover:text-white hover:translate-x-0.5")
-        )}
-      >
-        {/* Barra de acento lateral — só quando ativo */}
-        {active && (
-          <span className="absolute left-0 top-[18%] h-[64%] w-[3px] rounded-r-full bg-verde-accent" />
-        )}
-
-        <Icon
-          className={cn(
-            "size-[15px] shrink-0 transition-colors duration-150",
-            active ? "text-white" : ICON_COLOR[variant]
-          )}
-        />
-        <span className="truncate leading-snug">{label}</span>
-      </Link>
-    );
-  };
 
   const Content = (
     <>
@@ -157,7 +162,7 @@ export default function SidebarShell({
             </p>
             <div className="space-y-0.5">
               {section.items.map((item) => (
-                <NavItemView key={item.href} {...item} />
+                <NavItemView key={item.href} {...item} pathname={pathname} setMobileOpen={setMobileOpen} />
               ))}
             </div>
           </div>

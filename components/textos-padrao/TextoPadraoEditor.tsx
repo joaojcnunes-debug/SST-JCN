@@ -94,13 +94,13 @@ export default function TextoPadraoEditor({ modulo }: Props) {
     }
   }
 
-  function mover(cap: TextoPadraoCapitulo, direcao: "up" | "down") {
+  async function mover(cap: TextoPadraoCapitulo, direcao: "up" | "down") {
     const idx = capitulos.findIndex((c) => c.id_capitulo === cap.id_capitulo);
     const novoIdx = direcao === "up" ? idx - 1 : idx + 1;
     if (novoIdx < 0 || novoIdx >= capitulos.length) return;
     const outro = capitulos[novoIdx];
-    salvar.mutate({ id_capitulo: cap.id_capitulo, ordem: outro.ordem });
-    salvar.mutate({ id_capitulo: outro.id_capitulo, ordem: cap.ordem });
+    await salvar.mutateAsync({ id_capitulo: cap.id_capitulo, ordem: outro.ordem });
+    await salvar.mutateAsync({ id_capitulo: outro.id_capitulo, ordem: cap.ordem });
   }
 
   // Contagem apenas de capítulos editáveis por posição para o Stepper

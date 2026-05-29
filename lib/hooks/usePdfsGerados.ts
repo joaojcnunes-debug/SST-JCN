@@ -73,7 +73,23 @@ export function usePdfsGerados(filtros?: { modulo?: string; limit?: number }) {
       if (filtros?.modulo) q = q.eq("modulo", filtros.modulo);
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as unknown as PdfGerado[];
+
+      const rows = (data ?? []) as unknown as PdfGerado[];
+      // Gera URLs assinadas (1h) para PDFs no bucket privado.
+      // Registros antigos (path começa com "pdfs-gerados/") estão no bucket
+      // público "fotos" e mantêm a URL pública armazenada.
+      const comUrls = await Promise.all(
+        rows.map(async (row) => {
+          if (!row.pdf_storage_path || row.pdf_storage_path.startsWith("pdfs-gerados/")) {
+            return row;
+          }
+          const { data: signed } = await supabase.storage
+            .from("pdfs-gerados")
+            .createSignedUrl(row.pdf_storage_path, 3600);
+          return { ...row, pdf_url: signed?.signedUrl ?? null };
+        })
+      );
+      return comUrls;
     },
   });
 }
@@ -87,11 +103,11 @@ export function useRegistrarPdf() {
       // Compute SHA-256 fingerprint
       const hash = await computeSha256(pdfBuffer);
 
-      // Upload ao bucket "fotos" em pdfs-gerados/
+      // Upload ao bucket privado "pdfs-gerados"
       const nomeArquivo = `${opts.modulo}-${Date.now()}-${hash.slice(0, 8)}.pdf`;
-      const storagePath = `pdfs-gerados/${opts.modulo}/${nomeArquivo}`;
+      const storagePath = `${opts.modulo}/${nomeArquivo}`;
       const { error: upErr } = await supabase.storage
-        .from("fotos")
+        .from("pdfs-gerados")
         .upload(storagePath, new Uint8Array(pdfBuffer), {
           contentType: "application/pdf",
           cacheControl: "3600",
@@ -99,10 +115,7 @@ export function useRegistrarPdf() {
         });
       if (upErr) throw upErr;
 
-      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(storagePath);
-      const pdfUrl = pub?.publicUrl ?? null;
-
-      // Inserir registro
+      // Inserir registro (pdf_url fica null — gerada sob demanda via signed URL)
       const { data, error } = await supabase
         .from("pdfs_gerados")
         .insert({
@@ -116,7 +129,7 @@ export function useRegistrarPdf() {
           responsavel_tecnico: opts.responsavelTecnico ?? null,
           usuario_email: opts.usuarioEmail ?? null,
           pdf_storage_path: storagePath,
-          pdf_url: pdfUrl,
+          pdf_url: null,
           hash_sha256: hash,
         } as never)
         .select("id")
