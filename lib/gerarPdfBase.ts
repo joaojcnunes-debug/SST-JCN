@@ -60,6 +60,25 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
   const origCapaMargins = capaEls.map((e) => e.style.margin);
   capaEls.forEach((e) => { e.style.margin = "0"; });
 
+  // 4.5 Constrains <main> to A4 content width so html-to-image reflows text at
+  //     the same width that window.print() uses. Without this, content at ~1200px
+  //     screen width produces far fewer pages than the browser print engine
+  //     (which renders at 186mm ≈ 703px content width).
+  //     Also zeroes main padding (print:p-0 is in @layer utilities, unreachable by injection).
+  const a4ContentPx = Math.round((contentW / 25.4) * 96);
+  const origEl = {
+    padding:  el.style.padding,
+    width:    el.style.width,
+    maxWidth: el.style.maxWidth,
+    minWidth: el.style.minWidth,
+    flex:     el.style.flex,
+  };
+  el.style.padding  = "0";
+  el.style.width    = `${a4ContentPx}px`;
+  el.style.maxWidth = "none";
+  el.style.minWidth = "0";
+  el.style.flex     = "none";
+
   // 5. Aguarda imagens + dois frames para o layout se estabilizar.
   await Promise.allSettled(
     Array.from(el.querySelectorAll<HTMLImageElement>("img")).map((img) =>
@@ -173,6 +192,11 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
     printOverride.remove();
     displayOverrides.forEach(({ elem, orig }) => { elem.style.display = orig; });
     capaEls.forEach((e, i) => { e.style.margin = origCapaMargins[i]; });
+    el.style.padding  = origEl.padding;
+    el.style.width    = origEl.width;
+    el.style.maxWidth = origEl.maxWidth;
+    el.style.minWidth = origEl.minWidth;
+    el.style.flex     = origEl.flex;
   }
 }
 

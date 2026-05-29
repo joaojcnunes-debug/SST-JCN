@@ -116,10 +116,7 @@ export default function AssinaturaRelatorio({
       toast.error("Não foi possível gerar o link de download. Tente novamente.");
       return;
     }
-    const a = document.createElement("a");
-    a.href = data.signedUrl;
-    a.download = "relatorio-assinado.pdf";
-    a.click();
+    window.open(data.signedUrl, "_blank", "noopener");
   }
 
   const cargo = cargoResponsavel ?? sigData?.cargo ?? user?.cargo ?? "";
