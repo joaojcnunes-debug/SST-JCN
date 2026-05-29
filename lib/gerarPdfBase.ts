@@ -65,6 +65,13 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
   //     screen width produces far fewer pages than the browser print engine
   //     (which renders at 186mm ≈ 703px content width).
   //     Also zeroes main padding (print:p-0 is in @layer utilities, unreachable by injection).
+  const A4_W = 210;
+  const A4_H = 297;
+  const MT = pageMargins.top;
+  const MR = pageMargins.right;
+  const MB = pageMargins.bottom;
+  const ML = pageMargins.left;
+  const contentW = A4_W - ML - MR;
   const a4ContentPx = Math.round((contentW / 25.4) * 96);
   const origEl = {
     padding:  el.style.padding,
@@ -122,14 +129,6 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
         return true;
       },
     });
-
-    const A4_W = 210;
-    const A4_H = 297;
-    const MT = pageMargins.top;
-    const MR = pageMargins.right;
-    const MB = pageMargins.bottom;
-    const ML = pageMargins.left;
-    const contentW = A4_W - ML - MR;
 
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
