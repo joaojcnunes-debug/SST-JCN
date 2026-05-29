@@ -707,6 +707,15 @@ export default function AnalisePage({
                 docId={idRelatorio}
                 disabled={!podeImprimir}
                 className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+                registrarPdf={{
+                  modulo: "drps",
+                  tipoDocumento: "Diagnóstico de Riscos Psicossociais",
+                  idRelatorio,
+                  empresaId: relatorio?.id_empresa ?? undefined,
+                  empresaNome: empresa?.nome_empresa ?? undefined,
+                  empresaCnpj: empresa?.cnpj ?? undefined,
+                  responsavelTecnico: relatorio?.responsavel_tecnico ?? undefined,
+                }}
               />
             </div>
           </div>
