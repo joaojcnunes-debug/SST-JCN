@@ -47,6 +47,19 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
   forceDisplay('[class*="print:flex"]',  "flex");
   forceDisplay('[class*="print:grid"]',  "grid");
 
+  // Classes definidas em globals.css como display:none na tela e display:block no print.
+  // injectPrintRules() pode não alcançá-las em builds Tailwind v4 com @layer — forçamos
+  // via inline style (especificidade máxima) para garantir a captura.
+  forceDisplay('.textos-padrao-capitulos',       'block');
+  forceDisplay('.drps-sumario',                  'block');
+  forceDisplay('.drps-gestao-resumo-print',      'block');
+  forceDisplay('.drps-extras-print',             'block');
+  forceDisplay('.drps-capitulos',                'block');
+  forceDisplay('.drps-conclusao-geral-print',    'block');
+  forceDisplay('.aet-sumario',                   'block');
+  forceDisplay('.conformidade-situacao-print',   'block');
+  forceDisplay('.relacao-maquinas-footer-print', 'block');
+
   // 4. Corrige margens negativas das capas.
   //    Em tela: margin negativa compensa o padding do container e o @page margin.
   //    Na captura html-to-image, isso faz a imagem de fundo ser recortada.
