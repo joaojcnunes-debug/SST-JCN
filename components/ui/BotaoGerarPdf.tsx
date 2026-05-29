@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BadgeCheck, Download, Loader2, Printer } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import AssinarPdfModal from "@/components/ui/AssinarPdfModal";
+import { useRegistrarPdf, type RegistrarPdfOpts } from "@/lib/hooks/usePdfsGerados";
 
 interface Props {
   label?: string;
@@ -12,6 +13,10 @@ interface Props {
   tabelaNome?: string;
   docId?: string;
   defaultSignatoryEmail?: string;
+  /** Quando fornecido, o PDF gerado é salvo automaticamente no storage e
+   *  registrado em `pdfs_gerados`. A operação é assíncrona e não bloqueia
+   *  o download do usuário. */
+  registrarPdf?: RegistrarPdfOpts;
 }
 
 type Step = "idle" | "gerando" | "perguntar" | "assinar";
@@ -35,10 +40,12 @@ export default function BotaoGerarPdf({
   tabelaNome,
   docId,
   defaultSignatoryEmail,
+  registrarPdf,
 }: Props) {
   const [step, setStep] = useState<Step>("idle");
   const [pdfBuffer, setPdfBuffer] = useState<ArrayBuffer | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const registrar = useRegistrarPdf();
 
   async function handleGerar() {
     setErro(null);
@@ -48,6 +55,10 @@ export default function BotaoGerarPdf({
       const buf = await gerarPdfBase();
       setPdfBuffer(buf);
       setStep("perguntar");
+      // Registra em background — não bloqueia o fluxo do usuário
+      if (registrarPdf) {
+        registrar.mutate({ pdfBuffer: buf, ...registrarPdf });
+      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : "Erro ao gerar PDF");
       setStep("idle");
