@@ -99,23 +99,48 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
   );
   await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
-  // 6. Detecta TODOS os elementos com break-before: page.
-  //    Funciona porque injetamos as regras de break no passo 2: agora
-  //    getComputedStyle reflete os valores definidos pelo @media print da página,
-  //    sem precisar de listas hardcoded por tipo de relatório (DRPS, AET, etc.).
+  // 6. Detecta break points e zonas break-inside:avoid em um único walk do DOM.
+  //    break-before/after:page → pontos de corte entre segmentos de página.
+  //    break-inside:avoid → zonas que não devem ser cortadas (linhas de tabela, etc.).
   const mainRect = el.getBoundingClientRect();
   const naturalBreaksCss: number[] = [];
+  const avoidZonesCss: Array<{ top: number; bottom: number }> = [];
+
   for (const elem of Array.from(el.querySelectorAll<HTMLElement>("*"))) {
     const cs = getComputedStyle(elem);
-    const breaksPage =
+    const rect = elem.getBoundingClientRect();
+
+    // break-before: page
+    if (
       cs.breakBefore === "page" ||
       cs.breakBefore === "always" ||
-      cs.getPropertyValue("page-break-before") === "always";
-    if (breaksPage) {
-      const y = Math.round(elem.getBoundingClientRect().top - mainRect.top);
+      cs.getPropertyValue("page-break-before") === "always"
+    ) {
+      const y = Math.round(rect.top - mainRect.top);
       if (y > 10) naturalBreaksCss.push(y);
     }
+
+    // break-after: page — imprescindível para sumário + cada capítulo ter página própria
+    if (
+      cs.breakAfter === "page" ||
+      cs.breakAfter === "always" ||
+      cs.getPropertyValue("page-break-after") === "always"
+    ) {
+      const y = Math.round(rect.bottom - mainRect.top);
+      if (y > 10) naturalBreaksCss.push(y);
+    }
+
+    // break-inside: avoid — evita cortar linhas de tabela no meio
+    if (
+      cs.breakInside === "avoid" ||
+      cs.getPropertyValue("page-break-inside") === "avoid"
+    ) {
+      const top = Math.round(rect.top - mainRect.top);
+      const bottom = Math.round(rect.bottom - mainRect.top);
+      if (bottom - top > 5) avoidZonesCss.push({ top, bottom });
+    }
   }
+
   naturalBreaksCss.sort((a, b) => a - b);
 
   try {
@@ -132,11 +157,11 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
 
     const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
+    const pixelRatio = canvas.width / el.offsetWidth;
     const pxToMm = contentW / canvas.width;
     const pageHeightPx = (A4_H - MT - MB) / pxToMm;
-    const pixelRatio = canvas.width / el.offsetWidth;
 
-    // Converte posições CSS → canvas, mescla quebras muito próximas
+    // Converte posições CSS → canvas, mescla quebras muito próximas (30 canvas px)
     const breaksCv = naturalBreaksCss
       .map((y) => Math.round(y * pixelRatio))
       .filter((y) => y > 0 && y < canvas.height)
@@ -145,21 +170,49 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
         return acc;
       }, []);
 
+    // Converte zonas break-inside:avoid para pixels do canvas
+    const avoidZonesCv = avoidZonesCss.map((z) => ({
+      top:    Math.round(z.top    * pixelRatio),
+      bottom: Math.round(z.bottom * pixelRatio),
+    }));
+
+    // Retorna o fim seguro de um slice: move o corte para antes de uma zona
+    // break-inside:avoid se o corte natural cairia dentro dela.
+    // Só ajusta se a zona começa após 20% da página (evita gerar páginas minúsculas).
+    function findSafeEnd(sliceStart: number, naturalEnd: number): number {
+      for (const zone of avoidZonesCv) {
+        if (zone.top > sliceStart && zone.top < naturalEnd && zone.bottom > naturalEnd) {
+          if (zone.top - sliceStart > pageHeightPx * 0.2) return zone.top;
+        }
+      }
+      return naturalEnd;
+    }
+
     const segBounds = [0, ...breaksCv, canvas.height];
 
     const pages: Array<{ y: number; h: number }> = [];
     for (let i = 0; i < segBounds.length - 1; i++) {
       let y = segBounds[i];
       const end = segBounds[i + 1];
+      const segPages: Array<{ y: number; h: number }> = [];
       while (y < end) {
-        const h = Math.min(pageHeightPx, end - y);
-        if (h > 5) pages.push({ y, h });
-        y += pageHeightPx;
+        const naturalEnd = Math.min(y + pageHeightPx, end);
+        const safeEnd    = findSafeEnd(y, naturalEnd);
+        const h          = safeEnd - y;
+        if (h > 5) segPages.push({ y, h });
+        y = safeEnd;
       }
+      // Remove páginas residuais (<3% da altura) no final do segmento.
+      // São artefatos quando o ponto de quebra cai ligeiramente além do final
+      // da capa ou de um capítulo, criando uma fatia quase em branco.
+      while (segPages.length > 1 && segPages[segPages.length - 1].h < pageHeightPx * 0.03) {
+        segPages.pop();
+      }
+      pages.push(...segPages);
     }
 
-    // Remove páginas em branco no final (< 8% da altura de uma página)
-    while (pages.length > 1 && pages[pages.length - 1].h < pageHeightPx * 0.08) {
+    // Remove páginas finais em branco do PDF inteiro (< 5%)
+    while (pages.length > 1 && pages[pages.length - 1].h < pageHeightPx * 0.05) {
       pages.pop();
     }
 

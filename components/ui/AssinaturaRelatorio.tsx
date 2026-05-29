@@ -223,7 +223,7 @@ export default function AssinaturaRelatorio({
                 </div>
               </div>
             ) : (
-              <div className="flex w-72 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 py-6">
+              <div className="flex w-72 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 py-6 print:hidden">
                 <span className="text-xs italic text-gray-300">(sem assinatura cadastrada)</span>
               </div>
             )}
@@ -252,7 +252,7 @@ export default function AssinaturaRelatorio({
                 </div>
               </div>
             ) : (
-              <div className="flex w-72 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 py-6">
+              <div className="flex w-72 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 py-6 print:hidden">
                 <span className="text-xs italic text-gray-300">(sem assinatura da empresa)</span>
               </div>
             )}
