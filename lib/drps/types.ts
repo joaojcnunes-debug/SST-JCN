@@ -158,9 +158,28 @@ export interface DrpsTextoPadraoCapitulo {
   orientacao: string | null;
   quebra_pagina: string | null;
   ativo: boolean;
+  tipo: "fixo" | "editavel";
+  slug_fixo: string | null;
   created_at: string;
   updated_at: string | null;
 }
+
+/** Descrição de um capítulo fixo (gerado automaticamente) do DRPS. */
+export interface DrpsFixoCapitulo {
+  titulo: string;
+  slug_fixo: string;
+  descricao: string;
+  ordem_base: number;
+}
+
+export const DRPS_FIXOS: DrpsFixoCapitulo[] = [
+  { titulo: "Caracterização dos Trabalhadores",  slug_fixo: "drps_caracterizacao",  descricao: "Dados quantitativos de trabalhadores por setor — gerado automaticamente.", ordem_base: 1500 },
+  { titulo: "Análise por Setor",                 slug_fixo: "drps_analise_setor",   descricao: "Tópicos × setores com matriz Gravidade × Probabilidade — gerado automaticamente.", ordem_base: 2000 },
+  { titulo: "Conclusão Técnica Consolidada",     slug_fixo: "drps_conclusao",       descricao: "Consolidação dos riscos críticos e altos de todos os setores — gerada automaticamente.", ordem_base: 4000 },
+  { titulo: "Plano de Medidas de Controle",      slug_fixo: "drps_plano_medidas",   descricao: "Plano anual de ações com responsáveis e prazos — gerado automaticamente.", ordem_base: 4500 },
+  { titulo: "Revisão e Monitoramento",           slug_fixo: "drps_revisao",         descricao: "Checklist de revisão e equipe responsável — gerado automaticamente.", ordem_base: 5000 },
+  { titulo: "Assinatura Técnica",                slug_fixo: "drps_assinatura",      descricao: "Rodapé de assinatura do responsável técnico — gerado automaticamente.", ordem_base: 9000 },
+];
 
 export interface DrpsRevisao {
   id_relatorio: string;

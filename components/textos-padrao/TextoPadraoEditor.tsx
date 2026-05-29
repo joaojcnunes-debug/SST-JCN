@@ -19,6 +19,8 @@ import {
   FilePlus2,
   AlignLeft,
   Search,
+  Lock,
+  Layers,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -33,6 +35,7 @@ import {
   useCriarCapituloTexto,
   useSalvarCapituloTexto,
   useExcluirCapituloTexto,
+  useSeedCapitulosFixos,
 } from "@/lib/hooks/useTextosPadrao";
 import {
   type ModuloTextoPadrao,
@@ -63,11 +66,15 @@ export default function TextoPadraoEditor({ modulo }: Props) {
   const criar = useCriarCapituloTexto(modulo);
   const salvar = useSalvarCapituloTexto(modulo);
   const excluir = useExcluirCapituloTexto(modulo);
+  const seedFixos = useSeedCapitulosFixos(modulo);
 
   const [confirmExcluir, setConfirmExcluir] =
     useState<TextoPadraoCapitulo | null>(null);
   const [mostrarVars, setMostrarVars] = useState(false);
   const [busca, setBusca] = useState("");
+
+  const capitulosFixos    = capitulos.filter((c) => c.tipo === "fixo");
+  const capitulosEditaveis = capitulos.filter((c) => c.tipo !== "fixo");
 
   function novoCapitulo() {
     const ordem = capitulos.length;
@@ -80,7 +87,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
 
   function seedTemplate() {
     const tpl = TEMPLATES_POR_MODULO[modulo];
-    let ordem = capitulos.length;
+    let ordem = capitulosEditaveis.length;
     for (const t of tpl) {
       criar.mutate({ titulo: t.titulo, conteudo: t.conteudo, ordem });
       ordem++;
@@ -96,8 +103,8 @@ export default function TextoPadraoEditor({ modulo }: Props) {
     salvar.mutate({ id_capitulo: outro.id_capitulo, ordem: cap.ordem });
   }
 
-  // Contagem de capítulos por posição — passada pro Stepper como badge (usa lista completa)
-  const contagensPorPosicao = capitulos.reduce<
+  // Contagem apenas de capítulos editáveis por posição para o Stepper
+  const contagensPorPosicao = capitulosEditaveis.reduce<
     Partial<Record<PosicaoPdf, number>>
   >((acc, c) => {
     const p = (c.posicao_pdf ?? "inicio") as PosicaoPdf;
@@ -106,10 +113,10 @@ export default function TextoPadraoEditor({ modulo }: Props) {
   }, {});
 
   const capitulosFiltrados = busca.trim()
-    ? capitulos.filter((c) =>
+    ? capitulosEditaveis.filter((c) =>
         c.titulo.toLowerCase().includes(busca.trim().toLowerCase())
       )
-    : capitulos;
+    : capitulosEditaveis;
 
   return (
     <div className="space-y-4">
@@ -130,7 +137,17 @@ export default function TextoPadraoEditor({ modulo }: Props) {
             <Variable className="size-4" />
             {mostrarVars ? "Ocultar variáveis" : "Variáveis disponíveis"}
           </button>
-          {capitulos.length === 0 && !isLoading && (
+          <button
+            type="button"
+            onClick={() => seedFixos.mutate()}
+            disabled={seedFixos.isPending}
+            className="inline-flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+            title="Adiciona as seções geradas automaticamente pelo sistema"
+          >
+            {seedFixos.isPending ? <Loader2 className="size-4 animate-spin" /> : <Layers className="size-4" />}
+            Seções do sistema
+          </button>
+          {capitulosEditaveis.length === 0 && !isLoading && (
             <button
               type="button"
               onClick={seedTemplate}
@@ -218,39 +235,85 @@ export default function TextoPadraoEditor({ modulo }: Props) {
       ) : capitulos.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-900">
           Nenhum capítulo cadastrado ainda. Clique em{" "}
-          <strong>Carregar modelo inicial</strong> para popular com sugestões
-          ou em <strong>Novo Capítulo</strong> para começar do zero.
-        </div>
-      ) : capitulosFiltrados.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
-          Nenhum capítulo encontrado para <strong>&ldquo;{busca}&rdquo;</strong>.
+          <strong>Seções do sistema</strong> para adicionar as seções automáticas e em{" "}
+          <strong>Carregar modelo inicial</strong> para as seções introdutórias.
         </div>
       ) : (
         <div className="space-y-3">
-          {busca && (
-            <p className="text-xs text-gray-500">
-              {capitulosFiltrados.length} de {capitulos.length} capítulo{capitulos.length !== 1 ? "s" : ""}
-            </p>
+          {/* Capítulos SISTEMA */}
+          {capitulosFixos.length > 0 && (
+            <>
+              <p className="text-xs text-gray-500">
+                {capitulosFixos.length} seção{capitulosFixos.length !== 1 ? "ões" : ""} do sistema ·{" "}
+                {capitulosEditaveis.length} capítulo{capitulosEditaveis.length !== 1 ? "s" : ""} editáveis
+                {capitulosEditaveis.filter((c) => !c.ativo).length > 0 && (
+                  <> · {capitulosEditaveis.filter((c) => !c.ativo).length} oculto{capitulosEditaveis.filter((c) => !c.ativo).length !== 1 ? "s" : ""}</>
+                )}
+              </p>
+              {capitulosFixos.map((cap, idx) => {
+                const descricao = config.fixos.find((f) => f.slug_fixo === cap.slug_fixo)?.descricao ?? "";
+                return (
+                  <FixoCard
+                    key={cap.id_capitulo}
+                    capitulo={cap}
+                    indice={idx}
+                    total={capitulosFixos.length}
+                    salvando={salvar.isPending}
+                    descricao={descricao}
+                    onMover={(dir) => mover(cap, dir)}
+                    onToggleMostrar={() => salvar.mutate({ id_capitulo: cap.id_capitulo, ativo: !cap.ativo })}
+                    onSalvar={(patch) => salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })}
+                  />
+                );
+              })}
+            </>
           )}
-          {capitulosFiltrados.map((cap) => (
-            <CapituloCard
-              key={cap.id_capitulo}
-              capitulo={cap}
-              indice={capitulos.findIndex((c) => c.id_capitulo === cap.id_capitulo)}
-              total={capitulos.length}
-              salvando={salvar.isPending}
-              storagePrefix={`textos-padrao/${modulo}`}
-              contagensPorPosicao={contagensPorPosicao}
-              onSalvar={(patch) =>
-                salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })
-              }
-              onMover={(dir) => mover(cap, dir)}
-              onExcluir={() => setConfirmExcluir(cap)}
-              onToggleMostrar={() =>
-                salvar.mutate({ id_capitulo: cap.id_capitulo, ativo: !cap.ativo })
-              }
-            />
-          ))}
+
+          {/* Capítulos EDITÁVEIS */}
+          {capitulosEditaveis.length > 0 && (
+            <>
+              {capitulosFixos.length === 0 && (
+                <p className="text-xs text-gray-500">
+                  {capitulosEditaveis.length} capítulo{capitulosEditaveis.length !== 1 ? "s" : ""}
+                  {capitulosEditaveis.filter((c) => !c.ativo).length > 0 && (
+                    <> · {capitulosEditaveis.filter((c) => !c.ativo).length} oculto{capitulosEditaveis.filter((c) => !c.ativo).length !== 1 ? "s" : ""}</>
+                  )}
+                </p>
+              )}
+              {capitulosFiltrados.length === 0 && busca ? (
+                <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+                  Nenhum capítulo encontrado para <strong>&ldquo;{busca}&rdquo;</strong>.
+                </div>
+              ) : (
+                <>
+                  {busca && (
+                    <p className="text-xs text-gray-500">
+                      {capitulosFiltrados.length} de {capitulosEditaveis.length} capítulo{capitulosEditaveis.length !== 1 ? "s" : ""}
+                    </p>
+                  )}
+                  {capitulosFiltrados.map((cap) => (
+                    <CapituloCard
+                      key={cap.id_capitulo}
+                      capitulo={cap}
+                      indice={capitulos.findIndex((c) => c.id_capitulo === cap.id_capitulo)}
+                      total={capitulos.length}
+                      salvando={salvar.isPending}
+                      storagePrefix={`textos-padrao/${modulo}`}
+                      contagensPorPosicao={contagensPorPosicao}
+                      onSalvar={(patch) =>
+                        salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })
+                      }
+                      onMover={(dir) => mover(cap, dir)}
+                      onExcluir={() => setConfirmExcluir(cap)}
+                      onToggleMostrar={() =>
+                        salvar.mutate({ id_capitulo: cap.id_capitulo, ativo: !cap.ativo })
+                      }
+                    />
+                  ))}
+                </>
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -272,6 +335,107 @@ export default function TextoPadraoEditor({ modulo }: Props) {
         }}
         onCancel={() => setConfirmExcluir(null)}
       />
+    </div>
+  );
+}
+
+// ============================================================
+// FixoCard — capítulo gerado automaticamente pelo sistema
+// ============================================================
+
+function FixoCard({
+  capitulo,
+  indice,
+  total,
+  salvando,
+  descricao,
+  onMover,
+  onToggleMostrar,
+  onSalvar,
+}: {
+  capitulo: TextoPadraoCapitulo;
+  indice: number;
+  total: number;
+  salvando: boolean;
+  descricao: string;
+  onMover: (dir: "up" | "down") => void;
+  onToggleMostrar: () => void;
+  onSalvar: (patch: { orientacao?: OrientacaoPagina }) => void;
+}) {
+  const orientacao = capitulo.orientacao ?? "retrato";
+
+  return (
+    <div className={cn(
+      "rounded-xl border bg-blue-50/60 p-3 shadow-sm",
+      capitulo.ativo ? "border-blue-200" : "border-gray-200 opacity-60"
+    )}>
+      <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-0.5 shrink-0">
+          <button type="button" onClick={() => onMover("up")} disabled={indice === 0}
+            className="rounded p-1 text-gray-400 hover:bg-blue-100 hover:text-gray-700 disabled:opacity-30">
+            <ChevronUp className="size-4" />
+          </button>
+          <button type="button" onClick={() => onMover("down")} disabled={indice === total - 1}
+            className="rounded p-1 text-gray-400 hover:bg-blue-100 hover:text-gray-700 disabled:opacity-30">
+            <ChevronDown className="size-4" />
+          </button>
+        </div>
+
+        <span className="inline-flex shrink-0 items-center gap-1 rounded bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          <Lock className="size-2.5" /> Sistema
+        </span>
+
+        <p className="flex-1 text-sm font-semibold text-gray-800">{capitulo.titulo}</p>
+
+        {/* Orientação */}
+        <div className="inline-flex overflow-hidden rounded-md border border-blue-200 bg-white shrink-0">
+          <button type="button"
+            onClick={() => orientacao !== "retrato" && onSalvar({ orientacao: "retrato" })}
+            disabled={salvando}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+              orientacao === "retrato" ? "bg-blue-600 text-white" : "bg-white text-gray-500 hover:bg-blue-50"
+            )}
+          >
+            <FileText className="size-3" /> Retrato
+          </button>
+          <button type="button"
+            onClick={() => orientacao !== "paisagem" && onSalvar({ orientacao: "paisagem" })}
+            disabled={salvando}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+              orientacao === "paisagem" ? "bg-blue-600 text-white" : "bg-white text-gray-500 hover:bg-blue-50"
+            )}
+          >
+            <RectangleHorizontal className="size-3" /> Paisagem
+          </button>
+        </div>
+
+        {/* Toggle visibilidade */}
+        <button type="button" onClick={onToggleMostrar} disabled={salvando}
+          title={capitulo.ativo ? "Ocultar no laudo" : "Mostrar no laudo"}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50",
+            capitulo.ativo
+              ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+              : "border-gray-300 bg-white text-gray-500 hover:bg-gray-50"
+          )}
+        >
+          {capitulo.ativo ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+          {capitulo.ativo ? "Visível" : "Oculto"}
+        </button>
+      </div>
+
+      {descricao && (
+        <p className="mt-1.5 pl-16 text-[11px] italic text-blue-700/80">
+          {descricao}
+          {orientacao === "paisagem" && (
+            <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 not-italic">
+              A4 horizontal
+            </span>
+          )}
+        </p>
+      )}
     </div>
   );
 }

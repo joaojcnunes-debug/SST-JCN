@@ -712,8 +712,8 @@ export default function AnalisePage({
           </div>
 
           <div className="drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
-            {/* Logo Chabra (só aparece quando NÃO há capítulos com capa próprios) */}
-            {capitulos.length === 0 && (
+            {/* Logo Chabra (só aparece quando NÃO há capítulos editáveis com capa própria) */}
+            {capitulos.filter((c) => c.tipo !== "fixo").length === 0 && (
               <RelatorioPrintHeader
                 titulo="Diagnóstico de Riscos Psicossociais (DRPS)"
                 subtitulo={empresa?.nome_empresa ?? null}
@@ -898,7 +898,7 @@ function renderCapitulosPosicao(
   className: string
 ) {
   const filtrados = capitulos.filter(
-    (c) => (c.posicao_pdf ?? "inicio") === posicao
+    (c) => (c.posicao_pdf ?? "inicio") === posicao && c.tipo !== "fixo" && c.ativo !== false
   );
   if (filtrados.length === 0) return null;
   return (

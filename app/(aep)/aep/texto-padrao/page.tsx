@@ -104,6 +104,15 @@ export default function AepTextoPadraoPage() {
 
   const [confirmExcluir, setConfirmExcluir] = useState<AepTextoPadraoCapitulo | null>(null);
   const [mostrarVars, setMostrarVars] = useState(false);
+  const [seededRef, setSeededRef] = useState(false);
+
+  // Auto-seed seções fixas na primeira vez que não existem
+  useEffect(() => {
+    if (!isLoading && !seededRef && capitulos.filter((c) => c.tipo === "fixo").length === 0) {
+      setSeededRef(true);
+      seedFixos.mutate();
+    }
+  }, [isLoading, capitulos, seededRef, seedFixos]);
 
   const capitulosOrdenados = [...capitulos].sort(
     (a, b) => (a.ordem_global ?? a.ordem * 10) - (b.ordem_global ?? b.ordem * 10)

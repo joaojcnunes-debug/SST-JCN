@@ -4,18 +4,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
-import type {
-  ModuloTextoPadrao,
-  OrientacaoPagina,
-  PosicaoPdf,
-  QuebraPagina,
-  TextoPadraoCapitulo,
+import {
+  MODULO_CONFIGS,
+  type ModuloTextoPadrao,
+  type OrientacaoPagina,
+  type PosicaoPdf,
+  type QuebraPagina,
+  type TextoPadraoCapitulo,
 } from "@/lib/textos-padrao/types";
 import type { CaixaTexto } from "@/lib/drps/types";
 
 const KEY = (m: ModuloTextoPadrao) => ["textos-padrao", m] as const;
 
-/** Lista capítulos ativos do módulo, ordenados. */
+/** Lista todos os capítulos do módulo (ativos e inativos), ordenados. */
 export function useTextosPadrao(modulo: ModuloTextoPadrao) {
   return useQuery({
     queryKey: KEY(modulo),
@@ -26,7 +27,6 @@ export function useTextosPadrao(modulo: ModuloTextoPadrao) {
         .from("textos_padrao")
         .select("*")
         .eq("modulo", modulo)
-        .eq("ativo", true)
         .order("ordem", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as TextoPadraoCapitulo[];
@@ -91,6 +91,43 @@ export function useSalvarCapituloTexto(modulo: ModuloTextoPadrao) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY(modulo) });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useSeedCapitulosFixos(modulo: ModuloTextoPadrao) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const fixos = MODULO_CONFIGS[modulo].fixos;
+      const { data: exist } = await supabase
+        .from("textos_padrao")
+        .select("slug_fixo")
+        .eq("modulo", modulo)
+        .eq("tipo", "fixo");
+      const existSlugs = new Set((exist ?? []).map((r: { slug_fixo: string | null }) => r.slug_fixo));
+      const novos = fixos.filter((f) => !existSlugs.has(f.slug_fixo));
+      if (!novos.length) { toast("Seções do sistema já existem."); return; }
+      const { error } = await supabase.from("textos_padrao").insert(
+        novos.map((f) => ({
+          id_capitulo: gerarId("TXT"),
+          modulo,
+          titulo: f.titulo,
+          conteudo: null,
+          ordem: f.ordem_base,
+          tipo: "fixo",
+          slug_fixo: f.slug_fixo,
+          ativo: true,
+          created_at: new Date().toISOString(),
+        })) as never
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY(modulo) });
+      toast.success("Seções do sistema adicionadas!");
     },
     onError: (e: Error) => toast.error(e.message),
   });

@@ -36,13 +36,19 @@ export default function TextosPadraoPrint({
 }: Props) {
   const { data: capitulosTodos = [] } = useTextosPadrao(modulo);
 
+  // Capítulos fixos não têm conteúdo editável — são gerados automaticamente;
+  // excluir aqui para não renderizar seções em branco. Inativos também são excluídos.
+  const editaveisTodos = capitulosTodos.filter(
+    (c) => c.tipo !== "fixo" && c.ativo !== false
+  );
+
   // V53: filtra por posição se for uma das novas (inicio/apos_setores/etc).
   // Para os módulos antigos ("antes"/"depois"), mantém o comportamento legado
   // de renderizar TODOS os capítulos (single drop point).
   const ehPosicaoLegado = posicao === "antes" || posicao === "depois";
   const capitulos = ehPosicaoLegado
-    ? capitulosTodos
-    : capitulosTodos.filter(
+    ? editaveisTodos
+    : editaveisTodos.filter(
         (c) => (c.posicao_pdf ?? "inicio") === posicao
       );
 

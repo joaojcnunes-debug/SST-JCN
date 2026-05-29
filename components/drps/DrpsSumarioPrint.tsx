@@ -50,7 +50,9 @@ export default function DrpsSumarioPrint({
   temMonitoramento = false,
   temRevisao = false,
 }: Props) {
-  const { data: capitulos = [] } = useDrpsTextoPadrao();
+  const { data: capitulosTodos = [] } = useDrpsTextoPadrao();
+  // Fixos são gerados automaticamente e já aparecem na estrutura hardcoded do sumário.
+  const capitulos = capitulosTodos.filter((c) => c.tipo !== "fixo" && c.ativo !== false);
 
   const porPosicao = (pos: DrpsPosicaoPdf) =>
     capitulos.filter((c) => (c.posicao_pdf ?? "inicio") === pos);

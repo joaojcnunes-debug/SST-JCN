@@ -541,6 +541,41 @@ export function useDrpsSalvarCapitulo() {
   });
 }
 
+export function useDrpsSeedCapitulosFixos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { DRPS_FIXOS } = await import("@/lib/drps/types");
+      const { data: exist } = await supabase
+        .from("drps_texto_padrao")
+        .select("slug_fixo")
+        .eq("tipo", "fixo");
+      const existSlugs = new Set((exist ?? []).map((r: { slug_fixo: string | null }) => r.slug_fixo));
+      const novos = DRPS_FIXOS.filter((f) => !existSlugs.has(f.slug_fixo));
+      if (!novos.length) { toast("Seções do sistema já existem."); return; }
+      const { error } = await supabase.from("drps_texto_padrao").insert(
+        novos.map((f) => ({
+          id_capitulo: gerarId("TXT"),
+          titulo: f.titulo,
+          conteudo: null,
+          ordem: f.ordem_base,
+          tipo: "fixo",
+          slug_fixo: f.slug_fixo,
+          ativo: true,
+          created_at: new Date().toISOString(),
+        })) as never
+      );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drps-texto-padrao"] });
+      toast.success("Seções do sistema adicionadas!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useDrpsExcluirCapitulo() {
   const qc = useQueryClient();
   return useMutation({

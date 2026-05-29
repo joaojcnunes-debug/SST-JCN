@@ -11,7 +11,9 @@ import {
   FileText,
   FilePlus2,
   ImageIcon,
+  Layers,
   Loader2,
+  Lock,
   Plus,
   RectangleHorizontal,
   Save,
@@ -26,11 +28,13 @@ import CapaEditor from "@/components/drps/CapaEditor";
 import PosicaoPdfStepper from "@/components/textos-padrao/PosicaoPdfStepper";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { CaixaTexto } from "@/lib/drps/types";
+import { DRPS_FIXOS } from "@/lib/drps/types";
 import {
   useDrpsTextoPadrao,
   useDrpsCriarCapitulo,
   useDrpsSalvarCapitulo,
   useDrpsExcluirCapitulo,
+  useDrpsSeedCapitulosFixos,
 } from "@/lib/hooks/useDrps";
 import type {
   DrpsPosicaoPdf,
@@ -74,15 +78,19 @@ const TEMPLATE_INICIAL: { titulo: string; conteudo: string }[] = [
 
 export default function TextoPadraoPage() {
   const { data: capitulos = [], isLoading } = useDrpsTextoPadrao();
-  const criar   = useDrpsCriarCapitulo();
-  const salvar  = useDrpsSalvarCapitulo();
-  const excluir = useDrpsExcluirCapitulo();
+  const criar      = useDrpsCriarCapitulo();
+  const salvar     = useDrpsSalvarCapitulo();
+  const excluir    = useDrpsExcluirCapitulo();
+  const seedFixos  = useDrpsSeedCapitulosFixos();
 
   const [confirmExcluir, setConfirmExcluir] = useState<DrpsTextoPadraoCapitulo | null>(null);
 
+  const capitulosFixos     = capitulos.filter((c) => c.tipo === "fixo");
+  const capitulosEditaveis = capitulos.filter((c) => c.tipo !== "fixo");
+
   function novoCapitulo() {
     criar.mutate({
-      titulo: `Capítulo ${capitulos.length + 1}`,
+      titulo: `Capítulo ${capitulosEditaveis.length + 1}`,
       conteudo: "",
       ordem: capitulos.length,
     });
@@ -105,7 +113,7 @@ export default function TextoPadraoPage() {
     salvar.mutate({ id_capitulo: outro.id_capitulo, ordem: cap.ordem });
   }
 
-  const contagensPorPosicao = capitulos.reduce<Partial<Record<DrpsPosicaoPdf, number>>>(
+  const contagensPorPosicao = capitulosEditaveis.reduce<Partial<Record<DrpsPosicaoPdf, number>>>(
     (acc, c) => {
       const p = (c.posicao_pdf ?? "inicio") as DrpsPosicaoPdf;
       acc[p] = (acc[p] ?? 0) + 1;
@@ -121,12 +129,24 @@ export default function TextoPadraoPage() {
           <h1 className="text-xl font-semibold text-gray-900">Texto Padrão — DRPS</h1>
           <p className="max-w-2xl text-sm text-gray-600">
             Capítulos do relatório de Diagnóstico de Riscos Psicossociais. Capítulos{" "}
+            <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-bold text-blue-700">SISTEMA</span>{" "}
+            são gerados automaticamente; capítulos{" "}
             <span className="rounded bg-verde-light px-1.5 py-0.5 text-[11px] font-bold text-verde-primary">EDITÁVEL</span>{" "}
-            contêm texto livre que aparece no PDF gerado.
+            contêm texto livre.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {capitulos.length === 0 && !isLoading && (
+          <button
+            type="button"
+            onClick={() => seedFixos.mutate()}
+            disabled={seedFixos.isPending}
+            className="inline-flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+            title="Adiciona as seções automáticas do sistema"
+          >
+            {seedFixos.isPending ? <Loader2 className="size-4 animate-spin" /> : <Layers className="size-4" />}
+            Seções do sistema
+          </button>
+          {capitulosEditaveis.length === 0 && !isLoading && (
             <button
               type="button"
               onClick={seedTemplate}
@@ -154,21 +174,44 @@ export default function TextoPadraoPage() {
       ) : capitulos.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-900">
           Nenhum capítulo cadastrado ainda. Clique em{" "}
-          <strong>Carregar modelo inicial</strong> para popular com sugestões
-          ou em <strong>Novo Capítulo</strong> para começar do zero.
+          <strong>Seções do sistema</strong> para adicionar as seções automáticas e em{" "}
+          <strong>Carregar modelo inicial</strong> para as seções introdutórias.
         </div>
       ) : (
         <div className="space-y-2">
           <p className="text-xs text-gray-500">
-            {capitulos.length} capítulo{capitulos.length !== 1 ? "s" : ""} no total ·{" "}
-            {capitulos.filter((c) => !c.ativo).length} oculto{capitulos.filter((c) => !c.ativo).length !== 1 ? "s" : ""}
+            {capitulosFixos.length} seção{capitulosFixos.length !== 1 ? "ões" : ""} do sistema ·{" "}
+            {capitulosEditaveis.length} capítulo{capitulosEditaveis.length !== 1 ? "s" : ""} editáveis
+            {capitulosEditaveis.filter((c) => !c.ativo).length > 0 && (
+              <> · {capitulosEditaveis.filter((c) => !c.ativo).length} oculto{capitulosEditaveis.filter((c) => !c.ativo).length !== 1 ? "s" : ""}</>
+            )}
           </p>
-          {capitulos.map((cap, i) => (
+
+          {/* Seções SISTEMA */}
+          {capitulosFixos.map((cap, idx) => {
+            const descricao = DRPS_FIXOS.find((f) => f.slug_fixo === cap.slug_fixo)?.descricao ?? "";
+            return (
+              <FixoCard
+                key={cap.id_capitulo}
+                capitulo={cap}
+                indice={idx}
+                total={capitulosFixos.length}
+                salvando={salvar.isPending}
+                descricao={descricao}
+                onMover={(dir) => mover(cap, dir)}
+                onToggleMostrar={() => salvar.mutate({ id_capitulo: cap.id_capitulo, ativo: !cap.ativo })}
+                onSalvar={(patch) => salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })}
+              />
+            );
+          })}
+
+          {/* Capítulos EDITÁVEIS */}
+          {capitulosEditaveis.map((cap, i) => (
             <CapituloCard
               key={cap.id_capitulo}
               capitulo={cap}
               indice={i}
-              total={capitulos.length}
+              total={capitulosEditaveis.length}
               salvando={salvar.isPending}
               contagensPorPosicao={contagensPorPosicao}
               onSalvar={(patch) => salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })}
@@ -201,6 +244,105 @@ export default function TextoPadraoPage() {
     </div>
   );
 }
+
+// ─── FixoCard ─────────────────────────────────────────────────────────────────
+
+function FixoCard({
+  capitulo,
+  indice,
+  total,
+  salvando,
+  descricao,
+  onMover,
+  onToggleMostrar,
+  onSalvar,
+}: {
+  capitulo: DrpsTextoPadraoCapitulo;
+  indice: number;
+  total: number;
+  salvando: boolean;
+  descricao: string;
+  onMover: (dir: "up" | "down") => void;
+  onToggleMostrar: () => void;
+  onSalvar: (patch: { orientacao?: string }) => void;
+}) {
+  const orientacao = capitulo.orientacao ?? "retrato";
+
+  return (
+    <div className={cn(
+      "rounded-xl border bg-blue-50/60 p-3 shadow-sm",
+      capitulo.ativo ? "border-blue-200" : "border-gray-200 opacity-60"
+    )}>
+      <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-0.5 shrink-0">
+          <button type="button" onClick={() => onMover("up")} disabled={indice === 0}
+            className="rounded p-1 text-gray-400 hover:bg-blue-100 hover:text-gray-700 disabled:opacity-30">
+            <ChevronUp className="size-4" />
+          </button>
+          <button type="button" onClick={() => onMover("down")} disabled={indice === total - 1}
+            className="rounded p-1 text-gray-400 hover:bg-blue-100 hover:text-gray-700 disabled:opacity-30">
+            <ChevronDown className="size-4" />
+          </button>
+        </div>
+
+        <span className="inline-flex shrink-0 items-center gap-1 rounded bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+          <Lock className="size-2.5" /> Sistema
+        </span>
+
+        <p className="flex-1 text-sm font-semibold text-gray-800">{capitulo.titulo}</p>
+
+        <div className="inline-flex overflow-hidden rounded-md border border-blue-200 bg-white shrink-0">
+          <button type="button"
+            onClick={() => orientacao !== "retrato" && onSalvar({ orientacao: "retrato" })}
+            disabled={salvando}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+              orientacao === "retrato" ? "bg-blue-600 text-white" : "bg-white text-gray-500 hover:bg-blue-50"
+            )}
+          >
+            <FileText className="size-3" /> Retrato
+          </button>
+          <button type="button"
+            onClick={() => orientacao !== "paisagem" && onSalvar({ orientacao: "paisagem" })}
+            disabled={salvando}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+              orientacao === "paisagem" ? "bg-blue-600 text-white" : "bg-white text-gray-500 hover:bg-blue-50"
+            )}
+          >
+            <RectangleHorizontal className="size-3" /> Paisagem
+          </button>
+        </div>
+
+        <button type="button" onClick={onToggleMostrar} disabled={salvando}
+          title={capitulo.ativo ? "Ocultar no laudo" : "Mostrar no laudo"}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50",
+            capitulo.ativo
+              ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+              : "border-gray-300 bg-white text-gray-500 hover:bg-gray-50"
+          )}
+        >
+          {capitulo.ativo ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+          {capitulo.ativo ? "Visível" : "Oculto"}
+        </button>
+      </div>
+
+      {descricao && (
+        <p className="mt-1.5 pl-16 text-[11px] italic text-blue-700/80">
+          {descricao}
+          {orientacao === "paisagem" && (
+            <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 not-italic">
+              A4 horizontal
+            </span>
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── CapituloCard ─────────────────────────────────────────────────────────────
 
 function CapituloCard({
   capitulo,
@@ -276,7 +418,6 @@ function CapituloCard({
       "rounded-xl border border-gray-200 bg-white p-4 shadow-sm",
       !capitulo.ativo && "opacity-60"
     )}>
-      {/* Linha do título */}
       <div className="mb-2 flex items-start gap-2">
         <div className="flex flex-col gap-0.5 shrink-0">
           <button type="button" onClick={() => onMover("up")} disabled={indice === 0}
@@ -341,58 +482,44 @@ function CapituloCard({
 
       {/* Configurações */}
       <div className="mb-2 flex flex-wrap items-center gap-3 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
-        {/* Orientação */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Orientação:</span>
           <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
-            <button
-              type="button"
+            <button type="button"
               onClick={() => orientacao !== "retrato" && onSalvar({ orientacao: "retrato" })}
               disabled={salvando}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
-                orientacao === "retrato" ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50"
-              )}
+              className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
+                orientacao === "retrato" ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50")}
             >
               <FileText className="size-3.5" /> Retrato
             </button>
-            <button
-              type="button"
+            <button type="button"
               onClick={() => orientacao !== "paisagem" && onSalvar({ orientacao: "paisagem" })}
               disabled={salvando}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
-                orientacao === "paisagem" ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50"
-              )}
+              className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
+                orientacao === "paisagem" ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50")}
             >
               <RectangleHorizontal className="size-3.5" /> Paisagem
             </button>
           </div>
         </div>
 
-        {/* Quebra de página */}
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Início:</span>
           <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
-            <button
-              type="button"
+            <button type="button"
               onClick={() => quebraPagina !== "nova" && onSalvar({ quebra_pagina: "nova" })}
               disabled={salvando || !!capitulo.bg_imagem_url}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
-                quebraPagina === "nova" || capitulo.bg_imagem_url ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50"
-              )}
+              className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
+                quebraPagina === "nova" || capitulo.bg_imagem_url ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50")}
             >
               <FilePlus2 className="size-3.5" /> Nova página
             </button>
-            <button
-              type="button"
+            <button type="button"
               onClick={() => quebraPagina !== "continua" && onSalvar({ quebra_pagina: "continua" })}
               disabled={salvando || !!capitulo.bg_imagem_url || indice === 0}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
-                quebraPagina === "continua" && !capitulo.bg_imagem_url ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50"
-              )}
+              className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
+                quebraPagina === "continua" && !capitulo.bg_imagem_url ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50")}
             >
               <AlignLeft className="size-3.5" /> Continuação
             </button>
@@ -409,7 +536,6 @@ function CapituloCard({
             : "A4 vertical em folha nova (ABNT)."}
         </span>
 
-        {/* Posição no PDF */}
         <div className="w-full">
           <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
             📍 Posição no Relatório
@@ -433,12 +559,8 @@ function CapituloCard({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={capitulo.bg_imagem_url} alt="Fundo" className="h-10 w-16 rounded border border-gray-300 object-cover" />
             <span className="text-[10px] text-gray-600">Este capítulo sai como página inteira no PDF.</span>
-            <button
-              type="button"
-              onClick={() => onSalvar({ bg_imagem_url: null })}
-              disabled={salvando}
-              className="ml-auto inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-            >
+            <button type="button" onClick={() => onSalvar({ bg_imagem_url: null })} disabled={salvando}
+              className="ml-auto inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 disabled:opacity-50">
               <X className="size-3.5" /> Remover
             </button>
           </>
@@ -457,12 +579,8 @@ function CapituloCard({
           }}
         />
         {!capitulo.bg_imagem_url && (
-          <button
-            type="button"
-            onClick={() => bgInputRef.current?.click()}
-            disabled={enviandoBg || salvando}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-2 py-1 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
-          >
+          <button type="button" onClick={() => bgInputRef.current?.click()} disabled={enviandoBg || salvando}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-2 py-1 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50">
             {enviandoBg ? <Loader2 className="size-3.5 animate-spin" /> : <ImageIcon className="size-3.5" />}
             Enviar imagem
           </button>
