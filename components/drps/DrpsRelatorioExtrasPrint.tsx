@@ -117,6 +117,8 @@ export default function DrpsRelatorioExtrasPrint({
           margin: 0 0 12pt 0;
           text-indent: 1.25cm;
           white-space: pre-wrap;
+          break-inside: avoid;
+          page-break-inside: avoid;
         }
         .drps-extras-table {
           width: 100%;
@@ -149,6 +151,8 @@ export default function DrpsRelatorioExtrasPrint({
         }
         .drps-extras-list li {
           margin: 3pt 0;
+          break-inside: avoid;
+          page-break-inside: avoid;
         }
         .drps-extras-badge {
           display: inline-block;

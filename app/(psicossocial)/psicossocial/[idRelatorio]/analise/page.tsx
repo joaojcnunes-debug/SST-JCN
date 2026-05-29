@@ -383,6 +383,9 @@ export default function AnalisePage({
           .drps-setor-bloco { break-before: page; }
           .drps-setor-bloco:first-child { break-before: auto; }
           .drps-tabela tr, .drps-tabela td, .drps-tabela th { break-inside: avoid; }
+          .drps-capitulo-conteudo p,
+          .drps-capitulo-conteudo li { break-inside: avoid; page-break-inside: avoid; }
+          .drps-capitulos-apos-setores { break-before: page; }
         }
         .drps-tabela {
           border-collapse: collapse;
