@@ -1,22 +1,14 @@
 /**
  * gerarPdfBase — fonte única de geração de PDF para todos os relatórios.
  *
- * Esta função é usada tanto pelo fluxo de download simples quanto pela
- * assinatura digital A1. O PDF assinado deve sempre reutilizar esta mesma
- * função para garantir que o layout seja idêntico ao gerado pelo botão
- * "Gerar PDF" (que usa window.print()).
+ * Injeta todas as CSSStyleRules do @media print no modo tela antes da
+ * captura com html-to-image, replicando o comportamento do window.print().
+ * Isso inclui regras estruturais como padding:0 no container DRPS, remoção
+ * de borda/sombra, e as regras de quebra de página.
  *
- * Simula @media print injetando apenas as regras de visibilidade (display)
- * e quebra de página (break-before/after) — sem injetar regras estruturais
- * como padding, margin, border ou position que alterariam o fluxo do DOM
- * e causariam recortes no layout (ex: capa DRPS sendo cortada no topo).
- *
- * A detecção de quebras de página é dinâmica: após injetar as regras de
- * break-before, getComputedStyle reflete os valores corretos para cada
- * elemento, eliminando a necessidade de listas hardcoded por tipo de relatório.
- *
- * As margens do PDF são extraídas da regra @page da página (quando presente),
- * garantindo que o layout corresponda ao que window.print() produziria.
+ * Elementos com margin negativa para compensar padding do container (ex: capa
+ * DRPS) têm margin sobrescrita para 0 via inline style, evitando overflow
+ * fora dos bounds do <main> durante a captura.
  */
 export async function gerarPdfBase(): Promise<ArrayBuffer> {
   const [{ toCanvas }, { default: jsPDF }] = await Promise.all([
@@ -30,11 +22,13 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
   //    Usado para reproduzir as mesmas margens que window.print() aplicaria.
   const pageMargins = extractPageMargins();
 
-  // 2. Injeta APENAS regras de display e break-* do @media print.
-  //    Regras estruturais (padding, border, box-shadow, position, margin de
-  //    container) são intencionalmente omitidas para preservar o layout do DOM
-  //    durante a captura — sem elas o html-to-image recorta a capa.
-  const printOverride = injectSafePrintRules();
+  // 2. Injeta TODAS as CSSStyleRules do @media print como estilos de tela,
+  //    replicando o comportamento do window.print(). Isso inclui:
+  //    - display: none/block para elementos print-only
+  //    - padding:0 / border:none / box-shadow:none no container DRPS
+  //    - break-before/after/inside para detecção de quebras de página
+  //    As regras de @page são tratadas separadamente em extractPageMargins().
+  const printOverride = injectPrintRules();
 
   // 3. Corrige margens negativas das capas.
   //    Em tela: margin negativa compensa o padding do container e o @page margin.
@@ -234,13 +228,13 @@ function extractPageMargins(): { top: number; right: number; bottom: number; lef
 }
 
 /**
- * Injeta APENAS regras de display e break-* do @media print num elemento
- * <style> temporário. Regras estruturais (padding, border, box-shadow, margin
- * em containers) são omitidas para não alterar o layout durante a captura.
+ * Injeta todas as CSSStyleRules do @media print como estilos de tela normais,
+ * simulando o que o browser aplica ao imprimir. Regras @page são ignoradas
+ * aqui (tratadas por extractPageMargins).
  *
  * Retorna o elemento <style> para ser removido no finally.
  */
-function injectSafePrintRules(): HTMLStyleElement {
+function injectPrintRules(): HTMLStyleElement {
   const style = document.createElement("style");
   style.id = "pdf-print-override";
   const lines: string[] = [];
@@ -250,32 +244,8 @@ function injectSafePrintRules(): HTMLStyleElement {
       for (const rule of Array.from(sheet.cssRules)) {
         if (!(rule instanceof CSSMediaRule) || !rule.media.mediaText.includes("print")) continue;
         for (const inner of Array.from(rule.cssRules)) {
-          if (!(inner instanceof CSSStyleRule)) continue;
-
-          const s = inner.style;
-          const decls: string[] = [];
-
-          // display — mostra/oculta elementos print-only
-          if (s.display) {
-            const important = s.getPropertyPriority("display") === "important";
-            decls.push(`display: ${s.display}${important ? " !important" : ""}`);
-          }
-
-          // break-before / break-after / break-inside — quebras de página
-          const breakProps = [
-            ["break-before",    s.breakBefore],
-            ["break-after",     s.breakAfter],
-            ["break-inside",    s.breakInside],
-            ["page-break-before", s.getPropertyValue("page-break-before")],
-            ["page-break-after",  s.getPropertyValue("page-break-after")],
-            ["page-break-inside", s.getPropertyValue("page-break-inside")],
-          ] as const;
-          for (const [prop, val] of breakProps) {
-            if (val) decls.push(`${prop}: ${val}`);
-          }
-
-          if (decls.length > 0) {
-            lines.push(`${inner.selectorText} { ${decls.join("; ")} }`);
+          if (inner instanceof CSSStyleRule) {
+            lines.push(inner.cssText);
           }
         }
       }
