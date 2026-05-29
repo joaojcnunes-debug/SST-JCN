@@ -180,6 +180,7 @@ export default function AssinaturaRelatorio({
               tabelaNome={tabelaNome}
               docId={docId}
               onAssinado={carregarPdfAssinado}
+              reAssinatura
             />
           </>
         ) : (

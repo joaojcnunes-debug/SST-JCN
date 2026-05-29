@@ -13,6 +13,8 @@ interface Props {
   docId?: string;
   /** Callback após assinatura bem-sucedida. */
   onAssinado?: () => void;
+  /** Quando true, indica que o documento já foi assinado — exibe como ação secundária "Re-assinar". */
+  reAssinatura?: boolean;
 }
 
 export default function BotaoAssinarPdf({
@@ -20,6 +22,7 @@ export default function BotaoAssinarPdf({
   tabelaNome,
   docId,
   onAssinado,
+  reAssinatura = false,
 }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -28,11 +31,15 @@ export default function BotaoAssinarPdf({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 rounded-md border border-blue-300 bg-white px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 print:hidden"
-        title="Assinar este PDF com certificado A1 ICP-Brasil"
+        className={
+          reAssinatura
+            ? "inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-500 hover:bg-gray-50 print:hidden"
+            : "inline-flex items-center gap-1.5 rounded-md border border-blue-300 bg-white px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-50 print:hidden"
+        }
+        title={reAssinatura ? "Substituir a assinatura existente" : "Assinar este PDF com certificado A1 ICP-Brasil"}
       >
-        <BadgeCheck className="size-4" />
-        Assinar PDF A1
+        <BadgeCheck className={reAssinatura ? "size-3.5" : "size-4"} />
+        {reAssinatura ? "Re-assinar" : "Assinar PDF A1"}
       </button>
 
       <AssinarPdfModal

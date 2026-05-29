@@ -685,26 +685,33 @@ export default function AnalisePage({
               )}
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => salvarCampos()}
-                disabled={!canEdit || !dirty || salvar.isPending || !relatorio}
-                className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Save className="size-3.5" />
-                {salvar.isPending ? "Salvando..." : "Salvar"}
-              </button>
-              <button
-                type="button"
-                onClick={() => salvarCampos({ status: "CONCLUIDO" })}
-                disabled={!canEdit || salvar.isPending || !relatorio}
-                className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-1.5 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <CheckCircle2 className="size-3.5" />
-                {relatorio?.status === "CONCLUIDO"
-                  ? "Concluído"
-                  : "Concluir Análise"}
-              </button>
+              {dirty && (
+                <button
+                  type="button"
+                  onClick={() => salvarCampos()}
+                  disabled={!canEdit || salvar.isPending || !relatorio}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Save className="size-3.5" />
+                  {salvar.isPending ? "Salvando..." : "Salvar"}
+                </button>
+              )}
+              {relatorio?.status === "CONCLUIDO" ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-verde-light px-3 py-1.5 text-xs font-semibold text-verde-primary">
+                  <CheckCircle2 className="size-3.5" />
+                  Concluído
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => salvarCampos({ status: "CONCLUIDO" })}
+                  disabled={!canEdit || salvar.isPending || !relatorio}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-1.5 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <CheckCircle2 className="size-3.5" />
+                  Concluir Análise
+                </button>
+              )}
               <BotaoGerarPdf
                 tabelaNome="drps_relatorios_analise"
                 docId={idRelatorio}
