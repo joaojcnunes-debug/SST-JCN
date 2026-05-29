@@ -9,6 +9,8 @@ import {
   Eye,
   EyeOff,
   FileText,
+  FilePlus2,
+  ImageIcon,
   Layers,
   Loader2,
   Lock,
@@ -24,6 +26,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import CapaEditor from "@/components/drps/CapaEditor";
+import PosicaoPdfStepper, { type PosicaoPdfValor } from "@/components/textos-padrao/PosicaoPdfStepper";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { CaixaTexto } from "@/lib/drps/types";
 import {
@@ -39,12 +42,13 @@ import { cn } from "@/lib/utils";
 
 // ─── Template inicial AEP ─────────────────────────────────────────────────────
 
-const TEMPLATE_INICIAL: { titulo: string; conteudo: string; ordem_global: number }[] = [
+const TEMPLATE_INICIAL: { titulo: string; conteudo: string; posicao_pdf: PosicaoPdfValor; ordem_global: number }[] = [
   {
     titulo: "1 – Apresentação",
     conteudo:
       "<p>A presente Análise Ergonômica Preliminar (AEP) foi elaborada com o objetivo de identificar e avaliar os fatores de risco ergonômico presentes nos postos de trabalho da empresa <strong>{{empresa_nome}}</strong>, sediada em {{endereco_empresa}}.</p>" +
       "<p>A AEP constitui a primeira etapa do programa de gerenciamento de riscos ergonômicos, em conformidade com a NR-17 (Ergonomia) e NR-01 (GRO/PGR).</p>",
+    posicao_pdf: "apos_sumario",
     ordem_global: 500,
   },
   {
@@ -52,6 +56,7 @@ const TEMPLATE_INICIAL: { titulo: string; conteudo: string; ordem_global: number
     conteudo:
       "<p>Este documento tem por objetivo realizar uma triagem ergonômica nos setores da empresa, identificando postos de trabalho que apresentam fatores de risco físicos, cognitivos e organizacionais.</p>" +
       "<p>Com base nos resultados obtidos, serão indicados os setores que necessitam de Análise Ergonômica do Trabalho (AET) completa, conforme os critérios estabelecidos pela NR-17.</p>",
+    posicao_pdf: "apos_sumario",
     ordem_global: 600,
   },
   {
@@ -65,6 +70,7 @@ const TEMPLATE_INICIAL: { titulo: string; conteudo: string; ordem_global: number
       "<li>Identificação e classificação dos riscos ergonômicos por nível de criticidade (Trivial, De Atenção, Moderado, Alto, Crítico);</li>" +
       "<li>Emissão de parecer técnico e recomendações por setor.</li>" +
       "</ul>",
+    posicao_pdf: "apos_sumario",
     ordem_global: 700,
   },
   {
@@ -72,6 +78,7 @@ const TEMPLATE_INICIAL: { titulo: string; conteudo: string; ordem_global: number
     conteudo:
       "<p><strong>NR-17 – Ergonomia (Portaria MTE nº 3.214/78, atualizada pela Portaria MTE nº 876/2021):</strong> estabelece parâmetros para a adaptação das condições de trabalho às características psicofisiológicas dos trabalhadores.</p>" +
       "<p><strong>NR-01 – Disposições Gerais e Gerenciamento de Riscos Ocupacionais:</strong> exige o Programa de Gerenciamento de Riscos (PGR), que inclui o reconhecimento e avaliação de riscos ergonômicos.</p>",
+    posicao_pdf: "apos_sumario",
     ordem_global: 800,
   },
 ];
@@ -90,9 +97,9 @@ const SLUG_DESCRICAO: Record<string, string> = {
 
 export default function AepTextoPadraoPage() {
   const { data: capitulos = [], isLoading } = useAepTextoPadrao();
-  const criar   = useAepCriarCapitulo();
-  const salvar  = useAepSalvarCapitulo();
-  const excluir = useAepExcluirCapitulo();
+  const criar     = useAepCriarCapitulo();
+  const salvar    = useAepSalvarCapitulo();
+  const excluir   = useAepExcluirCapitulo();
   const seedFixos = useAepSeedCapitulosFixos();
 
   const [confirmExcluir, setConfirmExcluir] = useState<AepTextoPadraoCapitulo | null>(null);
@@ -151,6 +158,15 @@ export default function AepTextoPadraoPage() {
     salvar.mutate({ id_capitulo: cap.id_capitulo, mostrar: !cap.mostrar });
   }
 
+  const contagensPorPosicao = capitulos.reduce<Partial<Record<PosicaoPdfValor, number>>>(
+    (acc, c) => {
+      const p = (c.posicao_pdf ?? "inicio") as PosicaoPdfValor;
+      acc[p] = (acc[p] ?? 0) + 1;
+      return acc;
+    },
+    {}
+  );
+
   return (
     <div className="space-y-4">
       {/* Cabeçalho */}
@@ -161,7 +177,7 @@ export default function AepTextoPadraoPage() {
             Capítulos introdutórios do laudo de Análise Ergonômica Preliminar. Capítulos{" "}
             <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-bold text-blue-700">SISTEMA</span>{" "}
             são gerados automaticamente; capítulos{" "}
-            <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold text-emerald-700">EDITÁVEL</span>{" "}
+            <span className="rounded bg-verde-light px-1.5 py-0.5 text-[11px] font-bold text-verde-primary">EDITÁVEL</span>{" "}
             contêm texto livre com variáveis como{" "}
             <code className="rounded bg-gray-100 px-1 text-xs">{"{{empresa_nome}}"}</code>.
           </p>
@@ -190,7 +206,7 @@ export default function AepTextoPadraoPage() {
               type="button"
               onClick={seedTemplate}
               disabled={criar.isPending}
-              className="inline-flex items-center gap-2 rounded-md border border-emerald-600 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-md border border-verde-primary bg-white px-3 py-2 text-sm font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
               title="Adiciona os capítulos introdutórios padrão AEP que ainda não existem"
             >
               <BookOpen className="size-4" />
@@ -203,7 +219,7 @@ export default function AepTextoPadraoPage() {
             type="button"
             onClick={novoCapitulo}
             disabled={criar.isPending}
-            className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
           >
             <Plus className="size-4" /> Novo Capítulo
           </button>
@@ -212,18 +228,18 @@ export default function AepTextoPadraoPage() {
 
       {/* Painel de variáveis */}
       {mostrarVars && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3">
-          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-emerald-700">
+        <div className="rounded-xl border border-sky-200 bg-sky-50/40 p-3">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-sky-700">
             Variáveis disponíveis — AEP
           </p>
           <div className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2 lg:grid-cols-3">
             {VARIAVEIS_AEP.map((v) => (
               <div
                 key={v.chave}
-                className="flex items-center justify-between gap-2 rounded border border-emerald-100 bg-white px-2 py-1"
+                className="flex items-center justify-between gap-2 rounded border border-sky-100 bg-white px-2 py-1"
               >
                 <div className="min-w-0 flex-1">
-                  <code className="text-[11px] text-emerald-700">{`{{${v.chave}}}`}</code>
+                  <code className="text-[11px] text-sky-700">{`{{${v.chave}}}`}</code>
                   <p className="text-[10px] text-gray-600">{v.rotulo}</p>
                 </div>
                 <button
@@ -232,7 +248,7 @@ export default function AepTextoPadraoPage() {
                     navigator.clipboard?.writeText(`{{${v.chave}}}`);
                     toast.success(`{{${v.chave}}} copiado`);
                   }}
-                  className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 hover:bg-emerald-200"
+                  className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 hover:bg-sky-200"
                 >
                   Copiar
                 </button>
@@ -282,6 +298,7 @@ export default function AepTextoPadraoPage() {
                 indice={idx}
                 total={capitulosOrdenados.length}
                 salvando={salvar.isPending}
+                contagensPorPosicao={contagensPorPosicao}
                 onSalvar={(patch) => salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })}
                 onMover={(dir) => mover(cap, dir)}
                 onExcluir={() => setConfirmExcluir(cap)}
@@ -323,6 +340,7 @@ function FixoCard({
   salvando,
   onMover,
   onToggleMostrar,
+  onSalvar,
 }: {
   capitulo: AepTextoPadraoCapitulo;
   indice: number;
@@ -332,7 +350,8 @@ function FixoCard({
   onToggleMostrar: () => void;
   onSalvar: (patch: Partial<Omit<AepTextoPadraoCapitulo, "id_capitulo" | "created_at" | "updated_at">>) => void;
 }) {
-  const descricao = capitulo.slug_fixo ? SLUG_DESCRICAO[capitulo.slug_fixo] : null;
+  const descricao  = capitulo.slug_fixo ? SLUG_DESCRICAO[capitulo.slug_fixo] : null;
+  const orientacao = capitulo.orientacao ?? "retrato";
 
   return (
     <div className={cn(
@@ -365,6 +384,33 @@ function FixoCard({
 
         <p className="flex-1 text-sm font-semibold text-gray-800">{capitulo.titulo}</p>
 
+        {/* Orientação */}
+        <div className="inline-flex overflow-hidden rounded-md border border-blue-200 bg-white shrink-0">
+          <button
+            type="button"
+            onClick={() => orientacao !== "retrato" && onSalvar({ orientacao: "retrato" })}
+            disabled={salvando}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+              orientacao === "retrato" ? "bg-blue-600 text-white" : "bg-white text-gray-500 hover:bg-blue-50"
+            )}
+          >
+            <FileText className="size-3" /> Retrato
+          </button>
+          <button
+            type="button"
+            onClick={() => orientacao !== "paisagem" && onSalvar({ orientacao: "paisagem" })}
+            disabled={salvando}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+              orientacao === "paisagem" ? "bg-blue-600 text-white" : "bg-white text-gray-500 hover:bg-blue-50"
+            )}
+          >
+            <RectangleHorizontal className="size-3" /> Paisagem
+          </button>
+        </div>
+
+        {/* Toggle visibilidade */}
         <button
           type="button"
           onClick={onToggleMostrar}
@@ -383,7 +429,14 @@ function FixoCard({
       </div>
 
       {descricao && (
-        <p className="mt-1.5 pl-16 text-[11px] italic text-blue-700/80">{descricao}</p>
+        <p className="mt-1.5 pl-16 text-[11px] italic text-blue-700/80">
+          {descricao}
+          {orientacao === "paisagem" && (
+            <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 not-italic">
+              A4 horizontal
+            </span>
+          )}
+        </p>
       )}
     </div>
   );
@@ -396,6 +449,7 @@ function CapituloCard({
   indice,
   total,
   salvando,
+  contagensPorPosicao,
   onSalvar,
   onMover,
   onExcluir,
@@ -405,6 +459,7 @@ function CapituloCard({
   indice: number;
   total: number;
   salvando: boolean;
+  contagensPorPosicao: Partial<Record<PosicaoPdfValor, number>>;
   onSalvar: (patch: Partial<Omit<AepTextoPadraoCapitulo, "id_capitulo" | "created_at" | "updated_at">>) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
@@ -447,7 +502,8 @@ function CapituloCard({
     }
   }
 
-  const orientacao = capitulo.orientacao ?? "retrato";
+  const orientacao   = capitulo.orientacao   ?? "retrato";
+  const quebraPagina = capitulo.quebra_pagina ?? "nova";
 
   return (
     <div className={cn(
@@ -467,7 +523,7 @@ function CapituloCard({
           </button>
         </div>
 
-        <span className="inline-flex shrink-0 items-center rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 mt-2">
+        <span className="inline-flex shrink-0 items-center rounded bg-verde-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-verde-primary mt-2">
           Editável
         </span>
 
@@ -476,13 +532,14 @@ function CapituloCard({
           value={titulo}
           onChange={(e) => { setTitulo(e.target.value); setDirty(true); }}
           placeholder="Título do capítulo"
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
         />
 
         <button
           type="button"
           onClick={onToggleMostrar}
           disabled={salvando}
+          title={capitulo.mostrar ? "Ocultar no laudo" : "Mostrar no laudo"}
           className={cn(
             "inline-flex items-center gap-1 rounded-md border px-2 py-2 text-xs font-semibold transition-colors disabled:opacity-50",
             capitulo.mostrar
@@ -501,7 +558,7 @@ function CapituloCard({
             setDirty(false);
           }}
           disabled={!dirty || salvando || !titulo.trim()}
-          className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
         >
           {salvando ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
           Salvar
@@ -516,9 +573,10 @@ function CapituloCard({
         </button>
       </div>
 
-      {/* Orientação + imagem de fundo */}
+      {/* Configurações */}
       <div className="mb-2 flex flex-wrap items-center gap-3 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
-        <div className="flex items-center gap-2">
+        {/* Orientação */}
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Orientação:</span>
           <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
             <button
@@ -527,7 +585,7 @@ function CapituloCard({
               disabled={salvando}
               className={cn(
                 "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
-                orientacao === "retrato" ? "bg-emerald-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+                orientacao === "retrato" ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50"
               )}
             >
               <FileText className="size-3.5" /> Retrato
@@ -538,7 +596,7 @@ function CapituloCard({
               disabled={salvando}
               className={cn(
                 "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
-                orientacao === "paisagem" ? "bg-emerald-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+                orientacao === "paisagem" ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50"
               )}
             >
               <RectangleHorizontal className="size-3.5" /> Paisagem
@@ -546,45 +604,103 @@ function CapituloCard({
           </div>
         </div>
 
-        {/* Imagem de fundo */}
-        <div className="flex items-center gap-2 ml-auto">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Capa:</span>
-          {capitulo.bg_imagem_url ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={capitulo.bg_imagem_url} alt="Fundo" className="h-8 w-14 rounded border border-gray-300 object-cover" />
-              <button
-                type="button"
-                onClick={() => onSalvar({ bg_imagem_url: null })}
-                disabled={salvando}
-                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-              >
-                <X className="size-3.5" /> Remover
-              </button>
-            </>
-          ) : (
+        {/* Início da página */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Início:</span>
+          <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
             <button
               type="button"
-              onClick={() => bgInputRef.current?.click()}
-              disabled={enviandoBg || salvando}
-              className="inline-flex items-center gap-1.5 rounded-md border border-emerald-600 bg-white px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+              onClick={() => quebraPagina !== "nova" && onSalvar({ quebra_pagina: "nova" })}
+              disabled={salvando || !!capitulo.bg_imagem_url}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
+                quebraPagina === "nova" || capitulo.bg_imagem_url ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+              )}
             >
-              {enviandoBg ? <Loader2 className="size-3.5 animate-spin" /> : <AlignLeft className="size-3.5" />}
-              Enviar imagem de capa
+              <FilePlus2 className="size-3.5" /> Nova página
             </button>
-          )}
-          <input
-            ref={bgInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) enviarBg(f);
-              if (bgInputRef.current) bgInputRef.current.value = "";
-            }}
+            <button
+              type="button"
+              onClick={() => quebraPagina !== "continua" && onSalvar({ quebra_pagina: "continua" })}
+              disabled={salvando || !!capitulo.bg_imagem_url || indice === 0}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors disabled:opacity-50",
+                quebraPagina === "continua" && !capitulo.bg_imagem_url ? "bg-verde-primary text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+              )}
+            >
+              <AlignLeft className="size-3.5" /> Continuação
+            </button>
+          </div>
+        </div>
+
+        <span className="text-[10px] italic text-gray-500">
+          {capitulo.bg_imagem_url
+            ? "Capa: página inteira"
+            : quebraPagina === "continua"
+            ? "Continua na mesma folha do capítulo anterior."
+            : orientacao === "paisagem"
+            ? "A4 horizontal em folha nova."
+            : "A4 vertical em folha nova (ABNT)."}
+        </span>
+
+        {/* Posição no PDF */}
+        <div className="w-full">
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+            📍 Posição no Relatório
+          </p>
+          <PosicaoPdfStepper
+            valor={(capitulo.posicao_pdf ?? "inicio") as PosicaoPdfValor}
+            onChange={(p) => onSalvar({ posicao_pdf: p })}
+            contagens={contagensPorPosicao}
+            disabled={salvando}
           />
         </div>
+      </div>
+
+      {/* Imagem de capa */}
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+          Imagem de fundo (capa):
+        </span>
+        {capitulo.bg_imagem_url ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={capitulo.bg_imagem_url} alt="Fundo" className="h-10 w-16 rounded border border-gray-300 object-cover" />
+            <span className="text-[10px] text-gray-600">Este capítulo sai como página inteira no PDF.</span>
+            <button
+              type="button"
+              onClick={() => onSalvar({ bg_imagem_url: null })}
+              disabled={salvando}
+              className="ml-auto inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+            >
+              <X className="size-3.5" /> Remover
+            </button>
+          </>
+        ) : (
+          <span className="text-[11px] italic text-gray-500">Sem imagem (capítulo em fluxo normal).</span>
+        )}
+        <input
+          ref={bgInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) enviarBg(f);
+            if (bgInputRef.current) bgInputRef.current.value = "";
+          }}
+        />
+        {!capitulo.bg_imagem_url && (
+          <button
+            type="button"
+            onClick={() => bgInputRef.current?.click()}
+            disabled={enviandoBg || salvando}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-2 py-1 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+          >
+            {enviandoBg ? <Loader2 className="size-3.5 animate-spin" /> : <ImageIcon className="size-3.5" />}
+            Enviar imagem
+          </button>
+        )}
       </div>
 
       {/* Editor */}

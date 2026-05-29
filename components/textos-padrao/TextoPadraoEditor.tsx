@@ -8,6 +8,8 @@ import {
   ChevronUp,
   ChevronDown,
   BookOpen,
+  Eye,
+  EyeOff,
   ImageIcon,
   X,
   Loader2,
@@ -41,6 +43,7 @@ import {
   MODULO_CONFIGS,
 } from "@/lib/textos-padrao/types";
 import { VARIAVEIS_POR_MODULO } from "@/lib/textos-padrao/variaveis";
+import { cn } from "@/lib/utils";
 
 interface Props {
   modulo: ModuloTextoPadrao;
@@ -243,6 +246,9 @@ export default function TextoPadraoEditor({ modulo }: Props) {
               }
               onMover={(dir) => mover(cap, dir)}
               onExcluir={() => setConfirmExcluir(cap)}
+              onToggleMostrar={() =>
+                salvar.mutate({ id_capitulo: cap.id_capitulo, ativo: !cap.ativo })
+              }
             />
           ))}
         </div>
@@ -284,6 +290,7 @@ function CapituloCard({
   onSalvar,
   onMover,
   onExcluir,
+  onToggleMostrar,
 }: {
   capitulo: TextoPadraoCapitulo;
   indice: number;
@@ -299,9 +306,11 @@ function CapituloCard({
     orientacao?: OrientacaoPagina;
     quebra_pagina?: QuebraPagina;
     posicao_pdf?: PosicaoPdf;
+    ativo?: boolean;
   }) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
+  onToggleMostrar: () => void;
 }) {
   const [titulo, setTitulo] = useState(capitulo.titulo);
   const [conteudo, setConteudo] = useState(capitulo.conteudo ?? "");
@@ -357,9 +366,9 @@ function CapituloCard({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div className={cn("rounded-xl border border-gray-200 bg-white p-4 shadow-sm", !capitulo.ativo && "opacity-60")}>
       <div className="mb-2 flex items-start gap-2">
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-0.5 shrink-0">
           <button
             type="button"
             onClick={() => onMover("up")}
@@ -379,18 +388,33 @@ function CapituloCard({
             <ChevronDown className="size-4" />
           </button>
         </div>
-        <div className="flex-1">
-          <input
-            type="text"
-            value={titulo}
-            onChange={(e) => {
-              setTitulo(e.target.value);
-              setDirty(true);
-            }}
-            placeholder="Título do capítulo"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-          />
-        </div>
+        <span className="inline-flex shrink-0 items-center rounded bg-verde-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-verde-primary mt-2">
+          Editável
+        </span>
+        <input
+          type="text"
+          value={titulo}
+          onChange={(e) => {
+            setTitulo(e.target.value);
+            setDirty(true);
+          }}
+          placeholder="Título do capítulo"
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+        />
+        <button
+          type="button"
+          onClick={onToggleMostrar}
+          disabled={salvando}
+          title={capitulo.ativo ? "Ocultar no laudo" : "Mostrar no laudo"}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-md border px-2 py-2 text-xs font-semibold transition-colors disabled:opacity-50",
+            capitulo.ativo
+              ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+              : "border-gray-300 bg-white text-gray-500 hover:bg-gray-50"
+          )}
+        >
+          {capitulo.ativo ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+        </button>
         <button
           type="button"
           onClick={() =>
@@ -403,7 +427,8 @@ function CapituloCard({
           disabled={!dirty || salvando || !titulo.trim()}
           className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
         >
-          <Save className="size-3.5" /> Salvar
+          {salvando ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+          Salvar
         </button>
         <button
           type="button"

@@ -1136,6 +1136,8 @@ export interface AepTextoPadraoCapitulo {
   ordem: number;
   ordem_global: number | null;
   orientacao: string | null;
+  quebra_pagina: string | null;
+  posicao_pdf: string | null;
   bg_imagem_url: string | null;
   caixas_texto: import("@/lib/drps/types").CaixaTexto[] | null;
   created_at: string;

@@ -155,6 +155,8 @@ export interface DrpsTextoPadraoCapitulo {
   caixas_texto: CaixaTexto[] | null;
   /** V53: posição do capítulo no PDF do relatório DRPS. */
   posicao_pdf: DrpsPosicaoPdf;
+  orientacao: string | null;
+  quebra_pagina: string | null;
   ativo: boolean;
   created_at: string;
   updated_at: string | null;

@@ -473,7 +473,6 @@ export function useDrpsTextoPadrao() {
       const { data, error } = await supabase
         .from("drps_texto_padrao")
         .select("*")
-        .eq("ativo", true)
         .order("ordem", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as DrpsTextoPadraoCapitulo[];
@@ -524,6 +523,8 @@ export function useDrpsSalvarCapitulo() {
       bg_imagem_url?: string | null;
       caixas_texto?: import("@/lib/drps/types").CaixaTexto[] | null;
       posicao_pdf?: import("@/lib/drps/types").DrpsPosicaoPdf;
+      orientacao?: string | null;
+      quebra_pagina?: string | null;
     }) => {
       const supabase = createSupabaseBrowserClient();
       const { id_capitulo, ...rest } = args;
