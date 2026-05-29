@@ -46,6 +46,15 @@ export default function Modal({
     }
   }, [open]);
 
+  // Gerencia overflow do body separadamente de onClose para evitar que
+  // re-renders do caller (que criam nova referência para onClose) causem
+  // cleanup/re-setup do overflow enquanto o modal ainda está aberto.
+  useEffect(() => {
+    if (!open) return;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
   useEffect(() => {
     if (!open || !dialogRef.current) return;
     const dialog = dialogRef.current;
@@ -59,16 +68,10 @@ export default function Modal({
     const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
     (inputs[0] ?? focusable[0])?.focus();
 
-    document.body.style.overflow = "hidden";
-
     // Listener no dialog em capture — roda antes de qualquer listener
     // no document (Tiptap/ProseMirror), impedindo que o editor intercepte
     // teclas digitadas nos inputs do modal.
     const onKey = (e: KeyboardEvent) => {
-      // Impede que o evento chegue ao document/window após sair do modal.
-      // Como este listener está no dialog em capture, ele roda ANTES dos
-      // listeners de bubble do document, mas DEPOIS que o input-alvo
-      // já recebeu e processou o evento.
       e.stopPropagation();
 
       if (e.key === "Escape") { onClose(); return; }
@@ -84,13 +87,8 @@ export default function Modal({
       }
     };
 
-    // Bubble no dialog — o evento passa pelo input antes de chegar aqui.
-    // stopPropagation impede que suba para document (onde Tiptap escuta).
     dialog.addEventListener("keydown", onKey);
-    return () => {
-      dialog.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
+    return () => { dialog.removeEventListener("keydown", onKey); };
   }, [open, onClose]);
 
   if (!open || typeof document === "undefined") return null;
