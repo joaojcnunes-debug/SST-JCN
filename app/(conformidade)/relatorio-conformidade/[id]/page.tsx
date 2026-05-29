@@ -347,11 +347,11 @@ export default function DetalheConformidadePage({
       {/* Resumo */}
       <ResumoConformidade itens={itens} />
 
-      {/* Textos Padrão — só aparecem no print, antes dos itens */}
+      {/* Textos Padrão posicao_pdf = 'inicio' — antes dos itens */}
       <TextosPadraoPrint
         modulo="conformidade"
         valores={valoresTextosPadrao}
-        posicao="antes"
+        posicao="inicio"
       />
 
       {/* Lista de itens do checklist */}
@@ -480,6 +480,13 @@ export default function DetalheConformidadePage({
           }
         />
       </section>
+
+      {/* Textos Padrão posicao_pdf = 'fim' — após checklist, antes das assinaturas */}
+      <TextosPadraoPrint
+        modulo="conformidade"
+        valores={valoresTextosPadrao}
+        posicao="fim"
+      />
 
       {/* Bloco de Assinaturas */}
       <AssinaturaRelatorio

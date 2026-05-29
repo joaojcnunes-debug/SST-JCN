@@ -348,11 +348,11 @@ export default function DetalheNaoConformidadePage({
         baixa={ncsBaixa}
       />
 
-      {/* Textos Padrão — só aparecem no print, antes dos itens */}
+      {/* Textos Padrão posicao_pdf = 'inicio' — antes dos itens */}
       <TextosPadraoPrint
         modulo="nao_conformidade"
         valores={valoresTextosPadrao}
-        posicao="antes"
+        posicao="inicio"
       />
 
       {/* Lista de NCs */}
@@ -494,6 +494,13 @@ export default function DetalheNaoConformidadePage({
           }
         />
       </section>
+
+      {/* Textos Padrão posicao_pdf = 'fim' — após NCs, antes das assinaturas */}
+      <TextosPadraoPrint
+        modulo="nao_conformidade"
+        valores={valoresTextosPadrao}
+        posicao="fim"
+      />
 
       {/* Bloco de Assinaturas */}
       <AssinaturaRelatorio

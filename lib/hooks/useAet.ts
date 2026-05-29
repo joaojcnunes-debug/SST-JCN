@@ -808,10 +808,9 @@ export function useAet13FatoresSalvarPerguntas() {
   return useMutation({
     mutationFn: async (perguntas: Omit<Aet13FatorPergunta, "updated_at">[]) => {
       const sb = createSupabaseBrowserClient();
-      // Delete all and re-insert to handle reordering
-      await sb.from("aet_13fatores_perguntas").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       const rows = perguntas.map(({ id: _id, ...p }, i) => ({ ...p, ordem: i + 1 }));
-      const { error } = await sb.from("aet_13fatores_perguntas").insert(rows as never);
+      // RPC executa delete+insert em uma única transação — evita perda de dados se o insert falhar
+      const { error } = await sb.rpc("salvar_aet13fatores_perguntas" as never, { p_rows: rows } as never);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -827,8 +826,7 @@ export function useAet13FatoresRestaurarPerguntas() {
   return useMutation({
     mutationFn: async () => {
       const sb = createSupabaseBrowserClient();
-      await sb.from("aet_13fatores_perguntas").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      const { error } = await sb.from("aet_13fatores_perguntas").insert(PERGUNTAS_DEFAULT as never);
+      const { error } = await sb.rpc("salvar_aet13fatores_perguntas" as never, { p_rows: PERGUNTAS_DEFAULT } as never);
       if (error) throw error;
     },
     onSuccess: () => {

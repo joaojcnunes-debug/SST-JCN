@@ -140,7 +140,9 @@ export default function AssinarPdfModal({
         a.href = url;
         a.download = "relatorio-assinado.pdf";
         a.click();
-        URL.revokeObjectURL(url);
+        // Firefox precisa que a URL ainda exista quando processa o clique —
+        // revogar imediatamente causa download silencioso sem arquivo.
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
         handleClose();
       }
     } catch (err) {

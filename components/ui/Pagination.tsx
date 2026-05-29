@@ -18,6 +18,8 @@ export default function Pagination({
   pageSize,
   onChange,
 }: PaginationProps) {
+  if (totalItems === 0) return null;
+
   const start = (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, totalItems);
 
