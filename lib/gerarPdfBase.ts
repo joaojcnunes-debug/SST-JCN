@@ -23,18 +23,35 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
   const pageMargins = extractPageMargins();
 
   // 2. Injeta TODAS as CSSStyleRules do @media print como estilos de tela,
-  //    replicando o comportamento do window.print(). Isso inclui:
-  //    - display: none/block para elementos print-only
-  //    - padding:0 / border:none / box-shadow:none no container DRPS
-  //    - break-before/after/inside para detecção de quebras de página
+  //    replicando o comportamento do window.print(). Cobre regras de globals.css
+  //    (ex: .drps-print-container { padding:0 }, .drps-sumario { display:block }).
   //    As regras de @page são tratadas separadamente em extractPageMargins().
   const printOverride = injectPrintRules();
 
-  // 3. Corrige margens negativas das capas.
+  // 3. Aplica display para classes Tailwind print:* via inline style.
+  //    Tailwind v4 envolve utilitários em @layer utilities — não acessível via
+  //    sheet.cssRules — então injectPrintRules() não alcança print:hidden/print:block.
+  //    Inline style supera qualquer regra CSS (maior especificidade) e garante:
+  //      print:hidden → oculta toolbars, filtros e botões de ação
+  //      print:block/flex → mostra logos, sumários e headers print-only
+  type DisplayOv = { elem: HTMLElement; orig: string };
+  const displayOverrides: DisplayOv[] = [];
+  const forceDisplay = (sel: string, val: string) =>
+    el.querySelectorAll<HTMLElement>(sel).forEach((e) => {
+      displayOverrides.push({ elem: e, orig: e.style.display });
+      e.style.display = val;
+    });
+  // Ordem importa: print:hidden primeiro, depois print:block sobrescreve se necessário
+  forceDisplay('[class*="print:hidden"]', "none");
+  forceDisplay('[class*="print:block"]', "block");
+  forceDisplay('[class*="print:flex"]',  "flex");
+  forceDisplay('[class*="print:grid"]',  "grid");
+
+  // 4. Corrige margens negativas das capas.
   //    Em tela: margin negativa compensa o padding do container e o @page margin.
   //    Na captura html-to-image, isso faz a imagem de fundo ser recortada.
   //    A regra @media print { margin: 0 } já estaria em vigor via window.print(),
-  //    mas aqui precisamos aplicar manualmente.
+  //    mas aqui precisamos aplicar manualmente via inline style.
   const capaEls = Array.from(
     el.querySelectorAll<HTMLElement>(
       ".drps-capitulo--capa, .textos-padrao-capitulo--capa"
@@ -43,8 +60,7 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
   const origCapaMargins = capaEls.map((e) => e.style.margin);
   capaEls.forEach((e) => { e.style.margin = "0"; });
 
-  // 4. Aguarda imagens + dois frames para o layout se estabilizar com as
-  //    regras de visibilidade e as correções de capa acima.
+  // 5. Aguarda imagens + dois frames para o layout se estabilizar.
   await Promise.allSettled(
     Array.from(el.querySelectorAll<HTMLImageElement>("img")).map((img) =>
       img.complete
@@ -57,7 +73,7 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
   );
   await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 
-  // 5. Detecta TODOS os elementos com break-before: page.
+  // 6. Detecta TODOS os elementos com break-before: page.
   //    Funciona porque injetamos as regras de break no passo 2: agora
   //    getComputedStyle reflete os valores definidos pelo @media print da página,
   //    sem precisar de listas hardcoded por tipo de relatório (DRPS, AET, etc.).
@@ -155,6 +171,7 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
     return pdf.output("arraybuffer");
   } finally {
     printOverride.remove();
+    displayOverrides.forEach(({ elem, orig }) => { elem.style.display = orig; });
     capaEls.forEach((e, i) => { e.style.margin = origCapaMargins[i]; });
   }
 }
