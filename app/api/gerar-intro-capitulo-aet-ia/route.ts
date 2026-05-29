@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { createSupabaseServerClient } from "@/lib/supabase/client";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL = "llama-3.1-8b-instant";
@@ -42,6 +44,13 @@ Redija o parágrafo introdutório desta seção, contextualizando a síntese dos
 };
 
 export async function POST(req: NextRequest) {
+  const cookieStore = await cookies();
+  const supabase = createSupabaseServerClient(cookieStore);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
   const GROQ_API_KEY = process.env.GROQ_API_KEY;
   if (!GROQ_API_KEY) {
     return NextResponse.json({ error: "GROQ_API_KEY não configurada." }, { status: 500 });

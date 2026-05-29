@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      await supabase
+      const { error: upsertError } = await supabase
         .from("pdfs_assinados")
         .upsert(
           {
@@ -204,6 +204,13 @@ export async function POST(req: NextRequest) {
           } as never,
           { onConflict: "tabela,doc_id" }
         );
+
+      if (upsertError) {
+        return NextResponse.json(
+          { error: "PDF assinado e salvo, mas falha ao registrar no histórico. Entre em contato com o suporte." },
+          { status: 500 }
+        );
+      }
 
       return NextResponse.json({ success: true });
     }
