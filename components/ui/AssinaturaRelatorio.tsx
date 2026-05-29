@@ -106,6 +106,19 @@ export default function AssinaturaRelatorio({
 
   useEffect(() => { carregarPdfAssinado(); }, [carregarPdfAssinado]);
 
+  // Recarrega estado quando BotaoGerarPdf assina via fluxo integrado
+  useEffect(() => {
+    if (!tabelaNome || !docId) return;
+    const handler = (e: Event) => {
+      const ev = e as CustomEvent<{ tabelaNome: string; docId: string }>;
+      if (ev.detail.tabelaNome === tabelaNome && ev.detail.docId === docId) {
+        carregarPdfAssinado();
+      }
+    };
+    window.addEventListener("pdf:assinado", handler);
+    return () => window.removeEventListener("pdf:assinado", handler);
+  }, [tabelaNome, docId, carregarPdfAssinado]);
+
   async function handleBaixarPdf() {
     if (!pdfAssinado) return;
     const { data, error } = await createSupabaseBrowserClient()

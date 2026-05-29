@@ -42,6 +42,7 @@ import ItemApreciacaoCard from "@/components/apreciacao-maquinas/ItemApreciacaoC
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import { cn } from "@/lib/utils";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import {
   CATEGORIAS_NR12_LABELS,
@@ -388,13 +389,11 @@ export default function DetalheApreciacaoPage() {
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => window.print()}
+          <BotaoGerarPdf
+            tabelaNome="apreciacoes_maquinas"
+            docId={id}
             className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            <Printer className="size-4" /> Imprimir / PDF
-          </button>
+          />
           <span
             className={`rounded-full px-3 py-1 text-xs font-bold ${
               finalizada

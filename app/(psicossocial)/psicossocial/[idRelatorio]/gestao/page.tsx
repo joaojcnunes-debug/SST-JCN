@@ -11,6 +11,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import {
   useDrpsMonitoramento,
   useDrpsPlanoMedidas,
@@ -55,14 +56,12 @@ export default function GestaoPage({
               psicossocial.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => window.print()}
+          <BotaoGerarPdf
+            tabelaNome="drps_relatorios_gestao"
+            docId={idRelatorio}
+            label="Imprimir Resumo"
             className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
-          >
-            <Printer className="size-4" />
-            Imprimir Resumo
-          </button>
+          />
         </div>
 
         {/* Saúde geral */}

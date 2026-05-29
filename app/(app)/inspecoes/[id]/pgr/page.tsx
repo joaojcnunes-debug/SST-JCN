@@ -4,6 +4,7 @@ import { use, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer, Shield } from "lucide-react";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
@@ -108,14 +109,11 @@ export default function PgrPage({ params }: Props) {
           >
             Relatório resumido
           </Link>
-          <button
-            type="button"
-            onClick={() => window.print()}
+          <BotaoGerarPdf
+            tabelaNome="inspecoes_pgr"
+            docId={id}
             className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
-          >
-            <Printer className="size-4" />
-            Imprimir / Exportar PDF
-          </button>
+          />
         </div>
       </div>
 

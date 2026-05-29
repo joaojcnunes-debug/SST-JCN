@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import toast from "react-hot-toast";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { detectRegistroTipo } from "@/lib/registro-profissional";
@@ -418,13 +419,12 @@ export default function AetLaudoPage({
                 : <Clock className="size-3" />}
               {rel.status === "CONCLUIDO" ? "Concluído" : "Rascunho"}
             </span>
-            <button
-              type="button"
-              onClick={() => window.print()}
+            <BotaoGerarPdf
+              tabelaNome="aet_relatorios"
+              docId={idRelatorio}
+              label="Gerar Laudo"
               className="inline-flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition-colors hover:bg-white/30"
-            >
-              <Printer className="size-4" /> Gerar Laudo
-            </button>
+            />
           </div>
         </div>
 

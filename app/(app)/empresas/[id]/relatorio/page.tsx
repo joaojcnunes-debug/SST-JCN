@@ -4,6 +4,7 @@ import { use, useMemo } from "react";
 import Link from "next/link";
 import { ArrowLeft, Printer, Building2, ClipboardList } from "lucide-react";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import { useQuery } from "@tanstack/react-query";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
@@ -93,14 +94,11 @@ export default function RelatorioConsolidadoPage({ params }: Props) {
         >
           <ArrowLeft className="size-4" /> Voltar
         </Link>
-        <button
-          type="button"
-          onClick={() => window.print()}
+        <BotaoGerarPdf
+          tabelaNome="empresas_relatorio"
+          docId={id}
           className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
-        >
-          <Printer className="size-4" />
-          Imprimir / Exportar PDF
-        </button>
+        />
       </div>
 
       <article className="space-y-6 rounded-xl border border-gray-200 bg-white p-6 print:border-0 print:p-0 print:shadow-none">

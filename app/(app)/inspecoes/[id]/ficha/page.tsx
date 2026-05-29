@@ -4,6 +4,7 @@ import { use, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Printer } from "lucide-react";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
@@ -167,13 +168,11 @@ export default function FichaInspecaoPage({ params }: Props) {
         >
           <ArrowLeft className="size-4" /> Voltar à inspeção
         </button>
-        <button
-          type="button"
-          onClick={() => window.print()}
+        <BotaoGerarPdf
+          tabelaNome="inspecoes_ficha"
+          docId={id}
           className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
-        >
-          <Printer className="size-4" /> Imprimir / Salvar PDF
-        </button>
+        />
       </div>
 
       <div className="ficha-print rounded-xl border border-gray-200 bg-white p-6 shadow-sm">

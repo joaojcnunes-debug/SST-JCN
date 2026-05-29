@@ -4,6 +4,7 @@ import { use, useMemo } from "react";
 import { Printer, AlertTriangle } from "lucide-react";
 import { useAepRelatorio, useAepTextoPadrao, CLASS_COLOR_AEP, riscoMaximoSetor } from "@/lib/hooks/useAep";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import { montarValoresAep } from "@/lib/textos-padrao/variaveis-aep";
 import { substituirVariaveis } from "@/lib/textos-padrao/variaveis";
 import type { AepSetor, AepChecklistFisica, AepChecklistCognitiva, AepChecklistOrganizacional } from "@/lib/supabase/types";
@@ -235,12 +236,11 @@ export default function AepLaudoPage({
           <h1 className="text-lg font-bold text-gray-900">Laudo AEP</h1>
           <p className="text-sm text-gray-500">{empresa?.nome_empresa}</p>
         </div>
-        <button
-          onClick={() => window.print()}
+        <BotaoGerarPdf
+          tabelaNome="aep_relatorios"
+          docId={idRelatorio}
           className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700"
-        >
-          <Printer className="size-4" /> Imprimir / PDF
-        </button>
+        />
       </div>
 
       {/* Laudo */}

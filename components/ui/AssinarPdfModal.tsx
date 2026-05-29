@@ -19,6 +19,13 @@ interface Props {
   docId?: string;
   /** Callback chamado após assinatura bem-sucedida (com tabelaNome + docId). */
   onAssinado?: () => void;
+  /**
+   * PDF já gerado pelo caller (ex: BotaoGerarPdf).
+   * Quando fornecido, a etapa gerarPdfBase() é pulada — o documento não é
+   * renderizado novamente, garantindo que o layout assinado seja idêntico ao
+   * PDF original exibido ao usuário.
+   */
+  pdfBytes?: ArrayBuffer;
 }
 
 type Step = "idle" | "gerando" | "assinando";
@@ -37,6 +44,7 @@ export default function AssinarPdfModal({
   tabelaNome,
   docId,
   onAssinado,
+  pdfBytes: pdfBytesFromCaller,
 }: Props) {
   const user = useUserStore((s) => s.user);
   const [password, setPassword] = useState("");
@@ -93,11 +101,17 @@ export default function AssinarPdfModal({
     const salvarNoServidor = !!(tabelaNome && docId);
 
     try {
-      setStep("gerando");
-      // gerarPdfBase é a função única de geração de PDF — o PDF assinado
-      // reutiliza a mesma base do botão "Gerar PDF" para layout idêntico.
-      const { gerarPdfBase } = await import("@/lib/gerarPdfBase");
-      const pdfBytes = await gerarPdfBase();
+      // Se o caller já gerou o PDF (ex: BotaoGerarPdf), usa diretamente.
+      // Caso contrário, gera agora — mantendo compatibilidade com o uso standalone.
+      let pdfBytes: ArrayBuffer;
+      if (pdfBytesFromCaller) {
+        setStep("assinando");
+        pdfBytes = pdfBytesFromCaller;
+      } else {
+        setStep("gerando");
+        const { gerarPdfBase } = await import("@/lib/gerarPdfBase");
+        pdfBytes = await gerarPdfBase();
+      }
 
       setStep("assinando");
       const form = new FormData();

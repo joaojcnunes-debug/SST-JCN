@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
@@ -173,14 +174,11 @@ export default function RelatorioChabraPage({ params }: Props) {
           >
             Versão PGR (NR-1)
           </Link>
-          <button
-            type="button"
-            onClick={() => window.print()}
+          <BotaoGerarPdf
+            tabelaNome="inspecoes_relatorio"
+            docId={id}
             className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
-          >
-            <Printer className="size-4" />
-            Imprimir / Exportar PDF
-          </button>
+          />
         </div>
       </div>
 

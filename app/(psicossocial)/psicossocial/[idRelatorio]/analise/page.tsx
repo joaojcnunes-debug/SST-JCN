@@ -56,6 +56,7 @@ import {
   formatCAEPF,
   formatCNO,
 } from "@/lib/utils";
+import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import type { Empresa } from "@/lib/supabase/types";
 import type {
   DrpsProbabilidade,
@@ -701,14 +702,12 @@ export default function AnalisePage({
                   ? "Concluído"
                   : "Concluir Análise"}
               </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
+              <BotaoGerarPdf
+                tabelaNome="drps_relatorios_analise"
+                docId={idRelatorio}
                 disabled={!podeImprimir}
                 className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
-              >
-                <Printer className="size-3.5" /> Gerar PDF
-              </button>
+              />
             </div>
           </div>
 

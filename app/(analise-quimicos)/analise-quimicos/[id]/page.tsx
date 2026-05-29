@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import {
   useAnaliseQuimico,
@@ -80,13 +81,11 @@ export default function AnaliseDetalhePage({
           <ArrowLeft className="size-3.5" /> Voltar ao histórico
         </Link>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => window.print()}
+          <BotaoGerarPdf
+            tabelaNome="analises_quimicos"
+            docId={id}
             className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
-          >
-            <Printer className="size-4" /> Imprimir / PDF
-          </button>
+          />
           {canDelete && (
             <button
               type="button"
