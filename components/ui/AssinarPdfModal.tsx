@@ -94,8 +94,10 @@ export default function AssinarPdfModal({
 
     try {
       setStep("gerando");
-      const { gerarPdfDaPagina } = await import("@/lib/gerarPdfDaPagina");
-      const pdfBytes = await gerarPdfDaPagina();
+      // gerarPdfBase é a função única de geração de PDF — o PDF assinado
+      // reutiliza a mesma base do botão "Gerar PDF" para layout idêntico.
+      const { gerarPdfBase } = await import("@/lib/gerarPdfBase");
+      const pdfBytes = await gerarPdfBase();
 
       setStep("assinando");
       const form = new FormData();
