@@ -178,11 +178,21 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
 
     // Retorna o fim seguro de um slice: move o corte para antes de uma zona
     // break-inside:avoid se o corte natural cairia dentro dela.
-    // Só ajusta se a zona começa após 20% da página (evita gerar páginas minúsculas).
+    // Condições para evitar o corte:
+    //   1. A zona cabe em uma página (senão é impossível mantê-la inteira)
+    //   2. A zona começa na metade inferior da página (>50%) — evitar cortar cedo
+    //      demais deixaria a página com menos da metade de conteúdo útil.
     function findSafeEnd(sliceStart: number, naturalEnd: number): number {
       for (const zone of avoidZonesCv) {
-        if (zone.top > sliceStart && zone.top < naturalEnd && zone.bottom > naturalEnd) {
-          if (zone.top - sliceStart > pageHeightPx * 0.2) return zone.top;
+        const zoneFits = zone.bottom - zone.top <= pageHeightPx;
+        if (
+          zoneFits &&
+          zone.top > sliceStart &&
+          zone.top < naturalEnd &&
+          zone.bottom > naturalEnd &&
+          zone.top - sliceStart > pageHeightPx * 0.5
+        ) {
+          return zone.top;
         }
       }
       return naturalEnd;
