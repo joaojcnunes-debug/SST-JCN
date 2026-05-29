@@ -159,39 +159,30 @@ export default function AssinaturaRelatorio({
         </div>
       )}
 
-      {/* ── Barra de ações: assinar + baixar PDF ── */}
-      <div className="mt-4 flex flex-wrap items-center justify-end gap-2 print:hidden">
-        {pdfAssinado ? (
-          <>
-            <div className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
-              <BadgeCheck className="size-3.5 shrink-0" />
-              Assinado em {dataAssinatura}
-            </div>
-            <button
-              type="button"
-              onClick={handleBaixarPdf}
-              className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
-            >
-              <Download className="size-4" />
-              Baixar PDF Assinado
-            </button>
-            <BotaoAssinarPdf
-              defaultSignatoryEmail={sigData?.email ?? undefined}
-              tabelaNome={tabelaNome}
-              docId={docId}
-              onAssinado={carregarPdfAssinado}
-              reAssinatura
-            />
-          </>
-        ) : (
+      {/* ── Barra de ações: baixar + re-assinar (visível só após assinatura) ── */}
+      {pdfAssinado && (
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-2 print:hidden">
+          <div className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+            <BadgeCheck className="size-3.5 shrink-0" />
+            Assinado em {dataAssinatura}
+          </div>
+          <button
+            type="button"
+            onClick={handleBaixarPdf}
+            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
+          >
+            <Download className="size-4" />
+            Baixar PDF Assinado
+          </button>
           <BotaoAssinarPdf
             defaultSignatoryEmail={sigData?.email ?? undefined}
             tabelaNome={tabelaNome}
             docId={docId}
             onAssinado={carregarPdfAssinado}
+            reAssinatura
           />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Bloco final de assinatura ── */}
       <div className="mt-8 border-t border-gray-200 pt-8 print:mt-12">
