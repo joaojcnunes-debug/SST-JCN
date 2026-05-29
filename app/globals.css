@@ -69,6 +69,14 @@ body {
   }
   .print-break { page-break-after: always; }
   .print-avoid-break { page-break-inside: avoid; }
+
+  /* Bloco de assinaturas: nova página dedicada quando não há espaço suficiente */
+  .assinatura-bloco-final {
+    break-before: page;
+    page-break-before: always;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
   /* Remove decorações de tela que vazam na impressão */
   * { text-decoration-skip-ink: auto; }
 }

@@ -37,8 +37,8 @@ export default function BotaoGerarPdf({
     setGerando(true);
     setBuffer(null);
     try {
-      const { gerarPdfBase } = await import("@/lib/gerarPdfBase");
-      const ab = await gerarPdfBase();
+      const { gerarHtmlParaPdf } = await import("@/lib/gerarHtmlParaPdf");
+      const ab = await gerarHtmlParaPdf();
 
       // Abre o PDF em nova aba para o usuário revisar
       const blob = new Blob([ab], { type: "application/pdf" });
