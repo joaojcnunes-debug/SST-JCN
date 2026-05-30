@@ -424,6 +424,14 @@ export default function AetLaudoPage({
               docId={idRelatorio}
               label="Gerar Laudo"
               className="inline-flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition-colors hover:bg-white/30"
+              registrarPdf={{
+                modulo: "aet",
+                tipoDocumento: "Avaliação Ergonômica do Trabalho",
+                idRelatorio,
+                empresaNome: empresa?.nome_empresa ?? undefined,
+                empresaCnpj: empresa?.cnpj ?? undefined,
+                responsavelTecnico: responsavel || undefined,
+              }}
             />
           </div>
         </div>

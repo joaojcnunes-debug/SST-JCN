@@ -223,6 +223,15 @@ export default function DetalheNaoConformidadePage({
             tabelaNome="relatorios_nao_conformidade"
             docId={id}
             className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            registrarPdf={{
+              modulo: "nao_conformidade",
+              tipoDocumento: "Relatório de Não Conformidade",
+              idRelatorio: id,
+              empresaId: relatorio.id_empresa ?? undefined,
+              empresaNome: empresa?.nome_empresa ?? undefined,
+              empresaCnpj: empresa?.cnpj ?? undefined,
+              responsavelTecnico: relatorio.responsavel ?? undefined,
+            }}
           />
           {canEdit && finalizado && (
             <button

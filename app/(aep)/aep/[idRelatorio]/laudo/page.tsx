@@ -240,6 +240,14 @@ export default function AepLaudoPage({
           tabelaNome="aep_relatorios"
           docId={idRelatorio}
           className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700"
+          registrarPdf={{
+            modulo: "aep",
+            tipoDocumento: "Análise Ergonômica Preliminar",
+            idRelatorio,
+            empresaNome: empresa?.nome_empresa ?? undefined,
+            empresaCnpj: empresa?.cnpj ?? undefined,
+            responsavelTecnico: rel.responsavel_elaboracao ?? undefined,
+          }}
         />
       </div>
 

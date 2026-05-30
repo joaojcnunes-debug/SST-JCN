@@ -85,6 +85,15 @@ export default function AnaliseDetalhePage({
             tabelaNome="analises_quimicos"
             docId={id}
             className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+            registrarPdf={{
+              modulo: "analises_quimicos",
+              tipoDocumento: "Análise de Agente Químico",
+              idRelatorio: id,
+              empresaId: analise?.id_empresa ?? undefined,
+              empresaNome: empresa?.nome_empresa ?? undefined,
+              empresaCnpj: empresa?.cnpj ?? undefined,
+              responsavelTecnico: analise?.usuario_nome ?? undefined,
+            }}
           />
           {canDelete && (
             <button

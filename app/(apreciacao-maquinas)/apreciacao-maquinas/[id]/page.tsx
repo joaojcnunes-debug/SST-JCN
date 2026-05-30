@@ -393,6 +393,15 @@ export default function DetalheApreciacaoPage() {
             tabelaNome="apreciacoes_maquinas"
             docId={id}
             className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            registrarPdf={{
+              modulo: "apreciacao_maquinas",
+              tipoDocumento: "Apreciação de Máquinas NR-12",
+              idRelatorio: id,
+              empresaId: apreciacao?.id_empresa ?? undefined,
+              empresaNome: empresa?.nome_empresa ?? undefined,
+              empresaCnpj: empresa?.cnpj ?? undefined,
+              responsavelTecnico: responsavel || undefined,
+            }}
           />
           <span
             className={`rounded-full px-3 py-1 text-xs font-bold ${

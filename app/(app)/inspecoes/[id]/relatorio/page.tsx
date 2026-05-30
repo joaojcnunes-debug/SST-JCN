@@ -178,6 +178,15 @@ export default function RelatorioChabraPage({ params }: Props) {
             tabelaNome="inspecoes_relatorio"
             docId={id}
             className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
+            registrarPdf={{
+              modulo: "inspecoes",
+              tipoDocumento: "Relatório de Inspeção SST",
+              idRelatorio: id,
+              empresaId: inspecao.id_empresa ?? undefined,
+              empresaNome: empresa?.nome_empresa ?? undefined,
+              empresaCnpj: empresa?.cnpj ?? undefined,
+              responsavelTecnico: inspecao.responsavel ?? undefined,
+            }}
           />
         </div>
       </div>
