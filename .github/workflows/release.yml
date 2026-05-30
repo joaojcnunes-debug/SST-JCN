@@ -58,4 +58,4 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         run: npm run electron:release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
