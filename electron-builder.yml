@@ -1,0 +1,43 @@
+appId: com.chabra.painel-sst
+productName: "Painel SST"
+copyright: "Copyright © 2025 Chabra"
+
+directories:
+  output: dist
+  buildResources: electron/assets
+
+# Arquivos incluídos no pacote final
+files:
+  - electron-dist/**/*
+  - .next/standalone/**/*
+  - .next/static/**/*
+  - public/**/*
+  - package.json
+  - "!node_modules/.cache/**"
+  - "!**/*.map"
+  - "!electron/**"
+  - "!src/**"
+
+# Recursos adicionais copiados para resources/
+extraResources:
+  - from: .next/static
+    to: .next/static
+  - from: public
+    to: public
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  requestedExecutionLevel: asInvoker
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: "Painel SST"
+
+# Auto-update: configurar repositório quando disponível
+publish: null
