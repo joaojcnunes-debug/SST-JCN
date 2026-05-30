@@ -6,6 +6,8 @@ directories:
   output: dist
   buildResources: electron/assets
 
+icon: electron/assets/icon.png
+
 # Arquivos empacotados no app.asar (código Electron compilado)
 files:
   - electron-dist/**/*

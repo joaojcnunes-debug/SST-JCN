@@ -2,7 +2,7 @@
 
 import { Suspense, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Shield, Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
@@ -96,19 +96,14 @@ function LoginInner() {
     >
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
         <div className="flex flex-col items-center">
-          {configs?.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={configs.logo_url}
-              alt="Logo"
-              className="h-20 w-auto max-w-[160px] object-contain"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-primary text-white shadow-lg">
-              <Shield className="size-7" />
-            </div>
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={configs?.logo_url || "/logo-chabra.png"}
+            alt="Logo Chabra"
+            className="h-20 w-auto max-w-[200px] object-contain"
+            referrerPolicy="no-referrer"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/logo-chabra.png" }}
+          />
           <h1 className="mt-4 text-2xl font-bold text-gray-900">Painel SST</h1>
           <p className="text-sm text-gray-500">Chabra · Segurança e Saúde do Trabalho</p>
         </div>
