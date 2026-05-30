@@ -56,6 +56,9 @@ jobs:
 
       - name: Build Electron (sem publicar)
         if: steps.version.outputs.changed == 'true'
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: npx next build && npm run electron:compile && npx electron-builder --win --publish never
 
       - name: Publicar no GitHub Releases
