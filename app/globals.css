@@ -79,6 +79,13 @@ body {
   }
   /* Remove decorações de tela que vazam na impressão */
   * { text-decoration-skip-ink: auto; }
+
+  /* Textareas no print: expandem para mostrar todo o conteúdo */
+  textarea {
+    overflow: visible !important;
+    height: auto !important;
+    resize: none !important;
+  }
 }
 
 /* TipTap rich text editor — estilos visuais do conteudo */

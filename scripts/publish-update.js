@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Publica atualização no Supabase Storage após `npm run electron:build`
-// Uso: node scripts/publish-update.js
-// Requer: SUPABASE_SERVICE_ROLE_KEY definida em .env.local
+// Local: lê SUPABASE_SERVICE_ROLE_KEY do .env.local
+// CI:    lê SUPABASE_SERVICE_ROLE_KEY da variável de ambiente
 
 const fs = require('fs')
 const path = require('path')
@@ -9,49 +9,76 @@ const path = require('path')
 const VERSION = require('../package.json').version
 const SUPABASE_URL = 'https://vifatwpfqhhantordxlq.supabase.co'
 const BUCKET = 'atualizacoes'
+const TUS_THRESHOLD = 50 * 1024 * 1024 // 50 MB — acima disso usa TUS resumável
 
-function loadEnvLocal() {
+function loadKey() {
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) return process.env.SUPABASE_SERVICE_ROLE_KEY
   const envPath = path.join(__dirname, '..', '.env.local')
-  if (!fs.existsSync(envPath)) return {}
-  const env = {}
+  if (!fs.existsSync(envPath)) return null
   for (const line of fs.readFileSync(envPath, 'utf-8').split('\n')) {
-    const m = line.match(/^([^#=\s][^=]*)=(.*)$/)
-    if (m) env[m[1].trim()] = m[2].trim()
+    const m = line.match(/^SUPABASE_SERVICE_ROLE_KEY=(.+)$/)
+    if (m) return m[1].trim()
   }
-  return env
+  return null
 }
 
-async function upsert(localPath, remoteName, serviceKey) {
+async function uploadRest(localPath, objectName, serviceKey) {
   const content = fs.readFileSync(localPath)
-  const ext = path.extname(remoteName).toLowerCase()
+  const ext = path.extname(objectName).toLowerCase()
   const contentType = ext === '.yml' ? 'text/yaml' : 'application/octet-stream'
-  const encoded = remoteName.split('/').map(encodeURIComponent).join('/')
+  const encoded = objectName.split('/').map(encodeURIComponent).join('/')
   const url = `${SUPABASE_URL}/storage/v1/object/${BUCKET}/${encoded}`
 
   const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${serviceKey}`,
-      'Content-Type': contentType,
-      'x-upsert': 'true',
-    },
+    headers: { Authorization: `Bearer ${serviceKey}`, 'Content-Type': contentType, 'x-upsert': 'true' },
     body: content,
   })
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`)
+  console.log(`  ok  ${objectName}  (${(content.length / 1024 / 1024).toFixed(1)} MB)`)
+}
 
-  if (!res.ok) {
-    const body = await res.text()
-    throw new Error(`HTTP ${res.status} ao enviar ${remoteName}: ${body}`)
-  }
+function uploadTus(localPath, objectName, serviceKey) {
+  const { Upload } = require('tus-js-client')
+  const stat = fs.statSync(localPath)
+  const sizeMB = (stat.size / 1024 / 1024).toFixed(1)
 
-  const size = (content.length / 1024 / 1024).toFixed(1)
-  console.log(`  ok  ${remoteName}  (${size} MB)`)
+  return new Promise((resolve, reject) => {
+    const upload = new Upload(fs.createReadStream(localPath), {
+      endpoint: `${SUPABASE_URL}/storage/v1/upload/resumable`,
+      uploadSize: stat.size,
+      retryDelays: [0, 3000, 5000, 10000, 30000],
+      headers: { authorization: `Bearer ${serviceKey}`, 'x-upsert': 'true' },
+      metadata: {
+        bucketName: BUCKET,
+        objectName,
+        contentType: 'application/octet-stream',
+        cacheControl: '3600',
+      },
+      chunkSize: 6 * 1024 * 1024,
+      onError: reject,
+      onProgress(sent, total) {
+        process.stdout.write(`\r  ${objectName}: ${((sent / total) * 100).toFixed(1)}%  `)
+      },
+      onSuccess() {
+        process.stdout.write(`\r  ok  ${objectName}  (${sizeMB} MB)                    \n`)
+        resolve()
+      },
+    })
+    upload.start()
+  })
+}
+
+async function upload(localPath, objectName, serviceKey) {
+  const size = fs.statSync(localPath).size
+  if (size > TUS_THRESHOLD) return uploadTus(localPath, objectName, serviceKey)
+  return uploadRest(localPath, objectName, serviceKey)
 }
 
 async function main() {
-  const env = loadEnvLocal()
-  const key = env['SUPABASE_SERVICE_ROLE_KEY']
+  const key = loadKey()
   if (!key) {
-    console.error('Erro: SUPABASE_SERVICE_ROLE_KEY não encontrado em .env.local')
+    console.error('Erro: SUPABASE_SERVICE_ROLE_KEY não encontrada (env var ou .env.local)')
     process.exit(1)
   }
 
@@ -59,7 +86,7 @@ async function main() {
   const ymlPath = path.join(__dirname, '..', 'dist', 'latest.yml')
   const exePath = path.join(__dirname, '..', 'dist', installer)
 
-  for (const [p, name] of [[ymlPath, 'latest.yml'], [exePath, installer]]) {
+  for (const p of [ymlPath, exePath]) {
     if (!fs.existsSync(p)) {
       console.error(`Arquivo não encontrado: ${p}\nRode "npm run electron:build" primeiro.`)
       process.exit(1)
@@ -67,8 +94,8 @@ async function main() {
   }
 
   console.log(`Publicando versão ${VERSION}...`)
-  await upsert(ymlPath, 'latest.yml', key)
-  await upsert(exePath, installer, key)
+  await upload(ymlPath, 'latest.yml', key)
+  await upload(exePath, installer, key)
   console.log(`\nPronto! Versão ${VERSION} disponível para atualização automática.`)
 }
 

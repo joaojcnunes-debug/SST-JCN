@@ -1,6 +1,6 @@
 {
   "name": "painel-sst",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "main": "electron-dist/main.js",
   "scripts": {
@@ -69,6 +69,7 @@
     "eslint-config-next": "15.5.15",
     "supabase": "^2.98.2",
     "tailwindcss": "^4",
+    "tus-js-client": "^4.3.1",
     "typescript": "^5",
     "wait-on": "^8.0.3"
   }
