@@ -33,6 +33,9 @@ async function gerarPdfComUrl(pageUrl: string): Promise<Buffer> {
   try {
     await win.loadURL(pageUrl)
     await aguardarLoad(win)
+    // Windows: printToPDF falha com "Printing failed" se a janela nunca foi exibida.
+    // Mostramos fora da tela (x=-10000) para o Chromium ter um contexto de display válido.
+    mostrarForaDaTela(win)
     return win.webContents.printToPDF(pdfOpts())
   } finally {
     destroyWindow(win)
@@ -54,6 +57,7 @@ async function gerarPdfComHtml(html: string, baseUrl: string): Promise<Buffer> {
   try {
     await win.loadFile(tmpFile)
     await aguardarLoad(win)
+    mostrarForaDaTela(win)
     return win.webContents.printToPDF(pdfOpts())
   } finally {
     destroyWindow(win)
@@ -66,14 +70,29 @@ async function gerarPdfComHtml(html: string, baseUrl: string): Promise<Buffer> {
 function createPdfWindow(): BrowserWindow {
   return new BrowserWindow({
     show: false,
+    // Posição fora da tela: usada por mostrarForaDaTela() antes de printToPDF
+    x: -10000,
+    y: -10000,
     width: 1280,
     height: 900,
+    frame: false,
+    skipTaskbar: true,
+    focusable: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
       // Herda a sessão padrão → cookies Supabase são compartilhados
     },
   })
+}
+
+// No Windows, webContents.printToPDF falha com "Printing failed" quando
+// a janela nunca foi exibida (show:false). Exibimos fora da tela (-10000, -10000)
+// para que o Chromium tenha um contexto de display válido sem aparecer ao usuário.
+function mostrarForaDaTela(win: BrowserWindow): void {
+  if (!win.isDestroyed() && !win.isVisible()) {
+    win.showInactive()
+  }
 }
 
 function pdfOpts(): Electron.PrintToPDFOptions {

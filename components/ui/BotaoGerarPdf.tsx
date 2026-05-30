@@ -40,11 +40,16 @@ export default function BotaoGerarPdf({
       const { gerarHtmlParaPdf } = await import("@/lib/gerarHtmlParaPdf");
       const ab = await gerarHtmlParaPdf();
 
-      // Abre o PDF em nova aba para o usuário revisar
-      const blob = new Blob([ab], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      window.open(url, "_blank", "noopener");
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      // Abre o PDF: no Electron usa o leitor padrão do sistema (blob: não
+      // pode ser aberto externamente); no browser abre em nova aba.
+      if (typeof window !== "undefined" && window.electronAPI?.isElectron) {
+        await window.electronAPI.abrirPdf(new Uint8Array(ab));
+      } else {
+        const blob = new Blob([ab], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank", "noopener");
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      }
 
       // Mantém buffer para o fluxo de assinatura
       setBuffer(ab);

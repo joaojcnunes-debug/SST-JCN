@@ -19,6 +19,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
       error?: string
     }>,
 
+  /**
+   * Gera PDF imprimindo a janela principal diretamente (sem janela oculta).
+   * Mais confiável no Windows — a janela já está visível e autenticada.
+   */
+  printMainWindowPdf: () =>
+    ipcRenderer.invoke('print-main-window-pdf') as Promise<{
+      success: boolean
+      data?: Buffer
+      error?: string
+    }>,
+
+  /** Salva PDF em arquivo temp e abre no leitor padrão do Windows */
+  abrirPdf: (bytes: Uint8Array) =>
+    ipcRenderer.invoke('abrir-pdf', bytes) as Promise<{ success: boolean; error?: string }>,
+
   /** Versão do aplicativo desktop */
   getVersion: () => ipcRenderer.invoke('get-version') as Promise<string>,
 

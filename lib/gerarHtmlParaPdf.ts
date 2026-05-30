@@ -13,15 +13,17 @@
  *   - Não usa html-to-image, canvas, JPEG, nem jsPDF
  */
 export async function gerarHtmlParaPdf(): Promise<ArrayBuffer> {
-  // ── 1. Electron: Chromium local via IPC ─────────────────────────
+  // ── 1. Electron: imprime a janela principal diretamente ──────────
+  // Mais confiável que abrir uma janela oculta — a main window já está
+  // visível, autenticada e com a página carregada.
+  // Sidebar e barra de ações têm print:hidden → só o conteúdo do relatório
+  // aparece no PDF.
   if (typeof window !== 'undefined' && window.electronAPI?.isElectron) {
-    const result = await window.electronAPI.gerarPdf({
-      pageUrl: window.location.href,
-    })
+    const result = await window.electronAPI.printMainWindowPdf()
     if (!result.success || !result.data) {
       throw new Error(result.error ?? 'Erro ao gerar PDF no Electron')
     }
-    // Buffer Node.js → ArrayBuffer (copia para evitar SharedArrayBuffer)
+    // Buffer Node.js → ArrayBuffer
     const bytes = result.data as unknown as Uint8Array
     const ab = new ArrayBuffer(bytes.byteLength)
     new Uint8Array(ab).set(bytes)

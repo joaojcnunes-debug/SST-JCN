@@ -1,5 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import path from 'path'
+import { writeFileSync } from 'fs'
+import { tmpdir } from 'os'
 import { ChildProcess, spawn } from 'child_process'
 import { gerarPdfElectron } from './services/pdfService'
 import { closeDb } from './services/database/sqlite'
@@ -14,17 +16,24 @@ let nextServerProcess: ChildProcess | null = null
 // ── Next.js standalone server (produção) ─────────────────────────
 
 async function startNextServer(): Promise<void> {
-  const serverScript = path.join(app.getAppPath(), '.next', 'standalone', 'server.js')
+  // process.resourcesPath aponta para a pasta resources/ fora do asar.
+  // .next/standalone fica em extraResources (não empacotado no asar) para que
+  // spawn + ELECTRON_RUN_AS_NODE=1 (Node puro) possa ler os arquivos reais.
+  const standaloneDir = path.join(process.resourcesPath, '.next', 'standalone')
+  const serverScript = path.join(standaloneDir, 'server.js')
 
   return new Promise<void>((resolve) => {
     nextServerProcess = spawn(process.execPath, [serverScript], {
       env: {
         ...process.env,
+        ELECTRON_RUN_AS_NODE: '1',  // força modo Node.js puro (não Electron)
         PORT: String(SERVER_PORT),
         HOSTNAME: '127.0.0.1',
         NODE_ENV: 'production',
       },
+      cwd: standaloneDir,
       stdio: 'pipe',
+      windowsHide: true,
     })
 
     nextServerProcess.stdout?.on('data', (chunk: Buffer) => {
@@ -99,7 +108,42 @@ ipcMain.handle(
   },
 )
 
+// Imprime a janela principal diretamente — evita criar janela oculta.
+// Funciona sempre que a main window estiver visível e carregada.
+ipcMain.handle('print-main-window-pdf', async () => {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return { success: false, error: 'Janela principal não disponível' }
+  }
+  try {
+    const buffer = await mainWindow.webContents.printToPDF({
+      pageSize: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+      displayHeaderFooter: false,
+      landscape: false,
+      margins: { marginType: 'none' },
+    })
+    return { success: true, data: buffer }
+  } catch (err) {
+    console.error('[PDF main-window]', err)
+    return { success: false, error: err instanceof Error ? err.message : String(err) }
+  }
+})
+
 ipcMain.handle('get-version', () => app.getVersion())
+
+// Salva buffer de PDF em arquivo temp e abre no leitor padrão do sistema.
+// Necessário no Electron porque blob: URLs não podem ser abertas externamente.
+ipcMain.handle('abrir-pdf', async (_event, bytes: Uint8Array) => {
+  try {
+    const tmpFile = path.join(tmpdir(), `painel-sst-${Date.now()}.pdf`)
+    writeFileSync(tmpFile, Buffer.from(bytes))
+    await shell.openPath(tmpFile)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) }
+  }
+})
 
 ipcMain.handle('selecionar-certificado', async (_event) => {
   const result = await dialog.showOpenDialog(mainWindow!, {

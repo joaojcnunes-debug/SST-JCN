@@ -6,24 +6,26 @@ directories:
   output: dist
   buildResources: electron/assets
 
-# Arquivos incluídos no pacote final
+# Arquivos empacotados no app.asar (código Electron compilado)
 files:
   - electron-dist/**/*
-  - .next/standalone/**/*
-  - .next/static/**/*
-  - public/**/*
   - package.json
   - "!node_modules/.cache/**"
   - "!**/*.map"
   - "!electron/**"
   - "!src/**"
 
-# Recursos adicionais copiados para resources/
+# Recursos copiados para resources/ FORA do asar.
+# O servidor Next.js (server.js) precisa estar fora do asar para ser executado
+# via spawn + ELECTRON_RUN_AS_NODE=1 (Node puro sem patching de asar).
+# Layout: resources/.next/standalone/ com static e public na posição que o server.js espera.
 extraResources:
+  - from: .next/standalone
+    to: .next/standalone
   - from: .next/static
-    to: .next/static
+    to: .next/standalone/.next/static
   - from: public
-    to: public
+    to: .next/standalone/public
 
 win:
   target:
