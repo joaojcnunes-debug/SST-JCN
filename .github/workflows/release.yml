@@ -56,6 +56,6 @@ jobs:
 
       - name: Build e publicar no GitHub Releases
         if: steps.version.outputs.changed == 'true'
-        run: npx electron-builder --win --publish always
+        run: npm run electron:release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
