@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import path from 'path'
 import { writeFileSync } from 'fs'
 import { tmpdir } from 'os'
@@ -156,9 +157,49 @@ ipcMain.handle('selecionar-certificado', async (_event) => {
 
 // ── Ciclo de vida ─────────────────────────────────────────────────
 
+// ── Auto-update ───────────────────────────────────────────────────
+
+function setupAutoUpdater(): void {
+  autoUpdater.autoDownload = true
+  autoUpdater.autoInstallOnAppQuit = true
+
+  autoUpdater.on('update-available', (info) => {
+    dialog.showMessageBox(mainWindow!, {
+      type: 'info',
+      title: 'Nova versão disponível',
+      message: `Versão ${info.version} encontrada. Baixando em segundo plano...`,
+      buttons: ['OK'],
+    })
+  })
+
+  autoUpdater.on('update-downloaded', (info) => {
+    dialog.showMessageBox(mainWindow!, {
+      type: 'info',
+      title: 'Atualização pronta',
+      message: `Versão ${info.version} pronta para instalar.\nDeseja reiniciar o aplicativo agora?`,
+      buttons: ['Reiniciar agora', 'Depois'],
+      defaultId: 0,
+    }).then(({ response }) => {
+      if (response === 0) autoUpdater.quitAndInstall(false, true)
+    })
+  })
+
+  autoUpdater.on('error', (err) => {
+    console.error('[Updater]', err.message)
+  })
+
+  // Verifica após 5s — garante que a janela principal já carregou
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.error('[Updater] falha ao verificar:', err.message)
+    })
+  }, 5_000)
+}
+
 app.whenReady().then(async () => {
   if (!isDev) await startNextServer()
   createMainWindow()
+  if (!isDev) setupAutoUpdater()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createMainWindow()

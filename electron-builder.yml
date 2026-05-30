@@ -43,5 +43,6 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: "Painel SST"
 
-# Auto-update: configurar repositório quando disponível
-publish: null
+publish:
+  provider: generic
+  url: https://vifatwpfqhhantordxlq.supabase.co/storage/v1/object/public/atualizacoes

@@ -1,6 +1,6 @@
 {
   "name": "painel-sst",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "main": "electron-dist/main.js",
   "scripts": {
@@ -12,7 +12,8 @@
     "electron:compile": "tsc -p electron/tsconfig.json",
     "electron:dev": "concurrently -k -n NEXT,ELECTRON -c cyan,blue \"next dev\" \"wait-on http://localhost:3000 && npm run electron:compile && cross-env NODE_ENV=development node scripts/launch-electron.js .\"",
     "electron:build": "next build && npm run electron:compile && electron-builder --win",
-    "electron:rebuild": "electron-rebuild -f -w better-sqlite3"
+    "electron:rebuild": "electron-rebuild -f -w better-sqlite3",
+    "electron:publish": "node scripts/publish-update.js"
   },
   "dependencies": {
     "@signpdf/placeholder-pdf-lib": "^3.3.0",
