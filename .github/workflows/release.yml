@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: windows-latest
@@ -51,12 +54,8 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         run: npm ci
 
-      - name: Build Electron
+      - name: Build e publicar no GitHub Releases
         if: steps.version.outputs.changed == 'true'
-        run: npm run electron:build
-
-      - name: Publicar no Supabase Storage
-        if: steps.version.outputs.changed == 'true'
-        run: node scripts/publish-update.js
+        run: npx electron-builder --win --publish always
         env:
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

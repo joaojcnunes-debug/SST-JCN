@@ -44,5 +44,6 @@ nsis:
   shortcutName: "Painel SST"
 
 publish:
-  provider: generic
-  url: https://vifatwpfqhhantordxlq.supabase.co/storage/v1/object/public/atualizacoes
+  provider: github
+  owner: joaojefferson-hash
+  repo: Painel-SST--Chabra
