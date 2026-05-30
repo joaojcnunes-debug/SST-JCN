@@ -439,6 +439,11 @@ function InicioContent() {
 
         <p className="mt-10 text-center text-xs text-white/50">
           © {new Date().getFullYear()} Chabra · Sistemas Internos
+          {process.env.NEXT_PUBLIC_APP_VERSION && (
+            <span className="ml-2 opacity-60">
+              v{process.env.NEXT_PUBLIC_APP_VERSION}
+            </span>
+          )}
         </p>
       </main>
     </div>
