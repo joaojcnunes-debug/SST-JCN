@@ -56,7 +56,7 @@ jobs:
 
       - name: Build Electron (sem publicar)
         if: steps.version.outputs.changed == 'true'
-        run: npm run electron:build
+        run: npx next build && npm run electron:compile && npx electron-builder --win --publish never
 
       - name: Publicar no GitHub Releases
         if: steps.version.outputs.changed == 'true'
