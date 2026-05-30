@@ -54,8 +54,24 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         run: npm ci
 
-      - name: Build e publicar no GitHub Releases
+      - name: Build Electron (sem publicar)
         if: steps.version.outputs.changed == 'true'
-        run: npm run electron:release
+        run: npm run electron:build
+
+      - name: Publicar no GitHub Releases
+        if: steps.version.outputs.changed == 'true'
+        shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $installer = "dist/Painel SST Setup $version.exe"
+          $blockmap  = "dist/Painel SST Setup $version.exe.blockmap"
+          $yml       = "dist/latest.yml"
+
+          Write-Host "Criando release v$version..."
+          gh release create "v$version" `
+            --title "Painel SST v$version" `
+            --notes "Release automático v$version" `
+            "$installer" "$blockmap" "$yml"
+          Write-Host "Release v$version publicado com sucesso."
