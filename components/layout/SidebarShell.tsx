@@ -119,6 +119,9 @@ export default function SidebarShell({
     } catch {
       // ignora falha de rede
     }
+    // Limpa credenciais salvas para que o auto-login não reentrar imediatamente
+    const api = (window as Window & { electronAPI?: { clearCredentials?: () => Promise<void> } }).electronAPI;
+    await api?.clearCredentials?.();
     logout();
     toast.success("Sessão encerrada");
     router.replace("/login");
