@@ -76,7 +76,10 @@ function createMainWindow(): void {
       webSecurity: true,
     },
     show: false,
+    autoHideMenuBar: true,
   })
+
+  mainWindow.setMenu(null)
 
   mainWindow.loadURL(getAppUrl())
 
