@@ -113,15 +113,15 @@ export default function SidebarShell({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   async function handleLogout() {
+    // Limpa credenciais ANTES do signOut para evitar race com onAuthStateChange
+    const api = (window as Window & { electronAPI?: { clearCredentials?: () => Promise<void> } }).electronAPI;
+    await api?.clearCredentials?.();
     try {
       const supabase = createSupabaseBrowserClient();
       await supabase.auth.signOut();
     } catch {
       // ignora falha de rede
     }
-    // Limpa credenciais salvas para que o auto-login não reentrar imediatamente
-    const api = (window as Window & { electronAPI?: { clearCredentials?: () => Promise<void> } }).electronAPI;
-    await api?.clearCredentials?.();
     logout();
     toast.success("Sessão encerrada");
     router.replace("/login");
