@@ -70,4 +70,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Remove credenciais salvas */
   clearCredentials: () =>
     ipcRenderer.invoke('clear-credentials') as Promise<void>,
+
+  /** Baixa o instalador de uma versão via GitHub Releases, salva em Downloads */
+  downloadUpdateFile: (version: string) =>
+    ipcRenderer.invoke('download-update-file', version) as Promise<{
+      success: boolean
+      path?: string
+      error?: string
+    }>,
+
+  /** Executa o instalador via shell.openPath */
+  runInstallerFile: (filePath: string) =>
+    ipcRenderer.invoke('run-installer-file', filePath) as Promise<{
+      success: boolean
+      error?: string
+    }>,
+
+  /** Progresso do download in-app (0–100) */
+  onDownloadProgress: (cb: (info: { percent: number }) => void) => {
+    ipcRenderer.on('download-progress', (_event, info) => cb(info))
+  },
 })

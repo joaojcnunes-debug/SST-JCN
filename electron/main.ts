@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, safeStorage } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, net } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import path from 'path'
 import { writeFileSync, existsSync, readFileSync, unlinkSync } from 'fs'
@@ -196,6 +196,45 @@ ipcMain.handle('clear-credentials', () => {
     const file = CREDS_FILE()
     if (existsSync(file)) unlinkSync(file)
   } catch {}
+})
+
+// Download in-app do instalador via GitHub Releases
+ipcMain.handle('download-update-file', async (_event, version: string) => {
+  const assetName = `Painel SST Setup ${version}.exe`
+  const url = `https://github.com/joaojefferson-hash/Painel-SST--Chabra/releases/download/v${version}/${encodeURIComponent(assetName)}`
+  const dest = path.join(app.getPath('downloads'), assetName)
+
+  try {
+    const response = await net.fetch(url)
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+    const total = parseInt(response.headers.get('content-length') ?? '0', 10)
+    const reader = response.body!.getReader()
+    const chunks: Buffer[] = []
+    let received = 0
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      chunks.push(Buffer.from(value))
+      received += value.length
+      if (total > 0) {
+        mainWindow?.webContents.send('download-progress', {
+          percent: Math.round((received / total) * 100),
+        })
+      }
+    }
+
+    writeFileSync(dest, Buffer.concat(chunks))
+    return { success: true, path: dest }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) }
+  }
+})
+
+ipcMain.handle('run-installer-file', async (_event, filePath: string) => {
+  const err = await shell.openPath(filePath)
+  return { success: !err, error: err || undefined }
 })
 
 // ── Ciclo de vida ─────────────────────────────────────────────────
