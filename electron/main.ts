@@ -198,7 +198,26 @@ ipcMain.handle('clear-credentials', () => {
   } catch {}
 })
 
-// Download in-app do instalador a partir de qualquer URL (Supabase Storage)
+// Consulta GitHub API e retorna a URL de download do .exe do release mais recente
+ipcMain.handle('get-installer-url', async () => {
+  try {
+    const resp = await net.fetch(
+      'https://api.github.com/repos/joaojefferson-hash/Painel-SST--Chabra/releases/latest',
+      { headers: { 'User-Agent': 'PainelSST-Updater', 'Accept': 'application/vnd.github.v3+json' } }
+    )
+    if (!resp.ok) throw new Error(`GitHub API HTTP ${resp.status}`)
+    const release = await resp.json() as {
+      assets: Array<{ name: string; browser_download_url: string }>
+    }
+    const asset = release.assets.find((a) => a.name.endsWith('.exe'))
+    if (!asset) throw new Error('Instalador .exe não encontrado no release')
+    return { success: true, url: asset.browser_download_url }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) }
+  }
+})
+
+// Download in-app do instalador a partir de uma URL direta
 ipcMain.handle('download-update-file', async (_event, url: string) => {
   const dest = path.join(app.getPath('downloads'), 'PainelSST-Setup.exe')
 

@@ -3,9 +3,6 @@
 import { useEffect, useState } from "react";
 import { Download, RefreshCw, X, Loader2 } from "lucide-react";
 
-const INSTALLER_URL =
-  "https://vifatwpfqhhantordxlq.supabase.co/storage/v1/object/public/updates/PainelSST-Setup.exe";
-
 type UpdateState =
   | { status: "available"; version: string }
   | { status: "ready"; version: string }
@@ -16,7 +13,8 @@ type ElectronAPI = {
   onUpdateAvailable?: (cb: (info: { version: string }) => void) => void;
   onUpdateDownloaded?: (cb: (info: { version: string }) => void) => void;
   onDownloadProgress?: (cb: (info: { percent: number }) => void) => void;
-  downloadUpdateFile?: (version: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+  getInstallerUrl?: () => Promise<{ success: boolean; url?: string; error?: string }>;
+  downloadUpdateFile?: (url: string) => Promise<{ success: boolean; path?: string; error?: string }>;
   runInstallerFile?: (path: string) => Promise<{ success: boolean; error?: string }>;
   installUpdate?: () => void;
 };
@@ -59,9 +57,14 @@ export default function UpdateBanner() {
 
     setUpdate({ status: "downloading", version: update.version, percent: 0 });
 
-    const result = await api.downloadUpdateFile(INSTALLER_URL);
+    const urlResult = await api.getInstallerUrl?.();
+    if (!urlResult?.success || !urlResult.url) {
+      setUpdate({ status: "available", version: update.version });
+      return;
+    }
 
-    if (!result.success || !result.path) {
+    const result = await api.downloadUpdateFile?.(urlResult.url);
+    if (!result?.success || !result.path) {
       setUpdate({ status: "available", version: update.version });
       return;
     }

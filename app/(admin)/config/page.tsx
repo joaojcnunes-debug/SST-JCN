@@ -36,9 +36,6 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId, cn } from "@/lib/utils";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 
-const INSTALLER_URL =
-  "https://vifatwpfqhhantordxlq.supabase.co/storage/v1/object/public/updates/PainelSST-Setup.exe";
-
 type TabKey =
   | "matrizes"
   | "tiposRisco"
@@ -429,6 +426,7 @@ type DownloadState =
 
 type ElectronAPI = {
   getVersion?: () => Promise<string>;
+  getInstallerUrl?: () => Promise<{ success: boolean; url?: string; error?: string }>;
   downloadUpdateFile?: (url: string) => Promise<{ success: boolean; path?: string; error?: string }>;
   runInstallerFile?: (path: string) => Promise<{ success: boolean; error?: string }>;
   onDownloadProgress?: (cb: (info: { percent: number }) => void) => void;
@@ -458,11 +456,16 @@ function AtualizacaoTab() {
 
   async function handleDownload() {
     const api = getElectronAPI();
-    if (!api?.downloadUpdateFile) return;
+    if (!api) return;
     setDlState({ status: "downloading", percent: 0 });
-    const result = await api.downloadUpdateFile(INSTALLER_URL);
-    if (!result.success || !result.path) {
-      setDlState({ status: "error", message: result.error ?? "Falha no download" });
+    const urlResult = await api.getInstallerUrl?.();
+    if (!urlResult?.success || !urlResult.url) {
+      setDlState({ status: "error", message: urlResult?.error ?? "Não foi possível obter a URL do instalador" });
+      return;
+    }
+    const result = await api.downloadUpdateFile?.(urlResult.url);
+    if (!result?.success || !result.path) {
+      setDlState({ status: "error", message: result?.error ?? "Falha no download" });
       return;
     }
     setDlState({ status: "installing" });

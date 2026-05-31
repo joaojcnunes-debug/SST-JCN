@@ -71,7 +71,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   clearCredentials: () =>
     ipcRenderer.invoke('clear-credentials') as Promise<void>,
 
-  /** Baixa o instalador de uma URL (ex: Supabase Storage), salva em Downloads */
+  /** Consulta GitHub API e retorna a URL de download do .exe mais recente */
+  getInstallerUrl: () =>
+    ipcRenderer.invoke('get-installer-url') as Promise<{ success: boolean; url?: string; error?: string }>,
+
+  /** Baixa o instalador de uma URL direta, salva em Downloads */
   downloadUpdateFile: (url: string) =>
     ipcRenderer.invoke('download-update-file', url) as Promise<{
       success: boolean
