@@ -113,7 +113,8 @@ export default function SidebarShell({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   async function handleLogout() {
-    // Limpa credenciais ANTES do signOut para evitar race com onAuthStateChange
+    // Sinaliza ao login para não fazer auto-login nesta navegação
+    sessionStorage.setItem("intentional-logout", "1");
     const api = (window as Window & { electronAPI?: { clearCredentials?: () => Promise<void> } }).electronAPI;
     await api?.clearCredentials?.();
     try {

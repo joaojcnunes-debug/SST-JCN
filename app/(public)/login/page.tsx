@@ -46,6 +46,12 @@ function LoginInner() {
     if (autoTriedRef.current) return;
     autoTriedRef.current = true;
 
+    // Logout intencional — não faz auto-login
+    if (sessionStorage.getItem("intentional-logout")) {
+      sessionStorage.removeItem("intentional-logout");
+      return;
+    }
+
     const api = getElectron();
     if (!api?.loadCredentials) return;
 
