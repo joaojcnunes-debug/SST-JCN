@@ -198,11 +198,9 @@ ipcMain.handle('clear-credentials', () => {
   } catch {}
 })
 
-// Download in-app do instalador via GitHub Releases
-ipcMain.handle('download-update-file', async (_event, version: string) => {
-  const assetName = `Painel SST Setup ${version}.exe`
-  const url = `https://github.com/joaojefferson-hash/Painel-SST--Chabra/releases/download/v${version}/${encodeURIComponent(assetName)}`
-  const dest = path.join(app.getPath('downloads'), assetName)
+// Download in-app do instalador a partir de qualquer URL (Supabase Storage)
+ipcMain.handle('download-update-file', async (_event, url: string) => {
+  const dest = path.join(app.getPath('downloads'), 'PainelSST-Setup.exe')
 
   try {
     const response = await net.fetch(url)

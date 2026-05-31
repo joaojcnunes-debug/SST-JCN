@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { Download, RefreshCw, X, Loader2 } from "lucide-react";
 
+const INSTALLER_URL =
+  "https://vifatwpfqhhantordxlq.supabase.co/storage/v1/object/public/updates/PainelSST-Setup.exe";
+
 type UpdateState =
   | { status: "available"; version: string }
   | { status: "ready"; version: string }
@@ -56,14 +59,9 @@ export default function UpdateBanner() {
 
     setUpdate({ status: "downloading", version: update.version, percent: 0 });
 
-    const result = await api.downloadUpdateFile(update.version);
+    const result = await api.downloadUpdateFile(INSTALLER_URL);
 
     if (!result.success || !result.path) {
-      // Fallback: abre GitHub no browser se o download falhar
-      (window as Window & { electronAPI?: { openExternal?: (url: string) => void } })
-        .electronAPI?.openExternal?.(
-          `https://github.com/joaojefferson-hash/Painel-SST--Chabra/releases/latest`
-        );
       setUpdate({ status: "available", version: update.version });
       return;
     }

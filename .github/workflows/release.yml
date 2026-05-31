@@ -78,3 +78,25 @@ jobs:
             --notes "Release automático v$version" `
             "$installer" "$blockmap" "$yml"
           Write-Host "Release v$version publicado com sucesso."
+
+      - name: Publicar instalador no Supabase Storage
+        if: steps.version.outputs.changed == 'true'
+        shell: pwsh
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $installer = "dist/Painel SST Setup $version.exe"
+          $uploadUrl = "$env:SUPABASE_URL/storage/v1/object/updates/PainelSST-Setup.exe"
+
+          Write-Host "Enviando instalador ao Supabase Storage..."
+          Invoke-RestMethod -Method Post `
+            -Uri "$uploadUrl`?upsert=true" `
+            -Headers @{
+              "Authorization" = "Bearer $env:SUPABASE_SERVICE_KEY"
+              "Content-Type"  = "application/octet-stream"
+              "x-upsert"      = "true"
+            } `
+            -InFile $installer
+          Write-Host "Upload concluido: PainelSST-Setup.exe"

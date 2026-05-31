@@ -18,6 +18,9 @@ import {
   HelpCircle,
   Layers,
   BookText,
+  Download,
+  Loader2,
+  RefreshCw,
 } from "lucide-react";
 import TiposRiscoTab from "@/components/config/TiposRiscoTab";
 import PerguntasTab from "@/components/config/PerguntasTab";
@@ -33,6 +36,9 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId, cn } from "@/lib/utils";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 
+const INSTALLER_URL =
+  "https://vifatwpfqhhantordxlq.supabase.co/storage/v1/object/public/updates/PainelSST-Setup.exe";
+
 type TabKey =
   | "matrizes"
   | "tiposRisco"
@@ -43,7 +49,8 @@ type TabKey =
   | "niveis"
   | "logo"
   | "assinatura"
-  | "textosPadrao";
+  | "textosPadrao"
+  | "atualizacao";
 
 export default function ConfigPage() {
   const router = useRouter();
@@ -72,6 +79,7 @@ export default function ConfigPage() {
     { key: "logo" as TabKey, label: "Logo da Empresa", icon: ImageIcon },
     { key: "assinatura" as TabKey, label: "Assinatura da Empresa", icon: Upload },
     { key: "textosPadrao" as TabKey, label: "Textos Padrão", icon: BookText },
+    { key: "atualizacao" as TabKey, label: "Atualização", icon: Download },
   ];
 
   if (isLoading || !configs) return <LoadingSkeleton rows={8} />;
@@ -132,6 +140,7 @@ export default function ConfigPage() {
           {tab === "assinatura" && <AssinaturaEmpresaUpload configs={configs} />}
 
           {tab === "textosPadrao" && <TextosPadraoTab />}
+          {tab === "atualizacao" && <AtualizacaoTab />}
         </div>
       </div>
     </div>
@@ -404,6 +413,141 @@ function NiveisView() {
           );
         })}
       </div>
+    </section>
+  );
+}
+
+// =============================================================
+// Atualização do sistema
+// =============================================================
+
+type DownloadState =
+  | { status: "idle" }
+  | { status: "downloading"; percent: number }
+  | { status: "installing" }
+  | { status: "error"; message: string };
+
+type ElectronAPI = {
+  getVersion?: () => Promise<string>;
+  downloadUpdateFile?: (url: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+  runInstallerFile?: (path: string) => Promise<{ success: boolean; error?: string }>;
+  onDownloadProgress?: (cb: (info: { percent: number }) => void) => void;
+};
+
+function getElectronAPI(): ElectronAPI | undefined {
+  return (window as Window & { electronAPI?: ElectronAPI }).electronAPI;
+}
+
+function AtualizacaoTab() {
+  const [appVersion, setAppVersion] = useState<string | null>(null);
+  const [dlState, setDlState] = useState<DownloadState>({ status: "idle" });
+  const isElectron = typeof window !== "undefined" && !!getElectronAPI();
+
+  useEffect(() => {
+    const api = getElectronAPI();
+    if (!api) return;
+    api.getVersion?.().then(setAppVersion);
+    api.onDownloadProgress?.((info) => {
+      setDlState((prev) =>
+        prev.status === "downloading"
+          ? { status: "downloading", percent: info.percent }
+          : prev
+      );
+    });
+  }, []);
+
+  async function handleDownload() {
+    const api = getElectronAPI();
+    if (!api?.downloadUpdateFile) return;
+    setDlState({ status: "downloading", percent: 0 });
+    const result = await api.downloadUpdateFile(INSTALLER_URL);
+    if (!result.success || !result.path) {
+      setDlState({ status: "error", message: result.error ?? "Falha no download" });
+      return;
+    }
+    setDlState({ status: "installing" });
+    await api.runInstallerFile?.(result.path);
+    setDlState({ status: "idle" });
+  }
+
+  return (
+    <section className="space-y-5">
+      <div>
+        <h2 className="text-base font-semibold text-gray-900">Atualização do Sistema</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Baixe e instale a versão mais recente do Painel SST diretamente aqui, sem precisar acessar nenhum site.
+        </p>
+      </div>
+
+      {appVersion && (
+        <div className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5">
+          <RefreshCw className="size-4 text-gray-400" />
+          <span className="text-sm text-gray-600">
+            Versão instalada: <span className="font-mono font-semibold text-gray-900">v{appVersion}</span>
+          </span>
+        </div>
+      )}
+
+      {!isElectron ? (
+        <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
+          Esta opção está disponível apenas no aplicativo desktop instalado.
+        </p>
+      ) : (
+        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+          <p className="text-sm text-gray-600">
+            O instalador será baixado e executado automaticamente. O programa será atualizado e reiniciado.
+          </p>
+
+          {dlState.status === "idle" && (
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="inline-flex items-center gap-2 rounded-lg bg-verde-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+            >
+              <Download className="size-4" />
+              Baixar e instalar versão mais recente
+            </button>
+          )}
+
+          {dlState.status === "downloading" && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-gray-700">Baixando instalador…</span>
+                <span className="font-mono text-gray-500">{dlState.percent}%</span>
+              </div>
+              <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200">
+                <div
+                  className="h-full rounded-full bg-verde-primary transition-all duration-300"
+                  style={{ width: `${dlState.percent}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500">Aguarde. Não feche o programa durante o download.</p>
+            </div>
+          )}
+
+          {dlState.status === "installing" && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Loader2 className="size-4 animate-spin text-verde-primary" />
+              Abrindo instalador… siga as instruções na tela.
+            </div>
+          )}
+
+          {dlState.status === "error" && (
+            <div className="space-y-3">
+              <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                Erro no download: {dlState.message}
+              </p>
+              <button
+                type="button"
+                onClick={() => setDlState({ status: "idle" })}
+                className="text-sm font-medium text-verde-primary hover:underline"
+              >
+                Tentar novamente
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
