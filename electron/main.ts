@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, safeStorage } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import path from 'path'
-import { writeFileSync } from 'fs'
+import { writeFileSync, existsSync, readFileSync, unlinkSync } from 'fs'
 import { tmpdir } from 'os'
 import { ChildProcess, spawn } from 'child_process'
 import { gerarPdfElectron } from './services/pdfService'
@@ -164,6 +164,38 @@ ipcMain.handle('open-external', (_event, url: string) => {
 
 ipcMain.handle('install-update', () => {
   autoUpdater.quitAndInstall(false, true)
+})
+
+const CREDS_FILE = () => path.join(app.getPath('userData'), 'saved-creds.bin')
+
+ipcMain.handle('save-credentials', (_event, email: string, password: string) => {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return { success: false }
+    const encrypted = safeStorage.encryptString(JSON.stringify({ email, password }))
+    writeFileSync(CREDS_FILE(), encrypted)
+    return { success: true }
+  } catch {
+    return { success: false }
+  }
+})
+
+ipcMain.handle('load-credentials', () => {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return null
+    const file = CREDS_FILE()
+    if (!existsSync(file)) return null
+    const decrypted = safeStorage.decryptString(readFileSync(file))
+    return JSON.parse(decrypted) as { email: string; password: string }
+  } catch {
+    return null
+  }
+})
+
+ipcMain.handle('clear-credentials', () => {
+  try {
+    const file = CREDS_FILE()
+    if (existsSync(file)) unlinkSync(file)
+  } catch {}
 })
 
 // ── Ciclo de vida ─────────────────────────────────────────────────

@@ -1,12 +1,22 @@
 "use client";
 
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useState, useEffect, useRef, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
+
+type ElectronAPI = {
+  loadCredentials?: () => Promise<{ email: string; password: string } | null>;
+  saveCredentials?: (email: string, password: string) => Promise<{ success: boolean }>;
+  clearCredentials?: () => Promise<void>;
+};
+
+function getElectron(): ElectronAPI | undefined {
+  return (window as Window & { electronAPI?: ElectronAPI }).electronAPI;
+}
 
 export default function LoginPage() {
   return (
@@ -21,38 +31,63 @@ function LoginInner() {
   const params = useSearchParams();
   const setUser = useUserStore((s) => s.setUser);
   const { data: configs } = useConfiguracoes();
+
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const [autoLogging, setAutoLogging] = useState(false);
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!email || !senha) {
-      toast.error("Informe email e senha");
-      return;
-    }
+  const autoTriedRef = useRef(false);
+
+  // Auto-login: tenta com credenciais salvas na primeira renderização
+  useEffect(() => {
+    if (autoTriedRef.current) return;
+    autoTriedRef.current = true;
+
+    const api = getElectron();
+    if (!api?.loadCredentials) return;
+
+    api.loadCredentials().then((saved) => {
+      if (!saved) return;
+      setEmail(saved.email);
+      setSenha(saved.password);
+      setRememberMe(true);
+      setAutoLogging(true);
+      doLogin(saved.email, saved.password, true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function doLogin(emailVal: string, senhaVal: string, remember: boolean) {
     setLoading(true);
     try {
       const supabase = createSupabaseBrowserClient();
       const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password: senha,
+        email: emailVal.trim().toLowerCase(),
+        password: senhaVal,
       });
 
       if (error) {
+        setAutoLogging(false);
         toast.error(
           error.message === "Invalid login credentials"
             ? "Email ou senha incorretos"
             : error.message
         );
+        // Credenciais salvas inválidas — limpa para não loop de erro
+        if (remember) {
+          getElectron()?.clearCredentials?.();
+          setRememberMe(false);
+        }
         return;
       }
 
       const { data: perfilRaw, error: perfilError } = await supabase
         .from("usuarios")
         .select("*")
-        .eq("email", email.trim().toLowerCase())
+        .eq("email", emailVal.trim().toLowerCase())
         .single();
 
       const perfil = perfilRaw as
@@ -60,30 +95,65 @@ function LoginInner() {
         | null;
 
       if (perfilError || !perfil) {
-        toast.error(
-          "Login válido, mas usuário não cadastrado na tabela 'usuarios'"
-        );
+        setAutoLogging(false);
+        toast.error("Login válido, mas usuário não cadastrado na tabela 'usuarios'");
         await supabase.auth.signOut();
         return;
       }
 
       if (perfil.ativo_sistema === false) {
+        setAutoLogging(false);
         toast.error("Este usuário está inativo. Contate um administrador.");
         await supabase.auth.signOut();
         return;
       }
 
+      // Salva ou limpa credenciais conforme a opção escolhida
+      const api = getElectron();
+      if (remember) {
+        await api?.saveCredentials?.(emailVal.trim().toLowerCase(), senhaVal);
+      } else {
+        await api?.clearCredentials?.();
+      }
+
       setUser(perfil);
-      toast.success(`Bem-vindo, ${perfil.nome}!`);
       const raw = params.get("next") ?? "";
       const next = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/inicio";
       router.replace(next);
     } catch (err) {
+      setAutoLogging(false);
       const msg = err instanceof Error ? err.message : "Erro ao entrar";
       toast.error(msg);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!email || !senha) {
+      toast.error("Informe email e senha");
+      return;
+    }
+    await doLogin(email, senha, rememberMe);
+  }
+
+  // Tela de auto-login — mostra spinner enquanto autentica em background
+  if (autoLogging) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{
+          background:
+            "linear-gradient(135deg, #1e4d28 0%, #006B54 60%, #00835A 100%)",
+        }}
+      >
+        <div className="flex flex-col items-center gap-4 text-white/80">
+          <Loader2 className="size-8 animate-spin" />
+          <p className="text-sm">Entrando automaticamente...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -149,6 +219,19 @@ function LoginInner() {
               </button>
             </div>
           </div>
+
+          {/* Só exibe "Manter conectado" dentro do app Electron */}
+          {typeof window !== "undefined" && getElectron() && (
+            <label className="flex cursor-pointer items-center gap-2 select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="size-4 accent-verde-primary"
+              />
+              <span className="text-sm text-gray-600">Manter conectado</span>
+            </label>
+          )}
 
           <button
             type="submit"

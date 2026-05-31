@@ -58,4 +58,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onUpdateDownloaded: (cb: (info: { version: string }) => void) => {
     ipcRenderer.on('update-downloaded', (_event, info) => cb(info))
   },
+
+  /** Salva credenciais criptografadas via safeStorage do OS */
+  saveCredentials: (email: string, password: string) =>
+    ipcRenderer.invoke('save-credentials', email, password) as Promise<{ success: boolean }>,
+
+  /** Carrega credenciais salvas (null se não houver) */
+  loadCredentials: () =>
+    ipcRenderer.invoke('load-credentials') as Promise<{ email: string; password: string } | null>,
+
+  /** Remove credenciais salvas */
+  clearCredentials: () =>
+    ipcRenderer.invoke('clear-credentials') as Promise<void>,
 })
