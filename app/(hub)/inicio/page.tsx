@@ -249,6 +249,9 @@ function InicioContent() {
   const primeiroNome = user?.nome ? user.nome.split(" ")[0] : "";
 
   async function handleLogout() {
+    sessionStorage.setItem("intentional-logout", "1");
+    const api = (window as Window & { electronAPI?: { clearCredentials?: () => Promise<void> } }).electronAPI;
+    await api?.clearCredentials?.();
     try {
       const supabase = createSupabaseBrowserClient();
       await supabase.auth.signOut();
