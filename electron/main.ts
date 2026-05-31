@@ -158,6 +158,14 @@ ipcMain.handle('selecionar-certificado', async (_event) => {
   return result.canceled ? null : result.filePaths[0]
 })
 
+ipcMain.handle('open-external', (_event, url: string) => {
+  shell.openExternal(url)
+})
+
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall(false, true)
+})
+
 // ── Ciclo de vida ─────────────────────────────────────────────────
 
 // ── Auto-update ───────────────────────────────────────────────────
@@ -167,24 +175,11 @@ function setupAutoUpdater(): void {
   autoUpdater.autoInstallOnAppQuit = true
 
   autoUpdater.on('update-available', (info) => {
-    dialog.showMessageBox(mainWindow!, {
-      type: 'info',
-      title: 'Nova versão disponível',
-      message: `Versão ${info.version} encontrada. Baixando em segundo plano...`,
-      buttons: ['OK'],
-    })
+    mainWindow?.webContents.send('update-available', { version: info.version })
   })
 
   autoUpdater.on('update-downloaded', (info) => {
-    dialog.showMessageBox(mainWindow!, {
-      type: 'info',
-      title: 'Atualização pronta',
-      message: `Versão ${info.version} pronta para instalar.\nDeseja reiniciar o aplicativo agora?`,
-      buttons: ['Reiniciar agora', 'Depois'],
-      defaultId: 0,
-    }).then(({ response }) => {
-      if (response === 0) autoUpdater.quitAndInstall(false, true)
-    })
+    mainWindow?.webContents.send('update-downloaded', { version: info.version })
   })
 
   autoUpdater.on('error', (err) => {

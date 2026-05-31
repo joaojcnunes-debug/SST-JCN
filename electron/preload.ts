@@ -40,4 +40,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Abre diálogo nativo para selecionar arquivo .pfx/.p12 */
   selecionarCertificado: () =>
     ipcRenderer.invoke('selecionar-certificado') as Promise<string | null>,
+
+  /** Abre URL no navegador padrão do sistema */
+  openExternal: (url: string) =>
+    ipcRenderer.invoke('open-external', url) as Promise<void>,
+
+  /** Instala update baixado e reinicia o app */
+  installUpdate: () =>
+    ipcRenderer.invoke('install-update') as Promise<void>,
+
+  /** Listener: nova versão disponível para download */
+  onUpdateAvailable: (cb: (info: { version: string }) => void) => {
+    ipcRenderer.on('update-available', (_event, info) => cb(info))
+  },
+
+  /** Listener: update baixado e pronto para instalar */
+  onUpdateDownloaded: (cb: (info: { version: string }) => void) => {
+    ipcRenderer.on('update-downloaded', (_event, info) => cb(info))
+  },
 })

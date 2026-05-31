@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Providers from "@/lib/providers";
+import UpdateBanner from "@/components/UpdateBanner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -20,7 +21,10 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={inter.variable}>
       <body className="font-sans antialiased">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <UpdateBanner />
+        </Providers>
       </body>
     </html>
   );
