@@ -18,13 +18,11 @@ import {
   HelpCircle,
   Layers,
   BookText,
-  FileClock,
 } from "lucide-react";
 import TiposRiscoTab from "@/components/config/TiposRiscoTab";
 import PerguntasTab from "@/components/config/PerguntasTab";
 import MatrizesTab from "@/components/config/MatrizesTab";
 import TextosPadraoTab from "@/components/config/TextosPadraoTab";
-import PdfsGeradosTab from "@/components/config/PdfsGeradosTab";
 import toast from "react-hot-toast";
 import MatrizRisco from "@/components/riscos/MatrizRisco";
 import { PROBABILIDADES, SEVERIDADES } from "@/lib/utils";
@@ -45,8 +43,7 @@ type TabKey =
   | "niveis"
   | "logo"
   | "assinatura"
-  | "textosPadrao"
-  | "pdfsGerados";
+  | "textosPadrao";
 
 export default function ConfigPage() {
   const router = useRouter();
@@ -75,7 +72,6 @@ export default function ConfigPage() {
     { key: "logo" as TabKey, label: "Logo da Empresa", icon: ImageIcon },
     { key: "assinatura" as TabKey, label: "Assinatura da Empresa", icon: Upload },
     { key: "textosPadrao" as TabKey, label: "Textos Padrão", icon: BookText },
-    { key: "pdfsGerados" as TabKey, label: "PDFs Gerados", icon: FileClock },
   ];
 
   if (isLoading || !configs) return <LoadingSkeleton rows={8} />;
@@ -136,8 +132,6 @@ export default function ConfigPage() {
           {tab === "assinatura" && <AssinaturaEmpresaUpload configs={configs} />}
 
           {tab === "textosPadrao" && <TextosPadraoTab />}
-
-          {tab === "pdfsGerados" && <PdfsGeradosTab />}
         </div>
       </div>
     </div>

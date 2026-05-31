@@ -19,6 +19,7 @@ import {
   ClipboardList,
   ClipboardCheck,
   BookOpen,
+  FileClock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
@@ -354,36 +355,45 @@ function InicioContent() {
           </div>
         ) : categoriaAtiva === null ? (
           /* ── Nível 1: seleção de categoria ── */
-          <div
-            className={cn(
-              "grid w-full gap-5",
-              "grid-cols-1",
-              CATEGORIES.filter((c) => cardsDisponiveis.some((d) => d.categoria === c.id)).length === 2 && "sm:grid-cols-2 max-w-3xl",
-              CATEGORIES.filter((c) => cardsDisponiveis.some((d) => d.categoria === c.id)).length >= 3 && "sm:grid-cols-2 lg:grid-cols-3 max-w-5xl",
-            )}
-          >
-            {CATEGORIES.map((cat) => {
-              const catCards = cardsDisponiveis.filter((c) => c.categoria === cat.id);
-              if (catCards.length === 0) return null;
-              const cfg = CATEGORY_CONFIG[cat.id];
-              return (
-                <CategoryCard
-                  key={cat.id}
-                  label={cat.label}
-                  icon={cfg.icon}
-                  descricao={cfg.descricao}
-                  accent={cfg.accent}
-                  totalModulos={catCards.length}
-                  pendentes={catCards.reduce(
-                    (sum, c) => sum + (statsPorModulo(stats, c.modulo)?.pendente ?? 0),
-                    0
-                  )}
-                  isLoading={stats.isLoading}
-                  onClick={() => router.push(`/inicio?c=${cat.id}`)}
-                />
-              );
-            })}
-          </div>
+          (() => {
+            const visibleCats = CATEGORIES.filter((c) => cardsDisponiveis.some((d) => d.categoria === c.id));
+            const totalCards = visibleCats.length + (isAdmin ? 1 : 0);
+            return (
+              <div
+                className={cn(
+                  "grid w-full gap-5",
+                  "grid-cols-1",
+                  totalCards === 2 && "sm:grid-cols-2 max-w-3xl",
+                  totalCards === 3 && "sm:grid-cols-2 lg:grid-cols-3 max-w-5xl",
+                  totalCards >= 4 && "sm:grid-cols-2 lg:grid-cols-4 max-w-7xl",
+                )}
+              >
+                {visibleCats.map((cat) => {
+                  const catCards = cardsDisponiveis.filter((c) => c.categoria === cat.id);
+                  const cfg = CATEGORY_CONFIG[cat.id];
+                  return (
+                    <CategoryCard
+                      key={cat.id}
+                      label={cat.label}
+                      icon={cfg.icon}
+                      descricao={cfg.descricao}
+                      accent={cfg.accent}
+                      totalModulos={catCards.length}
+                      pendentes={catCards.reduce(
+                        (sum, c) => sum + (statsPorModulo(stats, c.modulo)?.pendente ?? 0),
+                        0
+                      )}
+                      isLoading={stats.isLoading}
+                      onClick={() => router.push(`/inicio?c=${cat.id}`)}
+                    />
+                  );
+                })}
+                {isAdmin && (
+                  <PdfDirectCard />
+                )}
+              </div>
+            );
+          })()
         ) : (
           /* ── Nível 2: módulos da categoria selecionada ── */
           <div className="w-full max-w-6xl">
@@ -481,6 +491,43 @@ function statsPorModulo(
     default:
       return undefined;
   }
+}
+
+function PdfDirectCard() {
+  return (
+    <Link
+      href="/pdfs-gerados"
+      className="group flex w-full flex-col gap-4 rounded-2xl bg-white p-6 text-left shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
+    >
+      <div className="flex items-start gap-4">
+        <div
+          className="flex size-16 shrink-0 items-center justify-center rounded-2xl text-white shadow-md transition-transform group-hover:scale-105"
+          style={{ backgroundColor: "#64748B" }}
+        >
+          <FileClock className="size-12" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-gray-900">PDFs Gerados</h2>
+          <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
+            Histórico de todos os PDFs gerados pelo sistema, com download e status de assinatura
+          </p>
+        </div>
+      </div>
+      <div className="flex min-h-[40px] items-center gap-2 border-t border-gray-100 pt-3 text-xs">
+        <span
+          className="rounded-full px-2 py-0.5 font-semibold text-white"
+          style={{ backgroundColor: "#64748B" }}
+        >
+          Histórico
+        </span>
+        <span className="text-gray-500">Todos os módulos</span>
+        <ArrowRight
+          className="ml-auto size-4 transition-transform group-hover:translate-x-1"
+          style={{ color: "#64748B" }}
+        />
+      </div>
+    </Link>
+  );
 }
 
 function HubCard({

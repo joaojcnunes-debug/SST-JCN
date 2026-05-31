@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { type ReactNode } from "react";
-import { Users, Settings } from "lucide-react";
+import { Users, Settings, FileClock } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -14,6 +14,7 @@ const sections: NavSection[] = [
     items: [
       { href: "/usuarios", label: "Usuários", icon: Users },
       { href: "/config", label: "Configurações", icon: Settings },
+      { href: "/pdfs-gerados", label: "PDFs Gerados", icon: FileClock },
     ],
   },
 ];
@@ -21,6 +22,7 @@ const sections: NavSection[] = [
 const TITULOS: Record<string, string> = {
   "/usuarios": "Usuários",
   "/config": "Configurações",
+  "/pdfs-gerados": "PDFs Gerados",
 };
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
