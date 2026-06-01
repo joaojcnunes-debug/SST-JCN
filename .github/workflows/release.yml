@@ -1,81 +1,46 @@
-name: Build & Release Desktop
+name: Build e Release Electron
 
 on:
   push:
     branches: [main]
 
-permissions:
-  contents: write
-
 jobs:
-  release:
-    runs-on: windows-latest
-
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.ver.outputs.changed }}
+      version: ${{ steps.ver.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 2
-
-      - name: Verificar se versão mudou
-        id: version
-        shell: pwsh
+      - id: ver
         run: |
-          $pkg = Get-Content package.json | ConvertFrom-Json
-          $version = $pkg.version
+          CURR=$(jq -r '.version' package.json)
+          PREV=$(git show HEAD~1:package.json 2>/dev/null | jq -r '.version' 2>/dev/null || echo "0.0.0")
+          echo "version=$CURR" >> $GITHUB_OUTPUT
+          if [ "$CURR" != "$PREV" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
 
-          try {
-            $prevContent = git show HEAD~1:package.json 2>$null
-            $prevPkg = $prevContent | ConvertFrom-Json
-            $prevVersion = $prevPkg.version
-          } catch {
-            $prevVersion = "0.0.0"
-          }
+  release:
+    needs: check-version
+    if: needs.check-version.outputs.changed == 'true'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
 
-          Write-Host "Versão atual: $version | Anterior: $prevVersion"
-
-          if ($version -ne $prevVersion) {
-            "changed=true" >> $env:GITHUB_OUTPUT
-            "version=$version" >> $env:GITHUB_OUTPUT
-            Write-Host "Versão mudou — iniciando build."
-          } else {
-            "changed=false" >> $env:GITHUB_OUTPUT
-            Write-Host "Versão não mudou — pulando build."
-          }
-
-      - name: Setup Node.js
-        if: steps.version.outputs.changed == 'true'
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: 20
+          cache: npm
 
-      - name: Instalar dependências
-        if: steps.version.outputs.changed == 'true'
+      - name: Instalar dependencias
         run: npm ci
 
-      - name: Build Electron (sem publicar)
-        if: steps.version.outputs.changed == 'true'
+      - name: Build e publish
+        run: npm run electron:release
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-        run: npx next build && npm run electron:compile && npx electron-builder --win --publish never
-
-      - name: Publicar no GitHub Releases
-        if: steps.version.outputs.changed == 'true'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: |
-          $version = (Get-Content package.json | ConvertFrom-Json).version
-          $installer = "dist/Painel SST Setup $version.exe"
-          $blockmap  = "dist/Painel SST Setup $version.exe.blockmap"
-          $yml       = "dist/latest.yml"
-
-          Write-Host "Criando release v$version..."
-          gh release create "v$version" `
-            --title "Painel SST v$version" `
-            --notes "Release automático v$version" `
-            "$installer" "$blockmap" "$yml"
-          Write-Host "Release v$version publicado com sucesso."
-
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
