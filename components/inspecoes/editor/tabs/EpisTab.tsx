@@ -117,6 +117,7 @@ export default function EpisTab({
                     <th className="px-4 py-2 text-left font-medium">Descrição</th>
                     <th className="px-4 py-2 text-left font-medium">CA</th>
                     <th className="px-4 py-2 text-left font-medium">Recomendado</th>
+                    <th className="px-4 py-2 text-left font-medium">Fotos</th>
                     <th className="px-4 py-2 text-right font-medium">Ações</th>
                   </tr>
                 </thead>
@@ -133,6 +134,30 @@ export default function EpisTab({
                       </td>
                       <td className="px-4 py-2 text-gray-600">{e.ca ?? "—"}</td>
                       <td className="px-4 py-2 text-gray-600">{e.recomendado ?? "—"}</td>
+                      <td className="px-4 py-2">
+                        {e.fotos_urls && e.fotos_urls.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {e.fotos_urls.map((url, i) => (
+                              <a
+                                key={i}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={`Foto ${i + 1}`}
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={url}
+                                  alt={`Foto ${i + 1}`}
+                                  className="h-9 w-9 rounded border border-gray-200 object-cover hover:opacity-80"
+                                />
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2">
                         <div className="flex justify-end gap-1">
                           {!readOnly && (

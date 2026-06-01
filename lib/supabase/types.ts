@@ -456,6 +456,8 @@ export interface EpiEpc {
   descricao: string;
   ca: string | null;
   recomendado: "Sim" | "Não" | null;
+  fotos_urls: string[];
+  fotos_storage_paths: string[];
   created_at?: string;
 }
 
@@ -527,8 +529,8 @@ export interface Extintor {
   data_validade: string | null;
   status: string | null;
   observacoes: string | null;
-  foto_url: string | null;
-  foto_storage_path: string | null;
+  fotos_urls: string[];
+  fotos_storage_paths: string[];
   ordem: number;
   ativo: boolean;
   created_at?: string;

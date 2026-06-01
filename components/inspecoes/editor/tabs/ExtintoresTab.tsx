@@ -268,29 +268,33 @@ function ExtintorCard({
             </span>
           )}
 
-          {e.observacoes && (
+            {e.observacoes && (
             <p className="mt-2 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-700">
               <strong>Obs:</strong> {e.observacoes}
             </p>
           )}
-        </div>
 
-        {e.foto_url && (
-          <a
-            href={e.foto_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0"
-            title="Ver foto"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={e.foto_url}
-              alt="Foto do extintor"
-              className="h-16 w-16 rounded-lg border border-gray-200 object-cover hover:opacity-90"
-            />
-          </a>
-        )}
+          {e.fotos_urls && e.fotos_urls.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {e.fotos_urls.map((url, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Foto ${i + 1}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt={`Foto ${i + 1}`}
+                    className="h-14 w-14 rounded-lg border border-gray-200 object-cover hover:opacity-80"
+                  />
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
 
         {!readOnly && (
           <div className="flex shrink-0 items-center gap-1">

@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
+import FotoSlots, { uploadFotoSlots, type FotoSlot } from "@/components/ui/FotoSlots";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { useTipoIcone } from "@/lib/hooks/useV3";
@@ -16,6 +17,14 @@ interface Props {
   idEmpresa: string;
   riscos: Risco[];
   epi?: EpiEpc | null;
+}
+
+function buildSlots(urls: string[], paths: string[]): (FotoSlot | null)[] {
+  const base: (FotoSlot | null)[] = [null, null, null, null];
+  urls.forEach((url, i) => {
+    if (i < 4) base[i] = { type: "existing", url, path: paths[i] ?? "" };
+  });
+  return base;
 }
 
 export default function EpiForm({
@@ -36,6 +45,7 @@ export default function EpiForm({
     ca: "",
     recomendado: "Sim" as "Sim" | "Não",
   });
+  const [slots, setSlots] = useState<(FotoSlot | null)[]>([null, null, null, null]);
 
   useEffect(() => {
     if (open) {
@@ -46,6 +56,7 @@ export default function EpiForm({
         ca: epi?.ca ?? "",
         recomendado: (epi?.recomendado as "Sim" | "Não") ?? "Sim",
       });
+      setSlots(buildSlots(epi?.fotos_urls ?? [], epi?.fotos_storage_paths ?? []));
     }
   }, [open, epi, riscos]);
 
@@ -53,6 +64,17 @@ export default function EpiForm({
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
       const r = riscos.find((x) => x.id_risco === form.id_risco);
+      const idProtecao = epi?.id_protecao ?? gerarId("EPI");
+
+      const { urls, paths } = await uploadFotoSlots(
+        supabase,
+        slots,
+        epi?.fotos_storage_paths ?? [],
+        "fotos",
+        `epi_epc/${idEmpresa}/${idInspecao}`,
+        gerarId,
+      );
+
       const payload = {
         id_risco: form.id_risco,
         tipo: form.tipo,
@@ -60,7 +82,10 @@ export default function EpiForm({
         ca: form.ca.trim() || null,
         recomendado: form.recomendado,
         id_setor: r?.id_setor ?? null,
+        fotos_urls: urls,
+        fotos_storage_paths: paths,
       };
+
       if (isEdit && epi) {
         const { error } = await supabase
           .from("epi_epc")
@@ -69,7 +94,7 @@ export default function EpiForm({
         if (error) throw error;
       } else {
         const row = {
-          id_protecao: gerarId("EPI"),
+          id_protecao: idProtecao,
           id_inspecao: idInspecao,
           id_empresa: idEmpresa,
           ...payload,
@@ -173,6 +198,18 @@ export default function EpiForm({
             className={inputCls}
           />
         </div>
+
+        {/* Fotos — até 4 */}
+        <div>
+          <label className={lblCls}>
+            Fotos{" "}
+            <span className="text-xs font-normal text-gray-500">(até 4)</span>
+          </label>
+          <div className="mt-1">
+            <FotoSlots slots={slots} onChange={setSlots} max={4} />
+          </div>
+        </div>
+
         <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
           <button
             type="button"
@@ -186,7 +223,11 @@ export default function EpiForm({
             disabled={mutation.isPending}
             className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
           >
-            {mutation.isPending ? "Salvando..." : isEdit ? "Salvar" : "Adicionar"}
+            {mutation.isPending
+              ? "Salvando..."
+              : isEdit
+              ? "Salvar"
+              : "Adicionar"}
           </button>
         </div>
       </form>

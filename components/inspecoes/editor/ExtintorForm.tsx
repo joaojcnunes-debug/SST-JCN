@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, X } from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
+import FotoSlots, { uploadFotoSlots, type FotoSlot } from "@/components/ui/FotoSlots";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import type { Extintor, Setor } from "@/lib/supabase/types";
@@ -41,6 +41,14 @@ const STATUS_OPCOES = [
   "Lacre violado",
 ];
 
+function buildSlots(urls: string[], paths: string[]): (FotoSlot | null)[] {
+  const base: (FotoSlot | null)[] = [null, null, null, null];
+  urls.forEach((url, i) => {
+    if (i < 4) base[i] = { type: "existing", url, path: paths[i] ?? "" };
+  });
+  return base;
+}
+
 export default function ExtintorForm({
   open,
   onClose,
@@ -50,7 +58,6 @@ export default function ExtintorForm({
   setores,
 }: Props) {
   const qc = useQueryClient();
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const [idSetor, setIdSetor] = useState<string>("");
   const [tipoAgente, setTipoAgente] = useState("");
@@ -61,11 +68,7 @@ export default function ExtintorForm({
   const [status, setStatus] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [ordem, setOrdem] = useState(99);
-
-  // Foto: arquivo novo (File) ou URL existente já salva no DB
-  const [fotoFile, setFotoFile] = useState<File | null>(null);
-  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
+  const [slots, setSlots] = useState<(FotoSlot | null)[]>([null, null, null, null]);
 
   useEffect(() => {
     if (!open) return;
@@ -78,25 +81,10 @@ export default function ExtintorForm({
     setStatus(editing?.status ?? "");
     setObservacoes(editing?.observacoes ?? "");
     setOrdem(editing?.ordem ?? 99);
-    setFotoFile(null);
-    setFotoPreview(editing?.foto_url ?? null);
-    setProgress(0);
+    setSlots(
+      buildSlots(editing?.fotos_urls ?? [], editing?.fotos_storage_paths ?? []),
+    );
   }, [open, editing]);
-
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0] ?? null;
-    setFotoFile(f);
-    if (f) {
-      const url = URL.createObjectURL(f);
-      setFotoPreview(url);
-    }
-  }
-
-  function removerFoto() {
-    setFotoFile(null);
-    setFotoPreview(null);
-    if (fileRef.current) fileRef.current.value = "";
-  }
 
   const save = useMutation({
     mutationFn: async () => {
@@ -105,40 +93,14 @@ export default function ExtintorForm({
       const supabase = createSupabaseBrowserClient();
       const idExtintor = editing?.id_extintor ?? gerarId("EXT");
 
-      let fotoUrl: string | null = editing?.foto_url ?? null;
-      let fotoStoragePath: string | null = editing?.foto_storage_path ?? null;
-
-      // Se removeu a foto (preview null) e havia uma antes
-      const removeu = !fotoPreview && !!editing?.foto_url;
-
-      if (fotoFile) {
-        // Upload novo arquivo
-        const ext = fotoFile.name.split(".").pop() ?? "jpg";
-        const path = `extintores/${idEmpresa}/${idInspecao}/${idExtintor}.${ext}`;
-
-        // Apaga arquivo anterior se existia em path diferente
-        if (editing?.foto_storage_path && editing.foto_storage_path !== path) {
-          await supabase.storage.from("fotos").remove([editing.foto_storage_path]);
-        }
-
-        setProgress(20);
-        const { error: upErr } = await supabase.storage
-          .from("fotos")
-          .upload(path, fotoFile, { upsert: true });
-        if (upErr) throw upErr;
-        setProgress(70);
-
-        const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
-        fotoUrl = pub.publicUrl;
-        fotoStoragePath = path;
-      } else if (removeu) {
-        // Usuário clicou em "remover" sem nova foto
-        if (editing?.foto_storage_path) {
-          await supabase.storage.from("fotos").remove([editing.foto_storage_path]);
-        }
-        fotoUrl = null;
-        fotoStoragePath = null;
-      }
+      const { urls, paths } = await uploadFotoSlots(
+        supabase,
+        slots,
+        editing?.fotos_storage_paths ?? [],
+        "fotos",
+        `extintores/${idEmpresa}/${idInspecao}`,
+        gerarId,
+      );
 
       const payload = {
         id_extintor: idExtintor,
@@ -152,8 +114,8 @@ export default function ExtintorForm({
         data_validade: dataValidade || null,
         status: status.trim() || null,
         observacoes: observacoes.trim() || null,
-        foto_url: fotoUrl,
-        foto_storage_path: fotoStoragePath,
+        fotos_urls: urls,
+        fotos_storage_paths: paths,
         ordem,
         ativo: editing?.ativo ?? true,
         updated_at: new Date().toISOString(),
@@ -163,7 +125,6 @@ export default function ExtintorForm({
         .from("extintores")
         .upsert(payload as never, { onConflict: "id_extintor" });
       if (error) throw error;
-      setProgress(100);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
@@ -308,69 +269,18 @@ export default function ExtintorForm({
           />
         </div>
 
-        {/* Foto */}
+        {/* Fotos — até 4 */}
         <div>
-          <label className={lblCls}>Foto do extintor</label>
-          {fotoPreview ? (
-            <div className="mt-1 flex items-start gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={fotoPreview}
-                alt="Preview"
-                className="h-28 w-28 rounded-lg border border-gray-200 object-cover"
-              />
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  <ImagePlus className="size-3.5" /> Trocar foto
-                </button>
-                <button
-                  type="button"
-                  onClick={removerFoto}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100"
-                >
-                  <X className="size-3.5" /> Remover foto
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 py-6 text-sm text-gray-500 hover:border-verde-primary hover:bg-verde-light hover:text-verde-primary"
-            >
-              <ImagePlus className="size-5" />
-              Clique para adicionar uma foto
-            </button>
-          )}
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            onChange={onFileChange}
-            className="hidden"
-          />
-          {fotoFile && (
-            <p className="mt-1 text-xs text-gray-500">
-              {fotoFile.name} · {(fotoFile.size / 1024).toFixed(0)} KB
-            </p>
-          )}
-        </div>
-
-        {save.isPending && progress > 0 && progress < 100 && (
-          <div>
-            <p className="text-xs text-gray-500">Enviando... {progress}%</p>
-            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-200">
-              <div
-                className="h-full bg-verde-primary transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+          <label className={lblCls}>
+            Fotos{" "}
+            <span className="text-xs font-normal text-gray-500">
+              (até 4)
+            </span>
+          </label>
+          <div className="mt-1">
+            <FotoSlots slots={slots} onChange={setSlots} max={4} />
           </div>
-        )}
+        </div>
 
         <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
           <button
