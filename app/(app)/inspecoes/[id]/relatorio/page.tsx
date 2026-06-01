@@ -13,6 +13,7 @@ import {
   Camera,
   Briefcase,
   ShieldCheck,
+  Flame,
 } from "lucide-react";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
@@ -40,6 +41,7 @@ import { NIVEL_CONFIG } from "@/lib/constants";
 import { useTipoIcone } from "@/lib/hooks/useV3";
 import type {
   EpiEpc,
+  Extintor,
   Foto,
   NivelRisco,
   PaeContato,
@@ -138,6 +140,19 @@ export default function RelatorioChabraPage({ params }: Props) {
       }
     }
 
+    // Extintores por setor
+    const extintoresPorSetor = new Map<string, Extintor[]>();
+    const extintoresGerais: Extintor[] = [];
+    for (const e of data.extintores) {
+      if (e.id_setor) {
+        const arr = extintoresPorSetor.get(e.id_setor) ?? [];
+        arr.push(e);
+        extintoresPorSetor.set(e.id_setor, arr);
+      } else {
+        extintoresGerais.push(e);
+      }
+    }
+
     return {
       setores: setoresOrdenados,
       naoConformes,
@@ -148,6 +163,8 @@ export default function RelatorioChabraPage({ params }: Props) {
       cargosPorSetor,
       fotosPorSetor,
       fotosGerais,
+      extintoresPorSetor,
+      extintoresGerais,
     };
   }, [data]);
 
@@ -468,6 +485,7 @@ export default function RelatorioChabraPage({ params }: Props) {
             cargos={ctx.cargosPorSetor.get(setor.id_setor) ?? []}
             riscosPorTipo={ctx.riscosPorSetor.get(setor.id_setor) ?? new Map()}
             fotos={ctx.fotosPorSetor.get(setor.id_setor) ?? []}
+            extintores={ctx.extintoresPorSetor.get(setor.id_setor) ?? []}
             episPorRisco={ctx.episPorRisco}
             perguntasMap={perguntasMap}
           />
@@ -490,9 +508,21 @@ export default function RelatorioChabraPage({ params }: Props) {
             cargos={[]}
             riscosPorTipo={ctx.riscosPorSetor.get("_sem_setor") ?? new Map()}
             fotos={[]}
+            extintores={[]}
             episPorRisco={ctx.episPorRisco}
             perguntasMap={perguntasMap}
           />
+        )}
+
+        {/* Extintores sem setor específico */}
+        {ctx.extintoresGerais.length > 0 && (
+          <section className="secao-setor border-t border-gray-200 px-8 py-6 md:px-12">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
+              <Flame className="size-4 text-red-600" />
+              Extintores — Geral / sem setor específico
+            </h3>
+            <ExtintoresGrid extintores={ctx.extintoresGerais} />
+          </section>
         )}
 
         {/* ============================================================
@@ -644,6 +674,7 @@ function SetorBlock({
   cargos,
   riscosPorTipo,
   fotos,
+  extintores,
   episPorRisco,
   perguntasMap,
 }: {
@@ -651,6 +682,7 @@ function SetorBlock({
   cargos: Cargo[];
   riscosPorTipo: Map<string, Risco[]>;
   fotos: Foto[];
+  extintores: Extintor[];
   episPorRisco: Map<string, EpiEpc[]>;
   perguntasMap: Map<string, string>;
 }) {
@@ -723,6 +755,17 @@ function SetorBlock({
               <FotoCard key={f.id_foto} foto={f} />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Extintores do setor — NR-23 */}
+      {extintores.length > 0 && (
+        <div className="mb-3">
+          <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-gray-900">
+            <Flame className="size-3.5 text-red-600" />
+            Extintores de Incêndio — NR-23 ({extintores.length})
+          </h3>
+          <ExtintoresGrid extintores={extintores} />
         </div>
       )}
 
@@ -1002,25 +1045,38 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
               <ShieldCheck className="size-3 text-verde-primary" />
               EPIs vinculados a este risco ({epis.length})
             </p>
-            <ul className="space-y-1">
+            <ul className="space-y-2">
               {epis.map((e) => (
-                <li
-                  key={e.id_protecao}
-                  className="grid grid-cols-[60px_1fr] gap-x-2"
-                >
-                  <span className="text-gray-500">
-                    {e.recomendado === "Sim" || !e.recomendado
-                      ? "RECOMENDADO"
-                      : "—"}
-                  </span>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {e.tipo} — {e.descricao || "não especificado"}
-                    </p>
-                    <p className="text-[10px] text-gray-500">
-                      CA: {e.ca || "não informado"}
-                    </p>
+                <li key={e.id_protecao}>
+                  <div className="grid grid-cols-[60px_1fr] gap-x-2">
+                    <span className="text-gray-500">
+                      {e.recomendado === "Sim" || !e.recomendado
+                        ? "RECOMENDADO"
+                        : "—"}
+                    </span>
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {e.tipo} — {e.descricao || "não especificado"}
+                      </p>
+                      <p className="text-[10px] text-gray-500">
+                        CA: {e.ca || "não informado"}
+                      </p>
+                    </div>
                   </div>
+                  {e.fotos_urls && e.fotos_urls.length > 0 && (
+                    <div className="mt-1.5 grid grid-cols-2 gap-1 w-fit mx-auto">
+                      {e.fotos_urls.map((url, i) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={i}
+                          src={url}
+                          alt={`${e.tipo} foto ${i + 1}`}
+                          className="h-20 w-20 rounded border border-gray-200 object-cover"
+                          referrerPolicy="no-referrer"
+                        />
+                      ))}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -1145,6 +1201,95 @@ function ListaMedidasRelatorio({
         <li key={i}>{m}</li>
       ))}
     </ul>
+  );
+}
+
+// =============================================================
+// EXTINTORES — grid de cards com foto 2×2 centralizada
+// =============================================================
+
+const STATUS_COR_REL: Record<string, string> = {
+  "Adequado": "border-green-300 bg-green-50 text-green-800",
+  "Vencido": "border-red-300 bg-red-50 text-red-700",
+  "A vencer (próx. 3 meses)": "border-amber-300 bg-amber-50 text-amber-800",
+  "Danificado": "border-red-300 bg-red-50 text-red-700",
+  "Sinalização inadequada": "border-orange-300 bg-orange-50 text-orange-800",
+  "Lacre violado": "border-orange-300 bg-orange-50 text-orange-800",
+};
+
+function ExtintoresGrid({ extintores }: { extintores: Extintor[] }) {
+  return (
+    <div className="space-y-2">
+      {extintores.map((e) => {
+        const statusCor = e.status ? (STATUS_COR_REL[e.status] ?? "border-gray-200 bg-gray-50 text-gray-700") : null;
+        const critico = e.status === "Vencido" || e.status === "Danificado" || e.status === "Lacre violado";
+        const temFotos = e.fotos_urls && e.fotos_urls.length > 0;
+
+        return (
+          <div
+            key={e.id_extintor}
+            className={`rounded-lg border bg-white px-3 py-2.5 text-[11px] ${critico ? "border-red-300" : "border-gray-200"}`}
+          >
+            <div className={`flex gap-3 ${temFotos ? "items-start" : "items-center"}`}>
+              {/* Ícone */}
+              <div className={`shrink-0 rounded p-1.5 ${critico ? "bg-red-100 text-red-700" : "bg-red-50 text-red-600"}`}>
+                <Flame className="size-4" />
+              </div>
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <p className="font-semibold text-gray-900">{e.tipo_agente}</p>
+                  {e.capacidade && (
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-700">
+                      {e.capacidade}
+                    </span>
+                  )}
+                  {e.numero_identificacao && (
+                    <span className="text-gray-500">Nº {e.numero_identificacao}</span>
+                  )}
+                </div>
+                <div className="mt-0.5 flex flex-wrap gap-x-3 text-gray-600">
+                  {e.localizacao && <span>📍 {e.localizacao}</span>}
+                  {e.data_validade && (
+                    <span>
+                      Validade:{" "}
+                      {new Date(e.data_validade + "T00:00:00").toLocaleDateString("pt-BR")}
+                    </span>
+                  )}
+                </div>
+                {e.status && statusCor && (
+                  <span className={`mt-1 inline-flex rounded border px-1.5 py-0.5 text-[10px] font-medium ${statusCor}`}>
+                    {e.status}
+                  </span>
+                )}
+                {e.observacoes && (
+                  <p className="mt-1 text-gray-600 italic">{e.observacoes}</p>
+                )}
+              </div>
+
+              {/* Fotos 2×2 centralizadas */}
+              {temFotos && (
+                <div className="shrink-0">
+                  <div className="grid grid-cols-2 gap-1">
+                    {e.fotos_urls!.slice(0, 4).map((url, i) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={i}
+                        src={url}
+                        alt={`Extintor foto ${i + 1}`}
+                        className="h-[60px] w-[60px] rounded border border-gray-200 object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
