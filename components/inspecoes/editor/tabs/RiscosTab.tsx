@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, ChevronDown, LayoutList, LayoutGrid } from "lucide-react";
+import { Plus, ChevronDown, LayoutList, LayoutGrid, Pencil, Copy, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import RiscoForm from "../RiscoForm";
@@ -145,6 +145,10 @@ export default function RiscosTab({
           riscos={riscos}
           setores={setores}
           iconeDe={iconeDe}
+          readOnly={readOnly}
+          onEdit={(risco) => { setEditing(risco); setFormOpen(true); }}
+          onCopy={(risco) => setCopiando(risco)}
+          onDelete={(risco) => setConfirm(risco)}
         />
       ) : (
         tiposOrdenados.map((tipo) => {
@@ -252,10 +256,18 @@ function QuadroRiscoSetor({
   riscos,
   setores,
   iconeDe,
+  readOnly,
+  onEdit,
+  onCopy,
+  onDelete,
 }: {
   riscos: Risco[];
   setores: Setor[];
   iconeDe: (tipo: string) => string;
+  readOnly?: boolean;
+  onEdit?: (r: Risco) => void;
+  onCopy?: (r: Risco) => void;
+  onDelete?: (r: Risco) => void;
 }) {
   const [openSetores, setOpenSetores] = useState<Record<string, boolean>>({});
 
@@ -308,6 +320,7 @@ function QuadroRiscoSetor({
                       <th className="px-4 py-2 text-left font-medium">Probabilidade</th>
                       <th className="px-4 py-2 text-left font-medium">Severidade</th>
                       <th className="px-4 py-2 text-left font-medium">Nível</th>
+                      {!readOnly && <th className="px-4 py-2 text-right font-medium">Ações</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -329,6 +342,36 @@ function QuadroRiscoSetor({
                             <span className="text-gray-400">—</span>
                           )}
                         </td>
+                        {!readOnly && (
+                          <td className="px-4 py-2.5">
+                            <div className="flex justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => onEdit?.(r)}
+                                className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                                title="Editar"
+                              >
+                                <Pencil className="size-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onCopy?.(r)}
+                                className="rounded p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-700"
+                                title="Copiar para outro setor ou empresa"
+                              >
+                                <Copy className="size-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => onDelete?.(r)}
+                                className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                                title="Excluir"
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -355,6 +398,7 @@ function QuadroRiscoSetor({
                   <th className="px-4 py-2 text-left font-medium">Agente</th>
                   <th className="px-4 py-2 text-left font-medium">Tipo</th>
                   <th className="px-4 py-2 text-left font-medium">Nível</th>
+                  {!readOnly && <th className="px-4 py-2 text-right font-medium">Ações</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-100">
@@ -368,6 +412,36 @@ function QuadroRiscoSetor({
                     <td className="px-4 py-2.5">
                       {r.nivel_risco ? <NivelBadge nivel={r.nivel_risco} /> : <span className="text-gray-400">—</span>}
                     </td>
+                    {!readOnly && (
+                      <td className="px-4 py-2.5">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onEdit?.(r)}
+                            className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                            title="Editar"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onCopy?.(r)}
+                            className="rounded p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-700"
+                            title="Copiar para outro setor ou empresa"
+                          >
+                            <Copy className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onDelete?.(r)}
+                            className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                            title="Excluir"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
