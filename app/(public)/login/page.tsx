@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useRef, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, Download } from "lucide-react";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
@@ -12,6 +12,10 @@ type ElectronAPI = {
   loadCredentials?: () => Promise<{ email: string; password: string } | null>;
   saveCredentials?: (email: string, password: string) => Promise<{ success: boolean }>;
   clearCredentials?: () => Promise<void>;
+  getVersion?: () => Promise<string>;
+  getInstallerUrl?: () => Promise<{ success: boolean; url?: string; error?: string }>;
+  downloadUpdateFile?: (url: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+  runInstallerFile?: (path: string) => Promise<{ success: boolean; error?: string }>;
 };
 
 function getElectron(): ElectronAPI | undefined {
@@ -252,7 +256,105 @@ function LoginInner() {
         <p className="mt-6 text-center text-xs text-gray-400">
           © {new Date().getFullYear()} Chabra · Painel SST
         </p>
+
+        {/* Botão de atualização manual — só aparece no Electron */}
+        {typeof window !== "undefined" && getElectron() && (
+          <UpdateButton />
+        )}
       </div>
+    </div>
+  );
+}
+
+function UpdateButton() {
+  const [state, setState] = useState<
+    "idle" | "checking" | "downloading" | "up-to-date" | "error"
+  >("idle");
+  const [percent, setPercent] = useState(0);
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
+
+  async function handleClick() {
+    const api = getElectron();
+    if (!api) return;
+
+    setState("checking");
+    try {
+      // Verifica versão disponível
+      const resp = await fetch(
+        "https://api.github.com/repos/joaojefferson-hash/Painel-SST--Chabra/releases/latest",
+        { headers: { Accept: "application/vnd.github.v3+json" } }
+      );
+      if (!resp.ok) throw new Error("Falha ao consultar GitHub");
+      const release = (await resp.json()) as { tag_name: string };
+      const remote = release.tag_name.replace(/^v/, "");
+      const current = (await api.getVersion?.()) ?? "0.0.0";
+      setLatestVersion(remote);
+
+      const [rMaj, rMin, rPatch] = remote.split(".").map(Number);
+      const [cMaj, cMin, cPatch] = current.split(".").map(Number);
+      const newer =
+        rMaj > cMaj ||
+        (rMaj === cMaj && rMin > cMin) ||
+        (rMaj === cMaj && rMin === cMin && rPatch > cPatch);
+
+      if (!newer) {
+        setState("up-to-date");
+        setTimeout(() => setState("idle"), 3000);
+        return;
+      }
+
+      // Baixa o instalador
+      setState("downloading");
+      setPercent(0);
+
+      const urlResult = await api.getInstallerUrl?.();
+      if (!urlResult?.success || !urlResult.url) throw new Error("URL não encontrada");
+
+      // Progresso via polling simples (getInstallerUrl já tem o URL)
+      const result = await api.downloadUpdateFile?.(urlResult.url);
+      if (!result?.success || !result.path) throw new Error("Falha no download");
+
+      await api.runInstallerFile?.(result.path);
+      setState("idle");
+    } catch (err) {
+      setState("error");
+      toast.error(err instanceof Error ? err.message : "Erro ao verificar atualização");
+      setTimeout(() => setState("idle"), 3000);
+    }
+  }
+
+  if (state === "downloading") {
+    return (
+      <div className="mt-4 flex flex-col items-center gap-1">
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <Loader2 className="size-3 animate-spin" />
+          Baixando v{latestVersion}… aguarde
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 flex justify-center">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={state === "checking"}
+        className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 transition-colors"
+      >
+        {state === "checking" ? (
+          <Loader2 className="size-3 animate-spin" />
+        ) : (
+          <Download className="size-3" />
+        )}
+        {state === "checking"
+          ? "Verificando…"
+          : state === "up-to-date"
+          ? "Você já tem a versão mais recente"
+          : state === "error"
+          ? "Erro — tente novamente"
+          : "Verificar atualização"}
+      </button>
     </div>
   );
 }
