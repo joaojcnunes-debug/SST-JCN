@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useMemo, useState } from "react";
 import {
   CheckCircle2,
   Loader2,
@@ -74,14 +74,11 @@ export default function ConclusaoGeralPage({
   const salvar = useDrpsSalvarRelatorio();
   const qc = useQueryClient();
 
-  const [conclusao, setConclusao] = useState("");
+  // null = sem edição local (usa valor do banco direto via relatorio)
+  // string = usuário editou ou IA gerou — override do valor do banco
+  const [localEdit, setLocalEdit] = useState<string | null>(null);
+  const conclusao = localEdit ?? (relatorio?.conclusao_geral ?? "");
   const [gerandoIA, setGerandoIA] = useState(false);
-
-  // Sincroniza sempre que o relatorio mudar (inclui remount e refetches)
-  useEffect(() => {
-    if (!relatorio) return;
-    setConclusao(relatorio.conclusao_geral ?? "");
-  }, [relatorio]);
 
   const setores = useMemo(() => listarSetores(respondentes), [respondentes]);
 
@@ -188,7 +185,7 @@ export default function ConclusaoGeralPage({
       if (!result?.conclusao) {
         throw new Error("Resposta inválida da IA — tente novamente");
       }
-      setConclusao(result.conclusao);
+      setLocalEdit(result.conclusao);
       // Cancela refetches em andamento antes de atualizar o cache (padrão optimistic update).
       // Sem isso, um refetch stale pode sobrescrever o setQueryData com valor antigo do banco.
       await qc.cancelQueries({ queryKey: ["drps-relatorio", idRelatorio] });
@@ -300,7 +297,7 @@ export default function ConclusaoGeralPage({
         )}
         <RichTextEditor
           value={conclusao}
-          onChange={setConclusao}
+          onChange={setLocalEdit}
           readOnly={!canEdit}
           uploadPathPrefix="drps-conclusao-geral"
           placeholder="Conclusão técnica consolidada do diagnóstico DRPS. Mencione os tópicos com maior matriz de risco entre os setores avaliados, articule com os agravos potenciais e cite as medidas de controle existentes. Cite NR-01 (item 1.5 - GRO/PGR) e NR-17 quando pertinente."
