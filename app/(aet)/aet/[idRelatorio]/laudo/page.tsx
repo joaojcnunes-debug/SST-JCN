@@ -225,6 +225,12 @@ export default function AetLaudoPage({
   const dataFormatada = dataElaboracao
     ? new Date(dataElaboracao + "T00:00:00").toLocaleDateString("pt-BR")
     : "—";
+
+  const dirty = responsavel !== (rel.responsavel_elaboracao ?? "")
+    || tituloProfissional !== (rel.titulo_profissional ?? "")
+    || registroProfissional !== (rel.registro_profissional ?? "")
+    || dataElaboracao !== (rel.data_elaboracao ?? "")
+    || enderecoEmpresa !== (rel.endereco_empresa ?? "");
   const empresa = rel.empresas;
 
   // ── Stats dashboard ──────────────────────────────────────────────────────
@@ -423,6 +429,8 @@ export default function AetLaudoPage({
               tabelaNome="aet_relatorios"
               docId={idRelatorio}
               label="Gerar Laudo"
+              disabled={dirty || salvar.isPending}
+              title={dirty ? "Salve as alterações antes de gerar o PDF" : undefined}
               className="inline-flex items-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white backdrop-blur transition-colors hover:bg-white/30"
               registrarPdf={{
                 modulo: "aet",
@@ -829,6 +837,7 @@ export default function AetLaudoPage({
                         tituloProfissional={tituloProfissional}
                         registroProfissional={registroProfissional}
                         idRelatorio={idRelatorio}
+                        dataRelatorio={dataElaboracao ? dataFormatada : undefined}
                       />
                     );
                     break;
@@ -979,6 +988,7 @@ export default function AetLaudoPage({
               tituloProfissional={tituloProfissional}
               registroProfissional={registroProfissional}
               idRelatorio={idRelatorio}
+              dataRelatorio={dataElaboracao ? dataFormatada : undefined}
             />
           </>
         )}
@@ -1806,16 +1816,19 @@ function AssinaturaSection({
   tituloProfissional,
   registroProfissional,
   idRelatorio,
+  dataRelatorio,
 }: {
   responsavel: string;
   tituloProfissional: string;
   registroProfissional: string;
   idRelatorio: string;
+  dataRelatorio?: string;
 }) {
   return (
     <AssinaturaRelatorio
       nomeResponsavel={responsavel ?? undefined}
       cargoResponsavel={tituloProfissional ?? undefined}
+      dataRelatorio={dataRelatorio}
       tabelaNome="aet_relatorios"
       docId={idRelatorio}
     />

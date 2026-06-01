@@ -166,6 +166,19 @@ export default function DetalheApreciacaoPage() {
   const podeFinalizar =
     apreciacao?.status === "RASCUNHO" && resumo.PENDENTE === 0;
 
+  const dirty = !!apreciacao && (
+    titulo !== (apreciacao.titulo ?? "")
+    || setor !== (apreciacao.setor ?? "")
+    || responsavel !== (apreciacao.responsavel ?? "")
+    || responsavelEmpresa !== (apreciacao.responsavel_empresa ?? "")
+    || cidade !== (apreciacao.cidade ?? "")
+    || dataApreciacao !== (apreciacao.data_apreciacao ?? "")
+    || observacoes !== (apreciacao.observacoes_gerais ?? "")
+    || conclusao !== (apreciacao.conclusao_tecnica ?? "")
+    || recomendacoes !== (apreciacao.recomendacoes ?? "")
+    || riscoResidual !== (apreciacao.risco_residual ?? "")
+  );
+
   async function handleSalvarCabecalho() {
     if (!id) return;
     try {
@@ -392,6 +405,8 @@ export default function DetalheApreciacaoPage() {
           <BotaoGerarPdf
             tabelaNome="apreciacoes_maquinas"
             docId={id}
+            disabled={dirty || atualizar.isPending}
+            title={dirty ? "Salve as alterações antes de gerar o PDF" : undefined}
             className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             registrarPdf={{
               modulo: "apreciacao_maquinas",
@@ -523,6 +538,30 @@ export default function DetalheApreciacaoPage() {
           </span>
         </div>
       </div>
+
+      {/* Textos Padrão — capítulos de introdução antes do conteúdo técnico */}
+      <TextosPadraoPrint
+        modulo="apreciacao_maquinas"
+        valores={{
+          ...montarValoresEmpresa(empresa),
+          titulo: apreciacao.titulo ?? "",
+          maquina_nome: maquinaNome,
+          setor: apreciacao.setor ?? "",
+          responsavel: apreciacao.responsavel ?? "",
+          responsavel_empresa: apreciacao.responsavel_empresa ?? "",
+          cidade: apreciacao.cidade ?? "",
+          data_apreciacao: formatarDataBR(apreciacao.data_apreciacao),
+          data_atual: new Date().toLocaleDateString("pt-BR"),
+          total_itens: String(itens.length),
+          total_nao_conforme: String(
+            itens.filter((i) => i.situacao === "NAO_CONFORME").length
+          ),
+          risco_residual: apreciacao.risco_residual ?? "",
+          carimbo: apreciacao.responsavel ?? "",
+          importado: formatarDataBR(apreciacao.created_at),
+        }}
+        posicao="inicio"
+      />
 
       {/* Seção: Dados Gerais */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
@@ -903,6 +942,7 @@ export default function DetalheApreciacaoPage() {
       <div className="print:break-inside-avoid">
         <AssinaturaRelatorio
           nomeResponsavel={apreciacao.responsavel ?? undefined}
+          dataRelatorio={formatarDataBR(apreciacao.data_apreciacao) || undefined}
           tabelaNome="apreciacoes_maquinas"
           docId={id}
         />

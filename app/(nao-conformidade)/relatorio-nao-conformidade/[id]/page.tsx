@@ -222,6 +222,7 @@ export default function DetalheNaoConformidadePage({
           <BotaoGerarPdf
             tabelaNome="relatorios_nao_conformidade"
             docId={id}
+            disabled={atualizarRelatorio.isPending}
             className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
             registrarPdf={{
               modulo: "nao_conformidade",
@@ -514,6 +515,7 @@ export default function DetalheNaoConformidadePage({
       {/* Bloco de Assinaturas */}
       <AssinaturaRelatorio
         nomeResponsavel={relatorio.responsavel ?? undefined}
+        dataRelatorio={formatarDataBR(relatorio.data_inspecao) || undefined}
         tabelaNome="relatorios_nao_conformidade"
         docId={id}
       />

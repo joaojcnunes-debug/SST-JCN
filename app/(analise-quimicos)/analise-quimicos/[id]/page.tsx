@@ -236,9 +236,25 @@ export default function AnaliseDetalhePage({
         <RelatorioEstruturado analise={analise} empresa={empresa ?? null} />
       </section>
 
+      {/* Textos Padrão — capítulos de encerramento após o relatório técnico */}
+      <TextosPadraoPrint
+        modulo="analise_quimicos"
+        valores={{
+          ...montarValoresEmpresa(empresa ?? null),
+          titulo: analise.titulo,
+          nome_quimico: analise.nome_quimico ?? "",
+          numero_cas: analise.numero_cas ?? "",
+          responsavel: analise.usuario_nome ?? "",
+          carimbo: analise.usuario_nome ?? "",
+          importado: formatarDataBR(analise.created_at),
+        }}
+        posicao="fim"
+      />
+
       {/* Bloco de assinatura */}
       <AssinaturaRelatorio
         nomeResponsavel={analise.usuario_nome ?? undefined}
+        dataRelatorio={formatarDataBR(analise.created_at) || undefined}
         tabelaNome="analises_quimicos"
         docId={id}
       />

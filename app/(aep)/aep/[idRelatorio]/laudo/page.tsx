@@ -6,7 +6,7 @@ import { useAepRelatorio, useAepTextoPadrao, CLASS_COLOR_AEP, riscoMaximoSetor }
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import { montarValoresAep } from "@/lib/textos-padrao/variaveis-aep";
-import { substituirVariaveis } from "@/lib/textos-padrao/variaveis";
+import { substituirVariaveis, formatarDataBR } from "@/lib/textos-padrao/variaveis";
 import type { AepSetor, AepChecklistFisica, AepChecklistCognitiva, AepChecklistOrganizacional } from "@/lib/supabase/types";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -332,6 +332,7 @@ export default function AepLaudoPage({
         <AssinaturaRelatorio
           nomeResponsavel={rel.responsavel_elaboracao ?? undefined}
           cargoResponsavel={rel.titulo_profissional ?? undefined}
+          dataRelatorio={formatarDataBR(rel.data_elaboracao) || undefined}
           tabelaNome="aep_relatorios"
           docId={idRelatorio}
         />
