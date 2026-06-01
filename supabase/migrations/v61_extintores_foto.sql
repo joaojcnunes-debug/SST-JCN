@@ -1,0 +1,2 @@
+ALTER TABLE extintores ADD COLUMN IF NOT EXISTS foto_url TEXT;
+ALTER TABLE extintores ADD COLUMN IF NOT EXISTS foto_storage_path TEXT;

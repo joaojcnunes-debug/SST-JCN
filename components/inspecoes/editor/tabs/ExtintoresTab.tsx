@@ -275,6 +275,23 @@ function ExtintorCard({
           )}
         </div>
 
+        {e.foto_url && (
+          <a
+            href={e.foto_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0"
+            title="Ver foto"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={e.foto_url}
+              alt="Foto do extintor"
+              className="h-16 w-16 rounded-lg border border-gray-200 object-cover hover:opacity-90"
+            />
+          </a>
+        )}
+
         {!readOnly && (
           <div className="flex shrink-0 items-center gap-1">
             <button

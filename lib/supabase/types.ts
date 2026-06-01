@@ -527,6 +527,8 @@ export interface Extintor {
   data_validade: string | null;
   status: string | null;
   observacoes: string | null;
+  foto_url: string | null;
+  foto_storage_path: string | null;
   ordem: number;
   ativo: boolean;
   created_at?: string;
