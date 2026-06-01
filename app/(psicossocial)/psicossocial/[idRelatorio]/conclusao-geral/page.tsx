@@ -173,7 +173,15 @@ export default function ConclusaoGeralPage({
           },
         }
       );
-      if (error) throw error;
+      if (error) {
+        // Extrai mensagem real do body da Edge Function (supabase-js encapsula em FunctionsHttpError)
+        let msg = error.message as string;
+        try {
+          const body = await (error as { context?: { json?: () => Promise<{ error?: string }> } }).context?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {}
+        throw new Error(msg);
+      }
       const result = (data as { data?: { conclusao?: string } } | null)?.data;
       if (!result?.conclusao) {
         throw new Error("Resposta inválida da IA — tente novamente");
