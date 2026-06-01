@@ -258,32 +258,42 @@ ipcMain.handle('run-installer-file', async (_event, filePath: string) => {
 
 // ── Auto-update ───────────────────────────────────────────────────
 
-function setupAutoUpdater(): void {
-  // Verifica via GitHub API diretamente — mais confiável que electron-updater.checkForUpdates()
-  // que depende de latest.yml e tem problemas de cache sha512 neste projeto.
-  setTimeout(async () => {
-    try {
-      const resp = await net.fetch(
-        'https://api.github.com/repos/joaojefferson-hash/Painel-SST--Chabra/releases/latest',
-        { headers: { 'User-Agent': 'PainelSST-Updater', 'Accept': 'application/vnd.github.v3+json' } }
-      )
-      if (!resp.ok) return
-      const release = await resp.json() as { tag_name: string }
-      const remoteVersion = release.tag_name.replace(/^v/, '')
-      const currentVersion = app.getVersion()
-      const [rMaj, rMin, rPatch] = remoteVersion.split('.').map(Number)
-      const [cMaj, cMin, cPatch] = currentVersion.split('.').map(Number)
-      const isNewer =
-        rMaj > cMaj ||
-        (rMaj === cMaj && rMin > cMin) ||
-        (rMaj === cMaj && rMin === cMin && rPatch > cPatch)
-      if (isNewer) {
-        mainWindow?.webContents.send('update-available', { version: remoteVersion })
-      }
-    } catch (err) {
-      console.error('[Updater] falha ao verificar:', err instanceof Error ? err.message : err)
+async function checkForUpdateGitHub(): Promise<void> {
+  try {
+    const resp = await net.fetch(
+      'https://api.github.com/repos/joaojefferson-hash/Painel-SST--Chabra/releases/latest',
+      { headers: { 'User-Agent': 'PainelSST-Updater', 'Accept': 'application/vnd.github.v3+json' } }
+    )
+    if (!resp.ok) return
+    const release = await resp.json() as { tag_name: string }
+    const remoteVersion = release.tag_name.replace(/^v/, '')
+    const currentVersion = app.getVersion()
+    const [rMaj, rMin, rPatch] = remoteVersion.split('.').map(Number)
+    const [cMaj, cMin, cPatch] = currentVersion.split('.').map(Number)
+    const isNewer =
+      rMaj > cMaj ||
+      (rMaj === cMaj && rMin > cMin) ||
+      (rMaj === cMaj && rMin === cMin && rPatch > cPatch)
+    if (isNewer) {
+      mainWindow?.webContents.send('update-available', { version: remoteVersion })
     }
-  }, 5_000)
+  } catch (err) {
+    console.error('[Updater] falha ao verificar:', err instanceof Error ? err.message : err)
+  }
+}
+
+function setupAutoUpdater(): void {
+  // Verifica 5s após iniciar
+  setTimeout(checkForUpdateGitHub, 5_000)
+
+  // Verifica a cada 30 minutos — garante que usuários que deixam o app aberto
+  // o dia inteiro também recebam a notificação sem precisar reiniciar
+  setInterval(checkForUpdateGitHub, 30 * 60 * 1000)
+
+  // Verifica ao focar a janela (usuário volta ao app após horas fora)
+  app.on('browser-window-focus', () => {
+    checkForUpdateGitHub().catch(() => {})
+  })
 }
 
 app.whenReady().then(async () => {
