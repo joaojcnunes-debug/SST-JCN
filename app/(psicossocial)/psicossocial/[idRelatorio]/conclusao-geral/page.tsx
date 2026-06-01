@@ -192,17 +192,21 @@ export default function ConclusaoGeralPage({
         throw new Error("Resposta inválida da IA — tente novamente");
       }
       setConclusao(result.conclusao);
-      // Atualiza cache imediatamente para que o useEffect inicial não apague o texto
+      // Atualiza cache imediatamente — inicializadoRef=true impede que o
+      // background refetch seguinte sobrescreva o estado local
       qc.setQueryData(["drps-relatorio", idRelatorio], (old: unknown) => {
         if (!old || typeof old !== "object") return old;
         return { ...(old as object), conclusao_geral: result.conclusao };
       });
-      // Salva no banco silenciosamente (sem toast extra)
+      // Salva no banco
       const { error: saveErr } = await supabase
         .from("drps_relatorios")
         .update({ conclusao_geral: result.conclusao, updated_at: new Date().toISOString() } as never)
         .eq("id_relatorio", idRelatorio);
       if (saveErr) throw saveErr;
+      // Marca cache como stale para que remontagens futuras (navegação
+      // para outra página e volta) refaçam fetch e leiam o texto correto do DB
+      qc.invalidateQueries({ queryKey: ["drps-relatorio", idRelatorio] });
       toast.success("Conclusão gerada e salva — revise e ajuste se necessário");
     } catch (err) {
       console.error(err);
