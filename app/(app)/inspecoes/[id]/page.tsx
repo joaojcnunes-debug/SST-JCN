@@ -318,6 +318,7 @@ export default function InspecaoEditorPage({ params }: Props) {
             <EpisTab
               idInspecao={id}
               idEmpresa={inspecao.id_empresa}
+              setores={setores}
               riscos={riscos}
               epis={epis}
               readOnly={readOnly}

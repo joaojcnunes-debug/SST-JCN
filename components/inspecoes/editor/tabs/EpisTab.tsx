@@ -9,11 +9,12 @@ import CopiarEpiModal from "../CopiarEpiModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useTipoIcone } from "@/lib/hooks/useV3";
-import type { EpiEpc, Risco } from "@/lib/supabase/types";
+import type { EpiEpc, Risco, Setor } from "@/lib/supabase/types";
 
 interface Props {
   idInspecao: string;
   idEmpresa: string;
+  setores: Setor[];
   riscos: Risco[];
   epis: EpiEpc[];
   readOnly?: boolean;
@@ -22,6 +23,7 @@ interface Props {
 export default function EpisTab({
   idInspecao,
   idEmpresa,
+  setores,
   riscos,
   epis,
   readOnly,
@@ -213,6 +215,7 @@ export default function EpisTab({
         onClose={() => setFormOpen(false)}
         idInspecao={idInspecao}
         idEmpresa={idEmpresa}
+        setores={setores}
         riscos={riscos}
         epi={editing}
       />

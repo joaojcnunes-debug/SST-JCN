@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
@@ -8,13 +8,14 @@ import FotoSlots, { uploadFotoSlots, type FotoSlot } from "@/components/ui/FotoS
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { useTipoIcone } from "@/lib/hooks/useV3";
-import type { EpiEpc, Risco } from "@/lib/supabase/types";
+import type { EpiEpc, Risco, Setor } from "@/lib/supabase/types";
 
 interface Props {
   open: boolean;
   onClose: () => void;
   idInspecao: string;
   idEmpresa: string;
+  setores: Setor[];
   riscos: Risco[];
   epi?: EpiEpc | null;
 }
@@ -32,12 +33,17 @@ export default function EpiForm({
   onClose,
   idInspecao,
   idEmpresa,
+  setores,
   riscos,
   epi,
 }: Props) {
   const qc = useQueryClient();
   const iconeDe = useTipoIcone();
   const isEdit = !!epi;
+
+  // Setor filtro — afeta só a lista de riscos exibida, não é persistido
+  const [idSetorFiltro, setIdSetorFiltro] = useState<string>("");
+
   const [form, setForm] = useState({
     id_risco: "",
     tipo: "EPI" as "EPI" | "EPC",
@@ -48,17 +54,37 @@ export default function EpiForm({
   const [slots, setSlots] = useState<(FotoSlot | null)[]>([null, null, null, null]);
 
   useEffect(() => {
-    if (open) {
-      setForm({
-        id_risco: epi?.id_risco ?? riscos[0]?.id_risco ?? "",
-        tipo: (epi?.tipo as "EPI" | "EPC") ?? "EPI",
-        descricao: epi?.descricao ?? "",
-        ca: epi?.ca ?? "",
-        recomendado: (epi?.recomendado as "Sim" | "Não") ?? "Sim",
-      });
-      setSlots(buildSlots(epi?.fotos_urls ?? [], epi?.fotos_storage_paths ?? []));
-    }
+    if (!open) return;
+    // Inicializa o setor filtro a partir do risco vinculado (ou do EPI)
+    const riscoDoEpi = riscos.find((r) => r.id_risco === epi?.id_risco);
+    setIdSetorFiltro(riscoDoEpi?.id_setor ?? epi?.id_setor ?? "");
+    setForm({
+      id_risco: epi?.id_risco ?? "",
+      tipo: (epi?.tipo as "EPI" | "EPC") ?? "EPI",
+      descricao: epi?.descricao ?? "",
+      ca: epi?.ca ?? "",
+      recomendado: (epi?.recomendado as "Sim" | "Não") ?? "Sim",
+    });
+    setSlots(buildSlots(epi?.fotos_urls ?? [], epi?.fotos_storage_paths ?? []));
   }, [open, epi, riscos]);
+
+  // Riscos filtrados pelo setor selecionado
+  const riscosFiltrados = useMemo(
+    () =>
+      idSetorFiltro
+        ? riscos.filter((r) => r.id_setor === idSetorFiltro)
+        : riscos,
+    [riscos, idSetorFiltro],
+  );
+
+  // Quando muda o setor, limpa o risco se ele não pertence ao novo setor
+  function handleSetorChange(novoSetor: string) {
+    setIdSetorFiltro(novoSetor);
+    const riscoAtual = riscos.find((r) => r.id_risco === form.id_risco);
+    if (novoSetor && riscoAtual?.id_setor !== novoSetor) {
+      setForm((f) => ({ ...f, id_risco: "" }));
+    }
+  }
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -131,8 +157,38 @@ export default function EpiForm({
       title={isEdit ? "Editar Proteção" : "Adicionar EPI/EPC"}
     >
       <form onSubmit={onSubmit} className="space-y-4">
+        {/* 1. Setor — filtra os riscos abaixo */}
         <div>
-          <label className={lblCls}>Risco vinculado *</label>
+          <label className={lblCls}>Setor</label>
+          <select
+            value={idSetorFiltro}
+            onChange={(e) => handleSetorChange(e.target.value)}
+            className={inputCls}
+          >
+            <option value="">— Todos os setores —</option>
+            {setores.map((s) => (
+              <option key={s.id_setor} value={s.id_setor}>
+                {s.setor_ghe}
+              </option>
+            ))}
+          </select>
+          {idSetorFiltro && riscosFiltrados.length === 0 && (
+            <p className="mt-1 text-xs text-amber-700">
+              Nenhum risco cadastrado para este setor.
+            </p>
+          )}
+        </div>
+
+        {/* 2. Risco vinculado — filtrado pelo setor */}
+        <div>
+          <label className={lblCls}>
+            Risco vinculado *
+            {idSetorFiltro && riscosFiltrados.length > 0 && (
+              <span className="ml-1 text-xs font-normal text-gray-500">
+                ({riscosFiltrados.length} risco{riscosFiltrados.length !== 1 ? "s" : ""} neste setor)
+              </span>
+            )}
+          </label>
           <select
             value={form.id_risco}
             onChange={(e) => setForm({ ...form, id_risco: e.target.value })}
@@ -140,7 +196,7 @@ export default function EpiForm({
             required
           >
             <option value="">Selecione...</option>
-            {riscos.map((r) => (
+            {riscosFiltrados.map((r) => (
               <option key={r.id_risco} value={r.id_risco}>
                 {iconeDe(r.tipo_risco)} {r.tipo_risco} —{" "}
                 {r.agente ?? r.id_risco}
@@ -148,6 +204,8 @@ export default function EpiForm({
             ))}
           </select>
         </div>
+
+        {/* 3. Tipo + Recomendado */}
         <div className="grid gap-3 md:grid-cols-2">
           <div>
             <label className={lblCls}>Tipo</label>
@@ -179,6 +237,8 @@ export default function EpiForm({
             </select>
           </div>
         </div>
+
+        {/* 4. Descrição */}
         <div>
           <label className={lblCls}>Descrição *</label>
           <input
@@ -189,6 +249,8 @@ export default function EpiForm({
             required
           />
         </div>
+
+        {/* 5. CA */}
         <div>
           <label className={lblCls}>Certificado de Aprovação (CA)</label>
           <input
@@ -199,7 +261,7 @@ export default function EpiForm({
           />
         </div>
 
-        {/* Fotos — até 4 */}
+        {/* 6. Fotos — até 4 */}
         <div>
           <label className={lblCls}>
             Fotos{" "}
