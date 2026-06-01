@@ -187,7 +187,13 @@ export default function ConclusaoGeralPage({
         throw new Error("Resposta inválida da IA — tente novamente");
       }
       setConclusao(result.conclusao);
-      toast.success("Conclusão gerada — revise e salve antes de finalizar");
+      // Auto-salva para não perder ao navegar
+      salvar.mutate({
+        id_relatorio: idRelatorio,
+        id_empresa: relatorio.id_empresa,
+        conclusao_geral: result.conclusao,
+      });
+      toast.success("Conclusão gerada e salva — revise e ajuste se necessário");
     } catch (err) {
       console.error(err);
       toast.error(
