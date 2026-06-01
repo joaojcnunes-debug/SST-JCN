@@ -514,6 +514,25 @@ export interface TreinamentoRiscoRel {
   id_risco: string;
 }
 
+// V60: Extintores — NR-23 Proteção Contra Incêndios
+export interface Extintor {
+  id_extintor: string;
+  id_inspecao: string;
+  id_empresa: string;
+  id_setor: string | null;
+  tipo_agente: string;
+  capacidade: string | null;
+  numero_identificacao: string | null;
+  localizacao: string | null;
+  data_validade: string | null;
+  status: string | null;
+  observacoes: string | null;
+  ordem: number;
+  ativo: boolean;
+  created_at?: string;
+  updated_at?: string | null;
+}
+
 // V13: Plano de Ação (5W2H)
 export type AcaoStatus =
   | "Pendente"

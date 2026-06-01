@@ -6,6 +6,7 @@ import type {
   Cargo,
   Complemento,
   EpiEpc,
+  Extintor,
   Foto,
   Inspecao,
   PaeContato,
@@ -32,6 +33,7 @@ export interface InspecaoFull {
   treinamentosSetor: TreinamentoSetorRel[];
   treinamentosCargo: TreinamentoCargoRel[];
   treinamentosRisco: TreinamentoRiscoRel[];
+  extintores: Extintor[];
 }
 
 export function useInspecao(id: string | null | undefined) {
@@ -54,6 +56,7 @@ export function useInspecao(id: string | null | undefined) {
         compRes,
         paeRes,
         treinaRes,
+        extintoresRes,
       ] = await Promise.all([
         supabase.from("inspecoes").select("*").eq("id_inspecao", inspId).single(),
         supabase.from("setores").select("*").eq("id_inspecao", inspId).order("setor_ghe"),
@@ -65,6 +68,7 @@ export function useInspecao(id: string | null | undefined) {
         supabase.from("complementos").select("*").eq("id_inspecao", inspId),
         supabase.from("pae_contatos").select("*").eq("id_inspecao", inspId).order("ordem"),
         supabase.from("treinamentos_nr").select("*").eq("id_inspecao", inspId).order("ordem"),
+        supabase.from("extintores").select("*").eq("id_inspecao", inspId).order("ordem"),
       ]);
 
       if (inspRes.error) throw inspRes.error;
@@ -95,6 +99,7 @@ export function useInspecao(id: string | null | undefined) {
         treinamentosSetor: (setRelRes.data ?? []) as unknown as TreinamentoSetorRel[],
         treinamentosCargo: (carRelRes.data ?? []) as unknown as TreinamentoCargoRel[],
         treinamentosRisco: (risRelRes.data ?? []) as unknown as TreinamentoRiscoRel[],
+        extintores: (extintoresRes.data ?? []) as unknown as Extintor[],
       };
     },
   });

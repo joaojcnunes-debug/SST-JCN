@@ -21,6 +21,7 @@ import {
   Siren,
   GraduationCap,
   ClipboardEdit,
+  Flame,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -41,6 +42,7 @@ import ComplementosTab from "@/components/inspecoes/editor/tabs/ComplementosTab"
 import ObservacoesTab from "@/components/inspecoes/editor/tabs/ObservacoesTab";
 import PaeTab from "@/components/inspecoes/editor/tabs/PaeTab";
 import TreinamentosTab from "@/components/inspecoes/editor/tabs/TreinamentosTab";
+import ExtintoresTab from "@/components/inspecoes/editor/tabs/ExtintoresTab";
 import CopiarParaEmpresaModal from "@/components/inspecoes/editor/CopiarParaEmpresaModal";
 
 type TabKey =
@@ -52,6 +54,7 @@ type TabKey =
   | "responsaveis"
   | "pae"
   | "treinamentos"
+  | "extintores"
   | "complementos"
   | "observacoes";
 
@@ -121,6 +124,7 @@ export default function InspecaoEditorPage({ params }: Props) {
     treinamentosSetor,
     treinamentosCargo,
     treinamentosRisco,
+    extintores,
   } = data;
   const isConcluida = inspecao.status === "CONCLUIDA";
   // Quem pode reabrir uma inspeção concluída:
@@ -145,6 +149,7 @@ export default function InspecaoEditorPage({ params }: Props) {
     { key: "responsaveis", label: "Responsáveis", icon: Users, count: responsaveis.length },
     { key: "pae", label: "PAE", icon: Siren, count: paeContatos.length },
     { key: "treinamentos", label: "Treinamentos", icon: GraduationCap, count: treinamentos.length },
+    { key: "extintores", label: "Extintores", icon: Flame, count: extintores.length },
     { key: "complementos", label: "Complementos", icon: Sticker, count: complementos.length },
     { key: "observacoes", label: "Observações", icon: FileText, count: inspecao.observacoes ? 1 : 0 },
   ];
@@ -354,6 +359,15 @@ export default function InspecaoEditorPage({ params }: Props) {
               treinamentosSetor={treinamentosSetor}
               treinamentosCargo={treinamentosCargo}
               treinamentosRisco={treinamentosRisco}
+              readOnly={readOnly}
+            />
+          )}
+          {tab === "extintores" && (
+            <ExtintoresTab
+              idInspecao={id}
+              idEmpresa={inspecao.id_empresa}
+              setores={setores}
+              extintores={extintores}
               readOnly={readOnly}
             />
           )}
