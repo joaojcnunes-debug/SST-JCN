@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useRef, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   Loader2,
@@ -76,13 +76,10 @@ export default function ConclusaoGeralPage({
 
   const [conclusao, setConclusao] = useState("");
   const [gerandoIA, setGerandoIA] = useState(false);
-  const inicializadoRef = useRef(false);
 
-  // Sincroniza com o banco apenas no carregamento inicial —
-  // background refetches NÃO sobrescrevem edições/geração IA em andamento
+  // Sincroniza sempre que o relatorio mudar (inclui remount e refetches)
   useEffect(() => {
-    if (!relatorio || inicializadoRef.current) return;
-    inicializadoRef.current = true;
+    if (!relatorio) return;
     setConclusao(relatorio.conclusao_geral ?? "");
   }, [relatorio]);
 
@@ -192,8 +189,9 @@ export default function ConclusaoGeralPage({
         throw new Error("Resposta inválida da IA — tente novamente");
       }
       setConclusao(result.conclusao);
-      // Atualiza cache imediatamente — inicializadoRef=true impede que o
-      // background refetch sobrescreva o estado local enquanto usuário edita
+      // Cancela refetches em andamento antes de atualizar o cache (padrão optimistic update).
+      // Sem isso, um refetch stale pode sobrescrever o setQueryData com valor antigo do banco.
+      await qc.cancelQueries({ queryKey: ["drps-relatorio", idRelatorio] });
       qc.setQueryData(["drps-relatorio", idRelatorio], (old: unknown) => {
         if (!old || typeof old !== "object") return old;
         return { ...(old as object), conclusao_geral: result.conclusao };
