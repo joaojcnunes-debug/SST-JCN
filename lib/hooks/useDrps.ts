@@ -113,10 +113,10 @@ export function useDrpsSalvarRelatorio() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (
-      r: Partial<DrpsRelatorio> & { id_relatorio: string }
+      r: Partial<DrpsRelatorio> & { id_relatorio: string; _toast?: string }
     ) => {
       const supabase = createSupabaseBrowserClient();
-      const { id_relatorio, ...rest } = r;
+      const { id_relatorio, _toast: _, ...rest } = r;
       const { error } = await supabase
         .from("drps_relatorios")
         .update({ ...rest, updated_at: new Date().toISOString() } as never)
@@ -130,7 +130,7 @@ export function useDrpsSalvarRelatorio() {
       if (vars.id_empresa) {
         qc.invalidateQueries({ queryKey: ["drps-relatorios", vars.id_empresa] });
       }
-      toast.success("Relatório atualizado");
+      toast.success(vars._toast ?? "Relatório atualizado");
     },
     onError: (e: Error) => toast.error(e.message),
   });

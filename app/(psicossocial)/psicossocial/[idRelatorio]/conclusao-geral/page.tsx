@@ -193,21 +193,19 @@ export default function ConclusaoGeralPage({
       }
       setConclusao(result.conclusao);
       // Atualiza cache imediatamente — inicializadoRef=true impede que o
-      // background refetch seguinte sobrescreva o estado local
+      // background refetch sobrescreva o estado local enquanto usuário edita
       qc.setQueryData(["drps-relatorio", idRelatorio], (old: unknown) => {
         if (!old || typeof old !== "object") return old;
         return { ...(old as object), conclusao_geral: result.conclusao };
       });
-      // Salva no banco
-      const { error: saveErr } = await supabase
-        .from("drps_relatorios")
-        .update({ conclusao_geral: result.conclusao, updated_at: new Date().toISOString() } as never)
-        .eq("id_relatorio", idRelatorio);
-      if (saveErr) throw saveErr;
-      // Marca cache como stale para que remontagens futuras (navegação
-      // para outra página e volta) refaçam fetch e leiam o texto correto do DB
-      qc.invalidateQueries({ queryKey: ["drps-relatorio", idRelatorio] });
-      toast.success("Conclusão gerada e salva — revise e ajuste se necessário");
+      // Usa o mesmo caminho comprovado do botão "Salvar" manual.
+      // invalidateQueries interno garante que a próxima montagem leia do banco.
+      await salvar.mutateAsync({
+        id_relatorio: idRelatorio,
+        id_empresa: relatorio.id_empresa,
+        conclusao_geral: result.conclusao,
+        _toast: "Conclusão gerada e salva — revise e ajuste se necessário",
+      } as never);
     } catch (err) {
       console.error(err);
       toast.error(
