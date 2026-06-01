@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useMemo, useRef, useState } from "react";
 import {
   CheckCircle2,
   Loader2,
@@ -9,6 +9,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import RichTextEditor from "@/components/drps/RichTextEditor";
@@ -71,13 +72,17 @@ export default function ConclusaoGeralPage({
     useDrpsProbabilidades(idRelatorio);
   const { data: empresa } = useEmpresa(relatorio?.id_empresa);
   const salvar = useDrpsSalvarRelatorio();
+  const qc = useQueryClient();
 
   const [conclusao, setConclusao] = useState("");
   const [gerandoIA, setGerandoIA] = useState(false);
+  const inicializadoRef = useRef(false);
 
-  // Sincroniza com o que vem do banco
+  // Sincroniza com o banco apenas no carregamento inicial —
+  // background refetches NÃO sobrescrevem edições/geração IA em andamento
   useEffect(() => {
-    if (!relatorio) return;
+    if (!relatorio || inicializadoRef.current) return;
+    inicializadoRef.current = true;
     setConclusao(relatorio.conclusao_geral ?? "");
   }, [relatorio]);
 
@@ -187,12 +192,17 @@ export default function ConclusaoGeralPage({
         throw new Error("Resposta inválida da IA — tente novamente");
       }
       setConclusao(result.conclusao);
-      // Auto-salva para não perder ao navegar
-      salvar.mutate({
-        id_relatorio: idRelatorio,
-        id_empresa: relatorio.id_empresa,
-        conclusao_geral: result.conclusao,
+      // Atualiza cache imediatamente para que o useEffect inicial não apague o texto
+      qc.setQueryData(["drps-relatorio", idRelatorio], (old: unknown) => {
+        if (!old || typeof old !== "object") return old;
+        return { ...(old as object), conclusao_geral: result.conclusao };
       });
+      // Salva no banco silenciosamente (sem toast extra)
+      const { error: saveErr } = await supabase
+        .from("drps_relatorios")
+        .update({ conclusao_geral: result.conclusao, updated_at: new Date().toISOString() } as never)
+        .eq("id_relatorio", idRelatorio);
+      if (saveErr) throw saveErr;
       toast.success("Conclusão gerada e salva — revise e ajuste se necessário");
     } catch (err) {
       console.error(err);
