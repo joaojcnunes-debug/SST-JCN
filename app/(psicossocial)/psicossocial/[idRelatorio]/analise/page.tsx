@@ -1060,9 +1060,8 @@ function BlocoSetor({
               probabilidade: t.classificacaoProbabilidade,
               matriz: t.matriz,
             })),
-            agravos: drpsRel?.agravos_por_setor?.[relatorio.setor] ?? null,
-            medidasExistentes:
-              drpsRel?.medidas_por_setor?.[relatorio.setor] ?? null,
+            agravos: serializeMultiSelect(editor.agravosSel, editor.agravosExtras),
+            medidasExistentes: serializeMultiSelect(editor.medidasSel, editor.medidasExtras),
             textoAtual: textoLocal || null,
           },
         }
