@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, RefreshCw, X, Loader2 } from "lucide-react";
 
 type UpdateState =
@@ -17,35 +17,79 @@ type ElectronAPI = {
   downloadUpdateFile?: (url: string) => Promise<{ success: boolean; path?: string; error?: string }>;
   runInstallerFile?: (path: string) => Promise<{ success: boolean; error?: string }>;
   installUpdate?: () => void;
+  getVersion?: () => Promise<string>;
 };
 
 function getAPI(): ElectronAPI | undefined {
   return (window as Window & { electronAPI?: ElectronAPI }).electronAPI;
 }
 
+function isNewer(remote: string, current: string): boolean {
+  const [rMaj, rMin, rPatch] = remote.split(".").map(Number);
+  const [cMaj, cMin, cPatch] = current.split(".").map(Number);
+  return (
+    rMaj > cMaj ||
+    (rMaj === cMaj && rMin > cMin) ||
+    (rMaj === cMaj && rMin === cMin && rPatch > cPatch)
+  );
+}
+
 export default function UpdateBanner() {
   const [update, setUpdate] = useState<UpdateState | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const notifiedVersion = useRef<string | null>(null);
+
+  function notify(version: string) {
+    if (notifiedVersion.current === version) return;
+    notifiedVersion.current = version;
+    setUpdate({ status: "available", version });
+    setDismissed(false);
+  }
 
   useEffect(() => {
     const api = getAPI();
     if (!api) return;
 
-    api.onUpdateAvailable?.((info) => {
-      setUpdate({ status: "available", version: info.version });
-      setDismissed(false);
-    });
-
+    // Escuta eventos vindos do processo principal (Electron main.ts)
+    api.onUpdateAvailable?.((info) => notify(info.version));
     api.onUpdateDownloaded?.((info) => {
       setUpdate({ status: "ready", version: info.version });
       setDismissed(false);
     });
-
     api.onDownloadProgress?.((info) => {
       setUpdate((prev) =>
         prev ? { status: "downloading", version: prev.version, percent: info.percent } : prev
       );
     });
+
+    // Verificação direta via GitHub API no renderer — funciona mesmo que o
+    // evento IPC do main process não chegue (app aberto antes do release)
+    async function checkGitHub() {
+      try {
+        const currentVersion = await api!.getVersion?.();
+        if (!currentVersion) return;
+        const resp = await fetch(
+          "https://api.github.com/repos/joaojefferson-hash/Painel-SST--Chabra/releases/latest",
+          { headers: { Accept: "application/vnd.github.v3+json" } }
+        );
+        if (!resp.ok) return;
+        const release = (await resp.json()) as { tag_name: string };
+        const remoteVersion = release.tag_name.replace(/^v/, "");
+        if (isNewer(remoteVersion, currentVersion)) notify(remoteVersion);
+      } catch {
+        // silencioso — sem internet ou rate limit
+      }
+    }
+
+    // Verifica 8s após montar (dá tempo do app carregar)
+    const t1 = setTimeout(checkGitHub, 8_000);
+    // Verifica a cada 30 minutos
+    const t2 = setInterval(checkGitHub, 30 * 60 * 1000);
+
+    return () => {
+      clearTimeout(t1);
+      clearInterval(t2);
+    };
   }, []);
 
   if (!update || dismissed) return null;
