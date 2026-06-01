@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, LogOut, Shield, Menu, X, Home } from "lucide-react";
+import { ArrowLeft, LogOut, Shield, Menu, X, Home, Download, Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 import toast from "react-hot-toast";
@@ -10,6 +10,87 @@ import { cn } from "@/lib/utils";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import { useUserStore } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+
+type ElectronAPI = {
+  getVersion?: () => Promise<string>;
+  getInstallerUrl?: () => Promise<{ success: boolean; url?: string; error?: string }>;
+  downloadUpdateFile?: (url: string) => Promise<{ success: boolean; path?: string; error?: string }>;
+  runInstallerFile?: (path: string) => Promise<{ success: boolean; error?: string }>;
+};
+
+function getElectron(): ElectronAPI | undefined {
+  if (typeof window === "undefined") return undefined;
+  return (window as Window & { electronAPI?: ElectronAPI }).electronAPI;
+}
+
+function SidebarUpdateButton() {
+  const [state, setState] = useState<"idle" | "checking" | "downloading" | "up-to-date">("idle");
+
+  async function handleClick() {
+    const api = getElectron();
+    if (!api) return;
+    setState("checking");
+    try {
+      const resp = await fetch(
+        "https://api.github.com/repos/joaojefferson-hash/Painel-SST--Chabra/releases/latest",
+        { headers: { Accept: "application/vnd.github.v3+json" } }
+      );
+      if (!resp.ok) throw new Error("Falha ao consultar GitHub");
+      const release = (await resp.json()) as { tag_name: string };
+      const remote = release.tag_name.replace(/^v/, "");
+      const current = (await api.getVersion?.()) ?? "0.0.0";
+      const [rMaj, rMin, rPatch] = remote.split(".").map(Number);
+      const [cMaj, cMin, cPatch] = current.split(".").map(Number);
+      const newer =
+        rMaj > cMaj ||
+        (rMaj === cMaj && rMin > cMin) ||
+        (rMaj === cMaj && rMin === cMin && rPatch > cPatch);
+
+      if (!newer) {
+        setState("up-to-date");
+        setTimeout(() => setState("idle"), 3000);
+        return;
+      }
+
+      setState("downloading");
+      const urlResult = await api.getInstallerUrl?.();
+      if (!urlResult?.success || !urlResult.url) throw new Error("URL não encontrada");
+      const result = await api.downloadUpdateFile?.(urlResult.url);
+      if (!result?.success || !result.path) throw new Error("Falha no download");
+      await api.runInstallerFile?.(result.path);
+      setState("idle");
+    } catch (err) {
+      setState("idle");
+      toast.error(err instanceof Error ? err.message : "Erro ao verificar atualização");
+    }
+  }
+
+  if (!getElectron()) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={state === "checking" || state === "downloading"}
+      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/50 transition-all duration-150 hover:bg-white/[0.09] hover:text-white/85 disabled:opacity-50"
+    >
+      {state === "checking" || state === "downloading" ? (
+        <Loader2 className="size-[15px] text-white/30 animate-spin" />
+      ) : (
+        <Download className="size-[15px] text-white/30" />
+      )}
+      <span className="truncate">
+        {state === "checking"
+          ? "Verificando…"
+          : state === "downloading"
+          ? "Baixando…"
+          : state === "up-to-date"
+          ? "Já atualizado"
+          : "Verificar atualização"}
+      </span>
+    </button>
+  );
+}
 
 /** Variante semântica do item — controla cor do ícone em estado inativo */
 export type NavItemVariant =
@@ -191,6 +272,7 @@ export default function SidebarShell({
           <Home className="size-[15px] text-white/30" />
           <span>Início</span>
         </Link>
+        <SidebarUpdateButton />
         <button
           type="button"
           onClick={handleLogout}
