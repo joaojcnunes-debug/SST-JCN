@@ -259,26 +259,30 @@ ipcMain.handle('run-installer-file', async (_event, filePath: string) => {
 // ── Auto-update ───────────────────────────────────────────────────
 
 function setupAutoUpdater(): void {
-  autoUpdater.autoDownload = true
-  autoUpdater.autoInstallOnAppQuit = true
-
-  autoUpdater.on('update-available', (info) => {
-    mainWindow?.webContents.send('update-available', { version: info.version })
-  })
-
-  autoUpdater.on('update-downloaded', (info) => {
-    mainWindow?.webContents.send('update-downloaded', { version: info.version })
-  })
-
-  autoUpdater.on('error', (err) => {
-    console.error('[Updater]', err.message)
-  })
-
-  // Verifica após 5s — garante que a janela principal já carregou
-  setTimeout(() => {
-    autoUpdater.checkForUpdates().catch((err) => {
-      console.error('[Updater] falha ao verificar:', err.message)
-    })
+  // Verifica via GitHub API diretamente — mais confiável que electron-updater.checkForUpdates()
+  // que depende de latest.yml e tem problemas de cache sha512 neste projeto.
+  setTimeout(async () => {
+    try {
+      const resp = await net.fetch(
+        'https://api.github.com/repos/joaojefferson-hash/Painel-SST--Chabra/releases/latest',
+        { headers: { 'User-Agent': 'PainelSST-Updater', 'Accept': 'application/vnd.github.v3+json' } }
+      )
+      if (!resp.ok) return
+      const release = await resp.json() as { tag_name: string }
+      const remoteVersion = release.tag_name.replace(/^v/, '')
+      const currentVersion = app.getVersion()
+      const [rMaj, rMin, rPatch] = remoteVersion.split('.').map(Number)
+      const [cMaj, cMin, cPatch] = currentVersion.split('.').map(Number)
+      const isNewer =
+        rMaj > cMaj ||
+        (rMaj === cMaj && rMin > cMin) ||
+        (rMaj === cMaj && rMin === cMin && rPatch > cPatch)
+      if (isNewer) {
+        mainWindow?.webContents.send('update-available', { version: remoteVersion })
+      }
+    } catch (err) {
+      console.error('[Updater] falha ao verificar:', err instanceof Error ? err.message : err)
+    }
   }, 5_000)
 }
 
