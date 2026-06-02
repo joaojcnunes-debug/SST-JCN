@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { GraduationCap, Pencil, Plus, Trash2 } from "lucide-react";
+import { GraduationCap, LayoutList, Pencil, Plus, Rows3, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import TreinamentoForm from "../TreinamentoForm";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -48,8 +48,8 @@ export default function TreinamentosTab({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<TreinamentoNR | null>(null);
   const [confirm, setConfirm] = useState<TreinamentoNR | null>(null);
+  const [view, setView] = useState<"lista" | "por-setor">("lista");
 
-  // Mapas de lookup pra mostrar relações na lista
   const setorPorId = useMemo(
     () => new Map(setores.map((s) => [s.id_setor, s])),
     [setores]
@@ -92,6 +92,26 @@ export default function TreinamentosTab({
     return m;
   }, [treinamentosRisco]);
 
+  // Agrupamento por setor (para a view "por-setor")
+  const treinamentosPorSetorView = useMemo(() => {
+    const treMap = new Map(treinamentos.map((t) => [t.id_treinamento, t]));
+    const m = new Map<string, TreinamentoNR[]>();
+    for (const rel of treinamentosSetor) {
+      const t = treMap.get(rel.id_treinamento);
+      if (!t) continue;
+      const arr = m.get(rel.id_setor) ?? [];
+      if (!arr.find((x) => x.id_treinamento === t.id_treinamento)) arr.push(t);
+      m.set(rel.id_setor, arr);
+    }
+    return m;
+  }, [treinamentos, treinamentosSetor]);
+
+  // Treinamentos sem setor vinculado
+  const treinamentosSemSetor = useMemo(() => {
+    const comSetor = new Set(treinamentosSetor.map((r) => r.id_treinamento));
+    return treinamentos.filter((t) => !comSetor.has(t.id_treinamento));
+  }, [treinamentos, treinamentosSetor]);
+
   const del = useMutation({
     mutationFn: async (t: TreinamentoNR) => {
       const supabase = createSupabaseBrowserClient();
@@ -109,6 +129,19 @@ export default function TreinamentosTab({
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const setoresComTreinamentos = useMemo(
+    () =>
+      [...setores]
+        .filter((s) => (treinamentosPorSetorView.get(s.id_setor) ?? []).length > 0)
+        .sort((a, b) => a.setor_ghe.localeCompare(b.setor_ghe)),
+    [setores, treinamentosPorSetorView]
+  );
+
+  function openEdit(t: TreinamentoNR) {
+    setEditing(t);
+    setFormOpen(true);
+  }
+
   return (
     <div className="space-y-3">
       <div className="rounded-md border border-purple-200 bg-purple-50/40 p-3 text-xs text-purple-800">
@@ -120,26 +153,57 @@ export default function TreinamentosTab({
         Eletricista + Riscos de altura).
       </div>
 
-      {!readOnly && (
-        <div className="flex justify-end">
+      <div className="flex items-center justify-between gap-2">
+        {/* Toggle de visualização */}
+        {treinamentos.length > 0 && (
+          <div className="flex items-center gap-0.5 rounded-lg border border-gray-200 bg-gray-50 p-1">
+            <button
+              type="button"
+              onClick={() => setView("lista")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                view === "lista"
+                  ? "bg-white text-gray-900 shadow"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <LayoutList className="size-3.5" />
+              Lista
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("por-setor")}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                view === "por-setor"
+                  ? "bg-white text-gray-900 shadow"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Rows3 className="size-3.5" />
+              Por Setor
+            </button>
+          </div>
+        )}
+
+        {!readOnly && (
           <button
             type="button"
             onClick={() => {
               setEditing(null);
               setFormOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
           >
             <Plus className="size-4" /> Novo Treinamento
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {treinamentos.length === 0 ? (
         <div className="rounded-md border border-dashed border-gray-300 bg-white p-8 text-center text-sm text-gray-500">
           Nenhum treinamento cadastrado.
         </div>
-      ) : (
+      ) : view === "lista" ? (
+        /* ── VISTA LISTA ──────────────────────────────────────────── */
         <ul className="space-y-2">
           {treinamentos.map((t) => {
             const idsSet = setoresPorTreina.get(t.id_treinamento) ?? [];
@@ -177,7 +241,6 @@ export default function TreinamentosTab({
                       <p className="mt-1 text-xs text-gray-600">{t.descricao}</p>
                     )}
 
-                    {/* Relacionamentos */}
                     {(idsSet.length > 0 || idsCar.length > 0 || idsRis.length > 0) && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {idsSet.map((id) => {
@@ -240,10 +303,7 @@ export default function TreinamentosTab({
                     <div className="flex shrink-0 items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => {
-                          setEditing(t);
-                          setFormOpen(true);
-                        }}
+                        onClick={() => openEdit(t)}
                         className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
                         title="Editar"
                       >
@@ -264,6 +324,156 @@ export default function TreinamentosTab({
             );
           })}
         </ul>
+      ) : (
+        /* ── VISTA POR SETOR ──────────────────────────────────────── */
+        <div className="space-y-3">
+          {setoresComTreinamentos.length === 0 && treinamentosSemSetor.length === 0 && (
+            <div className="rounded-md border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
+              Nenhum treinamento vinculado a setores.
+            </div>
+          )}
+
+          {setoresComTreinamentos.map((setor) => {
+            const tList = treinamentosPorSetorView.get(setor.id_setor) ?? [];
+            return (
+              <div
+                key={setor.id_setor}
+                className="overflow-hidden rounded-lg border border-amber-200"
+              >
+                <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2">
+                  <span className="text-sm">🏢</span>
+                  <h4 className="text-sm font-semibold text-amber-900">
+                    {setor.setor_ghe}
+                  </h4>
+                  <span className="ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                    {tList.length} treinamento{tList.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <ul className="divide-y divide-amber-100 bg-white">
+                  {tList.map((t) => (
+                    <li key={t.id_treinamento} className="flex items-start gap-2 px-3 py-2">
+                      <GraduationCap className="mt-0.5 size-4 shrink-0 text-purple-500" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-baseline gap-1.5">
+                          <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-800">
+                            {t.nr}
+                          </span>
+                          <span className="text-xs font-medium text-gray-900">
+                            {t.titulo}
+                          </span>
+                          {t.carga_horaria && (
+                            <span className="text-[11px] text-gray-500">
+                              · {t.carga_horaria}
+                            </span>
+                          )}
+                          {t.periodicidade && (
+                            <span className="text-[11px] text-gray-500">
+                              · {t.periodicidade}
+                            </span>
+                          )}
+                        </div>
+                        {t.descricao && (
+                          <p className="mt-0.5 text-[11px] text-gray-600">
+                            {t.descricao}
+                          </p>
+                        )}
+                      </div>
+                      {!readOnly && (
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(t)}
+                            className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                            title="Editar"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setConfirm(t)}
+                            className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                            title="Remover"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+
+          {/* Treinamentos sem setor vinculado */}
+          {treinamentosSemSetor.length > 0 && (
+            <div className="overflow-hidden rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
+                <span className="text-sm">🌐</span>
+                <h4 className="text-sm font-semibold text-gray-700">
+                  Sem setor específico
+                </h4>
+                <span className="ml-1 text-xs text-gray-500">
+                  (aplica-se a toda a inspeção)
+                </span>
+                <span className="ml-auto rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-bold text-gray-600">
+                  {treinamentosSemSetor.length} treinamento
+                  {treinamentosSemSetor.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <ul className="divide-y divide-gray-100 bg-white">
+                {treinamentosSemSetor.map((t) => (
+                  <li key={t.id_treinamento} className="flex items-start gap-2 px-3 py-2">
+                    <GraduationCap className="mt-0.5 size-4 shrink-0 text-purple-500" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-baseline gap-1.5">
+                        <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-800">
+                          {t.nr}
+                        </span>
+                        <span className="text-xs font-medium text-gray-900">
+                          {t.titulo}
+                        </span>
+                        {t.carga_horaria && (
+                          <span className="text-[11px] text-gray-500">
+                            · {t.carga_horaria}
+                          </span>
+                        )}
+                        {t.periodicidade && (
+                          <span className="text-[11px] text-gray-500">
+                            · {t.periodicidade}
+                          </span>
+                        )}
+                      </div>
+                      {t.descricao && (
+                        <p className="mt-0.5 text-[11px] text-gray-600">{t.descricao}</p>
+                      )}
+                    </div>
+                    {!readOnly && (
+                      <div className="flex shrink-0 items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(t)}
+                          className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                          title="Editar"
+                        >
+                          <Pencil className="size-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setConfirm(t)}
+                          className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-alert"
+                          title="Remover"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
 
       <TreinamentoForm

@@ -14,6 +14,7 @@ import {
   Briefcase,
   ShieldCheck,
   Flame,
+  GraduationCap,
 } from "lucide-react";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
@@ -48,6 +49,8 @@ import type {
   Risco,
   Setor,
   Cargo,
+  TreinamentoNR,
+  TreinamentoSetorRel,
 } from "@/lib/supabase/types";
 
 interface Props {
@@ -153,6 +156,26 @@ export default function RelatorioChabraPage({ params }: Props) {
       }
     }
 
+    // Treinamentos por setor
+    const treinamentosPorSetor = new Map<string, TreinamentoNR[]>();
+    const treMap = new Map(
+      (data.treinamentos ?? []).map((t) => [t.id_treinamento, t])
+    );
+    for (const rel of (data.treinamentosSetor ?? []) as TreinamentoSetorRel[]) {
+      const t = treMap.get(rel.id_treinamento);
+      if (!t) continue;
+      const arr = treinamentosPorSetor.get(rel.id_setor) ?? [];
+      if (!arr.find((x) => x.id_treinamento === t.id_treinamento)) arr.push(t);
+      treinamentosPorSetor.set(rel.id_setor, arr);
+    }
+    // Treinamentos sem setor vinculado (aplica-se a toda a inspeção)
+    const treIdsComSetor = new Set(
+      (data.treinamentosSetor ?? []).map((r) => r.id_treinamento)
+    );
+    const treinamentosGerais = (data.treinamentos ?? []).filter(
+      (t) => !treIdsComSetor.has(t.id_treinamento)
+    );
+
     return {
       setores: setoresOrdenados,
       naoConformes,
@@ -165,6 +188,8 @@ export default function RelatorioChabraPage({ params }: Props) {
       fotosGerais,
       extintoresPorSetor,
       extintoresGerais,
+      treinamentosPorSetor,
+      treinamentosGerais,
     };
   }, [data]);
 
@@ -488,6 +513,7 @@ export default function RelatorioChabraPage({ params }: Props) {
             extintores={ctx.extintoresPorSetor.get(setor.id_setor) ?? []}
             episPorRisco={ctx.episPorRisco}
             perguntasMap={perguntasMap}
+            treinamentos={ctx.treinamentosPorSetor.get(setor.id_setor) ?? []}
           />
         ))}
 
@@ -511,6 +537,7 @@ export default function RelatorioChabraPage({ params }: Props) {
             extintores={[]}
             episPorRisco={ctx.episPorRisco}
             perguntasMap={perguntasMap}
+            treinamentos={[]}
           />
         )}
 
@@ -522,6 +549,20 @@ export default function RelatorioChabraPage({ params }: Props) {
               Extintores — Geral / sem setor específico
             </h3>
             <ExtintoresGrid extintores={ctx.extintoresGerais} />
+          </section>
+        )}
+
+        {/* ============================================================
+            TREINAMENTOS GERAIS (sem setor específico vinculado)
+        ============================================================ */}
+        {ctx.treinamentosGerais.length > 0 && (
+          <section className="secao-setor border-t border-gray-200 px-8 py-6 md:px-12">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
+              <GraduationCap className="size-4 text-purple-600" />
+              Treinamentos Obrigatórios — Aplicação Geral (
+              {ctx.treinamentosGerais.length})
+            </h3>
+            <TreinamentosGrid treinamentos={ctx.treinamentosGerais} />
           </section>
         )}
 
@@ -666,6 +707,42 @@ export default function RelatorioChabraPage({ params }: Props) {
 }
 
 // =========================================================================
+// TREINAMENTOS GRID (compartilhado entre SetorBlock e seção geral)
+// =========================================================================
+
+function TreinamentosGrid({ treinamentos }: { treinamentos: TreinamentoNR[] }) {
+  return (
+    <div className="space-y-1.5">
+      {treinamentos.map((t) => (
+        <div
+          key={t.id_treinamento}
+          className="rounded border border-purple-200 bg-purple-50/30 px-3 py-2"
+        >
+          <div className="flex flex-wrap items-baseline gap-2">
+            <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-bold text-purple-800">
+              {t.nr}
+            </span>
+            <span className="text-xs font-semibold text-gray-900">{t.titulo}</span>
+            {t.carga_horaria && (
+              <span className="text-[11px] text-gray-600">· {t.carga_horaria}</span>
+            )}
+            {t.periodicidade && (
+              <span className="text-[11px] text-gray-600">· {t.periodicidade}</span>
+            )}
+          </div>
+          {t.descricao && (
+            <p className="mt-0.5 text-[11px] text-gray-700">{t.descricao}</p>
+          )}
+          {t.observacoes && (
+            <p className="mt-0.5 text-[11px] italic text-gray-500">{t.observacoes}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// =========================================================================
 // SETOR BLOCK
 // =========================================================================
 
@@ -677,6 +754,7 @@ function SetorBlock({
   extintores,
   episPorRisco,
   perguntasMap,
+  treinamentos,
 }: {
   setor: Setor;
   cargos: Cargo[];
@@ -685,6 +763,7 @@ function SetorBlock({
   extintores: Extintor[];
   episPorRisco: Map<string, EpiEpc[]>;
   perguntasMap: Map<string, string>;
+  treinamentos: TreinamentoNR[];
 }) {
   const isConforme = !setor.nao_conformidade?.trim();
   const iconeDe = useTipoIcone();
@@ -789,6 +868,17 @@ function SetorBlock({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Treinamentos obrigatórios do setor */}
+      {treinamentos.length > 0 && (
+        <div className="mb-4">
+          <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-gray-900">
+            <GraduationCap className="size-3.5 text-purple-600" />
+            Treinamentos Obrigatórios ({treinamentos.length})
+          </h3>
+          <TreinamentosGrid treinamentos={treinamentos} />
         </div>
       )}
 
