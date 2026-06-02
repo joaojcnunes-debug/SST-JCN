@@ -181,6 +181,12 @@ export default function TreinamentosTab({
               agente: r.agente ?? undefined,
               nivel: r.nivel_risco ?? undefined,
             })),
+          // Treinamentos já vinculados a este setor (evita duplicar por setor)
+          treinamentos_cadastrados: treinamentos
+            .filter((t) =>
+              (setoresPorTreina.get(t.id_treinamento) ?? []).includes(s.id_setor)
+            )
+            .map((t) => ({ nr: t.nr, titulo: t.titulo })),
         })),
         treinamentos_existentes: treinamentos.map((t) => ({
           nr: t.nr,

@@ -30,6 +30,7 @@ interface SetorInput {
   nome: string;
   descricao?: string;
   riscos: RiscoInput[];
+  treinamentos_cadastrados?: TreinamentoExistente[];
 }
 
 interface TreinamentoExistente {
@@ -116,6 +117,12 @@ function buildUserPrompt(p: Payload): string {
         if (r.agente) partes.push(r.agente);
         if (r.nivel) partes.push(`— Nível: ${r.nivel}`);
         l.push(`    • ${partes.join(" ")}`);
+      }
+    }
+    if (s.treinamentos_cadastrados && s.treinamentos_cadastrados.length > 0) {
+      l.push(`  Treinamentos JÁ CADASTRADOS neste setor (NÃO repita para este setor):`);
+      for (const t of s.treinamentos_cadastrados) {
+        l.push(`    • ${t.nr} — ${t.titulo}`);
       }
     }
     l.push("");

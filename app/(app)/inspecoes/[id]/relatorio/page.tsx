@@ -1138,13 +1138,13 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
             <ul className="space-y-2">
               {epis.map((e) => (
                 <li key={e.id_protecao}>
-                  <div className="grid grid-cols-[60px_1fr] gap-x-2">
-                    <span className="text-gray-500">
+                  <div className="flex items-start gap-2">
+                    <span className="w-[90px] shrink-0 leading-tight text-gray-500">
                       {e.recomendado === "Sim" || !e.recomendado
                         ? "RECOMENDADO"
                         : "—"}
                     </span>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium text-gray-900">
                         {e.tipo} — {e.descricao || "não especificado"}
                       </p>
@@ -1154,15 +1154,16 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
                     </div>
                   </div>
                   {e.fotos_urls && e.fotos_urls.length > 0 && (
-                    <div className="mt-1.5 grid grid-cols-2 gap-1 w-fit mx-auto">
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {e.fotos_urls.map((url, i) => (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           key={i}
                           src={url}
                           alt={`${e.tipo} foto ${i + 1}`}
-                          className="h-20 w-20 rounded border border-gray-200 object-cover"
+                          className="h-16 w-16 cursor-pointer rounded border border-gray-200 object-cover hover:opacity-80 print:cursor-default"
                           referrerPolicy="no-referrer"
+                          onClick={() => window.open(url, "_blank")}
                         />
                       ))}
                     </div>
@@ -1255,7 +1256,11 @@ function Campo({
 
 function FotoCard({ foto }: { foto: Foto }) {
   return (
-    <div className="overflow-hidden rounded border border-gray-200">
+    <div
+      className="cursor-pointer overflow-hidden rounded border border-gray-200 hover:ring-2 hover:ring-verde-primary print:cursor-default print:ring-0"
+      onClick={() => window.open(foto.arquivo_foto, "_blank")}
+      title="Clique para ampliar"
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={foto.arquivo_foto}
