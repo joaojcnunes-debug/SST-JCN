@@ -41,7 +41,8 @@ body {
 .aet-sumario,
 .textos-padrao-capitulos,
 .conformidade-situacao-print,
-.relacao-maquinas-footer-print {
+.relacao-maquinas-footer-print,
+.obs-text-print {
   display: none;
 }
 @media print {
@@ -55,6 +56,17 @@ body {
   .conformidade-situacao-print,
   .relacao-maquinas-footer-print {
     display: block;
+  }
+  /* Observação: exibe texto plano no print em vez do textarea (altura fixa corta conteúdo) */
+  .obs-text-print {
+    display: block;
+    white-space: pre-wrap;
+    font-size: 0.75rem;
+    color: #111827;
+    line-height: 1.5;
+  }
+  .obs-textarea-screen {
+    display: none;
   }
 }
 

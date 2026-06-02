@@ -771,8 +771,9 @@ function ItemNCRow({
             disabled={bloqueado}
             rows={2}
             placeholder="Descreva o que foi encontrado, onde e em que condição..."
-            className={inputCls}
+            className={`obs-textarea-screen ${inputCls}`}
           />
+          <p className="obs-text-print">{descricao}</p>
         </div>
 
         <div>
@@ -823,8 +824,9 @@ function ItemNCRow({
             disabled={bloqueado}
             rows={2}
             placeholder="Por que a NC ocorreu? Falta de treinamento, manutenção, procedimento..."
-            className={inputCls}
+            className={`obs-textarea-screen ${inputCls}`}
           />
+          <p className="obs-text-print">{causaRaiz}</p>
         </div>
 
         <div className="md:col-span-2">
@@ -840,8 +842,9 @@ function ItemNCRow({
             disabled={bloqueado}
             rows={2}
             placeholder="O que deve ser feito para tratar a não conformidade..."
-            className={inputCls}
+            className={`obs-textarea-screen ${inputCls}`}
           />
+          <p className="obs-text-print">{acaoCorretiva}</p>
         </div>
 
         <div>
@@ -1400,8 +1403,9 @@ function ObservacoesGerais({
       }
       disabled={disabled}
       rows={3}
-      className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:bg-gray-50 print:resize-none"
+      className="obs-textarea-screen mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:bg-gray-50"
     />
+    <p className="obs-text-print mt-1 text-sm">{texto}</p>
   );
 }
 

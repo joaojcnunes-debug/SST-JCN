@@ -964,8 +964,9 @@ function ItemRow({
             placeholder={bloqueado ? "" : "Observação (opcional)"}
             disabled={bloqueado}
             rows={2}
-            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-gray-50 disabled:text-gray-600 print:resize-none print:border-gray-300"
+            className="obs-textarea-screen w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-gray-50 disabled:text-gray-600"
           />
+          <p className="obs-text-print">{obs}</p>
         </div>
       )}
     </div>
@@ -1265,27 +1266,30 @@ function ObservacoesGerais({
   const [texto, setTexto] = useState(value);
   const [dirty, setDirty] = useState(false);
   return (
-    <textarea
-      value={texto}
-      onChange={(e) => {
-        setTexto(e.target.value);
-        setDirty(true);
-      }}
-      onBlur={() => {
-        if (dirty) {
-          onSave(texto);
-          setDirty(false);
+    <>
+      <textarea
+        value={texto}
+        onChange={(e) => {
+          setTexto(e.target.value);
+          setDirty(true);
+        }}
+        onBlur={() => {
+          if (dirty) {
+            onSave(texto);
+            setDirty(false);
+          }
+        }}
+        placeholder={
+          disabled
+            ? "Nenhuma observação registrada."
+            : "Considerações gerais sobre a auditoria, contexto, ações futuras..."
         }
-      }}
-      placeholder={
-        disabled
-          ? "Nenhuma observação registrada."
-          : "Considerações gerais sobre a auditoria, contexto, ações futuras..."
-      }
-      disabled={disabled}
-      rows={3}
-      className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-gray-50 print:resize-none"
-    />
+        disabled={disabled}
+        rows={3}
+        className="obs-textarea-screen mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-gray-50"
+      />
+      <p className="obs-text-print mt-1 text-sm">{texto}</p>
+    </>
   );
 }
 
