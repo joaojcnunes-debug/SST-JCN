@@ -155,7 +155,7 @@ function LoginInner() {
         className="min-h-screen flex items-center justify-center p-4"
         style={{
           background:
-            "linear-gradient(135deg, #1e4d28 0%, #006B54 60%, #00835A 100%)",
+            "linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #2563eb 100%)",
         }}
       >
         <div className="flex flex-col items-center gap-4 text-white/80">
@@ -171,7 +171,7 @@ function LoginInner() {
       className="min-h-screen flex items-center justify-center p-4"
       style={{
         background:
-          "linear-gradient(135deg, #1e4d28 0%, #006B54 60%, #00835A 100%)",
+          "linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #2563eb 100%)",
       }}
     >
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">

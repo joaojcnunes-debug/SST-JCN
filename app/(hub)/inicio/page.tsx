@@ -82,7 +82,7 @@ const CARDS: HubCardCfg[] = [
   {
     modulo: "analise_quimicos",
     href: "/analise-quimicos",
-    title: "Análise de Químicos Chabra",
+    title: "Análise de Químicos",
     description: "Análise quantitativa de agentes químicos e FISPQ",
     icon: <FlaskConical className="size-12" />,
     accent: "#0EA5E9",
@@ -125,12 +125,12 @@ const CARDS: HubCardCfg[] = [
     accent: "#6366F1",
     categoria: "psicossocial",
   },
-  // ── Chabra Sistema Interno ─────────────────────────────────────────
+  // ── JCN Sistema Interno ────────────────────────────────────────────
   {
     modulo: "inventario_maquinas",
     href: "/inventario-maquinas",
     title: "Inventário de Equipamentos",
-    description: "Patrimônio Chabra e máquinas das empresas clientes",
+    description: "Patrimônio JCN e máquinas das empresas clientes",
     icon: <Boxes className="size-12" />,
     accent: "#2563EB",
     categoria: "interno",
@@ -140,7 +140,7 @@ const CARDS: HubCardCfg[] = [
 const CATEGORIES: { id: Categoria; label: string; icon: React.ReactNode }[] = [
   { id: "seguranca",    label: "Segurança do Trabalho",      icon: <Shield className="size-4" /> },
   { id: "psicossocial", label: "NR — Fatores Psicossocial",  icon: <Brain className="size-4" /> },
-  { id: "interno",      label: "Chabra Sistema Interno",     icon: <Boxes className="size-4" /> },
+  { id: "interno",      label: "JCN Sistema Interno",        icon: <Boxes className="size-4" /> },
 ];
 
 const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; icon: React.ReactNode }> = {
@@ -155,7 +155,7 @@ const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; ic
     icon: <Brain className="size-12" />,
   },
   interno: {
-    descricao: "Patrimônio Chabra, inventário de equipamentos e sistemas de gestão interna",
+    descricao: "Patrimônio JCN, inventário de equipamentos e sistemas de gestão interna",
     accent: "#2563EB",
     icon: <Boxes className="size-12" />,
   },
@@ -451,7 +451,7 @@ function InicioContent() {
         )}
 
         <p className="mt-10 text-center text-xs text-white/50">
-          © {new Date().getFullYear()} Chabra · Sistemas Internos
+          © {new Date().getFullYear()} JCN Consultoria
           {process.env.NEXT_PUBLIC_APP_VERSION && (
             <span className="ml-2 opacity-60">
               v{process.env.NEXT_PUBLIC_APP_VERSION}

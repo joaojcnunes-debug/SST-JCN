@@ -1,14 +1,14 @@
 @import "tailwindcss";
 
 @theme {
-  --color-verde-primary: #006B54;
-  --color-verde-accent: #00835A;
-  --color-verde-dark: #1e4d28;
-  --color-verde-light: #e8f5e9;
-  --color-verde-border: #c8e6c9;
+  --color-verde-primary: #2563eb;
+  --color-verde-accent: #1d4ed8;
+  --color-verde-dark: #1e3a8a;
+  --color-verde-light: #eff6ff;
+  --color-verde-border: #bfdbfe;
   --color-red-alert: #D32F2F;
   --color-amber-warning: #d97706;
-  --color-app-bg: #f0f7f0;
+  --color-app-bg: #f0f4ff;
   --color-card-border: #e5e7eb;
 
   --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto,
