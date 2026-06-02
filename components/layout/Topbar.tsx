@@ -17,7 +17,7 @@ function deriveTitle(pathname: string): string {
     return "Relatório de Inspeção";
   if (pathname.startsWith("/inspecoes/")) return "Editor de Inspeção";
   if (pathname.startsWith("/empresas/")) return "Detalhes da Empresa";
-  return "Painel SST";
+  return "SST · JCN Consultoria";
 }
 
 export default function Topbar() {

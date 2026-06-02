@@ -1,6 +1,6 @@
-appId: com.chabra.painel-sst
-productName: "Painel SST"
-copyright: "Copyright © 2025 Chabra"
+appId: com.jcnconsultoria.sst-jcn
+productName: "SST JCN Consultoria"
+copyright: "Copyright © 2025 JCN Consultoria"
 
 directories:
   output: dist
@@ -41,10 +41,10 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: "Painel SST"
+  shortcutName: "SST JCN Consultoria"
 
 publish:
   provider: github
-  owner: joaojefferson-hash
-  repo: Painel-SST--Chabra
+  owner: joaojcnunes-debug
+  repo: SST-JCN
   releaseType: release

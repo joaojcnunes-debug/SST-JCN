@@ -32,7 +32,7 @@ function SidebarUpdateButton() {
     setState("checking");
     try {
       const resp = await fetch(
-        "https://api.github.com/repos/joaojefferson-hash/Painel-SST--Chabra/releases/latest",
+        "https://api.github.com/repos/joaojcnunes-debug/SST-JCN/releases/latest",
         { headers: { Accept: "application/vnd.github.v3+json" } }
       );
       if (!resp.ok) throw new Error("Falha ao consultar GitHub");
@@ -183,7 +183,7 @@ function NavItemView({
 
 export default function SidebarShell({
   title,
-  subtitle = "Chabra",
+  subtitle = "JCN Consultoria",
   logoHref = "/inicio",
   sections,
 }: Props) {

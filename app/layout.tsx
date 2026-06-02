@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Painel SST — Chabra",
+  title: "SST · JCN Consultoria",
   description: "Sistema de gestão de inspeções de Segurança e Saúde do Trabalho",
 };
 

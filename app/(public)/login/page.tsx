@@ -178,14 +178,14 @@ function LoginInner() {
         <div className="flex flex-col items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={configs?.logo_url || "/logo-chabra.png"}
-            alt="Logo Chabra"
+            src={configs?.logo_url || "/logo-jcn.svg"}
+            alt="Logo JCN Consultoria"
             className="h-20 w-auto max-w-[200px] object-contain"
             referrerPolicy="no-referrer"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/logo-chabra.png" }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/logo-jcn.svg" }}
           />
-          <h1 className="mt-4 text-2xl font-bold text-gray-900">Painel SST</h1>
-          <p className="text-sm text-gray-500">Chabra · Segurança e Saúde do Trabalho</p>
+          <h1 className="mt-4 text-2xl font-bold text-gray-900">SST · JCN Consultoria</h1>
+          <p className="text-sm text-gray-500">Segurança e Saúde do Trabalho</p>
         </div>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-4">
@@ -201,7 +201,7 @@ function LoginInner() {
               autoComplete="email"
               autoFocus
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-              placeholder="seuemail@chabra.com.br"
+              placeholder="seuemail@exemplo.com.br"
             />
           </div>
 
@@ -254,7 +254,7 @@ function LoginInner() {
         </form>
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          © {new Date().getFullYear()} Chabra · Painel SST
+          © {new Date().getFullYear()} JCN Consultoria · SST
         </p>
 
         {/* Botão de atualização manual — só aparece no Electron */}

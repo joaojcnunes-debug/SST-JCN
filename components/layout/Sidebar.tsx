@@ -55,8 +55,8 @@ export default function Sidebar() {
 
   return (
     <SidebarShell
-      title="Painel SST"
-      subtitle="Chabra"
+      title="SST"
+      subtitle="JCN Consultoria"
       logoHref="/dashboard"
       sections={sections}
     />
