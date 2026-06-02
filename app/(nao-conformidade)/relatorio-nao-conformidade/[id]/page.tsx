@@ -1384,28 +1384,30 @@ function ObservacoesGerais({
   const [texto, setTexto] = useState(value);
   const [dirty, setDirty] = useState(false);
   return (
-    <textarea
-      value={texto}
-      onChange={(e) => {
-        setTexto(e.target.value);
-        setDirty(true);
-      }}
-      onBlur={() => {
-        if (dirty) {
-          onSave(texto);
-          setDirty(false);
+    <>
+      <textarea
+        value={texto}
+        onChange={(e) => {
+          setTexto(e.target.value);
+          setDirty(true);
+        }}
+        onBlur={() => {
+          if (dirty) {
+            onSave(texto);
+            setDirty(false);
+          }
+        }}
+        placeholder={
+          disabled
+            ? "Nenhuma observação registrada."
+            : "Considerações gerais sobre a auditoria, contexto, ações futuras..."
         }
-      }}
-      placeholder={
-        disabled
-          ? "Nenhuma observação registrada."
-          : "Considerações gerais sobre a auditoria, contexto, ações futuras..."
-      }
-      disabled={disabled}
-      rows={3}
-      className="obs-textarea-screen mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:bg-gray-50"
-    />
-    <p className="obs-text-print mt-1 text-sm">{texto}</p>
+        disabled={disabled}
+        rows={3}
+        className="obs-textarea-screen mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:bg-gray-50"
+      />
+      <p className="obs-text-print mt-1 text-sm">{texto}</p>
+    </>
   );
 }
 
