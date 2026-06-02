@@ -42,6 +42,7 @@ import {
 } from "@/lib/hooks/useRelatoriosConformidade";
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
 import { useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
