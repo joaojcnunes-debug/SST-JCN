@@ -906,6 +906,55 @@ export interface ApreciacaoMaquinaItem {
 }
 
 // =====================================================
+// Módulo Máquinas por Inspeção (NR-12)
+// =====================================================
+
+export type GrauRiscoInspecaoMaquina = "BAIXO" | "MEDIO" | "ALTO" | "CRITICO";
+
+export const GRAU_RISCO_INSPECAO_MAQUINA_LABELS: Record<GrauRiscoInspecaoMaquina, string> = {
+  BAIXO: "Baixo",
+  MEDIO: "Médio",
+  ALTO: "Alto",
+  CRITICO: "Crítico",
+};
+
+export interface InspecaoMaquina {
+  id_maquina_inspecao: string;
+  id_inspecao: string;
+  id_empresa: string | null;
+  id_setor: string | null;
+  nome: string;
+  tipo: string | null;
+  marca: string | null;
+  modelo: string | null;
+  numero_serie: string | null;
+  tag: string | null;
+  ano_fabricacao: number | null;
+  potencia: string | null;
+  tensao: string | null;
+  protecao_fixa: boolean | null;
+  protecao_movel: boolean | null;
+  intertravamento: boolean | null;
+  botao_emergencia: boolean | null;
+  sistema_bloqueio: boolean | null;
+  possui_manual: boolean | null;
+  aterramento: boolean | null;
+  sinalizacao: boolean | null;
+  necessita_adequacao_nr12: boolean | null;
+  grau_risco: GrauRiscoInspecaoMaquina | null;
+  observacoes: string | null;
+  parecer_ia: string | null;
+  foto_urls: string[];
+  foto_storage_paths: string[];
+  ordem: number;
+  ativo: boolean;
+  usuario_email: string | null;
+  usuario_nome: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+// =====================================================
 // Módulo Relatório de Conformidade NR
 // =====================================================
 

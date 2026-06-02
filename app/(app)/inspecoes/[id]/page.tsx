@@ -22,6 +22,7 @@ import {
   GraduationCap,
   ClipboardEdit,
   Flame,
+  Wrench,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -43,6 +44,7 @@ import ObservacoesTab from "@/components/inspecoes/editor/tabs/ObservacoesTab";
 import PaeTab from "@/components/inspecoes/editor/tabs/PaeTab";
 import TreinamentosTab from "@/components/inspecoes/editor/tabs/TreinamentosTab";
 import ExtintoresTab from "@/components/inspecoes/editor/tabs/ExtintoresTab";
+import MaquinasTab from "@/components/inspecoes/editor/tabs/MaquinasTab";
 import CopiarParaEmpresaModal from "@/components/inspecoes/editor/CopiarParaEmpresaModal";
 
 type TabKey =
@@ -55,6 +57,7 @@ type TabKey =
   | "pae"
   | "treinamentos"
   | "extintores"
+  | "maquinas"
   | "complementos"
   | "observacoes";
 
@@ -125,6 +128,7 @@ export default function InspecaoEditorPage({ params }: Props) {
     treinamentosCargo,
     treinamentosRisco,
     extintores,
+    maquinas,
   } = data;
   const isConcluida = inspecao.status === "CONCLUIDA";
   // Quem pode reabrir uma inspeção concluída:
@@ -150,6 +154,7 @@ export default function InspecaoEditorPage({ params }: Props) {
     { key: "pae", label: "PAE", icon: Siren, count: paeContatos.length },
     { key: "treinamentos", label: "Treinamentos", icon: GraduationCap, count: treinamentos.length },
     { key: "extintores", label: "Extintores", icon: Flame, count: extintores.length },
+    { key: "maquinas", label: "Máquinas", icon: Wrench, count: maquinas.length },
     { key: "complementos", label: "Complementos", icon: Sticker, count: complementos.length },
     { key: "observacoes", label: "Observações", icon: FileText, count: inspecao.observacoes ? 1 : 0 },
   ];
@@ -369,6 +374,15 @@ export default function InspecaoEditorPage({ params }: Props) {
               idEmpresa={inspecao.id_empresa}
               setores={setores}
               extintores={extintores}
+              readOnly={readOnly}
+            />
+          )}
+          {tab === "maquinas" && (
+            <MaquinasTab
+              idInspecao={id}
+              idEmpresa={inspecao.id_empresa}
+              setores={setores}
+              maquinas={maquinas}
               readOnly={readOnly}
             />
           )}

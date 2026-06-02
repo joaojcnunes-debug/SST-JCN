@@ -1,6 +1,6 @@
 {
   "name": "painel-sst",
-  "version": "0.3.40",
+  "version": "0.3.41",
   "private": true,
   "main": "electron-dist/main.js",
   "scripts": {
