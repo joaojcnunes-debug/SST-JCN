@@ -20,6 +20,7 @@ import {
   ListChecks,
   Pencil,
   Check,
+  Sparkles,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -405,6 +406,10 @@ export default function DetalheConformidadePage({
               key={item.id_item}
               item={item}
               bloqueado={bloqueado}
+              empresaNome={empresa?.nome_empresa ?? undefined}
+              setor={relatorio.setor ?? undefined}
+              nrCodigo={relatorio.nr_codigo}
+              nrTitulo={relatorio.nr_titulo}
               onChangeSituacao={(situacao) =>
                 atualizarItem.mutate({
                   id_relatorio: id,
@@ -488,6 +493,11 @@ export default function DetalheConformidadePage({
               observacoes_gerais: v.trim() || null,
             })
           }
+          itens={itens}
+          empresaNome={empresa?.nome_empresa ?? undefined}
+          setor={relatorio.setor ?? undefined}
+          nrCodigo={relatorio.nr_codigo}
+          nrTitulo={relatorio.nr_titulo}
         />
       </section>
 
@@ -663,6 +673,10 @@ function ItemRow({
   onRemoverFoto,
   onAmpliarFoto,
   uploadEmAndamento,
+  empresaNome,
+  setor,
+  nrCodigo,
+  nrTitulo,
 }: {
   item: RelatorioConformidadeItem;
   bloqueado: boolean;
@@ -676,10 +690,48 @@ function ItemRow({
   onRemoverFoto: (storagePath: string) => void;
   onAmpliarFoto: (url: string) => void;
   uploadEmAndamento: boolean;
+  empresaNome?: string;
+  setor?: string;
+  nrCodigo?: string;
+  nrTitulo?: string;
 }) {
   const [obs, setObs] = useState(item.observacao ?? "");
   const [obsDirty, setObsDirty] = useState(false);
+  const [gerandoIAObs, setGerandoIAObs] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function gerarObsIA() {
+    setGerandoIAObs(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase.functions.invoke(
+        "gerar-observacao-conformidade-ia",
+        {
+          body: {
+            empresa_nome: empresaNome,
+            setor,
+            nr_codigo: nrCodigo ?? "",
+            nr_titulo: nrTitulo ?? "",
+            item_codigo: item.item_codigo,
+            item_titulo: item.item_titulo ?? "",
+            item_descricao: item.item_descricao,
+            situacao: item.situacao,
+            obs_atual: obs.trim() || null,
+          },
+        }
+      );
+      if (error) throw error;
+      const texto = (data as { data?: { observacao?: string } } | null)?.data?.observacao;
+      if (texto) {
+        setObs(texto);
+        onChangeObservacao(texto);
+      }
+    } catch (e) {
+      toast.error((e as Error).message ?? "Falha ao gerar observação");
+    } finally {
+      setGerandoIAObs(false);
+    }
+  }
 
   // Edit mode pro título/descrição (só itens livres)
   const ehLivre = item.item_nr_origem === "LIVRE";
@@ -946,7 +998,28 @@ function ItemRow({
       {/* Observação — fica ABAIXO das fotos */}
       {(item.observacao || !bloqueado) && (
         <div className="mt-3">
-          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-500 print:text-[11px]">
+          <div className="mb-1 flex items-center justify-between print:hidden">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              Observação
+            </span>
+            {!bloqueado && (
+              <button
+                type="button"
+                onClick={gerarObsIA}
+                disabled={gerandoIAObs}
+                className="inline-flex items-center gap-1 rounded border border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 disabled:opacity-50"
+                title="Preencher observação com IA (Groq · Llama)"
+              >
+                {gerandoIAObs ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3" />
+                )}
+                {gerandoIAObs ? "Gerando..." : "Preencher com IA"}
+              </button>
+            )}
+          </div>
+          <label className="mb-1 hidden text-[10px] font-semibold uppercase tracking-wider text-gray-500 print:block print:text-[11px]">
             Observação
           </label>
           <textarea
@@ -1258,15 +1331,81 @@ function ObservacoesGerais({
   value,
   disabled,
   onSave,
+  itens,
+  empresaNome,
+  setor,
+  nrCodigo,
+  nrTitulo,
 }: {
   value: string;
   disabled: boolean;
   onSave: (v: string) => void;
+  itens: RelatorioConformidadeItem[];
+  empresaNome?: string;
+  setor?: string;
+  nrCodigo?: string;
+  nrTitulo?: string;
 }) {
   const [texto, setTexto] = useState(value);
   const [dirty, setDirty] = useState(false);
+  const [gerandoIA, setGerandoIA] = useState(false);
+
+  async function gerarComIA() {
+    setGerandoIA(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase.functions.invoke(
+        "gerar-obs-gerais-conformidade-ia",
+        {
+          body: {
+            empresa_nome: empresaNome,
+            setor,
+            nr_codigo: nrCodigo ?? "",
+            nr_titulo: nrTitulo ?? "",
+            itens: itens.map((i) => ({
+              codigo: i.item_codigo,
+              titulo: i.item_titulo ?? "",
+              situacao: i.situacao,
+              observacao: i.observacao,
+            })),
+            obs_atual: texto.trim() || null,
+          },
+        }
+      );
+      if (error) throw error;
+      const gerado = (data as { data?: { observacoes_gerais?: string } } | null)
+        ?.data?.observacoes_gerais;
+      if (gerado) {
+        setTexto(gerado);
+        onSave(gerado);
+      }
+    } catch (e) {
+      toast.error((e as Error).message ?? "Falha ao gerar observações");
+    } finally {
+      setGerandoIA(false);
+    }
+  }
+
   return (
     <>
+      {!disabled && (
+        <div className="mt-2 flex justify-end print:hidden">
+          <button
+            type="button"
+            onClick={gerarComIA}
+            disabled={gerandoIA || itens.length === 0}
+            className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 disabled:cursor-not-allowed disabled:opacity-50"
+            title="Analisa todos os itens e suas observações para gerar um resumo consolidado"
+          >
+            {gerandoIA ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="size-3.5" />
+            )}
+            {gerandoIA ? "Analisando..." : "Analisar com IA"}
+          </button>
+        </div>
+      )}
       <textarea
         value={texto}
         onChange={(e) => {
