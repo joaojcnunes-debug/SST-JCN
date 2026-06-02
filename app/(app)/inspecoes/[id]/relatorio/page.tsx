@@ -871,17 +871,6 @@ function SetorBlock({
         </div>
       )}
 
-      {/* Treinamentos obrigatórios do setor */}
-      {treinamentos.length > 0 && (
-        <div className="mb-4">
-          <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-gray-900">
-            <GraduationCap className="size-3.5 text-purple-600" />
-            Treinamentos Obrigatórios ({treinamentos.length})
-          </h3>
-          <TreinamentosGrid treinamentos={treinamentos} />
-        </div>
-      )}
-
       {/* Riscos identificados */}
       {riscosPorTipo.size > 0 && (
         <div>
@@ -921,6 +910,17 @@ function SetorBlock({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Treinamentos obrigatórios do setor */}
+      {treinamentos.length > 0 && (
+        <div className="mt-4">
+          <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-gray-900">
+            <GraduationCap className="size-3.5 text-purple-600" />
+            Treinamentos Obrigatórios ({treinamentos.length})
+          </h3>
+          <TreinamentosGrid treinamentos={treinamentos} />
         </div>
       )}
     </section>
