@@ -229,7 +229,7 @@ export default function TreinamentosTab({
           observacoes: null,
           ordem: 0,
           ativo: true,
-        });
+        } as never);
         if (errT) throw errT;
 
         const setoresValidos = s.setores_ids.filter((id) =>
@@ -242,7 +242,7 @@ export default function TreinamentosTab({
               setoresValidos.map((id_setor) => ({
                 id_treinamento: idTreinamento,
                 id_setor,
-              }))
+              })) as never
             );
           if (errS) throw errS;
         }
