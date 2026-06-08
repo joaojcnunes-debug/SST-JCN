@@ -202,8 +202,8 @@ ipcMain.handle('clear-credentials', () => {
 ipcMain.handle('get-installer-url', async () => {
   try {
     const resp = await net.fetch(
-      'https://api.github.com/repos/joaojefferson-hash/Painel-SST--Chabra/releases/latest',
-      { headers: { 'User-Agent': 'PainelSST-Updater', 'Accept': 'application/vnd.github.v3+json' } }
+      'https://api.github.com/repos/joaojcnunes-debug/SST-JCN/releases/latest',
+      { headers: { 'User-Agent': 'SSTJCN-Updater', 'Accept': 'application/vnd.github.v3+json' } }
     )
     if (!resp.ok) throw new Error(`GitHub API HTTP ${resp.status}`)
     const release = await resp.json() as {
@@ -261,8 +261,8 @@ ipcMain.handle('run-installer-file', async (_event, filePath: string) => {
 async function checkForUpdateGitHub(): Promise<void> {
   try {
     const resp = await net.fetch(
-      'https://api.github.com/repos/joaojefferson-hash/Painel-SST--Chabra/releases/latest',
-      { headers: { 'User-Agent': 'PainelSST-Updater', 'Accept': 'application/vnd.github.v3+json' } }
+      'https://api.github.com/repos/joaojcnunes-debug/SST-JCN/releases/latest',
+      { headers: { 'User-Agent': 'SSTJCN-Updater', 'Accept': 'application/vnd.github.v3+json' } }
     )
     if (!resp.ok) return
     const release = await resp.json() as { tag_name: string }
