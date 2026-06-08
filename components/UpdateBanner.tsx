@@ -69,7 +69,7 @@ export default function UpdateBanner() {
         const currentVersion = await api!.getVersion?.();
         if (!currentVersion) return;
         const resp = await fetch(
-          "https://api.github.com/repos/joaojefferson-hash/Painel-SST--Chabra/releases/latest",
+          "https://api.github.com/repos/joaojcnunes-debug/SST-JCN/releases/latest",
           { headers: { Accept: "application/vnd.github.v3+json" } }
         );
         if (!resp.ok) return;
