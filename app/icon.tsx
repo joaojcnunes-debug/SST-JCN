@@ -1,9 +1,9 @@
-// Favicon dinâmico do Painel SST Chabra.
+// Favicon dinâmico do SST JCN Consultoria.
 //
 // Tenta usar a logo configurada em public.configuracoes.logo_url
 // (uploadada via /config → "Logo da Empresa"). Se não houver logo
-// configurada ou falhar a leitura, cai num fallback elegante:
-// fundo verde Chabra + letra "C" branca.
+// configurada ou falhar a leitura, cai no fallback:
+// escudo azul JCN com checkmark branco.
 //
 // O Next.js gera automaticamente o /icon e /favicon a partir deste
 // arquivo (App Router). Cache de 10min via revalidate.
@@ -79,7 +79,7 @@ export default async function Icon() {
     );
   }
 
-  // Fallback: letra "C" branca em fundo verde Chabra
+  // Fallback: escudo azul JCN com checkmark branco
   return new ImageResponse(
     (
       <div
@@ -87,19 +87,40 @@ export default async function Icon() {
           display: "flex",
           width: "100%",
           height: "100%",
-          background: "#006B54",
-          borderRadius: 12,
+          background: "linear-gradient(160deg, #38bdf8 0%, #0369a1 100%)",
+          borderRadius: 14,
           alignItems: "center",
           justifyContent: "center",
-          color: "#ffffff",
-          fontSize: 48,
-          fontWeight: 800,
-          letterSpacing: -2,
-          fontFamily:
-            "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
         }}
       >
-        C
+        {/* Escudo */}
+        <div
+          style={{
+            display: "flex",
+            position: "relative",
+            width: 40,
+            height: 46,
+            background: "rgba(255,255,255,0.18)",
+            borderRadius: "50% 50% 46% 46% / 40% 40% 60% 60%",
+            alignItems: "center",
+            justifyContent: "center",
+            border: "2px solid rgba(255,255,255,0.4)",
+          }}
+        >
+          {/* Checkmark via texto unicode */}
+          <div
+            style={{
+              display: "flex",
+              color: "#ffffff",
+              fontSize: 24,
+              fontWeight: 900,
+              marginTop: 2,
+              fontFamily: "system-ui, -apple-system, sans-serif",
+            }}
+          >
+            ✓
+          </div>
+        </div>
       </div>
     ),
     { ...size }
