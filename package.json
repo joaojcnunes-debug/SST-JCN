@@ -1,6 +1,6 @@
 {
-  "name": "painel-sst",
-  "version": "0.3.45",
+  "name": "sst-jcn",
+  "version": "0.3.46",
   "private": true,
   "main": "electron-dist/main.js",
   "scripts": {
@@ -11,8 +11,8 @@
     "sb": "supabase",
     "electron:compile": "tsc -p electron/tsconfig.json",
     "electron:dev": "concurrently -k -n NEXT,ELECTRON -c cyan,blue \"next dev\" \"wait-on http://localhost:3000 && npm run electron:compile && cross-env NODE_ENV=development node scripts/launch-electron.js .\"",
-    "electron:build": "next build && npm run electron:compile && electron-builder --win",
-    "electron:release": "next build && npm run electron:compile && electron-builder --win --publish always",
+    "electron:build": "next build && node scripts/fix-standalone-modules.js && npm run electron:compile && electron-builder --win",
+    "electron:release": "next build && node scripts/fix-standalone-modules.js && npm run electron:compile && electron-builder --win --publish always",
     "electron:rebuild": "electron-rebuild -f -w better-sqlite3",
     "electron:publish": "node scripts/publish-update.js"
   },
