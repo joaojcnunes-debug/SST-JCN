@@ -207,7 +207,7 @@ function LoginInner() {
                 autoComplete="email"
                 autoFocus
                 className="mt-1.5 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
-                placeholder="seuemail@chabra.com.br"
+                placeholder="seuemail@jcnconsultoria.com.br"
               />
             </div>
 
