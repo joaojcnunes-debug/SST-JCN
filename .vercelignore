@@ -1,0 +1,8 @@
+.next
+node_modules
+dist
+electron-dist
+electron/assets
+*.exe
+*.blockmap
+supabase/migrations_jcn_pending.sql
