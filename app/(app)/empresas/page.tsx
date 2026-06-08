@@ -65,7 +65,7 @@ export default function EmpresasPage() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por nome ou CNPJ..."
-            className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
           />
         </div>
         {canCreate && (
@@ -75,7 +75,7 @@ export default function EmpresasPage() {
               setEditing(null);
               setFormOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+            className="inline-flex items-center gap-2 rounded-xl bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95"
           >
             <Plus className="size-4" />
             Nova Empresa
@@ -98,18 +98,24 @@ export default function EmpresasPage() {
       )}
 
       {!isLoading && !error && filtradas.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center">
-          <Building2 className="size-10 text-gray-400" />
-          <p className="mt-3 text-sm font-medium text-gray-900">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white p-14 text-center">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-light">
+            <Building2 className="size-7 text-verde-primary" />
+          </div>
+          <p className="mt-4 text-sm font-semibold text-gray-800">
             Nenhuma empresa {busca ? "encontrada" : "cadastrada"}
+          </p>
+          <p className="mt-1 text-xs text-gray-400">
+            {busca ? `Nenhum resultado para "${busca}"` : "Comece cadastrando a primeira empresa"}
           </p>
           {!busca && canEdit && (
             <button
               type="button"
               onClick={() => setFormOpen(true)}
-              className="mt-3 text-sm font-medium text-verde-primary hover:underline"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-verde-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-verde-accent"
             >
-              Cadastrar a primeira →
+              <Plus className="size-4" />
+              Cadastrar empresa
             </button>
           )}
         </div>

@@ -10,11 +10,12 @@ export default function LoadingSkeleton({
   className,
 }: LoadingSkeletonProps) {
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("space-y-2.5", className)}>
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          className="h-12 w-full animate-pulse rounded-lg bg-gray-200/70"
+          className="skeleton-shimmer h-11 w-full"
+          style={{ opacity: 1 - i * 0.08 }}
         />
       ))}
     </div>
@@ -23,11 +24,6 @@ export default function LoadingSkeleton({
 
 export function CardSkeleton({ className }: { className?: string }) {
   return (
-    <div
-      className={cn(
-        "h-32 w-full animate-pulse rounded-xl bg-gray-200/70",
-        className
-      )}
-    />
+    <div className={cn("skeleton-shimmer h-32 w-full rounded-2xl", className)} />
   );
 }

@@ -44,6 +44,9 @@ export interface HomeStatsData {
   analise_quimicos?: ModuloStats;
   inventario_maquinas?: ModuloStats;
   apreciacao_maquinas?: ModuloStats;
+  aet?: ModuloStats;
+  aep?: ModuloStats;
+  questionarios_psicossociais?: ModuloStats;
   atividadeRecente: AtividadeItem[];
   isLoading: boolean;
 }
@@ -231,6 +234,71 @@ export function useHomeStats(): HomeStatsData {
     },
   });
 
+  // === AET — Análise Ergonômica ===
+  const aetQ = useQuery({
+    queryKey: ["home-stats-aet", empresasVinculadas],
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("aet_relatorios")
+        .select("id_relatorio, id_empresa, status, created_at, updated_at")
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .limit(200);
+      if (empresasVinculadas) {
+        q = q.in("id_empresa", empresasVinculadas);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as { status?: string; updated_at?: string | null; created_at?: string | null }[];
+    },
+  });
+
+  // === AEP — Análise Ergonômica Preliminar ===
+  const aepQ = useQuery({
+    queryKey: ["home-stats-aep", empresasVinculadas],
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("aep_relatorios")
+        .select("id_relatorio, id_empresa, status, created_at, updated_at")
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .limit(200);
+      if (empresasVinculadas) {
+        q = q.in("id_empresa", empresasVinculadas);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as { status?: string; updated_at?: string | null; created_at?: string | null }[];
+    },
+  });
+
+  // === Questionários Psicossociais (QPS) ===
+  // Nota: qps_aplicacoes usa criado_em/atualizado_em (não created_at/updated_at)
+  const qpsQ = useQuery({
+    queryKey: ["home-stats-qps", empresasVinculadas],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const supabase = createSupabaseBrowserClient() as any;
+      let q = supabase
+        .from("qps_aplicacoes")
+        .select("id_aplicacao, id_empresa, status, criado_em, atualizado_em")
+        .neq("status", "DELETADO")
+        .order("atualizado_em", { ascending: false, nullsFirst: false })
+        .limit(200);
+      if (empresasVinculadas) {
+        q = q.in("id_empresa", empresasVinculadas);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      // Normaliza nomes de campo para compatibilidade com calcStats/dataRow
+      return (data ?? []).map((r: { status?: string; criado_em?: string | null; atualizado_em?: string | null }) => ({
+        status: r.status,
+        created_at: r.criado_em,
+        updated_at: r.atualizado_em,
+      }));
+    },
+  });
+
   // === Apreciações NR-12 ===
   const apreciacoesQ = useQuery({
     queryKey: ["home-stats-apreciacao-maquinas", empresasVinculadas],
@@ -259,7 +327,10 @@ export function useHomeStats(): HomeStatsData {
     quimicosQ.isLoading ||
     psicoQ.isLoading ||
     maquinasQ.isLoading ||
-    apreciacoesQ.isLoading;
+    apreciacoesQ.isLoading ||
+    aetQ.isLoading ||
+    aepQ.isLoading ||
+    qpsQ.isLoading;
 
   // === Stats por módulo ===
   const painel = inspecoesQ.data ? calcStats(inspecoesQ.data) : undefined;
@@ -278,6 +349,9 @@ export function useHomeStats(): HomeStatsData {
   const apreciacao_maquinas = apreciacoesQ.data
     ? calcStats(apreciacoesQ.data)
     : undefined;
+  const aet = aetQ.data ? calcStats(aetQ.data) : undefined;
+  const aep = aepQ.data ? calcStats(aepQ.data) : undefined;
+  const questionarios_psicossociais = qpsQ.data ? calcStats(qpsQ.data) : undefined;
 
   // === Atividade Recente (top 8 do agregado) ===
   const atividade: AtividadeItem[] = [];
@@ -362,6 +436,9 @@ export function useHomeStats(): HomeStatsData {
     analise_quimicos,
     inventario_maquinas,
     apreciacao_maquinas,
+    aet,
+    aep,
+    questionarios_psicossociais,
     atividadeRecente,
     isLoading,
   };

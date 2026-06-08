@@ -142,7 +142,7 @@ export default function AcoesPage() {
               setEditing(null);
               setFormOpen(true);
             }}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+            className="inline-flex items-center gap-2 rounded-xl bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95"
           >
             <Plus className="size-4" /> Nova Ação
           </button>
@@ -150,7 +150,7 @@ export default function AcoesPage() {
       </div>
 
       {/* Filtros */}
-      <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
         <div className="grid gap-3 md:grid-cols-[1fr_220px_180px_160px]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
@@ -204,37 +204,43 @@ export default function AcoesPage() {
       </div>
 
       {/* Tabela */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {isLoading ? (
-          <div className="p-4">
+          <div className="p-5">
             <LoadingSkeleton rows={5} />
           </div>
         ) : filtradas.length === 0 ? (
-          <div className="p-12 text-center text-sm text-gray-500">
-            {acoes.length === 0
-              ? "Nenhuma ação cadastrada ainda."
-              : "Nenhuma ação encontrada com esses filtros."}
+          <div className="flex flex-col items-center justify-center p-14 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-light">
+              <Target className="size-7 text-verde-primary" />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-gray-800">
+              {acoes.length === 0 ? "Nenhuma ação cadastrada ainda" : "Nenhuma ação encontrada"}
+            </p>
+            <p className="mt-1 text-xs text-gray-400">
+              {acoes.length === 0 ? "Crie a primeira ação 5W2H" : "Tente ajustar os filtros"}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
-                <tr>
-                  <th className="px-3 py-2.5 text-left font-medium">Ação (O quê)</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Empresa / Setor</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Responsável</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Prazo</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Prioridade</th>
-                  <th className="px-3 py-2.5 text-left font-medium">Status</th>
-                  <th className="px-3 py-2.5 text-right font-medium">Ações</th>
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/70">
+                  <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Ação (O quê)</th>
+                  <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Empresa / Setor</th>
+                  <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Responsável</th>
+                  <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Prazo</th>
+                  <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Prioridade</th>
+                  <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
+                  <th className="px-3 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {pag.pageItems.map((a) => {
                   const sCfg = STATUS_CFG[a.status];
                   const pCfg = PRIORIDADE_CFG[a.prioridade];
                   return (
-                    <tr key={a.id_acao} className="hover:bg-gray-50">
+                    <tr key={a.id_acao} className="border-b border-gray-50 transition-colors hover:bg-verde-light/25 last:border-b-0">
                       <td className="px-3 py-2.5">
                         <p className="font-medium text-gray-900">{a.what_acao}</p>
                         {a.why_justificativa && (
@@ -307,7 +313,7 @@ export default function AcoesPage() {
                                   setEditing(a);
                                   setFormOpen(true);
                                 }}
-                                className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                                className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-verde-light hover:text-verde-primary"
                                 title="Editar"
                               >
                                 <Pencil className="size-4" />
@@ -315,7 +321,7 @@ export default function AcoesPage() {
                               <button
                                 type="button"
                                 onClick={() => setConfirmDel(a)}
-                                className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                                className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500"
                                 title="Excluir"
                               >
                                 <Trash2 className="size-4" />

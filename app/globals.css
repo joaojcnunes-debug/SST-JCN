@@ -32,6 +32,47 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Inputs — estilo base unificado */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+textarea,
+select {
+  border-radius: 0.625rem; /* rounded-[10px] */
+  border: 1px solid #e5e7eb;
+  transition: border-color 100ms, box-shadow 100ms;
+}
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="tel"]:focus,
+textarea:focus,
+select:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+  outline: none;
+}
+
+/* Elevation helpers — card, modal, dropdown */
+.card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+.card-hover {
+  transition: box-shadow 150ms, transform 150ms;
+}
+.card-hover:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
+  transform: translateY(-1px);
+}
+
 /* Print-only sections — hidden on screen, visible on print */
 .drps-sumario,
 .drps-gestao-resumo-print,
@@ -103,9 +144,9 @@ body {
 /* TipTap rich text editor — estilos visuais do conteudo */
 .tiptap-conteudo:focus { outline: none; }
 .tiptap-conteudo p { margin: 0 0 0.5em 0; }
-.tiptap-conteudo h1 { font-size: 1.5rem; font-weight: 700; color: #1e4d28; margin: 0.6em 0 0.3em; }
-.tiptap-conteudo h2 { font-size: 1.25rem; font-weight: 700; color: #1e4d28; margin: 0.5em 0 0.3em; }
-.tiptap-conteudo h3 { font-size: 1.1rem; font-weight: 700; color: #1e4d28; margin: 0.4em 0 0.2em; }
+.tiptap-conteudo h1 { font-size: 1.5rem; font-weight: 700; color: #0c4a6e; margin: 0.6em 0 0.3em; }
+.tiptap-conteudo h2 { font-size: 1.25rem; font-weight: 700; color: #0c4a6e; margin: 0.5em 0 0.3em; }
+.tiptap-conteudo h3 { font-size: 1.1rem; font-weight: 700; color: #0c4a6e; margin: 0.4em 0 0.2em; }
 .tiptap-conteudo ul { list-style: disc; margin: 0 0 0.5em 1.5em; }
 .tiptap-conteudo ol { list-style: decimal; margin: 0 0 0.5em 1.5em; }
 .tiptap-conteudo li { margin: 0.1em 0; }
@@ -113,7 +154,7 @@ body {
 .tiptap-conteudo em { font-style: italic; }
 .tiptap-conteudo u { text-decoration: underline; }
 .tiptap-conteudo s { text-decoration: line-through; }
-.tiptap-conteudo a { color: #006B54; text-decoration: underline; }
+.tiptap-conteudo a { color: #0ea5e9; text-decoration: underline; }
 .tiptap-conteudo img { max-width: 100%; height: auto; border-radius: 4px; margin: 0.5em 0; }
 .tiptap-conteudo table {
   border-collapse: collapse;
@@ -131,7 +172,7 @@ body {
 }
 .tiptap-conteudo th {
   background: #d4edda;
-  color: #1e4d28;
+  color: #0c4a6e;
   font-weight: 700;
 }
 .tiptap-conteudo .selectedCell {
@@ -143,15 +184,27 @@ body {
   top: 0;
   bottom: -2px;
   width: 4px;
-  background-color: #006B54;
+  background-color: #0ea5e9;
   pointer-events: none;
 }
 
+/* Skeleton shimmer */
+@keyframes shimmer {
+  0% { background-position: -400% 0; }
+  100% { background-position: 400% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #eef0ef 25%, #e2e8e5 50%, #eef0ef 75%);
+  background-size: 400% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+
 /* Scrollbar discreta */
-::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 8px;
+  background: #d1d5db;
+  border-radius: 99px;
 }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }

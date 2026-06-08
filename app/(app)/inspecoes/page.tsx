@@ -198,42 +198,47 @@ function InspecoesInner() {
         </div>
       )}
 
-      <div className={cn("overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm", isFetching && "opacity-70 transition-opacity")}>
+      <div className={cn(
+        "overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm",
+        isFetching && "opacity-70 transition-opacity"
+      )}>
         {!enabled ? (
-          <div className="flex flex-col items-center justify-center p-12 text-center">
-            <ClipboardList className="size-10 text-gray-400" />
-            <p className="mt-3 text-sm font-medium text-gray-900">
+          <div className="flex flex-col items-center justify-center p-14 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-light">
+              <ClipboardList className="size-7 text-verde-primary" />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-gray-800">
               Selecione uma empresa ou busque pelo técnico
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="mt-1 text-xs text-gray-400">
               Digite ao menos 2 caracteres no campo acima para buscar por técnico
             </p>
           </div>
         ) : isLoading ? (
-          <div className="p-4">
+          <div className="p-5">
             <LoadingSkeleton rows={6} />
           </div>
         ) : items.length === 0 ? (
-          <div className="p-12 text-center text-sm text-gray-500">
+          <div className="p-14 text-center text-sm text-gray-500">
             Nenhuma inspeção {filtro !== "Todos" ? "nesse status" : "encontrada"}.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
-                <tr>
-                  <th className="px-4 py-2.5 text-left font-medium">ID</th>
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/70">
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">ID</th>
                   {!empresaId && (
-                    <th className="px-4 py-2.5 text-left font-medium">Empresa</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Empresa</th>
                   )}
-                  <th className="px-4 py-2.5 text-center font-medium">Rev.</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Data</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Responsável</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Status</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Ações</th>
+                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-400">Rev.</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Data</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Responsável</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {items.map((i) => (
                   <InspecaoRow
                     key={i.id_inspecao}

@@ -14,6 +14,7 @@ import {
   Upload,
   X,
   BadgeCheck,
+  Users,
 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { detectRegistroTipo } from "@/lib/registro-profissional";
@@ -118,7 +119,7 @@ export default function UsuariosPage() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por nome, e-mail ou cargo..."
-            className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
           />
         </div>
         <button
@@ -127,38 +128,46 @@ export default function UsuariosPage() {
             setEditing(null);
             setFormOpen(true);
           }}
-          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+          className="inline-flex items-center gap-2 rounded-xl bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95"
         >
           <Plus className="size-4" />
           Novo Usuário
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {isLoading ? (
           <div className="p-4">
             <LoadingSkeleton rows={5} />
           </div>
         ) : filtrados.length === 0 ? (
-          <div className="p-12 text-center text-sm text-gray-500">
-            Nenhum usuário encontrado.
+          <div className="flex flex-col items-center justify-center p-14 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-light">
+              <Users className="size-7 text-verde-primary" />
+            </div>
+            <p className="mt-4 text-sm font-semibold text-gray-800">
+              {usuarios.length === 0 ? "Nenhum usuário cadastrado" : "Nenhum usuário encontrado"}
+            </p>
+            <p className="mt-1 text-xs text-gray-400">
+              {usuarios.length === 0 ? "Crie o primeiro usuário do sistema" : "Tente ajustar a busca"}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-xs uppercase text-gray-500">
-                <tr>
-                  <th className="px-4 py-2.5 text-left font-medium">Nome</th>
-                  <th className="px-4 py-2.5 text-left font-medium">E-mail</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Cargo</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Perfil</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Status</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Ações</th>
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/70">
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Nome</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">E-mail</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Cargo</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Perfil</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody>
                 {pag.pageItems.map((u) => (
-                  <tr key={u.id_usuario} className="hover:bg-gray-50">
+                  <tr key={u.id_usuario} className="border-b border-gray-50 transition-colors hover:bg-verde-light/25 last:border-b-0">
                     <td className="px-4 py-2.5 font-medium text-gray-900">
                       {u.nome}
                     </td>
@@ -182,7 +191,7 @@ export default function UsuariosPage() {
                             setEditing(u);
                             setFormOpen(true);
                           }}
-                          className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                          className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-verde-light hover:text-verde-primary"
                           title="Editar"
                         >
                           <Pencil className="size-4" />
@@ -192,7 +201,7 @@ export default function UsuariosPage() {
                           <button
                             type="button"
                             onClick={() => setConfirmDel(u)}
-                            className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                            className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500"
                             title="Excluir"
                           >
                             <Trash2 className="size-4" />
@@ -263,9 +272,9 @@ function ToggleAtivo({ usuario }: { usuario: Usuario }) {
       onClick={() => m.mutate()}
       disabled={m.isPending}
       className={cn(
-        "rounded p-1.5 hover:bg-amber-50 disabled:opacity-50",
+        "flex size-7 items-center justify-center rounded-lg transition hover:bg-amber-50 disabled:opacity-50",
         usuario.ativo_sistema
-          ? "text-gray-500 hover:text-amber-warning"
+          ? "text-gray-400 hover:text-amber-warning"
           : "text-amber-warning"
       )}
       title={usuario.ativo_sistema ? "Desativar" : "Ativar"}
@@ -974,18 +983,18 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           Usuário ativo no sistema
         </label>
 
-        <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
+        <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-xl bg-verde-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-verde-accent disabled:opacity-60"
           >
             {mutation.isPending ? "Salvando..." : isEdit ? "Salvar" : "Criar"}
           </button>
@@ -996,7 +1005,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
 }
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
+  "mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
 
 function Field({
   label,

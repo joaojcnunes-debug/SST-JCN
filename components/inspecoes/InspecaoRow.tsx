@@ -12,50 +12,53 @@ export default function InspecaoRow({
   showEmpresa,
 }: {
   insp: Inspecao;
-  /** Quando setado, mostra botão de excluir. Use só para Admin. */
   onDelete?: (insp: Inspecao) => void;
   showEmpresa?: boolean;
 }) {
   return (
-    <tr className="hover:bg-gray-50">
-      <td className="px-4 py-2.5 font-mono text-xs text-gray-600">
+    <tr className="border-b border-gray-50 transition-colors hover:bg-verde-light/25 last:border-b-0">
+      <td className="px-4 py-3 font-mono text-xs text-gray-400">
         {insp.id_inspecao}
       </td>
       {showEmpresa && (
-        <td className="px-4 py-2.5 text-gray-700">
+        <td className="px-4 py-3 font-medium text-gray-800">
           {insp.empresas?.nome_empresa ?? "—"}
         </td>
       )}
-      <td className="px-4 py-2.5 text-center text-gray-700">{insp.revisao}</td>
-      <td className="px-4 py-2.5 text-gray-600">{fmtData(insp.data_inspecao)}</td>
-      <td className="px-4 py-2.5 text-gray-700">{insp.responsavel ?? "—"}</td>
-      <td className="px-4 py-2.5">
+      <td className="px-4 py-3 text-center">
+        <span className="inline-flex size-6 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600">
+          {insp.revisao}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-600">{fmtData(insp.data_inspecao)}</td>
+      <td className="px-4 py-3 text-sm text-gray-700">{insp.responsavel ?? "—"}</td>
+      <td className="px-4 py-3">
         <StatusBadge status={insp.status} />
       </td>
-      <td className="px-4 py-2.5">
-        <div className="flex justify-end gap-1">
+      <td className="px-4 py-3">
+        <div className="flex items-center justify-end gap-1">
           <Link
             href={`/inspecoes/${insp.id_inspecao}`}
-            className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
-            title="Editar"
+            className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-verde-light hover:text-verde-primary"
+            title="Editar inspeção"
           >
-            <Pencil className="size-4" />
+            <Pencil className="size-3.5" />
           </Link>
           <Link
             href={`/inspecoes/${insp.id_inspecao}/relatorio`}
-            className="rounded p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-700"
-            title="Relatório"
+            className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-sky-50 hover:text-sky-600"
+            title="Ver relatório"
           >
-            <ChartBar className="size-4" />
+            <ChartBar className="size-3.5" />
           </Link>
           {onDelete && (
             <button
               type="button"
               onClick={() => onDelete(insp)}
-              className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
-              title="Excluir inspeção (Admin)"
+              className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+              title="Excluir inspeção"
             >
-              <Trash2 className="size-4" />
+              <Trash2 className="size-3.5" />
             </button>
           )}
         </div>

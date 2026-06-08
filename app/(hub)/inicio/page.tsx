@@ -125,7 +125,7 @@ const CARDS: HubCardCfg[] = [
     accent: "#6366F1",
     categoria: "psicossocial",
   },
-  // ── JCN Sistema Interno ────────────────────────────────────────────
+  // ── JCN Sistema Interno ─────────────────────────────────────────
   {
     modulo: "inventario_maquinas",
     href: "/inventario-maquinas",
@@ -140,7 +140,7 @@ const CARDS: HubCardCfg[] = [
 const CATEGORIES: { id: Categoria; label: string; icon: React.ReactNode }[] = [
   { id: "seguranca",    label: "Segurança do Trabalho",      icon: <Shield className="size-4" /> },
   { id: "psicossocial", label: "NR — Fatores Psicossocial",  icon: <Brain className="size-4" /> },
-  { id: "interno",      label: "JCN Sistema Interno",        icon: <Boxes className="size-4" /> },
+  { id: "interno",      label: "JCN Sistema Interno",     icon: <Boxes className="size-4" /> },
 ];
 
 const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; icon: React.ReactNode }> = {
@@ -287,7 +287,7 @@ function InicioContent() {
             </div>
           )}
           <div className="leading-tight">
-            <p className="text-sm font-bold text-white">Chabra</p>
+            <p className="text-sm font-bold text-white">JCN Consultoria</p>
             <p className="text-[11px] text-white/70">
               Segurança e Saúde do Trabalho
             </p>
@@ -491,6 +491,12 @@ function statsPorModulo(
       return data.inventario_maquinas;
     case "apreciacao_maquinas":
       return data.apreciacao_maquinas;
+    case "aet":
+      return data.aet;
+    case "aep":
+      return data.aep;
+    case "questionarios_psicossociais":
+      return data.questionarios_psicossociais;
     default:
       return undefined;
   }
@@ -500,7 +506,7 @@ function PdfDirectCard() {
   return (
     <Link
       href="/pdfs-gerados"
-      className="group flex w-full flex-col gap-4 rounded-2xl bg-white p-6 text-left shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
+      className="group flex w-full flex-col gap-4 rounded-2xl bg-white p-6 text-left ring-1 ring-black/5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
     >
       <div className="flex items-start gap-4">
         <div
@@ -553,7 +559,7 @@ function HubCard({
   return (
     <Link
       href={href}
-      className="group flex flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
+      className="group flex flex-col gap-4 rounded-2xl bg-white p-6 ring-1 ring-black/5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
     >
       <div className="flex items-start gap-4">
         <div
@@ -642,7 +648,7 @@ function CategoryCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full flex-col gap-4 rounded-2xl bg-white p-6 text-left shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
+      className="group flex w-full flex-col gap-4 rounded-2xl bg-white p-6 text-left ring-1 ring-black/5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
     >
       <div className="flex items-start gap-4">
         <div

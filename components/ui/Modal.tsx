@@ -46,9 +46,6 @@ export default function Modal({
     }
   }, [open]);
 
-  // Gerencia overflow do body separadamente de onClose para evitar que
-  // re-renders do caller (que criam nova referência para onClose) causem
-  // cleanup/re-setup do overflow enquanto o modal ainda está aberto.
   useEffect(() => {
     if (!open) return;
     document.body.style.overflow = "hidden";
@@ -59,21 +56,14 @@ export default function Modal({
     if (!open || !dialogRef.current) return;
     const dialog = dialogRef.current;
 
-    // Foca o primeiro input (não o botão X) ao abrir
     const inputs = Array.from(
-      dialog.querySelectorAll<HTMLElement>(
-        'input:not([disabled]), textarea:not([disabled])'
-      )
+      dialog.querySelectorAll<HTMLElement>('input:not([disabled]), textarea:not([disabled])')
     );
     const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
     (inputs[0] ?? focusable[0])?.focus();
 
-    // Listener no dialog em capture — roda antes de qualquer listener
-    // no document (Tiptap/ProseMirror), impedindo que o editor intercepte
-    // teclas digitadas nos inputs do modal.
     const onKey = (e: KeyboardEvent) => {
       e.stopPropagation();
-
       if (e.key === "Escape") { onClose(); return; }
       if (e.key !== "Tab") return;
       const els = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
@@ -95,7 +85,7 @@ export default function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 animate-in fade-in print:hidden"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px] animate-in fade-in print:hidden"
       onClick={closeOnBackdrop ? onClose : undefined}
       aria-hidden="true"
     >
@@ -105,29 +95,29 @@ export default function Modal({
         aria-modal="true"
         aria-labelledby={title ? titleId.current : undefined}
         className={cn(
-          "w-full rounded-xl bg-white shadow-2xl flex flex-col max-h-[90vh]",
+          "w-full rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 flex flex-col max-h-[90vh]",
           SIZE[size]
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {title && (
-          <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
-            <h2 id={titleId.current} className="text-lg font-semibold text-gray-900">
+          <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+            <h2 id={titleId.current} className="text-base font-bold text-gray-900">
               {title}
             </h2>
             <button
               type="button"
               onClick={onClose}
-              className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+              className="flex size-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
               aria-label="Fechar"
             >
-              <X className="size-5" />
+              <X className="size-4" />
             </button>
           </div>
         )}
-        <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
         {footer && (
-          <div className="border-t border-gray-200 px-5 py-3 bg-gray-50 rounded-b-xl">
+          <div className="rounded-b-2xl border-t border-gray-100 bg-gray-50/70 px-6 py-4">
             {footer}
           </div>
         )}

@@ -49,7 +49,7 @@ function RelatoriosInner() {
 
   return (
     <div className="space-y-6">
-      <header className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <header className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary">
             <BarChart3 className="size-6" />
@@ -78,29 +78,25 @@ function RelatoriosInner() {
       </header>
 
       {!empresaId ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center">
-          <Building2 className="size-10 text-gray-400" />
-          <p className="mt-3 text-sm font-medium text-gray-900">
-            Selecione uma empresa
-          </p>
-          <p className="text-xs text-gray-500">
-            Os relatórios são organizados por empresa.
-          </p>
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white p-14 text-center">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-light">
+            <Building2 className="size-7 text-verde-primary" />
+          </div>
+          <p className="mt-4 text-sm font-semibold text-gray-800">Selecione uma empresa</p>
+          <p className="mt-1 text-xs text-gray-400">Os relatórios são organizados por empresa.</p>
         </div>
       ) : (
         <>
           {/* Card empresa */}
           {empresa && (
-            <div className="rounded-xl border border-verde-border bg-verde-light/30 p-4">
+            <div className="rounded-2xl border border-verde-border bg-gradient-to-r from-verde-light/60 to-white p-4">
               <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-lg bg-verde-primary text-white">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-verde-primary text-white shadow-sm">
                   <Building2 className="size-5" />
                 </div>
                 <div>
-                  <p className="font-bold text-gray-900">
-                    {empresa.nome_empresa}
-                  </p>
-                  <p className="text-xs text-gray-600">
+                  <p className="font-bold text-gray-900">{empresa.nome_empresa}</p>
+                  <p className="text-xs text-gray-500">
                     CNPJ: {formatCNPJ(empresa.cnpj)}
                     {empresa.razao_social && <> · {empresa.razao_social}</>}
                   </p>
@@ -116,7 +112,7 @@ function RelatoriosInner() {
             </h2>
             <Link
               href={`/empresas/${empresaId}/relatorio`}
-              className="group flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:border-verde-primary hover:shadow-md"
+              className="group flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:border-verde-primary/50 hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="flex size-12 items-center justify-center rounded-xl bg-blue-50 text-blue-700 transition-colors group-hover:bg-blue-100">
                 <Layers className="size-6" />
@@ -149,30 +145,20 @@ function RelatoriosInner() {
                 Esta empresa ainda não tem inspeções cadastradas.
               </div>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-xs uppercase text-gray-500">
-                    <tr>
-                      <th className="px-4 py-2.5 text-left font-medium">
-                        Revisão
-                      </th>
-                      <th className="px-4 py-2.5 text-left font-medium">
-                        Data
-                      </th>
-                      <th className="px-4 py-2.5 text-left font-medium">
-                        Responsável
-                      </th>
-                      <th className="px-4 py-2.5 text-left font-medium">
-                        Status
-                      </th>
-                      <th className="px-4 py-2.5 text-right font-medium">
-                        Relatórios
-                      </th>
+                  <thead>
+                    <tr className="border-b border-gray-100 bg-gray-50/70">
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Revisão</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Data</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Responsável</th>
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
+                      <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400">Relatórios</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {inspecoesValidas.map((i) => (
-                      <tr key={i.id_inspecao} className="hover:bg-gray-50">
+                      <tr key={i.id_inspecao} className="border-b border-gray-50 transition-colors hover:bg-verde-light/25 last:border-b-0">
                         <td className="px-4 py-2.5">
                           <span className="font-mono text-xs text-gray-500">
                             Rev. {i.revisao}

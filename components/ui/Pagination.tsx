@@ -22,28 +22,27 @@ export default function Pagination({
 
   const start = (page - 1) * pageSize + 1;
   const end = Math.min(page * pageSize, totalItems);
-
   const pages = pageWindow(page, totalPages);
 
   return (
-    <div className="flex flex-col items-center justify-between gap-2 border-t border-gray-100 px-4 py-2.5 text-xs text-gray-600 sm:flex-row">
+    <div className="flex flex-col items-center justify-between gap-2 border-t border-gray-100 px-4 py-3 text-xs text-gray-500 sm:flex-row">
       <span>
-        Mostrando <strong>{start}</strong>–<strong>{end}</strong> de{" "}
-        <strong>{totalItems}</strong>
+        Mostrando <strong className="text-gray-700">{start}</strong>–<strong className="text-gray-700">{end}</strong> de{" "}
+        <strong className="text-gray-700">{totalItems}</strong>
       </span>
       <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={() => onChange(Math.max(1, page - 1))}
           disabled={page === 1}
-          className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent"
+          className="flex size-7 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-30"
           aria-label="Página anterior"
         >
           <ChevronLeft className="size-4" />
         </button>
         {pages.map((p, idx) =>
           p === "…" ? (
-            <span key={`gap-${idx}`} className="px-1.5 text-gray-400">
+            <span key={`gap-${idx}`} className="px-1 text-gray-400">
               …
             </span>
           ) : (
@@ -52,10 +51,10 @@ export default function Pagination({
               type="button"
               onClick={() => onChange(p)}
               className={cn(
-                "min-w-[28px] rounded px-2 py-1 text-xs font-medium transition-colors",
+                "min-w-[28px] rounded-lg px-2 py-1 text-xs font-medium transition",
                 p === page
-                  ? "bg-verde-primary text-white"
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "bg-verde-primary text-white shadow-sm"
+                  : "text-gray-600 hover:bg-gray-100"
               )}
             >
               {p}
@@ -66,7 +65,7 @@ export default function Pagination({
           type="button"
           onClick={() => onChange(Math.min(totalPages, page + 1))}
           disabled={page === totalPages}
-          className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent"
+          className="flex size-7 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-30"
           aria-label="Próxima página"
         >
           <ChevronRight className="size-4" />
@@ -76,7 +75,6 @@ export default function Pagination({
   );
 }
 
-// Janela "1 … 4 5 [6] 7 8 … 20"
 function pageWindow(current: number, total: number): (number | "…")[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   const result: (number | "…")[] = [1];

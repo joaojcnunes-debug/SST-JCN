@@ -168,7 +168,7 @@ function NavItemView({
       )}
     >
       {active && (
-        <span className="absolute left-0 top-[18%] h-[64%] w-[3px] rounded-r-full bg-verde-accent" />
+        <span className="absolute left-0 top-[12%] h-[76%] w-[3px] rounded-r-full bg-verde-accent shadow-[0_0_6px_#00835A99]" />
       )}
       <Icon
         className={cn(
@@ -298,7 +298,7 @@ export default function SidebarShell({
       </button>
 
       {/* Sidebar desktop */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col bg-verde-dark md:flex print:hidden">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #1a3d26 0%, #112a1a 60%, #0d2016 100%)" }}>
         {Content}
       </aside>
 
@@ -309,7 +309,7 @@ export default function SidebarShell({
           onClick={() => setMobileOpen(false)}
         >
           <aside
-            className="absolute inset-y-0 left-0 flex w-[240px] flex-col bg-verde-dark shadow-xl"
+            className="absolute inset-y-0 left-0 flex w-[240px] flex-col shadow-2xl" style={{ background: "linear-gradient(180deg, #1a3d26 0%, #112a1a 60%, #0d2016 100%)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <button

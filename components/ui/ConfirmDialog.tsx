@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import Modal from "./Modal";
 import { cn } from "@/lib/utils";
 
@@ -29,25 +29,26 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Modal open={open} onClose={onCancel} size="sm">
-      <div className="flex gap-3">
+      <div className="flex gap-4">
         {variant === "danger" && (
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-100">
-            <AlertTriangle className="size-5 text-red-alert" />
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-red-100">
+            <AlertTriangle className="size-5 text-red-500" />
           </div>
         )}
         <div className="flex-1">
-          <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+          <h3 className="text-base font-bold text-gray-900">{title}</h3>
           {description && (
-            <p className="mt-1 text-sm text-gray-600">{description}</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-gray-500">{description}</p>
           )}
         </div>
       </div>
-      <div className="mt-5 flex justify-end gap-2">
+
+      <div className="mt-6 flex justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
           disabled={loading}
-          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
         >
           {cancelLabel}
         </button>
@@ -56,12 +57,13 @@ export default function ConfirmDialog({
           onClick={onConfirm}
           disabled={loading}
           className={cn(
-            "rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50",
+            "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-50",
             variant === "danger"
-              ? "bg-red-alert hover:bg-red-700"
+              ? "bg-red-500 hover:bg-red-600"
               : "bg-verde-primary hover:bg-verde-accent"
           )}
         >
+          {loading && <Loader2 className="size-3.5 animate-spin" />}
           {loading ? "Aguarde..." : confirmLabel}
         </button>
       </div>
