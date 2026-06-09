@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import {
   useAepRelatorio,
@@ -15,6 +15,7 @@ import {
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { cn } from "@/lib/utils";
 import type {
+  AepCargoSetor,
   AepSetor,
   AepRisco,
   AepChecklistFisica,
@@ -133,13 +134,19 @@ const ITENS_COGNITIVA: { key: keyof AepChecklistCognitiva; label: string }[] = [
 ];
 
 const ITENS_ORGANIZACIONAL: { key: keyof AepChecklistOrganizacional; label: string }[] = [
-  { key: "metas",                  label: "Metas agressivas / inatingíveis" },
-  { key: "pausas",                 label: "Ausência ou insuficiência de pausas" },
-  { key: "jornada_extensiva",      label: "Jornada extensiva / horas extras frequentes" },
-  { key: "pressao_hierarquica",    label: "Pressão hierárquica / assédio moral" },
-  { key: "sobrecarga_operacional", label: "Sobrecarga operacional" },
-  { key: "deficit_equipe",         label: "Déficit de equipe / trabalho solitário" },
-  { key: "conflito_organizacional", label: "Conflito organizacional / falta de suporte" },
+  { key: "assedio",               label: "Assédio de qualquer natureza no trabalho" },
+  { key: "falta_suporte",         label: "Falta de suporte / apoio no trabalho" },
+  { key: "gestao_mudancas",       label: "Má gestão de mudanças organizacionais" },
+  { key: "clareza_papel",         label: "Baixa clareza de papel / função" },
+  { key: "recompensas",           label: "Baixas recompensas e reconhecimento" },
+  { key: "baixo_controle",        label: "Baixo controle no trabalho / Falta de autonomia" },
+  { key: "justica_organizacional",label: "Baixa justiça organizacional" },
+  { key: "eventos_traumaticos",   label: "Eventos violentos ou traumáticos" },
+  { key: "subcarga",              label: "Baixa demanda no trabalho (Subcarga)" },
+  { key: "sobrecarga",            label: "Excesso de demandas no trabalho (Sobrecarga)" },
+  { key: "maus_relacionamentos",  label: "Maus relacionamentos no local de trabalho" },
+  { key: "comunicacao_dificil",   label: "Trabalho em condições de difícil comunicação" },
+  { key: "trabalho_remoto",       label: "Trabalho remoto e isolado" },
 ];
 
 // ─── Página principal ─────────────────────────────────────────────────────────
@@ -213,6 +220,49 @@ export default function AepSetoresPage({
     const setor = setores.find((s) => s.id === setorId);
     if (!setor) return;
     updateSetor(setorId, { riscos: setor.riscos.filter((r) => r.id !== riscoId) });
+  }
+
+  function buildTrabalhadores(cargos: AepCargoSetor[]): string {
+    return cargos
+      .filter((c) => c.cargo)
+      .map((c) => c.quantidade > 0 ? `${c.quantidade} ${c.cargo}` : c.cargo)
+      .join(", ");
+  }
+
+  function addCargo(setorId: string) {
+    const setor = setores.find((s) => s.id === setorId);
+    if (!setor) return;
+    const novo: AepCargoSetor = { id: crypto.randomUUID(), cargo: "", descricao: "", quantidade: 0 };
+    const novos = [...(setor.cargos ?? []), novo];
+    updateSetor(setorId, {
+      cargos: novos,
+      funcao: novos.map((c) => c.cargo).filter(Boolean).join(", "),
+      trabalhadores_consultados: buildTrabalhadores(novos),
+    });
+  }
+
+  function updateCargo(setorId: string, cargoId: string, patch: Partial<AepCargoSetor>) {
+    const setor = setores.find((s) => s.id === setorId);
+    if (!setor) return;
+    const novos = (setor.cargos ?? []).map((c) => (c.id === cargoId ? { ...c, ...patch } : c));
+    const syncCargo = "cargo" in patch;
+    const syncQtd = "quantidade" in patch || syncCargo;
+    updateSetor(setorId, {
+      cargos: novos,
+      ...(syncCargo && { funcao: novos.map((c) => c.cargo).filter(Boolean).join(", ") }),
+      ...(syncQtd && { trabalhadores_consultados: buildTrabalhadores(novos) }),
+    });
+  }
+
+  function removeCargo(setorId: string, cargoId: string) {
+    const setor = setores.find((s) => s.id === setorId);
+    if (!setor) return;
+    const novos = (setor.cargos ?? []).filter((c) => c.id !== cargoId);
+    updateSetor(setorId, {
+      cargos: novos,
+      funcao: novos.map((c) => c.cargo).filter(Boolean).join(", "),
+      trabalhadores_consultados: buildTrabalhadores(novos),
+    });
   }
 
   async function handleSalvar() {
@@ -338,12 +388,10 @@ export default function AepSetoresPage({
                   </h3>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {[
-                      { key: "nome_setor",   label: "Setor *",              placeholder: "Nome do setor" },
-                      { key: "unidade",      label: "Unidade",              placeholder: "Unidade / filial" },
-                      { key: "ghe",          label: "GHE",                  placeholder: "Grupo Homogêneo de Exposição" },
-                      { key: "cargo",        label: "Cargo",                placeholder: "Cargo principal" },
-                      { key: "funcao",       label: "Função",               placeholder: "Função exercida" },
-                      { key: "jornada",      label: "Jornada",              placeholder: "Ex: 8h/dia, 44h/semana" },
+                      { key: "nome_setor", label: "Setor *",  placeholder: "Nome do setor" },
+                      { key: "unidade",    label: "Unidade",  placeholder: "Unidade / filial" },
+                      { key: "ghe",        label: "GHE",      placeholder: "Grupo Homogêneo de Exposição" },
+                      { key: "jornada",    label: "Jornada",  placeholder: "Ex: 8h/dia, 44h/semana" },
                     ].map(({ key, label, placeholder }) => (
                       <div key={key}>
                         <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
@@ -369,6 +417,77 @@ export default function AepSetoresPage({
                         className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
                       />
                     </div>
+                    <div className="sm:col-span-2 lg:col-span-3">
+                      <label className="mb-1 block text-xs font-medium text-gray-600">Função (preenchida automaticamente pelos cargos)</label>
+                      <input
+                        type="text"
+                        disabled
+                        value={setor.funcao ?? ""}
+                        placeholder="Preenchida automaticamente pelos cargos"
+                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Cargos */}
+                  <div className="mt-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <label className="text-xs font-medium text-gray-600">Cargos</label>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => addCargo(setor.id)}
+                          className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                        >
+                          <Plus className="size-3" /> Adicionar cargo
+                        </button>
+                      )}
+                    </div>
+                    {(setor.cargos ?? []).length > 0 && (
+                      <div className="space-y-2">
+                        <div className="grid gap-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400 px-1" style={{ gridTemplateColumns: "1fr 2fr 64px auto" }}>
+                          <span>Cargo</span><span>Descrição</span><span className="text-center">Qtd</span><span />
+                        </div>
+                        {(setor.cargos ?? []).map((cargo) => (
+                          <div key={cargo.id} className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 2fr 64px auto" }}>
+                            <input
+                              type="text"
+                              disabled={!canEdit}
+                              value={cargo.cargo}
+                              onChange={(e) => updateCargo(setor.id, cargo.id, { cargo: e.target.value })}
+                              placeholder="Ex: Operador"
+                              className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                            />
+                            <input
+                              type="text"
+                              disabled={!canEdit}
+                              value={cargo.descricao}
+                              onChange={(e) => updateCargo(setor.id, cargo.id, { descricao: e.target.value })}
+                              placeholder="Descrição da função"
+                              className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                            />
+                            <input
+                              type="number"
+                              min={0}
+                              disabled={!canEdit}
+                              value={cargo.quantidade || ""}
+                              onChange={(e) => updateCargo(setor.id, cargo.id, { quantidade: Number(e.target.value) })}
+                              placeholder="0"
+                              className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm text-center focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                            />
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => removeCargo(setor.id, cargo.id)}
+                                className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                              >
+                                <Trash2 className="size-4" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="mt-3">
                     <label className="mb-1 block text-xs font-medium text-gray-600">Descrição das atividades</label>
@@ -380,6 +499,32 @@ export default function AepSetoresPage({
                       placeholder="Descreva as principais atividades realizadas..."
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
                     />
+                  </div>
+
+                  {/* Participação dos trabalhadores */}
+                  <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 p-3 space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                      Participação dos trabalhadores — NR-1
+                    </p>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">Método de coleta de dados</label>
+                      <MetodoColetaSelect
+                        value={setor.metodo_coleta ?? ""}
+                        onChange={(v) => updateSetor(setor.id, { metodo_coleta: v })}
+                        disabled={!canEdit}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-gray-600">Trabalhadores consultados</label>
+                      <input
+                        type="text"
+                        disabled={!canEdit}
+                        value={setor.trabalhadores_consultados ?? ""}
+                        onChange={(e) => updateSetor(setor.id, { trabalhadores_consultados: e.target.value })}
+                        placeholder="Ex: 3 operador, 2 auxiliar"
+                        className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                      />
+                    </div>
                   </div>
                 </section>
 
@@ -548,6 +693,78 @@ export default function AepSetoresPage({
             {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Salvar tudo
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const METODOS_COLETA = [
+  "Observação direta",
+  "Entrevista individual",
+  "Entrevista coletiva",
+  "Questionário",
+  "Análise documental",
+  "Filmagem / fotografia",
+  "Medição ambiental",
+];
+
+function MetodoColetaSelect({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const selecionados = value ? value.split(";").map((s) => s.trim()).filter(Boolean) : [];
+
+  function toggle(metodo: string) {
+    const set = new Set(selecionados);
+    if (set.has(metodo)) set.delete(metodo);
+    else set.add(metodo);
+    onChange(Array.from(set).join("; "));
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-left text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50 disabled:text-gray-500"
+      >
+        {selecionados.length === 0
+          ? <span className="text-gray-400">Selecione os métodos...</span>
+          : <span className="truncate">{selecionados.join("; ")}</span>
+        }
+      </button>
+      {open && (
+        <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+          {METODOS_COLETA.map((m) => (
+            <label key={m} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50">
+              <input
+                type="checkbox"
+                checked={selecionados.includes(m)}
+                onChange={() => toggle(m)}
+                className="accent-emerald-600"
+              />
+              {m}
+            </label>
+          ))}
         </div>
       )}
     </div>

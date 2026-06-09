@@ -48,13 +48,19 @@ const CHECKLIST_COG_LABELS: [keyof AepChecklistCognitiva, string][] = [
 ];
 
 const CHECKLIST_ORG_LABELS: [keyof AepChecklistOrganizacional, string][] = [
-  ["metas",                   "Metas agressivas"],
-  ["pausas",                  "Falta de pausas"],
-  ["jornada_extensiva",       "Jornada extensiva"],
-  ["pressao_hierarquica",     "Pressão hierárquica"],
-  ["sobrecarga_operacional",  "Sobrecarga operacional"],
-  ["deficit_equipe",          "Déficit de equipe"],
-  ["conflito_organizacional", "Conflito organizacional"],
+  ["assedio",                "Assédio de qualquer natureza no trabalho"],
+  ["falta_suporte",          "Falta de suporte / apoio no trabalho"],
+  ["gestao_mudancas",        "Má gestão de mudanças organizacionais"],
+  ["clareza_papel",          "Baixa clareza de papel / função"],
+  ["recompensas",            "Baixas recompensas e reconhecimento"],
+  ["baixo_controle",         "Baixo controle no trabalho / Falta de autonomia"],
+  ["justica_organizacional", "Baixa justiça organizacional"],
+  ["eventos_traumaticos",    "Eventos violentos ou traumáticos"],
+  ["subcarga",               "Baixa demanda no trabalho (Subcarga)"],
+  ["sobrecarga",             "Excesso de demandas no trabalho (Sobrecarga)"],
+  ["maus_relacionamentos",   "Maus relacionamentos no local de trabalho"],
+  ["comunicacao_dificil",    "Trabalho em condições de difícil comunicação"],
+  ["trabalho_remoto",        "Trabalho remoto e isolado"],
 ];
 
 function labelResposta(v: string) {

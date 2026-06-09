@@ -858,7 +858,12 @@ export default function AetSetoresPage({
                 {/* ── Dados do setor ── */}
                 <div className="space-y-3">
                   <TextInput label="Nome do Setor" value={setor.nome_setor} disabled={!canEdit} onChange={(v) => updateSetor(setor.id, { nome_setor: v })} />
-                  <CargoList cargos={setor.cargos} disabled={!canEdit} onChange={(v) => updateSetor(setor.id, { cargos: v })} />
+                  <CargoList cargos={setor.cargos} disabled={!canEdit} onChange={(v) => updateSetor(setor.id, { cargos: v, funcao: v.map((c) => c.nome).filter(Boolean).join(", ") })} />
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Função <span className="text-gray-400 font-normal">(preenchida automaticamente pelos cargos)</span></label>
+                    <input type="text" readOnly value={setor.funcao} placeholder="—"
+                      className="w-full rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm text-gray-700 cursor-default" />
+                  </div>
                   <TagInput label="Máquinas e Equipamentos" value={setor.maquinas_equipamentos} disabled={!canEdit} onChange={(v) => updateSetor(setor.id, { maquinas_equipamentos: v })} />
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">Descrição Geral da Atividade</label>
@@ -1480,7 +1485,7 @@ function TextInput({ label, value, disabled, onChange }: { label: string; value:
 // ─── CargoList ────────────────────────────────────────────────────────────────
 
 function CargoList({ cargos, disabled, onChange }: { cargos: AetCargo[]; disabled: boolean; onChange: (cargos: AetCargo[]) => void }) {
-  function addCargo() { onChange([...cargos, { nome: "", descricao: "" }]); }
+  function addCargo() { onChange([...cargos, { nome: "", descricao: "", quantidade: 0 }]); }
   function removeCargo(idx: number) { onChange(cargos.filter((_, i) => i !== idx)); }
   function updateCargo(idx: number, patch: Partial<AetCargo>) { onChange(cargos.map((c, i) => (i === idx ? { ...c, ...patch } : c))); }
 
@@ -1505,6 +1510,13 @@ function CargoList({ cargos, disabled, onChange }: { cargos: AetCargo[]; disable
                 <input type="text" value={cargo.nome} disabled={disabled} onChange={(e) => updateCargo(idx, { nome: e.target.value })}
                   placeholder="Nome do cargo"
                   className="flex-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm font-medium focus:border-verde-primary focus:outline-none disabled:bg-white" />
+                <div className="flex items-center gap-1 shrink-0">
+                  <input type="number" min={0} value={cargo.quantidade || ""} disabled={disabled}
+                    onChange={(e) => updateCargo(idx, { quantidade: Number(e.target.value) })}
+                    placeholder="Qtd" title="Quantidade de pessoas neste cargo"
+                    className="w-16 rounded-md border border-gray-300 px-2 py-1.5 text-sm text-center focus:border-verde-primary focus:outline-none disabled:bg-white" />
+                  <span className="text-xs text-gray-400 whitespace-nowrap">pessoas</span>
+                </div>
                 {!disabled && (
                   <button type="button" onClick={() => removeCargo(idx)} className="text-red-400 hover:text-red-600"><X className="size-4" /></button>
                 )}

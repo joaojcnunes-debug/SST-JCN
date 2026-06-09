@@ -90,6 +90,7 @@ export interface QpsAplicacao {
   periodo_fim: string | null;
   usuario_email: string | null;
   usuario_nome: string | null;
+  observacoes_dimensoes: Record<string, string> | null;
   criado_em: string;
   atualizado_em: string | null;
 }
@@ -1153,13 +1154,26 @@ export interface AepChecklistCognitiva {
 }
 
 export interface AepChecklistOrganizacional {
-  metas: RespostaChecklist;
-  pausas: RespostaChecklist;
-  jornada_extensiva: RespostaChecklist;
-  pressao_hierarquica: RespostaChecklist;
-  sobrecarga_operacional: RespostaChecklist;
-  deficit_equipe: RespostaChecklist;
-  conflito_organizacional: RespostaChecklist;
+  assedio: RespostaChecklist;
+  falta_suporte: RespostaChecklist;
+  gestao_mudancas: RespostaChecklist;
+  clareza_papel: RespostaChecklist;
+  recompensas: RespostaChecklist;
+  baixo_controle: RespostaChecklist;
+  justica_organizacional: RespostaChecklist;
+  eventos_traumaticos: RespostaChecklist;
+  subcarga: RespostaChecklist;
+  sobrecarga: RespostaChecklist;
+  maus_relacionamentos: RespostaChecklist;
+  comunicacao_dificil: RespostaChecklist;
+  trabalho_remoto: RespostaChecklist;
+}
+
+export interface AepCargoSetor {
+  id: string;
+  cargo: string;
+  descricao: string;
+  quantidade: number;
 }
 
 export interface AepSetor {
@@ -1172,6 +1186,10 @@ export interface AepSetor {
   jornada: string;
   qtd_expostos: number;
   descricao_atividade: string;
+  metodo_coleta: string;
+  trabalhadores_consultados: string;
+  cargos: AepCargoSetor[];
+  observacoes_checklist: Record<string, string>;
   riscos: AepRisco[];
   checklist_fisica: AepChecklistFisica;
   checklist_cognitiva: AepChecklistCognitiva;
@@ -1313,11 +1331,13 @@ export interface AetPerfilOwas {
 export interface AetCargo {
   nome: string;
   descricao: string;
+  quantidade: number;
 }
 
 export interface AetSetor {
   id: string;
   nome_setor: string;
+  funcao: string;
   maquinas_equipamentos: string;
   cargos: AetCargo[];
   descricao_atividade: string;

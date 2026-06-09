@@ -39,6 +39,8 @@ interface HubCardCfg {
   icon: React.ReactNode;
   accent: string;
   categoria: Categoria;
+  skipStats?: boolean;
+  staticLabel?: string;
 }
 
 const CARDS: HubCardCfg[] = [
@@ -124,6 +126,17 @@ const CARDS: HubCardCfg[] = [
     icon: <BookOpen className="size-12" />,
     accent: "#6366F1",
     categoria: "psicossocial",
+  },
+  {
+    modulo: "psicossocial",
+    href: "/sinalizacao-psicossocial",
+    title: "Sinalização Psicossocial",
+    description: "Painel de alertas organizacionais por empresa e setor identificados nas triagens AEP",
+    icon: <Brain className="size-12" />,
+    accent: "#7C3AED",
+    categoria: "psicossocial",
+    skipStats: true,
+    staticLabel: "Dashboard · Fatores organizacionais",
   },
   // ── JCN Sistema Interno ─────────────────────────────────────────
   {
@@ -438,10 +451,10 @@ function InicioContent() {
                 >
                   {catCards.map((c) => (
                     <HubCard
-                      key={c.modulo}
+                      key={c.href}
                       {...c}
-                      stats={statsPorModulo(stats, c.modulo)}
-                      isLoadingStats={stats.isLoading}
+                      stats={c.skipStats ? undefined : statsPorModulo(stats, c.modulo)}
+                      isLoadingStats={c.skipStats ? false : stats.isLoading}
                     />
                   ))}
                 </div>
@@ -547,6 +560,7 @@ function HubCard({
   accent,
   stats,
   isLoadingStats,
+  staticLabel,
 }: {
   href: string;
   title: string;
@@ -555,6 +569,7 @@ function HubCard({
   accent: string;
   stats?: ModuloStats;
   isLoadingStats?: boolean;
+  staticLabel?: string;
 }) {
   return (
     <Link
@@ -582,6 +597,8 @@ function HubCard({
           <span className="flex items-center gap-1.5 text-gray-400">
             <Loader2 className="size-3 animate-spin" /> Carregando...
           </span>
+        ) : staticLabel ? (
+          <span className="font-medium" style={{ color: accent }}>{staticLabel}</span>
         ) : stats ? (
           <>
             <span

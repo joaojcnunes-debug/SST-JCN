@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import type {
+  AepCargoSetor,
   AepChecklistCognitiva,
   AepChecklistFisica,
   AepChecklistOrganizacional,
@@ -55,13 +56,19 @@ function normalizarChecklistCognitiva(raw: unknown): AepChecklistCognitiva {
 function normalizarChecklistOrganizacional(raw: unknown): AepChecklistOrganizacional {
   const c = (raw ?? {}) as Record<string, unknown>;
   return {
-    metas: toResposta(c.metas),
-    pausas: toResposta(c.pausas),
-    jornada_extensiva: toResposta(c.jornada_extensiva),
-    pressao_hierarquica: toResposta(c.pressao_hierarquica),
-    sobrecarga_operacional: toResposta(c.sobrecarga_operacional),
-    deficit_equipe: toResposta(c.deficit_equipe),
-    conflito_organizacional: toResposta(c.conflito_organizacional),
+    assedio: toResposta(c.assedio),
+    falta_suporte: toResposta(c.falta_suporte),
+    gestao_mudancas: toResposta(c.gestao_mudancas),
+    clareza_papel: toResposta(c.clareza_papel),
+    recompensas: toResposta(c.recompensas),
+    baixo_controle: toResposta(c.baixo_controle),
+    justica_organizacional: toResposta(c.justica_organizacional),
+    eventos_traumaticos: toResposta(c.eventos_traumaticos),
+    subcarga: toResposta(c.subcarga),
+    sobrecarga: toResposta(c.sobrecarga),
+    maus_relacionamentos: toResposta(c.maus_relacionamentos),
+    comunicacao_dificil: toResposta(c.comunicacao_dificil),
+    trabalho_remoto: toResposta(c.trabalho_remoto),
   };
 }
 
@@ -81,6 +88,10 @@ function normalizarSetor(s: unknown): AepSetor {
     checklist_fisica: normalizarChecklistFisica(setor.checklist_fisica),
     checklist_cognitiva: normalizarChecklistCognitiva(setor.checklist_cognitiva),
     checklist_organizacional: normalizarChecklistOrganizacional(setor.checklist_organizacional),
+    metodo_coleta: (setor.metodo_coleta as string) ?? "",
+    trabalhadores_consultados: (setor.trabalhadores_consultados as string) ?? "",
+    cargos: Array.isArray(setor.cargos) ? (setor.cargos as AepCargoSetor[]) : [],
+    observacoes_checklist: (setor.observacoes_checklist as Record<string, string>) ?? {},
     parecer_tecnico: (setor.parecer_tecnico as string) ?? "",
     recomendacoes: (setor.recomendacoes as string) ?? "",
     necessita_aet: Boolean(setor.necessita_aet),
@@ -128,14 +139,24 @@ export function setorVazioAep(): AepSetor {
       ritmo_mental: "nao",
     },
     checklist_organizacional: {
-      metas: "nao",
-      pausas: "nao",
-      jornada_extensiva: "nao",
-      pressao_hierarquica: "nao",
-      sobrecarga_operacional: "nao",
-      deficit_equipe: "nao",
-      conflito_organizacional: "nao",
+      assedio: "nao",
+      falta_suporte: "nao",
+      gestao_mudancas: "nao",
+      clareza_papel: "nao",
+      recompensas: "nao",
+      baixo_controle: "nao",
+      justica_organizacional: "nao",
+      eventos_traumaticos: "nao",
+      subcarga: "nao",
+      sobrecarga: "nao",
+      maus_relacionamentos: "nao",
+      comunicacao_dificil: "nao",
+      trabalho_remoto: "nao",
     },
+    metodo_coleta: "",
+    trabalhadores_consultados: "",
+    cargos: [],
+    observacoes_checklist: {},
     parecer_tecnico: "",
     recomendacoes: "",
     necessita_aet: false,
@@ -214,6 +235,8 @@ export function useAepRelatorios(empresaId?: string | null) {
   });
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function useAepRelatorio(id: string) {
   return useQuery({
     queryKey: ["aep-relatorio", id],
@@ -227,7 +250,7 @@ export function useAepRelatorio(id: string) {
       if (error) throw error;
       return normalizarRelatorio(data);
     },
-    enabled: !!id,
+    enabled: !!id && UUID_RE.test(id),
   });
 }
 
