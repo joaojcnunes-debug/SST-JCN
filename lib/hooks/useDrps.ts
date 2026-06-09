@@ -39,10 +39,12 @@ export function useDrpsRelatorios(idEmpresa: string | null | undefined) {
   });
 }
 
+const DRPS_ID_RE = /^DRPS-[0-9A-F]{8}$/i;
+
 export function useDrpsRelatorio(idRelatorio: string | null | undefined) {
   return useQuery({
     queryKey: ["drps-relatorio", idRelatorio],
-    enabled: !!idRelatorio,
+    enabled: !!idRelatorio && DRPS_ID_RE.test(idRelatorio),
     staleTime: 30 * 1000,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
@@ -167,7 +169,7 @@ export function useDrpsExcluirRelatorio() {
 export function useDrpsRespondentes(idRelatorio: string | null | undefined) {
   return useQuery({
     queryKey: ["drps-respondentes", idRelatorio],
-    enabled: !!idRelatorio,
+    enabled: !!idRelatorio && DRPS_ID_RE.test(idRelatorio),
     staleTime: 60 * 1000,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
@@ -246,7 +248,7 @@ export function useDrpsLimparTudo() {
 export function useDrpsProbabilidades(idRelatorio: string | null | undefined) {
   return useQuery({
     queryKey: ["drps-probabilidades", idRelatorio],
-    enabled: !!idRelatorio,
+    enabled: !!idRelatorio && DRPS_ID_RE.test(idRelatorio),
     staleTime: 60 * 1000,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
@@ -307,7 +309,7 @@ export function useDrpsPlanoMedidas(
 ) {
   return useQuery({
     queryKey: ["drps-plano-medidas", idRelatorio, ano],
-    enabled: !!idRelatorio,
+    enabled: !!idRelatorio && DRPS_ID_RE.test(idRelatorio),
     staleTime: 30 * 1000,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
@@ -366,7 +368,7 @@ export function useDrpsMonitoramento(
 ) {
   return useQuery({
     queryKey: ["drps-monitoramento", idRelatorio],
-    enabled: !!idRelatorio,
+    enabled: !!idRelatorio && DRPS_ID_RE.test(idRelatorio),
     staleTime: 30 * 1000,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
@@ -416,7 +418,7 @@ export function useDrpsSalvarMonitoramento() {
 export function useDrpsRevisao(idRelatorio: string | null | undefined) {
   return useQuery({
     queryKey: ["drps-revisao", idRelatorio],
-    enabled: !!idRelatorio,
+    enabled: !!idRelatorio && DRPS_ID_RE.test(idRelatorio),
     staleTime: 30 * 1000,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();

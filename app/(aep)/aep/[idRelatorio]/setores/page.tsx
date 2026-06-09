@@ -1,7 +1,17 @@
 "use client";
 
 import { use, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import Link from "next/link";
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Loader2,
+  Plus,
+  Save,
+  Trash2,
+} from "lucide-react";
 import {
   useAepRelatorio,
   useSalvarAep,
@@ -26,44 +36,58 @@ import type {
   TipoRiscoAET,
 } from "@/lib/supabase/types";
 
-// ─── Tristate ─────────────────────────────────────────────────────────────────
+// ─── Tristate com campo de observação ────────────────────────────────────────
 
 function Tristate({
   label,
   value,
+  observacao,
   onChange,
+  onObservacaoChange,
   disabled,
 }: {
   label: string;
   value: RespostaChecklist;
+  observacao?: string;
   onChange: (v: RespostaChecklist) => void;
+  onObservacaoChange?: (text: string) => void;
   disabled?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-      <span className="text-xs text-gray-700">{label}</span>
-      <div className="flex gap-1 shrink-0">
-        {(["sim", "nao", "nao_aplica"] as RespostaChecklist[]).map((opt) => (
-          <button
-            key={opt}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(opt)}
-            className={cn(
-              "rounded px-2 py-0.5 text-[10px] font-semibold transition",
-              value === opt
-                ? opt === "sim"
-                  ? "bg-red-500 text-white"
-                  : opt === "nao"
-                  ? "bg-green-500 text-white"
-                  : "bg-gray-400 text-white"
-                : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-100"
-            )}
-          >
-            {opt === "sim" ? "Sim" : opt === "nao" ? "Não" : "N/A"}
-          </button>
-        ))}
+    <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-gray-700">{label}</span>
+        <div className="flex gap-1 shrink-0">
+          {(["sim", "nao", "nao_aplica"] as RespostaChecklist[]).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(opt)}
+              className={cn(
+                "rounded px-2 py-0.5 text-[10px] font-semibold transition",
+                value === opt
+                  ? opt === "sim"
+                    ? "bg-red-500 text-white"
+                    : opt === "nao"
+                    ? "bg-green-500 text-white"
+                    : "bg-gray-400 text-white"
+                  : "bg-white border border-gray-200 text-gray-500 hover:bg-gray-100"
+              )}
+            >
+              {opt === "sim" ? "Sim" : opt === "nao" ? "Não" : "N/A"}
+            </button>
+          ))}
+        </div>
       </div>
+      <textarea
+        disabled={disabled}
+        value={observacao ?? ""}
+        onChange={(e) => onObservacaoChange?.(e.target.value)}
+        rows={1}
+        placeholder="Observação de campo..."
+        className="w-full resize-none rounded border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-700 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 disabled:bg-gray-50"
+      />
     </div>
   );
 }
@@ -75,14 +99,18 @@ function ChecklistBloco({
   cor,
   itens,
   valores,
+  observacoes,
   onChange,
+  onObservacaoChange,
   disabled,
 }: {
   titulo: string;
   cor: string;
   itens: { key: string; label: string }[];
   valores: Record<string, RespostaChecklist>;
+  observacoes: Record<string, string>;
   onChange: (patch: Record<string, RespostaChecklist>) => void;
+  onObservacaoChange: (key: string, text: string) => void;
   disabled?: boolean;
 }) {
   const positivos = itens.filter((i) => valores[i.key] === "sim").length;
@@ -102,7 +130,9 @@ function ChecklistBloco({
             key={key}
             label={label}
             value={valores[key]}
+            observacao={observacoes[key]}
             onChange={(v) => onChange({ [key]: v })}
+            onObservacaoChange={(text) => onObservacaoChange(key, text)}
             disabled={disabled}
           />
         ))}
@@ -279,7 +309,7 @@ export default function AepSetoresPage({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="size-6 animate-spin text-emerald-600" />
+        <Loader2 className="size-6 animate-spin text-sky-600" />
       </div>
     );
   }
@@ -298,7 +328,7 @@ export default function AepSetoresPage({
             <button
               type="button"
               onClick={addSetor}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100"
             >
               <Plus className="size-4" /> Adicionar setor
             </button>
@@ -306,7 +336,7 @@ export default function AepSetoresPage({
               type="button"
               onClick={handleSalvar}
               disabled={salvando}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:opacity-50"
             >
               {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               Salvar
@@ -321,7 +351,7 @@ export default function AepSetoresPage({
           {canEdit && (
             <button
               onClick={addSetor}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white"
             >
               <Plus className="size-4" /> Adicionar setor
             </button>
@@ -335,6 +365,7 @@ export default function AepSetoresPage({
         const alertaCog = Object.values(setor.checklist_cognitiva).filter((v) => v === "sim").length;
         const alertaOrg = Object.values(setor.checklist_organizacional).filter((v) => v === "sim").length;
         const totalAlertas = aletaFisica + alertaCog + alertaOrg;
+        const displayCargo = setor.cargos?.[0]?.cargo || setor.cargo;
 
         return (
           <div key={setor.id} className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -344,14 +375,14 @@ export default function AepSetoresPage({
               onClick={() => toggle(setor.id)}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <span className="shrink-0 flex size-6 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+                <span className="shrink-0 flex size-6 items-center justify-center rounded-full bg-sky-100 text-xs font-bold text-sky-700">
                   {idx + 1}
                 </span>
                 <div className="min-w-0">
                   <p className="font-semibold text-gray-900 truncate">
                     {setor.nome_setor || "Setor sem nome"}
                   </p>
-                  {setor.cargo && <p className="text-xs text-gray-500 truncate">{setor.cargo}</p>}
+                  {displayCargo && <p className="text-xs text-gray-500 truncate">{displayCargo}</p>}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -383,7 +414,7 @@ export default function AepSetoresPage({
 
                 {/* ── Identificação ─────────────────────────────────── */}
                 <section>
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-sky-700">
                     Identificação
                   </h3>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -392,6 +423,7 @@ export default function AepSetoresPage({
                       { key: "unidade",    label: "Unidade",  placeholder: "Unidade / filial" },
                       { key: "ghe",        label: "GHE",      placeholder: "Grupo Homogêneo de Exposição" },
                       { key: "jornada",    label: "Jornada",  placeholder: "Ex: 8h/dia, 44h/semana" },
+                      { key: "funcao",     label: "Função",   placeholder: "Preenchida automaticamente pelos cargos" },
                     ].map(({ key, label, placeholder }) => (
                       <div key={key}>
                         <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
@@ -401,7 +433,7 @@ export default function AepSetoresPage({
                           value={(setor as unknown as Record<string, unknown>)[key] as string ?? ""}
                           onChange={(e) => updateSetor(setor.id, { [key]: e.target.value })}
                           placeholder={placeholder}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                         />
                       </div>
                     ))}
@@ -414,74 +446,64 @@ export default function AepSetoresPage({
                         value={setor.qtd_expostos || ""}
                         onChange={(e) => updateSetor(setor.id, { qtd_expostos: Number(e.target.value) })}
                         placeholder="0"
-                        className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
-                      />
-                    </div>
-                    <div className="sm:col-span-2 lg:col-span-3">
-                      <label className="mb-1 block text-xs font-medium text-gray-600">Função (preenchida automaticamente pelos cargos)</label>
-                      <input
-                        type="text"
-                        disabled
-                        value={setor.funcao ?? ""}
-                        placeholder="Preenchida automaticamente pelos cargos"
-                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm text-gray-500"
+                        className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                       />
                     </div>
                   </div>
 
-                  {/* Cargos */}
-                  <div className="mt-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <label className="text-xs font-medium text-gray-600">Cargos</label>
+                  {/* ── Cargos do setor ──────────────────────────── */}
+                  <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50/50 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold text-gray-700">Cargos do setor</label>
                       {canEdit && (
                         <button
                           type="button"
                           onClick={() => addCargo(setor.id)}
-                          className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                          className="inline-flex items-center gap-1 rounded border border-sky-300 bg-white px-2 py-0.5 text-xs font-semibold text-sky-700 hover:bg-sky-50"
                         >
-                          <Plus className="size-3" /> Adicionar cargo
+                          <Plus className="size-3" /> Cargo
                         </button>
                       )}
                     </div>
-                    {(setor.cargos ?? []).length > 0 && (
+                    {(setor.cargos ?? []).length === 0 ? (
+                      <p className="text-xs text-gray-400 italic">Nenhum cargo adicionado.</p>
+                    ) : (
                       <div className="space-y-2">
-                        <div className="grid gap-2 text-[10px] font-semibold uppercase tracking-wide text-gray-400 px-1" style={{ gridTemplateColumns: "1fr 2fr 64px auto" }}>
-                          <span>Cargo</span><span>Descrição</span><span className="text-center">Qtd</span><span />
-                        </div>
-                        {(setor.cargos ?? []).map((cargo) => (
-                          <div key={cargo.id} className="grid items-center gap-2" style={{ gridTemplateColumns: "1fr 2fr 64px auto" }}>
+                        {(setor.cargos ?? []).map((c) => (
+                          <div key={c.id} className="grid grid-cols-[1fr_2fr_64px_auto] gap-2 items-center">
                             <input
                               type="text"
                               disabled={!canEdit}
-                              value={cargo.cargo}
-                              onChange={(e) => updateCargo(setor.id, cargo.id, { cargo: e.target.value })}
-                              placeholder="Ex: Operador"
-                              className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                              value={c.cargo}
+                              onChange={(e) => updateCargo(setor.id, c.id, { cargo: e.target.value })}
+                              placeholder="Cargo"
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                             />
                             <input
                               type="text"
                               disabled={!canEdit}
-                              value={cargo.descricao}
-                              onChange={(e) => updateCargo(setor.id, cargo.id, { descricao: e.target.value })}
-                              placeholder="Descrição da função"
-                              className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                              value={c.descricao}
+                              onChange={(e) => updateCargo(setor.id, c.id, { descricao: e.target.value })}
+                              placeholder="Descrição da atividade do cargo"
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                             />
                             <input
                               type="number"
                               min={0}
                               disabled={!canEdit}
-                              value={cargo.quantidade || ""}
-                              onChange={(e) => updateCargo(setor.id, cargo.id, { quantidade: Number(e.target.value) })}
-                              placeholder="0"
-                              className="rounded-lg border border-gray-200 px-2 py-1.5 text-sm text-center focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                              value={c.quantidade || ""}
+                              onChange={(e) => updateCargo(setor.id, c.id, { quantidade: Number(e.target.value) })}
+                              placeholder="Qtd"
+                              title="Quantidade de pessoas neste cargo"
+                              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-center focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                             />
                             {canEdit && (
                               <button
                                 type="button"
-                                onClick={() => removeCargo(setor.id, cargo.id)}
-                                className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                                onClick={() => removeCargo(setor.id, c.id)}
+                                className="rounded p-1.5 text-gray-400 hover:text-red-500"
                               >
-                                <Trash2 className="size-4" />
+                                <Trash2 className="size-3.5" />
                               </button>
                             )}
                           </div>
@@ -489,6 +511,7 @@ export default function AepSetoresPage({
                       </div>
                     )}
                   </div>
+
                   <div className="mt-3">
                     <label className="mb-1 block text-xs font-medium text-gray-600">Descrição das atividades</label>
                     <textarea
@@ -497,49 +520,60 @@ export default function AepSetoresPage({
                       onChange={(e) => updateSetor(setor.id, { descricao_atividade: e.target.value })}
                       rows={2}
                       placeholder="Descreva as principais atividades realizadas..."
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                     />
                   </div>
 
-                  {/* Participação dos trabalhadores */}
-                  <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 p-3 space-y-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  {/* Participação dos trabalhadores (NR-1) */}
+                  <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50/50 p-3 space-y-3">
+                    <p className="text-xs font-semibold text-sky-800">
                       Participação dos trabalhadores — NR-1
                     </p>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">Método de coleta de dados</label>
-                      <MetodoColetaSelect
-                        value={setor.metodo_coleta ?? ""}
-                        onChange={(v) => updateSetor(setor.id, { metodo_coleta: v })}
-                        disabled={!canEdit}
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">Trabalhadores consultados</label>
-                      <input
-                        type="text"
-                        disabled={!canEdit}
-                        value={setor.trabalhadores_consultados ?? ""}
-                        onChange={(e) => updateSetor(setor.id, { trabalhadores_consultados: e.target.value })}
-                        placeholder="Ex: 3 operador, 2 auxiliar"
-                        className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
-                      />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">Método de coleta</label>
+                        <MetodoColetaSelect
+                          value={setor.metodo_coleta ?? ""}
+                          disabled={!canEdit}
+                          onChange={(v) => updateSetor(setor.id, { metodo_coleta: v })}
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">
+                          Trabalhadores consultados <span className="text-gray-400 font-normal">(auto)</span>
+                        </label>
+                        <input
+                          type="text"
+                          disabled={!canEdit}
+                          value={setor.trabalhadores_consultados ?? ""}
+                          onChange={(e) => updateSetor(setor.id, { trabalhadores_consultados: e.target.value })}
+                          placeholder="Ex: 3 operadores, 1 supervisor"
+                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
+                        />
+                      </div>
                     </div>
                   </div>
                 </section>
 
                 {/* ── Triagem Ergonômica ────────────────────────────── */}
                 <section>
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-sky-700">
                     Triagem Ergonômica
                   </h3>
+                  <p className="mb-2 text-[11px] text-gray-500">
+                    Ao marcar <strong>Sim</strong>, um campo de observação aparece para registrar o que foi observado.
+                  </p>
                   <div className="grid gap-3 lg:grid-cols-3">
                     <ChecklistBloco
                       titulo="Ergonomia Física"
                       cor="bg-blue-50 text-blue-800"
                       itens={ITENS_FISICA}
                       valores={setor.checklist_fisica as unknown as Record<string, RespostaChecklist>}
+                      observacoes={setor.observacoes_checklist ?? {}}
                       onChange={(p) => updateSetor(setor.id, { checklist_fisica: { ...setor.checklist_fisica, ...p } as AepChecklistFisica })}
+                      onObservacaoChange={(key, text) =>
+                        updateSetor(setor.id, { observacoes_checklist: { ...setor.observacoes_checklist, [key]: text } })
+                      }
                       disabled={!canEdit}
                     />
                     <ChecklistBloco
@@ -547,7 +581,11 @@ export default function AepSetoresPage({
                       cor="bg-purple-50 text-purple-800"
                       itens={ITENS_COGNITIVA}
                       valores={setor.checklist_cognitiva as unknown as Record<string, RespostaChecklist>}
+                      observacoes={setor.observacoes_checklist ?? {}}
                       onChange={(p) => updateSetor(setor.id, { checklist_cognitiva: { ...setor.checklist_cognitiva, ...p } as AepChecklistCognitiva })}
+                      onObservacaoChange={(key, text) =>
+                        updateSetor(setor.id, { observacoes_checklist: { ...setor.observacoes_checklist, [key]: text } })
+                      }
                       disabled={!canEdit}
                     />
                     <ChecklistBloco
@@ -555,7 +593,11 @@ export default function AepSetoresPage({
                       cor="bg-amber-50 text-amber-800"
                       itens={ITENS_ORGANIZACIONAL}
                       valores={setor.checklist_organizacional as unknown as Record<string, RespostaChecklist>}
+                      observacoes={setor.observacoes_checklist ?? {}}
                       onChange={(p) => updateSetor(setor.id, { checklist_organizacional: { ...setor.checklist_organizacional, ...p } as AepChecklistOrganizacional })}
+                      onObservacaoChange={(key, text) =>
+                        updateSetor(setor.id, { observacoes_checklist: { ...setor.observacoes_checklist, [key]: text } })
+                      }
                       disabled={!canEdit}
                     />
                   </div>
@@ -564,14 +606,14 @@ export default function AepSetoresPage({
                 {/* ── Matriz de Riscos ──────────────────────────────── */}
                 <section>
                   <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-700">
                       Matriz de Riscos
                     </h3>
                     {canEdit && (
                       <button
                         type="button"
                         onClick={() => addRisco(setor.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                        className="inline-flex items-center gap-1 rounded-lg border border-sky-300 bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100"
                       >
                         <Plus className="size-3" /> Risco
                       </button>
@@ -588,7 +630,7 @@ export default function AepSetoresPage({
                             disabled={!canEdit}
                             value={risco.tipo}
                             onChange={(e) => updateRisco(setor.id, risco.id, { tipo: e.target.value as TipoRiscoAET })}
-                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-sky-500 focus:outline-none disabled:bg-gray-50"
                           >
                             {TIPOS_RISCO_AEP.map((t) => (
                               <option key={t}>{t}</option>
@@ -600,7 +642,7 @@ export default function AepSetoresPage({
                             value={risco.risco}
                             onChange={(e) => updateRisco(setor.id, risco.id, { risco: e.target.value })}
                             placeholder="Agente / risco"
-                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-sky-500 focus:outline-none disabled:bg-gray-50"
                           />
                           <select
                             disabled={!canEdit}
@@ -618,7 +660,7 @@ export default function AepSetoresPage({
                             value={risco.medida_preventiva}
                             onChange={(e) => updateRisco(setor.id, risco.id, { medida_preventiva: e.target.value })}
                             placeholder="Medida preventiva"
-                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-sky-500 focus:outline-none disabled:bg-gray-50"
                           />
                           {canEdit && (
                             <button
@@ -659,8 +701,8 @@ export default function AepSetoresPage({
                       value={setor.parecer_tecnico}
                       onChange={(e) => updateSetor(setor.id, { parecer_tecnico: e.target.value })}
                       rows={4}
-                      placeholder="Descreva o parecer técnico preliminar para este setor..."
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                      placeholder="Descreva as condições de trabalho, práticas de gestão e fatores organizacionais observados que podem estar gerando risco..."
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                     />
                   </div>
                   <div>
@@ -671,7 +713,7 @@ export default function AepSetoresPage({
                       onChange={(e) => updateSetor(setor.id, { recomendacoes: e.target.value })}
                       rows={4}
                       placeholder="Liste as recomendações ergonômicas preliminares..."
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                     />
                   </div>
                 </section>
@@ -682,13 +724,43 @@ export default function AepSetoresPage({
         );
       })}
 
+      {/* Banner AEP → QPS */}
+      {(() => {
+        const totalAlertasOrg = setores.reduce(
+          (acc, s) =>
+            acc + Object.values(s.checklist_organizacional).filter((v) => v === "sim").length,
+          0
+        );
+        if (totalAlertasOrg < 3) return null;
+        return (
+          <div className="flex items-start gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+            <AlertTriangle className="size-5 shrink-0 text-indigo-600 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-indigo-900">
+                {totalAlertasOrg} alerta{totalAlertasOrg > 1 ? "s" : ""} de risco organizacional identificado{totalAlertasOrg > 1 ? "s" : ""}
+              </p>
+              <p className="mt-0.5 text-xs text-indigo-700 leading-relaxed">
+                A NR-1 e a Fundacentro recomendam aprofundar a avaliação de riscos psicossociais com um
+                questionário estruturado (DRPS, Copsoq ou equivalente) aplicado diretamente aos trabalhadores.
+              </p>
+            </div>
+            <Link
+              href="/questionarios-psicossociais"
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+            >
+              Abrir QPS <ExternalLink className="size-3" />
+            </Link>
+          </div>
+        );
+      })()}
+
       {setores.length > 0 && canEdit && (
         <div className="flex justify-end">
           <button
             type="button"
             onClick={handleSalvar}
             disabled={salvando}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:opacity-50"
           >
             {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Salvar tudo
@@ -699,70 +771,63 @@ export default function AepSetoresPage({
   );
 }
 
+// ─── MetodoColetaSelect ───────────────────────────────────────────────────────
+
 const METODOS_COLETA = [
   "Observação direta",
-  "Entrevista individual",
-  "Entrevista coletiva",
-  "Questionário",
+  "Entrevista com trabalhadores",
+  "Entrevista com gestores",
   "Análise documental",
-  "Filmagem / fotografia",
-  "Medição ambiental",
+  "Questionário aplicado",
 ];
 
-function MetodoColetaSelect({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  disabled?: boolean;
-}) {
+function MetodoColetaSelect({ value, disabled, onChange }: { value: string; disabled: boolean; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const selecionados = value ? value.split(";").map((s) => s.trim()).filter(Boolean) : [];
+  const selecionados = value
+    ? value.split(", ").map((s) => s.trim()).filter(Boolean)
+    : [];
 
   function toggle(metodo: string) {
-    const set = new Set(selecionados);
-    if (set.has(metodo)) set.delete(metodo);
-    else set.add(metodo);
-    onChange(Array.from(set).join("; "));
+    const novos = selecionados.includes(metodo)
+      ? selecionados.filter((m) => m !== metodo)
+      : [...selecionados, metodo];
+    onChange(novos.join(", "));
   }
 
   useEffect(() => {
-    if (!open) return;
-    function handler(e: MouseEvent) {
+    function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((o) => !o)}
-        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-left text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50 disabled:text-gray-500"
+        onClick={() => !disabled && setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-left focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
       >
-        {selecionados.length === 0
-          ? <span className="text-gray-400">Selecione os métodos...</span>
-          : <span className="truncate">{selecionados.join("; ")}</span>
-        }
+        <span className={selecionados.length === 0 ? "text-gray-400 truncate" : "text-gray-800 truncate"}>
+          {selecionados.length === 0 ? "Selecione…" : selecionados.join(", ")}
+        </span>
+        <ChevronDown className="size-3.5 text-gray-400 shrink-0" />
       </button>
       {open && (
-        <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-          {METODOS_COLETA.map((m) => (
-            <label key={m} className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm hover:bg-gray-50">
+        <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
+          {METODOS_COLETA.map((metodo) => (
+            <label key={metodo} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-sky-50 first:rounded-t-lg last:rounded-b-lg">
               <input
                 type="checkbox"
-                checked={selecionados.includes(m)}
-                onChange={() => toggle(m)}
-                className="accent-emerald-600"
+                checked={selecionados.includes(metodo)}
+                onChange={() => toggle(metodo)}
+                className="rounded border-gray-300 text-sky-600 focus:ring-sky-500"
               />
-              {m}
+              {metodo}
             </label>
           ))}
         </div>

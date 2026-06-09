@@ -329,6 +329,7 @@ export interface QpsAplicacaoInput {
   periodo_fim: string | null;
   usuario_email: string | null;
   usuario_nome: string | null;
+  observacoes_dimensoes?: Record<string, string> | null;
 }
 
 export function useCreateQpsAplicacao() {

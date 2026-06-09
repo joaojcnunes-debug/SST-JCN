@@ -12,6 +12,7 @@ import {
   Info,
   Layers,
   Calculator,
+  Building2,
 } from "lucide-react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -210,6 +211,85 @@ export default function ComoFuncionaPage() {
             <span>Copenhagen Psychosocial Questionnaire — referência internacional para avaliação de riscos psicossociais, adaptável ao módulo via importação de Tipos personalizados.</span>
           </li>
         </ul>
+      </Section>
+
+      {/* Diretriz Fundacentro / NR-1 2026 */}
+      <Section icon={<Building2 className="size-5 text-indigo-500" />} title="Abordagem Organizacional — NR-1 e Fundacentro (2026)">
+        <div className="space-y-4 text-sm text-gray-700 leading-relaxed">
+
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+            <p className="font-semibold mb-1">Atenção: foco nas condições de trabalho, não no indivíduo</p>
+            <p className="text-xs leading-relaxed">
+              A Fundacentro (2026) orienta que os riscos psicossociais devem ser compreendidos como
+              consequências de como o trabalho é <strong>organizado, gerenciado e executado</strong> —
+              e não como características individuais dos trabalhadores. Abordagens baseadas apenas em
+              questionários de estresse, ansiedade ou resiliência pessoal não identificam as causas reais
+              do adoecimento relacionadas à organização do trabalho.
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-2 font-semibold text-gray-800">O que a avaliação deve responder:</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                <p className="mb-1 text-xs font-bold text-red-700">Pergunta incorreta</p>
+                <p className="text-xs text-red-800">&ldquo;Quem está adoecido neste setor?&rdquo;</p>
+              </div>
+              <div className="rounded-lg border border-green-200 bg-green-50 p-3">
+                <p className="mb-1 text-xs font-bold text-green-700">Pergunta correta</p>
+                <p className="text-xs text-green-800">&ldquo;O que na organização e gestão do trabalho está produzindo o risco?&rdquo;</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 font-semibold text-gray-800">Principais fatores de risco psicossocial (NR-1 / Fundacentro):</p>
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {[
+                "Sobrecarga de trabalho e metas excessivas",
+                "Ritmo intenso e jornadas prolongadas",
+                "Falta de autonomia nas decisões",
+                "Falta de reconhecimento e valorização",
+                "Ambiguidade ou conflito de funções",
+                "Comunicação organizacional deficiente",
+                "Assédio moral e violência no trabalho",
+                "Falta de suporte da liderança e colegas",
+                "Excesso de controle e monitoramento",
+                "Insegurança quanto ao emprego",
+                "Mudanças organizacionais sem participação",
+                "Conflitos interpessoais não gerenciados",
+              ].map((f) => (
+                <div key={f} className="flex items-start gap-2 text-xs text-gray-700">
+                  <span className="mt-1 size-1.5 shrink-0 rounded-full bg-indigo-400" />
+                  {f}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 font-semibold text-gray-800">Participação dos trabalhadores — requisito essencial:</p>
+            <p className="text-xs leading-relaxed text-gray-700">
+              A NR-1 e a Fundacentro estabelecem que a participação dos trabalhadores é elemento
+              essencial da avaliação. Os resultados do questionário devem ser complementados por
+              <strong> observação direta, entrevistas e escuta ativa</strong> para identificar as
+              condições reais do trabalho. Registre sempre o método de coleta utilizado e quantos
+              trabalhadores foram consultados — isso documenta a conformidade com a norma.
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-2 font-semibold text-gray-800">Como os resultados devem alimentar o PGR:</p>
+            <ol className="list-decimal pl-5 space-y-1.5 text-xs text-gray-700">
+              <li>Identifique as dimensões com risco <strong>Moderado</strong> ou <strong>Alto</strong> na matriz de resultados.</li>
+              <li>Para cada dimensão crítica, descreva <strong>quais condições organizacionais</strong> explicam o score — não os trabalhadores afetados.</li>
+              <li>Defina medidas de controle que atuem na <strong>organização do trabalho</strong> (redistribuição de tarefas, revisão de metas, treinamento de gestores, etc.).</li>
+              <li>Inclua os riscos psicossociais identificados no PGR da mesma forma que riscos físicos, químicos ou ergonômicos — com probabilidade, severidade, medidas e prazo.</li>
+              <li>Estabeleça monitoramento contínuo e reavaliação periódica.</li>
+            </ol>
+          </div>
+
+        </div>
       </Section>
     </div>
   );

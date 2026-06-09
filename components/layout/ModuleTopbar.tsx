@@ -29,7 +29,8 @@ function buildCrumbs(pathname: string): { label: string; href: string }[] {
   let path = "";
   for (const seg of segments) {
     path += `/${seg}`;
-    const label = ROUTE_LABELS[seg] ?? (seg.length > 12 ? `#${seg.slice(-6)}` : seg);
+    const label = ROUTE_LABELS[seg] ?? (seg.length > 12 ? null : seg);
+    if (label === null) continue;
     crumbs.push({ label, href: path });
   }
   return crumbs;
