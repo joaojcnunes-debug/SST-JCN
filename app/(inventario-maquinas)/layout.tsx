@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import { type ReactNode } from "react";
-import { Boxes } from "lucide-react";
+import { Boxes, HelpCircle } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -12,6 +12,7 @@ const sections: NavSection[] = [
     label: "Inventário",
     items: [
       { href: "/inventario-maquinas", label: "Visão geral", icon: Boxes },
+      { href: "/inventario-maquinas/ajuda", label: "Ajuda", icon: HelpCircle },
     ],
   },
 ];
@@ -28,7 +29,7 @@ export default function InventarioMaquinasLayout({
     <div className="min-h-screen">
       <SidebarShell
         title="Inventário"
-        subtitle="JCN"
+        subtitle="Chabra"
         logoHref="/inventario-maquinas"
         sections={sections}
       />

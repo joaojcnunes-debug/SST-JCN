@@ -30,7 +30,7 @@ function buildCrumbs(pathname: string): { label: string; href: string }[] {
   for (const seg of segments) {
     path += `/${seg}`;
     const label = ROUTE_LABELS[seg] ?? (seg.length > 12 ? null : seg);
-    if (label === null) continue;
+    if (label === null) continue; // IDs de relatório — não exibir no breadcrumb
     crumbs.push({ label, href: path });
   }
   return crumbs;

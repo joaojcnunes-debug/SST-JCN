@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { Download, RefreshCw, X, Loader2 } from "lucide-react";
@@ -7,7 +7,8 @@ type UpdateState =
   | { status: "available"; version: string }
   | { status: "ready"; version: string }
   | { status: "downloading"; version: string; percent: number }
-  | { status: "installing"; version: string };
+  | { status: "installing"; version: string }
+  | { status: "error"; version: string; message: string };
 
 type ElectronAPI = {
   onUpdateAvailable?: (cb: (info: { version: string }) => void) => void;
@@ -18,6 +19,7 @@ type ElectronAPI = {
   runInstallerFile?: (path: string) => Promise<{ success: boolean; error?: string }>;
   installUpdate?: () => void;
   getVersion?: () => Promise<string>;
+  openExternal?: (url: string) => void;
 };
 
 function getAPI(): ElectronAPI | undefined {
@@ -97,19 +99,25 @@ export default function UpdateBanner() {
   async function handleDownload() {
     if (!update) return;
     const api = getAPI();
-    if (!api?.downloadUpdateFile) return;
 
-    setUpdate({ status: "downloading", version: update.version, percent: 0 });
-
-    const urlResult = await api.getInstallerUrl?.();
-    if (!urlResult?.success || !urlResult.url) {
-      setUpdate({ status: "available", version: update.version });
+    if (!api?.getInstallerUrl || !api?.downloadUpdateFile) {
+      setUpdate({ status: "error", version: update.version, message: "Versão instalada muito antiga — baixe manualmente." });
       return;
     }
 
-    const result = await api.downloadUpdateFile?.(urlResult.url);
+    setUpdate({ status: "downloading", version: update.version, percent: 0 });
+
+    const urlResult = await api.getInstallerUrl();
+    if (!urlResult?.success || !urlResult.url) {
+      console.error("[UpdateBanner] getInstallerUrl falhou:", urlResult?.error);
+      setUpdate({ status: "error", version: update.version, message: urlResult?.error ?? "Falha ao obter URL do instalador." });
+      return;
+    }
+
+    const result = await api.downloadUpdateFile(urlResult.url);
     if (!result?.success || !result.path) {
-      setUpdate({ status: "available", version: update.version });
+      console.error("[UpdateBanner] downloadUpdateFile falhou:", result?.error);
+      setUpdate({ status: "error", version: update.version, message: result?.error ?? "Falha no download." });
       return;
     }
 
@@ -128,6 +136,8 @@ export default function UpdateBanner() {
               ? `Baixando v${update.version}…`
               : update.status === "installing"
               ? `Iniciando instalador…`
+              : update.status === "error"
+              ? `Erro ao atualizar`
               : `v${update.version} disponível`}
           </p>
           <p className="mt-0.5 text-xs text-gray-400">
@@ -137,6 +147,8 @@ export default function UpdateBanner() {
               ? "Aguarde, isso pode levar alguns minutos."
               : update.status === "installing"
               ? "O instalador abrirá em instantes."
+              : update.status === "error"
+              ? update.message
               : "Clique para baixar e instalar automaticamente."}
           </p>
         </div>
@@ -165,7 +177,7 @@ export default function UpdateBanner() {
       )}
 
       {/* Botões de ação */}
-      {(update.status === "available" || update.status === "ready") && (
+      {(update.status === "available" || update.status === "ready" || update.status === "error") && (
         <div className="flex gap-2">
           {update.status === "ready" && (
             <button
@@ -185,6 +197,16 @@ export default function UpdateBanner() {
             >
               <Download className="size-3.5" />
               Baixar e instalar
+            </button>
+          )}
+          {update.status === "error" && (
+            <button
+              type="button"
+              onClick={() => getAPI()?.openExternal?.("https://github.com/joaojcnunes-debug/SST-JCN/releases/latest")}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-gray-700 px-3 py-2 text-xs font-semibold hover:bg-gray-600"
+            >
+              <Download className="size-3.5" />
+              Baixar manualmente
             </button>
           )}
         </div>

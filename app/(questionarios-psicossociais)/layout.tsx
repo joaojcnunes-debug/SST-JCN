@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { type ReactNode, useMemo } from "react";
 import {
@@ -10,6 +10,7 @@ import {
   BarChart2,
   ListChecks,
   BookOpen,
+  HelpCircle,
 } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
@@ -27,7 +28,7 @@ export default function QuestionariosLayout({ children }: { children: ReactNode 
   const pathname = usePathname();
   const match = pathname.match(/\/questionarios-psicossociais\/([^/]+)/);
   const idAplicacao = match?.[1];
-  const isIdPage = idAplicacao && idAplicacao !== "nova" && idAplicacao !== "tipos" && idAplicacao !== "como-funciona";
+  const isIdPage = idAplicacao && idAplicacao !== "nova" && idAplicacao !== "tipos" && idAplicacao !== "como-funciona" && idAplicacao !== "ajuda";
 
   const sections = useMemo<NavSection[]>(() => {
     const base: NavSection[] = [
@@ -44,6 +45,11 @@ export default function QuestionariosLayout({ children }: { children: ReactNode 
             label: "Nova Aplicação",
             icon: Plus,
             variant: "action",
+          },
+          {
+            href: "/questionarios-psicossociais/ajuda",
+            label: "Ajuda",
+            icon: HelpCircle,
           },
         ],
       },
@@ -105,7 +111,7 @@ export default function QuestionariosLayout({ children }: { children: ReactNode 
     <div className="min-h-screen">
       <SidebarShell
         title="QPS / DRPS"
-        subtitle="JCN"
+        subtitle="Chabra"
         logoHref="/questionarios-psicossociais"
         sections={sections}
       />

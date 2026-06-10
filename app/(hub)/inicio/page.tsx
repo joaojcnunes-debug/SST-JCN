@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -84,7 +84,7 @@ const CARDS: HubCardCfg[] = [
   {
     modulo: "analise_quimicos",
     href: "/analise-quimicos",
-    title: "Análise de Químicos",
+    title: "Análise de Químicos JCN",
     description: "Análise quantitativa de agentes químicos e FISPQ",
     icon: <FlaskConical className="size-12" />,
     accent: "#0EA5E9",
@@ -300,7 +300,7 @@ function InicioContent() {
             </div>
           )}
           <div className="leading-tight">
-            <p className="text-sm font-bold text-white">JCN Consultoria</p>
+            <p className="text-sm font-bold text-white">JCN</p>
             <p className="text-[11px] text-white/70">
               Segurança e Saúde do Trabalho
             </p>
@@ -366,7 +366,7 @@ function InicioContent() {
               Psicossocial e outros).
             </p>
             <p className="mt-3 text-xs text-white/60">
-              Admin: <span className="font-mono">suporte@jcnconsultoria.com.br</span>
+              Admin: <span className="font-mono">suporte.ti@jcnconsultoria.com.br</span>
             </p>
           </div>
         ) : categoriaAtiva === null ? (
@@ -449,9 +449,9 @@ function InicioContent() {
                     catCards.length >= 3 && "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3",
                   )}
                 >
-                  {catCards.map((c) => (
+                  {catCards.map((c, i) => (
                     <HubCard
-                      key={c.href}
+                      key={`${c.modulo}-${i}`}
                       {...c}
                       stats={c.skipStats ? undefined : statsPorModulo(stats, c.modulo)}
                       isLoadingStats={c.skipStats ? false : stats.isLoading}
@@ -464,7 +464,7 @@ function InicioContent() {
         )}
 
         <p className="mt-10 text-center text-xs text-white/50">
-          © {new Date().getFullYear()} JCN Consultoria
+          © {new Date().getFullYear()} JCN · Sistemas Internos
           {process.env.NEXT_PUBLIC_APP_VERSION && (
             <span className="ml-2 opacity-60">
               v{process.env.NEXT_PUBLIC_APP_VERSION}
@@ -570,6 +570,7 @@ function HubCard({
   stats?: ModuloStats;
   isLoadingStats?: boolean;
   staticLabel?: string;
+  skipStats?: boolean;
 }) {
   return (
     <Link
@@ -597,8 +598,6 @@ function HubCard({
           <span className="flex items-center gap-1.5 text-gray-400">
             <Loader2 className="size-3 animate-spin" /> Carregando...
           </span>
-        ) : staticLabel ? (
-          <span className="font-medium" style={{ color: accent }}>{staticLabel}</span>
         ) : stats ? (
           <>
             <span
@@ -630,6 +629,8 @@ function HubCard({
               )}
             </span>
           </>
+        ) : staticLabel ? (
+          <span className="font-medium" style={{ color: accent }}>{staticLabel}</span>
         ) : (
           <span className="italic text-gray-400">Em construção</span>
         )}

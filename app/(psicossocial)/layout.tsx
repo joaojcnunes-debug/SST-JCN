@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
@@ -30,8 +30,8 @@ const SECTIONS_LISTA: NavSection[] = [
   {
     label: "Psicossocial",
     items: [
-      { href: "/psicossocial/dashboard-geral", label: "Dashboard Geral", icon: Globe },
-      { href: "/psicossocial", label: "Relatórios DRPS", icon: Files },
+      { href: "/psicossocial/dashboard-geral", label: "Dashboard Geral",  icon: Globe },
+      { href: "/psicossocial",                label: "Relatórios DRPS", icon: Files },
     ],
   },
   {
@@ -151,7 +151,7 @@ export default function PsicossocialLayout({
     <div className="min-h-screen">
       <SidebarShell
         title="Psicossocial"
-        subtitle="JCN"
+        subtitle="Chabra"
         logoHref="/psicossocial"
         sections={sections}
       />

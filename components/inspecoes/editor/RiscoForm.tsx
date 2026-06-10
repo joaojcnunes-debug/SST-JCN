@@ -1515,7 +1515,7 @@ type EpiInlineProps = (
 function EpiInline(props: EpiInlineProps) {
   // Modo server: busca lista uma vez; cada bloco filtra
   const idRiscoServer = props.mode === "server" ? props.idRisco : null;
-  const { data: serverLista = [] } = useQuery({
+  const { data: serverLista = [], isLoading: loadingEpis } = useQuery({
     queryKey: ["epi-risco", idRiscoServer],
     enabled: props.mode === "server",
     queryFn: async () => {
@@ -1531,9 +1531,14 @@ function EpiInline(props: EpiInlineProps) {
 
   return (
     <section className="space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-        EPIs e EPCs vinculados a este risco
-      </p>
+      <div className="flex items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+          EPIs e EPCs vinculados a este risco
+        </p>
+        {loadingEpis && props.mode === "server" && (
+          <span className="text-[10px] text-gray-400 animate-pulse">carregando…</span>
+        )}
+      </div>
       <EpiBloco
         ordem={1}
         titulo="EPI Utilizado"

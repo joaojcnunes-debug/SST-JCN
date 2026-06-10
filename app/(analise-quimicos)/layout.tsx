@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import { type ReactNode, useMemo } from "react";
 import {
   FlaskConical,
   Plus,
   History,
+  HelpCircle,
   Database,
   FileEdit,
 } from "lucide-react";
@@ -31,6 +32,7 @@ export default function AnaliseQuimicosLayout({
       { href: "/analise-quimicos", label: "Visão geral", icon: FlaskConical },
       { href: "/analise-quimicos/nova", label: "Nova análise", icon: Plus },
       { href: "/analise-quimicos/historico", label: "Histórico", icon: History },
+      { href: "/analise-quimicos/ajuda", label: "Ajuda", icon: HelpCircle },
     ];
     // Base de referência: só Admin vê e edita.
     if (user?.perfil === "Admin") {
@@ -59,12 +61,12 @@ export default function AnaliseQuimicosLayout({
     <div className="min-h-screen">
       <SidebarShell
         title="Análise de Químicos"
-        subtitle="JCN"
+        subtitle="Chabra"
         logoHref="/analise-quimicos"
         sections={sections}
       />
       <div className="md:pl-[220px] print:pl-0">
-        <ModuleTopbar title="Análise de Químicos JCN" />
+        <ModuleTopbar title="Análise de Químicos Chabra" />
         <main className="px-4 py-6 md:px-6 print:p-0">{children}</main>
       </div>
     </div>

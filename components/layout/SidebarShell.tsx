@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -118,6 +118,7 @@ interface Props {
   subtitle?: string;
   logoHref?: string;
   sections: NavSection[];
+  backHref?: string;
 }
 
 // Cor do ícone quando item está inativo (texto recebe hover do grupo)
@@ -183,9 +184,10 @@ function NavItemView({
 
 export default function SidebarShell({
   title,
-  subtitle = "JCN Consultoria",
+  subtitle = "JCN",
   logoHref = "/inicio",
   sections,
+  backHref,
 }: Props) {
   const pathname = usePathname();
   const router = useRouter();
@@ -258,7 +260,7 @@ export default function SidebarShell({
       <div className="border-t border-white/[0.07] px-2 py-2 space-y-0.5">
         <button
           type="button"
-          onClick={() => { setMobileOpen(false); router.back(); }}
+          onClick={() => { setMobileOpen(false); backHref ? router.push(backHref) : router.back(); }}
           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/50 transition-all duration-150 hover:bg-white/[0.09] hover:text-white/85"
         >
           <ArrowLeft className="size-[15px] text-white/30" />

@@ -1,4 +1,4 @@
-// Tipos dos dados do banco. Reflete o schema v2 descrito na spec.
+﻿// Tipos dos dados do banco. Reflete o schema v2 descrito na spec.
 
 export type StatusInspecao =
   | "RASCUNHO"
@@ -41,7 +41,7 @@ export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   nao_conformidade: "Relatório de Não Conformidade",
   apreciacao_maquinas: "Apreciação de Máquinas",
   inventario_maquinas: "Inventário de Equipamentos",
-  analise_quimicos: "Análise de Químicos JCN",
+  analise_quimicos: "Análise de Químicos Chabra",
   aet: "AET – Análise Ergonômica do Trabalho",
   aep: "AEP – Análise Ergonômica Preliminar",
   questionarios_psicossociais: "Questionários Psicossociais / DRPS",

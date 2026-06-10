@@ -24,7 +24,7 @@ const SECTIONS: NavSection[] = [
 
 export default function SinalizacaoPsicossocialLayout({ children }: { children: ReactNode }) {
   useAuth();
-  useRequireModule("aep");
+  useRequireModule(["aep", "psicossocial"]);
 
   return (
     <div className="min-h-screen">
@@ -33,6 +33,7 @@ export default function SinalizacaoPsicossocialLayout({ children }: { children: 
         subtitle="Psicossocial"
         logoHref="/sinalizacao-psicossocial"
         sections={SECTIONS}
+        backHref="/inicio"
       />
       <div className="md:pl-[220px] print:pl-0">
         <ModuleTopbar title="Sinalização de Fatores Psicossociais" />

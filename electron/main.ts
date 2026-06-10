@@ -217,36 +217,40 @@ ipcMain.handle('get-installer-url', async () => {
   }
 })
 
-// Download in-app do instalador a partir de uma URL direta
-ipcMain.handle('download-update-file', async (_event, url: string) => {
-  const dest = path.join(app.getPath('downloads'), 'PainelSST-Setup.exe')
-
-  try {
-    const response = await net.fetch(url)
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-
-    const total = parseInt(response.headers.get('content-length') ?? '0', 10)
-    const reader = response.body!.getReader()
-    const chunks: Buffer[] = []
-    let received = 0
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      chunks.push(Buffer.from(value))
-      received += value.length
-      if (total > 0) {
-        mainWindow?.webContents.send('download-progress', {
-          percent: Math.round((received / total) * 100),
-        })
-      }
+// Download in-app do instalador usando o download manager nativo do Electron
+ipcMain.handle('download-update-file', (_event, url: string) => {
+  return new Promise<{ success: boolean; path?: string; error?: string }>((resolve) => {
+    if (!mainWindow) {
+      resolve({ success: false, error: 'Janela principal não disponível' })
+      return
     }
 
-    writeFileSync(dest, Buffer.concat(chunks))
-    return { success: true, path: dest }
-  } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) }
-  }
+    const dest = path.join(app.getPath('downloads'), 'SSTJCN-Setup.exe')
+
+    mainWindow.webContents.session.once('will-download', (_ev, item) => {
+      item.setSavePath(dest)
+
+      item.on('updated', (_ev, state) => {
+        if (state === 'progressing') {
+          const total = item.getTotalBytes()
+          if (total > 0) {
+            const pct = Math.round((item.getReceivedBytes() / total) * 100)
+            mainWindow?.webContents.send('download-progress', { percent: pct })
+          }
+        }
+      })
+
+      item.once('done', (_ev, state) => {
+        if (state === 'completed') {
+          resolve({ success: true, path: dest })
+        } else {
+          resolve({ success: false, error: `Download ${state}` })
+        }
+      })
+    })
+
+    mainWindow.webContents.downloadURL(url)
+  })
 })
 
 ipcMain.handle('run-installer-file', async (_event, filePath: string) => {

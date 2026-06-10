@@ -1,9 +1,11 @@
-"use client";
+﻿"use client";
 
 import { type ReactNode, useMemo } from "react";
 import {
   BookOpen,
+  Brain,
   ClipboardCheck,
+  HelpCircle,
   Info,
   LayoutDashboard,
   List,
@@ -27,16 +29,18 @@ export default function AepLayout({ children }: { children: ReactNode }) {
 
   const match = pathname.match(/\/aep\/([^/]+)\//);
   const idRelatorio = match?.[1];
-  const isConfigPage = ["dashboard", "novo", "texto-padrao"].includes(idRelatorio ?? "");
+  const isConfigPage = ["dashboard", "novo", "texto-padrao", "ajuda"].includes(idRelatorio ?? "");
 
   const sections = useMemo<NavSection[]>(() => {
     const base: NavSection[] = [
       {
         label: "AEP",
         items: [
-          { href: "/aep/dashboard", label: "Dashboard",    icon: LayoutDashboard, variant: "dashboard" },
-          { href: "/aep",           label: "Análises",     icon: List },
-          { href: "/aep/novo",      label: "Nova Análise", icon: Plus, variant: "action" },
+          { href: "/aep/dashboard",             label: "Dashboard",            icon: LayoutDashboard, variant: "dashboard" },
+          { href: "/aep",                       label: "Análises",             icon: List },
+          { href: "/aep/novo",                  label: "Nova Análise",         icon: Plus, variant: "action" },
+          { href: "/sinalizacao-psicossocial",  label: "Sinalização Psicoss.", icon: Brain },
+          { href: "/aep/ajuda",                 label: "Ajuda",                icon: HelpCircle },
         ],
       },
       ...(isAdmin
@@ -69,7 +73,7 @@ export default function AepLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       <SidebarShell
         title="AEP"
-        subtitle="JCN"
+        subtitle="Chabra"
         logoHref="/aep"
         sections={sections}
       />
