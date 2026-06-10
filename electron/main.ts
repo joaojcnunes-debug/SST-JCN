@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, net } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, net, nativeImage } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import path from 'path'
 import { writeFileSync, existsSync, readFileSync, unlinkSync } from 'fs'
@@ -256,6 +256,18 @@ ipcMain.handle('download-update-file', (_event, url: string) => {
 ipcMain.handle('run-installer-file', async (_event, filePath: string) => {
   const err = await shell.openPath(filePath)
   return { success: !err, error: err || undefined }
+})
+
+// Atualiza o ícone da janela em tempo real quando o logo muda no Supabase
+ipcMain.handle('update-window-icon', async (_event, url: string) => {
+  try {
+    const resp = await net.fetch(url)
+    if (!resp.ok) return
+    const image = nativeImage.createFromBuffer(Buffer.from(await resp.arrayBuffer()))
+    if (!image.isEmpty()) mainWindow?.setIcon(image)
+  } catch {
+    // ícone é cosmético — falha silenciosa
+  }
 })
 
 // ── Ciclo de vida ─────────────────────────────────────────────────

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Providers from "@/lib/providers";
 import UpdateBanner from "@/components/UpdateBanner";
+import ElectronIconSync from "@/components/ElectronIconSync";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -24,6 +25,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <UpdateBanner />
+          <ElectronIconSync />
         </Providers>
       </body>
     </html>

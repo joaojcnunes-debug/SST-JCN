@@ -94,4 +94,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onDownloadProgress: (cb: (info: { percent: number }) => void) => {
     ipcRenderer.on('download-progress', (_event, info) => cb(info))
   },
+
+  /** Atualiza o ícone da janela Electron com a imagem do logo configurado */
+  updateWindowIcon: (url: string) =>
+    ipcRenderer.invoke('update-window-icon', url) as Promise<void>,
 })
