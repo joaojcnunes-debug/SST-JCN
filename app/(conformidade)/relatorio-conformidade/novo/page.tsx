@@ -97,7 +97,7 @@ function NovoConformidadeInner() {
         </h1>
         <p className="text-sm text-gray-600">
           Escolha a NR e a empresa. O checklist será criado automaticamente com
-          base no catálogo Chabra.
+          base no catálogo JCN.
         </p>
       </div>
 
@@ -149,7 +149,7 @@ function NovoConformidadeInner() {
             />
           </div>
           <div>
-            <label className={lblCls}>Responsável técnico (Chabra)</label>
+            <label className={lblCls}>Responsável técnico (JCN)</label>
             <ProfissionalSelect
               value={responsavel}
               onChange={(nome) => setResponsavel(nome)}

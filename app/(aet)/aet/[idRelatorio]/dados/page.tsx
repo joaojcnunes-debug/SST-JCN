@@ -297,7 +297,7 @@ function CaracterizacaoCard({
 
           {/* Cabeçalho — igual ao laudo */}
           <div className="mb-8 flex items-start justify-between border-b pb-4">
-            <div className="text-xs text-gray-500">Chabra Saúde e Segurança do Trabalho</div>
+            <div className="text-xs text-gray-500">JCN Consultoria — Segurança e Saúde do Trabalho</div>
           </div>
 
           {/* Capa — igual ao laudo */}

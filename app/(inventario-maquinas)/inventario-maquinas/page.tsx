@@ -100,7 +100,7 @@ export default function InventarioMaquinasPage() {
           Inventário de Máquinas e Equipamentos
         </h1>
         <p className="text-sm text-gray-600">
-          Cadastro de máquinas e equipamentos. Patrimônio interno da Chabra
+          Cadastro de máquinas e equipamentos. Patrimônio interno da JCN
           (sem empresa vinculada) ou de empresas clientes. Suporta foto,
           localização e status operacional.
         </p>
@@ -222,7 +222,7 @@ export default function InventarioMaquinasPage() {
                     <p className="mt-0.5 truncate text-xs text-gray-500">
                       {m.id_empresa
                         ? empresaMap.get(m.id_empresa) ?? "Empresa removida"
-                        : "Patrimônio Chabra"}
+                        : "Patrimônio JCN"}
                       {m.localizacao ? ` · ${m.localizacao}` : ""}
                     </p>
                   </div>

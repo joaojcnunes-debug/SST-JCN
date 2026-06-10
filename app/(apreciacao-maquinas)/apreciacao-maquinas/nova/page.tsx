@@ -141,7 +141,7 @@ export default function NovaApreciacaoPage() {
                 <option key={m.id_maquina} value={m.id_maquina}>
                   {m.nome}
                   {m.modelo ? ` (${m.modelo})` : ""}
-                  {m.id_empresa === null ? " — Chabra" : ""}
+                  {m.id_empresa === null ? " — JCN" : ""}
                 </option>
               ))}
             </select>
@@ -194,7 +194,7 @@ export default function NovaApreciacaoPage() {
               className={inputClass}
             />
           </Campo>
-          <Campo label="Responsável técnico (Chabra)" htmlFor="resp">
+          <Campo label="Responsável técnico (JCN)" htmlFor="resp">
             <ProfissionalSelect
               value={responsavel}
               onChange={(nome) => setResponsavel(nome)}

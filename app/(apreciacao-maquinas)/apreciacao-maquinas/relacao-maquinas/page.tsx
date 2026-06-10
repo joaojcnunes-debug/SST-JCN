@@ -418,7 +418,7 @@ export default function RelacaoMaquinasPage() {
                     {m.ano_fabricacao && <p className="text-[11px] text-gray-400">Ano: {m.ano_fabricacao}</p>}
                   </td>
                   <td className="px-3 py-2">
-                    <p className="text-gray-700">{m.id_empresa ? (empresaMap.get(m.id_empresa) ?? "—") : "Chabra"}</p>
+                    <p className="text-gray-700">{m.id_empresa ? (empresaMap.get(m.id_empresa) ?? "—") : "JCN"}</p>
                     {m.setor && <p className="text-[11px] text-gray-500">{m.setor}</p>}
                     {m.unidade && <p className="text-[11px] text-gray-400">{m.unidade}</p>}
                   </td>
@@ -507,7 +507,7 @@ export default function RelacaoMaquinasPage() {
 
       {/* Rodapé de impressão */}
       <div className="relacao-maquinas-footer-print mt-6 text-center text-[9px] text-gray-500 border-t border-gray-200 pt-3">
-        Relação de Máquinas e Equipamentos — NR-12 item 1.7 alínea &quot;a&quot; · Gerado por Chabra SST · {new Date().toLocaleDateString("pt-BR")}
+        Relação de Máquinas e Equipamentos — NR-12 item 1.7 alínea &quot;a&quot; · Gerado por JCN Consultoria · {new Date().toLocaleDateString("pt-BR")}
       </div>
 
       {/* Modal de cadastro/edição */}
@@ -553,7 +553,7 @@ export default function RelacaoMaquinasPage() {
                     onChange={(e) => setF("id_empresa", e.target.value || null)}
                     className={INPUT_CLASS}
                   >
-                    <option value="">— Patrimônio Chabra (sem empresa) —</option>
+                    <option value="">— Patrimônio JCN (sem empresa) —</option>
                     {empresas.map((e) => (
                       <option key={e.id_empresa} value={e.id_empresa}>{e.nome_empresa}</option>
                     ))}

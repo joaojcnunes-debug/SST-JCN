@@ -920,8 +920,8 @@ export default function AnaliseForm() {
             <p className="font-semibold">
               <Database className="inline size-3.5 mr-1" />
               {hitsBase.length === 1
-                ? "Encontrado na base de referência Chabra"
-                : `${hitsBase.length} componentes encontrados na base de referência Chabra`}
+                ? "Encontrado na base de referência JCN"
+                : `${hitsBase.length} componentes encontrados na base de referência JCN`}
             </p>
             <ul className="mt-1 space-y-0.5 text-xs">
               {hitsBase.map((h, i) => (

@@ -61,7 +61,7 @@ function RelatoriosInner() {
             <p className="text-sm text-gray-600">
               Selecione uma empresa para acessar os relatórios disponíveis:
               <strong> Consolidado</strong> (comparativo entre revisões),
-              <strong> Executivo</strong> (formato Chabra para apresentação) e
+              <strong> Executivo</strong> (formato JCN para apresentação) e
               <strong> PGR/NR-1</strong> (Inventário de Riscos técnico).
             </p>
           </div>
@@ -178,7 +178,7 @@ function RelatoriosInner() {
                             <Link
                               href={`/inspecoes/${i.id_inspecao}/relatorio`}
                               className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-verde-light hover:border-verde-primary hover:text-verde-primary"
-                              title="Relatório executivo (capa Chabra)"
+                              title="Relatório executivo (capa JCN)"
                             >
                               <ChartBar className="size-3.5" />
                               Executivo

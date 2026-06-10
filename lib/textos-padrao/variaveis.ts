@@ -21,8 +21,8 @@ export interface VariavelDef {
 }
 
 const VARIAVEIS_EMPRESA: VariavelDef[] = [
-  { chave: "empresa_nome", rotulo: "Nome da empresa", exemplo: "Chabra Saúde e Segurança" },
-  { chave: "empresa_razao_social", rotulo: "Razão social", exemplo: "Chabra Ltda" },
+  { chave: "empresa_nome", rotulo: "Nome da empresa", exemplo: "JCN Consultoria" },
+  { chave: "empresa_razao_social", rotulo: "Razão social", exemplo: "JCN Consultoria Ltda" },
   { chave: "cnpj", rotulo: "CNPJ", exemplo: "31.427.455/0001-11" },
   { chave: "cpf", rotulo: "CPF", exemplo: "000.000.000-00" },
   { chave: "cei", rotulo: "CEI", exemplo: "00.000.00000/00" },

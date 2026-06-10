@@ -127,7 +127,7 @@ export default function AnaliseDetalhePage({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-sky-600">
-              Análise de Químicos Chabra
+              Análise de Químicos JCN
             </p>
             <h1 className="truncate text-xl font-bold text-gray-900">
               {analise.titulo}
@@ -261,7 +261,7 @@ export default function AnaliseDetalhePage({
 
       {/* Rodapé pra impressão */}
       <p className="text-center text-[9px] text-gray-500 print:mt-4">
-        Análise gerada por IA · Chabra — Segurança e Saúde do Trabalho ·{" "}
+        Análise gerada por IA · JCN Consultoria — Segurança e Saúde do Trabalho ·{" "}
         {new Date(analise.created_at).toLocaleString("pt-BR")} · Revisão técnica
         obrigatória antes de uso oficial.
       </p>

@@ -209,7 +209,7 @@ export default function MaquinaForm({
               disabled={disabled}
               className={inputClass}
             >
-              <option value="">Patrimônio interno Chabra</option>
+              <option value="">Patrimônio interno JCN</option>
               {empresas.map((e) => (
                 <option key={e.id_empresa} value={e.id_empresa}>{e.nome_empresa}</option>
               ))}

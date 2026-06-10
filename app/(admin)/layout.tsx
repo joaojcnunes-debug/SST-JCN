@@ -35,7 +35,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       <SidebarShell
         title="Administração"
-        subtitle="Chabra"
+        subtitle="JCN"
         logoHref="/usuarios"
         sections={sections}
       />

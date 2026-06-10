@@ -52,7 +52,7 @@ export default function ConformidadeLayout({
     <div className="min-h-screen">
       <SidebarShell
         title="Conformidade"
-        subtitle="Chabra"
+        subtitle="JCN"
         logoHref="/relatorio-conformidade"
         sections={sections}
       />

@@ -321,7 +321,7 @@ export default function DetalheConformidadePage({
           <DataItem label="CNPJ" value={empresa?.cnpj ?? "—"} />
           <DataItem label="Setor / Local" value={relatorio.setor ?? "—"} />
           <DataItem
-            label="Responsável técnico (Chabra)"
+            label="Responsável técnico (JCN)"
             value={relatorio.responsavel ?? "—"}
           />
           <DataItem
@@ -519,7 +519,7 @@ export default function DetalheConformidadePage({
 
       {/* Rodapé pra impressão */}
       <p className="text-center text-[9px] text-gray-500 print:mt-4">
-        Relatório de Conformidade gerado por Chabra — Segurança e Saúde do
+        Relatório de Conformidade gerado por JCN Consultoria — Segurança e Saúde do
         Trabalho ·{" "}
         {relatorio.finalizado_em
           ? `Finalizado em ${new Date(relatorio.finalizado_em).toLocaleString("pt-BR")}`
@@ -1178,7 +1178,7 @@ function BlocoAssinaturas({
         <Assinatura
           nome={responsavelTecnico}
           cargo="Responsável Técnico"
-          subtitulo="Chabra Saúde e Segurança do Trabalho"
+          subtitulo="JCN Consultoria — Segurança e Saúde do Trabalho"
         />
         <Assinatura
           nome={responsavelEmpresa}
@@ -1273,7 +1273,7 @@ function EditarCabecalho({
         />
       </div>
       <div>
-        <label className={lblCls}>Responsável técnico (Chabra)</label>
+        <label className={lblCls}>Responsável técnico (JCN)</label>
         <ProfissionalSelect
           value={responsavel}
           onChange={(nome) => { setResponsavel(nome); onSalvar({ responsavel: nome || null }); }}

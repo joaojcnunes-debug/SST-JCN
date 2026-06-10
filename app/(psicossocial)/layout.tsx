@@ -151,7 +151,7 @@ export default function PsicossocialLayout({
     <div className="min-h-screen">
       <SidebarShell
         title="Psicossocial"
-        subtitle="Chabra"
+        subtitle="JCN"
         logoHref="/psicossocial"
         sections={sections}
       />

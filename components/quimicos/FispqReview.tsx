@@ -49,7 +49,7 @@ function FonteBadge({ fonte }: { fonte: FonteCampo | undefined }) {
       icon: <Database className="size-2.5" />,
       cor: "bg-emerald-100 text-emerald-700",
       texto: "Catálogo",
-      titulo: "Valor canônico da base de referência Chabra (CAS bateu)",
+      titulo: "Valor canônico da base de referência JCN (CAS bateu)",
     },
     parser: {
       icon: <Search className="size-2.5" />,

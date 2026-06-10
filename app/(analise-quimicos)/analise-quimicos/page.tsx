@@ -17,7 +17,7 @@ export default function AnaliseQuimicosOverviewPage() {
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
           <FlaskConical className="size-5 text-sky-500" />
-          Análise de Químicos Chabra
+          Análise de Químicos JCN
         </h1>
         <p className="text-sm text-gray-600">
           Análise técnica de agentes químicos a partir de FDS/FISPQ ou entrada

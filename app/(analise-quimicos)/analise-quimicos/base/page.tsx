@@ -156,7 +156,7 @@ export default function BaseReferenciaPage() {
   function handleInicializar() {
     setPendingAction({
       title: "Inicializar base de referência",
-      desc: "Importar os 267 agentes padrão da Chabra? Isso só funciona se a tabela estiver vazia.",
+      desc: "Importar os 267 agentes padrão da base JCN? Isso só funciona se a tabela estiver vazia.",
       fn: async () => {
         try {
           const total = await inicializar.mutateAsync();
@@ -204,7 +204,7 @@ export default function BaseReferenciaPage() {
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
           <Database className="size-5 text-sky-500" />
-          Base de Referência Chabra — Químicos NR-15
+          Base de Referência JCN — Químicos NR-15
         </h1>
         <p className="text-sm text-gray-600">
           {isLoading
@@ -223,7 +223,7 @@ export default function BaseReferenciaPage() {
                 A base de referência está vazia
               </p>
               <p className="mt-1 text-sm text-amber-800">
-                Importe os 267 agentes padrão da Chabra (NR-15 + ACGIH + IARC +
+                Importe os 267 agentes padrão da base JCN (NR-15 + ACGIH + IARC +
                 eSocial) com 1 clique. Depois disso você pode editar, adicionar
                 ou remover qualquer entrada.
               </p>

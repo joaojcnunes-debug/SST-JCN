@@ -158,7 +158,7 @@ export default function NovoNaoConformidadePage() {
             />
           </div>
           <div>
-            <label className={lblCls}>Responsável técnico (Chabra)</label>
+            <label className={lblCls}>Responsável técnico (JCN)</label>
             <ProfissionalSelect
               value={responsavel}
               onChange={(nome) => setResponsavel(nome)}

@@ -995,7 +995,7 @@ export default function AetLaudoPage({
 
         {/* Rodapé */}
         <p className="mt-8 text-center text-[9px] text-gray-400">
-          Laudo AET gerado em {new Date().toLocaleDateString("pt-BR")} · Chabra Saúde e Segurança do Trabalho · Portaria 3.214/78 — NR-17
+          Laudo AET gerado em {new Date().toLocaleDateString("pt-BR")} · JCN Consultoria — Segurança e Saúde do Trabalho · Portaria 3.214/78 — NR-17
         </p>
       </div>
     </div>

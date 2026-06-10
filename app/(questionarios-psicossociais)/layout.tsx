@@ -105,7 +105,7 @@ export default function QuestionariosLayout({ children }: { children: ReactNode 
     <div className="min-h-screen">
       <SidebarShell
         title="QPS / DRPS"
-        subtitle="Chabra"
+        subtitle="JCN"
         logoHref="/questionarios-psicossociais"
         sections={sections}
       />

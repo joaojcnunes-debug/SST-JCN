@@ -59,12 +59,12 @@ export default function AnaliseQuimicosLayout({
     <div className="min-h-screen">
       <SidebarShell
         title="Análise de Químicos"
-        subtitle="Chabra"
+        subtitle="JCN"
         logoHref="/analise-quimicos"
         sections={sections}
       />
       <div className="md:pl-[220px] print:pl-0">
-        <ModuleTopbar title="Análise de Químicos Chabra" />
+        <ModuleTopbar title="Análise de Químicos JCN" />
         <main className="px-4 py-6 md:px-6 print:p-0">{children}</main>
       </div>
     </div>

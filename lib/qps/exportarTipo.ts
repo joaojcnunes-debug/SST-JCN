@@ -163,7 +163,7 @@ export async function gerarWordTipo(
   }
 
   const doc = new Document({
-    creator: "Chabra SST",
+    creator: "JCN Consultoria",
     title: tipo.nome,
     description: tipo.descricao ?? undefined,
     sections: [{ children }],

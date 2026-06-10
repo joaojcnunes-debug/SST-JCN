@@ -569,7 +569,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         <AssinaturaRelatorio tabelaNome="inspecoes_ficha" docId={id} />
 
         <p className="mt-4 text-center text-[9px] text-gray-500">
-          Painel SST Chabra · Ficha de Inspeção em Branco · gerado em{" "}
+          SST JCN Consultoria · Ficha de Inspeção em Branco · gerado em{" "}
           {new Date().toLocaleDateString("pt-BR")} — preencha em campo e lance
           posteriormente no sistema.
         </p>

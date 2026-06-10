@@ -608,7 +608,7 @@ export default function DetalheApreciacaoPage() {
               className={inputClass}
             />
           </Campo>
-          <Campo label="Responsável técnico (Chabra)" htmlFor="resp">
+          <Campo label="Responsável técnico (JCN)" htmlFor="resp">
             <ProfissionalSelect
               value={responsavel}
               onChange={(nome) => setResponsavel(nome)}

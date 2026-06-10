@@ -535,7 +535,7 @@ export default function PgrPage({ params }: Props) {
 
         {/* RODAPÉ */}
         <footer className="border-t border-gray-200 pt-2 text-center text-[10px] text-gray-500 print-avoid-break">
-          Documento gerado em {fmtDataHora(new Date())} pelo Painel SST Chabra
+          Documento gerado em {fmtDataHora(new Date())} pelo SST JCN Consultoria
           · NR-01 / GRO · Inventário de Riscos
         </footer>
       </article>

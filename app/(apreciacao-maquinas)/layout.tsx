@@ -38,7 +38,7 @@ export default function ApreciacaoMaquinasLayout({
     <div className="min-h-screen">
       <SidebarShell
         title="Apreciação"
-        subtitle="Chabra"
+        subtitle="JCN"
         logoHref="/apreciacao-maquinas"
         sections={sections}
       />

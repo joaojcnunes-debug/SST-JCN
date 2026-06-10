@@ -896,7 +896,7 @@ export default function AnalisePage({
             />
 
             <p className="mt-6 text-center text-[9px] text-gray-500 print:hidden">
-              Documento gerado pelo Painel SST Chabra em{" "}
+              Documento gerado pelo SST JCN Consultoria em{" "}
               {new Date().toLocaleDateString("pt-BR")}
             </p>
           </div>

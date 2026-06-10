@@ -69,7 +69,7 @@ export default function AepLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       <SidebarShell
         title="AEP"
-        subtitle="Chabra"
+        subtitle="JCN"
         logoHref="/aep"
         sections={sections}
       />

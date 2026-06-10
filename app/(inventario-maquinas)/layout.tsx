@@ -28,7 +28,7 @@ export default function InventarioMaquinasLayout({
     <div className="min-h-screen">
       <SidebarShell
         title="Inventário"
-        subtitle="Chabra"
+        subtitle="JCN"
         logoHref="/inventario-maquinas"
         sections={sections}
       />

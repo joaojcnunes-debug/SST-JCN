@@ -74,7 +74,7 @@ export default function AetLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       <SidebarShell
         title="AET"
-        subtitle="Chabra"
+        subtitle="JCN"
         logoHref="/aet"
         sections={sections}
       />

@@ -296,7 +296,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={configs.logo_url}
-                  alt="Logo Chabra"
+                  alt="Logo JCN"
                   className="max-h-44 w-auto object-contain"
                   referrerPolicy="no-referrer"
                 />
@@ -306,7 +306,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                     <ShieldCheck className="size-16" strokeWidth={1.5} />
                   </div>
                   <p className="mt-3 text-2xl font-extrabold tracking-tight text-red-alert">
-                    Chabra
+                    JCN
                   </p>
                   <p className="text-[10px] uppercase tracking-wider text-gray-600">
                     Segurança e Medicina do Trabalho
@@ -318,8 +318,7 @@ export default function RelatorioChabraPage({ params }: Props) {
 
           {/* Rodapé da capa */}
           <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-center text-[10px] text-gray-500">
-            Documento gerado em {fmtDataHora(new Date())} · Chabra Saúde e
-            Segurança do Trabalho
+            Documento gerado em {fmtDataHora(new Date())} · JCN Consultoria — Segurança e Saúde do Trabalho
           </p>
         </section>
 
@@ -698,7 +697,7 @@ export default function RelatorioChabraPage({ params }: Props) {
           />
 
           <p className="mt-8 text-center text-[10px] text-gray-400">
-            Documento gerado em {fmtDataHora(new Date())} · Painel SST Chabra
+            Documento gerado em {fmtDataHora(new Date())} · SST JCN Consultoria
           </p>
         </section>
       </article>
