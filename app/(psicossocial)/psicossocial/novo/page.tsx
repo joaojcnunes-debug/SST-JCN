@@ -70,7 +70,7 @@ function Inner() {
         <span>Voltar</span>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm reveal-up">
         <div className="flex items-center gap-3">
           <Sparkles className="size-6 text-verde-primary" />
           <div>
@@ -142,7 +142,7 @@ function Inner() {
 
           <p className="text-xs text-gray-500">
             Você pode preencher mais metadados (funções, qtd. trabalhadores,
-            agravos, medidas existentes) depois, na aba <strong>Metadados</strong>{" "}
+            agravos, medidas recomendadas) depois, na aba <strong>Metadados</strong>{" "}
             do relatório.
           </p>
 

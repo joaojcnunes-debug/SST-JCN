@@ -1,0 +1,322 @@
+<claude-code-hint v="1" type="plugin" value="vercel@claude-plugins-official" />
+Vercel CLI 54.7.1 (Node.js 24.14.0)
+Retrieving project…
+Deploying joao-jeffersons-projects/painel-sst-chabra
+Uploading [--------------------] (0.0B/20.3KB)
+Uploading [==============------] (14.5KB/20.3KB)
+Uploading [================----] (17.2KB/20.3KB)
+Uploading [====================] (20.3KB/20.3KB)
+  Inspect     https://vercel.com/joao-jeffersons-projects/painel-sst-chabra/EjCaL9V1B49ZaqnVNRazGoSMZ17M
+▲ Production  https://painel-sst-chabra-96qajyshq-joao-jeffersons-projects.vercel.app
+Building…
+Running build in Washington, D.C., USA (East) – iad1
+Build machine configuration: 2 cores, 8 GB
+Retrieving list of deployment files...
+Retrieving list of deployment files...
+Downloading 490 deployment files...
+Restored build cache from previous deployment (GneG6Lc1chK7XT2QtPk7pckuerhY)
+Running "vercel build"
+Vercel CLI 54.14.0
+Installing dependencies...
+up to date in 1s
+247 packages are looking for funding
+run `npm fund` for details
+Detected Next.js version: 15.5.15
+Running "npm run build"
+> painel-sst@0.3.257 build
+> next build
+▲ Next.js 15.5.15
+Creating an optimized production build ...
+✓ Compiled successfully in 48s
+Linting and checking validity of types ...
+./app/(admin)/portal-sst/page.tsx
+72:9  Warning: 'user' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+270:10  Warning: 'mostrarForm' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+270:23  Warning: 'setMostrarForm' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+./app/(admin)/usuarios/page.tsx
+404:3  Warning: Unused eslint-disable directive (no problems were reported from 'react-hooks/exhaustive-deps').
+./app/(aep)/aep/[idRelatorio]/setores/page.tsx
+212:7  Warning: Expected an assignment or function call and instead saw an expression.  @typescript-eslint/no-unused-expressions
+./app/(aet)/aet/13fatores-config/page.tsx
+107:7  Warning: Expected an assignment or function call and instead saw an expression.  @typescript-eslint/no-unused-expressions
+./app/(aet)/aet/[idRelatorio]/analise/page.tsx
+65:7  Warning: Expected an assignment or function call and instead saw an expression.  @typescript-eslint/no-unused-expressions
+./app/(aet)/aet/[idRelatorio]/dados/page.tsx
+199:6  Warning: React Hook useEffect has a missing dependency: 'rel'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+./app/(aet)/aet/[idRelatorio]/laudo/page.tsx
+12:3  Warning: 'Printer' is defined but never used.  @typescript-eslint/no-unused-vars
+33:3  Warning: 'useAetTextoPadrao' is defined but never used.  @typescript-eslint/no-unused-vars
+52:8  Warning: 'RichTextEditor' is defined but never used.  @typescript-eslint/no-unused-vars
+62:3  Warning: 'AetTextoPadraoCapitulo' is defined but never used.  @typescript-eslint/no-unused-vars
+1257:3  Warning: 'semaforo' is defined but never used.  @typescript-eslint/no-unused-vars
+1748:13  Warning: '_semaforo' is defined but never used.  @typescript-eslint/no-unused-vars
+1750:18  Warning: '_zonaFromMedia' is defined but never used.  @typescript-eslint/no-unused-vars
+1913:3  Warning: 'registroProfissional' is defined but never used.  @typescript-eslint/no-unused-vars
+./app/(aet)/aet/[idRelatorio]/psicossocial/page.tsx
+345:7  Warning: Expected an assignment or function call and instead saw an expression.  @typescript-eslint/no-unused-expressions
+./app/(aet)/aet/[idRelatorio]/setores/page.tsx
+306:7  Warning: Expected an assignment or function call and instead saw an expression.  @typescript-eslint/no-unused-expressions
+./app/(aet)/layout.tsx
+13:3  Warning: 'Settings2' is defined but never used.  @typescript-eslint/no-unused-vars
+./app/(analise-quimicos)/analise-quimicos/base/page.tsx
+124:9  Warning: The 'itens' logical expression could make the dependencies of useMemo Hook (at line 144) change on every render. To fix this, wrap the initialization of 'itens' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+./app/(app)/empresas/[id]/relatorio/page.tsx
+5:21  Warning: 'Printer' is defined but never used.  @typescript-eslint/no-unused-vars
+./app/(app)/inspecoes/[id]/ficha/page.tsx
+5:21  Warning: 'Printer' is defined but never used.  @typescript-eslint/no-unused-vars
+./app/(app)/inspecoes/[id]/pgr/page.tsx
+5:21  Warning: 'Printer' is defined but never used.  @typescript-eslint/no-unused-vars
+./app/(app)/inspecoes/[id]/relatorio/page.tsx
+9:3  Warning: 'Printer' is defined but never used.  @typescript-eslint/no-unused-vars
+./app/(apreciacao-maquinas)/apreciacao-maquinas/[id]/laudo/page.tsx
+42:9  Warning: The 'itens' logical expression could make the dependencies of useMemo Hook (at line 86) change on every render. To fix this, wrap the initialization of 'itens' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+42:9  Warning: The 'itens' logical expression could make the dependencies of useMemo Hook (at line 106) change on every render. To fix this, wrap the initialization of 'itens' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+./app/(apreciacao-maquinas)/apreciacao-maquinas/[id]/page.tsx
+99:9  Warning: The 'itens' logical expression could make the dependencies of useMemo Hook (at line 180) change on every render. To fix this, wrap the initialization of 'itens' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+99:9  Warning: The 'itens' logical expression could make the dependencies of useMemo Hook (at line 189) change on every render. To fix this, wrap the initialization of 'itens' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+99:9  Warning: The 'itens' logical expression could make the dependencies of useMemo Hook (at line 297) change on every render. To fix this, wrap the initialization of 'itens' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+196:9  Warning: 'dirty' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+./app/(conformidade)/relatorio-conformidade/[id]/page.tsx
+1139:10  Warning: 'BlocoAssinaturas' is defined but never used.  @typescript-eslint/no-unused-vars
+./app/(hub)/inicio/page.tsx
+225:10  Warning: 'diferencaTexto' is defined but never used.  @typescript-eslint/no-unused-vars
+./app/(nao-conformidade)/relatorio-nao-conformidade/[id]/page.tsx
+20:10  Warning: 'createSupabaseBrowserClient' is defined but never used.  @typescript-eslint/no-unused-vars
+1157:10  Warning: 'BlocoAssinaturas' is defined but never used.  @typescript-eslint/no-unused-vars
+./app/(psicossocial)/psicossocial/[idRelatorio]/gestao/page.tsx
+9:3  Warning: 'Printer' is defined but never used.  @typescript-eslint/no-unused-vars
+./app/(public)/login/page.tsx
+280:10  Warning: 'percent' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+./app/(questionarios-psicossociais)/layout.tsx
+108:6  Warning: React Hook useMemo has a missing dependency: 'isAdmin'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+./app/api/cert/validar/route.ts
+95:5  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').
+./app/api/pdf/token/route.ts
+6:28  Warning: '_req' is defined but never used.  @typescript-eslint/no-unused-vars
+./app/icon.tsx
+68:12  Warning: Unused eslint-disable directive (no problems were reported from '@next/next/no-img-element').
+./components/empresas/EmpresaCard.tsx
+4:10  Warning: 'Building2' is defined but never used.  @typescript-eslint/no-unused-vars
+./components/inspecoes/editor/tabs/MaquinasTab.tsx
+277:55  Warning: '_' is defined but never used.  @typescript-eslint/no-unused-vars
+277:58  Warning: 'i' is defined but never used.  @typescript-eslint/no-unused-vars
+708:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+1060:21  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+./components/inspecoes/editor/tabs/RiscosTab.tsx
+15:22  Warning: 'NivelRisco' is defined but never used.  @typescript-eslint/no-unused-vars
+./components/inspecoes/editor/tabs/TreinamentosTab.tsx
+425:23  Warning: Expected an assignment or function call and instead saw an expression.  @typescript-eslint/no-unused-expressions
+./components/layout/ModuleTopbar.tsx
+59:40  Warning: 'title' is defined but never used.  @typescript-eslint/no-unused-vars
+./components/layout/SidebarShell.tsx
+263:50  Warning: Expected an assignment or function call and instead saw an expression.  @typescript-eslint/no-unused-expressions
+./components/pdf/templates/AepTemplate.tsx
+877:8  Warning: Unused eslint-disable directive (no problems were reported from 'react/no-danger').
+./components/pdf/templates/AnaliseQuimicosTemplate.tsx
+393:8  Warning: Unused eslint-disable directive (no problems were reported from 'react/no-danger').
+./components/pdf/templates/ApreciacaoTemplate.tsx
+361:8  Warning: Unused eslint-disable directive (no problems were reported from 'react/no-danger').
+./components/pdf/templates/ConformidadeTemplate.tsx
+241:8  Warning: Unused eslint-disable directive (no problems were reported from 'react/no-danger').
+./components/pdf/templates/DrpsTemplate.tsx
+539:8  Warning: Unused eslint-disable directive (no problems were reported from 'react/no-danger').
+./components/pdf/templates/NaoConformidadeTemplate.tsx
+262:8  Warning: Unused eslint-disable directive (no problems were reported from 'react/no-danger').
+./components/ui/AssinaturaRelatorio.tsx
+97:27  Warning: '_n' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+./lib/gerarHtmlParaPdf.ts
+244:3  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any').
+./lib/hooks/useAet.ts
+843:41  Warning: '_id' is defined but never used.  @typescript-eslint/no-unused-vars
+./lib/hooks/useDrps.ts
+122:37  Warning: '_' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+Collecting page data ...
+⚠ Using edge runtime on a page currently disables static generation for that page
+Generating static pages (0/95) ...
+Generating static pages (23/95)
+Generating static pages (47/95)
+Generating static pages (71/95)
+✓ Generating static pages (95/95)
+Finalizing page optimization ...
+Collecting build traces ...
+Route (app)                                            Size  First Load JS
+┌ ○ /                                                 185 B         102 kB
+├ ○ /_not-found                                        1 kB         103 kB
+├ ○ /acoes                                           7.4 kB         213 kB
+├ ○ /aep                                            10.4 kB         208 kB
+├ ƒ /aep/[idRelatorio]                                185 B         102 kB
+├ ƒ /aep/[idRelatorio]/dados                        8.57 kB         206 kB
+├ ƒ /aep/[idRelatorio]/laudo                          12 kB         235 kB
+├ ƒ /aep/[idRelatorio]/setores                      11.8 kB         213 kB
+├ ○ /aep/ajuda                                        34 kB         136 kB
+├ ○ /aep/dashboard                                  8.66 kB         206 kB
+├ ○ /aep/novo                                       9.06 kB         207 kB
+├ ○ /aep/texto-padrao                               1.63 kB         366 kB
+├ ○ /aet                                            8.82 kB         220 kB
+├ ƒ /aet/[idRelatorio]                                185 B         102 kB
+├ ƒ /aet/[idRelatorio]/analise                      6.13 kB         357 kB
+├ ƒ /aet/[idRelatorio]/dados                        8.24 kB         359 kB
+├ ƒ /aet/[idRelatorio]/laudo                        20.1 kB         246 kB
+├ ƒ /aet/[idRelatorio]/psicossocial                 9.51 kB         217 kB
+├ ƒ /aet/[idRelatorio]/setores                      14.6 kB         366 kB
+├ ○ /aet/13fatores-config                           7.57 kB         215 kB
+├ ○ /aet/ajuda                                      22.9 kB         125 kB
+├ ○ /aet/dashboard                                  8.19 kB         219 kB
+├ ○ /aet/novo                                       7.63 kB         215 kB
+├ ○ /aet/owas-config                                7.94 kB         215 kB
+├ ○ /aet/perfis-owas                                7.07 kB         214 kB
+├ ○ /aet/texto-padrao                               1.63 kB         366 kB
+├ ○ /analise-quimicos                               5.39 kB         214 kB
+├ ƒ /analise-quimicos/[id]                          3.52 kB         244 kB
+├ ƒ /analise-quimicos/[id]/laudo                    4.13 kB         250 kB
+├ ○ /analise-quimicos/ajuda                         11.6 kB         114 kB
+├ ○ /analise-quimicos/base                          6.29 kB         220 kB
+├ ○ /analise-quimicos/historico                     5.26 kB         214 kB
+├ ○ /analise-quimicos/nova                          15.7 kB         237 kB
+├ ○ /analise-quimicos/texto-padrao                  1.64 kB         366 kB
+├ ƒ /api/cert/validar                                 185 B         102 kB
+├ ƒ /api/cnpj/[cnpj]                                  185 B         102 kB
+├ ƒ /api/gerar-analise-setor-aet-ia                   185 B         102 kB
+├ ƒ /api/gerar-intro-capitulo-aet-ia                  185 B         102 kB
+├ ƒ /api/maquina/analisar-foto                        185 B         102 kB
+├ ƒ /api/pdf/aep/[id]                                 185 B         102 kB
+├ ƒ /api/pdf/analise-quimicos/[id]                    185 B         102 kB
+├ ƒ /api/pdf/apreciacao/[id]                          185 B         102 kB
+├ ƒ /api/pdf/conformidade/[id]                        185 B         102 kB
+├ ƒ /api/pdf/drps/[id]                                185 B         102 kB
+├ ƒ /api/pdf/nao-conformidade/[id]                    185 B         102 kB
+├ ƒ /api/pdf/token                                    185 B         102 kB
+├ ƒ /api/sign-image                                   185 B         102 kB
+├ ƒ /api/sign-pdf                                     185 B         102 kB
+├ ○ /apreciacao-maquinas                            6.42 kB         215 kB
+├ ƒ /apreciacao-maquinas/[id]                       12.4 kB         258 kB
+├ ƒ /apreciacao-maquinas/[id]/laudo                 4.75 kB         256 kB
+├ ○ /apreciacao-maquinas/ajuda                      12.3 kB         114 kB
+├ ○ /apreciacao-maquinas/nova                       7.27 kB         219 kB
+├ ○ /apreciacao-maquinas/relacao-maquinas           17.5 kB         218 kB
+├ ○ /apreciacao-maquinas/texto-padrao               1.65 kB         366 kB
+├ ○ /config                                           23 kB         389 kB
+├ ○ /dashboard                                      8.16 kB         318 kB
+├ ○ /dashboard/documentos-emitidos                  4.08 kB         308 kB
+├ ○ /dashboard/inspecoes-concluidas                 3.92 kB         308 kB
+├ ○ /empresas                                       6.96 kB         215 kB
+├ ƒ /empresas/[id]                                  5.25 kB         220 kB
+├ ƒ /empresas/[id]/relatorio                         9.7 kB         221 kB
+├ ƒ /icon                                             185 B         102 kB
+├ ○ /inicio                                         11.2 kB         213 kB
+├ ○ /inspecoes                                      7.35 kB         215 kB
+├ ƒ /inspecoes/[id]                                   53 kB         269 kB
+├ ƒ /inspecoes/[id]/ficha                           11.5 kB         218 kB
+├ ƒ /inspecoes/[id]/pgr                               12 kB         233 kB
+├ ƒ /inspecoes/[id]/relatorio                       15.7 kB         241 kB
+├ ○ /inspecoes/ficha                                7.01 kB         205 kB
+├ ○ /inspecoes/nova                                 9.08 kB         207 kB
+├ ○ /inventario-maquinas                            2.71 kB         212 kB
+├ ƒ /inventario-maquinas/[id]                       1.84 kB         219 kB
+├ ○ /inventario-maquinas/ajuda                        11 kB         113 kB
+├ ○ /inventario-maquinas/nova                         928 B         218 kB
+├ ○ /lixeira                                        6.25 kB         204 kB
+├ ○ /login                                          6.77 kB         187 kB
+├ ○ /pdfs-gerados                                   6.79 kB         204 kB
+├ ƒ /portal-cliente/documentos                      2.51 kB         211 kB
+├ ƒ /portal-cliente/inicio                          2.07 kB         211 kB
+├ ƒ /portal-cliente/nao-conformidades               2.94 kB         211 kB
+├ ƒ /portal-cliente/pendencias                      4.18 kB         213 kB
+├ ƒ /portal-cliente/perfil                          1.43 kB         210 kB
+├ ƒ /portal-cliente/plano-acao                      1.53 kB         210 kB
+├ ƒ /portal-cliente/solicitacoes                    4.67 kB         213 kB
+├ ○ /portal-sst                                     8.53 kB         206 kB
+├ ○ /produtividade                                  9.65 kB         440 kB
+├ ○ /produtividade/acompanhamento                   6.87 kB         180 kB
+├ ○ /produtividade/controle-mensal                  6.74 kB         187 kB
+├ ○ /produtividade/documentos                       7.41 kB         326 kB
+├ ○ /produtividade/projecoes                        12.6 kB         305 kB
+├ ○ /produtividade/projecoes-salvas                 7.25 kB         188 kB
+├ ○ /produtividade/registros                        6.12 kB         186 kB
+├ ○ /produtividade/unidades                         8.01 kB         188 kB
+├ ○ /psicossocial                                   7.52 kB         218 kB
+├ ƒ /psicossocial/[idRelatorio]/analise             11.6 kB         384 kB
+├ ƒ /psicossocial/[idRelatorio]/conclusao-geral     6.18 kB         356 kB
+├ ƒ /psicossocial/[idRelatorio]/dados               10.8 kB         216 kB
+├ ƒ /psicossocial/[idRelatorio]/dashboard           10.1 kB         330 kB
+├ ƒ /psicossocial/[idRelatorio]/escala              5.37 kB         211 kB
+├ ƒ /psicossocial/[idRelatorio]/gestao                12 kB         228 kB
+├ ƒ /psicossocial/[idRelatorio]/laudo               10.5 kB         250 kB
+├ ƒ /psicossocial/[idRelatorio]/medidas             9.29 kB         209 kB
+├ ƒ /psicossocial/[idRelatorio]/metadados           6.32 kB         206 kB
+├ ƒ /psicossocial/[idRelatorio]/monitoramento       6.31 kB         212 kB
+├ ƒ /psicossocial/[idRelatorio]/resumo              5.84 kB         211 kB
+├ ƒ /psicossocial/[idRelatorio]/revisao             10.1 kB         209 kB
+├ ○ /psicossocial/agravos                           12.1 kB         210 kB
+├ ○ /psicossocial/ajuda                               185 B         102 kB
+├ ○ /psicossocial/criterios                           185 B         102 kB
+├ ○ /psicossocial/dashboard-geral                   4.93 kB         208 kB
+├ ○ /psicossocial/medidas-recomendadas              8.26 kB         210 kB
+├ ○ /psicossocial/metodologia                       6.54 kB         109 kB
+├ ○ /psicossocial/novo                              8.02 kB         207 kB
+├ ○ /psicossocial/texto-padrao                      1.68 kB         366 kB
+├ ○ /questionarios-psicossociais                     4.1 kB         208 kB
+├ ƒ /questionarios-psicossociais/[id]               5.33 kB         209 kB
+├ ƒ /questionarios-psicossociais/[id]/planos        5.23 kB         209 kB
+├ ƒ /questionarios-psicossociais/[id]/respondentes  7.55 kB         354 kB
+├ ƒ /questionarios-psicossociais/[id]/resultados    5.18 kB         209 kB
+├ ○ /questionarios-psicossociais/ajuda              12.1 kB         114 kB
+├ ○ /questionarios-psicossociais/como-funciona      8.46 kB         128 kB
+├ ○ /questionarios-psicossociais/nova               2.99 kB         190 kB
+├ ○ /questionarios-psicossociais/tipos               104 kB         447 kB
+├ ○ /relatorio-conformidade                         7.16 kB         213 kB
+├ ƒ /relatorio-conformidade/[id]                    14.7 kB         244 kB
+├ ƒ /relatorio-conformidade/[id]/laudo               9.4 kB         245 kB
+├ ○ /relatorio-conformidade/ajuda                   8.09 kB         110 kB
+├ ○ /relatorio-conformidade/historico               6.99 kB         213 kB
+├ ○ /relatorio-conformidade/novo                    9.34 kB         215 kB
+├ ○ /relatorio-conformidade/texto-padrao            1.64 kB         366 kB
+├ ○ /relatorio-nao-conformidade                     7.32 kB         213 kB
+├ ƒ /relatorio-nao-conformidade/[id]                14.2 kB         244 kB
+├ ƒ /relatorio-nao-conformidade/[id]/laudo          9.52 kB         245 kB
+├ ○ /relatorio-nao-conformidade/ajuda               9.27 kB         111 kB
+├ ○ /relatorio-nao-conformidade/historico           6.92 kB         213 kB
+├ ○ /relatorio-nao-conformidade/novo                9.29 kB         215 kB
+├ ○ /relatorio-nao-conformidade/texto-padrao        1.65 kB         366 kB
+├ ○ /relatorios                                     8.71 kB         210 kB
+├ ○ /sinalizacao-psicossocial                       9.05 kB         207 kB
+├ ○ /texto-padrao                                   1.63 kB         366 kB
+└ ○ /usuarios                                       11.1 kB         215 kB
++ First Load JS shared by all                        102 kB
+├ chunks/1255-55f5611cfd370a3f.js                 45.7 kB
+├ chunks/4bd1b696-100b9d70ed4e49c1.js             54.2 kB
+└ other shared chunks (total)                     2.24 kB
+ƒ Middleware                                        89.7 kB
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+Traced Next.js server files in: 44.754ms
+Created all serverless functions in: 1.153s
+Collected static files (public/, static/, .next/static): 36.878ms
+Build Completed in /vercel/output [2m]
+Deploying outputs...
+[2K[1A[2K[G▲ Production  https://painel-sst-chabra-96qajyshq-joao-jeffersons-projects.vercel.app
+Completing…
+▲ Aliased     https://painel-sst-chabra.vercel.app
+{
+  "status": "ok",
+  "deployment": {
+    "id": "dpl_EjCaL9V1B49ZaqnVNRazGoSMZ17M",
+    "url": "https://painel-sst-chabra-96qajyshq-joao-jeffersons-projects.vercel.app",
+    "inspectorUrl": "https://vercel.com/joao-jeffersons-projects/painel-sst-chabra/EjCaL9V1B49ZaqnVNRazGoSMZ17M",
+    "readyState": "READY",
+    "target": "production",
+    "deploymentApiUrl": "https://api.vercel.com/v13/deployments/dpl_EjCaL9V1B49ZaqnVNRazGoSMZ17M"
+  },
+  "message": "Deployment painel-sst-chabra-96qajyshq-joao-jeffersons-projects.vercel.app ready.",
+  "next": [
+    {
+      "command": "vercel inspect painel-sst-chabra-96qajyshq-joao-jeffersons-projects.vercel.app",
+      "when": "Inspect deployment"
+    },
+    {
+      "command": "vercel deploy --prod",
+      "when": "Promote to production"
+    }
+  ]
+}

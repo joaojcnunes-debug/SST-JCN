@@ -27,7 +27,7 @@ export default function NovaAnalisePage() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm reveal-up">
         <AnaliseForm />
       </div>
     </div>

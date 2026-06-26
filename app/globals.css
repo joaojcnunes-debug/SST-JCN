@@ -2,13 +2,13 @@
 
 @theme {
   --color-verde-primary: #0ea5e9;
-  --color-verde-accent: #38bdf8;
+  --color-verde-accent: #0284c7;
   --color-verde-dark: #0369a1;
-  --color-verde-light: #e0f2fe;
-  --color-verde-border: #bae6fd;
+  --color-verde-light: #e8f5e9;
+  --color-verde-border: #c8e6c9;
   --color-red-alert: #D32F2F;
   --color-amber-warning: #d97706;
-  --color-app-bg: #f0f9ff;
+  --color-app-bg: #f4f6f5;
   --color-card-border: #e5e7eb;
 
   --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto,
@@ -54,16 +54,16 @@ input[type="tel"]:focus,
 textarea:focus,
 select:focus {
   border-color: #0ea5e9;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 107, 84, 0.12);
   outline: none;
 }
 
 /* Elevation helpers — card, modal, dropdown */
 .card {
   background: #ffffff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid rgba(15,23,42,0.06);
   border-radius: 1rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  box-shadow: 0 10px 26px -16px rgba(2,32,22,0.18), 0 2px 5px rgba(2,32,22,0.05);
 }
 .card-hover {
   transition: box-shadow 150ms, transform 150ms;
@@ -71,6 +71,105 @@ select:focus {
 .card-hover:hover {
   box-shadow: 0 4px 12px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
   transform: translateY(-1px);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Design moderno — glass + gradientes + 3D sutil (SOMENTE TELA).
+   Tudo aqui é decorativo e é neutralizado em @media print mais abaixo.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Aurora animada de fundo do app */
+@keyframes aurora-shift {
+  0%   { background-position: 0% 50%, 100% 50%, 50% 0%; }
+  50%  { background-position: 100% 50%, 0% 50%, 50% 100%; }
+  100% { background-position: 0% 50%, 100% 50%, 50% 0%; }
+}
+.app-aurora {
+  background-color: #eef3f1;
+  background-image:
+    radial-gradient(55rem 55rem at 6% -12%, rgba(0,131,90,0.16), transparent 60%),
+    radial-gradient(48rem 48rem at 112% 8%, rgba(0,107,84,0.13), transparent 55%),
+    radial-gradient(42rem 42rem at 50% 118%, rgba(26,61,38,0.10), transparent 60%);
+  background-size: 200% 200%, 200% 200%, 200% 200%;
+  animation: aurora-shift 30s ease-in-out infinite;
+}
+
+/* Cartão "premium" — branco SÓLIDO e nítido (sem desfoque), com profundidade.
+   Antes usava backdrop-blur/translucidez e ficava embaçado; agora é cristalino. */
+.glass {
+  background: #ffffff;
+  border: 1px solid rgba(15,23,42,0.06);
+  box-shadow:
+    0 12px 30px -16px rgba(2,32,22,0.22),
+    0 2px 6px rgba(2,32,22,0.06);
+}
+.glass-dark {
+  background: linear-gradient(160deg, rgba(20,48,32,0.66), rgba(13,32,22,0.74));
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 12px 34px -14px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+/* Tilt 3D sutil no hover (perspectiva) */
+.tilt-3d {
+  transform-style: preserve-3d;
+  transition: transform 280ms cubic-bezier(.2,.7,.3,1), box-shadow 280ms;
+  will-change: transform;
+}
+.tilt-3d:hover {
+  transform: perspective(900px) translateY(-4px) rotateX(3deg) rotateY(-3deg) scale(1.012);
+  box-shadow: 0 24px 48px -20px rgba(2,32,22,0.30), 0 6px 16px rgba(2,32,22,0.10);
+}
+
+/* Sheen — brilho que cruza no hover */
+.sheen { position: relative; overflow: hidden; isolation: isolate; }
+.sheen::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%);
+  transform: translateX(-130%);
+  transition: transform 750ms ease;
+  pointer-events: none;
+}
+.sheen:hover::after { transform: translateX(130%); }
+
+/* Texto com gradiente da marca */
+.text-gradient {
+  background: linear-gradient(90deg, #0ea5e9, #00a36c 55%, #0284c7);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Entrada suave (reveal) + escalonamento */
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.reveal-up { animation: reveal-up 520ms cubic-bezier(.2,.7,.3,1) both; }
+.delay-1 { animation-delay: 60ms; }
+.delay-2 { animation-delay: 120ms; }
+.delay-3 { animation-delay: 180ms; }
+.delay-4 { animation-delay: 240ms; }
+.delay-5 { animation-delay: 300ms; }
+.delay-6 { animation-delay: 360ms; }
+
+/* Pulso de alerta sutil (badge de vencidos) */
+@keyframes pulse-alerta {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, .35); }
+  50%      { box-shadow: 0 0 0 5px rgba(220, 38, 38, 0); }
+}
+.pulse-alerta { animation: pulse-alerta 1.9s ease-in-out infinite; }
+
+/* Acessibilidade: respeita redução de movimento */
+@media (prefers-reduced-motion: reduce) {
+  .app-aurora,
+  .reveal-up,
+  .pulse-alerta { animation: none; }
+  .tilt-3d { transition: none; }
+  .tilt-3d:hover { transform: none; }
+  .sheen::after { transition: none; }
 }
 
 /* Print-only sections — hidden on screen, visible on print */
@@ -122,6 +221,9 @@ select:focus {
   }
   .print-break { page-break-after: always; }
   .print-avoid-break { page-break-inside: avoid; }
+  /* Quebra de página de capítulos/seções (editáveis e do sistema) */
+  .textos-padrao-capitulo--nova-pagina { page-break-before: always; }
+  .textos-padrao-capitulo--continua { page-break-before: auto; }
 
   /* Bloco de assinaturas: nova página dedicada quando não há espaço suficiente */
   .assinatura-bloco-final {
@@ -139,14 +241,33 @@ select:focus {
     height: auto !important;
     resize: none !important;
   }
+
+  /* Neutraliza as decorações modernas (glass/aurora/3D) na impressão/PDF */
+  .app-aurora { background: #fff !important; animation: none !important; }
+  .glass,
+  .glass-dark {
+    background: #fff !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    border-color: #e5e7eb !important;
+  }
+  .tilt-3d { transform: none !important; box-shadow: none !important; }
+  .sheen::after { display: none !important; }
+  .text-gradient {
+    background: none !important;
+    -webkit-text-fill-color: #111827 !important;
+    color: #111827 !important;
+  }
+  .reveal-up { animation: none !important; }
 }
 
 /* TipTap rich text editor — estilos visuais do conteudo */
 .tiptap-conteudo:focus { outline: none; }
 .tiptap-conteudo p { margin: 0 0 0.5em 0; }
-.tiptap-conteudo h1 { font-size: 1.5rem; font-weight: 700; color: #0c4a6e; margin: 0.6em 0 0.3em; }
-.tiptap-conteudo h2 { font-size: 1.25rem; font-weight: 700; color: #0c4a6e; margin: 0.5em 0 0.3em; }
-.tiptap-conteudo h3 { font-size: 1.1rem; font-weight: 700; color: #0c4a6e; margin: 0.4em 0 0.2em; }
+.tiptap-conteudo h1 { font-size: 1.5rem; font-weight: 700; color: #1e4d28; margin: 0.6em 0 0.3em; }
+.tiptap-conteudo h2 { font-size: 1.25rem; font-weight: 700; color: #1e4d28; margin: 0.5em 0 0.3em; }
+.tiptap-conteudo h3 { font-size: 1.1rem; font-weight: 700; color: #1e4d28; margin: 0.4em 0 0.2em; }
 .tiptap-conteudo ul { list-style: disc; margin: 0 0 0.5em 1.5em; }
 .tiptap-conteudo ol { list-style: decimal; margin: 0 0 0.5em 1.5em; }
 .tiptap-conteudo li { margin: 0.1em 0; }
@@ -172,7 +293,7 @@ select:focus {
 }
 .tiptap-conteudo th {
   background: #d4edda;
-  color: #0c4a6e;
+  color: #1e4d28;
   font-weight: 700;
 }
 .tiptap-conteudo .selectedCell {
@@ -198,6 +319,52 @@ select:focus {
   background-size: 400% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
   border-radius: 0.5rem;
+}
+
+/* Transição entre páginas (View Transitions API — Chromium/Electron) */
+@keyframes vt-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+::view-transition-old(root) {
+  animation-duration: 200ms;
+  animation-timing-function: ease;
+}
+::view-transition-new(root) {
+  animation: vt-enter 280ms cubic-bezier(.2, .7, .3, 1);
+}
+
+/* Direcional: avançar para uma sub-página (cresce/entra) */
+@keyframes vt-forward-in {
+  from { opacity: 0; transform: scale(.965); }
+  to   { opacity: 1; transform: scale(1); }
+}
+/* Direcional: voltar para o hub (recua/assenta) */
+@keyframes vt-back-in {
+  from { opacity: 0; transform: scale(1.035); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes vt-fade-out { to { opacity: 0; } }
+
+:root[data-vt="forward"]::view-transition-new(root) {
+  animation: vt-forward-in 300ms cubic-bezier(.2, .7, .3, 1);
+  transform-origin: 50% 42%;
+}
+:root[data-vt="back"]::view-transition-new(root) {
+  animation: vt-back-in 300ms cubic-bezier(.2, .7, .3, 1);
+  transform-origin: 50% 42%;
+}
+:root[data-vt="forward"]::view-transition-old(root),
+:root[data-vt="back"]::view-transition-old(root) {
+  animation: vt-fade-out 220ms ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }
 
 /* Scrollbar discreta */

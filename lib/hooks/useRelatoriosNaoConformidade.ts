@@ -2,7 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
 import { getChecklistNR } from "@/lib/conformidade/checklists";
@@ -157,6 +159,7 @@ export function useAtualizarRelatorioNaoConformidade() {
       responsavel_empresa?: string | null;
       cidade?: string | null;
       data_inspecao?: string | null;
+      data_validade?: string | null;
       observacoes_gerais?: string | null;
       status?: StatusRelatorioNC;
     }) => {
@@ -185,6 +188,8 @@ export function useAtualizarRelatorioNaoConformidade() {
       if (params.cidade !== undefined) patch.cidade = params.cidade;
       if (params.data_inspecao !== undefined)
         patch.data_inspecao = params.data_inspecao;
+      if (params.data_validade !== undefined)
+        patch.data_validade = params.data_validade || null;
       if (params.observacoes_gerais !== undefined)
         patch.observacoes_gerais = params.observacoes_gerais;
       if (params.status !== undefined) {
@@ -205,7 +210,7 @@ export function useAtualizarRelatorioNaoConformidade() {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -213,12 +218,13 @@ export function useExcluirRelatorioNaoConformidade() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id_relatorio: string) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("relatorios_nao_conformidade")
-        .delete()
-        .eq("id_relatorio", id_relatorio);
-      if (error) throw error;
+      await excluirComLixeiraPorId({
+        tabela: "relatorios_nao_conformidade",
+        chave: "id_relatorio",
+        id: id_relatorio,
+        modulo: "nao_conformidade",
+        rotuloCol: "titulo",
+      });
       return id_relatorio;
     },
     onSuccess: () => {
@@ -272,7 +278,7 @@ export function useAdicionarItemNC() {
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_relatorio) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -321,7 +327,7 @@ export function useAtualizarItemNC() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -355,12 +361,32 @@ export function useExcluirItemNC() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
 /** Limite máximo de fotos por item (mesmo padrão do Conformidade). */
 export const MAX_FOTOS_POR_NC = 8;
+
+/** Lê os arrays de foto FRESCOS do banco (evita lost update — ver Conformidade). */
+async function lerFotosItemNC(
+  supabase: ReturnType<typeof createSupabaseBrowserClient>,
+  id_item: string
+) {
+  const { data, error } = await supabase
+    .from("relatorios_nao_conformidade_itens")
+    .select("foto_urls, foto_storage_paths")
+    .eq("id_item", id_item)
+    .single();
+  if (error) throw error;
+  const row = data as unknown as {
+    foto_urls: string[] | null;
+    foto_storage_paths: string[] | null;
+  };
+  return { urls: row.foto_urls ?? [], paths: row.foto_storage_paths ?? [] };
+}
+
+const SCOPE_FOTOS_NC = { id: "nao-conformidade-fotos-item" };
 
 export function useUploadFotoItemNC() {
   const qc = useQueryClient();
@@ -369,12 +395,11 @@ export function useUploadFotoItemNC() {
       id_relatorio: string;
       id_item: string;
       file: File;
-      fotos_urls_atuais: string[];
-      fotos_paths_atuais: string[];
     }) => {
       const supabase = createSupabaseBrowserClient();
 
-      if (params.fotos_paths_atuais.length >= MAX_FOTOS_POR_NC) {
+      const atual = await lerFotosItemNC(supabase, params.id_item);
+      if (atual.paths.length >= MAX_FOTOS_POR_NC) {
         throw new Error(
           `Limite de ${MAX_FOTOS_POR_NC} fotos por item atingido.`
         );
@@ -394,8 +419,8 @@ export function useUploadFotoItemNC() {
 
       const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
 
-      const novasUrls = [...params.fotos_urls_atuais, pub.publicUrl];
-      const novosPaths = [...params.fotos_paths_atuais, path];
+      const novasUrls = [...atual.urls, pub.publicUrl];
+      const novosPaths = [...atual.paths, path];
 
       const { error: updateErr } = await supabase
         .from("relatorios_nao_conformidade_itens")
@@ -409,10 +434,11 @@ export function useUploadFotoItemNC() {
 
       return { foto_url: pub.publicUrl, path };
     },
+    scope: SCOPE_FOTOS_NC,
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -423,16 +449,16 @@ export function useRemoverFotoItemNC() {
       id_relatorio: string;
       id_item: string;
       foto_storage_path: string;
-      fotos_urls_atuais: string[];
-      fotos_paths_atuais: string[];
     }) => {
       const supabase = createSupabaseBrowserClient();
 
       await supabase.storage.from("fotos").remove([params.foto_storage_path]);
 
-      const idx = params.fotos_paths_atuais.indexOf(params.foto_storage_path);
-      const novosPaths = params.fotos_paths_atuais.filter((_, i) => i !== idx);
-      const novasUrls = params.fotos_urls_atuais.filter((_, i) => i !== idx);
+      const atual = await lerFotosItemNC(supabase, params.id_item);
+      const idx = atual.paths.indexOf(params.foto_storage_path);
+      if (idx < 0) return params;
+      const novosPaths = atual.paths.filter((_, i) => i !== idx);
+      const novasUrls = atual.urls.filter((_, i) => i !== idx);
 
       const { error } = await supabase
         .from("relatorios_nao_conformidade_itens")
@@ -445,9 +471,10 @@ export function useRemoverFotoItemNC() {
       if (error) throw error;
       return params;
     },
+    scope: SCOPE_FOTOS_NC,
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }

@@ -1,5 +1,5 @@
 import type { VariavelDef } from "./variaveis";
-import { formatarDataBR } from "./variaveis";
+import { formatarDataBR } from "./formatters";
 import type { AepRelatorio } from "@/lib/supabase/types";
 
 export const VARIAVEIS_AEP: VariavelDef[] = [
@@ -39,5 +39,19 @@ export function montarValoresAep(
     carimbo,
     data_elaboracao: formatarDataBR(rel.data_elaboracao),
     data_atual:      new Date().toLocaleDateString("pt-BR"),
+    // Variáveis de documento (Fase 1): sempre resolvem (default ""), não vazam token.
+    grau_risco:      "",
+    ghe:             "",
+    funcao:          "",
+    usuario_logado:  "",
+    tipo_relatorio:  "AEP — Análise Ergonômica Preliminar",
+    // E1 (Módulo Documentos SST): sempre resolvem (default "").
+    unidade:               "",
+    cargo:                 "",
+    formacao_responsavel:  "",
+    data_emissao:          "",
+    data_inicio_vigencia:  "",
+    data_fim_vigencia:     "",
+    numero_revisao:        "",
   };
 }

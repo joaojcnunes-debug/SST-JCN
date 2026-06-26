@@ -60,7 +60,7 @@ export default function EmpresaCard({
           style={{
             background: inativa
               ? "#9ca3af"
-              : "linear-gradient(135deg, #006B54 0%, #00835A 100%)",
+              : "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)",
           }}
         >
           {initials}

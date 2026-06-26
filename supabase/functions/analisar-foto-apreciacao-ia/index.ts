@@ -1,8 +1,8 @@
 // Edge Function — IA olha as fotos de um item NR-12 e propõe observação
-// técnica descrevendo o que vê em relação ao requisito.
+// técnica + achados visuais estruturados (possíveis não conformidades).
 //
-// Modelo vision: Llama 3.2 11B Vision (Groq). Leve, suporta múltiplas
-// imagens via URL pública.
+// Modelo vision: Llama 4 Scout 17B (Groq). O llama-3.2-11b-vision-preview
+// anterior foi descontinuado pelo Groq.
 //
 // DEPLOY:
 //   1. supabase secrets set GROQ_API_KEY=gsk_xxx  (provavelmente já existe)
@@ -14,8 +14,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-// Vision-capable, mais barato/rápido que o 90B
-const MODEL = "llama-3.2-11b-vision-preview";
+const MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -48,12 +47,21 @@ Sua tarefa: analisar a(s) foto(s) anexada(s) de um item do checklist NR-12 e pro
 Responda APENAS com um JSON válido (sem markdown, sem cercas \`\`\`, sem texto fora do JSON) no formato:
 
 {
-  "observacao": "Texto corrido em português brasileiro técnico, 2 a 5 frases. Descreva o que está visível na foto que se relaciona ao requisito. Mencione condições observadas (presença/ausência de proteções, sinalização, estado de conservação, distâncias, dispositivos visíveis). Não invente o que não está claramente visível. Quando a foto for inconclusiva ou ambígua, declare explicitamente (ex: 'A imagem não permite confirmar a presença do dispositivo X')."
+  "observacao": "Texto corrido em português brasileiro técnico, 2 a 5 frases. Descreva o que está visível na foto que se relaciona ao requisito. Mencione condições observadas (presença/ausência de proteções, sinalização, estado de conservação, distâncias, dispositivos visíveis). Não invente o que não está claramente visível. Quando a foto for inconclusiva ou ambígua, declare explicitamente (ex: 'A imagem não permite confirmar a presença do dispositivo X').",
+  "achados": [
+    {
+      "titulo": "Achado visual curto e objetivo (ex: 'Partes móveis expostas sem proteção fixa')",
+      "severidade": "ALTA | MEDIA | BAIXA",
+      "recomendacao": "Recomendação técnica objetiva pra tratar o achado (1-2 frases)"
+    }
+  ]
 }
+
+Sobre "achados": liste APENAS possíveis não conformidades ou condições de risco CLARAMENTE visíveis nas fotos (ausência de proteção, proteção inadequada, partes móveis expostas, pontos de esmagamento/corte, ausência de sinalização, falta de botão de emergência visível, conservação precária, desorganização do entorno). Se nada de relevante for visível, retorne "achados": [] (array vazio). Não invente achados.
 
 Diretrizes:
 - Português brasileiro formal técnico, redação na 3ª pessoa
-- 50-150 palavras
+- observacao: 50-150 palavras
 - Fatos observáveis primeiro — depois inferências razoáveis se aplicável
 - Se múltiplas fotos forem fornecidas, sintetize o conjunto (não descreva uma a uma)
 - Se a foto não tem relação clara com o requisito, escreva uma frase indicando isso
@@ -149,7 +157,7 @@ Deno.serve(async (req: Request) => {
         ],
         response_format: { type: "json_object" },
         temperature: 0.3,
-        max_tokens: 500,
+        max_tokens: 900,
       }),
     });
 
@@ -171,7 +179,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    let parsed: { observacao?: unknown };
+    let parsed: { observacao?: unknown; achados?: unknown };
     try {
       parsed = JSON.parse(content);
     } catch {
@@ -196,7 +204,25 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    return new Response(JSON.stringify({ data: { observacao } }), {
+    // Sanitiza achados — array opcional de não conformidades visuais
+    const SEVERIDADES = ["ALTA", "MEDIA", "BAIXA"];
+    const achados = Array.isArray(parsed?.achados)
+      ? (parsed.achados as Record<string, unknown>[])
+          .filter((a) => a && typeof a.titulo === "string" && a.titulo.trim())
+          .slice(0, 10)
+          .map((a) => ({
+            titulo: (a.titulo as string).trim(),
+            severidade: SEVERIDADES.includes(String(a.severidade))
+              ? (String(a.severidade) as "ALTA" | "MEDIA" | "BAIXA")
+              : null,
+            recomendacao:
+              typeof a.recomendacao === "string" && a.recomendacao.trim()
+                ? a.recomendacao.trim()
+                : null,
+          }))
+      : [];
+
+    return new Response(JSON.stringify({ data: { observacao, achados } }), {
       status: 200,
       headers: { ...CORS, "Content-Type": "application/json" },
     });

@@ -12,6 +12,9 @@ interface Props {
   onClose: () => void;
   /** Email do profissional responsável — pré-seleciona no dropdown ao abrir. */
   defaultSignatoryEmail?: string;
+  /** Nome do profissional responsável cadastrado no documento — usado para
+   *  pré-selecionar o signatário quando não há email (casamento por nome). */
+  defaultSignatoryName?: string;
   /** Tabela do documento (ex: "aet_relatorios"). Quando fornecido junto com docId,
    *  o PDF assinado é salvo no Storage em vez de ser baixado automaticamente. */
   tabelaNome?: string;
@@ -41,6 +44,7 @@ export default function AssinarPdfModal({
   open,
   onClose,
   defaultSignatoryEmail,
+  defaultSignatoryName,
   tabelaNome,
   docId,
   onAssinado,
@@ -68,16 +72,45 @@ export default function AssinarPdfModal({
       .then(({ data }) => {
         const lista = (data ?? []) as Signatario[];
         setSignatarios(lista);
-        // Prioridade: responsável do documento > usuário logado > primeiro da lista
-        const responsavel = defaultSignatoryEmail
+        // Casamento de nomes tolerante (mesma lógica de AssinaturaRelatorio):
+        // ignora caixa/acentos/ordem para achar o técnico cadastrado no documento.
+        const norm = (s: string) =>
+          s
+            .normalize("NFD")
+            .replace(new RegExp("[\\u0300-\\u036f]", "g"), "")
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, " ");
+        const wordMatch = (a: string, b: string) => {
+          const words = norm(a).split(" ").filter((w) => w.length > 2);
+          return words.length > 0 && words.every((w) => norm(b).includes(w));
+        };
+        const nameMatches = (a: string, b: string) =>
+          norm(a) === norm(b) ||
+          norm(a).includes(norm(b)) ||
+          norm(b).includes(norm(a)) ||
+          wordMatch(a, b) ||
+          wordMatch(b, a);
+
+        // Prioridade: email do documento > nome cadastrado no documento >
+        // usuário logado > primeiro da lista.
+        const porEmail = defaultSignatoryEmail
           ? lista.find((s) => s.email === defaultSignatoryEmail)
           : null;
+        const porNome =
+          !porEmail && defaultSignatoryName?.trim()
+            ? lista.find((s) => nameMatches(s.nome, defaultSignatoryName))
+            : null;
         const logado = lista.find((s) => s.email === user?.email);
         setEmailSelecionado(
-          responsavel?.email ?? logado?.email ?? lista[0]?.email ?? ""
+          porEmail?.email ??
+            porNome?.email ??
+            logado?.email ??
+            lista[0]?.email ??
+            ""
         );
       });
-  }, [open, user?.email, defaultSignatoryEmail]);
+  }, [open, user?.email, defaultSignatoryEmail, defaultSignatoryName]);
 
   const signatarioAtual = signatarios.find((s) => s.email === emailSelecionado);
 
@@ -110,7 +143,7 @@ export default function AssinarPdfModal({
       } else {
         setStep("gerando");
         const { gerarHtmlParaPdf } = await import("@/lib/gerarHtmlParaPdf");
-        pdfBytes = await gerarHtmlParaPdf();
+        pdfBytes = await gerarHtmlParaPdf({ forSigning: true });
       }
 
       setStep("assinando");

@@ -1,7 +1,3 @@
-// Tipos da feature "Texto Padrão" genérica (Painel SST, Conformidade,
-// Análise de Químicos). O Psicossocial mantém sua estrutura própria em
-// `lib/drps/types.ts` por compatibilidade.
-
 import type { CaixaTexto } from "@/lib/drps/types";
 
 export type ModuloTextoPadrao =
@@ -9,7 +5,10 @@ export type ModuloTextoPadrao =
   | "conformidade"
   | "nao_conformidade"
   | "analise_quimicos"
-  | "apreciacao_maquinas";
+  | "apreciacao_maquinas"
+  | "aep"
+  | "aet"
+  | "psicossocial";
 
 export type OrientacaoPagina = "retrato" | "paisagem";
 
@@ -62,8 +61,34 @@ export interface TextoPadraoCapitulo {
   ativo: boolean;
   tipo: "fixo" | "editavel";
   slug_fixo: string | null;
+  /** E5: texto travado — só admin edita o conteúdo. */
+  bloqueado: boolean;
+  /** E5: não pode ser ocultado/desativado no laudo. */
+  obrigatorio: boolean;
   created_at: string;
   updated_at: string | null;
+}
+
+/** Snapshot de uma versão de um capítulo (tabela textos_padrao_versoes, Fase 2). */
+export interface TextoPadraoVersao {
+  id_versao: string;
+  id_capitulo: string;
+  versao: number;
+  modulo: ModuloTextoPadrao;
+  titulo: string;
+  conteudo: string | null;
+  bg_imagem_url: string | null;
+  caixas_texto: CaixaTexto[] | null;
+  orientacao: OrientacaoPagina | null;
+  quebra_pagina: QuebraPagina | null;
+  posicao_pdf: PosicaoPdf | null;
+  tipo: "fixo" | "editavel" | null;
+  slug_fixo: string | null;
+  ordem: number | null;
+  ativo: boolean | null;
+  /** E-mail de quem salvou (null no baseline v1 e em escritas server-side). */
+  editado_por: string | null;
+  editado_em: string;
 }
 
 /** Capítulo gerado automaticamente pelo sistema (não editável pelo usuário). */
@@ -80,21 +105,28 @@ export interface ModuloConfig {
   descricao: string;
   destino: string;
   fixos: FixoCapitulo[];
+  /** Posições efetivamente renderizadas no laudo deste módulo.
+   *  O PosicaoPdfStepper mostra só essas — evita o usuário mover
+   *  um capítulo para uma posição que nunca aparece no PDF. */
+  posicoesDisponiveis: PosicaoPdf[];
+  /** Quando true, o laudo é montado como uma LISTA ÚNICA de blocos ordenada
+   *  por `ordem` (capítulos editáveis + seções do sistema intercalados),
+   *  e o editor mostra tudo numa lista só reordenável. As seções do sistema
+   *  são identificadas pelos slug_fixo dos capítulos `fixo`. */
+  ordenacaoUnificada?: boolean;
 }
 
 export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
   sst: {
     modulo: "sst",
-    titulo: "Texto Padrão — Painel SST",
+    titulo: "Texto Padrão — SST JCN Consultoria",
     descricao:
-      "Capítulos reutilizáveis para os relatórios de Inspeção e PGR. Use as variáveis abaixo pra preencher empresa, CNPJ, datas etc. na hora da geração do PDF.",
-    destino: "Aparecem nos relatórios de inspeção, ficha NR-01 e PGR.",
+      "Monte o laudo como lista única: arraste/reordene os capítulos editáveis em relação ao bloco do relatório (inventário, riscos, plano — gerado automaticamente). Textos com ordem menor saem antes do relatório; maiores, depois.",
+    destino: "A ordem definida aqui vale para o relatório de inspeção, ficha NR-01 e PGR.",
+    posicoesDisponiveis: ["inicio", "fim"],
+    ordenacaoUnificada: true,
     fixos: [
-      { titulo: "Itens Inspecionados",               slug_fixo: "sst_itens",             descricao: "Checklist de todos os itens avaliados na inspeção — gerado automaticamente.", ordem_base: 2000 },
-      { titulo: "Não Conformidades Identificadas",   slug_fixo: "sst_nao_conformidades", descricao: "Lista de não conformidades com nível de risco — gerada automaticamente.", ordem_base: 3000 },
-      { titulo: "Plano de Ação Corretiva",           slug_fixo: "sst_plano_acao",        descricao: "Plano de ação com prazos e responsáveis — gerado automaticamente.", ordem_base: 4000 },
-      { titulo: "Avaliação de Riscos",               slug_fixo: "sst_riscos",            descricao: "Tabela de avaliação de riscos identificados — gerada automaticamente.", ordem_base: 4500 },
-      { titulo: "Assinatura do Responsável Técnico", slug_fixo: "sst_assinatura",        descricao: "Rodapé de assinatura — gerado automaticamente.", ordem_base: 9000 },
+      { titulo: "Corpo do Relatório (inventário, riscos, plano)", slug_fixo: "sst_corpo", descricao: "Corpo gerado automaticamente: resumo, inventário de riscos, plano de ação, PAE etc. Os textos editáveis ficam antes ou depois deste bloco conforme a ordem.", ordem_base: 2000 },
     ],
   },
   conformidade: {
@@ -102,7 +134,9 @@ export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
     titulo: "Texto Padrão — Conformidade NR",
     descricao:
       "Capítulos reutilizáveis para os Relatórios de Conformidade NR. Inclua introdução, fundamentação legal, considerações finais — com variáveis dinâmicas.",
-    destino: "Aparecem nos Relatórios de Conformidade (NR-24, NR-17 etc).",
+    destino: "A ordem definida aqui é a ordem do laudo de Conformidade.",
+    posicoesDisponiveis: ["inicio", "fim"],
+    ordenacaoUnificada: true,
     fixos: [
       { titulo: "Itens de Conformidade Avaliados",   slug_fixo: "conformidade_itens",      descricao: "Tabela de itens por NR avaliados — gerada automaticamente.", ordem_base: 2000 },
       { titulo: "Resultado Geral de Conformidade",   slug_fixo: "conformidade_resultado",  descricao: "Percentual de conformidade por NR — gerado automaticamente.", ordem_base: 3000 },
@@ -113,8 +147,10 @@ export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
     modulo: "nao_conformidade",
     titulo: "Texto Padrão — Não Conformidade",
     descricao:
-      "Capítulos reutilizáveis para os Relatórios de Não Conformidade (RNC). Inclua introdução, base metodológica e considerações sobre o plano de ação.",
-    destino: "Aparecem nos Relatórios de Não Conformidade.",
+      "Monte o laudo como lista única: arraste/reordene livremente os capítulos editáveis e as seções do sistema. A ordem definida aqui é a ordem do laudo.",
+    destino: "A ordem definida aqui é exatamente a ordem do Relatório de Não Conformidade.",
+    posicoesDisponiveis: ["inicio", "fim"],
+    ordenacaoUnificada: true,
     fixos: [
       { titulo: "Descrição da Não Conformidade",     slug_fixo: "nc_descricao",  descricao: "Dados da NC: título, data, setor e evidências — gerados automaticamente.", ordem_base: 2000 },
       { titulo: "Plano de Ação Corretiva",           slug_fixo: "nc_plano",      descricao: "Ações corretivas com responsáveis e prazos — geradas automaticamente.", ordem_base: 3000 },
@@ -125,21 +161,23 @@ export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
     modulo: "analise_quimicos",
     titulo: "Texto Padrão — Análise de Químicos",
     descricao:
-      "Capítulos reutilizáveis para as análises de produtos químicos. Pode incluir disclaimers, metodologia, normas aplicáveis.",
-    destino: "Aparecem no relatório de Análise de Químicos.",
+      "Monte o laudo como lista única: arraste/reordene livremente os capítulos editáveis em relação ao bloco da Análise Química (gerado automaticamente).",
+    destino: "A ordem definida aqui é exatamente a ordem do laudo de Análise de Químicos.",
+    posicoesDisponiveis: ["inicio", "fim"],
+    ordenacaoUnificada: true,
     fixos: [
-      { titulo: "Inventário de Substâncias Químicas",  slug_fixo: "quimicos_inventario", descricao: "Inventário com CAS, quantidade e armazenamento — gerado automaticamente.", ordem_base: 2000 },
-      { titulo: "Fichas de Dados de Segurança (FDS)",  slug_fixo: "quimicos_fds",        descricao: "Resumo de riscos por produto — gerado automaticamente.", ordem_base: 3000 },
-      { titulo: "Classificação de Risco e EPC/EPI",    slug_fixo: "quimicos_risco",      descricao: "Nível de risco e medidas de controle — gerado automaticamente.", ordem_base: 4000 },
-      { titulo: "Assinatura do Responsável Técnico",   slug_fixo: "quimicos_assinatura", descricao: "Rodapé de assinatura — gerado automaticamente.", ordem_base: 9000 },
+      { titulo: "Análise Química (corpo do laudo)", slug_fixo: "quimicos_analise", descricao: "Corpo completo da análise: identificação, NR-15/16, aposentadoria, controles, parecer — gerado automaticamente.", ordem_base: 2000 },
+      { titulo: "Assinatura do Responsável Técnico", slug_fixo: "quimicos_assinatura", descricao: "Rodapé de assinatura — gerado automaticamente.", ordem_base: 9000 },
     ],
   },
   apreciacao_maquinas: {
     modulo: "apreciacao_maquinas",
     titulo: "Texto Padrão — Apreciação de Máquinas (NR-12)",
     descricao:
-      "Capítulos reutilizáveis para os laudos de Apreciação NR-12: introdução, fundamentação legal (ISOs 12100/13849), metodologia, considerações finais.",
-    destino: "Aparecem no PDF do laudo da Apreciação NR-12, após a conclusão técnica.",
+      "Monte o laudo como lista única: arraste/reordene livremente os capítulos editáveis e as seções do sistema (checklist, apreciação de risco, plano de ação). A ordem definida aqui é a ordem do laudo.",
+    destino: "A ordem definida aqui é exatamente a ordem do laudo de Apreciação NR-12.",
+    posicoesDisponiveis: ["inicio", "fim"],
+    ordenacaoUnificada: true,
     fixos: [
       { titulo: "Identificação da Máquina/Equipamento",  slug_fixo: "apreciacao_identificacao", descricao: "Dados de identificação: fabricante, modelo, ano, função — gerados automaticamente.", ordem_base: 2000 },
       { titulo: "Checklist NR-12",                       slug_fixo: "apreciacao_checklist",     descricao: "Resultado do checklist NR-12 por item e zona — gerado automaticamente.", ordem_base: 2500 },
@@ -148,4 +186,82 @@ export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
       { titulo: "Assinatura do Responsável Técnico",     slug_fixo: "apreciacao_assinatura",    descricao: "Rodapé de assinatura — gerado automaticamente.", ordem_base: 9000 },
     ],
   },
+  aep: {
+    modulo: "aep",
+    titulo: "Texto Padrão — AEP (Análise Ergonômica Preliminar)",
+    descricao:
+      "Monte o laudo AEP como uma lista única: arraste/reordene livremente os capítulos editáveis (introdução, base legal, etc.) e as seções do sistema. A capa e a folha de assinatura ficam sempre nas pontas.",
+    destino: "A ordem definida aqui é exatamente a ordem do laudo AEP gerado.",
+    posicoesDisponiveis: ["inicio", "fim"],
+    ordenacaoUnificada: true,
+    fixos: [
+      { titulo: "Indicadores de Necessidade de AET", slug_fixo: "aep_escalonamento", descricao: "Lista de setores que exigem AET completa — gerado automaticamente.", ordem_base: 3000 },
+      { titulo: "Triagem Ergonômica por Setor", slug_fixo: "aep_triagem", descricao: "Tabela de riscos ergonômicos por setor — gerado automaticamente.", ordem_base: 3500 },
+      { titulo: "Considerações Finais e Encaminhamentos", slug_fixo: "aep_consideracoes", descricao: "Conclusão do relatório — gerado automaticamente.", ordem_base: 5000 },
+      { titulo: "Assinatura do Responsável Técnico", slug_fixo: "aep_assinatura", descricao: "Rodapé de assinatura — gerado automaticamente.", ordem_base: 9000 },
+    ],
+  },
+  aet: {
+    modulo: "aet",
+    titulo: "Texto Padrão — AET (Análise Ergonômica do Trabalho)",
+    descricao:
+      "Monte o laudo AET como uma lista única: arraste/reordene livremente os capítulos editáveis e as seções do sistema. A ordem definida aqui é a ordem do laudo.",
+    destino: "A ordem definida aqui é exatamente a ordem do laudo AET gerado.",
+    posicoesDisponiveis: ["inicio", "fim"],
+    ordenacaoUnificada: true,
+    fixos: [
+      { titulo: "Agentes Ambientais por Setor", slug_fixo: "aet_agentes_ambientais", descricao: "Riscos ambientais por setor — gerado automaticamente.", ordem_base: 1090 },
+      { titulo: "Análise Ergonômica do Trabalho", slug_fixo: "aet_analise_ergonomica", descricao: "Análise por setor (OWAS, biomecânica) — gerado automaticamente.", ordem_base: 1100 },
+      { titulo: "Fatores Psicossociais (QPS)", slug_fixo: "aet_psicossocial", descricao: "Resultados do QPS Nordic — gerado automaticamente.", ordem_base: 2000 },
+      { titulo: "Considerações Finais", slug_fixo: "aet_consideracoes_finais", descricao: "Conclusão do laudo — gerado automaticamente.", ordem_base: 5000 },
+      { titulo: "Assinatura do Responsável Técnico", slug_fixo: "aet_assinatura", descricao: "Folha de assinatura — gerado automaticamente.", ordem_base: 5500 },
+    ],
+  },
+  psicossocial: {
+    modulo: "psicossocial",
+    titulo: "Texto Padrão — DRPS (Psicossocial)",
+    descricao:
+      "Monte o laudo DRPS como uma lista única: arraste/reordene livremente os capítulos editáveis e as seções do sistema. A ordem definida aqui é a ordem do laudo.",
+    destino: "A ordem definida aqui é exatamente a ordem do laudo DRPS gerado.",
+    posicoesDisponiveis: ["inicio", "fim"],
+    ordenacaoUnificada: true,
+    fixos: [
+      { titulo: "Caracterização dos Trabalhadores", slug_fixo: "drps_caracterizacao", descricao: "Dados quantitativos de trabalhadores por setor — gerado automaticamente.", ordem_base: 1500 },
+      { titulo: "Análise por Setor", slug_fixo: "drps_analise_setor", descricao: "Tópicos × setores com matriz Gravidade × Probabilidade — gerado automaticamente.", ordem_base: 2000 },
+      { titulo: "Conclusão Técnica Consolidada", slug_fixo: "drps_conclusao", descricao: "Consolidação dos riscos críticos e altos de todos os setores — gerada automaticamente.", ordem_base: 4000 },
+      { titulo: "Plano de Medidas de Controle", slug_fixo: "drps_plano_medidas", descricao: "Plano anual de ações com responsáveis e prazos — gerado automaticamente.", ordem_base: 4500 },
+      { titulo: "Revisão e Monitoramento", slug_fixo: "drps_revisao", descricao: "Checklist de revisão e equipe responsável — gerado automaticamente.", ordem_base: 5000 },
+      { titulo: "Assinatura Técnica", slug_fixo: "drps_assinatura", descricao: "Rodapé de assinatura do responsável técnico — gerado automaticamente.", ordem_base: 9000 },
+    ],
+  },
 };
+
+/**
+ * Capítulos do sistema COMUNS a todos os módulos — reposicionáveis como
+ * qualquer seção fixa (modo unificado). São gerados automaticamente:
+ *  - identificacao_empresa: bloco com os dados de identificação da empresa
+ *    (substitui o antigo cabeçalho fixo, agora podendo ser movido).
+ *  - sumario: índice com os títulos dos capítulos na ordem do laudo.
+ * Ordem-base baixa para aparecerem no início por padrão; o usuário pode mover.
+ */
+export const FIXOS_COMUNS: FixoCapitulo[] = [
+  {
+    titulo: "Identificação da Empresa",
+    slug_fixo: "identificacao_empresa",
+    descricao:
+      "Dados de identificação da empresa (razão social, CNPJ, endereço etc.) — gerado automaticamente. Pode ser reposicionado no laudo.",
+    ordem_base: 50,
+  },
+  {
+    titulo: "Sumário",
+    slug_fixo: "sumario",
+    descricao:
+      "Índice com os títulos dos capítulos na ordem do laudo — gerado automaticamente. Pode ser reposicionado.",
+    ordem_base: 80,
+  },
+];
+
+// Injeta os fixos comuns no início da lista de fixos de cada módulo.
+for (const cfg of Object.values(MODULO_CONFIGS)) {
+  cfg.fixos = [...FIXOS_COMUNS, ...cfg.fixos];
+}

@@ -26,6 +26,8 @@ import TiposRiscoTab from "@/components/config/TiposRiscoTab";
 import PerguntasTab from "@/components/config/PerguntasTab";
 import MatrizesTab from "@/components/config/MatrizesTab";
 import TextosPadraoTab from "@/components/config/TextosPadraoTab";
+import UnidadesTab from "@/components/config/UnidadesTab";
+import { Building2 } from "lucide-react";
 import toast from "react-hot-toast";
 import MatrizRisco from "@/components/riscos/MatrizRisco";
 import { PROBABILIDADES, SEVERIDADES } from "@/lib/utils";
@@ -47,6 +49,7 @@ type TabKey =
   | "logo"
   | "assinatura"
   | "textosPadrao"
+  | "unidades"
   | "atualizacao";
 
 export default function ConfigPage() {
@@ -76,6 +79,7 @@ export default function ConfigPage() {
     { key: "logo" as TabKey, label: "Logo da Empresa", icon: ImageIcon },
     { key: "assinatura" as TabKey, label: "Assinatura da Empresa", icon: Upload },
     { key: "textosPadrao" as TabKey, label: "Textos Padrão", icon: BookText },
+    { key: "unidades" as TabKey, label: "Unidades", icon: Building2 },
     { key: "atualizacao" as TabKey, label: "Atualização", icon: Download },
   ];
 
@@ -83,7 +87,7 @@ export default function ConfigPage() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="reveal-up rounded-xl border border-gray-200 bg-white shadow-sm">
         <nav className="flex flex-wrap gap-1 border-b border-gray-200 p-2">
           {TABS.map((t) => {
             const Icon = t.icon;
@@ -137,6 +141,7 @@ export default function ConfigPage() {
           {tab === "assinatura" && <AssinaturaEmpresaUpload configs={configs} />}
 
           {tab === "textosPadrao" && <TextosPadraoTab />}
+          {tab === "unidades" && <UnidadesTab />}
           {tab === "atualizacao" && <AtualizacaoTab />}
         </div>
       </div>
@@ -478,7 +483,7 @@ function AtualizacaoTab() {
       <div>
         <h2 className="text-base font-semibold text-gray-900">Atualização do Sistema</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Baixe e instale a versão mais recente do Painel SST diretamente aqui, sem precisar acessar nenhum site.
+          Baixe e instale a versão mais recente do SST JCN Consultoria diretamente aqui, sem precisar acessar nenhum site.
         </p>
       </div>
 
@@ -570,12 +575,14 @@ function LogoUpload({ configs }: { configs: Configs }) {
     try {
       const supabase = createSupabaseBrowserClient();
       const ext = file.name.split(".").pop() ?? "png";
+      // Branding fica num bucket PÚBLICO dedicado (não em `fotos`, que será
+      // privatizado): o logo aparece na /login sem sessão e não pode ser assinado.
       const path = `_config/logo_${gerarId("LOGO")}.${ext}`;
       const { error } = await supabase.storage
-        .from("fotos")
+        .from("branding")
         .upload(path, file, { upsert: true });
       if (error) throw error;
-      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
       save.mutate({ chave: "logo_url", valor: pub.publicUrl });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro";
@@ -663,12 +670,13 @@ function AssinaturaEmpresaUpload({ configs }: { configs: Configs }) {
     try {
       const supabase = createSupabaseBrowserClient();
       const ext = file.name.split(".").pop() ?? "png";
+      // Branding (assinatura da empresa) no bucket público dedicado — ver LogoUpload.
       const path = `assinaturas/empresa_${gerarId("EMP")}.${ext}`;
       const { error } = await supabase.storage
-        .from("fotos")
+        .from("branding")
         .upload(path, file, { upsert: true });
       if (error) throw error;
-      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
       save.mutate({ chave: "assinatura_empresa_url", valor: pub.publicUrl });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro";

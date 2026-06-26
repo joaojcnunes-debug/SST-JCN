@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Flame, Pencil, Plus, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import ExtintorForm from "../ExtintorForm";
+import StorageImg from "@/components/ui/StorageImg";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Extintor, Setor } from "@/lib/supabase/types";
@@ -284,9 +285,8 @@ function ExtintorCard({
                   rel="noopener noreferrer"
                   title={`Foto ${i + 1}`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
+                  <StorageImg
+                    stored={e.fotos_storage_paths?.[i] || url}
                     alt={`Foto ${i + 1}`}
                     className="h-14 w-14 rounded-lg border border-gray-200 object-cover hover:opacity-80"
                   />

@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useMemo, useState } from "react";
-import { BarChart2, ChevronLeft, Loader2, Info } from "lucide-react";
+import { BarChart2, ChevronLeft, Loader2, Info, Building2, Save } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import {
@@ -11,6 +11,7 @@ import {
   useQpsAllPerguntas,
   useQpsProbabilidades,
   useUpsertQpsProbabilidade,
+  useUpdateQpsAplicacao,
 } from "@/lib/hooks/useQuestionarios";
 import { useQpsTipos } from "@/lib/hooks/useQuestionarios";
 import type { QpsCategoria, QpsPergunta, QpsProbabilidade } from "@/lib/supabase/types";
@@ -132,6 +133,8 @@ function calcularMatriz(
 export default function ResultadosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [celulaEditando, setCelulaEditando] = useState<string | null>(null);
+  const [obsLocal, setObsLocal] = useState<Record<string, string>>({});
+  const [obsInicializado, setObsInicializado] = useState(false);
 
   const { data: ap } = useQpsAplicacao(id);
   const { data: tipos = [] } = useQpsTipos();
@@ -140,8 +143,29 @@ export default function ResultadosPage({ params }: { params: Promise<{ id: strin
   const { data: respondentes = [], isLoading: loadingResp } = useQpsRespondentes(id);
   const { data: probabilidades = [] } = useQpsProbabilidades(id);
   const upsertProb = useUpsertQpsProbabilidade();
+  const updateAp = useUpdateQpsAplicacao();
 
   const tipo = tipos.find((t) => t.id_tipo === ap?.id_tipo);
+
+  // Inicializa obsLocal com dados já salvos no banco (roda só uma vez quando ap carrega)
+  if (ap && !obsInicializado) {
+    setObsInicializado(true);
+    if (ap.observacoes_dimensoes) setObsLocal(ap.observacoes_dimensoes);
+  }
+
+  async function salvarObservacoes() {
+    if (!ap) return;
+    try {
+      await updateAp.mutateAsync({
+        id: ap.id_aplicacao,
+        idEmpresa: ap.id_empresa,
+        input: { observacoes_dimensoes: obsLocal },
+      });
+      toast.success("Análise salva");
+    } catch {
+      toast.error("Erro ao salvar análise");
+    }
+  }
 
   const setores = useMemo(
     () => [...new Set(respondentes.map((r) => r.setor))].sort(),
@@ -267,6 +291,84 @@ export default function ResultadosPage({ params }: { params: Promise<{ id: strin
             onOverride={handleOverride}
             salvando={upsertProb.isPending}
           />
+
+          {/* Análise qualitativa por dimensão — NR-1 / Fundacentro 2026 */}
+          {(() => {
+            const dimensoesCriticas = categorias.filter((cat) =>
+              matriz.some(
+                (c) =>
+                  c.categoria.id_categoria === cat.id_categoria &&
+                  (c.risco === "MODERADO" || c.risco === "ALTO")
+              )
+            );
+            if (dimensoesCriticas.length === 0) return null;
+            return (
+              <div className="rounded-xl border border-indigo-200 bg-white shadow-sm">
+                <div className="flex items-center justify-between gap-3 border-b border-indigo-100 px-5 py-4">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="size-4 text-indigo-600" />
+                    <h2 className="text-sm font-bold text-gray-900">
+                      Análise das Dimensões Críticas
+                    </h2>
+                  </div>
+                  <button
+                    onClick={salvarObservacoes}
+                    disabled={updateAp.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                  >
+                    {updateAp.isPending
+                      ? <Loader2 className="size-3.5 animate-spin" />
+                      : <Save className="size-3.5" />}
+                    Salvar análise
+                  </button>
+                </div>
+                <div className="px-5 py-3 text-xs text-indigo-700 bg-indigo-50 border-b border-indigo-100">
+                  Para cada dimensão com risco Moderado ou Alto, descreva quais
+                  <strong> condições de trabalho, práticas de gestão ou fatores organizacionais</strong> observados
+                  explicam o resultado. Foque nas condições — não em características individuais.
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {dimensoesCriticas.map((cat) => {
+                    const celulas = matriz.filter(
+                      (c) => c.categoria.id_categoria === cat.id_categoria
+                    );
+                    const temAlto = celulas.some((c) => c.risco === "ALTO");
+                    return (
+                      <div key={cat.id_categoria} className="px-5 py-4 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-[10px] font-bold",
+                              temAlto
+                                ? "bg-red-100 text-red-700"
+                                : "bg-yellow-100 text-yellow-700"
+                            )}
+                          >
+                            {temAlto ? "ALTO" : "MODERADO"}
+                          </span>
+                          <span className="text-sm font-semibold text-gray-800">
+                            {cat.nome}
+                          </span>
+                        </div>
+                        <textarea
+                          rows={3}
+                          value={obsLocal[cat.id_categoria] ?? ""}
+                          onChange={(e) =>
+                            setObsLocal((prev) => ({
+                              ...prev,
+                              [cat.id_categoria]: e.target.value,
+                            }))
+                          }
+                          placeholder={`O que na organização do trabalho explica o resultado desta dimensão? Ex: metas agressivas sem participação dos trabalhadores na definição, jornadas prolongadas por déficit de equipe, falta de autonomia nas decisões operacionais…`}
+                          className="w-full resize-y rounded-lg border border-gray-200 px-3 py-2 text-sm leading-relaxed focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </>
       )}
     </div>

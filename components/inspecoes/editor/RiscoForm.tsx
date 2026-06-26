@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { Plus, Trash2, Upload, Pencil, Check, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import StorageImg from "@/components/ui/StorageImg";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import SetorMultiSelect from "./SetorMultiSelect";
 import MeiosPropagacaoMultiSelect from "./MeiosPropagacaoMultiSelect";
@@ -1434,12 +1435,7 @@ function FotoQuimUpload({
       <label className={lblCls}>Foto da FDS / Rótulo (opcional)</label>
       <div className="mt-1 flex items-center gap-3">
         {value && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={value}
-            alt="FDS"
-            className="size-16 rounded-md border border-gray-200 object-cover"
-          />
+          <StorageImg stored={value} alt="FDS" className="size-16 rounded-md border border-gray-200 object-cover" />
         )}
         <label
           className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50 ${

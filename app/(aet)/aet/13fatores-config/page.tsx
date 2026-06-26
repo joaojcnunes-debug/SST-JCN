@@ -45,7 +45,7 @@ export default function Config13FatoresPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-          <Brain className="size-5 text-[#006B54]" />
+          <Brain className="size-5 text-[#0ea5e9]" />
           Config. 13 Fatores Psicossociais
         </h1>
         <p className="mt-1 text-sm text-gray-500">
@@ -69,7 +69,7 @@ export default function Config13FatoresPage() {
             className={cn(
               "px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors",
               aba === t.id
-                ? "border-[#006B54] text-[#006B54]"
+                ? "border-[#0ea5e9] text-[#0ea5e9]"
                 : "border-transparent text-gray-500 hover:text-gray-700"
             )}
           >
@@ -125,7 +125,7 @@ function AbaFatores() {
         <button
           onClick={() => salvar.mutate(fatores)}
           disabled={salvar.isPending}
-          className="flex items-center gap-1.5 rounded-lg bg-[#006B54] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#005542] disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg bg-[#0ea5e9] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#005542] disabled:opacity-50"
         >
           {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
           Salvar
@@ -138,8 +138,8 @@ function AbaFatores() {
             onClick={() => toggle(f.codigo)}
             className="flex w-full items-center gap-3 px-4 py-3 text-left"
           >
-            {abertos.has(f.codigo) ? <ChevronDown className="size-4 text-[#006B54]" /> : <ChevronRight className="size-4 text-gray-400" />}
-            <span className="rounded bg-[#006B54]/10 px-2 py-0.5 text-xs font-bold text-[#006B54]">{f.codigo}</span>
+            {abertos.has(f.codigo) ? <ChevronDown className="size-4 text-[#0ea5e9]" /> : <ChevronRight className="size-4 text-gray-400" />}
+            <span className="rounded bg-[#0ea5e9]/10 px-2 py-0.5 text-xs font-bold text-[#0ea5e9]">{f.codigo}</span>
             <span className="font-semibold text-gray-800">{f.nome}</span>
           </button>
           {abertos.has(f.codigo) && (
@@ -147,22 +147,22 @@ function AbaFatores() {
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs font-medium text-gray-600">Nome do fator</label>
                 <input value={f.nome} onChange={(e) => setF(f.codigo, "nome", e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B54]/40" />
+                  className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/40" />
               </div>
               <div className="sm:col-span-2">
                 <label className="mb-1 block text-xs font-medium text-gray-600">Descrição</label>
                 <textarea rows={2} value={f.descricao ?? ""} onChange={(e) => setF(f.codigo, "descricao", e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B54]/40" />
+                  className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/40" />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">Perigos típicos</label>
                 <textarea rows={3} value={f.perigos_tipicos ?? ""} onChange={(e) => setF(f.codigo, "perigos_tipicos", e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B54]/40" />
+                  className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/40" />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">Possíveis danos à saúde</label>
                 <textarea rows={3} value={f.possiveis_danos ?? ""} onChange={(e) => setF(f.codigo, "possiveis_danos", e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B54]/40" />
+                  className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/40" />
               </div>
             </div>
           )}
@@ -214,7 +214,7 @@ function AbaPerguntas() {
           {total} pergunta(s) {alertaTotal ? "⚠ recomendado: 20–50" : ""}
         </span>
         <div className="flex gap-2">
-          <button onClick={addPergunta} className="flex items-center gap-1.5 rounded-lg border border-[#006B54] px-3 py-1.5 text-sm text-[#006B54] hover:bg-[#006B54]/5">
+          <button onClick={addPergunta} className="flex items-center gap-1.5 rounded-lg border border-[#0ea5e9] px-3 py-1.5 text-sm text-[#0ea5e9] hover:bg-[#0ea5e9]/5">
             <Plus className="size-3.5" /> Adicionar
           </button>
           <button onClick={() => restaurar.mutate()} disabled={restaurar.isPending}
@@ -223,7 +223,7 @@ function AbaPerguntas() {
             Restaurar padrão
           </button>
           <button onClick={() => salvar.mutate(perguntas)} disabled={salvar.isPending}
-            className="flex items-center gap-1.5 rounded-lg bg-[#006B54] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#005542] disabled:opacity-50">
+            className="flex items-center gap-1.5 rounded-lg bg-[#0ea5e9] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#005542] disabled:opacity-50">
             {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
             Salvar
           </button>
@@ -247,7 +247,7 @@ function AbaPerguntas() {
                 <td className="px-3 py-2 text-center text-xs text-gray-400">{idx + 1}</td>
                 <td className="px-3 py-2">
                   <select value={p.codigo_fator} onChange={(e) => setP(idx, "codigo_fator", e.target.value)}
-                    className="rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#006B54]">
+                    className="rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]">
                     {(fatores.length ? fatores : FATORES_DEFAULT).map((f) => (
                       <option key={f.codigo} value={f.codigo}>{f.codigo} — {f.nome}</option>
                     ))}
@@ -255,11 +255,11 @@ function AbaPerguntas() {
                 </td>
                 <td className="px-3 py-2">
                   <input value={p.texto} onChange={(e) => setP(idx, "texto", e.target.value)}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#006B54]" />
+                    className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]" />
                 </td>
                 <td className="px-3 py-2">
                   <select value={p.logica} onChange={(e) => setP(idx, "logica", e.target.value)}
-                    className="rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#006B54]">
+                    className="rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]">
                     <option value="invertida">Invertida</option>
                     <option value="direta">Direta</option>
                   </select>
@@ -300,7 +300,7 @@ function AbaPlano() {
     <div className="space-y-3">
       <div className="flex justify-end">
         <button onClick={() => salvar.mutate(fatores)} disabled={salvar.isPending}
-          className="flex items-center gap-1.5 rounded-lg bg-[#006B54] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#005542] disabled:opacity-50">
+          className="flex items-center gap-1.5 rounded-lg bg-[#0ea5e9] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#005542] disabled:opacity-50">
           {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
           Salvar
         </button>
@@ -321,19 +321,19 @@ function AbaPlano() {
             {fatores.map((f) => (
               <tr key={f.codigo} className={cn("hover:bg-gray-50", (f.prazo_plano === "30 dias" || f.prazo_plano === "60 dias") && "bg-red-50/40")}>
                 <td className="px-3 py-2">
-                  <span className="rounded bg-[#006B54]/10 px-1.5 py-0.5 text-xs font-bold text-[#006B54]">{f.codigo}</span>
+                  <span className="rounded bg-[#0ea5e9]/10 px-1.5 py-0.5 text-xs font-bold text-[#0ea5e9]">{f.codigo}</span>
                 </td>
                 <td className="px-3 py-2">
                   <input value={f.foco_plano ?? ""} onChange={(e) => setF(f.codigo, "foco_plano", e.target.value)}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#006B54]" />
+                    className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]" />
                 </td>
                 <td className="px-3 py-2">
                   <textarea rows={2} value={f.acao_plano ?? ""} onChange={(e) => setF(f.codigo, "acao_plano", e.target.value)}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#006B54]" />
+                    className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]" />
                 </td>
                 <td className="px-3 py-2">
                   <select value={f.responsavel_plano ?? ""} onChange={(e) => setF(f.codigo, "responsavel_plano", e.target.value)}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#006B54]">
+                    className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]">
                     <option value="">Selecione</option>
                     {RESPONSAVEIS.map((r) => <option key={r} value={r}>{r}</option>)}
                     <option value={f.responsavel_plano ?? ""}>{f.responsavel_plano}</option>
@@ -344,7 +344,7 @@ function AbaPlano() {
                     className={cn("w-full rounded border px-2 py-1 text-xs focus:outline-none focus:ring-1",
                       (f.prazo_plano === "30 dias" || f.prazo_plano === "60 dias")
                         ? "border-red-300 text-red-700 focus:ring-red-400"
-                        : "border-gray-300 focus:ring-[#006B54]")}>
+                        : "border-gray-300 focus:ring-[#0ea5e9]")}>
                     <option value="">Selecione</option>
                     {PRAZOS.map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>
@@ -388,7 +388,7 @@ function AbaSemaforo() {
           <RotateCcw className="size-3.5" /> Restaurar padrão
         </button>
         <button onClick={() => salvar.mutate(rows)} disabled={salvar.isPending}
-          className="flex items-center gap-1.5 rounded-lg bg-[#006B54] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#005542] disabled:opacity-50">
+          className="flex items-center gap-1.5 rounded-lg bg-[#0ea5e9] px-4 py-1.5 text-sm font-semibold text-white hover:bg-[#005542] disabled:opacity-50">
           {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
           Salvar
         </button>
@@ -402,22 +402,22 @@ function AbaSemaforo() {
               <div>
                 <label className="mb-1 block font-medium text-gray-600">Mín. (≥)</label>
                 <input type="number" step="0.1" value={r.min_score ?? ""} onChange={(e) => setR(r.id, "min_score", e.target.value ? parseFloat(e.target.value) : null)}
-                  className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#006B54]" />
+                  className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]" />
               </div>
               <div>
                 <label className="mb-1 block font-medium text-gray-600">Máx. (&lt;)</label>
                 <input type="number" step="0.1" value={r.max_score ?? ""} onChange={(e) => setR(r.id, "max_score", e.target.value ? parseFloat(e.target.value) : null)}
-                  className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#006B54]" />
+                  className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]" />
               </div>
               <div>
                 <label className="mb-1 block font-medium text-gray-600">Nível PGR</label>
                 <input value={r.nivel_pgr} onChange={(e) => setR(r.id, "nivel_pgr", e.target.value)}
-                  className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#006B54]" />
+                  className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]" />
               </div>
               <div>
                 <label className="mb-1 block font-medium text-gray-600">Prazo padrão</label>
                 <input value={r.prazo_texto} onChange={(e) => setR(r.id, "prazo_texto", e.target.value)}
-                  className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#006B54]" />
+                  className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]" />
               </div>
             </div>
           </div>

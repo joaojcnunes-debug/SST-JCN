@@ -1,17 +1,19 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useUserStore } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 /**
  * Sincroniza o usuário a partir da sessão Supabase. Se não logado,
  * manda para /login. Carrega o perfil completo da tabela usuarios.
+ * Clientes são redirecionados para o portal se tentarem acessar rotas internas.
  * Usado pelos layouts dos route groups protegidos.
  */
 export function useAuth() {
   const router = useRouter();
+  const pathname = usePathname();
   const setUser = useUserStore((s) => s.setUser);
 
   useEffect(() => {
@@ -35,7 +37,17 @@ export function useAuth() {
         .single();
 
       if (!mounted) return;
-      if (perfil) setUser(perfil);
+      if (perfil) {
+        setUser(perfil);
+        // Clientes não têm acesso a rotas internas — apenas ao portal
+        if (
+          (perfil as { perfil?: string }).perfil === "Cliente" &&
+          !pathname.startsWith("/portal-cliente")
+        ) {
+          router.replace("/portal-cliente/inicio");
+          return;
+        }
+      }
     })();
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {

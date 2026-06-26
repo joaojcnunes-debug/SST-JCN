@@ -156,3 +156,20 @@ export function formatCNO(cno: string | null | undefined): string {
   if (digits.length !== 12) return cno;
   return digits.replace(/(\d{2})(\d{3})(\d{5})(\d{2})/, "$1.$2.$3/$4");
 }
+
+/** Formata CEP: 8 dígitos -> 00000-000. Mantém o valor original se não bater. */
+export function formatCEP(cep: string | null | undefined): string {
+  if (!cep) return "—";
+  const digits = cep.replace(/\D/g, "");
+  if (digits.length !== 8) return cep;
+  return digits.replace(/(\d{5})(\d{3})/, "$1-$2");
+}
+
+/** Formata telefone BR: 10 ou 11 dígitos -> (00) 0000-0000 / (00) 00000-0000. */
+export function formatTelefone(tel: string | null | undefined): string {
+  if (!tel) return "—";
+  const d = tel.replace(/\D/g, "");
+  if (d.length === 11) return d.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  if (d.length === 10) return d.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+  return tel;
+}

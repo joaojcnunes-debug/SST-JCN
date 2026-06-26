@@ -118,7 +118,7 @@ export default function HistoricoConformidadePage() {
             : "Nenhum relatório encontrado com esses filtros."}
         </div>
       ) : (
-        <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm reveal-up card-hover">
           {filtrados.map((r) => (
             <Link
               key={r.id_relatorio}

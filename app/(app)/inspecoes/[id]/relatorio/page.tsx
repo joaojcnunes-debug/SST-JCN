@@ -1,8 +1,9 @@
 "use client";
 
-import { use, useMemo } from "react";
+import React, { use, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -15,18 +16,31 @@ import {
   ShieldCheck,
   Flame,
   GraduationCap,
+  BadgeCheck,
+  Download,
+  Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { usePdfAssinado } from "@/lib/hooks/usePdfsGerados";
+import BotaoAssinarPdf from "@/components/ui/BotaoAssinarPdf";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
-import { useInspecao } from "@/lib/hooks/useInspecao";
+import StorageImg from "@/components/ui/StorageImg";
+import { abrirMidiaAssinada } from "@/lib/storage/abrir-midia-assinada";
+import { useInspecao, useSalvarElaboracao } from "@/lib/hooks/useInspecao";
+import { useCurrentUser } from "@/lib/hooks/useUsuario";
+import { FileSignature } from "lucide-react";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
+import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
 import {
   montarValoresEmpresa,
   formatarDataBR,
+  substituirVariaveisTexto,
 } from "@/lib/textos-padrao/variaveis";
 import {
   fmtData,
@@ -57,7 +71,7 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-export default function RelatorioChabraPage({ params }: Props) {
+export default function RelatorioJCNPage({ params }: Props) {
   const { id } = use(params);
   const { data, isLoading } = useInspecao(id);
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
@@ -193,10 +207,101 @@ export default function RelatorioChabraPage({ params }: Props) {
     };
   }, [data]);
 
+  const { pdfAssinado, recarregar } = usePdfAssinado("inspecoes_relatorio", id);
+  const [baixando, setBaixando] = useState(false);
+  const user = useCurrentUser();
+  // A elaboração do documento (SGG) é feita por usuários internos — inclusive
+  // Visualizadores (que leem a inspeção e montam o documento). Só Cliente não.
+  const podeElaborar = !!user && user.perfil !== "Cliente";
+  const salvarElab = useSalvarElaboracao(id);
+
+  async function handleBaixarPdf() {
+    if (!pdfAssinado) return;
+    setBaixando(true);
+    try {
+      await baixarPdfAssinado(pdfAssinado.pdf_path, "relatorio-assinado.pdf");
+    } catch { toast.error("Erro ao baixar o PDF."); }
+    finally { setBaixando(false); }
+  }
+
+  const { data: capitulosSst = [] } = useTextosPadrao("sst");
+
   if (isLoading) return <LoadingSkeleton rows={10} />;
   if (!data || !ctx) return null;
 
   const { inspecao, responsaveis, paeContatos } = data;
+
+  const valoresSst: Record<string, string> = {
+    ...montarValoresEmpresa(empresa ?? null),
+    data_inspecao: formatarDataBR(inspecao.data_inspecao),
+    revisao: String(inspecao.revisao ?? ""),
+    responsavel: inspecao.responsavel ?? "",
+    carimbo: inspecao.responsavel ?? "",
+    importado: formatarDataBR(inspecao.created_at),
+  };
+
+  // Unificado: blocos (editáveis + seções do sistema) antes/depois do corpo do
+  // relatório (sst_corpo) por ordem. Sem seções do sistema, mantém o legado.
+  const temFixosSst = capitulosSst.some((c) => c.tipo === "fixo");
+  const ordemCorpoSst = capitulosSst.find((c) => c.slug_fixo === "sst_corpo")?.ordem ?? 2000;
+  // Blocos ativos exceto o próprio corpo (sst_corpo é renderizado por este componente).
+  const blocosSst = [...capitulosSst]
+    .filter((c) => c.ativo !== false && c.slug_fixo !== "sst_corpo")
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  // Títulos do sumário (na ordem; exclui o próprio sumário).
+  const sumarioTitulosSst = blocosSst
+    .filter((c) => c.slug_fixo !== "sumario" && !c.bg_imagem_url && (c.titulo ?? "").trim().toLowerCase() !== "capa")
+    .map((c) =>
+      c.tipo === "fixo" ? c.titulo : substituirVariaveisTexto(c.titulo, valoresSst),
+    )
+    .filter((t) => t && t.trim());
+  function renderBlocoSst(c: (typeof blocosSst)[number]): React.ReactNode {
+    if (c.tipo === "fixo") {
+      const classeQuebra =
+        c.quebra_pagina === "continua"
+          ? "textos-padrao-capitulo--continua"
+          : c.quebra_pagina === "nova"
+            ? "textos-padrao-capitulo--nova-pagina"
+            : "";
+      if (c.slug_fixo === "identificacao_empresa") {
+        return (
+          <div key={c.id_capitulo} className={`mb-6 break-inside-avoid ${classeQuebra}`}>
+            <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+              Identificação da Empresa
+            </h2>
+            <EmpresaInfoPanel empresa={empresa ?? null} />
+          </div>
+        );
+      }
+      if (c.slug_fixo === "sumario") {
+        return (
+          <div key={c.id_capitulo} className={`mb-6 break-inside-avoid ${classeQuebra}`}>
+            <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+              Sumário
+            </h2>
+            <ol className="space-y-1">
+              {sumarioTitulosSst.map((t, i) => (
+                <li key={i} className="flex items-baseline gap-2 border-b border-dotted border-gray-300 py-0.5 text-xs text-gray-700">
+                  <span className="min-w-5 font-bold text-emerald-800">{i + 1}.</span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        );
+      }
+      return null;
+    }
+    return (
+      <TextosPadraoPrint key={c.id_capitulo} modulo="sst" capituloId={c.id_capitulo} valores={valoresSst} />
+    );
+  }
+  const antesSst = temFixosSst
+    ? blocosSst.filter((c) => (c.ordem ?? 0) < ordemCorpoSst).map(renderBlocoSst)
+    : <TextosPadraoPrint modulo="sst" valores={valoresSst} posicao="antes" />;
+  const depoisSst = temFixosSst
+    ? blocosSst.filter((c) => (c.ordem ?? 0) >= ordemCorpoSst).map(renderBlocoSst)
+    : null;
   const dataInspFmt = fmtData(inspecao.data_inspecao);
 
   return (
@@ -216,6 +321,21 @@ export default function RelatorioChabraPage({ params }: Props) {
           >
             Versão PGR (NR-1)
           </Link>
+          {pdfAssinado ? (
+            <>
+              <div className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                <BadgeCheck className="size-3.5 shrink-0" />
+                Assinado em {new Date(pdfAssinado.assinado_em).toLocaleDateString("pt-BR")}
+              </div>
+              <button type="button" onClick={handleBaixarPdf} disabled={baixando}
+                className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                {baixando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                Baixar PDF Assinado
+              </button>
+            </>
+          ) : (
+            <BotaoAssinarPdf defaultSignatoryName={inspecao.responsavel ?? undefined} tabelaNome="inspecoes_relatorio" docId={id} onAssinado={recarregar} />
+          )}
           <BotaoGerarPdf
             tabelaNome="inspecoes_relatorio"
             docId={id}
@@ -231,6 +351,83 @@ export default function RelatorioChabraPage({ params }: Props) {
             }}
           />
         </div>
+      </div>
+
+      {/* Documento (SGG) — elaboração pelo ADM (não imprime) */}
+      <div className="no-print rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <FileSignature className="size-4 shrink-0 text-verde-primary" />
+            <div>
+              <p className="text-sm font-semibold text-gray-800">Documento (SGG)</p>
+              <p className="text-xs text-gray-500">
+                {inspecao.elaboracao_status === "CONCLUIDO"
+                  ? `Concluído por ${inspecao.elaboracao_responsavel ?? "—"}${inspecao.elaboracao_concluida_em ? " · " + new Date(inspecao.elaboracao_concluida_em).toLocaleString("pt-BR") : ""}`
+                  : inspecao.elaboracao_status === "EM_ELABORACAO"
+                    ? `Em elaboração por ${inspecao.elaboracao_responsavel ?? "—"}`
+                    : "Pendente — ninguém assumiu a elaboração"}
+              </p>
+            </div>
+          </div>
+          {podeElaborar && (
+            <div className="flex flex-wrap gap-2">
+              {(inspecao.elaboracao_status ?? "PENDENTE") === "PENDENTE" && (
+                <button
+                  type="button"
+                  disabled={salvarElab.isPending || !user?.nome}
+                  onClick={() => salvarElab.mutate(
+                    { elaboracao_status: "EM_ELABORACAO", elaboracao_responsavel: user?.nome ?? null },
+                    { onSuccess: () => toast.success("Você assumiu a elaboração do documento") },
+                  )}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                >
+                  Assumir elaboração (eu)
+                </button>
+              )}
+              {inspecao.elaboracao_status === "EM_ELABORACAO" && (inspecao.elaboracao_responsavel === user?.nome || user?.perfil === "Admin") && (
+                <>
+                  <button
+                    type="button"
+                    disabled={salvarElab.isPending}
+                    onClick={() => salvarElab.mutate(
+                      { elaboracao_status: "CONCLUIDO", elaboracao_concluida_em: new Date().toISOString() },
+                      { onSuccess: () => toast.success("Documento concluído — enviado ao cliente") },
+                    )}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    <BadgeCheck className="size-4" /> Concluir (emitido e enviado)
+                  </button>
+                  <button
+                    type="button"
+                    disabled={salvarElab.isPending}
+                    onClick={() => salvarElab.mutate({ elaboracao_status: "PENDENTE", elaboracao_responsavel: null })}
+                    className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                  >
+                    Liberar
+                  </button>
+                </>
+              )}
+              {inspecao.elaboracao_status === "CONCLUIDO" && user?.perfil === "Admin" && (
+                <button
+                  type="button"
+                  disabled={salvarElab.isPending}
+                  onClick={() => salvarElab.mutate({ elaboracao_status: "EM_ELABORACAO", elaboracao_concluida_em: null })}
+                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  Reabrir
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Dados da empresa (não imprime) */}
+      <div className="no-print">
+        <EmpresaInfoPanel
+          empresa={empresa ?? null}
+          className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+        />
       </div>
 
       {/* CSS de impressão */}
@@ -296,7 +493,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={configs.logo_url}
-                  alt="Logo JCN"
+                  alt="Logo JCN Consultoria"
                   className="max-h-44 w-auto object-contain"
                   referrerPolicy="no-referrer"
                 />
@@ -306,7 +503,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                     <ShieldCheck className="size-16" strokeWidth={1.5} />
                   </div>
                   <p className="mt-3 text-2xl font-extrabold tracking-tight text-red-alert">
-                    JCN
+                    JCN Consultoria
                   </p>
                   <p className="text-[10px] uppercase tracking-wider text-gray-600">
                     Segurança e Medicina do Trabalho
@@ -318,24 +515,13 @@ export default function RelatorioChabraPage({ params }: Props) {
 
           {/* Rodapé da capa */}
           <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-center text-[10px] text-gray-500">
-            Documento gerado em {fmtDataHora(new Date())} · JCN Consultoria — Segurança e Saúde do Trabalho
+            Documento gerado em {fmtDataHora(new Date())} · JCN Consultoria Saúde e
+            Segurança do Trabalho
           </p>
         </section>
 
-        {/* Textos Padrão (capítulos cadastrados em /texto-padrao) —
-            aparecem após a capa, antes da página 2 de identificação. */}
-        <TextosPadraoPrint
-          modulo="sst"
-          valores={{
-            ...montarValoresEmpresa(empresa ?? null),
-            data_inspecao: formatarDataBR(inspecao.data_inspecao),
-            revisao: String(inspecao.revisao ?? ""),
-            responsavel: inspecao.responsavel ?? "",
-            carimbo: inspecao.responsavel ?? "",
-            importado: formatarDataBR(inspecao.created_at),
-          }}
-          posicao="antes"
-        />
+        {/* Textos Padrão — editáveis antes do corpo do relatório (ordem unificada) */}
+        {antesSst}
 
         {/* ============================================================
             PÁGINA 2: Identificação + Resumo Geral
@@ -442,7 +628,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                 label="Não Conformes"
                 valor={ctx.naoConformes}
                 cor={ctx.naoConformes > 0 ? "#ffffff" : "#ffffff"}
-                bg={ctx.naoConformes > 0 ? "#D32F2F" : "#006B54"}
+                bg={ctx.naoConformes > 0 ? "#D32F2F" : "#0ea5e9"}
                 destacado
               />
             </div>
@@ -689,11 +875,15 @@ export default function RelatorioChabraPage({ params }: Props) {
             </div>
           )}
 
+          {/* Textos Padrão — editáveis depois do corpo (ordem unificada) */}
+          {depoisSst}
+
           <AssinaturaRelatorio
             nomeResponsavel={inspecao.responsavel ?? undefined}
             dataRelatorio={formatarDataBR(inspecao.data_inspecao) || undefined}
             tabelaNome="inspecoes_relatorio"
             docId={id}
+            hideAcoes
           />
 
           <p className="mt-8 text-center text-[10px] text-gray-400">
@@ -938,7 +1128,7 @@ const QUIM_LABELS_DEFAULT: Record<string, string> = {
 };
 
 // =========================================================================
-// RISCO CARD (estilo PDF Chabra)
+// RISCO CARD (estilo PDF JCN Consultoria)
 // =========================================================================
 
 function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]; perguntasMap: Map<string, string> }) {
@@ -1097,12 +1287,10 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
         {/* Foto FDS química */}
         {risco.foto_quim_url && (
           <div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={risco.foto_quim_url}
+            <StorageImg
+              stored={risco.foto_quim_url}
               alt="FDS"
               className="max-h-24 rounded border border-gray-200"
-              referrerPolicy="no-referrer"
             />
           </div>
         )}
@@ -1155,15 +1343,17 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
                   {e.fotos_urls && e.fotos_urls.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {e.fotos_urls.map((url, i) => (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
+                        <span
                           key={i}
-                          src={url}
-                          alt={`${e.tipo} foto ${i + 1}`}
-                          className="h-16 w-16 cursor-pointer rounded border border-gray-200 object-cover hover:opacity-80 print:cursor-default"
-                          referrerPolicy="no-referrer"
-                          onClick={() => window.open(url, "_blank")}
-                        />
+                          onClick={() => abrirMidiaAssinada(url)}
+                          className="cursor-pointer print:cursor-default"
+                        >
+                          <StorageImg
+                            stored={e.fotos_storage_paths?.[i] || url}
+                            alt={`${e.tipo} foto ${i + 1}`}
+                            className="h-16 w-16 rounded border border-gray-200 object-cover hover:opacity-80"
+                          />
+                        </span>
                       ))}
                     </div>
                   )}
@@ -1257,15 +1447,13 @@ function FotoCard({ foto }: { foto: Foto }) {
   return (
     <div
       className="cursor-pointer overflow-hidden rounded border border-gray-200 hover:ring-2 hover:ring-verde-primary print:cursor-default print:ring-0"
-      onClick={() => window.open(foto.arquivo_foto, "_blank")}
+      onClick={() => abrirMidiaAssinada(foto.arquivo_foto)}
       title="Clique para ampliar"
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={foto.arquivo_foto}
+      <StorageImg
+        stored={foto.storage_path || foto.arquivo_foto}
         alt={foto.legenda ?? foto.categoria}
         className="aspect-square w-full object-cover"
-        referrerPolicy="no-referrer"
       />
       {foto.legenda && (
         <p className="truncate p-1 text-[10px] text-gray-700">{foto.legenda}</p>
@@ -1367,13 +1555,11 @@ function ExtintoresGrid({ extintores }: { extintores: Extintor[] }) {
                 <div className="shrink-0">
                   <div className="grid grid-cols-2 gap-1">
                     {e.fotos_urls!.slice(0, 4).map((url, i) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <StorageImg
                         key={i}
-                        src={url}
+                        stored={e.fotos_storage_paths?.[i] || url}
                         alt={`Extintor foto ${i + 1}`}
                         className="h-[60px] w-[60px] rounded border border-gray-200 object-cover"
-                        referrerPolicy="no-referrer"
                       />
                     ))}
                   </div>

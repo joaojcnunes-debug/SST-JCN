@@ -80,12 +80,12 @@ export default function VisaoGeralConformidadePage() {
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-700">
           Normas disponíveis ({nrs.length})
         </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 reveal-up">
           {nrs.map((nr) => (
             <Link
               key={nr.codigo}
               href={`/relatorio-conformidade/novo?nr=${encodeURIComponent(nr.codigo)}`}
-              className="group flex flex-col gap-1 rounded-lg border border-gray-200 bg-white p-3 shadow-sm transition-colors hover:border-teal-400 hover:bg-teal-50/30"
+              className="group tilt-3d sheen flex flex-col gap-1 rounded-lg border border-gray-200 bg-white p-3 shadow-sm transition-colors hover:border-teal-400 hover:bg-teal-50/30"
             >
               <p className="text-xs font-bold text-teal-700">{nr.codigo}</p>
               <p className="text-sm font-semibold text-gray-900 group-hover:text-teal-800">
@@ -123,7 +123,7 @@ export default function VisaoGeralConformidadePage() {
             ou escolha uma NR acima.
           </div>
         ) : (
-          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm reveal-up card-hover">
             {relatorios.slice(0, 8).map((r) => (
               <Link
                 key={r.id_relatorio}
@@ -181,7 +181,7 @@ function Card({
   };
   return (
     <div
-      className={`flex items-center gap-3 rounded-lg border bg-white p-4 shadow-sm`}
+      className={`flex items-center gap-3 rounded-lg border bg-white p-4 shadow-sm card-hover`}
     >
       <div className={`flex size-10 items-center justify-center rounded-md ${cores[cor]}`}>
         {icon}

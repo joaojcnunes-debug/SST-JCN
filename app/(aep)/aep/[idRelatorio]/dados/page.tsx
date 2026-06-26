@@ -24,6 +24,7 @@ export default function AepDadosPage({
   const [titulo,      setTitulo]      = useState("");
   const [registro,    setRegistro]    = useState("");
   const [data,        setData]        = useState("");
+  const [validade,    setValidade]    = useState("");
   const [endereco,    setEndereco]    = useState("");
   const [conclusao,   setConclusao]   = useState("");
   const [status,      setStatus]      = useState<StatusAEP>("RASCUNHO");
@@ -34,6 +35,7 @@ export default function AepDadosPage({
     setTitulo(rel.titulo_profissional     ?? "");
     setRegistro(rel.registro_profissional ?? "");
     setData(rel.data_elaboracao           ?? "");
+    setValidade(rel.data_validade         ?? "");
     setEndereco(rel.endereco_empresa      ?? "");
     setConclusao(rel.conclusao            ?? "");
     setStatus(rel.status);
@@ -48,6 +50,7 @@ export default function AepDadosPage({
         titulo_profissional:    titulo.trim(),
         registro_profissional:  registro.trim(),
         data_elaboracao:        data || null,
+        data_validade:          validade || null,
         endereco_empresa:       endereco.trim() || null,
         conclusao:              conclusao.trim(),
         status,
@@ -172,6 +175,18 @@ export default function AepDadosPage({
             value={data}
             disabled={!canEdit}
             onChange={(e) => setData(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+          />
+        </div>
+
+        {/* Validade do documento */}
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Validade do documento</label>
+          <input
+            type="date"
+            value={validade}
+            disabled={!canEdit}
+            onChange={(e) => setValidade(e.target.value)}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
           />
         </div>

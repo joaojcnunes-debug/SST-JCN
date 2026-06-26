@@ -11,13 +11,21 @@ import {
   type ModuloEmpresa,
   MODULOS_EMPRESA,
 } from "@/lib/supabase/types";
+import { useUnidades } from "@/lib/hooks/useUnidades";
 
-const DEFAULT_MODULOS: ModuloEmpresa[] = [
-  "sst",
-  "psicossocial",
-  "conformidade",
-  "analise_quimicos",
-];
+// Toda empresa é habilitada em todos os quadros (filtro por módulo removido).
+const TODOS_MODULOS: ModuloEmpresa[] = MODULOS_EMPRESA.map((m) => m.value);
+
+/** Aplica a máscara 00.000.000/0000-00 conforme o usuário digita/cola (só dígitos, máx. 14). */
+function formatarCnpj(v: string): string {
+  const d = v.replace(/\D/g, "").slice(0, 14);
+  let out = d.slice(0, 2);
+  if (d.length > 2) out += "." + d.slice(2, 5);
+  if (d.length > 5) out += "." + d.slice(5, 8);
+  if (d.length > 8) out += "/" + d.slice(8, 12);
+  if (d.length > 12) out += "-" + d.slice(12, 14);
+  return out;
+}
 
 interface Props {
   open: boolean;
@@ -35,6 +43,8 @@ export default function EmpresaForm({
 }: Props) {
   const qc = useQueryClient();
   const isEdit = !!empresa;
+  const [buscandoCnpj, setBuscandoCnpj] = useState(false);
+  const { data: unidades = [] } = useUnidades();
 
   const [form, setForm] = useState({
     nome_empresa: "",
@@ -44,9 +54,23 @@ export default function EmpresaForm({
     cei: "",
     caepf: "",
     cno: "",
+    id_unidade: "",
+    logradouro: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    municipio: "",
+    uf: "",
+    cep: "",
+    telefone: "",
+    email: "",
+    cnae_principal: "",
+    cnae_descricao: "",
+    situacao_cadastral: "",
+    porte: "",
     status: "Ativo" as "Ativo" | "Inativa",
     observacao: "",
-    modulos_habilitados: [...DEFAULT_MODULOS] as ModuloEmpresa[],
+    modulos_habilitados: [...TODOS_MODULOS] as ModuloEmpresa[],
   });
 
   useEffect(() => {
@@ -54,32 +78,90 @@ export default function EmpresaForm({
       setForm({
         nome_empresa: empresa?.nome_empresa ?? "",
         razao_social: empresa?.razao_social ?? "",
-        cnpj: empresa?.cnpj ?? "",
+        cnpj: empresa?.cnpj ? formatarCnpj(empresa.cnpj) : "",
         cpf: empresa?.cpf ?? "",
         cei: empresa?.cei ?? "",
         caepf: empresa?.caepf ?? "",
         cno: empresa?.cno ?? "",
+        id_unidade: empresa?.id_unidade ?? "",
+        logradouro: empresa?.logradouro ?? "",
+        numero: empresa?.numero ?? "",
+        complemento: empresa?.complemento ?? "",
+        bairro: empresa?.bairro ?? "",
+        municipio: empresa?.municipio ?? "",
+        uf: empresa?.uf ?? "",
+        cep: empresa?.cep ?? "",
+        telefone: empresa?.telefone ?? "",
+        email: empresa?.email ?? "",
+        cnae_principal: empresa?.cnae_principal ?? "",
+        cnae_descricao: empresa?.cnae_descricao ?? "",
+        situacao_cadastral: empresa?.situacao_cadastral ?? "",
+        porte: empresa?.porte ?? "",
         status: (empresa?.status as "Ativo" | "Inativa") ?? "Ativo",
         observacao: empresa?.observacao ?? "",
-        modulos_habilitados:
-          empresa?.modulos_habilitados && empresa.modulos_habilitados.length > 0
-            ? [...empresa.modulos_habilitados]
-            : [...DEFAULT_MODULOS],
+        modulos_habilitados: [...TODOS_MODULOS],
       });
     }
   }, [open, empresa]);
 
-  function toggleModulo(m: ModuloEmpresa) {
-    setForm((f) => {
-      const existe = f.modulos_habilitados.includes(m);
-      return {
+  /**
+   * Busca os dados da empresa na base da Receita Federal (via BrasilAPI,
+   * dados públicos) e preenche os campos estruturados (razão social, nome
+   * fantasia, endereço, contato, CNAE, situação, porte). Capital social não
+   * é trazido. Nada é salvo aqui — o usuário revisa e confirma.
+   */
+  async function buscarCnpj() {
+    const digitos = form.cnpj.replace(/\D/g, "");
+    if (digitos.length !== 14) {
+      toast.error("Informe um CNPJ com 14 dígitos para buscar.");
+      return;
+    }
+    setBuscandoCnpj(true);
+    try {
+      const res = await fetch(`/api/cnpj/${digitos}`);
+      const d = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (res.status === 404) throw new Error("CNPJ não encontrado na Receita.");
+      if (!res.ok)
+        throw new Error(
+          (typeof d.error === "string" && d.error) ||
+            `Falha na consulta (HTTP ${res.status}).`,
+        );
+
+      const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+      const razao = str(d.razao_social);
+      const fantasia = str(d.nome_fantasia);
+      const cepDig = str(d.cep).replace(/\D/g, "");
+      const cepFmt = cepDig.length === 8 ? `${cepDig.slice(0, 5)}-${cepDig.slice(5)}` : str(d.cep);
+      const cnaeCod =
+        d.cnae_fiscal != null && d.cnae_fiscal !== "" ? String(d.cnae_fiscal) : "";
+
+      // Mantém o que já houver preenchido como fallback (?? f.campo).
+      setForm((f) => ({
         ...f,
-        modulos_habilitados: existe
-          ? f.modulos_habilitados.filter((x) => x !== m)
-          : [...f.modulos_habilitados, m],
-      };
-    });
+        razao_social: razao || f.razao_social,
+        nome_empresa: f.nome_empresa.trim() || fantasia || razao || f.nome_empresa,
+        logradouro: str(d.logradouro) || f.logradouro,
+        numero: str(d.numero) || f.numero,
+        complemento: str(d.complemento) || f.complemento,
+        bairro: str(d.bairro) || f.bairro,
+        municipio: str(d.municipio) || f.municipio,
+        uf: str(d.uf) || f.uf,
+        cep: cepFmt || f.cep,
+        telefone: str(d.ddd_telefone_1) || f.telefone,
+        email: str(d.email) || f.email,
+        cnae_principal: cnaeCod || f.cnae_principal,
+        cnae_descricao: str(d.cnae_fiscal_descricao) || f.cnae_descricao,
+        situacao_cadastral: str(d.descricao_situacao_cadastral) || f.situacao_cadastral,
+        porte: str(d.porte) || f.porte,
+      }));
+      toast.success("Dados da Receita carregados — revise e salve.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao consultar o CNPJ.");
+    } finally {
+      setBuscandoCnpj(false);
+    }
   }
+
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -92,6 +174,20 @@ export default function EmpresaForm({
         cei: form.cei.replace(/\D/g, "") || null,
         caepf: form.caepf.replace(/\D/g, "") || null,
         cno: form.cno.replace(/\D/g, "") || null,
+        id_unidade: form.id_unidade || null,
+        logradouro: form.logradouro.trim() || null,
+        numero: form.numero.trim() || null,
+        complemento: form.complemento.trim() || null,
+        bairro: form.bairro.trim() || null,
+        municipio: form.municipio.trim() || null,
+        uf: form.uf.trim().toUpperCase() || null,
+        cep: form.cep.trim() || null,
+        telefone: form.telefone.trim() || null,
+        email: form.email.trim() || null,
+        cnae_principal: form.cnae_principal.trim() || null,
+        cnae_descricao: form.cnae_descricao.trim() || null,
+        situacao_cadastral: form.situacao_cadastral.trim() || null,
+        porte: form.porte.trim() || null,
         status: form.status,
         observacao: form.observacao.trim() || null,
         modulos_habilitados: form.modulos_habilitados,
@@ -136,6 +232,10 @@ export default function EmpresaForm({
       toast.error("Nome é obrigatório");
       return;
     }
+    if (!form.id_unidade) {
+      toast.error("Selecione a unidade da empresa");
+      return;
+    }
     mutation.mutate();
   }
 
@@ -160,13 +260,32 @@ export default function EmpresaForm({
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="text-sm font-medium text-gray-700">CNPJ</label>
-            <input
-              type="text"
-              value={form.cnpj}
-              onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
-              placeholder="00.000.000/0000-00"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-            />
+            <div className="mt-1 flex gap-2">
+              <input
+                type="text"
+                value={form.cnpj}
+                onChange={(e) => setForm({ ...form, cnpj: formatarCnpj(e.target.value) })}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    buscarCnpj();
+                  }
+                }}
+                inputMode="numeric"
+                maxLength={18}
+                placeholder="00.000.000/0000-00"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+              <button
+                type="button"
+                onClick={buscarCnpj}
+                disabled={buscandoCnpj}
+                title="Buscar dados da empresa na Receita Federal pelo CNPJ"
+                className="shrink-0 rounded-md bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+              >
+                {buscandoCnpj ? "Buscando…" : "Buscar"}
+              </button>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Razão Social</label>
@@ -227,37 +346,169 @@ export default function EmpresaForm({
           </div>
         </div>
 
-        {/* Módulos habilitados — controla em quais quadros a empresa aparece */}
-        <div className="rounded-lg border border-teal-200 bg-teal-50/40 p-3">
-          <p className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-teal-700">
-            Módulos habilitados
+        {/* Unidade — controla quais usuários enxergam esta empresa (obrigatória) */}
+        <div>
+          <label className="text-sm font-medium text-gray-700">
+            Unidade <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={form.id_unidade}
+            onChange={(e) => setForm({ ...form, id_unidade: e.target.value })}
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          >
+            <option value="" disabled>
+              Selecione a unidade…
+            </option>
+            {unidades.map((u) => (
+              <option key={u.id_unidade} value={u.id_unidade}>
+                {u.nome}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            Só usuários com esta unidade (e Admins) verão a empresa.
           </p>
-          <p className="mb-2 text-xs text-gray-600">
-            Selecione em quais quadros esta empresa deve aparecer no seletor.
-            Por padrão, novas empresas aparecem em todos.
+          {unidades.length === 0 && (
+            <p className="mt-1 text-xs text-amber-600">
+              Nenhuma unidade cadastrada. Cadastre em Configurações → Unidades antes.
+            </p>
+          )}
+        </div>
+
+        {/* Endereço e contato — preenchidos pela busca por CNPJ, editáveis */}
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+            Endereço e contato
           </p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {MODULOS_EMPRESA.map((m) => {
-              const checked = form.modulos_habilitados.includes(m.value);
-              return (
-                <label
-                  key={m.value}
-                  className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
-                    checked
-                      ? "border-teal-300 bg-white text-teal-900"
-                      : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleModulo(m.value)}
-                    className="size-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-                  />
-                  {m.label}
-                </label>
-              );
-            })}
+          <div className="grid gap-3 md:grid-cols-6">
+            <div className="md:col-span-4">
+              <label className="text-xs font-medium text-gray-700">Logradouro</label>
+              <input
+                type="text"
+                value={form.logradouro}
+                onChange={(e) => setForm({ ...form, logradouro: e.target.value })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-700">Número</label>
+              <input
+                type="text"
+                value={form.numero}
+                onChange={(e) => setForm({ ...form, numero: e.target.value })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-700">CEP</label>
+              <input
+                type="text"
+                value={form.cep}
+                onChange={(e) => setForm({ ...form, cep: e.target.value })}
+                placeholder="00000-000"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-gray-700">Complemento</label>
+              <input
+                type="text"
+                value={form.complemento}
+                onChange={(e) => setForm({ ...form, complemento: e.target.value })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-gray-700">Bairro</label>
+              <input
+                type="text"
+                value={form.bairro}
+                onChange={(e) => setForm({ ...form, bairro: e.target.value })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div className="md:col-span-1">
+              <label className="text-xs font-medium text-gray-700">Município</label>
+              <input
+                type="text"
+                value={form.municipio}
+                onChange={(e) => setForm({ ...form, municipio: e.target.value })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div className="md:col-span-1">
+              <label className="text-xs font-medium text-gray-700">UF</label>
+              <input
+                type="text"
+                maxLength={2}
+                value={form.uf}
+                onChange={(e) => setForm({ ...form, uf: e.target.value.toUpperCase() })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm uppercase focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div className="md:col-span-3">
+              <label className="text-xs font-medium text-gray-700">Telefone</label>
+              <input
+                type="text"
+                value={form.telefone}
+                onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div className="md:col-span-3">
+              <label className="text-xs font-medium text-gray-700">E-mail</label>
+              <input
+                type="text"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Dados cadastrais da Receita */}
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+            Atividade e situação (Receita)
+          </p>
+          <div className="grid gap-3 md:grid-cols-6">
+            <div className="md:col-span-1">
+              <label className="text-xs font-medium text-gray-700">CNAE</label>
+              <input
+                type="text"
+                value={form.cnae_principal}
+                onChange={(e) => setForm({ ...form, cnae_principal: e.target.value })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div className="md:col-span-5">
+              <label className="text-xs font-medium text-gray-700">Atividade principal</label>
+              <input
+                type="text"
+                value={form.cnae_descricao}
+                onChange={(e) => setForm({ ...form, cnae_descricao: e.target.value })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div className="md:col-span-3">
+              <label className="text-xs font-medium text-gray-700">Situação cadastral</label>
+              <input
+                type="text"
+                value={form.situacao_cadastral}
+                onChange={(e) => setForm({ ...form, situacao_cadastral: e.target.value })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div className="md:col-span-3">
+              <label className="text-xs font-medium text-gray-700">Porte</label>
+              <input
+                type="text"
+                value={form.porte}
+                onChange={(e) => setForm({ ...form, porte: e.target.value })}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
           </div>
         </div>
 

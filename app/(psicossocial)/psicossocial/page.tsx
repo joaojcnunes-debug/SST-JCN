@@ -110,7 +110,7 @@ export default function DrpsListaPage() {
             )}
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm reveal-up card-hover">
             {isLoading ? (
               <div className="p-4">
                 <LoadingSkeleton rows={4} />

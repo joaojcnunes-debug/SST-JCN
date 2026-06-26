@@ -80,10 +80,12 @@ export default function ApreciacaoMaquinasPage() {
           Apreciação de Máquinas (NR-12)
         </h1>
         <p className="text-sm text-gray-600">
-          Laudo técnico estruturado de conformidade com a NR-12. Avalia uma
-          máquina contra checklist regulatório por categoria (instalações,
-          dispositivos, sistemas de segurança, ergonomia, manutenção...), com
-          evidência fotográfica por item.
+          Apreciação de risco de máquinas e equipamentos em conformidade com o
+          item 12.1.9 da NR-12 e normas ABNT NBR 12100, 14009, 14154 e ABNT
+          ISO/TR 14121-2:2018. Avalia checklist regulatório por categoria,
+          realiza análise de riscos pelo método HRN (POD × FEP × GPD), gera
+          Plano de Adequação com prazos e mantém relação atualizada do parque
+          de máquinas.
         </p>
       </div>
 
@@ -156,7 +158,7 @@ export default function ApreciacaoMaquinasPage() {
             )}
           </div>
         ) : (
-          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm reveal-up card-hover">
             {filtradas.map((a) => (
               <Link
                 key={a.id_apreciacao}
@@ -216,7 +218,7 @@ function Card({
     amber: "border-amber-200 bg-amber-50 text-amber-700",
   };
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-white p-4 shadow-sm">
+    <div className="flex items-center gap-3 rounded-lg border bg-white p-4 shadow-sm card-hover">
       <div
         className={`flex size-10 items-center justify-center rounded-md ${cores[cor]}`}
       >

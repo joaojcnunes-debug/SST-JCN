@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -File \"C:\\Users\\PC\\painel-sst\\.claude\\sst-jcn-sync.ps1\"",
+            "shell": "powershell",
+            "timeout": 10,
+            "statusMessage": "Verificando sync SST-JCN..."
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Acao5W2H } from "@/lib/supabase/types";
 
@@ -51,7 +52,7 @@ export function useSaveAcao() {
       qc.invalidateQueries({ queryKey: ["acoes-5w2h"] });
       toast.success("Ação salva");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -70,6 +71,6 @@ export function useDeleteAcao() {
       qc.invalidateQueries({ queryKey: ["acoes-5w2h"] });
       toast.success("Ação removida");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }

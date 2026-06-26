@@ -2,7 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
 import { CATALOGO_NR12 } from "@/lib/apreciacao-maquinas/catalogo-nr12";
@@ -10,6 +12,7 @@ import type {
   ApreciacaoMaquina,
   ApreciacaoMaquinaItem,
   ApreciacaoAcao,
+  Acao5W2H,
   SituacaoApreciacaoItem,
   StatusApreciacao,
   StatusAcaoApreciacao,
@@ -88,6 +91,8 @@ export function useApreciacaoMaquina(id: string | null | undefined) {
 export interface CriarApreciacaoInput {
   id_empresa: string;
   id_maquina: string | null;
+  /** Inspeção de origem da máquina (v66) — rastreia inspeção → apreciação. */
+  id_inspecao?: string | null;
   maquina_descricao: string | null;
   titulo: string | null;
   setor: string | null;
@@ -114,6 +119,7 @@ export function useCriarApreciacaoMaquina() {
         id_apreciacao,
         id_empresa: input.id_empresa,
         id_maquina: input.id_maquina,
+        id_inspecao: input.id_inspecao ?? null,
         maquina_descricao: input.maquina_descricao,
         titulo: input.titulo,
         setor: input.setor,
@@ -127,6 +133,14 @@ export function useCriarApreciacaoMaquina() {
         status: "RASCUNHO",
         finalizado_em: null,
         observacoes_gerais: null,
+        componentes_maquina: null,
+        limite_uso: null,
+        limite_espaco: null,
+        limite_tempo: null,
+        limite_produtividade: null,
+        npe: null,
+        sistemas_atual: null,
+        sistemas_necessario: null,
         usuario_email: user?.email ?? null,
         usuario_nome: user?.nome ?? null,
         created_at: new Date().toISOString(),
@@ -157,6 +171,7 @@ export function useCriarApreciacaoMaquina() {
         id_matriz: null,
         foto_urls: [],
         foto_storage_paths: [],
+        foto_legendas: [],
         created_at: new Date().toISOString(),
         updated_at: null,
       }));
@@ -188,11 +203,21 @@ export function useAtualizarApreciacaoMaquina() {
       responsavel_empresa?: string | null;
       cidade?: string | null;
       data_apreciacao?: string | null;
+      data_validade?: string | null;
       conclusao_tecnica?: string | null;
       recomendacoes?: string | null;
       risco_residual?: RiscoResidual | null;
       observacoes_gerais?: string | null;
       status?: StatusApreciacao;
+      // Identificação dos componentes / limites / sistemas (NR-12 HRN)
+      componentes_maquina?: string[] | null;
+      limite_uso?: string | null;
+      limite_espaco?: string | null;
+      limite_tempo?: string | null;
+      limite_produtividade?: string | null;
+      npe?: string | null;
+      sistemas_atual?: string[] | null;
+      sistemas_necessario?: string[] | null;
     }) => {
       const supabase = createSupabaseBrowserClient();
       const patch: Partial<ApreciacaoMaquina> = {
@@ -210,6 +235,8 @@ export function useAtualizarApreciacaoMaquina() {
       if (params.cidade !== undefined) patch.cidade = params.cidade;
       if (params.data_apreciacao !== undefined)
         patch.data_apreciacao = params.data_apreciacao;
+      if (params.data_validade !== undefined)
+        patch.data_validade = params.data_validade || null;
       if (params.conclusao_tecnica !== undefined)
         patch.conclusao_tecnica = params.conclusao_tecnica;
       if (params.recomendacoes !== undefined)
@@ -218,6 +245,14 @@ export function useAtualizarApreciacaoMaquina() {
         patch.risco_residual = params.risco_residual;
       if (params.observacoes_gerais !== undefined)
         patch.observacoes_gerais = params.observacoes_gerais;
+      if (params.componentes_maquina !== undefined) patch.componentes_maquina = params.componentes_maquina;
+      if (params.limite_uso !== undefined) patch.limite_uso = params.limite_uso;
+      if (params.limite_espaco !== undefined) patch.limite_espaco = params.limite_espaco;
+      if (params.limite_tempo !== undefined) patch.limite_tempo = params.limite_tempo;
+      if (params.limite_produtividade !== undefined) patch.limite_produtividade = params.limite_produtividade;
+      if (params.npe !== undefined) patch.npe = params.npe;
+      if (params.sistemas_atual !== undefined) patch.sistemas_atual = params.sistemas_atual;
+      if (params.sistemas_necessario !== undefined) patch.sistemas_necessario = params.sistemas_necessario;
       if (params.status !== undefined) {
         patch.status = params.status;
         if (params.status === "FINALIZADO") {
@@ -236,7 +271,7 @@ export function useAtualizarApreciacaoMaquina() {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -244,23 +279,14 @@ export function useExcluirApreciacaoMaquina() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id_apreciacao: string) => {
-      const supabase = createSupabaseBrowserClient();
-      // Best-effort: limpa fotos de TODOS os itens antes do delete em cascata
-      const { data: itens } = await supabase
-        .from("apreciacoes_maquinas_itens")
-        .select("foto_storage_paths")
-        .eq("id_apreciacao", id_apreciacao);
-      const paths = (
-        (itens ?? []) as { foto_storage_paths: string[] }[]
-      ).flatMap((i) => i.foto_storage_paths ?? []);
-      if (paths.length > 0) {
-        await supabase.storage.from("fotos").remove(paths);
-      }
-      const { error } = await supabase
-        .from("apreciacoes_maquinas")
-        .delete()
-        .eq("id_apreciacao", id_apreciacao);
-      if (error) throw error;
+      // Vai para a lixeira (snapshot + auditoria). Fotos mantidas para restore.
+      await excluirComLixeiraPorId({
+        tabela: "apreciacoes_maquinas",
+        chave: "id_apreciacao",
+        id: id_apreciacao,
+        modulo: "apreciacao_maquinas",
+        rotuloCol: "titulo",
+      });
       return id_apreciacao;
     },
     onSuccess: () => {
@@ -313,11 +339,48 @@ export function useAtualizarItemApreciacao() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
 export const MAX_FOTOS_POR_ITEM_APR = 6;
+
+/** Garante que o array de legendas tenha exatamente `tamanho` posições. */
+function padLegendas(legendas: string[] | null | undefined, tamanho: number): string[] {
+  const base = [...(legendas ?? [])].slice(0, tamanho);
+  while (base.length < tamanho) base.push("");
+  return base;
+}
+
+/**
+ * Lê os arrays de foto FRESCOS do banco. As mutações de foto/legenda regravam
+ * o array inteiro — partir do cache do React Query (props) causa lost update
+ * quando duas mutações correm em sequência rápida (blur + blur, blur + X).
+ */
+async function lerFotosItemFresco(
+  supabase: ReturnType<typeof createSupabaseBrowserClient>,
+  id_item: string
+) {
+  const { data, error } = await supabase
+    .from("apreciacoes_maquinas_itens")
+    .select("foto_urls, foto_storage_paths, foto_legendas")
+    .eq("id_item", id_item)
+    .single();
+  if (error) throw error;
+  const row = data as unknown as {
+    foto_urls: string[] | null;
+    foto_storage_paths: string[] | null;
+    foto_legendas: string[] | null;
+  };
+  return {
+    urls: row.foto_urls ?? [],
+    paths: row.foto_storage_paths ?? [],
+    legendas: row.foto_legendas ?? [],
+  };
+}
+
+/** Serializa as mutações de foto/legenda entre si (React Query scope). */
+const SCOPE_FOTOS_APR = { id: "apreciacao-fotos-item" };
 
 export function useUploadFotoItemApreciacao() {
   const qc = useQueryClient();
@@ -328,10 +391,12 @@ export function useUploadFotoItemApreciacao() {
       file: File;
       fotos_urls_atuais: string[];
       fotos_paths_atuais: string[];
+      fotos_legendas_atuais?: string[];
     }) => {
       const supabase = createSupabaseBrowserClient();
 
-      if (params.fotos_paths_atuais.length >= MAX_FOTOS_POR_ITEM_APR) {
+      const atual = await lerFotosItemFresco(supabase, params.id_item);
+      if (atual.paths.length >= MAX_FOTOS_POR_ITEM_APR) {
         throw new Error(
           `Limite de ${MAX_FOTOS_POR_ITEM_APR} fotos por item atingido.`
         );
@@ -351,14 +416,16 @@ export function useUploadFotoItemApreciacao() {
 
       const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
 
-      const novasUrls = [...params.fotos_urls_atuais, pub.publicUrl];
-      const novosPaths = [...params.fotos_paths_atuais, path];
+      const novasUrls = [...atual.urls, pub.publicUrl];
+      const novosPaths = [...atual.paths, path];
+      const novasLegendas = [...padLegendas(atual.legendas, atual.urls.length), ""];
 
       const { error: updateErr } = await supabase
         .from("apreciacoes_maquinas_itens")
         .update({
           foto_urls: novasUrls,
           foto_storage_paths: novosPaths,
+          foto_legendas: novasLegendas,
           updated_at: new Date().toISOString(),
         } as never)
         .eq("id_item", params.id_item);
@@ -366,10 +433,47 @@ export function useUploadFotoItemApreciacao() {
 
       return { foto_url: pub.publicUrl, path };
     },
+    scope: SCOPE_FOTOS_APR,
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
+/** Atualiza a legenda de UMA foto do item (pareada por índice). */
+export function useAtualizarLegendaFotoItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      id_apreciacao: string;
+      id_item: string;
+      indice: number;
+      legenda: string;
+      legendas_atuais: string[];
+      total_fotos: number;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const atual = await lerFotosItemFresco(supabase, params.id_item);
+      // a foto pode ter sido removida entre o blur e a gravação
+      if (params.indice >= atual.urls.length) return params;
+      const legendas = padLegendas(atual.legendas, atual.urls.length);
+      legendas[params.indice] = params.legenda;
+      const { error } = await supabase
+        .from("apreciacoes_maquinas_itens")
+        .update({
+          foto_legendas: legendas,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id_item", params.id_item);
+      if (error) throw error;
+      return params;
+    },
+    scope: SCOPE_FOTOS_APR,
+    onSuccess: (_d, params) => {
+      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -412,6 +516,7 @@ export function useAdicionarItemLivreApreciacao() {
         id_matriz: null,
         foto_urls: [],
         foto_storage_paths: [],
+        foto_legendas: [],
         created_at: new Date().toISOString(),
         updated_at: null,
       };
@@ -424,7 +529,7 @@ export function useAdicionarItemLivreApreciacao() {
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_apreciacao) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -464,18 +569,18 @@ export function useExcluirItemApreciacao() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
 // ============================================================
-// Plano de Ação — STANDALONE da apreciação (não vincula com Painel SST)
+// Plano de Ação — STANDALONE da apreciação (não vincula com SST JCN Consultoria)
 // ============================================================
 
 const KEY_ACOES = (id_apreciacao: string) =>
   ["apreciacao-acoes", id_apreciacao] as const;
 
-/** Mapeia nível de risco do Painel SST → prioridade da ação da apreciação. */
+/** Mapeia nível de risco do SST JCN Consultoria → prioridade da ação da apreciação. */
 function prioridadePorNivel(
   nivel: NivelRisco | null
 ): PrioridadeAcaoApreciacao {
@@ -562,7 +667,7 @@ export function useCriarAcaoApreciacao() {
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: KEY_ACOES(row.id_apreciacao) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -604,7 +709,7 @@ export function useAtualizarAcaoApreciacao() {
     onSuccess: ({ id_apreciacao }) => {
       qc.invalidateQueries({ queryKey: KEY_ACOES(id_apreciacao) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -623,7 +728,7 @@ export function useExcluirAcaoApreciacao() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_ACOES(params.id_apreciacao) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -716,7 +821,7 @@ export function useGerarPlanoApreciacao() {
         queryKey: KEY_ACOES(vars.apreciacao.id_apreciacao),
       });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -786,8 +891,17 @@ export interface AnalisarFotoIAInput {
   textoAtual?: string | null;
 }
 
+/** Achado visual estruturado (possível não conformidade vista na foto). */
+export interface AchadoVisualIA {
+  titulo: string;
+  severidade: "ALTA" | "MEDIA" | "BAIXA" | null;
+  recomendacao: string | null;
+}
+
 export interface AnalisarFotoIAOutput {
   observacao: string;
+  /** Possíveis NCs visíveis nas fotos (edge function v3+; pode vir vazio). */
+  achados?: AchadoVisualIA[];
 }
 
 /**
@@ -824,29 +938,161 @@ export function useRemoverFotoItemApreciacao() {
       foto_storage_path: string;
       fotos_urls_atuais: string[];
       fotos_paths_atuais: string[];
+      fotos_legendas_atuais?: string[];
     }) => {
       const supabase = createSupabaseBrowserClient();
       // Storage: best-effort
       await supabase.storage.from("fotos").remove([params.foto_storage_path]);
 
-      const idx = params.fotos_paths_atuais.indexOf(params.foto_storage_path);
-      const novasUrls = params.fotos_urls_atuais.filter((_, i) => i !== idx);
-      const novosPaths = params.fotos_paths_atuais.filter((_, i) => i !== idx);
+      const atual = await lerFotosItemFresco(supabase, params.id_item);
+      const idx = atual.paths.indexOf(params.foto_storage_path);
+      if (idx < 0) return params; // já removida por outra mutação
+      const novasUrls = atual.urls.filter((_, i) => i !== idx);
+      const novosPaths = atual.paths.filter((_, i) => i !== idx);
+      const novasLegendas = padLegendas(atual.legendas, atual.urls.length).filter(
+        (_, i) => i !== idx
+      );
 
       const { error } = await supabase
         .from("apreciacoes_maquinas_itens")
         .update({
           foto_urls: novasUrls,
           foto_storage_paths: novosPaths,
+          foto_legendas: novasLegendas,
           updated_at: new Date().toISOString(),
         } as never)
         .eq("id_item", params.id_item);
       if (error) throw error;
       return params;
     },
+    scope: SCOPE_FOTOS_APR,
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
+// ============================================================
+// "Enviar para Plano de Ação" (v67) — copia ações do plano de
+// adequação da apreciação pro Plano de Ação central (acoes_5w2h)
+// ============================================================
+
+export interface ResultadoEnvioPlanoAcao {
+  enviadas: number;
+  ignoradas: number;
+}
+
+/**
+ * Copia ações de apreciacao_acoes pra acoes_5w2h, marcando a origem em
+ * id_apreciacao_acao (índice único parcial no banco impede duplicar) e
+ * id_apreciacao_item (v49) quando a ação veio de item NAO_CONFORME.
+ * Ações canceladas não são enviadas.
+ */
+export function useEnviarAcoesParaPlanoAcao() {
+  const qc = useQueryClient();
+  const user = useUserStore((s) => s.user);
+
+  return useMutation({
+    mutationFn: async (params: {
+      apreciacao: ApreciacaoMaquina;
+      acoes: ApreciacaoAcao[];
+    }): Promise<ResultadoEnvioPlanoAcao> => {
+      const supabase = createSupabaseBrowserClient();
+      const { apreciacao } = params;
+      const candidatas = params.acoes.filter((a) => a.status !== "Cancelada");
+      if (candidatas.length === 0) return { enviadas: 0, ignoradas: 0 };
+
+      // Quais já foram enviadas? (dedupe pela origem)
+      const { data: exist, error: exErr } = await supabase
+        .from("acoes_5w2h")
+        .select("id_apreciacao_acao")
+        .in("id_apreciacao_acao", candidatas.map((a) => a.id_acao));
+      if (exErr) throw exErr;
+      const jaEnviadas = new Set(
+        ((exist ?? []) as { id_apreciacao_acao: string | null }[])
+          .map((r) => r.id_apreciacao_acao)
+          .filter(Boolean) as string[]
+      );
+
+      const referencia =
+        apreciacao.titulo ||
+        apreciacao.maquina_descricao ||
+        apreciacao.id_apreciacao;
+
+      const novas: Acao5W2H[] = candidatas
+        .filter((a) => !jaEnviadas.has(a.id_acao))
+        .map((a) => ({
+          id_acao: gerarId("ACA"),
+          id_empresa: apreciacao.id_empresa,
+          id_setor: null,
+          id_risco: null,
+          id_inspecao: apreciacao.id_inspecao ?? null,
+          id_apreciacao_item: a.id_item,
+          id_apreciacao_acao: a.id_acao,
+          what_acao: a.what_acao,
+          why_justificativa: a.why_justificativa,
+          where_local: a.where_local ?? apreciacao.setor,
+          when_prazo: a.when_prazo,
+          who_responsavel: a.who_responsavel,
+          how_metodo: a.how_metodo,
+          how_much_custo: a.how_much_custo,
+          status: a.status,
+          prioridade: a.prioridade,
+          data_conclusao: a.data_conclusao,
+          observacoes: [
+            `Origem: Apreciação de Máquinas NR-12 — ${referencia}`,
+            a.observacoes,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          created_by: user?.email ?? null,
+        }));
+
+      if (novas.length > 0) {
+        const { error } = await supabase
+          .from("acoes_5w2h")
+          .insert(novas as never);
+        if (error) {
+          // unique violation = envio concorrente (duas abas/usuários):
+          // re-consulta o que já entrou e insere só o restante
+          if ((error as { code?: string }).code === "23505") {
+            const { data: ex2 } = await supabase
+              .from("acoes_5w2h")
+              .select("id_apreciacao_acao")
+              .in("id_apreciacao_acao", novas.map((n) => n.id_apreciacao_acao!));
+            const jaForam = new Set(
+              ((ex2 ?? []) as { id_apreciacao_acao: string | null }[])
+                .map((r) => r.id_apreciacao_acao)
+                .filter(Boolean) as string[]
+            );
+            const restantes = novas.filter(
+              (n) => !jaForam.has(n.id_apreciacao_acao!)
+            );
+            if (restantes.length > 0) {
+              const { error: e2 } = await supabase
+                .from("acoes_5w2h")
+                .insert(restantes.map((n) => ({ ...n, id_acao: gerarId("ACA") })) as never);
+              if (e2) throw e2;
+            }
+            return {
+              enviadas: restantes.length,
+              ignoradas: candidatas.length - restantes.length,
+            };
+          }
+          throw error;
+        }
+      }
+
+      return {
+        enviadas: novas.length,
+        ignoradas: candidatas.length - novas.length,
+      };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["acoes-5w2h"] });
+    },
+    onError: (e: Error) =>
+      toast.error(`Erro ao enviar pro Plano de Ação: ${e.message}`),
   });
 }

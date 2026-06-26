@@ -18,9 +18,11 @@ import {
 export default function DrpsGestaoResumoPrint({
   idRelatorio,
   anoMedidas,
+  numero,
 }: {
   idRelatorio: string;
   anoMedidas?: number;
+  numero?: number;
 }) {
   const ano = anoMedidas ?? new Date().getFullYear();
   const { data: planoDB } = useDrpsPlanoMedidas(idRelatorio, ano);
@@ -45,7 +47,7 @@ export default function DrpsGestaoResumoPrint({
           font-size: 16pt;
           font-weight: 700;
           color: #1e4d28;
-          border-bottom: 2px solid #006B54;
+          border-bottom: 2px solid #0ea5e9;
           padding-bottom: 6px;
           margin: 0 0 14pt 0;
           text-transform: uppercase;
@@ -60,7 +62,7 @@ export default function DrpsGestaoResumoPrint({
           text-indent: 1.25cm;
         }
         .drps-gestao-saude {
-          border: 1px solid #006B54;
+          border: 1px solid #0ea5e9;
           background: #f0fdf4;
           padding: 10pt 12pt;
           margin: 0 0 14pt 0;
@@ -77,7 +79,7 @@ export default function DrpsGestaoResumoPrint({
         .drps-gestao-saude-num {
           font-size: 24pt;
           font-weight: 800;
-          color: #006B54;
+          color: #0ea5e9;
           margin: 2pt 0;
         }
         .drps-gestao-bar {
@@ -89,7 +91,7 @@ export default function DrpsGestaoResumoPrint({
         }
         .drps-gestao-bar-fill {
           height: 100%;
-          background: #006B54;
+          background: #0ea5e9;
         }
         .drps-gestao-table {
           width: 100%;
@@ -123,11 +125,11 @@ export default function DrpsGestaoResumoPrint({
         }
         .drps-gestao-pct {
           font-weight: 700;
-          color: #006B54;
+          color: #0ea5e9;
         }
       `}</style>
 
-      <h2>Painel de Gestão — Resumo Executivo</h2>
+      <h2>{numero ? `${numero}. ` : ""}Painel de Gestão — Resumo Executivo</h2>
       <p className="intro">
         Indicadores consolidados das três frentes de gestão do programa de
         riscos psicossociais: Medidas de Controle (cronograma de implementação),

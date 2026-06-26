@@ -2,7 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
 import type {
@@ -19,7 +21,7 @@ import { gerarConclusaoTemplate } from "@/lib/quimicos/gerarTemplate";
  * Fallback de extração de campos via IA — chama a edge function
  * `extrair-campos-fispq` pra preencher lacunas do parser regex local.
  *
- * Uso: quando parser + base Chabra falharam em extrair nome_produto,
+ * Uso: quando parser + base JCN Consultoria falharam em extrair nome_produto,
  * fabricante ou forma_fisica de uma FISPQ, OU quando componentes da
  * Seção 3 ficaram sem nome/concentração. Manda um snippet curto + listas
  * de campos/CAS pendentes; recebe valores extraídos. 0-1 chamada por
@@ -142,7 +144,7 @@ export interface GerarAnaliseInput {
 
 /**
  * Avalia se TODOS os componentes submetidos estão catalogados na base
- * Chabra. Quando sim, podemos pular a IA e gerar a conclusão via
+ * JCN Consultoria. Quando sim, podemos pular a IA e gerar a conclusão via
  * template client-side (campos regulatórios da base + prosa templatizada
  * por forma física/flags).
  */
@@ -280,17 +282,42 @@ export function useGerarAnaliseQuimico() {
   });
 }
 
+/** Atualiza metadados editáveis da análise (hoje só a validade do documento). */
+export function useAtualizarAnaliseQuimico() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { id_analise: string; data_validade?: string | null }) => {
+      const supabase = createSupabaseBrowserClient();
+      const patch: Partial<AnaliseQuimico> = { updated_at: new Date().toISOString() };
+      if (params.data_validade !== undefined)
+        patch.data_validade = params.data_validade || null;
+      const { error } = await supabase
+        .from("analises_quimicos")
+        .update(patch as never)
+        .eq("id_analise", params.id_analise);
+      if (error) throw error;
+      return params;
+    },
+    onSuccess: (params) => {
+      qc.invalidateQueries({ queryKey: ["analise-quimico", params.id_analise] });
+      qc.invalidateQueries({ queryKey: ["analises-quimicos"] });
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
 export function useExcluirAnaliseQuimico() {
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn: async (id_analise: string) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("analises_quimicos")
-        .delete()
-        .eq("id_analise", id_analise);
-      if (error) throw error;
+      await excluirComLixeiraPorId({
+        tabela: "analises_quimicos",
+        chave: "id_analise",
+        id: id_analise,
+        modulo: "analise_quimicos",
+        rotuloCol: "titulo",
+      });
       return id_analise;
     },
     onSuccess: () => {

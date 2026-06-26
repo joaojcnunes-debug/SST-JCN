@@ -44,3 +44,8 @@ next-env.d.ts
 /electron-dist/
 /dist/
 electron/assets/*.ico
+
+.vercel
+electron-release.log
+release-*.log
+*.log

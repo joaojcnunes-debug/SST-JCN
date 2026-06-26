@@ -12,6 +12,8 @@ export interface DrpsRelatorio {
   revisao: number;
   status: StatusRelatorio;
   data_elaboracao: string | null;
+  /** Validade do documento (informada pelo usuário) — alerta de vencimento. */
+  data_validade?: string | null;
   responsavel_tecnico: string | null;
   crp: string | null;
   funcoes: string | null;
@@ -22,7 +24,7 @@ export interface DrpsRelatorio {
   medidas_existentes: string | null;
   /** Mapa setor -> texto de agravos (bullets) aplicaveis ao setor. */
   agravos_por_setor: Record<string, string> | null;
-  /** Mapa setor -> texto de medidas de controle existentes no setor. */
+  /** Mapa setor -> texto de medidas de controle recomendadas no setor. */
   medidas_por_setor: Record<string, string> | null;
   /** Mapa setor -> texto de conclusao manuscrita pelo psicologo. */
   conclusoes_por_setor: Record<string, string> | null;

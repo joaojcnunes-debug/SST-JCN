@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import StorageImg from "@/components/ui/StorageImg";
 import { detectRegistroTipo } from "@/lib/registro-profissional";
 import Badge from "@/components/ui/Badge";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
@@ -24,6 +25,7 @@ import Pagination from "@/components/ui/Pagination";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
+import { useUnidades } from "@/lib/hooks/useUnidades";
 import { useCurrentUser } from "@/lib/hooks/useUsuario";
 import { usePagination } from "@/lib/hooks/usePagination";
 import { cn, gerarId } from "@/lib/utils";
@@ -34,7 +36,7 @@ import type {
 } from "@/lib/supabase/types";
 import { ROTULO_MODULO, TODOS_MODULOS } from "@/lib/supabase/types";
 
-const PERFIS: PerfilUsuario[] = ["Admin", "Tecnico", "Visualizador"];
+const PERFIS: PerfilUsuario[] = ["Admin", "Tecnico", "Visualizador", "Cliente"];
 
 /**
  * Defaults granulares por perfil (V45+). Admin sempre tudo; Técnico cria
@@ -135,7 +137,7 @@ export default function UsuariosPage() {
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div className="reveal-up overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {isLoading ? (
           <div className="p-4">
             <LoadingSkeleton rows={5} />
@@ -294,6 +296,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
   const qc = useQueryClient();
   const isEdit = !!usuario;
   const { data: empresas = [] } = useEmpresas();
+  const { data: unidades = [] } = useUnidades();
 
   const [form, setForm] = useState({
     nome: "",
@@ -303,6 +306,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     perfil: "Tecnico" as PerfilUsuario,
     ativo_sistema: true,
     empresas_vinculadas: [] as string[],
+    unidades: [] as string[],
     modulos_permitidos: [...TODOS_MODULOS] as ModuloPermitido[],
     // V45: permissões granulares — Admin contorna estes flags, mas a UI
     // mantém eles marcados pra clareza.
@@ -314,12 +318,52 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     mostrar_assinatura_imagem: true,
     tipo_certificado: null as "A1" | "A3" | null,
     certificado_pfx_path: null as string | null,
+    certificado_validade: null as string | null,
+    certificado_titular: null as string | null,
     crp: null as string | null,
     crm: null as string | null,
     registro_mte: null as string | null,
   });
   const [uploadingAssinatura, setUploadingAssinatura] = useState(false);
   const [uploadingPfx, setUploadingPfx] = useState(false);
+  const [senhaVerif, setSenhaVerif] = useState("");
+  const [verificandoCert, setVerificandoCert] = useState(false);
+
+  /** Verifica o .pfx no servidor com a senha e atualiza a validade exibida. */
+  async function verificarValidade() {
+    if (!senhaVerif) {
+      toast.error("Informe a senha do certificado para verificar.");
+      return;
+    }
+    setVerificandoCert(true);
+    try {
+      const res = await fetch("/api/cert/validar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password: senhaVerif,
+          signatoryEmail: usuario?.email ?? null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+      setForm((f) => ({
+        ...f,
+        certificado_validade: data.validade ?? null,
+        certificado_titular: data.titular ?? f.certificado_titular,
+      }));
+      setSenhaVerif("");
+      toast.success(
+        data.vencido
+          ? "Certificado VENCIDO — veja a data."
+          : "Certificado válido — validade atualizada."
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao verificar certificado");
+    } finally {
+      setVerificandoCert(false);
+    }
+  }
 
   useEffect(() => {
     if (open) {
@@ -332,6 +376,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         perfil: perfilDoUser,
         ativo_sistema: usuario?.ativo_sistema ?? true,
         empresas_vinculadas: usuario?.empresas_vinculadas ?? [],
+        unidades: usuario?.unidades ?? [],
         modulos_permitidos:
           usuario?.modulos_permitidos ?? [...TODOS_MODULOS],
         // Se o usuário já existe, respeita o que está no banco.
@@ -346,12 +391,19 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         mostrar_assinatura_imagem: usuario?.mostrar_assinatura_imagem ?? true,
         tipo_certificado: usuario?.tipo_certificado ?? null,
         certificado_pfx_path: usuario?.certificado_pfx_path ?? null,
+        certificado_validade: usuario?.certificado_validade ?? null,
+        certificado_titular: usuario?.certificado_titular ?? null,
         crp: usuario?.crp ?? null,
         crm: usuario?.crm ?? null,
         registro_mte: usuario?.registro_mte ?? null,
       });
     }
   }, [open, usuario]);
+
+  const [buscaEmpresa, setBuscaEmpresa] = useState("");
+  // Limpa busca ao abrir/fechar modal
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setBuscaEmpresa(""); }, [open]);
 
   // Quando o admin troca o perfil, reaplica os defaults granulares (só se
   // for criação — em edição, mantém o que o admin já configurou pra não
@@ -417,7 +469,10 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             perfil: form.perfil,
             ativo_sistema: form.ativo_sistema,
             empresas_vinculadas:
-              form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
+              form.perfil === "Tecnico" || form.perfil === "Cliente"
+                ? form.empresas_vinculadas
+                : [],
+            unidades: form.unidades,
             modulos_permitidos: form.modulos_permitidos,
             pode_criar: form.pode_criar,
             pode_editar: form.pode_editar,
@@ -453,7 +508,10 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             perfil: form.perfil,
             ativo_sistema: form.ativo_sistema,
             empresas_vinculadas:
-              form.perfil === "Tecnico" ? form.empresas_vinculadas : [],
+              form.perfil === "Tecnico" || form.perfil === "Cliente"
+                ? form.empresas_vinculadas
+                : [],
+            unidades: form.unidades,
             modulos_permitidos: form.modulos_permitidos,
             pode_criar: form.pode_criar,
             pode_editar: form.pode_editar,
@@ -560,6 +618,13 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
       toast.error("Nome e e-mail são obrigatórios");
       return;
     }
+    if (
+      (form.perfil === "Tecnico" || form.perfil === "Visualizador") &&
+      form.unidades.length === 0
+    ) {
+      toast.error("Selecione ao menos uma unidade para Técnico/Visualizador");
+      return;
+    }
     mutation.mutate();
   }
 
@@ -569,6 +634,15 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
       empresas_vinculadas: f.empresas_vinculadas.includes(id)
         ? f.empresas_vinculadas.filter((x) => x !== id)
         : [...f.empresas_vinculadas, id],
+    }));
+  }
+
+  function toggleUnidade(id: string) {
+    setForm((f) => ({
+      ...f,
+      unidades: f.unidades.includes(id)
+        ? f.unidades.filter((x) => x !== id)
+        : [...f.unidades, id],
     }));
   }
 
@@ -688,11 +762,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           </Field>
         </div>
 
-        {/* Permissões granulares (V45+). Admin tem tudo por padrão (e
-            contorna esses flags no código) — mas o checkbox aparece pra
-            clareza visual. Visualizador começa sem nada; admin pode
-            habilitar individualmente. */}
-        <Field label="Permissões">
+        {/* Permissões granulares (V45+). Oculto para perfil Cliente. */}
+        {form.perfil !== "Cliente" && <Field label="Permissões">
           <p className="mt-0.5 text-[11px] text-gray-500">
             O perfil define defaults. Admin contorna estes flags. Visualizador
             só pode criar/editar/excluir o que estiver marcado aqui.
@@ -741,30 +812,95 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               </span>
             </label>
           </div>
-        </Field>
+        </Field>}
 
-        {form.perfil === "Tecnico" && (
+        {(form.perfil === "Tecnico" || form.perfil === "Cliente") && (
           <Field
-            label={`Empresas vinculadas (vazio = todas) — ${form.empresas_vinculadas.length} selecionadas`}
+            label={
+              form.perfil === "Cliente"
+                ? `Empresa do cliente — ${form.empresas_vinculadas.length === 0 ? "nenhuma selecionada" : form.empresas_vinculadas[0]}`
+                : `Empresas vinculadas (vazio = todas) — ${form.empresas_vinculadas.length} selecionadas`
+            }
           >
+            <input
+              type="text"
+              value={buscaEmpresa}
+              onChange={(e) => setBuscaEmpresa(e.target.value)}
+              placeholder="Buscar empresa…"
+              className="mb-2 w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-verde-primary/40"
+            />
             <div className="max-h-48 overflow-auto rounded-md border border-gray-200 bg-white p-2">
               {empresas.length === 0 ? (
                 <p className="p-2 text-xs text-gray-500">
                   Nenhuma empresa cadastrada.
                 </p>
+              ) : (() => {
+                const filtradas = empresas.filter((e) =>
+                  e.nome_empresa.toLowerCase().includes(buscaEmpresa.toLowerCase())
+                );
+                if (filtradas.length === 0)
+                  return <p className="p-2 text-xs text-gray-500">Nenhuma empresa encontrada.</p>;
+                return filtradas.map((e) =>
+                  form.perfil === "Cliente" ? (
+                    <label
+                      key={e.id_empresa}
+                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-gray-50"
+                    >
+                      <input
+                        type="radio"
+                        name="empresa_cliente"
+                        checked={form.empresas_vinculadas[0] === e.id_empresa}
+                        onChange={() => setForm({ ...form, empresas_vinculadas: [e.id_empresa] })}
+                        className="border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                      />
+                      <span className="text-sm text-gray-700">{e.nome_empresa}</span>
+                    </label>
+                  ) : (
+                    <label
+                      key={e.id_empresa}
+                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-gray-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.empresas_vinculadas.includes(e.id_empresa)}
+                        onChange={() => toggleEmpresa(e.id_empresa)}
+                        className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                      />
+                      <span className="text-sm text-gray-700">{e.nome_empresa}</span>
+                    </label>
+                  )
+                );
+              })()}
+            </div>
+          </Field>
+        )}
+
+        {(form.perfil === "Tecnico" || form.perfil === "Visualizador") && (
+          <Field
+            label={`Unidades * — ${form.unidades.length === 0 ? "obrigatório (selecione ao menos uma)" : `${form.unidades.length} selecionada(s)`}`}
+          >
+            <p className="mb-2 text-xs text-gray-500">
+              O usuário vê as empresas destas unidades. Obrigatório para
+              Técnico/Visualizador. Cadastre em Configurações → Unidades.
+            </p>
+            <div className="max-h-48 overflow-auto rounded-md border border-gray-200 bg-white p-2">
+              {unidades.length === 0 ? (
+                <p className="p-2 text-xs text-gray-500">
+                  Nenhuma unidade cadastrada.
+                </p>
               ) : (
-                empresas.map((e) => (
+                unidades.map((u) => (
                   <label
-                    key={e.id_empresa}
+                    key={u.id_unidade}
                     className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-gray-50"
                   >
                     <input
                       type="checkbox"
-                      checked={form.empresas_vinculadas.includes(e.id_empresa)}
-                      onChange={() => toggleEmpresa(e.id_empresa)}
+                      checked={form.unidades.includes(u.id_unidade)}
+                      onChange={() => toggleUnidade(u.id_unidade)}
                       className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
                     />
-                    <span className="text-sm text-gray-700">{e.nome_empresa}</span>
+                    <span className="text-sm text-gray-700">{u.nome}</span>
                   </label>
                 ))
               )}
@@ -772,7 +908,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           </Field>
         )}
 
-        <Field
+        {form.perfil !== "Cliente" && <Field
           label={`Acesso aos módulos — ${form.modulos_permitidos.length} de ${TODOS_MODULOS.length}`}
         >
           <div className="grid gap-2 rounded-md border border-gray-200 bg-white p-3 sm:grid-cols-2">
@@ -798,7 +934,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             permanecem acessíveis a qualquer Admin, mesmo sem acesso a esses
             módulos.
           </p>
-        </Field>
+        </Field>}
 
         {/* ── Assinatura digital ─────────────────────────────────── */}
         <Field label="Assinatura do Técnico">
@@ -810,9 +946,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           {/* Preview */}
           {form.assinatura_url ? (
             <div className="mt-2 flex items-center gap-3 rounded-md border border-gray-200 bg-gray-50 p-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={form.assinatura_url}
+              <StorageImg
+                stored={form.assinatura_url}
                 alt="Assinatura"
                 className="max-h-14 max-w-[180px] object-contain"
               />
@@ -927,18 +1062,68 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                 Arquivo do Certificado A1 (.pfx / .p12)
               </p>
               {form.certificado_pfx_path ? (
-                <div className="flex items-center gap-2 text-sm text-green-700">
-                  <BadgeCheck className="size-4" />
-                  <span>Certificado cadastrado</span>
-                  <button
-                    type="button"
-                    onClick={() => setForm((f) => ({ ...f, certificado_pfx_path: null }))}
-                    className="ml-auto rounded p-0.5 text-gray-400 hover:text-red-500"
-                    title="Remover certificado"
-                  >
-                    <X className="size-4" />
-                  </button>
-                </div>
+                <>
+                  <div className="flex items-center gap-2 text-sm text-green-700">
+                    <BadgeCheck className="size-4" />
+                    <span>Certificado cadastrado</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          certificado_pfx_path: null,
+                          certificado_validade: null,
+                          certificado_titular: null,
+                        }))
+                      }
+                      className="ml-auto rounded p-0.5 text-gray-400 hover:text-red-500"
+                      title="Remover certificado"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  </div>
+                  {(() => {
+                    if (!form.certificado_validade)
+                      return (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Validade ainda não verificada.
+                        </p>
+                      );
+                    const dt = new Date(form.certificado_validade);
+                    const venceu = new Date() > dt;
+                    return (
+                      <p
+                        className={cn(
+                          "mt-1 text-xs font-medium",
+                          venceu ? "text-red-600" : "text-green-700"
+                        )}
+                      >
+                        {venceu ? "⚠ Vencido em " : "Válido até "}
+                        {dt.toLocaleDateString("pt-BR")}
+                        {form.certificado_titular ? ` — ${form.certificado_titular}` : ""}
+                      </p>
+                    );
+                  })()}
+                  {/* Verificar validade (lê o .pfx no servidor com a senha) */}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <input
+                      type="password"
+                      value={senhaVerif}
+                      onChange={(e) => setSenhaVerif(e.target.value)}
+                      placeholder="Senha do certificado"
+                      autoComplete="off"
+                      className="w-44 rounded-md border border-blue-200 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={verificarValidade}
+                      disabled={verificandoCert}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-blue-300 bg-white px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                    >
+                      {verificandoCert ? "Verificando…" : "Verificar validade"}
+                    </button>
+                  </div>
+                </>
               ) : (
                 <p className="text-xs text-blue-600">Nenhum arquivo cadastrado</p>
               )}

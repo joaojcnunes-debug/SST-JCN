@@ -2,7 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import type { Aet13FatorConfig, Aet13FatorPergunta, Aet13FatorSemaforo, AetCargo, AetChecklist, AetChecklistPergunta, AetLaudoFatorPsi, AetLaudoQpsMeta, AetLaudoQpsResposta, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, RespostaChecklist, StatusAET, ZonaPsi } from "@/lib/supabase/types";
 
@@ -170,12 +172,12 @@ export function useExcluirAet() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("aet_relatorios")
-        .delete()
-        .eq("id_relatorio", id);
-      if (error) throw error;
+      await excluirComLixeiraPorId({
+        tabela: "aet_relatorios",
+        chave: "id_relatorio",
+        id,
+        modulo: "aet",
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-relatorios"] });
@@ -227,7 +229,7 @@ export function useAetCriarCapitulo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -249,7 +251,7 @@ export function useAetSalvarCapitulo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -306,7 +308,7 @@ export function useAetExcluirCapitulo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -399,7 +401,7 @@ export function useAetSalvarOwasCategoria() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-config"] }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -416,7 +418,7 @@ export function useAetInicializarOwasConfig() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-config"] }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -461,7 +463,7 @@ export function useAetSalvarOwasSelect() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-selects"] }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -477,7 +479,7 @@ export function useAetInicializarOwasSelects() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-selects"] }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -525,7 +527,7 @@ export function useAetSalvarChecklistPergunta() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-checklist-perguntas"] }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -541,7 +543,7 @@ export function useAetInicializarChecklistPerguntas() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-checklist-perguntas"] }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -557,7 +559,7 @@ export function useAetDeletarChecklistPergunta() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-checklist-perguntas"] }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -592,7 +594,7 @@ export function useAetCriarPerfilOwas() {
       return data as AetPerfilOwas;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-perfis-owas"] }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -608,7 +610,7 @@ export function useAetSalvarPerfilOwas() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-perfis-owas"] }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -624,7 +626,7 @@ export function useAetExcluirPerfilOwas() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-perfis-owas"] }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 

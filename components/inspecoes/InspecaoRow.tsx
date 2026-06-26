@@ -9,10 +9,13 @@ import type { Inspecao } from "@/lib/supabase/types";
 export default function InspecaoRow({
   insp,
   onDelete,
+  onEditResponsavel,
   showEmpresa,
 }: {
   insp: Inspecao;
   onDelete?: (insp: Inspecao) => void;
+  /** Quando fornecido (apenas Admin), mostra o lápis para editar o responsável. */
+  onEditResponsavel?: (insp: Inspecao) => void;
   showEmpresa?: boolean;
 }) {
   return (
@@ -31,7 +34,21 @@ export default function InspecaoRow({
         </span>
       </td>
       <td className="px-4 py-3 text-sm text-gray-600">{fmtData(insp.data_inspecao)}</td>
-      <td className="px-4 py-3 text-sm text-gray-700">{insp.responsavel ?? "—"}</td>
+      <td className="px-4 py-3 text-sm text-gray-700">
+        <span className="inline-flex items-center gap-1.5">
+          {insp.responsavel ?? "—"}
+          {onEditResponsavel && (
+            <button
+              type="button"
+              onClick={() => onEditResponsavel(insp)}
+              className="flex size-6 items-center justify-center rounded-md text-gray-300 transition hover:bg-verde-light hover:text-verde-primary"
+              title="Editar responsável (Admin)"
+            >
+              <Pencil className="size-3" />
+            </button>
+          )}
+        </span>
+      </td>
       <td className="px-4 py-3">
         <StatusBadge status={insp.status} />
       </td>

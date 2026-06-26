@@ -12,11 +12,23 @@ import {
   Printer,
   Save,
   Users,
+  BadgeCheck,
+  Download,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
+import StorageImg from "@/components/ui/StorageImg";
+import { useHtmlImagensAssinadas } from "@/lib/hooks/useSignedUrl";
+import StorageBg from "@/components/ui/StorageBg";
+import BotaoAssinarPdf from "@/components/ui/BotaoAssinarPdf";
+import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
+import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
+import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
+import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
+import { usePdfAssinado } from "@/lib/hooks/usePdfsGerados";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { detectRegistroTipo } from "@/lib/registro-profissional";
 import {
@@ -39,6 +51,8 @@ import {
   SLUG_TO_OWAS_FIELD,
 } from "@/lib/hooks/useAet";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
+import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import { cn } from "@/lib/utils";
 import {
@@ -164,6 +178,7 @@ export default function AetLaudoPage({
 }) {
   const { idRelatorio } = use(params);
   const { data: rel, isLoading } = useAetRelatorio(idRelatorio);
+  const { data: empresaFull } = useEmpresa((rel as { id_empresa?: string })?.id_empresa ?? null);
   const salvar = useSalvarAet();
   const canEdit = useCanEdit();
   const [consideracoes, setConsideracoes] = useState("");
@@ -174,7 +189,10 @@ export default function AetLaudoPage({
   const [enderecoEmpresa, setEnderecoEmpresa] = useState("");
 
 
-  const { data: capitulos = [] } = useAetTextoPadrao();
+  // Lê os capítulos da tabela unificada textos_padrao (mesma que o editor
+  // grava). Antes lia aet_textos_padrao (dedicada) — após a unificação v79 o
+  // editor passou a gravar em textos_padrao, então o laudo tem que ler de lá.
+  const { data: capitulos = [] } = useTextosPadrao("aet");
   const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
   const { data: owasConfig = [] } = useAetOwasConfig();
   const { data: fatoresConfig = [] } = useAet13FatoresConfig();
@@ -195,6 +213,18 @@ export default function AetLaudoPage({
     }
   }, [rel]);
 
+  const { pdfAssinado, recarregar } = usePdfAssinado("aet_relatorios", idRelatorio);
+  const [baixando, setBaixando] = useState(false);
+
+  async function handleBaixarPdf() {
+    if (!pdfAssinado) return;
+    setBaixando(true);
+    try {
+      await baixarPdfAssinado(pdfAssinado.pdf_path, "relatorio-assinado.pdf");
+    } catch { toast.error("Erro ao baixar o PDF."); }
+    finally { setBaixando(false); }
+  }
+
   function handleSaveDados() {
     salvar.mutate(
       {
@@ -209,7 +239,7 @@ export default function AetLaudoPage({
       },
       {
         onSuccess: () => toast.success("Dados salvos"),
-        onError: (e: Error) => toast.error(e.message),
+        onError: (e: Error) => toast.error(mensagemErro(e)),
       }
     );
   }
@@ -250,8 +280,8 @@ export default function AetLaudoPage({
   const temCapitulosFixos = capitulos.some((c) => c.tipo === "fixo");
 
   const capitulosOrdenados = [...capitulos]
-    .filter((c) => c.mostrar !== false)
-    .sort((a, b) => (a.ordem_global ?? a.ordem * 10) - (b.ordem_global ?? b.ordem * 10));
+    .filter((c) => c.ativo !== false)
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 
   // Legado: grupos por posicao_pdf (usado quando não há capítulos fixos no banco)
   const capitulosInicio = capitulos.filter((c) => !c.posicao_pdf || c.posicao_pdf === "inicio");
@@ -425,7 +455,24 @@ export default function AetLaudoPage({
                 : <Clock className="size-3" />}
               {rel.status === "CONCLUIDO" ? "Concluído" : "Rascunho"}
             </span>
+            {pdfAssinado ? (
+              <>
+                <div className="flex items-center gap-1.5 rounded-md border border-white/30 bg-white/15 px-3 py-1.5 text-xs font-medium text-white backdrop-blur">
+                  <BadgeCheck className="size-3.5 shrink-0" />
+                  Assinado em {new Date(pdfAssinado.assinado_em).toLocaleDateString("pt-BR")}
+                </div>
+                <button type="button" onClick={handleBaixarPdf} disabled={baixando}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/80 px-3 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-emerald-500 disabled:opacity-60">
+                  {baixando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                  Baixar PDF Assinado
+                </button>
+                <BotaoAssinarPdf reAssinatura={true} apiPdfUrl={`/api/pdf/aet/${idRelatorio}`} defaultSignatoryName={responsavel || undefined} tabelaNome="aet_relatorios" docId={idRelatorio} onAssinado={recarregar} />
+              </>
+            ) : (
+              <BotaoAssinarPdf apiPdfUrl={`/api/pdf/aet/${idRelatorio}`} defaultSignatoryName={responsavel || undefined} tabelaNome="aet_relatorios" docId={idRelatorio} onAssinado={recarregar} />
+            )}
             <BotaoGerarPdf
+              apiPdfUrl={`/api/pdf/aet/${idRelatorio}`}
               tabelaNome="aet_relatorios"
               docId={idRelatorio}
               label="Gerar Laudo"
@@ -490,6 +537,11 @@ export default function AetLaudoPage({
             </p>
           </div>
         </div>
+      </div>
+
+      {/* ═══ DADOS DA EMPRESA (print:hidden) ═══ */}
+      <div className="print:hidden mb-5">
+        <EmpresaInfoPanel empresa={empresaFull ?? null} className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" />
       </div>
 
       {/* ═══ DADOS DO LAUDO (print:hidden) ═══ */}
@@ -624,10 +676,10 @@ export default function AetLaudoPage({
 
         {/* CAPA */}
         {temCapa && capas.map((cap) => (
-          <div
+          <StorageBg
             key={cap.id_capitulo}
+            stored={cap.bg_imagem_url}
             className="aet-capitulo--capa"
-            style={{ backgroundImage: `url(${cap.bg_imagem_url})` }}
           >
             {(cap.caixas_texto ?? []).map((caixa: CaixaTexto) => (
               <div
@@ -647,13 +699,14 @@ export default function AetLaudoPage({
                 {substituirVariaveisTexto(caixa.conteudo, valoresCapitulos)}
               </div>
             ))}
-          </div>
+          </StorageBg>
         ))}
 
       </div>
 
-      {/* ═══ SUMÁRIO — print only ═══ */}
-      {sumarioItems.length > 0 && (
+      {/* ═══ SUMÁRIO — print only (legado; suprimido quando existe o capítulo
+           do sistema "sumario", que é renderizado em fluxo e reposicionável) ═══ */}
+      {sumarioItems.length > 0 && !capitulos.some((c) => c.slug_fixo === "sumario") && (
         <section className="aet-sumario">
           <style>{`
             .aet-sumario {
@@ -665,7 +718,7 @@ export default function AetLaudoPage({
               font-size: 16pt;
               font-weight: 700;
               color: #1e4d28;
-              border-bottom: 2px solid #006B54;
+              border-bottom: 2px solid #0ea5e9;
               padding-bottom: 6px;
               margin-bottom: 16pt;
               text-transform: uppercase;
@@ -684,7 +737,7 @@ export default function AetLaudoPage({
             .aet-sumario-numero {
               font-weight: 700;
               margin-right: 8pt;
-              color: #006B54;
+              color: #0ea5e9;
               min-width: 24pt;
               display: inline-block;
             }
@@ -725,6 +778,12 @@ export default function AetLaudoPage({
           <span className="text-[10px] text-gray-400">{dataFormatada}</span>
         </div>
 
+        {/* Capítulos de texto padrão — posição início (só no modo legado sem
+            fixos; com fixos, capitulosOrdenados já renderiza tudo) */}
+        {!temCapitulosFixos && (
+          <TextosPadraoPrint modulo="aet" posicao="inicio" valores={valoresCapitulos} />
+        )}
+
         {/* ── RENDERIZAÇÃO PRINCIPAL ────────────────────────────────────────────── */}
         {temCapitulosFixos ? (
           /* Modo v56: ordem global unificada — cada capítulo renderizado por slug */
@@ -750,6 +809,35 @@ export default function AetLaudoPage({
                 ) : null;
 
                 switch (cap.slug_fixo) {
+                  case "identificacao_empresa":
+                    content = (
+                      <div className="mb-6 break-inside-avoid">
+                        <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+                          Identificação da Empresa
+                        </h2>
+                        <EmpresaInfoPanel empresa={empresaFull ?? null} />
+                      </div>
+                    );
+                    break;
+
+                  case "sumario":
+                    content = sumarioItems.length > 0 ? (
+                      <div className="mb-6 break-inside-avoid">
+                        <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+                          Sumário
+                        </h2>
+                        <ol className="space-y-1">
+                          {sumarioItems.map((item, i) => (
+                            <li key={i} className="flex items-baseline gap-2 border-b border-dotted border-gray-300 py-0.5 text-xs text-gray-700">
+                              <span className="min-w-5 font-bold text-emerald-800">{i + 1}.</span>
+                              <span>{item.titulo}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    ) : null;
+                    break;
+
                   case "aet_agentes_ambientais":
                     content = rel.setores.length > 0 ? (
                       <Section num="9" title="Agentes Ambientais para as Áreas Operacionais">
@@ -838,6 +926,7 @@ export default function AetLaudoPage({
                         registroProfissional={registroProfissional}
                         idRelatorio={idRelatorio}
                         dataRelatorio={dataElaboracao ? dataFormatada : undefined}
+                        hideAcoes
                       />
                     );
                     break;
@@ -989,13 +1078,19 @@ export default function AetLaudoPage({
               registroProfissional={registroProfissional}
               idRelatorio={idRelatorio}
               dataRelatorio={dataElaboracao ? dataFormatada : undefined}
+              hideAcoes
             />
           </>
         )}
 
+        {/* Capítulos de texto padrão — posição fim */}
+        {!temCapitulosFixos && (
+          <TextosPadraoPrint modulo="aet" posicao="fim" valores={valoresCapitulos} />
+        )}
+
         {/* Rodapé */}
         <p className="mt-8 text-center text-[9px] text-gray-400">
-          Laudo AET gerado em {new Date().toLocaleDateString("pt-BR")} · JCN Consultoria — Segurança e Saúde do Trabalho · Portaria 3.214/78 — NR-17
+          Laudo AET gerado em {new Date().toLocaleDateString("pt-BR")} · JCN Consultoria Saúde e Segurança do Trabalho · Portaria 3.214/78 — NR-17
         </p>
       </div>
     </div>
@@ -1018,10 +1113,12 @@ function Section({ num, title, children }: { num: string; title: string; childre
 }
 
 function RichBlock({ html }: { html: string }) {
+  // Assina as imagens inline (<img>) gravadas no HTML rich-text (prévia em tela).
+  const assinado = useHtmlImagensAssinadas(html);
   return (
     <div
       className="prose prose-xs max-w-none text-xs leading-relaxed text-gray-700 [&_a]:text-gray-700 [&_a]:no-underline [&_p]:my-1"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: assinado }}
     />
   );
 }
@@ -1030,7 +1127,7 @@ function CapituloLaudo({
   cap,
   valores = {},
 }: {
-  cap: AetTextoPadraoCapitulo;
+  cap: TextoPadraoCapitulo;
   valores?: Record<string, string>;
 }) {
   if (cap.bg_imagem_url) {
@@ -1309,9 +1406,8 @@ function SetorAnaliseBlock({
                       </div>
                       {imageSrc && (
                         <div className="w-32 shrink-0 self-start">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={imageSrc}
+                          <StorageImg
+                            stored={imageSrc}
                             alt={`Referência OWAS: ${cat.titulo}`}
                             className="h-auto w-full rounded border border-gray-200"
                           />
@@ -1423,9 +1519,8 @@ function SetorAnaliseBlock({
                   className="relative w-40 shrink-0 overflow-hidden rounded-md border border-gray-200"
                   style={{ aspectRatio: "16/9" }}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={url}
+                  <StorageImg
+                    stored={url}
                     alt={`Foto ${i + 1}`}
                     className="h-full w-full object-cover"
                   />
@@ -1817,12 +1912,14 @@ function AssinaturaSection({
   registroProfissional,
   idRelatorio,
   dataRelatorio,
+  hideAcoes,
 }: {
   responsavel: string;
   tituloProfissional: string;
   registroProfissional: string;
   idRelatorio: string;
   dataRelatorio?: string;
+  hideAcoes?: boolean;
 }) {
   return (
     <AssinaturaRelatorio
@@ -1831,6 +1928,7 @@ function AssinaturaSection({
       dataRelatorio={dataRelatorio}
       tabelaNome="aet_relatorios"
       docId={idRelatorio}
+      hideAcoes={hideAcoes}
     />
   );
 }

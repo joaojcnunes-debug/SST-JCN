@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { ImagePlus, X } from "lucide-react";
+import { useSignedUrls } from "@/lib/hooks/useSignedUrl";
 
 export type FotoSlot =
   | { type: "existing"; url: string; path: string }
@@ -12,9 +13,11 @@ interface Props {
   onChange: (slots: (FotoSlot | null)[]) => void;
   max?: number;
   disabled?: boolean;
+  /** Bucket das fotos existentes (default "fotos"). */
+  bucket?: string;
 }
 
-export default function FotoSlots({ slots, onChange, max = 4, disabled }: Props) {
+export default function FotoSlots({ slots, onChange, max = 4, disabled, bucket = "fotos" }: Props) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   function onFileChange(idx: number, e: React.ChangeEvent<HTMLInputElement>) {
@@ -36,16 +39,22 @@ export default function FotoSlots({ slots, onChange, max = 4, disabled }: Props)
 
   const allSlots = Array.from({ length: max }, (_, i) => slots[i] ?? null);
 
+  // Resolve fotos existentes via URL assinada (a partir do path; fallback p/ a
+  // URL armazenada enquanto carrega — e porque o bucket ainda é público).
+  const existentes = allSlots.map((s) => (s?.type === "existing" ? s.path || s.url : null));
+  const assinadas = useSignedUrls(existentes, bucket);
+
   return (
     <div className="flex flex-wrap gap-2">
       {allSlots.map((slot, i) => {
+        const urlExistente = slot?.type === "existing" ? (assinadas[i]?.data ?? slot.url) : null;
         const url =
           slot?.type === "existing"
-            ? slot.url
+            ? urlExistente
             : slot?.type === "new"
             ? slot.preview
             : null;
-        const href = slot?.type === "existing" ? slot.url : null;
+        const href = slot?.type === "existing" ? urlExistente : null;
 
         return (
           <div key={i} className="relative shrink-0">

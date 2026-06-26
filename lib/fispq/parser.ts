@@ -14,7 +14,7 @@
 /**
  * Origem de um campo extraído da FISPQ — usado pra UI mostrar pro
  * usuário o nível de confiança por campo. Marcado em cascata:
- *   parser (regex local) → base (catálogo Chabra) → ia (fallback IA)
+ *   parser (regex local) → base (catálogo JCN Consultoria) → ia (fallback IA)
  *   → manual (usuário editou).
  */
 export type FonteCampo = "base" | "parser" | "ia" | "manual";

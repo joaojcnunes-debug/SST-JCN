@@ -46,12 +46,12 @@ interface ContextoIA {
 
 const SYSTEM_PROMPT = `Você é um(a) psicólogo(a) do trabalho brasileiro(a), especialista em Saúde Mental Ocupacional e Riscos Psicossociais, com domínio da NR-01 (item 1.5 — GRO/PGR), NR-17 (ergonomia organizacional) e da metodologia do Diagnóstico de Riscos Psicossociais (DRPS).
 
-Sua tarefa: redigir a CONCLUSÃO TÉCNICA do DRPS para um setor específico (ou consolidada para todos os setores), com base nos tópicos psicossociais avaliados (gravidade × probabilidade → matriz de risco), nos agravos potenciais à saúde mental identificados e nas medidas de controle existentes.
+Sua tarefa: redigir a CONCLUSÃO TÉCNICA do DRPS para um setor específico (ou consolidada para todos os setores), com base nos tópicos psicossociais avaliados (gravidade × probabilidade → matriz de risco), nos agravos potenciais à saúde mental identificados e nas medidas de controle recomendadas (medidas que a empresa deve adotar).
 
 Responda APENAS com um JSON válido (sem markdown, sem cercas \`\`\`, sem texto fora do JSON) no formato:
 
 {
-  "conclusao": "Texto corrido em português brasileiro, 2 a 4 parágrafos, tom técnico-profissional, redação na 3ª pessoa, citando os tópicos de maior matriz de risco, articulando agravos potenciais com medidas existentes e indicando a necessidade (ou suficiência) de medidas de controle adicionais. Não usar listas com bullets — somente parágrafos. Quando pertinente, citar NR-01 e NR-17."
+  "conclusao": "Texto corrido em português brasileiro, 2 a 4 parágrafos, tom técnico-profissional, redação na 3ª pessoa, citando os tópicos de maior matriz de risco, articulando agravos potenciais com as medidas de controle recomendadas e indicando a necessidade (ou suficiência) de medidas adicionais. Não usar listas com bullets — somente parágrafos. Quando pertinente, citar NR-01 e NR-17."
 }
 
 Diretrizes:
@@ -60,10 +60,48 @@ Diretrizes:
 - Mencionar o nome do setor explicitamente
 - Destacar tópicos com matriz "Crítico" ou "Alto" antes dos "Médio"/"Baixo"
 - Se houver agravos listados, contextualizar como riscos potenciais (não como diagnósticos)
-- Se houver medidas existentes, reconhecê-las e apontar lacunas
+- Se houver medidas de controle recomendadas, articulá-las como ações que a empresa deve adotar para mitigar os riscos identificados
 - Não inventar dados (nomes, datas, números) que não estejam no contexto
 - Não recomendar ações específicas (isso vai em outro bloco) — foque em diagnóstico/parecer
 - Se o usuário enviou "textoAtual" não vazio, REFINE preservando o sentido — não contradiga`;
+
+/** Coage agravos/medidas para texto: aceita string, array ou mapa por setor
+ *  (Record<setor, texto>) — a Conclusão Geral envia o mapa agravos_por_setor. */
+function asText(v: unknown): string {
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  if (Array.isArray(v)) return v.filter(Boolean).map(String).join("\n");
+  if (typeof v === "object") {
+    return Object.values(v as Record<string, unknown>)
+      .filter(Boolean)
+      .map(String)
+      .join("\n");
+  }
+  return String(v);
+}
+
+// Conclusão POR SETOR: texto corrido (conclusão técnica em parágrafos).
+const SYSTEM_PROMPT_SETOR = `Você é um(a) psicólogo(a) do trabalho brasileiro(a), especialista em Saúde Mental Ocupacional e Riscos Psicossociais, com domínio da NR-01 (item 1.5 — GRO/PGR) e da NR-17 (ergonomia organizacional).
+
+Sua tarefa: redigir a CONCLUSÃO TÉCNICA do setor em TEXTO CORRIDO (parágrafos), com base na Classificação de Risco Psicossocial — Fatores de Risco identificados, suas Fontes Geradoras, Gravidade, Probabilidade e respectiva Matriz de Risco.
+
+Responda APENAS com JSON válido (sem markdown, sem cercas \`\`\`, sem texto fora do JSON):
+{
+  "conclusao": "Texto corrido em parágrafos (HTML simples com <p>), SEM tabelas e SEM listas com bullets."
+}
+
+A conclusão deve, de forma fluida e articulada (NÃO em tabela, NÃO em tópicos):
+- Abrir com um panorama do risco psicossocial do setor, destacando os fatores de maior criticidade primeiro (Crítico > Alto > Médio > Baixo) e citando a respectiva matriz.
+- Para os fatores relevantes, relacionar os POSSÍVEIS AGRAVOS à saúde mental como riscos potenciais (ex.: ansiedade, estresse ocupacional, síndrome de burnout, depressão, distúrbios do sono, transtornos psicossomáticos, queda de desempenho cognitivo), proporcionais ao nível da matriz — sem diagnosticar pessoas.
+- Indicar as MEDIDAS DE CONTROLE RECOMENDADAS que a empresa deve adotar, atacando diretamente as Fontes Geradoras descritas e seguindo a hierarquia de controle (eliminação > controles organizacionais > medidas administrativas/individuais), com mais ênfase/urgência nos fatores Crítico/Alto.
+- Fechar com o encaminhamento técnico (necessidade ou suficiência de medidas adicionais), citando NR-01 e NR-17 quando pertinente.
+
+Regras:
+- 2 a 5 parágrafos, entre 140 e 360 palavras, em português do Brasil formal e técnico.
+- Mencionar explicitamente o nome do setor.
+- NÃO inventar fatores fora dos listados na classificação fornecida.
+- NÃO usar tabelas, NÃO usar listas com bullets — somente parágrafos <p>.
+- Se houver "textoAtual" não vazio, REFINE preservando o sentido — não contradiga.`;
 
 function buildUserPrompt(ctx: ContextoIA): string {
   const linhas: string[] = ["Contexto do Diagnóstico de Riscos Psicossociais:", ""];
@@ -96,16 +134,18 @@ function buildUserPrompt(ctx: ContextoIA): string {
     if (t.fonteGeradora) linhas.push(`    Fonte geradora: ${t.fonteGeradora}`);
   }
 
-  if (ctx.agravos && ctx.agravos.trim().length > 0) {
+  const agravosTxt = asText(ctx.agravos);
+  if (agravosTxt.trim().length > 0) {
     linhas.push("");
-    linhas.push("Possíveis agravos à saúde mental (apontados para o setor):");
-    linhas.push(ctx.agravos);
+    linhas.push("Possíveis agravos à saúde mental (já apontados pelo psicólogo, use como apoio):");
+    linhas.push(agravosTxt);
   }
 
-  if (ctx.medidasExistentes && ctx.medidasExistentes.trim().length > 0) {
+  const medidasTxt = asText(ctx.medidasExistentes);
+  if (medidasTxt.trim().length > 0) {
     linhas.push("");
-    linhas.push("Medidas de controle existentes na empresa/setor:");
-    linhas.push(ctx.medidasExistentes);
+    linhas.push("Medidas de controle já indicadas (use como apoio):");
+    linhas.push(medidasTxt);
   }
 
   if (ctx.textoAtual && ctx.textoAtual.trim().length > 0) {
@@ -115,7 +155,11 @@ function buildUserPrompt(ctx: ContextoIA): string {
   }
 
   linhas.push("");
-  linhas.push("Gere a conclusão técnica em JSON conforme o formato definido.");
+  linhas.push(
+    ctx.ehConsolidado
+      ? "Gere a conclusão técnica consolidada (texto corrido) em JSON conforme o formato definido."
+      : "Gere a conclusão técnica do setor (texto corrido, em parágrafos) em JSON conforme o formato definido."
+  );
   return linhas.join("\n");
 }
 
@@ -144,6 +188,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Conclusão por setor → tabela (Fator × Agravos × Medidas).
+    // Conclusão geral (consolidada) → texto corrido em parágrafos.
+    const systemPrompt = body.ehConsolidado ? SYSTEM_PROMPT : SYSTEM_PROMPT_SETOR;
+    const maxTokens = 1200;
+
     const groqRes = await fetch(GROQ_URL, {
       method: "POST",
       headers: {
@@ -153,12 +202,12 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         model: MODEL,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           { role: "user", content: buildUserPrompt(body) },
         ],
         response_format: { type: "json_object" },
         temperature: 0.5,
-        max_tokens: 900,
+        max_tokens: maxTokens,
       }),
     });
 

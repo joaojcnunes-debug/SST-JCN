@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
 export default function Home() {
-  redirect("/inicio");
+  // Landing pós-login: a "Visão geral" por unidade. Os módulos continuam em /inicio.
+  redirect("/visao-geral");
 }

@@ -34,6 +34,14 @@ export interface AtividadeItem {
   data: string; // ISO
   /** Texto auxiliar (ex: nome da empresa, NR, etc.) */
   contexto?: string;
+  /** Empresa do registro (id) — usado para enriquecer com nome/técnico vinculado. */
+  id_empresa?: string | null;
+  /** Responsável gravado no registro (quem está trabalhando no documento). */
+  responsavel?: string | null;
+  /** Nome da empresa (preenchido pelo consumidor via id_empresa). */
+  empresaNome?: string | null;
+  /** Técnico(s) vinculado(s) à empresa (empresas_vinculadas) — preenchido pelo consumidor. */
+  tecnicoVinculado?: string | null;
 }
 
 export interface HomeStatsData {
@@ -96,7 +104,7 @@ function calcStats(
 // ===================================================
 
 /**
- * Agrega estatísticas dos 5 módulos com listagem (Painel SST,
+ * Agrega estatísticas dos 5 módulos com listagem (SST JCN Consultoria,
  * Psicossocial, Conformidade, RNC, Análise Químicos) + lista mesclada
  * dos últimos 8 registros pra exibir como "Atividade Recente" na home.
  *
@@ -112,14 +120,14 @@ export function useHomeStats(): HomeStatsData {
       ? user.empresas_vinculadas
       : null;
 
-  // === Inspeções (Painel SST) ===
+  // === Inspeções (SST JCN Consultoria) ===
   const inspecoesQ = useQuery({
     queryKey: ["home-stats-inspecoes", empresasVinculadas],
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
         .from("inspecoes")
-        .select("id_inspecao, id_empresa, status, created_at, updated_at, revisao")
+        .select("id_inspecao, id_empresa, status, created_at, updated_at, revisao, responsavel")
         .neq("status", "DELETADA")
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(200);
@@ -139,7 +147,7 @@ export function useHomeStats(): HomeStatsData {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
         .from("relatorios_conformidade")
-        .select("id_relatorio, id_empresa, status, nr_codigo, nr_titulo, created_at, updated_at")
+        .select("id_relatorio, id_empresa, status, nr_codigo, nr_titulo, created_at, updated_at, responsavel")
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(200);
       if (empresasVinculadas) {
@@ -158,7 +166,7 @@ export function useHomeStats(): HomeStatsData {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
         .from("relatorios_nao_conformidade")
-        .select("id_relatorio, id_empresa, status, titulo, created_at, updated_at")
+        .select("id_relatorio, id_empresa, status, titulo, created_at, updated_at, responsavel")
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(200);
       if (empresasVinculadas) {
@@ -199,7 +207,7 @@ export function useHomeStats(): HomeStatsData {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
         .from("drps_relatorios")
-        .select("id_relatorio, id_empresa, status, revisao, created_at, updated_at")
+        .select("id_relatorio, id_empresa, status, revisao, created_at, updated_at, responsavel_tecnico")
         .neq("status", "DELETADO")
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(200);
@@ -223,7 +231,7 @@ export function useHomeStats(): HomeStatsData {
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(200);
       if (empresasVinculadas) {
-        // Inclui máquinas da empresa OU patrimônio Chabra (id_empresa null)
+        // Inclui máquinas da empresa OU patrimônio JCN Consultoria (id_empresa null)
         q = q.or(
           `id_empresa.in.(${empresasVinculadas.join(",")}),id_empresa.is.null`
         );
@@ -359,10 +367,12 @@ export function useHomeStats(): HomeStatsData {
   for (const r of inspecoesQ.data ?? []) {
     atividade.push({
       modulo: "painel",
-      titulo: `Inspeção ${r.id_inspecao}${r.revisao ? ` (rev. ${r.revisao})` : ""}`,
+      titulo: `Inspeção${r.revisao ? ` (rev. ${r.revisao})` : ""}`,
       href: `/inspecoes/${r.id_inspecao}`,
       status: r.status,
       data: dataRow(r),
+      id_empresa: r.id_empresa,
+      responsavel: r.responsavel,
     });
   }
   for (const r of conformidadeQ.data ?? []) {
@@ -375,15 +385,19 @@ export function useHomeStats(): HomeStatsData {
       status: r.status,
       data: dataRow(r),
       contexto: r.nr_codigo ?? undefined,
+      id_empresa: r.id_empresa,
+      responsavel: r.responsavel,
     });
   }
   for (const r of ncQ.data ?? []) {
     atividade.push({
       modulo: "nao_conformidade",
-      titulo: r.titulo || `RNC ${r.id_relatorio}`,
+      titulo: r.titulo || "Não conformidade",
       href: `/relatorio-nao-conformidade/${r.id_relatorio}`,
       status: r.status,
       data: dataRow(r),
+      id_empresa: r.id_empresa,
+      responsavel: r.responsavel,
     });
   }
   for (const r of quimicosQ.data ?? []) {
@@ -392,6 +406,7 @@ export function useHomeStats(): HomeStatsData {
       titulo: r.titulo || r.nome_quimico || "Análise química",
       href: `/analise-quimicos/${r.id_analise}`,
       data: dataRow(r),
+      id_empresa: r.id_empresa,
     });
   }
   for (const r of psicoQ.data ?? []) {
@@ -401,6 +416,8 @@ export function useHomeStats(): HomeStatsData {
       href: `/psicossocial/${r.id_relatorio}/analise`,
       status: r.status,
       data: dataRow(r),
+      id_empresa: r.id_empresa,
+      responsavel: r.responsavel_tecnico,
     });
   }
   for (const r of maquinasQ.data ?? []) {
@@ -410,18 +427,17 @@ export function useHomeStats(): HomeStatsData {
       href: `/inventario-maquinas/${r.id_maquina}`,
       status: r.status,
       data: dataRow(r),
+      id_empresa: r.id_empresa,
     });
   }
   for (const r of apreciacoesQ.data ?? []) {
     atividade.push({
       modulo: "apreciacao_maquinas",
-      titulo:
-        r.titulo ||
-        r.maquina_descricao ||
-        `Apreciação ${r.id_apreciacao.slice(-6)}`,
+      titulo: r.titulo || r.maquina_descricao || "Apreciação NR-12",
       href: `/apreciacao-maquinas/${r.id_apreciacao}`,
       status: r.status,
       data: dataRow(r),
+      id_empresa: r.id_empresa,
     });
   }
 

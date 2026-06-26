@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { useAetRelatorio, useSalvarAet } from "@/lib/hooks/useAet";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -107,7 +108,7 @@ export default function AetDadosPage({
       { id: idRelatorio, patch: { textos_secoes } },
       {
         onSuccess: () => toast.success("Texto salvo"),
-        onError: (e: Error) => toast.error(e.message),
+        onError: (e: Error) => toast.error(mensagemErro(e)),
       }
     );
   }
@@ -117,13 +118,15 @@ export default function AetDadosPage({
     titulo_profissional: string;
     registro_profissional: string;
     data_elaboracao: string;
+    data_validade: string;
     status: "RASCUNHO" | "CONCLUIDO";
   }) {
     salvar.mutate(
-      { id: idRelatorio, patch },
+      // data_validade é coluna `date`: "" → null.
+      { id: idRelatorio, patch: { ...patch, data_validade: patch.data_validade || null } },
       {
         onSuccess: () => toast.success("Dados salvos"),
-        onError: (e: Error) => toast.error(e.message),
+        onError: (e: Error) => toast.error(mensagemErro(e)),
       }
     );
   }
@@ -174,6 +177,7 @@ function CaracterizacaoCard({
     titulo_profissional: string;
     registro_profissional: string;
     data_elaboracao: string;
+    data_validade: string;
     status: "RASCUNHO" | "CONCLUIDO";
   }) => void;
 }) {
@@ -182,6 +186,7 @@ function CaracterizacaoCard({
     titulo_profissional: rel?.titulo_profissional ?? "",
     registro_profissional: rel?.registro_profissional ?? "",
     data_elaboracao: rel?.data_elaboracao ?? "",
+    data_validade: rel?.data_validade ?? "",
     status: (rel?.status ?? "RASCUNHO") as "RASCUNHO" | "CONCLUIDO",
   });
   const [dirty, setDirty] = useState(false);
@@ -193,6 +198,7 @@ function CaracterizacaoCard({
       titulo_profissional: rel.titulo_profissional,
       registro_profissional: rel.registro_profissional,
       data_elaboracao: rel.data_elaboracao ?? "",
+      data_validade: rel.data_validade ?? "",
       status: rel.status,
     });
     setDirty(false);
@@ -272,6 +278,18 @@ function CaracterizacaoCard({
           </div>
           <div>
             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Validade do Documento
+            </label>
+            <input
+              type="date"
+              value={form.data_validade}
+              disabled={!canEdit}
+              onChange={(e) => set("data_validade", e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-100"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">
               Status
             </label>
             <select
@@ -297,7 +315,7 @@ function CaracterizacaoCard({
 
           {/* Cabeçalho — igual ao laudo */}
           <div className="mb-8 flex items-start justify-between border-b pb-4">
-            <div className="text-xs text-gray-500">JCN Consultoria — Segurança e Saúde do Trabalho</div>
+            <div className="text-xs text-gray-500">JCN Consultoria Saúde e Segurança do Trabalho</div>
           </div>
 
           {/* Capa — igual ao laudo */}

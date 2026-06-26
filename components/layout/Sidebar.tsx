@@ -2,7 +2,6 @@
 
 import {
   LayoutDashboard,
-  Building2,
   ClipboardList,
   PlusCircle,
   BarChart3,
@@ -10,13 +9,13 @@ import {
   ClipboardEdit,
   FileEdit,
   Settings,
+  Trash2,
 } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import SidebarShell, { type NavItem, type NavSection } from "./SidebarShell";
 
 const PRINCIPAL: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, variant: "dashboard" },
-  { href: "/empresas", label: "Empresas", icon: Building2 },
   { href: "/inspecoes", label: "Inspeções", icon: ClipboardList },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3, variant: "report" },
 ];
@@ -33,6 +32,7 @@ const CONFIGURACAO_BASE: NavItem[] = [
 
 const CONFIGURACAO_ADMIN: NavItem[] = [
   { href: "/config", label: "Configurações", icon: Settings, variant: "config" },
+  { href: "/lixeira", label: "Lixeira", icon: Trash2, variant: "config" },
 ];
 
 export default function Sidebar() {
@@ -55,7 +55,7 @@ export default function Sidebar() {
 
   return (
     <SidebarShell
-      title="SST"
+      title="SST JCN Consultoria"
       subtitle="JCN Consultoria"
       logoHref="/dashboard"
       sections={sections}

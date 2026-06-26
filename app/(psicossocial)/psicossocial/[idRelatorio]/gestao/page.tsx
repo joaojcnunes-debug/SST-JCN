@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import Link from "next/link";
 import {
   ClipboardCheck,
@@ -9,12 +9,21 @@ import {
   Printer,
   TrendingUp,
   ArrowRight,
+  BadgeCheck,
+  Download,
+  Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
+import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
+import { usePdfAssinado } from "@/lib/hooks/usePdfsGerados";
+import BotaoAssinarPdf from "@/components/ui/BotaoAssinarPdf";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import {
   useDrpsMonitoramento,
   useDrpsPlanoMedidas,
+  useDrpsRelatorio,
   useDrpsRevisao,
 } from "@/lib/hooks/useDrps";
 import {
@@ -31,6 +40,7 @@ export default function GestaoPage({
 }) {
   const { idRelatorio } = use(params);
   const ano = new Date().getFullYear();
+  const { data: relatorioDrps } = useDrpsRelatorio(idRelatorio);
   const { data: planoDB } = useDrpsPlanoMedidas(idRelatorio, ano);
   const { data: monitoramentos = [] } = useDrpsMonitoramento(idRelatorio);
   const { data: revisao } = useDrpsRevisao(idRelatorio);
@@ -42,6 +52,18 @@ export default function GestaoPage({
   });
   const corSaude = corPercentual(resumo.saudeGeral);
   const base = `/psicossocial/${idRelatorio}`;
+
+  const { pdfAssinado, recarregar } = usePdfAssinado("drps_relatorios_gestao", idRelatorio);
+  const [baixando, setBaixando] = useState(false);
+
+  async function handleBaixarPdf() {
+    if (!pdfAssinado) return;
+    setBaixando(true);
+    try {
+      await baixarPdfAssinado(pdfAssinado.pdf_path, "relatorio-assinado.pdf");
+    } catch { toast.error("Erro ao baixar o PDF."); }
+    finally { setBaixando(false); }
+  }
 
   return (
     <>
@@ -56,6 +78,21 @@ export default function GestaoPage({
               psicossocial.
             </p>
           </div>
+          {pdfAssinado ? (
+            <>
+              <div className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                <BadgeCheck className="size-3.5 shrink-0" />
+                Assinado em {new Date(pdfAssinado.assinado_em).toLocaleDateString("pt-BR")}
+              </div>
+              <button type="button" onClick={handleBaixarPdf} disabled={baixando}
+                className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                {baixando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                Baixar PDF Assinado
+              </button>
+            </>
+          ) : (
+            <BotaoAssinarPdf defaultSignatoryName={relatorioDrps?.responsavel_tecnico ?? undefined} tabelaNome="drps_relatorios_gestao" docId={idRelatorio} onAssinado={recarregar} />
+          )}
           <BotaoGerarPdf
             tabelaNome="drps_relatorios_gestao"
             docId={idRelatorio}
@@ -198,7 +235,7 @@ export default function GestaoPage({
       {/* Versão print do quadro — mesma usada no PDF completo do relatório */}
       <DrpsGestaoResumoPrint idRelatorio={idRelatorio} />
 
-      <AssinaturaRelatorio tabelaNome="drps_relatorios_gestao" docId={idRelatorio} />
+      <AssinaturaRelatorio tabelaNome="drps_relatorios_gestao" docId={idRelatorio} hideAcoes />
     </>
   );
 }

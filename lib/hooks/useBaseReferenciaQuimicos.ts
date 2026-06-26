@@ -2,7 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { gerarId } from "@/lib/utils";
 import {
   BASE_REFERENCIA,
@@ -110,7 +112,7 @@ export function useUpsertAgenteReferencia() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEY });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -118,12 +120,13 @@ export function useDeleteAgenteReferencia() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("base_referencia_quimicos")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
+      await excluirComLixeiraPorId({
+        tabela: "base_referencia_quimicos",
+        chave: "id",
+        id,
+        modulo: "config",
+        rotuloCol: "agente",
+      });
       return id;
     },
     onSuccess: () => {

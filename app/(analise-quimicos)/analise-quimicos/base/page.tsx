@@ -16,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { useRequireAdmin } from "@/lib/hooks/useRequireAdmin";
 import { useUserStore } from "@/lib/store";
 import {
@@ -156,13 +157,13 @@ export default function BaseReferenciaPage() {
   function handleInicializar() {
     setPendingAction({
       title: "Inicializar base de referência",
-      desc: "Importar os 267 agentes padrão da base JCN? Isso só funciona se a tabela estiver vazia.",
+      desc: "Importar os 267 agentes padrão da JCN Consultoria? Isso só funciona se a tabela estiver vazia.",
       fn: async () => {
         try {
           const total = await inicializar.mutateAsync();
           toast.success(`${total} agentes carregados na base.`);
         } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Falha ao inicializar a base");
+          toast.error(mensagemErro(e, "Falha ao inicializar a base"));
         }
       },
     });
@@ -177,7 +178,7 @@ export default function BaseReferenciaPage() {
           await deletar.mutateAsync(row.id);
           toast.success("Agente removido");
         } catch (e) {
-          toast.error(e instanceof Error ? e.message : "Falha ao remover agente");
+          toast.error(mensagemErro(e, "Falha ao remover agente"));
         }
       },
     });
@@ -204,7 +205,7 @@ export default function BaseReferenciaPage() {
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
           <Database className="size-5 text-sky-500" />
-          Base de Referência JCN — Químicos NR-15
+          Base de Referência JCN Consultoria — Químicos NR-15
         </h1>
         <p className="text-sm text-gray-600">
           {isLoading
@@ -223,7 +224,7 @@ export default function BaseReferenciaPage() {
                 A base de referência está vazia
               </p>
               <p className="mt-1 text-sm text-amber-800">
-                Importe os 267 agentes padrão da base JCN (NR-15 + ACGIH + IARC +
+                Importe os 267 agentes padrão da JCN Consultoria (NR-15 + ACGIH + IARC +
                 eSocial) com 1 clique. Depois disso você pode editar, adicionar
                 ou remover qualquer entrada.
               </p>
@@ -508,7 +509,7 @@ function EditModal({ row, onClose }: EditModalProps) {
       onClose();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Falha ao salvar"
+        mensagemErro(err, "Falha ao salvar")
       );
     }
   }

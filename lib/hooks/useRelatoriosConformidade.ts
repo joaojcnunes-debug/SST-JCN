@@ -2,7 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
 import type {
@@ -189,7 +191,7 @@ export function useAtualizarItemConformidade() {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -203,6 +205,7 @@ export function useAtualizarRelatorioConformidade() {
       responsavel_empresa?: string | null;
       cidade?: string | null;
       data_inspecao?: string | null;
+      data_validade?: string | null;
       observacoes_gerais?: string | null;
       status?: StatusRelatorioConformidade;
     }) => {
@@ -217,6 +220,8 @@ export function useAtualizarRelatorioConformidade() {
       if (params.cidade !== undefined) patch.cidade = params.cidade;
       if (params.data_inspecao !== undefined)
         patch.data_inspecao = params.data_inspecao;
+      if (params.data_validade !== undefined)
+        patch.data_validade = params.data_validade || null;
       if (params.observacoes_gerais !== undefined)
         patch.observacoes_gerais = params.observacoes_gerais;
       if (params.status !== undefined) {
@@ -237,7 +242,7 @@ export function useAtualizarRelatorioConformidade() {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -330,7 +335,7 @@ export function useAdicionarItemConformidadeExtra() {
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_relatorio) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -367,7 +372,7 @@ export function useExcluirItemConformidadeExtra() {
     onSuccess: (params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -383,6 +388,31 @@ export const MAX_FOTOS_POR_ITEM = 8;
  * sobe 2+ fotos rapidamente em sequência (cada chamada vê o estado mais
  * recente vindo do componente).
  */
+/**
+ * Lê os arrays de foto FRESCOS do banco. As mutações regravam o array
+ * inteiro — partir dos arrays vindos das props (cache stale do React Query)
+ * causa lost update quando o usuário sobe/remove fotos em sequência rápida.
+ */
+async function lerFotosItemConformidade(
+  supabase: ReturnType<typeof createSupabaseBrowserClient>,
+  id_item: string
+) {
+  const { data, error } = await supabase
+    .from("relatorios_conformidade_itens")
+    .select("foto_urls, foto_storage_paths")
+    .eq("id_item", id_item)
+    .single();
+  if (error) throw error;
+  const row = data as unknown as {
+    foto_urls: string[] | null;
+    foto_storage_paths: string[] | null;
+  };
+  return { urls: row.foto_urls ?? [], paths: row.foto_storage_paths ?? [] };
+}
+
+/** Serializa as mutações de foto do mesmo item entre si (React Query scope). */
+const SCOPE_FOTOS_CONF = { id: "conformidade-fotos-item" };
+
 export function useUploadFotoItemConformidade() {
   const qc = useQueryClient();
   return useMutation({
@@ -390,12 +420,11 @@ export function useUploadFotoItemConformidade() {
       id_relatorio: string;
       id_item: string;
       file: File;
-      fotos_urls_atuais: string[];
-      fotos_paths_atuais: string[];
     }) => {
       const supabase = createSupabaseBrowserClient();
 
-      if (params.fotos_paths_atuais.length >= MAX_FOTOS_POR_ITEM) {
+      const atual = await lerFotosItemConformidade(supabase, params.id_item);
+      if (atual.paths.length >= MAX_FOTOS_POR_ITEM) {
         throw new Error(
           `Limite de ${MAX_FOTOS_POR_ITEM} fotos por item atingido.`
         );
@@ -415,8 +444,8 @@ export function useUploadFotoItemConformidade() {
 
       const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
 
-      const novasUrls = [...params.fotos_urls_atuais, pub.publicUrl];
-      const novosPaths = [...params.fotos_paths_atuais, path];
+      const novasUrls = [...atual.urls, pub.publicUrl];
+      const novosPaths = [...atual.paths, path];
 
       const { error: updateErr } = await supabase
         .from("relatorios_conformidade_itens")
@@ -430,10 +459,11 @@ export function useUploadFotoItemConformidade() {
 
       return { foto_url: pub.publicUrl, path };
     },
+    scope: SCOPE_FOTOS_CONF,
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -448,20 +478,18 @@ export function useRemoverFotoItemConformidade() {
       id_relatorio: string;
       id_item: string;
       foto_storage_path: string;
-      fotos_urls_atuais: string[];
-      fotos_paths_atuais: string[];
     }) => {
       const supabase = createSupabaseBrowserClient();
 
       // Apaga do storage (best-effort)
       await supabase.storage.from("fotos").remove([params.foto_storage_path]);
 
-      // Filtra mantendo o pareamento URL ↔ path
-      const idx = params.fotos_paths_atuais.indexOf(params.foto_storage_path);
-      const novosPaths = params.fotos_paths_atuais.filter(
-        (_, i) => i !== idx
-      );
-      const novasUrls = params.fotos_urls_atuais.filter((_, i) => i !== idx);
+      // Relê fresco do banco e filtra mantendo o pareamento URL ↔ path
+      const atual = await lerFotosItemConformidade(supabase, params.id_item);
+      const idx = atual.paths.indexOf(params.foto_storage_path);
+      if (idx < 0) return params; // já removida por outra mutação
+      const novosPaths = atual.paths.filter((_, i) => i !== idx);
+      const novasUrls = atual.urls.filter((_, i) => i !== idx);
 
       const { error } = await supabase
         .from("relatorios_conformidade_itens")
@@ -474,10 +502,11 @@ export function useRemoverFotoItemConformidade() {
       if (error) throw error;
       return params;
     },
+    scope: SCOPE_FOTOS_CONF,
     onSuccess: (_d, params) => {
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -485,12 +514,13 @@ export function useExcluirRelatorioConformidade() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id_relatorio: string) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("relatorios_conformidade")
-        .delete()
-        .eq("id_relatorio", id_relatorio);
-      if (error) throw error;
+      await excluirComLixeiraPorId({
+        tabela: "relatorios_conformidade",
+        chave: "id_relatorio",
+        id: id_relatorio,
+        modulo: "conformidade",
+        rotuloCol: "nr_titulo",
+      });
       return id_relatorio;
     },
     onSuccess: () => {

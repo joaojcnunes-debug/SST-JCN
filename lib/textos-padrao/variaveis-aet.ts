@@ -3,7 +3,7 @@
 // Integração: montarValoresAet() no laudo/page.tsx antes de renderizar cada capítulo.
 
 import type { VariavelDef } from "./variaveis";
-import { formatarDataBR } from "./variaveis";
+import { formatarDataBR } from "./formatters";
 import type { AetRelatorio } from "@/lib/supabase/types";
 
 export const VARIAVEIS_AET: VariavelDef[] = [
@@ -59,5 +59,19 @@ export function montarValoresAet(
     carimbo,
     data_elaboracao: formatarDataBR(dataElab),
     data_atual: new Date().toLocaleDateString("pt-BR"),
+    // Variáveis de documento (Fase 1): sempre resolvem (default ""), não vazam token.
+    grau_risco: "",
+    ghe: "",
+    funcao: "",
+    usuario_logado: "",
+    tipo_relatorio: "AET — Análise Ergonômica do Trabalho",
+    // E1 (Módulo Documentos SST): sempre resolvem (default "").
+    unidade: "",
+    cargo: "",
+    formacao_responsavel: "",
+    data_emissao: "",
+    data_inicio_vigencia: "",
+    data_fim_vigencia: "",
+    numero_revisao: "",
   };
 }

@@ -354,7 +354,7 @@ const FLUXO = [
   { titulo: "Cálculo automático da gravidade",  descricao: "Para cada tópico e setor, o sistema calcula a pontuação corrigida de cada pergunta, classifica em Baixa/Média/Alta e calcula a média do tópico." },
   { titulo: "Definição da probabilidade",       descricao: "O psicólogo responsável avalia, para cada setor × tópico, a probabilidade (1–3) com base nos critérios de frequência, histórico e recursos disponíveis." },
   { titulo: "Geração da matriz de risco",       descricao: "Gravidade × Probabilidade gera o nível final (Baixo / Médio / Alto / Crítico) para cada tópico, exibido no dashboard e na matriz visual." },
-  { titulo: "Análise e avaliação",              descricao: "O psicólogo documenta os agravos potenciais à saúde e as medidas existentes por setor na aba 'Análise e Avaliação'." },
+  { titulo: "Análise e avaliação",              descricao: "O psicólogo documenta os agravos potenciais à saúde e as medidas recomendadas por setor na aba 'Análise e Avaliação'." },
   { titulo: "Plano de ação (medidas de controle)", descricao: "Com base nos riscos identificados, são definidas medidas preventivas, responsáveis e cronograma no Painel de Gestão." },
   { titulo: "Monitoramento e revisão",          descricao: "O ciclo é revisado periodicamente conforme exigência do PGR/GRO, gerando novas revisões do relatório com comparação histórica." },
 ];

@@ -204,7 +204,7 @@ export default function AcoesPage() {
       </div>
 
       {/* Tabela */}
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <div className="reveal-up overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         {isLoading ? (
           <div className="p-5">
             <LoadingSkeleton rows={5} />

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
@@ -69,7 +70,7 @@ function NovoConformidadeInner() {
           router.push(`/relatorio-conformidade/${r.id_relatorio}`);
         },
         onError: (e: Error) =>
-          toast.error(e.message || "Falha ao criar relatório"),
+          toast.error(mensagemErro(e, "Falha ao criar relatório")),
       }
     );
   }
@@ -97,11 +98,11 @@ function NovoConformidadeInner() {
         </h1>
         <p className="text-sm text-gray-600">
           Escolha a NR e a empresa. O checklist será criado automaticamente com
-          base no catálogo JCN.
+          base no catálogo JCN Consultoria.
         </p>
       </div>
 
-      <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm reveal-up">
         <div>
           <label className={lblCls}>Norma Regulamentadora *</label>
           <select
@@ -149,7 +150,7 @@ function NovoConformidadeInner() {
             />
           </div>
           <div>
-            <label className={lblCls}>Responsável técnico (JCN)</label>
+            <label className={lblCls}>Responsável técnico (JCN Consultoria)</label>
             <ProfissionalSelect
               value={responsavel}
               onChange={(nome) => setResponsavel(nome)}

@@ -4,6 +4,7 @@ import "./globals.css";
 import Providers from "@/lib/providers";
 import UpdateBanner from "@/components/UpdateBanner";
 import ElectronIconSync from "@/components/ElectronIconSync";
+import PageTransitions from "@/components/PageTransitions";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -12,7 +13,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "SST · JCN Consultoria",
+  title: "SST JCN Consultoria",
   description: "Sistema de gestão de inspeções de Segurança e Saúde do Trabalho",
 };
 
@@ -23,6 +24,7 @@ export default function RootLayout({
     <html lang="pt-BR" className={inter.variable}>
       <body className="font-sans antialiased">
         <Providers>
+          <PageTransitions />
           {children}
           <UpdateBanner />
           <ElectronIconSync />

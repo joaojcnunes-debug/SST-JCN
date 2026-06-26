@@ -17,7 +17,7 @@ export default function AnaliseQuimicosOverviewPage() {
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
           <FlaskConical className="size-5 text-sky-500" />
-          Análise de Químicos JCN
+          Análise de Químicos JCN Consultoria
         </h1>
         <p className="text-sm text-gray-600">
           Análise técnica de agentes químicos a partir de FDS/FISPQ ou entrada
@@ -44,11 +44,11 @@ export default function AnaliseQuimicosOverviewPage() {
       </div>
 
       {/* Ações principais */}
-      <div className={`grid grid-cols-1 gap-4 ${canCreate ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
+      <div className={`grid grid-cols-1 gap-4 reveal-up ${canCreate ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
         {canCreate && (
           <Link
             href="/analise-quimicos/nova"
-            className="group flex flex-col gap-2 rounded-xl border-2 border-sky-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md"
+            className="group tilt-3d sheen flex flex-col gap-2 rounded-xl border-2 border-sky-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-sky-400 hover:shadow-md"
           >
             <div className="flex items-center gap-3">
               <div className="flex size-12 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
@@ -73,7 +73,7 @@ export default function AnaliseQuimicosOverviewPage() {
 
         <Link
           href="/analise-quimicos/historico"
-          className="group flex flex-col gap-2 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-gray-400 hover:shadow-md"
+          className="group tilt-3d sheen flex flex-col gap-2 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-gray-400 hover:shadow-md"
         >
           <div className="flex items-center gap-3">
             <div className="flex size-12 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
@@ -102,7 +102,7 @@ export default function AnaliseQuimicosOverviewPage() {
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-500">
             Últimas análises
           </h2>
-          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm">
+          <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm reveal-up card-hover">
             {ultimas.map((a) => (
               <Link
                 key={a.id_analise}

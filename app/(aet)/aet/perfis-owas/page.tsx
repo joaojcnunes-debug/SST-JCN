@@ -13,6 +13,7 @@ import {
 } from "@/lib/hooks/useAet";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import StorageImg from "@/components/ui/StorageImg";
 import type { AetOwasCategoria, AetPerfilOwas } from "@/lib/supabase/types";
 
 function perfilVazio(): Omit<AetPerfilOwas, "id" | "created_at"> {
@@ -240,9 +241,8 @@ function OwasGroupPerfil({
         </div>
         {imageSrc && (
           <div className="w-32 shrink-0 self-start">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={imageSrc}
+            <StorageImg
+              stored={imageSrc}
               alt={`OWAS: ${categoria.titulo}`}
               className="h-auto w-full rounded border border-gray-200"
             />

@@ -70,7 +70,7 @@ export default function AepListaPage() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 reveal-up">
         {relatorios.map((rel) => {
           const empresa = rel.empresas as { nome_empresa?: string } | null;
           const rMax = riscoMaximoRelatorio(rel);
@@ -81,7 +81,7 @@ export default function AepListaPage() {
           return (
             <div
               key={rel.id_relatorio}
-              className="group relative flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+              className="group relative flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md card-hover"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">

@@ -280,7 +280,7 @@ export default function AjudaRelatorioConformidade() {
                 Relatório de Conformidade (RNC)
               </h1>
               <p className="mt-1 text-sm text-gray-600">
-                Como usar o módulo de auditoria normativa do Painel SST
+                Como usar o módulo de auditoria normativa do SST JCN Consultoria
               </p>
             </div>
           </div>

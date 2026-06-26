@@ -83,7 +83,7 @@ export default function HistoricoAnalisesPage() {
             : "Nenhuma análise salva ainda."}
         </div>
       ) : (
-        <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm reveal-up card-hover">
           {filtradas.map((a) => {
             const insalubre = (a.conclusao_rapida?.insalubridade_nr15 ?? "")
               .toUpperCase()

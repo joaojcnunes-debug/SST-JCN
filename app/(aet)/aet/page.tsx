@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { useAetRelatorios, useExcluirAet } from "@/lib/hooks/useAet";
 import { useCanCreate, useCanDelete } from "@/lib/hooks/useUsuario";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
@@ -104,7 +105,7 @@ export default function AetListPage() {
       </div>
 
       {/* Tabela documental */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm reveal-up card-hover">
         {isLoading ? (
           <div className="p-4">
             <LoadingSkeleton rows={5} />
@@ -242,7 +243,7 @@ export default function AetListPage() {
                 toast.success("Laudo excluído");
                 setConfirmDel(null);
               },
-              onError: (e: Error) => toast.error(e.message),
+              onError: (e: Error) => toast.error(mensagemErro(e)),
             });
           }
         }}

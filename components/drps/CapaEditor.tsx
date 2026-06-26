@@ -17,6 +17,7 @@ import {
   Braces,
   ChevronDown,
 } from "lucide-react";
+import { useSignedUrl } from "@/lib/hooks/useSignedUrl";
 import { VARIAVEIS } from "@/lib/drps/variaveis";
 import type { CaixaTexto } from "@/lib/drps/types";
 import { cn } from "@/lib/utils";
@@ -120,13 +121,18 @@ function PaginaPreview({
   const PREVIEW_WIDTH = 480;
   const PREVIEW_HEIGHT = Math.round((PREVIEW_WIDTH * 297) / 210);
 
+  // Resolve a imagem de fundo (bucket fotos) p/ URL assinada (fallback p/ a
+  // original enquanto carrega / se for origem externa).
+  const { data: bgAssinada } = useSignedUrl(bgImagemUrl, "fotos");
+  const bgUrl = bgAssinada ?? bgImagemUrl;
+
   return (
     <div
       className="relative overflow-hidden rounded border border-gray-300 bg-gray-100 shadow-md"
       style={{
         width: PREVIEW_WIDTH,
         height: PREVIEW_HEIGHT,
-        backgroundImage: `url(${bgImagemUrl})`,
+        backgroundImage: `url(${bgUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
@@ -211,7 +217,7 @@ function CaixaArrastavel({
     lineHeight: 1.3,
     textShadow: "0 1px 2px rgba(0,0,0,0.35)",
     padding: 4,
-    border: selecionada ? "1.5px dashed #006B54" : "1.5px dashed transparent",
+    border: selecionada ? "1.5px dashed #0ea5e9" : "1.5px dashed transparent",
     background: selecionada ? "rgba(0, 107, 84, 0.05)" : "transparent",
     borderRadius: 4,
   };

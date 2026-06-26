@@ -11,7 +11,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   useRequireModule("painel");
 
   return (
-    <div className="min-h-screen">
+    <div className="app-aurora min-h-screen print:bg-white">
       <Sidebar />
       <div className="md:pl-[220px] print:pl-0">
         <Topbar />

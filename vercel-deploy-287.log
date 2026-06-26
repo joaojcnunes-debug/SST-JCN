@@ -1,0 +1,53 @@
+<claude-code-hint v="1" type="plugin" value="vercel@claude-plugins-official" />
+Vercel CLI 54.7.1 (Node.js 24.14.0)
+Retrieving project…
+Deploying joao-jeffersons-projects/painel-sst-chabra
+Uploading [--------------------] (0.0B/16.5KB)
+Uploading [================----] (13.7KB/16.5KB)
+Uploading [====================] (16.5KB/16.5KB)
+  Inspect     https://vercel.com/joao-jeffersons-projects/painel-sst-chabra/R3Jqdiyq5jYWVuCgbJiZexT4eiG4
+▲ Production  https://painel-sst-chabra-6cc34le0v-joao-jeffersons-projects.vercel.app
+Building…
+Running build in Washington, D.C., USA (East) – iad1
+Build machine configuration: 2 cores, 8 GB
+Retrieving list of deployment files...
+Downloading 500 deployment files...
+Downloading 500 deployment files...
+Restored build cache from previous deployment (8iasDhCwVxCgAcBQeHJxae22e7Sx)
+Running "vercel build"
+Vercel CLI 54.14.0
+Installing dependencies...
+up to date in 1s
+247 packages are looking for funding
+run `npm fund` for details
+Detected Next.js version: 15.5.15
+Running "npm run build"
+> painel-sst@0.3.287 build
+> next build
+▲ Next.js 15.5.15
+Creating an optimized production build ...
+[2K[1A[2K[G▲ Production  https://painel-sst-chabra-6cc34le0v-joao-jeffersons-projects.vercel.app
+Completing…
+▲ Aliased     https://painel-sst-chabra.vercel.app
+{
+  "status": "ok",
+  "deployment": {
+    "id": "dpl_R3Jqdiyq5jYWVuCgbJiZexT4eiG4",
+    "url": "https://painel-sst-chabra-6cc34le0v-joao-jeffersons-projects.vercel.app",
+    "inspectorUrl": "https://vercel.com/joao-jeffersons-projects/painel-sst-chabra/R3Jqdiyq5jYWVuCgbJiZexT4eiG4",
+    "readyState": "READY",
+    "target": "production",
+    "deploymentApiUrl": "https://api.vercel.com/v13/deployments/dpl_R3Jqdiyq5jYWVuCgbJiZexT4eiG4"
+  },
+  "message": "Deployment painel-sst-chabra-6cc34le0v-joao-jeffersons-projects.vercel.app ready.",
+  "next": [
+    {
+      "command": "vercel inspect painel-sst-chabra-6cc34le0v-joao-jeffersons-projects.vercel.app",
+      "when": "Inspect deployment"
+    },
+    {
+      "command": "vercel deploy --prod",
+      "when": "Promote to production"
+    }
+  ]
+}

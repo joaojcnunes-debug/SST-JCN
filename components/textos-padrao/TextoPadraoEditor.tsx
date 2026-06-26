@@ -21,9 +21,14 @@ import {
   Search,
   Lock,
   Layers,
+  History,
+  RotateCcw,
+  Star,
 } from "lucide-react";
+import { useIsAdmin } from "@/lib/hooks/useUsuario";
 import toast from "react-hot-toast";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import StorageImg from "@/components/ui/StorageImg";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import CapaEditor from "@/components/drps/CapaEditor";
@@ -36,6 +41,8 @@ import {
   useSalvarCapituloTexto,
   useExcluirCapituloTexto,
   useSeedCapitulosFixos,
+  useHistoricoCapitulo,
+  useRestaurarVersao,
 } from "@/lib/hooks/useTextosPadrao";
 import {
   type ModuloTextoPadrao,
@@ -43,6 +50,7 @@ import {
   type PosicaoPdf,
   type QuebraPagina,
   type TextoPadraoCapitulo,
+  type TextoPadraoVersao,
   MODULO_CONFIGS,
 } from "@/lib/textos-padrao/types";
 import { VARIAVEIS_POR_MODULO } from "@/lib/textos-padrao/variaveis";
@@ -62,6 +70,7 @@ interface Props {
 export default function TextoPadraoEditor({ modulo }: Props) {
   const config = MODULO_CONFIGS[modulo];
   const variaveis = VARIAVEIS_POR_MODULO[modulo];
+  const isAdmin = useIsAdmin();
   const { data: capitulos = [], isLoading } = useTextosPadrao(modulo);
   const criar = useCriarCapituloTexto(modulo);
   const salvar = useSalvarCapituloTexto(modulo);
@@ -75,6 +84,9 @@ export default function TextoPadraoEditor({ modulo }: Props) {
 
   const capitulosFixos    = capitulos.filter((c) => c.tipo === "fixo");
   const capitulosEditaveis = capitulos.filter((c) => c.tipo !== "fixo");
+  // Módulos com ordenação unificada (ex: AEP): o laudo é uma lista única de
+  // blocos (editáveis + seções do sistema) na ordem de `ordem`.
+  const unificado = !!config.ordenacaoUnificada;
 
   function novoCapitulo() {
     const ordem = capitulos.length;
@@ -94,13 +106,77 @@ export default function TextoPadraoEditor({ modulo }: Props) {
     }
   }
 
+  // Reordena DENTRO do grupo lógico: editáveis entre si por posição (é o
+  // `ordem` dentro da posição que define a ordem no PDF), e fixos entre si.
+  // Os fixos não são impressos como texto (são o corpo do laudo), então
+  // reordená-los é só visual.
   async function mover(cap: TextoPadraoCapitulo, direcao: "up" | "down") {
-    const idx = capitulos.findIndex((c) => c.id_capitulo === cap.id_capitulo);
+    const grupo = capitulos
+      .filter((c) =>
+        unificado
+          ? true // lista única: reordena entre TODOS os blocos
+          : cap.tipo === "fixo"
+          ? c.tipo === "fixo"
+          : c.tipo !== "fixo" &&
+            (c.posicao_pdf ?? "inicio") === (cap.posicao_pdf ?? "inicio")
+      )
+      .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+    const idx = grupo.findIndex((c) => c.id_capitulo === cap.id_capitulo);
     const novoIdx = direcao === "up" ? idx - 1 : idx + 1;
-    if (novoIdx < 0 || novoIdx >= capitulos.length) return;
-    const outro = capitulos[novoIdx];
-    await salvar.mutateAsync({ id_capitulo: cap.id_capitulo, ordem: outro.ordem });
-    await salvar.mutateAsync({ id_capitulo: outro.id_capitulo, ordem: cap.ordem });
+    if (novoIdx < 0 || novoIdx >= grupo.length) return;
+
+    // Reordena a lista e RE-SEQUENCIA as ordens (passo 10). Robusto a ordens
+    // duplicadas/colididas (que antes faziam a troca simples não surtir efeito).
+    const novaLista = [...grupo];
+    const [item] = novaLista.splice(idx, 1);
+    novaLista.splice(novoIdx, 0, item);
+    await Promise.all(
+      novaLista
+        .map((c, i) => ({ c, novaOrdem: i * 10 }))
+        .filter(({ c, novaOrdem }) => (c.ordem ?? 0) !== novaOrdem)
+        .map(({ c, novaOrdem }) => salvar.mutateAsync({ id_capitulo: c.id_capitulo, ordem: novaOrdem })),
+    );
+  }
+
+  // Editáveis agrupados por posição no laudo (reflete a ordem real do PDF):
+  // tudo que não for "fim" entra antes do corpo do laudo; "fim" vai depois.
+  const aplicaBusca = (lista: TextoPadraoCapitulo[]) =>
+    busca.trim()
+      ? lista.filter((c) =>
+          c.titulo.toLowerCase().includes(busca.trim().toLowerCase())
+        )
+      : lista;
+  const editavelInicio = aplicaBusca(
+    capitulosEditaveis.filter((c) => (c.posicao_pdf ?? "inicio") !== "fim")
+  );
+  const editavelFim = aplicaBusca(
+    capitulosEditaveis.filter((c) => (c.posicao_pdf ?? "inicio") === "fim")
+  );
+
+  function renderCardEditavel(cap: TextoPadraoCapitulo, idx: number, total: number) {
+    return (
+      <CapituloCard
+        key={cap.id_capitulo}
+        capitulo={cap}
+        modulo={modulo}
+        isAdmin={isAdmin}
+        indice={idx}
+        total={total}
+        salvando={salvar.isPending}
+        storagePrefix={`textos-padrao/${modulo}`}
+        contagensPorPosicao={contagensPorPosicao}
+        posicoesMod={config.posicoesDisponiveis}
+        ocultarPosicao={unificado}
+        onSalvar={(patch) =>
+          salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })
+        }
+        onMover={(dir) => mover(cap, dir)}
+        onExcluir={() => setConfirmExcluir(cap)}
+        onToggleMostrar={() =>
+          salvar.mutate({ id_capitulo: cap.id_capitulo, ativo: !cap.ativo })
+        }
+      />
+    );
   }
 
   // Contagem apenas de capítulos editáveis por posição para o Stepper
@@ -111,12 +187,6 @@ export default function TextoPadraoEditor({ modulo }: Props) {
     acc[p] = (acc[p] ?? 0) + 1;
     return acc;
   }, {});
-
-  const capitulosFiltrados = busca.trim()
-    ? capitulosEditaveis.filter((c) =>
-        c.titulo.toLowerCase().includes(busca.trim().toLowerCase())
-      )
-    : capitulosEditaveis;
 
   return (
     <div className="space-y-4">
@@ -240,16 +310,72 @@ export default function TextoPadraoEditor({ modulo }: Props) {
         </div>
       ) : (
         <div className="space-y-3">
-          {/* Capítulos SISTEMA */}
+          {/* Resumo */}
+          <p className="text-xs text-gray-500">
+            {capitulosFixos.length > 0 && (
+              <>{capitulosFixos.length} seção{capitulosFixos.length !== 1 ? "ões" : ""} do sistema · </>
+            )}
+            {capitulosEditaveis.length} capítulo{capitulosEditaveis.length !== 1 ? "s" : ""} editáveis
+            {capitulosEditaveis.filter((c) => !c.ativo).length > 0 && (
+              <> · {capitulosEditaveis.filter((c) => !c.ativo).length} oculto{capitulosEditaveis.filter((c) => !c.ativo).length !== 1 ? "s" : ""}</>
+            )}
+          </p>
+
+          {/* Modo UNIFICADO (ex: AEP): lista única reordenável — arraste
+              qualquer bloco (texto editável ou seção do sistema) em qualquer
+              ordem; é exatamente a ordem do laudo. Capa e assinatura ficam
+              fixas nas pontas (não aparecem aqui). */}
+          {unificado ? (
+            <>
+              <div className="rounded-md bg-verde-light/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-verde-primary">
+                Ordem do laudo — arraste/reordene livremente (capa e assinatura são fixas)
+              </div>
+              {aplicaBusca(
+                [...capitulos].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+              ).map((cap, idx, arr) =>
+                cap.tipo === "fixo" ? (
+                  <FixoCard
+                    key={cap.id_capitulo}
+                    capitulo={cap}
+                    indice={idx}
+                    total={arr.length}
+                    salvando={salvar.isPending}
+                    descricao={
+                      config.fixos.find((f) => f.slug_fixo === cap.slug_fixo)?.descricao ?? ""
+                    }
+                    onMover={(dir) => mover(cap, dir)}
+                    onToggleMostrar={() =>
+                      salvar.mutate({ id_capitulo: cap.id_capitulo, ativo: !cap.ativo })
+                    }
+                    onSalvar={(patch) =>
+                      salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })
+                    }
+                  />
+                ) : (
+                  renderCardEditavel(cap, idx, arr.length)
+                )
+              )}
+            </>
+          ) : (
+          <>
+          {/* 1) Editáveis posicionados no INÍCIO (antes do corpo do laudo) */}
+          {editavelInicio.length > 0 && (
+            <>
+              <div className="rounded-md bg-verde-light/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-verde-primary">
+                Texto editável — início (sai antes do laudo)
+              </div>
+              {editavelInicio.map((cap, idx) =>
+                renderCardEditavel(cap, idx, editavelInicio.length)
+              )}
+            </>
+          )}
+
+          {/* 2) Corpo do laudo — seções geradas pelo sistema (posição fixa) */}
           {capitulosFixos.length > 0 && (
             <>
-              <p className="text-xs text-gray-500">
-                {capitulosFixos.length} seção{capitulosFixos.length !== 1 ? "ões" : ""} do sistema ·{" "}
-                {capitulosEditaveis.length} capítulo{capitulosEditaveis.length !== 1 ? "s" : ""} editáveis
-                {capitulosEditaveis.filter((c) => !c.ativo).length > 0 && (
-                  <> · {capitulosEditaveis.filter((c) => !c.ativo).length} oculto{capitulosEditaveis.filter((c) => !c.ativo).length !== 1 ? "s" : ""}</>
-                )}
-              </p>
+              <div className="rounded-md bg-gray-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                Corpo do laudo — seções do sistema (posição fixa, entre início e fim)
+              </div>
               {capitulosFixos.map((cap, idx) => {
                 const descricao = config.fixos.find((f) => f.slug_fixo === cap.slug_fixo)?.descricao ?? "";
                 return (
@@ -269,50 +395,24 @@ export default function TextoPadraoEditor({ modulo }: Props) {
             </>
           )}
 
-          {/* Capítulos EDITÁVEIS */}
-          {capitulosEditaveis.length > 0 && (
+          {/* 3) Editáveis posicionados no FIM (depois do corpo do laudo) */}
+          {editavelFim.length > 0 && (
             <>
-              {capitulosFixos.length === 0 && (
-                <p className="text-xs text-gray-500">
-                  {capitulosEditaveis.length} capítulo{capitulosEditaveis.length !== 1 ? "s" : ""}
-                  {capitulosEditaveis.filter((c) => !c.ativo).length > 0 && (
-                    <> · {capitulosEditaveis.filter((c) => !c.ativo).length} oculto{capitulosEditaveis.filter((c) => !c.ativo).length !== 1 ? "s" : ""}</>
-                  )}
-                </p>
-              )}
-              {capitulosFiltrados.length === 0 && busca ? (
-                <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
-                  Nenhum capítulo encontrado para <strong>&ldquo;{busca}&rdquo;</strong>.
-                </div>
-              ) : (
-                <>
-                  {busca && (
-                    <p className="text-xs text-gray-500">
-                      {capitulosFiltrados.length} de {capitulosEditaveis.length} capítulo{capitulosEditaveis.length !== 1 ? "s" : ""}
-                    </p>
-                  )}
-                  {capitulosFiltrados.map((cap) => (
-                    <CapituloCard
-                      key={cap.id_capitulo}
-                      capitulo={cap}
-                      indice={capitulos.findIndex((c) => c.id_capitulo === cap.id_capitulo)}
-                      total={capitulos.length}
-                      salvando={salvar.isPending}
-                      storagePrefix={`textos-padrao/${modulo}`}
-                      contagensPorPosicao={contagensPorPosicao}
-                      onSalvar={(patch) =>
-                        salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })
-                      }
-                      onMover={(dir) => mover(cap, dir)}
-                      onExcluir={() => setConfirmExcluir(cap)}
-                      onToggleMostrar={() =>
-                        salvar.mutate({ id_capitulo: cap.id_capitulo, ativo: !cap.ativo })
-                      }
-                    />
-                  ))}
-                </>
+              <div className="rounded-md bg-verde-light/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-verde-primary">
+                Texto editável — fim (sai depois do laudo)
+              </div>
+              {editavelFim.map((cap, idx) =>
+                renderCardEditavel(cap, idx, editavelFim.length)
               )}
             </>
+          )}
+
+          {busca && editavelInicio.length === 0 && editavelFim.length === 0 && (
+            <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">
+              Nenhum capítulo editável encontrado para <strong>&ldquo;{busca}&rdquo;</strong>.
+            </div>
+          )}
+          </>
           )}
         </div>
       )}
@@ -329,7 +429,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
         loading={excluir.isPending}
         onConfirm={() => {
           if (!confirmExcluir) return;
-          excluir.mutate(confirmExcluir.id_capitulo, {
+          excluir.mutate(confirmExcluir, {
             onSuccess: () => setConfirmExcluir(null),
           });
         }}
@@ -360,9 +460,10 @@ function FixoCard({
   descricao: string;
   onMover: (dir: "up" | "down") => void;
   onToggleMostrar: () => void;
-  onSalvar: (patch: { orientacao?: OrientacaoPagina }) => void;
+  onSalvar: (patch: { orientacao?: OrientacaoPagina; quebra_pagina?: QuebraPagina }) => void;
 }) {
   const orientacao = capitulo.orientacao ?? "retrato";
+  const quebra = capitulo.quebra_pagina ?? "nova";
 
   return (
     <div className={cn(
@@ -386,6 +487,32 @@ function FixoCard({
         </span>
 
         <p className="flex-1 text-sm font-semibold text-gray-800">{capitulo.titulo}</p>
+
+        {/* Início: Nova página / Continuação */}
+        <div className="inline-flex overflow-hidden rounded-md border border-blue-200 bg-white shrink-0">
+          <button type="button"
+            onClick={() => quebra !== "nova" && onSalvar({ quebra_pagina: "nova" })}
+            disabled={salvando}
+            title="Inicia em uma nova página"
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+              quebra === "nova" ? "bg-blue-600 text-white" : "bg-white text-gray-500 hover:bg-blue-50"
+            )}
+          >
+            <FilePlus2 className="size-3" /> Nova página
+          </button>
+          <button type="button"
+            onClick={() => quebra !== "continua" && onSalvar({ quebra_pagina: "continua" })}
+            disabled={salvando || indice === 0}
+            title={indice === 0 ? "O primeiro capítulo começa em nova página" : "Continua na página do capítulo anterior"}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-1.5 text-[10px] font-semibold transition-colors disabled:opacity-50",
+              quebra === "continua" ? "bg-blue-600 text-white" : "bg-white text-gray-500 hover:bg-blue-50"
+            )}
+          >
+            <AlignLeft className="size-3" /> Continuação
+          </button>
+        </div>
 
         {/* Orientação */}
         <div className="inline-flex overflow-hidden rounded-md border border-blue-200 bg-white shrink-0">
@@ -446,22 +573,32 @@ function FixoCard({
 
 function CapituloCard({
   capitulo,
+  modulo,
+  isAdmin,
   indice,
   total,
   salvando,
   storagePrefix,
   contagensPorPosicao,
+  posicoesMod,
+  ocultarPosicao,
   onSalvar,
   onMover,
   onExcluir,
   onToggleMostrar,
 }: {
   capitulo: TextoPadraoCapitulo;
+  modulo: ModuloTextoPadrao;
+  isAdmin: boolean;
   indice: number;
   total: number;
   salvando: boolean;
   storagePrefix: string;
   contagensPorPosicao: Partial<Record<PosicaoPdf, number>>;
+  posicoesMod: PosicaoPdf[];
+  /** Em ordenação unificada (ex: AEP), a posição é dada pela ordem na lista,
+   *  então o seletor de posição é ocultado. */
+  ocultarPosicao?: boolean;
   onSalvar: (patch: {
     titulo?: string;
     conteudo?: string | null;
@@ -471,11 +608,15 @@ function CapituloCard({
     quebra_pagina?: QuebraPagina;
     posicao_pdf?: PosicaoPdf;
     ativo?: boolean;
+    bloqueado?: boolean;
+    obrigatorio?: boolean;
   }) => void;
   onMover: (dir: "up" | "down") => void;
   onExcluir: () => void;
   onToggleMostrar: () => void;
 }) {
+  // E5: texto travado — só admin edita. Obrigatório não pode ser ocultado.
+  const travado = capitulo.bloqueado && !isAdmin;
   const [titulo, setTitulo] = useState(capitulo.titulo);
   const [conteudo, setConteudo] = useState(capitulo.conteudo ?? "");
   const [caixas, setCaixas] = useState<CaixaTexto[]>(
@@ -483,19 +624,31 @@ function CapituloCard({
   );
   const [dirty, setDirty] = useState(false);
   const [enviandoBg, setEnviandoBg] = useState(false);
+  const [histAberto, setHistAberto] = useState(false);
   const bgInputRef = useRef<HTMLInputElement | null>(null);
+  const migrated = useRef(false);
 
   useEffect(() => {
     setTitulo(capitulo.titulo);
     setConteudo(capitulo.conteudo ?? "");
     setCaixas(capitulo.caixas_texto ?? []);
     setDirty(false);
+    migrated.current = false;
   }, [
     capitulo.id_capitulo,
     capitulo.titulo,
     capitulo.conteudo,
     capitulo.caixas_texto,
   ]);
+
+  useEffect(() => {
+    if (ocultarPosicao || migrated.current) return;
+    const pos = (capitulo.posicao_pdf ?? "inicio") as PosicaoPdf;
+    if (posicoesMod.length > 0 && !posicoesMod.includes(pos)) {
+      migrated.current = true;
+      onSalvar({ posicao_pdf: posicoesMod[0] });
+    }
+  }, [capitulo.posicao_pdf, posicoesMod, onSalvar, ocultarPosicao]);
 
   async function enviarBg(file: File) {
     if (enviandoBg) return;
@@ -555,21 +708,68 @@ function CapituloCard({
         <span className="inline-flex shrink-0 items-center rounded bg-verde-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-verde-primary mt-2">
           Editável
         </span>
+        {capitulo.bloqueado && (
+          <span className="mt-2 inline-flex shrink-0 items-center gap-1 rounded bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700" title="Texto travado — só admin edita">
+            <Lock className="size-2.5" /> Travado
+          </span>
+        )}
+        {capitulo.obrigatorio && (
+          <span className="mt-2 inline-flex shrink-0 items-center rounded bg-blue-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700" title="Obrigatório — não pode ser ocultado">
+            Obrigatório
+          </span>
+        )}
         <input
           type="text"
           value={titulo}
+          readOnly={travado}
           onChange={(e) => {
             setTitulo(e.target.value);
             setDirty(true);
           }}
           placeholder="Título do capítulo"
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          className={cn(
+            "flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30",
+            travado && "bg-gray-50 text-gray-500",
+          )}
         />
+        {/* Admin: travar / marcar obrigatório */}
+        {isAdmin && (
+          <>
+            <button
+              type="button"
+              onClick={() => onSalvar({ bloqueado: !capitulo.bloqueado })}
+              disabled={salvando}
+              title={capitulo.bloqueado ? "Destravar (permitir edição por todos)" : "Travar (só admin edita)"}
+              className={cn(
+                "inline-flex items-center rounded-md border px-2 py-2 transition-colors disabled:opacity-50",
+                capitulo.bloqueado
+                  ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                  : "border-gray-300 bg-white text-gray-400 hover:bg-gray-50",
+              )}
+            >
+              <Lock className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onSalvar({ obrigatorio: !capitulo.obrigatorio })}
+              disabled={salvando}
+              title={capitulo.obrigatorio ? "Tornar opcional" : "Tornar obrigatório (não pode ocultar)"}
+              className={cn(
+                "inline-flex items-center rounded-md border px-2 py-2 transition-colors disabled:opacity-50",
+                capitulo.obrigatorio
+                  ? "border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                  : "border-gray-300 bg-white text-gray-400 hover:bg-gray-50",
+              )}
+            >
+              <Star className={cn("size-3.5", capitulo.obrigatorio && "fill-blue-500 text-blue-500")} />
+            </button>
+          </>
+        )}
         <button
           type="button"
           onClick={onToggleMostrar}
-          disabled={salvando}
-          title={capitulo.ativo ? "Ocultar no laudo" : "Mostrar no laudo"}
+          disabled={salvando || capitulo.obrigatorio}
+          title={capitulo.obrigatorio ? "Obrigatório — não pode ocultar" : capitulo.ativo ? "Ocultar no laudo" : "Mostrar no laudo"}
           className={cn(
             "inline-flex items-center gap-1 rounded-md border px-2 py-2 text-xs font-semibold transition-colors disabled:opacity-50",
             capitulo.ativo
@@ -588,7 +788,7 @@ function CapituloCard({
               caixas_texto: caixas,
             })
           }
-          disabled={!dirty || salvando || !titulo.trim()}
+          disabled={!dirty || salvando || !titulo.trim() || travado}
           className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
         >
           {salvando ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
@@ -596,13 +796,31 @@ function CapituloCard({
         </button>
         <button
           type="button"
-          onClick={onExcluir}
-          className="rounded-md border border-gray-300 bg-white p-2 text-gray-500 hover:bg-red-50 hover:text-red-alert"
-          title="Excluir"
+          onClick={() => setHistAberto(true)}
+          className="rounded-md border border-gray-300 bg-white p-2 text-gray-500 hover:bg-sky-50 hover:text-sky-700"
+          title="Histórico de versões"
         >
-          <Trash2 className="size-4" />
+          <History className="size-4" />
         </button>
+        {!travado && (
+          <button
+            type="button"
+            onClick={onExcluir}
+            className="rounded-md border border-gray-300 bg-white p-2 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+            title="Excluir"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        )}
       </div>
+
+      {histAberto && (
+        <HistoricoVersoesModal
+          capitulo={capitulo}
+          modulo={modulo}
+          onFechar={() => setHistAberto(false)}
+        />
+      )}
       {/* Orientação da página + Quebra de página */}
       <div className="mb-2 flex flex-wrap items-center gap-3 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -703,20 +921,23 @@ function CapituloCard({
             : "A4 vertical em folha nova (ABNT)."}
         </span>
 
-        {/* V53: Posição no PDF — Stepper visual */}
-        <div className="w-full">
-          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
-            📍 Posição no Relatório
-          </p>
-          <PosicaoPdfStepper
-            valor={(capitulo.posicao_pdf ?? "inicio") as PosicaoPdf}
-            onChange={(p) =>
-              onSalvar({ posicao_pdf: p as PosicaoPdf })
-            }
-            contagens={contagensPorPosicao}
-            disabled={salvando}
-          />
-        </div>
+        {/* V53: Posição no PDF — Stepper visual (oculto na ordenação unificada) */}
+        {!ocultarPosicao && (
+          <div className="w-full">
+            <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+              📍 Posição no Relatório
+            </p>
+            <PosicaoPdfStepper
+              valor={(capitulo.posicao_pdf ?? "inicio") as PosicaoPdf}
+              onChange={(p) =>
+                onSalvar({ posicao_pdf: p as PosicaoPdf })
+              }
+              contagens={contagensPorPosicao}
+              disabled={salvando}
+              posicoes={posicoesMod}
+            />
+          </div>
+        )}
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
@@ -725,9 +946,8 @@ function CapituloCard({
         </span>
         {capitulo.bg_imagem_url ? (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={capitulo.bg_imagem_url}
+            <StorageImg
+              stored={capitulo.bg_imagem_url}
               alt="Fundo"
               className="h-10 w-16 rounded border border-gray-300 object-cover"
             />
@@ -788,6 +1008,7 @@ function CapituloCard({
       ) : (
         <RichTextEditor
           value={conteudo}
+          readOnly={travado}
           onChange={(html) => {
             setConteudo(html);
             setDirty(true);
@@ -795,6 +1016,123 @@ function CapituloCard({
           placeholder="Conteúdo do capítulo... use {{empresa_nome}}, {{cnpj}} etc. pra inserir variáveis."
         />
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// HistoricoVersoesModal — histórico de versões de um capítulo (Fase 2)
+// ============================================================
+
+function resumoVersao(v: TextoPadraoVersao): string {
+  if (v.bg_imagem_url) return "[Capa / imagem de fundo]";
+  const texto = (v.conteudo ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  if (!texto) return "(sem conteúdo)";
+  return texto.length > 180 ? texto.slice(0, 180) + "…" : texto;
+}
+
+function HistoricoVersoesModal({
+  capitulo,
+  modulo,
+  onFechar,
+}: {
+  capitulo: TextoPadraoCapitulo;
+  modulo: ModuloTextoPadrao;
+  onFechar: () => void;
+}) {
+  const { data: versoes = [], isLoading } = useHistoricoCapitulo(capitulo.id_capitulo);
+  const restaurar = useRestaurarVersao(modulo);
+  const [confirmar, setConfirmar] = useState<TextoPadraoVersao | null>(null);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onFechar}
+    >
+      <div
+        className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <History className="size-4 text-sky-700" />
+            <h3 className="text-sm font-semibold text-gray-900">
+              Histórico — {capitulo.titulo}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onFechar}
+            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          {isLoading ? (
+            <LoadingSkeleton rows={3} />
+          ) : versoes.length === 0 ? (
+            <p className="py-6 text-center text-sm text-gray-500">
+              Nenhuma versão registrada ainda.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {versoes.map((v, idx) => (
+                <li
+                  key={v.id_versao}
+                  className="rounded-lg border border-gray-200 bg-gray-50/60 p-3"
+                >
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center rounded bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-700">
+                        v{v.versao}
+                      </span>
+                      {idx === 0 && (
+                        <span className="inline-flex items-center rounded bg-green-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-green-700">
+                          Atual
+                        </span>
+                      )}
+                      <span className="text-[11px] text-gray-500">
+                        {new Date(v.editado_em).toLocaleString("pt-BR")}
+                        {v.editado_por ? ` · ${v.editado_por}` : ""}
+                      </span>
+                    </div>
+                    {idx !== 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmar(v)}
+                        disabled={restaurar.isPending}
+                        className="inline-flex items-center gap-1 rounded-md border border-sky-300 bg-white px-2 py-1 text-[11px] font-semibold text-sky-700 hover:bg-sky-50 disabled:opacity-50"
+                      >
+                        <RotateCcw className="size-3" /> Restaurar
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-600">{resumoVersao(v)}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={!!confirmar}
+        title={`Restaurar versão ${confirmar?.versao ?? ""}?`}
+        description="O conteúdo atual do capítulo será substituído por esta versão. A versão atual permanece no histórico (a restauração gera uma nova versão)."
+        loading={restaurar.isPending}
+        onConfirm={() => {
+          if (!confirmar) return;
+          restaurar.mutate(confirmar, {
+            onSuccess: () => {
+              setConfirmar(null);
+              onFechar();
+            },
+          });
+        }}
+        onCancel={() => setConfirmar(null)}
+      />
     </div>
   );
 }
@@ -890,6 +1228,57 @@ const TEMPLATES_POR_MODULO: Record<
       titulo: "3. Considerações Finais",
       conteudo:
         '<p style="text-align: justify">O presente parecer não substitui a análise de risco específica exigida pelo item 12.131 da NR-12 nem dispensa a capacitação obrigatória dos operadores. Recomenda-se reavaliação periódica e sempre que houver modificação significativa na máquina ou no processo. Risco residual final apurado: <strong>{{risco_residual}}</strong>.</p>',
+    },
+  ],
+  aep: [
+    {
+      titulo: "1. Introdução",
+      conteudo:
+        '<p style="text-align: justify">Esta Análise Ergonômica Preliminar foi elaborada para a empresa <strong>{{empresa_nome}}</strong> (CNPJ {{cnpj}}), com o objetivo de identificar os principais riscos ergonômicos presentes nos postos de trabalho avaliados, em conformidade com a <strong>NR-17 — Ergonomia</strong>.</p>',
+    },
+    {
+      titulo: "2. Metodologia",
+      conteudo:
+        '<p style="text-align: justify">A avaliação foi realizada por meio de inspeção visual, entrevistas com trabalhadores e análise das condições de trabalho, abrangendo aspectos físicos, cognitivos e organizacionais conforme a metodologia de triagem ergonômica. A AEP não substitui a Análise Ergonômica do Trabalho completa (AET), sendo recomendada quando houver indicadores que justifiquem aprofundamento.</p>',
+    },
+    {
+      titulo: "3. Considerações Finais",
+      conteudo:
+        '<p style="text-align: justify">Recomenda-se a implementação das medidas corretivas identificadas neste relatório, com prioridade para os setores de maior risco ergonômico. Para os setores em que foi indicada necessidade de AET completa, sugere-se a contratação de estudo aprofundado conforme NR-17.</p>',
+    },
+  ],
+  aet: [
+    {
+      titulo: "1. Introdução",
+      conteudo:
+        '<p style="text-align: justify">Este Laudo de Análise Ergonômica do Trabalho foi elaborado para a empresa <strong>{{empresa_nome}}</strong> (CNPJ {{cnpj}}), atendendo às exigências da <strong>NR-17 — Ergonomia</strong> e da <strong>NR-01</strong> (GRO/PGR). O estudo abrange os postos de trabalho, condições ambientais e organização do trabalho dos setores avaliados.</p>',
+    },
+    {
+      titulo: "2. Metodologia",
+      conteudo:
+        '<p style="text-align: justify">A avaliação ergonômica foi conduzida por meio de: inspeção visual dos postos de trabalho; análise postural pelo método OWAS; aplicação do QPS Nordic para fatores psicossociais; medições ambientais (iluminação, ruído, temperatura); e entrevistas com trabalhadores e gestores. As ferramentas utilizadas seguem padrões ABNT, ISO 9241 e literatura ergonômica especializada.</p>',
+    },
+    {
+      titulo: "3. Considerações Finais",
+      conteudo:
+        '<p style="text-align: justify">As medidas recomendadas neste laudo visam adequar as condições de trabalho às capacidades e limitações dos trabalhadores, reduzindo a exposição a fatores de risco ergonômico. Recomenda-se revisão periódica deste estudo, especialmente quando houver alterações significativas nos postos de trabalho, nos processos produtivos ou no quadro de trabalhadores.</p>',
+    },
+  ],
+  psicossocial: [
+    {
+      titulo: "1. Introdução",
+      conteudo:
+        '<p style="text-align: justify">Este Diagnóstico de Riscos Psicossociais foi elaborado para a empresa <strong>{{empresa_nome}}</strong> (CNPJ {{cnpj}}), em conformidade com a <strong>NR-01</strong> (GRO/PGR) e com as diretrizes da Organização Mundial da Saúde para gestão de riscos psicossociais no trabalho.</p>',
+    },
+    {
+      titulo: "2. Metodologia",
+      conteudo:
+        '<p style="text-align: justify">O diagnóstico foi conduzido por meio da aplicação do questionário <strong>QPS Nordic</strong> (Questionário Psicossocial Nórdico), instrumento validado para avaliação de fatores psicossociais no ambiente de trabalho. A coleta ocorreu entre {{data_carimbo_inicio}} e {{data_carimbo_fim}}, com análise estatística dos resultados por setor e função.</p>',
+    },
+    {
+      titulo: "3. Considerações Finais",
+      conteudo:
+        '<p style="text-align: justify">Os resultados deste diagnóstico devem ser utilizados como subsídio para a elaboração do Plano de Ação de Controle dos Riscos Psicossociais, com priorização das medidas de acordo com a gravidade e probabilidade identificadas. Recomenda-se nova avaliação em prazo não superior a 12 meses.</p>',
     },
   ],
 };

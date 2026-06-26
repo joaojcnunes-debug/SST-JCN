@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useMemo, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
@@ -20,6 +20,10 @@ import {
   CheckCircle2,
   Gauge,
   FlaskConical,
+  Printer,
+  ClipboardList,
+  Brain,
+  Workflow,
 } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
@@ -37,6 +41,16 @@ const SECTIONS_LISTA: NavSection[] = [
   {
     label: "Configuração",
     items: [
+      {
+        href: "/psicossocial/agravos",
+        label: "Possíveis Agravos",
+        icon: Brain,
+      },
+      {
+        href: "/psicossocial/medidas-recomendadas",
+        label: "Medidas Recomendadas",
+        icon: ClipboardList,
+      },
       {
         href: "/psicossocial/texto-padrao",
         label: "Texto Padrão",
@@ -79,6 +93,11 @@ function sectionsRelatorio(idRelatorio: string): NavSection[] {
           label: "Conclusão Geral",
           icon: CheckCircle2,
         },
+        {
+          href: `${base}/plano-acao`,
+          label: "Plano de Ação 5W2H",
+          icon: Workflow,
+        },
       ],
     },
     {
@@ -91,9 +110,17 @@ function sectionsRelatorio(idRelatorio: string): NavSection[] {
       ],
     },
     {
+      label: "Laudo",
+      items: [
+        { href: `${base}/laudo`, label: "Laudo / Imprimir", icon: Printer, variant: "report" as const },
+      ],
+    },
+    {
       label: "Configuração",
       items: [
         { href: `${base}/metadados`, label: "Metadados do Relatório", icon: Building2 },
+        { href: "/psicossocial/agravos", label: "Possíveis Agravos", icon: Brain },
+        { href: "/psicossocial/medidas-recomendadas", label: "Medidas Recomendadas", icon: ClipboardList },
         { href: "/psicossocial/texto-padrao", label: "Texto Padrão", icon: FileEdit },
       ],
     },
@@ -121,6 +148,8 @@ function extrairIdRelatorio(pathname: string): string | null {
     "criterios",
     "metodologia",
     "texto-padrao",
+    "medidas-recomendadas",
+    "agravos",
     "dashboard-geral",
   ]);
   if (reservadas.has(candidato)) return null;
@@ -151,7 +180,7 @@ export default function PsicossocialLayout({
     <div className="min-h-screen">
       <SidebarShell
         title="Psicossocial"
-        subtitle="Chabra"
+        subtitle="JCN Consultoria"
         logoHref="/psicossocial"
         sections={sections}
       />

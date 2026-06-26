@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -6,10 +6,11 @@ import { Suspense, useState, useEffect } from "react";
 import {
   Shield,
   Brain,
+  Building2,
   LogOut,
   CheckCircle2,
   AlertTriangle,
-  Users,
+  Settings,
   Cog,
   Boxes,
   FlaskConical,
@@ -20,6 +21,8 @@ import {
   ClipboardCheck,
   BookOpen,
   FileClock,
+  TrendingUp,
+  Siren,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
@@ -48,10 +51,10 @@ const CARDS: HubCardCfg[] = [
   {
     modulo: "painel",
     href: "/dashboard",
-    title: "Painel SST",
+    title: "SST JCN Consultoria",
     description: "Inspeções, riscos, ações 5W2H, treinamentos e relatórios",
     icon: <Shield className="size-12" />,
-    accent: "#00835A",
+    accent: "#0284c7",
     categoria: "seguranca",
   },
   {
@@ -84,7 +87,7 @@ const CARDS: HubCardCfg[] = [
   {
     modulo: "analise_quimicos",
     href: "/analise-quimicos",
-    title: "Análise de Químicos JCN",
+    title: "Análise de Químicos JCN Consultoria",
     description: "Análise quantitativa de agentes químicos e FISPQ",
     icon: <FlaskConical className="size-12" />,
     accent: "#0EA5E9",
@@ -107,6 +110,17 @@ const CARDS: HubCardCfg[] = [
     icon: <ClipboardCheck className="size-12" />,
     accent: "#059669",
     categoria: "seguranca",
+  },
+  {
+    modulo: "investigacao_acidente",
+    href: "/investigacao-acidente",
+    title: "Investigação de Acidente",
+    description: "Investigação de acidentes de trabalho: CAT, análise de causas (5 porquês) e medidas",
+    icon: <Siren className="size-12" />,
+    accent: "#B91C1C",
+    categoria: "seguranca",
+    skipStats: true,
+    staticLabel: "Investigação de acidentes do trabalho",
   },
   // ── NR — Fatores Psicossocial ──────────────────────────────────────
   {
@@ -138,28 +152,39 @@ const CARDS: HubCardCfg[] = [
     skipStats: true,
     staticLabel: "Dashboard · Fatores organizacionais",
   },
-  // ── JCN Sistema Interno ─────────────────────────────────────────
+  // ── JCN Consultoria Sistema Interno ─────────────────────────────────────────
   {
     modulo: "inventario_maquinas",
     href: "/inventario-maquinas",
     title: "Inventário de Equipamentos",
-    description: "Patrimônio JCN e máquinas das empresas clientes",
+    description: "Patrimônio JCN Consultoria e máquinas das empresas clientes",
     icon: <Boxes className="size-12" />,
     accent: "#2563EB",
     categoria: "interno",
+  },
+  {
+    modulo: "produtividade",
+    href: "/produtividade",
+    title: "Projeção de Produtividade CHABRA",
+    description: "Controle de unidades, documentos SST, produtividade da equipe e projeção de capacidade operacional",
+    icon: <TrendingUp className="size-12" />,
+    accent: "#0F766E",
+    categoria: "interno",
+    skipStats: true,
+    staticLabel: "Dashboard · Projeção de capacidade",
   },
 ];
 
 const CATEGORIES: { id: Categoria; label: string; icon: React.ReactNode }[] = [
   { id: "seguranca",    label: "Segurança do Trabalho",      icon: <Shield className="size-4" /> },
   { id: "psicossocial", label: "NR — Fatores Psicossocial",  icon: <Brain className="size-4" /> },
-  { id: "interno",      label: "JCN Sistema Interno",     icon: <Boxes className="size-4" /> },
+  { id: "interno",      label: "JCN Consultoria Sistema Interno",     icon: <Boxes className="size-4" /> },
 ];
 
 const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; icon: React.ReactNode }> = {
   seguranca: {
     descricao: "Inspeções, conformidade NR, laudos NR-12, ergonomia e análise de agentes químicos",
-    accent: "#00835A",
+    accent: "#0284c7",
     icon: <Shield className="size-12" />,
   },
   psicossocial: {
@@ -168,7 +193,7 @@ const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; ic
     icon: <Brain className="size-12" />,
   },
   interno: {
-    descricao: "Patrimônio JCN, inventário de equipamentos e sistemas de gestão interna",
+    descricao: "Patrimônio JCN Consultoria, inventário de equipamentos e sistemas de gestão interna",
     accent: "#2563EB",
     icon: <Boxes className="size-12" />,
   },
@@ -252,6 +277,11 @@ function InicioContent() {
 
   const temCards = cardsDisponiveis.length > 0;
 
+  // Clientes não usam o hub — redirecionados para o portal
+  useEffect(() => {
+    if (user?.perfil === "Cliente") router.replace("/portal-cliente/inicio");
+  }, [user?.perfil, router]);
+
   const [saudacao, setSaudacao] = useState("");
   const [agora, setAgora] = useState<Date | null>(null);
   useEffect(() => {
@@ -260,6 +290,19 @@ function InicioContent() {
     setAgora(now);
   }, []);
   const primeiroNome = user?.nome ? user.nome.split(" ")[0] : "";
+
+  // Evita flash do hub antes do redirect completar (depois de todos os hooks)
+  if (user?.perfil === "Cliente") {
+    return (
+      <div
+        className="min-h-screen"
+        style={{
+          background:
+            "linear-gradient(135deg, #1e4d28 0%, #0ea5e9 60%, #0284c7 100%)",
+        }}
+      />
+    );
+  }
 
   async function handleLogout() {
     sessionStorage.setItem("intentional-logout", "1");
@@ -281,11 +324,19 @@ function InicioContent() {
       className="min-h-screen flex flex-col"
       style={{
         background:
-          "linear-gradient(135deg, #1e4d28 0%, #006B54 60%, #00835A 100%)",
+          "linear-gradient(135deg, #1e4d28 0%, #0ea5e9 60%, #0284c7 100%)",
       }}
     >
       <header className="flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-3">
+          <Link
+            href="/visao-geral"
+            className="flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20"
+            title="Voltar à Visão geral"
+          >
+            <ArrowLeft className="size-4" />
+            <span className="hidden sm:inline">Visão geral</span>
+          </Link>
           {configs?.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -300,7 +351,7 @@ function InicioContent() {
             </div>
           )}
           <div className="leading-tight">
-            <p className="text-sm font-bold text-white">JCN</p>
+            <p className="text-sm font-bold text-white">JCN Consultoria</p>
             <p className="text-[11px] text-white/70">
               Segurança e Saúde do Trabalho
             </p>
@@ -320,10 +371,10 @@ function InicioContent() {
             <Link
               href="/usuarios"
               className="flex items-center gap-2 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-white/20"
-              title="Gerenciar usuários"
+              title="Administração do sistema (usuários, configurações, lixeira)"
             >
-              <Users className="size-4" />
-              <span className="hidden sm:inline">Usuários</span>
+              <Settings className="size-4" />
+              <span className="hidden sm:inline">Sistema</span>
             </Link>
           )}
           <button
@@ -362,7 +413,7 @@ function InicioContent() {
             </p>
             <p className="mt-1 text-sm text-white/80">
               Fale com o admin do sistema pra solicitar acesso aos módulos
-              (Painel SST, Conformidade NR, RNC, Análise de Químicos,
+              (SST JCN Consultoria, Conformidade NR, RNC, Análise de Químicos,
               Psicossocial e outros).
             </p>
             <p className="mt-3 text-xs text-white/60">
@@ -373,12 +424,14 @@ function InicioContent() {
           /* ── Nível 1: seleção de categoria ── */
           (() => {
             const visibleCats = CATEGORIES.filter((c) => cardsDisponiveis.some((d) => d.categoria === c.id));
-            const totalCards = visibleCats.length + (isAdmin ? 1 : 0);
+            // +1 do card Empresa (todos os usuários internos) e +1 do PDFs (admin).
+            const totalCards = visibleCats.length + 1 + (isAdmin ? 1 : 0);
             return (
               <div
                 className={cn(
                   "grid w-full gap-5",
                   "grid-cols-1",
+                  totalCards === 1 && "max-w-sm",
                   totalCards === 2 && "sm:grid-cols-2 max-w-3xl",
                   totalCards === 3 && "sm:grid-cols-2 lg:grid-cols-3 max-w-5xl",
                   totalCards >= 4 && "sm:grid-cols-2 lg:grid-cols-4 max-w-7xl",
@@ -387,12 +440,15 @@ function InicioContent() {
                 {visibleCats.map((cat) => {
                   const catCards = cardsDisponiveis.filter((c) => c.categoria === cat.id);
                   const cfg = CATEGORY_CONFIG[cat.id];
+                  // Descrição reflete os módulos que o usuário REALMENTE acessa
+                  // (evita citar inventário/patrimônio p/ quem só tem Produtividade).
+                  const descricao = catCards.map((c) => c.title).join(" · ") || cfg.descricao;
                   return (
                     <CategoryCard
                       key={cat.id}
                       label={cat.label}
                       icon={cfg.icon}
-                      descricao={cfg.descricao}
+                      descricao={descricao}
                       accent={cfg.accent}
                       totalModulos={catCards.length}
                       pendentes={catCards.reduce(
@@ -404,6 +460,7 @@ function InicioContent() {
                     />
                   );
                 })}
+                <EmpresaDirectCard />
                 {isAdmin && (
                   <PdfDirectCard />
                 )}
@@ -464,7 +521,7 @@ function InicioContent() {
         )}
 
         <p className="mt-10 text-center text-xs text-white/50">
-          © {new Date().getFullYear()} JCN · Sistemas Internos
+          © {new Date().getFullYear()} JCN Consultoria · Sistemas Internos
           {process.env.NEXT_PUBLIC_APP_VERSION && (
             <span className="ml-2 opacity-60">
               v{process.env.NEXT_PUBLIC_APP_VERSION}
@@ -478,7 +535,17 @@ function InicioContent() {
 
 export default function InicioPage() {
   return (
-    <Suspense>
+    <Suspense
+      fallback={
+        <div
+          className="min-h-screen"
+          style={{
+            background:
+              "linear-gradient(135deg, #1e4d28 0%, #0ea5e9 60%, #0284c7 100%)",
+          }}
+        />
+      }
+    >
       <InicioContent />
     </Suspense>
   );
@@ -515,11 +582,49 @@ function statsPorModulo(
   }
 }
 
+function EmpresaDirectCard() {
+  const accent = "#0E7490";
+  return (
+    <Link
+      href="/empresas"
+      className="group flex w-full flex-col gap-4 glass tilt-3d sheen reveal-up rounded-2xl p-6 text-left"
+    >
+      <div className="flex items-start gap-4">
+        <div
+          className="flex size-16 shrink-0 items-center justify-center rounded-2xl text-white shadow-md transition-transform group-hover:scale-105"
+          style={{ backgroundColor: accent }}
+        >
+          <Building2 className="size-12" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-gray-900">Empresas</h2>
+          <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
+            Cadastro e gestão das empresas clientes — base usada por todos os módulos
+          </p>
+        </div>
+      </div>
+      <div className="flex min-h-[40px] items-center gap-2 border-t border-gray-100 pt-3 text-xs">
+        <span
+          className="rounded-full px-2 py-0.5 font-semibold text-white"
+          style={{ backgroundColor: accent }}
+        >
+          Cadastro
+        </span>
+        <span className="text-gray-500">Todos os módulos</span>
+        <ArrowRight
+          className="ml-auto size-4 transition-transform group-hover:translate-x-1"
+          style={{ color: accent }}
+        />
+      </div>
+    </Link>
+  );
+}
+
 function PdfDirectCard() {
   return (
     <Link
       href="/pdfs-gerados"
-      className="group flex w-full flex-col gap-4 rounded-2xl bg-white p-6 text-left ring-1 ring-black/5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
+      className="group flex w-full flex-col gap-4 glass tilt-3d sheen reveal-up rounded-2xl p-6 text-left"
     >
       <div className="flex items-start gap-4">
         <div
@@ -575,7 +680,7 @@ function HubCard({
   return (
     <Link
       href={href}
-      className="group flex flex-col gap-4 rounded-2xl bg-white p-6 ring-1 ring-black/5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
+      className="group glass tilt-3d sheen reveal-up flex flex-col gap-4 rounded-2xl p-6"
     >
       <div className="flex items-start gap-4">
         <div
@@ -666,7 +771,7 @@ function CategoryCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full flex-col gap-4 rounded-2xl bg-white p-6 text-left ring-1 ring-black/5 shadow-xl transition-all hover:-translate-y-1 hover:shadow-2xl"
+      className="group flex w-full flex-col gap-4 glass tilt-3d sheen reveal-up rounded-2xl p-6 text-left"
     >
       <div className="flex items-start gap-4">
         <div

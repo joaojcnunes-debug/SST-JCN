@@ -17,10 +17,16 @@ import {
   AlertTriangle,
   Camera,
   FileText,
+  Send,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useImportarMaquinasInspecao } from "@/lib/hooks/useInventarioMaquinas";
+import RevisaoIAModal, { type CampoRevisaoIA } from "@/components/ui/RevisaoIAModal";
+import StorageImg from "@/components/ui/StorageImg";
+import { abrirMidiaAssinada } from "@/lib/storage/abrir-midia-assinada";
+import { extrairPathStorage } from "@/lib/storage/signed-url";
 import { cn } from "@/lib/utils";
 import type { InspecaoMaquina, Setor } from "@/lib/supabase/types";
 
@@ -136,6 +142,16 @@ export default function MaquinasTab({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [analisandoId, setAnalisandoId] = useState<string | null>(null);
   const [expandedParecer, setExpandedParecer] = useState<string | null>(null);
+  const importarApreciacao = useImportarMaquinasInspecao();
+  // Sugestões da IA aguardando revisão (modal aceitar/editar/rejeitar)
+  const [revisaoIA, setRevisaoIA] = useState<{
+    maquina: InspecaoMaquina;
+    campos: CampoRevisaoIA[];
+  } | null>(null);
+  const [aplicandoIA, setAplicandoIA] = useState(false);
+  // IA dentro do form: lê as fotos e sugere os campos (revisão antes de aplicar)
+  const [analisandoForm, setAnalisandoForm] = useState(false);
+  const [revisaoForm, setRevisaoForm] = useState<CampoRevisaoIA[] | null>(null);
 
   // foto upload
   const fileRef = useRef<HTMLInputElement>(null);
@@ -160,6 +176,8 @@ export default function MaquinasTab({
 
   function refresh() {
     qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+    // máquinas salvas/deletadas aqui alimentam o banner/modal de importação
+    qc.invalidateQueries({ queryKey: ["inspecao-maquinas-pendentes"] });
   }
 
   function f<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -253,6 +271,7 @@ export default function MaquinasTab({
 
   async function handleSave() {
     if (!form.nome.trim()) { toast.error("Nome da máquina é obrigatório"); return; }
+    if (!form.id_setor) { toast.error("Setor é obrigatório — toda máquina pertence a um setor"); return; }
     setSaving(true);
     try {
       // monta lista de fotos existentes (as que ficaram no preview com URL https)
@@ -355,27 +374,60 @@ export default function MaquinasTab({
       const result = data?.data;
       if (!result) throw new Error("Resposta inválida da IA");
 
-      const upd: Record<string, unknown> = {
-        parecer_ia: result.parecer ?? null,
-        updated_at: new Date().toISOString(),
-      };
-      if (result.grau_risco) upd.grau_risco = result.grau_risco;
-      if (result.protecao_fixa !== undefined && result.protecao_fixa !== null) upd.protecao_fixa = result.protecao_fixa;
-      if (result.protecao_movel !== undefined && result.protecao_movel !== null) upd.protecao_movel = result.protecao_movel;
-      if (result.intertravamento !== undefined && result.intertravamento !== null) upd.intertravamento = result.intertravamento;
-      if (result.botao_emergencia !== undefined && result.botao_emergencia !== null) upd.botao_emergencia = result.botao_emergencia;
-      if (result.aterramento !== undefined && result.aterramento !== null) upd.aterramento = result.aterramento;
-      if (result.sinalizacao !== undefined && result.sinalizacao !== null) upd.sinalizacao = result.sinalizacao;
-      if (result.necessita_adequacao_nr12 !== undefined && result.necessita_adequacao_nr12 !== null)
-        upd.necessita_adequacao_nr12 = result.necessita_adequacao_nr12;
-
-      await supabase
-        .from("inspecao_maquinas")
-        .update(upd as never)
-        .eq("id_maquina_inspecao", m.id_maquina_inspecao);
-
-      toast.success("Análise IA concluída");
-      refresh();
+      // Monta a revisão — nada é persistido sem o usuário confirmar no modal
+      const boolParaTexto = (v: boolean | null | undefined) =>
+        v === true ? "Sim" : v === false ? "Não" : "";
+      const SIM_NAO = [
+        { value: "Sim", label: "Sim" },
+        { value: "Não", label: "Não" },
+      ];
+      const campos: CampoRevisaoIA[] = [];
+      if (result.parecer) {
+        campos.push({
+          key: "parecer_ia",
+          label: "Parecer técnico (IA)",
+          valorSugerido: String(result.parecer),
+          valorAtual: m.parecer_ia,
+          multiline: true,
+        });
+      }
+      if (result.grau_risco) {
+        campos.push({
+          key: "grau_risco",
+          label: "Grau de risco",
+          valorSugerido: String(result.grau_risco),
+          valorAtual: m.grau_risco,
+          options: (Object.keys(GRAU_LABELS) as GrauRisco[]).map((g) => ({
+            value: g,
+            label: GRAU_LABELS[g],
+          })),
+        });
+      }
+      const BOOLS: { key: keyof InspecaoMaquina & string; label: string }[] = [
+        { key: "protecao_fixa", label: "Proteção fixa" },
+        { key: "protecao_movel", label: "Proteção móvel" },
+        { key: "intertravamento", label: "Intertravamento" },
+        { key: "botao_emergencia", label: "Botão de emergência" },
+        { key: "aterramento", label: "Aterramento elétrico" },
+        { key: "sinalizacao", label: "Sinalização de segurança" },
+        { key: "necessita_adequacao_nr12", label: "Necessita adequação NR-12" },
+      ];
+      for (const b of BOOLS) {
+        const v = result[b.key];
+        if (v === undefined || v === null) continue;
+        campos.push({
+          key: b.key,
+          label: b.label,
+          valorSugerido: boolParaTexto(v as boolean),
+          valorAtual: boolParaTexto(m[b.key] as boolean | null) || null,
+          options: SIM_NAO,
+        });
+      }
+      if (campos.length === 0) {
+        toast("A IA não retornou sugestões pra esta máquina.", { icon: "ℹ️" });
+        return;
+      }
+      setRevisaoIA({ maquina: m, campos });
     } catch (e) {
       toast.error(`Erro na análise IA: ${(e as Error).message}`);
     } finally {
@@ -383,12 +435,213 @@ export default function MaquinasTab({
     }
   }
 
-  function gerarRelatorio() {
-    const html = buildRelatorioHTML(maquinas, setoresMap);
+  /** Persiste os campos aceitos na revisão da análise de IA. */
+  async function aplicarRevisaoIA(valores: Record<string, string>) {
+    if (!revisaoIA) return;
+    setAplicandoIA(true);
+    try {
+      const upd: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      for (const [key, valor] of Object.entries(valores)) {
+        if (key === "parecer_ia") upd.parecer_ia = valor || null;
+        else if (key === "grau_risco") upd.grau_risco = valor || null;
+        else upd[key] = valor === "Sim" ? true : valor === "Não" ? false : null;
+      }
+      const { error } = await supabase
+        .from("inspecao_maquinas")
+        .update(upd as never)
+        .eq("id_maquina_inspecao", revisaoIA.maquina.id_maquina_inspecao);
+      if (error) throw error;
+      toast.success("Análise IA aplicada");
+      setRevisaoIA(null);
+      refresh();
+    } catch (e) {
+      toast.error(`Erro ao aplicar: ${(e as Error).message}`);
+    } finally {
+      setAplicandoIA(false);
+    }
+  }
+
+  /**
+   * IA dentro do form: lê TODAS as fotos anexadas (novas e já salvas) e
+   * sugere identificação + campos NR-12 visíveis. O que a IA não conseguir
+   * identificar fica de fora (preenchimento manual). Nada é aplicado sem
+   * confirmação no modal de revisão.
+   */
+  async function handleAnalisarFotosForm() {
+    if (fotosPreview.length === 0) {
+      toast("Adicione ao menos uma foto da máquina (de preferência da plaqueta)", { icon: "ℹ️" });
+      return;
+    }
+    setAnalisandoForm(true);
+    try {
+      const images: { b64: string; mime: string }[] = [];
+      for (const file of fotosUpload.slice(0, 4)) {
+        images.push({ b64: await resizeAndBase64(file), mime: "image/jpeg" });
+      }
+      // fotos já salvas (edição): baixa do storage e redimensiona
+      for (const url of fotosPreview.filter((u) => u.startsWith("http"))) {
+        if (images.length >= 4) break;
+        const blob = await fetch(url).then((r) => r.blob());
+        const file = new File([blob], "foto.jpg", { type: blob.type || "image/jpeg" });
+        images.push({ b64: await resizeAndBase64(file), mime: "image/jpeg" });
+      }
+
+      const res = await fetch("/api/maquina/analisar-foto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ images }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`);
+      }
+      const { data } = (await res.json()) as { data: Record<string, unknown> };
+
+      const boolParaTexto = (v: unknown) =>
+        v === true ? "Sim" : v === false ? "Não" : "";
+      const SIM_NAO = [
+        { value: "Sim", label: "Sim" },
+        { value: "Não", label: "Não" },
+      ];
+      const TEXTOS: { key: keyof FormState & string; label: string; ia?: string; multiline?: boolean }[] = [
+        { key: "nome", label: "Nome / Descrição" },
+        { key: "tipo", label: "Tipo" },
+        { key: "marca", label: "Fabricante / Marca" },
+        { key: "modelo", label: "Modelo" },
+        { key: "numero_serie", label: "Nº de Série" },
+        { key: "tag", label: "TAG / Patrimônio" },
+        { key: "ano_fabricacao", label: "Ano de Fabricação" },
+        { key: "potencia", label: "Potência" },
+        { key: "tensao", label: "Tensão" },
+        { key: "observacoes", label: "Observações técnicas", ia: "descricao_tecnica", multiline: true },
+      ];
+      const BOOLS: { key: keyof FormState & string; label: string }[] = [
+        { key: "protecao_fixa", label: "Proteção fixa" },
+        { key: "protecao_movel", label: "Proteção móvel" },
+        { key: "intertravamento", label: "Intertravamento" },
+        { key: "botao_emergencia", label: "Botão emergência" },
+        { key: "sistema_bloqueio", label: "Sistema de bloqueio/LOTO" },
+        { key: "aterramento", label: "Aterramento elétrico" },
+        { key: "sinalizacao", label: "Sinalização de segurança" },
+        { key: "necessita_adequacao_nr12", label: "Necessita adequação NR-12?" },
+      ];
+
+      const campos: CampoRevisaoIA[] = [];
+      for (const t of TEXTOS) {
+        const val = data[t.ia ?? t.key];
+        if (val === null || val === undefined || val === "") continue;
+        campos.push({
+          key: t.key,
+          label: t.label,
+          valorSugerido: String(val),
+          valorAtual: (form[t.key] as string) || null,
+          multiline: t.multiline,
+        });
+      }
+      for (const b of BOOLS) {
+        const v = data[b.key];
+        if (v !== true && v !== false) continue;
+        campos.push({
+          key: b.key,
+          label: b.label,
+          valorSugerido: boolParaTexto(v),
+          valorAtual: boolParaTexto(form[b.key]) || null,
+          options: SIM_NAO,
+        });
+      }
+      // grau de risco (select com os 4 níveis)
+      const grau = data.grau_risco;
+      if (typeof grau === "string" && grau in GRAU_LABELS) {
+        campos.push({
+          key: "grau_risco",
+          label: "Grau de risco",
+          valorSugerido: grau,
+          valorAtual: form.grau_risco || null,
+          options: (Object.keys(GRAU_LABELS) as GrauRisco[]).map((g) => ({
+            value: g,
+            label: GRAU_LABELS[g],
+          })),
+        });
+      }
+      if (campos.length === 0) {
+        toast("A IA não identificou dados nas fotos. Preencha manualmente.", { icon: "ℹ️" });
+        return;
+      }
+      setRevisaoForm(campos);
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : "Falha na análise IA");
+    } finally {
+      setAnalisandoForm(false);
+    }
+  }
+
+  /** Aplica no form os campos aceitos na revisão (nada vai pro banco aqui). */
+  function aplicarRevisaoForm(valores: Record<string, string>) {
+    setForm((p) => {
+      const next = { ...p };
+      for (const [key, valor] of Object.entries(valores)) {
+        const k = key as keyof FormState;
+        if (typeof p[k] === "boolean" || p[k] === null) {
+          (next as Record<string, unknown>)[key] =
+            valor === "Sim" ? true : valor === "Não" ? false : null;
+        } else {
+          (next as Record<string, unknown>)[key] = valor;
+        }
+      }
+      return next;
+    });
+    setRevisaoForm(null);
+    toast.success("Sugestões aplicadas — revise e salve");
+  }
+
+  async function gerarRelatorio() {
+    // O popup é aberto via document.write — uma janela SEM sessão Supabase, que
+    // não consegue assinar URL. Então assino as fotos AQUI (em lote) e embuto as
+    // URLs assinadas no HTML. Sem isso, ao privatizar o bucket `fotos` o relatório
+    // sairia com as imagens quebradas.
+    const todas = Array.from(new Set(maquinas.flatMap((m) => m.foto_urls).filter(Boolean)));
+    const assinadas = new Map<string, string>();
+    const comPath = todas
+      .map((u) => ({ u, path: extrairPathStorage(u, "fotos") }))
+      .filter((x): x is { u: string; path: string } => !!x.path);
+    if (comPath.length) {
+      try {
+        const sb = createSupabaseBrowserClient();
+        const { data } = await sb.storage
+          .from("fotos")
+          .createSignedUrls(comPath.map((x) => x.path), 3600);
+        data?.forEach((d, i) => {
+          if (d.signedUrl) assinadas.set(comPath[i].u, d.signedUrl);
+        });
+      } catch {
+        // fallback: mantém as URLs originais (degrada como antes, não trava o relatório)
+      }
+    }
+    const html = buildRelatorioHTML(maquinas, setoresMap, assinadas);
     const w = window.open("", "_blank");
     if (!w) { toast.error("Popup bloqueado. Permita popups para este site."); return; }
     w.document.write(html);
     w.document.close();
+  }
+
+  /** Envia as máquinas da inspeção pro inventário NR-12 (módulo Apreciação). */
+  async function enviarParaApreciacao() {
+    try {
+      const r = await importarApreciacao.mutateAsync(maquinas);
+      if (r.criadas > 0) {
+        toast.success(
+          `${r.criadas} máquina${r.criadas > 1 ? "s" : ""} enviada${r.criadas > 1 ? "s" : ""} pro inventário NR-12` +
+            (r.ignoradas > 0 ? ` · ${r.ignoradas} já existia(m)` : "") +
+            " — disponíveis em Apreciação de Máquinas",
+          { duration: 6000 }
+        );
+      } else {
+        toast(`Todas as ${r.ignoradas} máquinas já estão no inventário NR-12.`, { icon: "ℹ️" });
+      }
+    } catch {
+      // toast de erro já emitido pelo hook
+    }
   }
 
   // ─── render helpers ────────────────────────────────────────────────────────
@@ -477,15 +730,18 @@ export default function MaquinasTab({
             {m.foto_urls.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {m.foto_urls.map((url, i) => (
-                  <img
+                  <span
                     key={i}
-                    src={url}
-                    alt={`foto ${i + 1}`}
-                    className="h-14 w-14 cursor-pointer rounded border border-gray-200 object-cover hover:opacity-80"
-                    onClick={() => window.open(url, "_blank")}
+                    onClick={() => abrirMidiaAssinada(url)}
                     title="Clique para ampliar"
-                    referrerPolicy="no-referrer"
-                  />
+                    className="cursor-pointer"
+                  >
+                    <StorageImg
+                      stored={m.foto_storage_paths?.[i] || url}
+                      alt={`foto ${i + 1}`}
+                      className="h-14 w-14 rounded border border-gray-200 object-cover hover:opacity-80"
+                    />
+                  </span>
                 ))}
               </div>
             )}
@@ -608,6 +864,22 @@ export default function MaquinasTab({
               Relatório
             </button>
           )}
+          {maquinas.length > 0 && !readOnly && (
+            <button
+              type="button"
+              onClick={enviarParaApreciacao}
+              disabled={importarApreciacao.isPending}
+              title="Envia as máquinas desta inspeção pro inventário do módulo Apreciação de Máquinas NR-12 (sem duplicar)"
+              className="inline-flex items-center gap-1.5 rounded-md border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-50"
+            >
+              {importarApreciacao.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Send className="size-3.5" />
+              )}
+              Enviar p/ Apreciação NR-12
+            </button>
+          )}
           {!readOnly && (
             <button
               type="button"
@@ -634,6 +906,46 @@ export default function MaquinasTab({
           </div>
 
           <div className="space-y-4">
+            {/* setor primeiro — toda máquina pertence a um setor */}
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Setor
+              </p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-700">
+                    Setor da máquina <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={form.id_setor}
+                    onChange={(e) => f("id_setor", e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                  >
+                    <option value="" disabled>
+                      Selecione o setor…
+                    </option>
+                    {setores.map((s) => (
+                      <option key={s.id_setor} value={s.id_setor}>
+                        {s.setor_ghe}
+                      </option>
+                    ))}
+                  </select>
+                  {setores.length === 0 && (
+                    <p className="mt-1 text-xs text-amber-600">
+                      Cadastre os setores na aba Setores antes de adicionar máquinas.
+                    </p>
+                  )}
+                  {!form.id_setor && setores.length > 0 && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Escolha o setor pra liberar os dados da máquina.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {form.id_setor && (
+            <>
             {/* identificação */}
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -673,27 +985,12 @@ export default function MaquinasTab({
               </div>
             </div>
 
-            {/* setor + capacidade */}
+            {/* capacidade */}
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Localização e Capacidade
+                Capacidade
               </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Setor</label>
-                  <select
-                    value={form.id_setor}
-                    onChange={(e) => f("id_setor", e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
-                  >
-                    <option value="">— sem setor —</option>
-                    {setores.map((s) => (
-                      <option key={s.id_setor} value={s.id_setor}>
-                        {s.setor_ghe}
-                      </option>
-                    ))}
-                  </select>
-                </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-700">Potência</label>
                   <input
@@ -766,14 +1063,30 @@ export default function MaquinasTab({
 
             {/* fotos */}
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Fotos da Máquina (máx. 4 — usadas pela IA)
-              </p>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Fotos da Máquina (máx. 4 — usadas pela IA)
+                </p>
+                <button
+                  type="button"
+                  onClick={handleAnalisarFotosForm}
+                  disabled={analisandoForm || fotosPreview.length === 0}
+                  title="A IA lê as fotos e sugere os dados da máquina (identificação + segurança NR-12). Você revisa antes de aplicar."
+                  className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100 disabled:opacity-50"
+                >
+                  {analisandoForm ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Bot className="size-3.5" />
+                  )}
+                  Preencher com IA
+                </button>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {fotosPreview.map((url, i) => (
                   <div key={i} className="relative">
-                    <img
-                      src={url}
+                    <StorageImg
+                      stored={url}
                       alt={`foto ${i + 1}`}
                       className="h-20 w-20 rounded-lg border border-gray-200 object-cover"
                     />
@@ -806,6 +1119,8 @@ export default function MaquinasTab({
                 onChange={(e) => handleFotoSelect(e.target.files)}
               />
             </div>
+            </>
+            )}
           </div>
 
           <div className="mt-4 flex justify-end gap-2">
@@ -819,7 +1134,7 @@ export default function MaquinasTab({
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || !form.id_setor}
               className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
             >
               {saving && <Loader2 className="size-4 animate-spin" />}
@@ -895,15 +1210,62 @@ export default function MaquinasTab({
           )}
         </div>
       )}
+
+      {/* Revisão da análise de IA — aceitar/editar/rejeitar antes de persistir */}
+      {revisaoIA && (
+        <RevisaoIAModal
+          titulo={`Análise NR-12 da IA — ${revisaoIA.maquina.nome}`}
+          descricao="Sugestões geradas a partir das fotos e dados da máquina. Nada é salvo sem a sua confirmação."
+          campos={revisaoIA.campos}
+          onAplicar={aplicarRevisaoIA}
+          onClose={() => setRevisaoIA(null)}
+          aplicando={aplicandoIA}
+        />
+      )}
+
+      {/* Revisão das sugestões da IA lidas das fotos do FORM */}
+      {revisaoForm && (
+        <RevisaoIAModal
+          titulo="Sugestões da IA — dados da máquina"
+          descricao="Extraído das fotos anexadas. O que a IA não identificou ficou de fora — preencha manualmente."
+          campos={revisaoForm}
+          onAplicar={aplicarRevisaoForm}
+          onClose={() => setRevisaoForm(null)}
+        />
+      )}
     </div>
   );
 }
 
 // ─── relatório HTML ────────────────────────────────────────────────────────
 
+/** Redimensiona e converte pra base64 (sem prefixo data:) — reduz custo de tokens. */
+async function resizeAndBase64(file: File, maxPx = 1024): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      resolve(dataUrl.split(",")[1]);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 function buildRelatorioHTML(
   maquinas: InspecaoMaquina[],
-  setoresMap: Map<string, string>
+  setoresMap: Map<string, string>,
+  fotosAssinadas: Map<string, string> = new Map()
 ): string {
   const grauCores: Record<string, string> = {
     BAIXO: "#166534",
@@ -942,7 +1304,7 @@ function buildRelatorioHTML(
             ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">${m.foto_urls
                 .map(
                   (u) =>
-                    `<img src="${u}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;" referrerpolicy="no-referrer"/>`
+                    `<img src="${fotosAssinadas.get(u) ?? u}" style="width:72px;height:72px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;" referrerpolicy="no-referrer"/>`
                 )
                 .join("")}</div>`
             : "";

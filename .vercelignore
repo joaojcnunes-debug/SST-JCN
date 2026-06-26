@@ -1,8 +1,12 @@
-.next
+# Build local e artefatos do Electron — a Vercel builda remotamente, não precisa
+# subir nada disso (e o instalador .exe em dist/ estoura o limite de 100 MB).
 node_modules
+.next
 dist
 electron-dist
-electron/assets
+out
+electron/assets/*.ico
 *.exe
 *.blockmap
-supabase/migrations_jcn_pending.sql
+*.log
+.git

@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { PDFDocument } from "pdf-lib";
-import { pdflibAddPlaceholder } from "@signpdf/placeholder-pdf-lib";
-import { P12Signer } from "@signpdf/signer-p12";
-import signpdf from "@signpdf/signpdf";
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const forge: any = require("node-forge");
-import { createSupabaseServerClient } from "@/lib/supabase/client";
+import {
+  createSupabaseServerClient,
+  createSupabaseServiceClient,
+} from "@/lib/supabase/client";
 import type { Usuario } from "@/lib/supabase/types";
+import { assinarPdfPades } from "@/lib/pdf/assinar-pdf-pades";
+
+export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
@@ -83,8 +85,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "PDF muito grande (máx. 50 MB)" }, { status: 400 });
   }
 
-  // Baixa o certificado .pfx do bucket privado
-  const { data: certBlob, error: certError } = await supabase.storage
+  // Baixa o certificado .pfx do bucket privado via SERVICE_ROLE (o bucket é
+  // travado para acesso direto do cliente; só o servidor, após validar
+  // auth + permissão acima, pode ler o .pfx).
+  const serviceClient = createSupabaseServiceClient();
+  const { data: certBlob, error: certError } = await serviceClient.storage
     .from("certificados")
     .download(usuario.certificado_pfx_path);
 
@@ -164,32 +169,26 @@ export async function POST(req: NextRequest) {
   try {
     const pdfBuffer = Buffer.from(await pdfFile.arrayBuffer());
 
-    // Carrega o PDF gerado pelo cliente
-    let pdfDoc;
+    let pdfAssinado: Buffer;
     try {
-      pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+      const assinarOpts = {
+        pfxBuffer: p12Buffer,
+        passphrase: password,
+        signatoryName: usuario.nome ?? usuario.email ?? "",
+        signatoryEmail: usuario.email ?? "",
+        reason: "Assinatura digital ICP-Brasil A1",
+        location: "Brasil",
+      };
+      // Todos os documentos usam o signer PAdES ICP-Brasil (conformidade ITI,
+      // validado no validar.iti.gov.br). O signer antigo (assinar-pdf.ts) fica
+      // como referência/rollback, mas não é mais chamado.
+      pdfAssinado = await assinarPdfPades(pdfBuffer, assinarOpts);
     } catch {
       return NextResponse.json(
         { error: "Falha ao processar o PDF. Recarregue a página e tente novamente." },
         { status: 400 }
       );
     }
-
-    // signatureLength: 65536 (64 KB) — cobre certificados ICP-Brasil com cadeia completa
-    // Raiz AC + AC Política + AC Emissora + leaf cert + OCSP pode chegar a ~50 KB
-    pdflibAddPlaceholder({
-      pdfDoc,
-      reason: "Assinatura digital ICP-Brasil A1",
-      name: usuario.nome ?? usuario.email ?? "",
-      location: "Brasil",
-      contactInfo: usuario.email ?? "",
-      signatureLength: 65536,
-    });
-
-    const pdfComPlaceholder = Buffer.from(await pdfDoc.save({ useObjectStreams: false }));
-
-    const signer = new P12Signer(p12Buffer, { passphrase: password });
-    const pdfAssinado = await signpdf.sign(pdfComPlaceholder, signer);
 
     // Se tabelaNome + docId fornecidos: salva no Storage e registra no banco
     if (tabelaNome && docId) {
@@ -198,6 +197,9 @@ export async function POST(req: NextRequest) {
         .from("pdfs-assinados")
         .upload(pdfPath, new Uint8Array(pdfAssinado), {
           contentType: "application/pdf",
+          // Sem cache: o mesmo path é sobrescrito a cada (re)assinatura; com o
+          // padrão (3600s) o navegador/CDN reentregava o PDF antigo após re-assinar.
+          cacheControl: "0",
           upsert: true,
         });
 
@@ -227,6 +229,17 @@ export async function POST(req: NextRequest) {
           { status: 500 }
         );
       }
+
+      // E3: trilha de auditoria (fire-and-forget — nunca bloqueia a assinatura)
+      try {
+        await supabase.from("document_audit_logs").insert({
+          modulo: tabelaNome,
+          id_referencia: docId,
+          acao: "assinou_pdf",
+          descricao: "PDF assinado com certificado A1 ICP-Brasil",
+          usuario_email: emailSignatario,
+        } as never);
+      } catch { /* ignora falha de auditoria */ }
 
       return NextResponse.json({ success: true });
     }

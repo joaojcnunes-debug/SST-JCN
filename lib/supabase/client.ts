@@ -3,6 +3,7 @@ import {
   createServerClient,
   type CookieOptions,
 } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -29,6 +30,22 @@ type CookieStore = {
   getAll: () => { name: string; value: string }[];
   set?: (name: string, value: string, options?: CookieOptions) => void;
 };
+
+/**
+ * Client com SERVICE_ROLE — bypassa RLS. USAR SOMENTE em Route Handlers/Server
+ * Actions, e SOMENTE depois de validar auth/autorização manualmente na rota.
+ * Nunca importar/chamar em código client (a chave não tem prefixo NEXT_PUBLIC,
+ * então é undefined no browser e a função lança erro).
+ */
+export function createSupabaseServiceClient() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  if (!serviceKey) {
+    throw new Error("SUPABASE_SERVICE_ROLE_KEY não configurada no servidor.");
+  }
+  return createClient<Database>(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
 
 export function createSupabaseServerClient(cookieStore: CookieStore) {
   return createServerClient<Database>(url, anonKey, {

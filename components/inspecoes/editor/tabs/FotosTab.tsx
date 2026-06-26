@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import FotoForm from "../FotoForm";
+import StorageImg from "@/components/ui/StorageImg";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { CATEGORIAS_FOTO, CATEGORIA_FOTO_ICONE } from "@/lib/constants";
@@ -102,9 +103,8 @@ export default function FotosTab({
                     className="group overflow-hidden rounded-lg border border-gray-200 bg-white"
                   >
                     <div className="relative aspect-square bg-gray-100">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={f.arquivo_foto}
+                      <StorageImg
+                        stored={f.storage_path || f.arquivo_foto}
                         alt={f.legenda ?? cat}
                         className="size-full object-cover"
                       />

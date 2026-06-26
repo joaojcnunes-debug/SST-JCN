@@ -9,6 +9,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -167,7 +168,10 @@ export default function ConclusaoGeralPage({
               matriz: t.matriz,
             })),
             agravos: relatorio.agravos_por_setor ?? null,
-            medidasExistentes: relatorio.medidas_existentes ?? null,
+            // Lê as medidas RECOMENDADAS por setor (consolidadas), igual ao agravos
+            // e à conclusão por setor — não o campo global legado medidas_existentes.
+            medidasExistentes:
+              relatorio.medidas_por_setor ?? relatorio.medidas_existentes ?? null,
             textoAtual: conclusao.trim() || null,
           },
         }
@@ -204,7 +208,7 @@ export default function ConclusaoGeralPage({
     } catch (err) {
       console.error(err);
       toast.error(
-        err instanceof Error ? err.message : "Falha ao gerar conclusão"
+        mensagemErro(err, "Falha ao gerar conclusão")
       );
     } finally {
       setGerandoIA(false);
@@ -239,7 +243,7 @@ export default function ConclusaoGeralPage({
         </h1>
         <p className="text-sm text-gray-600">
           Síntese técnica consolidada do diagnóstico DRPS — agrega todos os
-          setores avaliados, agravos potenciais e medidas existentes. Usada
+          setores avaliados, agravos potenciais e medidas recomendadas. Usada
           como fechamento do PDF do relatório.
         </p>
       </div>
@@ -275,7 +279,7 @@ export default function ConclusaoGeralPage({
               type="button"
               onClick={handleGerarIA}
               disabled={gerandoIA || topicosConsolidados.length === 0}
-              title="IA gera conclusão consolidada com base nos tópicos avaliados de todos os setores, agravos e medidas existentes"
+              title="IA gera conclusão consolidada com base nos tópicos avaliados de todos os setores, agravos e medidas recomendadas"
               className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100 disabled:opacity-50"
             >
               {gerandoIA ? (
@@ -291,7 +295,7 @@ export default function ConclusaoGeralPage({
           <p className="rounded-md border border-purple-100 bg-purple-50/40 px-2 py-1.5 text-[11px] text-purple-800">
             <Sparkles className="mr-1 inline size-3" />
             A IA analisa os tópicos de TODOS os setores (matriz pior-caso) +
-            agravos + medidas existentes. Revise antes de salvar — a
+            agravos + medidas recomendadas. Revise antes de salvar — a
             responsabilidade técnica é do psicólogo.
           </p>
         )}
@@ -300,7 +304,7 @@ export default function ConclusaoGeralPage({
           onChange={setLocalEdit}
           readOnly={!canEdit}
           uploadPathPrefix="drps-conclusao-geral"
-          placeholder="Conclusão técnica consolidada do diagnóstico DRPS. Mencione os tópicos com maior matriz de risco entre os setores avaliados, articule com os agravos potenciais e cite as medidas de controle existentes. Cite NR-01 (item 1.5 - GRO/PGR) e NR-17 quando pertinente."
+          placeholder="Conclusão técnica consolidada do diagnóstico DRPS. Mencione os tópicos com maior matriz de risco entre os setores avaliados, articule com os agravos potenciais e cite as medidas de controle recomendadas. Cite NR-01 (item 1.5 - GRO/PGR) e NR-17 quando pertinente."
         />
         {canEdit && (
           <div className="flex justify-end">

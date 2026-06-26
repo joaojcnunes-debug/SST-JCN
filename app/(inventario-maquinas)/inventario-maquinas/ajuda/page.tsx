@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   AlertTriangle,
@@ -305,7 +305,7 @@ export default function InventarioMaquinasAjudaPage() {
               Ele é o ponto de partida para a gestão de SST relacionada a máquinas: sem saber o que existe, não é possível
               planejar apreciações de risco, manutenção preventiva ou treinamento de operadores. A{" "}
               <strong>NR-12</strong> exige que as máquinas sejam identificadas e que as informações técnicas relevantes estejam
-              disponíveis — o inventário é a materialização dessa exigência. Para a Chabra, o inventário também alimenta
+              disponíveis — o inventário é a materialização dessa exigência. Para a JCN Consultoria, o inventário também alimenta
               diretamente o módulo de <strong>Apreciação de Máquinas</strong>.
             </p>
           </div>

@@ -10,7 +10,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL_VISION = "llama-3.2-11b-vision-preview";
+// llama-3.2-11b-vision-preview foi descontinuado pelo Groq → Llama 4 Scout
+const MODEL_VISION = "meta-llama/llama-4-scout-17b-16e-instruct";
 const MODEL_TEXT = "llama-3.1-8b-instant";
 
 const CORS = {

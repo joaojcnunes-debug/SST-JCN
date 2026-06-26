@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import EpiForm from "../EpiForm";
 import CopiarEpiModal from "../CopiarEpiModal";
+import StorageImg from "@/components/ui/StorageImg";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useTipoIcone } from "@/lib/hooks/useV3";
@@ -147,9 +148,8 @@ export default function EpisTab({
                                 rel="noopener noreferrer"
                                 title={`Foto ${i + 1}`}
                               >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={url}
+                                <StorageImg
+                                  stored={e.fotos_storage_paths?.[i] || url}
                                   alt={`Foto ${i + 1}`}
                                   className="h-9 w-9 rounded border border-gray-200 object-cover hover:opacity-80"
                                 />

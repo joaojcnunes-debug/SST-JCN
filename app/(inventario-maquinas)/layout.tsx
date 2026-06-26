@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { type ReactNode } from "react";
 import { Boxes, HelpCircle } from "lucide-react";
@@ -29,7 +29,7 @@ export default function InventarioMaquinasLayout({
     <div className="min-h-screen">
       <SidebarShell
         title="Inventário"
-        subtitle="Chabra"
+        subtitle="JCN Consultoria"
         logoHref="/inventario-maquinas"
         sections={sections}
       />

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, use } from "react";
 import {
-  Printer,
   Save,
   Plus,
   X,
@@ -13,12 +12,15 @@ import {
   Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import DrpsSumarioPrint from "@/components/drps/DrpsSumarioPrint";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
+import StorageImg from "@/components/ui/StorageImg";
+import HtmlConteudoAssinado from "@/components/ui/HtmlConteudoAssinado";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { detectRegistroTipo } from "@/lib/registro-profissional";
 import DrpsRelatorioExtrasPrint from "@/components/drps/DrpsRelatorioExtrasPrint";
@@ -41,9 +43,13 @@ import {
 } from "@/lib/drps/calculos";
 import {
   AGRAVOS_OPCOES,
-  MEDIDAS_EXISTENTES_OPCOES,
   TOPICOS,
 } from "@/lib/drps/topicos";
+import {
+  useMedidasRecomendadasOpcoes,
+  MEDIDAS_RECOMENDADAS_BASE,
+} from "@/lib/hooks/useMedidasRecomendadas";
+import { useAgravosOpcoes } from "@/lib/hooks/useAgravos";
 import {
   montarValoresVariaveis,
   substituirVariaveis,
@@ -56,7 +62,6 @@ import {
   formatCAEPF,
   formatCNO,
 } from "@/lib/utils";
-import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import type { Empresa } from "@/lib/supabase/types";
 import type {
   DrpsProbabilidade,
@@ -247,7 +252,7 @@ export default function AnalisePage({
     const novos: Record<string, SetorEditor> = {};
     for (const s of setoresUnicos) {
       const a = parseMultiSelect(agravosMap[s] ?? null, AGRAVOS_OPCOES);
-      const m = parseMultiSelect(medidasMap[s] ?? null, MEDIDAS_EXISTENTES_OPCOES);
+      const m = parseMultiSelect(medidasMap[s] ?? null, MEDIDAS_RECOMENDADAS_BASE);
       novos[s] = {
         agravosSel: a.selecionados,
         agravosExtras: a.extras,
@@ -265,7 +270,9 @@ export default function AnalisePage({
     return editores[s] ?? editorVazio;
   }
   function patchEditor(s: string, patch: Partial<SetorEditor>) {
-    setEditores((prev) => ({ ...prev, [s]: { ...getEditor(s), ...patch } }));
+    // Lê de `prev` (não da closure) para que múltiplos patches no mesmo clique
+    // (ex: selecionar item + limpar o campo) componham sem se sobrescrever.
+    setEditores((prev) => ({ ...prev, [s]: { ...(prev[s] ?? editorVazio), ...patch } }));
     setDirty(true);
   }
   function toggleAgravo(s: string, item: string) {
@@ -359,10 +366,6 @@ export default function AnalisePage({
     });
   }, [setoresParaRelatorio, respondentes, probabilidades]);
 
-  const podeImprimir =
-    !!relatorio &&
-    respondentes.length > 0 &&
-    setoresParaRelatorio.length > 0;
 
   return (
     <div className="space-y-4">
@@ -416,7 +419,7 @@ export default function AnalisePage({
           padding: 8px 10px;
         }
         .drps-title {
-          background: linear-gradient(180deg, #006B54 0%, #00563f 100%);
+          background: linear-gradient(180deg, #0ea5e9 0%, #00563f 100%);
           color: white;
           font-weight: 700;
           font-size: 13px;
@@ -477,7 +480,7 @@ export default function AnalisePage({
           font-size: 14px;
           font-weight: 700;
           color: #1e4d28;
-          border-bottom: 2px solid #006B54;
+          border-bottom: 2px solid #0ea5e9;
           padding-bottom: 4px;
           margin-bottom: 8px;
         }
@@ -493,7 +496,7 @@ export default function AnalisePage({
         .drps-capitulo-conteudo ul,
         .drps-capitulo-conteudo ol { margin: 0 0 8px 20px; padding: 0; }
         .drps-capitulo-conteudo li { margin: 2px 0; }
-        .drps-capitulo-conteudo a { color: #006B54; text-decoration: underline; }
+        .drps-capitulo-conteudo a { color: #0ea5e9; text-decoration: underline; }
         .drps-capitulo-conteudo img {
           max-width: 100%;
           height: auto;
@@ -712,27 +715,11 @@ export default function AnalisePage({
                   Concluir Análise
                 </button>
               )}
-              <BotaoGerarPdf
-                tabelaNome="drps_relatorios_analise"
-                docId={idRelatorio}
-                disabled={!podeImprimir || dirty}
-                title={dirty ? "Salve as alterações antes de gerar o PDF" : undefined}
-                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
-                registrarPdf={{
-                  modulo: "drps",
-                  tipoDocumento: "Diagnóstico de Riscos Psicossociais",
-                  idRelatorio,
-                  empresaId: relatorio?.id_empresa ?? undefined,
-                  empresaNome: empresa?.nome_empresa ?? undefined,
-                  empresaCnpj: empresa?.cnpj ?? undefined,
-                  responsavelTecnico: relatorio?.responsavel_tecnico ?? undefined,
-                }}
-              />
             </div>
           </div>
 
           <div className="drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
-            {/* Logo Chabra (só aparece quando NÃO há capítulos editáveis com capa própria) */}
+            {/* Logo JCN Consultoria (só aparece quando NÃO há capítulos editáveis com capa própria) */}
             {capitulos.filter((c) => c.tipo !== "fixo").length === 0 && (
               <RelatorioPrintHeader
                 titulo="Diagnóstico de Riscos Psicossociais (DRPS)"
@@ -838,7 +825,7 @@ export default function AnalisePage({
                     font-size: 16pt;
                     font-weight: 700;
                     color: #1e4d28;
-                    border-bottom: 2px solid #006B54;
+                    border-bottom: 2px solid #0ea5e9;
                     padding-bottom: 6px;
                     margin: 0 0 14pt 0;
                     text-transform: uppercase;
@@ -893,6 +880,7 @@ export default function AnalisePage({
               nomeResponsavel={relatorio?.responsavel_tecnico ?? undefined}
               tabelaNome="drps_relatorios_analise"
               docId={idRelatorio}
+              hideAcoes
             />
 
             <p className="mt-6 text-center text-[9px] text-gray-500 print:hidden">
@@ -933,9 +921,8 @@ function renderCapitulosPosicao(
             }
           >
             {ehCapa && c.bg_imagem_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={c.bg_imagem_url}
+              <StorageImg
+                stored={c.bg_imagem_url}
                 alt=""
                 className="drps-capitulo-bg-img"
               />
@@ -967,11 +954,9 @@ function renderCapitulosPosicao(
                 </div>
               ))
             ) : c.conteudo ? (
-              <div
+              <HtmlConteudoAssinado
                 className="drps-capitulo-conteudo"
-                dangerouslySetInnerHTML={{
-                  __html: substituirVariaveis(c.conteudo, valoresVars),
-                }}
+                html={substituirVariaveis(c.conteudo, valoresVars)}
               />
             ) : null}
           </article>
@@ -1025,6 +1010,9 @@ function BlocoSetor({
 }) {
   const [textoLocal, setTextoLocal] = useState(conclusao);
   const [gerandoIA, setGerandoIA] = useState(false);
+  // Catálogos (Configuração) — base dos multi-selects de agravos e medidas.
+  const medidasOpcoes = useMedidasRecomendadasOpcoes();
+  const agravosOpcoes = useAgravosOpcoes();
 
   useEffect(() => {
     setTextoLocal(conclusao);
@@ -1075,7 +1063,7 @@ function BlocoSetor({
       toast.success("Conclusão gerada pela IA — revise antes de assinar.");
     } catch (e) {
       toast.error(
-        e instanceof Error ? e.message : "Erro ao gerar conclusão com IA"
+        mensagemErro(e, "Erro ao gerar conclusão com IA")
       );
     } finally {
       setGerandoIA(false);
@@ -1177,62 +1165,6 @@ function BlocoSetor({
             <td colSpan={3}>{relatorio.totalRespondentes}</td>
           </tr>
           <tr>
-            <td className="drps-label align-top">
-              Possíveis Agravos à Saúde Mental
-              <div className="mt-1 text-[9px] font-normal italic text-gray-600">
-                Ex: tudo aquilo que pode acontecer com colaboradores se os
-                riscos psicossociais não forem identificados e controlados.
-              </div>
-            </td>
-            <td colSpan={3} className="align-top">
-              <div className="print:hidden">
-                <MultiSelectInline
-                  opcoes={AGRAVOS_OPCOES}
-                  selecionados={editor.agravosSel}
-                  extras={editor.agravosExtras}
-                  novoValor={editor.novoAgravo}
-                  onToggle={editor.toggleAgravo}
-                  onAdd={editor.adicionarAgravo}
-                  onRemoveExtra={editor.removerAgravoExtra}
-                  onNovoValor={editor.setNovoAgravo}
-                  placeholder="Adicionar outro agravo..."
-                  disabled={!canEdit}
-                />
-              </div>
-              <div className="hidden whitespace-pre-wrap print:block">
-                {drpsRel?.agravos_por_setor?.[relatorio.setor] ?? ""}
-              </div>
-            </td>
-          </tr>
-          <tr>
-            <td className="drps-label align-top">
-              Medidas de Controle Existentes
-              <div className="mt-1 text-[9px] font-normal italic text-gray-600">
-                Ex: ações que a empresa já realiza para controle dos riscos
-                psicossociais.
-              </div>
-            </td>
-            <td colSpan={3} className="align-top">
-              <div className="print:hidden">
-                <MultiSelectInline
-                  opcoes={MEDIDAS_EXISTENTES_OPCOES}
-                  selecionados={editor.medidasSel}
-                  extras={editor.medidasExtras}
-                  novoValor={editor.novaMedida}
-                  onToggle={editor.toggleMedida}
-                  onAdd={editor.adicionarMedida}
-                  onRemoveExtra={editor.removerMedidaExtra}
-                  onNovoValor={editor.setNovaMedida}
-                  placeholder="Adicionar outra medida..."
-                  disabled={!canEdit}
-                />
-              </div>
-              <div className="hidden whitespace-pre-wrap print:block">
-                {drpsRel?.medidas_por_setor?.[relatorio.setor] ?? ""}
-              </div>
-            </td>
-          </tr>
-          <tr>
             <td className="drps-header-section" colSpan={4}>
               Classificação de Risco Psicossocial
             </td>
@@ -1322,6 +1254,71 @@ function BlocoSetor({
       <table className="drps-tabela mt-2">
         <tbody>
           <tr>
+            <td className="drps-header-section" colSpan={4}>
+              Possíveis Agravos à Saúde Mental
+            </td>
+          </tr>
+          <tr>
+            <td colSpan={4} className="align-top">
+              <div className="mb-1 text-[9px] font-normal italic text-gray-600">
+                Ex: tudo aquilo que pode acontecer com colaboradores se os
+                riscos psicossociais não forem identificados e controlados.
+              </div>
+              <div className="print:hidden">
+                <ComboTagInline
+                  opcoes={agravosOpcoes}
+                  selecionados={editor.agravosSel}
+                  extras={editor.agravosExtras}
+                  novoValor={editor.novoAgravo}
+                  onToggle={editor.toggleAgravo}
+                  onAdd={editor.adicionarAgravo}
+                  onRemoveExtra={editor.removerAgravoExtra}
+                  onNovoValor={editor.setNovoAgravo}
+                  placeholder="Buscar agravo na lista ou digitar e adicionar..."
+                  disabled={!canEdit}
+                />
+              </div>
+              <div className="hidden whitespace-pre-wrap print:block">
+                {drpsRel?.agravos_por_setor?.[relatorio.setor] ?? ""}
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td className="drps-header-section" colSpan={4}>
+              Medidas de controle recomendadas (medidas que a empresa deve adotar)
+            </td>
+          </tr>
+          <tr>
+            <td colSpan={4} className="align-top">
+              <div className="mb-1 text-[9px] font-normal italic text-gray-600">
+                Ex: medidas que a empresa deve adotar para controlar os riscos
+                psicossociais identificados.
+              </div>
+              <div className="print:hidden">
+                <ComboTagInline
+                  opcoes={medidasOpcoes}
+                  selecionados={editor.medidasSel}
+                  extras={editor.medidasExtras}
+                  novoValor={editor.novaMedida}
+                  onToggle={editor.toggleMedida}
+                  onAdd={editor.adicionarMedida}
+                  onRemoveExtra={editor.removerMedidaExtra}
+                  onNovoValor={editor.setNovaMedida}
+                  placeholder="Buscar medida na lista ou digitar e adicionar..."
+                  disabled={!canEdit}
+                />
+              </div>
+              <div className="hidden whitespace-pre-wrap print:block">
+                {drpsRel?.medidas_por_setor?.[relatorio.setor] ?? ""}
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <table className="drps-tabela mt-2">
+        <tbody>
+          <tr>
             <td className="drps-header-section">
               <div className="flex items-center justify-between gap-2">
                 <span>Conclusão</span>
@@ -1331,7 +1328,7 @@ function BlocoSetor({
                   disabled={
                     !canEdit || gerandoIA || relatorio.topicos.length === 0
                   }
-                  title="Gerar conclusão técnica com IA a partir dos tópicos avaliados, agravos e medidas existentes"
+                  title="Gerar conclusão técnica com IA a partir dos tópicos avaliados, agravos e medidas recomendadas"
                   className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2 py-1 text-[10px] font-semibold normal-case tracking-normal text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50 print:hidden"
                 >
                   {gerandoIA ? (
@@ -1363,12 +1360,10 @@ function BlocoSetor({
                   }
                 />
               </div>
-              <div
+              <HtmlConteudoAssinado
                 className="tiptap-conteudo prose prose-sm max-w-none hidden text-[11px] leading-relaxed text-gray-900 print:block"
                 style={{ minHeight: 70 }}
-                dangerouslySetInnerHTML={{
-                  __html: textoLocal || "<em style=\"color:#9ca3af\">(Conclusão não preenchida)</em>",
-                }}
+                html={textoLocal || "<em style=\"color:#9ca3af\">(Conclusão não preenchida)</em>"}
               />
             </td>
           </tr>
@@ -1378,7 +1373,13 @@ function BlocoSetor({
   );
 }
 
-function MultiSelectInline({
+/**
+ * Campo ÚNICO (combobox + tags): digita para filtrar/escolher da lista OU
+ * adiciona manual quando o texto não existe — tudo no mesmo campo, com chips.
+ * Usa o mesmo estado/dados (selecionados + extras), então não muda salvamento
+ * nem PDF.
+ */
+function ComboTagInline({
   opcoes,
   selecionados,
   extras,
@@ -1407,119 +1408,133 @@ function MultiSelectInline({
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [open]);
 
-  const total = selecionados.length + extras.length;
+  const q = novoValor.trim().toLowerCase();
+  const norm = (s: string) => s.trim().toLowerCase();
+  const filtradas = opcoes
+    .filter((o) => !selecionados.includes(o))
+    .filter((o) => (q ? norm(o).includes(q) : true));
+  const jaExiste =
+    opcoes.some((o) => norm(o) === q) ||
+    selecionados.some((s) => norm(s) === q) ||
+    extras.some((e) => norm(e) === q);
+
+  function escolher(opt: string) {
+    if (!selecionados.includes(opt)) onToggle(opt);
+    onNovoValor("");
+    setOpen(true);
+  }
+
+  function adicionar() {
+    const v = novoValor.trim();
+    if (!v) return;
+    // Se já existe na lista, marca em vez de duplicar como manual.
+    const match = opcoes.find((o) => norm(o) === norm(v));
+    if (match) {
+      if (!selecionados.includes(match)) onToggle(match);
+      onNovoValor("");
+      return;
+    }
+    onAdd(); // adiciona aos "extras" (manual) e limpa o campo no pai
+  }
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        disabled={disabled}
-        className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-2 py-1.5 text-left text-[11px] hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:opacity-60"
+      {/* Campo único com chips + input */}
+      <div
+        onClick={() => !disabled && setOpen(true)}
+        className={`flex min-h-[34px] flex-wrap items-center gap-1 rounded-md border px-2 py-1 ${
+          disabled ? "cursor-not-allowed border-gray-200 bg-gray-50" : "cursor-text border-gray-300 bg-white focus-within:border-verde-primary focus-within:ring-1 focus-within:ring-verde-primary/30"
+        }`}
       >
-        <span className={total === 0 ? "text-gray-400" : "text-gray-700"}>
-          {total === 0
-            ? "Selecionar..."
-            : `${total} selecionado${total === 1 ? "" : "s"}`}
-        </span>
-        <ChevronDown
-          className={`size-3.5 text-gray-400 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-        />
-      </button>
-
-      {open && (
-        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
-          <ul className="max-h-56 overflow-auto py-1">
-            {opcoes.map((opt) => {
-              const marcado = selecionados.includes(opt);
-              return (
-                <li key={opt}>
-                  <button
-                    type="button"
-                    onClick={() => onToggle(opt)}
-                    className={`flex w-full items-center gap-2 px-3 py-1 text-left text-[11px] hover:bg-verde-light ${
-                      marcado ? "bg-verde-light/60" : ""
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={marcado}
-                      readOnly
-                      className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
-                    />
-                    <span className="text-gray-800">{opt}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-
-      {(selecionados.length > 0 || extras.length > 0) && (
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {selecionados.map((s) => (
-            <span
-              key={s}
-              className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2 py-0.5 text-[10px] text-verde-primary"
-            >
-              {s}
-              <button
-                type="button"
-                onClick={() => onToggle(s)}
-                className="text-verde-primary/60 hover:text-red-600"
-              >
+        {selecionados.map((s) => (
+          <span key={s} className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2 py-0.5 text-[10px] text-verde-primary">
+            {s}
+            {!disabled && (
+              <button type="button" onClick={(e) => { e.stopPropagation(); onToggle(s); }} className="text-verde-primary/60 hover:text-red-600">
                 <X className="size-3" />
               </button>
-            </span>
-          ))}
-          {extras.map((e, i) => (
-            <span
-              key={`extra-${i}`}
-              className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-800"
-            >
-              {e}
-              <button
-                type="button"
-                onClick={() => onRemoveExtra(i)}
-                className="text-amber-700/60 hover:text-red-600"
-              >
+            )}
+          </span>
+        ))}
+        {extras.map((e, i) => (
+          <span key={`extra-${i}`} className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-800">
+            {e}
+            {!disabled && (
+              <button type="button" onClick={(ev) => { ev.stopPropagation(); onRemoveExtra(i); }} className="text-amber-700/60 hover:text-red-600">
                 <X className="size-3" />
               </button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-1.5 flex gap-1.5">
+            )}
+          </span>
+        ))}
         <input
           type="text"
           value={novoValor}
-          onChange={(e) => onNovoValor(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && onAdd()}
+          onChange={(e) => { onNovoValor(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (filtradas.length === 1 && q) escolher(filtradas[0]);
+              else adicionar();
+            } else if (e.key === "Backspace" && !novoValor) {
+              if (extras.length > 0) onRemoveExtra(extras.length - 1);
+              else if (selecionados.length > 0) onToggle(selecionados[selecionados.length - 1]);
+            }
+          }}
           disabled={disabled}
-          placeholder={placeholder}
-          className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-[11px] focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:cursor-not-allowed disabled:bg-gray-50"
+          placeholder={selecionados.length + extras.length === 0 ? placeholder : "Adicionar mais..."}
+          className="min-w-[140px] flex-1 border-0 bg-transparent p-0.5 text-[11px] focus:outline-none disabled:cursor-not-allowed"
         />
-        <button
-          type="button"
-          onClick={onAdd}
-          disabled={disabled || !novoValor.trim()}
-          className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-[11px] font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Plus className="size-3" />
-        </button>
+        {!disabled && (
+          <ChevronDown
+            onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+            className={`size-3.5 shrink-0 cursor-pointer text-gray-400 transition-transform ${open ? "rotate-180" : ""}`}
+          />
+        )}
       </div>
+
+      {/* Dropdown: opções filtradas + "adicionar manual" */}
+      {open && !disabled && (
+        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
+          <ul className="max-h-56 overflow-auto py-1">
+            {filtradas.map((opt) => (
+              <li key={opt}>
+                <button
+                  type="button"
+                  onClick={() => escolher(opt)}
+                  className="flex w-full items-center gap-2 px-3 py-1 text-left text-[11px] text-gray-800 hover:bg-verde-light"
+                >
+                  <Plus className="size-3 text-verde-primary/70" />
+                  {opt}
+                </button>
+              </li>
+            ))}
+            {q && !jaExiste && (
+              <li>
+                <button
+                  type="button"
+                  onClick={adicionar}
+                  className="flex w-full items-center gap-2 px-3 py-1 text-left text-[11px] font-medium text-amber-800 hover:bg-amber-50"
+                >
+                  <Plus className="size-3" />
+                  Adicionar “{novoValor.trim()}”
+                </button>
+              </li>
+            )}
+            {filtradas.length === 0 && (!q || jaExiste) && (
+              <li className="px-3 py-2 text-[11px] text-gray-400">
+                {jaExiste ? "Já adicionado." : "Digite para adicionar um novo agravo."}
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

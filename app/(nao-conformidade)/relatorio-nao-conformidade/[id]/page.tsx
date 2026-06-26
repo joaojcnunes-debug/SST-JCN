@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Printer,
   Trash2,
   Lock,
   Loader2,
@@ -18,9 +17,12 @@ import {
   ListChecks,
   Check,
 } from "lucide-react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
+import StorageImg from "@/components/ui/StorageImg";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import {
   montarValoresEmpresa,
@@ -47,7 +49,6 @@ import type {
   StatusTratativaNC,
 } from "@/lib/supabase/types";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
-import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 
 const MAX_FOTO_MB = 8;
@@ -134,7 +135,7 @@ export default function DetalheNaoConformidadePage({
           toast.success("Relatório apagado");
           router.push("/relatorio-nao-conformidade");
         },
-        onError: (e: Error) => toast.error(e.message || "Falha ao apagar"),
+        onError: (e: Error) => toast.error(mensagemErro(e, "Falha ao apagar")),
       }),
     });
   }
@@ -144,7 +145,7 @@ export default function DetalheNaoConformidadePage({
       { id_relatorio: id, status: "FINALIZADO" },
       {
         onSuccess: () => toast.success("Relatório finalizado"),
-        onError: (e: Error) => toast.error(e.message || "Falha"),
+        onError: (e: Error) => toast.error(mensagemErro(e, "Falha")),
       }
     );
     if (itens.length === 0) {
@@ -163,7 +164,7 @@ export default function DetalheNaoConformidadePage({
       { id_relatorio: id, status: "RASCUNHO" },
       {
         onSuccess: () => toast.success("Relatório reaberto pra edição"),
-        onError: (e: Error) => toast.error(e.message || "Falha"),
+        onError: (e: Error) => toast.error(mensagemErro(e, "Falha")),
       }
     );
   }
@@ -174,7 +175,7 @@ export default function DetalheNaoConformidadePage({
       {
         onSuccess: () => toast.success("Nova NC adicionada"),
         onError: (e: Error) =>
-          toast.error(e.message || "Falha ao adicionar NC"),
+          toast.error(mensagemErro(e, "Falha ao adicionar NC")),
       }
     );
   }
@@ -203,7 +204,7 @@ export default function DetalheNaoConformidadePage({
         onSuccess: () =>
           toast.success(`NC inserida (${relatorio.nr_codigo} ${itemCodigo})`),
         onError: (e: Error) =>
-          toast.error(e.message || "Falha ao inserir NC"),
+          toast.error(mensagemErro(e, "Falha ao inserir NC")),
       }
     );
   }
@@ -219,21 +220,6 @@ export default function DetalheNaoConformidadePage({
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
         <div className="flex items-center gap-2">
-          <BotaoGerarPdf
-            tabelaNome="relatorios_nao_conformidade"
-            docId={id}
-            disabled={atualizarRelatorio.isPending}
-            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            registrarPdf={{
-              modulo: "nao_conformidade",
-              tipoDocumento: "Relatório de Não Conformidade",
-              idRelatorio: id,
-              empresaId: relatorio.id_empresa ?? undefined,
-              empresaNome: empresa?.nome_empresa ?? undefined,
-              empresaCnpj: empresa?.cnpj ?? undefined,
-              responsavelTecnico: relatorio.responsavel ?? undefined,
-            }}
-          />
           {canEdit && finalizado && (
             <button
               type="button"
@@ -268,7 +254,7 @@ export default function DetalheNaoConformidadePage({
         </div>
       </div>
 
-      {/* Logo Chabra (print + tela) */}
+      {/* Logo JCN Consultoria (print + tela) */}
       <RelatorioPrintHeader
         titulo={`Relatório de Não Conformidade — ${relatorio.titulo}`}
         subtitulo={empresa?.nome_empresa ?? null}
@@ -316,7 +302,7 @@ export default function DetalheNaoConformidadePage({
           />
           <DataItem label="Setor / Local" value={relatorio.setor ?? "—"} />
           <DataItem
-            label="Responsável técnico (JCN)"
+            label="Responsável técnico (JCN Consultoria)"
             value={relatorio.responsavel ?? "—"}
           />
           <DataItem
@@ -436,7 +422,7 @@ export default function DetalheNaoConformidadePage({
                       { id_relatorio: id, id_item: item.id_item },
                       {
                         onSuccess: () => toast.success("NC apagada"),
-                        onError: (e: Error) => toast.error(e.message || "Falha ao apagar"),
+                        onError: (e: Error) => toast.error(mensagemErro(e, "Falha ao apagar")),
                       }
                     ),
                   });
@@ -451,13 +437,11 @@ export default function DetalheNaoConformidadePage({
                       id_relatorio: id,
                       id_item: item.id_item,
                       file,
-                      fotos_urls_atuais: item.foto_urls,
-                      fotos_paths_atuais: item.foto_storage_paths,
                     },
                     {
                       onSuccess: () => toast.success("Foto enviada"),
                       onError: (e: Error) =>
-                        toast.error(e.message || "Falha ao enviar foto"),
+                        toast.error(mensagemErro(e, "Falha ao enviar foto")),
                     }
                   );
                 }}
@@ -470,12 +454,10 @@ export default function DetalheNaoConformidadePage({
                         id_relatorio: id,
                         id_item: item.id_item,
                         foto_storage_path: path,
-                        fotos_urls_atuais: item.foto_urls,
-                        fotos_paths_atuais: item.foto_storage_paths,
                       },
                       {
                         onSuccess: () => toast.success("Foto removida"),
-                        onError: (e: Error) => toast.error(e.message || "Falha ao remover"),
+                        onError: (e: Error) => toast.error(mensagemErro(e, "Falha ao remover")),
                       }
                     ),
                   });
@@ -518,6 +500,7 @@ export default function DetalheNaoConformidadePage({
         dataRelatorio={formatarDataBR(relatorio.data_inspecao) || undefined}
         tabelaNome="relatorios_nao_conformidade"
         docId={id}
+        hideAcoes
       />
 
       <p className="text-center text-[9px] text-gray-500 print:mt-4">
@@ -580,13 +563,13 @@ export default function DetalheNaoConformidadePage({
           >
             <X className="size-5" />
           </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightbox}
-            alt="Foto ampliada"
-            className="max-h-[90vh] max-w-[90vw] object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          <span className="contents" onClick={(e) => e.stopPropagation()}>
+            <StorageImg
+              stored={lightbox}
+              alt="Foto ampliada"
+              className="max-h-[90vh] max-w-[90vw] object-contain"
+            />
+          </span>
         </div>
       )}
 
@@ -1000,9 +983,8 @@ function FotoThumb({
         className="block overflow-hidden rounded-md border border-gray-300 print:border-gray-400"
         title="Ampliar"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={url}
+        <StorageImg
+          stored={url}
           alt={`Evidência NC #${ordem}`}
           className="h-36 w-44 object-cover sm:h-40 sm:w-52 print:h-40 print:w-48"
         />
@@ -1193,7 +1175,7 @@ function BlocoAssinaturas({
         <Assinatura
           nome={responsavelTecnico}
           cargo="Responsável Técnico"
-          subtitulo="JCN Consultoria — Segurança e Saúde do Trabalho"
+          subtitulo="JCN Consultoria Saúde e Segurança do Trabalho"
         />
         <Assinatura
           nome={responsavelEmpresa}
@@ -1243,6 +1225,7 @@ function EditarCabecalho({
     responsavel_empresa?: string | null;
     cidade?: string | null;
     data_inspecao?: string | null;
+    data_validade?: string | null;
   }) => void;
 }) {
   const nrsDisponiveis = useMemo(() => listarNRs(), []);
@@ -1255,6 +1238,7 @@ function EditarCabecalho({
   );
   const [cidade, setCidade] = useState(relatorio.cidade ?? "");
   const [dataInsp, setDataInsp] = useState(relatorio.data_inspecao ?? "");
+  const [dataValidade, setDataValidade] = useState(relatorio.data_validade ?? "");
 
   if (!aberto) {
     return (
@@ -1321,7 +1305,7 @@ function EditarCabecalho({
         />
       </div>
       <div>
-        <label className={lblCls}>Responsável técnico (JCN)</label>
+        <label className={lblCls}>Responsável técnico (JCN Consultoria)</label>
         <ProfissionalSelect
           value={responsavel}
           onChange={(nome) => { setResponsavel(nome); onSalvar({ responsavel: nome || null }); }}
@@ -1356,6 +1340,16 @@ function EditarCabecalho({
           value={dataInsp}
           onChange={(e) => setDataInsp(e.target.value)}
           onBlur={() => onSalvar({ data_inspecao: dataInsp || null })}
+          className={inputCls}
+        />
+      </div>
+      <div>
+        <label className={lblCls}>Validade do documento</label>
+        <input
+          type="date"
+          value={dataValidade}
+          onChange={(e) => setDataValidade(e.target.value)}
+          onBlur={() => onSalvar({ data_validade: dataValidade || null })}
           className={inputCls}
         />
       </div>

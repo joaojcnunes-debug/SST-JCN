@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardCheck, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { useCriarAet } from "@/lib/hooks/useAet";
@@ -53,7 +54,7 @@ export default function NovoAetPage() {
           toast.success("Laudo criado!");
           router.push(`/aet/${r.id_relatorio}/setores`);
         },
-        onError: (e: Error) => toast.error(e.message),
+        onError: (e: Error) => toast.error(mensagemErro(e)),
       }
     );
   }
@@ -70,7 +71,7 @@ export default function NovoAetPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm reveal-up">
         {/* Empresa */}
         <div>
           <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500">

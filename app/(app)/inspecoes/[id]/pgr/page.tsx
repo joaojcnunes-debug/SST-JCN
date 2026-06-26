@@ -1,14 +1,23 @@
 "use client";
 
-import { use, useMemo } from "react";
+import React, { use, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Printer, Shield } from "lucide-react";
+import { ArrowLeft, Printer, Shield, BadgeCheck, Download, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
+import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
+import { usePdfAssinado } from "@/lib/hooks/usePdfsGerados";
+import BotaoAssinarPdf from "@/components/ui/BotaoAssinarPdf";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
+import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
+import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
+import { montarValoresEmpresa, formatarDataBR, substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import StorageImg from "@/components/ui/StorageImg";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import {
   fmtData,
@@ -87,10 +96,95 @@ export default function PgrPage({ params }: Props) {
     [inventario]
   );
 
+  const { pdfAssinado, recarregar } = usePdfAssinado("inspecoes_pgr", id);
+  const { data: capitulosSst = [] } = useTextosPadrao("sst");
+  const [baixando, setBaixando] = useState(false);
+
+  async function handleBaixarPdf() {
+    if (!pdfAssinado) return;
+    setBaixando(true);
+    try {
+      await baixarPdfAssinado(pdfAssinado.pdf_path, "relatorio-assinado.pdf");
+    } catch { toast.error("Erro ao baixar o PDF."); }
+    finally { setBaixando(false); }
+  }
+
   if (isLoading) return <LoadingSkeleton rows={10} />;
   if (!data) return null;
 
   const { inspecao, responsaveis, paeContatos } = data;
+
+  const valoresSst: Record<string, string> = {
+    ...montarValoresEmpresa(empresa ?? null),
+    data_inspecao: formatarDataBR(inspecao.data_inspecao),
+    revisao: String(inspecao.revisao ?? ""),
+    responsavel: inspecao.responsavel ?? "",
+    carimbo: inspecao.responsavel ?? "",
+    importado: formatarDataBR(inspecao.created_at),
+  };
+
+  // Unificado: blocos (editáveis + seções do sistema) antes/depois do corpo do
+  // relatório (sst_corpo), conforme a ordem. Sem seções do sistema, mantém o legado.
+  const temFixosSst = capitulosSst.some((c) => c.tipo === "fixo");
+  const ordemCorpoSst = capitulosSst.find((c) => c.slug_fixo === "sst_corpo")?.ordem ?? 2000;
+  // Blocos ativos exceto o próprio corpo (sst_corpo é o conteúdo desta página).
+  const blocosSst = [...capitulosSst]
+    .filter((c) => c.ativo !== false && c.slug_fixo !== "sst_corpo")
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  // Títulos do sumário (na ordem; exclui o próprio sumário).
+  const sumarioTitulosSst = blocosSst
+    .filter((c) => c.slug_fixo !== "sumario" && !c.bg_imagem_url && (c.titulo ?? "").trim().toLowerCase() !== "capa")
+    .map((c) =>
+      c.tipo === "fixo" ? c.titulo : substituirVariaveisTexto(c.titulo, valoresSst),
+    )
+    .filter((t) => t && t.trim());
+  function renderBlocoSst(c: (typeof blocosSst)[number]): React.ReactNode {
+    if (c.tipo === "fixo") {
+      const classeQuebra =
+        c.quebra_pagina === "continua"
+          ? "textos-padrao-capitulo--continua"
+          : c.quebra_pagina === "nova"
+            ? "textos-padrao-capitulo--nova-pagina"
+            : "";
+      if (c.slug_fixo === "identificacao_empresa") {
+        return (
+          <div key={c.id_capitulo} className={`mb-6 break-inside-avoid ${classeQuebra}`}>
+            <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+              Identificação da Empresa
+            </h2>
+            <EmpresaInfoPanel empresa={empresa ?? null} />
+          </div>
+        );
+      }
+      if (c.slug_fixo === "sumario") {
+        return (
+          <div key={c.id_capitulo} className={`mb-6 break-inside-avoid ${classeQuebra}`}>
+            <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+              Sumário
+            </h2>
+            <ol className="space-y-1">
+              {sumarioTitulosSst.map((t, i) => (
+                <li key={i} className="flex items-baseline gap-2 border-b border-dotted border-gray-300 py-0.5 text-xs text-gray-700">
+                  <span className="min-w-5 font-bold text-emerald-800">{i + 1}.</span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        );
+      }
+      return null;
+    }
+    return (
+      <TextosPadraoPrint key={c.id_capitulo} modulo="sst" capituloId={c.id_capitulo} valores={valoresSst} />
+    );
+  }
+  const antesSst = temFixosSst
+    ? blocosSst.filter((c) => (c.ordem ?? 0) < ordemCorpoSst).map(renderBlocoSst)
+    : <TextosPadraoPrint modulo="sst" valores={valoresSst} posicao="antes" />;
+  const depoisSst = temFixosSst
+    ? blocosSst.filter((c) => (c.ordem ?? 0) >= ordemCorpoSst).map(renderBlocoSst)
+    : null;
 
   return (
     <div className="space-y-4">
@@ -109,12 +203,35 @@ export default function PgrPage({ params }: Props) {
           >
             Relatório resumido
           </Link>
+          {pdfAssinado ? (
+            <>
+              <div className="flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                <BadgeCheck className="size-3.5 shrink-0" />
+                Assinado em {new Date(pdfAssinado.assinado_em).toLocaleDateString("pt-BR")}
+              </div>
+              <button type="button" onClick={handleBaixarPdf} disabled={baixando}
+                className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                {baixando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+                Baixar PDF Assinado
+              </button>
+            </>
+          ) : (
+            <BotaoAssinarPdf defaultSignatoryName={inspecao.responsavel ?? undefined} tabelaNome="inspecoes_pgr" docId={id} onAssinado={recarregar} />
+          )}
           <BotaoGerarPdf
             tabelaNome="inspecoes_pgr"
             docId={id}
             className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
           />
         </div>
+      </div>
+
+      {/* Dados da empresa (não imprime) */}
+      <div className="no-print">
+        <EmpresaInfoPanel
+          empresa={empresa ?? null}
+          className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+        />
       </div>
 
       {/* CSS de impressão paisagem A4 */}
@@ -126,6 +243,8 @@ export default function PgrPage({ params }: Props) {
           .pgr-table th, .pgr-table td { padding: 4px 6px !important; }
         }
       `}</style>
+
+      {antesSst}
 
       <article className="space-y-5 rounded-xl border border-gray-200 bg-white p-6 print:border-0 print:p-0 print:shadow-none">
         {/* HEADER PGR */}
@@ -402,12 +521,10 @@ export default function PgrPage({ params }: Props) {
                       </dl>
                     )}
                     {r.foto_quim_url && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={r.foto_quim_url}
+                      <StorageImg
+                        stored={r.foto_quim_url}
                         alt="FDS"
                         className="mt-1.5 max-h-24 rounded border border-gray-200"
-                        referrerPolicy="no-referrer"
                       />
                     )}
                     {r.observacoes_risco && (
@@ -531,7 +648,9 @@ export default function PgrPage({ params }: Props) {
           </section>
         )}
 
-        <AssinaturaRelatorio tabelaNome="inspecoes_pgr" docId={id} />
+        {depoisSst}
+
+        <AssinaturaRelatorio tabelaNome="inspecoes_pgr" docId={id} hideAcoes />
 
         {/* RODAPÉ */}
         <footer className="border-t border-gray-200 pt-2 text-center text-[10px] text-gray-500 print-avoid-break">

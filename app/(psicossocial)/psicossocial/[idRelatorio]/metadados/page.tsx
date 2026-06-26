@@ -14,6 +14,7 @@ import type { StatusRelatorio } from "@/lib/drps/types";
 interface Form {
   status: StatusRelatorio;
   data_elaboracao: string;
+  data_validade: string;
   responsavel_tecnico: string;
   crp: string;
   cargo_responsavel: string | null;
@@ -22,6 +23,7 @@ interface Form {
 const EMPTY: Form = {
   status: "EM_ANDAMENTO",
   data_elaboracao: "",
+  data_validade: "",
   responsavel_tecnico: "",
   crp: "",
   cargo_responsavel: null,
@@ -50,6 +52,7 @@ export default function MetadadosPage({
     setForm({
       status: relatorio.status,
       data_elaboracao: relatorio.data_elaboracao ?? "",
+      data_validade: relatorio.data_validade ?? "",
       responsavel_tecnico: relatorio.responsavel_tecnico ?? "",
       crp: relatorio.crp ?? "",
       cargo_responsavel: null,
@@ -63,6 +66,7 @@ export default function MetadadosPage({
       id_empresa: relatorio.id_empresa,
       status: form.status,
       data_elaboracao: form.data_elaboracao || null,
+      data_validade: form.data_validade || null,
       responsavel_tecnico: form.responsavel_tecnico.trim() || null,
       crp: form.crp.trim() || null,
     });
@@ -109,6 +113,17 @@ export default function MetadadosPage({
                 value={form.data_elaboracao}
                 onChange={(e) =>
                   setForm({ ...form, data_elaboracao: e.target.value })
+                }
+                disabled={!canEdit}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Validade do documento">
+              <input
+                type="date"
+                value={form.data_validade}
+                onChange={(e) =>
+                  setForm({ ...form, data_validade: e.target.value })
                 }
                 disabled={!canEdit}
                 className={inputCls}

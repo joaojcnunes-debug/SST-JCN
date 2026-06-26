@@ -49,7 +49,7 @@ function RelatoriosInner() {
 
   return (
     <div className="space-y-6">
-      <header className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+      <header className="reveal-up rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3">
           <div className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary">
             <BarChart3 className="size-6" />
@@ -61,7 +61,7 @@ function RelatoriosInner() {
             <p className="text-sm text-gray-600">
               Selecione uma empresa para acessar os relatórios disponíveis:
               <strong> Consolidado</strong> (comparativo entre revisões),
-              <strong> Executivo</strong> (formato JCN para apresentação) e
+              <strong> Executivo</strong> (formato JCN Consultoria para apresentação) e
               <strong> PGR/NR-1</strong> (Inventário de Riscos técnico).
             </p>
           </div>
@@ -112,7 +112,7 @@ function RelatoriosInner() {
             </h2>
             <Link
               href={`/empresas/${empresaId}/relatorio`}
-              className="group flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:border-verde-primary/50 hover:-translate-y-0.5 hover:shadow-md"
+              className="group tilt-3d sheen flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:border-verde-primary/50 hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="flex size-12 items-center justify-center rounded-xl bg-blue-50 text-blue-700 transition-colors group-hover:bg-blue-100">
                 <Layers className="size-6" />
@@ -178,7 +178,7 @@ function RelatoriosInner() {
                             <Link
                               href={`/inspecoes/${i.id_inspecao}/relatorio`}
                               className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-verde-light hover:border-verde-primary hover:text-verde-primary"
-                              title="Relatório executivo (capa JCN)"
+                              title="Relatório executivo (capa JCN Consultoria)"
                             >
                               <ChartBar className="size-3.5" />
                               Executivo

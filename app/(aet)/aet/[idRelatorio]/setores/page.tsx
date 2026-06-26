@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import {
   useAetRelatorio,
   useSalvarAet,
@@ -32,6 +33,8 @@ import {
 } from "@/lib/hooks/useAet";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
+import StorageImg from "@/components/ui/StorageImg";
+import HtmlConteudoAssinado from "@/components/ui/HtmlConteudoAssinado";
 import { cn } from "@/lib/utils";
 import type {
   AetSetor,
@@ -406,7 +409,7 @@ export default function AetSetoresPage({
       updateSetor(setorId, { fotos: [...(setor.fotos ?? []), pub.publicUrl] });
       toast.success("Foto adicionada", { id: loadId });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Falha no upload", { id: loadId });
+      toast.error(mensagemErro(err, "Falha no upload"), { id: loadId });
     } finally {
       setUploadingFoto(null);
     }
@@ -460,7 +463,7 @@ export default function AetSetoresPage({
       if (!texto) { toast.error("IA não retornou texto"); return; }
       updateSetor(setorId, { [campo]: texto });
     } catch (err) {
-      toast.error(`IA: ${err instanceof Error ? err.message : String(err)}`);
+      toast.error(`IA: ${mensagemErro(err)}`);
     } finally {
       setGerandoIA(null);
     }
@@ -471,7 +474,7 @@ export default function AetSetoresPage({
       { id: idRelatorio, patch: { setores } },
       {
         onSuccess: () => toast.success("Salvo com sucesso"),
-        onError: (e: Error) => toast.error(e.message),
+        onError: (e: Error) => toast.error(mensagemErro(e)),
       }
     );
   }
@@ -548,7 +551,7 @@ export default function AetSetoresPage({
       { id: idRelatorio, patch: { consideracoes_finais: consideracoes } },
       {
         onSuccess: () => toast.success("Considerações salvas"),
-        onError: (e: Error) => toast.error(e.message),
+        onError: (e: Error) => toast.error(mensagemErro(e)),
       }
     );
   }
@@ -861,8 +864,13 @@ export default function AetSetoresPage({
                   <CargoList cargos={setor.cargos} disabled={!canEdit} onChange={(v) => updateSetor(setor.id, { cargos: v, funcao: v.map((c) => c.nome).filter(Boolean).join(", ") })} />
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">Função <span className="text-gray-400 font-normal">(preenchida automaticamente pelos cargos)</span></label>
-                    <input type="text" readOnly value={setor.funcao} placeholder="—"
-                      className="w-full rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm text-gray-700 cursor-default" />
+                    <input
+                      type="text"
+                      readOnly
+                      value={setor.funcao}
+                      placeholder="—"
+                      className="w-full rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm text-gray-700 cursor-default"
+                    />
                   </div>
                   <TagInput label="Máquinas e Equipamentos" value={setor.maquinas_equipamentos} disabled={!canEdit} onChange={(v) => updateSetor(setor.id, { maquinas_equipamentos: v })} />
                   <div>
@@ -986,8 +994,7 @@ export default function AetSetoresPage({
                     <div className="grid grid-cols-3 gap-2">
                       {(setor.fotos ?? []).slice(0, 6).map((url, fIdx) => (
                         <div key={fIdx} className="group relative aspect-video overflow-hidden rounded-md border border-gray-200">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={url} alt={`Foto ${fIdx + 1}`} className="h-full w-full object-cover" />
+                          <StorageImg stored={url} alt={`Foto ${fIdx + 1}`} className="h-full w-full object-cover" />
                           {canEdit && (
                             <button type="button" onClick={() => removeFoto(setor.id, url)}
                               className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity group-hover:opacity-100">
@@ -1153,7 +1160,7 @@ export default function AetSetoresPage({
                               onClick={() => toggleAbertosFactores(setor.id, fator.codigo)}
                               className="flex w-full items-center gap-3 px-4 py-3 text-left"
                             >
-                              <span className="shrink-0 rounded-md px-2 py-0.5 text-xs font-bold text-white" style={{ background: "#006B54" }}>
+                              <span className="shrink-0 rounded-md px-2 py-0.5 text-xs font-bold text-white" style={{ background: "#0ea5e9" }}>
                                 {fator.codigo}
                               </span>
                               <span className="flex-1 text-sm font-semibold text-gray-900">{fator.nome}</span>
@@ -1211,7 +1218,7 @@ export default function AetSetoresPage({
                                               <button key={v} type="button"
                                                 onClick={() => handleResposta(setor.id, fator.codigo, p.ordem, v)}
                                                 className={cn("flex flex-col items-center justify-center gap-0.5 rounded-lg border py-2 px-1 text-center transition-all",
-                                                  respostaAtual === v ? "border-[#006B54] bg-[#006B54] text-white shadow-sm" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700")}>
+                                                  respostaAtual === v ? "border-[#0ea5e9] bg-[#0ea5e9] text-white shadow-sm" : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700")}>
                                                 <span className={cn("text-[10px] font-bold tabular-nums", respostaAtual === v ? "text-white/70" : "text-gray-400")}>{v}</span>
                                                 <span className="text-[10px] font-medium leading-tight">{ESCALA_LABEL[v]}</span>
                                               </button>
@@ -1271,7 +1278,7 @@ export default function AetSetoresPage({
                                   <div className="flex justify-end">
                                     <button type="button" onClick={() => handleSalvarFator(setor.id, fator.codigo)} disabled={salvandoFatorPsiKey === fatorKey}
                                       className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                                      style={{ background: "#006B54" }}>
+                                      style={{ background: "#0ea5e9" }}>
                                       {salvandoFatorPsiKey === fatorKey ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                                       Salvar {fator.codigo}
                                     </button>
@@ -1315,7 +1322,7 @@ export default function AetSetoresPage({
                               return (
                                 <tr key={fator.codigo} className="hover:bg-gray-50/50">
                                   <td className="px-4 py-2">
-                                    <span className="rounded px-1.5 py-0.5 text-xs font-bold text-white" style={{ background: "#006B54" }}>{fator.codigo}</span>
+                                    <span className="rounded px-1.5 py-0.5 text-xs font-bold text-white" style={{ background: "#0ea5e9" }}>{fator.codigo}</span>
                                   </td>
                                   <td className="px-4 py-2 font-medium text-gray-900 text-xs">{fator.nome}</td>
                                   <td className="px-4 py-2 text-center text-gray-600 tabular-nums text-xs">{isF13 ? "—" : `${respondidas}/${perguntasFator.length}`}</td>
@@ -1389,9 +1396,9 @@ export default function AetSetoresPage({
             </div>
           ) : (
             consideracoes ? (
-              <div
+              <HtmlConteudoAssinado
                 className="prose prose-xs max-w-none text-xs leading-relaxed text-gray-700 [&_a]:text-gray-700 [&_a]:no-underline [&_p]:my-1"
-                dangerouslySetInnerHTML={{ __html: consideracoes }}
+                html={consideracoes}
               />
             ) : (
               <p className="text-xs italic text-gray-400">Sem considerações finais registradas.</p>
@@ -1429,8 +1436,7 @@ function OwasGroup({
         </div>
         {imageSrc && (
           <div className="w-36 shrink-0 self-start">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageSrc} alt={`Referência OWAS: ${categoria.titulo}`} className="h-auto w-full rounded border border-gray-200" />
+            <StorageImg stored={imageSrc} alt={`Referência OWAS: ${categoria.titulo}`} className="h-auto w-full rounded border border-gray-200" />
           </div>
         )}
       </div>

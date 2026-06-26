@@ -1,11 +1,10 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Printer,
   Trash2,
   FlaskConical,
   Loader2,
@@ -13,19 +12,20 @@ import {
   Pencil,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
-import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import {
   useAnaliseQuimico,
   useExcluirAnaliseQuimico,
+  useAtualizarAnaliseQuimico,
 } from "@/lib/hooks/useAnalisesQuimicos";
 import ConclusaoRapidaCard from "@/components/quimicos/ConclusaoRapidaCard";
 import RelatorioEstruturado from "@/components/quimicos/RelatorioEstruturado";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import { montarValoresEmpresa, formatarDataBR } from "@/lib/textos-padrao/variaveis";
-import { useCanDelete } from "@/lib/hooks/useUsuario";
+import { useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function AnaliseDetalhePage({
@@ -39,7 +39,13 @@ export default function AnaliseDetalhePage({
   const { data: analise, isLoading, error } = useAnaliseQuimico(id);
   const { data: empresa } = useEmpresa(analise?.id_empresa ?? null);
   const excluir = useExcluirAnaliseQuimico();
+  const canEdit = useCanEdit();
+  const atualizar = useAtualizarAnaliseQuimico();
   const [confirmExcluirOpen, setConfirmExcluirOpen] = useState(false);
+  const [validade, setValidade] = useState("");
+  useEffect(() => {
+    setValidade(analise?.data_validade ?? "");
+  }, [analise?.data_validade]);
 
   if (isLoading) {
     return (
@@ -81,20 +87,6 @@ export default function AnaliseDetalhePage({
           <ArrowLeft className="size-3.5" /> Voltar ao histórico
         </Link>
         <div className="flex items-center gap-2">
-          <BotaoGerarPdf
-            tabelaNome="analises_quimicos"
-            docId={id}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
-            registrarPdf={{
-              modulo: "analises_quimicos",
-              tipoDocumento: "Análise de Agente Químico",
-              idRelatorio: id,
-              empresaId: analise?.id_empresa ?? undefined,
-              empresaNome: empresa?.nome_empresa ?? undefined,
-              empresaCnpj: empresa?.cnpj ?? undefined,
-              responsavelTecnico: analise?.usuario_nome ?? undefined,
-            }}
-          />
           {canDelete && (
             <button
               type="button"
@@ -109,7 +101,7 @@ export default function AnaliseDetalhePage({
         </div>
       </div>
 
-      {/* Logo Chabra (print + tela) */}
+      {/* Logo JCN Consultoria (print + tela) */}
       <RelatorioPrintHeader
         titulo="Análise de Agente Químico"
         subtitulo={analise.titulo}
@@ -127,7 +119,7 @@ export default function AnaliseDetalhePage({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-wider text-sky-600">
-              Análise de Químicos JCN
+              Análise de Químicos JCN Consultoria
             </p>
             <h1 className="truncate text-xl font-bold text-gray-900">
               {analise.titulo}
@@ -203,6 +195,27 @@ export default function AnaliseDetalhePage({
         )}
       </div>
 
+      {/* Validade do documento (editável) — alimenta os vencimentos da Visão geral */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm print:hidden">
+        <label className="text-sm font-semibold text-gray-700">Validade do documento</label>
+        <input
+          type="date"
+          value={validade}
+          disabled={!canEdit}
+          onChange={(e) => setValidade(e.target.value)}
+          onBlur={() => {
+            if ((analise.data_validade ?? "") !== validade) {
+              atualizar.mutate(
+                { id_analise: analise.id_analise, data_validade: validade || null },
+                { onSuccess: () => toast.success("Validade salva") },
+              );
+            }
+          }}
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-100"
+        />
+        <span className="text-xs text-gray-400">Usada nos alertas de vencimento da Visão geral.</span>
+      </div>
+
       {/* Conclusão rápida */}
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm print:border-0 print:shadow-none print:p-2">
         <h2 className="mb-3 text-base font-bold text-verde-primary">
@@ -224,7 +237,7 @@ export default function AnaliseDetalhePage({
           carimbo: analise.usuario_nome ?? "",
           importado: formatarDataBR(analise.created_at),
         }}
-        posicao="antes"
+        posicao="inicio"
       />
 
       {/* Relatório técnico estruturado (gerado pelo programa a partir dos
@@ -257,6 +270,7 @@ export default function AnaliseDetalhePage({
         dataRelatorio={formatarDataBR(analise.created_at) || undefined}
         tabelaNome="analises_quimicos"
         docId={id}
+        hideAcoes
       />
 
       {/* Rodapé pra impressão */}
@@ -280,7 +294,7 @@ export default function AnaliseDetalhePage({
               toast.success("Análise excluída");
               router.push("/analise-quimicos/historico");
             },
-            onError: (e: Error) => toast.error(e.message),
+            onError: (e: Error) => toast.error(mensagemErro(e)),
           });
           setConfirmExcluirOpen(false);
         }}

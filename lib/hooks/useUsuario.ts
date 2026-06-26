@@ -9,6 +9,11 @@ export function useCurrentUser() {
   return useUserStore((s) => s.user);
 }
 
+export function useIsCliente() {
+  const user = useUserStore((s) => s.user);
+  return user?.perfil === "Cliente";
+}
+
 export function useIsAdmin() {
   const user = useUserStore((s) => s.user);
   return user?.perfil === "Admin";

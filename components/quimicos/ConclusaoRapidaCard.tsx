@@ -121,7 +121,7 @@ export default function ConclusaoRapidaCard({
           <Database className="size-4 shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold">
-              Análise gerada a partir da Base de Referência JCN (sem IA)
+              Análise gerada a partir da Base de Referência JCN Consultoria (sem IA)
             </p>
             <p className="mt-0.5">
               Todos os componentes deste produto estão catalogados — os campos

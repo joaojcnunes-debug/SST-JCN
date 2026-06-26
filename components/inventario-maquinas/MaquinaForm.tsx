@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Save, Upload, X, ImageOff, Loader2 } from "lucide-react";
+import { Save, Upload, X, ImageOff, Loader2, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
+import StorageImg from "@/components/ui/StorageImg";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import {
   uploadFotoMaquina,
@@ -16,6 +17,7 @@ import {
   type StatusMaquina,
   type GrauRiscoMaquina,
 } from "@/lib/supabase/types";
+import RevisaoIAModal, { type CampoRevisaoIA } from "@/components/ui/RevisaoIAModal";
 import { cn } from "@/lib/utils";
 
 const BOOL_OPTS = [
@@ -62,7 +64,10 @@ function initialForm(m?: Maquina): MaquinaInput {
     finalidade: m?.finalidade ?? null,
     descricao_tecnica: m?.descricao_tecnica ?? null,
     protecao_fixa: m?.protecao_fixa ?? null,
+    descricao_protecao_fixa: m?.descricao_protecao_fixa ?? null,
     protecao_movel: m?.protecao_movel ?? null,
+    descricao_protecao_movel: m?.descricao_protecao_movel ?? null,
+    dispositivos_seguranca: m?.dispositivos_seguranca ?? null,
     intertravamento: m?.intertravamento ?? null,
     botao_emergencia: m?.botao_emergencia ?? null,
     sistema_bloqueio: m?.sistema_bloqueio ?? null,
@@ -103,6 +108,10 @@ export default function MaquinaForm({
   const [abaAtiva, setAbaAtiva] = useState<0 | 1 | 2 | 3>(0);
   const [uploading, setUploading] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [analisando, setAnalisando] = useState(false);
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  // Sugestões da IA aguardando revisão (modal aceitar/editar/rejeitar)
+  const [revisaoIA, setRevisaoIA] = useState<CampoRevisaoIA[] | null>(null);
 
   useEffect(() => {
     if (inicial) setForm(initialForm(inicial));
@@ -115,13 +124,14 @@ export default function MaquinaForm({
   async function handleFotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Foto maior que 5 MB. Reduza antes de enviar.");
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Foto maior que 10 MB. Reduza antes de enviar.");
       return;
     }
+    setFotoFile(file);
     setUploading(true);
     try {
-      if (form.foto_storage_path && !form.foto_storage_path.endsWith(file.name)) {
+      if (form.foto_storage_path) {
         await removerFotoMaquinaStorage(form.foto_storage_path);
       }
       const { publicUrl, storagePath } = await uploadFotoMaquina(idMaquina, file);
@@ -134,6 +144,75 @@ export default function MaquinaForm({
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
     }
+  }
+
+  async function handleAnalisarIA() {
+    if (!fotoFile) return;
+    setAnalisando(true);
+    try {
+      // Redimensiona para max 1024px antes de enviar (reduz custo de tokens)
+      const base64 = await resizeAndBase64(fotoFile, 1024);
+      const res = await fetch("/api/maquina/analisar-foto", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: base64, mimeType: fotoFile.type || "image/jpeg" }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`);
+      }
+      const { data } = await res.json() as { data: Record<string, unknown> };
+      // Monta a revisão — nada é aplicado sem o usuário confirmar no modal
+      const SUGESTOES: { key: keyof MaquinaInput & string; label: string; multiline?: boolean }[] = [
+        { key: "nome", label: "Nome da máquina" },
+        { key: "tipo", label: "Tipo" },
+        { key: "categoria", label: "Categoria" },
+        { key: "marca", label: "Fabricante / Marca" },
+        { key: "modelo", label: "Modelo" },
+        { key: "numero_serie", label: "Número de série" },
+        { key: "ano_fabricacao", label: "Ano de fabricação" },
+        { key: "capacidade_operacional", label: "Capacidade operacional" },
+        { key: "tensao", label: "Tensão" },
+        { key: "potencia", label: "Potência" },
+        { key: "descricao_tecnica", label: "Descrição técnica", multiline: true },
+      ];
+      const campos: CampoRevisaoIA[] = [];
+      for (const s of SUGESTOES) {
+        const val = data[s.key];
+        if (val === null || val === undefined || val === "") continue;
+        campos.push({
+          key: s.key,
+          label: s.label,
+          valorSugerido: String(val),
+          valorAtual: form[s.key] != null ? String(form[s.key]) : null,
+          multiline: s.multiline,
+        });
+      }
+      if (campos.length === 0) {
+        toast("A IA não identificou dados na foto. Tente uma foto da plaqueta.", { icon: "ℹ️" });
+        return;
+      }
+      setRevisaoIA(campos);
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Falha na análise IA");
+    } finally {
+      setAnalisando(false);
+    }
+  }
+
+  /** Aplica os campos aceitos na revisão da IA. */
+  function aplicarRevisaoIA(valores: Record<string, string>) {
+    for (const [key, valor] of Object.entries(valores)) {
+      if (key === "ano_fabricacao") {
+        const n = Number(valor);
+        setF("ano_fabricacao", valor && Number.isFinite(n) ? n : null);
+      } else {
+        setF(key as keyof MaquinaInput, valor || null);
+      }
+    }
+    setRevisaoIA(null);
+    toast.success("Sugestões aplicadas — revise e salve");
   }
 
   async function handleRemoverFoto() {
@@ -154,6 +233,10 @@ export default function MaquinaForm({
       toast.error("Informe o nome da máquina.");
       return;
     }
+    if (!form.setor?.trim()) {
+      toast.error("Informe o setor — toda máquina pertence a um setor.");
+      return;
+    }
     setSalvando(true);
     try {
       await onSubmit({ ...form, nome: form.nome.trim() });
@@ -170,8 +253,7 @@ export default function MaquinaForm({
         <div className="flex items-start gap-3">
           <div className="flex size-24 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
             {form.foto_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={form.foto_url} alt="Foto" className="size-full object-cover" referrerPolicy="no-referrer" />
+              <StorageImg stored={form.foto_url} alt="Foto" className="size-full object-cover" />
             ) : (
               <ImageOff className="size-7 text-gray-300" />
             )}
@@ -187,6 +269,18 @@ export default function MaquinaForm({
               {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
               {form.foto_url ? "Trocar foto" : "Enviar foto"}
             </button>
+            {/* Analisar com IA — aparece após enviar a foto */}
+            {fotoFile && !disabled && (
+              <button
+                type="button"
+                onClick={handleAnalisarIA}
+                disabled={analisando || uploading}
+                className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-100 disabled:opacity-50"
+              >
+                {analisando ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+                {analisando ? "Analisando..." : "Analisar com IA"}
+              </button>
+            )}
             {form.foto_url && !disabled && (
               <button
                 type="button"
@@ -196,7 +290,7 @@ export default function MaquinaForm({
                 <X className="size-3" /> Remover
               </button>
             )}
-            <p className="text-[11px] text-gray-400">Até 5 MB · JPG/PNG/WebP</p>
+            <p className="text-[11px] text-gray-400">Até 10 MB · JPG/PNG/WebP</p>
           </div>
         </div>
 
@@ -209,7 +303,7 @@ export default function MaquinaForm({
               disabled={disabled}
               className={inputClass}
             >
-              <option value="">Patrimônio interno JCN</option>
+              <option value="">Patrimônio interno JCN Consultoria</option>
               {empresas.map((e) => (
                 <option key={e.id_empresa} value={e.id_empresa}>{e.nome_empresa}</option>
               ))}
@@ -293,7 +387,7 @@ export default function MaquinaForm({
           <Campo label="Unidade">
             <input type="text" value={form.unidade ?? ""} onChange={(e) => setF("unidade", e.target.value || null)} disabled={disabled} placeholder="Ex: Planta I, Filial SP" className={inputClass} />
           </Campo>
-          <Campo label="Setor">
+          <Campo label="Setor *">
             <input type="text" value={form.setor ?? ""} onChange={(e) => setF("setor", e.target.value || null)} disabled={disabled} placeholder="Ex: Estamparia, Montagem" className={inputClass} />
           </Campo>
           <Campo label="Linha / Processo">
@@ -383,6 +477,18 @@ export default function MaquinaForm({
                 </Campo>
               ))}
             </div>
+            {/* Campos de texto para inventário NR-12 */}
+            <div className="mt-3 grid grid-cols-1 gap-3">
+              <Campo label="Proteções fixas — descrição (NR-12)">
+                <input type="text" value={form.descricao_protecao_fixa ?? ""} onChange={(e) => setF("descricao_protecao_fixa", e.target.value || null)} disabled={disabled} placeholder="Ex: Proteção fixa nas correntes de transmissão" className={inputClass} />
+              </Campo>
+              <Campo label="Proteções móveis — descrição (NR-12)">
+                <input type="text" value={form.descricao_protecao_movel ?? ""} onChange={(e) => setF("descricao_protecao_movel", e.target.value || null)} disabled={disabled} placeholder="Ex: Proteção móvel no cabeçote, enclausuramento" className={inputClass} />
+              </Campo>
+              <Campo label="Dispositivos de segurança (NR-12)">
+                <input type="text" value={form.dispositivos_seguranca ?? ""} onChange={(e) => setF("dispositivos_seguranca", e.target.value || null)} disabled={disabled} placeholder="Ex: Botões de parada de emergência, proteção lateral" className={inputClass} />
+              </Campo>
+            </div>
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-gray-50/40 p-4">
@@ -449,12 +555,46 @@ export default function MaquinaForm({
           </button>
         </div>
       )}
+
+      {/* Revisão das sugestões da IA — aceitar/editar/rejeitar */}
+      {revisaoIA && (
+        <RevisaoIAModal
+          titulo="Sugestões da IA — dados da máquina"
+          descricao="Extraído da foto enviada (plaqueta/identificação da máquina)."
+          campos={revisaoIA}
+          onAplicar={aplicarRevisaoIA}
+          onClose={() => setRevisaoIA(null)}
+        />
+      )}
     </form>
   );
 }
 
 const inputClass =
   "w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500";
+
+/** Redimensiona e converte para base64 (sem prefixo data:) para envio ao servidor. */
+async function resizeAndBase64(file: File, maxPx = 1024): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, w, h);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      resolve(dataUrl.split(",")[1]); // remove prefixo "data:image/jpeg;base64,"
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (

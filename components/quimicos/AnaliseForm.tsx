@@ -151,7 +151,7 @@ export default function AnaliseForm() {
     setFispqDados(novo ? novo.parsed : null);
   }
 
-  // Auto-preenche nomes de componentes via base Chabra: ao subir um PDF,
+  // Auto-preenche nomes de componentes via base JCN Consultoria: ao subir um PDF,
   // varre cada CAS extraído e, se bater na base, sobrescreve o `nome`
   // com o nome canônico (ex.: "Tolueno", "Álcool etílico"). Só roda uma
   // vez por PDF (controlado por enrichedKeyRef) pra não atropelar edições
@@ -920,8 +920,8 @@ export default function AnaliseForm() {
             <p className="font-semibold">
               <Database className="inline size-3.5 mr-1" />
               {hitsBase.length === 1
-                ? "Encontrado na base de referência JCN"
-                : `${hitsBase.length} componentes encontrados na base de referência JCN`}
+                ? "Encontrado na base de referência JCN Consultoria"
+                : `${hitsBase.length} componentes encontrados na base de referência JCN Consultoria`}
             </p>
             <ul className="mt-1 space-y-0.5 text-xs">
               {hitsBase.map((h, i) => (

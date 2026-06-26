@@ -1,5 +1,5 @@
 // Geração client-side de Conclusão Rápida QUANDO todos os componentes
-// estão catalogados na base Chabra. Substitui a chamada à IA pra produtos
+// estão catalogados na base JCN Consultoria. Substitui a chamada à IA pra produtos
 // comuns (thinner, álcool, acetona, etc.), economizando ~100% dos tokens
 // nesses casos. Mantém o mesmo formato de resposta da edge function
 // `analisar-quimico-ia` pra UI não precisar mudar.
@@ -253,7 +253,7 @@ export interface GerarTemplateInput {
  * Gera ConclusaoRapidaQuimico 100% client-side, sem chamar IA.
  *
  * Pré-requisito: TODOS os componentes do produto estão catalogados na base
- * Chabra. Pra produtos com componentes fora da base, use a IA — ela tem
+ * JCN Consultoria. Pra produtos com componentes fora da base, use a IA — ela tem
  * mais flexibilidade pra raciocinar por analogia.
  */
 export function gerarConclusaoTemplate(

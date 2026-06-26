@@ -2,7 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { registrarSoftNaLixeira } from "@/lib/hooks/useLixeira";
 import { gerarId } from "@/lib/utils";
 import type {
   DrpsMonitoramento,
@@ -107,7 +109,7 @@ export function useDrpsCriarRelatorio() {
       qc.invalidateQueries({ queryKey: ["drps-relatorios", vars.id_empresa] });
       toast.success("Relatório criado");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -134,7 +136,7 @@ export function useDrpsSalvarRelatorio() {
       }
       toast.success(vars._toast ?? "Relatório atualizado");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -143,6 +145,23 @@ export function useDrpsExcluirRelatorio() {
   return useMutation({
     mutationFn: async (args: { id_relatorio: string; id_empresa: string }) => {
       const supabase = createSupabaseBrowserClient();
+      // Registra na lixeira com o status ANTERIOR preservado (para restaurar).
+      const { data: row } = await supabase
+        .from("drps_relatorios")
+        .select("*")
+        .eq("id_relatorio", args.id_relatorio)
+        .maybeSingle();
+      if (row) {
+        const r = row as Record<string, unknown>;
+        await registrarSoftNaLixeira({
+          tabela: "drps_relatorios",
+          chave: "id_relatorio",
+          id: args.id_relatorio,
+          dados: r,
+          rotulo: (r.titulo as string) || `DRPS ${args.id_relatorio}`,
+          modulo: "drps",
+        });
+      }
       // Soft-delete: marca como DELETADO em vez de apagar (preserva numeração
       // de revisão e auditoria)
       const { error } = await supabase
@@ -158,7 +177,7 @@ export function useDrpsExcluirRelatorio() {
       qc.invalidateQueries({ queryKey: ["drps-relatorios", vars.id_empresa] });
       toast.success("Relatório excluído");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -218,7 +237,7 @@ export function useDrpsImportar() {
       });
       toast.success(`${total} respondente(s) importado(s)`);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -237,7 +256,7 @@ export function useDrpsLimparTudo() {
       qc.invalidateQueries({ queryKey: ["drps-respondentes", idRelatorio] });
       toast.success("Respondentes removidos");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -295,7 +314,7 @@ export function useDrpsSalvarProbabilidade() {
         queryKey: ["drps-probabilidades", args.id_relatorio],
       });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -355,7 +374,7 @@ export function useDrpsSalvarPlanoMedidas() {
       });
       toast.success("Plano salvo");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -407,7 +426,7 @@ export function useDrpsSalvarMonitoramento() {
         queryKey: ["drps-monitoramento", vars.id_relatorio],
       });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -458,7 +477,7 @@ export function useDrpsSalvarRevisao() {
       });
       toast.success("Revisão salva");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -472,6 +491,9 @@ export function useDrpsTextoPadrao() {
     staleTime: 60 * 1000,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
+      // Lê da MESMA tabela em que as mutações escrevem (drps_texto_padrao).
+      // Antes lia de textos_padrao (modulo=psicossocial), que nunca recebia
+      // dados — a tela ficava sempre vazia e nada entrava no PDF.
       const { data, error } = await supabase
         .from("drps_texto_padrao")
         .select("*")
@@ -509,7 +531,7 @@ export function useDrpsCriarCapitulo() {
       qc.invalidateQueries({ queryKey: ["drps-texto-padrao"] });
       toast.success("Capítulo criado");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -539,7 +561,7 @@ export function useDrpsSalvarCapitulo() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["drps-texto-padrao"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -574,7 +596,7 @@ export function useDrpsSeedCapitulosFixos() {
       qc.invalidateQueries({ queryKey: ["drps-texto-padrao"] });
       toast.success("Seções do sistema adicionadas!");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
@@ -593,7 +615,7 @@ export function useDrpsExcluirCapitulo() {
       qc.invalidateQueries({ queryKey: ["drps-texto-padrao"] });
       toast.success("Capítulo excluído");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 

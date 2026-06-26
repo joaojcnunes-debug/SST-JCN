@@ -128,7 +128,8 @@ function LoginInner() {
 
       setUser(perfil);
       const raw = params.get("next") ?? "";
-      const next = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/inicio";
+      const defaultHome = perfil.perfil === "Cliente" ? "/portal-cliente/inicio" : "/visao-geral";
+      const next = raw.startsWith("/") && !raw.startsWith("//") ? raw : defaultHome;
       router.replace(next);
     } catch (err) {
       setAutoLogging(false);
@@ -155,7 +156,7 @@ function LoginInner() {
         className="min-h-screen flex items-center justify-center p-4"
         style={{
           background:
-            "linear-gradient(135deg, #075985 0%, #0369a1 60%, #0ea5e9 100%)",
+            "linear-gradient(135deg, #1e4d28 0%, #0ea5e9 60%, #0284c7 100%)",
         }}
       >
         <div className="flex flex-col items-center gap-4 text-white/80">
@@ -169,7 +170,7 @@ function LoginInner() {
   return (
     <div
       className="relative min-h-screen flex items-center justify-center overflow-hidden p-4"
-      style={{ background: "linear-gradient(135deg, #075985 0%, #0369a1 65%, #0ea5e9 100%)" }}
+      style={{ background: "linear-gradient(135deg, #0369a1 0%, #0ea5e9 65%, #0284c7 100%)" }}
     >
       {/* Círculos decorativos de fundo */}
       <div className="pointer-events-none absolute -left-32 -top-32 size-96 rounded-full bg-white/[0.04] blur-3xl" />
@@ -177,7 +178,7 @@ function LoginInner() {
 
       <div className="relative w-full max-w-md">
         {/* Card principal */}
-        <div className="rounded-3xl bg-white px-8 py-10 shadow-[0_25px_60px_rgba(0,0,0,0.25)] ring-1 ring-black/5">
+        <div className="reveal-up rounded-3xl bg-white px-8 py-10 shadow-[0_25px_60px_rgba(0,0,0,0.25)] ring-1 ring-black/5">
 
           {/* Logo + título */}
           <div className="flex flex-col items-center text-center">
@@ -189,8 +190,8 @@ function LoginInner() {
               referrerPolicy="no-referrer"
               onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/logo-jcn.svg"; }}
             />
-            <h1 className="mt-4 text-2xl font-bold tracking-tight text-gray-900">SST · JCN Consultoria</h1>
-            <p className="mt-1 text-sm text-gray-400">Segurança e Saúde do Trabalho</p>
+            <h1 className="mt-4 text-2xl font-bold tracking-tight text-gray-900">SST JCN Consultoria</h1>
+            <p className="mt-1 text-sm text-gray-400">JCN Consultoria · Segurança e Saúde do Trabalho</p>
           </div>
 
           {/* Formulário */}
@@ -251,8 +252,8 @@ function LoginInner() {
             <button
               type="submit"
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white shadow-md transition active:scale-[0.98] disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg, #0369a1 0%, #0ea5e9 100%)" }}
+              className="sheen flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white shadow-md transition active:scale-[0.98] disabled:opacity-60"
+              style={{ background: "linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)" }}
             >
               {loading && <Loader2 className="size-4 animate-spin" />}
               {loading ? "Entrando..." : "Entrar"}
@@ -260,7 +261,7 @@ function LoginInner() {
           </form>
 
           <p className="mt-7 text-center text-xs text-gray-400">
-            © {new Date().getFullYear()} JCN Consultoria
+            © {new Date().getFullYear()} JCN Consultoria · SST JCN Consultoria
           </p>
 
           {typeof window !== "undefined" && getElectron() && (

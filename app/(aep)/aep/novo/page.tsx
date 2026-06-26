@@ -45,7 +45,7 @@ export default function AepNovoPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm reveal-up">
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Empresa *</label>
           <EmpresaSelect

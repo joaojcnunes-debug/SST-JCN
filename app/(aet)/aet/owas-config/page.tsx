@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Image as ImageIcon, Loader2, Plus, RefreshCw, Save, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import {
   SLUG_TO_DEFAULT_IMAGE,
   CHECKLIST_PERGUNTAS_PADRAO,
@@ -18,6 +19,7 @@ import {
   useAetDeletarChecklistPergunta,
 } from "@/lib/hooks/useAet";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import StorageImg from "@/components/ui/StorageImg";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { AetChecklistPergunta, AetOwasCategoria, AetOwasOpcao, AetOwasSelectCampo } from "@/lib/supabase/types";
 
@@ -274,7 +276,7 @@ function CategoriaCard({
         { onSuccess: () => toast.success("Imagem atualizada", { id: toastId }) }
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Falha no upload", { id: toastId });
+      toast.error(mensagemErro(err, "Falha no upload"), { id: toastId });
     } finally {
       setEnviandoImg(false);
     }
@@ -374,9 +376,8 @@ function CategoriaCard({
             Imagem de Referência
           </p>
           <div className="space-y-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={imageSrc}
+            <StorageImg
+              stored={imageSrc}
               alt={`Referência OWAS: ${categoria.titulo}`}
               className="h-auto w-full max-w-[260px] rounded border border-gray-200"
             />

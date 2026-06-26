@@ -15,13 +15,15 @@ import {
   ClipboardList,
   FileText,
   Plus,
-  Printer,
   Sparkles,
   Wand2,
   ListTodo,
+  Activity,
+  ShieldCheck,
   X as IconX,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import {
   useApreciacaoMaquina,
   useAtualizarApreciacaoMaquina,
@@ -30,6 +32,7 @@ import {
   useGerarParecerApreciacaoIA,
 } from "@/lib/hooks/useApreciacoesMaquinas";
 import PlanoAcaoTable from "@/components/apreciacao-maquinas/PlanoAcaoTable";
+import RiscoHrnTable from "@/components/apreciacao-maquinas/RiscoHrnTable";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import {
   montarValoresEmpresa,
@@ -42,8 +45,8 @@ import ItemApreciacaoCard from "@/components/apreciacao-maquinas/ItemApreciacaoC
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import { cn } from "@/lib/utils";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
-import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
+import RevisaoIAModal, { type CampoRevisaoIA } from "@/components/ui/RevisaoIAModal";
 import {
   CATEGORIAS_NR12_LABELS,
   CATEGORIAS_NR12_ORDEM,
@@ -51,12 +54,16 @@ import {
 } from "@/lib/apreciacao-maquinas/catalogo-nr12";
 import {
   RISCO_RESIDUAL_LABELS,
+  COMPONENTES_MAQUINA_NR12,
+  SISTEMAS_SEGURANCA_NR12,
+  NPE_HRN_LABELS,
   type RiscoResidual,
   type ApreciacaoMaquinaItem,
   type NivelRisco,
+  type NpeHrn,
 } from "@/lib/supabase/types";
 
-/** Mapeia NivelRisco (matriz Painel SST) pra RiscoResidual (Apreciação). */
+/** Mapeia NivelRisco (matriz SST JCN Consultoria) pra RiscoResidual (Apreciação). */
 const NIVEL_PARA_RISCO_RESIDUAL: Record<NivelRisco, RiscoResidual> = {
   Trivial: "BAIXO",
   Baixo: "BAIXO",
@@ -99,12 +106,25 @@ export default function DetalheApreciacaoPage() {
   const [responsavelEmpresa, setResponsavelEmpresa] = useState("");
   const [cidade, setCidade] = useState("");
   const [dataApreciacao, setDataApreciacao] = useState("");
+  const [dataValidade, setDataValidade] = useState("");
   const [conclusao, setConclusao] = useState("");
   const [recomendacoes, setRecomendacoes] = useState("");
   const [riscoResidual, setRiscoResidual] = useState<RiscoResidual | "">("");
   const [observacoes, setObservacoes] = useState("");
+  // Parecer da IA aguardando revisão (modal aceitar/editar/rejeitar)
+  const [revisaoParecer, setRevisaoParecer] = useState<CampoRevisaoIA[] | null>(null);
 
   const [confirmarExclusao, setConfirmarExclusao] = useState(false);
+
+  // Identificação dos componentes / limites / sistemas (NR-12 HRN)
+  const [componentes, setComponentes] = useState<string[]>([]);
+  const [limiteUso, setLimiteUso] = useState("");
+  const [limiteEspaco, setLimiteEspaco] = useState("");
+  const [limiteTempo, setLimiteTempo] = useState("");
+  const [limiteProdutividade, setLimiteProdutividade] = useState("");
+  const [npe, setNpe] = useState<NpeHrn | "">("");
+  const [sistemasAtual, setSistemasAtual] = useState<string[]>([]);
+  const [sistemasNecessario, setSistemasNecessario] = useState<string[]>([]);
 
   // Form "Adicionar item livre"
   const [livreOpen, setLivreOpen] = useState(false);
@@ -123,10 +143,20 @@ export default function DetalheApreciacaoPage() {
     setResponsavelEmpresa(apreciacao.responsavel_empresa ?? "");
     setCidade(apreciacao.cidade ?? "");
     setDataApreciacao(apreciacao.data_apreciacao ?? "");
+    setDataValidade(apreciacao.data_validade ?? "");
     setConclusao(apreciacao.conclusao_tecnica ?? "");
     setRecomendacoes(apreciacao.recomendacoes ?? "");
     setRiscoResidual(apreciacao.risco_residual ?? "");
     setObservacoes(apreciacao.observacoes_gerais ?? "");
+    // HRN
+    setComponentes(apreciacao.componentes_maquina ?? []);
+    setLimiteUso(apreciacao.limite_uso ?? "");
+    setLimiteEspaco(apreciacao.limite_espaco ?? "");
+    setLimiteTempo(apreciacao.limite_tempo ?? "");
+    setLimiteProdutividade(apreciacao.limite_produtividade ?? "");
+    setNpe((apreciacao.npe as NpeHrn) ?? "");
+    setSistemasAtual(apreciacao.sistemas_atual ?? []);
+    setSistemasNecessario(apreciacao.sistemas_necessario ?? []);
   }, [apreciacao]);
 
   const empresa = useMemo(() => {
@@ -173,6 +203,7 @@ export default function DetalheApreciacaoPage() {
     || responsavelEmpresa !== (apreciacao.responsavel_empresa ?? "")
     || cidade !== (apreciacao.cidade ?? "")
     || dataApreciacao !== (apreciacao.data_apreciacao ?? "")
+    || dataValidade !== (apreciacao.data_validade ?? "")
     || observacoes !== (apreciacao.observacoes_gerais ?? "")
     || conclusao !== (apreciacao.conclusao_tecnica ?? "")
     || recomendacoes !== (apreciacao.recomendacoes ?? "")
@@ -190,6 +221,7 @@ export default function DetalheApreciacaoPage() {
         responsavel_empresa: responsavelEmpresa.trim() || null,
         cidade: cidade.trim() || null,
         data_apreciacao: dataApreciacao || null,
+        data_validade: dataValidade || null,
         observacoes_gerais: observacoes.trim() || null,
       });
       toast.success("Dados gerais salvos");
@@ -212,6 +244,26 @@ export default function DetalheApreciacaoPage() {
     } catch (err) {
       console.error(err);
       toast.error("Falha ao salvar conclusão");
+    }
+  }
+
+  async function handleSalvarAnalise() {
+    if (!id) return;
+    try {
+      await atualizar.mutateAsync({
+        id_apreciacao: id,
+        componentes_maquina: componentes.length ? componentes : null,
+        limite_uso: limiteUso.trim() || null,
+        limite_espaco: limiteEspaco.trim() || null,
+        limite_tempo: limiteTempo.trim() || null,
+        limite_produtividade: limiteProdutividade.trim() || null,
+        npe: npe || null,
+        sistemas_atual: sistemasAtual.length ? sistemasAtual : null,
+        sistemas_necessario: sistemasNecessario.length ? sistemasNecessario : null,
+      });
+      toast.success("Análise salva");
+    } catch {
+      toast.error("Falha ao salvar análise");
     }
   }
 
@@ -303,19 +355,53 @@ export default function DetalheApreciacaoPage() {
         })),
         textoAtual: conclusao.trim() || null,
       });
-      // Preenche os 3 campos — usuário revisa e clica "Salvar conclusão"
-      setConclusao(result.conclusao_tecnica);
-      setRecomendacoes(result.recomendacoes_finais);
+      // Abre o modal de revisão — nada é aplicado sem o usuário confirmar
+      const campos: CampoRevisaoIA[] = [
+        {
+          key: "conclusao_tecnica",
+          label: "Conclusão técnica",
+          valorSugerido: result.conclusao_tecnica,
+          valorAtual: conclusao || null,
+          multiline: true,
+        },
+        {
+          key: "recomendacoes",
+          label: "Recomendações finais",
+          valorSugerido: result.recomendacoes_finais,
+          valorAtual: recomendacoes || null,
+          multiline: true,
+        },
+      ];
       if (result.risco_residual_sugerido) {
-        setRiscoResidual(result.risco_residual_sugerido);
+        campos.push({
+          key: "risco_residual",
+          label: "Risco residual",
+          valorSugerido: result.risco_residual_sugerido,
+          valorAtual: riscoResidual || null,
+          options: (Object.keys(RISCO_RESIDUAL_LABELS) as RiscoResidual[]).map((r) => ({
+            value: r,
+            label: RISCO_RESIDUAL_LABELS[r],
+          })),
+        });
       }
-      toast.success("Parecer gerado — revise antes de salvar");
+      setRevisaoParecer(campos);
     } catch (err) {
       console.error(err);
       toast.error(
-        err instanceof Error ? err.message : "Falha ao gerar parecer"
+        mensagemErro(err, "Falha ao gerar parecer")
       );
     }
+  }
+
+  /** Aplica os campos aceitos na revisão do parecer da IA. */
+  function aplicarRevisaoParecer(valores: Record<string, string>) {
+    if (valores.conclusao_tecnica !== undefined) setConclusao(valores.conclusao_tecnica);
+    if (valores.recomendacoes !== undefined) setRecomendacoes(valores.recomendacoes);
+    if (valores.risco_residual !== undefined) {
+      setRiscoResidual((valores.risco_residual as RiscoResidual) || "");
+    }
+    setRevisaoParecer(null);
+    toast.success("Parecer aplicado — revise e clique em Salvar conclusão");
   }
 
   /** Sugere risco_residual baseado no MAX nível dos itens NAO_CONFORME. */
@@ -402,22 +488,6 @@ export default function DetalheApreciacaoPage() {
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
         <div className="flex items-center gap-2">
-          <BotaoGerarPdf
-            tabelaNome="apreciacoes_maquinas"
-            docId={id}
-            disabled={dirty || atualizar.isPending}
-            title={dirty ? "Salve as alterações antes de gerar o PDF" : undefined}
-            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-            registrarPdf={{
-              modulo: "apreciacao_maquinas",
-              tipoDocumento: "Apreciação de Máquinas NR-12",
-              idRelatorio: id,
-              empresaId: apreciacao?.id_empresa ?? undefined,
-              empresaNome: empresa?.nome_empresa ?? undefined,
-              empresaCnpj: empresa?.cnpj ?? undefined,
-              responsavelTecnico: responsavel || undefined,
-            }}
-          />
           <span
             className={`rounded-full px-3 py-1 text-xs font-bold ${
               finalizada
@@ -432,7 +502,7 @@ export default function DetalheApreciacaoPage() {
 
       {/* Cabeçalho de impressão (visível em tela também, discreto) */}
       <RelatorioPrintHeader
-        titulo={`Apreciação NR-12 — ${maquinaNome}`}
+        titulo={`Apreciação de Risco NR-12 — ${maquinaNome}`}
         subtitulo={empresaNome}
         terciario={
           apreciacao.data_apreciacao
@@ -608,7 +678,7 @@ export default function DetalheApreciacaoPage() {
               className={inputClass}
             />
           </Campo>
-          <Campo label="Responsável técnico (JCN)" htmlFor="resp">
+          <Campo label="Responsável técnico (JCN Consultoria)" htmlFor="resp">
             <ProfissionalSelect
               value={responsavel}
               onChange={(nome) => setResponsavel(nome)}
@@ -631,6 +701,16 @@ export default function DetalheApreciacaoPage() {
               type="date"
               value={dataApreciacao}
               onChange={(e) => setDataApreciacao(e.target.value)}
+              disabled={readOnly}
+              className={inputClass}
+            />
+          </Campo>
+          <Campo label="Validade do documento" htmlFor="validade">
+            <input
+              id="validade"
+              type="date"
+              value={dataValidade}
+              onChange={(e) => setDataValidade(e.target.value)}
               disabled={readOnly}
               className={inputClass}
             />
@@ -663,6 +743,127 @@ export default function DetalheApreciacaoPage() {
             </button>
           </div>
         )}
+      </section>
+
+      {/* ── SEÇÃO: Identificação dos Componentes + Limites ──────────────────── */}
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4 print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
+        <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
+          <Cog className="size-4 text-orange-600" /> Identificação dos Componentes da Máquina
+        </h2>
+        <p className="text-[11px] text-gray-500">
+          Marque os tipos de componentes presentes nesta máquina (ABNT ISO/TR 14121-2:2018).
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {COMPONENTES_MAQUINA_NR12.map((comp) => {
+            const checked = componentes.includes(comp);
+            return (
+              <label key={comp} className={cn("flex cursor-pointer items-center gap-2 rounded-md border px-2 py-1.5 text-xs transition-colors", checked ? "border-orange-300 bg-orange-50 text-orange-800" : "border-gray-200 text-gray-700 hover:bg-gray-50", readOnly && "cursor-default")}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={readOnly}
+                  onChange={() => !readOnly && setComponentes((prev) => checked ? prev.filter((c) => c !== comp) : [...prev, comp])}
+                  className="accent-orange-600"
+                />
+                <span>{comp}</span>
+              </label>
+            );
+          })}
+        </div>
+        {/* Limites */}
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-600">Limites</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {([
+              ["limiteUso", limiteUso, setLimiteUso, "De Uso", "Ex: Alimentos, panificação"],
+              ["limiteEspaco", limiteEspaco, setLimiteEspaco, "De Espaço", "Ex: Interior da padaria, 2º andar"],
+              ["limiteTempo", limiteTempo, setLimiteTempo, "De Tempo", "Ex: Vida útil 15 anos"],
+              ["limiteProdutividade", limiteProdutividade, setLimiteProdutividade, "De Produtividade", "Ex: 80 kg/h"],
+            ] as [string, string, (v: string) => void, string, string][]).map(([, val, setter, label, placeholder]) => (
+              <label key={label} className="block">
+                <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">{label}</span>
+                <input type="text" value={val} onChange={(e) => setter(e.target.value)} disabled={readOnly}
+                  placeholder={placeholder}
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+        {/* NPE padrão */}
+        <div className="w-full sm:w-1/2">
+          <label className="block">
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">NPE — Número de Pessoas Expostas</span>
+            <select value={npe} onChange={(e) => setNpe(e.target.value as NpeHrn | "")} disabled={readOnly}
+              className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500">
+              <option value="">— Não informado —</option>
+              {(Object.entries(NPE_HRN_LABELS) as [NpeHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {/* ── Sistemas de Segurança Analisados ─── */}
+        <div>
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-600">
+            <ShieldCheck className="mr-1 inline size-3.5 text-blue-600" />
+            Sistemas de Segurança Analisados
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-gray-700">
+                  <th className="border border-gray-200 px-2 py-1 text-left font-semibold">Sistema</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-semibold w-24">Sistema Atual</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-semibold w-28">Sistema Necessário</th>
+                </tr>
+              </thead>
+              <tbody>
+                {SISTEMAS_SEGURANCA_NR12.map((sis) => {
+                  const temAtual = sistemasAtual.includes(sis);
+                  const temNecessario = sistemasNecessario.includes(sis);
+                  return (
+                    <tr key={sis} className="hover:bg-gray-50">
+                      <td className="border border-gray-200 px-2 py-1">{sis}</td>
+                      <td className="border border-gray-200 px-2 py-1 text-center">
+                        <input type="checkbox" checked={temAtual} disabled={readOnly}
+                          onChange={() => !readOnly && setSistemasAtual((prev) => temAtual ? prev.filter((s) => s !== sis) : [...prev, sis])}
+                          className="accent-emerald-600 size-3.5"
+                        />
+                      </td>
+                      <td className="border border-gray-200 px-2 py-1 text-center">
+                        <input type="checkbox" checked={temNecessario} disabled={readOnly}
+                          onChange={() => !readOnly && setSistemasNecessario((prev) => temNecessario ? prev.filter((s) => s !== sis) : [...prev, sis])}
+                          className="accent-orange-600 size-3.5"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {!readOnly && (
+          <div className="flex justify-end print:hidden">
+            <button type="button" onClick={handleSalvarAnalise} disabled={atualizar.isPending}
+              className="inline-flex items-center gap-1.5 rounded-md bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50">
+              {atualizar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              Salvar componentes e sistemas
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* ── SEÇÃO: Análise de Riscos HRN ──────────────────────────────────── */}
+      <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3 print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
+        <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
+          <Activity className="size-4 text-orange-600" /> Análise de Riscos — HRN
+        </h2>
+        <p className="text-[11px] text-gray-500">
+          Avaliação por tipo de perigo: POD (Probabilidade) × FEP (Frequência) × GPD (Gravidade) conforme ABNT ISO/TR 14121-2:2018.
+        </p>
+        <RiscoHrnTable idApreciacao={apreciacao.id_apreciacao} disabled={readOnly} />
       </section>
 
       {/* Seção: Checklist NR-12 agrupado por categoria */}
@@ -904,7 +1105,7 @@ export default function DetalheApreciacaoPage() {
       {/* Seção: Plano de Ação — standalone da apreciação */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3 print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
         <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
-          <ListTodo className="size-4" /> Plano de Ação
+          <ListTodo className="size-4" /> Plano de Adequação
         </h2>
         <PlanoAcaoTable
           idApreciacao={apreciacao.id_apreciacao}
@@ -935,7 +1136,7 @@ export default function DetalheApreciacaoPage() {
           carimbo: apreciacao.responsavel ?? "",
           importado: formatarDataBR(apreciacao.created_at),
         }}
-        posicao="depois"
+        posicao="fim"
       />
 
       {/* Bloco de assinatura */}
@@ -945,6 +1146,7 @@ export default function DetalheApreciacaoPage() {
           dataRelatorio={formatarDataBR(apreciacao.data_apreciacao) || undefined}
           tabelaNome="apreciacoes_maquinas"
           docId={id}
+          hideAcoes
         />
       </div>
 
@@ -992,6 +1194,17 @@ export default function DetalheApreciacaoPage() {
             </button>
           )}
         </div>
+      )}
+
+      {/* Revisão do parecer gerado pela IA — aceitar/editar/rejeitar */}
+      {revisaoParecer && (
+        <RevisaoIAModal
+          titulo="Parecer técnico sugerido pela IA"
+          descricao="Gerado a partir do checklist NR-12 preenchido (itens avaliados, NCs e níveis de risco)."
+          campos={revisaoParecer}
+          onAplicar={aplicarRevisaoParecer}
+          onClose={() => setRevisaoParecer(null)}
+        />
       )}
     </div>
   );

@@ -19,6 +19,7 @@ import {
   STATUS_MAQUINA_LABELS,
   type StatusMaquina,
 } from "@/lib/supabase/types";
+import StorageImg from "@/components/ui/StorageImg";
 
 const STATUS_CORES: Record<StatusMaquina, string> = {
   OPERANTE: "bg-emerald-100 text-emerald-700",
@@ -100,7 +101,7 @@ export default function InventarioMaquinasPage() {
           Inventário de Máquinas e Equipamentos
         </h1>
         <p className="text-sm text-gray-600">
-          Cadastro de máquinas e equipamentos. Patrimônio interno da JCN
+          Cadastro de máquinas e equipamentos. Patrimônio interno da JCN Consultoria
           (sem empresa vinculada) ou de empresas clientes. Suporta foto,
           localização e status operacional.
         </p>
@@ -192,12 +193,10 @@ export default function InventarioMaquinasPage() {
                 >
                   <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-gray-100">
                     {m.foto_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={m.foto_url}
+                      <StorageImg
+                        stored={m.foto_url}
                         alt={m.nome}
                         className="size-full object-cover"
-                        referrerPolicy="no-referrer"
                       />
                     ) : (
                       <ImageOff className="size-6 text-gray-300" />
@@ -222,7 +221,7 @@ export default function InventarioMaquinasPage() {
                     <p className="mt-0.5 truncate text-xs text-gray-500">
                       {m.id_empresa
                         ? empresaMap.get(m.id_empresa) ?? "Empresa removida"
-                        : "Patrimônio JCN"}
+                        : "Patrimônio JCN Consultoria"}
                       {m.localizacao ? ` · ${m.localizacao}` : ""}
                     </p>
                   </div>

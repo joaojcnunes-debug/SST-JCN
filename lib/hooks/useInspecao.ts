@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type {
   Cargo,
@@ -110,6 +110,38 @@ export function useInspecao(id: string | null | undefined) {
   });
 }
 
+/**
+ * Atualiza a elaboração do documento (etapa do ADM) numa inspeção.
+ * "assumir" → EM_ELABORACAO com o nome do ADM; "concluir" → CONCLUIDO + data;
+ * "limpar" → volta a PENDENTE.
+ */
+export function useSalvarElaboracao(idInspecao: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (patch: {
+      elaboracao_status: "PENDENTE" | "EM_ELABORACAO" | "CONCLUIDO";
+      elaboracao_responsavel?: string | null;
+      elaboracao_concluida_em?: string | null;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      // RPC SECURITY DEFINER: altera só os 3 campos de elaboração e libera
+      // Visualizadores (que não têm pode_editar). Evita abrir o UPDATE da inspeção.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).rpc("set_elaboracao_documento", {
+        p_id_inspecao: idInspecao,
+        p_status: patch.elaboracao_status,
+        p_responsavel: patch.elaboracao_responsavel ?? null,
+        p_concluida_em: patch.elaboracao_concluida_em ?? null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+      qc.invalidateQueries({ queryKey: ["dashboard-documentos-adm"] });
+    },
+  });
+}
+
 export function useInspecoesByEmpresa(idEmpresa: string | null | undefined) {
   return useQuery({
     queryKey: ["inspecoes", idEmpresa],
@@ -154,46 +186,58 @@ export type OrdemInspecao = "recentes" | "antigas" | "revisao";
 interface InspecoesPaginadasParams {
   idEmpresa: string | null;
   tecnico: string;
+  idUnidade?: string | null;
+  dataIni?: string;
+  dataFim?: string;
   filtro: FiltroInspecao;
   ordem: OrdemInspecao;
   page: number;
   pageSize: number;
 }
 
-function buildBaseQuery(
-  supabase: ReturnType<typeof createSupabaseBrowserClient>,
-  idEmpresa: string | null,
-  tecnico: string
-) {
-  let q = supabase
-    .from("inspecoes")
-    .select("*, empresas(nome_empresa)", { count: "exact" })
-    .neq("status", "DELETADA");
-  if (idEmpresa) {
-    q = q.eq("id_empresa", idEmpresa);
-  } else if (tecnico.trim().length >= 2) {
-    q = q.ilike("responsavel", `%${tecnico.trim()}%`);
-  }
-  return q;
+interface FiltrosBase {
+  idEmpresa: string | null;
+  tecnico: string;
+  idUnidade?: string | null;
+  dataIni?: string;
+  dataFim?: string;
+}
+
+// Aplica os filtros comuns (empresa, técnico, unidade, período) a uma query de inspeções.
+// `select` muda quando há filtro por unidade (inner join em empresas).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function aplicarFiltros(q: any, { idEmpresa, tecnico, idUnidade, dataIni, dataFim }: FiltrosBase) {
+  let query = q.neq("status", "DELETADA");
+  if (idEmpresa) query = query.eq("id_empresa", idEmpresa);
+  else if (tecnico.trim().length >= 2) query = query.ilike("responsavel", `%${tecnico.trim()}%`);
+  if (idUnidade) query = query.eq("empresas.id_unidade", idUnidade);
+  if (dataIni) query = query.gte("data_inspecao", dataIni);
+  if (dataFim) query = query.lte("data_inspecao", dataFim);
+  return query;
 }
 
 export function useInspecoesPaginadas({
   idEmpresa,
   tecnico,
+  idUnidade,
+  dataIni,
+  dataFim,
   filtro,
   ordem,
   page,
   pageSize,
 }: InspecoesPaginadasParams) {
-  const enabled = !!idEmpresa || tecnico.trim().length >= 2;
+  // Lista todas as inspeções por padrão (paginadas); filtros são opcionais.
+  const base: FiltrosBase = { idEmpresa, tecnico, idUnidade, dataIni, dataFim };
+  // Quando filtra por unidade, precisa de inner join em empresas para o eq funcionar.
+  const selLista = idUnidade ? "*, empresas!inner(nome_empresa, id_unidade)" : "*, empresas(nome_empresa)";
 
   const lista = useQuery({
-    queryKey: ["inspecoes-lista", idEmpresa, tecnico, filtro, ordem, page, pageSize],
-    enabled,
+    queryKey: ["inspecoes-lista", idEmpresa, tecnico, idUnidade, dataIni, dataFim, filtro, ordem, page, pageSize],
     placeholderData: (prev) => prev,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
-      let q = buildBaseQuery(supabase, idEmpresa, tecnico);
+      let q = aplicarFiltros(supabase.from("inspecoes").select(selLista, { count: "exact" }), base);
       if (filtro !== "Todos") q = q.eq("status", filtro);
       if (ordem === "recentes") q = q.order("created_at", { ascending: false });
       else if (ordem === "antigas") q = q.order("created_at", { ascending: true });
@@ -207,18 +251,13 @@ export function useInspecoesPaginadas({
   });
 
   // Contagens por status — busca só a coluna status (leve) para os filtros.
+  const selCounts = idUnidade ? "status, empresas!inner(id_unidade)" : "status";
   const counts = useQuery({
-    queryKey: ["inspecoes-counts", idEmpresa, tecnico],
-    enabled,
+    queryKey: ["inspecoes-counts", idEmpresa, tecnico, idUnidade, dataIni, dataFim],
     staleTime: 30_000,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
-      let q = supabase
-        .from("inspecoes")
-        .select("status")
-        .neq("status", "DELETADA");
-      if (idEmpresa) q = q.eq("id_empresa", idEmpresa);
-      else if (tecnico.trim().length >= 2) q = q.ilike("responsavel", `%${tecnico.trim()}%`);
+      const q = aplicarFiltros(supabase.from("inspecoes").select(selCounts), base);
       const { data, error } = await q;
       if (error) throw error;
       const acc: Record<FiltroInspecao, number> = {

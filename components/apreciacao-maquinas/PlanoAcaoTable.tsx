@@ -7,6 +7,7 @@ import {
   Plus,
   Trash2,
   ListTodo,
+  Send,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -15,6 +16,7 @@ import {
   useAtualizarAcaoApreciacao,
   useExcluirAcaoApreciacao,
   useGerarPlanoApreciacao,
+  useEnviarAcoesParaPlanoAcao,
 } from "@/lib/hooks/useApreciacoesMaquinas";
 import type {
   ApreciacaoAcao,
@@ -67,6 +69,7 @@ export default function PlanoAcaoTable({
   const { data: acoes = [], isLoading } = useAcoesApreciacao(idApreciacao);
   const criar = useCriarAcaoApreciacao();
   const gerarPlano = useGerarPlanoApreciacao();
+  const enviarPlanoSST = useEnviarAcoesParaPlanoAcao();
 
   const [expandida, setExpandida] = useState<string | null>(null);
 
@@ -106,7 +109,28 @@ export default function PlanoAcaoTable({
       }
     } catch (err) {
       console.error(err);
-      toast.error("Falha ao gerar plano de ação");
+      toast.error("Falha ao gerar plano de adequação");
+    }
+  }
+
+  async function handleEnviarPlanoSST() {
+    try {
+      const { enviadas, ignoradas } = await enviarPlanoSST.mutateAsync({
+        apreciacao,
+        acoes,
+      });
+      if (enviadas === 0 && ignoradas === 0) {
+        toast("Nenhuma ação pra enviar (canceladas não são enviadas).", { icon: "ℹ️" });
+      } else if (enviadas === 0) {
+        toast(`Todas as ${ignoradas} ações já estão no Plano de Ação.`, { icon: "ℹ️" });
+      } else {
+        toast.success(
+          `${enviadas} ação(ões) enviada(s) pro Plano de Ação` +
+            (ignoradas > 0 ? ` · ${ignoradas} já estava(m) lá` : "")
+        );
+      }
+    } catch {
+      // toast de erro já emitido pelo hook
     }
   }
 
@@ -150,6 +174,22 @@ export default function PlanoAcaoTable({
           >
             <Plus className="size-3.5" /> Adicionar ação manual
           </button>
+          {acoes.length > 0 && (
+            <button
+              type="button"
+              onClick={handleEnviarPlanoSST}
+              disabled={enviarPlanoSST.isPending}
+              title="Copia as ações deste plano de adequação pro Plano de Ação central do SST JCN Consultoria (sem duplicar)"
+              className="inline-flex items-center gap-1.5 rounded-md border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+            >
+              {enviarPlanoSST.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Send className="size-3.5" />
+              )}
+              Enviar para Plano de Ação
+            </button>
+          )}
           <p className="ml-auto text-[11px] text-gray-500">
             {acoes.length} ação(ões) · {totalPorStatus.Pendente} pendente(s) ·{" "}
             {totalPorStatus.Concluida} concluída(s)

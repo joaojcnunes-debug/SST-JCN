@@ -10,6 +10,7 @@ import {
   Loader2,
   Plus,
   Save,
+  Sparkles,
   Trash2,
 } from "lucide-react";
 import {
@@ -24,6 +25,9 @@ import {
 } from "@/lib/hooks/useAep";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { cn } from "@/lib/utils";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import type {
   AepCargoSetor,
   AepSetor,
@@ -194,6 +198,7 @@ export default function AepSetoresPage({
   const [setores, setSetores] = useState<AepSetor[]>([]);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
   const [salvando, setSalvando] = useState(false);
+  const [gerandoIA, setGerandoIA] = useState<string | null>(null);
 
   useEffect(() => {
     if (rel) {
@@ -295,6 +300,39 @@ export default function AepSetoresPage({
     });
   }
 
+  async function gerarTextoIA(setorId: string, campo: "parecer_tecnico" | "recomendacoes") {
+    const setor = setores.find((s) => s.id === setorId);
+    if (!setor) return;
+    const key = `${setorId}:${campo}`;
+    setGerandoIA(key);
+    try {
+      const sb = createSupabaseBrowserClient();
+      const empresa = rel?.empresas as { nome_empresa?: string } | null;
+      const { data, error } = await sb.functions.invoke("gerar-parecer-aep-ia", {
+        body: {
+          campo,
+          empresa_nome: empresa?.nome_empresa ?? null,
+          setor_nome: setor.nome_setor || "Setor",
+          cargos: (setor.cargos ?? []).filter((c) => c.cargo),
+          jornada: setor.jornada || null,
+          qtd_expostos: setor.qtd_expostos || null,
+          checklist_fisica: setor.checklist_fisica as unknown as Record<string, string>,
+          checklist_cognitiva: setor.checklist_cognitiva as unknown as Record<string, string>,
+          checklist_organizacional: setor.checklist_organizacional as unknown as Record<string, string>,
+          observacoes: setor.observacoes_checklist ?? {},
+          textoAtual: (setor[campo] as string) || null,
+        },
+      });
+      if (error) { toast.error(mensagemErro(error, "Erro ao gerar texto")); return; }
+      updateSetor(setorId, { [campo]: data.data.texto });
+      toast.success("Texto gerado com sucesso");
+    } catch {
+      toast.error("Falha na conexão com a IA");
+    } finally {
+      setGerandoIA(null);
+    }
+  }
+
   async function handleSalvar() {
     setSalvando(true);
     try {
@@ -309,7 +347,7 @@ export default function AepSetoresPage({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="size-6 animate-spin text-sky-600" />
+        <Loader2 className="size-6 animate-spin text-emerald-600" />
       </div>
     );
   }
@@ -328,7 +366,7 @@ export default function AepSetoresPage({
             <button
               type="button"
               onClick={addSetor}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
             >
               <Plus className="size-4" /> Adicionar setor
             </button>
@@ -336,7 +374,7 @@ export default function AepSetoresPage({
               type="button"
               onClick={handleSalvar}
               disabled={salvando}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
             >
               {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               Salvar
@@ -351,7 +389,7 @@ export default function AepSetoresPage({
           {canEdit && (
             <button
               onClick={addSetor}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
             >
               <Plus className="size-4" /> Adicionar setor
             </button>
@@ -375,7 +413,7 @@ export default function AepSetoresPage({
               onClick={() => toggle(setor.id)}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <span className="shrink-0 flex size-6 items-center justify-center rounded-full bg-sky-100 text-xs font-bold text-sky-700">
+                <span className="shrink-0 flex size-6 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
                   {idx + 1}
                 </span>
                 <div className="min-w-0">
@@ -414,7 +452,7 @@ export default function AepSetoresPage({
 
                 {/* ── Identificação ─────────────────────────────────── */}
                 <section>
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-sky-700">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700">
                     Identificação
                   </h3>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -423,7 +461,6 @@ export default function AepSetoresPage({
                       { key: "unidade",    label: "Unidade",  placeholder: "Unidade / filial" },
                       { key: "ghe",        label: "GHE",      placeholder: "Grupo Homogêneo de Exposição" },
                       { key: "jornada",    label: "Jornada",  placeholder: "Ex: 8h/dia, 44h/semana" },
-                      { key: "funcao",     label: "Função",   placeholder: "Preenchida automaticamente pelos cargos" },
                     ].map(({ key, label, placeholder }) => (
                       <div key={key}>
                         <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
@@ -433,7 +470,7 @@ export default function AepSetoresPage({
                           value={(setor as unknown as Record<string, unknown>)[key] as string ?? ""}
                           onChange={(e) => updateSetor(setor.id, { [key]: e.target.value })}
                           placeholder={placeholder}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
+                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
                         />
                       </div>
                     ))}
@@ -446,7 +483,7 @@ export default function AepSetoresPage({
                         value={setor.qtd_expostos || ""}
                         onChange={(e) => updateSetor(setor.id, { qtd_expostos: Number(e.target.value) })}
                         placeholder="0"
-                        className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
+                        className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
                       />
                     </div>
                   </div>
@@ -459,7 +496,7 @@ export default function AepSetoresPage({
                         <button
                           type="button"
                           onClick={() => addCargo(setor.id)}
-                          className="inline-flex items-center gap-1 rounded border border-sky-300 bg-white px-2 py-0.5 text-xs font-semibold text-sky-700 hover:bg-sky-50"
+                          className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-white px-2 py-0.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
                         >
                           <Plus className="size-3" /> Cargo
                         </button>
@@ -477,7 +514,7 @@ export default function AepSetoresPage({
                               value={c.cargo}
                               onChange={(e) => updateCargo(setor.id, c.id, { cargo: e.target.value })}
                               placeholder="Cargo"
-                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
                             />
                             <input
                               type="text"
@@ -485,7 +522,7 @@ export default function AepSetoresPage({
                               value={c.descricao}
                               onChange={(e) => updateCargo(setor.id, c.id, { descricao: e.target.value })}
                               placeholder="Descrição da atividade do cargo"
-                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
                             />
                             <input
                               type="number"
@@ -495,7 +532,7 @@ export default function AepSetoresPage({
                               onChange={(e) => updateCargo(setor.id, c.id, { quantidade: Number(e.target.value) })}
                               placeholder="Qtd"
                               title="Quantidade de pessoas neste cargo"
-                              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-center focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
+                              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-center focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
                             />
                             {canEdit && (
                               <button
@@ -512,28 +549,16 @@ export default function AepSetoresPage({
                     )}
                   </div>
 
-                  <div className="mt-3">
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Descrição das atividades</label>
-                    <textarea
-                      disabled={!canEdit}
-                      value={setor.descricao_atividade}
-                      onChange={(e) => updateSetor(setor.id, { descricao_atividade: e.target.value })}
-                      rows={2}
-                      placeholder="Descreva as principais atividades realizadas..."
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
-                    />
-                  </div>
-
-                  {/* Participação dos trabalhadores (NR-1) */}
-                  <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50/50 p-3 space-y-3">
-                    <p className="text-xs font-semibold text-sky-800">
+                  {/* Participação dos trabalhadores (NR-1 / Fundacentro) */}
+                  <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3 space-y-3">
+                    <p className="text-xs font-semibold text-emerald-800">
                       Participação dos trabalhadores — NR-1
                     </p>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
                         <label className="mb-1 block text-xs font-medium text-gray-600">Método de coleta</label>
                         <MetodoColetaSelect
-                          value={setor.metodo_coleta ?? ""}
+                          value={setor.metodo_coleta}
                           disabled={!canEdit}
                           onChange={(v) => updateSetor(setor.id, { metodo_coleta: v })}
                         />
@@ -545,10 +570,10 @@ export default function AepSetoresPage({
                         <input
                           type="text"
                           disabled={!canEdit}
-                          value={setor.trabalhadores_consultados ?? ""}
+                          value={setor.trabalhadores_consultados}
                           onChange={(e) => updateSetor(setor.id, { trabalhadores_consultados: e.target.value })}
                           placeholder="Ex: 3 operadores, 1 supervisor"
-                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
+                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
                         />
                       </div>
                     </div>
@@ -557,7 +582,7 @@ export default function AepSetoresPage({
 
                 {/* ── Triagem Ergonômica ────────────────────────────── */}
                 <section>
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-sky-700">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700">
                     Triagem Ergonômica
                   </h3>
                   <p className="mb-2 text-[11px] text-gray-500">
@@ -606,14 +631,14 @@ export default function AepSetoresPage({
                 {/* ── Matriz de Riscos ──────────────────────────────── */}
                 <section>
                   <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-sky-700">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
                       Matriz de Riscos
                     </h3>
                     {canEdit && (
                       <button
                         type="button"
                         onClick={() => addRisco(setor.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-sky-300 bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
                       >
                         <Plus className="size-3" /> Risco
                       </button>
@@ -630,7 +655,7 @@ export default function AepSetoresPage({
                             disabled={!canEdit}
                             value={risco.tipo}
                             onChange={(e) => updateRisco(setor.id, risco.id, { tipo: e.target.value as TipoRiscoAET })}
-                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-sky-500 focus:outline-none disabled:bg-gray-50"
+                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
                           >
                             {TIPOS_RISCO_AEP.map((t) => (
                               <option key={t}>{t}</option>
@@ -642,7 +667,7 @@ export default function AepSetoresPage({
                             value={risco.risco}
                             onChange={(e) => updateRisco(setor.id, risco.id, { risco: e.target.value })}
                             placeholder="Agente / risco"
-                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-sky-500 focus:outline-none disabled:bg-gray-50"
+                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
                           />
                           <select
                             disabled={!canEdit}
@@ -660,7 +685,7 @@ export default function AepSetoresPage({
                             value={risco.medida_preventiva}
                             onChange={(e) => updateRisco(setor.id, risco.id, { medida_preventiva: e.target.value })}
                             placeholder="Medida preventiva"
-                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-sky-500 focus:outline-none disabled:bg-gray-50"
+                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
                           />
                           {canEdit && (
                             <button
@@ -694,28 +719,41 @@ export default function AepSetoresPage({
 
                 {/* ── Parecer e Recomendações ───────────────────────── */}
                 <section className="grid gap-3 lg:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-gray-700">Parecer Técnico Preliminar</label>
-                    <textarea
-                      disabled={!canEdit}
-                      value={setor.parecer_tecnico}
-                      onChange={(e) => updateSetor(setor.id, { parecer_tecnico: e.target.value })}
-                      rows={4}
-                      placeholder="Descreva as condições de trabalho, práticas de gestão e fatores organizacionais observados que podem estar gerando risco..."
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold text-gray-700">Recomendações</label>
-                    <textarea
-                      disabled={!canEdit}
-                      value={setor.recomendacoes}
-                      onChange={(e) => updateSetor(setor.id, { recomendacoes: e.target.value })}
-                      rows={4}
-                      placeholder="Liste as recomendações ergonômicas preliminares..."
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
-                    />
-                  </div>
+                  {(["parecer_tecnico", "recomendacoes"] as const).map((campo) => {
+                    const isGerandoEste = gerandoIA === `${setor.id}:${campo}`;
+                    const label = campo === "parecer_tecnico" ? "Parecer Técnico Preliminar" : "Recomendações";
+                    const placeholder = campo === "parecer_tecnico"
+                      ? "Descreva as condições de trabalho, práticas de gestão e fatores organizacionais observados que podem estar gerando risco. Foque nas condições e processos — não em características individuais dos trabalhadores."
+                      : "Liste as recomendações ergonômicas preliminares...";
+                    return (
+                      <div key={campo}>
+                        <div className="mb-1 flex items-center justify-between gap-2">
+                          <label className="text-xs font-semibold text-gray-700">{label}</label>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              disabled={!!gerandoIA}
+                              onClick={() => gerarTextoIA(setor.id, campo)}
+                              className="inline-flex items-center gap-1 rounded-md border border-violet-300 bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 hover:bg-violet-100 disabled:opacity-50 transition-colors"
+                            >
+                              {isGerandoEste
+                                ? <Loader2 className="size-3 animate-spin" />
+                                : <Sparkles className="size-3" />}
+                              {isGerandoEste ? "Gerando..." : "Gerar IA"}
+                            </button>
+                          )}
+                        </div>
+                        <textarea
+                          disabled={!canEdit}
+                          value={(setor[campo] as string) ?? ""}
+                          onChange={(e) => updateSetor(setor.id, { [campo]: e.target.value })}
+                          rows={4}
+                          placeholder={placeholder}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                        />
+                      </div>
+                    );
+                  })}
                 </section>
 
               </div>
@@ -760,7 +798,7 @@ export default function AepSetoresPage({
             type="button"
             onClick={handleSalvar}
             disabled={salvando}
-            className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
           >
             {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Salvar tudo
@@ -810,7 +848,7 @@ function MetodoColetaSelect({ value, disabled, onChange }: { value: string; disa
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-left focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
+        className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-left focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
       >
         <span className={selecionados.length === 0 ? "text-gray-400 truncate" : "text-gray-800 truncate"}>
           {selecionados.length === 0 ? "Selecione…" : selecionados.join(", ")}
@@ -820,12 +858,12 @@ function MetodoColetaSelect({ value, disabled, onChange }: { value: string; disa
       {open && (
         <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
           {METODOS_COLETA.map((metodo) => (
-            <label key={metodo} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-sky-50 first:rounded-t-lg last:rounded-b-lg">
+            <label key={metodo} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-emerald-50 first:rounded-t-lg last:rounded-b-lg">
               <input
                 type="checkbox"
                 checked={selecionados.includes(metodo)}
                 onChange={() => toggle(metodo)}
-                className="rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+                className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
               {metodo}
             </label>

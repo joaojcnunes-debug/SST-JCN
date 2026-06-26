@@ -21,6 +21,11 @@ const ROUTE_LABELS: Record<string, string> = {
   "pdfs-gerados":        "PDFs Gerados",
   "inspecoes-ficha":     "Ficha em Branco",
   ficha:                 "Ficha em Branco",
+  produtividade:         "Produtividade",
+  unidades:              "Unidades",
+  documentos:            "Documentos SST",
+  projecoes:             "Projeções",
+  registros:             "Registros",
 };
 
 function buildCrumbs(pathname: string): { label: string; href: string }[] {
@@ -61,7 +66,7 @@ export default function ModuleTopbar({ title }: { title: string }) {
   return (
     <header
       className="sticky top-0 z-20 flex h-[54px] items-center justify-between border-b border-black/[0.12] px-4 md:px-6 text-white shadow-md print:hidden"
-      style={{ background: "linear-gradient(90deg, #006B54 0%, #00795e 100%)" }}
+      style={{ background: "linear-gradient(90deg, #0ea5e9 0%, #00795e 100%)" }}
     >
       {/* ── Esquerda: breadcrumb ─────────────────────── */}
       <nav className="ml-12 flex items-center gap-1 md:ml-0" aria-label="breadcrumb">

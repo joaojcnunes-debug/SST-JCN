@@ -32,7 +32,7 @@ const inputCls =
 
 /**
  * Badge minúsculo ao lado do label indicando a ORIGEM do valor:
- * - base   (catálogo Chabra) → verde, ícone Database — mais confiável
+ * - base   (catálogo JCN Consultoria) → verde, ícone Database — mais confiável
  * - parser (regex local)     → âmbar, ícone Search   — heurístico
  * - ia     (fallback Groq)   → azul,  ícone Sparkles — preencheu lacuna
  * - manual (usuário editou)  → cinza, ícone Pencil   — humano
@@ -49,7 +49,7 @@ function FonteBadge({ fonte }: { fonte: FonteCampo | undefined }) {
       icon: <Database className="size-2.5" />,
       cor: "bg-emerald-100 text-emerald-700",
       texto: "Catálogo",
-      titulo: "Valor canônico da base de referência JCN (CAS bateu)",
+      titulo: "Valor canônico da base de referência JCN Consultoria (CAS bateu)",
     },
     parser: {
       icon: <Search className="size-2.5" />,

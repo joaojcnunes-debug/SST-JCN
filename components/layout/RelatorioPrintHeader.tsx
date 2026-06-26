@@ -13,8 +13,8 @@ interface Props {
 }
 
 /**
- * Cabeçalho fixo de relatórios para impressão. Mostra a logo da empresa
- * (cadastrada em /config) + nome à esquerda, e o título/subtítulo
+ * Cabeçalho fixo de relatórios para impressão. Mostra a logo da JCN Consultoria
+ * (cadastrada em /config) + nome da JCN Consultoria à esquerda, e o título/subtítulo
  * do relatório à direita.
  *
  * Em tela: aparece também como um cabeçalho discreto acima do relatório.
@@ -38,7 +38,7 @@ export default function RelatorioPrintHeader({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={logoUrl}
-            alt="Logo JCN"
+            alt="JCN Consultoria"
             className="h-14 w-auto max-w-[70px] object-contain print:h-16 print:max-w-[80px]"
             referrerPolicy="no-referrer"
           />
@@ -49,7 +49,7 @@ export default function RelatorioPrintHeader({
         )}
         <div className="leading-tight">
           <p className="text-sm font-bold text-gray-900 print:text-[13px]">
-            JCN Consultoria — Segurança e Saúde do Trabalho
+            JCN Consultoria Saúde e Segurança do Trabalho
           </p>
           <p className="text-[10px] text-gray-500 print:text-[9px]">
             Documento técnico — uso interno e regulatório

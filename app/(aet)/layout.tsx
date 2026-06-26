@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { type ReactNode, useMemo } from "react";
 import {
@@ -76,7 +76,7 @@ export default function AetLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       <SidebarShell
         title="AET"
-        subtitle="Chabra"
+        subtitle="JCN Consultoria"
         logoHref="/aet"
         sections={sections}
       />

@@ -4,14 +4,19 @@ import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider, QueryCache } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
     () =>
       new QueryClient({
         queryCache: new QueryCache({
-          onError: (error) => {
-            toast.error(`Erro ao carregar dados: ${(error as Error).message}`);
+          onError: (error, query) => {
+            // Queries best-effort (ex.: assinar URL de mídia) marcam-se com
+            // meta.silent — uma falha não deve poluir a tela com toast de erro
+            // (a imagem só faz fallback). Ver useSignedUrl.
+            if (query.meta?.silent) return;
+            toast.error(mensagemErro(error, "Não foi possível carregar os dados."));
           },
         }),
         defaultOptions: {
@@ -38,7 +43,7 @@ export default function Providers({ children }: { children: ReactNode }) {
             padding: "12px 16px",
           },
           success: {
-            iconTheme: { primary: "#006B54", secondary: "#fff" },
+            iconTheme: { primary: "#0ea5e9", secondary: "#fff" },
             style: {
               background: "#e8f5e9",
               color: "#1e4d28",

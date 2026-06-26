@@ -165,7 +165,7 @@ export default function DrpsSumarioPrint({
           font-size: 16pt;
           font-weight: 700;
           color: #1e4d28;
-          border-bottom: 2px solid #006B54;
+          border-bottom: 2px solid #0ea5e9;
           padding-bottom: 6px;
           margin-bottom: 16pt;
           text-transform: uppercase;
@@ -184,7 +184,7 @@ export default function DrpsSumarioPrint({
         .drps-sumario-item-numero {
           font-weight: 700;
           margin-right: 8pt;
-          color: #006B54;
+          color: #0ea5e9;
           min-width: 32pt;
           display: inline-block;
         }
@@ -201,7 +201,7 @@ export default function DrpsSumarioPrint({
         .drps-sumario-subitem-numero {
           font-weight: 600;
           margin-right: 6pt;
-          color: #006B54;
+          color: #0ea5e9;
           min-width: 32pt;
           display: inline-block;
         }

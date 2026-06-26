@@ -80,6 +80,7 @@ async function fetchInspecoesPorMes(): Promise<MesData[]> {
   const { data } = await supabase
     .from("inspecoes")
     .select("created_at")
+    .eq("status", "CONCLUIDA")
     .gte("created_at", sixAgo.toISOString());
 
   // Skeleton dos últimos 6 meses
@@ -101,6 +102,60 @@ async function fetchInspecoesPorMes(): Promise<MesData[]> {
   });
 
   return months;
+}
+
+async function fetchDocumentosPorMes(): Promise<MesData[]> {
+  const supabase = createSupabaseBrowserClient();
+  const now = new Date();
+  const sixAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+  const { data } = await supabase
+    .from("inspecoes")
+    .select("elaboracao_concluida_em")
+    .eq("elaboracao_status", "CONCLUIDO")
+    .gte("elaboracao_concluida_em", sixAgo.toISOString());
+
+  const months: MesData[] = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    return {
+      mes: d.toLocaleDateString("pt-BR", { month: "short" })
+        .replace(".", "")
+        .replace(/^\w/, (c) => c.toUpperCase()),
+      total: 0,
+    };
+  });
+
+  (data ?? []).forEach(({ elaboracao_concluida_em }) => {
+    if (!elaboracao_concluida_em) return;
+    const d = new Date(elaboracao_concluida_em);
+    const diff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+    const idx = 5 - diff;
+    if (idx >= 0 && idx < 6) months[idx].total++;
+  });
+
+  return months;
+}
+
+async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: number }[]> {
+  const supabase = createSupabaseBrowserClient();
+  const { data } = await supabase
+    .from("inspecoes")
+    .select("status, elaboracao_status")
+    .neq("status", "DELETADA");
+
+  let pendentes = 0, assumidos = 0, concluidos = 0;
+  for (const row of (data ?? []) as { status: string; elaboracao_status: string | null }[]) {
+    if (row.elaboracao_status === "CONCLUIDO") concluidos++;
+    else if (row.elaboracao_status === "EM_ELABORACAO") assumidos++;
+    else if (row.status === "CONCLUIDA") pendentes++; // inspeção concluída aguardando documento
+  }
+
+  // Ordem fixa (cor é posicional): Pendentes · Assumidos · Concluídos
+  return [
+    { name: "Pendentes",  value: pendentes },
+    { name: "Assumidos",  value: assumidos },
+    { name: "Concluídos", value: concluidos },
+  ];
 }
 
 async function fetchInspecoesRecentes(): Promise<InspecaoComEmpresa[]> {
@@ -131,15 +186,143 @@ async function fetchInspecoesRecentes(): Promise<InspecaoComEmpresa[]> {
 
 // ─── Constantes visuais ───────────────────────────────────────────────────────
 
-const PIE_COLORS = ["#d97706", "#006B54", "#94a3b8"];
+const PIE_COLORS = ["#d97706", "#0ea5e9", "#94a3b8"];
+// Documentos por situação: Pendentes (cinza) · Assumidos (âmbar) · Concluídos (verde)
+const DOC_COLORS = ["#94a3b8", "#d97706", "#0ea5e9"];
 
 const KPI_CONFIG = [
-  { key: "empresasAtivas" as const, label: "Empresas Ativas",  icon: Building2,    color: "#006B54", from: "#ecfdf5" },
+  { key: "empresasAtivas" as const, label: "Empresas Ativas",  icon: Building2,    color: "#0ea5e9", from: "#ecfdf5" },
   { key: "totalInspecoes" as const, label: "Total Inspeções",  icon: ClipboardList, color: "#0369a1", from: "#eff6ff" },
   { key: "emAndamento"    as const, label: "Em Andamento",     icon: Clock,         color: "#d97706", from: "#fffbeb" },
   { key: "concluidas"     as const, label: "Concluídas",       icon: CheckCircle2,  color: "#16a34a", from: "#f0fdf4" },
   { key: "rascunho"       as const, label: "Rascunhos",        icon: FileText,      color: "#64748b", from: "#f8fafc" },
 ] as const;
+
+// ─── Gráfico mensal reutilizável (Técnicos / ADM) ──────────────────────────────
+
+function GraficoMes({
+  titulo, data, loading, link, linkLabel, linkTitle, singular, plural, className,
+}: {
+  titulo: string;
+  data: MesData[] | undefined;
+  loading: boolean;
+  link: string;
+  linkLabel: string;
+  linkTitle: string;
+  singular: string;
+  plural: string;
+  className?: string;
+}) {
+  return (
+    <div className={`glass reveal-up flex flex-col rounded-2xl p-5 ${className ?? ""}`}>
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-800">{titulo}</h2>
+          <p className="mt-0.5 text-xs text-gray-400">Últimos 6 meses</p>
+        </div>
+        <Link
+          href={link}
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-verde-light px-2.5 py-1.5 text-xs font-semibold text-verde-primary transition-colors hover:bg-verde-primary hover:text-white"
+          title={linkTitle}
+        >
+          <TrendingUp className="size-3.5" />
+          {linkLabel}
+          <ArrowRight className="size-3" />
+        </Link>
+      </div>
+      {loading ? (
+        <div className="min-h-40 flex-1 animate-pulse rounded-xl bg-gray-100" />
+      ) : (
+        <div className="min-h-40 flex-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} barSize={24} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+            <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
+            <Tooltip
+              cursor={{ fill: "#f0fdf4" }}
+              contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: 12, padding: "6px 12px" }}
+              formatter={(v) => [`${v} ${Number(v) !== 1 ? plural : singular}`, ""]}
+              labelStyle={{ fontWeight: 600, color: "#111827", marginBottom: 2 }}
+            />
+            <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+              {(data ?? []).map((_, idx, arr) => (
+                <Cell key={idx} fill={idx === arr.length - 1 ? "#0ea5e9" : "#0ea5e960"} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Donut reutilizável (Por Status / Documentos por Situação) ─────────────────
+
+function GraficoDonut({
+  titulo, sub, data, colors, loading,
+}: {
+  titulo: string;
+  sub: string;
+  data: { name: string; value: number }[];
+  colors: string[];
+  loading: boolean;
+}) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  return (
+    <div className="glass reveal-up delay-1 rounded-2xl p-5">
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-800">{titulo}</h2>
+          <p className="mt-0.5 text-xs text-gray-400">{sub}</p>
+        </div>
+        <div className="flex size-8 items-center justify-center rounded-lg bg-verde-light">
+          <Target className="size-4 text-verde-primary" />
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="h-52 animate-pulse rounded-xl bg-gray-100" />
+      ) : total === 0 ? (
+        <div className="flex h-52 items-center justify-center text-sm text-gray-400">
+          Nenhum dado disponível
+        </div>
+      ) : (
+        <div className="flex flex-col items-center">
+          <ResponsiveContainer width="100%" height={170}>
+            <PieChart>
+              <Pie data={data.filter((d) => d.value > 0)} cx="50%" cy="50%" innerRadius={48} outerRadius={72} paddingAngle={3} dataKey="value" nameKey="name" strokeWidth={0}>
+                {data.filter((d) => d.value > 0).map((item) => (
+                  <Cell key={item.name} fill={colors[data.findIndex((x) => x.name === item.name) % colors.length]} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", fontSize: 12, padding: "6px 12px" }} />
+            </PieChart>
+          </ResponsiveContainer>
+
+          {/* Legenda manual */}
+          <div className="mt-1 w-full space-y-2">
+            {data.map((item, idx) => {
+              const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+              return (
+                <div key={item.name} className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: colors[idx % colors.length] }} />
+                    <span className="text-gray-600">{item.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-gray-800">{item.value}</span>
+                    <span className="text-gray-400">{pct}%</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
@@ -170,6 +353,16 @@ export default function DashboardPage() {
   const { data: porMes, isLoading: loadingMes } = useQuery({
     queryKey: ["dashboard-por-mes"],
     queryFn: fetchInspecoesPorMes,
+  });
+
+  const { data: porMesAdm, isLoading: loadingMesAdm } = useQuery({
+    queryKey: ["dashboard-por-mes-adm"],
+    queryFn: fetchDocumentosPorMes,
+  });
+
+  const { data: docSituacao = [], isLoading: loadingDocSit } = useQuery({
+    queryKey: ["dashboard-doc-situacao"],
+    queryFn: fetchDocumentosPorSituacao,
   });
 
   const { data: recentes, isLoading: loadingRecentes } = useQuery({
@@ -227,137 +420,49 @@ export default function DashboardPage() {
       </section>
 
       {/* ── Gráficos ──────────────────────────────────────────────────── */}
-      <section className="grid gap-4 lg:grid-cols-3">
+      {/* Grade por linhas: cada linha = barra (col-span-2) + donut (col-span-1).
+          items-stretch alinha os dois cards da linha na mesma altura. */}
+      <section className="grid items-stretch gap-4 lg:auto-rows-fr lg:grid-cols-3">
 
-        {/* BarChart — inspeções por mês */}
-        <div className="lg:col-span-2 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-start justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-800">Inspeções por Mês</h2>
-              <p className="mt-0.5 text-xs text-gray-400">Últimos 6 meses</p>
-            </div>
-            <div className="flex size-8 items-center justify-center rounded-lg bg-verde-light">
-              <TrendingUp className="size-4 text-verde-primary" />
-            </div>
-          </div>
-          {loadingMes ? (
-            <div className="h-52 animate-pulse rounded-xl bg-gray-100" />
-          ) : (
-            <ResponsiveContainer width="100%" height={210}>
-              <BarChart data={porMes} barSize={32} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
-                <XAxis
-                  dataKey="mes"
-                  tick={{ fontSize: 11, fill: "#9ca3af" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: "#9ca3af" }}
-                  axisLine={false}
-                  tickLine={false}
-                  allowDecimals={false}
-                  width={28}
-                />
-                <Tooltip
-                  cursor={{ fill: "#f0fdf4" }}
-                  contentStyle={{
-                    borderRadius: 10,
-                    border: "1px solid #e5e7eb",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                    fontSize: 12,
-                    padding: "6px 12px",
-                  }}
-                  formatter={(v) => [
-                    `${v} inspeção${Number(v) !== 1 ? "ões" : ""}`,
-                    "",
-                  ]}
-                  labelStyle={{ fontWeight: 600, color: "#111827", marginBottom: 2 }}
-                />
-                <Bar dataKey="total" radius={[6, 6, 0, 0]}>
-                  {(porMes ?? []).map((_, idx, arr) => (
-                    <Cell
-                      key={idx}
-                      fill={idx === arr.length - 1 ? "#006B54" : "#006B5460"}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        {/* Linha 1: Inspeções (Técnicos) + Por Status */}
+        <GraficoMes
+          className="lg:col-span-2"
+          titulo="Inspeções por Mês (Técnicos)"
+          data={porMes}
+          loading={loadingMes}
+          link="/dashboard/inspecoes-concluidas"
+          linkLabel="Ver por técnico"
+          linkTitle="Abrir dashboard de inspeções concluídas (por mês e por técnico)"
+          singular="inspeção"
+          plural="inspeções"
+        />
+        <GraficoDonut
+          titulo="Por Status"
+          sub="Inspeções — distribuição total"
+          data={pieData}
+          colors={PIE_COLORS}
+          loading={loadingStats}
+        />
 
-        {/* PieChart — distribuição por status */}
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-start justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-800">Por Status</h2>
-              <p className="mt-0.5 text-xs text-gray-400">Distribuição total</p>
-            </div>
-            <div className="flex size-8 items-center justify-center rounded-lg bg-verde-light">
-              <Target className="size-4 text-verde-primary" />
-            </div>
-          </div>
-
-          {loadingStats ? (
-            <div className="h-52 animate-pulse rounded-xl bg-gray-100" />
-          ) : pieData.length === 0 ? (
-            <div className="flex h-52 items-center justify-center text-sm text-gray-400">
-              Nenhum dado disponível
-            </div>
-          ) : (
-            <div className="flex flex-col items-center">
-              <ResponsiveContainer width="100%" height={170}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={48}
-                    outerRadius={72}
-                    paddingAngle={3}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
-                    {pieData.map((_, idx) => (
-                      <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      borderRadius: 10,
-                      border: "1px solid #e5e7eb",
-                      fontSize: 12,
-                      padding: "6px 12px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-
-              {/* Legenda manual */}
-              <div className="mt-1 w-full space-y-2">
-                {pieData.map((item, idx) => {
-                  const total = pieData.reduce((s, d) => s + d.value, 0);
-                  const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
-                  return (
-                    <div key={item.name} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="size-2.5 shrink-0 rounded-full"
-                          style={{ backgroundColor: PIE_COLORS[idx % PIE_COLORS.length] }}
-                        />
-                        <span className="text-gray-600">{item.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-gray-800">{item.value}</span>
-                        <span className="text-gray-400">{pct}%</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Linha 2: Documentos (ADM) + Documentos por Situação */}
+        <GraficoMes
+          className="lg:col-span-2"
+          titulo="Documentos por Mês (ADM)"
+          data={porMesAdm}
+          loading={loadingMesAdm}
+          link="/dashboard/documentos-emitidos"
+          linkLabel="Ver por ADM"
+          linkTitle="Produção de documentos por ADM (elaborados no SGG e enviados), por mês"
+          singular="documento"
+          plural="documentos"
+        />
+        <GraficoDonut
+          titulo="Documentos por Situação"
+          sub="Pendentes · Assumidos · Concluídos"
+          data={docSituacao}
+          colors={DOC_COLORS}
+          loading={loadingDocSit}
+        />
       </section>
 
       {/* ── Atividade recente ─────────────────────────────────────────── */}
@@ -372,7 +477,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="glass reveal-up delay-2 overflow-hidden rounded-2xl">
           {loadingRecentes ? (
             <div className="p-4">
               <LoadingSkeleton rows={6} />
@@ -389,7 +494,7 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/70">
-                    {["Empresa", "Status", "Data", ""].map((h) => (
+                    {["Empresa", "Técnico", "Resp. Documento", "Status", "Data", ""].map((h) => (
                       <th
                         key={h}
                         className={cn(
@@ -413,6 +518,14 @@ export default function DashboardPage() {
                     >
                       <td className="px-4 py-3 font-medium text-gray-900">
                         {insp.empresa_nome}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {insp.responsavel?.trim() || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {insp.elaboracao_responsavel?.trim() || (
+                          <span className="text-gray-300">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge status={insp.status} />
@@ -460,7 +573,7 @@ function KpiCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl border p-4 shadow-sm transition-shadow hover:shadow-md",
+        "tilt-3d reveal-up relative overflow-hidden rounded-2xl border p-4 shadow-sm",
         warn ? "border-amber-200 bg-amber-50/60" : "border-gray-100 bg-white"
       )}
       style={!warn ? { background: `linear-gradient(135deg, ${from} 0%, #ffffff 100%)` } : undefined}

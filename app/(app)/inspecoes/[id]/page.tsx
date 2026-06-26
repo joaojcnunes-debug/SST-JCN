@@ -28,6 +28,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import { useCanEdit, useCurrentUser, useIsAdmin } from "@/lib/hooks/useUsuario";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
@@ -253,6 +254,12 @@ export default function InspecaoEditorPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Dados da empresa */}
+      <EmpresaInfoPanel
+        empresa={empresa ?? null}
+        className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+      />
 
       {/* Abas */}
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">

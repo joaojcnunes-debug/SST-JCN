@@ -6,18 +6,11 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { Empresa, ModuloEmpresa } from "@/lib/supabase/types";
 import { useUserStore } from "@/lib/store";
 
-async function fetchEmpresas(
-  empresasVinculadas: string[] | null,
-  modulo: ModuloEmpresa | null
-) {
+async function fetchEmpresas(empresasVinculadas: string[] | null) {
   const supabase = createSupabaseBrowserClient();
   let q = supabase.from("empresas").select("*").order("nome_empresa");
   if (empresasVinculadas && empresasVinculadas.length > 0) {
     q = q.in("id_empresa", empresasVinculadas);
-  }
-  if (modulo) {
-    // contains array — só empresas com `modulo` em modulos_habilitados
-    q = q.contains("modulos_habilitados", [modulo]);
   }
   const { data, error } = await q;
   if (error) throw error;
@@ -25,9 +18,9 @@ async function fetchEmpresas(
 }
 
 /**
- * Lista empresas. Se `modulo` for passado, filtra só as habilitadas naquele
- * módulo (Painel SST, Psicossocial, Conformidade, Análise de Químicos).
- * Quando omitido, retorna todas — usado em telas administrativas/cadastro.
+ * Lista empresas. O filtro por módulo (`modulos_habilitados`) foi removido —
+ * toda empresa aparece em todos os quadros. O parâmetro `modulo` é mantido por
+ * compatibilidade com os chamadores (e só compõe a chave de cache).
  */
 export function useEmpresas(modulo?: ModuloEmpresa) {
   const user = useUserStore((s) => s.user);
@@ -41,7 +34,7 @@ export function useEmpresas(modulo?: ModuloEmpresa) {
 
   return useQuery({
     queryKey: ["empresas", vinculos, modulo ?? null],
-    queryFn: () => fetchEmpresas(vinculos, modulo ?? null),
+    queryFn: () => fetchEmpresas(vinculos),
   });
 }
 

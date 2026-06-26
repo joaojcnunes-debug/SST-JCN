@@ -1,4 +1,4 @@
-﻿// Tipos dos dados do banco. Reflete o schema v2 descrito na spec.
+// Tipos dos dados do banco. Reflete o schema v2 descrito na spec.
 
 export type StatusInspecao =
   | "RASCUNHO"
@@ -7,7 +7,7 @@ export type StatusInspecao =
   | "DELETADA";
 export type TipoCriacao = "BRANCO" | "REVISAO" | "COPIA_EMPRESA";
 export type StatusEmpresa = "Ativo" | "Inativa";
-export type PerfilUsuario = "Admin" | "Tecnico" | "Visualizador";
+export type PerfilUsuario = "Admin" | "Tecnico" | "Visualizador" | "Cliente";
 
 export type ModuloPermitido =
   | "painel"
@@ -19,7 +19,9 @@ export type ModuloPermitido =
   | "analise_quimicos"
   | "aet"
   | "aep"
-  | "questionarios_psicossociais";
+  | "questionarios_psicossociais"
+  | "produtividade"
+  | "investigacao_acidente";
 
 export const TODOS_MODULOS: ModuloPermitido[] = [
   "painel",
@@ -32,20 +34,88 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "aet",
   "aep",
   "questionarios_psicossociais",
+  "produtividade",
+  "investigacao_acidente",
 ];
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
-  painel: "Painel SST",
+  investigacao_acidente: "Investigação de Acidente de Trabalho",
+  painel: "SST JCN Consultoria",
   psicossocial: "DRPS – Diagnóstico de Riscos Psicossociais",
   conformidade: "Relatório de Conformidade",
   nao_conformidade: "Relatório de Não Conformidade",
   apreciacao_maquinas: "Apreciação de Máquinas",
   inventario_maquinas: "Inventário de Equipamentos",
-  analise_quimicos: "Análise de Químicos Chabra",
+  analise_quimicos: "Análise de Químicos JCN Consultoria",
   aet: "AET – Análise Ergonômica do Trabalho",
   aep: "AEP – Análise Ergonômica Preliminar",
   questionarios_psicossociais: "Questionários Psicossociais / DRPS",
+  produtividade: "Projeção de Produtividade CHABRA",
 };
+
+// ─── Investigação de Acidente de Trabalho ────────────────────────────────────
+
+export type TipoAcidente = "TIPICO" | "TRAJETO" | "DOENCA";
+export type GravidadeAcidente = "LEVE" | "GRAVE" | "FATAL";
+export type StatusInvestigacao = "RASCUNHO" | "CONCLUIDA" | "DELETADA";
+
+export interface TestemunhaAcidente {
+  nome: string;
+  depoimento: string;
+}
+
+export interface InvestigacaoAcidente {
+  id_investigacao: string;
+  id_empresa: string;
+  // Dados gerais
+  data_acidente: string | null;
+  hora_acidente: string | null;
+  local_acidente: string | null;
+  setor: string | null;
+  data_investigacao: string | null;
+  responsavel_tecnico: string | null;
+  numero_cat: string | null;
+  data_cat: string | null;
+  // Acidentado
+  acidentado_nome: string | null;
+  acidentado_cargo: string | null;
+  acidentado_admissao: string | null;
+  tipo_acidente: TipoAcidente | null;
+  houve_afastamento: boolean;
+  dias_afastamento: number | null;
+  gravidade: GravidadeAcidente | null;
+  /** Setores e funções do acidentado (múltiplos). `setor`/`acidentado_cargo` (single) ficam de legado. */
+  setores: string[];
+  acidentado_funcoes: string[];
+  // Descrição
+  descricao: string | null;
+  agente_causador: string | null;
+  /** Parte do corpo (legado single) + partes do corpo atingidas (lista + silhueta). */
+  parte_corpo: string | null;
+  partes_corpo: string[];
+  natureza_lesao: string | null;
+  cid: string | null;
+  // Testemunhas (JSONB)
+  testemunhas: TestemunhaAcidente[];
+  // Análise de causas
+  causas_imediatas: string | null;
+  causas_basicas: string | null;
+  /** 5 Porquês — respostas em ordem (até 5). */
+  cinco_porques: string[];
+  /** Diagrama de Ishikawa: categoria (6M) → causas. */
+  ishikawa: Record<string, string[]>;
+  // Medidas + conclusão
+  medidas: string | null;
+  conclusao: string | null;
+  // Evidências
+  foto_urls: string[];
+  foto_legendas: string[];
+  // Controle
+  status: StatusInvestigacao;
+  data_validade: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
 
 // ─── QPS — Questionários Psicossociais ───────────────────────────────────────
 
@@ -165,7 +235,7 @@ export type ModuloEmpresa =
   | "aep";
 
 export const MODULOS_EMPRESA: Array<{ value: ModuloEmpresa; label: string }> = [
-  { value: "sst", label: "Painel SST (Inspeções)" },
+  { value: "sst", label: "SST JCN Consultoria (Inspeções)" },
   { value: "psicossocial", label: "Psicossocial" },
   { value: "conformidade", label: "Relatório de Conformidade" },
   { value: "nao_conformidade", label: "Relatório de Não Conformidade" },
@@ -185,8 +255,32 @@ export interface Empresa {
   grau_risco: number | null;
   status: StatusEmpresa | null;
   observacao: string | null;
+  // Endereço e contato (preenchidos pela busca por CNPJ na Receita)
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  municipio: string | null;
+  uf: string | null;
+  cep: string | null;
+  telefone: string | null;
+  email: string | null;
+  // Dados cadastrais da Receita
+  cnae_principal: string | null;
+  cnae_descricao: string | null;
+  situacao_cadastral: string | null;
+  porte: string | null;
+  /** Unidade (agrupamento de acesso). Null = visível a todos os usuários. */
+  id_unidade: string | null;
   /** Lista de módulos em que a empresa está habilitada (aparece nos selects). */
   modulos_habilitados: ModuloEmpresa[];
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface Unidade {
+  id_unidade: string;
+  nome: string;
   created_at: string;
   updated_at: string | null;
 }
@@ -195,6 +289,8 @@ export interface Inspecao {
   id_inspecao: string;
   id_empresa: string;
   data_inspecao: string | null;
+  /** Validade do documento (PGR) — alerta de vencimento. */
+  data_validade?: string | null;
   status: StatusInspecao;
   revisao: number;
   responsavel: string | null;
@@ -202,6 +298,10 @@ export interface Inspecao {
   tipo_criacao: TipoCriacao | null;
   id_inspecao_base: string | null;
   usuario: string | null;
+  /** Elaboração do documento no SGG pelo ADM (rastreio de produção). */
+  elaboracao_responsavel: string | null;
+  elaboracao_status: "PENDENTE" | "EM_ELABORACAO" | "CONCLUIDO" | null;
+  elaboracao_concluida_em: string | null;
   created_at: string;
   updated_at: string | null;
   empresas?: { nome_empresa: string } | null;
@@ -555,6 +655,9 @@ export interface Acao5W2H {
   id_inspecao: string | null;
   /** V49: FK opcional pro item da Apreciação NR-12 que originou a ação. */
   id_apreciacao_item: string | null;
+  /** V67: ação do plano de adequação (apreciacao_acoes) que originou esta —
+   *  índice único parcial garante envio único por ação da apreciação. */
+  id_apreciacao_acao: string | null;
   what_acao: string;
   why_justificativa: string | null;
   where_local: string | null;
@@ -606,6 +709,8 @@ export interface Usuario {
   perfil: PerfilUsuario;
   ativo_sistema: boolean;
   empresas_vinculadas: string[];
+  /** Unidades de acesso do usuário. Vê as empresas dessas unidades + as sem unidade. */
+  unidades?: string[];
   modulos_permitidos?: ModuloPermitido[];
   /** Permissão granular pra criar relatórios/itens. Admin contorna. */
   pode_criar?: boolean;
@@ -629,6 +734,12 @@ export interface Usuario {
   crm?: string | null;
   /** Registro no MTE — Ministério do Trabalho (técnicos de segurança). */
   registro_mte?: string | null;
+  /** CPF do profissional — exibido sempre mascarado (LGPD). */
+  cpf?: string | null;
+  /** Validade (notAfter) do certificado A1, extraída do .pfx quando a senha é fornecida. */
+  certificado_validade?: string | null;
+  /** Titular (CN) do certificado A1. */
+  certificado_titular?: string | null;
 }
 
 export interface Configuracao {
@@ -681,7 +792,7 @@ export interface ConclusaoRapidaQuimico {
   limite_exposicao?: string;
   resumo_tecnico?: string;
   /** Origem da análise: "template" = gerada client-side a partir da base
-   *  Chabra (sem IA); "ia" = chamada à edge function Groq. Análises antigas
+   *  JCN Consultoria (sem IA); "ia" = chamada à edge function Groq. Análises antigas
    *  sem essa marca são tratadas como "ia" pela UI (fallback). */
   _fonte?: "template" | "ia";
 }
@@ -703,6 +814,8 @@ export interface AnaliseQuimico {
   condicoes_uso: CondicoesUsoQuimico | null;
   resultado_texto: string;
   conclusao_rapida: ConclusaoRapidaQuimico | null;
+  /** Validade do documento (informada pelo usuário) — alerta de vencimento. */
+  data_validade?: string | null;
   usuario_email: string | null;
   usuario_nome: string | null;
   created_at: string;
@@ -739,8 +852,12 @@ export const GRAU_RISCO_MAQUINA_LABELS: Record<GrauRiscoMaquina, string> = {
 
 export interface Maquina {
   id_maquina: string;
-  /** NULL = patrimônio interno da Chabra; preenchido = máquina de cliente. */
+  /** NULL = patrimônio interno da JCN Consultoria; preenchido = máquina de cliente. */
   id_empresa: string | null;
+  /** Origem da importação (v66): inspeção de onde a máquina veio, se importada. */
+  id_inspecao: string | null;
+  /** Origem da importação (v66): registro original em inspecao_maquinas (dedupe). */
+  id_maquina_inspecao: string | null;
 
   // ── Identificação ──────────────────────────────────────────
   nome: string;
@@ -778,7 +895,10 @@ export interface Maquina {
 
   // ── Segurança e Conformidade ───────────────────────────────
   protecao_fixa: boolean | null;
+  descricao_protecao_fixa: string | null;   // texto descritivo (NR-12 inventário)
   protecao_movel: boolean | null;
+  descricao_protecao_movel: string | null;  // texto descritivo (NR-12 inventário)
+  dispositivos_seguranca: string | null;    // ex: "Botões de parada de emergência, proteção lateral"
   intertravamento: boolean | null;
   botao_emergencia: boolean | null;
   sistema_bloqueio: boolean | null;
@@ -830,6 +950,8 @@ export interface ApreciacaoMaquina {
   id_apreciacao: string;
   id_empresa: string;
   id_maquina: string | null;
+  /** Inspeção de origem (v66) — preenchido quando a máquina veio de uma inspeção. */
+  id_inspecao: string | null;
   maquina_descricao: string | null;
   titulo: string | null;
   setor: string | null;
@@ -837,17 +959,137 @@ export interface ApreciacaoMaquina {
   responsavel_empresa: string | null;
   cidade: string | null;
   data_apreciacao: string | null;
+  /** Validade do documento (informada pelo usuário) — alerta de vencimento. */
+  data_validade?: string | null;
   conclusao_tecnica: string | null;
   recomendacoes: string | null;
   risco_residual: RiscoResidual | null;
   status: StatusApreciacao;
   finalizado_em: string | null;
   observacoes_gerais: string | null;
+
+  // ── Identificação dos Componentes (ABNT ISO/TR 14121-2:2018) ──────────────
+  componentes_maquina: string[] | null;   // tipos de componentes presentes
+  limite_uso: string | null;
+  limite_espaco: string | null;
+  limite_tempo: string | null;
+  limite_produtividade: string | null;
+  npe: string | null;                     // Número de Pessoas Expostas (padrão)
+  sistemas_atual: string[] | null;        // sistemas de segurança existentes
+  sistemas_necessario: string[] | null;   // sistemas de segurança necessários
+
   usuario_email: string | null;
   usuario_nome: string | null;
   created_at: string;
   updated_at: string | null;
 }
+
+// ── Análise de Riscos HRN (ABNT ISO/TR 14121-2:2018) ──────────────────────
+export type PodHrn = "MUITO_PROVAVEL" | "PROVAVEL" | "IMPROVAVEL" | "REMOTA";
+export type FepHrn = "DIARIAMENTE" | "SEMANALMENTE" | "MENSALMENTE" | "ANUALMENTE";
+export type GpdHrn = "CATASTROFICA" | "GRAVE" | "MODERADA" | "BAIXA";
+export type NpeHrn = "ACIMA_50" | "DE_16_50" | "DE_8_15" | "DE_3_7" | "DE_1_2";
+export type ClassificacaoRiscoHrn = "ALTO" | "MEDIO" | "BAIXO" | "DESPREZIVEL";
+
+export const POD_HRN_LABELS: Record<PodHrn, string> = {
+  MUITO_PROVAVEL: "Muito Provável",
+  PROVAVEL: "Provável",
+  IMPROVAVEL: "Improvável",
+  REMOTA: "Remota",
+};
+export const FEP_HRN_LABELS: Record<FepHrn, string> = {
+  DIARIAMENTE: "Diariamente",
+  SEMANALMENTE: "Semanalmente",
+  MENSALMENTE: "Mensalmente",
+  ANUALMENTE: "Anualmente",
+};
+export const GPD_HRN_LABELS: Record<GpdHrn, string> = {
+  CATASTROFICA: "Catastrófica",
+  GRAVE: "Grave",
+  MODERADA: "Moderada",
+  BAIXA: "Baixa",
+};
+export const NPE_HRN_LABELS: Record<NpeHrn, string> = {
+  ACIMA_50: ">50 pessoas",
+  DE_16_50: "16–50 pessoas",
+  DE_8_15: "8–15 pessoas",
+  DE_3_7: "3–7 pessoas",
+  DE_1_2: "1–2 pessoas",
+};
+export const CLASSIFICACAO_HRN_LABELS: Record<ClassificacaoRiscoHrn, string> = {
+  ALTO: "Alto",
+  MEDIO: "Médio",
+  BAIXO: "Baixo",
+  DESPREZIVEL: "Desprezível",
+};
+
+/** Pontuações para cálculo automático: POD × FEP × GPD → score */
+const _POD_SCORE: Record<PodHrn, number> = { MUITO_PROVAVEL: 4, PROVAVEL: 3, IMPROVAVEL: 2, REMOTA: 1 };
+const _FEP_SCORE: Record<FepHrn, number> = { DIARIAMENTE: 4, SEMANALMENTE: 3, MENSALMENTE: 2, ANUALMENTE: 1 };
+const _GPD_SCORE: Record<GpdHrn, number> = { CATASTROFICA: 4, GRAVE: 3, MODERADA: 2, BAIXA: 1 };
+
+export function calcularClassificacaoHrn(
+  pod: string | null,
+  fep: string | null,
+  gpd: string | null
+): ClassificacaoRiscoHrn | null {
+  const p = _POD_SCORE[pod as PodHrn];
+  const f = _FEP_SCORE[fep as FepHrn];
+  const g = _GPD_SCORE[gpd as GpdHrn];
+  if (!p || !f || !g) return null;
+  const score = p * f * g;
+  if (score <= 4) return "DESPREZIVEL";
+  if (score <= 12) return "BAIXO";
+  if (score <= 32) return "MEDIO";
+  return "ALTO";
+}
+
+export interface RiscoHrn {
+  id_risco: string;
+  id_apreciacao: string;
+  tipo_perigo: string;
+  origem: string | null;
+  potenciais_consequencias: string | null;
+  pod: PodHrn | null;
+  fep: FepHrn | null;
+  gpd: GpdHrn | null;
+  npe_item: NpeHrn | null;
+  classificacao_risco: ClassificacaoRiscoHrn | null;
+  nivel_acoes: string | null;
+  medidas_preventivas: string | null;
+  ordem: number;
+  created_at: string;
+}
+
+// ── Tipos de componentes de máquina (Identificação NR-12) ─────────────────
+export const COMPONENTES_MAQUINA_NR12 = [
+  "Transmissão por Engrenagens",
+  "Superfície Rotativa",
+  "Esteira",
+  "Equip. Móvel/Corte das Partes Superiores",
+  "Facas, Punções e Lâminas",
+  "Equipamento Fixo Horizontal",
+  "Impacto ou Prensamento",
+  "Lâmina Rotativa",
+  "Equipamento Rotativo",
+  "Transmissões por Corrente",
+  "Roletes Tracionados",
+  "Máquina Automática",
+] as const;
+
+// ── Sistemas de segurança analisados (NR-12 / ABNT NBR 14153) ────────────
+export const SISTEMAS_SEGURANCA_NR12 = [
+  "Sistema de Emergência",
+  "Borda de Segurança/Bumper",
+  "Seccionadora",
+  "Inercial",
+  "Monit. Proteções Físicas Móveis",
+  "Proteções Físicas",
+  "Rearme/Reset Manual",
+  "Treinamentos Específicos",
+  "Autorização para Utilização",
+  "Desligamento Seguro",
+] as const;
 
 export type StatusAcaoApreciacao =
   | "Pendente"
@@ -896,12 +1138,14 @@ export interface ApreciacaoMaquinaItem {
   probabilidade: string | null;
   /** Severidade da matriz ativa (snapshot do label, ex: "Moderada"). */
   severidade: string | null;
-  /** Nível calculado via `calcularNivelComMatriz` (NivelRisco do Painel SST). */
+  /** Nível calculado via `calcularNivelComMatriz` (NivelRisco do SST JCN Consultoria). */
   nivel_risco_calculado: NivelRisco | null;
   /** FK da matriz usada — snapshot pra preservar avaliação se a matriz mudar. */
   id_matriz: string | null;
   foto_urls: string[];
   foto_storage_paths: string[];
+  /** Legenda por foto (v68) — pareado 1:1 com foto_urls; "" = sem legenda. */
+  foto_legendas: string[];
   created_at: string;
   updated_at: string | null;
 }
@@ -968,13 +1212,15 @@ export interface RelatorioConformidade {
   nr_codigo: string;
   nr_titulo: string;
   setor: string | null;
-  /** Responsável técnico Chabra (quem assina a auditoria pelo prestador). */
+  /** Responsável técnico JCN Consultoria (quem assina a auditoria pelo prestador). */
   responsavel: string | null;
   /** Pessoa do lado da empresa que acompanhou a auditoria e co-assina o relatório. */
   responsavel_empresa: string | null;
   /** Cidade da auditoria, usada na linha de fechamento ("Cidade, dd de mês de YYYY"). */
   cidade: string | null;
   data_inspecao: string | null;
+  /** Validade do documento (informada pelo usuário) — alerta de vencimento. */
+  data_validade?: string | null;
   observacoes_gerais: string | null;
   status: StatusRelatorioConformidade;
   finalizado_em: string | null;
@@ -1028,13 +1274,15 @@ export interface RelatorioNaoConformidade {
    *  pode mudar; relatório fica congelado). */
   nr_titulo: string | null;
   setor: string | null;
-  /** Responsável técnico Chabra (quem assina pelo prestador). */
+  /** Responsável técnico JCN Consultoria (quem assina pelo prestador). */
   responsavel: string | null;
   /** Pessoa do lado da empresa que acompanhou a auditoria. */
   responsavel_empresa: string | null;
   /** Cidade da auditoria, usada na linha de fechamento. */
   cidade: string | null;
   data_inspecao: string | null;
+  /** Validade do documento (informada pelo usuário) — alerta de vencimento. */
+  data_validade?: string | null;
   observacoes_gerais: string | null;
   status: StatusRelatorioNC;
   finalizado_em: string | null;
@@ -1068,6 +1316,92 @@ export interface RelatorioNaoConformidadeItem {
   foto_storage_paths: string[];
   created_at: string;
   updated_at: string | null;
+}
+
+// ─────────────────────────────────────────────
+// Portal do Cliente
+// ─────────────────────────────────────────────
+
+export type StatusDocumentoPortal = "liberado" | "assinado" | "vencido" | "substituido";
+export type StatusPendenciaPortal = "pendente" | "recebido" | "em_analise" | "resolvido";
+export type PrioridadePortal = "baixa" | "media" | "alta";
+export type StatusSolicitacaoPortal = "aberta" | "em_analise" | "em_execucao" | "concluida" | "cancelada";
+export type TipoSolicitacaoPortal =
+  | "visita_tecnica"
+  | "atualizacao_documento"
+  | "treinamento"
+  | "inclusao_setor"
+  | "inclusao_maquina"
+  | "duvida"
+  | "outro";
+export type TipoDocumentoPortal =
+  | "AET" | "AEP" | "RNC" | "Conformidade" | "DRPS" | "NR-12" | "Quimicos" | "Inspecao" | "Outro";
+export type ReferenciaPortalTipo = "pendencia" | "solicitacao" | "nao_conformidade" | "documento";
+
+export interface PortalDocumentoCliente {
+  id: string;
+  empresa_id: string;
+  titulo: string;
+  tipo_documento: TipoDocumentoPortal;
+  modulo_origem: string;
+  arquivo_pdf_url: string | null;
+  status: StatusDocumentoPortal;
+  versao: number;
+  data_emissao: string | null;
+  data_validade: string | null;
+  criado_por: string | null;
+  criado_em: string;
+  atualizado_em: string;
+  referencia_tipo: string | null;
+  referencia_id: string | null;
+}
+
+export interface PortalPendenciaCliente {
+  id: string;
+  empresa_id: string;
+  titulo: string;
+  descricao: string | null;
+  status: StatusPendenciaPortal;
+  prioridade: PrioridadePortal;
+  prazo: string | null;
+  criado_por: string | null;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+export interface PortalSolicitacaoCliente {
+  id: string;
+  empresa_id: string;
+  tipo_solicitacao: TipoSolicitacaoPortal;
+  descricao: string;
+  prioridade: PrioridadePortal;
+  status: StatusSolicitacaoPortal;
+  criado_por: string | null;
+  criado_em: string;
+  atualizado_em: string;
+}
+
+export interface PortalComentario {
+  id: string;
+  empresa_id: string;
+  referencia_tipo: ReferenciaPortalTipo;
+  referencia_id: string;
+  texto: string;
+  criado_por: string | null;
+  criado_em: string;
+}
+
+export interface PortalAnexo {
+  id: string;
+  empresa_id: string;
+  referencia_tipo: ReferenciaPortalTipo;
+  referencia_id: string;
+  nome_arquivo: string;
+  storage_path: string;
+  tamanho_bytes: number | null;
+  mime_type: string | null;
+  criado_por: string | null;
+  criado_em: string;
 }
 
 // Schema esperado pelo @supabase/ssr / supabase-js (Database genérico).
@@ -1113,10 +1447,18 @@ export interface Database {
       apreciacoes_maquinas: TableShape<ApreciacaoMaquina>;
       apreciacoes_maquinas_itens: TableShape<ApreciacaoMaquinaItem>;
       apreciacao_acoes: TableShape<ApreciacaoAcao>;
+      apreciacao_riscos_hrn: TableShape<RiscoHrn>;
       aet_relatorios: TableShape<AetRelatorio>;
       aet_textos_padrao: TableShape<AetTextoPadraoCapitulo>;
       aep_relatorios: TableShape<AepRelatorio>;
       aep_textos_padrao: TableShape<AepTextoPadraoCapitulo>;
+      relatorios_nao_conformidade: TableShape<RelatorioNaoConformidade>;
+      relatorios_nao_conformidade_itens: TableShape<RelatorioNaoConformidadeItem>;
+      portal_documentos_cliente: TableShape<PortalDocumentoCliente>;
+      portal_pendencias_cliente: TableShape<PortalPendenciaCliente>;
+      portal_solicitacoes_cliente: TableShape<PortalSolicitacaoCliente>;
+      portal_comentarios: TableShape<PortalComentario>;
+      portal_anexos: TableShape<PortalAnexo>;
     };
   };
 }
@@ -1208,6 +1550,8 @@ export interface AepRelatorio {
   titulo_profissional: string;
   registro_profissional: string;
   data_elaboracao: string | null;
+  /** Validade do documento (informada pelo usuário) — alerta de vencimento. */
+  data_validade?: string | null;
   endereco_empresa: string | null;
   conclusao: string;
   usuario: string | null;
@@ -1355,6 +1699,8 @@ export interface AetRelatorio {
   id_relatorio: string;
   id_empresa: string;
   data_elaboracao: string | null;
+  /** Validade do documento (informada pelo usuário) — alerta de vencimento. */
+  data_validade?: string | null;
   responsavel_elaboracao: string;
   titulo_profissional: string;
   registro_profissional: string;

@@ -4,6 +4,7 @@ import { use, useState, useEffect } from "react";
 import { Brain, ChevronDown, ChevronUp, Loader2, Save, Sparkles } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import {
   useAetRelatorio,
   useAet13FatoresConfig,
@@ -371,7 +372,7 @@ export default function PsicossocialPage({
       <div className="flex items-center gap-3">
         <div
           className="flex size-10 items-center justify-center rounded-xl"
-          style={{ background: "#006B54" }}
+          style={{ background: "#0ea5e9" }}
         >
           <Brain className="size-5 text-white" />
         </div>
@@ -488,7 +489,7 @@ export default function PsicossocialPage({
             onClick={handleSalvarMeta}
             disabled={salvarMeta.isPending}
             className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            style={{ background: "#006B54" }}
+            style={{ background: "#0ea5e9" }}
           >
             {salvarMeta.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Salvar Dados QPS
@@ -576,7 +577,7 @@ export default function PsicossocialPage({
                             >
                               <span
                                 className="shrink-0 rounded-md px-2 py-0.5 text-xs font-bold text-white"
-                                style={{ background: "#006B54" }}
+                                style={{ background: "#0ea5e9" }}
                               >
                                 {fator.codigo}
                               </span>
@@ -684,7 +685,7 @@ export default function PsicossocialPage({
                                                 className={cn(
                                                   "flex flex-col items-center justify-center gap-0.5 rounded-lg border py-2 px-1 text-center transition-all",
                                                   respostaAtual === v
-                                                    ? "border-[#006B54] bg-[#006B54] text-white shadow-sm"
+                                                    ? "border-[#0ea5e9] bg-[#0ea5e9] text-white shadow-sm"
                                                     : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-700"
                                                 )}
                                               >
@@ -787,7 +788,7 @@ export default function PsicossocialPage({
                                       onClick={() => handleSalvarFator(setor.id, fator.codigo)}
                                       disabled={salvandoFator === fatorKey}
                                       className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-                                      style={{ background: "#006B54" }}
+                                      style={{ background: "#0ea5e9" }}
                                     >
                                       {salvandoFator === fatorKey
                                         ? <Loader2 className="size-4 animate-spin" />
@@ -842,7 +843,7 @@ export default function PsicossocialPage({
                                     <td className="px-4 py-3">
                                       <span
                                         className="rounded px-1.5 py-0.5 text-xs font-bold text-white"
-                                        style={{ background: "#006B54" }}
+                                        style={{ background: "#0ea5e9" }}
                                       >
                                         {fator.codigo}
                                       </span>

@@ -356,7 +356,7 @@ export default function AjudaAnaliseQuimicosPage() {
                 </h1>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   Guia técnico completo para quantificação da exposição a substâncias químicas,
-                  interpretação de limites de tolerância e embasamento do LTCAT no Painel SST.
+                  interpretação de limites de tolerância e embasamento do LTCAT no SST JCN Consultoria.
                 </p>
               </div>
             </div>

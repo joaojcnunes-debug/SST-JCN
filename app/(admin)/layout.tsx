@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { type ReactNode } from "react";
-import { Users, Settings, FileClock } from "lucide-react";
+import { Users, Settings, FileClock, Trash2 } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -15,6 +15,7 @@ const sections: NavSection[] = [
       { href: "/usuarios", label: "Usuários", icon: Users },
       { href: "/config", label: "Configurações", icon: Settings },
       { href: "/pdfs-gerados", label: "PDFs Gerados", icon: FileClock },
+      { href: "/lixeira", label: "Lixeira", icon: Trash2 },
     ],
   },
 ];
@@ -23,6 +24,7 @@ const TITULOS: Record<string, string> = {
   "/usuarios": "Usuários",
   "/config": "Configurações",
   "/pdfs-gerados": "PDFs Gerados",
+  "/lixeira": "Lixeira",
 };
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -35,7 +37,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen">
       <SidebarShell
         title="Administração"
-        subtitle="JCN"
+        subtitle="JCN Consultoria"
         logoHref="/usuarios"
         sections={sections}
       />

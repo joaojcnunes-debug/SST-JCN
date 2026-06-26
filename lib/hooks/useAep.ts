@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import type {
   AepCargoSetor,
@@ -310,12 +311,12 @@ export function useExcluirAep() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("aep_relatorios")
-        .delete()
-        .eq("id_relatorio", id);
-      if (error) throw error;
+      await excluirComLixeiraPorId({
+        tabela: "aep_relatorios",
+        chave: "id_relatorio",
+        id,
+        modulo: "aep",
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["aep-relatorios"] });
