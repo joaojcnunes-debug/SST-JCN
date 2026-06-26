@@ -1,7 +1,14 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-type Variant = "default" | "success" | "warning" | "danger" | "info" | "muted";
+type Variant =
+  | "default"
+  | "success"
+  | "warning"
+  | "danger"
+  | "info"
+  | "muted"
+  | "indigo";
 
 const VARIANTS: Record<Variant, string> = {
   default: "bg-gray-100 text-gray-700 border-gray-200",
@@ -10,6 +17,7 @@ const VARIANTS: Record<Variant, string> = {
   danger: "bg-red-100 text-red-800 border-red-200",
   info: "bg-sky-100 text-sky-800 border-sky-200",
   muted: "bg-slate-100 text-slate-600 border-slate-200",
+  indigo: "bg-indigo-100 text-indigo-800 border-indigo-200",
 };
 
 interface BadgeProps {

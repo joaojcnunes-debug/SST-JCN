@@ -36,9 +36,10 @@ import { TOPICOS } from "@/lib/drps/topicos";
 import type { NivelMatriz, StatusRelatorio } from "@/lib/drps/types";
 
 const STATUS_OPCOES: { v: StatusRelatorio; label: string; cls: string }[] = [
-  { v: "RASCUNHO",     label: "Rascunho",      cls: "bg-gray-100 text-gray-700" },
-  { v: "EM_ANDAMENTO", label: "Em andamento",  cls: "bg-blue-100 text-blue-700" },
-  { v: "CONCLUIDO",    label: "Concluído",      cls: "bg-green-100 text-green-700" },
+  { v: "RASCUNHO",        label: "Rascunho",              cls: "bg-gray-100 text-gray-700" },
+  { v: "EM_ANDAMENTO",    label: "Em andamento",          cls: "bg-blue-100 text-blue-700" },
+  { v: "CONCLUIDO",       label: "Concluído",             cls: "bg-green-100 text-green-700" },
+  { v: "ENVIADO_CLIENTE", label: "Enviado para cliente",  cls: "bg-indigo-100 text-indigo-700" },
 ];
 
 const NIVEIS: NivelMatriz[] = ["Baixo", "Médio", "Alto", "Crítico"];

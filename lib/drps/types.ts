@@ -4,6 +4,7 @@ export type StatusRelatorio =
   | "RASCUNHO"
   | "EM_ANDAMENTO"
   | "CONCLUIDO"
+  | "ENVIADO_CLIENTE"
   | "DELETADO";
 
 export interface DrpsRelatorio {
