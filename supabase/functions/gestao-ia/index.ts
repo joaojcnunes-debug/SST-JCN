@@ -1,4 +1,4 @@
-// Edge Function — IA da Gestão Chabra (Groq / Llama 3.1 8B).
+// Edge Function — IA da Gestão JCN Consultoria (Groq / Llama 3.1 8B).
 // Ações:
 //   "subtarefas" → { data: { subtarefas: string[] } }
 //   "descricao"  → { data: { descricao: string } }

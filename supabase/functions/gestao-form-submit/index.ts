@@ -1,4 +1,4 @@
-// Edge Function — Formulários de entrada da Gestão Chabra.
+// Edge Function — Formulários de entrada da Gestão JCN Consultoria.
 //
 // Endpoint PÚBLICO (deploy com --no-verify-jwt). Usa service role para validar o
 // token e criar a tarefa, sem expor dados internos.

@@ -1,4 +1,4 @@
-// Edge Function — feed ICS (iCalendar) de uma lista da Gestão Chabra.
+// Edge Function — feed ICS (iCalendar) de uma lista da Gestão JCN Consultoria.
 // Endpoint PÚBLICO (--no-verify-jwt). Devolve as tarefas com prazo como eventos
 // de dia inteiro, para assinatura no Google/Outlook. Token valida o acesso.
 //   GET ?token=...  → text/calendar
@@ -39,10 +39,10 @@ Deno.serve(async (req) => {
   const linhas: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Chabra//Gestao SST//PT-BR",
+    "PRODID:-//JCN Consultoria//Gestao SST//PT-BR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escICS(quadro.nome)} · Chabra`,
+    `X-WR-CALNAME:${escICS(quadro.nome)} · JCN Consultoria`,
   ];
   for (const t of (tarefas ?? [])) {
     if (concluidos.has(t.status)) continue;
