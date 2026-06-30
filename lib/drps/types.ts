@@ -33,6 +33,8 @@ export interface DrpsRelatorio {
   conclusao_geral: string | null;
   /** Carimbo automático do momento em que o status passou pra CONCLUIDO (V54). */
   data_conclusao: string | null;
+  /** Carimbo automático do momento em que o status passou pra ENVIADO_CLIENTE (v110). */
+  data_envio_cliente: string | null;
   usuario_email: string | null;
   created_at: string;
   updated_at: string | null;
