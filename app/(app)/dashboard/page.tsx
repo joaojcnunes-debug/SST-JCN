@@ -27,9 +27,10 @@ import {
 } from "recharts";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
-import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import { TabelaSkeleton } from "@/components/ui/PageSkeletons";
 import { cn, fmtData } from "@/lib/utils";
 import { useUserStore } from "@/lib/store";
+import { corAvatar } from "@/lib/hooks/useGestao";
 import type { Inspecao, Empresa } from "@/lib/supabase/types";
 import { useState, useEffect, useMemo } from "react";
 
@@ -136,6 +137,42 @@ async function fetchDocumentosPorMes(): Promise<MesData[]> {
   return months;
 }
 
+// Inspeções associadas por mês: nº de inspeções DISTINTAS que receberam uma associação
+// naquele mês (por created_at da tabela inspecao_associados). Degrada p/ zeros se a
+// tabela ainda não existir.
+async function fetchInspecoesAssociadasPorMes(): Promise<MesData[]> {
+  const supabase = createSupabaseBrowserClient();
+  const now = new Date();
+  const sixAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+  const { data } = await supabase
+    .from("inspecao_associados")
+    .select("created_at, id_inspecao")
+    .gte("created_at", sixAgo.toISOString());
+
+  const months: MesData[] = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+    return {
+      mes: d.toLocaleDateString("pt-BR", { month: "short" })
+        .replace(".", "")
+        .replace(/^\w/, (c) => c.toUpperCase()),
+      total: 0,
+    };
+  });
+  const setsPorMes = Array.from({ length: 6 }, () => new Set<string>());
+
+  for (const r of (data ?? []) as { created_at: string; id_inspecao: string }[]) {
+    if (!r.created_at) continue;
+    const d = new Date(r.created_at);
+    const diff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+    const idx = 5 - diff;
+    if (idx >= 0 && idx < 6) setsPorMes[idx].add(r.id_inspecao);
+  }
+  for (let i = 0; i < 6; i++) months[i].total = setsPorMes[i].size;
+
+  return months;
+}
+
 async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: number }[]> {
   const supabase = createSupabaseBrowserClient();
   const { data } = await supabase
@@ -156,6 +193,44 @@ async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: numb
     { name: "Assumidos",  value: assumidos },
     { name: "Concluídos", value: concluidos },
   ];
+}
+
+// Documentos por associado à elaboração: nº de inspeções distintas por pessoa.
+// Une a tabela inspecao_associados com quem assumiu (elaboracao_responsavel), como na
+// coluna da lista. Top 6 pessoas + "Outros". Degrada se a tabela ainda não existir.
+async function fetchDocumentosPorAssociado(): Promise<{ name: string; value: number }[]> {
+  const supabase = createSupabaseBrowserClient();
+  const [assocRes, respRes] = await Promise.all([
+    supabase.from("inspecao_associados").select("nome, id_inspecao"),
+    supabase
+      .from("inspecoes")
+      .select("elaboracao_responsavel, id_inspecao")
+      .neq("status", "DELETADA")
+      .not("elaboracao_responsavel", "is", null),
+  ]);
+
+  const porPessoa = new Map<string, { nome: string; docs: Set<string> }>();
+  const add = (nome: string | null, idInsp: string) => {
+    const n = (nome ?? "").trim();
+    if (!n || !idInsp) return;
+    const key = n.toLowerCase();
+    const e = porPessoa.get(key) ?? { nome: n, docs: new Set<string>() };
+    e.docs.add(idInsp);
+    porPessoa.set(key, e);
+  };
+  for (const r of (assocRes.data ?? []) as { nome: string; id_inspecao: string }[]) add(r.nome, r.id_inspecao);
+  for (const r of (respRes.data ?? []) as { elaboracao_responsavel: string | null; id_inspecao: string }[]) {
+    add(r.elaboracao_responsavel, r.id_inspecao);
+  }
+
+  const ordenado = [...porPessoa.values()]
+    .map((e) => ({ name: e.nome, value: e.docs.size }))
+    .sort((a, b) => b.value - a.value);
+  const TOP = 6;
+  if (ordenado.length <= TOP) return ordenado;
+  const outros = ordenado.slice(TOP).reduce((s, x) => s + x.value, 0);
+  const top = ordenado.slice(0, TOP);
+  return outros > 0 ? [...top, { name: "Outros", value: outros }] : top;
 }
 
 async function fetchInspecoesRecentes(): Promise<InspecaoComEmpresa[]> {
@@ -206,9 +281,9 @@ function GraficoMes({
   titulo: string;
   data: MesData[] | undefined;
   loading: boolean;
-  link: string;
-  linkLabel: string;
-  linkTitle: string;
+  link?: string;
+  linkLabel?: string;
+  linkTitle?: string;
   singular: string;
   plural: string;
   className?: string;
@@ -220,15 +295,17 @@ function GraficoMes({
           <h2 className="text-sm font-semibold text-gray-800">{titulo}</h2>
           <p className="mt-0.5 text-xs text-gray-400">Últimos 6 meses</p>
         </div>
-        <Link
-          href={link}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-verde-light px-2.5 py-1.5 text-xs font-semibold text-verde-primary transition-colors hover:bg-verde-primary hover:text-white"
-          title={linkTitle}
-        >
-          <TrendingUp className="size-3.5" />
-          {linkLabel}
-          <ArrowRight className="size-3" />
-        </Link>
+        {link && (
+          <Link
+            href={link}
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-verde-light px-2.5 py-1.5 text-xs font-semibold text-verde-primary transition-colors hover:bg-verde-primary hover:text-white"
+            title={linkTitle}
+          >
+            <TrendingUp className="size-3.5" />
+            {linkLabel}
+            <ArrowRight className="size-3" />
+          </Link>
+        )}
       </div>
       {loading ? (
         <div className="min-h-40 flex-1 animate-pulse rounded-xl bg-gray-100" />
@@ -260,17 +337,18 @@ function GraficoMes({
 // ─── Donut reutilizável (Por Status / Documentos por Situação) ─────────────────
 
 function GraficoDonut({
-  titulo, sub, data, colors, loading,
+  titulo, sub, data, colors, loading, className,
 }: {
   titulo: string;
   sub: string;
   data: { name: string; value: number }[];
   colors: string[];
   loading: boolean;
+  className?: string;
 }) {
   const total = data.reduce((s, d) => s + d.value, 0);
   return (
-    <div className="glass reveal-up delay-1 rounded-2xl p-5">
+    <div className={cn("glass reveal-up delay-1 rounded-2xl p-5", className)}>
       <div className="mb-4 flex items-start justify-between">
         <div>
           <h2 className="text-sm font-semibold text-gray-800">{titulo}</h2>
@@ -364,6 +442,19 @@ export default function DashboardPage() {
     queryKey: ["dashboard-doc-situacao"],
     queryFn: fetchDocumentosPorSituacao,
   });
+
+  const { data: docAssociado = [], isLoading: loadingDocAssoc } = useQuery({
+    queryKey: ["dashboard-doc-associado"],
+    queryFn: fetchDocumentosPorAssociado,
+  });
+  const { data: assocPorMes, isLoading: loadingAssocMes } = useQuery({
+    queryKey: ["dashboard-assoc-por-mes"],
+    queryFn: fetchInspecoesAssociadasPorMes,
+  });
+  const assocColors = useMemo(
+    () => docAssociado.map((d) => (d.name === "Outros" ? "#9ca3af" : corAvatar(d.name))),
+    [docAssociado],
+  );
 
   const { data: recentes, isLoading: loadingRecentes } = useQuery({
     queryKey: ["dashboard-recentes"],
@@ -463,6 +554,27 @@ export default function DashboardPage() {
           colors={DOC_COLORS}
           loading={loadingDocSit}
         />
+
+        {/* Linha 3: Inspeções Associadas por Mês (barra) + Documentos por Associado (donut) */}
+        <GraficoMes
+          className="lg:col-span-2"
+          titulo="Inspeções Associadas por Mês"
+          data={assocPorMes}
+          loading={loadingAssocMes}
+          link="/dashboard/por-associados"
+          linkLabel="Ver por associados"
+          linkTitle="Detalhe das inspeções associadas por mês e por associado"
+          singular="associação"
+          plural="associações"
+        />
+        <GraficoDonut
+          className="lg:col-start-3"
+          titulo="Documentos por Associado"
+          sub="Associados à elaboração"
+          data={docAssociado}
+          colors={assocColors}
+          loading={loadingDocAssoc}
+        />
       </section>
 
       {/* ── Atividade recente ─────────────────────────────────────────── */}
@@ -480,7 +592,7 @@ export default function DashboardPage() {
         <div className="glass reveal-up delay-2 overflow-hidden rounded-2xl">
           {loadingRecentes ? (
             <div className="p-4">
-              <LoadingSkeleton rows={6} />
+              <TabelaSkeleton linhas={6} />
             </div>
           ) : !recentes || recentes.length === 0 ? (
             <div className="p-10 text-center text-sm text-gray-500">

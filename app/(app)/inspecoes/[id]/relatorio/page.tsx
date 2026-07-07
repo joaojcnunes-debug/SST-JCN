@@ -29,6 +29,8 @@ import StorageImg from "@/components/ui/StorageImg";
 import { abrirMidiaAssinada } from "@/lib/storage/abrir-midia-assinada";
 import { useInspecao, useSalvarElaboracao } from "@/lib/hooks/useInspecao";
 import { useCurrentUser } from "@/lib/hooks/useUsuario";
+import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
+import { useAssociarUsuario } from "@/lib/hooks/useInspecaoAssociados";
 import { FileSignature } from "lucide-react";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
@@ -210,6 +212,7 @@ export default function RelatorioJCNPage({ params }: Props) {
   const { pdfAssinado, recarregar } = usePdfAssinado("inspecoes_relatorio", id);
   const [baixando, setBaixando] = useState(false);
   const user = useCurrentUser();
+  const associarSelf = useAssociarUsuario();
   // A elaboração do documento (SGG) é feita por usuários internos — inclusive
   // Visualizadores (que leem a inspeção e montam o documento). Só Cliente não.
   const podeElaborar = !!user && user.perfil !== "Cliente";
@@ -377,7 +380,12 @@ export default function RelatorioJCNPage({ params }: Props) {
                   disabled={salvarElab.isPending || !user?.nome}
                   onClick={() => salvarElab.mutate(
                     { elaboracao_status: "EM_ELABORACAO", elaboracao_responsavel: user?.nome ?? null },
-                    { onSuccess: () => toast.success("Você assumiu a elaboração do documento") },
+                    { onSuccess: () => {
+                      toast.success("Você assumiu a elaboração do documento");
+                      if (user?.id_usuario && user?.nome) {
+                        associarSelf.mutate({ id_inspecao: id, id_usuario: user.id_usuario, nome: user.nome, created_by: user.nome });
+                      }
+                    } },
                   )}
                   className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
                 >
@@ -420,6 +428,9 @@ export default function RelatorioJCNPage({ params }: Props) {
             </div>
           )}
         </div>
+        {podeElaborar && (
+          <AssociadosElaboracao idInspecao={id} user={user} isAdmin={user?.perfil === "Admin"} responsavelNome={inspecao.elaboracao_responsavel} />
+        )}
       </div>
 
       {/* Dados da empresa (não imprime) */}
