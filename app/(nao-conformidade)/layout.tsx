@@ -68,7 +68,7 @@ export default function NaoConformidadeLayout({ children }: { children: ReactNod
       />
       <div className="md:pl-[220px] print:pl-0">
         <ModuleTopbar title="Relatório de Não Conformidade" />
-        <main className="px-4 py-6 md:px-6 print:p-0">{children}</main>
+        <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>{children}</main>
       </div>
     </div>
   );

@@ -37,7 +37,7 @@ export default function EmpresasLayout({ children }: { children: ReactNode }) {
       />
       <div className="md:pl-[220px] print:pl-0">
         <ModuleTopbar title="Cadastro de Empresas" />
-        <main className="mx-auto max-w-[1400px] px-4 py-6 md:px-6 print:p-0">{children}</main>
+        <main className="mx-auto max-w-[1400px] px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>{children}</main>
       </div>
     </div>
   );

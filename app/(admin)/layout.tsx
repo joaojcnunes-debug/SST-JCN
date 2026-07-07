@@ -43,7 +43,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       />
       <div className="md:pl-[220px]">
         <ModuleTopbar title={titulo} />
-        <main className="px-4 py-6 md:px-6">{children}</main>
+        <main className="px-4 py-6 md:px-6" style={{ viewTransitionName: "content" }}>{children}</main>
       </div>
     </div>
   );

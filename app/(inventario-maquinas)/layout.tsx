@@ -35,7 +35,7 @@ export default function InventarioMaquinasLayout({
       />
       <div className="md:pl-[220px]">
         <ModuleTopbar title="Inventário de Máquinas e Equipamentos" />
-        <main className="px-4 py-6 md:px-6">{children}</main>
+        <main className="px-4 py-6 md:px-6" style={{ viewTransitionName: "content" }}>{children}</main>
       </div>
     </div>
   );

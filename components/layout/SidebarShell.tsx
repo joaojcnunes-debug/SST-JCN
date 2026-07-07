@@ -231,6 +231,7 @@ export default function SidebarShell({
             alt="Logo"
             className="h-8 w-auto max-w-[36px] rounded-md bg-white object-contain p-0.5 shadow"
             referrerPolicy="no-referrer"
+            onError={(e) => { const el = e.currentTarget as HTMLImageElement; if (!el.src.endsWith("/logo-jcn.svg")) el.src = "/logo-jcn.svg"; }}
           />
         ) : (
           <div className="flex size-8 items-center justify-center rounded-md bg-verde-primary text-white shadow">
@@ -314,8 +315,9 @@ export default function SidebarShell({
         <Menu className="size-5" />
       </button>
 
-      {/* Sidebar desktop */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)" }}>
+      {/* Sidebar desktop — view-transition-name fixo: o shell não cruza entre
+          páginas, só a área de conteúdo transiciona (ver globals.css). */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)", viewTransitionName: "sidebar" }}>
         {Content}
       </aside>
 

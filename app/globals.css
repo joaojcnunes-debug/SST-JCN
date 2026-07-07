@@ -359,6 +359,32 @@ select:focus {
   animation: vt-fade-out 220ms ease both;
 }
 
+/* ── Transição COM ESCOPO (shell imóvel, só o conteúdo cruza) ──────────────
+   A sidebar e a topbar recebem view-transition-name fixos (SidebarShell /
+   ModuleTopbar): como são o "mesmo" elemento entre páginas, ficam parados.
+   Só o <main name=content> faz o fade curto. Onde o <main> ainda não tem o
+   name, cai no crossfade de root (regra acima) — sem regressão. */
+::view-transition-group(sidebar),
+::view-transition-group(topbar),
+::view-transition-old(sidebar),
+::view-transition-new(sidebar),
+::view-transition-old(topbar),
+::view-transition-new(topbar) {
+  animation: none;
+}
+::view-transition-old(content) {
+  animation: vt-fade-out 140ms ease both;
+}
+::view-transition-new(content) {
+  animation: vt-enter 200ms cubic-bezier(.2, .7, .3, 1);
+}
+/* Barra de progresso (TopProgressBar) fica fora do crossfade — anima sozinha. */
+::view-transition-group(progress),
+::view-transition-old(progress),
+::view-transition-new(progress) {
+  animation: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),

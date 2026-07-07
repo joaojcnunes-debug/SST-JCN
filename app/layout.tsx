@@ -5,6 +5,7 @@ import Providers from "@/lib/providers";
 import UpdateBanner from "@/components/UpdateBanner";
 import ElectronIconSync from "@/components/ElectronIconSync";
 import PageTransitions from "@/components/PageTransitions";
+import TopProgressBar from "@/components/TopProgressBar";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <Providers>
           <PageTransitions />
+          <TopProgressBar />
           {children}
           <UpdateBanner />
           <ElectronIconSync />
