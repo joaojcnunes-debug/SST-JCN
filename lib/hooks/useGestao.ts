@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -911,7 +911,7 @@ export function useExcluirTempo() {
   });
 }
 
-export type GatilhoAutomacao = "status_muda" | "tarefa_criada" | "prazo_proximo";
+export type GatilhoAutomacao = "status_muda" | "tarefa_criada" | "prazo_proximo" | "prazo_vencido";
 
 export interface GestaoAutomacao {
   id: string;
@@ -919,7 +919,7 @@ export interface GestaoAutomacao {
   nome: string;
   ativo: boolean;
   gatilho: GatilhoAutomacao;
-  condicao: { de?: string; para?: string };
+  condicao: { de?: string; para?: string; dias_antes?: string };
   acao: { tipo?: string; valor?: string; campo_id?: string };
   ordem: number;
 }
@@ -979,33 +979,32 @@ export function useExcluirAutomacao() {
   });
 }
 
-/** Executor client-side das automações (gatilhos de ação imediata). */
-export function useAutomacaoRunner(idQuadro: string | null | undefined) {
-  const { data: automacoes = [] } = useAutomacoes(idQuadro);
-  const salvar = useSalvarTarefa();
-  const criarNotif = useCriarNotificacao();
-  const { data: usuariosFull = [] } = useUsuarios();
-  return useCallback(
-    (ctx: { gatilho: "status_muda" | "tarefa_criada"; tarefa: GestaoTarefa; de?: string; para?: string }) => {
-      for (const a of automacoes) {
-        if (!a.ativo || a.gatilho !== ctx.gatilho) continue;
-        if (ctx.gatilho === "status_muda") {
-          if (a.condicao?.de && a.condicao.de !== ctx.de) continue;
-          if (a.condicao?.para && a.condicao.para !== ctx.para) continue;
-        }
-        const acao = a.acao || {};
-        const base = { id_tarefa: ctx.tarefa.id_tarefa, id_quadro: ctx.tarefa.id_quadro };
-        if (acao.tipo === "mover_status" && acao.valor) salvar.mutate({ ...base, status: acao.valor });
-        else if (acao.tipo === "definir_responsavel") salvar.mutate({ ...base, responsavel: acao.valor || null });
-        else if (acao.tipo === "definir_prioridade" && acao.valor) salvar.mutate({ ...base, prioridade: acao.valor as PrioridadeTarefa });
-        else if (acao.tipo === "definir_campo" && acao.campo_id) salvar.mutate({ ...base, campos: { ...(ctx.tarefa.campos ?? {}), [acao.campo_id]: acao.valor ?? null } });
-        else if (acao.tipo === "notificar") {
-          const email = ctx.tarefa.responsavel ? usuariosFull.find((u) => u.nome === ctx.tarefa.responsavel)?.email ?? null : null;
-          if (email) criarNotif.mutate({ destinatario: email, tipo: "status", titulo: acao.valor || `Automação em "${ctx.tarefa.titulo}"`, id_tarefa: ctx.tarefa.id_tarefa, id_quadro: ctx.tarefa.id_quadro });
-        }
+/** Dispara o scan diário de prazos no servidor (fallback sem pg_cron, ex.: .107). Idempotente:
+ *  gestao_automacao_tick roda no máximo 1x/dia. Chamado ao abrir a Gestão. */
+export function useAutomacaoTick() {
+  useEffect(() => {
+    // O rpc() do Supabase é um thenable (sem .catch) — consumir via await + try/catch.
+    // Um fallback de agendamento NUNCA deve derrubar a página.
+    void (async () => {
+      try {
+        const sb = createSupabaseBrowserClient() as unknown as { rpc: (fn: string) => PromiseLike<unknown> };
+        await sb.rpc("gestao_automacao_tick");
+      } catch {
+        /* silencioso */
       }
+    })();
+  }, []);
+}
+
+/** Automações agora rodam NO SERVIDOR (v120: trigger em gestao_tarefas + pg_cron para prazos).
+ *  O executor client-side foi aposentado para não aplicar a ação duas vezes. Mantido como no-op
+ *  (mesma assinatura) para não quebrar os call sites em gestao/page.tsx. */
+export function useAutomacaoRunner(_idQuadro: string | null | undefined) {
+  return useCallback(
+    (_ctx: { gatilho: "status_muda" | "tarefa_criada"; tarefa: GestaoTarefa; de?: string; para?: string }) => {
+      /* no-op: ver public.gestao_automacao_trg / gestao_automacao_prazos (v120) */
     },
-    [automacoes, salvar, criarNotif, usuariosFull],
+    [],
   );
 }
 
@@ -1414,32 +1413,18 @@ export function useMeusAcessos() {
 async function upsertAcesso(idQuadro: string, email: string, papel: "viewer" | "editor") {
   const sb = createSupabaseBrowserClient();
   const lower = email.toLowerCase();
+  // Grava também o modelo novo (nivel/recurso) — o resolver da v117 lê `nivel`, não `papel`.
+  // viewer→view, editor→edit; recurso é sempre a lista (list) deste quadro.
+  const nivel = papel === "editor" ? "edit" : "view";
+  const campos = { papel, nivel, recurso_tipo: "list", recurso_id: idQuadro };
   const { data: ex } = await sb.from("gestao_acessos").select("id").eq("id_quadro", idQuadro).eq("usuario_email", lower).maybeSingle();
-  if (ex) { const { error } = await sb.from("gestao_acessos").update({ papel } as never).eq("id", (ex as { id: string }).id); if (error) throw error; }
-  else { const { error } = await sb.from("gestao_acessos").insert({ id: crypto.randomUUID(), id_quadro: idQuadro, usuario_email: lower, papel } as never); if (error) throw error; }
+  if (ex) { const { error } = await sb.from("gestao_acessos").update(campos as never).eq("id", (ex as { id: string }).id); if (error) throw error; }
+  else { const { error } = await sb.from("gestao_acessos").insert({ id: crypto.randomUUID(), id_quadro: idQuadro, usuario_email: lower, ...campos } as never); if (error) throw error; }
 }
 
-export function useSalvarAcesso() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (p: { id_quadro: string; email: string; papel: "viewer" | "editor" }) => upsertAcesso(p.id_quadro, p.email, p.papel),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["gestao-acessos"] }); qc.invalidateQueries({ queryKey: ["gestao-meus-acessos"] }); },
-    onError: (e) => toast.error(mensagemErro(e, "Não foi possível salvar o acesso.")),
-  });
-}
-
-export function useExcluirAcesso() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const sb = createSupabaseBrowserClient();
-      const { error } = await sb.from("gestao_acessos").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["gestao-acessos"] }); qc.invalidateQueries({ queryKey: ["gestao-meus-acessos"] }); },
-    onError: (e) => toast.error(mensagemErro(e, "Não foi possível remover o acesso.")),
-  });
-}
+// useSalvarAcesso/useExcluirAcesso removidos na Fase 4b: o compartilhamento por lista agora passa
+// por gestao_alterar_acesso (useAlterarAcesso) — com motivo + log LGPD. upsertAcesso segue abaixo,
+// usado só pelo auto-grant de useToggleRestrito (não se trancar fora ao restringir).
 
 /** Liga/desliga "lista restrita". Ao ligar, garante o usuário atual como editor ANTES (não se trancar fora). */
 export function useToggleRestrito() {

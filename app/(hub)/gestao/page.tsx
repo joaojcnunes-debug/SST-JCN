@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, KanbanSquare, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CircleUser, CheckSquare, BarChart3, FileText, Inbox, Lock } from "lucide-react";
+import { ArrowLeft, KanbanSquare, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CircleUser, CheckSquare, BarChart3, FileText, Inbox, Lock, Users } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import { useCanEdit, useIsAdmin } from "@/lib/hooks/useUsuario";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
@@ -12,7 +12,7 @@ import {
   useMinhasTarefas, useTodosStatus, useNotificacoes, useMarcarLida, useMeusAcessos,
   usePreferenciaVisao, useSalvarPreferenciaVisao,
   useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro,
-  useEspacos, usePastas, useTodasDependencias, useAutomacaoRunner, useTempoQuadro, useAnexosCountQuadro,
+  useEspacos, usePastas, useTodasDependencias, useAutomacaoRunner, useAutomacaoTick, useTempoQuadro, useAnexosCountQuadro,
   corAvatar, formatarDuracao,
   PRIORIDADES, FILTRO_VAZIO, contarFiltros,
   type GestaoTarefa, type StatusTarefa, type VistaGestao, type AgruparPor, type GestaoStatus, type GestaoNotificacao, type PrioridadeTarefa, type FiltrosGestao,
@@ -28,6 +28,8 @@ import EtiquetasManagerModal from "@/components/gestao/EtiquetasManagerModal";
 import FormulariosManagerModal from "@/components/gestao/FormulariosManagerModal";
 import CalendarioModal from "@/components/gestao/CalendarioModal";
 import CompartilharModal from "@/components/gestao/CompartilharModal";
+import MembrosModal from "@/components/gestao/MembrosModal";
+import { useMeuPapelGestao } from "@/lib/hooks/useGestaoAcesso";
 import TarefaCard from "@/components/gestao/TarefaCard";
 import FiltrosPanel from "@/components/gestao/FiltrosPanel";
 import MinhasTarefas from "@/components/gestao/MinhasTarefas";
@@ -58,6 +60,8 @@ export default function GestaoJCNPage() {
   const canEditGlobal = useCanEdit();
   const isAdmin = useIsAdmin();
   const { data: meusAcessos } = useMeusAcessos();
+  const { data: meuPapelGestao, isFetched: papelGestaoFetched } = useMeuPapelGestao();
+  const souGestor = meuPapelGestao === "owner" || meuPapelGestao === "admin";
   const podeEditarGlobal = isAdmin || canEditGlobal;
   const { data: configs } = useConfiguracoes();
   const { data: quadros = [], isLoading: loadingQuadros } = useQuadros();
@@ -81,6 +85,7 @@ export default function GestaoJCNPage() {
   const { data: campos = [] } = useCamposQuadro(quadro?.id_quadro);
   const { data: etiquetasCat = [] } = useEtiquetasQuadro(quadro?.id_quadro);
   const runAuto = useAutomacaoRunner(quadro?.id_quadro);
+  useAutomacaoTick();  // fallback de agendamento sem pg_cron (.107): scan de prazos 1x/dia
   const salvar = useSalvarTarefa();
   const acaoMassa = useAcaoMassa();
   const { data: tempoEntries = [] } = useTempoQuadro(quadro?.id_quadro, tarefas.map((t) => t.id_tarefa));
@@ -112,6 +117,7 @@ export default function GestaoJCNPage() {
   const [formulariosOpen, setFormulariosOpen] = useState(false);
   const [calendarioOpen, setCalendarioOpen] = useState(false);
   const [compartilharOpen, setCompartilharOpen] = useState(false);
+  const [membrosOpen, setMembrosOpen] = useState(false);
   const [quadroAgrupar, setQuadroAgrupar] = useState<"status" | "responsavel" | "prioridade" | "etiqueta">("status");
   const [online, setOnline] = useState(true);
   const [boardScrolled, setBoardScrolled] = useState(false);
@@ -128,8 +134,11 @@ export default function GestaoJCNPage() {
   const inboxCount = useMemo(() => notificacoes.filter((n) => !n.lida).length, [notificacoes]);
 
   useEffect(() => {
-    if (user?.perfil === "Cliente") router.replace("/portal-cliente/inicio");
-  }, [user?.perfil, router]);
+    if (user?.perfil === "Cliente") { router.replace("/portal-cliente/inicio"); return; }
+    // Portão de membership: quem não é membro da Gestão não entra. Só dispara quando a
+    // query resolveu com NULL explícito (não-membro) — erro/loading mantém a guarda dormindo.
+    if (papelGestaoFetched && meuPapelGestao === null && user) router.replace("/inicio");
+  }, [user, user?.perfil, papelGestaoFetched, meuPapelGestao, router]);
 
   useEffect(() => {
     let t: ReturnType<typeof setTimeout> | undefined;
@@ -321,11 +330,11 @@ export default function GestaoJCNPage() {
   return (
     <div className="min-h-screen bg-[#f6f5f2]">
       {/* Menu lateral fixo (verde, igual ao app) */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col lg:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)" }}>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col lg:flex print:hidden" style={{ background: "linear-gradient(180deg, #1a3d26 0%, #112a1a 60%, #0d2016 100%)" }}>
         <Link href="/visao-geral" className="flex items-center gap-2.5 border-b border-white/[0.09] px-4 py-3.5 transition-colors hover:bg-white/[0.05]">
           {configs?.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={configs.logo_url} alt="Logo JCN Consultoria" className="h-8 w-auto max-w-[36px] shrink-0 rounded-md bg-white object-contain p-0.5 shadow" referrerPolicy="no-referrer" />
+            <img src={configs.logo_url} alt="Logo JCN Consultoria" className="h-8 w-auto max-w-[36px] shrink-0 rounded-md bg-white object-contain p-0.5 shadow" referrerPolicy="no-referrer" onError={(e) => { const el = e.currentTarget as HTMLImageElement; if (!el.src.endsWith("/logo-jcn.svg")) el.src = "/logo-jcn.svg"; }} />
           ) : (
             <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-verde-primary text-white shadow"><KanbanSquare className="size-4" /></span>
           )}
@@ -434,6 +443,11 @@ export default function GestaoJCNPage() {
           {temFiltro && (
             <button type="button" onClick={() => { setBusca(""); setFiltros(FILTRO_VAZIO); setSoMinhas(false); }} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800">
               <X className="size-4" /> Limpar
+            </button>
+          )}
+          {souGestor && (
+            <button type="button" onClick={() => setMembrosOpen(true)} title="Membros da Gestão" className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+              <Users className="size-4" /> Membros
             </button>
           )}
           {podeEditar && (
@@ -701,6 +715,8 @@ export default function GestaoJCNPage() {
           podeEditar={podeEditar}
         />
       )}
+
+      <MembrosModal open={membrosOpen} onClose={() => setMembrosOpen(false)} />
 
       {selecaoModo && selecionados.size > 0 && (
         <BarraAcoesMassa

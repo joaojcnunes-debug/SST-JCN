@@ -5,9 +5,10 @@ import { Lock, Globe, Trash2, UserPlus, ShieldCheck } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import {
-  useAcessosQuadro, useSalvarAcesso, useExcluirAcesso, useToggleRestrito, useUsuarios,
+  useAcessosQuadro, useToggleRestrito, useUsuarios,
   iniciais, corAvatar, type GestaoQuadro,
 } from "@/lib/hooks/useGestao";
+import { useAlterarAcesso, type GestaoNivel } from "@/lib/hooks/useGestaoAcesso";
 
 export default function CompartilharModal({
   open, onClose, quadro, podeEditar,
@@ -19,20 +20,41 @@ export default function CompartilharModal({
 }) {
   const { data: acessos = [] } = useAcessosQuadro(quadro.restrito ? quadro.id_quadro : null);
   const { data: usuarios = [] } = useUsuarios();
-  const salvar = useSalvarAcesso();
-  const excluir = useExcluirAcesso();
+  const alterar = useAlterarAcesso();
   const toggle = useToggleRestrito();
 
   const [novoEmail, setNovoEmail] = useState("");
   const [novoPapel, setNovoPapel] = useState<"viewer" | "editor">("viewer");
+  const [motivo, setMotivo] = useState("");
+  const motivoOk = motivo.trim().length >= 5;
 
   const emailsComAcesso = useMemo(() => new Set(acessos.map((a) => a.usuario_email.toLowerCase())), [acessos]);
   const disponiveis = useMemo(() => usuarios.filter((u) => !emailsComAcesso.has(u.email.toLowerCase())), [usuarios, emailsComAcesso]);
   const nomePorEmail = useMemo(() => new Map(usuarios.map((u) => [u.email.toLowerCase(), u.nome])), [usuarios]);
 
+  // viewer→view, editor→edit. Toda mudança passa por gestao_alterar_acesso (log + motivo).
+  const nivelDe = (papel: "viewer" | "editor"): GestaoNivel => (papel === "editor" ? "edit" : "view");
+
   function adicionar() {
-    if (!novoEmail) return;
-    salvar.mutate({ id_quadro: quadro.id_quadro, email: novoEmail, papel: novoPapel }, { onSuccess: () => setNovoEmail("") });
+    if (!novoEmail || !motivoOk) return;
+    alterar.mutate(
+      { alvo: novoEmail, acao: "concedeu", recursoTipo: "list", recursoId: quadro.id_quadro, nivel: nivelDe(novoPapel), motivo: motivo.trim() },
+      { onSuccess: () => { setNovoEmail(""); setMotivo(""); } },
+    );
+  }
+  function mudarPapel(email: string, papel: "viewer" | "editor") {
+    if (!motivoOk) return;
+    alterar.mutate(
+      { alvo: email, acao: "concedeu", recursoTipo: "list", recursoId: quadro.id_quadro, nivel: nivelDe(papel), motivo: motivo.trim() },
+      { onSuccess: () => setMotivo("") },
+    );
+  }
+  function remover(email: string) {
+    if (!motivoOk) return;
+    alterar.mutate(
+      { alvo: email, acao: "revogou", recursoTipo: "list", recursoId: quadro.id_quadro, nivel: "view", motivo: motivo.trim() },
+      { onSuccess: () => setMotivo("") },
+    );
   }
 
   return (
@@ -74,6 +96,19 @@ export default function CompartilharModal({
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Pessoas com acesso</p>
 
+            {/* Motivo (obrigatório para conceder/alterar/remover — entra no log LGPD) */}
+            {podeEditar && (
+              <div className="mb-2.5">
+                <input
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  placeholder="Motivo da alteração (ex.: entrou no projeto X) *"
+                  className="w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                />
+                {!motivoOk && motivo.length > 0 && <p className="mt-0.5 text-[11px] text-amber-600">Mínimo 5 caracteres.</p>}
+              </div>
+            )}
+
             <ul className="space-y-1.5">
               {acessos.map((a) => {
                 const nome = nomePorEmail.get(a.usuario_email.toLowerCase()) ?? a.usuario_email;
@@ -85,7 +120,13 @@ export default function CompartilharModal({
                       <p className="truncate text-[11px] text-gray-400">{a.usuario_email}</p>
                     </div>
                     {podeEditar ? (
-                      <select value={a.papel} onChange={(e) => salvar.mutate({ id_quadro: quadro.id_quadro, email: a.usuario_email, papel: e.target.value as "viewer" | "editor" })} className="shrink-0 rounded-md border border-gray-200 px-1.5 py-1 text-xs text-gray-700 focus:outline-none">
+                      <select
+                        value={a.papel}
+                        disabled={!motivoOk || alterar.isPending}
+                        title={!motivoOk ? "Preencha o motivo para alterar" : "Alterar papel"}
+                        onChange={(e) => mudarPapel(a.usuario_email, e.target.value as "viewer" | "editor")}
+                        className="shrink-0 rounded-md border border-gray-200 px-1.5 py-1 text-xs text-gray-700 focus:outline-none disabled:opacity-50"
+                      >
                         <option value="viewer">Pode ver</option>
                         <option value="editor">Pode editar</option>
                       </select>
@@ -93,7 +134,13 @@ export default function CompartilharModal({
                       <span className="shrink-0 text-xs text-gray-500">{a.papel === "editor" ? "Pode editar" : "Pode ver"}</span>
                     )}
                     {podeEditar && (
-                      <button type="button" onClick={async () => { if (await confirmar({ title: "Remover acesso?", description: nome })) excluir.mutate(a.id); }} className="shrink-0 rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-600" title="Remover">
+                      <button
+                        type="button"
+                        disabled={!motivoOk || alterar.isPending}
+                        title={!motivoOk ? "Preencha o motivo para remover" : "Remover"}
+                        onClick={async () => { if (await confirmar({ title: "Remover acesso?", description: nome })) remover(a.usuario_email); }}
+                        className="shrink-0 rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                      >
                         <Trash2 className="size-4" />
                       </button>
                     )}
@@ -113,13 +160,13 @@ export default function CompartilharModal({
                   <option value="viewer">Pode ver</option>
                   <option value="editor">Pode editar</option>
                 </select>
-                <button type="button" onClick={adicionar} disabled={!novoEmail || salvar.isPending} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-sm font-medium text-white hover:bg-verde-dark disabled:opacity-50">
+                <button type="button" onClick={adicionar} disabled={!novoEmail || !motivoOk || alterar.isPending} title={!motivoOk ? "Preencha o motivo" : "Adicionar"} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-sm font-medium text-white hover:bg-verde-dark disabled:opacity-50">
                   <UserPlus className="size-4" />
                 </button>
               </div>
             )}
 
-            <p className="mt-2 flex items-center gap-1 text-[11px] text-gray-400"><ShieldCheck className="size-3.5" /> Administradores sempre têm acesso total.</p>
+            <p className="mt-2 flex items-center gap-1 text-[11px] text-gray-400"><ShieldCheck className="size-3.5" /> Administradores sempre têm acesso total. Alterações ficam registradas.</p>
           </div>
         )}
       </div>
