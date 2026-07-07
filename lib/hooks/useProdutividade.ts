@@ -460,6 +460,9 @@ export interface ProdProjecaoSalva {
   tecs_necessarios: number | null;
   adms_adicionais: number | null;
   tecs_adicionais: number | null;
+  /** Mês/ano de referência (Controle Mensal) usado como base da projeção. */
+  mes: number | null;
+  ano: number | null;
   criado_em: string;
   atualizado_em: string;
 }

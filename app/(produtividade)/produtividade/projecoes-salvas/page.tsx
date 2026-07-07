@@ -67,6 +67,9 @@ function ProjecaoCard({ p }: { p: ProdProjecaoSalva }) {
             <span className="flex items-center gap-1">
               <Calendar className="size-3" /> {formatDateTime(p.criado_em)}
             </span>
+            {p.mes != null && p.ano != null && (
+              <span className="font-medium text-gray-500">Ref. {String(p.mes).padStart(2, "0")}/{p.ano}</span>
+            )}
             <span>{p.dias_uteis} dias úteis ≈ {semanas} semanas</span>
             <span>{p.adms_atuais} ADMs + {p.tecnicos_atuais} técnicos</span>
           </div>
