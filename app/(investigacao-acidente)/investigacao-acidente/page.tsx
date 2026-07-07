@@ -8,6 +8,7 @@ import {
   useExcluirInvestigacao,
 } from "@/lib/hooks/useInvestigacaoAcidente";
 import { useCanCreate, useCanDelete } from "@/lib/hooks/useUsuario";
+import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import type { InvestigacaoListItem } from "@/lib/hooks/useInvestigacaoAcidente";
@@ -25,12 +26,15 @@ function fmtData(iso: string | null): string {
 }
 
 export default function InvestigacoesPage() {
-  const { data: lista = [], isLoading } = useInvestigacoesAcidente();
+  const { data: listaAll = [], isLoading } = useInvestigacoesAcidente();
   const canCreate = useCanCreate();
   const canDelete = useCanDelete();
   const excluir = useExcluirInvestigacao();
+  const { inUnidade } = useUnidadeFiltro();
   const [busca, setBusca] = useState("");
   const [confirmDel, setConfirmDel] = useState<InvestigacaoListItem | null>(null);
+
+  const lista = useMemo(() => listaAll.filter((i) => inUnidade(i.id_empresa)), [listaAll, inUnidade]);
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();

@@ -26,6 +26,7 @@ import AnimatedNumber from "./AnimatedNumber";
 import SaudeAnel, { type SaudeDocumentos } from "./SaudeAnel";
 import GraficosVisaoGeral, { type FatiaTipo, type PontoMes, type FatiaStatus } from "./GraficosVisaoGeral";
 import { cn } from "@/lib/utils";
+import { useUnidadeAtiva } from "@/lib/store";
 
 const VERDE_SIDEBAR = "#0f3d28";
 
@@ -91,6 +92,7 @@ export default function VisaoGeralView({
 }: VisaoGeralViewProps) {
   const totais = data?.totais;
   const unidades = data?.unidades ?? [];
+  const setUnidadeAtiva = useUnidadeAtiva((s) => s.setUnidade);
   const escopoRestrito = userPerfil === "Tecnico" && vinculadasCount > 0;
   const totalPendencias = (pendencias ?? []).reduce((s, p) => s + p.pendente, 0);
   const vencidos = vencimentos?.vencidos ?? [];
@@ -157,7 +159,11 @@ export default function VisaoGeralView({
           {unidades
             .filter((u) => u.id_unidade)
             .map((u) => (
-              <Link key={u.id_unidade} href={`/empresas?unidade=${u.id_unidade}`}>
+              <Link
+                key={u.id_unidade}
+                href="/inicio"
+                onClick={() => setUnidadeAtiva(u.id_unidade!, u.nome)}
+              >
                 <NavItem icon={<MapPin className="size-[15px]" />} label={u.nome} badge={u.empresas} />
               </Link>
             ))}
@@ -453,10 +459,15 @@ function ResumoCard({
 
 function UnidadeCard({ u, delay = 0 }: { u: UnidadeResumo; delay?: number }) {
   const semUnidade = u.id_unidade === null;
-  const href = `/empresas?unidade=${semUnidade ? "__sem__" : u.id_unidade}`;
+  const setUnidadeAtiva = useUnidadeAtiva((s) => s.setUnidade);
+  // Unidade real → ativa o escopo e vai pro hub de módulos. "Sem unidade" mantém
+  // o atalho para as empresas sem unidade (não há escopo de unidade real).
+  const href = semUnidade ? "/empresas?unidade=__sem__" : "/inicio";
+  const onPick = semUnidade ? undefined : () => setUnidadeAtiva(u.id_unidade!, u.nome);
   return (
     <Link
       href={href}
+      onClick={onPick}
       style={{ animationDelay: `${delay}ms` }}
       className="reveal-up group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-verde-primary hover:shadow-md"
     >

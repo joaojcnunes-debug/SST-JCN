@@ -20,6 +20,7 @@ import {
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import { useCanCreate, useCanDelete, useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useUnidadeAtiva } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { registrarSoftNaLixeira } from "@/lib/hooks/useLixeira";
 import { cn } from "@/lib/utils";
@@ -89,8 +90,10 @@ function InspecoesInner() {
   });
 
   const empresaParam = params.get("empresa");
+  const unidadeAtivaId = useUnidadeAtiva((s) => s.id);
   const [empresaId, setEmpresaId] = useState<string | null>(empresaParam);
-  const [idUnidade, setIdUnidade] = useState<string>("");
+  // Filtro de unidade inicia na Unidade ativa (escopo global), se houver.
+  const [idUnidade, setIdUnidade] = useState<string>(unidadeAtivaId ?? "");
   const [dataIni, setDataIni] = useState<string>("");
   const [dataFim, setDataFim] = useState<string>("");
   const [filtro, setFiltro] = useState<FiltroInspecao>("Todos");
@@ -102,6 +105,9 @@ function InspecoesInner() {
 
   // Reseta para página 1 quando qualquer filtro muda
   useEffect(() => { setPage(1); }, [empresaId, idUnidade, dataIni, dataFim, filtro, ordem, buscaTecnico]);
+
+  // Mantém o filtro de unidade alinhado à Unidade ativa (inclusive ao limpá-la).
+  useEffect(() => { setIdUnidade(unidadeAtivaId ?? ""); }, [unidadeAtivaId]);
 
   // Sincroniza empresa na URL para deep-linking
   useEffect(() => {
@@ -140,7 +146,7 @@ function InspecoesInner() {
           <label className="text-xs font-medium uppercase tracking-wider text-gray-500">
             Empresa
           </label>
-          <EmpresaSelect value={empresaId} onChange={setEmpresaId} modulo="sst" />
+          <EmpresaSelect value={empresaId} onChange={setEmpresaId} modulo="sst" unidadeId={unidadeAtivaId} />
         </div>
         <div className="flex gap-2">
           {empresaId && (

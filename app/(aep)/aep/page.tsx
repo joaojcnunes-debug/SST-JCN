@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Printer, Trash2, AlertTriangle } from "lucide-react";
 import { useAepRelatorios, useExcluirAep, riscoMaximoRelatorio, CLASS_COLOR_AEP, STATUS_LABEL_AEP } from "@/lib/hooks/useAep";
 import { useCanCreate, useCanDelete } from "@/lib/hooks/useUsuario";
+import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
@@ -22,7 +23,9 @@ export default function AepListaPage() {
   const router = useRouter();
   const [empresaId, setEmpresaId] = useState<string | null>(null);
   const [confirmarExcluir, setConfirmarExcluir] = useState<AepRelatorio | null>(null);
-  const { data: relatorios = [], isLoading } = useAepRelatorios(empresaId);
+  const { data: relatoriosAll = [], isLoading } = useAepRelatorios(empresaId);
+  const { unidadeId, inUnidade } = useUnidadeFiltro();
+  const relatorios = useMemo(() => relatoriosAll.filter((r) => inUnidade(r.id_empresa)), [relatoriosAll, inUnidade]);
   const excluir = useExcluirAep();
   const canCreate = useCanCreate();
   const canDelete = useCanDelete();
@@ -51,6 +54,7 @@ export default function AepListaPage() {
           placeholder="Filtrar por empresa..."
           modulo="aep"
           allowAll
+          unidadeId={unidadeId}
         />
       </div>
 

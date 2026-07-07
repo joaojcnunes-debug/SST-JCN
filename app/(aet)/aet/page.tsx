@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   ClipboardCheck,
@@ -14,6 +14,7 @@ import { mensagemErro } from "@/lib/errors";
 import { useAetRelatorios, useExcluirAet } from "@/lib/hooks/useAet";
 import { useCanCreate, useCanDelete } from "@/lib/hooks/useUsuario";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { cn } from "@/lib/utils";
@@ -65,7 +66,9 @@ export default function AetListPage() {
   const [empresaId, setEmpresaId] = useState<string | null>(null);
   const [confirmDel, setConfirmDel] = useState<AetRelatorio | null>(null);
 
-  const { data: relatorios = [], isLoading } = useAetRelatorios(empresaId);
+  const { data: relatoriosAll = [], isLoading } = useAetRelatorios(empresaId);
+  const { unidadeId, inUnidade } = useUnidadeFiltro();
+  const relatorios = useMemo(() => relatoriosAll.filter((r) => inUnidade(r.id_empresa)), [relatoriosAll, inUnidade]);
   const excluir = useExcluirAet();
   const canCreate = useCanCreate();
   const canDelete = useCanDelete();
@@ -100,7 +103,7 @@ export default function AetListPage() {
           <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">
             Filtrar por empresa
           </label>
-          <EmpresaSelect value={empresaId} onChange={setEmpresaId} modulo="sst" />
+          <EmpresaSelect value={empresaId} onChange={setEmpresaId} modulo="sst" unidadeId={unidadeId} />
         </div>
       </div>
 

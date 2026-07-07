@@ -14,10 +14,14 @@ import {
 import { useRelatoriosConformidade } from "@/lib/hooks/useRelatoriosConformidade";
 import { listarNRs } from "@/lib/conformidade/checklists";
 import { useCanCreate } from "@/lib/hooks/useUsuario";
+import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 
 export default function VisaoGeralConformidadePage() {
   const canCreate = useCanCreate();
-  const { data: relatorios = [], isLoading } = useRelatoriosConformidade();
+  const { data: relatoriosAll = [], isLoading } = useRelatoriosConformidade();
+  const { inUnidade } = useUnidadeFiltro();
+  // Escopo por Unidade ativa: KPIs e lista só das empresas da unidade.
+  const relatorios = useMemo(() => relatoriosAll.filter((r) => inUnidade(r.id_empresa)), [relatoriosAll, inUnidade]);
   const nrs = useMemo(() => listarNRs(), []);
 
   const totalFinalizados = relatorios.filter((r) => r.status === "FINALIZADO").length;

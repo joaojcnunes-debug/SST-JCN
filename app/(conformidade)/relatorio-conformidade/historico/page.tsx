@@ -12,11 +12,14 @@ import { useRelatoriosConformidade } from "@/lib/hooks/useRelatoriosConformidade
 import { listarNRs } from "@/lib/conformidade/checklists";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useCanCreate } from "@/lib/hooks/useUsuario";
+import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 
 export default function HistoricoConformidadePage() {
   const canCreate = useCanCreate();
-  const { data: relatorios = [], isLoading } = useRelatoriosConformidade();
+  const { data: relatoriosAll = [], isLoading } = useRelatoriosConformidade();
   const { data: empresas = [] } = useEmpresas();
+  const { inUnidade } = useUnidadeFiltro();
+  const relatorios = useMemo(() => relatoriosAll.filter((r) => inUnidade(r.id_empresa)), [relatoriosAll, inUnidade]);
   const nrs = useMemo(() => listarNRs(), []);
 
   const [q, setQ] = useState("");

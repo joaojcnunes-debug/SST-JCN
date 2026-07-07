@@ -14,6 +14,7 @@ import ImportarEmpresasModal from "@/components/empresas/ImportarEmpresasModal";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useCanCreate, useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
+import { useUnidadeAtiva } from "@/lib/store";
 import type { Empresa } from "@/lib/supabase/types";
 
 function EmpresasInner() {
@@ -24,9 +25,10 @@ function EmpresasInner() {
   const canCreate = useCanCreate();
   const canDelete = useCanDelete();
   const qc = useQueryClient();
+  const unidadeAtivaId = useUnidadeAtiva((s) => s.id);
   const [busca, setBusca] = useState("");
-  // Pré-filtra por unidade quando vem da "Visão geral" (/empresas?unidade=ID|__sem__).
-  const [filtroUnidade, setFiltroUnidade] = useState(searchParams.get("unidade") ?? "");
+  // Pré-filtra por unidade: pelo deep-link (?unidade=ID|__sem__) ou pela Unidade ativa.
+  const [filtroUnidade, setFiltroUnidade] = useState(searchParams.get("unidade") ?? unidadeAtivaId ?? "");
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Empresa | null>(null);

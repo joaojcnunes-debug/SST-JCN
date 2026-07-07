@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
+import UnidadeAtivaChip from "@/components/layout/UnidadeAtivaChip";
 import {
   Shield,
   Brain,
@@ -359,6 +360,7 @@ function InicioContent() {
         </div>
 
         <div className="flex items-center gap-3">
+          <UnidadeAtivaChip variant="hub" />
           {user && (
             <div className="hidden text-right text-white/90 sm:block">
               <p className="text-sm font-semibold leading-tight">{user.nome}</p>

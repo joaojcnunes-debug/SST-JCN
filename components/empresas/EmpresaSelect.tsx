@@ -16,6 +16,8 @@ interface EmpresaSelectProps {
   modulo?: ModuloEmpresa;
   /** Ignora o filtro de módulo e exibe todas as empresas. */
   allowAll?: boolean;
+  /** Quando informado (Unidade ativa), limita o dropdown às empresas da unidade. */
+  unidadeId?: string | null;
 }
 
 export default function EmpresaSelect({
@@ -26,6 +28,7 @@ export default function EmpresaSelect({
   disabled,
   modulo,
   allowAll,
+  unidadeId,
 }: EmpresaSelectProps) {
   const { data: empresas = [], isLoading } = useEmpresas(allowAll ? undefined : modulo);
   const [open, setOpen] = useState(false);
@@ -38,15 +41,17 @@ export default function EmpresaSelect({
   );
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return empresas;
+    // Escopo por Unidade ativa: só empresas da unidade.
+    const base = unidadeId ? empresas.filter((e) => e.id_unidade === unidadeId) : empresas;
+    if (!query.trim()) return base;
     const q = query.toLowerCase();
-    return empresas.filter(
+    return base.filter(
       (e) =>
         e.nome_empresa.toLowerCase().includes(q) ||
         (e.cnpj ?? "").toLowerCase().includes(q) ||
         (e.razao_social ?? "").toLowerCase().includes(q)
     );
-  }, [empresas, query]);
+  }, [empresas, query, unidadeId]);
 
   useEffect(() => {
     if (!open) return;

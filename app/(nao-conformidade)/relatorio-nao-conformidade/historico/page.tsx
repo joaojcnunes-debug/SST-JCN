@@ -6,11 +6,14 @@ import { AlertTriangle, Search, ArrowLeft, Plus } from "lucide-react";
 import { useRelatoriosNaoConformidade } from "@/lib/hooks/useRelatoriosNaoConformidade";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useCanCreate } from "@/lib/hooks/useUsuario";
+import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 
 export default function HistoricoNaoConformidadePage() {
   const canCreate = useCanCreate();
-  const { data: relatorios = [], isLoading } = useRelatoriosNaoConformidade();
+  const { data: relatoriosAll = [], isLoading } = useRelatoriosNaoConformidade();
   const { data: empresas = [] } = useEmpresas();
+  const { inUnidade } = useUnidadeFiltro();
+  const relatorios = useMemo(() => relatoriosAll.filter((r) => inUnidade(r.id_empresa)), [relatoriosAll, inUnidade]);
 
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
