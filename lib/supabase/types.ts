@@ -40,13 +40,13 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   investigacao_acidente: "Investigação de Acidente de Trabalho",
-  painel: "SST JCN Consultoria",
+  painel: "Painel SST",
   psicossocial: "DRPS – Diagnóstico de Riscos Psicossociais",
   conformidade: "Relatório de Conformidade",
   nao_conformidade: "Relatório de Não Conformidade",
   apreciacao_maquinas: "Apreciação de Máquinas",
   inventario_maquinas: "Inventário de Equipamentos",
-  analise_quimicos: "Análise de Químicos JCN Consultoria",
+  analise_quimicos: "Análise de Químicos Chabra",
   aet: "AET – Análise Ergonômica do Trabalho",
   aep: "AEP – Análise Ergonômica Preliminar",
   questionarios_psicossociais: "Questionários Psicossociais / DRPS",
@@ -62,6 +62,76 @@ export type StatusInvestigacao = "RASCUNHO" | "CONCLUIDA" | "DELETADA";
 export interface TestemunhaAcidente {
   nome: string;
   depoimento: string;
+}
+
+export type VinculoPessoa = "equipe" | "chefia_direta" | "chefia_indireta" | "comando";
+
+/** Pessoa envolvida no acidente (equipe, chefia, comando) — Item 8. */
+export interface PessoaEnvolvida {
+  nome: string;
+  cpf: string;
+  funcao: string;
+  telefone: string;
+  email: string;
+  vinculo: VinculoPessoa;
+}
+
+/** Relato de uma pessoa envolvida (ponto de vista) — Item 11. */
+export interface RelatoEnvolvido {
+  pessoa: string;
+  relato: string;
+}
+
+/** Organização do trabalho da tarefa — Item 9 (campos por aspecto). */
+export interface OrganizacaoTrabalho {
+  planejamento?: string;
+  orientacao?: string;
+  recursos?: string;       // materiais, máquinas, ferramentas, EPI/EPC
+  processos?: string;      // processos e controle de tempo
+  sinalizacao?: string;
+  hierarquia?: string;
+}
+
+/** Arquivo de mídia (foto/croqui/mapa): url pública + path de storage — Item 7. */
+export interface MidiaArquivo {
+  url: string;
+  path: string;
+}
+
+/** Vídeo do acidente (link externo) — Item 7. */
+export interface VideoLink {
+  url: string;
+  descricao?: string;
+}
+
+/** Avaliação de um fator contribuinte (questionário causal) — Item 12. */
+export interface FatorAvaliacao {
+  resposta: "" | "sim" | "nao" | "parcial" | "na";
+  obs: string;
+}
+
+/** Laudo/documento externo (LPAT, perícia, BO, bombeiros…) — Item 13. */
+export interface LaudoExterno {
+  tipo: string;
+  numero: string;
+  data: string;
+  url: string;
+  obs: string;
+}
+
+/** Consultor / membro da equipe técnica da análise — Item 14. */
+export interface Consultor {
+  nome: string;
+  registro: string;
+}
+
+/** Item de cronograma de medida adotada — Item 17. */
+export interface Cronograma {
+  tipo: string;          // manutenção, aquisições, treinamentos, procedimentos…
+  descricao: string;
+  prazo: string;
+  responsavel: string;
+  status: string;        // pendente, em andamento, concluído
 }
 
 export interface InvestigacaoAcidente {
@@ -87,6 +157,50 @@ export interface InvestigacaoAcidente {
   /** Setores e funções do acidentado (múltiplos). `setor`/`acidentado_cargo` (single) ficam de legado. */
   setores: string[];
   acidentado_funcoes: string[];
+  // Ficha completa do acidentado (Bloco 1 / Item 6)
+  acidentado_cpf: string | null;
+  acidentado_pis: string | null;
+  acidentado_estado_civil: string | null;
+  acidentado_nascimento: string | null;
+  acidentado_escolaridade: string | null;
+  acidentado_telefone: string | null;
+  acidentado_endereco: string | null;
+  acidentado_cbo: string | null;
+  acidentado_tempo_funcao: string | null;
+  acidentado_tempo_empresa: string | null;
+  acidentado_jornada: string | null;
+  acidentado_tempo_apos_inicio: string | null;
+  // Dados do acidente (Bloco 1 / Item 5)
+  qtd_acidentados: number | null;
+  /** Consequências graves (checklist). */
+  consequencias: string[];
+  /** Fator de morbi/mortalidade (checklist). */
+  fatores_morbi: string[];
+  // Local, pessoas e organização (Bloco 2 / Itens 8-11)
+  pessoas_envolvidas: PessoaEnvolvida[];
+  organizacao_trabalho: OrganizacaoTrabalho;
+  atividade_momento: string | null;
+  relatos_envolvidos: RelatoEnvolvido[];
+  // Mídia do local (Bloco 2b / Item 7)
+  croqui: MidiaArquivo[];
+  mapa_riscos: MidiaArquivo[];
+  fotos_anteriores: MidiaArquivo[];
+  fotos_momento: MidiaArquivo[];
+  fotos_atuais: MidiaArquivo[];
+  videos: VideoLink[];
+  // Fatores contribuintes (Bloco 3 / Item 12) — chave do fator → avaliação
+  fatores_contribuintes: Record<string, FatorAvaliacao>;
+  // Documentação técnica e medidas (Bloco 4 / Itens 13-14-17)
+  laudos_externos: LaudoExterno[];
+  analise_equipe: string | null;
+  consultores: Consultor[];
+  analise_links: VideoLink[];        // filmes/esquemas do dia (links)
+  medidas_adotadas: string | null;   // `medidas` (existente) = recomendadas
+  cronogramas: Cronograma[];
+  fotos_pos: MidiaArquivo[];          // relatório fotográfico pós-acidente
+  responsavel_legal_nome: string | null;
+  responsavel_legal_cargo: string | null;
+  responsavel_legal_data: string | null;
   // Descrição
   descricao: string | null;
   agente_causador: string | null;
@@ -100,8 +214,8 @@ export interface InvestigacaoAcidente {
   // Análise de causas
   causas_imediatas: string | null;
   causas_basicas: string | null;
-  /** 5 Porquês — respostas em ordem (até 5). */
-  cinco_porques: string[];
+  /** 5 Porquês — pergunta + resposta em ordem (até 5). */
+  cinco_porques: { pergunta: string; resposta: string }[];
   /** Diagrama de Ishikawa: categoria (6M) → causas. */
   ishikawa: Record<string, string[]>;
   // Medidas + conclusão
@@ -235,7 +349,7 @@ export type ModuloEmpresa =
   | "aep";
 
 export const MODULOS_EMPRESA: Array<{ value: ModuloEmpresa; label: string }> = [
-  { value: "sst", label: "SST JCN Consultoria (Inspeções)" },
+  { value: "sst", label: "Painel SST (Inspeções)" },
   { value: "psicossocial", label: "Psicossocial" },
   { value: "conformidade", label: "Relatório de Conformidade" },
   { value: "nao_conformidade", label: "Relatório de Não Conformidade" },
@@ -792,7 +906,7 @@ export interface ConclusaoRapidaQuimico {
   limite_exposicao?: string;
   resumo_tecnico?: string;
   /** Origem da análise: "template" = gerada client-side a partir da base
-   *  JCN Consultoria (sem IA); "ia" = chamada à edge function Groq. Análises antigas
+   *  Chabra (sem IA); "ia" = chamada à edge function Groq. Análises antigas
    *  sem essa marca são tratadas como "ia" pela UI (fallback). */
   _fonte?: "template" | "ia";
 }
@@ -852,7 +966,7 @@ export const GRAU_RISCO_MAQUINA_LABELS: Record<GrauRiscoMaquina, string> = {
 
 export interface Maquina {
   id_maquina: string;
-  /** NULL = patrimônio interno da JCN Consultoria; preenchido = máquina de cliente. */
+  /** NULL = patrimônio interno da Chabra; preenchido = máquina de cliente. */
   id_empresa: string | null;
   /** Origem da importação (v66): inspeção de onde a máquina veio, se importada. */
   id_inspecao: string | null;
@@ -1121,6 +1235,28 @@ export interface ApreciacaoAcao {
   updated_at: string | null;
 }
 
+/** Ação 5W2H do plano de ação da Investigação de Acidente (tabela investigacao_acoes).
+ *  Espelha ApreciacaoAcao, escopada por investigação (sem item de origem). */
+export interface InvestigacaoAcao {
+  id_acao: string;
+  id_investigacao: string;
+  ordem: number;
+  what_acao: string;
+  why_justificativa: string | null;
+  where_local: string | null;
+  when_prazo: string | null; // ISO date
+  who_responsavel: string | null;
+  how_metodo: string | null;
+  how_much_custo: string | null;
+  status: StatusAcaoApreciacao;
+  prioridade: PrioridadeAcaoApreciacao;
+  data_conclusao: string | null;
+  observacoes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
 /** Usuário associado à elaboração de uma inspeção (Documento SGG) — tabela inspecao_associados. */
 export interface InspecaoAssociado {
   id: string;
@@ -1148,7 +1284,7 @@ export interface ApreciacaoMaquinaItem {
   probabilidade: string | null;
   /** Severidade da matriz ativa (snapshot do label, ex: "Moderada"). */
   severidade: string | null;
-  /** Nível calculado via `calcularNivelComMatriz` (NivelRisco do SST JCN Consultoria). */
+  /** Nível calculado via `calcularNivelComMatriz` (NivelRisco do Painel SST). */
   nivel_risco_calculado: NivelRisco | null;
   /** FK da matriz usada — snapshot pra preservar avaliação se a matriz mudar. */
   id_matriz: string | null;
@@ -1222,7 +1358,7 @@ export interface RelatorioConformidade {
   nr_codigo: string;
   nr_titulo: string;
   setor: string | null;
-  /** Responsável técnico JCN Consultoria (quem assina a auditoria pelo prestador). */
+  /** Responsável técnico Chabra (quem assina a auditoria pelo prestador). */
   responsavel: string | null;
   /** Pessoa do lado da empresa que acompanhou a auditoria e co-assina o relatório. */
   responsavel_empresa: string | null;
@@ -1284,7 +1420,7 @@ export interface RelatorioNaoConformidade {
    *  pode mudar; relatório fica congelado). */
   nr_titulo: string | null;
   setor: string | null;
-  /** Responsável técnico JCN Consultoria (quem assina pelo prestador). */
+  /** Responsável técnico Chabra (quem assina pelo prestador). */
   responsavel: string | null;
   /** Pessoa do lado da empresa que acompanhou a auditoria. */
   responsavel_empresa: string | null;
