@@ -1,5 +1,7 @@
 "use client";
 
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
 import { use, useState, useEffect, useRef } from "react";
 import { Loader2, Save, Trash2, Plus, Workflow, AlertTriangle, ChevronDown, Check } from "lucide-react";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
@@ -12,12 +14,27 @@ import {
   type DrpsPlanoAcao5w2h,
   type StatusPlanoAcao,
 } from "@/lib/hooks/useDrpsPlanoAcao";
+import {
+  useAcaoOque,
+  useAcaoComo,
+  comoOpcoesDeTitulo,
+  type AcaoOque,
+  type AcaoComo,
+} from "@/lib/hooks/useAcaoCatalogo";
+import ComboTagInline from "@/components/drps/ComboTagInline";
 
 const STATUS_OPCOES: { valor: StatusPlanoAcao; label: string; classe: string }[] = [
   { valor: "PENDENTE", label: "Pendente", classe: "border-amber-200 bg-amber-50 text-amber-700" },
   { valor: "EM_ANDAMENTO", label: "Em andamento", classe: "border-blue-200 bg-blue-50 text-blue-700" },
   { valor: "CONCLUIDA", label: "Concluída", classe: "border-emerald-200 bg-emerald-50 text-emerald-700" },
 ];
+
+const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+function ordenarMeses(set: Set<string>): string {
+  const idx = (m: string) => { const i = MESES.indexOf(m); return i < 0 ? 99 : i; };
+  return Array.from(set).sort((a, b) => idx(a) - idx(b) || a.localeCompare(b)).join(", ");
+}
+const splitCSV = (s: string | null | undefined) => (s ?? "").split(",").map((x) => x.trim()).filter(Boolean);
 
 export default function PlanoAcaoPage({
   params,
@@ -30,6 +47,8 @@ export default function PlanoAcaoPage({
   const { data: relatorio, isLoading: loadRel } = useDrpsRelatorio(idRelatorio);
   const { data: linhas = [], isLoading: loadLinhas } = useDrpsPlanoAcao(idRelatorio);
   const { data: respondentes = [], isLoading: loadResp } = useDrpsRespondentes(idRelatorio);
+  const { data: oques = [] } = useAcaoOque();
+  const { data: comos = [] } = useAcaoComo();
   const salvar = useSalvarLinhaPlanoAcao();
 
   // Setores avaliados neste DRPS (origem dos respondentes) p/ o select "Onde".
@@ -47,13 +66,7 @@ export default function PlanoAcaoPage({
     });
   }
 
-  if (loadRel || loadLinhas || loadResp) {
-    return (
-      <div className="flex items-center justify-center py-16 text-gray-500">
-        <Loader2 className="size-5 animate-spin" />
-      </div>
-    );
-  }
+  if (loadRel || loadLinhas || loadResp) return <EditorSkeleton />;
 
   if (!relatorio) {
     return (
@@ -94,6 +107,8 @@ export default function PlanoAcaoPage({
             idRelatorio={idRelatorio}
             idEmpresa={relatorio.id_empresa}
             setores={setores}
+            oques={oques}
+            comos={comos}
             canEdit={canEdit}
           />
         ))}
@@ -120,6 +135,8 @@ function LinhaCard({
   idRelatorio,
   idEmpresa,
   setores,
+  oques,
+  comos,
   canEdit,
 }: {
   numero: number;
@@ -127,10 +144,13 @@ function LinhaCard({
   idRelatorio: string;
   idEmpresa: string | null;
   setores: string[];
+  oques: AcaoOque[];
+  comos: AcaoComo[];
   canEdit: boolean;
 }) {
   const salvar = useSalvarLinhaPlanoAcao();
   const remover = useRemoverLinhaPlanoAcao();
+  const [comoNovo, setComoNovo] = useState("");
 
   const [form, setForm] = useState({
     acao: linha.acao ?? "",
@@ -182,6 +202,47 @@ function LinhaCard({
     set("onde", Array.from(next).join(", "));
   }
 
+  // "O Quê" — opções do catálogo (ativas) para o combo (datalist).
+  const oqueOpcoes = oques.filter((o) => o.ativo).map((o) => o.titulo);
+  const oqueListId = `oque-${linha.id}`;
+
+  // "Como" — opções vêm do "O Quê" selecionado; valores guardados por vírgula (catálogo + extras).
+  const comoOpcoes = comoOpcoesDeTitulo(oques, comos, form.acao);
+  const comoArr = splitCSV(form.como);
+  const comoOptSet = new Set(comoOpcoes.map((o) => o.toLowerCase()));
+  const comoSelecionados = comoArr.filter((x) => comoOptSet.has(x.toLowerCase()));
+  const comoExtras = comoArr.filter((x) => !comoOptSet.has(x.toLowerCase()));
+  const comoSet = (sel: string[], ext: string[]) => set("como", [...sel, ...ext].join(", "));
+  function comoToggle(item: string) {
+    if (!canEdit) return;
+    const has = comoSelecionados.some((s) => s.toLowerCase() === item.toLowerCase());
+    const nextSel = has
+      ? comoSelecionados.filter((s) => s.toLowerCase() !== item.toLowerCase())
+      : [...comoSelecionados, item];
+    comoSet(nextSel, comoExtras);
+  }
+  function comoAdd() {
+    const v = comoNovo.trim();
+    if (!v) return;
+    const dup = [...comoSelecionados, ...comoExtras].some((x) => x.toLowerCase() === v.toLowerCase());
+    if (!dup) comoSet(comoSelecionados, [...comoExtras, v]);
+    setComoNovo("");
+  }
+  function comoRemoveExtra(i: number) {
+    comoSet(comoSelecionados, comoExtras.filter((_, j) => j !== i));
+  }
+
+  // "Quando" — checklist de meses (Jan–Dez); guarda por vírgula (preserva legado).
+  const selecionadosQuando = new Set(splitCSV(form.prazo));
+  const opcoesQuando = Array.from(new Set([...MESES, ...selecionadosQuando]));
+  function toggleQuando(m: string) {
+    if (!canEdit) return;
+    const next = new Set(selecionadosQuando);
+    if (next.has(m)) next.delete(m);
+    else next.add(m);
+    set("prazo", ordenarMeses(next));
+  }
+
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -195,14 +256,24 @@ function LinhaCard({
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Campo label="O quê (ação)" full>
-          <textarea
-            value={form.acao}
-            onChange={(e) => set("acao", e.target.value)}
-            readOnly={!canEdit}
-            rows={2}
-            className={inputCls}
-            placeholder="Ação planejada"
-          />
+          {!canEdit ? (
+            <p className="py-1.5 text-sm text-gray-700">{form.acao || "—"}</p>
+          ) : (
+            <>
+              <input
+                list={oqueListId}
+                value={form.acao}
+                onChange={(e) => set("acao", e.target.value)}
+                className={inputCls}
+                placeholder="Escolha do catálogo ou digite a ação"
+              />
+              <datalist id={oqueListId}>
+                {oqueOpcoes.map((o) => (
+                  <option key={o} value={o} />
+                ))}
+              </datalist>
+            </>
+          )}
         </Campo>
         <Campo label="Por quê (justificativa)" full>
           <textarea
@@ -227,8 +298,18 @@ function LinhaCard({
             />
           )}
         </Campo>
-        <Campo label="Quando (prazo)">
-          <input value={form.prazo} onChange={(e) => set("prazo", e.target.value)} readOnly={!canEdit} className={inputCls} placeholder="Ex.: Jul/2026" />
+        <Campo label="Quando (meses — pode marcar vários)">
+          {!canEdit ? (
+            <p className="py-1.5 text-sm text-gray-700">
+              {selecionadosQuando.size ? ordenarMeses(selecionadosQuando) : "—"}
+            </p>
+          ) : (
+            <MultiSelectSetores
+              opcoes={opcoesQuando}
+              selecionados={selecionadosQuando}
+              onToggle={toggleQuando}
+            />
+          )}
         </Campo>
         <Campo label="Quem (responsável)">
           <input value={form.responsavel} onChange={(e) => set("responsavel", e.target.value)} readOnly={!canEdit} className={inputCls} placeholder="Responsável" />
@@ -236,15 +317,26 @@ function LinhaCard({
         <Campo label="Quanto custa">
           <input value={form.quanto_custa} onChange={(e) => set("quanto_custa", e.target.value)} readOnly={!canEdit} className={inputCls} placeholder="Custo estimado" />
         </Campo>
-        <Campo label="Como" full>
-          <textarea
-            value={form.como}
-            onChange={(e) => set("como", e.target.value)}
-            readOnly={!canEdit}
-            rows={2}
-            className={inputCls}
-            placeholder="Como será executada"
-          />
+        <Campo label="Como (formas de execução — uma ou mais)" full>
+          {!canEdit ? (
+            <p className="py-1.5 text-sm text-gray-700">
+              {[...comoSelecionados, ...comoExtras].join(", ") || "—"}
+            </p>
+          ) : (
+            <ComboTagInline
+              opcoes={comoOpcoes}
+              selecionados={comoSelecionados}
+              extras={comoExtras}
+              novoValor={comoNovo}
+              onToggle={comoToggle}
+              onAdd={comoAdd}
+              onRemoveExtra={comoRemoveExtra}
+              onNovoValor={setComoNovo}
+              placeholder={form.acao.trim() ? "Escolha um 'Como' ou digite" : "Escolha o 'O quê' primeiro, ou digite"}
+              vazioLabel={comoOpcoes.length === 0 ? "Sem 'Como' no catálogo p/ esta ação — digite um personalizado." : "Já adicionado."}
+              disabled={!canEdit}
+            />
+          )}
         </Campo>
       </div>
 

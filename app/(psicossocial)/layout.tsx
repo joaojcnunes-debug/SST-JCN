@@ -52,6 +52,11 @@ const SECTIONS_LISTA: NavSection[] = [
         icon: ClipboardList,
       },
       {
+        href: "/psicossocial/acoes-plano",
+        label: "Plano de Ação",
+        icon: ClipboardCheck,
+      },
+      {
         href: "/psicossocial/texto-padrao",
         label: "Texto Padrão",
         icon: FileEdit,
@@ -121,6 +126,7 @@ function sectionsRelatorio(idRelatorio: string): NavSection[] {
         { href: `${base}/metadados`, label: "Metadados do Relatório", icon: Building2 },
         { href: "/psicossocial/agravos", label: "Possíveis Agravos", icon: Brain },
         { href: "/psicossocial/medidas-recomendadas", label: "Medidas Recomendadas", icon: ClipboardList },
+        { href: "/psicossocial/acoes-plano", label: "Plano de Ação", icon: ClipboardCheck },
         { href: "/psicossocial/texto-padrao", label: "Texto Padrão", icon: FileEdit },
       ],
     },
