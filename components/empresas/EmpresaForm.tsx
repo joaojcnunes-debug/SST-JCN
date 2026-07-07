@@ -135,11 +135,12 @@ export default function EmpresaForm({
       const cnaeCod =
         d.cnae_fiscal != null && d.cnae_fiscal !== "" ? String(d.cnae_fiscal) : "";
 
-      // Mantém o que já houver preenchido como fallback (?? f.campo).
+      // Mantém o que já houver preenchido como fallback (?? f.campo). Exceção: o Nome
+      // recebe a RAZÃO SOCIAL completa da busca (mesmo sobrescrevendo), como pedido.
       setForm((f) => ({
         ...f,
         razao_social: razao || f.razao_social,
-        nome_empresa: f.nome_empresa.trim() || fantasia || razao || f.nome_empresa,
+        nome_empresa: razao || fantasia || f.nome_empresa,
         logradouro: str(d.logradouro) || f.logradouro,
         numero: str(d.numero) || f.numero,
         complemento: str(d.complemento) || f.complemento,
