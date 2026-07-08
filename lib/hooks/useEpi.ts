@@ -14,6 +14,7 @@ import type {
   EpiTipoMovimentacao,
   EpiImportacaoNfe,
   EpiNfeItemStatusMap,
+  EpiEntrega,
 } from "@/lib/epi/types";
 
 function emailAtual(): string | null {
@@ -324,6 +325,75 @@ export function useImportarNfe() {
       qc.invalidateQueries({ queryKey: ["epi-movimentacoes", vars.empresa_id] });
       qc.invalidateQueries({ queryKey: ["epi-saldo", vars.empresa_id] });
       toast.success("NF-e importada");
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
+// ============================================================
+// ENTREGAS DE EPI (Fase 3) — histórico + registro via RPC
+// ============================================================
+export function useEpiEntregas(empresaId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["epi-entregas", empresaId],
+    enabled: !!empresaId,
+    staleTime: 20 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("epi_entregas")
+        .select("*")
+        .eq("empresa_id", empresaId!)
+        .order("data_entrega", { ascending: false })
+        .order("criado_em", { ascending: false })
+        .limit(300);
+      if (error) throw error;
+      return (data ?? []) as unknown as EpiEntrega[];
+    },
+  });
+}
+
+/** Item enviado ao RPC epi_registrar_entrega. */
+export interface RegistrarEntregaItem {
+  id_catalogo: string;
+  quantidade: number;
+}
+
+export interface RegistrarEntregaArgs {
+  empresa_id: string;
+  id_colaborador: string;
+  data_entrega: string | null;
+  responsavel: string | null;
+  observacao: string | null;
+  itens: RegistrarEntregaItem[];
+}
+
+/**
+ * Registra a entrega física de forma atômica via RPC SECURITY DEFINER: valida o
+ * saldo de cada item ANTES de escrever, grava a ficha + itens (com snapshot de
+ * nome/CA) e dá baixa (`saida`) no estoque. Sem estado parcial.
+ */
+export function useRegistrarEntrega() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: RegistrarEntregaArgs) => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("epi_registrar_entrega", {
+        p_empresa_id: args.empresa_id,
+        p_id_colaborador: args.id_colaborador,
+        p_data_entrega: args.data_entrega,
+        p_responsavel: args.responsavel,
+        p_observacao: args.observacao,
+        p_itens: args.itens as never,
+      } as never);
+      if (error) throw error;
+      return data as unknown as string;
+    },
+    onSuccess: (_r, vars) => {
+      qc.invalidateQueries({ queryKey: ["epi-entregas", vars.empresa_id] });
+      qc.invalidateQueries({ queryKey: ["epi-movimentacoes", vars.empresa_id] });
+      qc.invalidateQueries({ queryKey: ["epi-saldo", vars.empresa_id] });
+      toast.success("Entrega registrada");
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });

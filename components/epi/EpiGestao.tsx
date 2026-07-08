@@ -1,18 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { HardHat, Boxes, Users, FileText } from "lucide-react";
+import { HardHat, Boxes, FileText, ClipboardCheck, Users } from "lucide-react";
 import EpiCatalogoTab from "./EpiCatalogoTab";
 import EpiEstoqueTab from "./EpiEstoqueTab";
 import EpiColaboradoresTab from "./EpiColaboradoresTab";
 import EpiNfeTab from "./EpiNfeTab";
+import EpiEntregasTab from "./EpiEntregasTab";
 
-type Aba = "catalogo" | "estoque" | "nfe" | "colaboradores";
+type Aba = "catalogo" | "estoque" | "nfe" | "entregas" | "colaboradores";
 
 const ABAS = [
   { id: "catalogo", label: "Catálogo", icon: HardHat, soEdicao: false },
   { id: "estoque", label: "Estoque", icon: Boxes, soEdicao: false },
   { id: "nfe", label: "NF-e", icon: FileText, soEdicao: true },
+  { id: "entregas", label: "Entregas", icon: ClipboardCheck, soEdicao: false },
   { id: "colaboradores", label: "Colaboradores", icon: Users, soEdicao: false },
 ] as const;
 
@@ -73,6 +75,9 @@ export default function EpiGestao({
       )}
       {aba === "nfe" && canEdit && (
         <EpiNfeTab empresaId={empresaId} canEdit={canEdit} />
+      )}
+      {aba === "entregas" && (
+        <EpiEntregasTab empresaId={empresaId} canEdit={canEdit} />
       )}
       {aba === "colaboradores" && (
         <EpiColaboradoresTab empresaId={empresaId} canEdit={canEdit} />

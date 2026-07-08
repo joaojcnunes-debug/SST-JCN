@@ -104,3 +104,31 @@ export interface EpiNfeParsed {
 
 /** Como a UI decidiu tratar cada item na conferência. */
 export type EpiNfeItemStatusMap = "lancado" | "ignorado";
+
+// ============================================================
+// ENTREGAS DE EPI (Fase 3) — cabeçalho + itens append-only
+// ============================================================
+export interface EpiEntrega {
+  id: string;
+  empresa_id: string;
+  id_colaborador: string;
+  data_entrega: string; // ISO date
+  responsavel_entrega: string | null;
+  observacao: string | null;
+  total_itens: number;
+  status: string;
+  assinatura_recebedor: string | null;
+  criado_por: string | null;
+  criado_em: string;
+}
+
+export interface EpiEntregaItem {
+  id: string;
+  id_entrega: string;
+  empresa_id: string;
+  id_catalogo: string;
+  nome_epi: string | null;
+  ca_numero: string | null;
+  quantidade: number;
+  criado_em: string;
+}
