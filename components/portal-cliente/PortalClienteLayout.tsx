@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   ListChecks,
   MessageSquarePlus,
+  HardHat,
   User,
   LogOut,
   Menu,
@@ -29,6 +30,7 @@ const NAV = [
   { href: "/portal-cliente/pendencias",         label: "Pendências",         icon: ClipboardList },
   { href: "/portal-cliente/nao-conformidades",  label: "Não Conformidades",  icon: AlertTriangle },
   { href: "/portal-cliente/plano-acao",         label: "Plano de Ação",      icon: ListChecks },
+  { href: "/portal-cliente/epi",                label: "EPI",                icon: HardHat },
   { href: "/portal-cliente/solicitacoes",       label: "Solicitações",       icon: MessageSquarePlus },
   { href: "/portal-cliente/perfil",             label: "Meu Perfil",         icon: User },
 ];
