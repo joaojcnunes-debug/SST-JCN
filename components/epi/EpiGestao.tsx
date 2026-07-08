@@ -1,21 +1,36 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { HardHat, Boxes, FileText, ClipboardCheck, Users } from "lucide-react";
+import {
+  HardHat,
+  Boxes,
+  FileText,
+  ClipboardCheck,
+  ArrowLeftRight,
+  Users,
+} from "lucide-react";
 import EpiCatalogoTab from "./EpiCatalogoTab";
 import EpiEstoqueTab from "./EpiEstoqueTab";
 import EpiColaboradoresTab from "./EpiColaboradoresTab";
 import EpiNfeTab from "./EpiNfeTab";
 import EpiEntregasTab from "./EpiEntregasTab";
+import EpiTransferenciasTab from "./EpiTransferenciasTab";
 
-type Aba = "catalogo" | "estoque" | "nfe" | "entregas" | "colaboradores";
+type Aba =
+  | "catalogo"
+  | "estoque"
+  | "nfe"
+  | "entregas"
+  | "transferencias"
+  | "colaboradores";
 
 const ABAS = [
-  { id: "catalogo", label: "Catálogo", icon: HardHat, soEdicao: false },
-  { id: "estoque", label: "Estoque", icon: Boxes, soEdicao: false },
-  { id: "nfe", label: "NF-e", icon: FileText, soEdicao: true },
-  { id: "entregas", label: "Entregas", icon: ClipboardCheck, soEdicao: false },
-  { id: "colaboradores", label: "Colaboradores", icon: Users, soEdicao: false },
+  { id: "catalogo", label: "Catálogo", icon: HardHat, soEdicao: false, soInterno: false },
+  { id: "estoque", label: "Estoque", icon: Boxes, soEdicao: false, soInterno: false },
+  { id: "nfe", label: "NF-e", icon: FileText, soEdicao: true, soInterno: false },
+  { id: "entregas", label: "Entregas", icon: ClipboardCheck, soEdicao: false, soInterno: false },
+  { id: "transferencias", label: "Transferências", icon: ArrowLeftRight, soEdicao: true, soInterno: true },
+  { id: "colaboradores", label: "Colaboradores", icon: Users, soEdicao: false, soInterno: false },
 ] as const;
 
 /**
@@ -36,8 +51,12 @@ export default function EpiGestao({
   const [aba, setAba] = useState<Aba>("catalogo");
 
   const abasVisiveis = useMemo(
-    () => ABAS.filter((a) => canEdit || !a.soEdicao),
-    [canEdit]
+    () =>
+      ABAS.filter(
+        (a) =>
+          (canEdit || !a.soEdicao) && (contexto === "interno" || !a.soInterno)
+      ),
+    [canEdit, contexto]
   );
 
   if (!empresaId) {
@@ -85,6 +104,9 @@ export default function EpiGestao({
           canEdit={canEdit}
           podeSelar={contexto === "interno"}
         />
+      )}
+      {aba === "transferencias" && contexto === "interno" && (
+        <EpiTransferenciasTab empresaOrigem={empresaId} />
       )}
       {aba === "colaboradores" && (
         <EpiColaboradoresTab empresaId={empresaId} canEdit={canEdit} />

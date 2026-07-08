@@ -134,6 +134,31 @@ export interface EpiEntregaItem {
 }
 
 // ============================================================
+// TRANSFERÊNCIA ENTRE EMPRESAS (Fase 5) — append-only, só interno
+// ============================================================
+export interface EpiTransferencia {
+  id: string;
+  empresa_origem: string;
+  empresa_destino: string;
+  observacao: string | null;
+  total_itens: number;
+  criado_por: string | null;
+  criado_em: string;
+}
+
+export interface EpiTransferenciaItem {
+  id: string;
+  id_transferencia: string;
+  empresa_origem: string;
+  empresa_destino: string;
+  id_catalogo_origem: string;
+  id_catalogo_destino: string;
+  nome_epi: string | null;
+  quantidade: number;
+  criado_em: string;
+}
+
+// ============================================================
 // ASSINATURA DA ENTREGA (Fase 4) — trilha de evidências append-only
 // ============================================================
 export interface EpiEntregaAssinatura {

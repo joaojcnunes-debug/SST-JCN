@@ -16,6 +16,7 @@ import type {
   EpiNfeItemStatusMap,
   EpiEntrega,
   EpiEntregaAssinatura,
+  EpiTransferencia,
 } from "@/lib/epi/types";
 
 function emailAtual(): string | null {
@@ -469,6 +470,78 @@ export function useAssinarEntrega() {
     onSuccess: (_r, vars) => {
       qc.invalidateQueries({ queryKey: ["epi-entregas-assinadas", vars.empresa_id] });
       toast.success("Assinatura registrada");
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
+// ============================================================
+// TRANSFERÊNCIA ENTRE EMPRESAS (Fase 5) — histórico + registro via RPC
+// ============================================================
+
+/** Transferências em que a empresa aparece como origem OU destino. */
+export function useEpiTransferencias(empresaId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["epi-transferencias", empresaId],
+    enabled: !!empresaId,
+    staleTime: 20 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("epi_transferencias")
+        .select("*")
+        .or(`empresa_origem.eq.${empresaId},empresa_destino.eq.${empresaId}`)
+        .order("criado_em", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as unknown as EpiTransferencia[];
+    },
+  });
+}
+
+/** Item enviado ao RPC epi_transferir após a conferência de destino. */
+export interface TransferirItem {
+  id_catalogo_origem: string;
+  quantidade: number;
+  id_catalogo_destino: string | null;
+  criar_no_destino: boolean;
+}
+
+export interface TransferirArgs {
+  empresa_origem: string;
+  empresa_destino: string;
+  observacao: string | null;
+  itens: TransferirItem[];
+}
+
+/**
+ * Transfere itens de uma empresa para outra de forma atômica via RPC SECURITY
+ * DEFINER (só equipe interna): valida saldo na origem, cria/mapeia o item no
+ * destino e gera saída+entrada. Sem estado parcial.
+ */
+export function useTransferir() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: TransferirArgs) => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("epi_transferir", {
+        p_empresa_origem: args.empresa_origem,
+        p_empresa_destino: args.empresa_destino,
+        p_observacao: args.observacao,
+        p_itens: args.itens as never,
+      } as never);
+      if (error) throw error;
+      return data as unknown as string;
+    },
+    onSuccess: (_r, vars) => {
+      // invalida os dois lados (origem e destino)
+      for (const emp of [vars.empresa_origem, vars.empresa_destino]) {
+        qc.invalidateQueries({ queryKey: ["epi-transferencias", emp] });
+        qc.invalidateQueries({ queryKey: ["epi-catalogo", emp] });
+        qc.invalidateQueries({ queryKey: ["epi-movimentacoes", emp] });
+        qc.invalidateQueries({ queryKey: ["epi-saldo", emp] });
+      }
+      toast.success("Transferência registrada");
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
