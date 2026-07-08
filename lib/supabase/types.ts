@@ -21,7 +21,8 @@ export type ModuloPermitido =
   | "aep"
   | "questionarios_psicossociais"
   | "produtividade"
-  | "investigacao_acidente";
+  | "investigacao_acidente"
+  | "epi";
 
 export const TODOS_MODULOS: ModuloPermitido[] = [
   "painel",
@@ -36,6 +37,7 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "questionarios_psicossociais",
   "produtividade",
   "investigacao_acidente",
+  "epi",
 ];
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
@@ -51,6 +53,7 @@ export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   aep: "AEP – Análise Ergonômica Preliminar",
   questionarios_psicossociais: "Questionários Psicossociais / DRPS",
   produtividade: "Projeção de Produtividade CHABRA",
+  epi: "EPI – Equipamentos de Proteção Individual",
 };
 
 // ─── Investigação de Acidente de Trabalho ────────────────────────────────────
