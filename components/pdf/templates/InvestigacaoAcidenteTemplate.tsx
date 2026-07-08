@@ -37,8 +37,11 @@ body { font-family: Arial, Helvetica, sans-serif; color: #111827; }
 .ia-test .nome { font-weight: 700; font-size: 11pt; color: #111827; }
 .ia-test .dep { font-size: 10pt; color: #374151; white-space: pre-wrap; margin-top: 2px; }
 .ia-pq { margin: 4px 0; padding-left: 0; list-style: none; }
-.ia-pq li { font-size: 11pt; color: #111827; padding: 3px 0; border-bottom: 1px dotted #d1d5db; }
-.ia-pq b { color: ${VERDE}; }
+.ia-pq li { padding: 5px 0; border-bottom: 1px dotted #d1d5db; }
+.ia-pq .num { display: block; font-size: 8.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: ${VERDE}; margin-bottom: 1px; }
+.ia-pq .perg { display: block; font-size: 11pt; font-weight: 600; color: #111827; }
+.ia-pq .resp { display: block; font-size: 11pt; color: #374151; margin-top: 1px; }
+.ia-pq .lbl { font-weight: 700; color: #6b7280; }
 section { page-break-inside: avoid; }
 `;
 
@@ -145,14 +148,50 @@ function Campo({ rot, val, full }: { rot: string; val: string | null | undefined
   );
 }
 
+/** Remove tags HTML (às vezes o texto vem com <p>...</p> da geração por IA) preservando as
+ *  quebras de parágrafo. Só remove tags conhecidas — não come "< 30 >" de texto comum. */
+function limparHtml(val: string | null | undefined): string {
+  if (!val) return "";
+  return val
+    .replace(/<\/(p|div)\s*>/gi, "\n\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/?(p|div|span|strong|em|b|i|u|ul|ol|li)\b[^>]*>/gi, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .trim();
+}
+
+/** Normaliza um "Por quê?": objeto {pergunta,resposta}, JSON-string (bug do text[]) ou string simples. */
+function parsePorqueEntry(p: unknown): { pergunta: string; resposta: string } {
+  if (typeof p === "string") {
+    const s = p.trim();
+    if (s.startsWith("{")) {
+      try {
+        const o = JSON.parse(s) as { pergunta?: unknown; resposta?: unknown };
+        if (o && typeof o === "object") return { pergunta: String(o.pergunta ?? ""), resposta: String(o.resposta ?? "") };
+      } catch { /* não é JSON — trata como resposta */ }
+    }
+    return { pergunta: "", resposta: p };
+  }
+  const o = (p ?? {}) as { pergunta?: string; resposta?: string };
+  return { pergunta: o.pergunta ?? "", resposta: o.resposta ?? "" };
+}
+
 function Bloco({ rot, val }: { rot: string; val: string | null | undefined }) {
-  if (!val || !val.trim()) return null;
+  const texto = limparHtml(val);
+  if (!texto) return null;
   return (
     <div className="ia-bloco">
       <p className="rot" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", color: "#6b7280", margin: "0 0 2px" }}>
         {rot}
       </p>
-      <p className="val" style={{ fontSize: "11pt", color: "#111827", whiteSpace: "pre-wrap", margin: 0 }}>{val}</p>
+      <p className="val" style={{ fontSize: "11pt", color: "#111827", whiteSpace: "pre-wrap", margin: 0 }}>{texto}</p>
     </div>
   );
 }
@@ -201,8 +240,8 @@ export default function InvestigacaoAcidenteTemplate({
   const afast = inv.houve_afastamento
     ? `Sim${inv.dias_afastamento != null ? ` — ${inv.dias_afastamento} dia(s)` : ""}`
     : "Não";
-  const porques = ((inv.cinco_porques ?? []) as unknown as (string | { pergunta?: string; resposta?: string })[])
-    .map((p) => (typeof p === "string" ? { pergunta: "", resposta: p } : { pergunta: p?.pergunta ?? "", resposta: p?.resposta ?? "" }))
+  const porques = ((inv.cinco_porques ?? []) as unknown[])
+    .map(parsePorqueEntry)
     .filter((p) => p.pergunta.trim() || p.resposta.trim());
   const testemunhas = (inv.testemunhas ?? []).filter((t) => (t.nome ?? "").trim() || (t.depoimento ?? "").trim());
 
@@ -384,8 +423,9 @@ export default function InvestigacaoAcidenteTemplate({
             <ul className="ia-pq">
               {porques.map((p, i) => (
                 <li key={i}>
-                  <b>{i + 1}º Por quê?{p.pergunta.trim() ? ` ${p.pergunta}` : ""}</b>
-                  {p.resposta.trim() ? ` — ${p.resposta}` : ""}
+                  <span className="num">{i + 1}º Por quê?</span>
+                  {p.pergunta.trim() && <span className="perg">{p.pergunta}</span>}
+                  {p.resposta.trim() && <span className="resp"><span className="lbl">Resposta: </span>{p.resposta}</span>}
                 </li>
               ))}
             </ul>

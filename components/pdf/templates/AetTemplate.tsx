@@ -730,7 +730,9 @@ export default function AetTemplate({
         conteudoFixo = consideracoes ? (
           <div className="aet-conc">
             <SectionTitulo titulo={numLabel(numPorSlug["aet_consideracoes_finais"], tituloPorSlug["aet_consideracoes_finais"] ?? "Considerações Finais")} />
-            <p>{consideracoes}</p>
+            {/* Rich text do editor (com <p>...</p>) — renderizar como HTML igual ao parecer/recomendações,
+                senão as tags saem literais no PDF. */}
+            <div className="aet-rich" dangerouslySetInnerHTML={{ __html: consideracoes }} />
           </div>
         ) : null;
         break;

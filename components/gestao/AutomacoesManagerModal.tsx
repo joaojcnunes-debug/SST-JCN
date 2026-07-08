@@ -12,6 +12,7 @@ const GATILHOS: { value: GatilhoAutomacao; label: string }[] = [
   { value: "status_muda", label: "Quando o status muda" },
   { value: "tarefa_criada", label: "Quando a tarefa é criada" },
   { value: "prazo_proximo", label: "Quando o prazo se aproxima" },
+  { value: "prazo_vencido", label: "Quando o prazo vence (atrasada)" },
 ];
 const ACOES: { value: string; label: string }[] = [
   { value: "mover_status", label: "Mover para status" },
@@ -74,6 +75,13 @@ export default function AutomacoesManagerModal({
                   </select>
                 </>
               )}
+              {a.gatilho === "prazo_proximo" && (
+                <>
+                  <input type="number" min={0} max={90} value={a.condicao?.dias_antes ?? "3"} disabled={!podeEditar}
+                    onChange={(e) => setCond(a, { dias_antes: e.target.value || undefined })} className={`${sel} w-16`} />
+                  <span className="text-gray-400">dia(s) antes do prazo</span>
+                </>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -114,7 +122,7 @@ export default function AutomacoesManagerModal({
                 <input defaultValue={a.acao?.valor ?? ""} disabled={!podeEditar} onBlur={(e) => setAcao(a, { valor: e.target.value.trim() })} placeholder="mensagem (opcional)" className={`${sel} flex-1`} />
               )}
             </div>
-            {a.gatilho === "prazo_proximo" && <p className="text-[11px] text-gray-400">Executada diariamente pelo agendador (Etapa 7d).</p>}
+            {(a.gatilho === "prazo_proximo" || a.gatilho === "prazo_vencido") && <p className="text-[11px] text-gray-400">Verificada diariamente pelo servidor (não precisa estar com o quadro aberto).</p>}
           </div>
         ))}
         {podeEditar && (
@@ -123,7 +131,7 @@ export default function AutomacoesManagerModal({
           </button>
         )}
         {automacoes.length === 0 && !podeEditar && <p className="text-sm text-gray-400">Nenhuma automação.</p>}
-        <p className="pt-1 text-xs text-gray-400">As automações de gatilho imediato rodam ao mudar o status ou criar a tarefa no app.</p>
+        <p className="pt-1 text-xs text-gray-400">As automações rodam no servidor: as de status/criação disparam na hora; as de prazo são verificadas diariamente.</p>
       </div>
     </Modal>
   );

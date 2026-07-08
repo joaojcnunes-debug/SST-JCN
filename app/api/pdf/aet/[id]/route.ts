@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
+import { PERGUNTAS_DEFAULT } from "@/lib/aet/perguntas-default";
 import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
@@ -88,7 +89,12 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         supabase.from("aet_laudo_qps_meta").select("*").eq("id_relatorio", id).maybeSingle(),
       ]);
     const fatoresConfig = (rawFCfg ?? []) as unknown as AetFatorConfigLike[];
-    const fatoresPerguntas = (rawFPerg ?? []) as unknown as AetFatorPerguntaLike[];
+    // Fallback igual ao da tela (useAet13FatoresPerguntas): tabela vazia → perguntas padrão.
+    // Sem isto, o calcMediaSetor do template não acha a `logica` e usa a nota CRUA (sem inversão),
+    // fazendo a seção 10 (por setor) divergir da seção 11. Ver lib/aet/perguntas-default.ts.
+    const fatoresPerguntas = ((rawFPerg && rawFPerg.length > 0)
+      ? rawFPerg
+      : PERGUNTAS_DEFAULT) as unknown as AetFatorPerguntaLike[];
     const qpsRespostas = (rawQResp ?? []) as unknown as AetQpsRespostaLike[];
     const fatoresPsi = (rawFPsi ?? []) as unknown as AetFatorPsiLike[];
     const qpsMeta = (rawQMeta ?? null) as unknown as AetQpsMetaLike | null;

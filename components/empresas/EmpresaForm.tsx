@@ -68,6 +68,7 @@ export default function EmpresaForm({
     cnae_descricao: "",
     situacao_cadastral: "",
     porte: "",
+    grau_risco: "",
     status: "Ativo" as "Ativo" | "Inativa",
     observacao: "",
     modulos_habilitados: [...TODOS_MODULOS] as ModuloEmpresa[],
@@ -97,6 +98,7 @@ export default function EmpresaForm({
         cnae_descricao: empresa?.cnae_descricao ?? "",
         situacao_cadastral: empresa?.situacao_cadastral ?? "",
         porte: empresa?.porte ?? "",
+        grau_risco: empresa?.grau_risco != null ? String(empresa.grau_risco) : "",
         status: (empresa?.status as "Ativo" | "Inativa") ?? "Ativo",
         observacao: empresa?.observacao ?? "",
         modulos_habilitados: [...TODOS_MODULOS],
@@ -189,6 +191,7 @@ export default function EmpresaForm({
         cnae_descricao: form.cnae_descricao.trim() || null,
         situacao_cadastral: form.situacao_cadastral.trim() || null,
         porte: form.porte.trim() || null,
+        grau_risco: form.grau_risco ? parseInt(form.grau_risco, 10) : null,
         status: form.status,
         observacao: form.observacao.trim() || null,
         modulos_habilitados: form.modulos_habilitados,
@@ -235,6 +238,10 @@ export default function EmpresaForm({
     }
     if (!form.id_unidade) {
       toast.error("Selecione a unidade da empresa");
+      return;
+    }
+    if (!form.grau_risco) {
+      toast.error("Grau de risco é obrigatório");
       return;
     }
     mutation.mutate();
@@ -511,6 +518,28 @@ export default function EmpresaForm({
               />
             </div>
           </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-gray-700">
+            Grau de risco (NR-4) <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={form.grau_risco}
+            onChange={(e) => setForm({ ...form, grau_risco: e.target.value })}
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          >
+            <option value="" disabled>
+              Selecione o grau de risco…
+            </option>
+            <option value="1">Grau 1</option>
+            <option value="2">Grau 2</option>
+            <option value="3">Grau 3</option>
+            <option value="4">Grau 4</option>
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            Conforme o Quadro I da NR-4, de acordo com o CNAE da empresa.
+          </p>
         </div>
 
         <div>

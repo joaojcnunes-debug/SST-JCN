@@ -214,10 +214,21 @@ export default function EditorInvestigacaoPage() {
       testemunhas: data.testemunhas ?? [],
       causas_imediatas: data.causas_imediatas ?? "",
       causas_basicas: data.causas_basicas ?? "",
-      // aceita formato legado (string[]) e o novo ({ pergunta, resposta }[])
-      cinco_porques: ((data.cinco_porques ?? []) as unknown as (string | { pergunta?: string; resposta?: string })[]).map((p) =>
-        typeof p === "string" ? { pergunta: "", resposta: p } : { pergunta: p?.pergunta ?? "", resposta: p?.resposta ?? "" },
-      ),
+      // aceita objeto {pergunta,resposta}, JSON-string (coerção do text[]) e string simples (legado)
+      cinco_porques: ((data.cinco_porques ?? []) as unknown[]).map((p) => {
+        if (typeof p === "string") {
+          const s = p.trim();
+          if (s.startsWith("{")) {
+            try {
+              const o = JSON.parse(s) as { pergunta?: unknown; resposta?: unknown };
+              if (o && typeof o === "object") return { pergunta: String(o.pergunta ?? ""), resposta: String(o.resposta ?? "") };
+            } catch { /* trata como resposta */ }
+          }
+          return { pergunta: "", resposta: p };
+        }
+        const o = (p ?? {}) as { pergunta?: string; resposta?: string };
+        return { pergunta: o.pergunta ?? "", resposta: o.resposta ?? "" };
+      }),
       ishikawa: data.ishikawa ?? {},
       medidas: data.medidas ?? "",
       conclusao: data.conclusao ?? "",
