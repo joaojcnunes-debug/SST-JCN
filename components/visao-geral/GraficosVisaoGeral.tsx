@@ -63,7 +63,7 @@ function DonutCard({
       </div>
       <div className="flex items-center gap-4">
         <div className="relative size-[150px] shrink-0">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width={150} height={150}>
             <PieChart>
               <Pie data={fatias} dataKey="valor" nameKey="label" innerRadius={48} outerRadius={72} paddingAngle={2} stroke="none">
                 {fatias.map((f) => <Cell key={f.label} fill={f.cor} />)}
@@ -123,7 +123,7 @@ export default function GraficosVisaoGeral({
             <Link href="/dashboard" className="text-xs font-semibold text-verde-primary hover:underline">Ver →</Link>
           </div>
           <div className="h-[150px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={150} minWidth={0}>
               <BarChart data={inspecoesPorMes} margin={{ top: 6, right: 6, left: -22, bottom: 0 }}>
                 <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
                 <Tooltip

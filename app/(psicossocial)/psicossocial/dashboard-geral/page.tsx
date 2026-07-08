@@ -12,6 +12,8 @@ import {
   Building2,
   Send,
   GripVertical,
+  Search,
+  X,
 } from "lucide-react";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import {
@@ -234,6 +236,22 @@ function Coluna({
   onSoltar: () => void;
 }) {
   const { titulo, descricao, cor, bg, border, Icone } = config;
+  const [busca, setBusca] = useState("");
+  const visiveis = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    if (!q) return items;
+    const digitos = q.replace(/\D/g, "");
+    return items.filter((r) => {
+      const nome = (r.empresa_nome ?? "").toLowerCase();
+      const resp = (r.responsavel_tecnico ?? "").toLowerCase();
+      const cnpj = (r.empresa_cnpj ?? "").replace(/\D/g, "");
+      return (
+        nome.includes(q) ||
+        resp.includes(q) ||
+        (digitos.length > 0 && cnpj.includes(digitos))
+      );
+    });
+  }, [items, busca]);
 
   const dropProps = canEdit
     ? {
@@ -286,9 +304,35 @@ function Coluna({
           className="rounded-full px-2.5 py-0.5 text-xs font-bold text-white"
           style={{ backgroundColor: cor }}
         >
-          {items.length}
+          {busca.trim() ? `${visiveis.length}/${items.length}` : items.length}
         </span>
       </header>
+
+      {items.length > 0 && (
+        <div className="border-b border-gray-100 px-3 py-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Filtrar empresa, CNPJ ou responsável…"
+              aria-label={`Filtrar ${titulo}`}
+              className="w-full rounded-md border border-gray-200 py-1.5 pl-7 pr-7 text-xs focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300"
+            />
+            {busca && (
+              <button
+                type="button"
+                onClick={() => setBusca("")}
+                aria-label="Limpar filtro"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {items.length === 0 ? (
         <div
@@ -300,9 +344,13 @@ function Coluna({
         >
           {arrastando && canEdit ? "Solte aqui" : "Nenhum relatório nesse status."}
         </div>
+      ) : visiveis.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center p-6 text-center text-xs italic text-gray-400">
+          Nenhuma empresa encontrada.
+        </div>
       ) : (
         <ul className="flex-1 divide-y divide-gray-100 overflow-auto">
-          {items.map((r) => (
+          {visiveis.map((r) => (
             <li key={r.id_relatorio}>
               <div
                 role="button"
