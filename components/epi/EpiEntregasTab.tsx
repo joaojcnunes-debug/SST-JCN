@@ -1,14 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, Trash2, ClipboardCheck, FileText, UserCheck } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  ClipboardCheck,
+  FileText,
+  UserCheck,
+  PenLine,
+  ShieldCheck,
+} from "lucide-react";
 import { inputCls, labelCls } from "./EpiModal";
+import EpiAssinaturaModal from "./EpiAssinaturaModal";
 import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import {
   useEpiColaboradores,
   useEpiCatalogo,
   useEpiSaldo,
   useEpiEntregas,
+  useEpiEntregasAssinadas,
   useRegistrarEntrega,
   type RegistrarEntregaItem,
 } from "@/lib/hooks/useEpi";
@@ -26,15 +36,22 @@ function hojeISO(): string {
 export default function EpiEntregasTab({
   empresaId,
   canEdit,
+  podeSelar = false,
 }: {
   empresaId: string;
   canEdit: boolean;
+  /** Selagem PAdES A1 (ICP-Brasil) — só no contexto interno da JCN. */
+  podeSelar?: boolean;
 }) {
   const { data: colaboradores = [] } = useEpiColaboradores(empresaId);
   const { data: catalogo = [] } = useEpiCatalogo(empresaId);
   const { data: saldos } = useEpiSaldo(empresaId);
   const { data: entregas = [] } = useEpiEntregas(empresaId);
+  const { data: assinadas } = useEpiEntregasAssinadas(empresaId);
   const registrar = useRegistrarEntrega();
+
+  const [assinandoId, setAssinandoId] = useState<string | null>(null);
+  const entregaAssinando = entregas.find((e) => e.id === assinandoId) ?? null;
 
   const [idColaborador, setIdColaborador] = useState("");
   const [data, setData] = useState(hojeISO());
@@ -271,35 +288,69 @@ export default function EpiEntregasTab({
           </div>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {entregas.map((e) => (
-              <li
-                key={e.id}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium text-gray-800">
-                    {nomeColab.get(e.id_colaborador) ?? "Colaborador"}
+            {entregas.map((e) => {
+              const assinatura = assinadas?.get(e.id) ?? null;
+              return (
+                <li
+                  key={e.id}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 text-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate font-medium text-gray-800">
+                        {nomeColab.get(e.id_colaborador) ?? "Colaborador"}
+                      </span>
+                      {assinatura && (
+                        <span
+                          title={`Assinada em ${fmtData(assinatura.assinado_em)}`}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700"
+                        >
+                          <ShieldCheck className="size-3" /> Assinada
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-gray-500">
+                      {fmtData(e.data_entrega)} · {e.total_itens}{" "}
+                      {e.total_itens === 1 ? "item" : "itens"}
+                      {e.responsavel_entrega ? ` · ${e.responsavel_entrega}` : ""}
+                    </div>
                   </div>
-                  <div className="text-[11px] text-gray-500">
-                    {fmtData(e.data_entrega)} · {e.total_itens}{" "}
-                    {e.total_itens === 1 ? "item" : "itens"}
-                    {e.responsavel_entrega ? ` · ${e.responsavel_entrega}` : ""}
-                  </div>
-                </div>
-                <BotaoGerarPdf
-                  label="Ficha"
-                  apiPdfUrl={`/api/pdf/epi-entrega/${e.id}`}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                />
-              </li>
-            ))}
+                  {canEdit && !assinatura && (
+                    <button
+                      type="button"
+                      onClick={() => setAssinandoId(e.id)}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-sky-300 bg-white px-2.5 py-1.5 text-xs font-medium text-verde-accent hover:bg-sky-50"
+                    >
+                      <PenLine className="size-3.5" /> Assinar
+                    </button>
+                  )}
+                  <BotaoGerarPdf
+                    label="Ficha"
+                    apiPdfUrl={`/api/pdf/epi-entrega/${e.id}`}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                    tabelaNome={podeSelar ? "epi_entregas" : undefined}
+                    docId={podeSelar ? e.id : undefined}
+                  />
+                </li>
+              );
+            })}
           </ul>
         )}
         <div className="flex items-center gap-1.5 border-t border-gray-100 px-4 py-2 text-[11px] text-gray-400">
-          <FileText className="size-3" /> A ficha de entrega gera um PDF para
-          assinatura do colaborador.
+          <FileText className="size-3" /> A ficha gera um PDF; a assinatura do
+          colaborador é vinculada ao documento por hash (não-repúdio).
         </div>
       </div>
+
+      {entregaAssinando && (
+        <EpiAssinaturaModal
+          open={!!assinandoId}
+          onClose={() => setAssinandoId(null)}
+          entregaId={entregaAssinando.id}
+          empresaId={empresaId}
+          colaboradorNome={nomeColab.get(entregaAssinando.id_colaborador) ?? ""}
+        />
+      )}
     </div>
   );
 }

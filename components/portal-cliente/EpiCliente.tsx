@@ -29,7 +29,7 @@ export default function EpiCliente() {
           JCN Consultoria.
         </div>
       ) : (
-        <EpiGestao empresaId={empresaId} canEdit />
+        <EpiGestao empresaId={empresaId} canEdit contexto="cliente" />
       )}
     </div>
   );

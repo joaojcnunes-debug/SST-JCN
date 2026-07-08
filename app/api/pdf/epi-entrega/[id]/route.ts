@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
 import type { Empresa } from "@/lib/supabase/types";
-import type { EpiColaborador, EpiEntrega, EpiEntregaItem } from "@/lib/epi/types";
+import type {
+  EpiColaborador,
+  EpiEntrega,
+  EpiEntregaItem,
+  EpiEntregaAssinatura,
+} from "@/lib/epi/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -71,6 +76,16 @@ export async function GET(
     const valorLogo = (rawLogo as unknown as { valor?: unknown } | null)?.valor;
     if (typeof valorLogo === "string" && valorLogo.trim()) logoUrl = valorLogo;
 
+    // Assinatura biométrica mais recente (Fase 4), se já coletada.
+    const { data: rawAssin } = await supabase
+      .from("epi_entrega_assinaturas")
+      .select("*")
+      .eq("id_entrega", id)
+      .order("assinado_em", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const assinatura = (rawAssin as unknown as EpiEntregaAssinatura) ?? null;
+
     const shortId = String(id).replace(/-/g, "").slice(0, 8).toUpperCase();
     const identificador = `ENT-${new Date().getFullYear()}-${shortId}`;
 
@@ -89,6 +104,7 @@ export async function GET(
         empresa,
         logoUrl,
         identificador,
+        assinatura,
       }),
     );
 

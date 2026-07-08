@@ -13,8 +13,13 @@
 
 import React from "react";
 import type { Empresa } from "@/lib/supabase/types";
-import type { EpiColaborador, EpiEntrega, EpiEntregaItem } from "@/lib/epi/types";
-import { formatCNPJ, formatCPF, fmtData } from "@/lib/utils";
+import type {
+  EpiColaborador,
+  EpiEntrega,
+  EpiEntregaItem,
+  EpiEntregaAssinatura,
+} from "@/lib/epi/types";
+import { formatCNPJ, formatCPF, fmtData, fmtDataHora } from "@/lib/utils";
 
 const VERDE = "#0ea5e9";
 const ESCURO = "#0369a1";
@@ -29,6 +34,8 @@ export interface EpiFichaEntregaProps {
   empresa: Partial<Empresa> | null;
   logoUrl: string | null;
   identificador: string;
+  /** Assinatura biométrica do recebedor (Fase 4), quando já coletada. */
+  assinatura?: EpiEntregaAssinatura | null;
 }
 
 function Campo({ label, valor }: { label: string; valor: string }) {
@@ -57,6 +64,7 @@ export default function EpiFichaEntregaTemplate({
   empresa,
   logoUrl,
   identificador,
+  assinatura,
 }: EpiFichaEntregaProps) {
   const empresaNome = empresa?.nome_empresa ?? empresa?.razao_social ?? VAZIO;
   const empresaDoc = empresa?.cnpj ? formatCNPJ(empresa.cnpj) : "";
@@ -219,11 +227,21 @@ table { border-collapse: collapse; width: 100%; }
       </div>
 
       {/* Assinaturas */}
-      <div style={{ display: "flex", gap: 40, marginTop: 30 }}>
+      <div style={{ display: "flex", gap: 40, marginTop: assinatura ? 14 : 30, alignItems: "flex-end" }}>
         <div style={{ flex: 1, textAlign: "center" }}>
+          {assinatura?.assinatura_png ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={assinatura.assinatura_png}
+              alt=""
+              style={{ height: 44, maxWidth: "90%", objectFit: "contain", margin: "0 auto 2px", display: "block" }}
+            />
+          ) : (
+            <div style={{ height: 44 }} />
+          )}
           <div style={{ borderTop: "1px solid #9ca3af", paddingTop: 5 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: CINZA }}>
-              {colaborador?.nome ?? "Colaborador"}
+              {assinatura?.assinante_nome ?? colaborador?.nome ?? "Colaborador"}
             </div>
             <div style={{ fontSize: 9, color: CINZA_LEVE }}>
               Assinatura do colaborador (recebedor)
@@ -231,6 +249,7 @@ table { border-collapse: collapse; width: 100%; }
           </div>
         </div>
         <div style={{ flex: 1, textAlign: "center" }}>
+          <div style={{ height: 44 }} />
           <div style={{ borderTop: "1px solid #9ca3af", paddingTop: 5 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: CINZA }}>
               {entrega.responsavel_entrega ?? "Responsável"}
@@ -241,6 +260,40 @@ table { border-collapse: collapse; width: 100%; }
           </div>
         </div>
       </div>
+
+      {/* Carimbo de não-repúdio (assinatura eletrônica) */}
+      {assinatura && (
+        <div
+          style={{
+            marginTop: 14,
+            border: "1px solid #bae6fd",
+            backgroundColor: "#f0f9ff",
+            borderRadius: 8,
+            padding: "8px 12px",
+            fontSize: 8.5,
+            color: "#0c4a6e",
+            lineHeight: 1.5,
+          }}
+        >
+          <strong style={{ letterSpacing: "0.03em" }}>
+            ASSINADO ELETRONICAMENTE
+          </strong>{" "}
+          por {assinatura.assinante_nome ?? colaborador?.nome ?? "recebedor"} em{" "}
+          {fmtDataHora(assinatura.assinado_em)}.
+          {assinatura.pdf_sha256 ? (
+            <>
+              {" "}
+              Integridade do documento (SHA-256):{" "}
+              <span style={{ fontFamily: "monospace", wordBreak: "break-all" }}>
+                {assinatura.pdf_sha256}
+              </span>
+              .
+            </>
+          ) : null}
+          {assinatura.ip ? <> Origem (IP): {assinatura.ip}.</> : null} Evidência
+          registrada de forma imutável na plataforma JCN.
+        </div>
+      )}
 
       {/* Rodapé */}
       <div

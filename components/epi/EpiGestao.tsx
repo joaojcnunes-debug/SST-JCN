@@ -26,9 +26,12 @@ const ABAS = [
 export default function EpiGestao({
   empresaId,
   canEdit,
+  contexto = "interno",
 }: {
   empresaId: string | null;
   canEdit: boolean;
+  /** "interno" = equipe JCN (habilita selagem PAdES A1); "cliente" = Portal. */
+  contexto?: "interno" | "cliente";
 }) {
   const [aba, setAba] = useState<Aba>("catalogo");
 
@@ -77,7 +80,11 @@ export default function EpiGestao({
         <EpiNfeTab empresaId={empresaId} canEdit={canEdit} />
       )}
       {aba === "entregas" && (
-        <EpiEntregasTab empresaId={empresaId} canEdit={canEdit} />
+        <EpiEntregasTab
+          empresaId={empresaId}
+          canEdit={canEdit}
+          podeSelar={contexto === "interno"}
+        />
       )}
       {aba === "colaboradores" && (
         <EpiColaboradoresTab empresaId={empresaId} canEdit={canEdit} />

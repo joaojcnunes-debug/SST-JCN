@@ -15,6 +15,7 @@ import type {
   EpiImportacaoNfe,
   EpiNfeItemStatusMap,
   EpiEntrega,
+  EpiEntregaAssinatura,
 } from "@/lib/epi/types";
 
 function emailAtual(): string | null {
@@ -394,6 +395,80 @@ export function useRegistrarEntrega() {
       qc.invalidateQueries({ queryKey: ["epi-movimentacoes", vars.empresa_id] });
       qc.invalidateQueries({ queryKey: ["epi-saldo", vars.empresa_id] });
       toast.success("Entrega registrada");
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
+// ============================================================
+// ASSINATURA DA ENTREGA (Fase 4) — evidência + registro via RPC
+// ============================================================
+
+/** SHA-256 (hex) de um buffer via WebCrypto — padrão da casa (usePdfsGerados). */
+export async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
+  const hash = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/** Assinaturas por entrega da empresa (Map id_entrega -> assinatura mais recente). */
+export function useEpiEntregasAssinadas(empresaId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["epi-entregas-assinadas", empresaId],
+    enabled: !!empresaId,
+    staleTime: 20 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("epi_entrega_assinaturas")
+        .select("*")
+        .eq("empresa_id", empresaId!)
+        .order("assinado_em", { ascending: false });
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as EpiEntregaAssinatura[];
+      const map = new Map<string, EpiEntregaAssinatura>();
+      // já vem por assinado_em desc → o 1º de cada entrega é o mais recente
+      for (const r of rows) if (!map.has(r.id_entrega)) map.set(r.id_entrega, r);
+      return map;
+    },
+  });
+}
+
+export interface AssinarEntregaArgs {
+  empresa_id: string;
+  id_entrega: string;
+  assinante_nome: string;
+  assinatura_png: string;
+  pdf_sha256: string;
+}
+
+/**
+ * Registra a assinatura biométrica do recebedor via RPC SECURITY DEFINER
+ * (insert-only, append-only): grava imagem manuscrita, hash do PDF consentido,
+ * user-agent e IP (capturado no servidor). Não altera a entrega (estado
+ * "assinada" é derivado da existência desta evidência).
+ */
+export function useAssinarEntrega() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: AssinarEntregaArgs) => {
+      const sb = createSupabaseBrowserClient();
+      const ua =
+        typeof navigator !== "undefined" ? navigator.userAgent : null;
+      const { data, error } = await sb.rpc("epi_assinar_entrega", {
+        p_id_entrega: args.id_entrega,
+        p_assinante_nome: args.assinante_nome,
+        p_assinatura_png: args.assinatura_png,
+        p_pdf_sha256: args.pdf_sha256,
+        p_user_agent: ua,
+      } as never);
+      if (error) throw error;
+      return data as unknown as string;
+    },
+    onSuccess: (_r, vars) => {
+      qc.invalidateQueries({ queryKey: ["epi-entregas-assinadas", vars.empresa_id] });
+      toast.success("Assinatura registrada");
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });

@@ -132,3 +132,21 @@ export interface EpiEntregaItem {
   quantidade: number;
   criado_em: string;
 }
+
+// ============================================================
+// ASSINATURA DA ENTREGA (Fase 4) — trilha de evidências append-only
+// ============================================================
+export interface EpiEntregaAssinatura {
+  id: string;
+  id_entrega: string;
+  empresa_id: string;
+  id_colaborador: string | null;
+  assinante_nome: string | null;
+  assinatura_png: string | null;
+  pdf_sha256: string | null;
+  user_agent: string | null;
+  ip: string | null;
+  assinado_em: string;
+  criado_por: string | null;
+  criado_em: string;
+}
