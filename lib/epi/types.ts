@@ -62,3 +62,45 @@ export const EPI_TIPO_MOV_LABEL: Record<EpiTipoMovimentacao, string> = {
   saida: "Saída",
   ajuste: "Ajuste",
 };
+
+// ============================================================
+// IMPORTAÇÃO DE NF-e (Fase 2) — cabeçalho append-only
+// ============================================================
+export interface EpiImportacaoNfe {
+  id: string;
+  empresa_id: string;
+  chnfe: string;
+  fornecedor_cnpj: string | null;
+  fornecedor_nome: string | null;
+  numero_nf: string | null;
+  data_emissao: string | null; // ISO date
+  xml_nome: string | null;
+  total_itens: number;
+  itens_lancados: number;
+  status: string;
+  criado_por: string | null;
+  criado_em: string;
+}
+
+/** Item extraído do XML da NF-e (antes da conferência). */
+export interface EpiNfeItemParsed {
+  cprod: string;
+  xprod: string;
+  ncm: string;
+  unidade: string;
+  quantidade: number;
+  valor_unitario: number | null;
+}
+
+/** Cabeçalho + itens extraídos do XML da NF-e. */
+export interface EpiNfeParsed {
+  chnfe: string;
+  fornecedor_cnpj: string | null;
+  fornecedor_nome: string | null;
+  numero_nf: string | null;
+  data_emissao: string | null; // ISO date
+  itens: EpiNfeItemParsed[];
+}
+
+/** Como a UI decidiu tratar cada item na conferência. */
+export type EpiNfeItemStatusMap = "lancado" | "ignorado";

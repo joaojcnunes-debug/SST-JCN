@@ -12,6 +12,8 @@ import type {
   EpiMovimentacao,
   EpiSaldo,
   EpiTipoMovimentacao,
+  EpiImportacaoNfe,
+  EpiNfeItemStatusMap,
 } from "@/lib/epi/types";
 
 function emailAtual(): string | null {
@@ -244,5 +246,85 @@ export function useEpiSaldo(empresaId: string | null | undefined) {
       for (const r of rows) map.set(r.id_catalogo, Number(r.saldo) || 0);
       return map;
     },
+  });
+}
+
+// ============================================================
+// IMPORTAÇÃO DE NF-e (Fase 2) — histórico + importação via RPC
+// ============================================================
+export function useEpiImportacoes(empresaId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["epi-importacoes", empresaId],
+    enabled: !!empresaId,
+    staleTime: 20 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("epi_importacoes_nfe")
+        .select("*")
+        .eq("empresa_id", empresaId!)
+        .order("criado_em", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as unknown as EpiImportacaoNfe[];
+    },
+  });
+}
+
+/** Item enviado ao RPC epi_importar_nfe após a conferência. */
+export interface ImportarNfeItem {
+  cprod: string;
+  xprod: string;
+  ncm: string;
+  unidade: string;
+  quantidade: number;
+  valor_unitario: number | null;
+  status_map: EpiNfeItemStatusMap;
+  id_catalogo: string | null;
+  criar_novo: boolean;
+}
+
+export interface ImportarNfeArgs {
+  empresa_id: string;
+  chnfe: string;
+  fornecedor_cnpj: string | null;
+  fornecedor_nome: string | null;
+  numero_nf: string | null;
+  data_emissao: string | null;
+  xml_nome: string | null;
+  itens: ImportarNfeItem[];
+}
+
+/**
+ * Importa a NF-e de forma atômica via RPC SECURITY DEFINER: cria itens novos
+ * no catálogo (quando marcado), registra a importação e dá entrada no estoque.
+ * A RPC valida permissão e faz dedup por chNFe — sem estado parcial.
+ */
+export function useImportarNfe() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: ImportarNfeArgs) => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("epi_importar_nfe", {
+        p_empresa_id: args.empresa_id,
+        p_chnfe: args.chnfe,
+        p_fornecedor_cnpj: args.fornecedor_cnpj,
+        p_fornecedor_nome: args.fornecedor_nome,
+        p_numero_nf: args.numero_nf,
+        p_data_emissao: args.data_emissao,
+        p_xml_nome: args.xml_nome,
+        p_itens: args.itens as never,
+      } as never);
+      if (error) throw error;
+      return data as unknown as string;
+    },
+    onSuccess: (_r, vars) => {
+      qc.invalidateQueries({ queryKey: ["epi-importacoes", vars.empresa_id] });
+      qc.invalidateQueries({ queryKey: ["epi-catalogo", vars.empresa_id] });
+      qc.invalidateQueries({ queryKey: ["epi-movimentacoes", vars.empresa_id] });
+      qc.invalidateQueries({ queryKey: ["epi-saldo", vars.empresa_id] });
+      toast.success("NF-e importada");
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }

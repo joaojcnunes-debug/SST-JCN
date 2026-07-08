@@ -1,17 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { HardHat, Boxes, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { HardHat, Boxes, Users, FileText } from "lucide-react";
 import EpiCatalogoTab from "./EpiCatalogoTab";
 import EpiEstoqueTab from "./EpiEstoqueTab";
 import EpiColaboradoresTab from "./EpiColaboradoresTab";
+import EpiNfeTab from "./EpiNfeTab";
 
-type Aba = "catalogo" | "estoque" | "colaboradores";
+type Aba = "catalogo" | "estoque" | "nfe" | "colaboradores";
 
 const ABAS = [
-  { id: "catalogo", label: "Catálogo", icon: HardHat },
-  { id: "estoque", label: "Estoque", icon: Boxes },
-  { id: "colaboradores", label: "Colaboradores", icon: Users },
+  { id: "catalogo", label: "Catálogo", icon: HardHat, soEdicao: false },
+  { id: "estoque", label: "Estoque", icon: Boxes, soEdicao: false },
+  { id: "nfe", label: "NF-e", icon: FileText, soEdicao: true },
+  { id: "colaboradores", label: "Colaboradores", icon: Users, soEdicao: false },
 ] as const;
 
 /**
@@ -28,6 +30,11 @@ export default function EpiGestao({
 }) {
   const [aba, setAba] = useState<Aba>("catalogo");
 
+  const abasVisiveis = useMemo(
+    () => ABAS.filter((a) => canEdit || !a.soEdicao),
+    [canEdit]
+  );
+
   if (!empresaId) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -39,7 +46,7 @@ export default function EpiGestao({
   return (
     <div className="space-y-4">
       <div className="inline-flex flex-wrap rounded-lg border border-gray-200 bg-white p-0.5 text-sm font-medium">
-        {ABAS.map((a) => {
+        {abasVisiveis.map((a) => {
           const Icon = a.icon;
           return (
             <button
@@ -63,6 +70,9 @@ export default function EpiGestao({
       )}
       {aba === "estoque" && (
         <EpiEstoqueTab empresaId={empresaId} canEdit={canEdit} />
+      )}
+      {aba === "nfe" && canEdit && (
+        <EpiNfeTab empresaId={empresaId} canEdit={canEdit} />
       )}
       {aba === "colaboradores" && (
         <EpiColaboradoresTab empresaId={empresaId} canEdit={canEdit} />
