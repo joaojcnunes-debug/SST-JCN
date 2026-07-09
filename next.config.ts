@@ -39,9 +39,11 @@ const nextConfig: NextConfig = {
       ...(config.resolve.alias || {}),
       WebSdk: path.resolve(__dirname, "node_modules/@digitalpersona/websdk"),
     };
+    // WebSdk global + a lib `async` (o websdk usa `async.waterfall` como global).
     config.plugins.push(
       new webpack.ProvidePlugin({
         WebSdk: "@digitalpersona/websdk",
+        async: "async",
       }),
     );
     return config;

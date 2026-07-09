@@ -1,6 +1,6 @@
 {
   "name": "sst-jcn",
-  "version": "0.3.79",
+  "version": "0.3.80",
   "private": true,
   "main": "electron-dist/main.js",
   "scripts": {
@@ -37,6 +37,7 @@
     "@tiptap/react": "^3.23.4",
     "@tiptap/starter-kit": "^3.23.4",
     "asn1js": "^3.0.10",
+    "async": "^3.2.6",
     "better-sqlite3": "^11.10.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
