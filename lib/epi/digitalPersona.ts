@@ -29,6 +29,18 @@ async function sha256Hex(texto: string): Promise<string> {
 /** Detecta se há agente + leitor disponíveis (sem capturar). */
 export async function leitorDisponivel(): Promise<boolean> {
   if (typeof window === "undefined") return false;
+  // Electron desktop: helper nativo DPUruNet (funciona com o RTE do SGG, em
+  // modo exclusivo — o SDK web cooperativo não recebe o toque nessas máquinas).
+  const api = window.electronAPI;
+  if (api?.epiLeitorCheck) {
+    try {
+      const r = await api.epiLeitorCheck();
+      return !!r?.ok && (r.count ?? 0) > 0;
+    } catch {
+      return false;
+    }
+  }
+  // Navegador: SDK web (@digitalpersona/devices) via agente local.
   try {
     const dp = await import("@digitalpersona/devices");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,6 +65,22 @@ export async function capturarDigital(
   opts?: { onQualidade?: (q: string) => void; timeoutMs?: number },
 ): Promise<CapturaDigital> {
   if (typeof window === "undefined") throw new Error("Indisponível no servidor");
+
+  // Electron desktop: captura pelo helper nativo (retorna só o hash; a
+  // biometria é descartada no próprio helper).
+  const api = window.electronAPI;
+  if (api?.epiLerDigital) {
+    const r = await api.epiLerDigital();
+    if (!r?.ok || !r.fingerHash) {
+      throw new Error(r?.error || "Falha ao ler a digital.");
+    }
+    return {
+      fingerHash: r.fingerHash,
+      device: r.device ?? "U.are.U",
+      qualidade: r.quality ?? null,
+    };
+  }
+
   const dp = await import("@digitalpersona/devices");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const D = dp as any;

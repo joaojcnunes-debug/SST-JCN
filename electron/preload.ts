@@ -98,4 +98,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Atualiza o ícone da janela Electron com a imagem do logo configurado */
   updateWindowIcon: (url: string) =>
     ipcRenderer.invoke('update-window-icon', url) as Promise<void>,
+
+  /** EPI: verifica se há leitor de digital disponível (não captura) */
+  epiLeitorCheck: () =>
+    ipcRenderer.invoke('epi:leitor-check') as Promise<{
+      ok: boolean
+      count?: number
+      error?: string | null
+    }>,
+
+  /** EPI: captura uma digital e devolve o hash (biometria descartada) */
+  epiLerDigital: () =>
+    ipcRenderer.invoke('epi:ler-digital') as Promise<{
+      ok: boolean
+      fingerHash?: string | null
+      device?: string | null
+      quality?: string | null
+      error?: string | null
+    }>,
 })

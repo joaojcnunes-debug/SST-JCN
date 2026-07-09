@@ -28,6 +28,13 @@ extraResources:
     to: .next/standalone/.next/static
   - from: public
     to: .next/standalone/public
+  # Helper de captura de digital (EPI) — EpiFingerprint.exe + DPUruNet.dll.
+  # Os DLLs nativos (dpfpdd/dpfj) vêm do RTE DigitalPersona instalado na máquina.
+  - from: native/EpiFingerprint/build
+    to: fingerprint
+    filter:
+      - "*.exe"
+      - "*.dll"
 
 win:
   target:

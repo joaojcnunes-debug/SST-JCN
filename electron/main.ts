@@ -136,6 +136,66 @@ ipcMain.handle('print-main-window-pdf', async () => {
 
 ipcMain.handle('get-version', () => app.getVersion())
 
+// ── EPI: captura de digital via helper nativo DPUruNet (U.are.U) ──
+// O helper EpiFingerprint.exe captura UMA digital, calcula o SHA-256 e DESCARTA
+// a biometria (LGPD). Precisa do RTE DigitalPersona instalado (dpfpdd/dpfj no
+// System32) + DPUruNet.dll ao lado do .exe. Só Windows.
+function resolverFingerprintExe(): string | null {
+  const candidatos = app.isPackaged
+    ? [path.join(process.resourcesPath, 'fingerprint', 'EpiFingerprint.exe')]
+    : [
+        path.join(app.getAppPath(), 'native', 'EpiFingerprint', 'build', 'EpiFingerprint.exe'),
+        path.join(process.cwd(), 'native', 'EpiFingerprint', 'build', 'EpiFingerprint.exe'),
+      ]
+  return candidatos.find((p) => existsSync(p)) ?? null
+}
+
+interface DigitalResultado {
+  ok: boolean
+  fingerHash?: string | null
+  device?: string | null
+  quality?: string | null
+  error?: string | null
+  count?: number
+}
+
+function rodarFingerprint(args: string[], timeoutMs: number): Promise<DigitalResultado> {
+  return new Promise((resolve) => {
+    if (process.platform !== 'win32') {
+      resolve({ ok: false, error: 'Leitor de digital disponível apenas no Windows.' })
+      return
+    }
+    const exe = resolverFingerprintExe()
+    if (!exe) {
+      resolve({ ok: false, error: 'Componente de digital não instalado (EpiFingerprint.exe ausente).' })
+      return
+    }
+    let saida = ''
+    const proc = spawn(exe, args, { windowsHide: true, stdio: 'pipe' })
+    const timer = setTimeout(() => {
+      try { proc.kill() } catch { /* ignora */ }
+      resolve({ ok: false, error: 'Tempo esgotado ao ler a digital.' })
+    }, timeoutMs)
+    proc.stdout?.on('data', (c: Buffer) => { saida += c.toString() })
+    proc.on('error', (e) => {
+      clearTimeout(timer)
+      resolve({ ok: false, error: 'Falha ao iniciar o leitor: ' + e.message })
+    })
+    proc.on('close', () => {
+      clearTimeout(timer)
+      const linha = saida.trim().split(/\r?\n/).filter(Boolean).pop() ?? ''
+      try {
+        resolve(JSON.parse(linha) as DigitalResultado)
+      } catch {
+        resolve({ ok: false, error: 'Resposta inválida do leitor.' })
+      }
+    })
+  })
+}
+
+ipcMain.handle('epi:leitor-check', () => rodarFingerprint(['--check'], 8000))
+ipcMain.handle('epi:ler-digital', () => rodarFingerprint([], 70000))
+
 // Salva buffer de PDF em arquivo temp e abre no leitor padrão do sistema.
 // Necessário no Electron porque blob: URLs não podem ser abertas externamente.
 ipcMain.handle('abrir-pdf', async (_event, bytes: Uint8Array) => {
