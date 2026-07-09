@@ -7,6 +7,7 @@ import {
   FileText,
   ClipboardCheck,
   ArrowLeftRight,
+  ShieldCheck,
   Users,
 } from "lucide-react";
 import EpiCatalogoTab from "./EpiCatalogoTab";
@@ -15,6 +16,7 @@ import EpiColaboradoresTab from "./EpiColaboradoresTab";
 import EpiNfeTab from "./EpiNfeTab";
 import EpiEntregasTab from "./EpiEntregasTab";
 import EpiTransferenciasTab from "./EpiTransferenciasTab";
+import EpiAuditoriaTab from "./EpiAuditoriaTab";
 
 type Aba =
   | "catalogo"
@@ -22,6 +24,7 @@ type Aba =
   | "nfe"
   | "entregas"
   | "transferencias"
+  | "auditoria"
   | "colaboradores";
 
 const ABAS = [
@@ -30,6 +33,7 @@ const ABAS = [
   { id: "nfe", label: "NF-e", icon: FileText, soEdicao: true, soInterno: false },
   { id: "entregas", label: "Entregas", icon: ClipboardCheck, soEdicao: false, soInterno: false },
   { id: "transferencias", label: "Transferências", icon: ArrowLeftRight, soEdicao: true, soInterno: true },
+  { id: "auditoria", label: "Auditoria", icon: ShieldCheck, soEdicao: false, soInterno: true },
   { id: "colaboradores", label: "Colaboradores", icon: Users, soEdicao: false, soInterno: false },
 ] as const;
 
@@ -107,6 +111,9 @@ export default function EpiGestao({
       )}
       {aba === "transferencias" && contexto === "interno" && (
         <EpiTransferenciasTab empresaOrigem={empresaId} />
+      )}
+      {aba === "auditoria" && contexto === "interno" && (
+        <EpiAuditoriaTab empresaId={empresaId} />
       )}
       {aba === "colaboradores" && (
         <EpiColaboradoresTab empresaId={empresaId} canEdit={canEdit} />

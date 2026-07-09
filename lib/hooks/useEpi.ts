@@ -490,6 +490,35 @@ export function useAssinarEntrega() {
   });
 }
 
+/** Linha da trilha de auditoria de assinaturas (com dados da entrega). */
+export interface EpiAuditoriaAssinatura extends EpiEntregaAssinatura {
+  entrega?: { data_entrega: string | null } | null;
+}
+
+/**
+ * Trilha completa de assinaturas da empresa para AUDITORIA/FISCALIZAÇÃO
+ * (NT 162/2017). Append-only, ordenada por data/hora. Inclui hashes, método,
+ * dispositivo, IP e consentimento — exportável em CSV pela UI.
+ */
+export function useEpiAuditoriaAssinaturas(empresaId: string | null | undefined) {
+  return useQuery({
+    queryKey: ["epi-auditoria-assin", empresaId],
+    enabled: !!empresaId,
+    staleTime: 20 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("epi_entrega_assinaturas")
+        .select("*, entrega:epi_entregas(data_entrega)")
+        .eq("empresa_id", empresaId!)
+        .order("assinado_em", { ascending: false })
+        .limit(5000);
+      if (error) throw error;
+      return (data ?? []) as unknown as EpiAuditoriaAssinatura[];
+    },
+  });
+}
+
 // ============================================================
 // TRANSFERÊNCIA ENTRE EMPRESAS (Fase 5) — histórico + registro via RPC
 // ============================================================
