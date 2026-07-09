@@ -30,6 +30,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    // O SDK @digitalpersona/devices importa o módulo-irmão 'WebSdk' por um
+    // especificador nu (historicamente carregado via <script> global). Mapeamos
+    // para o pacote npm @digitalpersona/websdk para o webpack empacotá-lo.
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      WebSdk: path.resolve(__dirname, "node_modules/@digitalpersona/websdk"),
+    };
+    return config;
+  },
 };
 
 export default nextConfig;

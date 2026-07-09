@@ -161,6 +161,8 @@ export interface EpiTransferenciaItem {
 // ============================================================
 // ASSINATURA DA ENTREGA (Fase 4) — trilha de evidências append-only
 // ============================================================
+export type EpiAssinaturaMetodo = "canvas" | "digital";
+
 export interface EpiEntregaAssinatura {
   id: string;
   id_entrega: string;
@@ -174,4 +176,10 @@ export interface EpiEntregaAssinatura {
   assinado_em: string;
   criado_por: string | null;
   criado_em: string;
+  // Fase 4B — método e evidência biométrica (biometria NÃO é persistida)
+  metodo: EpiAssinaturaMetodo;
+  finger_hash: string | null;
+  device_info: string | null;
+  qualidade: string | null;
+  consentimento_em: string | null;
 }

@@ -236,6 +236,29 @@ table { border-collapse: collapse; width: 100%; }
               alt=""
               style={{ height: 44, maxWidth: "90%", objectFit: "contain", margin: "0 auto 2px", display: "block" }}
             />
+          ) : assinatura?.metodo === "digital" ? (
+            <div
+              style={{
+                height: 44,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <span
+                style={{
+                  border: `1px solid ${VERDE}`,
+                  color: ESCURO,
+                  borderRadius: 6,
+                  padding: "3px 8px",
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                }}
+              >
+                ✔ IMPRESSÃO DIGITAL
+              </span>
+            </div>
           ) : (
             <div style={{ height: 44 }} />
           )}
@@ -278,8 +301,21 @@ table { border-collapse: collapse; width: 100%; }
           <strong style={{ letterSpacing: "0.03em" }}>
             ASSINADO ELETRONICAMENTE
           </strong>{" "}
-          por {assinatura.assinante_nome ?? colaborador?.nome ?? "recebedor"} em{" "}
-          {fmtDataHora(assinatura.assinado_em)}.
+          por {assinatura.assinante_nome ?? colaborador?.nome ?? "recebedor"}
+          {assinatura.metodo === "digital"
+            ? " mediante biometria (impressão digital)"
+            : ""}{" "}
+          em {fmtDataHora(assinatura.assinado_em)}.
+          {assinatura.metodo === "digital" && assinatura.finger_hash ? (
+            <>
+              {" "}
+              Verificação biométrica (hash SHA-256):{" "}
+              <span style={{ fontFamily: "monospace", wordBreak: "break-all" }}>
+                {assinatura.finger_hash}
+              </span>
+              .
+            </>
+          ) : null}
           {assinatura.pdf_sha256 ? (
             <>
               {" "}

@@ -440,15 +440,25 @@ export interface AssinarEntregaArgs {
   empresa_id: string;
   id_entrega: string;
   assinante_nome: string;
-  assinatura_png: string;
+  /** Método da assinatura: desenho na tela ou digital biométrica. */
+  metodo: "canvas" | "digital";
+  /** PNG do desenho (canvas). Null quando metodo='digital'. */
+  assinatura_png: string | null;
   pdf_sha256: string;
+  /** Hash da amostra biométrica (a biometria em si é descartada). */
+  finger_hash?: string | null;
+  device_info?: string | null;
+  qualidade?: string | null;
+  /** Consentimento LGPD (obrigatório p/ digital). */
+  consentimento?: boolean;
 }
 
 /**
- * Registra a assinatura biométrica do recebedor via RPC SECURITY DEFINER
- * (insert-only, append-only): grava imagem manuscrita, hash do PDF consentido,
- * user-agent e IP (capturado no servidor). Não altera a entrega (estado
- * "assinada" é derivado da existência desta evidência).
+ * Registra a assinatura do recebedor via RPC SECURITY DEFINER (insert-only,
+ * append-only): desenho na tela OU digital biométrica (só o hash da amostra é
+ * gravado; a biometria é descartada). Grava hash do PDF consentido, user-agent
+ * e IP (capturado no servidor). Não altera a entrega (estado "assinada" é
+ * derivado da existência desta evidência).
  */
 export function useAssinarEntrega() {
   const qc = useQueryClient();
@@ -463,6 +473,11 @@ export function useAssinarEntrega() {
         p_assinatura_png: args.assinatura_png,
         p_pdf_sha256: args.pdf_sha256,
         p_user_agent: ua,
+        p_metodo: args.metodo,
+        p_finger_hash: args.finger_hash ?? null,
+        p_device_info: args.device_info ?? null,
+        p_qualidade: args.qualidade ?? null,
+        p_consentimento: args.consentimento ?? false,
       } as never);
       if (error) throw error;
       return data as unknown as string;
