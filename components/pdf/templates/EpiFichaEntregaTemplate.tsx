@@ -142,10 +142,6 @@ table { border-collapse: collapse; width: 100%; }
         <Campo label="Matrícula" valor={colaborador?.matricula ?? VAZIO} />
         <Campo label="Cargo" valor={colaborador?.cargo ?? VAZIO} />
         <Campo label="Setor" valor={colaborador?.setor ?? VAZIO} />
-        <Campo
-          label="Responsável pela entrega"
-          valor={entrega.responsavel_entrega ?? VAZIO}
-        />
         <Campo label="Data da entrega" valor={fmtData(entrega.data_entrega)} />
       </div>
 
@@ -226,62 +222,90 @@ table { border-collapse: collapse; width: 100%; }
         </p>
       </div>
 
-      {/* Assinaturas */}
-      <div style={{ display: "flex", gap: 40, marginTop: assinatura ? 14 : 30, alignItems: "flex-end" }}>
-        <div style={{ flex: 1, textAlign: "center" }}>
-          {assinatura?.assinatura_png ? (
-            // eslint-disable-next-line @next/next/no-img-element
+      {/* Assinatura do recebedor */}
+      <div style={{ marginTop: 24 }}>
+        {assinatura?.metodo === "digital" ? (
+          // Carimbo biométrico (estilo "assinado biometricamente")
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 14,
+              border: "1px solid #dbeafe",
+              borderRadius: 10,
+              padding: "10px 18px",
+            }}
+          >
+            <svg
+              width="42"
+              height="42"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#7fb2d9"
+              strokeWidth={1.3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2 12C2 6.5 6.5 2 12 2a10 10 0 0 1 8 4" />
+              <path d="M5 19.5C5.5 18 6 15 6 12c0-.7.12-1.37.34-2" />
+              <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02" />
+              <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4" />
+              <path d="M8.65 22c.21-.66.45-1.32.57-2" />
+              <path d="M14 13.12c0 2.38 0 6.38-1 8.88" />
+              <path d="M2 16h.01" />
+              <path d="M21.8 16c.2-2 .131-5.354 0-6" />
+              <path d="M9 6.8a6 6 0 0 1 9 5.2c0 .47 0 1.17-.02 2" />
+            </svg>
+            <div style={{ lineHeight: 1.4 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: ESCURO }}>
+                Assinado biometricamente
+              </div>
+              <div style={{ fontSize: 11, color: CINZA }}>
+                {fmtDataHora(assinatura.assinado_em)}
+              </div>
+              <div style={{ fontSize: 11, color: CINZA }}>
+                {assinatura.assinante_nome ?? colaborador?.nome ?? "Colaborador"}
+              </div>
+              {assinatura.finger_hash ? (
+                <div
+                  style={{ fontSize: 9, fontFamily: "monospace", color: CINZA_LEVE }}
+                >
+                  Cód. {assinatura.finger_hash.slice(0, 12).toUpperCase()}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : assinatura?.assinatura_png ? (
+          // Assinatura desenhada
+          <div style={{ maxWidth: 320 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={assinatura.assinatura_png}
               alt=""
-              style={{ height: 44, maxWidth: "90%", objectFit: "contain", margin: "0 auto 2px", display: "block" }}
+              style={{ height: 46, maxWidth: "100%", objectFit: "contain", display: "block", marginBottom: 2 }}
             />
-          ) : assinatura?.metodo === "digital" ? (
-            <div
-              style={{
-                height: 44,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <span
-                style={{
-                  border: `1px solid ${VERDE}`,
-                  color: ESCURO,
-                  borderRadius: 6,
-                  padding: "3px 8px",
-                  fontSize: 9,
-                  fontWeight: 700,
-                  letterSpacing: "0.04em",
-                }}
-              >
-                ✔ IMPRESSÃO DIGITAL
-              </span>
-            </div>
-          ) : (
-            <div style={{ height: 44 }} />
-          )}
-          <div style={{ borderTop: "1px solid #9ca3af", paddingTop: 5 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: CINZA }}>
-              {assinatura?.assinante_nome ?? colaborador?.nome ?? "Colaborador"}
-            </div>
-            <div style={{ fontSize: 9, color: CINZA_LEVE }}>
-              Assinatura do colaborador (recebedor)
+            <div style={{ borderTop: "1px solid #9ca3af", paddingTop: 5 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: CINZA }}>
+                {assinatura.assinante_nome ?? colaborador?.nome ?? "Colaborador"}
+              </div>
+              <div style={{ fontSize: 9, color: CINZA_LEVE }}>
+                Assinatura do colaborador (recebedor)
+              </div>
             </div>
           </div>
-        </div>
-        <div style={{ flex: 1, textAlign: "center" }}>
-          <div style={{ height: 44 }} />
-          <div style={{ borderTop: "1px solid #9ca3af", paddingTop: 5 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: CINZA }}>
-              {entrega.responsavel_entrega ?? "Responsável"}
-            </div>
-            <div style={{ fontSize: 9, color: CINZA_LEVE }}>
-              Responsável pela entrega
+        ) : (
+          // Ainda sem assinatura — linha para assinatura manual
+          <div style={{ maxWidth: 320, marginTop: 24 }}>
+            <div style={{ borderTop: "1px solid #9ca3af", paddingTop: 5 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: CINZA }}>
+                {colaborador?.nome ?? "Colaborador"}
+              </div>
+              <div style={{ fontSize: 9, color: CINZA_LEVE }}>
+                Assinatura do colaborador (recebedor)
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Carimbo de não-repúdio (assinatura eletrônica) */}

@@ -55,7 +55,6 @@ export default function EpiEntregasTab({
 
   const [idColaborador, setIdColaborador] = useState("");
   const [data, setData] = useState(hojeISO());
-  const [responsavel, setResponsavel] = useState("");
   const [observacao, setObservacao] = useState("");
   const [linhas, setLinhas] = useState<LinhaItem[]>([
     { id_catalogo: "", quantidade: "" },
@@ -107,7 +106,7 @@ export default function EpiEntregasTab({
         empresa_id: empresaId,
         id_colaborador: idColaborador,
         data_entrega: data || null,
-        responsavel: responsavel.trim() || null,
+        responsavel: null,
         observacao: observacao.trim() || null,
         itens: itensValidos,
       },
@@ -157,25 +156,14 @@ export default function EpiEntregasTab({
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={labelCls}>Data da entrega</label>
-                  <input
-                    type="date"
-                    className={inputCls}
-                    value={data}
-                    onChange={(e) => setData(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Responsável pela entrega</label>
-                  <input
-                    className={inputCls}
-                    value={responsavel}
-                    onChange={(e) => setResponsavel(e.target.value)}
-                    placeholder="Quem entregou"
-                  />
-                </div>
+              <div>
+                <label className={labelCls}>Data da entrega</label>
+                <input
+                  type="date"
+                  className={inputCls}
+                  value={data}
+                  onChange={(e) => setData(e.target.value)}
+                />
               </div>
 
               {/* Itens */}
