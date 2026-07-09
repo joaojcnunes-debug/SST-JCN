@@ -222,8 +222,8 @@ table { border-collapse: collapse; width: 100%; }
         </p>
       </div>
 
-      {/* Assinatura do recebedor */}
-      <div style={{ marginTop: 24 }}>
+      {/* Assinatura do recebedor — centralizada; legenda embaixo de todos os tipos */}
+      <div style={{ marginTop: 26, textAlign: "center" }}>
         {assinatura?.metodo === "digital" ? (
           // Carimbo biométrico (estilo "assinado biometricamente")
           <div
@@ -234,6 +234,7 @@ table { border-collapse: collapse; width: 100%; }
               border: "1px solid #dbeafe",
               borderRadius: 10,
               padding: "10px 18px",
+              textAlign: "left",
             }}
           >
             <svg
@@ -263,9 +264,6 @@ table { border-collapse: collapse; width: 100%; }
               <div style={{ fontSize: 11, color: CINZA }}>
                 {fmtDataHora(assinatura.assinado_em)}
               </div>
-              <div style={{ fontSize: 11, color: CINZA }}>
-                {assinatura.assinante_nome ?? colaborador?.nome ?? "Colaborador"}
-              </div>
               {assinatura.finger_hash ? (
                 <div
                   style={{ fontSize: 9, fontFamily: "monospace", color: CINZA_LEVE }}
@@ -277,35 +275,26 @@ table { border-collapse: collapse; width: 100%; }
           </div>
         ) : assinatura?.assinatura_png ? (
           // Assinatura desenhada
-          <div style={{ maxWidth: 320 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={assinatura.assinatura_png}
-              alt=""
-              style={{ height: 46, maxWidth: "100%", objectFit: "contain", display: "block", marginBottom: 2 }}
-            />
-            <div style={{ borderTop: "1px solid #9ca3af", paddingTop: 5 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: CINZA }}>
-                {assinatura.assinante_nome ?? colaborador?.nome ?? "Colaborador"}
-              </div>
-              <div style={{ fontSize: 9, color: CINZA_LEVE }}>
-                Assinatura do colaborador (recebedor)
-              </div>
-            </div>
-          </div>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={assinatura.assinatura_png}
+            alt=""
+            style={{ height: 46, maxWidth: 300, objectFit: "contain", display: "inline-block" }}
+          />
         ) : (
           // Ainda sem assinatura — linha para assinatura manual
-          <div style={{ maxWidth: 320, marginTop: 24 }}>
-            <div style={{ borderTop: "1px solid #9ca3af", paddingTop: 5 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: CINZA }}>
-                {colaborador?.nome ?? "Colaborador"}
-              </div>
-              <div style={{ fontSize: 9, color: CINZA_LEVE }}>
-                Assinatura do colaborador (recebedor)
-              </div>
-            </div>
-          </div>
+          <div style={{ width: 300, borderTop: "1px solid #9ca3af", margin: "34px auto 0" }} />
         )}
+
+        {/* Legenda embaixo de TODAS as assinaturas */}
+        <div style={{ marginTop: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: CINZA }}>
+            {assinatura?.assinante_nome ?? colaborador?.nome ?? "Colaborador"}
+          </div>
+          <div style={{ fontSize: 9, color: CINZA_LEVE }}>
+            Assinatura do colaborador (recebedor)
+          </div>
+        </div>
       </div>
 
       {/* Carimbo de não-repúdio (assinatura eletrônica) */}
