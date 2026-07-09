@@ -326,8 +326,20 @@ table { border-collapse: collapse; width: 100%; }
               .
             </>
           ) : null}
-          {assinatura.ip ? <> Origem (IP): {assinatura.ip}.</> : null} Evidência
-          registrada de forma imutável na plataforma JCN.
+          {assinatura.ip ? <> Origem (IP): {assinatura.ip}.</> : null}
+          {assinatura.consentimento_em ? (
+            <>
+              {" "}
+              Consentimento (LGPD) registrado em{" "}
+              {fmtDataHora(assinatura.consentimento_em)}.
+            </>
+          ) : null}
+          <div style={{ marginTop: 5, fontSize: 8, color: "#0369a1" }}>
+            Assinatura eletrônica nos termos da Lei nº 14.063/2020 e da MP nº
+            2.200-2/2001. O documento e as evidências de autoria, integridade e
+            data/hora são mantidos de forma imutável na plataforma JCN, podendo
+            ser verificados pelos códigos (hash SHA-256) acima.
+          </div>
         </div>
       )}
 
