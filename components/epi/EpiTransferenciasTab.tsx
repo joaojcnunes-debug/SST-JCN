@@ -160,7 +160,7 @@ export default function EpiTransferenciasTab({
                   return (
                     <div key={i} className="rounded-lg border border-gray-100 p-2">
                       <div className="flex items-start gap-2">
-                        <div className="flex-1">
+                        <div className="min-w-0 flex-1">
                           <select
                             className={inputCls}
                             value={l.id_catalogo_origem}
@@ -186,15 +186,19 @@ export default function EpiTransferenciasTab({
                             </p>
                           )}
                         </div>
-                        <input
-                          type="number"
-                          min={0.01}
-                          step="any"
-                          placeholder="Qtd."
-                          className={`${inputCls} w-20 shrink-0`}
-                          value={l.quantidade}
-                          onChange={(e) => setLinha(i, { quantidade: e.target.value })}
-                        />
+                        <div className="w-20 shrink-0">
+                          <input
+                            type="number"
+                            min={0.01}
+                            step="any"
+                            placeholder="Qtd."
+                            className={inputCls}
+                            value={l.quantidade}
+                            onChange={(e) =>
+                              setLinha(i, { quantidade: e.target.value })
+                            }
+                          />
+                        </div>
                         <button
                           type="button"
                           onClick={() => removeLinha(i)}
