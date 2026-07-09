@@ -30,14 +30,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config) => {
-    // O SDK @digitalpersona/devices importa o módulo-irmão 'WebSdk' por um
-    // especificador nu (historicamente carregado via <script> global). Mapeamos
-    // para o pacote npm @digitalpersona/websdk para o webpack empacotá-lo.
+  webpack: (config, { webpack }) => {
+    // O SDK @digitalpersona/devices usa o módulo-irmão 'WebSdk' de duas formas:
+    // (1) como especificador de import nu -> resolvido pelo alias abaixo;
+    // (2) como VARIÁVEL GLOBAL em runtime -> injetada pelo ProvidePlugin (senão
+    //     dá "ReferenceError: WebSdk is not defined" no navegador).
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
       WebSdk: path.resolve(__dirname, "node_modules/@digitalpersona/websdk"),
     };
+    config.plugins.push(
+      new webpack.ProvidePlugin({
+        WebSdk: "@digitalpersona/websdk",
+      }),
+    );
     return config;
   },
 };
