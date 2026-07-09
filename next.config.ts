@@ -30,23 +30,19 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  webpack: (config, { webpack }) => {
-    // O SDK @digitalpersona/devices usa o módulo-irmão 'WebSdk' de duas formas:
-    // (1) como especificador de import nu -> resolvido pelo alias abaixo;
-    // (2) como VARIÁVEL GLOBAL em runtime -> injetada pelo ProvidePlugin (senão
-    //     dá "ReferenceError: WebSdk is not defined" no navegador).
-    config.resolve.alias = {
-      ...(config.resolve.alias || {}),
-      WebSdk: path.resolve(__dirname, "node_modules/@digitalpersona/websdk"),
-    };
-    // WebSdk global via ProvidePlugin. (A lib `async` NÃO pode ir aqui — webpack
-    // ignora `async` por ser palavra contextual; ela é setada em window.async
-    // pelo wrapper lib/epi/digitalPersona.ts antes de carregar o SDK.)
-    config.plugins.push(
-      new webpack.ProvidePlugin({
-        WebSdk: "@digitalpersona/websdk",
-      }),
-    );
+  webpack: (config) => {
+    // O @digitalpersona/devices depende do 'WebSdk', que foi feito para carregar
+    // via <script> (public/vendor/websdk.client.ui.min.js) — autocontido, já
+    // inclui a lib `async`. Empacotar o websdk pelo webpack quebra o wiring
+    // interno do async (async.waterfall = undefined). Então tratamos 'WebSdk'
+    // como EXTERNAL global: o SDK passa a usar window.WebSdk (setado pelo script).
+    // Aplica-se aos dois bundles (o server compila o módulo mesmo sendo dynamic
+    // import client-only; nunca executa lá — o wrapper é guardado por window).
+    const ext = config.externals || [];
+    config.externals = [
+      ...(Array.isArray(ext) ? ext : [ext]),
+      { WebSdk: "WebSdk" },
+    ];
     return config;
   },
 };

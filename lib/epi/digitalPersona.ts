@@ -19,19 +19,30 @@ export interface CapturaDigital {
 }
 
 /**
- * O @digitalpersona/websdk foi escrito para carregar via <script> e usa a lib
- * `async` como GLOBAL (`async.waterfall`). Ao empacotar, esse global não existe,
- * então setamos `window.async` antes de importar o SDK. (ProvidePlugin não
- * resolve `async` porque o webpack o trata como palavra contextual.)
+ * O @digitalpersona/websdk foi feito para carregar via <script> (autocontido,
+ * já inclui a lib `async`). Empacotá-lo pelo webpack quebra o wiring interno do
+ * async, então carregamos o script estático `/vendor/websdk.client.ui.min.js`,
+ * que define `window.WebSdk` — o que o @digitalpersona/devices (tratado com
+ * WebSdk external) usa em runtime.
  */
-async function garantirGlobaisWebSdk(): Promise<void> {
-  if (typeof window === "undefined") return;
-  const w = window as unknown as { async?: unknown };
-  if (!w.async) {
-    // @ts-expect-error 'async' não tem tipos; só o usamos como global do WebSdk.
-    const m = await import("async");
-    w.async = (m as { default?: unknown }).default ?? m;
+let webSdkPromise: Promise<void> | null = null;
+function garantirGlobaisWebSdk(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  const w = window as unknown as { WebSdk?: unknown };
+  if (w.WebSdk) return Promise.resolve();
+  if (!webSdkPromise) {
+    webSdkPromise = new Promise<void>((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "/vendor/websdk.client.ui.min.js";
+      s.onload = () => resolve();
+      s.onerror = () => {
+        webSdkPromise = null;
+        reject(new Error("Falha ao carregar o WebSdk local."));
+      };
+      document.head.appendChild(s);
+    });
   }
+  return webSdkPromise;
 }
 
 async function sha256Hex(texto: string): Promise<string> {
