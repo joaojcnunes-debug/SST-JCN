@@ -18,6 +18,22 @@ export interface CapturaDigital {
   qualidade: string | null;
 }
 
+/**
+ * O @digitalpersona/websdk foi escrito para carregar via <script> e usa a lib
+ * `async` como GLOBAL (`async.waterfall`). Ao empacotar, esse global não existe,
+ * então setamos `window.async` antes de importar o SDK. (ProvidePlugin não
+ * resolve `async` porque o webpack o trata como palavra contextual.)
+ */
+async function garantirGlobaisWebSdk(): Promise<void> {
+  if (typeof window === "undefined") return;
+  const w = window as unknown as { async?: unknown };
+  if (!w.async) {
+    // @ts-expect-error 'async' não tem tipos; só o usamos como global do WebSdk.
+    const m = await import("async");
+    w.async = (m as { default?: unknown }).default ?? m;
+  }
+}
+
 async function sha256Hex(texto: string): Promise<string> {
   const buf = new TextEncoder().encode(texto);
   const hash = await crypto.subtle.digest("SHA-256", buf);
@@ -42,6 +58,7 @@ export async function leitorDisponivel(): Promise<boolean> {
   }
   // Navegador: SDK web (@digitalpersona/devices) via agente local.
   try {
+    await garantirGlobaisWebSdk();
     const dp = await import("@digitalpersona/devices");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const reader = new (dp as any).FingerprintReader();
@@ -85,6 +102,7 @@ export async function capturarDigital(
     };
   }
 
+  await garantirGlobaisWebSdk();
   const dp = await import("@digitalpersona/devices");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const D = dp as any;
