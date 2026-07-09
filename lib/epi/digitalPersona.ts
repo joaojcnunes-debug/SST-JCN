@@ -46,13 +46,17 @@ export async function leitorDisponivel(): Promise<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const reader = new (dp as any).FingerprintReader();
     const devices: string[] = await reader.enumerateDevices();
+    // eslint-disable-next-line no-console
+    console.info("[epi-digital] enumerateDevices ->", devices);
     try {
       reader.off?.();
     } catch {
       /* ignora */
     }
     return Array.isArray(devices) && devices.length > 0;
-  } catch {
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn("[epi-digital] leitor indisponível (SDK web):", e);
     return false;
   }
 }
