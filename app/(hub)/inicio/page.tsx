@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Siren,
   HardHat,
+  CalendarClock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
@@ -185,6 +186,17 @@ const CARDS: HubCardCfg[] = [
     categoria: "interno",
     skipStats: true,
     staticLabel: "Dashboard · Projeção de capacidade",
+  },
+  {
+    modulo: "gestao_gerencial",
+    href: "/gestao-gerencial",
+    title: "Gestão Gerencial",
+    description: "Escalas e substituições da equipe por unidade: escala padrão, ausências, sugestão de substitutos e projeção mensal",
+    icon: <CalendarClock className="size-12" />,
+    accent: "#7C3AED",
+    categoria: "interno",
+    skipStats: true,
+    staticLabel: "Escalas · Substituições",
   },
 ];
 
