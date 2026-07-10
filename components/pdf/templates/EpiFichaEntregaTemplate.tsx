@@ -19,13 +19,27 @@ import type {
   EpiEntregaItem,
   EpiEntregaAssinatura,
 } from "@/lib/epi/types";
-import { formatCNPJ, formatCPF, fmtData, fmtDataHora } from "@/lib/utils";
+import { formatCNPJ, formatCPF, fmtData } from "@/lib/utils";
 
 const VERDE = "#0ea5e9";
 const ESCURO = "#0369a1";
 const CINZA = "#374151";
 const CINZA_LEVE = "#6b7280";
 const VAZIO = "—";
+
+// O PDF é renderizado no servidor (Vercel/UTC); força o fuso de Brasília no
+// carimbo da assinatura (senão a hora sai +3h). Usa Intl nativo (sem date-fns-tz).
+const fmtDataHoraBRT = (iso?: string | null) =>
+  iso
+    ? new Date(iso).toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
 
 export interface EpiFichaEntregaProps {
   entrega: EpiEntrega;
@@ -262,7 +276,7 @@ table { border-collapse: collapse; width: 100%; }
                 Assinado biometricamente
               </div>
               <div style={{ fontSize: 11, color: CINZA }}>
-                {fmtDataHora(assinatura.assinado_em)}
+                {fmtDataHoraBRT(assinatura.assinado_em)}
               </div>
               {assinatura.verificado ? (
                 <div style={{ fontSize: 9, fontWeight: 700, color: "#15803d" }}>
@@ -323,7 +337,7 @@ table { border-collapse: collapse; width: 100%; }
           {assinatura.metodo === "digital"
             ? " mediante biometria (impressão digital)"
             : ""}{" "}
-          em {fmtDataHora(assinatura.assinado_em)}.
+          em {fmtDataHoraBRT(assinatura.assinado_em)}.
           {assinatura.verificado ? (
             <>
               {" "}
@@ -360,7 +374,7 @@ table { border-collapse: collapse; width: 100%; }
             <>
               {" "}
               Consentimento (LGPD) registrado em{" "}
-              {fmtDataHora(assinatura.consentimento_em)}.
+              {fmtDataHoraBRT(assinatura.consentimento_em)}.
             </>
           ) : null}
           <div style={{ marginTop: 5, fontSize: 8, color: "#0369a1" }}>
