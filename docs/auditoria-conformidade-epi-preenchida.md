@@ -10,6 +10,14 @@
 
 Legenda: `[x]` conforme · `[ ]` pendente · `N/A` não se aplica.
 
+> **Atualização (Fase 4D, v0.3.88):** foi implementada a **verificação biométrica 1:1**
+> (confronto de identidade) — o que fortalece a Camada 2 (impede assinatura por terceiro).
+> **Consequência:** agora **armazenamos o template** do colaborador (minúcias, não a imagem),
+> sob RLS. Para a Camada 4 (retenção), há **expurgo automático do template ao inativar o
+> colaborador** (trigger v129, com carimbo `biometria_expurgada_em`) + botão de **remoção
+> manual** (revogação de consentimento). Ainda pendente de política/DPO: prazo formal de
+> retenção e o **RIPD** (NCs #1 e #2 continuam abertas na parte documental).
+
 ---
 
 ## Camada 1 — Classificação jurídica por tipo de documento
