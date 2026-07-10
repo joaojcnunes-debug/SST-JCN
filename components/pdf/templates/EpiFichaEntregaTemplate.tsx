@@ -264,6 +264,11 @@ table { border-collapse: collapse; width: 100%; }
               <div style={{ fontSize: 11, color: CINZA }}>
                 {fmtDataHora(assinatura.assinado_em)}
               </div>
+              {assinatura.verificado ? (
+                <div style={{ fontSize: 9, fontWeight: 700, color: "#15803d" }}>
+                  ✓ Identidade verificada
+                </div>
+              ) : null}
               {assinatura.finger_hash ? (
                 <div
                   style={{ fontSize: 9, fontFamily: "monospace", color: CINZA_LEVE }}
@@ -319,6 +324,17 @@ table { border-collapse: collapse; width: 100%; }
             ? " mediante biometria (impressão digital)"
             : ""}{" "}
           em {fmtDataHora(assinatura.assinado_em)}.
+          {assinatura.verificado ? (
+            <>
+              {" "}
+              <strong>Identidade confirmada</strong> por verificação biométrica
+              1:1 contra o cadastro do colaborador
+              {assinatura.match_score != null
+                ? ` (score ${assinatura.match_score})`
+                : ""}
+              .
+            </>
+          ) : null}
           {assinatura.metodo === "digital" && assinatura.finger_hash ? (
             <>
               {" "}

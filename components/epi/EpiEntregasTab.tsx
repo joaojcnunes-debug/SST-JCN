@@ -66,6 +66,12 @@ export default function EpiEntregasTab({
     return m;
   }, [colaboradores]);
 
+  const templateColab = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const c of colaboradores) m.set(c.id, c.biometria_template ?? null);
+    return m;
+  }, [colaboradores]);
+
   function setLinha(i: number, patch: Partial<LinhaItem>) {
     setLinhas((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   }
@@ -339,6 +345,9 @@ export default function EpiEntregasTab({
           entregaId={entregaAssinando.id}
           empresaId={empresaId}
           colaboradorNome={nomeColab.get(entregaAssinando.id_colaborador) ?? ""}
+          colaboradorTemplate={
+            templateColab.get(entregaAssinando.id_colaborador) ?? null
+          }
         />
       )}
     </div>

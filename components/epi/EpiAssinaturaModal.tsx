@@ -19,15 +19,17 @@ import {
   capturarDigital,
   type CapturaDigital,
 } from "@/lib/epi/digitalPersona";
+import { agentDisponivel, verificarDigital } from "@/lib/epi/biometricAgent";
 
 type Metodo = "digital" | "canvas";
 
 /**
- * Coleta a assinatura do recebedor (Fase 4/4B). Ao abrir, baixa o PDF exato da
- * ficha e calcula o SHA-256 — o hash daquilo que o colaborador está consentindo.
- * Dois métodos: DIGITAL (leitor 4500 — captura → hash → descarta, exige
- * consentimento LGPD) ou DESENHO na tela (fallback). Ambos gravam a evidência na
- * trilha append-only com hash do PDF + user-agent/IP.
+ * Coleta a assinatura do recebedor. Baixa o PDF exato da ficha e calcula o
+ * SHA-256 (o que está sendo consentido). Métodos: DIGITAL ou DESENHO.
+ *
+ * Fase 4D — se o colaborador tem biometria CADASTRADA (`colaboradorTemplate`) e
+ * o companion local está ativo, a digital é VERIFICADA 1:1 (confronta identidade);
+ * só assina se der match. Sem template, cai para captura simples (via SDK web).
  */
 export default function EpiAssinaturaModal({
   open,
@@ -35,15 +37,18 @@ export default function EpiAssinaturaModal({
   entregaId,
   empresaId,
   colaboradorNome,
+  colaboradorTemplate,
 }: {
   open: boolean;
   onClose: () => void;
   entregaId: string;
   empresaId: string;
   colaboradorNome: string;
+  colaboradorTemplate?: string | null;
 }) {
   const assinar = useAssinarEntrega();
   const sigRef = useRef<SignatureCanvasHandle | null>(null);
+  const modoVerificacao = !!colaboradorTemplate;
 
   const [nome, setNome] = useState(colaboradorNome);
   const [hash, setHash] = useState<string | null>(null);
@@ -52,11 +57,19 @@ export default function EpiAssinaturaModal({
 
   const [metodo, setMetodo] = useState<Metodo>("canvas");
   const [leitorOk, setLeitorOk] = useState<boolean | null>(null);
+  const [agenteOk, setAgenteOk] = useState<boolean | null>(null);
   const [consentimento, setConsentimento] = useState(false);
   const [capturando, setCapturando] = useState(false);
   const [captura, setCaptura] = useState<CapturaDigital | null>(null);
+  const [verificado, setVerificado] = useState(false);
+  const [matchScore, setMatchScore] = useState<number | null>(null);
   const [erroDigital, setErroDigital] = useState<string | null>(null);
   const [vazio, setVazio] = useState(true);
+
+  // Digital só é possível se: cadastrado -> precisa do agente; senão -> SDK web.
+  const digitalPossivel = modoVerificacao
+    ? agenteOk === true
+    : leitorOk === true;
 
   useEffect(() => {
     if (!open) return;
@@ -65,8 +78,11 @@ export default function EpiAssinaturaModal({
     setErroHash(null);
     setConsentimento(false);
     setCaptura(null);
+    setVerificado(false);
+    setMatchScore(null);
     setErroDigital(null);
     setLeitorOk(null);
+    setAgenteOk(null);
     setCarregandoHash(true);
     let cancelado = false;
 
@@ -88,17 +104,18 @@ export default function EpiAssinaturaModal({
     })();
 
     (async () => {
-      const ok = await leitorDisponivel();
-      if (!cancelado) {
-        setLeitorOk(ok);
-        setMetodo(ok ? "digital" : "canvas");
-      }
+      const [ag, web] = await Promise.all([agentDisponivel(), leitorDisponivel()]);
+      if (cancelado) return;
+      setAgenteOk(ag);
+      setLeitorOk(web);
+      const possivel = colaboradorTemplate ? ag : web;
+      setMetodo(possivel ? "digital" : "canvas");
     })();
 
     return () => {
       cancelado = true;
     };
-  }, [open, entregaId, colaboradorNome]);
+  }, [open, entregaId, colaboradorNome, colaboradorTemplate]);
 
   if (!open) return null;
 
@@ -110,9 +127,35 @@ export default function EpiAssinaturaModal({
     setErroDigital(null);
     setCapturando(true);
     try {
-      const cap = await capturarDigital();
-      setCaptura(cap);
-      toast.success("Digital capturada");
+      if (colaboradorTemplate) {
+        // Verificação 1:1 contra o cadastro.
+        const v = await verificarDigital(colaboradorTemplate);
+        if (!v.match) {
+          setCaptura(null);
+          setVerificado(false);
+          setMatchScore(v.score);
+          setErroDigital(
+            "A digital NÃO confere com o cadastro deste colaborador. Assinatura bloqueada.",
+          );
+          toast.error("Digital não confere com o colaborador");
+          return;
+        }
+        setCaptura({
+          fingerHash: v.finger_hash ?? "",
+          device: v.device ?? "U.are.U",
+          qualidade: v.quality,
+        });
+        setVerificado(true);
+        setMatchScore(v.score);
+        toast.success("Identidade verificada");
+      } else {
+        // Sem cadastro: captura simples (SDK web).
+        const cap = await capturarDigital();
+        setCaptura(cap);
+        setVerificado(false);
+        setMatchScore(null);
+        toast.success("Digital capturada");
+      }
     } catch (e) {
       setCaptura(null);
       setErroDigital(e instanceof Error ? e.message : "Falha ao ler a digital");
@@ -140,6 +183,10 @@ export default function EpiAssinaturaModal({
         toast.error("Colete a digital antes de confirmar.");
         return;
       }
+      if (modoVerificacao && !verificado) {
+        toast.error("A digital precisa ser verificada com sucesso.");
+        return;
+      }
       assinar.mutate(
         {
           empresa_id: empresaId,
@@ -152,6 +199,8 @@ export default function EpiAssinaturaModal({
           device_info: captura.device,
           qualidade: captura.qualidade,
           consentimento: true,
+          verificado,
+          match_score: matchScore,
         },
         { onSuccess: () => onClose() },
       );
@@ -180,7 +229,9 @@ export default function EpiAssinaturaModal({
   const confirmarDesabilitado =
     assinar.isPending ||
     !hash ||
-    (metodo === "digital" ? !captura || !consentimento : vazio);
+    (metodo === "digital"
+      ? !captura || !consentimento || (modoVerificacao && !verificado)
+      : vazio);
 
   return (
     <EpiModal titulo="Assinatura do recebedor" onClose={onClose}>
@@ -190,15 +241,12 @@ export default function EpiAssinaturaModal({
           <button
             type="button"
             onClick={() => setMetodo("digital")}
-            disabled={leitorOk === false}
+            disabled={digitalPossivel === false}
             className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 ${
               metodo === "digital"
                 ? "bg-verde-primary text-white"
                 : "text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent"
             }`}
-            title={
-              leitorOk === false ? "Nenhum leitor de digital detectado" : undefined
-            }
           >
             <Fingerprint className="size-4" /> Digital
           </button>
@@ -215,11 +263,29 @@ export default function EpiAssinaturaModal({
           </button>
         </div>
 
-        {leitorOk === false && (
+        {/* Avisos de disponibilidade */}
+        {modoVerificacao && agenteOk === false && (
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] text-amber-900">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
-            Leitor de digital não detectado. Instale o “HID Authentication Device
-            Client” e conecte o leitor, ou use a assinatura desenhada.
+            Este colaborador tem <strong>biometria cadastrada</strong>, mas o
+            agente de biometria não está ativo neste PC — não é possível
+            verificar. Instale/abra o “EpiBiometricAgent” ou use a assinatura
+            desenhada.
+          </div>
+        )}
+        {!modoVerificacao && leitorOk === false && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-[11px] text-amber-900">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+            Leitor de digital não detectado. Use a assinatura desenhada. (Cadastre
+            a biometria do colaborador para habilitar a verificação de
+            identidade.)
+          </div>
+        )}
+        {modoVerificacao && agenteOk !== false && (
+          <div className="flex items-start gap-2 rounded-lg border border-sky-100 bg-sky-50 p-2.5 text-[11px] text-sky-900">
+            <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-verde-primary" />
+            Colaborador com biometria cadastrada — a digital será{" "}
+            <strong>conferida com o cadastro</strong> antes de assinar.
           </div>
         )}
 
@@ -243,18 +309,18 @@ export default function EpiAssinaturaModal({
                 className="mt-0.5 size-3.5 shrink-0"
               />
               <span>
-                Autorizo a coleta da minha impressão digital exclusivamente para
-                assinar esta ficha de entrega de EPI. Estou ciente de que a imagem
-                e o gabarito da digital <strong>não são armazenados</strong> —
-                apenas um código de verificação (hash) irreversível, conforme a
-                LGPD.
+                Autorizo a leitura da minha impressão digital para{" "}
+                {modoVerificacao ? "confirmar minha identidade e " : ""}assinar
+                esta ficha de entrega de EPI. A imagem da digital{" "}
+                <strong>não é armazenada</strong> nesta etapa — apenas um código
+                de verificação (hash) irreversível, conforme a LGPD.
               </span>
             </label>
 
             <button
               type="button"
               onClick={lerDigital}
-              disabled={capturando || !consentimento}
+              disabled={capturando || !consentimento || digitalPossivel === false}
               className="flex w-full items-center justify-center gap-2 rounded-md border border-sky-300 bg-white px-4 py-3 text-sm font-semibold text-verde-accent hover:bg-sky-50 disabled:opacity-50"
             >
               {capturando ? (
@@ -264,24 +330,31 @@ export default function EpiAssinaturaModal({
                 </>
               ) : captura ? (
                 <>
-                  <CheckCircle2 className="size-4 text-green-600" /> Digital
-                  capturada — ler de novo
+                  <CheckCircle2 className="size-4 text-green-600" />{" "}
+                  {modoVerificacao ? "Verificar de novo" : "Ler de novo"}
                 </>
               ) : (
                 <>
-                  <Fingerprint className="size-4" /> Ler digital
+                  <Fingerprint className="size-4" />{" "}
+                  {modoVerificacao ? "Verificar digital" : "Ler digital"}
                 </>
               )}
             </button>
 
-            {captura && (
+            {captura && verificado && (
+              <p className="flex items-center gap-1.5 text-[11px] font-medium text-green-700">
+                <ShieldCheck className="size-3.5" /> Identidade verificada
+                {matchScore != null ? ` (score ${matchScore})` : ""}.
+              </p>
+            )}
+            {captura && !verificado && (
               <p className="flex items-center gap-1.5 text-[11px] text-green-700">
-                <CheckCircle2 className="size-3.5" /> Evidência gerada (hash{" "}
-                {captura.fingerHash.slice(0, 16)}…). A biometria foi descartada.
+                <CheckCircle2 className="size-3.5" /> Digital capturada (hash{" "}
+                {captura.fingerHash.slice(0, 16)}…).
               </p>
             )}
             {erroDigital && (
-              <p className="text-[11px] text-red-600">{erroDigital}</p>
+              <p className="text-[11px] font-medium text-red-600">{erroDigital}</p>
             )}
           </div>
         )}

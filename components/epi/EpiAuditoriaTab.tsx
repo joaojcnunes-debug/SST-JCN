@@ -34,6 +34,8 @@ export default function EpiAuditoriaTab({ empresaId }: { empresaId: string }) {
       "Assinante",
       "Data da entrega",
       "Método",
+      "Identidade verificada",
+      "Score",
       "Hash do documento (SHA-256)",
       "Hash biométrico (SHA-256)",
       "Dispositivo",
@@ -52,6 +54,8 @@ export default function EpiAuditoriaTab({ empresaId }: { empresaId: string }) {
         l.assinante_nome,
         l.entrega?.data_entrega ? fmtData(l.entrega.data_entrega) : "",
         l.metodo === "digital" ? "Biométrica (digital)" : "Desenhada",
+        l.verificado ? "Sim" : "Não",
+        l.match_score ?? "",
         l.pdf_sha256,
         l.finger_hash,
         l.device_info,
@@ -131,6 +135,7 @@ export default function EpiAuditoriaTab({ empresaId }: { empresaId: string }) {
                   <th className="px-3 py-2 font-semibold">Data/hora</th>
                   <th className="px-3 py-2 font-semibold">Assinante</th>
                   <th className="px-3 py-2 font-semibold">Método</th>
+                  <th className="px-3 py-2 font-semibold">Verificada</th>
                   <th className="px-3 py-2 font-semibold">Hash doc.</th>
                   <th className="px-3 py-2 font-semibold">Hash bio.</th>
                   <th className="px-3 py-2 font-semibold">IP</th>
@@ -164,6 +169,15 @@ export default function EpiAuditoriaTab({ empresaId }: { empresaId: string }) {
                           </>
                         )}
                       </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      {l.verificado ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700">
+                          <ShieldCheck className="size-3" /> Sim
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-gray-400">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-2 font-mono text-[11px] text-gray-500">
                       {l.pdf_sha256 ? l.pdf_sha256.slice(0, 12) + "…" : "—"}

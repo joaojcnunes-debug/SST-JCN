@@ -451,6 +451,9 @@ export interface AssinarEntregaArgs {
   qualidade?: string | null;
   /** Consentimento LGPD (obrigatório p/ digital). */
   consentimento?: boolean;
+  /** Verificação 1:1 contra o template cadastrado (Fase 4D). */
+  verificado?: boolean;
+  match_score?: number | null;
 }
 
 /**
@@ -478,6 +481,8 @@ export function useAssinarEntrega() {
         p_device_info: args.device_info ?? null,
         p_qualidade: args.qualidade ?? null,
         p_consentimento: args.consentimento ?? false,
+        p_verificado: args.verificado ?? false,
+        p_match_score: args.match_score ?? null,
       } as never);
       if (error) throw error;
       return data as unknown as string;

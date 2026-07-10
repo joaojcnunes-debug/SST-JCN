@@ -12,6 +12,10 @@ export interface EpiColaborador {
   criado_por: string | null;
   criado_em: string;
   updated_at: string | null;
+  // Fase 4D — biometria cadastrada (template FMD) p/ verificação 1:1
+  biometria_template?: string | null;
+  biometria_cadastrada_em?: string | null;
+  biometria_consentimento_em?: string | null;
 }
 
 export type EpiTipoItem = "EPI" | "EPC";
@@ -182,4 +186,7 @@ export interface EpiEntregaAssinatura {
   device_info: string | null;
   qualidade: string | null;
   consentimento_em: string | null;
+  // Fase 4D — verificação de identidade 1:1
+  verificado: boolean;
+  match_score: number | null;
 }

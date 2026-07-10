@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Pencil, Trash2, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Pencil, Trash2, Users, Fingerprint, Loader2 } from "lucide-react";
+import toast from "react-hot-toast";
 import EpiModal, { inputCls, labelCls } from "./EpiModal";
 import {
   useEpiColaboradores,
   useSalvarColaborador,
   useExcluirColaborador,
 } from "@/lib/hooks/useEpi";
+import { agentDisponivel, capturarTemplate } from "@/lib/epi/biometricAgent";
 import { formatCPF } from "@/lib/utils";
 import type { EpiColaborador } from "@/lib/epi/types";
 
@@ -25,12 +27,54 @@ export default function EpiColaboradoresTab({
   const excluir = useExcluirColaborador();
   const [form, setForm] = useState<FormState | null>(null);
   const [confirmar, setConfirmar] = useState<EpiColaborador | null>(null);
+  const [agenteOk, setAgenteOk] = useState<boolean | null>(null);
+  const [bioConsent, setBioConsent] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
+
+  // Detecta o companion de biometria quando o modal abre.
+  useEffect(() => {
+    if (!form) return;
+    setAgenteOk(null);
+    setBioConsent(!!form.biometria_consentimento_em);
+    let vivo = true;
+    agentDisponivel().then((ok) => vivo && setAgenteOk(ok));
+    return () => {
+      vivo = false;
+    };
+  }, [form?.id, form]);
 
   function novo() {
     setForm({ empresa_id: empresaId, nome: "", ativo: true });
   }
   function editar(c: EpiColaborador) {
     setForm({ ...c });
+  }
+
+  async function cadastrarBiometria() {
+    if (!bioConsent) {
+      toast.error("Aceite o consentimento para cadastrar a biometria.");
+      return;
+    }
+    setEnrolling(true);
+    try {
+      const cap = await capturarTemplate();
+      const agora = new Date().toISOString();
+      setForm((f) =>
+        f
+          ? {
+              ...f,
+              biometria_template: cap.template,
+              biometria_cadastrada_em: agora,
+              biometria_consentimento_em: agora,
+            }
+          : f
+      );
+      toast.success("Biometria cadastrada — salve o colaborador.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao cadastrar a digital.");
+    } finally {
+      setEnrolling(false);
+    }
   }
   function submit() {
     if (!form?.nome?.trim()) return;
@@ -183,6 +227,65 @@ export default function EpiColaboradoresTab({
               />
               Colaborador ativo
             </label>
+
+            {/* Biometria (Fase 4D) — cadastro do template p/ verificação 1:1 */}
+            <div className="col-span-2 rounded-lg border border-gray-200 p-3">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600">
+                  <Fingerprint className="size-4 text-verde-primary" /> Biometria
+                  (digital)
+                </span>
+                {form.biometria_template ? (
+                  <span className="text-[11px] font-medium text-green-700">
+                    ✓ Cadastrada
+                  </span>
+                ) : (
+                  <span className="text-[11px] text-gray-400">Não cadastrada</span>
+                )}
+              </div>
+              <label className="mt-2 flex items-start gap-2 text-[11px] leading-relaxed text-gray-600">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-3.5 shrink-0"
+                  checked={bioConsent}
+                  onChange={(e) => setBioConsent(e.target.checked)}
+                />
+                <span>
+                  Autorizo o cadastro da minha impressão digital, exclusivamente
+                  para <strong>verificar minha identidade</strong> ao assinar
+                  fichas de EPI. Ciente de que é guardado apenas um gabarito
+                  (template) protegido, conforme a LGPD.
+                </span>
+              </label>
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={cadastrarBiometria}
+                  disabled={enrolling || !bioConsent || agenteOk === false}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-white px-3 py-1.5 text-xs font-semibold text-verde-accent hover:bg-sky-50 disabled:opacity-50"
+                >
+                  {enrolling ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" /> Encoste o
+                      dedo…
+                    </>
+                  ) : (
+                    <>
+                      <Fingerprint className="size-3.5" />{" "}
+                      {form.biometria_template
+                        ? "Recadastrar digital"
+                        : "Cadastrar digital"}
+                    </>
+                  )}
+                </button>
+              </div>
+              {agenteOk === false && (
+                <p className="mt-1.5 text-[11px] text-amber-700">
+                  Agente de biometria não detectado neste PC. Instale o
+                  “EpiBiometricAgent” e conecte o leitor.
+                </p>
+              )}
+            </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">
             <button
