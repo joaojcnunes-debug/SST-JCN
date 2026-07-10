@@ -273,7 +273,7 @@ export default function SidebarShell({
           <span>Voltar</span>
         </button>
         <Link
-          href="/inicio"
+          href="/visao-geral"
           onClick={() => setMobileOpen(false)}
           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/50 transition-all duration-150 hover:bg-white/[0.09] hover:text-white/85"
         >
