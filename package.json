@@ -1,6 +1,6 @@
 {
   "name": "sst-jcn",
-  "version": "0.3.87",
+  "version": "0.3.88",
   "private": true,
   "main": "electron-dist/main.js",
   "scripts": {

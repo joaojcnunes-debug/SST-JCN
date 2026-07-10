@@ -16,6 +16,7 @@ export interface EpiColaborador {
   biometria_template?: string | null;
   biometria_cadastrada_em?: string | null;
   biometria_consentimento_em?: string | null;
+  biometria_expurgada_em?: string | null;
 }
 
 export type EpiTipoItem = "EPI" | "EPC";

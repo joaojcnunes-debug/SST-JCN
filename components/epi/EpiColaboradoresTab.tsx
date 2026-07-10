@@ -10,7 +10,7 @@ import {
   useExcluirColaborador,
 } from "@/lib/hooks/useEpi";
 import { agentDisponivel, capturarTemplate } from "@/lib/epi/biometricAgent";
-import { formatCPF } from "@/lib/utils";
+import { formatCPF, fmtDataHora } from "@/lib/utils";
 import type { EpiColaborador } from "@/lib/epi/types";
 
 type FormState = Partial<EpiColaborador> & { empresa_id: string };
@@ -75,6 +75,22 @@ export default function EpiColaboradoresTab({
     } finally {
       setEnrolling(false);
     }
+  }
+
+  function removerBiometria() {
+    setForm((f) =>
+      f
+        ? {
+            ...f,
+            biometria_template: null,
+            biometria_cadastrada_em: null,
+            biometria_consentimento_em: null,
+            biometria_expurgada_em: new Date().toISOString(),
+          }
+        : f
+    );
+    setBioConsent(false);
+    toast.success("Biometria marcada para remoção — salve o colaborador.");
   }
   function submit() {
     if (!form?.nome?.trim()) return;
@@ -257,7 +273,7 @@ export default function EpiColaboradoresTab({
                   (template) protegido, conforme a LGPD.
                 </span>
               </label>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={cadastrarBiometria}
@@ -278,6 +294,15 @@ export default function EpiColaboradoresTab({
                     </>
                   )}
                 </button>
+                {form.biometria_template && (
+                  <button
+                    type="button"
+                    onClick={removerBiometria}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="size-3.5" /> Remover biometria
+                  </button>
+                )}
               </div>
               {agenteOk === false && (
                 <p className="mt-1.5 text-[11px] text-amber-700">
@@ -285,6 +310,15 @@ export default function EpiColaboradoresTab({
                   “EpiBiometricAgent” e conecte o leitor.
                 </p>
               )}
+              {!form.biometria_template && form.biometria_expurgada_em && (
+                <p className="mt-1.5 text-[11px] text-gray-400">
+                  Biometria removida em {fmtDataHora(form.biometria_expurgada_em)}.
+                </p>
+              )}
+              <p className="mt-1.5 text-[10px] text-gray-400">
+                O template é apagado automaticamente ao inativar o colaborador
+                (retenção LGPD).
+              </p>
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-2">
