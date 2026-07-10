@@ -9,7 +9,11 @@ import {
   useSalvarColaborador,
   useExcluirColaborador,
 } from "@/lib/hooks/useEpi";
-import { agentDisponivel, capturarTemplate } from "@/lib/epi/biometricAgent";
+import {
+  agentDisponivel,
+  capturarPreTemplate,
+  combinarTemplates,
+} from "@/lib/epi/biometricAgent";
 import { formatCPF, fmtDataHora } from "@/lib/utils";
 import type { EpiColaborador } from "@/lib/epi/types";
 
@@ -30,6 +34,8 @@ export default function EpiColaboradoresTab({
   const [agenteOk, setAgenteOk] = useState<boolean | null>(null);
   const [bioConsent, setBioConsent] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
+  const [progresso, setProgresso] = useState(0); // capturas concluídas (0..4)
+  const CAPTURAS = 4;
 
   // Detecta o companion de biometria quando o modal abre.
   useEffect(() => {
@@ -56,24 +62,35 @@ export default function EpiColaboradoresTab({
       return;
     }
     setEnrolling(true);
+    setProgresso(0);
     try {
-      const cap = await capturarTemplate();
+      // 4 capturas em sequência (enrollment DigitalPersona) — cada toque avança.
+      const amostras: string[] = [];
+      for (let i = 0; i < CAPTURAS; i++) {
+        const cap = await capturarPreTemplate();
+        amostras.push(cap.template);
+        setProgresso(i + 1);
+        // pequena pausa para levantar o dedo antes da próxima captura
+        if (i < CAPTURAS - 1) await new Promise((r) => setTimeout(r, 350));
+      }
+      const template = await combinarTemplates(amostras);
       const agora = new Date().toISOString();
       setForm((f) =>
         f
           ? {
               ...f,
-              biometria_template: cap.template,
+              biometria_template: template,
               biometria_cadastrada_em: agora,
               biometria_consentimento_em: agora,
             }
           : f
       );
-      toast.success("Biometria cadastrada — salve o colaborador.");
+      toast.success("Biometria cadastrada (4 capturas) — salve o colaborador.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao cadastrar a digital.");
     } finally {
       setEnrolling(false);
+      setProgresso(0);
     }
   }
 
@@ -192,6 +209,7 @@ export default function EpiColaboradoresTab({
         <EpiModal
           titulo={form.id ? "Editar colaborador" : "Novo colaborador"}
           onClose={() => setForm(null)}
+          larguraMax="max-w-2xl"
         >
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
@@ -282,15 +300,17 @@ export default function EpiColaboradoresTab({
                 >
                   {enrolling ? (
                     <>
-                      <Loader2 className="size-3.5 animate-spin" /> Encoste o
-                      dedo…
+                      <Loader2 className="size-3.5 animate-spin" />{" "}
+                      {progresso >= CAPTURAS
+                        ? "Combinando…"
+                        : `Captura ${progresso + 1}/${CAPTURAS} — encoste o dedo`}
                     </>
                   ) : (
                     <>
                       <Fingerprint className="size-3.5" />{" "}
                       {form.biometria_template
-                        ? "Recadastrar digital"
-                        : "Cadastrar digital"}
+                        ? "Recadastrar digital (4×)"
+                        : "Cadastrar digital (4×)"}
                     </>
                   )}
                 </button>
@@ -304,6 +324,18 @@ export default function EpiColaboradoresTab({
                   </button>
                 )}
               </div>
+              {enrolling && (
+                <div className="mt-2 flex items-center gap-1.5">
+                  {Array.from({ length: CAPTURAS }).map((_, i) => (
+                    <span
+                      key={i}
+                      className={`h-1.5 flex-1 rounded-full ${
+                        i < progresso ? "bg-verde-primary" : "bg-gray-200"
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
               {agenteOk === false && (
                 <p className="mt-1.5 text-[11px] text-amber-700">
                   Agente de biometria não detectado neste PC. Instale o

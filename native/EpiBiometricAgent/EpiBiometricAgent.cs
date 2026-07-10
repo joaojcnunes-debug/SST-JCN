@@ -2,9 +2,11 @@
 //
 // Servidor HTTP mínimo em http://127.0.0.1:52182 (TcpListener → sem admin),
 // usando o DPUruNet (RTE DigitalPersona que o SGG já instala). Expõe:
-//   GET  /status     -> { ok, count }                      (há leitor?)
-//   POST /capturar   -> { ok, template(b64 XML), quality, device }   (ENROLL)
-//   POST /verificar  body { template: b64 } -> { ok, match, score, quality }
+//   GET  /status       -> { ok, count }                    (há leitor?)
+//   POST /capturar     -> { ok, template(b64 XML ANSI), quality, device }
+//   POST /capturar-pre -> { ok, template(b64 XML DP_PRE_REGISTRATION) }  (amostra p/ enroll)
+//   POST /combinar     body { templates: [b64...] } -> { ok, template, amostras }  (enroll 4x)
+//   POST /verificar    body { template: b64 } -> { ok, match, score, quality }
 //
 // A captura é EXCLUSIVA (o DpHost do SGG segura o leitor em cooperativo).
 // CORS + Private Network Access liberados para o site https chamar o localhost.
@@ -86,6 +88,8 @@ internal static class EpiBiometricAgent
         {
             if (method == "GET" && path == "/status") { WriteJson(s, origin, Status()); return; }
             if (method == "POST" && path == "/capturar") { WriteJson(s, origin, Capturar()); return; }
+            if (method == "POST" && path == "/capturar-pre") { WriteJson(s, origin, CapturarPre()); return; }
+            if (method == "POST" && path == "/combinar") { WriteJson(s, origin, Combinar(body)); return; }
             if (method == "POST" && path == "/verificar") { WriteJson(s, origin, Verificar(body)); return; }
             WriteJson(s, origin, "{\"ok\":false,\"error\":\"rota desconhecida\"}");
         }
@@ -196,7 +200,7 @@ internal static class EpiBiometricAgent
         }
     }
 
-    private static Fmd CapturarFmd(out string quality, out string device)
+    private static Fmd CapturarFmd(Constants.Formats.Fmd fmdFormat, out string quality, out string device)
     {
         quality = null; device = "U.are.U";
         ReaderCollection readers = ReaderCollection.GetReaders();
@@ -240,12 +244,45 @@ internal static class EpiBiometricAgent
         lock (ReaderLock)
         {
             string quality, device;
-            Fmd fmd = CapturarFmd(out quality, out device);
+            Fmd fmd = CapturarFmd(Constants.Formats.Fmd.ANSI, out quality, out device);
             string xml = Fmd.SerializeXml(fmd);
             string b64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(xml));
             return "{\"ok\":true,\"template\":" + JStr(b64)
                 + ",\"quality\":" + JStr(quality) + ",\"device\":" + JStr(device) + "}";
         }
+    }
+
+    // Captura em formato DP_PRE_REGISTRATION — amostra p/ enrollment (via /combinar).
+    private static string CapturarPre()
+    {
+        lock (ReaderLock)
+        {
+            string quality, device;
+            Fmd fmd = CapturarFmd(Constants.Formats.Fmd.DP_PRE_REGISTRATION, out quality, out device);
+            string xml = Fmd.SerializeXml(fmd);
+            string b64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(xml));
+            return "{\"ok\":true,\"template\":" + JStr(b64)
+                + ",\"quality\":" + JStr(quality) + ",\"device\":" + JStr(device) + "}";
+        }
+    }
+
+    // Combina várias capturas (pré-enrollment) num template de ENROLLMENT melhor.
+    private static string Combinar(string body)
+    {
+        List<string> b64s = ExtractArray(body, "templates");
+        List<Fmd> gallery = new List<Fmd>();
+        foreach (string b in b64s)
+        {
+            try { gallery.Add(Fmd.DeserializeXml(Encoding.UTF8.GetString(Convert.FromBase64String(b)))); }
+            catch { /* ignora captura inválida */ }
+        }
+        if (gallery.Count < 2) return "{\"ok\":false,\"error\":\"envie ao menos 2 capturas válidas\"}";
+        DataResult<Fmd> res = Enrollment.CreateEnrollmentFmd(Constants.Formats.Fmd.ANSI, gallery);
+        if (res == null || res.ResultCode != Constants.ResultCode.DP_SUCCESS || res.Data == null)
+            return "{\"ok\":false,\"error\":\"falha ao combinar as capturas\"}";
+        string xml = Fmd.SerializeXml(res.Data);
+        string b64out = Convert.ToBase64String(Encoding.UTF8.GetBytes(xml));
+        return "{\"ok\":true,\"template\":" + JStr(b64out) + ",\"amostras\":" + gallery.Count + "}";
     }
 
     private static string Verificar(string body)
@@ -263,7 +300,7 @@ internal static class EpiBiometricAgent
         lock (ReaderLock)
         {
             string quality, device;
-            Fmd fresh = CapturarFmd(out quality, out device);
+            Fmd fresh = CapturarFmd(Constants.Formats.Fmd.ANSI, out quality, out device);
             CompareResult cmp = Comparison.Compare(enrolled, 0, fresh, 0);
             bool match = cmp.ResultCode == Constants.ResultCode.DP_SUCCESS
                          && cmp.Score >= 0 && cmp.Score <= _threshold;
@@ -301,6 +338,26 @@ internal static class EpiBiometricAgent
             foreach (byte b in h) sb.Append(b.ToString("x2"));
             return sb.ToString();
         }
+    }
+
+    // Extrai um array de strings base64 (sem aspas internas) de um JSON simples.
+    private static List<string> ExtractArray(string json, string key)
+    {
+        List<string> list = new List<string>();
+        if (string.IsNullOrEmpty(json)) return list;
+        int i = json.IndexOf("\"" + key + "\"", StringComparison.Ordinal);
+        if (i < 0) return list;
+        int lb = json.IndexOf('[', i);
+        if (lb < 0) return list;
+        int rb = json.IndexOf(']', lb);
+        if (rb < 0) return list;
+        string inner = json.Substring(lb + 1, rb - lb - 1);
+        foreach (string part in inner.Split(','))
+        {
+            string p = part.Trim().Trim('"').Trim();
+            if (p.Length > 0) list.Add(p);
+        }
+        return list;
     }
 
     private static string JStr(string s)

@@ -7,10 +7,13 @@ export default function EpiModal({
   titulo,
   onClose,
   children,
+  larguraMax = "max-w-lg",
 }: {
   titulo: string;
   onClose: () => void;
   children: ReactNode;
+  /** Classe Tailwind de largura máxima (ex.: "max-w-2xl"). Padrão "max-w-lg". */
+  larguraMax?: string;
 }) {
   return (
     <div
@@ -18,7 +21,7 @@ export default function EpiModal({
       onClick={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-xl bg-white shadow-xl"
+        className={`max-h-[90vh] w-full ${larguraMax} overflow-auto rounded-xl bg-white shadow-xl`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">

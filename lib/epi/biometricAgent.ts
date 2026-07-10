@@ -42,6 +42,30 @@ export async function capturarTemplate(): Promise<AgentCapture> {
   return { template: j.template, quality: j.quality ?? null, device: j.device ?? null };
 }
 
+/** Captura uma AMOSTRA de pré-registro (DP_PRE_REGISTRATION) para o enrollment 4×. */
+export async function capturarPreTemplate(): Promise<AgentCapture> {
+  const r = await fetch(`${AGENT}/capturar-pre`, { method: "POST" });
+  const j = await r.json().catch(() => ({}));
+  if (!j?.ok || !j.template) {
+    throw new Error(j?.error || "Falha ao capturar a digital.");
+  }
+  return { template: j.template, quality: j.quality ?? null, device: j.device ?? null };
+}
+
+/** Combina várias capturas (pré-enrollment) num template de enrollment melhor. */
+export async function combinarTemplates(templates: string[]): Promise<string> {
+  const r = await fetch(`${AGENT}/combinar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ templates }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!j?.ok || !j.template) {
+    throw new Error(j?.error || "Falha ao combinar as capturas.");
+  }
+  return j.template as string;
+}
+
 /** Captura uma digital e COMPARA com o template cadastrado (verificação 1:1). */
 export async function verificarDigital(template: string): Promise<AgentVerify> {
   const r = await fetch(`${AGENT}/verificar`, {
