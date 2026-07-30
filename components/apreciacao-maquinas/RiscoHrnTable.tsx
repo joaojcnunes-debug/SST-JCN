@@ -264,7 +264,12 @@ export default function RiscoHrnTable({
     const podR = (p.pod_residual_default as PodHrn) || null;
     const fepR = (p.fep_residual_default as FepHrn) || null;
     const gpdR = (p.gpd_residual_default as GpdHrn) || null;
-    const medidas = [p.medidas_eng, p.medidas_adm].filter(Boolean).join("\n");
+    const medidas = [
+      p.medidas_eng ? `Eng.: ${p.medidas_eng}` : null,
+      p.medidas_adm ? `Adm.: ${p.medidas_adm}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
     setNovoForm({
       ...novoForm,
       tipo_perigo: p.nome,

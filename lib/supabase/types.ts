@@ -1148,19 +1148,31 @@ const _POD_SCORE: Record<PodHrn, number> = { MUITO_PROVAVEL: 4, PROVAVEL: 3, IMP
 const _FEP_SCORE: Record<FepHrn, number> = { DIARIAMENTE: 4, SEMANALMENTE: 3, MENSALMENTE: 2, ANUALMENTE: 1 };
 const _GPD_SCORE: Record<GpdHrn, number> = { CATASTROFICA: 4, GRAVE: 3, MODERADA: 2, BAIXA: 1 };
 
+/** Índice de Risco = POD × FEP × GPD (número). null se faltar fator. */
+export function calcularIndiceHrn(
+  pod: string | null,
+  fep: string | null,
+  gpd: string | null
+): number | null {
+  const p = _POD_SCORE[pod as PodHrn];
+  const f = _FEP_SCORE[fep as FepHrn];
+  const g = _GPD_SCORE[gpd as GpdHrn];
+  if (!p || !f || !g) return null;
+  return p * f * g;
+}
+
+// Faixas de classificação (padrão do laudo CHABRA/TERE PÃO):
+//   ALTO > 36 · MÉDIO 19–36 · BAIXO 9–18 · DESPREZÍVEL ≤ 8
 export function calcularClassificacaoHrn(
   pod: string | null,
   fep: string | null,
   gpd: string | null
 ): ClassificacaoRiscoHrn | null {
-  const p = _POD_SCORE[pod as PodHrn];
-  const f = _FEP_SCORE[fep as FepHrn];
-  const g = _GPD_SCORE[gpd as GpdHrn];
-  if (!p || !f || !g) return null;
-  const score = p * f * g;
-  if (score <= 4) return "DESPREZIVEL";
-  if (score <= 12) return "BAIXO";
-  if (score <= 32) return "MEDIO";
+  const score = calcularIndiceHrn(pod, fep, gpd);
+  if (score == null) return null;
+  if (score <= 8) return "DESPREZIVEL";
+  if (score <= 18) return "BAIXO";
+  if (score <= 36) return "MEDIO";
   return "ALTO";
 }
 

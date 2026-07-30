@@ -9,6 +9,8 @@ import {
   GPD_HRN_LABELS,
   NPE_HRN_LABELS,
   CLASSIFICACAO_HRN_LABELS,
+  calcularIndiceHrn,
+  calcularClassificacaoHrn,
 } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import { substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
@@ -135,10 +137,17 @@ ${TP_STYLE}
 .dados { width: 100%; border-collapse: collapse; font-size: 10.5pt; margin-bottom: 8pt; }
 .dados td { border: 1px solid #e5e7eb; padding: 4px 8px; vertical-align: top; }
 .dados .rot { width: 28%; font-size: 9px; font-weight: 700; text-transform: uppercase; color: #6b7280; }
-.hrn { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin: 4pt 0 8pt; page-break-inside: avoid; }
-.hrn th, .hrn td { border: 1px solid #e5e7eb; padding: 3px 6px; vertical-align: top; text-align: left; }
-.hrn th { background: #fff7ed; color: #9a3412; font-weight: 700; font-size: 8.5pt; text-transform: uppercase; }
-.hrn .cls { font-weight: 700; border-radius: 4px; padding: 1px 6px; font-size: 8.5pt; white-space: nowrap; }
+.inv-cab { background: ${LARANJA}; color: #fff; font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 4px 8px; }
+.placa { font-style: italic; color: #9ca3af; font-size: 9pt; }
+.constat { font-size: 9.5pt; color: #374151; margin: 4pt 0 6pt; line-height: 1.45; }
+.constat strong { color: #111827; }
+.hrn { width: 100%; border-collapse: collapse; font-size: 9pt; margin: 4pt 0 8pt; }
+.hrn th, .hrn td { border: 1px solid #e5e7eb; padding: 3px 5px; vertical-align: top; text-align: left; }
+.hrn th { background: #fff7ed; color: #9a3412; font-weight: 700; font-size: 8pt; text-transform: uppercase; }
+.hrn tr { page-break-inside: avoid; }
+.hrn .rcel { text-align: center; border-radius: 3px; padding: 2px 3px; }
+.hrn .rcel .lbls { font-size: 7pt; line-height: 1.15; }
+.hrn .rcel .idx { font-weight: 700; font-size: 8.5pt; }
 .ap-item { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; page-break-inside: avoid; }
 .ap-item .cab { display: flex; align-items: flex-start; gap: 8px; }
 .ap-cod { font-family: monospace; font-size: 10px; font-weight: 700; border-radius: 4px; padding: 2px 6px; background: #f3f4f6; color: #4b5563; white-space: nowrap; }
@@ -276,15 +285,19 @@ function ChecklistGrupos({ itens }: { itens: ApreciacaoItemLocal[] }) {
   );
 }
 
-function IdentificacaoMaquina({ f }: { f: ApreciacaoFichaLocal }) {
-  const linhas: [string, string | null][] = [
+const PLACA_FALLBACK =
+  "Placa de identificação não localizada na inspeção; recomenda-se identificação patrimonial interna e complementação documental.";
+
+function Inventario({ f }: { f: ApreciacaoFichaLocal }) {
+  const core: [string, string | null][] = [
     ["Tipo", f.tipo],
     ["Modelo", f.modelo],
     ["Fabricante", f.fabricante],
-    ["Nº de série", f.serie],
+    ["Nº de Série", f.serie],
     ["Ano", f.ano],
     ["Capacidade", f.capacidade],
-  ].filter(([, v]) => v) as [string, string][];
+    ["Setor", f.setor],
+  ];
   const componentes = f.componentes_maquina?.length ? f.componentes_maquina.join(", ") : null;
   const limites = [
     f.limite_uso && `Uso: ${f.limite_uso}`,
@@ -295,41 +308,53 @@ function IdentificacaoMaquina({ f }: { f: ApreciacaoFichaLocal }) {
   const sisAtual = f.sistemas_atual?.length ? f.sistemas_atual.join(", ") : null;
   const sisNec = f.sistemas_necessario?.length ? f.sistemas_necessario.join(", ") : null;
 
-  if (
-    linhas.length === 0 && !componentes && !limites && !sisAtual && !sisNec &&
-    !f.npe && !f.constatacoes_inspecao
-  ) {
-    return null;
-  }
   return (
     <table className="dados">
       <tbody>
-        {linhas.map(([rot, val]) => (
+        <tr><td className="inv-cab" colSpan={2}>Inventário</td></tr>
+        {core.map(([rot, val]) => (
           <tr key={rot}>
             <td className="rot">{rot}</td>
-            <td>{val}</td>
+            <td>{val ? val : <span className="placa">{PLACA_FALLBACK}</span>}</td>
           </tr>
         ))}
-        {componentes && (
-          <tr><td className="rot">Componentes (NR-12)</td><td>{componentes}</td></tr>
-        )}
-        {limites && (
-          <tr><td className="rot">Limites</td><td>{limites}</td></tr>
-        )}
-        {f.npe && (
-          <tr><td className="rot">Pessoas expostas</td><td>{lbl(NPE_HRN_LABELS, f.npe)}</td></tr>
-        )}
-        {sisAtual && (
-          <tr><td className="rot">Sistemas atuais</td><td>{sisAtual}</td></tr>
-        )}
-        {sisNec && (
-          <tr><td className="rot">Sistemas necessários</td><td>{sisNec}</td></tr>
-        )}
-        {f.constatacoes_inspecao && (
-          <tr><td className="rot">Constatações</td><td style={{ whiteSpace: "pre-wrap" }}>{f.constatacoes_inspecao}</td></tr>
-        )}
+        {componentes && (<tr><td className="rot">Componentes (NR-12)</td><td>{componentes}</td></tr>)}
+        {limites && (<tr><td className="rot">Limites</td><td>{limites}</td></tr>)}
+        {f.npe && (<tr><td className="rot">Pessoas expostas</td><td>{lbl(NPE_HRN_LABELS, f.npe)}</td></tr>)}
+        {sisAtual && (<tr><td className="rot">Sistemas atuais</td><td>{sisAtual}</td></tr>)}
+        {sisNec && (<tr><td className="rot">Sistemas necessários</td><td>{sisNec}</td></tr>)}
       </tbody>
     </table>
+  );
+}
+
+function CelulaRisco({
+  pod,
+  fep,
+  gpd,
+  classe,
+}: {
+  pod: string | null;
+  fep: string | null;
+  gpd: string | null;
+  classe: string | null;
+}) {
+  const idx = calcularIndiceHrn(pod, fep, gpd);
+  // Recalcula a classe pelas faixas atuais (índice e classe sempre coerentes).
+  const classeCalc = calcularClassificacaoHrn(pod, fep, gpd) ?? classe;
+  const c = corClasseHrn(classeCalc);
+  const classeLabel = classeCalc
+    ? (CLASSIFICACAO_HRN_LABELS[classeCalc as keyof typeof CLASSIFICACAO_HRN_LABELS] ?? classeCalc).toUpperCase()
+    : "—";
+  return (
+    <div className="rcel" style={{ background: c.bg, color: c.fg }}>
+      <div className="lbls">
+        {lbl(POD_HRN_LABELS, pod)}·{lbl(FEP_HRN_LABELS, fep)}·{lbl(GPD_HRN_LABELS, gpd)}
+      </div>
+      <div className="idx">
+        {idx != null ? idx : "—"} · {classeLabel}
+      </div>
+    </div>
   );
 }
 
@@ -339,43 +364,32 @@ function HrnTable({ riscos }: { riscos: ApreciacaoRiscoLocal[] }) {
     <table className="hrn">
       <thead>
         <tr>
-          <th>Perigo</th>
-          <th>POD × FEP × GPD</th>
-          <th>Inicial</th>
-          <th>Residual</th>
-          <th>Medidas</th>
+          <th style={{ width: "13%" }}>Perigo</th>
+          <th style={{ width: "23%" }}>Origem / Consequências</th>
+          <th style={{ width: "10%" }}>Item NR-12</th>
+          <th style={{ width: "13%" }}>Risco Inicial</th>
+          <th style={{ width: "28%" }}>Medidas de Controle</th>
+          <th style={{ width: "13%" }}>Risco Residual</th>
         </tr>
       </thead>
       <tbody>
         {riscos.map((r, i) => {
-          const ci = corClasseHrn(r.classificacao_risco);
-          const cr = corClasseHrn(r.classificacao_residual);
+          const classeResidual =
+            r.classificacao_residual ||
+            calcularClassificacaoHrn(r.pod_residual, r.fep_residual, r.gpd_residual);
+          const origemCons = [r.origem, r.potenciais_consequencias].filter(Boolean).join(" → ");
           return (
             <tr key={i}>
+              <td><strong>{r.tipo_perigo}</strong></td>
+              <td>{origemCons || "—"}</td>
+              <td style={{ fontSize: "8pt", color: "#6b7280" }}>—</td>
               <td>
-                <strong>{r.tipo_perigo}</strong>
-                {r.potenciais_consequencias ? (
-                  <div style={{ color: "#6b7280", fontSize: "8.5pt" }}>{r.potenciais_consequencias}</div>
-                ) : null}
+                <CelulaRisco pod={r.pod} fep={r.fep} gpd={r.gpd} classe={r.classificacao_risco} />
               </td>
+              <td style={{ whiteSpace: "pre-wrap", fontSize: "8pt" }}>{r.medidas_preventivas || "—"}</td>
               <td>
-                {lbl(POD_HRN_LABELS, r.pod)} × {lbl(FEP_HRN_LABELS, r.fep)} × {lbl(GPD_HRN_LABELS, r.gpd)}
+                <CelulaRisco pod={r.pod_residual} fep={r.fep_residual} gpd={r.gpd_residual} classe={classeResidual} />
               </td>
-              <td>
-                {r.classificacao_risco ? (
-                  <span className="cls" style={{ background: ci.bg, color: ci.fg }}>
-                    {CLASSIFICACAO_HRN_LABELS[r.classificacao_risco as keyof typeof CLASSIFICACAO_HRN_LABELS] ?? r.classificacao_risco}
-                  </span>
-                ) : "—"}
-              </td>
-              <td>
-                {r.classificacao_residual ? (
-                  <span className="cls" style={{ background: cr.bg, color: cr.fg }}>
-                    {CLASSIFICACAO_HRN_LABELS[r.classificacao_residual as keyof typeof CLASSIFICACAO_HRN_LABELS] ?? r.classificacao_residual}
-                  </span>
-                ) : "—"}
-              </td>
-              <td style={{ whiteSpace: "pre-wrap", fontSize: "8.5pt" }}>{r.medidas_preventivas || "—"}</td>
             </tr>
           );
         })}
@@ -384,34 +398,42 @@ function HrnTable({ riscos }: { riscos: ApreciacaoRiscoLocal[] }) {
   );
 }
 
+// O laudo TERE PÃO NÃO inclui o checklist de 37 itens por máquina (só a análise
+// de risco HRN). Mantido desligado por padrão; ligar para anexar o checklist.
+const INCLUIR_CHECKLIST_PDF = false;
+
 function MaquinasSection({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; titulo: string }) {
-  const totalItens = fichas.reduce((s, f) => s + f.itens.length, 0);
   return (
     <div>
-      <p className="sec-titulo">{titulo} ({fichas.length} máquina{fichas.length === 1 ? "" : "s"}, {totalItens} itens)</p>
+      <p className="sec-titulo">
+        {titulo} ({fichas.length} máquina{fichas.length === 1 ? "" : "s"})
+      </p>
       {fichas.map((f, idx) => (
-        <div
-          key={idx}
-          style={idx > 0 ? { pageBreakBefore: "always" } : undefined}
-        >
+        <div key={idx} style={idx > 0 ? { pageBreakBefore: "always" } : undefined}>
           <p className="maq-titulo">
-            Máquina {f.numero_ordem}: {f.nome}
+            {f.numero_ordem}. {f.nome}
             {f.setor ? ` — ${f.setor}` : ""}
             {f.prioridade_manual ? <span className="maq-prio">PRIORIDADE</span> : null}
           </p>
-          <IdentificacaoMaquina f={f} />
-          {f.riscos.length > 0 && (
-            <>
-              <p className="cat-titulo">Análise de Riscos — HRN</p>
-              <HrnTable riscos={f.riscos} />
-            </>
+          <Inventario f={f} />
+          {f.constatacoes_inspecao && (
+            <p className="constat">
+              <strong>Constatações da inspeção: </strong>
+              {f.constatacoes_inspecao}
+            </p>
           )}
-          <ChecklistGrupos itens={f.itens} />
+          <HrnTable riscos={f.riscos} />
           {f.parecer_tecnico && (
-            <div className="campo">
-              <p className="rot">Parecer técnico da máquina</p>
-              <p className="val">{f.parecer_tecnico}</p>
-            </div>
+            <p className="constat">
+              <strong>Parecer técnico: </strong>
+              {f.parecer_tecnico}
+            </p>
+          )}
+          {INCLUIR_CHECKLIST_PDF && (
+            <>
+              <p className="cat-titulo">Checklist NR-12</p>
+              <ChecklistGrupos itens={f.itens} />
+            </>
           )}
         </div>
       ))}
