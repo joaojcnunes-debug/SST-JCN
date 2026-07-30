@@ -243,6 +243,83 @@ export function useApreciacaoDashboard() {
   });
 }
 
+export const MAX_FOTOS_FICHA = 6;
+
+async function lerFotosFichaFresco(
+  supabase: ReturnType<typeof createSupabaseBrowserClient>,
+  id_ficha: string
+) {
+  const { data, error } = await supabase
+    .from("apreciacao_fichas_maquina")
+    .select("foto_urls, foto_storage_paths")
+    .eq("id_ficha", id_ficha)
+    .single();
+  if (error) throw error;
+  const row = data as { foto_urls: string[] | null; foto_storage_paths: string[] | null };
+  return { urls: row.foto_urls ?? [], paths: row.foto_storage_paths ?? [] };
+}
+
+/** Envia uma foto (registro fotográfico) da máquina/ficha. */
+export function useUploadFotoFicha(idApreciacao: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { id_ficha: string; file: File }) => {
+      const supabase = createSupabaseBrowserClient();
+      const atual = await lerFotosFichaFresco(supabase, params.id_ficha);
+      if (atual.paths.length >= MAX_FOTOS_FICHA) {
+        throw new Error(`Limite de ${MAX_FOTOS_FICHA} fotos por máquina.`);
+      }
+      const ext = (params.file.name.split(".").pop() ?? "jpg").toLowerCase();
+      const sufixo = Math.random().toString(36).slice(2, 8);
+      const path = `apreciacao-maquinas/${idApreciacao}/ficha-${params.id_ficha}-${sufixo}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from("fotos")
+        .upload(path, params.file, { upsert: false, contentType: params.file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      const { error: updErr } = await supabase
+        .from("apreciacao_fichas_maquina")
+        .update({
+          foto_urls: [...atual.urls, pub.publicUrl],
+          foto_storage_paths: [...atual.paths, path],
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id_ficha", params.id_ficha);
+      if (updErr) throw updErr;
+      return pub.publicUrl;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY(idApreciacao) }),
+    onError: (e: Error) => toast.error(`Erro ao enviar foto: ${e.message}`),
+  });
+}
+
+/** Remove a foto de índice `indice` da ficha. */
+export function useRemoverFotoFicha(idApreciacao: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { id_ficha: string; indice: number }) => {
+      const supabase = createSupabaseBrowserClient();
+      const atual = await lerFotosFichaFresco(supabase, params.id_ficha);
+      const pathRem = atual.paths[params.indice];
+      const urls = atual.urls.filter((_, i) => i !== params.indice);
+      const paths = atual.paths.filter((_, i) => i !== params.indice);
+      if (pathRem) await supabase.storage.from("fotos").remove([pathRem]);
+      const { error } = await supabase
+        .from("apreciacao_fichas_maquina")
+        .update({
+          foto_urls: urls,
+          foto_storage_paths: paths,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq("id_ficha", params.id_ficha);
+      if (error) throw error;
+      return params;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY(idApreciacao) }),
+    onError: (e: Error) => toast.error(`Erro ao remover foto: ${e.message}`),
+  });
+}
+
 /** Reordena as fichas: recebe os id_ficha na ordem desejada. */
 export function useReordenarFichas(idApreciacao: string) {
   const qc = useQueryClient();

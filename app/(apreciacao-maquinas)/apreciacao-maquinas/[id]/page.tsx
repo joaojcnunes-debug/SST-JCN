@@ -35,7 +35,12 @@ import PlanoAcaoTable from "@/components/apreciacao-maquinas/PlanoAcaoTable";
 import RiscoHrnTable from "@/components/apreciacao-maquinas/RiscoHrnTable";
 import FichasMaquinaPanel from "@/components/apreciacao-maquinas/FichasMaquinaPanel";
 import { useApreciacaoEdicaoStore } from "@/lib/apreciacao-maquinas/store";
-import { useFichasMaquina, useAtualizarFicha } from "@/lib/hooks/useFichasMaquina";
+import {
+  useFichasMaquina,
+  useAtualizarFicha,
+  useUploadFotoFicha,
+  useRemoverFotoFicha,
+} from "@/lib/hooks/useFichasMaquina";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import {
   montarValoresEmpresa,
@@ -104,6 +109,8 @@ export default function DetalheApreciacaoPage() {
   const { data: fichas = [] } = useFichasMaquina(id);
   const fichaAtiva = fichas.find((f) => f.id_ficha === fichaAtivaId) ?? null;
   const atualizarFicha = useAtualizarFicha(id ?? "");
+  const uploadFotoFicha = useUploadFotoFicha(id ?? "");
+  const removerFotoFicha = useRemoverFotoFicha(id ?? "");
   // O checklist é POR MÁQUINA: filtra os itens do laudo pela ficha ativa.
   const todosItens = useMemo(() => data?.itens ?? [], [data]);
   const itens = useMemo(
@@ -807,6 +814,61 @@ export default function DetalheApreciacaoPage() {
             className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
           />
         </label>
+
+        {/* Registro fotográfico da máquina */}
+        {fichaAtiva && (
+          <div>
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+              Registro fotográfico da máquina
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {(fichaAtiva.foto_urls ?? []).map((url, i) => (
+                <div key={`${url}-${i}`} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt=""
+                    className="size-20 rounded border border-gray-300 object-cover"
+                  />
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removerFotoFicha.mutate({ id_ficha: fichaAtiva.id_ficha, indice: i })
+                      }
+                      className="absolute -right-1.5 -top-1.5 rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700"
+                      aria-label="Remover foto"
+                    >
+                      <IconX className="size-3" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {!readOnly && (fichaAtiva.foto_urls?.length ?? 0) < 6 && (
+                <label className="flex size-20 cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-2 border-dashed border-gray-300 text-[10px] text-gray-500 hover:bg-gray-50">
+                  {uploadFotoFicha.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="size-4" />
+                      <span>Foto</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadFotoFicha.mutate({ id_ficha: fichaAtiva.id_ficha, file });
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {COMPONENTES_MAQUINA_NR12.map((comp) => {
             const checked = componentes.includes(comp);

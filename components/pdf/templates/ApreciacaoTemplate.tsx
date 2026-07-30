@@ -1,7 +1,7 @@
 import React from "react";
 import FolhaAssinaturas from "@/components/pdf/FolhaAssinaturas";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
-import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/SecoesComuns";
+import { SecaoSumario } from "@/components/pdf/SecoesComuns";
 import type { Empresa } from "@/lib/supabase/types";
 import {
   POD_HRN_LABELS,
@@ -403,6 +403,59 @@ function HrnTable({ riscos }: { riscos: ApreciacaoRiscoLocal[] }) {
   );
 }
 
+function IdentificacaoLaudo({
+  empresa,
+  apreciacao,
+  numero,
+}: {
+  empresa?: Partial<Empresa> | null;
+  apreciacao: ApreciacaoTemplateProps["apreciacao"];
+  numero?: number;
+}) {
+  const e = empresa ?? {};
+  const endereco = [
+    [e.logradouro, e.numero].filter(Boolean).join(", "),
+    e.complemento,
+    e.bairro,
+    [e.municipio, e.uf].filter(Boolean).join(" / "),
+    e.cep ? `CEP ${e.cep}` : null,
+  ]
+    .filter(Boolean)
+    .join(" – ");
+  const cnae = [e.cnae_principal, e.cnae_descricao].filter(Boolean).join(" — ");
+  const cnpjCnae =
+    [e.cnpj, cnae].filter(Boolean).join(" — ") +
+    (e.grau_risco != null ? ` — Grau de Risco ${e.grau_risco}` : "");
+  return (
+    <div>
+      <p className="sec-titulo">{numero ? `${numero}. ` : ""}Identificação</p>
+      <table className="dados">
+        <tbody>
+          <tr><td className="inv-cab" colSpan={2}>Empresa Contratante</td></tr>
+          <tr><td className="rot">Razão Social</td><td>{e.razao_social || e.nome_empresa || "—"}</td></tr>
+          <tr><td className="rot">Endereço</td><td>{endereco || "—"}</td></tr>
+          <tr><td className="rot">CNPJ / CNAE</td><td>{cnpjCnae || "—"}</td></tr>
+          {apreciacao.responsavel_empresa && (
+            <tr><td className="rot">Responsável (empresa)</td><td>{apreciacao.responsavel_empresa}</td></tr>
+          )}
+        </tbody>
+      </table>
+      <table className="dados">
+        <tbody>
+          <tr><td className="inv-cab" colSpan={2}>Empresa Contratada</td></tr>
+          <tr><td className="rot">Razão Social</td><td>JCN Consultoria em Segurança do Trabalho</td></tr>
+          {apreciacao.responsavel && (
+            <tr><td className="rot">Responsável Técnico</td><td>{apreciacao.responsavel}</td></tr>
+          )}
+          {apreciacao.cidade && (
+            <tr><td className="rot">Cidade</td><td>{apreciacao.cidade}</td></tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function MetodoHrn() {
   return (
     <div>
@@ -693,7 +746,7 @@ export default function ApreciacaoTemplate({
 
   function renderSecaoApreciacao(slug: string): React.ReactNode {
     switch (slug) {
-      case "identificacao_empresa": return <SecaoIdentificacaoEmpresa empresa={empresa} numero={numPorSlug["identificacao_empresa"]} />;
+      case "identificacao_empresa": return <IdentificacaoLaudo empresa={empresa} apreciacao={apreciacao} numero={numPorSlug["identificacao_empresa"]} />;
       case "sumario":               return <SecaoSumario titulos={sumarioTitulos} />;
       case "apreciacao_checklist":  return maquinasNode;
       case "apreciacao_risco":      return conclusaoNode;
