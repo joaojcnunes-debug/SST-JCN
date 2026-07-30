@@ -198,6 +198,49 @@ export function useExcluirFicha(idApreciacao: string) {
   });
 }
 
+export interface ApreciacaoDashboard {
+  /** nº de máquinas (fichas) por laudo */
+  fichasCount: Record<string, number>;
+  /** classificação de cada linha HRN (residual quando houver, senão inicial) */
+  riscos: { id_apreciacao: string; classe: string | null }[];
+}
+
+/** Resumo p/ a Visão Geral: contagem de máquinas por laudo + classes de risco. */
+export function useApreciacaoDashboard() {
+  return useQuery({
+    queryKey: ["apreciacao-dashboard"],
+    queryFn: async (): Promise<ApreciacaoDashboard> => {
+      const supabase = createSupabaseBrowserClient();
+      const [fichasRes, riscosRes] = await Promise.all([
+        supabase.from("apreciacao_fichas_maquina").select("id_apreciacao"),
+        supabase
+          .from("apreciacao_riscos_hrn")
+          .select("id_apreciacao, classificacao_risco, classificacao_residual"),
+      ]);
+      if (fichasRes.error) throw fichasRes.error;
+      if (riscosRes.error) throw riscosRes.error;
+
+      const fichasCount: Record<string, number> = {};
+      for (const f of (fichasRes.data ?? []) as { id_apreciacao: string }[]) {
+        fichasCount[f.id_apreciacao] = (fichasCount[f.id_apreciacao] ?? 0) + 1;
+      }
+      const riscos = (
+        (riscosRes.data ?? []) as {
+          id_apreciacao: string;
+          classificacao_risco: string | null;
+          classificacao_residual: string | null;
+        }[]
+      ).map((r) => ({
+        id_apreciacao: r.id_apreciacao,
+        classe: r.classificacao_residual || r.classificacao_risco,
+      }));
+
+      return { fichasCount, riscos };
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
 /** Reordena as fichas: recebe os id_ficha na ordem desejada. */
 export function useReordenarFichas(idApreciacao: string) {
   const qc = useQueryClient();
