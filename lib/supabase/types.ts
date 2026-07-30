@@ -1167,6 +1167,7 @@ export function calcularClassificacaoHrn(
 export interface RiscoHrn {
   id_risco: string;
   id_apreciacao: string;
+  id_ficha: string | null;              // v132 — máquina (ficha) à qual o risco pertence
   tipo_perigo: string;
   origem: string | null;
   potenciais_consequencias: string | null;
@@ -1175,9 +1176,65 @@ export interface RiscoHrn {
   gpd: GpdHrn | null;
   npe_item: NpeHrn | null;
   classificacao_risco: ClassificacaoRiscoHrn | null;
+  // Risco residual (v132 — reduz prioritariamente o POD)
+  pod_residual: PodHrn | null;
+  fep_residual: FepHrn | null;
+  gpd_residual: GpdHrn | null;
+  classificacao_residual: ClassificacaoRiscoHrn | null;
   nivel_acoes: string | null;
   medidas_preventivas: string | null;
   ordem: number;
+  created_at: string;
+}
+
+// ── Ficha de máquina (v132 — N máquinas por laudo de apreciação) ──────────
+export interface FichaMaquina {
+  id_ficha: string;
+  id_apreciacao: string;
+  numero_ordem: number;
+  id_maquina: string | null;
+  maquina_descricao: string | null;
+  equipamento: string | null;
+  tipo: string | null;
+  modelo: string | null;
+  fabricante: string | null;
+  serie: string | null;
+  ano: string | null;
+  capacidade: string | null;
+  setor: string | null;
+  componentes_maquina: string[] | null;
+  limite_uso: string | null;
+  limite_espaco: string | null;
+  limite_tempo: string | null;
+  limite_produtividade: string | null;
+  npe: string | null;
+  sistemas_atual: string[] | null;
+  sistemas_necessario: string[] | null;
+  constatacoes_inspecao: string | null;
+  parecer_tecnico: string | null;
+  prioridade_manual: boolean;
+  foto_urls: string[];
+  foto_storage_paths: string[];
+  created_at: string;
+  updated_at: string | null;
+}
+
+// ── Catálogo de perigos reutilizável (v132 — pré-preenche a linha HRN) ─────
+export interface PerigoCatalogo {
+  id: string;
+  nome: string;
+  origem_consequencias: string | null;
+  itens_nr12: string[];
+  medidas_eng: string | null;
+  medidas_adm: string | null;
+  pod_default: PodHrn | null;
+  fep_default: FepHrn | null;
+  gpd_default: GpdHrn | null;
+  pod_residual_default: PodHrn | null;
+  fep_residual_default: FepHrn | null;
+  gpd_residual_default: GpdHrn | null;
+  ordem: number;
+  ativo: boolean;
   created_at: string;
 }
 
