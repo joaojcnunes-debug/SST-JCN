@@ -8,6 +8,7 @@ import {
   ChevronUp,
   ChevronDown,
   Loader2,
+  Download,
   X,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -19,8 +20,13 @@ import {
   type FichaMaquinaInput,
 } from "@/lib/hooks/useFichasMaquina";
 import { useApreciacaoEdicaoStore } from "@/lib/apreciacao-maquinas/store";
-import { useInventarioMaquinas } from "@/lib/hooks/useInventarioMaquinas";
-import type { FichaMaquina } from "@/lib/supabase/types";
+import {
+  useInventarioMaquinas,
+  useMaquinasInspecaoPendentes,
+  useImportarMaquinasInspecao,
+} from "@/lib/hooks/useInventarioMaquinas";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { FichaMaquina, Maquina } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
 const inputClass =
@@ -46,6 +52,9 @@ export default function FichasMaquinaPanel({
   const fichaAtivaId = useApreciacaoEdicaoStore((s) => s.fichaAtivaId);
   const setFichaAtiva = useApreciacaoEdicaoStore((s) => s.setFichaAtiva);
   const { data: inventario = [] } = useInventarioMaquinas();
+  const { data: pend } = useMaquinasInspecaoPendentes(idEmpresa);
+  const pendentes = pend?.pendentes ?? [];
+  const importar = useImportarMaquinasInspecao();
 
   const maquinasEmpresa = useMemo(
     () => inventario.filter((m) => !idEmpresa || m.id_empresa === idEmpresa),
@@ -114,6 +123,47 @@ export default function FichasMaquinaPanel({
     }
   }
 
+  // Importa as máquinas de inspeções da empresa e já as adiciona como fichas.
+  async function handleImportarPendentes() {
+    try {
+      await importar.mutateAsync(pendentes);
+      const supabase = createSupabaseBrowserClient();
+      const idsInsp = pendentes.map((p) => p.id_maquina_inspecao);
+      const { data } = await supabase
+        .from("inventario_maquinas")
+        .select("*")
+        .in("id_maquina_inspecao", idsInsp);
+      const invMaqs = (data ?? []) as Maquina[];
+      const jaNoLaudo = new Set(
+        fichas.map((f) => f.id_maquina).filter(Boolean) as string[]
+      );
+      let add = 0;
+      for (const m of invMaqs) {
+        if (jaNoLaudo.has(m.id_maquina)) continue;
+        const nova = await criar.mutateAsync({
+          id_maquina: m.id_maquina,
+          equipamento: m.nome,
+          tipo: m.tipo,
+          modelo: m.modelo,
+          fabricante: m.marca,
+          serie: m.numero_serie,
+          ano: m.ano_fabricacao != null ? String(m.ano_fabricacao) : null,
+          capacidade: m.capacidade_operacional,
+          setor: m.setor,
+        });
+        if (add === 0) setFichaAtiva(nova.id_ficha);
+        add++;
+      }
+      toast.success(
+        add > 0
+          ? `${add} máquina${add > 1 ? "s" : ""} da inspeção adicionada${add > 1 ? "s" : ""} ao laudo`
+          : "As máquinas da inspeção já estão no laudo."
+      );
+    } catch {
+      /* erro tratado no hook */
+    }
+  }
+
   function mover(index: number, dir: -1 | 1) {
     const alvo = index + dir;
     if (alvo < 0 || alvo >= fichas.length) return;
@@ -152,6 +202,30 @@ export default function FichasMaquinaPanel({
           </button>
         )}
       </div>
+
+      {/* Banner: máquinas de inspeções da empresa ainda não neste laudo */}
+      {!disabled && pendentes.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5">
+          <p className="text-xs text-blue-800">
+            <strong>{pendentes.length}</strong> máquina
+            {pendentes.length > 1 ? "s" : ""} de inspeções desta empresa{" "}
+            {pendentes.length > 1 ? "não estão" : "não está"} no laudo.
+          </p>
+          <button
+            type="button"
+            onClick={handleImportarPendentes}
+            disabled={importar.isPending || criar.isPending}
+            className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {importar.isPending || criar.isPending ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <Download className="size-3" />
+            )}
+            Adicionar da inspeção
+          </button>
+        </div>
+      )}
 
       {/* Form de adicionar */}
       {!disabled && addOpen && (
