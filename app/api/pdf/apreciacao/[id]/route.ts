@@ -5,6 +5,8 @@ import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
 import type {
   ApreciacaoItemLocal,
   ApreciacaoAcaoLocal,
+  ApreciacaoRiscoLocal,
+  ApreciacaoFichaLocal,
 } from "@/components/pdf/templates/ApreciacaoTemplate";
 import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
@@ -38,39 +40,109 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     }
     const ap = rawAp as Record<string, unknown>;
 
+    // Fichas de máquina (multi-máquina), ordenadas.
+    const { data: rawFichas } = await supabase
+      .from("apreciacao_fichas_maquina")
+      .select("*")
+      .eq("id_apreciacao", id)
+      .order("numero_ordem", { ascending: true });
+    const fichasRaw = (rawFichas ?? []) as Record<string, unknown>[];
+
+    // Itens (checklist) de todas as fichas.
     const { data: rawItens } = await supabase
       .from("apreciacoes_maquinas_itens")
       .select("*")
       .eq("id_apreciacao", id)
       .order("ordem", { ascending: true });
-    const rawItensArr = (rawItens ?? []) as Record<string, unknown>[];
-    const itens: ApreciacaoItemLocal[] = rawItensArr.map((i) => ({
-      id_item: String(i.id_item),
-      item_codigo: (i.item_codigo as string) ?? "",
-      item_categoria: (i.item_categoria as string) ?? "",
-      item_titulo: (i.item_titulo as string) ?? "",
-      item_descricao: (i.item_descricao as string) ?? null,
-      item_origem: (i.item_origem as string) ?? null,
-      situacao: (i.situacao as string) ?? "PENDENTE",
-      observacao: (i.observacao as string) ?? null,
-      recomendacao: (i.recomendacao as string) ?? null,
-      probabilidade: (i.probabilidade as string) ?? null,
-      severidade: (i.severidade as string) ?? null,
-      nivel_risco_calculado: (i.nivel_risco_calculado as string) ?? null,
-      foto_urls: Array.isArray(i.foto_urls) ? (i.foto_urls as string[]) : [],
-      foto_legendas: Array.isArray(i.foto_legendas) ? (i.foto_legendas as string[]) : [],
+    const itensComFicha = ((rawItens ?? []) as Record<string, unknown>[]).map((i) => ({
+      id_ficha: (i.id_ficha as string) ?? null,
+      item: {
+        id_item: String(i.id_item),
+        item_codigo: (i.item_codigo as string) ?? "",
+        item_categoria: (i.item_categoria as string) ?? "",
+        item_titulo: (i.item_titulo as string) ?? "",
+        item_descricao: (i.item_descricao as string) ?? null,
+        item_origem: (i.item_origem as string) ?? null,
+        situacao: (i.situacao as string) ?? "PENDENTE",
+        observacao: (i.observacao as string) ?? null,
+        recomendacao: (i.recomendacao as string) ?? null,
+        probabilidade: (i.probabilidade as string) ?? null,
+        severidade: (i.severidade as string) ?? null,
+        nivel_risco_calculado: (i.nivel_risco_calculado as string) ?? null,
+        foto_urls: Array.isArray(i.foto_urls) ? (i.foto_urls as string[]) : [],
+        foto_legendas: Array.isArray(i.foto_legendas) ? (i.foto_legendas as string[]) : [],
+      } as ApreciacaoItemLocal,
     }));
 
     // Fotos → URLs assinadas p/ o Puppeteer (fallback p/ original em falha).
     await Promise.all(
-      itens.map(async (it) => {
-        it.foto_urls = await assinarMidiaPdf(supabase, it.foto_urls, "fotos");
+      itensComFicha.map(async (x) => {
+        x.item.foto_urls = await assinarMidiaPdf(supabase, x.item.foto_urls, "fotos");
       }),
     );
 
+    // Riscos HRN de todas as fichas.
+    const { data: rawRiscos } = await supabase
+      .from("apreciacao_riscos_hrn")
+      .select("*")
+      .eq("id_apreciacao", id)
+      .order("ordem", { ascending: true });
+    const riscosComFicha = ((rawRiscos ?? []) as Record<string, unknown>[]).map((r) => ({
+      id_ficha: (r.id_ficha as string) ?? null,
+      risco: {
+        tipo_perigo: (r.tipo_perigo as string) ?? "",
+        origem: (r.origem as string) ?? null,
+        potenciais_consequencias: (r.potenciais_consequencias as string) ?? null,
+        pod: (r.pod as string) ?? null,
+        fep: (r.fep as string) ?? null,
+        gpd: (r.gpd as string) ?? null,
+        classificacao_risco: (r.classificacao_risco as string) ?? null,
+        pod_residual: (r.pod_residual as string) ?? null,
+        fep_residual: (r.fep_residual as string) ?? null,
+        gpd_residual: (r.gpd_residual as string) ?? null,
+        classificacao_residual: (r.classificacao_residual as string) ?? null,
+        nivel_acoes: (r.nivel_acoes as string) ?? null,
+        medidas_preventivas: (r.medidas_preventivas as string) ?? null,
+      } as ApreciacaoRiscoLocal,
+    }));
+
+    const todosItens = itensComFicha.map((x) => x.item);
+
+    // Monta as fichas (identificação + itens + riscos por máquina).
+    const fichas: ApreciacaoFichaLocal[] = fichasRaw.map((fr) => {
+      const idf = fr.id_ficha as string;
+      return {
+        nome:
+          (fr.equipamento as string) ||
+          (fr.maquina_descricao as string) ||
+          `Máquina ${(fr.numero_ordem as number) ?? ""}`,
+        numero_ordem: (fr.numero_ordem as number) ?? 1,
+        setor: (fr.setor as string) ?? null,
+        tipo: (fr.tipo as string) ?? null,
+        modelo: (fr.modelo as string) ?? null,
+        fabricante: (fr.fabricante as string) ?? null,
+        serie: (fr.serie as string) ?? null,
+        ano: (fr.ano as string) ?? null,
+        capacidade: (fr.capacidade as string) ?? null,
+        componentes_maquina: Array.isArray(fr.componentes_maquina) ? (fr.componentes_maquina as string[]) : null,
+        limite_uso: (fr.limite_uso as string) ?? null,
+        limite_espaco: (fr.limite_espaco as string) ?? null,
+        limite_tempo: (fr.limite_tempo as string) ?? null,
+        limite_produtividade: (fr.limite_produtividade as string) ?? null,
+        npe: (fr.npe as string) ?? null,
+        sistemas_atual: Array.isArray(fr.sistemas_atual) ? (fr.sistemas_atual as string[]) : null,
+        sistemas_necessario: Array.isArray(fr.sistemas_necessario) ? (fr.sistemas_necessario as string[]) : null,
+        constatacoes_inspecao: (fr.constatacoes_inspecao as string) ?? null,
+        parecer_tecnico: (fr.parecer_tecnico as string) ?? null,
+        prioridade_manual: !!fr.prioridade_manual,
+        itens: itensComFicha.filter((x) => x.id_ficha === idf).map((x) => x.item),
+        riscos: riscosComFicha.filter((x) => x.id_ficha === idf).map((x) => x.risco),
+      } as ApreciacaoFichaLocal;
+    });
+
     // Mapa id_item → "codigo — titulo" para a coluna Origem do plano de ação.
     const itemLabel = new Map<string, string>();
-    itens.forEach((i) => itemLabel.set(i.id_item, `${i.item_codigo} — ${i.item_titulo}`));
+    todosItens.forEach((i) => itemLabel.set(i.id_item, `${i.item_codigo} — ${i.item_titulo}`));
 
     const { data: rawAcoes } = await supabase
       .from("apreciacao_acoes")
@@ -105,14 +177,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       empresa = (rawEmp as unknown as Empresa) ?? null;
     }
 
-    // Nome da máquina: vínculo no inventário ou descrição livre.
-    let maquinaNome = (ap.maquina_descricao as string) ?? "Máquina";
-    if (ap.id_maquina) {
-      const { data: rawMaq } = await supabase
-        .from("inventario_maquinas").select("nome").eq("id_maquina", ap.id_maquina as string).single();
-      const maq = rawMaq as { nome: string | null } | null;
-      if (maq?.nome) maquinaNome = maq.nome;
-    }
+    // Nome exibido: 1 máquina → o nome dela; várias → contagem.
+    const maquinaNome =
+      fichas.length === 1
+        ? fichas[0].nome
+        : fichas.length > 1
+          ? `${fichas.length} máquinas`
+          : ((ap.maquina_descricao as string) ?? "Máquina");
 
     const valores: Record<string, string> = {
       ...montarValoresEmpresa(empresa),
@@ -123,8 +194,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       responsavel_empresa: (ap.responsavel_empresa as string) ?? "",
       cidade: (ap.cidade as string) ?? "",
       data_apreciacao: formatarDataBR(ap.data_apreciacao as string | null),
-      total_itens: String(itens.length),
-      total_nao_conforme: String(itens.filter((i) => i.situacao === "NAO_CONFORME").length),
+      total_itens: String(todosItens.length),
+      total_nao_conforme: String(todosItens.filter((i) => i.situacao === "NAO_CONFORME").length),
       risco_residual: (ap.risco_residual as string) ?? "",
       carimbo: (ap.responsavel as string) ?? "",
       importado: formatarDataBR(ap.created_at as string | null),
@@ -174,7 +245,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         },
         maquinaNome,
         empresa,
-        itens,
+        fichas,
         acoes,
         capitulos,
         valores,

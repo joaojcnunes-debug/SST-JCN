@@ -105,10 +105,14 @@ export default function DetalheApreciacaoPage() {
   const fichaAtiva = fichas.find((f) => f.id_ficha === fichaAtivaId) ?? null;
   const atualizarFicha = useAtualizarFicha(id ?? "");
   // O checklist é POR MÁQUINA: filtra os itens do laudo pela ficha ativa.
-  const todosItens = data?.itens ?? [];
-  const itens = fichaAtivaId
-    ? todosItens.filter((i) => i.id_ficha === fichaAtivaId)
-    : todosItens;
+  const todosItens = useMemo(() => data?.itens ?? [], [data]);
+  const itens = useMemo(
+    () =>
+      fichaAtivaId
+        ? todosItens.filter((i) => i.id_ficha === fichaAtivaId)
+        : todosItens,
+    [todosItens, fichaAtivaId]
+  );
 
   // Estado do cabeçalho (form editável)
   const [titulo, setTitulo] = useState("");
