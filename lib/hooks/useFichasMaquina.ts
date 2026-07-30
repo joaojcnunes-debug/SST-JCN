@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
+import { CATALOGO_NR12 } from "@/lib/apreciacao-maquinas/catalogo-nr12";
 import type { FichaMaquina } from "@/lib/supabase/types";
 
 const KEY = (idApreciacao: string | null | undefined) =>
@@ -101,9 +102,43 @@ export function useCriarFicha(idApreciacao: string) {
         .from("apreciacao_fichas_maquina")
         .insert(row as never);
       if (error) throw error;
+
+      // Snapshot do checklist NR-12 para ESTA máquina (por ficha).
+      const itens = CATALOGO_NR12.map((it, idx) => ({
+        id_item: gerarId("APRI"),
+        id_apreciacao: idApreciacao,
+        id_ficha: row.id_ficha,
+        item_codigo: it.codigo,
+        item_categoria: it.categoria,
+        item_titulo: it.titulo,
+        item_descricao: it.descricao ?? null,
+        item_origem: null,
+        ordem: idx,
+        situacao: "PENDENTE",
+        observacao: null,
+        recomendacao: null,
+        probabilidade: null,
+        severidade: null,
+        nivel_risco_calculado: null,
+        id_matriz: null,
+        foto_urls: [] as string[],
+        foto_storage_paths: [] as string[],
+        foto_legendas: [] as string[],
+        created_at: new Date().toISOString(),
+        updated_at: null,
+      }));
+      const { error: eItens } = await supabase
+        .from("apreciacoes_maquinas_itens")
+        .insert(itens as never);
+      if (eItens) throw eItens;
+
       return row;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY(idApreciacao) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY(idApreciacao) });
+      // o editor lê o checklist via useApreciacaoMaquina (KEY_DETALHE)
+      qc.invalidateQueries({ queryKey: ["apreciacao-maquina", idApreciacao] });
+    },
     onError: (e: Error) => toast.error(`Erro ao adicionar máquina: ${e.message}`),
   });
 }

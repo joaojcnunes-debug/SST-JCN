@@ -11,6 +11,7 @@ import {
   useExcluirRiscoHrn,
   type RiscoHrnInput,
 } from "@/lib/hooks/useRiscosHrn";
+import { usePerigosCatalogo } from "@/lib/hooks/usePerigosCatalogo";
 import {
   POD_HRN_LABELS,
   FEP_HRN_LABELS,
@@ -24,6 +25,7 @@ import {
   type NpeHrn,
   type ClassificacaoRiscoHrn,
   type RiscoHrn,
+  type PerigoCatalogo,
 } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
@@ -238,6 +240,7 @@ export default function RiscoHrnTable({
   const riscos = (idFicha ? qFicha.data : qApre.data) ?? [];
   const isLoading = idFicha ? qFicha.isLoading : qApre.isLoading;
   const criar = useCriarRiscoHrn(idApreciacao);
+  const { data: perigos = [] } = usePerigosCatalogo();
   const [novoForm, setNovoForm] = useState<RiscoHrnInput>({ ...BLANK_INPUT });
   const [adicionando, setAdicionando] = useState(false);
 
@@ -252,6 +255,30 @@ export default function RiscoHrnTable({
       if (sug) next.classificacao_risco = sug;
     }
     setNovoForm(next);
+  }
+
+  function aplicarCatalogo(p: PerigoCatalogo) {
+    const pod = (p.pod_default as PodHrn) || null;
+    const fep = (p.fep_default as FepHrn) || null;
+    const gpd = (p.gpd_default as GpdHrn) || null;
+    const podR = (p.pod_residual_default as PodHrn) || null;
+    const fepR = (p.fep_residual_default as FepHrn) || null;
+    const gpdR = (p.gpd_residual_default as GpdHrn) || null;
+    const medidas = [p.medidas_eng, p.medidas_adm].filter(Boolean).join("\n");
+    setNovoForm({
+      ...novoForm,
+      tipo_perigo: p.nome,
+      potenciais_consequencias: p.origem_consequencias ?? null,
+      pod,
+      fep,
+      gpd,
+      classificacao_risco: calcularClassificacaoHrn(pod, fep, gpd),
+      pod_residual: podR,
+      fep_residual: fepR,
+      gpd_residual: gpdR,
+      classificacao_residual: calcularClassificacaoHrn(podR, fepR, gpdR),
+      medidas_preventivas: medidas || null,
+    });
   }
 
   async function handleAdicionar() {
@@ -298,6 +325,28 @@ export default function RiscoHrnTable({
           <p className="text-[10px] font-bold uppercase tracking-wider text-orange-700">
             Novo risco HRN
           </p>
+          {perigos.length > 0 && (
+            <label className="block">
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">
+                Preencher a partir do catálogo de perigos
+              </span>
+              <select
+                value=""
+                onChange={(e) => {
+                  const p = perigos.find((x) => x.id === e.target.value);
+                  if (p) aplicarCatalogo(p);
+                }}
+                className={inputClass}
+              >
+                <option value="">— escolher perigo do catálogo —</option>
+                {perigos.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nome}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <label className="block">
               <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Tipo do Perigo *</span>

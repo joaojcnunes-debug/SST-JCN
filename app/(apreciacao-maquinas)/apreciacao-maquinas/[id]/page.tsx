@@ -35,6 +35,7 @@ import PlanoAcaoTable from "@/components/apreciacao-maquinas/PlanoAcaoTable";
 import RiscoHrnTable from "@/components/apreciacao-maquinas/RiscoHrnTable";
 import FichasMaquinaPanel from "@/components/apreciacao-maquinas/FichasMaquinaPanel";
 import { useApreciacaoEdicaoStore } from "@/lib/apreciacao-maquinas/store";
+import { useFichasMaquina, useAtualizarFicha } from "@/lib/hooks/useFichasMaquina";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import {
   montarValoresEmpresa,
@@ -99,8 +100,15 @@ export default function DetalheApreciacaoPage() {
   );
 
   const apreciacao = data?.apreciacao;
-  const itens = data?.itens ?? [];
   const fichaAtivaId = useApreciacaoEdicaoStore((s) => s.fichaAtivaId);
+  const { data: fichas = [] } = useFichasMaquina(id);
+  const fichaAtiva = fichas.find((f) => f.id_ficha === fichaAtivaId) ?? null;
+  const atualizarFicha = useAtualizarFicha(id ?? "");
+  // O checklist é POR MÁQUINA: filtra os itens do laudo pela ficha ativa.
+  const todosItens = data?.itens ?? [];
+  const itens = fichaAtivaId
+    ? todosItens.filter((i) => i.id_ficha === fichaAtivaId)
+    : todosItens;
 
   // Estado do cabeçalho (form editável)
   const [titulo, setTitulo] = useState("");
@@ -151,16 +159,19 @@ export default function DetalheApreciacaoPage() {
     setRecomendacoes(apreciacao.recomendacoes ?? "");
     setRiscoResidual(apreciacao.risco_residual ?? "");
     setObservacoes(apreciacao.observacoes_gerais ?? "");
-    // HRN
-    setComponentes(apreciacao.componentes_maquina ?? []);
-    setLimiteUso(apreciacao.limite_uso ?? "");
-    setLimiteEspaco(apreciacao.limite_espaco ?? "");
-    setLimiteTempo(apreciacao.limite_tempo ?? "");
-    setLimiteProdutividade(apreciacao.limite_produtividade ?? "");
-    setNpe((apreciacao.npe as NpeHrn) ?? "");
-    setSistemasAtual(apreciacao.sistemas_atual ?? []);
-    setSistemasNecessario(apreciacao.sistemas_necessario ?? []);
   }, [apreciacao]);
+
+  // Identificação (componentes/limites/npe/sistemas) é POR MÁQUINA (ficha ativa).
+  useEffect(() => {
+    setComponentes(fichaAtiva?.componentes_maquina ?? []);
+    setLimiteUso(fichaAtiva?.limite_uso ?? "");
+    setLimiteEspaco(fichaAtiva?.limite_espaco ?? "");
+    setLimiteTempo(fichaAtiva?.limite_tempo ?? "");
+    setLimiteProdutividade(fichaAtiva?.limite_produtividade ?? "");
+    setNpe((fichaAtiva?.npe as NpeHrn) ?? "");
+    setSistemasAtual(fichaAtiva?.sistemas_atual ?? []);
+    setSistemasNecessario(fichaAtiva?.sistemas_necessario ?? []);
+  }, [fichaAtiva]);
 
   const empresa = useMemo(() => {
     if (!apreciacao) return null;
@@ -196,8 +207,11 @@ export default function DetalheApreciacaoPage() {
 
   const totalAvaliados = itens.length - resumo.PENDENTE;
   const totalItens = itens.length;
+  // Finalizar exige TODAS as máquinas (fichas) do laudo sem itens pendentes.
   const podeFinalizar =
-    apreciacao?.status === "RASCUNHO" && resumo.PENDENTE === 0;
+    apreciacao?.status === "RASCUNHO" &&
+    todosItens.length > 0 &&
+    todosItens.every((i) => i.situacao !== "PENDENTE");
 
   const dirty = !!apreciacao && (
     titulo !== (apreciacao.titulo ?? "")
@@ -251,10 +265,13 @@ export default function DetalheApreciacaoPage() {
   }
 
   async function handleSalvarAnalise() {
-    if (!id) return;
+    if (!fichaAtiva) {
+      toast.error("Selecione uma máquina para salvar a identificação.");
+      return;
+    }
     try {
-      await atualizar.mutateAsync({
-        id_apreciacao: id,
+      await atualizarFicha.mutateAsync({
+        id_ficha: fichaAtiva.id_ficha,
         componentes_maquina: componentes.length ? componentes : null,
         limite_uso: limiteUso.trim() || null,
         limite_espaco: limiteEspaco.trim() || null,
@@ -264,9 +281,9 @@ export default function DetalheApreciacaoPage() {
         sistemas_atual: sistemasAtual.length ? sistemasAtual : null,
         sistemas_necessario: sistemasNecessario.length ? sistemasNecessario : null,
       });
-      toast.success("Análise salva");
+      toast.success("Identificação da máquina salva");
     } catch {
-      toast.error("Falha ao salvar análise");
+      toast.error("Falha ao salvar identificação");
     }
   }
 
@@ -758,7 +775,14 @@ export default function DetalheApreciacaoPage() {
       {/* ── SEÇÃO: Identificação dos Componentes + Limites ──────────────────── */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4 print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
         <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
-          <Cog className="size-4 text-orange-600" /> Identificação dos Componentes da Máquina
+          <Cog className="size-4 text-orange-600" /> Identificação dos Componentes
+          {fichaAtiva && (
+            <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 text-[11px] font-semibold normal-case text-orange-700">
+              {fichaAtiva.equipamento ||
+                fichaAtiva.maquina_descricao ||
+                `Máquina ${fichaAtiva.numero_ordem}`}
+            </span>
+          )}
         </h2>
         <p className="text-[11px] text-gray-500">
           Marque os tipos de componentes presentes nesta máquina (ABNT ISO/TR 14121-2:2018).
@@ -856,9 +880,9 @@ export default function DetalheApreciacaoPage() {
 
         {!readOnly && (
           <div className="flex justify-end print:hidden">
-            <button type="button" onClick={handleSalvarAnalise} disabled={atualizar.isPending}
+            <button type="button" onClick={handleSalvarAnalise} disabled={atualizarFicha.isPending}
               className="inline-flex items-center gap-1.5 rounded-md bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50">
-              {atualizar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+              {atualizarFicha.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               Salvar componentes e sistemas
             </button>
           </div>
