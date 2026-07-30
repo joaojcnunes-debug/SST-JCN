@@ -107,10 +107,6 @@ export default function NovaApreciacaoPage() {
       toast.error("Selecione a empresa.");
       return;
     }
-    if (!idMaquina && !maquinaDescricao.trim()) {
-      toast.error("Selecione uma máquina do inventário ou descreva a máquina.");
-      return;
-    }
     try {
       const maquinaSel = idMaquina
         ? maquinas.find((m) => m.id_maquina === idMaquina)
@@ -127,7 +123,11 @@ export default function NovaApreciacaoPage() {
         cidade: cidade.trim() || null,
         data_apreciacao: dataApreciacao || null,
       });
-      toast.success("Apreciação criada — checklist NR-12 snapshotado");
+      toast.success(
+        idMaquina || maquinaDescricao.trim()
+          ? "Laudo criado com a 1ª máquina — adicione mais no editor."
+          : "Laudo criado — adicione as máquinas no editor."
+      );
       router.push(`/apreciacao-maquinas/${row.id_apreciacao}`);
     } catch (err) {
       console.error(err);
@@ -152,9 +152,10 @@ export default function NovaApreciacaoPage() {
         <p className="text-sm text-gray-600">
           Apreciação de risco em conformidade com o item 12.1.9 da NR-12 e
           normas ABNT NBR 12100, 14009, 14154 e ABNT ISO/TR 14121-2:2018.
-          Ao criar, o checklist é gerado automaticamente com{" "}
-          <strong>{CATALOGO_NR12.length}</strong> itens por categoria, além
-          da análise de riscos HRN (POD × FEP × GPD), prontos para avaliação.
+          O laudo pode conter <strong>várias máquinas</strong> — cada uma recebe
+          seu checklist NR-12 (<strong>{CATALOGO_NR12.length}</strong> itens) e a
+          análise de riscos HRN (POD × FEP × GPD). Você adiciona/importa as
+          máquinas dentro do laudo.
         </p>
       </div>
 
@@ -211,7 +212,11 @@ export default function NovaApreciacaoPage() {
         {/* 2 — Máquina (empresa → setor → máquina) */}
         <div className="rounded-md border border-gray-200 bg-gray-50 p-3 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-600">
-            Máquina avaliada *
+            Primeira máquina (opcional)
+          </p>
+          <p className="text-[11px] text-gray-500">
+            Vincule/descreva a 1ª máquina agora, ou deixe em branco e
+            adicione/importe as máquinas depois, dentro do laudo.
           </p>
 
           {/* 2a — Setor (cascata: só aparece após empresa selecionada com setores no inventário) */}

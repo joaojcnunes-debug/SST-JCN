@@ -155,6 +155,9 @@ export function useCriarApreciacaoMaquina() {
         .insert(cabecalho as never);
       if (e1) throw e1;
 
+      // Só cria a 1ª ficha + checklist se uma máquina foi informada. Sem máquina,
+      // o laudo nasce vazio e as máquinas são adicionadas depois no editor.
+      if (input.id_maquina || input.maquina_descricao) {
       // Cria a 1ª ficha de máquina do laudo (multi-máquina, v132) a partir da
       // máquina selecionada — puxa detalhes do inventário quando vinculada.
       let maq: Maquina | null = null;
@@ -231,6 +234,7 @@ export function useCriarApreciacaoMaquina() {
         .from("apreciacoes_maquinas_itens")
         .insert(itens as never);
       if (e2) throw e2;
+      }
 
       return cabecalho;
     },
