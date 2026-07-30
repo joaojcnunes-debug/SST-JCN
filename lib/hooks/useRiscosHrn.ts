@@ -85,6 +85,7 @@ export interface RiscoHrnInput {
   fep_residual?: FepHrn | null;
   gpd_residual?: GpdHrn | null;
   classificacao_residual?: ClassificacaoRiscoHrn | null;
+  itens_nr12?: string[] | null; // v136
 }
 
 export function useCriarRiscoHrn(idApreciacao: string) {
@@ -110,6 +111,7 @@ export function useCriarRiscoHrn(idApreciacao: string) {
         classificacao_residual: input.classificacao_residual ?? null,
         nivel_acoes: input.nivel_acoes,
         medidas_preventivas: input.medidas_preventivas,
+        itens_nr12: input.itens_nr12 ?? null,
         ordem: input.ordem,
         created_at: new Date().toISOString(),
       };

@@ -1195,6 +1195,7 @@ export interface RiscoHrn {
   classificacao_residual: ClassificacaoRiscoHrn | null;
   nivel_acoes: string | null;
   medidas_preventivas: string | null;
+  itens_nr12: string[] | null;          // v136 — itens da NR-12 (ex.: "12.38 a 12.55")
   ordem: number;
   created_at: string;
 }
@@ -1224,6 +1225,7 @@ export interface FichaMaquina {
   sistemas_necessario: string[] | null;
   constatacoes_inspecao: string | null;
   parecer_tecnico: string | null;
+  operadores: string | null;            // v136 — operadores/responsáveis da máquina
   prioridade_manual: boolean;
   foto_urls: string[];
   foto_storage_paths: string[];

@@ -49,6 +49,7 @@ export interface FichaMaquinaInput {
   sistemas_necessario?: string[] | null;
   constatacoes_inspecao?: string | null;
   parecer_tecnico?: string | null;
+  operadores?: string | null;
   prioridade_manual?: boolean;
 }
 
@@ -92,6 +93,7 @@ export function useCriarFicha(idApreciacao: string) {
         sistemas_necessario: input.sistemas_necessario ?? null,
         constatacoes_inspecao: input.constatacoes_inspecao ?? null,
         parecer_tecnico: input.parecer_tecnico ?? null,
+        operadores: input.operadores ?? null,
         prioridade_manual: input.prioridade_manual ?? false,
         foto_urls: [],
         foto_storage_paths: [],

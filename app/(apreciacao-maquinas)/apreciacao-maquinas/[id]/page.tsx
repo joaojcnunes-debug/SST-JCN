@@ -140,6 +140,7 @@ export default function DetalheApreciacaoPage() {
   const [npe, setNpe] = useState<NpeHrn | "">("");
   const [sistemasAtual, setSistemasAtual] = useState<string[]>([]);
   const [sistemasNecessario, setSistemasNecessario] = useState<string[]>([]);
+  const [operadores, setOperadores] = useState("");
 
   // Form "Adicionar item livre"
   const [livreOpen, setLivreOpen] = useState(false);
@@ -175,6 +176,7 @@ export default function DetalheApreciacaoPage() {
     setNpe((fichaAtiva?.npe as NpeHrn) ?? "");
     setSistemasAtual(fichaAtiva?.sistemas_atual ?? []);
     setSistemasNecessario(fichaAtiva?.sistemas_necessario ?? []);
+    setOperadores(fichaAtiva?.operadores ?? "");
   }, [fichaAtiva]);
 
   const empresa = useMemo(() => {
@@ -284,6 +286,7 @@ export default function DetalheApreciacaoPage() {
         npe: npe || null,
         sistemas_atual: sistemasAtual.length ? sistemasAtual : null,
         sistemas_necessario: sistemasNecessario.length ? sistemasNecessario : null,
+        operadores: operadores.trim() || null,
       });
       toast.success("Identificação da máquina salva");
     } catch {
@@ -791,6 +794,19 @@ export default function DetalheApreciacaoPage() {
         <p className="text-[11px] text-gray-500">
           Marque os tipos de componentes presentes nesta máquina (ABNT ISO/TR 14121-2:2018).
         </p>
+        <label className="block">
+          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+            Operadores / Responsáveis
+          </span>
+          <textarea
+            rows={2}
+            value={operadores}
+            onChange={(e) => setOperadores(e.target.value)}
+            disabled={readOnly}
+            placeholder="Ex: Fulano de Tal, Ciclano de Souza, Beltrano da Silva"
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
+          />
+        </label>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {COMPONENTES_MAQUINA_NR12.map((comp) => {
             const checked = componentes.includes(comp);

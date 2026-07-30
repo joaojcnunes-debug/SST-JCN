@@ -194,6 +194,7 @@ export function useCriarApreciacaoMaquina() {
         sistemas_necessario: null,
         constatacoes_inspecao: null,
         parecer_tecnico: null,
+        operadores: null,
         prioridade_manual: false,
         foto_urls: [],
         foto_storage_paths: [],

@@ -52,6 +52,7 @@ export interface ApreciacaoRiscoLocal {
   classificacao_residual: string | null;
   nivel_acoes: string | null;
   medidas_preventivas: string | null;
+  itens_nr12: string[] | null;
 }
 
 export interface ApreciacaoFichaLocal {
@@ -74,6 +75,8 @@ export interface ApreciacaoFichaLocal {
   sistemas_necessario: string[] | null;
   constatacoes_inspecao: string | null;
   parecer_tecnico: string | null;
+  operadores: string | null;
+  foto_urls: string[];
   prioridade_manual: boolean;
   itens: ApreciacaoItemLocal[];
   riscos: ApreciacaoRiscoLocal[];
@@ -382,7 +385,9 @@ function HrnTable({ riscos }: { riscos: ApreciacaoRiscoLocal[] }) {
             <tr key={i}>
               <td><strong>{r.tipo_perigo}</strong></td>
               <td>{origemCons || "—"}</td>
-              <td style={{ fontSize: "8pt", color: "#6b7280" }}>—</td>
+              <td style={{ fontSize: "8pt", color: "#374151" }}>
+                {r.itens_nr12?.length ? r.itens_nr12.join(", ") : "—"}
+              </td>
               <td>
                 <CelulaRisco pod={r.pod} fep={r.fep} gpd={r.gpd} classe={r.classificacao_risco} />
               </td>
@@ -395,6 +400,79 @@ function HrnTable({ riscos }: { riscos: ApreciacaoRiscoLocal[] }) {
         })}
       </tbody>
     </table>
+  );
+}
+
+function MetodoHrn() {
+  return (
+    <div>
+      <p className="sec-titulo">Método de Cálculo do Risco</p>
+      <p className="constat">
+        Índice de Risco = <strong>POD × FEP × GPD</strong>, conforme ABNT ISO/TR
+        14121-2:2018. O risco residual é recalculado após as medidas de proteção,
+        reduzindo prioritariamente a probabilidade (POD).
+      </p>
+      <table className="hrn" style={{ marginBottom: 6 }}>
+        <thead>
+          <tr>
+            <th style={{ width: "10%" }}>Valor</th>
+            <th>POD</th>
+            <th>FEP</th>
+            <th>GPD</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>Remota</td><td>Anualmente</td><td>Baixa</td></tr>
+          <tr><td>2</td><td>Improvável</td><td>Mensalmente</td><td>Moderada</td></tr>
+          <tr><td>3</td><td>Provável</td><td>Semanalmente</td><td>Grave</td></tr>
+          <tr><td>4</td><td>Muito provável</td><td>Diariamente</td><td>Catastrófica</td></tr>
+        </tbody>
+      </table>
+      <table className="hrn">
+        <tbody>
+          <tr>
+            <td style={{ background: "#fee2e2", textAlign: "center" }}><strong>ALTO</strong><br />índice &gt; 36</td>
+            <td style={{ background: "#fef3c7", textAlign: "center" }}><strong>MÉDIO</strong><br />19–36</td>
+            <td style={{ background: "#d1fae5", textAlign: "center" }}><strong>BAIXO</strong><br />9–18</td>
+            <td style={{ background: "#f3f4f6", textAlign: "center" }}><strong>DESPREZÍVEL</strong><br />índice ≤ 8</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RelacaoMaquinas({ fichas }: { fichas: ApreciacaoFichaLocal[] }) {
+  return (
+    <div>
+      <p className="sec-titulo">Relação de Máquinas e Equipamentos ({fichas.length})</p>
+      <table className="hrn">
+        <thead>
+          <tr>
+            <th style={{ width: "5%" }}>Nº</th>
+            <th>Equipamento</th>
+            <th>Tipo</th>
+            <th>Modelo / Fab.</th>
+            <th>Série</th>
+            <th>Ano</th>
+            <th>Setor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {fichas.map((f) => (
+            <tr key={f.numero_ordem}>
+              <td>{f.numero_ordem}</td>
+              <td><strong>{f.nome}</strong></td>
+              <td>{f.tipo || "—"}</td>
+              <td>{[f.modelo, f.fabricante].filter(Boolean).join(" / ") || "—"}</td>
+              <td>{f.serie || "—"}</td>
+              <td>{f.ano || "—"}</td>
+              <td>{f.setor || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -415,7 +493,27 @@ function MaquinasSection({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; t
             {f.setor ? ` — ${f.setor}` : ""}
             {f.prioridade_manual ? <span className="maq-prio">PRIORIDADE</span> : null}
           </p>
-          <Inventario f={f} />
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Inventario f={f} />
+            </div>
+            {f.foto_urls.length > 0 && (
+              <div className="fotos" style={{ width: 250, marginTop: 0 }}>
+                {f.foto_urls.slice(0, 4).map((url, i) => (
+                  <div key={`${url}-${i}`} className="f">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt={`Foto ${f.nome}`} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {f.operadores && (
+            <p className="constat">
+              <strong>Operadores/Responsáveis: </strong>
+              {f.operadores}
+            </p>
+          )}
           {f.constatacoes_inspecao && (
             <p className="constat">
               <strong>Constatações da inspeção: </strong>
@@ -554,12 +652,16 @@ export default function ApreciacaoTemplate({
     />
   );
 
-  // Seção "checklist" agora itera as MÁQUINAS (identificação + HRN + checklist).
+  // Seção "checklist" agora traz Método + Relação de Máquinas + fichas por máquina.
   const maquinasNode = (
-    <MaquinasSection
-      fichas={fichas}
-      titulo={numLabel(numPorSlug["apreciacao_checklist"], tituloPorSlug["apreciacao_checklist"] ?? "Avaliação por Máquina (NR-12)")}
-    />
+    <>
+      <MetodoHrn />
+      <RelacaoMaquinas fichas={fichas} />
+      <MaquinasSection
+        fichas={fichas}
+        titulo={numLabel(numPorSlug["apreciacao_checklist"], tituloPorSlug["apreciacao_checklist"] ?? "Apreciação de Risco por Máquina")}
+      />
+    </>
   );
   const conclusaoNode = temConclusao ? (
     <div>

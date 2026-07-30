@@ -103,6 +103,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         classificacao_residual: (r.classificacao_residual as string) ?? null,
         nivel_acoes: (r.nivel_acoes as string) ?? null,
         medidas_preventivas: (r.medidas_preventivas as string) ?? null,
+        itens_nr12: Array.isArray(r.itens_nr12) ? (r.itens_nr12 as string[]) : null,
       } as ApreciacaoRiscoLocal,
     }));
 
@@ -134,11 +135,20 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         sistemas_necessario: Array.isArray(fr.sistemas_necessario) ? (fr.sistemas_necessario as string[]) : null,
         constatacoes_inspecao: (fr.constatacoes_inspecao as string) ?? null,
         parecer_tecnico: (fr.parecer_tecnico as string) ?? null,
+        operadores: (fr.operadores as string) ?? null,
+        foto_urls: Array.isArray(fr.foto_urls) ? (fr.foto_urls as string[]) : [],
         prioridade_manual: !!fr.prioridade_manual,
         itens: itensComFicha.filter((x) => x.id_ficha === idf).map((x) => x.item),
         riscos: riscosComFicha.filter((x) => x.id_ficha === idf).map((x) => x.risco),
       } as ApreciacaoFichaLocal;
     });
+
+    // Assina as fotos das fichas (registro fotográfico da máquina) p/ o Puppeteer.
+    await Promise.all(
+      fichas.map(async (f) => {
+        f.foto_urls = await assinarMidiaPdf(supabase, f.foto_urls, "fotos");
+      }),
+    );
 
     // Mapa id_item → "codigo — titulo" para a coluna Origem do plano de ação.
     const itemLabel = new Map<string, string>();

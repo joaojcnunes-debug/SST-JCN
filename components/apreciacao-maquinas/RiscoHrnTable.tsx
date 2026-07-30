@@ -283,6 +283,7 @@ export default function RiscoHrnTable({
       gpd_residual: gpdR,
       classificacao_residual: calcularClassificacaoHrn(podR, fepR, gpdR),
       medidas_preventivas: medidas || null,
+      itens_nr12: p.itens_nr12?.length ? p.itens_nr12 : null,
     });
   }
 
@@ -365,6 +366,19 @@ export default function RiscoHrnTable({
           <label className="block">
             <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Potenciais Consequências</span>
             <input type="text" value={novoForm.potenciais_consequencias ?? ""} onChange={(e) => setNF("potenciais_consequencias", e.target.value || null)} className={inputClass} placeholder="Ex: Laceração, Amputação" />
+          </label>
+          <label className="block">
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Itens NR-12 (separados por vírgula)</span>
+            <input
+              type="text"
+              value={novoForm.itens_nr12?.join(", ") ?? ""}
+              onChange={(e) => {
+                const arr = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
+                setNF("itens_nr12", arr.length ? arr : null);
+              }}
+              className={inputClass}
+              placeholder="Ex: 12.38 a 12.55, 12.46"
+            />
           </label>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <label className="block">
