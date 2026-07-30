@@ -33,6 +33,8 @@ import {
 } from "@/lib/hooks/useApreciacoesMaquinas";
 import PlanoAcaoTable from "@/components/apreciacao-maquinas/PlanoAcaoTable";
 import RiscoHrnTable from "@/components/apreciacao-maquinas/RiscoHrnTable";
+import FichasMaquinaPanel from "@/components/apreciacao-maquinas/FichasMaquinaPanel";
+import { useApreciacaoEdicaoStore } from "@/lib/apreciacao-maquinas/store";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import {
   montarValoresEmpresa,
@@ -98,6 +100,7 @@ export default function DetalheApreciacaoPage() {
 
   const apreciacao = data?.apreciacao;
   const itens = data?.itens ?? [];
+  const fichaAtivaId = useApreciacaoEdicaoStore((s) => s.fichaAtivaId);
 
   // Estado do cabeçalho (form editável)
   const [titulo, setTitulo] = useState("");
@@ -745,6 +748,13 @@ export default function DetalheApreciacaoPage() {
         )}
       </section>
 
+      {/* ── SEÇÃO: Máquinas do laudo (multi-máquina) ────────────────────────── */}
+      <FichasMaquinaPanel
+        idApreciacao={apreciacao.id_apreciacao}
+        idEmpresa={apreciacao.id_empresa}
+        disabled={readOnly}
+      />
+
       {/* ── SEÇÃO: Identificação dos Componentes + Limites ──────────────────── */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4 print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
         <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
@@ -861,9 +871,22 @@ export default function DetalheApreciacaoPage() {
           <Activity className="size-4 text-orange-600" /> Análise de Riscos — HRN
         </h2>
         <p className="text-[11px] text-gray-500">
-          Avaliação por tipo de perigo: POD (Probabilidade) × FEP (Frequência) × GPD (Gravidade) conforme ABNT ISO/TR 14121-2:2018.
+          Avaliação por tipo de perigo da <strong>máquina selecionada</strong>:
+          POD (Probabilidade) × FEP (Frequência) × GPD (Gravidade) conforme ABNT
+          ISO/TR 14121-2:2018.
         </p>
-        <RiscoHrnTable idApreciacao={apreciacao.id_apreciacao} disabled={readOnly} />
+        {fichaAtivaId ? (
+          <RiscoHrnTable
+            idApreciacao={apreciacao.id_apreciacao}
+            idFicha={fichaAtivaId}
+            disabled={readOnly}
+          />
+        ) : (
+          <p className="rounded-md border border-dashed border-gray-200 bg-gray-50 p-3 text-center text-xs text-gray-500">
+            Selecione uma máquina na seção “Máquinas do laudo” para lançar os
+            riscos.
+          </p>
+        )}
       </section>
 
       {/* Seção: Checklist NR-12 agrupado por categoria */}

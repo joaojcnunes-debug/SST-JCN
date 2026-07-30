@@ -5,6 +5,7 @@ import { Plus, Trash2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   useRiscosHrn,
+  useRiscosHrnPorFicha,
   useCriarRiscoHrn,
   useAtualizarRiscoHrn,
   useExcluirRiscoHrn,
@@ -223,12 +224,19 @@ function RiscoRow({
 
 export default function RiscoHrnTable({
   idApreciacao,
+  idFicha,
   disabled = false,
 }: {
   idApreciacao: string;
+  /** Quando presente, os riscos são da MÁQUINA (ficha), não do laudo inteiro. */
+  idFicha?: string;
   disabled?: boolean;
 }) {
-  const { data: riscos = [], isLoading } = useRiscosHrn(idApreciacao);
+  // Só uma das duas queries fica ativa (a outra recebe undefined → enabled:false).
+  const qApre = useRiscosHrn(idFicha ? undefined : idApreciacao);
+  const qFicha = useRiscosHrnPorFicha(idFicha);
+  const riscos = (idFicha ? qFicha.data : qApre.data) ?? [];
+  const isLoading = idFicha ? qFicha.isLoading : qApre.isLoading;
   const criar = useCriarRiscoHrn(idApreciacao);
   const [novoForm, setNovoForm] = useState<RiscoHrnInput>({ ...BLANK_INPUT });
   const [adicionando, setAdicionando] = useState(false);
@@ -252,7 +260,7 @@ export default function RiscoHrnTable({
       return;
     }
     try {
-      await criar.mutateAsync({ ...novoForm, ordem: riscos.length });
+      await criar.mutateAsync({ ...novoForm, ordem: riscos.length, id_ficha: idFicha ?? null });
       setNovoForm({ ...BLANK_INPUT });
       setAdicionando(false);
       toast.success("Risco adicionado");
