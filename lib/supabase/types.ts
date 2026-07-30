@@ -1333,6 +1333,7 @@ export interface InspecaoAssociado {
 export interface ApreciacaoMaquinaItem {
   id_item: string;
   id_apreciacao: string;
+  id_ficha: string | null;            // v132 — máquina (ficha) do item de checklist
   item_codigo: string;
   item_categoria: string;
   item_titulo: string;

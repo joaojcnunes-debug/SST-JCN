@@ -8,6 +8,7 @@ import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
 import { CATALOGO_NR12 } from "@/lib/apreciacao-maquinas/catalogo-nr12";
+import { useApreciacaoEdicaoStore } from "@/lib/apreciacao-maquinas/store";
 import type {
   ApreciacaoMaquina,
   ApreciacaoMaquinaItem,
@@ -19,6 +20,8 @@ import type {
   PrioridadeAcaoApreciacao,
   RiscoResidual,
   NivelRisco,
+  Maquina,
+  FichaMaquina,
 } from "@/lib/supabase/types";
 
 const KEY_LISTA = ["apreciacoes-maquinas"] as const;
@@ -152,10 +155,58 @@ export function useCriarApreciacaoMaquina() {
         .insert(cabecalho as never);
       if (e1) throw e1;
 
+      // Cria a 1ª ficha de máquina do laudo (multi-máquina, v132) a partir da
+      // máquina selecionada — puxa detalhes do inventário quando vinculada.
+      let maq: Maquina | null = null;
+      if (input.id_maquina) {
+        const { data: mData } = await supabase
+          .from("inventario_maquinas")
+          .select("*")
+          .eq("id_maquina", input.id_maquina)
+          .maybeSingle();
+        maq = (mData as Maquina | null) ?? null;
+      }
+      const id_ficha = gerarId("APF");
+      const ficha: FichaMaquina = {
+        id_ficha,
+        id_apreciacao,
+        numero_ordem: 1,
+        id_maquina: input.id_maquina,
+        maquina_descricao: input.maquina_descricao,
+        equipamento: maq?.nome ?? input.maquina_descricao ?? null,
+        tipo: maq?.tipo ?? null,
+        modelo: maq?.modelo ?? null,
+        fabricante: maq?.marca ?? null,
+        serie: maq?.numero_serie ?? null,
+        ano: maq?.ano_fabricacao != null ? String(maq.ano_fabricacao) : null,
+        capacidade: maq?.capacidade_operacional ?? null,
+        setor: input.setor ?? maq?.setor ?? null,
+        componentes_maquina: null,
+        limite_uso: null,
+        limite_espaco: null,
+        limite_tempo: null,
+        limite_produtividade: null,
+        npe: null,
+        sistemas_atual: null,
+        sistemas_necessario: null,
+        constatacoes_inspecao: null,
+        parecer_tecnico: null,
+        prioridade_manual: false,
+        foto_urls: [],
+        foto_storage_paths: [],
+        created_at: new Date().toISOString(),
+        updated_at: null,
+      };
+      const { error: ef } = await supabase
+        .from("apreciacao_fichas_maquina")
+        .insert(ficha as never);
+      if (ef) throw ef;
+
       // Snapshot dos itens do catálogo (item_origem = null marca "veio do catálogo")
       const itens: ApreciacaoMaquinaItem[] = CATALOGO_NR12.map((it, idx) => ({
         id_item: gerarId("APRI"),
         id_apreciacao,
+        id_ficha,
         item_codigo: it.codigo,
         item_categoria: it.categoria,
         item_titulo: it.titulo,
@@ -501,6 +552,8 @@ export function useAdicionarItemLivreApreciacao() {
       const row: ApreciacaoMaquinaItem = {
         id_item,
         id_apreciacao: params.id_apreciacao,
+        // item livre pertence à máquina (ficha) atualmente selecionada no editor
+        id_ficha: useApreciacaoEdicaoStore.getState().fichaAtivaId,
         item_codigo: `LIVRE-${params.proximoIndiceLivre}`,
         item_categoria: params.categoria,
         item_titulo: params.titulo,
