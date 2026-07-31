@@ -61,6 +61,38 @@ export default function FichasMaquinaPanel({
     [inventario, idEmpresa]
   );
 
+  // Hierarquia Empresa → Setor → Máquina: agrupa as fichas por setor.
+  // Ordem dos setores pela 1ª aparição (menor numero_ordem); máquinas dentro
+  // do setor pela numero_ordem. Robusto a numero_ordem interleaveado.
+  const SEM_SETOR = "Sem setor";
+  const grupos = useMemo(() => {
+    const byNum = [...fichas].sort(
+      (a, b) => (a.numero_ordem ?? 0) - (b.numero_ordem ?? 0)
+    );
+    const ordem: string[] = [];
+    const map = new Map<string, FichaMaquina[]>();
+    for (const f of byNum) {
+      const key = f.setor && f.setor.trim() ? f.setor.trim() : SEM_SETOR;
+      if (!map.has(key)) {
+        map.set(key, []);
+        ordem.push(key);
+      }
+      map.get(key)!.push(f);
+    }
+    return ordem.map((setor) => ({ setor, fichas: map.get(setor)! }));
+  }, [fichas]);
+
+  // Ordem "achatada" (agrupada) → numeração sequencial 1..N na hierarquia.
+  const fichasOrdenadas = useMemo(
+    () => grupos.flatMap((g) => g.fichas),
+    [grupos]
+  );
+  const seqPorId = useMemo(() => {
+    const m = new Map<string, number>();
+    fichasOrdenadas.forEach((f, i) => m.set(f.id_ficha, i + 1));
+    return m;
+  }, [fichasOrdenadas]);
+
   // Auto-seleciona a 1ª ficha quando a ativa não pertence a este laudo.
   useEffect(() => {
     if (isLoading) return;
@@ -164,11 +196,19 @@ export default function FichasMaquinaPanel({
     }
   }
 
-  function mover(index: number, dir: -1 | 1) {
-    const alvo = index + dir;
-    if (alvo < 0 || alvo >= fichas.length) return;
-    const ids = fichas.map((f) => f.id_ficha);
-    [ids[index], ids[alvo]] = [ids[alvo], ids[index]];
+  // Reordena DENTRO do setor: troca com a máquina vizinha do mesmo grupo,
+  // preservando a ordem agrupada (setores contíguos).
+  function moverNoGrupo(
+    grupoFichas: FichaMaquina[],
+    idxNoGrupo: number,
+    dir: -1 | 1
+  ) {
+    const alvo = idxNoGrupo + dir;
+    if (alvo < 0 || alvo >= grupoFichas.length) return;
+    const ids = fichasOrdenadas.map((f) => f.id_ficha);
+    const ia = ids.indexOf(grupoFichas[idxNoGrupo].id_ficha);
+    const ib = ids.indexOf(grupoFichas[alvo].id_ficha);
+    [ids[ia], ids[ib]] = [ids[ib], ids[ia]];
     reordenar.mutate(ids);
   }
 
@@ -314,110 +354,121 @@ export default function FichasMaquinaPanel({
           {!disabled && ' Clique em "Adicionar máquina".'}
         </p>
       ) : (
-        <ul className="space-y-1.5">
-          {fichas.map((f, i) => {
-            const ativa = f.id_ficha === fichaAtivaId;
-            return (
-              <li
-                key={f.id_ficha}
-                className={cn(
-                  "flex items-center gap-2 rounded-md border px-3 py-2",
-                  ativa
-                    ? "border-orange-300 bg-orange-50"
-                    : "border-gray-200 bg-white hover:bg-gray-50"
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => setFichaAtiva(f.id_ficha)}
-                  className="flex flex-1 items-center gap-2 text-left min-w-0"
-                >
-                  <span
-                    className={cn(
-                      "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
-                      ativa
-                        ? "bg-orange-600 text-white"
-                        : "bg-gray-100 text-gray-500"
-                    )}
-                  >
-                    {f.numero_ordem}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-xs font-semibold text-gray-800">
-                      {nomeFicha(f)}
-                    </span>
-                    {f.setor && (
-                      <span className="block truncate text-[10px] text-gray-500">
-                        {f.setor}
-                      </span>
-                    )}
-                  </span>
-                  {f.prioridade_manual && (
-                    <span className="ml-1 shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
-                      PRIORIDADE
-                    </span>
-                  )}
-                </button>
-
-                {!disabled && (
-                  <div className="flex shrink-0 items-center gap-0.5">
-                    <button
-                      type="button"
-                      onClick={() => mover(i, -1)}
-                      disabled={i === 0 || reordenar.isPending}
-                      className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
-                      aria-label="Mover para cima"
+        <div className="space-y-3">
+          {grupos.map((g) => (
+            <div key={g.setor}>
+              {/* Cabeçalho do setor (Empresa → Setor → Máquina) */}
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-orange-700">
+                  {g.setor}
+                </span>
+                <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[9px] font-semibold text-orange-700">
+                  {g.fichas.length}
+                </span>
+                <span className="h-px flex-1 bg-gray-100" />
+              </div>
+              <ul className="space-y-1.5 pl-1">
+                {g.fichas.map((f, i) => {
+                  const ativa = f.id_ficha === fichaAtivaId;
+                  return (
+                    <li
+                      key={f.id_ficha}
+                      className={cn(
+                        "flex items-center gap-2 rounded-md border px-3 py-2",
+                        ativa
+                          ? "border-orange-300 bg-orange-50"
+                          : "border-gray-200 bg-white hover:bg-gray-50"
+                      )}
                     >
-                      <ChevronUp className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => mover(i, 1)}
-                      disabled={i === fichas.length - 1 || reordenar.isPending}
-                      className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
-                      aria-label="Mover para baixo"
-                    >
-                      <ChevronDown className="size-3.5" />
-                    </button>
-                    {confirmarExcluir === f.id_ficha ? (
-                      <span className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleExcluir(f.id_ficha)}
-                          disabled={excluir.isPending}
-                          className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          {excluir.isPending ? (
-                            <Loader2 className="size-3 animate-spin" />
-                          ) : (
-                            "Confirmar"
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmarExcluir(null)}
-                          className="rounded p-1 text-gray-400 hover:bg-gray-100"
-                          aria-label="Cancelar"
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      </span>
-                    ) : (
                       <button
                         type="button"
-                        onClick={() => setConfirmarExcluir(f.id_ficha)}
-                        className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                        aria-label="Remover máquina"
+                        onClick={() => setFichaAtiva(f.id_ficha)}
+                        className="flex flex-1 items-center gap-2 text-left min-w-0"
                       >
-                        <Trash2 className="size-3.5" />
+                        <span
+                          className={cn(
+                            "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+                            ativa
+                              ? "bg-orange-600 text-white"
+                              : "bg-gray-100 text-gray-500"
+                          )}
+                        >
+                          {seqPorId.get(f.id_ficha)}
+                        </span>
+                        <span className="block truncate text-xs font-semibold text-gray-800">
+                          {nomeFicha(f)}
+                        </span>
+                        {f.prioridade_manual && (
+                          <span className="ml-1 shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
+                            PRIORIDADE
+                          </span>
+                        )}
                       </button>
-                    )}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+
+                      {!disabled && (
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => moverNoGrupo(g.fichas, i, -1)}
+                            disabled={i === 0 || reordenar.isPending}
+                            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
+                            aria-label="Mover para cima"
+                          >
+                            <ChevronUp className="size-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moverNoGrupo(g.fichas, i, 1)}
+                            disabled={
+                              i === g.fichas.length - 1 || reordenar.isPending
+                            }
+                            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
+                            aria-label="Mover para baixo"
+                          >
+                            <ChevronDown className="size-3.5" />
+                          </button>
+                          {confirmarExcluir === f.id_ficha ? (
+                            <span className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleExcluir(f.id_ficha)}
+                                disabled={excluir.isPending}
+                                className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                              >
+                                {excluir.isPending ? (
+                                  <Loader2 className="size-3 animate-spin" />
+                                ) : (
+                                  "Confirmar"
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmarExcluir(null)}
+                                className="rounded p-1 text-gray-400 hover:bg-gray-100"
+                                aria-label="Cancelar"
+                              >
+                                <X className="size-3.5" />
+                              </button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmarExcluir(f.id_ficha)}
+                              className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                              aria-label="Remover máquina"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
       )}
     </section>
   );

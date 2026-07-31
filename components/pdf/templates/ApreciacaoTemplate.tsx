@@ -153,6 +153,8 @@ ${TP_STYLE}
 .cat-titulo { font-size: 10.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: #9a3412; border-bottom: 1px solid #fdba74; padding-bottom: 2px; margin: 10pt 0 6pt; }
 .maq-titulo { font-size: 11.5pt; font-weight: 700; color: #fff; background: ${LARANJA}; border-radius: 5px; padding: 5px 10px; margin: 12pt 0 8pt; page-break-after: avoid; }
 .maq-prio { font-size: 8px; font-weight: 700; background: #fde68a; color: #92400e; border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
+.setor-titulo { font-size: 12pt; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #9a3412; background: #fff7ed; border-left: 4px solid ${LARANJA}; padding: 4px 10px; margin: 14pt 0 8pt; page-break-after: avoid; }
+.setor-row td { font-size: 10pt; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: #9a3412; background: #fff7ed; }
 .dados { width: 100%; border-collapse: collapse; font-size: 10.5pt; margin-bottom: 8pt; }
 .dados td { border: 1px solid #e5e7eb; padding: 4px 8px; vertical-align: top; }
 .dados .rot { width: 28%; font-size: 9px; font-weight: 700; text-transform: uppercase; color: #6b7280; }
@@ -536,7 +538,31 @@ function MetodoHrn({ titulo }: { titulo: string }) {
   );
 }
 
+/** Hierarquia Empresa → Setor → Máquina: agrupa as fichas por setor.
+ *  Setores na ordem da 1ª aparição (menor numero_ordem); máquinas por ordem. */
+function agruparFichasPorSetor(fichas: ApreciacaoFichaLocal[]) {
+  const SEM = "Sem setor";
+  const byNum = [...fichas].sort(
+    (a, b) => (a.numero_ordem ?? 0) - (b.numero_ordem ?? 0)
+  );
+  const ordem: string[] = [];
+  const map = new Map<string, ApreciacaoFichaLocal[]>();
+  for (const f of byNum) {
+    const key = f.setor && f.setor.trim() ? f.setor.trim() : SEM;
+    if (!map.has(key)) {
+      map.set(key, []);
+      ordem.push(key);
+    }
+    map.get(key)!.push(f);
+  }
+  const grupos = ordem.map((setor) => ({ setor, fichas: map.get(setor)! }));
+  const flat = grupos.flatMap((g) => g.fichas);
+  const seqDe = (f: ApreciacaoFichaLocal) => flat.indexOf(f) + 1;
+  return { grupos, flat, seqDe };
+}
+
 function RelacaoMaquinas({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; titulo: string }) {
+  const { grupos, seqDe } = agruparFichasPorSetor(fichas);
   return (
     <div>
       <p className="sec-titulo">{titulo} ({fichas.length})</p>
@@ -549,20 +575,27 @@ function RelacaoMaquinas({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; t
             <th>Modelo / Fab.</th>
             <th>Série</th>
             <th>Ano</th>
-            <th>Setor</th>
           </tr>
         </thead>
         <tbody>
-          {fichas.map((f) => (
-            <tr key={f.numero_ordem}>
-              <td>{f.numero_ordem}</td>
-              <td><strong>{f.nome}</strong></td>
-              <td>{f.tipo || "—"}</td>
-              <td>{[f.modelo, f.fabricante].filter(Boolean).join(" / ") || "—"}</td>
-              <td>{f.serie || "—"}</td>
-              <td>{f.ano || "—"}</td>
-              <td>{f.setor || "—"}</td>
-            </tr>
+          {grupos.map((g) => (
+            <React.Fragment key={g.setor}>
+              <tr>
+                <td colSpan={6} className="setor-row">
+                  Setor: {g.setor} ({g.fichas.length})
+                </td>
+              </tr>
+              {g.fichas.map((f) => (
+                <tr key={f.numero_ordem}>
+                  <td>{seqDe(f)}</td>
+                  <td><strong>{f.nome}</strong></td>
+                  <td>{f.tipo || "—"}</td>
+                  <td>{[f.modelo, f.fabricante].filter(Boolean).join(" / ") || "—"}</td>
+                  <td>{f.serie || "—"}</td>
+                  <td>{f.ano || "—"}</td>
+                </tr>
+              ))}
+            </React.Fragment>
           ))}
         </tbody>
       </table>
@@ -575,16 +608,22 @@ function RelacaoMaquinas({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; t
 const INCLUIR_CHECKLIST_PDF = false;
 
 function MaquinasSection({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; titulo: string }) {
+  const { flat } = agruparFichasPorSetor(fichas);
+  let prevSetor: string | null = null;
   return (
     <div>
       <p className="sec-titulo">
         {titulo} ({fichas.length} máquina{fichas.length === 1 ? "" : "s"})
       </p>
-      {fichas.map((f, idx) => (
+      {flat.map((f, idx) => {
+        const setorAtual = f.setor && f.setor.trim() ? f.setor.trim() : "Sem setor";
+        const novoSetor = setorAtual !== prevSetor;
+        prevSetor = setorAtual;
+        return (
         <div key={idx} style={idx > 0 ? { pageBreakBefore: "always" } : undefined}>
+          {novoSetor && <p className="setor-titulo">Setor: {setorAtual}</p>}
           <p className="maq-titulo">
-            {f.numero_ordem}. {f.nome}
-            {f.setor ? ` — ${f.setor}` : ""}
+            {idx + 1}. {f.nome}
             {f.prioridade_manual ? <span className="maq-prio">PRIORIDADE</span> : null}
           </p>
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -633,7 +672,8 @@ function MaquinasSection({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; t
             </>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

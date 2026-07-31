@@ -367,11 +367,15 @@ export function useImportarInspecaoParaLaudo() {
       if (setorIds.length) {
         const { data: setores } = await supabase
           .from("setores")
-          .select("id_setor, nome")
+          .select("id_setor, setor_ghe, descricao")
           .in("id_setor", setorIds);
         (setores ?? []).forEach((s) => {
-          const row = s as { id_setor: string; nome: string };
-          setorNome.set(row.id_setor, row.nome);
+          const row = s as {
+            id_setor: string;
+            setor_ghe: string | null;
+            descricao: string | null;
+          };
+          setorNome.set(row.id_setor, row.setor_ghe || row.descricao || "");
         });
       }
 
