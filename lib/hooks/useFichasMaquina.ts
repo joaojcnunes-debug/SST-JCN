@@ -49,7 +49,7 @@ export interface FichaMaquinaInput {
   sistemas_necessario?: string[] | null;
   constatacoes_inspecao?: string | null;
   parecer_tecnico?: string | null;
-  operadores?: string | null;
+  operadores?: { nome: string; cargo: string }[] | null;
   prioridade_manual?: boolean;
 }
 
@@ -385,14 +385,13 @@ export function useImportarInspecaoParaLaudo() {
       let ordem = 0;
       for (const m of sorted) {
         ordem += 1;
-        const ops = Array.isArray(m.operadores)
+        const ops = (Array.isArray(m.operadores)
           ? (m.operadores as { nome?: string; cargo?: string }[])
-          : [];
-        const operadoresTxt =
-          ops
-            .map((o) => [o.nome, o.cargo].filter(Boolean).join(" — "))
-            .filter(Boolean)
-            .join("; ") || null;
+          : []
+        )
+          .map((o) => ({ nome: (o.nome ?? "").trim(), cargo: (o.cargo ?? "").trim() }))
+          .filter((o) => o.nome || o.cargo);
+        const operadores = ops.length ? ops : null;
         const id_ficha = gerarId("APF");
         const ficha = {
           id_ficha,
@@ -418,7 +417,7 @@ export function useImportarInspecaoParaLaudo() {
           sistemas_necessario: null,
           constatacoes_inspecao: (m.observacoes as string) ?? null,
           parecer_tecnico: null,
-          operadores: operadoresTxt,
+          operadores,
           prioridade_manual: false,
           foto_urls: Array.isArray(m.foto_urls) ? (m.foto_urls as string[]) : [],
           foto_storage_paths: Array.isArray(m.foto_storage_paths)

@@ -51,7 +51,7 @@ import { useMaquina } from "@/lib/hooks/useInventarioMaquinas";
 import { useCanEdit, useCanDelete } from "@/lib/hooks/useUsuario";
 import ItemApreciacaoCard from "@/components/apreciacao-maquinas/ItemApreciacaoCard";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
-import { cn } from "@/lib/utils";
+import { cn, formatCNPJ } from "@/lib/utils";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import RevisaoIAModal, { type CampoRevisaoIA } from "@/components/ui/RevisaoIAModal";
@@ -148,7 +148,9 @@ export default function DetalheApreciacaoPage() {
   const [npe, setNpe] = useState<NpeHrn | "">("");
   const [sistemasAtual, setSistemasAtual] = useState<string[]>([]);
   const [sistemasNecessario, setSistemasNecessario] = useState<string[]>([]);
-  const [operadores, setOperadores] = useState("");
+  const [operadores, setOperadores] = useState<{ nome: string; cargo: string }[]>(
+    []
+  );
 
   // Form "Adicionar item livre"
   const [livreOpen, setLivreOpen] = useState(false);
@@ -185,7 +187,7 @@ export default function DetalheApreciacaoPage() {
     setNpe((fichaAtiva?.npe as NpeHrn) ?? "");
     setSistemasAtual(fichaAtiva?.sistemas_atual ?? []);
     setSistemasNecessario(fichaAtiva?.sistemas_necessario ?? []);
-    setOperadores(fichaAtiva?.operadores ?? "");
+    setOperadores(fichaAtiva?.operadores ?? []);
   }, [fichaAtiva]);
 
   const empresa = useMemo(() => {
@@ -297,7 +299,12 @@ export default function DetalheApreciacaoPage() {
         npe: npe || null,
         sistemas_atual: sistemasAtual.length ? sistemasAtual : null,
         sistemas_necessario: sistemasNecessario.length ? sistemasNecessario : null,
-        operadores: operadores.trim() || null,
+        operadores: (() => {
+          const limpos = operadores
+            .map((o) => ({ nome: o.nome.trim(), cargo: o.cargo.trim() }))
+            .filter((o) => o.nome || o.cargo);
+          return limpos.length ? limpos : null;
+        })(),
       });
       toast.success("Identificação da máquina salva");
     } catch {
@@ -676,46 +683,42 @@ export default function DetalheApreciacaoPage() {
         <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
           <FileText className="size-4" /> Dados Gerais
         </h2>
+        {/* Identificação da empresa (contratante) — vem do cadastro da empresa */}
+        {empresa && (
+          <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 p-3">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+              Empresa (contratante) — da identificação da empresa
+            </p>
+            <p className="text-sm font-semibold text-gray-800">
+              {empresa.razao_social || empresa.nome_empresa}
+            </p>
+            <p className="text-xs text-gray-600">
+              {[
+                empresa.cnpj ? `CNPJ ${formatCNPJ(empresa.cnpj)}` : null,
+                empresa.cnae_principal ? `CNAE ${empresa.cnae_principal}` : null,
+                empresa.grau_risco != null
+                  ? `Grau de Risco ${empresa.grau_risco}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+            {(() => {
+              const end = [
+                [empresa.logradouro, empresa.numero].filter(Boolean).join(", "),
+                empresa.bairro,
+                [empresa.municipio, empresa.uf].filter(Boolean).join(" / "),
+                empresa.cep ? `CEP ${empresa.cep}` : null,
+              ]
+                .filter(Boolean)
+                .join(" – ");
+              return end ? (
+                <p className="text-xs text-gray-600">{end}</p>
+              ) : null;
+            })()}
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Campo label="Título" htmlFor="titulo">
-            <input
-              id="titulo"
-              type="text"
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              disabled={readOnly}
-              className={inputClass}
-            />
-          </Campo>
-          <Campo label="Máquina" htmlFor="maq">
-            <input
-              id="maq"
-              type="text"
-              value={maquinaNome}
-              disabled
-              className={inputClass}
-            />
-          </Campo>
-          <Campo label="Setor" htmlFor="setor">
-            <input
-              id="setor"
-              type="text"
-              value={setor}
-              onChange={(e) => setSetor(e.target.value)}
-              disabled={readOnly}
-              className={inputClass}
-            />
-          </Campo>
-          <Campo label="Cidade" htmlFor="cidade">
-            <input
-              id="cidade"
-              type="text"
-              value={cidade}
-              onChange={(e) => setCidade(e.target.value)}
-              disabled={readOnly}
-              className={inputClass}
-            />
-          </Campo>
           <Campo label="Responsável técnico (JCN Consultoria)" htmlFor="resp">
             <ProfissionalSelect
               value={responsavel}
@@ -816,19 +819,68 @@ export default function DetalheApreciacaoPage() {
         <p className="text-[11px] text-gray-500">
           Marque os tipos de componentes presentes nesta máquina (ABNT ISO/TR 14121-2:2018).
         </p>
-        <label className="block">
+        <div>
           <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
             Operadores / Responsáveis
           </span>
-          <textarea
-            rows={2}
-            value={operadores}
-            onChange={(e) => setOperadores(e.target.value)}
-            disabled={readOnly}
-            placeholder="Ex: Fulano de Tal, Ciclano de Souza, Beltrano da Silva"
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
-          />
-        </label>
+          <div className="space-y-1.5">
+            {operadores.map((op, i) => (
+              <div key={i} className="flex gap-2">
+                <input
+                  type="text"
+                  value={op.nome}
+                  onChange={(e) =>
+                    setOperadores((prev) =>
+                      prev.map((o, j) =>
+                        j === i ? { ...o, nome: e.target.value } : o
+                      )
+                    )
+                  }
+                  disabled={readOnly}
+                  placeholder="Nome"
+                  className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
+                />
+                <input
+                  type="text"
+                  value={op.cargo}
+                  onChange={(e) =>
+                    setOperadores((prev) =>
+                      prev.map((o, j) =>
+                        j === i ? { ...o, cargo: e.target.value } : o
+                      )
+                    )
+                  }
+                  disabled={readOnly}
+                  placeholder="Cargo"
+                  className="w-40 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
+                />
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOperadores((prev) => prev.filter((_, j) => j !== i))
+                    }
+                    className="shrink-0 rounded-md border border-red-200 bg-red-50 px-2 text-red-600 hover:bg-red-100"
+                    aria-label="Remover pessoa"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() =>
+                  setOperadores((prev) => [...prev, { nome: "", cargo: "" }])
+                }
+                className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+              >
+                + Adicionar pessoa
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Registro fotográfico da máquina */}
         {fichaAtiva && (

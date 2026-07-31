@@ -1232,7 +1232,7 @@ export interface FichaMaquina {
   sistemas_necessario: string[] | null;
   constatacoes_inspecao: string | null;
   parecer_tecnico: string | null;
-  operadores: string | null;            // v136 — operadores/responsáveis da máquina
+  operadores: { nome: string; cargo: string }[] | null; // v141 — nome+cargo (era text v136)
   prioridade_manual: boolean;
   foto_urls: string[];
   foto_storage_paths: string[];

@@ -76,7 +76,7 @@ export interface ApreciacaoFichaLocal {
   sistemas_necessario: string[] | null;
   constatacoes_inspecao: string | null;
   parecer_tecnico: string | null;
-  operadores: string | null;
+  operadores: { nome: string; cargo: string }[] | null;
   foto_urls: string[];
   prioridade_manual: boolean;
   itens: ApreciacaoItemLocal[];
@@ -602,10 +602,15 @@ function MaquinasSection({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; t
               </div>
             )}
           </div>
-          {f.operadores && (
+          {f.operadores && f.operadores.length > 0 && (
             <p className="constat">
               <strong>Operadores/Responsáveis: </strong>
-              {f.operadores}
+              {f.operadores
+                .map((o) =>
+                  [o.nome, o.cargo].filter(Boolean).join(" — ")
+                )
+                .filter(Boolean)
+                .join("; ")}
             </p>
           )}
           {f.constatacoes_inspecao && (

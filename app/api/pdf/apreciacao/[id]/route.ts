@@ -137,7 +137,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         sistemas_necessario: Array.isArray(fr.sistemas_necessario) ? (fr.sistemas_necessario as string[]) : null,
         constatacoes_inspecao: (fr.constatacoes_inspecao as string) ?? null,
         parecer_tecnico: (fr.parecer_tecnico as string) ?? null,
-        operadores: (fr.operadores as string) ?? null,
+        operadores: Array.isArray(fr.operadores)
+          ? (fr.operadores as { nome: string; cargo: string }[])
+          : null,
         foto_urls: Array.isArray(fr.foto_urls) ? (fr.foto_urls as string[]) : [],
         prioridade_manual: !!fr.prioridade_manual,
         itens: itensComFicha.filter((x) => x.id_ficha === idf).map((x) => x.item),
