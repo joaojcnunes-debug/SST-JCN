@@ -497,10 +497,10 @@ function IdentificacaoLaudo({
   );
 }
 
-function MetodoHrn() {
+function MetodoHrn({ titulo }: { titulo: string }) {
   return (
     <div>
-      <p className="sec-titulo">Método de Cálculo do Risco</p>
+      <p className="sec-titulo">{titulo}</p>
       <p className="constat">
         Índice de Risco = <strong>POD × FEP × GPD</strong>, conforme ABNT ISO/TR
         14121-2:2018. O risco residual é recalculado após as medidas de proteção,
@@ -536,10 +536,10 @@ function MetodoHrn() {
   );
 }
 
-function RelacaoMaquinas({ fichas }: { fichas: ApreciacaoFichaLocal[] }) {
+function RelacaoMaquinas({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; titulo: string }) {
   return (
     <div>
-      <p className="sec-titulo">Relação de Máquinas e Equipamentos ({fichas.length})</p>
+      <p className="sec-titulo">{titulo} ({fichas.length})</p>
       <table className="hrn">
         <thead>
           <tr>
@@ -724,6 +724,8 @@ export default function ApreciacaoTemplate({
     if (c.tipo !== "fixo") return true;
     switch (c.slug_fixo) {
       case "identificacao_empresa": return true;
+      case "apreciacao_metodo":     return true;
+      case "apreciacao_relacao":    return true;
       case "apreciacao_checklist":  return true;
       case "apreciacao_risco":      return temConclusao; // só numera se há conteúdo
       case "apreciacao_plano":      return true;
@@ -761,16 +763,23 @@ export default function ApreciacaoTemplate({
     />
   );
 
-  // Seção "checklist" agora traz Método + Relação de Máquinas + fichas por máquina.
+  // Seções próprias: Método, Relação de Máquinas e Apreciação por Máquina.
+  const metodoNode = (
+    <MetodoHrn
+      titulo={numLabel(numPorSlug["apreciacao_metodo"], tituloPorSlug["apreciacao_metodo"] ?? "Objetivo, Base Normativa e Método")}
+    />
+  );
+  const relacaoNode = (
+    <RelacaoMaquinas
+      fichas={fichas}
+      titulo={numLabel(numPorSlug["apreciacao_relacao"], tituloPorSlug["apreciacao_relacao"] ?? "Relação de Máquinas e Equipamentos")}
+    />
+  );
   const maquinasNode = (
-    <>
-      <MetodoHrn />
-      <RelacaoMaquinas fichas={fichas} />
-      <MaquinasSection
-        fichas={fichas}
-        titulo={numLabel(numPorSlug["apreciacao_checklist"], tituloPorSlug["apreciacao_checklist"] ?? "Apreciação de Risco por Máquina")}
-      />
-    </>
+    <MaquinasSection
+      fichas={fichas}
+      titulo={numLabel(numPorSlug["apreciacao_checklist"], tituloPorSlug["apreciacao_checklist"] ?? "Apreciação de Risco por Máquina")}
+    />
   );
   const conclusaoNode = temConclusao ? (
     <div>
@@ -819,6 +828,8 @@ export default function ApreciacaoTemplate({
     switch (slug) {
       case "identificacao_empresa": return <IdentificacaoLaudo empresa={empresa} apreciacao={apreciacao} rt={responsavelTecnico} numero={numPorSlug["identificacao_empresa"]} />;
       case "sumario":               return <SecaoSumario titulos={sumarioTitulos} />;
+      case "apreciacao_metodo":     return metodoNode;
+      case "apreciacao_relacao":    return relacaoNode;
       case "apreciacao_checklist":  return maquinasNode;
       case "apreciacao_risco":      return conclusaoNode;
       case "apreciacao_plano":      return planoNode;
@@ -832,6 +843,8 @@ export default function ApreciacaoTemplate({
     : (
       <>
         {renderEditaveis(capitulos, valores, "inicio")}
+        {metodoNode}
+        {relacaoNode}
         {maquinasNode}
         {conclusaoNode}
         {planoNode}
