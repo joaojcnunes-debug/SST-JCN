@@ -340,3 +340,133 @@ export function useReordenarFichas(idApreciacao: string) {
     onError: (e: Error) => toast.error(`Erro ao reordenar: ${e.message}`),
   });
 }
+
+/**
+ * Auto-importa as máquinas da INSPEÇÃO da empresa como fichas do laudo,
+ * AGRUPADAS POR SETOR, trazendo dados + operadores (texto) + fotos + checklist.
+ * Usado ao criar uma nova apreciação.
+ */
+export function useImportarInspecaoParaLaudo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { idApreciacao: string; idEmpresa: string }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { data: maqsData } = await supabase
+        .from("inspecao_maquinas")
+        .select("*")
+        .eq("id_empresa", params.idEmpresa)
+        .eq("ativo", true);
+      const maqs = (maqsData ?? []) as Record<string, unknown>[];
+      if (maqs.length === 0) return 0;
+
+      // Resolve os nomes dos setores p/ ordenar/agrupar.
+      const setorIds = Array.from(
+        new Set(maqs.map((m) => m.id_setor).filter(Boolean))
+      ) as string[];
+      const setorNome = new Map<string, string>();
+      if (setorIds.length) {
+        const { data: setores } = await supabase
+          .from("setores")
+          .select("id_setor, nome")
+          .in("id_setor", setorIds);
+        (setores ?? []).forEach((s) => {
+          const row = s as { id_setor: string; nome: string };
+          setorNome.set(row.id_setor, row.nome);
+        });
+      }
+
+      const sorted = [...maqs].sort((a, b) => {
+        const sa = setorNome.get(a.id_setor as string) ?? "";
+        const sb = setorNome.get(b.id_setor as string) ?? "";
+        if (sa !== sb) return sa.localeCompare(sb, "pt-BR");
+        return ((a.ordem as number) ?? 0) - ((b.ordem as number) ?? 0);
+      });
+
+      let ordem = 0;
+      for (const m of sorted) {
+        ordem += 1;
+        const ops = Array.isArray(m.operadores)
+          ? (m.operadores as { nome?: string; cargo?: string }[])
+          : [];
+        const operadoresTxt =
+          ops
+            .map((o) => [o.nome, o.cargo].filter(Boolean).join(" — "))
+            .filter(Boolean)
+            .join("; ") || null;
+        const id_ficha = gerarId("APF");
+        const ficha = {
+          id_ficha,
+          id_apreciacao: params.idApreciacao,
+          numero_ordem: ordem,
+          id_maquina: null,
+          maquina_descricao: (m.nome as string) ?? null,
+          equipamento: (m.nome as string) ?? null,
+          tipo: (m.tipo as string) ?? null,
+          modelo: (m.modelo as string) ?? null,
+          fabricante: (m.marca as string) ?? null,
+          serie: (m.numero_serie as string) ?? null,
+          ano: m.ano_fabricacao != null ? String(m.ano_fabricacao) : null,
+          capacidade: (m.potencia as string) ?? null,
+          setor: setorNome.get(m.id_setor as string) ?? null,
+          componentes_maquina: null,
+          limite_uso: null,
+          limite_espaco: null,
+          limite_tempo: null,
+          limite_produtividade: null,
+          npe: null,
+          sistemas_atual: null,
+          sistemas_necessario: null,
+          constatacoes_inspecao: (m.observacoes as string) ?? null,
+          parecer_tecnico: null,
+          operadores: operadoresTxt,
+          prioridade_manual: false,
+          foto_urls: Array.isArray(m.foto_urls) ? (m.foto_urls as string[]) : [],
+          foto_storage_paths: Array.isArray(m.foto_storage_paths)
+            ? (m.foto_storage_paths as string[])
+            : [],
+          created_at: new Date().toISOString(),
+          updated_at: null,
+        };
+        const { error: ef } = await supabase
+          .from("apreciacao_fichas_maquina")
+          .insert(ficha as never);
+        if (ef) throw ef;
+
+        const itens = CATALOGO_NR12.map((it, idx) => ({
+          id_item: gerarId("APRI"),
+          id_apreciacao: params.idApreciacao,
+          id_ficha,
+          item_codigo: it.codigo,
+          item_categoria: it.categoria,
+          item_titulo: it.titulo,
+          item_descricao: it.descricao ?? null,
+          item_origem: null,
+          ordem: idx,
+          situacao: "PENDENTE",
+          observacao: null,
+          recomendacao: null,
+          probabilidade: null,
+          severidade: null,
+          nivel_risco_calculado: null,
+          id_matriz: null,
+          foto_urls: [] as string[],
+          foto_storage_paths: [] as string[],
+          foto_legendas: [] as string[],
+          created_at: new Date().toISOString(),
+          updated_at: null,
+        }));
+        const { error: ei } = await supabase
+          .from("apreciacoes_maquinas_itens")
+          .insert(itens as never);
+        if (ei) throw ei;
+      }
+      return sorted.length;
+    },
+    onSuccess: (_n, params) => {
+      qc.invalidateQueries({ queryKey: KEY(params.idApreciacao) });
+      qc.invalidateQueries({ queryKey: ["apreciacao-maquina", params.idApreciacao] });
+    },
+    onError: (e: Error) =>
+      toast.error(`Erro ao importar máquinas da inspeção: ${e.message}`),
+  });
+}
