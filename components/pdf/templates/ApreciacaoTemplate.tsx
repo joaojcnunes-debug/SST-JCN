@@ -144,6 +144,11 @@ const SITUACAO_LABELS: Record<string, string> = {
 const STYLE_BLOCK = `
 * { box-sizing: border-box; }
 ${TP_STYLE}
+/* Orientação por capítulo (Texto Padrão): requer gerarPdf preferCssPageSize/capaFullBleed. */
+@page paisagem { size: A4 landscape; }
+@page retrato { size: A4 portrait; }
+.cap-paisagem { page: paisagem; break-before: page; }
+.cap-retrato { page: retrato; break-before: page; }
 .sec-titulo { font-size: 13pt; font-weight: 700; color: ${LARANJA}; border-bottom: 2px solid ${LARANJA}; padding-bottom: 3px; margin: 14pt 0 8pt; }
 .cat-titulo { font-size: 10.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: #9a3412; border-bottom: 1px solid #fdba74; padding-bottom: 2px; margin: 10pt 0 6pt; }
 .maq-titulo { font-size: 11.5pt; font-weight: 700; color: #fff; background: ${LARANJA}; border-radius: 5px; padding: 5px 10px; margin: 12pt 0 8pt; page-break-after: avoid; }

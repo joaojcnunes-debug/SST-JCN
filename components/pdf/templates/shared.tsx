@@ -160,29 +160,43 @@ export function renderUnificado(
   opts?: { numPorId?: Record<string, number> },
 ): React.ReactNode {
   const numPorId = opts?.numPorId;
-  return [...capitulos]
+  const ativos = [...capitulos]
     .filter((c) => c.ativo !== false)
-    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
-    .map((c) =>
-      c.tipo === "fixo" ? (
-        <div
-          key={c.id_capitulo}
-          className={classeQuebraFixo(c)}
-          data-slug={c.slug_fixo ?? undefined}
-        >
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  const orientDe = (c: TextoPadraoCapitulo) =>
+    c.orientacao === "paisagem" ? "paisagem" : "retrato";
+  return ativos.map((c, i) => {
+    const orient = orientDe(c);
+    const prev = i > 0 ? orientDe(ativos[i - 1]) : "retrato";
+    // Classe de orientação: paisagem sempre; ao voltar p/ retrato após paisagem,
+    // força a quebra p/ o tamanho de página não "vazar" da seção anterior.
+    // (Requer `@page paisagem`/`@page retrato` + `.cap-paisagem`/`.cap-retrato`
+    //  no template + gerarPdf com preferCssPageSize/capaFullBleed.)
+    const orientClass =
+      orient === "paisagem" ? "cap-paisagem" : orient !== prev ? "cap-retrato" : "";
+    if (c.tipo === "fixo") {
+      const cls =
+        [classeQuebraFixo(c), orientClass].filter(Boolean).join(" ") || undefined;
+      return (
+        <div key={c.id_capitulo} className={cls} data-slug={c.slug_fixo ?? undefined}>
           {renderSecao(c.slug_fixo ?? "")}
         </div>
-      ) : (
-        <React.Fragment key={c.id_capitulo}>
-          {renderEditavelUm(
-            numPorId?.[c.id_capitulo]
-              ? { ...c, titulo: `${numPorId[c.id_capitulo]}. ${c.titulo}` }
-              : c,
-            valores,
-          )}
-        </React.Fragment>
-      ),
+      );
+    }
+    const inner = renderEditavelUm(
+      numPorId?.[c.id_capitulo]
+        ? { ...c, titulo: `${numPorId[c.id_capitulo]}. ${c.titulo}` }
+        : c,
+      valores,
     );
+    return orientClass ? (
+      <div key={c.id_capitulo} className={orientClass}>
+        {inner}
+      </div>
+    ) : (
+      <React.Fragment key={c.id_capitulo}>{inner}</React.Fragment>
+    );
+  });
 }
 
 /** Cabeçalho padrão dos laudos (faixa colorida + grid de dados). */
