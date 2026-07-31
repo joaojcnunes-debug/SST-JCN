@@ -88,6 +88,7 @@ interface FormState {
   necessita_adequacao_nr12: boolean | null;
   grau_risco: string;
   observacoes: string;
+  operadores: { nome: string; cargo: string }[];
 }
 
 const EMPTY: FormState = {
@@ -112,6 +113,7 @@ const EMPTY: FormState = {
   necessita_adequacao_nr12: null,
   grau_risco: "",
   observacoes: "",
+  operadores: [],
 };
 
 interface Props {
@@ -216,6 +218,8 @@ export default function MaquinasTab({
       necessita_adequacao_nr12: m.necessita_adequacao_nr12,
       grau_risco: m.grau_risco ?? "",
       observacoes: m.observacoes ?? "",
+      operadores:
+        (m.operadores as { nome: string; cargo: string }[] | null) ?? [],
     });
     setFotosUpload([]);
     setFotosPreview(m.foto_urls ?? []);
@@ -308,6 +312,7 @@ export default function MaquinasTab({
         necessita_adequacao_nr12: form.necessita_adequacao_nr12,
         grau_risco: form.grau_risco || null,
         observacoes: form.observacoes || null,
+        operadores: form.operadores.filter((o) => o.nome.trim() || o.cargo.trim()),
         foto_urls: [...existingUrls, ...newUrls],
         foto_storage_paths: [...existingPaths, ...newPaths],
         updated_at: new Date().toISOString(),
@@ -1059,6 +1064,72 @@ export default function MaquinasTab({
                 rows={3}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
               />
+            </div>
+
+            {/* operadores / responsáveis pela máquina */}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">
+                Operadores / Responsáveis pela máquina
+              </label>
+              <div className="space-y-2">
+                {form.operadores.map((op, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={op.nome}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          operadores: p.operadores.map((o, j) =>
+                            j === i ? { ...o, nome: e.target.value } : o
+                          ),
+                        }))
+                      }
+                      placeholder="Nome"
+                      className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={op.cargo}
+                      onChange={(e) =>
+                        setForm((p) => ({
+                          ...p,
+                          operadores: p.operadores.map((o, j) =>
+                            j === i ? { ...o, cargo: e.target.value } : o
+                          ),
+                        }))
+                      }
+                      placeholder="Cargo"
+                      className="w-40 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setForm((p) => ({
+                          ...p,
+                          operadores: p.operadores.filter((_, j) => j !== i),
+                        }))
+                      }
+                      className="shrink-0 rounded-md border border-red-200 bg-red-50 px-2 text-red-600 hover:bg-red-100"
+                      aria-label="Remover pessoa"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((p) => ({
+                      ...p,
+                      operadores: [...p.operadores, { nome: "", cargo: "" }],
+                    }))
+                  }
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                >
+                  + Adicionar pessoa
+                </button>
+              </div>
             </div>
 
             {/* fotos */}

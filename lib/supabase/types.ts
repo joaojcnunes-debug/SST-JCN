@@ -1419,6 +1419,8 @@ export interface InspecaoMaquina {
   necessita_adequacao_nr12: boolean | null;
   grau_risco: GrauRiscoInspecaoMaquina | null;
   observacoes: string | null;
+  /** Operadores/responsáveis que utilizam a máquina (v139). */
+  operadores?: { nome: string; cargo: string }[] | null;
   parecer_ia: string | null;
   foto_urls: string[];
   foto_storage_paths: string[];
