@@ -53,6 +53,7 @@ export interface ApreciacaoRiscoLocal {
   nivel_acoes: string | null;
   medidas_preventivas: string | null;
   itens_nr12: string[] | null;
+  categoria_seguranca: string | null;
 }
 
 export interface ApreciacaoFichaLocal {
@@ -104,6 +105,7 @@ export interface ApreciacaoTemplateProps {
     responsavel: string | null;
     responsavel_empresa: string | null;
     data_apreciacao: string | null;
+    notificacao_sit: string | null;
     risco_residual: string | null;
     observacoes_gerais: string | null;
     conclusao_tecnica: string | null;
@@ -400,7 +402,14 @@ function HrnTable({ riscos }: { riscos: ApreciacaoRiscoLocal[] }) {
               <td>
                 <CelulaRisco pod={r.pod} fep={r.fep} gpd={r.gpd} classe={r.classificacao_risco} />
               </td>
-              <td style={{ whiteSpace: "pre-wrap", fontSize: "8pt" }}>{r.medidas_preventivas || "—"}</td>
+              <td style={{ whiteSpace: "pre-wrap", fontSize: "8pt" }}>
+                {r.medidas_preventivas || "—"}
+                {r.categoria_seguranca ? (
+                  <div style={{ marginTop: 2, color: "#9a3412", fontWeight: 700 }}>
+                    Cat. segurança (NBR 14153): {r.categoria_seguranca}
+                  </div>
+                ) : null}
+              </td>
               <td>
                 <CelulaRisco pod={r.pod_residual} fep={r.fep_residual} gpd={r.gpd_residual} classe={classeResidual} />
               </td>
@@ -473,6 +482,12 @@ function IdentificacaoLaudo({
           )}
         </tbody>
       </table>
+      {apreciacao.notificacao_sit && (
+        <p className="constat">
+          <strong>Documento elaborado em atendimento à Notificação SIT/MTE nº </strong>
+          {apreciacao.notificacao_sit}.
+        </p>
+      )}
     </div>
   );
 }
@@ -675,11 +690,25 @@ export default function ApreciacaoTemplate({
       }),
   );
 
-  // Conclusão Técnica renderiza quando há parecer/recomendações OU máquinas críticas.
+  // Resumo dos riscos residuais por classe (todas as máquinas).
+  const resumoResidual = { ALTO: 0, MEDIO: 0, BAIXO: 0, DESPREZIVEL: 0 };
+  fichas.forEach((f) =>
+    f.riscos.forEach((r) => {
+      const c =
+        calcularClassificacaoHrn(r.pod_residual, r.fep_residual, r.gpd_residual) ||
+        r.classificacao_residual ||
+        calcularClassificacaoHrn(r.pod, r.fep, r.gpd);
+      if (c && c in resumoResidual) resumoResidual[c as keyof typeof resumoResidual] += 1;
+    }),
+  );
+  const temRiscos = fichas.some((f) => f.riscos.length > 0);
+
+  // Conclusão Técnica renderiza quando há parecer/recomendações, máquinas críticas ou riscos.
   const temConclusao = !!(
     apreciacao.conclusao_tecnica ||
     apreciacao.recomendacoes ||
-    maquinasCriticas.length > 0
+    maquinasCriticas.length > 0 ||
+    temRiscos
   );
 
   // Um capítulo só entra no Sumário/numeração se renderiza seção numerada.
@@ -741,6 +770,14 @@ export default function ApreciacaoTemplate({
   const conclusaoNode = temConclusao ? (
     <div>
       <p className="sec-titulo">{numLabel(numPorSlug["apreciacao_risco"], tituloPorSlug["apreciacao_risco"] ?? "Conclusão Técnica")}</p>
+      {temRiscos && (
+        <div className="campo">
+          <p className="rot">Resumo dos riscos residuais (todas as máquinas)</p>
+          <p className="val">
+            {resumoResidual.ALTO} Alto · {resumoResidual.MEDIO} Médio · {resumoResidual.BAIXO} Baixo · {resumoResidual.DESPREZIVEL} Desprezível
+          </p>
+        </div>
+      )}
       {maquinasCriticas.length > 0 && (
         <div className="campo">
           <p className="rot">Máquinas com risco residual relevante (Médio ou superior) ou prioridade</p>
@@ -757,6 +794,13 @@ export default function ApreciacaoTemplate({
       {apreciacao.recomendacoes && (
         <div className="campo"><p className="rot">Recomendações finais</p><p className="val">{apreciacao.recomendacoes}</p></div>
       )}
+      <p className="constat" style={{ marginTop: 6 }}>
+        Recomenda-se a integração desta apreciação ao Programa de Gerenciamento de
+        Riscos (PGR), conforme NR-01; a validação da categoria de segurança dos
+        circuitos de comando (ABNT NBR 14153 / ISO 13849); e a reavaliação
+        periódica ou sempre que houver modificação significativa na máquina ou no
+        processo.
+      </p>
     </div>
   ) : null;
   const planoNode = (

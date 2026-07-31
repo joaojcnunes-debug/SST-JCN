@@ -133,6 +133,7 @@ export default function DetalheApreciacaoPage() {
   const [recomendacoes, setRecomendacoes] = useState("");
   const [riscoResidual, setRiscoResidual] = useState<RiscoResidual | "">("");
   const [observacoes, setObservacoes] = useState("");
+  const [notificacaoSit, setNotificacaoSit] = useState("");
   // Parecer da IA aguardando revisão (modal aceitar/editar/rejeitar)
   const [revisaoParecer, setRevisaoParecer] = useState<CampoRevisaoIA[] | null>(null);
 
@@ -171,6 +172,7 @@ export default function DetalheApreciacaoPage() {
     setRecomendacoes(apreciacao.recomendacoes ?? "");
     setRiscoResidual(apreciacao.risco_residual ?? "");
     setObservacoes(apreciacao.observacoes_gerais ?? "");
+    setNotificacaoSit(apreciacao.notificacao_sit ?? "");
   }, [apreciacao]);
 
   // Identificação (componentes/limites/npe/sistemas) é POR MÁQUINA (ficha ativa).
@@ -235,6 +237,7 @@ export default function DetalheApreciacaoPage() {
     || dataApreciacao !== (apreciacao.data_apreciacao ?? "")
     || dataValidade !== (apreciacao.data_validade ?? "")
     || observacoes !== (apreciacao.observacoes_gerais ?? "")
+    || notificacaoSit !== (apreciacao.notificacao_sit ?? "")
     || conclusao !== (apreciacao.conclusao_tecnica ?? "")
     || recomendacoes !== (apreciacao.recomendacoes ?? "")
     || riscoResidual !== (apreciacao.risco_residual ?? "")
@@ -253,6 +256,7 @@ export default function DetalheApreciacaoPage() {
         data_apreciacao: dataApreciacao || null,
         data_validade: dataValidade || null,
         observacoes_gerais: observacoes.trim() || null,
+        notificacao_sit: notificacaoSit.trim() || null,
       });
       toast.success("Dados gerais salvos");
     } catch (err) {
@@ -746,6 +750,17 @@ export default function DetalheApreciacaoPage() {
               value={dataValidade}
               onChange={(e) => setDataValidade(e.target.value)}
               disabled={readOnly}
+              className={inputClass}
+            />
+          </Campo>
+          <Campo label="Notificação SIT/MTE (opcional)" htmlFor="notif">
+            <input
+              id="notif"
+              type="text"
+              value={notificacaoSit}
+              onChange={(e) => setNotificacaoSit(e.target.value)}
+              disabled={readOnly}
+              placeholder="Ex: RMBHIUV2OAHH6O — itens 10, 11 e 13"
               className={inputClass}
             />
           </Campo>

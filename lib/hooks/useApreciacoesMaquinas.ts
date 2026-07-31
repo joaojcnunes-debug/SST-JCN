@@ -103,6 +103,7 @@ export interface CriarApreciacaoInput {
   responsavel_empresa: string | null;
   cidade: string | null;
   data_apreciacao: string | null;
+  notificacao_sit?: string | null;
 }
 
 /**
@@ -130,6 +131,7 @@ export function useCriarApreciacaoMaquina() {
         responsavel_empresa: input.responsavel_empresa,
         cidade: input.cidade,
         data_apreciacao: input.data_apreciacao,
+        notificacao_sit: input.notificacao_sit ?? null,
         conclusao_tecnica: null,
         recomendacoes: null,
         risco_residual: null,
@@ -260,6 +262,7 @@ export function useAtualizarApreciacaoMaquina() {
       cidade?: string | null;
       data_apreciacao?: string | null;
       data_validade?: string | null;
+      notificacao_sit?: string | null;
       conclusao_tecnica?: string | null;
       recomendacoes?: string | null;
       risco_residual?: RiscoResidual | null;

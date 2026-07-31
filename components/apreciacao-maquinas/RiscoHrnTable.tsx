@@ -380,6 +380,23 @@ export default function RiscoHrnTable({
               placeholder="Ex: 12.38 a 12.55, 12.46"
             />
           </label>
+          <label className="block">
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">
+              Categoria de Segurança (NBR 14153 / ISO 13849)
+            </span>
+            <select
+              value={novoForm.categoria_seguranca ?? ""}
+              onChange={(e) => setNF("categoria_seguranca", e.target.value || null)}
+              className={inputClass}
+            >
+              <option value="">— não avaliada —</option>
+              {["B", "1", "2", "3", "4"].map((c) => (
+                <option key={c} value={c}>
+                  Categoria {c}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <label className="block">
               <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">POD</span>

@@ -40,6 +40,7 @@ export default function NovaApreciacaoPage() {
   const [dataApreciacao, setDataApreciacao] = useState(() =>
     new Date().toISOString().slice(0, 10)
   );
+  const [notificacaoSit, setNotificacaoSit] = useState("");
 
   const empresaSelecionada = empresas.find((e) => e.id_empresa === idEmpresa) ?? null;
 
@@ -122,6 +123,7 @@ export default function NovaApreciacaoPage() {
         responsavel_empresa: responsavelEmpresa.trim() || null,
         cidade: cidade.trim() || null,
         data_apreciacao: dataApreciacao || null,
+        notificacao_sit: notificacaoSit.trim() || null,
       });
       toast.success(
         idMaquina || maquinaDescricao.trim()
@@ -308,6 +310,16 @@ export default function NovaApreciacaoPage() {
               type="text"
               value={cidade}
               onChange={(e) => setCidade(e.target.value)}
+              className={inputClass}
+            />
+          </Campo>
+          <Campo label="Notificação SIT/MTE (opcional)" htmlFor="notif">
+            <input
+              id="notif"
+              type="text"
+              value={notificacaoSit}
+              onChange={(e) => setNotificacaoSit(e.target.value)}
+              placeholder="Ex: RMBHIUV2OAHH6O — itens 10, 11 e 13"
               className={inputClass}
             />
           </Campo>

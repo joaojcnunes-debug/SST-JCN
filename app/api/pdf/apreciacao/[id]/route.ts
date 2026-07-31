@@ -105,6 +105,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         nivel_acoes: (r.nivel_acoes as string) ?? null,
         medidas_preventivas: (r.medidas_preventivas as string) ?? null,
         itens_nr12: Array.isArray(r.itens_nr12) ? (r.itens_nr12 as string[]) : null,
+        categoria_seguranca: (r.categoria_seguranca as string) ?? null,
       } as ApreciacaoRiscoLocal,
     }));
 
@@ -280,6 +281,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           responsavel: (ap.responsavel as string) ?? null,
           responsavel_empresa: (ap.responsavel_empresa as string) ?? null,
           data_apreciacao: (ap.data_apreciacao as string) ?? null,
+          notificacao_sit: (ap.notificacao_sit as string) ?? null,
           risco_residual: (ap.risco_residual as string) ?? null,
           observacoes_gerais: (ap.observacoes_gerais as string) ?? null,
           conclusao_tecnica: (ap.conclusao_tecnica as string) ?? null,

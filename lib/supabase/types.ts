@@ -1083,6 +1083,8 @@ export interface ApreciacaoMaquina {
   responsavel_empresa: string | null;
   cidade: string | null;
   data_apreciacao: string | null;
+  /** Nº da Notificação SIT/MTE atendida por este laudo (v138). */
+  notificacao_sit?: string | null;
   /** Validade do documento (informada pelo usuário) — alerta de vencimento. */
   data_validade?: string | null;
   conclusao_tecnica: string | null;
@@ -1200,6 +1202,7 @@ export interface RiscoHrn {
   nivel_acoes: string | null;
   medidas_preventivas: string | null;
   itens_nr12: string[] | null;          // v136 — itens da NR-12 (ex.: "12.38 a 12.55")
+  categoria_seguranca: string | null;   // v138 — categoria/PL NBR 14153 (B,1,2,3,4)
   ordem: number;
   created_at: string;
 }
