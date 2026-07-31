@@ -838,7 +838,7 @@ export default function DetalheApreciacaoPage() {
                   }
                   disabled={readOnly}
                   placeholder="Nome"
-                  className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
+                  className="min-w-0 flex-[2] rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
                 />
                 <input
                   type="text"
@@ -852,7 +852,7 @@ export default function DetalheApreciacaoPage() {
                   }
                   disabled={readOnly}
                   placeholder="Cargo"
-                  className="w-40 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
+                  className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
                 />
                 {!readOnly && (
                   <button

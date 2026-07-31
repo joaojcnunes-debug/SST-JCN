@@ -1086,7 +1086,7 @@ export default function MaquinasTab({
                         }))
                       }
                       placeholder="Nome"
-                      className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                      className="min-w-0 flex-[2] rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
                     />
                     <input
                       type="text"
@@ -1100,7 +1100,7 @@ export default function MaquinasTab({
                         }))
                       }
                       placeholder="Cargo"
-                      className="w-40 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                      className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
                     />
                     <button
                       type="button"
