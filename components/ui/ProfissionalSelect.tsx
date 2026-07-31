@@ -13,6 +13,7 @@ type Profissional = {
   crp: string | null;
   crm: string | null;
   registro_mte: string | null;
+  crea: string | null;
 };
 
 /**
@@ -54,7 +55,7 @@ export default function ProfissionalSelect({
   useEffect(() => {
     createSupabaseBrowserClient()
       .from("usuarios")
-      .select("id_usuario, nome, cargo, tipo_certificado, crp, crm, registro_mte")
+      .select("id_usuario, nome, cargo, tipo_certificado, crp, crm, registro_mte, crea")
       .eq("ativo_sistema", true)
       .neq("perfil", "Visualizador")
       .order("nome")

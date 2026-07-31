@@ -12,6 +12,7 @@ import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import { montarValoresEmpresa, formatarDataBR } from "@/lib/textos-padrao/variaveis";
 import { montarSignatarioTecnico } from "@/lib/pdf/folha-assinatura-tecnico";
+import { detectRegistroTipo, getRegistroValue } from "@/lib/registro-profissional";
 import { assinarMidiaPdf, assinarCapitulos } from "@/lib/pdf/assinar-midia";
 
 import { aplicarAnexosNoPdf } from "@/lib/anexos/server";
@@ -218,6 +219,37 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     valores.usuario_logado = perfilLogado?.nome ?? user.email ?? "";
     valores.tipo_relatorio = "Apreciação de Risco — Máquinas (NR-12)";
 
+    // Responsável Técnico (assinante): busca o usuário pelo nome p/ registro + ART.
+    let responsavelTecnico: {
+      nome: string;
+      cargo: string | null;
+      registroLabel: string;
+      registro: string | null;
+      art: string | null;
+    } | null = null;
+    if (ap.responsavel) {
+      const { data: usrs } = await supabase
+        .from("usuarios")
+        .select("nome, cargo, crea, art, crp, crm, registro_mte")
+        .eq("ativo_sistema", true);
+      const normn = (s: string) => s.toLowerCase().trim().replace(/\s+/g, " ");
+      const alvo = normn(ap.responsavel as string);
+      const u = ((usrs ?? []) as Record<string, unknown>[]).find((x) => {
+        const n = normn(String(x.nome ?? ""));
+        return n && (n === alvo || alvo.includes(n) || n.includes(alvo));
+      });
+      if (u) {
+        const reg = detectRegistroTipo(u.cargo as string | null);
+        responsavelTecnico = {
+          nome: String(u.nome),
+          cargo: (u.cargo as string) ?? null,
+          registroLabel: reg.label,
+          registro: getRegistroValue(u as never) || null,
+          art: (u.art as string) ?? null,
+        };
+      }
+    }
+
     const { signatario, dataHoraAssinatura } = await montarSignatarioTecnico(supabase, {
       tabela: "apreciacoes_maquinas",
       docId: String(id),
@@ -263,6 +295,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         folhaEmpresa,
         dataHoraAssinatura,
         identificadorDocumento,
+        responsavelTecnico,
       }),
     );
 

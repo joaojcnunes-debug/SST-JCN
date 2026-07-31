@@ -119,7 +119,16 @@ export interface ApreciacaoTemplateProps {
   folhaEmpresa: { razaoSocial: string; cnpj: string } | null;
   dataHoraAssinatura: string;
   identificadorDocumento: string;
+  responsavelTecnico?: {
+    nome: string;
+    cargo: string | null;
+    registroLabel: string;
+    registro: string | null;
+    art: string | null;
+  } | null;
 }
+
+type ResponsavelTecnico = NonNullable<ApreciacaoTemplateProps["responsavelTecnico"]>;
 
 const LARANJA = "#c2410c";
 
@@ -406,10 +415,12 @@ function HrnTable({ riscos }: { riscos: ApreciacaoRiscoLocal[] }) {
 function IdentificacaoLaudo({
   empresa,
   apreciacao,
+  rt,
   numero,
 }: {
   empresa?: Partial<Empresa> | null;
   apreciacao: ApreciacaoTemplateProps["apreciacao"];
+  rt?: ResponsavelTecnico | null;
   numero?: number;
 }) {
   const e = empresa ?? {};
@@ -444,8 +455,18 @@ function IdentificacaoLaudo({
         <tbody>
           <tr><td className="inv-cab" colSpan={2}>Empresa Contratada</td></tr>
           <tr><td className="rot">Razão Social</td><td>JCN Consultoria em Segurança do Trabalho</td></tr>
-          {apreciacao.responsavel && (
-            <tr><td className="rot">Responsável Técnico</td><td>{apreciacao.responsavel}</td></tr>
+          {(rt?.nome || apreciacao.responsavel) && (
+            <tr>
+              <td className="rot">Responsável Técnico</td>
+              <td>
+                {rt?.nome ?? apreciacao.responsavel}
+                {rt?.cargo ? ` — ${rt.cargo}` : ""}
+                {rt?.registro ? ` — ${rt.registroLabel} ${rt.registro}` : ""}
+              </td>
+            </tr>
+          )}
+          {rt?.art && (
+            <tr><td className="rot">ART Vinculada</td><td>{rt.art}</td></tr>
           )}
           {apreciacao.cidade && (
             <tr><td className="rot">Cidade</td><td>{apreciacao.cidade}</td></tr>
@@ -638,6 +659,7 @@ export default function ApreciacaoTemplate({
   folhaEmpresa,
   dataHoraAssinatura,
   identificadorDocumento,
+  responsavelTecnico,
 }: ApreciacaoTemplateProps) {
   // Título cadastrado de cada seção fixa (p/ cabeçalho numerado no corpo).
   const tituloPorSlug: Record<string, string> = {};
@@ -746,7 +768,7 @@ export default function ApreciacaoTemplate({
 
   function renderSecaoApreciacao(slug: string): React.ReactNode {
     switch (slug) {
-      case "identificacao_empresa": return <IdentificacaoLaudo empresa={empresa} apreciacao={apreciacao} numero={numPorSlug["identificacao_empresa"]} />;
+      case "identificacao_empresa": return <IdentificacaoLaudo empresa={empresa} apreciacao={apreciacao} rt={responsavelTecnico} numero={numPorSlug["identificacao_empresa"]} />;
       case "sumario":               return <SecaoSumario titulos={sumarioTitulos} />;
       case "apreciacao_checklist":  return maquinasNode;
       case "apreciacao_risco":      return conclusaoNode;

@@ -854,6 +854,10 @@ export interface Usuario {
   crm?: string | null;
   /** Registro no MTE — Ministério do Trabalho (técnicos de segurança). */
   registro_mte?: string | null;
+  /** CREA — engenheiros (ex.: 2025106994-RJ). */
+  crea?: string | null;
+  /** ART vinculada (ex.: CREA-RJ nº 2020260174144). */
+  art?: string | null;
   /** CPF do profissional — exibido sempre mascarado (LGPD). */
   cpf?: string | null;
   /** Validade (notAfter) do certificado A1, extraída do .pfx quando a senha é fornecida. */

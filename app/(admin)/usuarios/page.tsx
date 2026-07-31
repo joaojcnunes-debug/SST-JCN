@@ -323,6 +323,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     crp: null as string | null,
     crm: null as string | null,
     registro_mte: null as string | null,
+    crea: null as string | null,
+    art: null as string | null,
   });
   const [uploadingAssinatura, setUploadingAssinatura] = useState(false);
   const [uploadingPfx, setUploadingPfx] = useState(false);
@@ -396,6 +398,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         crp: usuario?.crp ?? null,
         crm: usuario?.crm ?? null,
         registro_mte: usuario?.registro_mte ?? null,
+        crea: usuario?.crea ?? null,
+        art: usuario?.art ?? null,
       });
     }
   }, [open, usuario]);
@@ -484,6 +488,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             crp: form.crp || null,
             crm: form.crm || null,
             registro_mte: form.registro_mte || null,
+            crea: form.crea || null,
+            art: form.art || null,
           } as never)
           .eq("id_usuario", usuario.id_usuario);
         if (error) throw error;
@@ -523,6 +529,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             crp: form.crp || null,
             crm: form.crm || null,
             registro_mte: form.registro_mte || null,
+            crea: form.crea || null,
+            art: form.art || null,
           },
         }
       );
@@ -724,23 +732,37 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             const reg = detectRegistroTipo(form.cargo);
             const valor = form[reg.campo] ?? "";
             return (
-              <Field label={reg.label}>
-                <input
-                  type="text"
-                  value={valor}
-                  onChange={(e) => {
-                    const v = e.target.value || null;
-                    setForm({
-                      ...form,
-                      crp: reg.campo === "crp" ? v : null,
-                      crm: reg.campo === "crm" ? v : null,
-                      registro_mte: reg.campo === "registro_mte" ? v : null,
-                    });
-                  }}
-                  placeholder={reg.placeholder}
-                  className={inputCls}
-                />
-              </Field>
+              <>
+                <Field label={reg.label}>
+                  <input
+                    type="text"
+                    value={valor}
+                    onChange={(e) => {
+                      const v = e.target.value || null;
+                      setForm({
+                        ...form,
+                        crp: reg.campo === "crp" ? v : null,
+                        crm: reg.campo === "crm" ? v : null,
+                        registro_mte: reg.campo === "registro_mte" ? v : null,
+                        crea: reg.campo === "crea" ? v : null,
+                      });
+                    }}
+                    placeholder={reg.placeholder}
+                    className={inputCls}
+                  />
+                </Field>
+                {reg.campo === "crea" && (
+                  <Field label="ART Vinculada">
+                    <input
+                      type="text"
+                      value={form.art ?? ""}
+                      onChange={(e) => setForm({ ...form, art: e.target.value || null })}
+                      placeholder="Ex: CREA-RJ nº 2020260174144"
+                      className={inputCls}
+                    />
+                  </Field>
+                )}
+              </>
             );
           })()}
           <Field label="Perfil">
