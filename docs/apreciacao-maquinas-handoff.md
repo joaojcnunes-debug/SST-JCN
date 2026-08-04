@@ -1,7 +1,7 @@
 # Apreciação de Máquinas e Equipamentos (NR-12) — SST-JCN
 
 > Documento de handoff técnico para consumo em outra sessão do Claude.
-> Estado do código: **app v0.3.120 · migrations até v142** (2026-07-31).
+> Estado do código: **app v0.3.121 · migrations até v142** (2026-07-31).
 > Projeto: **SST-JCN** (`C:\Users\Usuario\sst-jcn`) — Next.js 15 App Router + Supabase + Vercel.
 
 ---
@@ -209,7 +209,7 @@ O corpo é dirigido pelos **capítulos** de `textos_padrao` (`modulo='apreciacao
 | `apreciacao_relacao` | 60 | **paisagem** | `RelacaoMaquinas` (tabela consolidada, **agrupada por setor**) |
 | `apreciacao_checklist` | 70 | **paisagem** | `MaquinasSection` (uma máquina por página, HRN, **agrupada por setor**) |
 | `apreciacao_risco` | 80 | retrato | `conclusaoNode` (resumo residual por classe + máquinas críticas + nota PGR/NBR 14153) |
-| `apreciacao_plano` | 90 | retrato | `PlanoAcaoSection` (5W2H) |
+| `apreciacao_plano` | 90 | retrato | `PlanoAcaoSection` (5W2H) — **só aparece/numera se houver ≥1 ação com conteúdo** (`acoesComConteudo`); filtrado na renderização, registro não é apagado (padrão DRPS) |
 | (editável) 3. Considerações Finais | 100 | retrato | HTML |
 | `apreciacao_assinatura` | 110 | retrato | `FolhaAssinaturas` (PAdES) |
 | `apreciacao_identificacao` | 120 | retrato | **não renderiza seção** (dados da máquina ficam no cabeçalho; slug legado) |
@@ -294,6 +294,7 @@ Finalizar → PDF (por capítulos do Texto Padrão, agrupado por setor) + PAdES
 - **v0.3.118:** botão **editar** por máquina no `FichasMaquinaPanel` (formulário inline: equipamento, setor, tipo, modelo, fabricante, série, ano, capacidade).
 - **v0.3.119:** textareas **Constatações da inspeção** + **Parecer técnico** por máquina no editor (colunas já existentes; sem migration; já saíam no PDF).
 - **v0.3.120 (v142):** impressão do **checklist NR-12 no PDF vira opcional por laudo** (`apreciacoes_maquinas.incluir_checklist_pdf`, default false) — checkbox em DADOS GERAIS; a constante global `INCLUIR_CHECKLIST_PDF` virou prop `incluirChecklist` no template. Aditivo (não afeta a ficha HRN).
+- **v0.3.121:** capítulo **Plano de Ação** só aparece (sumário/numeração/corpo, PDF e tela) quando há **≥1 ação com conteúdo 5W2H** (`acoesComConteudo`) — filtrado na renderização (template + `laudo/page.tsx`), sem apagar registro. Padrão DRPS.
 
 ---
 

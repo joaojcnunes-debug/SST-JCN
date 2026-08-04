@@ -17,7 +17,7 @@ import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
 import { montarValoresEmpresa, formatarDataBR, substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
-import { useApreciacaoMaquina } from "@/lib/hooks/useApreciacoesMaquinas";
+import { useApreciacaoMaquina, useAcoesApreciacao } from "@/lib/hooks/useApreciacoesMaquinas";
 import ItemApreciacaoCard from "@/components/apreciacao-maquinas/ItemApreciacaoCard";
 import PlanoAcaoTable from "@/components/apreciacao-maquinas/PlanoAcaoTable";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
@@ -38,6 +38,13 @@ export default function LaudoApreciacaoMaquinasPage({
   const { data, isLoading, error } = useApreciacaoMaquina(id);
   const { data: empresas = [] } = useEmpresas();
   const { data: maquinaVinculada } = useMaquina(data?.apreciacao.id_maquina ?? null);
+
+  // Plano de Ação só entra quando há ao menos uma ação COM conteúdo (padrão DRPS).
+  const { data: acoesLaudo = [] } = useAcoesApreciacao(id);
+  const acoesComConteudo = acoesLaudo.filter((a) =>
+    [a.what_acao, a.why_justificativa, a.where_local, a.when_prazo, a.who_responsavel, a.how_metodo, a.how_much_custo]
+      .some((v) => (v ?? "").trim().length > 0),
+  );
 
   const apreciacao = data?.apreciacao;
   const itens = data?.itens ?? [];
@@ -144,7 +151,7 @@ export default function LaudoApreciacaoMaquinasPage({
       case "identificacao_empresa": return true;
       case "apreciacao_checklist":  return true;
       case "apreciacao_risco":      return temConclusaoAp;
-      case "apreciacao_plano":      return true;
+      case "apreciacao_plano":      return acoesComConteudo.length > 0;
       case "apreciacao_assinatura": return true;
       default:                      return false; // sumario, apreciacao_identificacao
     }
@@ -225,14 +232,14 @@ export default function LaudoApreciacaoMaquinasPage({
     </section>
   ) : null;
 
-  const planoScreenNode = (
+  const planoScreenNode = acoesComConteudo.length > 0 ? (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
       <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-gray-700">
         {numLabelAp(numPorSlugAp["apreciacao_plano"], tituloPorSlugAp["apreciacao_plano"] ?? "Plano de Ação")}
       </h2>
       <PlanoAcaoTable idApreciacao={apreciacao.id_apreciacao} apreciacao={apreciacao} itens={itens} readOnly={true} />
     </section>
-  );
+  ) : null;
 
   // Títulos do sumário — só capítulos que viram seção numerada (mesmo predicado do PDF).
   const sumarioTitulos = blocosAp

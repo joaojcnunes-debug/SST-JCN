@@ -772,6 +772,12 @@ export default function ApreciacaoTemplate({
     temRiscos
   );
 
+  // Plano de Ação só entra quando há ao menos uma ação COM conteúdo (padrão DRPS).
+  const acoesComConteudo = acoes.filter((a) =>
+    [a.what_acao, a.why_justificativa, a.where_local, a.when_prazo, a.who_responsavel, a.how_metodo, a.how_much_custo]
+      .some((v) => (v ?? "").trim().length > 0),
+  );
+
   // Um capítulo só entra no Sumário/numeração se renderiza seção numerada.
   function renderizaNumerado(c: TextoPadraoCapitulo): boolean {
     if (c.ativo === false) return false;
@@ -784,7 +790,7 @@ export default function ApreciacaoTemplate({
       case "apreciacao_relacao":    return true;
       case "apreciacao_checklist":  return true;
       case "apreciacao_risco":      return temConclusao; // só numera se há conteúdo
-      case "apreciacao_plano":      return true;
+      case "apreciacao_plano":      return acoesComConteudo.length > 0;
       case "apreciacao_assinatura": return true;
       // sumário não numera; apreciacao_identificacao não renderiza seção própria
       // (os dados da máquina ficam no cabeçalho fixo do topo).
@@ -874,12 +880,12 @@ export default function ApreciacaoTemplate({
       </p>
     </div>
   ) : null;
-  const planoNode = (
+  const planoNode = acoesComConteudo.length > 0 ? (
     <PlanoAcaoSection
-      acoes={acoes}
+      acoes={acoesComConteudo}
       titulo={numLabel(numPorSlug["apreciacao_plano"], tituloPorSlug["apreciacao_plano"] ?? "Plano de Ação")}
     />
-  );
+  ) : null;
 
   function renderSecaoApreciacao(slug: string): React.ReactNode {
     switch (slug) {
