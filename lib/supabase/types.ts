@@ -1093,6 +1093,8 @@ export interface ApreciacaoMaquina {
   status: StatusApreciacao;
   finalizado_em: string | null;
   observacoes_gerais: string | null;
+  /** Imprimir o checklist NR-12 (37 itens) no PDF, além da ficha HRN (v142). */
+  incluir_checklist_pdf: boolean;
 
   // ── Identificação dos Componentes (ABNT ISO/TR 14121-2:2018) ──────────────
   componentes_maquina: string[] | null;   // tipos de componentes presentes

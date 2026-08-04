@@ -138,6 +138,7 @@ export function useCriarApreciacaoMaquina() {
         status: "RASCUNHO",
         finalizado_em: null,
         observacoes_gerais: null,
+        incluir_checklist_pdf: false,
         componentes_maquina: null,
         limite_uso: null,
         limite_espaco: null,
@@ -267,6 +268,7 @@ export function useAtualizarApreciacaoMaquina() {
       recomendacoes?: string | null;
       risco_residual?: RiscoResidual | null;
       observacoes_gerais?: string | null;
+      incluir_checklist_pdf?: boolean;
       status?: StatusApreciacao;
       // Identificação dos componentes / limites / sistemas (NR-12 HRN)
       componentes_maquina?: string[] | null;
@@ -304,6 +306,8 @@ export function useAtualizarApreciacaoMaquina() {
         patch.risco_residual = params.risco_residual;
       if (params.observacoes_gerais !== undefined)
         patch.observacoes_gerais = params.observacoes_gerais;
+      if (params.incluir_checklist_pdf !== undefined)
+        patch.incluir_checklist_pdf = params.incluir_checklist_pdf;
       if (params.componentes_maquina !== undefined) patch.componentes_maquina = params.componentes_maquina;
       if (params.limite_uso !== undefined) patch.limite_uso = params.limite_uso;
       if (params.limite_espaco !== undefined) patch.limite_espaco = params.limite_espaco;

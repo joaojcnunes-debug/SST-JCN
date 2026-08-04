@@ -1,7 +1,7 @@
 # Apreciação de Máquinas e Equipamentos (NR-12) — SST-JCN
 
 > Documento de handoff técnico para consumo em outra sessão do Claude.
-> Estado do código: **app v0.3.119 · migrations até v141** (2026-07-31).
+> Estado do código: **app v0.3.120 · migrations até v142** (2026-07-31).
 > Projeto: **SST-JCN** (`C:\Users\Usuario\sst-jcn`) — Next.js 15 App Router + Supabase + Vercel.
 
 ---
@@ -72,7 +72,7 @@ Catálogo estático de requisitos objetivos da NR-12. Ao criar uma ficha, TODOS 
 
 Cada item: `{ codigo (ex "12.38.1"), categoria, titulo, descricao? }`. Situações por item: `PENDENTE` (default), e as demais setadas na tela (conforme/não conforme/etc.). Helpers: `CATEGORIAS_NR12_LABELS`, `CATEGORIAS_NR12_ORDEM`, `catalogoNR12PorCategoria()`.
 
-> **O checklist de 37 itens NÃO sai no PDF por padrão** (flag `INCLUIR_CHECKLIST_PDF=false` no template — TERE PÃO não tem). O PDF mostra a análise HRN por máquina.
+> **O checklist de 37 itens NÃO sai no PDF por padrão**, mas é **opcional por laudo** (v142): checkbox "Imprimir o checklist NR-12 no PDF" em DADOS GERAIS → grava `apreciacoes_maquinas.incluir_checklist_pdf` (default false). O PDF sempre mostra a análise HRN por máquina; o checklist é **aditivo** (sai ALÉM da ficha HRN, quando marcado). Fluxo: editor `incluirChecklist` → rota passa `incluirChecklist: Boolean(ap.incluir_checklist_pdf)` → template `MaquinasSection` gateia o bloco `{incluirChecklist && (…)}`.
 
 ---
 
@@ -138,6 +138,7 @@ Arquivos em `supabase/migrations/`. Todas aplicadas via MCP no prod.
 | **v139** | `inspecao_maquinas.operadores` (jsonb) — operadores no formulário de máquina da inspeção. |
 | **v140** | Reorg dos capítulos do Texto Padrão (seed): `apreciacao_identificacao`→`apreciacao_metodo`; nova `apreciacao_relacao` (paisagem); `apreciacao_checklist`→"Apreciação de Risco por Máquina"; `apreciacao_risco`→"Conclusão Geral". |
 | **v141** | `apreciacao_fichas_maquina.operadores` **text→jsonb** `[{nome,cargo}]` (guarda contra reexecução; converte só se ainda for text, nula os dados antigos). |
+| **v142** | `apreciacoes_maquinas.incluir_checklist_pdf` (boolean not null default false) — impressão do checklist NR-12 no PDF opcional por laudo. |
 
 ---
 
@@ -292,6 +293,7 @@ Finalizar → PDF (por capítulos do Texto Padrão, agrupado por setor) + PAdES
 - **v0.3.117:** **hierarquia Empresa → Setor → Máquina** (tela + PDF agrupados por setor) + **fix do bug do setor no import** (`setor_ghe`).
 - **v0.3.118:** botão **editar** por máquina no `FichasMaquinaPanel` (formulário inline: equipamento, setor, tipo, modelo, fabricante, série, ano, capacidade).
 - **v0.3.119:** textareas **Constatações da inspeção** + **Parecer técnico** por máquina no editor (colunas já existentes; sem migration; já saíam no PDF).
+- **v0.3.120 (v142):** impressão do **checklist NR-12 no PDF vira opcional por laudo** (`apreciacoes_maquinas.incluir_checklist_pdf`, default false) — checkbox em DADOS GERAIS; a constante global `INCLUIR_CHECKLIST_PDF` virou prop `incluirChecklist` no template. Aditivo (não afeta a ficha HRN).
 
 ---
 

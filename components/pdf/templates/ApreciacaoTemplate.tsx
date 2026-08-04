@@ -121,6 +121,8 @@ export interface ApreciacaoTemplateProps {
   folhaEmpresa: { razaoSocial: string; cnpj: string } | null;
   dataHoraAssinatura: string;
   identificadorDocumento: string;
+  /** Imprimir o checklist NR-12 (37 itens) por máquina, além da ficha HRN (v142). */
+  incluirChecklist?: boolean;
   responsavelTecnico?: {
     nome: string;
     cargo: string | null;
@@ -603,11 +605,19 @@ function RelacaoMaquinas({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; t
   );
 }
 
-// O laudo TERE PÃO NÃO inclui o checklist de 37 itens por máquina (só a análise
-// de risco HRN). Mantido desligado por padrão; ligar para anexar o checklist.
-const INCLUIR_CHECKLIST_PDF = false;
-
-function MaquinasSection({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; titulo: string }) {
+// O checklist de 37 itens por máquina (além da ficha de risco HRN) é OPCIONAL por
+// laudo (v142): controlado por `incluirChecklist`, gravado em
+// apreciacoes_maquinas.incluir_checklist_pdf. Default false = só a análise HRN
+// (padrão do laudo TERE PÃO).
+function MaquinasSection({
+  fichas,
+  titulo,
+  incluirChecklist,
+}: {
+  fichas: ApreciacaoFichaLocal[];
+  titulo: string;
+  incluirChecklist?: boolean;
+}) {
   const { flat } = agruparFichasPorSetor(fichas);
   let prevSetor: string | null = null;
   return (
@@ -665,7 +675,7 @@ function MaquinasSection({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; t
               {f.parecer_tecnico}
             </p>
           )}
-          {INCLUIR_CHECKLIST_PDF && (
+          {incluirChecklist && (
             <>
               <p className="cat-titulo">Checklist NR-12</p>
               <ChecklistGrupos itens={f.itens} />
@@ -724,6 +734,7 @@ export default function ApreciacaoTemplate({
   folhaEmpresa,
   dataHoraAssinatura,
   identificadorDocumento,
+  incluirChecklist,
   responsavelTecnico,
 }: ApreciacaoTemplateProps) {
   // Título cadastrado de cada seção fixa (p/ cabeçalho numerado no corpo).
@@ -824,6 +835,7 @@ export default function ApreciacaoTemplate({
     <MaquinasSection
       fichas={fichas}
       titulo={numLabel(numPorSlug["apreciacao_checklist"], tituloPorSlug["apreciacao_checklist"] ?? "Apreciação de Risco por Máquina")}
+      incluirChecklist={incluirChecklist}
     />
   );
   const conclusaoNode = temConclusao ? (

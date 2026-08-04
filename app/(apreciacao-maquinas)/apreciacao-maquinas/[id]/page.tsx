@@ -134,6 +134,7 @@ export default function DetalheApreciacaoPage() {
   const [riscoResidual, setRiscoResidual] = useState<RiscoResidual | "">("");
   const [observacoes, setObservacoes] = useState("");
   const [notificacaoSit, setNotificacaoSit] = useState("");
+  const [incluirChecklist, setIncluirChecklist] = useState(false);
   // Parecer da IA aguardando revisão (modal aceitar/editar/rejeitar)
   const [revisaoParecer, setRevisaoParecer] = useState<CampoRevisaoIA[] | null>(null);
 
@@ -177,6 +178,7 @@ export default function DetalheApreciacaoPage() {
     setRiscoResidual(apreciacao.risco_residual ?? "");
     setObservacoes(apreciacao.observacoes_gerais ?? "");
     setNotificacaoSit(apreciacao.notificacao_sit ?? "");
+    setIncluirChecklist(apreciacao.incluir_checklist_pdf ?? false);
   }, [apreciacao]);
 
   // Identificação (componentes/limites/npe/sistemas) é POR MÁQUINA (ficha ativa).
@@ -247,6 +249,7 @@ export default function DetalheApreciacaoPage() {
     || conclusao !== (apreciacao.conclusao_tecnica ?? "")
     || recomendacoes !== (apreciacao.recomendacoes ?? "")
     || riscoResidual !== (apreciacao.risco_residual ?? "")
+    || incluirChecklist !== (apreciacao.incluir_checklist_pdf ?? false)
   );
 
   async function handleSalvarCabecalho() {
@@ -263,6 +266,7 @@ export default function DetalheApreciacaoPage() {
         data_validade: dataValidade || null,
         observacoes_gerais: observacoes.trim() || null,
         notificacao_sit: notificacaoSit.trim() || null,
+        incluir_checklist_pdf: incluirChecklist,
       });
       toast.success("Dados gerais salvos");
     } catch (err) {
@@ -784,6 +788,16 @@ export default function DetalheApreciacaoPage() {
             className={inputClass}
           />
         </Campo>
+        <label className="mt-3 flex items-center gap-2 text-xs text-gray-700 print:hidden">
+          <input
+            type="checkbox"
+            checked={incluirChecklist}
+            onChange={(e) => setIncluirChecklist(e.target.checked)}
+            disabled={readOnly}
+            className="accent-orange-600"
+          />
+          Imprimir o checklist NR-12 no PDF (além da ficha de risco por máquina)
+        </label>
         {!readOnly && (
           <div className="mt-3 flex justify-end print:hidden">
             <button

@@ -299,6 +299,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         folhaEmpresa,
         dataHoraAssinatura,
         identificadorDocumento,
+        incluirChecklist: Boolean(ap.incluir_checklist_pdf),
         responsavelTecnico,
       }),
     );
