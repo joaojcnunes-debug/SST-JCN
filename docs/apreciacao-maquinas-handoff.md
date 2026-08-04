@@ -1,7 +1,7 @@
 # Apreciação de Máquinas e Equipamentos (NR-12) — SST-JCN
 
 > Documento de handoff técnico para consumo em outra sessão do Claude.
-> Estado do código: **app v0.3.118 · migrations até v141** (2026-07-31).
+> Estado do código: **app v0.3.119 · migrations até v141** (2026-07-31).
 > Projeto: **SST-JCN** (`C:\Users\Usuario\sst-jcn`) — Next.js 15 App Router + Supabase + Vercel.
 
 ---
@@ -176,7 +176,7 @@ Operadores estruturados (Nome+Cargo, colunas 2:1 com `flex-[2]`/`flex-1` + `min-
 ## 10. Páginas / rotas (`app/(apreciacao-maquinas)/apreciacao-maquinas/`)
 
 - **`nova/page.tsx`** — "Nova apreciação" **simplificada**: só Empresa (+ RT, responsável da empresa, Notificação SIT, data). Título é fixo ("Apreciação de Máquinas NR-12"); setor/cidade vêm da identificação da empresa. Ao submeter: cria o laudo (sem máquina) e chama `useImportarInspecaoParaLaudo` (auto-import por setor).
-- **`[id]/page.tsx`** — **editor do laudo** (arquivo grande ~1300+ l.). DADOS GERAIS mostra a **identificação da empresa contratante no topo** (razão social, CNPJ/CNAE/grau de risco, endereço) — SEM os campos Título/Máquina/Setor/Cidade. `FichasMaquinaPanel` + por ficha: identificação NR-12, checklist filtrado por `id_ficha`, HRN por ficha, **Operadores (Nome+Cargo)**, upload de fotos, Notificação SIT. Finalizar exige todas as fichas completas.
+- **`[id]/page.tsx`** — **editor do laudo** (arquivo grande ~1300+ l.). DADOS GERAIS mostra a **identificação da empresa contratante no topo** (razão social, CNPJ/CNAE/grau de risco, endereço) — SEM os campos Título/Máquina/Setor/Cidade. `FichasMaquinaPanel` + por ficha: identificação NR-12, checklist filtrado por `id_ficha`, HRN por ficha, **Operadores (Nome+Cargo)**, **Constatações da inspeção** + **Parecer técnico** (textareas → `constatacoes_inspecao`/`parecer_tecnico` da ficha, salvos em `handleSalvarAnalise`; ambos saem no PDF por máquina), upload de fotos, Notificação SIT. Finalizar exige todas as fichas completas.
 - **`[id]/laudo/page.tsx`** — prévia do laudo em tela.
 - **`relacao-maquinas/page.tsx`** — **inventário geral** de máquinas (CRUD com filtros por empresa/status/grau/setor + importar de inspeção). É o inventário, não o laudo.
 - **`texto-padrao/page.tsx`** — editor dos capítulos do Texto Padrão (ver §11).
@@ -291,6 +291,7 @@ Finalizar → PDF (por capítulos do Texto Padrão, agrupado por setor) + PAdES
 - **v0.3.116:** proporção coerente das colunas Nome/Cargo (2:1).
 - **v0.3.117:** **hierarquia Empresa → Setor → Máquina** (tela + PDF agrupados por setor) + **fix do bug do setor no import** (`setor_ghe`).
 - **v0.3.118:** botão **editar** por máquina no `FichasMaquinaPanel` (formulário inline: equipamento, setor, tipo, modelo, fabricante, série, ano, capacidade).
+- **v0.3.119:** textareas **Constatações da inspeção** + **Parecer técnico** por máquina no editor (colunas já existentes; sem migration; já saíam no PDF).
 
 ---
 

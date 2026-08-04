@@ -151,6 +151,8 @@ export default function DetalheApreciacaoPage() {
   const [operadores, setOperadores] = useState<{ nome: string; cargo: string }[]>(
     []
   );
+  const [constatacoes, setConstatacoes] = useState("");
+  const [parecer, setParecer] = useState("");
 
   // Form "Adicionar item livre"
   const [livreOpen, setLivreOpen] = useState(false);
@@ -188,6 +190,8 @@ export default function DetalheApreciacaoPage() {
     setSistemasAtual(fichaAtiva?.sistemas_atual ?? []);
     setSistemasNecessario(fichaAtiva?.sistemas_necessario ?? []);
     setOperadores(fichaAtiva?.operadores ?? []);
+    setConstatacoes(fichaAtiva?.constatacoes_inspecao ?? "");
+    setParecer(fichaAtiva?.parecer_tecnico ?? "");
   }, [fichaAtiva]);
 
   const empresa = useMemo(() => {
@@ -305,6 +309,8 @@ export default function DetalheApreciacaoPage() {
             .filter((o) => o.nome || o.cargo);
           return limpos.length ? limpos : null;
         })(),
+        constatacoes_inspecao: constatacoes.trim() || null,
+        parecer_tecnico: parecer.trim() || null,
       });
       toast.success("Identificação da máquina salva");
     } catch {
@@ -881,6 +887,34 @@ export default function DetalheApreciacaoPage() {
             )}
           </div>
         </div>
+
+        <label className="block">
+          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+            Constatações da inspeção
+          </span>
+          <textarea
+            rows={3}
+            value={constatacoes}
+            onChange={(e) => setConstatacoes(e.target.value)}
+            disabled={readOnly}
+            placeholder="Descreva o estado atual da máquina, não conformidades e riscos observados na inspeção."
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+            Parecer técnico
+          </span>
+          <textarea
+            rows={3}
+            value={parecer}
+            onChange={(e) => setParecer(e.target.value)}
+            disabled={readOnly}
+            placeholder="Conclusão técnica sobre a máquina: adequação à NR-12, medidas necessárias e priorização."
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
+          />
+        </label>
 
         {/* Registro fotográfico da máquina */}
         {fichaAtiva && (
