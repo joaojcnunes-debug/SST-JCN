@@ -432,6 +432,10 @@ export default function FolhaAssinaturas({
         fontFamily: "Arial, Helvetica, sans-serif",
         pageBreakBefore: quebraAntes ? "always" : "auto",
         breakBefore: quebraAntes ? "page" : "auto",
+        // Nunca partir a folha na virada da página: título + carimbos + rodapé
+        // pulam juntos para a próxima página quando não couberem no espaço restante.
+        pageBreakInside: "avoid",
+        breakInside: "avoid",
         padding: "32px 0 16px",
       }}
     >

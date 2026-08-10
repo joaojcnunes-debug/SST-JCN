@@ -313,6 +313,14 @@ export default function DrpsTemplate({
   const planoComConteudo = planoEntries.filter(
     ([, p]) => p.meses.some((m) => m) || (p.responsavel ?? "").trim().length > 0,
   );
+  // Uma linha do 5W2H só conta se algum campo foi preenchido. Salvar o plano de
+  // ação sem digitar nada grava uma linha em branco, e ela fazia a seção inteira
+  // aparecer no laudo como um quadro de traços ("—") com status "Pendente".
+  // Filtra na renderização em vez de apagar o registro: o dado do usuário fica.
+  const planoAcaoComConteudo = planoAcao.filter((l) =>
+    [l.acao, l.justificativa, l.onde, l.prazo, l.responsavel, l.como, l.quanto_custa]
+      .some((v) => (v ?? "").trim().length > 0),
+  );
   const checklist = (revisao?.checklist as Record<string, boolean>) ?? {};
   const equipe = (revisao?.equipe as Record<string, boolean>) ?? {};
   const anotacoes = revisao?.anotacoes ?? "";
@@ -336,7 +344,7 @@ export default function DrpsTemplate({
       case "drps_analise_setor":    return blocos.length > 0;
       case "drps_conclusao":        return !!relatorio.conclusao_geral;
       case "drps_plano_medidas":    return planoComConteudo.length > 0;
-      case "drps_plano_acao_5w2h":  return planoAcao.length > 0;
+      case "drps_plano_acao_5w2h":  return planoAcaoComConteudo.length > 0;
       case "drps_revisao":          return topicosPorSetorMon.length > 0 || !!revisao;
       case "drps_assinatura":       return true; // folha de assinaturas é capítulo numerado
       // sumário não é seção numerada
@@ -485,7 +493,7 @@ export default function DrpsTemplate({
     EM_ANDAMENTO: "Em andamento",
     CONCLUIDA: "Concluída",
   };
-  const planoAcaoNode = planoAcao.length > 0 ? (
+  const planoAcaoNode = planoAcaoComConteudo.length > 0 ? (
     <section className="drps-sec">
       <h2>{numLabel(numPorSlug["drps_plano_acao_5w2h"], "Plano de Ação 5W2H")}</h2>
       <p style={{ textIndent: "1.25cm" }}>
@@ -506,7 +514,7 @@ export default function DrpsTemplate({
           </tr>
         </thead>
         <tbody>
-          {planoAcao.map((l, i) => (
+          {planoAcaoComConteudo.map((l, i) => (
             <tr key={i}>
               <td>{l.acao || "—"}</td>
               <td>{l.justificativa || "—"}</td>

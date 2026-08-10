@@ -63,7 +63,20 @@ export default function BotaoGerarPdf({
         // Fallback: serviço externo retornou bytes — abre como blob
         const blob = new Blob([ab], { type: "application/pdf" });
         const url = URL.createObjectURL(blob);
-        window.open(url, "_blank", "noopener");
+        const aba = window.open(url, "_blank", "noopener");
+        // O window.open acontece DEPOIS do await do fetch, fora do gesto do
+        // usuário — o navegador trata como pop-up e bloqueia silenciosamente
+        // (nada abre, nenhum erro). Quanto mais demorado o PDF, mais provável.
+        // Bloqueou: baixa o arquivo, que não passa pelo bloqueador.
+        if (!aba || aba.closed) {
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${docId ?? "documento"}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          toast.success("PDF baixado (o navegador bloqueou a aba nova).");
+        }
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
         setBuffer(ab);
       }
