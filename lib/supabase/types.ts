@@ -394,6 +394,14 @@ export interface Empresa {
   id_unidade: string | null;
   /** Lista de módulos em que a empresa está habilitada (aparece nos selects). */
   modulos_habilitados: ModuloEmpresa[];
+  // ─── Procedência do grau de risco (v144) ──────────────────────────────────
+  /**
+   * NORMA = derivado do CNAE pelo Anexo I da NR-4; MANUAL = pessoa escolheu
+   * outro valor. NULL nos cadastros anteriores à v144, onde não dá para saber.
+   */
+  grau_risco_origem?: "NORMA" | "MANUAL" | null;
+  /** O que a NR-4 indicava quando o cadastro foi gravado. */
+  grau_risco_norma?: number | null;
   created_at: string;
   updated_at: string | null;
 }

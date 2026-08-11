@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
@@ -12,6 +12,7 @@ import {
   MODULOS_EMPRESA,
 } from "@/lib/supabase/types";
 import { useUnidades } from "@/lib/hooks/useUnidades";
+import { useGrauRiscoNorma } from "@/lib/nr4/grau-risco";
 
 // Toda empresa é habilitada em todos os quadros (filtro por módulo removido).
 const TODOS_MODULOS: ModuloEmpresa[] = MODULOS_EMPRESA.map((m) => m.value);
@@ -192,6 +193,14 @@ export default function EmpresaForm({
         situacao_cadastral: form.situacao_cadastral.trim() || null,
         porte: form.porte.trim() || null,
         grau_risco: form.grau_risco ? parseInt(form.grau_risco, 10) : null,
+        // Procedência: separa "a norma disse" de "alguém escolheu outra
+        // coisa". Sem isso, numa auditoria os dois casos são indistinguíveis.
+        grau_risco_origem: !form.grau_risco
+          ? null
+          : grauNorma != null && parseInt(form.grau_risco, 10) === grauNorma
+            ? "NORMA"
+            : "MANUAL",
+        grau_risco_norma: grauNorma,
         status: form.status,
         observacao: form.observacao.trim() || null,
         modulos_habilitados: form.modulos_habilitados,
@@ -246,6 +255,41 @@ export default function EmpresaForm({
     }
     mutation.mutate();
   }
+
+  // ─── Grau de risco pela NR-4 ──────────────────────────────────────────────
+  // A norma responde a partir do CNAE, que a busca por CNPJ já trouxe.
+  const { data: norma } = useGrauRiscoNorma(form.cnae_principal);
+  const grauNorma = norma?.grau_risco ?? null;
+  const grauAtual = form.grau_risco ? parseInt(form.grau_risco, 10) : null;
+  // Divergência só existe quando há os dois valores e eles brigam. Cadastro
+  // vazio não é divergência — é lacuna, e tem tratamento próprio abaixo.
+  const divergeDaNorma =
+    grauNorma != null && grauAtual != null && grauAtual !== grauNorma;
+  const lacunaPreenchivel = grauNorma != null && grauAtual == null;
+
+  /** Aceita o valor da norma. Sempre por clique — nada muda sozinho. */
+  function usarGrauDaNorma() {
+    if (grauNorma == null) return;
+    setForm((f) => ({ ...f, grau_risco: String(grauNorma) }));
+  }
+
+  // Preenchimento automático — SÓ em cadastro novo e SÓ uma vez por CNAE.
+  // Em edição nada é preenchido sozinho: cadastro que já existe se avisa, não
+  // se altera. O controle por CNAE permite ao usuário apagar o valor sugerido
+  // sem que ele volte no próximo render.
+  const autoPreenchido = useRef<string | null>(null);
+  useEffect(() => {
+    if (isEdit || grauNorma == null) return;
+    const classe = form.cnae_principal.replace(/\D/g, "").slice(0, 5);
+    if (autoPreenchido.current === classe) return;
+    autoPreenchido.current = classe;
+    setForm((f) => (f.grau_risco ? f : { ...f, grau_risco: String(grauNorma) }));
+  }, [grauNorma, form.cnae_principal, isEdit]);
+
+  // Cada abertura do modal recomeça o controle acima.
+  useEffect(() => {
+    if (open) autoPreenchido.current = null;
+  }, [open]);
 
   return (
     <Modal
@@ -540,6 +584,47 @@ export default function EmpresaForm({
           <p className="mt-1 text-xs text-gray-500">
             Conforme o Quadro I da NR-4, de acordo com o CNAE da empresa.
           </p>
+
+          {/* A norma discorda do que está gravado. NUNCA sobrescreve sozinho:
+              pode haver decisão técnica por trás do valor atual. */}
+          {divergeDaNorma && (
+            <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3">
+              <p className="text-xs font-semibold text-amber-900">
+                A NR-4 indica grau {grauNorma} para este CNAE, e aqui está{" "}
+                {grauAtual}.
+              </p>
+              <p className="mt-1 text-[11px] text-amber-800">
+                {norma?.denominacao
+                  ? `Anexo I, ${form.cnae_principal}: ${norma.denominacao}.`
+                  : "Conforme o Anexo I da NR-4."}{" "}
+                Se o valor atual foi uma decisão técnica, mantenha — nada muda
+                sem você clicar.
+              </p>
+              <button
+                type="button"
+                onClick={usarGrauDaNorma}
+                className="mt-2 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700"
+              >
+                Usar o grau {grauNorma} da norma
+              </button>
+            </div>
+          )}
+
+          {/* Lacuna: cadastro sem grau, e a norma sabe qual é. */}
+          {lacunaPreenchivel && (
+            <div className="mt-2 rounded-lg border border-verde-primary/40 bg-verde-light p-3">
+              <p className="text-xs text-gray-800">
+                A NR-4 indica <strong>grau {grauNorma}</strong> para este CNAE.
+              </p>
+              <button
+                type="button"
+                onClick={usarGrauDaNorma}
+                className="mt-2 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent"
+              >
+                Preencher com o grau {grauNorma}
+              </button>
+            </div>
+          )}
         </div>
 
         <div>
