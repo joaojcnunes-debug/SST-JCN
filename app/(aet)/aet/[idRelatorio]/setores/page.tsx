@@ -31,6 +31,7 @@ import {
   nivelPgrFromZona,
   SEMAFORO_DEFAULT,
 } from "@/lib/hooks/useAet";
+import { apenasSetoresExistentes, consolidarPiorCaso } from "@/lib/aet/consolidar-psi";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import StorageImg from "@/components/ui/StorageImg";
@@ -113,6 +114,13 @@ const ZONA_BORDER_L: Record<ZonaPsi, string> = {
 
 function rKey(idSetor: string, codigoFator: string, ordem: number) {
   return `${idSetor}|${codigoFator}|${ordem}`;
+}
+
+/** Chave de um fator DENTRO de um setor. Observação, pergunta crítica e zona
+ *  são por setor (v145) — antes eram indexadas só pelo código do fator, o que
+ *  fazia o mesmo texto aparecer em todos os setores do laudo. */
+function fKey(idSetor: string, codigoFator: string) {
+  return `${idSetor}:${codigoFator}`;
 }
 
 function perguntaCriticaAuto(
@@ -259,9 +267,10 @@ export default function AetSetoresPage({
       for (const setorId of Array.from(abertos)) {
         for (const fator of fatores) {
           if (fator.codigo === "F13") continue;
-          if (prev[fator.codigo]) continue;
+          const k = fKey(setorId, fator.codigo);
+          if (prev[k]) continue;
           const auto = perguntaCriticaAuto(perguntas, localRespostas, setorId, fator.codigo);
-          if (auto) { next[fator.codigo] = auto; changed = true; }
+          if (auto) { next[k] = auto; changed = true; }
         }
       }
       return changed ? next : prev;
@@ -273,9 +282,10 @@ export default function AetSetoresPage({
     const pc: Record<string, string> = {};
     const zm: Record<string, ZonaPsi | null> = {};
     for (const fp of fatoresPsi) {
-      obs[fp.codigo_fator] = fp.observacao ?? "";
-      pc[fp.codigo_fator] = fp.pergunta_critica ?? "";
-      if (fp.codigo_fator === "F13") zm[fp.codigo_fator] = fp.zona ?? null;
+      const k = fKey(fp.id_setor, fp.codigo_fator);
+      obs[k] = fp.observacao ?? "";
+      pc[k] = fp.pergunta_critica ?? "";
+      if (fp.codigo_fator === "F13") zm[k] = fp.zona ?? null;
     }
     setObservacoes(obs);
     setPerguntasCriticas(pc);
@@ -503,11 +513,24 @@ export default function AetSetoresPage({
         };
       });
 
-      const fatoresPsiCtx = fatoresPsi
-        .filter((fp) => fp.avaliado && fp.zona && fp.zona !== "verde")
+      // v145: há uma linha por (setor, fator). Consolida pelo pior caso antes de
+      // mandar à IA — senão o prompt recebe o mesmo fator repetido N vezes, sem
+      // nada que os distinga.
+      const fatoresPsiCtx = consolidarPiorCaso(
+        apenasSetoresExistentes(
+          fatoresPsi.filter((fp) => fp.avaliado),
+          setores.map((s) => s.id),
+        ),
+      )
+        .filter((fp) => fp.zona && fp.zona !== "verde")
         .map((fp) => {
           const cfg = fatores.find((f) => f.codigo === fp.codigo_fator);
-          return { codigo: fp.codigo_fator, nome: cfg?.nome ?? fp.codigo_fator, zona: fp.zona as string };
+          return {
+            codigo: fp.codigo_fator,
+            nome: cfg?.nome ?? fp.codigo_fator,
+            zona: fp.zona as string,
+            setor: setores.find((s) => s.id === fp.id_setor)?.nome_setor || undefined,
+          };
         });
 
       // Strip HTML para contexto limpo à IA
@@ -595,24 +618,25 @@ export default function AetSetoresPage({
       })
       .filter((r): r is AetLaudoQpsResposta => r !== null);
 
+    const fatorKey = fKey(setorId, codigoFator);
     const mediaCalc = isF13
       ? null
       : calcularMediaFator(perguntas, localRespostas, setorId, codigoFator);
-    const zona = isF13 ? (zonasManuais[codigoFator] ?? null) : zonaFromMedia(mediaCalc);
+    const zona = isF13 ? (zonasManuais[fatorKey] ?? null) : zonaFromMedia(mediaCalc);
 
-    const fatorKey = `${setorId}:${codigoFator}`;
     setSalvandoFatorPsiKey(fatorKey);
     try {
       await Promise.all([
         rows.length > 0 ? salvarRespostas.mutateAsync(rows) : Promise.resolve(),
         salvarFatorPsi.mutateAsync({
           id_relatorio: idRelatorio,
+          id_setor: setorId,
           codigo_fator: codigoFator,
           avaliado: true,
           media: mediaCalc,
           pct_zona_risco: null,
-          pergunta_critica: perguntasCriticas[codigoFator] || null,
-          observacao: observacoes[codigoFator] || null,
+          pergunta_critica: perguntasCriticas[fatorKey] || null,
+          observacao: observacoes[fatorKey] || null,
           zona,
         }),
       ]);
@@ -630,7 +654,7 @@ export default function AetSetoresPage({
     const setorObj = setores.find((s) => s.id === setorId);
     const mediaCalc = calcularMediaFator(perguntas, localRespostas, setorId, codigoFator);
     const zona = zonaFromMedia(mediaCalc);
-    const fatorKey = `${setorId}:${codigoFator}`;
+    const fatorKey = fKey(setorId, codigoFator);
     setGerandoObsIA(fatorKey);
     try {
       const sb = createSupabaseBrowserClient();
@@ -644,13 +668,13 @@ export default function AetSetoresPage({
           media: mediaCalc,
           zona,
           nivel_pgr: nivelPgrFromZona(zona),
-          pergunta_critica: perguntasCriticas[codigoFator] || null,
-          textoAtual: observacoes[codigoFator] || null,
+          pergunta_critica: perguntasCriticas[fatorKey] || null,
+          textoAtual: observacoes[fatorKey] || null,
         },
       });
       if (error) throw error;
       const obs = data?.data?.observacao ?? data?.observacao ?? "";
-      if (obs) setObservacoes((prev) => ({ ...prev, [codigoFator]: obs }));
+      if (obs) setObservacoes((prev) => ({ ...prev, [fatorKey]: obs }));
       else toast.error("IA não retornou texto");
     } catch {
       toast.error("Erro ao gerar com IA");
@@ -1135,18 +1159,18 @@ export default function AetSetoresPage({
                     <div className="space-y-2">
                       {fatores.map((fator) => {
                         const isF13 = fator.codigo === "F13";
+                        const fatorKey = fKey(setor.id, fator.codigo);
                         const perguntasFator = perguntas.filter((p) => p.codigo_fator === fator.codigo);
                         const mediaCalc = isF13
                           ? null
                           : calcularMediaFator(perguntas, localRespostas, setor.id, fator.codigo);
                         const zonaCalc = isF13
-                          ? (zonasManuais[fator.codigo] ?? null)
+                          ? (zonasManuais[fatorKey] ?? null)
                           : zonaFromMedia(mediaCalc);
                         const prazoSem = semaforo.find((s) => s.id === zonaCalc);
                         const respondidas = perguntasFator.filter(
                           (p) => localRespostas[rKey(setor.id, fator.codigo, p.ordem)] != null
                         ).length;
-                        const fatorKey = `${setor.id}:${fator.codigo}`;
                         const aberto = abertosFactores[fatorKey] ?? false;
 
                         return (
@@ -1189,8 +1213,8 @@ export default function AetSetoresPage({
                                   <div>
                                     <label className="mb-1 block text-xs font-medium text-gray-600">Classificação (baseada no PGR)</label>
                                     <select
-                                      value={zonasManuais[fator.codigo] ?? ""}
-                                      onChange={(e) => setZonasManuais((prev) => ({ ...prev, [fator.codigo]: (e.target.value as ZonaPsi) || null }))}
+                                      value={zonasManuais[fatorKey] ?? ""}
+                                      onChange={(e) => setZonasManuais((prev) => ({ ...prev, [fatorKey]: (e.target.value as ZonaPsi) || null }))}
                                       className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none"
                                     >
                                       <option value="">Selecione a zona…</option>
@@ -1253,8 +1277,8 @@ export default function AetSetoresPage({
                                   {!isF13 && (
                                     <div>
                                       <label className="mb-1 block text-xs font-medium text-gray-600">Pergunta Crítica</label>
-                                      <textarea rows={2} value={perguntasCriticas[fator.codigo] ?? ""}
-                                        onChange={(e) => setPerguntasCriticas((prev) => ({ ...prev, [fator.codigo]: e.target.value }))}
+                                      <textarea rows={2} value={perguntasCriticas[fatorKey] ?? ""}
+                                        onChange={(e) => setPerguntasCriticas((prev) => ({ ...prev, [fatorKey]: e.target.value }))}
                                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none resize-y"
                                         placeholder="Pergunta com pior score neste fator…" />
                                     </div>
@@ -1270,8 +1294,8 @@ export default function AetSetoresPage({
                                         </button>
                                       )}
                                     </div>
-                                    <textarea rows={3} value={observacoes[fator.codigo] ?? ""}
-                                      onChange={(e) => setObservacoes((prev) => ({ ...prev, [fator.codigo]: e.target.value }))}
+                                    <textarea rows={3} value={observacoes[fatorKey] ?? ""}
+                                      onChange={(e) => setObservacoes((prev) => ({ ...prev, [fatorKey]: e.target.value }))}
                                       className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none"
                                       placeholder="Análise, contexto e achados relevantes…" />
                                   </div>
@@ -1316,7 +1340,7 @@ export default function AetSetoresPage({
                               const isF13 = fator.codigo === "F13";
                               const perguntasFator = perguntas.filter((p) => p.codigo_fator === fator.codigo);
                               const mediaCalc = isF13 ? null : calcularMediaFator(perguntas, localRespostas, setor.id, fator.codigo);
-                              const zonaCalc = isF13 ? (zonasManuais[fator.codigo] ?? null) : zonaFromMedia(mediaCalc);
+                              const zonaCalc = isF13 ? (zonasManuais[fKey(setor.id, fator.codigo)] ?? null) : zonaFromMedia(mediaCalc);
                               const prazoSem = semaforo.find((s) => s.id === zonaCalc);
                               const respondidas = perguntasFator.filter((p) => localRespostas[rKey(setor.id, fator.codigo, p.ordem)] != null).length;
                               return (

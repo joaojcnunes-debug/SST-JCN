@@ -2045,6 +2045,9 @@ export interface AetLaudoQpsResposta {
 
 export interface AetLaudoFatorPsi {
   id_relatorio: string;
+  /** Setor do laudo (id dentro do JSONB aet_relatorios.setores). v145: os
+   *  fatores passaram a ser por setor — antes eram um só para o laudo todo. */
+  id_setor: string;
   codigo_fator: string;
   avaliado: boolean;
   media: number | null;

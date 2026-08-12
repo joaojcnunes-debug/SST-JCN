@@ -13,6 +13,7 @@ import FolhaAssinaturas from "@/components/pdf/FolhaAssinaturas";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
 import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/SecoesComuns";
 import { classeQuebraFixo, numerarCapitulos, numLabel } from "@/components/pdf/templates/shared";
+import { apenasSetoresExistentes, consolidarPiorCaso } from "@/lib/aet/consolidar-psi";
 import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import { substituirVariaveis, substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
@@ -362,7 +363,7 @@ type ZonaPsi = "verde" | "amarela" | "laranja" | "vermelha";
 export interface AetFatorConfigLike { codigo: string; nome: string }
 export interface AetFatorPerguntaLike { codigo_fator: string; ordem: number; logica?: string | null }
 export interface AetQpsRespostaLike { id_setor: string; codigo_fator: string; pergunta_ordem: number; resposta: number }
-export interface AetFatorPsiLike { codigo_fator: string; avaliado?: boolean; zona?: ZonaPsi | null; media?: number | null; observacao?: string | null; pergunta_critica?: string | null }
+export interface AetFatorPsiLike { id_setor: string; codigo_fator: string; avaliado?: boolean; zona?: ZonaPsi | null; media?: number | null; observacao?: string | null; pergunta_critica?: string | null }
 export interface AetQpsMetaLike {
   n_respondentes?: number | null; total_elegivel?: number | null;
   periodo_inicio?: string | null; periodo_fim?: string | null;
@@ -422,7 +423,10 @@ function BlocoFatoresSetor({
       return { f, media, zona: zonaFromMedia(media) };
     })
     .filter((x): x is { f: AetFatorConfigLike; media: number; zona: ZonaPsi | null } => x !== null);
-  const f13 = fatoresPsi.find((fp) => fp.codigo_fator === "F13" && fp.avaliado && fp.zona);
+  // F13 não tem média (zona é escolhida à mão) — e é POR SETOR desde a v145.
+  const f13 = fatoresPsi.find(
+    (fp) => fp.id_setor === setor.id && fp.codigo_fator === "F13" && fp.avaliado && fp.zona,
+  );
   if (psiRows.length === 0 && !f13) return null;
   return (
     <div className="aet-chk-wrap">
@@ -609,8 +613,30 @@ export default function AetTemplate({
   }
 
   function secaoPsicossocial(intro: string | null) {
-    const avaliados = fatoresPsi.filter((f) => f.avaliado);
-    const comAnalise = avaliados.filter((f) => f.observacao || f.pergunta_critica);
+    const nomeSetor = (idSetor: string) =>
+      rel.setores.find((s) => s.id === idSetor)?.nome_setor?.trim() || "Setor sem nome";
+
+    // v145: uma linha por (setor, fator). Descarta setores já excluídos do laudo
+    // — sem isso um setor apagado ainda puxaria o quadro geral para a pior zona.
+    const avaliados = apenasSetoresExistentes(
+      fatoresPsi.filter((f) => f.avaliado),
+      rel.setores.map((s) => s.id),
+    );
+
+    // Quadro geral: cada fator na condição mais desfavorável entre os setores.
+    const geral = consolidarPiorCaso(avaliados);
+
+    // Análise detalhada: uma entrada por (fator, setor) — o texto do técnico é
+    // de um setor específico e deixa de ser repetido para todos.
+    const comAnalise = avaliados
+      .filter((f) => f.observacao || f.pergunta_critica)
+      .sort(
+        (a, b) =>
+          a.codigo_fator.localeCompare(b.codigo_fator) ||
+          nomeSetor(a.id_setor).localeCompare(nomeSetor(b.id_setor)),
+      );
+
+    const multiSetor = rel.setores.length > 1;
     const temDados = qpsMeta && (qpsMeta.n_respondentes != null || qpsMeta.periodo_inicio || qpsMeta.modo_aplicacao || qpsMeta.tecnico_aplicador);
     const fmtData = (d?: string | null) => (d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "—");
     return (
@@ -644,21 +670,28 @@ export default function AetTemplate({
           </>
         )}
 
-        {avaliados.length > 0 && (
+        {geral.length > 0 && (
           <>
             <h3 className="aet-sub">Resultado Geral por Fator</h3>
+            {multiSetor && (
+              <p style={{ margin: "0 0 6px", fontSize: 10, color: "#6b7280" }}>
+                Consolidado dos setores avaliados pelo pior caso: cada fator é apresentado na
+                condição mais desfavorável encontrada entre os setores. O detalhamento por setor
+                consta no capítulo de Análise Ergonômica.
+              </p>
+            )}
             <table className="aet-setor-tab aet-riscos" style={{ marginBottom: 12 }}>
               <thead><tr>{["Cód.", "Fator", "Média", "Zona de Risco", "Nível PGR"].map((h) => <th key={h}>{h}</th>)}</tr></thead>
               <tbody>
-                {avaliados.map((fp) => {
-                  const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
+                {geral.map((g) => {
+                  const cfg = fatoresConfig.find((f) => f.codigo === g.codigo_fator);
                   return (
-                    <tr key={fp.codigo_fator}>
-                      <td style={{ fontWeight: 700 }}>{fp.codigo_fator}</td>
-                      <td>{cfg?.nome ?? fp.codigo_fator}</td>
-                      <td style={{ textAlign: "center" }}>{fp.codigo_fator === "F13" ? "—" : fp.media != null ? fp.media.toFixed(2) : "—"}</td>
-                      <td><ZonaTag zona={fp.zona} /></td>
-                      <td>{nivelPgrFromZona(fp.zona)}</td>
+                    <tr key={g.codigo_fator}>
+                      <td style={{ fontWeight: 700 }}>{g.codigo_fator}</td>
+                      <td>{cfg?.nome ?? g.codigo_fator}</td>
+                      <td style={{ textAlign: "center" }}>{g.media != null ? g.media.toFixed(2) : "—"}</td>
+                      <td><ZonaTag zona={g.zona} /></td>
+                      <td>{nivelPgrFromZona(g.zona)}</td>
                     </tr>
                   );
                 })}
@@ -674,10 +707,15 @@ export default function AetTemplate({
               {comAnalise.map((fp) => {
                 const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
                 return (
-                  <div key={fp.codigo_fator} style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: 10 }}>
+                  <div key={`${fp.id_setor}:${fp.codigo_fator}`} style={{ border: "1px solid #e5e7eb", borderRadius: 6, padding: 10 }}>
                     <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#374151" }}>
                       {fp.codigo_fator} — {cfg?.nome ?? fp.codigo_fator} <ZonaTag zona={fp.zona} />
                     </p>
+                    {multiSetor && (
+                      <p style={{ margin: "0 0 4px", fontSize: 10, fontWeight: 600, color: "#6b7280" }}>
+                        Setor: {nomeSetor(fp.id_setor)}
+                      </p>
+                    )}
                     {fp.pergunta_critica && <p style={{ margin: "0 0 4px", fontSize: 11, fontStyle: "italic", color: "#4b5563" }}>“{fp.pergunta_critica}”</p>}
                     {fp.observacao && <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: "#374151" }}>{fp.observacao}</p>}
                   </div>

@@ -50,6 +50,7 @@ import {
   SLUG_TO_DEFAULT_IMAGE,
   SLUG_TO_OWAS_FIELD,
 } from "@/lib/hooks/useAet";
+import { apenasSetoresExistentes, consolidarPiorCaso } from "@/lib/aet/consolidar-psi";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
@@ -907,6 +908,7 @@ export default function AetLaudoPage({
                           fatoresConfig={fatoresConfig}
                           semaforo={semaforo}
                           qpsMeta={qpsMeta ?? null}
+                          setores={rel.setores}
                           zonaFromMedia={zonaFromMedia}
                           nivelPgrFromZona={nivelPgrFromZona}
                         />
@@ -1065,6 +1067,7 @@ export default function AetLaudoPage({
                 fatoresConfig={fatoresConfig}
                 semaforo={semaforo}
                 qpsMeta={qpsMeta ?? null}
+                setores={rel.setores}
                 zonaFromMedia={zonaFromMedia}
                 nivelPgrFromZona={nivelPgrFromZona}
               />
@@ -1584,7 +1587,11 @@ function SetorAnaliseBlock({
             })
             .filter((x): x is { f: Aet13FatorConfig; media: number; zona: ZonaPsi | null } => x !== null);
 
-          const f13 = fatoresPsi.find((fp) => fp.codigo_fator === "F13" && fp.avaliado && fp.zona);
+          // v145: os fatores psi são POR SETOR — sem o filtro de id_setor, este
+          // find pegava a linha de um setor qualquer e repetia embaixo de todos.
+          const f13 = fatoresPsi.find(
+            (fp) => fp.id_setor === setor.id && fp.codigo_fator === "F13" && fp.avaliado && fp.zona,
+          );
 
           if (psiRows.length === 0 && !f13) return null;
 
@@ -1652,12 +1659,12 @@ function SetorAnaliseBlock({
               </table>
               {/* Observações por fator (se houver) */}
               {psiRows.some(({ f }) => {
-                const fp = fatoresPsi.find((p) => p.codigo_fator === f.codigo);
+                const fp = fatoresPsi.find((p) => p.id_setor === setor.id && p.codigo_fator === f.codigo);
                 return fp?.observacao || fp?.pergunta_critica;
               }) && (
                 <div className="mt-2 space-y-2">
                   {psiRows.map(({ f }) => {
-                    const fp = fatoresPsi.find((p) => p.codigo_fator === f.codigo);
+                    const fp = fatoresPsi.find((p) => p.id_setor === setor.id && p.codigo_fator === f.codigo);
                     if (!fp?.observacao && !fp?.pergunta_critica) return null;
                     return (
                       <div key={f.codigo} className="rounded border border-gray-200 p-2">
@@ -1746,6 +1753,7 @@ function PsicossocialSections({
   fatoresConfig,
   semaforo: _semaforo,
   qpsMeta,
+  setores,
   zonaFromMedia: _zonaFromMedia,
   nivelPgrFromZona,
 }: {
@@ -1753,11 +1761,31 @@ function PsicossocialSections({
   fatoresConfig: Aet13FatorConfig[];
   semaforo: Aet13FatorSemaforo[];
   qpsMeta: import("@/lib/supabase/types").AetLaudoQpsMeta | null;
+  setores: AetSetor[];
   zonaFromMedia: (m: number | null) => ZonaPsi | null;
   nivelPgrFromZona: (z: ZonaPsi | null) => string;
 }) {
-  const fatoresAvaliados = fatoresPsi.filter((f) => f.avaliado);
-  const comAnalise = fatoresAvaliados.filter((f) => f.observacao || f.pergunta_critica);
+  const nomeSetor = (idSetor: string) =>
+    setores.find((s) => s.id === idSetor)?.nome_setor?.trim() || "Setor sem nome";
+
+  // v145: uma linha por (setor, fator). Descarta setores já excluídos do laudo.
+  const avaliados = apenasSetoresExistentes(
+    fatoresPsi.filter((f) => f.avaliado),
+    setores.map((s) => s.id),
+  );
+
+  // Quadro geral: cada fator na condição mais desfavorável entre os setores.
+  const fatoresAvaliados = consolidarPiorCaso(avaliados);
+
+  const comAnalise = avaliados
+    .filter((f) => f.observacao || f.pergunta_critica)
+    .sort(
+      (a, b) =>
+        a.codigo_fator.localeCompare(b.codigo_fator) ||
+        nomeSetor(a.id_setor).localeCompare(nomeSetor(b.id_setor)),
+    );
+
+  const multiSetor = setores.length > 1;
 
   return (
     <>
@@ -1821,6 +1849,13 @@ function PsicossocialSections({
       )}
 
       <Section num="16" title="Resultado Geral por Fator">
+        {multiSetor && (
+          <p className="mb-2 text-[10px] text-gray-500">
+            Consolidado dos setores avaliados pelo pior caso: cada fator é apresentado na condição
+            mais desfavorável encontrada entre os setores. O detalhamento por setor consta no
+            capítulo de Análise Ergonômica.
+          </p>
+        )}
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr className="bg-gray-100">
@@ -1862,14 +1897,17 @@ function PsicossocialSections({
             {comAnalise.map((fp) => {
               const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
               return (
-                <div key={fp.codigo_fator} className="rounded border border-gray-200 p-3">
-                  <div className="mb-2 flex items-center gap-2">
+                <div key={`${fp.id_setor}:${fp.codigo_fator}`} className="rounded border border-gray-200 p-3">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
                     <span className="text-[10px] font-mono font-bold text-gray-500">{fp.codigo_fator}</span>
                     <span className="text-[11px] font-bold text-gray-700">{cfg?.nome ?? fp.codigo_fator}</span>
                     {fp.zona && (
                       <span className="rounded px-1.5 py-0.5 text-[9px] font-bold" style={{ background: ZONA_PRINT[fp.zona], color: ZONA_TEXT[fp.zona] }}>
                         {fp.zona.charAt(0).toUpperCase() + fp.zona.slice(1)}
                       </span>
+                    )}
+                    {multiSetor && (
+                      <span className="text-[10px] font-semibold text-gray-500">Setor: {nomeSetor(fp.id_setor)}</span>
                     )}
                   </div>
                   {fp.pergunta_critica && (

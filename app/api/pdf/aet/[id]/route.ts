@@ -85,7 +85,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         supabase.from("aet_13fatores_config").select("codigo, nome").order("codigo", { ascending: true }),
         supabase.from("aet_13fatores_perguntas").select("codigo_fator, ordem, logica"),
         supabase.from("aet_laudo_qps_respostas").select("id_setor, codigo_fator, pergunta_ordem, resposta").eq("id_relatorio", id),
-        supabase.from("aet_laudo_fatores_psi").select("codigo_fator, avaliado, zona, media, observacao, pergunta_critica").eq("id_relatorio", id),
+        supabase.from("aet_laudo_fatores_psi").select("id_setor, codigo_fator, avaliado, zona, media, observacao, pergunta_critica").eq("id_relatorio", id),
         supabase.from("aet_laudo_qps_meta").select("*").eq("id_relatorio", id).maybeSingle(),
       ]);
     const fatoresConfig = (rawFCfg ?? []) as unknown as AetFatorConfigLike[];

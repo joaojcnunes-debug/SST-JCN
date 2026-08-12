@@ -898,7 +898,7 @@ export function useAetSalvarFatorPsi() {
       const sb = createSupabaseBrowserClient();
       const { error } = await sb
         .from("aet_laudo_fatores_psi")
-        .upsert(row as never, { onConflict: "id_relatorio,codigo_fator" });
+        .upsert(row as never, { onConflict: "id_relatorio,id_setor,codigo_fator" });
       if (error) throw error;
     },
     onSuccess: (_d, v) => {
