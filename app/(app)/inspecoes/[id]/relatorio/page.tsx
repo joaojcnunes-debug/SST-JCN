@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   Flame,
   GraduationCap,
+  Wrench,
+  XCircle,
   BadgeCheck,
   Download,
   Loader2,
@@ -60,6 +62,7 @@ import type {
   EpiEpc,
   Extintor,
   Foto,
+  InspecaoMaquina,
   NivelRisco,
   PaeContato,
   Risco,
@@ -192,6 +195,19 @@ export default function RelatorioJCNPage({ params }: Props) {
       (t) => !treIdsComSetor.has(t.id_treinamento)
     );
 
+    // Máquinas (NR-12) por setor + gerais (sem setor vinculado)
+    const maquinasPorSetor = new Map<string, InspecaoMaquina[]>();
+    const maquinasGerais: InspecaoMaquina[] = [];
+    for (const m of data.maquinas ?? []) {
+      if (m.id_setor) {
+        const arr = maquinasPorSetor.get(m.id_setor) ?? [];
+        arr.push(m);
+        maquinasPorSetor.set(m.id_setor, arr);
+      } else {
+        maquinasGerais.push(m);
+      }
+    }
+
     return {
       setores: setoresOrdenados,
       naoConformes,
@@ -206,6 +222,8 @@ export default function RelatorioJCNPage({ params }: Props) {
       extintoresGerais,
       treinamentosPorSetor,
       treinamentosGerais,
+      maquinasPorSetor,
+      maquinasGerais,
     };
   }, [data]);
 
@@ -452,6 +470,7 @@ export default function RelatorioJCNPage({ params }: Props) {
           .capa-page { page-break-after: always; min-height: 100vh; }
           .secao-setor { page-break-inside: avoid; }
           .risco-card { page-break-inside: avoid; }
+          .maquina-card { page-break-inside: avoid; }
         }
       `}</style>
 
@@ -710,6 +729,7 @@ export default function RelatorioJCNPage({ params }: Props) {
             episPorRisco={ctx.episPorRisco}
             perguntasMap={perguntasMap}
             treinamentos={ctx.treinamentosPorSetor.get(setor.id_setor) ?? []}
+            maquinas={ctx.maquinasPorSetor.get(setor.id_setor) ?? []}
           />
         ))}
 
@@ -734,6 +754,7 @@ export default function RelatorioJCNPage({ params }: Props) {
             episPorRisco={ctx.episPorRisco}
             perguntasMap={perguntasMap}
             treinamentos={[]}
+            maquinas={[]}
           />
         )}
 
@@ -759,6 +780,20 @@ export default function RelatorioJCNPage({ params }: Props) {
               {ctx.treinamentosGerais.length})
             </h3>
             <TreinamentosGrid treinamentos={ctx.treinamentosGerais} />
+          </section>
+        )}
+
+        {/* ============================================================
+            MÁQUINAS / NR-12 GERAIS (sem setor específico vinculado)
+        ============================================================ */}
+        {ctx.maquinasGerais.length > 0 && (
+          <section className="secao-setor border-t border-gray-200 px-8 py-6 md:px-12">
+            <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
+              <Wrench className="size-4 text-gray-600" />
+              Máquinas / NR-12 — Geral / sem setor específico (
+              {ctx.maquinasGerais.length})
+            </h3>
+            <MaquinasGrid maquinas={ctx.maquinasGerais} />
           </section>
         )}
 
@@ -955,6 +990,7 @@ function SetorBlock({
   episPorRisco,
   perguntasMap,
   treinamentos,
+  maquinas,
 }: {
   setor: Setor;
   cargos: Cargo[];
@@ -964,6 +1000,7 @@ function SetorBlock({
   episPorRisco: Map<string, EpiEpc[]>;
   perguntasMap: Map<string, string>;
   treinamentos: TreinamentoNR[];
+  maquinas: InspecaoMaquina[];
 }) {
   const isConforme = !setor.nao_conformidade?.trim();
   const iconeDe = useTipoIcone();
@@ -1123,7 +1160,130 @@ function SetorBlock({
           <TreinamentosGrid treinamentos={treinamentos} />
         </div>
       )}
+
+      {/* Máquinas / NR-12 do setor */}
+      {maquinas.length > 0 && (
+        <div className="mt-4">
+          <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-gray-900">
+            <Wrench className="size-3.5 text-gray-600" />
+            Máquinas / NR-12 ({maquinas.length})
+          </h3>
+          <MaquinasGrid maquinas={maquinas} />
+        </div>
+      )}
     </section>
+  );
+}
+
+// =========================================================================
+// MÁQUINAS / NR-12 — grid de cards (read-only, print-friendly)
+// =========================================================================
+
+const MAQ_SAFETY: { key: keyof InspecaoMaquina; label: string }[] = [
+  { key: "protecao_fixa", label: "Proteção fixa" },
+  { key: "protecao_movel", label: "Proteção móvel" },
+  { key: "intertravamento", label: "Intertravamento" },
+  { key: "botao_emergencia", label: "Botão emergência" },
+  { key: "sistema_bloqueio", label: "Sistema de bloqueio/LOTO" },
+  { key: "possui_manual", label: "Manual do fabricante" },
+  { key: "aterramento", label: "Aterramento elétrico" },
+  { key: "sinalizacao", label: "Sinalização de segurança" },
+];
+
+const GRAU_MAQ: Record<string, { label: string; cls: string }> = {
+  BAIXO: { label: "Baixo", cls: "border-green-200 bg-green-100 text-green-800" },
+  MEDIO: { label: "Médio", cls: "border-amber-200 bg-amber-100 text-amber-800" },
+  ALTO: { label: "Alto", cls: "border-orange-200 bg-orange-100 text-orange-800" },
+  CRITICO: { label: "Crítico", cls: "border-red-200 bg-red-100 text-red-800" },
+};
+
+function MaqSafetyIcon({ val }: { val: boolean | null }) {
+  if (val === true) return <CheckCircle2 className="size-3.5 text-green-600" />;
+  if (val === false) return <XCircle className="size-3.5 text-red-500" />;
+  return <span className="inline-block size-3.5 text-center text-gray-300">—</span>;
+}
+
+function MaquinasGrid({ maquinas }: { maquinas: InspecaoMaquina[] }) {
+  return (
+    <div className="space-y-2">
+      {maquinas.map((m) => {
+        const grau = m.grau_risco ? GRAU_MAQ[m.grau_risco] : null;
+        const temIdent =
+          m.marca ||
+          m.modelo ||
+          m.numero_serie ||
+          m.tag ||
+          m.potencia ||
+          m.tensao ||
+          m.ano_fabricacao;
+        return (
+          <div
+            key={m.id_maquina_inspecao}
+            className="maquina-card rounded-lg border border-gray-200 bg-white p-3 text-[11px]"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <Wrench className="size-4 shrink-0 text-gray-500" />
+              <span className="text-sm font-semibold text-gray-900">{m.nome}</span>
+              {m.tipo && <span className="text-xs text-gray-500">{m.tipo}</span>}
+              {grau && (
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${grau.cls}`}
+                >
+                  Grau {grau.label}
+                </span>
+              )}
+              {m.necessita_adequacao_nr12 && (
+                <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-700">
+                  Necessita adequação NR-12
+                </span>
+              )}
+            </div>
+
+            {temIdent && (
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-gray-500">
+                {m.marca && <span>Marca: {m.marca}</span>}
+                {m.modelo && <span>Modelo: {m.modelo}</span>}
+                {m.numero_serie && <span>N/S: {m.numero_serie}</span>}
+                {m.tag && <span>TAG: {m.tag}</span>}
+                {m.ano_fabricacao && <span>Ano: {m.ano_fabricacao}</span>}
+                {m.potencia && <span>Potência: {m.potencia}</span>}
+                {m.tensao && <span>Tensão: {m.tensao}</span>}
+              </div>
+            )}
+
+            {/* Itens de segurança NR-12 */}
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+              {MAQ_SAFETY.map(({ key, label }) => (
+                <span
+                  key={key}
+                  className="flex items-center gap-1 text-[10px] text-gray-500"
+                >
+                  <MaqSafetyIcon val={m[key] as boolean | null} />
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {m.foto_urls.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {m.foto_urls.map((url, i) => (
+                  <StorageImg
+                    key={i}
+                    stored={m.foto_storage_paths?.[i] || url}
+                    alt={`${m.nome} foto ${i + 1}`}
+                    className="h-16 w-16 rounded border border-gray-200 object-cover"
+                  />
+                ))}
+              </div>
+            )}
+
+            {m.observacoes && (
+              <p className="mt-1.5 italic text-gray-600">Obs.: {m.observacoes}</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
