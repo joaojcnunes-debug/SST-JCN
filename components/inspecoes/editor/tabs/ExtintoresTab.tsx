@@ -8,6 +8,12 @@ import ExtintorForm from "../ExtintorForm";
 import StorageImg from "@/components/ui/StorageImg";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  corSituacaoExtintor,
+  extintorCritico,
+  causaCritica,
+  rotuloSituacao,
+} from "@/lib/inspecoes/extintores";
 import type { Extintor, Setor } from "@/lib/supabase/types";
 
 interface Props {
@@ -17,15 +23,6 @@ interface Props {
   extintores: Extintor[];
   readOnly?: boolean;
 }
-
-const STATUS_COR: Record<string, string> = {
-  "Adequado": "border-green-200 bg-green-50 text-green-800",
-  "Vencido": "border-red-200 bg-red-50 text-red-700",
-  "A vencer (próx. 3 meses)": "border-amber-200 bg-amber-50 text-amber-800",
-  "Danificado": "border-red-200 bg-red-50 text-red-700",
-  "Sinalização inadequada": "border-orange-200 bg-orange-50 text-orange-800",
-  "Lacre violado": "border-orange-200 bg-orange-50 text-orange-800",
-};
 
 export default function ExtintoresTab({
   idInspecao,
@@ -81,9 +78,11 @@ export default function ExtintoresTab({
     <div className="space-y-3">
       <div className="rounded-md border border-red-200 bg-red-50/40 p-3 text-xs text-red-800">
         <strong>Extintores — NR-23.</strong> Registre os extintores de incêndio
-        por setor: tipo de agente, capacidade, validade e localização. Itens com
-        status <strong>Vencido</strong> ou <strong>Danificado</strong> são
-        destacados automaticamente.
+        por setor: tipo de agente, capacidade, validade e localização. Marque a
+        situação e, quando não conforme, <strong>quantas não conformidades
+        houver</strong> — um extintor pode estar vencido e com sinalização
+        inadequada ao mesmo tempo. As causas críticas destacam o item em
+        vermelho.
       </div>
 
       {!readOnly && (
@@ -209,10 +208,9 @@ function ExtintorCard({
   onEdit: (e: Extintor) => void;
   onDelete: (e: Extintor) => void;
 }) {
-  const statusCor =
-    e.status ? (STATUS_COR[e.status] ?? "border-gray-200 bg-gray-50 text-gray-700") : null;
-  const vencidoOuDanificado =
-    e.status === "Vencido" || e.status === "Danificado" || e.status === "Lacre violado";
+  // v158: situação + lista de causas no lugar do antigo `status` de texto livre.
+  const situacaoCor = corSituacaoExtintor(e.situacao, e.nao_conformidades);
+  const vencidoOuDanificado = extintorCritico(e.situacao, e.nao_conformidades);
 
   return (
     <li
@@ -261,13 +259,26 @@ function ExtintorCard({
             )}
           </div>
 
-          {e.status && statusCor && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <span
-              className={`mt-1.5 inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium ${statusCor}`}
+              className={`inline-flex rounded-md border px-2 py-0.5 text-[11px] font-medium ${situacaoCor}`}
             >
-              {e.status}
+              {rotuloSituacao(e.situacao)}
             </span>
-          )}
+            {/* Uma etiqueta por causa: era o que o campo único não permitia */}
+            {(e.nao_conformidades ?? []).map((c) => (
+              <span
+                key={c}
+                className={`inline-flex rounded-md border px-2 py-0.5 text-[11px] ${
+                  causaCritica(c)
+                    ? "border-red-200 bg-red-50 text-red-700"
+                    : "border-amber-200 bg-amber-50 text-amber-800"
+                }`}
+              >
+                {c}
+              </span>
+            ))}
+          </div>
 
             {e.observacoes && (
             <p className="mt-2 rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-700">

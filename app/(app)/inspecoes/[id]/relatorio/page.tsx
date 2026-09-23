@@ -57,6 +57,12 @@ import {
   parseMedidas,
 } from "@/lib/utils";
 import { NIVEL_CONFIG } from "@/lib/constants";
+import {
+  corSituacaoExtintor,
+  extintorCritico,
+  causaCritica,
+  rotuloSituacao,
+} from "@/lib/inspecoes/extintores";
 import { useTipoIcone } from "@/lib/hooks/useV3";
 import type {
   EpiEpc,
@@ -199,10 +205,14 @@ export default function RelatorioJCNPage({ params }: Props) {
     const maquinasPorSetor = new Map<string, InspecaoMaquina[]>();
     const maquinasGerais: InspecaoMaquina[] = [];
     for (const m of data.maquinas ?? []) {
-      if (m.id_setor) {
-        const arr = maquinasPorSetor.get(m.id_setor) ?? [];
-        arr.push(m);
-        maquinasPorSetor.set(m.id_setor, arr);
+      // v160: a máquina pode servir a vários setores — sai sob CADA um deles.
+      const ids = m.ids_setores ?? [];
+      if (ids.length > 0) {
+        for (const idSetor of ids) {
+          const arr = maquinasPorSetor.get(idSetor) ?? [];
+          arr.push(m);
+          maquinasPorSetor.set(idSetor, arr);
+        }
       } else {
         maquinasGerais.push(m);
       }
@@ -1665,21 +1675,13 @@ function ListaMedidasRelatorio({
 // EXTINTORES — grid de cards com foto 2×2 centralizada
 // =============================================================
 
-const STATUS_COR_REL: Record<string, string> = {
-  "Adequado": "border-green-300 bg-green-50 text-green-800",
-  "Vencido": "border-red-300 bg-red-50 text-red-700",
-  "A vencer (próx. 3 meses)": "border-amber-300 bg-amber-50 text-amber-800",
-  "Danificado": "border-red-300 bg-red-50 text-red-700",
-  "Sinalização inadequada": "border-orange-300 bg-orange-50 text-orange-800",
-  "Lacre violado": "border-orange-300 bg-orange-50 text-orange-800",
-};
-
 function ExtintoresGrid({ extintores }: { extintores: Extintor[] }) {
   return (
     <div className="space-y-2">
       {extintores.map((e) => {
-        const statusCor = e.status ? (STATUS_COR_REL[e.status] ?? "border-gray-200 bg-gray-50 text-gray-700") : null;
-        const critico = e.status === "Vencido" || e.status === "Danificado" || e.status === "Lacre violado";
+        // v158: situacao + causas no lugar do antigo `status` de texto livre.
+        const situacaoCor = corSituacaoExtintor(e.situacao, e.nao_conformidades);
+        const critico = extintorCritico(e.situacao, e.nao_conformidades);
         const temFotos = e.fotos_urls && e.fotos_urls.length > 0;
 
         return (
@@ -1715,11 +1717,23 @@ function ExtintoresGrid({ extintores }: { extintores: Extintor[] }) {
                     </span>
                   )}
                 </div>
-                {e.status && statusCor && (
-                  <span className={`mt-1 inline-flex rounded border px-1.5 py-0.5 text-[10px] font-medium ${statusCor}`}>
-                    {e.status}
+                <div className="mt-1 flex flex-wrap items-center gap-1">
+                  <span className={`inline-flex rounded border px-1.5 py-0.5 text-[10px] font-medium ${situacaoCor}`}>
+                    {rotuloSituacao(e.situacao)}
                   </span>
-                )}
+                  {(e.nao_conformidades ?? []).map((c) => (
+                    <span
+                      key={c}
+                      className={`inline-flex rounded border px-1.5 py-0.5 text-[10px] ${
+                        causaCritica(c)
+                          ? "border-red-300 bg-red-50 text-red-700"
+                          : "border-amber-300 bg-amber-50 text-amber-800"
+                      }`}
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
                 {e.observacoes && (
                   <p className="mt-1 text-gray-600 italic">{e.observacoes}</p>
                 )}

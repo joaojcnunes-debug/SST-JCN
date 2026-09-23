@@ -781,7 +781,15 @@ export interface Extintor {
   numero_identificacao: string | null;
   localizacao: string | null;
   data_validade: string | null;
+  /**
+   * LEGADO — congelado na v158 (2026-08-05). O app não escreve mais aqui:
+   * use `situacao` + `nao_conformidades`. Mantido como trilha de auditoria.
+   */
   status: string | null;
+  /** v158 — CONFORME | NAO_CONFORME | null (não avaliado). */
+  situacao: string | null;
+  /** v158 — causas da não conformidade; vazio quando não é NAO_CONFORME. */
+  nao_conformidades: string[];
   observacoes: string | null;
   fotos_urls: string[];
   fotos_storage_paths: string[];
@@ -1450,7 +1458,16 @@ export interface InspecaoMaquina {
   id_maquina_inspecao: string;
   id_inspecao: string;
   id_empresa: string | null;
+  /**
+   * LEGADO — congelado na v160 (2026-08-05). A máquina pode estar em vários
+   * setores: use `ids_setores`. Mantido como trilha e base do rollback.
+   */
   id_setor: string | null;
+  /**
+   * v160 — setores em que a máquina é utilizada, de
+   * `inspecao_maquinas_setores`. Derivado: não é coluna da tabela.
+   */
+  ids_setores: string[];
   nome: string;
   tipo: string | null;
   marca: string | null;

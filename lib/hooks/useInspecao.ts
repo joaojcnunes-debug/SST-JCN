@@ -72,7 +72,15 @@ export function useInspecao(id: string | null | undefined) {
         supabase.from("pae_contatos").select("*").eq("id_inspecao", inspId).order("ordem"),
         supabase.from("treinamentos_nr").select("*").eq("id_inspecao", inspId).order("ordem"),
         supabase.from("extintores").select("*").eq("id_inspecao", inspId).order("ordem"),
-        supabase.from("inspecao_maquinas").select("*").eq("id_inspecao", inspId).order("ordem").order("created_at"),
+        // v160: os setores da máquina vêm embedados da tabela de ligação. A
+        // junção não tem id_inspecao, então filtrar por ela direto exigiria uma
+        // segunda ida ao banco — o embed resolve numa consulta só.
+        supabase
+          .from("inspecao_maquinas")
+          .select("*, inspecao_maquinas_setores(id_setor)")
+          .eq("id_inspecao", inspId)
+          .order("ordem")
+          .order("created_at"),
       ]);
 
       if (inspRes.error) throw inspRes.error;
@@ -104,7 +112,18 @@ export function useInspecao(id: string | null | undefined) {
         treinamentosCargo: (carRelRes.data ?? []) as unknown as TreinamentoCargoRel[],
         treinamentosRisco: (risRelRes.data ?? []) as unknown as TreinamentoRiscoRel[],
         extintores: (extintoresRes.data ?? []) as unknown as Extintor[],
-        maquinas: (maquinasRes.data ?? []) as unknown as InspecaoMaquina[],
+        // Achata o embed em `ids_setores` para o resto do app não precisar
+        // conhecer o formato da tabela de ligação.
+        maquinas: ((maquinasRes.data ?? []) as Record<string, unknown>[]).map((m) => {
+          const vinculos = Array.isArray(m.inspecao_maquinas_setores)
+            ? (m.inspecao_maquinas_setores as { id_setor: string }[])
+            : [];
+          const { inspecao_maquinas_setores: _embed, ...resto } = m;
+          return {
+            ...resto,
+            ids_setores: vinculos.map((v) => v.id_setor).filter(Boolean),
+          };
+        }) as unknown as InspecaoMaquina[],
       };
     },
   });

@@ -5,9 +5,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
 import FotoSlots, { uploadFotoSlots, type FotoSlot } from "@/components/ui/FotoSlots";
+import ComboTagInline from "@/components/drps/ComboTagInline";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { useTipoIcone } from "@/lib/hooks/useV3";
+import { useEpiSugestoes } from "@/lib/hooks/useEpiSugestoes";
 import type { EpiEpc, Risco, Setor } from "@/lib/supabase/types";
 
 interface Props {
@@ -53,8 +55,39 @@ export default function EpiForm({
   });
   const [slots, setSlots] = useState<(FotoSlot | null)[]>([null, null, null, null]);
 
+  // ── Multi-seleção (só ao ADICIONAR) ───────────────────────────────────────
+  // Ao editar, o formulário continua sendo de um item só — mexer nisso mudaria
+  // o comportamento de um registro que já existe.
+  // `escolhidos` vêm da lista de sugestões; `extras` são digitados na hora e
+  // aparecem com chip âmbar. A lista sugere, não trava.
+  const [escolhidos, setEscolhidos] = useState<string[]>([]);
+  const [extras, setExtras] = useState<string[]>([]);
+  const [novoValor, setNovoValor] = useState("");
+  const { data: sugestoes = [] } = useEpiSugestoes(form.tipo);
+
+  // Ordem preservada e sem repetir o mesmo nome duas vezes (ignora maiúscula).
+  const itens = useMemo(() => {
+    const vistos = new Set<string>();
+    const out: string[] = [];
+    for (const d of [...escolhidos, ...extras]) {
+      const v = d.trim();
+      const k = v.toLowerCase();
+      if (!v || vistos.has(k)) continue;
+      vistos.add(k);
+      out.push(v);
+    }
+    return out;
+  }, [escolhidos, extras]);
+
+  // CA e fotos são de CADA equipamento. Com vários selecionados não há valor
+  // único que sirva, então os campos somem e o usuário edita item a item.
+  const varios = !isEdit && itens.length > 1;
+
   useEffect(() => {
     if (!open) return;
+    setEscolhidos([]);
+    setExtras([]);
+    setNovoValor("");
     // Inicializa o setor filtro a partir do risco vinculado (ou do EPI)
     const riscoDoEpi = riscos.find((r) => r.id_risco === epi?.id_risco);
     setIdSetorFiltro(riscoDoEpi?.id_setor ?? epi?.id_setor ?? "");
@@ -90,48 +123,65 @@ export default function EpiForm({
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
       const r = riscos.find((x) => x.id_risco === form.id_risco);
-      const idProtecao = epi?.id_protecao ?? gerarId("EPI");
 
-      const { urls, paths } = await uploadFotoSlots(
-        supabase,
-        slots,
-        epi?.fotos_storage_paths ?? [],
-        "fotos",
-        `epi_epc/${idEmpresa}/${idInspecao}`,
-        gerarId,
-      );
+      // Com vários itens não há foto a subir: o upload só acontece quando o
+      // registro é único, senão a mesma foto iria parar em N equipamentos.
+      const { urls, paths } = varios
+        ? { urls: [] as string[], paths: [] as string[] }
+        : await uploadFotoSlots(
+            supabase,
+            slots,
+            epi?.fotos_storage_paths ?? [],
+            "fotos",
+            `epi_epc/${idEmpresa}/${idInspecao}`,
+            gerarId,
+          );
 
-      const payload = {
+      const comum = {
         id_risco: form.id_risco,
         tipo: form.tipo,
-        descricao: form.descricao.trim(),
-        ca: form.ca.trim() || null,
         recomendado: form.recomendado,
         id_setor: r?.id_setor ?? null,
-        fotos_urls: urls,
-        fotos_storage_paths: paths,
       };
 
       if (isEdit && epi) {
         const { error } = await supabase
           .from("epi_epc")
-          .update(payload as never)
+          .update({
+            ...comum,
+            descricao: form.descricao.trim(),
+            ca: form.ca.trim() || null,
+            fotos_urls: urls,
+            fotos_storage_paths: paths,
+          } as never)
           .eq("id_protecao", epi.id_protecao);
         if (error) throw error;
-      } else {
-        const row = {
-          id_protecao: idProtecao,
-          id_inspecao: idInspecao,
-          id_empresa: idEmpresa,
-          ...payload,
-        };
-        const { error } = await supabase.from("epi_epc").insert(row as never);
-        if (error) throw error;
+        return 1;
       }
+
+      // Adicionar: uma linha por equipamento escolhido, num insert só — se algo
+      // falhar, não fica meia lista gravada.
+      const rows = itens.map((descricao) => ({
+        id_protecao: gerarId("EPI"),
+        id_inspecao: idInspecao,
+        id_empresa: idEmpresa,
+        ...comum,
+        descricao,
+        ca: varios ? null : form.ca.trim() || null,
+        fotos_urls: urls,
+        fotos_storage_paths: paths,
+      }));
+      const { error } = await supabase.from("epi_epc").insert(rows as never);
+      if (error) throw error;
+      return rows.length;
     },
-    onSuccess: () => {
+    onSuccess: (n) => {
       qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success(isEdit ? "Atualizado" : "Adicionado");
+      // A lista de sugestões passa a considerar o que acabou de ser cadastrado.
+      qc.invalidateQueries({ queryKey: ["epi-sugestoes"] });
+      toast.success(
+        isEdit ? "Atualizado" : n > 1 ? `${n} equipamentos adicionados` : "Adicionado",
+      );
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -139,8 +189,12 @@ export default function EpiForm({
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!form.descricao.trim()) {
+    if (isEdit && !form.descricao.trim()) {
       toast.error("Descrição é obrigatória");
+      return;
+    }
+    if (!isEdit && itens.length === 0) {
+      toast.error("Escolha ao menos um equipamento — ou digite um que não esteja na lista");
       return;
     }
     if (!form.id_risco) {
@@ -238,39 +292,86 @@ export default function EpiForm({
           </div>
         </div>
 
-        {/* 4. Descrição */}
-        <div>
-          <label className={lblCls}>Descrição *</label>
-          <input
-            type="text"
-            value={form.descricao}
-            onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-            className={inputCls}
-            required
-          />
-        </div>
-
-        {/* 5. CA */}
-        <div>
-          <label className={lblCls}>Certificado de Aprovação (CA)</label>
-          <input
-            type="text"
-            value={form.ca}
-            onChange={(e) => setForm({ ...form, ca: e.target.value })}
-            className={inputCls}
-          />
-        </div>
-
-        {/* 6. Fotos — até 4 */}
+        {/* 4. Equipamento(s) — lista ao adicionar, campo único ao editar */}
         <div>
           <label className={lblCls}>
-            Fotos{" "}
-            <span className="text-xs font-normal text-gray-500">(até 4)</span>
+            {isEdit ? "Descrição *" : "Equipamentos *"}
+            {!isEdit && (
+              <span className="ml-1 text-xs font-normal text-gray-500">
+                (escolha da lista ou digite um novo)
+              </span>
+            )}
           </label>
-          <div className="mt-1">
-            <FotoSlots slots={slots} onChange={setSlots} max={4} />
-          </div>
+          {isEdit ? (
+            <input
+              type="text"
+              value={form.descricao}
+              onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+              className={inputCls}
+              required
+            />
+          ) : (
+            <div className="mt-1">
+              <ComboTagInline
+                tamanho="normal"
+                opcoes={sugestoes}
+                selecionados={escolhidos}
+                extras={extras}
+                novoValor={novoValor}
+                onToggle={(item) =>
+                  setEscolhidos((v) =>
+                    v.includes(item) ? v.filter((x) => x !== item) : [...v, item],
+                  )
+                }
+                onAdd={() => {
+                  const v = novoValor.trim();
+                  if (!v) return;
+                  setExtras((e) => [...e, v]);
+                  setNovoValor("");
+                }}
+                onRemoveExtra={(i) => setExtras((e) => e.filter((_, j) => j !== i))}
+                onNovoValor={setNovoValor}
+                placeholder={`Buscar ${form.tipo}...`}
+                vazioLabel="Nenhuma sugestão ainda — digite para cadastrar o equipamento."
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                As sugestões saem do que já foi cadastrado. O de cor âmbar é novo e
+                será gravado do jeito que você escreveu.
+              </p>
+            </div>
+          )}
         </div>
+
+        {/* 5 e 6. CA e fotos são de cada equipamento — só com um item de cada vez */}
+        {varios ? (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <strong>{itens.length} equipamentos selecionados.</strong> CA e fotos são
+            de cada um, então não aparecem aqui — adicione todos e depois edite item
+            a item para preencher.
+          </p>
+        ) : (
+          <>
+            <div>
+              <label className={lblCls}>Certificado de Aprovação (CA)</label>
+              <input
+                type="text"
+                value={form.ca}
+                onChange={(e) => setForm({ ...form, ca: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+
+            <div>
+              <label className={lblCls}>
+                Fotos{" "}
+                <span className="text-xs font-normal text-gray-500">(até 4)</span>
+              </label>
+              <div className="mt-1">
+                <FotoSlots slots={slots} onChange={setSlots} max={4} />
+              </div>
+            </div>
+          </>
+        )}
 
         <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
           <button
@@ -289,6 +390,8 @@ export default function EpiForm({
               ? "Salvando..."
               : isEdit
               ? "Salvar"
+              : itens.length > 1
+              ? `Adicionar ${itens.length}`
               : "Adicionar"}
           </button>
         </div>

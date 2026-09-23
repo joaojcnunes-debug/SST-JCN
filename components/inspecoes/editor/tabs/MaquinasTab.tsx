@@ -28,6 +28,7 @@ import StorageImg from "@/components/ui/StorageImg";
 import { abrirMidiaAssinada } from "@/lib/storage/abrir-midia-assinada";
 import { extrairPathStorage } from "@/lib/storage/signed-url";
 import { cn } from "@/lib/utils";
+import SetorMultiSelect from "../SetorMultiSelect";
 import type { InspecaoMaquina, Setor } from "@/lib/supabase/types";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -76,7 +77,7 @@ interface FormState {
   ano_fabricacao: string;
   potencia: string;
   tensao: string;
-  id_setor: string;
+  ids_setores: string[];
   protecao_fixa: boolean | null;
   protecao_movel: boolean | null;
   intertravamento: boolean | null;
@@ -101,7 +102,7 @@ const EMPTY: FormState = {
   ano_fabricacao: "",
   potencia: "",
   tensao: "",
-  id_setor: "",
+  ids_setores: [],
   protecao_fixa: null,
   protecao_movel: null,
   intertravamento: null,
@@ -165,16 +166,49 @@ export default function MaquinasTab({
     [setores]
   );
 
+  // v160: a máquina pode estar em vários setores, então aparece sob CADA um
+  // deles. Sem setor nenhum, cai no grupo null ("sem setor").
   const maquinasPorSetor = useMemo(() => {
     const map = new Map<string | null, InspecaoMaquina[]>();
     for (const m of maquinas) {
-      const k = m.id_setor ?? null;
-      const arr = map.get(k) ?? [];
-      arr.push(m);
-      map.set(k, arr);
+      const chaves: (string | null)[] =
+        m.ids_setores && m.ids_setores.length > 0 ? m.ids_setores : [null];
+      for (const k of chaves) {
+        const arr = map.get(k) ?? [];
+        arr.push(m);
+        map.set(k, arr);
+      }
     }
     return map;
   }, [maquinas]);
+
+  /**
+   * Reescreve os vínculos de setor da máquina (v160).
+   *
+   * Apaga e reinsere em vez de calcular o diff: são poucas linhas por máquina e
+   * a PK composta faria um insert repetido falhar. Se o delete passar e o
+   * insert falhar, a máquina fica sem setor — por isso o erro é propagado, para
+   * o usuário ver e refazer, em vez de sumir em silêncio.
+   */
+  async function gravarSetores(idMaquina: string) {
+    const { error: errDel } = await supabase
+      .from("inspecao_maquinas_setores")
+      .delete()
+      .eq("id_maquina_inspecao", idMaquina);
+    if (errDel) throw errDel;
+
+    if (form.ids_setores.length === 0) return;
+
+    const { error: errIns } = await supabase
+      .from("inspecao_maquinas_setores")
+      .insert(
+        form.ids_setores.map((idSetor) => ({
+          id_maquina_inspecao: idMaquina,
+          id_setor: idSetor,
+        })) as never,
+      );
+    if (errIns) throw errIns;
+  }
 
   function refresh() {
     qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
@@ -206,7 +240,7 @@ export default function MaquinasTab({
       ano_fabricacao: m.ano_fabricacao?.toString() ?? "",
       potencia: m.potencia ?? "",
       tensao: m.tensao ?? "",
-      id_setor: m.id_setor ?? "",
+      ids_setores: m.ids_setores ?? [],
       protecao_fixa: m.protecao_fixa,
       protecao_movel: m.protecao_movel,
       intertravamento: m.intertravamento,
@@ -275,7 +309,7 @@ export default function MaquinasTab({
 
   async function handleSave() {
     if (!form.nome.trim()) { toast.error("Nome da máquina é obrigatório"); return; }
-    if (!form.id_setor) { toast.error("Setor é obrigatório — toda máquina pertence a um setor"); return; }
+    if (form.ids_setores.length === 0) { toast.error("Escolha ao menos um setor — toda máquina pertence a algum setor"); return; }
     setSaving(true);
     try {
       // monta lista de fotos existentes (as que ficaram no preview com URL https)
@@ -291,7 +325,8 @@ export default function MaquinasTab({
       const payload = {
         id_inspecao: idInspecao,
         id_empresa: idEmpresa,
-        id_setor: form.id_setor || null,
+        // v160: `id_setor` nao entra no payload — congelado como legado. Os
+        // setores vao para inspecao_maquinas_setores, depois do upsert.
         nome: form.nome.trim(),
         tipo: form.tipo || null,
         marca: form.marca || null,
@@ -324,12 +359,19 @@ export default function MaquinasTab({
           .update(payload as never)
           .eq("id_maquina_inspecao", editando.id_maquina_inspecao);
         if (error) throw error;
+        await gravarSetores(editando.id_maquina_inspecao);
         toast.success("Máquina atualizada");
       } else {
-        const { error } = await supabase
+        // `select()` para recuperar o id gerado — a ligação precisa dele.
+        const { data: criada, error } = await supabase
           .from("inspecao_maquinas")
-          .insert(payload as never);
+          .insert(payload as never)
+          .select("id_maquina_inspecao")
+          .single();
         if (error) throw error;
+        await gravarSetores(
+          (criada as { id_maquina_inspecao: string }).id_maquina_inspecao,
+        );
         toast.success("Máquina adicionada");
       }
       refresh();
@@ -919,37 +961,29 @@ export default function MaquinasTab({
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-700">
-                    Setor da máquina <span className="text-red-500">*</span>
+                    Setor(es) da máquina <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={form.id_setor}
-                    onChange={(e) => f("id_setor", e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
-                  >
-                    <option value="" disabled>
-                      Selecione o setor…
-                    </option>
-                    {setores.map((s) => (
-                      <option key={s.id_setor} value={s.id_setor}>
-                        {s.setor_ghe}
-                      </option>
-                    ))}
-                  </select>
+                  {/* v160: a mesma máquina pode ser usada em mais de um setor */}
+                  <SetorMultiSelect
+                    setores={setores}
+                    value={form.ids_setores}
+                    onChange={(ids) => f("ids_setores", ids)}
+                  />
                   {setores.length === 0 && (
                     <p className="mt-1 text-xs text-amber-600">
                       Cadastre os setores na aba Setores antes de adicionar máquinas.
                     </p>
                   )}
-                  {!form.id_setor && setores.length > 0 && (
+                  {form.ids_setores.length === 0 && setores.length > 0 && (
                     <p className="mt-1 text-xs text-gray-500">
-                      Escolha o setor pra liberar os dados da máquina.
+                      Escolha ao menos um setor pra liberar os dados da máquina.
                     </p>
                   )}
                 </div>
               </div>
             </div>
 
-            {form.id_setor && (
+            {form.ids_setores.length > 0 && (
             <>
             {/* identificação */}
             <div>
@@ -1205,7 +1239,7 @@ export default function MaquinasTab({
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving || !form.id_setor}
+              disabled={saving || form.ids_setores.length === 0}
               className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
             >
               {saving && <Loader2 className="size-4 animate-spin" />}
@@ -1357,11 +1391,17 @@ function buildRelatorioHTML(
   // Agrupar por setor
   const grupos = new Map<string, { nome: string; items: InspecaoMaquina[] }>();
   for (const m of maquinas) {
-    const key = m.id_setor ?? "__sem_setor__";
-    const nome = m.id_setor ? (setoresMap.get(m.id_setor) ?? "Setor desconhecido") : "Sem setor vinculado";
-    const g = grupos.get(key) ?? { nome, items: [] };
-    g.items.push(m);
-    grupos.set(key, g);
+    // v160: sem setor vira um grupo so; com varios, a maquina entra em cada um
+    const chaves = m.ids_setores && m.ids_setores.length > 0 ? m.ids_setores : [null];
+    for (const idSetor of chaves) {
+      const key = idSetor ?? "__sem_setor__";
+      const nome = idSetor
+        ? (setoresMap.get(idSetor) ?? "Setor desconhecido")
+        : "Sem setor vinculado";
+      const g = grupos.get(key) ?? { nome, items: [] };
+      g.items.push(m);
+      grupos.set(key, g);
+    }
   }
 
   const rows = Array.from(grupos.values())
