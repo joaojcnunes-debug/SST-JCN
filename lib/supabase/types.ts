@@ -363,10 +363,20 @@ export const MODULOS_EMPRESA: Array<{ value: ModuloEmpresa; label: string }> = [
   { value: "aep", label: "AEP – Análise Ergonômica Preliminar" },
 ];
 
+/**
+ * Que tipo de cadastro é esta empresa (v148).
+ * CLIENTE   = empresa contratante dos serviços, o caso de sempre.
+ * TERCEIROS = canteiro, obra ou cliente externo onde se trabalha; aponta para
+ *             a contratante em `id_empresa_contratante`.
+ */
+export type TipoEstabelecimento = "CLIENTE" | "TERCEIROS";
+
 export interface Empresa {
   id_empresa: string;
   nome_empresa: string;
   razao_social: string | null;
+  /** Nome fantasia da Receita. Preenchido pela busca por CNPJ. */
+  nome_fantasia?: string | null;
   cnpj: string | null;
   cpf: string | null;
   cei: string | null;
@@ -402,6 +412,16 @@ export interface Empresa {
   grau_risco_origem?: "NORMA" | "MANUAL" | null;
   /** O que a NR-4 indicava quando o cadastro foi gravado. */
   grau_risco_norma?: number | null;
+  // ─── Estabelecimento de terceiros (v148) ──────────────────────────────────
+  /** Ausente nos registros anteriores à v148 — trate como "CLIENTE". */
+  tipo_estabelecimento?: TipoEstabelecimento | null;
+  /** Só preenchido quando tipo_estabelecimento === "TERCEIROS". */
+  id_empresa_contratante?: string | null;
+  /** Ponto de referência para chegar ao local (canteiro sem número). */
+  referencia?: string | null;
+  /** Hospital, UPA ou ambulatório mais próximo e telefones. */
+  locais_emergencia?: string | null;
+  dados_adicionais?: string | null;
   created_at: string;
   updated_at: string | null;
 }

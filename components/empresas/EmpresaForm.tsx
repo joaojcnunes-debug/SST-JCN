@@ -5,13 +5,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { gerarId } from "@/lib/utils";
+import { gerarId, cn } from "@/lib/utils";
 import {
   type Empresa,
   type ModuloEmpresa,
+  type TipoEstabelecimento,
   MODULOS_EMPRESA,
 } from "@/lib/supabase/types";
 import { useUnidades } from "@/lib/hooks/useUnidades";
+import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useGrauRiscoNorma } from "@/lib/nr4/grau-risco";
 
 // Toda empresa é habilitada em todos os quadros (filtro por módulo removido).
@@ -46,10 +48,17 @@ export default function EmpresaForm({
   const isEdit = !!empresa;
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
   const { data: unidades = [] } = useUnidades();
+  const { data: todasEmpresas = [] } = useEmpresas();
 
   const [form, setForm] = useState({
+    tipo_estabelecimento: "CLIENTE" as TipoEstabelecimento,
+    id_empresa_contratante: "",
     nome_empresa: "",
+    nome_fantasia: "",
     razao_social: "",
+    referencia: "",
+    locais_emergencia: "",
+    dados_adicionais: "",
     cnpj: "",
     cpf: "",
     cei: "",
@@ -78,8 +87,15 @@ export default function EmpresaForm({
   useEffect(() => {
     if (open) {
       setForm({
+        // Cadastros anteriores à v148 não têm a coluna — são todos clientes.
+        tipo_estabelecimento: empresa?.tipo_estabelecimento ?? "CLIENTE",
+        id_empresa_contratante: empresa?.id_empresa_contratante ?? "",
         nome_empresa: empresa?.nome_empresa ?? "",
+        nome_fantasia: empresa?.nome_fantasia ?? "",
         razao_social: empresa?.razao_social ?? "",
+        referencia: empresa?.referencia ?? "",
+        locais_emergencia: empresa?.locais_emergencia ?? "",
+        dados_adicionais: empresa?.dados_adicionais ?? "",
         cnpj: empresa?.cnpj ? formatarCnpj(empresa.cnpj) : "",
         cpf: empresa?.cpf ?? "",
         cei: empresa?.cei ?? "",
@@ -144,6 +160,9 @@ export default function EmpresaForm({
         ...f,
         razao_social: razao || f.razao_social,
         nome_empresa: razao || fantasia || f.nome_empresa,
+        // Antes da v148 o fantasia só servia de reserva para o Nome e era
+        // descartado; agora tem coluna própria e é guardado.
+        nome_fantasia: fantasia || f.nome_fantasia,
         logradouro: str(d.logradouro) || f.logradouro,
         numero: str(d.numero) || f.numero,
         complemento: str(d.complemento) || f.complemento,
@@ -170,9 +189,21 @@ export default function EmpresaForm({
   const mutation = useMutation({
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
+      const ehTerceiros = form.tipo_estabelecimento === "TERCEIROS";
       const payload = {
+        tipo_estabelecimento: form.tipo_estabelecimento,
+        // O banco recusa contratante em cadastro CLIENTE (v148). Zerar aqui
+        // cobre o caso de quem marcou terceiros, escolheu a contratante e
+        // voltou atrás antes de salvar.
+        id_empresa_contratante: ehTerceiros
+          ? form.id_empresa_contratante || null
+          : null,
         nome_empresa: form.nome_empresa.trim(),
+        nome_fantasia: form.nome_fantasia.trim() || null,
         razao_social: form.razao_social.trim() || null,
+        referencia: form.referencia.trim() || null,
+        locais_emergencia: form.locais_emergencia.trim() || null,
+        dados_adicionais: form.dados_adicionais.trim() || null,
         cnpj: form.cnpj.replace(/\D/g, "") || null,
         cpf: form.cpf.replace(/\D/g, "") || null,
         cei: form.cei.replace(/\D/g, "") || null,
@@ -239,6 +270,17 @@ export default function EmpresaForm({
     },
   });
 
+  const ehTerceiros = form.tipo_estabelecimento === "TERCEIROS";
+
+  // Contratante só pode ser uma empresa cliente — um terceiro não é
+  // contratante de outro. Exclui também a própria empresa em edição, que o
+  // banco recusaria (empresas_contratante_nao_e_ela_mesma_chk).
+  const contratantesDisponiveis = todasEmpresas.filter(
+    (e) =>
+      (e.tipo_estabelecimento ?? "CLIENTE") === "CLIENTE" &&
+      e.id_empresa !== empresa?.id_empresa,
+  );
+
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!form.nome_empresa.trim()) {
@@ -249,7 +291,14 @@ export default function EmpresaForm({
       toast.error("Selecione a unidade da empresa");
       return;
     }
-    if (!form.grau_risco) {
+    if (ehTerceiros && !form.id_empresa_contratante) {
+      toast.error("Selecione a empresa contratante do estabelecimento");
+      return;
+    }
+    // Grau de risco é obrigatório para a empresa cliente, mas não para um
+    // estabelecimento de terceiros: o técnico em campo nem sempre sabe o grau
+    // do canteiro alheio, e travar o cadastro por isso o faria desistir.
+    if (!ehTerceiros && !form.grau_risco) {
       toast.error("Grau de risco é obrigatório");
       return;
     }
@@ -299,6 +348,79 @@ export default function EmpresaForm({
       size="lg"
     >
       <form onSubmit={onSubmit} className="space-y-4">
+        {/* Tipo de cadastro — decide se é a empresa contratante ou o local de
+            terceiros onde se trabalha. Primeiro campo porque muda o que o
+            resto do formulário exige. */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-gray-700">Tipo de cadastro</p>
+          {(
+            [
+              [
+                "CLIENTE",
+                "Empresa cliente",
+                "A empresa contratante dos serviços. É o cadastro de sempre.",
+              ],
+              [
+                "TERCEIROS",
+                "Estabelecimento de terceiros",
+                "Canteiro, obra ou cliente externo onde a equipe trabalha. Fica vinculado à contratante.",
+              ],
+            ] as const
+          ).map(([v, titulo, desc]) => (
+            <label
+              key={v}
+              className={cn(
+                "flex cursor-pointer gap-3 rounded-lg border-2 p-3 transition-colors",
+                form.tipo_estabelecimento === v
+                  ? "border-verde-primary bg-verde-light"
+                  : "border-gray-200 bg-white hover:border-gray-300",
+              )}
+            >
+              <input
+                type="radio"
+                name="tipo-estabelecimento"
+                checked={form.tipo_estabelecimento === v}
+                onChange={() => setForm({ ...form, tipo_estabelecimento: v })}
+                className="mt-0.5 text-verde-primary focus:ring-verde-primary/30"
+              />
+              <span>
+                <span className="block text-sm font-semibold text-gray-900">
+                  {titulo}
+                </span>
+                <span className="block text-xs text-gray-600">{desc}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+
+        {ehTerceiros && (
+          <div>
+            <label className="text-sm font-medium text-gray-700">
+              Empresa contratante <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={form.id_empresa_contratante}
+              onChange={(e) =>
+                setForm({ ...form, id_empresa_contratante: e.target.value })
+              }
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            >
+              <option value="" disabled>
+                Selecione a empresa contratante…
+              </option>
+              {contratantesDisponiveis.map((e) => (
+                <option key={e.id_empresa} value={e.id_empresa}>
+                  {e.nome_empresa}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              De quem é a equipe que trabalha neste local. Só empresas clientes
+              aparecem aqui — um terceiro não é contratante de outro.
+            </p>
+          </div>
+        )}
+
         <div>
           <label className="text-sm font-medium text-gray-700">Nome *</label>
           <input
@@ -345,6 +467,17 @@ export default function EmpresaForm({
               type="text"
               value={form.razao_social}
               onChange={(e) => setForm({ ...form, razao_social: e.target.value })}
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700">
+              Nome Fantasia
+            </label>
+            <input
+              type="text"
+              value={form.nome_fantasia}
+              onChange={(e) => setForm({ ...form, nome_fantasia: e.target.value })}
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
             />
           </div>
@@ -564,26 +697,86 @@ export default function EmpresaForm({
           </div>
         </div>
 
+        {/* Informações do local — servem para os dois tipos: uma empresa
+            cliente também tem ponto de referência e pronto-socorro perto. */}
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+            Informações do estabelecimento
+          </p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-gray-700">
+                Ponto de referência
+              </label>
+              <input
+                type="text"
+                value={form.referencia}
+                onChange={(e) => setForm({ ...form, referencia: e.target.value })}
+                placeholder="Como chegar ao local"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              />
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div>
+                <label className="text-xs font-medium text-gray-700">
+                  Locais de atendimento a emergências
+                </label>
+                <textarea
+                  value={form.locais_emergencia}
+                  onChange={(e) =>
+                    setForm({ ...form, locais_emergencia: e.target.value })
+                  }
+                  rows={4}
+                  placeholder="Hospital, UPA ou ambulatório mais próximo e telefones"
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-700">
+                  Dados adicionais
+                </label>
+                <textarea
+                  value={form.dados_adicionais}
+                  onChange={(e) =>
+                    setForm({ ...form, dados_adicionais: e.target.value })
+                  }
+                  rows={4}
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div>
           <label className="text-sm font-medium text-gray-700">
-            Grau de risco (NR-4) <span className="text-red-500">*</span>
+            Grau de risco (NR-4){" "}
+            {!ehTerceiros && <span className="text-red-500">*</span>}
           </label>
           <select
             value={form.grau_risco}
             onChange={(e) => setForm({ ...form, grau_risco: e.target.value })}
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
           >
-            <option value="" disabled>
-              Selecione o grau de risco…
+            <option value="" disabled={!ehTerceiros}>
+              {ehTerceiros ? "Não informado" : "Selecione o grau de risco…"}
             </option>
             <option value="1">Grau 1</option>
             <option value="2">Grau 2</option>
             <option value="3">Grau 3</option>
             <option value="4">Grau 4</option>
           </select>
-          <p className="mt-1 text-xs text-gray-500">
-            Conforme o Quadro I da NR-4, de acordo com o CNAE da empresa.
-          </p>
+          {ehTerceiros && !form.grau_risco ? (
+            <p className="mt-1 text-xs text-amber-600">
+              Não é obrigatório em estabelecimento de terceiros — mas sem ele o
+              relatório não consegue dimensionar o risco do local. Preencha
+              assim que souber.
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-500">
+              Conforme o Quadro I da NR-4, de acordo com o CNAE da empresa.
+            </p>
+          )}
 
           {/* A norma discorda do que está gravado. NUNCA sobrescreve sozinho:
               pode haver decisão técnica por trás do valor atual. */}
