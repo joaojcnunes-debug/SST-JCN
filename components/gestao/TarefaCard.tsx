@@ -90,7 +90,10 @@ export default function TarefaCard({
         <div className="mt-1.5 flex flex-wrap gap-1">
           {(t.etiquetas ?? []).map((e) => {
             const cor = etiquetaCor.get(e);
-            return <span key={e} className="rounded px-1.5 py-0.5 text-[10px] font-medium" style={cor ? { background: cor, color: "#fff" } : { background: "#f3f4f6", color: "#6b7280" }}>{e}</span>;
+            // Sem cor definida, o chip caía em #f3f4f6/#6b7280 fixos e ficava
+            // claro no escuro. As variáveis JÁ valem exatamente esses dois
+            // valores no tema claro, então o claro não muda em nada.
+            return <span key={e} className="rounded px-1.5 py-0.5 text-[10px] font-medium" style={cor ? { background: cor, color: "#fff" } : { background: "var(--surface-3)", color: "var(--text-muted)" }}>{e}</span>;
           })}
         </div>
       )}

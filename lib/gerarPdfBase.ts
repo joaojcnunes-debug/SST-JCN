@@ -10,6 +10,8 @@
  * DRPS) têm margin sobrescrita para 0 via inline style, evitando overflow
  * fora dos bounds do <main> durante a captura.
  */
+import { stripDarkForCapture } from "@/lib/pdf/force-light-capture";
+
 export async function gerarPdfBase(): Promise<ArrayBuffer> {
   const [{ toCanvas }, { default: jsPDF }] = await Promise.all([
     import("html-to-image"),
@@ -158,6 +160,10 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
 
   const PIXEL_RATIO = 2;
 
+  // Captura do DOM ao vivo → força o claro (o documento sai sempre claro) e
+  // restaura o tema no finally abaixo.
+  const restaurarDark = stripDarkForCapture();
+
   try {
     const canvas = await toCanvas(el, {
       backgroundColor: "#ffffff",
@@ -269,6 +275,7 @@ export async function gerarPdfBase(): Promise<ArrayBuffer> {
 
     return pdf.output("arraybuffer");
   } finally {
+    restaurarDark();
     printOverride.remove();
     displayOverrides.forEach(({ elem, orig }) => { elem.style.display = orig; });
     capaEls.forEach((e, i) => { e.style.margin = origCapaMargins[i]; });

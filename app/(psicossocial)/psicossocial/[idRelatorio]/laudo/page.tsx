@@ -524,7 +524,7 @@ export default function PsicossocialLaudoPage({
           Nenhum respondente importado — não é possível gerar o laudo.
         </div>
       ) : (
-        <div className="drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
+        <div className="force-light drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
           {temFixos ? (
             <>
               {ordenados.map((c) =>

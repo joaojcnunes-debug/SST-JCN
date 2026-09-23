@@ -16,6 +16,8 @@ import {
   Loader2,
   Settings,
   KanbanSquare,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,7 +28,7 @@ import AnimatedNumber from "./AnimatedNumber";
 import SaudeAnel, { type SaudeDocumentos } from "./SaudeAnel";
 import GraficosVisaoGeral, { type FatiaTipo, type PontoMes, type FatiaStatus } from "./GraficosVisaoGeral";
 import { cn } from "@/lib/utils";
-import { useUnidadeAtiva } from "@/lib/store";
+import { useUnidadeAtiva, useTema } from "@/lib/store";
 
 const VERDE_SIDEBAR = "#0f3d28";
 
@@ -93,6 +95,12 @@ export default function VisaoGeralView({
   const totais = data?.totais;
   const unidades = data?.unidades ?? [];
   const setUnidadeAtiva = useUnidadeAtiva((s) => s.setUnidade);
+  // Toggle de tema também aqui (a tela inicial não usa a ModuleTopbar).
+  const tema = useTema((s) => s.tema);
+  const toggleTema = useTema((s) => s.toggle);
+  const [temaMontado, setTemaMontado] = useState(false);
+  useEffect(() => setTemaMontado(true), []);
+  const escuro = temaMontado && tema === "dark";
   const escopoRestrito = userPerfil === "Tecnico" && vinculadasCount > 0;
   const totalPendencias = (pendencias ?? []).reduce((s, p) => s + p.pendente, 0);
   const vencidos = vencimentos?.vencidos ?? [];
@@ -110,7 +118,7 @@ export default function VisaoGeralView({
   const dataExtenso = dataFmt ? dataFmt.charAt(0).toUpperCase() + dataFmt.slice(1) : "";
 
   return (
-    <div className="flex min-h-screen bg-[#f6f5f2]">
+    <div className="flex min-h-screen bg-app-bg">
       {/* ── Sidebar ──────────────────────────────────────────── */}
       <aside
         className="hidden w-60 shrink-0 flex-col px-4 py-5 text-white md:flex"
@@ -122,7 +130,7 @@ export default function VisaoGeralView({
             <img
               src={logoUrl}
               alt="Logo"
-              className="h-9 w-auto max-w-[40px] rounded-md bg-white object-contain p-0.5"
+              className="force-light h-9 w-auto max-w-[40px] rounded-md bg-white object-contain p-0.5"
               referrerPolicy="no-referrer"
             />
           ) : (
@@ -181,6 +189,12 @@ export default function VisaoGeralView({
               <NavItem icon={<Settings className="size-[15px]" />} label="Sistema" />
             </Link>
           )}
+          <button type="button" onClick={toggleTema} className="w-full">
+            <NavItem
+              icon={escuro ? <Sun className="size-[15px]" /> : <Moon className="size-[15px]" />}
+              label={escuro ? "Modo claro" : "Modo escuro"}
+            />
+          </button>
           <button type="button" onClick={onLogout} className="w-full">
             <NavItem icon={<LogOut className="size-[15px]" />} label="Sair" />
           </button>

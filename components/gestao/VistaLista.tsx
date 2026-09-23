@@ -170,7 +170,9 @@ export default function VistaLista({
                           {podeEditar ? (
                             <select value={t.status} onChange={(e) => { const para = e.target.value; const de = t.status; patch(t, { status: para }); aoMudarStatus?.(t, de, para); }}
                               className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs font-medium hover:border-gray-200 focus:border-verde-primary focus:outline-none" style={{ color: st?.cor }}>
-                              {statuses.map((s) => <option key={s.slug} value={s.slug} style={{ color: "#374151" }}>{s.nome}</option>)}
+                              {/* No escuro o color-scheme deixa o menu nativo escuro; #374151 fixo
+                                  ficava texto escuro sobre fundo escuro. */}
+                              {statuses.map((s) => <option key={s.slug} value={s.slug} style={{ color: "var(--text-body)" }}>{s.nome}</option>)}
                             </select>
                           ) : <span className="text-xs font-medium" style={{ color: st?.cor }}>{st?.nome}</span>}
                         </td>

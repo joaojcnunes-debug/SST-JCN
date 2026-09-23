@@ -80,7 +80,9 @@ export default function FormularioPublico({ token }: { token: string }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f0f7f0] px-4 py-10">
+    // Formulário aberto a gente de fora, como o login e o portal do cliente:
+    // continua claro sempre. O tema é preferência de quem usa o painel interno.
+    <div className="force-light min-h-screen bg-[#f0f7f0] px-4 py-10">
       <div className="mx-auto max-w-lg">
         <div className="mb-5 text-center">
           <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#1e4d28] to-[#0ea5e9] text-2xl">🛡️</div>

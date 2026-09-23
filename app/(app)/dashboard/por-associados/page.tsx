@@ -124,8 +124,8 @@ export default function PorAssociadosDashboard() {
               <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
               <Tooltip
-                cursor={{ fill: "#f0fdf4" }}
-                contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", fontSize: 12, padding: "6px 12px" }}
+                cursor={{ fill: "var(--grafico-cursor)" }}
+                contentStyle={{ borderRadius: 10, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", fontSize: 12, padding: "6px 12px" }}
                 formatter={(v) => [`${v} inspeç${Number(v) !== 1 ? "ões" : "ão"}`, ""]}
               />
               <Bar
@@ -178,8 +178,8 @@ export default function PorAssociadosDashboard() {
               <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
               <YAxis type="category" dataKey="nome" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} width={150} />
               <Tooltip
-                cursor={{ fill: "#f0fdf4" }}
-                contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", fontSize: 12, padding: "6px 12px" }}
+                cursor={{ fill: "var(--grafico-cursor)" }}
+                contentStyle={{ borderRadius: 10, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", fontSize: 12, padding: "6px 12px" }}
                 formatter={(v) => [`${v} inspeç${Number(v) !== 1 ? "ões" : "ão"}`, ""]}
               />
               <Bar dataKey="total" radius={[0, 6, 6, 0]}>

@@ -643,20 +643,20 @@ export default function RelatorioJCNPage({ params }: Props) {
               <CardNumero
                 label="Setores"
                 valor={data.setores.length}
-                cor="#475569"
-                bg="#f1f5f9"
+                cor="var(--card-slate-cor)"
+                bg="var(--card-slate-bg)"
               />
               <CardNumero
                 label="Cargos"
                 valor={data.cargos.length}
-                cor="#475569"
-                bg="#f1f5f9"
+                cor="var(--card-slate-cor)"
+                bg="var(--card-slate-bg)"
               />
               <CardNumero
                 label="Riscos"
                 valor={data.riscos.length}
-                cor="#475569"
-                bg="#f1f5f9"
+                cor="var(--card-slate-cor)"
+                bg="var(--card-slate-bg)"
               />
               <CardNumero
                 label="Não Conformes"
@@ -1582,7 +1582,7 @@ function CardNumero({
       }`}
       style={{
         backgroundColor: bg,
-        borderColor: destacado ? bg : "#e5e7eb",
+        borderColor: destacado ? bg : "var(--border-app)",
       }}
     >
       <p

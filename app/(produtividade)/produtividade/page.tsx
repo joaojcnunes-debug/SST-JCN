@@ -227,7 +227,7 @@ export default function ProdutividadeDashboard() {
               <h2 className="mb-3 text-sm font-semibold text-gray-700">Pendências por Unidade</h2>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={barData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--grafico-grade)" />
                   <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip />

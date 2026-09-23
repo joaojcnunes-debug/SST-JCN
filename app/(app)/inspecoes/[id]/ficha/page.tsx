@@ -208,7 +208,10 @@ export default function FichaInspecaoPage({ params }: Props) {
         </div>
       </div>
 
-      <div className="ficha-print rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      {/* A ficha é uma folha imprimível com CSS próprio (.ficha-tabela usa
+          #f0f9f4, #94a3b8… fixos). Como os laudos, vira ilha clara: o papel
+          continua papel no escuro. A barra de ações acima segue o tema. */}
+      <div className="ficha-print force-light rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <RelatorioPrintHeader
           titulo="Ficha de Inspeção SST · NR-01"
           subtitulo={empresa?.nome_empresa ?? null}

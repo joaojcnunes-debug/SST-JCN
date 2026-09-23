@@ -258,7 +258,7 @@ export default function SidebarShell({
           <img
             src={configs.logo_url}
             alt="Logo"
-            className="h-8 w-auto max-w-[36px] rounded-md bg-white object-contain p-0.5 shadow"
+            className="force-light h-8 w-auto max-w-[36px] rounded-md bg-white object-contain p-0.5 shadow"
             referrerPolicy="no-referrer"
             onError={(e) => { const el = e.currentTarget as HTMLImageElement; if (!el.src.endsWith("/logo-jcn.svg")) el.src = "/logo-jcn.svg"; }}
           />

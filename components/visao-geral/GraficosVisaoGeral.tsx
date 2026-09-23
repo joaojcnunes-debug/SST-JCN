@@ -69,7 +69,7 @@ function DonutCard({
                 {fatias.map((f) => <Cell key={f.label} fill={f.cor} />)}
               </Pie>
               <Tooltip
-                contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
+                contentStyle={{ borderRadius: 8, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", fontSize: 12 }}
                 formatter={(v, n) => [`${v} ${unidade}`, String(n)]}
               />
             </PieChart>
@@ -127,8 +127,8 @@ export default function GraficosVisaoGeral({
               <BarChart data={inspecoesPorMes} margin={{ top: 6, right: 6, left: -22, bottom: 0 }}>
                 <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
                 <Tooltip
-                  cursor={{ fill: "#f3f4f6" }}
-                  contentStyle={{ borderRadius: 8, border: "1px solid #e5e7eb", fontSize: 12 }}
+                  cursor={{ fill: "var(--surface-3)" }}
+                  contentStyle={{ borderRadius: 8, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", fontSize: 12 }}
                   formatter={(v) => [`${v} inspeções`, ""]}
                   labelFormatter={(l) => `Mês: ${l}`}
                 />

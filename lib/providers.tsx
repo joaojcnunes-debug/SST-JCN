@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider, QueryCache } from "@tanstack/react-qu
 import { Toaster } from "react-hot-toast";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
+import ThemeManager from "@/components/ThemeManager";
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -32,6 +33,7 @@ export default function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={client}>
+      <ThemeManager />
       {children}
       <Toaster
         position="top-right"
@@ -42,20 +44,24 @@ export default function Providers({ children }: { children: ReactNode }) {
             fontSize: "14px",
             padding: "12px 16px",
           },
+          // O toast é montado fora da árvore da página (portal no <body>), então
+          // nenhuma classe do shim o alcança: as cores vão inline. Os pares
+          // --toast-* têm o hexadecimal EXATO de hoje no tema claro, então quem
+          // nunca ligar o escuro não vê diferença nenhuma.
           success: {
             iconTheme: { primary: "#0ea5e9", secondary: "#fff" },
             style: {
-              background: "#e8f5e9",
-              color: "#1e4d28",
-              border: "1px solid #c8e6c9",
+              background: "var(--toast-ok-bg)",
+              color: "var(--toast-ok-tx)",
+              border: "1px solid var(--toast-ok-bd)",
             },
           },
           error: {
             iconTheme: { primary: "#D32F2F", secondary: "#fff" },
             style: {
-              background: "#fee2e2",
-              color: "#7f1d1d",
-              border: "1px solid #fca5a5",
+              background: "var(--toast-erro-bg)",
+              color: "var(--toast-erro-tx)",
+              border: "1px solid var(--toast-erro-bd)",
             },
           },
         }}

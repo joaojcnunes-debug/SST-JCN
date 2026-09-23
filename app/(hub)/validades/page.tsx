@@ -70,7 +70,7 @@ export default function ValidadesPage() {
   const semValidade = laudos.filter((l) => !l.data_validade).length;
 
   return (
-    <div className="min-h-screen bg-[#f6f5f2]">
+    <div className="min-h-screen bg-app-bg">
       <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8">
         <Link href="/visao-geral" className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
           <ArrowLeft className="size-4" /> Visão geral

@@ -169,7 +169,7 @@ function LoginInner() {
 
   return (
     <div
-      className="relative min-h-screen flex items-center justify-center overflow-hidden p-4"
+      className="force-light relative min-h-screen flex items-center justify-center overflow-hidden p-4"
       style={{ background: "linear-gradient(135deg, #0369a1 0%, #0ea5e9 65%, #0284c7 100%)" }}
     >
       {/* Círculos decorativos de fundo */}

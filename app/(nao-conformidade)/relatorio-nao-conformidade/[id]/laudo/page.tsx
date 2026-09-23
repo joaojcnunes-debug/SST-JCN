@@ -241,7 +241,7 @@ export default function LaudoNaoConformidadePage({
   );
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4 print:max-w-none print:space-y-2">
+    <div className="force-light mx-auto max-w-4xl space-y-4 print:max-w-none print:space-y-2">
       {/* Toolbar — não imprime */}
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <Link

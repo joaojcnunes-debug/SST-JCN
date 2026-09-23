@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { ChevronRight, ChevronsLeft, ChevronsRight, Home } from "lucide-react";
 import { useSidebarMini, useUserStore } from "@/lib/store";
 import UnidadeAtivaChip from "@/components/layout/UnidadeAtivaChip";
+import ThemeToggle from "@/components/layout/ThemeToggle";
 
 // ─── Breadcrumb mapping ───────────────────────────────────────────────────────
 
@@ -116,6 +117,7 @@ export default function ModuleTopbar({ title }: { title: string }) {
 
       {/* ── Direita: unidade ativa + usuário ─────────── */}
       <div className="flex items-center gap-3">
+        <ThemeToggle />
         <UnidadeAtivaChip variant="topbar" />
         {user && (
           <div className="flex items-center gap-2.5">

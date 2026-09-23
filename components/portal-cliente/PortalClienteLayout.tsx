@@ -59,7 +59,7 @@ export default function PortalClienteLayout({ children }: { children: React.Reac
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="force-light flex min-h-screen bg-gray-50">
       {/* Overlay mobile */}
       {menuAberto && (
         <div

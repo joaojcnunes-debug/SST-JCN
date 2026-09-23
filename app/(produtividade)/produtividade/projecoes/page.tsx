@@ -920,7 +920,7 @@ export default function ProjecoesPage() {
           <p className="mb-4 text-xs text-gray-400">Com {calc.admsEfet} ADMs{calc.simAdms ? " (simulado)" : " (cadastro)"} fazendo {num(docsPorAdm, 5)} docs/dia</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={calc.graficoDocs} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--grafico-grade)" />
               <XAxis dataKey="semana" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />

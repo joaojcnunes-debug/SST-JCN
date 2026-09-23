@@ -2,6 +2,17 @@
 
 import { calcularMatriz, CORES_MATRIZ } from "@/lib/drps/calculos";
 import type { NivelMatriz, TopicoComMatriz } from "@/lib/drps/types";
+import { useTema } from "@/lib/store";
+
+/**
+ * Baixo/Médio/Alto (#27ae60, #f39c12, #e74c3c) são saturados e continuam
+ * legíveis com texto branco no escuro — ficam como estão, conforme o pedido
+ * de não mexer nos blocos coloridos. Só o "Crítico" (#1a1a2e, quase preto)
+ * some contra o fundo escuro; clareio APENAS ele e APENAS no escuro.
+ * `CORES_MATRIZ` não é tocado: o DrpsTemplate/PDF lê a mesma constante e o
+ * laudo precisa continuar idêntico.
+ */
+const CRITICO_ESCURO = "#4d4d68";
 
 /**
  * Heatmap 3×3 (Gravidade × Probabilidade) com os tópicos posicionados na
@@ -15,6 +26,10 @@ export default function MatrizRisco({
   topicos: TopicoComMatriz[];
   mostrarTopicos?: boolean;
 }) {
+  const escuro = useTema((s) => s.tema) === "dark";
+  const fundoCelula = (nivel: NivelMatriz) =>
+    escuro && nivel === "Crítico" ? CRITICO_ESCURO : CORES_MATRIZ[nivel];
+
   // Preencho a matriz: linha = gravidade (3-1 top→bottom), col = probabilidade (1-3)
   const linhas: NivelMatriz[][] = [];
   const conteudo: TopicoComMatriz[][][] = [];
@@ -66,7 +81,7 @@ export default function MatrizRisco({
                     <td key={j} className="p-1 align-top">
                       <div
                         className="min-h-[90px] rounded-md p-2 text-xs text-white shadow-sm"
-                        style={{ backgroundColor: CORES_MATRIZ[nivel] }}
+                        style={{ backgroundColor: fundoCelula(nivel) }}
                       >
                         {mostrarTopicos ? (
                           <>

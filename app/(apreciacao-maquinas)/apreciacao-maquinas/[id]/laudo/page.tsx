@@ -308,7 +308,7 @@ export default function LaudoApreciacaoMaquinasPage({
   );
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 print:max-w-none print:space-y-3">
+    <div className="force-light mx-auto max-w-4xl space-y-6 print:max-w-none print:space-y-3">
       {/* CSS de impressão */}
       <style>{`
         @media print {

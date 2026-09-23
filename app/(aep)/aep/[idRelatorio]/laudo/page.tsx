@@ -455,7 +455,7 @@ export default function AepLaudoPage({
       </div>
 
       {/* Laudo */}
-      <div data-pdf-content className="mx-auto max-w-4xl bg-white px-8 py-10 shadow-sm print:shadow-none print:p-0 print:max-w-none">
+      <div data-pdf-content className="force-light mx-auto max-w-4xl bg-white px-8 py-10 shadow-sm print:shadow-none print:p-0 print:max-w-none">
 
         {/* Corpo do laudo — blocos na ordem definida em Texto Padrão (textos
             editáveis + seções do sistema). Mesma ordem do PDF gerado.

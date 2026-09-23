@@ -60,6 +60,34 @@ export const useSidebarMini = create<SidebarMiniState>()(
   ),
 );
 
+/**
+ * Tema da interface (claro/escuro). Persiste em localStorage sob "tema"
+ * — o script de pré-hidratação em app/layout.tsx lê essa MESMA chave/forma
+ * (`{ state: { tema } }`) para aplicar a classe .dark antes da 1ª pintura
+ * (sem flash). O ThemeManager mantém a classe em sincronia com este estado.
+ */
+export type Tema = "light" | "dark";
+
+interface TemaState {
+  tema: Tema;
+  setTema: (t: Tema) => void;
+  toggle: () => void;
+}
+
+export const useTema = create<TemaState>()(
+  persist(
+    (set, get) => ({
+      tema: "light",
+      setTema: (t) => set({ tema: t }),
+      toggle: () => set({ tema: get().tema === "dark" ? "light" : "dark" }),
+    }),
+    {
+      name: "tema",
+      storage: createJSONStorage(() => localStorage),
+    },
+  ),
+);
+
 interface UserState {
   user: Usuario | null;
   setUser: (u: Usuario | null) => void;

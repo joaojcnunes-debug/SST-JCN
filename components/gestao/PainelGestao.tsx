@@ -95,7 +95,7 @@ export default function PainelGestao({
             <BarChart data={porStatus} margin={{ top: 4, right: 8, left: -20, bottom: 4 }}>
               <XAxis dataKey="nome" tick={{ fontSize: 11 }} />
               <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip cursor={{ fill: "#f3f4f6" }} />
+              <Tooltip cursor={{ fill: "var(--surface-3)" }} contentStyle={{ borderRadius: 8, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", fontSize: 12 }} />
               <Bar dataKey="valor" name="Tarefas" radius={[4, 4, 0, 0]}>
                 {porStatus.map((d) => <Cell key={d.nome} fill={d.cor} />)}
               </Bar>
@@ -126,7 +126,7 @@ export default function PainelGestao({
             <BarChart data={porResponsavel} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
               <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
               <YAxis type="category" dataKey="nome" width={110} tick={{ fontSize: 11 }} />
-              <Tooltip cursor={{ fill: "#f3f4f6" }} />
+              <Tooltip cursor={{ fill: "var(--surface-3)" }} contentStyle={{ borderRadius: 8, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", fontSize: 12 }} />
               <Bar dataKey="valor" name="Tarefas" fill="#0ea5e9" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -140,7 +140,7 @@ export default function PainelGestao({
               <BarChart data={tempoPorResp} layout="vertical" margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
                 <XAxis type="number" tick={{ fontSize: 11 }} />
                 <YAxis type="category" dataKey="nome" width={110} tick={{ fontSize: 11 }} />
-                <Tooltip cursor={{ fill: "#f3f4f6" }} formatter={(v) => [`${v} h`, "Tempo"]} />
+                <Tooltip cursor={{ fill: "var(--surface-3)" }} contentStyle={{ borderRadius: 8, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", fontSize: 12 }} formatter={(v) => [`${v} h`, "Tempo"]} />
                 <Bar dataKey="horas" name="Horas" fill="#0891b2" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>

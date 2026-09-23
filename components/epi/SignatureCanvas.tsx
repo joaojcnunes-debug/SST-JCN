@@ -117,7 +117,7 @@ const SignatureCanvas = forwardRef<
 
   return (
     <div className={className}>
-      <div className="relative overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-white">
+      <div className="force-light relative overflow-hidden rounded-lg border-2 border-dashed border-gray-300 bg-white">
         <canvas
           ref={canvasRef}
           className="block h-40 w-full cursor-crosshair touch-none"

@@ -328,13 +328,13 @@ export default function GestaoJCNPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f5f2]">
+    <div className="min-h-screen bg-app-bg">
       {/* Menu lateral fixo (verde, igual ao app) */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col lg:flex print:hidden" style={{ background: "linear-gradient(180deg, #1a3d26 0%, #112a1a 60%, #0d2016 100%)" }}>
         <Link href="/visao-geral" className="flex items-center gap-2.5 border-b border-white/[0.09] px-4 py-3.5 transition-colors hover:bg-white/[0.05]">
           {configs?.logo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={configs.logo_url} alt="Logo JCN Consultoria" className="h-8 w-auto max-w-[36px] shrink-0 rounded-md bg-white object-contain p-0.5 shadow" referrerPolicy="no-referrer" onError={(e) => { const el = e.currentTarget as HTMLImageElement; if (!el.src.endsWith("/logo-jcn.svg")) el.src = "/logo-jcn.svg"; }} />
+            <img src={configs.logo_url} alt="Logo JCN Consultoria" className="force-light h-8 w-auto max-w-[36px] shrink-0 rounded-md bg-white object-contain p-0.5 shadow" referrerPolicy="no-referrer" onError={(e) => { const el = e.currentTarget as HTMLImageElement; if (!el.src.endsWith("/logo-jcn.svg")) el.src = "/logo-jcn.svg"; }} />
           ) : (
             <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-verde-primary text-white shadow"><KanbanSquare className="size-4" /></span>
           )}
@@ -518,7 +518,7 @@ export default function GestaoJCNPage() {
           </div>
         ) : vista === "quadro" ? (
           <div className="relative mt-5">
-          {boardScrolled && <div className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-10 bg-gradient-to-r from-[#f6f5f2] to-transparent" />}
+          {boardScrolled && <div className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-10 bg-gradient-to-r from-[var(--esteira-fade)] to-transparent" />}
           <div className="flex gap-3 overflow-x-auto pb-2" onScroll={(e) => { const s = e.currentTarget.scrollLeft > 4; setBoardScrolled((p) => (p !== s ? s : p)); }}>
             {gruposQuadro.map((col) => {
               const todas = porGrupo[col.slug] ?? [];
@@ -586,7 +586,7 @@ export default function GestaoJCNPage() {
               );
             })}
           </div>
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[#f6f5f2] to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[var(--esteira-fade)] to-transparent" />
           </div>
         ) : vista === "lista" ? (
           <VistaLista

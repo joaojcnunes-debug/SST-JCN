@@ -18,12 +18,22 @@ function badgeColor(val: string | undefined): {
   color: string;
   border: string;
 } {
+  // Este card também é renderizado DENTRO do laudo de químicos (ilha
+  // .force-light), então a cor não pode depender do tema em JS.
+  // Pares --qui-* definidos no globals.css: no tema CLARO valem o hexadecimal
+  // exato que sempre esteve aqui (#dcfce7/#15803d/#86efac etc.), então nada
+  // muda para quem não liga o escuro; no escuro viram a tinta escura da mesma
+  // cor. Como o .force-light repete os valores claros, este card continua
+  // idêntico dentro do laudo de químicos e no PDF.
   const v = (val ?? "").toUpperCase();
-  if (v.startsWith("SIM"))
-    return { bg: "#dcfce7", color: "#15803d", border: "#86efac" };
-  if (v.startsWith("NÃO") || v.startsWith("NAO"))
-    return { bg: "#fee2e2", color: "#b91c1c", border: "#fca5a5" };
-  return { bg: "#fef9c3", color: "#854d0e", border: "#fde68a" };
+  const tinta = (n: string) => ({
+    bg: `var(--${n}-bg)`,
+    color: `var(--${n}-tx)`,
+    border: `var(--${n}-bd)`,
+  });
+  if (v.startsWith("SIM")) return tinta("qui-sim");
+  if (v.startsWith("NÃO") || v.startsWith("NAO")) return tinta("qui-nao");
+  return tinta("qui-parc");
 }
 
 /**

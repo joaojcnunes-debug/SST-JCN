@@ -25,6 +25,7 @@ import {
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { fmtData, formatCNPJ } from "@/lib/utils";
 import type { StatusRelatorio } from "@/lib/drps/types";
+import { useTema } from "@/lib/store";
 
 type StatusQuadro = Extract<
   StatusRelatorio,
@@ -35,9 +36,15 @@ interface ColunaConfig {
   status: StatusQuadro;
   titulo: string;
   descricao: string;
+  /** Cor forte. Vale nos DOIS temas: é o fundo da pílula de contagem, que
+   *  leva texto branco — clareá-la no escuro quebraria essa leitura. */
   cor: string;
   bg: string;
   border: string;
+  /** Só no escuro: o cabeçalho da coluna é claro por fora (bg/border) e o
+   *  título/ícone precisam clarear junto, senão somem no fundo escuro.
+   *  Os valores do tema claro acima ficam intocados. */
+  escuro: { bg: string; border: string; texto: string };
   Icone: typeof CircleDashed;
 }
 
@@ -49,6 +56,7 @@ const COLUNAS: ColunaConfig[] = [
     cor: "#6b7280",
     bg: "#f3f4f6",
     border: "#d1d5db",
+    escuro: { bg: "#21262d", border: "#333c40", texto: "#a3aab1" },
     Icone: CircleDashed,
   },
   {
@@ -58,6 +66,7 @@ const COLUNAS: ColunaConfig[] = [
     cor: "#b45309",
     bg: "#fffbeb",
     border: "#fcd34d",
+    escuro: { bg: "#2e2617", border: "#5c4a1e", texto: "#f0b45f" },
     Icone: Activity,
   },
   {
@@ -67,6 +76,7 @@ const COLUNAS: ColunaConfig[] = [
     cor: "#15803d",
     bg: "#f0fdf4",
     border: "#86efac",
+    escuro: { bg: "#16301f", border: "#2c5c3c", texto: "#63d18f" },
     Icone: CheckCircle2,
   },
   {
@@ -76,6 +86,7 @@ const COLUNAS: ColunaConfig[] = [
     cor: "#4f46e5",
     bg: "#eef2ff",
     border: "#c7d2fe",
+    escuro: { bg: "#1e2036", border: "#3a3f6b", texto: "#9aa0f5" },
     Icone: Send,
   },
 ];
@@ -236,7 +247,11 @@ function Coluna({
   onColLeave: () => void;
   onSoltar: () => void;
 }) {
-  const { titulo, descricao, cor, bg, border, Icone } = config;
+  const { titulo, descricao, cor, Icone } = config;
+  const noEscuro = useTema((s) => s.tema) === "dark";
+  const bg     = noEscuro ? config.escuro.bg     : config.bg;
+  const border = noEscuro ? config.escuro.border : config.border;
+  const corTexto = noEscuro ? config.escuro.texto : cor;
   // Filtro de busca por coluna (empresa, cidade, CNPJ ou responsável).
   const [busca, setBusca] = useState("");
   const visiveis = useMemo(() => {
@@ -293,11 +308,11 @@ function Coluna({
         style={{ backgroundColor: bg, borderColor: border }}
       >
         <div className="flex items-start gap-2">
-          <Icone className="mt-0.5 size-5" style={{ color: cor }} />
+          <Icone className="mt-0.5 size-5" style={{ color: corTexto }} />
           <div>
             <h2
               className="text-sm font-bold uppercase tracking-wider"
-              style={{ color: cor }}
+              style={{ color: corTexto }}
             >
               {titulo}
             </h2>

@@ -31,7 +31,7 @@ import { mesAbsSP, mesAbsAgoraSP, rotuloMesAbs } from "@/lib/dashboard/mes";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { TabelaSkeleton } from "@/components/ui/PageSkeletons";
 import { cn, fmtData } from "@/lib/utils";
-import { useUserStore } from "@/lib/store";
+import { useUserStore, useTema } from "@/lib/store";
 import { corAvatar } from "@/lib/hooks/useGestao";
 import type { Inspecao, Empresa } from "@/lib/supabase/types";
 import { useState, useEffect, useMemo } from "react";
@@ -311,8 +311,8 @@ function GraficoMes({
             <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
             <Tooltip
-              cursor={{ fill: "#f0fdf4" }}
-              contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: 12, padding: "6px 12px" }}
+              cursor={{ fill: "var(--grafico-cursor)" }}
+              contentStyle={{ borderRadius: 10, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: 12, padding: "6px 12px" }}
               formatter={(v) => [`${v} ${Number(v) !== 1 ? plural : singular}`, ""]}
               labelStyle={{ fontWeight: 600, color: "#111827", marginBottom: 2 }}
             />
@@ -369,7 +369,7 @@ function GraficoDonut({
                   <Cell key={item.name} fill={colors[data.findIndex((x) => x.name === item.name) % colors.length]} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", fontSize: 12, padding: "6px 12px" }} />
+              <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", fontSize: 12, padding: "6px 12px" }} />
             </PieChart>
           </ResponsiveContainer>
 
@@ -677,13 +677,25 @@ function KpiCard({
   from: string;
   warn?: boolean;
 }) {
+  const escuro = useTema((s) => s.tema) === "dark";
   return (
     <div
       className={cn(
         "tilt-3d reveal-up relative overflow-hidden rounded-2xl border p-4 shadow-sm",
-        warn ? "border-amber-200 bg-amber-50/60" : "border-gray-100 bg-white"
+        warn ? "border-amber-200 bg-amber-50" : "border-gray-100 bg-white"
       )}
-      style={!warn ? { background: `linear-gradient(135deg, ${from} 0%, #ffffff 100%)` } : undefined}
+      style={
+        !warn
+          ? {
+              // Claro = o gradiente original (pastel cheio → branco). No escuro
+              // o mesmo pastel viraria um bloco claro, então lá ele vira tinta
+              // sobre a superfície do tema.
+              background: escuro
+                ? `linear-gradient(135deg, color-mix(in srgb, ${from} 45%, var(--surface)) 0%, var(--surface) 100%)`
+                : `linear-gradient(135deg, ${from} 0%, #ffffff 100%)`,
+            }
+          : undefined
+      }
     >
       {/* Círculo decorativo de fundo */}
       <div

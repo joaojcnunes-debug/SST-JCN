@@ -68,6 +68,9 @@ function createMainWindow(): void {
     height: 860,
     minWidth: 1024,
     minHeight: 600,
+    // Fundo escuro neutro: evita o flash branco antes da 1ª pintura para quem
+    // usa o modo noturno (o show:false + ready-to-show já cobre o resto).
+    backgroundColor: '#0d1215',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

@@ -418,16 +418,16 @@ export default function AnalisePage({
           vertical-align: top;
         }
         .drps-label {
-          background: #f0f9f4;
+          background: var(--psi-label-bg);
           font-weight: 600;
-          color: #1e4d28;
+          color: var(--psi-verde);
           font-size: 10.5px;
           letter-spacing: 0.02em;
           width: 30%;
         }
         .drps-header-section {
-          background: #d4edda;
-          color: #1e4d28;
+          background: var(--psi-faixa-bg);
+          color: var(--psi-verde);
           font-weight: 700;
           text-align: center;
           font-size: 11.5px;
@@ -496,7 +496,7 @@ export default function AnalisePage({
         .drps-capitulo-titulo {
           font-size: 14px;
           font-weight: 700;
-          color: #1e4d28;
+          color: var(--psi-verde);
           border-bottom: 2px solid #0ea5e9;
           padding-bottom: 4px;
           margin-bottom: 8px;
@@ -507,9 +507,9 @@ export default function AnalisePage({
           line-height: 1.55;
         }
         .drps-capitulo-conteudo p { margin: 0 0 8px 0; }
-        .drps-capitulo-conteudo h1 { font-size: 16px; font-weight: 700; color: #1e4d28; margin: 12px 0 6px; }
-        .drps-capitulo-conteudo h2 { font-size: 14px; font-weight: 700; color: #1e4d28; margin: 10px 0 6px; }
-        .drps-capitulo-conteudo h3 { font-size: 12px; font-weight: 700; color: #1e4d28; margin: 8px 0 4px; }
+        .drps-capitulo-conteudo h1 { font-size: 16px; font-weight: 700; color: var(--psi-verde); margin: 12px 0 6px; }
+        .drps-capitulo-conteudo h2 { font-size: 14px; font-weight: 700; color: var(--psi-verde); margin: 10px 0 6px; }
+        .drps-capitulo-conteudo h3 { font-size: 12px; font-weight: 700; color: var(--psi-verde); margin: 8px 0 4px; }
         .drps-capitulo-conteudo ul,
         .drps-capitulo-conteudo ol { margin: 0 0 8px 20px; padding: 0; }
         .drps-capitulo-conteudo li { margin: 2px 0; }
@@ -533,8 +533,8 @@ export default function AnalisePage({
           vertical-align: top;
         }
         .drps-capitulo-conteudo th {
-          background: #d4edda;
-          color: #1e4d28;
+          background: var(--psi-faixa-bg);
+          color: var(--psi-verde);
           font-weight: 700;
           text-align: left;
         }
@@ -858,7 +858,7 @@ export default function AnalisePage({
                   .drps-conclusao-geral-print h2 {
                     font-size: 16pt;
                     font-weight: 700;
-                    color: #1e4d28;
+                    color: var(--psi-verde);
                     border-bottom: 2px solid #0ea5e9;
                     padding-bottom: 6px;
                     margin: 0 0 14pt 0;
@@ -1207,7 +1207,7 @@ function BlocoSetor({
             <td
               colSpan={4}
               className="text-center text-[11px] font-semibold uppercase tracking-wider"
-              style={{ background: "#f0f9f4", color: "#1e4d28" }}
+              style={{ background: "var(--psi-label-bg)", color: "var(--psi-verde)" }}
             >
               Quantitativo e Qualitativo
             </td>
