@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Home } from "lucide-react";
-import { useUserStore } from "@/lib/store";
+import { ChevronRight, ChevronsLeft, ChevronsRight, Home } from "lucide-react";
+import { useSidebarMini, useUserStore } from "@/lib/store";
 import UnidadeAtivaChip from "@/components/layout/UnidadeAtivaChip";
 
 // ─── Breadcrumb mapping ───────────────────────────────────────────────────────
@@ -59,6 +59,7 @@ const PERFIL_COLORS: Record<string, string> = {
 
 export default function ModuleTopbar({ title }: { title: string }) {
   const user = useUserStore((s) => s.user);
+  const toggleSidebar = useSidebarMini((s) => s.toggle);
   const pathname = usePathname();
   const crumbs = buildCrumbs(pathname);
   const initials = user?.nome ? getInitials(user.nome) : "?";
@@ -69,32 +70,49 @@ export default function ModuleTopbar({ title }: { title: string }) {
       className="sticky top-0 z-20 flex h-[54px] items-center justify-between border-b border-black/[0.12] px-4 md:px-6 text-white shadow-md print:hidden"
       style={{ background: "linear-gradient(90deg, #0ea5e9 0%, #00795e 100%)", viewTransitionName: "topbar" }}
     >
-      {/* ── Esquerda: breadcrumb ─────────────────────── */}
-      <nav className="ml-12 flex items-center gap-1 md:ml-0" aria-label="breadcrumb">
-        <Link
-          href="/dashboard"
-          className="flex items-center text-white/50 transition hover:text-white/90"
-          title="Dashboard"
+      {/* ── Esquerda: minimizador + breadcrumb ────────── */}
+      <div className="ml-12 flex min-w-0 items-center gap-2 md:ml-0">
+        {/* Recolhe/expande a sidebar. Só no desktop — no celular o menu é
+            gaveta. Qual seta aparece quem decide é o CSS (globals.css), a
+            partir do data-sidebar no <html>: assim nada aqui depende de
+            estado e servidor e cliente renderizam igual. */}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label="Recolher ou expandir o menu"
+          title="Recolher ou expandir o menu"
+          className="hidden size-7 shrink-0 items-center justify-center rounded-md text-white/55 transition-colors hover:bg-white/10 hover:text-white md:flex"
         >
-          <Home className="size-3.5" />
-        </Link>
+          <ChevronsLeft className="sidebar-seta-fechar size-4" />
+          <ChevronsRight className="sidebar-seta-abrir size-4" />
+        </button>
 
-        {crumbs.map((c, idx) => (
-          <span key={c.href} className="flex items-center gap-1">
-            <ChevronRight className="size-3 text-white/30" />
-            {idx === crumbs.length - 1 ? (
-              <span className="text-sm font-semibold text-white">{c.label}</span>
-            ) : (
-              <Link
-                href={c.href}
-                className="text-sm text-white/60 transition hover:text-white/90"
-              >
-                {c.label}
-              </Link>
-            )}
-          </span>
-        ))}
-      </nav>
+        <nav className="flex min-w-0 items-center gap-1" aria-label="breadcrumb">
+          <Link
+            href="/dashboard"
+            className="flex items-center text-white/50 transition hover:text-white/90"
+            title="Dashboard"
+          >
+            <Home className="size-3.5" />
+          </Link>
+
+          {crumbs.map((c, idx) => (
+            <span key={c.href} className="flex items-center gap-1">
+              <ChevronRight className="size-3 text-white/30" />
+              {idx === crumbs.length - 1 ? (
+                <span className="text-sm font-semibold text-white">{c.label}</span>
+              ) : (
+                <Link
+                  href={c.href}
+                  className="text-sm text-white/60 transition hover:text-white/90"
+                >
+                  {c.label}
+                </Link>
+              )}
+            </span>
+          ))}
+        </nav>
+      </div>
 
       {/* ── Direita: unidade ativa + usuário ─────────── */}
       <div className="flex items-center gap-3">

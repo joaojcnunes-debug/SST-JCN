@@ -393,6 +393,71 @@ select:focus {
   }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════════
+   SIDEBAR RECOLHIDA ("minimizador") — camada REVERSÍVEL.
+
+   Ligada por data-sidebar="mini" no <html> (useSidebarMini + script de
+   pré-hidratação em app/layout.tsx). Apagar este bloco devolve a sidebar
+   fixa de 220px de sempre; a marcação em SidebarShell.tsx é IDÊNTICA nos
+   dois estados (por isso não há divergência de hidratação nem flash).
+
+   Só vale em @media screen md+ — na impressão e no celular nada muda: o
+   print:pl-0 dos layouts continua valendo e o menu do celular segue gaveta.
+   ════════════════════════════════════════════════════════════════════════ */
+:root { --sidebar-w: 220px; --sidebar-w-mini: 60px; }
+
+@media screen and (min-width: 768px) {
+  .sidebar-shell,
+  .md\:pl-\[220px\] {
+    transition: width 180ms cubic-bezier(.2, .7, .3, 1),
+                padding-left 180ms cubic-bezier(.2, .7, .3, 1);
+  }
+
+  html[data-sidebar="mini"] .sidebar-shell { width: var(--sidebar-w-mini); }
+  /* Compensação do conteúdo: os layouts dos módulos usam md:pl-[220px]. */
+  html[data-sidebar="mini"] .md\:pl-\[220px\] { padding-left: var(--sidebar-w-mini); }
+
+  /* Some com tudo que é texto; sobram os ícones, centralizados. */
+  html[data-sidebar="mini"] .sidebar-label,
+  html[data-sidebar="mini"] .sidebar-secao-titulo { display: none; }
+  html[data-sidebar="mini"] .sidebar-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  html[data-sidebar="mini"] .sidebar-item:hover { transform: none; }
+  html[data-sidebar="mini"] .sidebar-logo { justify-content: center; padding-inline: 0; }
+  html[data-sidebar="mini"] .sidebar-nav { overflow-x: hidden; }
+
+  /* Seta do botão: mostra a que corresponde ao estado atual. */
+  .sidebar-seta-abrir { display: none; }
+  html[data-sidebar="mini"] .sidebar-seta-abrir { display: block; }
+  html[data-sidebar="mini"] .sidebar-seta-fechar { display: none; }
+
+  /* Dica flutuante com o nome do item (só faz sentido recolhida). */
+  html[data-sidebar="mini"] .sidebar-item[data-label]:hover::after {
+    content: attr(data-label);
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    white-space: nowrap;
+    border-radius: 6px;
+    background: #0d2016;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #fff;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-shell, .md\:pl-\[220px\] { transition: none; }
+}
 /* Scrollbar discreta */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
