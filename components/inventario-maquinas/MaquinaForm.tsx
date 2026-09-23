@@ -5,6 +5,7 @@ import { Save, Upload, X, ImageOff, Loader2, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import StorageImg from "@/components/ui/StorageImg";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
+import { useUnidades } from "@/lib/hooks/useUnidades";
 import {
   uploadFotoMaquina,
   removerFotoMaquinaStorage,
@@ -13,9 +14,11 @@ import {
 import {
   STATUS_MAQUINA_LABELS,
   GRAU_RISCO_MAQUINA_LABELS,
+  CATEGORIA_INVENTARIO_LABELS,
   type Maquina,
   type StatusMaquina,
   type GrauRiscoMaquina,
+  type CategoriaInventario,
 } from "@/lib/supabase/types";
 import RevisaoIAModal, { type CampoRevisaoIA } from "@/components/ui/RevisaoIAModal";
 import { cn } from "@/lib/utils";
@@ -32,12 +35,16 @@ function parseBool(v: string): boolean | null {
   return null;
 }
 
-function initialForm(m?: Maquina): MaquinaInput {
+function initialForm(
+  m?: Maquina,
+  categoriaInicial?: CategoriaInventario,
+): MaquinaInput {
   return {
     id_empresa: m?.id_empresa ?? null,
     nome: m?.nome ?? "",
     tipo: m?.tipo ?? null,
     categoria: m?.categoria ?? null,
+    categoria_inventario: m?.categoria_inventario ?? categoriaInicial ?? "maquinas",
     codigo_interno: m?.codigo_interno ?? null,
     tag: m?.tag ?? null,
     marca: m?.marca ?? null,
@@ -46,6 +53,7 @@ function initialForm(m?: Maquina): MaquinaInput {
     ano_fabricacao: m?.ano_fabricacao ?? null,
     numero_patrimonio: m?.numero_patrimonio ?? null,
     status: m?.status ?? "OPERANTE",
+    id_unidade: m?.id_unidade ?? null,
     unidade: m?.unidade ?? null,
     setor: m?.setor ?? null,
     linha_processo: m?.linha_processo ?? null,
@@ -88,6 +96,8 @@ interface MaquinaFormProps {
   inicial?: Maquina;
   idMaquina: string;
   disabled?: boolean;
+  /** Categoria pré-selecionada ao cadastrar a partir de uma aba do inventário. */
+  categoriaInicial?: CategoriaInventario;
   onSubmit: (input: MaquinaInput) => Promise<void>;
   submitLabel?: string;
 }
@@ -98,13 +108,17 @@ export default function MaquinaForm({
   inicial,
   idMaquina,
   disabled = false,
+  categoriaInicial,
   onSubmit,
   submitLabel = "Salvar",
 }: MaquinaFormProps) {
   const { data: empresas = [] } = useEmpresas();
+  const { data: unidades = [] } = useUnidades();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState<MaquinaInput>(() => initialForm(inicial));
+  const [form, setForm] = useState<MaquinaInput>(() =>
+    initialForm(inicial, categoriaInicial),
+  );
   const [abaAtiva, setAbaAtiva] = useState<0 | 1 | 2 | 3>(0);
   const [uploading, setUploading] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -337,6 +351,19 @@ export default function MaquinaForm({
       {abaAtiva === 0 && (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Campo label="Categoria do inventário">
+              <select
+                value={form.categoria_inventario ?? "maquinas"}
+                onChange={(e) => setF("categoria_inventario", e.target.value as CategoriaInventario)}
+                disabled={disabled}
+                className={inputClass}
+              >
+                {(Object.keys(CATEGORIA_INVENTARIO_LABELS) as CategoriaInventario[]).map((c) => (
+                  <option key={c} value={c}>{CATEGORIA_INVENTARIO_LABELS[c]}</option>
+                ))}
+              </select>
+            </Campo>
+            <div className="hidden sm:block" aria-hidden />
             <Campo label="Nome da máquina / equipamento *">
               <input type="text" value={form.nome} onChange={(e) => setF("nome", e.target.value)} disabled={disabled} required placeholder="Ex: Furadeira de bancada" className={inputClass} />
             </Campo>
@@ -384,8 +411,28 @@ export default function MaquinaForm({
       {/* ABA 1: Localização */}
       {abaAtiva === 1 && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Campo label="Unidade">
-            <input type="text" value={form.unidade ?? ""} onChange={(e) => setF("unidade", e.target.value || null)} disabled={disabled} placeholder="Ex: Planta I, Filial SP" className={inputClass} />
+          <Campo label="Unidade / Base">
+            <select
+              value={form.id_unidade ?? ""}
+              onChange={(e) => {
+                const id = e.target.value || null;
+                const u = unidades.find((x) => x.id_unidade === id);
+                setF("id_unidade", id);
+                setF("unidade", u?.nome ?? null); // mantém o espelho em texto sincronizado
+              }}
+              disabled={disabled}
+              className={inputClass}
+            >
+              <option value="">— Sem unidade definida —</option>
+              {unidades.map((u) => (
+                <option key={u.id_unidade} value={u.id_unidade}>{u.nome}</option>
+              ))}
+            </select>
+            {form.id_unidade === null && form.unidade ? (
+              <span className="mt-1 block text-[11px] text-amber-600">
+                Registro antigo: “{form.unidade}”. Selecione a base para padronizar.
+              </span>
+            ) : null}
           </Campo>
           <Campo label="Setor *">
             <input type="text" value={form.setor ?? ""} onChange={(e) => setF("setor", e.target.value || null)} disabled={disabled} placeholder="Ex: Estamparia, Montagem" className={inputClass} />

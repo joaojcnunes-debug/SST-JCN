@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { mensagemErro } from "@/lib/errors";
 import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
@@ -10,6 +11,7 @@ import type {
   Maquina,
   StatusMaquina,
   GrauRiscoMaquina,
+  CategoriaInventario,
   InspecaoMaquina,
 } from "@/lib/supabase/types";
 
@@ -77,6 +79,7 @@ export interface MaquinaInput {
   nome: string;
   tipo: string | null;
   categoria: string | null;
+  categoria_inventario: CategoriaInventario | null;
   codigo_interno: string | null;
   tag: string | null;
   marca: string | null;
@@ -86,7 +89,8 @@ export interface MaquinaInput {
   numero_patrimonio: string | null;
   status: StatusMaquina;
   // Localização
-  unidade: string | null;
+  id_unidade: string | null;   // base/unidade (FK unidades) — controla o isolamento e a transferência
+  unidade: string | null;      // espelho em texto do nome da unidade (legado/exibição)
   setor: string | null;
   linha_processo: string | null;
   area: string | null;
@@ -158,7 +162,8 @@ export function useCriarMaquina() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventario-maquinas"] });
     },
-    onError: (e: Error) => toast.error(`Erro ao criar: ${e.message}`),
+    onError: (e: Error) =>
+      toast.error(mensagemErro(e, "Não foi possível cadastrar.")),
   });
 }
 
@@ -179,7 +184,8 @@ export function useAtualizarMaquina() {
       qc.invalidateQueries({ queryKey: ["inventario-maquinas"] });
       qc.invalidateQueries({ queryKey: KEY_ITEM(params.id_maquina) });
     },
-    onError: (e: Error) => toast.error(`Erro ao atualizar: ${e.message}`),
+    onError: (e: Error) =>
+      toast.error(mensagemErro(e, "Não foi possível salvar as alterações.")),
   });
 }
 
@@ -202,7 +208,8 @@ export function useExcluirMaquina() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inventario-maquinas"] });
     },
-    onError: (e: Error) => toast.error(`Erro ao excluir: ${e.message}`),
+    onError: (e: Error) =>
+      toast.error(mensagemErro(e, "Não foi possível excluir.")),
   });
 }
 
@@ -482,6 +489,8 @@ export function useImportarMaquinasInspecao() {
           nome: m.nome,
           tipo: m.tipo,
           categoria: null,
+          // Máquinas importadas de inspeções são de clientes.
+          categoria_inventario: "maquinas",
           codigo_interno: null,
           tag: m.tag,
           marca: m.marca,
@@ -490,6 +499,7 @@ export function useImportarMaquinasInspecao() {
           ano_fabricacao: m.ano_fabricacao,
           numero_patrimonio: null,
           status: "OPERANTE",
+          id_unidade: null,
           unidade: null,
           setor,
           linha_processo: null,
@@ -562,6 +572,7 @@ export function useImportarMaquinasInspecao() {
       qc.invalidateQueries({ queryKey: ["inventario-maquinas"] });
       qc.invalidateQueries({ queryKey: ["inspecao-maquinas-pendentes"] });
     },
-    onError: (e: Error) => toast.error(`Erro ao importar: ${e.message}`),
+    onError: (e: Error) =>
+      toast.error(mensagemErro(e, "Não foi possível importar as máquinas.")),
   });
 }

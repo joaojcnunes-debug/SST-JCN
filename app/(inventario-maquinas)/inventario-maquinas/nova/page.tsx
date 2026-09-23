@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Boxes } from "lucide-react";
 import toast from "react-hot-toast";
 import MaquinaForm from "@/components/inventario-maquinas/MaquinaForm";
@@ -12,24 +12,35 @@ import {
 } from "@/lib/hooks/useInventarioMaquinas";
 import { useRequireCreate } from "@/lib/hooks/useUsuario";
 import { gerarId } from "@/lib/utils";
+import type { CategoriaInventario } from "@/lib/supabase/types";
 
-export default function NovaMaquinaPage() {
-  useRequireCreate("/inventario-maquinas");
+const CATS: CategoriaInventario[] = ["equipamentos", "maquinas", "medicoes"];
+
+function NovaMaquinaInner() {
+  // `exigeEditar`: a RLS de inventario_maquinas (v76) exige caller_pode_editar()
+  // no INSERT — sem isso o cadastro só falharia no submit.
+  useRequireCreate("/inventario-maquinas", { exigeEditar: true });
   const router = useRouter();
+  const searchParams = useSearchParams();
   const criar = useCriarMaquina();
 
+  // Categoria pré-selecionada quando vem de uma aba (ex.: /nova?cat=equipamentos).
+  const catParam = searchParams.get("cat");
+  const categoriaInicial = (CATS as string[]).includes(catParam ?? "")
+    ? (catParam as CategoriaInventario)
+    : undefined;
+
   // ID estável da máquina pra upload da foto antes mesmo do insert.
-  // useMemo garante mesmo ID entre re-renders.
   const idMaquina = useMemo(() => gerarId("MAQ"), []);
 
   async function handleSubmit(input: MaquinaInput) {
     try {
       const row = await criar.mutateAsync({ input, idMaquina });
-      toast.success("Máquina cadastrada");
+      toast.success("Cadastro realizado");
       router.push(`/inventario-maquinas/${row.id_maquina}`);
     } catch (err) {
       console.error(err);
-      toast.error("Falha ao cadastrar máquina");
+      toast.error("Falha ao cadastrar");
     }
   }
 
@@ -56,10 +67,19 @@ export default function NovaMaquinaPage() {
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
         <MaquinaForm
           idMaquina={idMaquina}
+          categoriaInicial={categoriaInicial}
           onSubmit={handleSubmit}
-          submitLabel="Cadastrar máquina"
+          submitLabel="Cadastrar"
         />
       </div>
     </div>
+  );
+}
+
+export default function NovaMaquinaPage() {
+  return (
+    <Suspense fallback={null}>
+      <NovaMaquinaInner />
+    </Suspense>
   );
 }

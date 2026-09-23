@@ -36,12 +36,17 @@ export function useCanEdit() {
  * Permissão de CRIAR novos relatórios/análises/inspeções.
  *
  * V45+: usa o flag granular `pode_criar`. Admin sempre pode.
+ *
+ * `exigeEditar`: nos módulos cobertos pelas policies `for all` da v74/v76 o
+ * banco exige `pode_editar` até no INSERT. Passe `{ exigeEditar: true }` para
+ * o botão "Novo" não aparecer para quem o Postgres vai barrar depois.
  */
-export function useCanCreate() {
+export function useCanCreate(opts?: { exigeEditar?: boolean }) {
   const user = useUserStore((s) => s.user);
   if (!user) return false;
   if (user.perfil === "Admin") return true;
-  return user.pode_criar === true;
+  if (user.pode_criar !== true) return false;
+  return opts?.exigeEditar === true ? user.pode_editar === true : true;
 }
 
 /**
@@ -60,23 +65,40 @@ export function useCanDelete() {
 /**
  * Bloqueia páginas de criação pra quem não tem `pode_criar`.
  * Redireciona pra `redirectTo` com toast.
+ *
+ * `exigeEditar`: a RLS da v74/v76 usa policies `for all` com
+ * `caller_pode_editar()` — ou seja, o banco exige `pode_editar` até para
+ * INSERT. Nos módulos cobertos por elas, quem tem só `pode_criar` preenchia
+ * o formulário inteiro e só descobria no submit, com erro de RLS cru vindo
+ * do Postgres. Passe `{ exigeEditar: true }` para barrar na entrada.
  */
-export function useRequireCreate(redirectTo: string = "/inicio") {
+export function useRequireCreate(
+  redirectTo: string = "/inicio",
+  opts?: { exigeEditar?: boolean },
+) {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
   const avisouRef = useRef(false);
+  const exigeEditar = opts?.exigeEditar === true;
 
   useEffect(() => {
     if (!user) return;
     if (user.perfil === "Admin") return;
-    if (user.pode_criar === true) return;
+
+    const podeCriar = user.pode_criar === true;
+    const passaNaRls = !exigeEditar || user.pode_editar === true;
+    if (podeCriar && passaNaRls) return;
 
     if (!avisouRef.current) {
       avisouRef.current = true;
-      toast.error("Você não tem permissão para criar.");
+      toast.error(
+        podeCriar
+          ? "Cadastrar neste módulo exige a permissão de editar. Peça ao administrador."
+          : "Você não tem permissão para criar.",
+      );
     }
     router.replace(redirectTo);
-  }, [user, redirectTo, router]);
+  }, [user, redirectTo, router, exigeEditar]);
 }
 
 /**

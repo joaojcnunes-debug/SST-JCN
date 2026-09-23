@@ -23,7 +23,8 @@ export type ModuloPermitido =
   | "produtividade"
   | "investigacao_acidente"
   | "epi"
-  | "gestao_gerencial";
+  | "gestao_gerencial"
+  | "transferencias";
 
 export const TODOS_MODULOS: ModuloPermitido[] = [
   "painel",
@@ -40,6 +41,7 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "investigacao_acidente",
   "epi",
   "gestao_gerencial",
+  "transferencias",
 ];
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
@@ -57,6 +59,7 @@ export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   produtividade: "Projeção de Produtividade CHABRA",
   epi: "EPI – Equipamentos de Proteção Individual",
   gestao_gerencial: "Gestão Gerencial",
+  transferencias: "Transferência de Equipamentos entre Bases",
 };
 
 // ─── Investigação de Acidente de Trabalho ────────────────────────────────────
@@ -1004,9 +1007,23 @@ export const GRAU_RISCO_MAQUINA_LABELS: Record<GrauRiscoMaquina, string> = {
   CRITICO: "Crítico",
 };
 
+/**
+ * Classificação do item no inventário (abas/categorias do sidebar):
+ *  - equipamentos: material interno da JCN Consultoria
+ *  - maquinas:     material de clientes
+ *  - medicoes:     instrumentos de medição
+ */
+export type CategoriaInventario = "equipamentos" | "maquinas" | "medicoes";
+
+export const CATEGORIA_INVENTARIO_LABELS: Record<CategoriaInventario, string> = {
+  equipamentos: "Equipamentos",
+  maquinas: "Máquinas",
+  medicoes: "Medição",
+};
+
 export interface Maquina {
   id_maquina: string;
-  /** NULL = patrimônio interno da Chabra; preenchido = máquina de cliente. */
+  /** NULL = patrimônio interno da JCN; preenchido = máquina de cliente. */
   id_empresa: string | null;
   /** Origem da importação (v66): inspeção de onde a máquina veio, se importada. */
   id_inspecao: string | null;
@@ -1017,6 +1034,8 @@ export interface Maquina {
   nome: string;
   tipo: string | null;
   categoria: string | null;
+  /** Aba/categoria do inventário: Equipamentos (interno) · Máquinas (cliente) · Medição. */
+  categoria_inventario: CategoriaInventario | null;
   codigo_interno: string | null;
   tag: string | null;
   marca: string | null; // fabricante
@@ -1027,7 +1046,8 @@ export interface Maquina {
   status: StatusMaquina;
 
   // ── Localização e Processo ─────────────────────────────────
-  unidade: string | null;
+  id_unidade: string | null;   // base/unidade (FK unidades) — isolamento e transferência (v152)
+  unidade: string | null;      // espelho em texto do nome da unidade (legado/exibição)
   setor: string | null;
   linha_processo: string | null;
   area: string | null;
