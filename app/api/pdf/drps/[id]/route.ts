@@ -8,6 +8,7 @@ import type {
   DrpsMonitoramento,
   DrpsPlanoMedidas,
   DrpsProbabilidade,
+  DrpsProbabilidadeUnidade,
   DrpsRelatorio,
   DrpsRespondente,
   DrpsRevisao,
@@ -52,6 +53,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       { data: rawRev },
       { data: rawCaps },
       { data: rawPlanoAcao },
+      { data: rawProbUni },
     ] = await Promise.all([
       supabase.from("drps_respondentes").select("*").eq("id_relatorio", id),
       supabase.from("drps_probabilidades").select("*").eq("id_relatorio", id),
@@ -60,6 +62,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       supabase.from("drps_revisao").select("*").eq("id_relatorio", id).maybeSingle(),
       supabase.from("textos_padrao").select("*").eq("modulo", "psicossocial").order("ordem", { ascending: true }),
       supabase.from("drps_plano_acao_5w2h").select("*").eq("id_relatorio", id).order("ordem", { ascending: true }).order("created_at", { ascending: true }),
+      // v150 — overrides de probabilidade por unidade. Vazio nos relatórios
+      // cujo formulário não pergunta a unidade (a grande maioria).
+      supabase.from("drps_probabilidades_unidade").select("*").eq("id_relatorio", id),
     ]);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -77,6 +82,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
     const respondentes = (rawResp ?? []) as unknown as DrpsRespondente[];
     const probabilidades = (rawProb ?? []) as unknown as DrpsProbabilidade[];
+    const probabilidadesUnidade = (rawProbUni ?? []) as unknown as DrpsProbabilidadeUnidade[];
     const planoMedidas = (rawPlano as unknown as DrpsPlanoMedidas) ?? null;
     const monitoramentos = (rawMon ?? []) as unknown as DrpsMonitoramento[];
     const revisao = (rawRev as unknown as DrpsRevisao) ?? null;
@@ -144,6 +150,28 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         )
       : rel.conclusoes_por_setor;
 
+    // Mesmo tratamento para as conclusões por unidade (v150), um nível mais
+    // fundo: {unidade: {setor: html}}.
+    const conclusoesPorUnidadeAssinadas = rel.conclusoes_por_unidade_setor
+      ? Object.fromEntries(
+          await Promise.all(
+            Object.entries(
+              rel.conclusoes_por_unidade_setor as Record<string, Record<string, string>>,
+            ).map(async ([unidade, porSetor]) => [
+              unidade,
+              Object.fromEntries(
+                await Promise.all(
+                  Object.entries(porSetor ?? {}).map(
+                    async ([setor, html]) =>
+                      [setor, await assinarImagensHtml(supabase, html)] as const,
+                  ),
+                ),
+              ),
+            ] as const),
+          ),
+        )
+      : null;
+
     const shortId = String(id).replace(/-/g, "").slice(0, 8);
     const identificadorDocumento = `DRPS-${new Date().getFullYear()}-${shortId}`;
 
@@ -165,10 +193,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           medidas_por_setor: rel.medidas_por_setor,
           conclusoes_por_setor: conclusoesPorSetorAssinadas,
           conclusao_geral: conclusaoGeralAssinada,
+          agravos_por_unidade_setor: rel.agravos_por_unidade_setor ?? null,
+          medidas_por_unidade_setor: rel.medidas_por_unidade_setor ?? null,
+          conclusoes_por_unidade_setor: conclusoesPorUnidadeAssinadas,
         },
         empresa,
         respondentes,
         probabilidades,
+        probabilidadesUnidade,
         planoMedidas,
         monitoramentos,
         revisao,

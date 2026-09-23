@@ -10,6 +10,7 @@ import type {
   DrpsMonitoramento,
   DrpsPlanoMedidas,
   DrpsProbabilidade,
+  DrpsProbabilidadeUnidade,
   DrpsRelatorio,
   DrpsRespondente,
   DrpsRevisao,
@@ -221,6 +222,7 @@ export function useDrpsImportar() {
         id_empresa,
         setor: l.setor,
         cargo: l.cargo,
+        unidade_trabalho: l.unidade,
         respostas: l.respostas,
         data_carimbo: l.data_carimbo,
         lote_importacao: lote,
@@ -312,6 +314,99 @@ export function useDrpsSalvarProbabilidade() {
     onSuccess: (_v, args) => {
       qc.invalidateQueries({
         queryKey: ["drps-probabilidades", args.id_relatorio],
+      });
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
+// ============================================================
+// PROBABILIDADES POR UNIDADE — overrides da v150
+// ============================================================
+// Guarda só a exceção: o bloco (unidade, setor) que diverge do valor do setor.
+// Ausência de linha = herda. Ver montarMapaProbUnidade em lib/drps/blocos.ts.
+
+export function useDrpsProbabilidadesUnidade(
+  idRelatorio: string | null | undefined
+) {
+  return useQuery({
+    queryKey: ["drps-probabilidades-unidade", idRelatorio],
+    enabled: !!idRelatorio && DRPS_ID_RE.test(idRelatorio),
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("drps_probabilidades_unidade")
+        .select("*")
+        .eq("id_relatorio", idRelatorio!);
+      if (error) throw error;
+      return (data ?? []) as unknown as DrpsProbabilidadeUnidade[];
+    },
+  });
+}
+
+export interface SalvarProbabilidadeUnidadeArgs {
+  id_relatorio: string;
+  id_empresa: string;
+  unidade: string;
+  setor: string;
+  topico_idx: number;
+  probabilidade: 1 | 2 | 3;
+}
+
+export function useDrpsSalvarProbabilidadeUnidade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: SalvarProbabilidadeUnidadeArgs) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("drps_probabilidades_unidade")
+        .upsert(
+          {
+            id_relatorio: args.id_relatorio,
+            id_empresa: args.id_empresa,
+            unidade: args.unidade,
+            setor: args.setor,
+            topico_idx: args.topico_idx,
+            probabilidade: args.probabilidade,
+            updated_at: new Date().toISOString(),
+          } as never,
+          { onConflict: "id_relatorio,unidade,setor,topico_idx" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: (_v, args) => {
+      qc.invalidateQueries({
+        queryKey: ["drps-probabilidades-unidade", args.id_relatorio],
+      });
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
+/** Remove o override e devolve o bloco à herança do setor. */
+export function useDrpsRemoverProbabilidadeUnidade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id_relatorio: string;
+      unidade: string;
+      setor: string;
+      topico_idx: number;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("drps_probabilidades_unidade")
+        .delete()
+        .eq("id_relatorio", args.id_relatorio)
+        .eq("unidade", args.unidade)
+        .eq("setor", args.setor)
+        .eq("topico_idx", args.topico_idx);
+      if (error) throw error;
+    },
+    onSuccess: (_v, args) => {
+      qc.invalidateQueries({
+        queryKey: ["drps-probabilidades-unidade", args.id_relatorio],
       });
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),

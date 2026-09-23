@@ -31,6 +31,21 @@ export interface DrpsRelatorio {
   conclusoes_por_setor: Record<string, string> | null;
   /** Conclusão técnica consolidada do relatório (todos os setores juntos). */
   conclusao_geral: string | null;
+  /**
+   * v150 — overrides de texto por unidade: {unidade: {setor: texto}}.
+   * Ausente/null = o bloco herda o texto de *_por_setor acima, que continua
+   * sendo a fonte de sempre. Opcionais porque os relatórios anteriores à v150
+   * não têm nada aqui.
+   */
+  agravos_por_unidade_setor?: Record<string, Record<string, string>> | null;
+  medidas_por_unidade_setor?: Record<string, Record<string, string>> | null;
+  conclusoes_por_unidade_setor?: Record<string, Record<string, string>> | null;
+  /**
+   * v150 — true faz o tópico sem nenhuma resposta (n=0) sair como
+   * "Sem análise" em vez de "Baixa". false nos relatórios anteriores, que
+   * reimprimem idênticos.
+   */
+  exibir_sem_analise?: boolean;
   /** Carimbo automático do momento em que o status passou pra CONCLUIDO (V54). */
   data_conclusao: string | null;
   /** Carimbo automático do momento em que o status passou pra ENVIADO_CLIENTE (v110). */
@@ -46,6 +61,9 @@ export interface DrpsRespondente {
   id_empresa: string;
   setor: string;
   cargo: string | null;
+  /** Unidade/local de trabalho informado no Forms (v149). null nos relatórios
+   *  cujo formulário não tem essa pergunta — a maioria. */
+  unidade_trabalho: string | null;
   respostas: number[];
   data_carimbo: string | null;
   importado_em: string;
@@ -55,6 +73,22 @@ export interface DrpsRespondente {
 export interface DrpsProbabilidade {
   id_relatorio: string;
   id_empresa: string;
+  setor: string;
+  topico_idx: number;
+  probabilidade: 1 | 2 | 3;
+  updated_at: string;
+}
+
+/**
+ * Override de probabilidade de um bloco (unidade, setor) — v150.
+ * Só existe quando a psicóloga diverge do valor do setor; a ausência de linha
+ * significa "herda de DrpsProbabilidade". `unidade` nunca é vazia (CHECK no
+ * banco), porque "sem unidade" é justamente o registro de nível setor.
+ */
+export interface DrpsProbabilidadeUnidade {
+  id_relatorio: string;
+  id_empresa: string;
+  unidade: string;
   setor: string;
   topico_idx: number;
   probabilidade: 1 | 2 | 3;

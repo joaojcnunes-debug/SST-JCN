@@ -13,6 +13,13 @@ interface DrpsState {
    */
   setor: string;
   setSetor: (s: string) => void;
+  /**
+   * Unidade de trabalho filtrada (v150). Default "Todas" = não filtra.
+   * Só tem efeito nos relatórios cujo formulário pergunta a unidade; nos
+   * demais o filtro nem aparece e isto fica em "Todas".
+   */
+  unidade: string;
+  setUnidade: (u: string) => void;
 }
 
 export const useDrpsStore = create<DrpsState>()(
@@ -20,6 +27,11 @@ export const useDrpsStore = create<DrpsState>()(
     (set) => ({
       setor: "Todos",
       setSetor: (setor) => set({ setor }),
+      unidade: "Todas",
+      // Trocar de unidade zera o setor: a lista de setores é dependente da
+      // unidade, e um setor da unidade anterior pode não existir na nova
+      // (COZINHA existe em 8 unidades da A.C.F., ESTOQUE em 7).
+      setUnidade: (unidade) => set({ unidade, setor: "Todos" }),
     }),
     { name: "drps-filtro" }
   )

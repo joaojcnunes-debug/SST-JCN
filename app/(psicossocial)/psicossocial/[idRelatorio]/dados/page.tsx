@@ -21,7 +21,7 @@ import {
   useDrpsRespondentes,
 } from "@/lib/hooks/useDrps";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
-import { listarSetores, parsearTexto } from "@/lib/drps/calculos";
+import { listarSetores, listarUnidades, parsearTexto } from "@/lib/drps/calculos";
 import type { DrpsRespondente } from "@/lib/drps/types";
 
 export default function DadosPage({
@@ -48,6 +48,9 @@ export default function DadosPage({
   }, [texto]);
 
   const setores = listarSetores(respondentes);
+  // Vazio quando o formulário não tem a pergunta de unidade — o caso da maioria
+  // dos relatórios. Aí a coluna e o card somem da tela.
+  const unidades = listarUnidades(respondentes);
   const periodo = useMemo(() => {
     if (respondentes.length === 0) return null;
     const datas = respondentes
@@ -99,18 +102,29 @@ export default function DadosPage({
         </h1>
         <p className="text-sm text-gray-600">
           Importe as respostas do Forms colando do Google Sheets ou via CSV.
-          Estrutura esperada: data + setor + cargo + 50 respostas.
+          Estrutura esperada: data + setor + cargo + 50 respostas. Perguntas
+          demográficas extras antes das respostas são aceitas — se uma delas for
+          a unidade de trabalho, ela é reconhecida e gravada.
         </p>
       </div>
 
       <DrpsFiltro idRelatorio={idRelatorio} />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div
+        className={`grid gap-4 ${unidades.length > 0 ? "md:grid-cols-4" : "md:grid-cols-3"}`}
+      >
         <StatCard
           label="Respondentes"
           value={respondentes.length}
           icon={<Database className="size-4" />}
         />
+        {unidades.length > 0 && (
+          <StatCard
+            label="Unidades"
+            value={unidades.length}
+            icon={<Database className="size-4" />}
+          />
+        )}
         <StatCard
           label="Setores"
           value={setores.length}
@@ -209,7 +223,16 @@ export default function DadosPage({
                   <strong>
                     [{previa.diagnostico.colunasPorLinha.join(", ") || "—"}]
                   </strong>{" "}
-                  (esperado 53 por linha)
+                  (53 no formulário padrão; mais que isso = perguntas
+                  demográficas extras, o que é aceito)
+                </li>
+                <li>
+                  Coluna &quot;unidade de trabalho&quot;:{" "}
+                  <strong>
+                    {previa.diagnostico.unidadeColuna
+                      ? `detectada na coluna ${previa.diagnostico.unidadeColuna}`
+                      : "não encontrada — este formulário não pergunta a unidade"}
+                  </strong>
                 </li>
                 {previa.diagnostico.amostraLinha && (
                   <li className="mt-2">
@@ -308,6 +331,9 @@ export default function DadosPage({
             <table className="w-full text-sm">
               <thead className="bg-gray-50 text-xs uppercase text-gray-500">
                 <tr>
+                  {unidades.length > 0 && (
+                    <th className="px-3 py-2 text-left font-medium">Unidade</th>
+                  )}
                   <th className="px-3 py-2 text-left font-medium">Setor</th>
                   <th className="px-3 py-2 text-left font-medium">Cargo</th>
                   <th className="px-3 py-2 text-left font-medium">Carimbo</th>
@@ -323,6 +349,11 @@ export default function DadosPage({
               <tbody className="divide-y divide-gray-100">
                 {respondentes.slice(0, 100).map((r) => (
                   <tr key={r.id_respondente} className="hover:bg-gray-50">
+                    {unidades.length > 0 && (
+                      <td className="px-3 py-2 text-gray-900">
+                        {r.unidade_trabalho ?? "—"}
+                      </td>
+                    )}
                     <td className="px-3 py-2 text-gray-900">{r.setor}</td>
                     <td className="px-3 py-2 text-gray-600">
                       {r.cargo ?? "—"}

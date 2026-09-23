@@ -6,15 +6,20 @@ import { useDrpsStore } from "@/lib/drps/store";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
   useDrpsProbabilidades,
+  useDrpsProbabilidadesUnidade,
   useDrpsRelatorio,
   useDrpsRespondentes,
+  useDrpsRemoverProbabilidadeUnidade,
   useDrpsSalvarProbabilidade,
+  useDrpsSalvarProbabilidadeUnidade,
 } from "@/lib/hooks/useDrps";
 import {
   aplicarMatriz,
   calcularResumoCompleto,
   filtrarPorSetor,
+  filtrarPorUnidade,
 } from "@/lib/drps/calculos";
+import { montarMapaProb, montarMapaProbUnidade } from "@/lib/drps/blocos";
 import { TOPICOS } from "@/lib/drps/topicos";
 import type { NivelProbabilidade } from "@/lib/drps/types";
 
@@ -31,15 +36,24 @@ export default function ResumoPage({
 }) {
   const { idRelatorio } = use(params);
   const setor = useDrpsStore((s) => s.setor);
+  const unidade = useDrpsStore((s) => s.unidade);
   const canEdit = useCanEdit();
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
   const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
+  const { data: overrides = [] } = useDrpsProbabilidadesUnidade(idRelatorio);
   const salvar = useDrpsSalvarProbabilidade();
+  const salvarUnidade = useDrpsSalvarProbabilidadeUnidade();
+  const removerUnidade = useDrpsRemoverProbabilidadeUnidade();
+
+  // Editando uma unidade específica: a gravação vai para a tabela de
+  // overrides (v150), não para o valor do setor — que é o padrão herdado
+  // por TODAS as unidades e não pode ser alterado sem querer daqui.
+  const editandoUnidade = unidade !== "Todas";
 
   const filtrados = useMemo(
-    () => filtrarPorSetor(respondentes, setor),
-    [respondentes, setor]
+    () => filtrarPorSetor(filtrarPorUnidade(respondentes, unidade), setor),
+    [respondentes, unidade, setor]
   );
 
   const topicos = useMemo(
@@ -47,17 +61,24 @@ export default function ResumoPage({
     [filtrados]
   );
 
-  const mapaProb = useMemo(() => {
-    const m: Record<number, 1 | 2 | 3> = {};
-    for (let i = 0; i < TOPICOS.length; i++) m[i] = 1;
-    if (setor === "Todos") return m;
-    for (const p of probabilidades) {
-      if (p.setor === setor) {
-        m[p.topico_idx] = p.probabilidade as 1 | 2 | 3;
-      }
+  const { mapaProb, herdados } = useMemo(() => {
+    const vazio: Record<number, 1 | 2 | 3> = {};
+    for (let i = 0; i < TOPICOS.length; i++) vazio[i] = 1;
+    if (setor === "Todos") return { mapaProb: vazio, herdados: new Set<number>() };
+    if (!editandoUnidade) {
+      return {
+        mapaProb: montarMapaProb(probabilidades, setor),
+        herdados: new Set<number>(),
+      };
     }
-    return m;
-  }, [probabilidades, setor]);
+    const { mapa, herdados: h } = montarMapaProbUnidade(
+      probabilidades,
+      overrides,
+      unidade,
+      setor
+    );
+    return { mapaProb: mapa, herdados: new Set(h) };
+  }, [probabilidades, overrides, setor, unidade, editandoUnidade]);
 
   const topicosComMatriz = useMemo(
     () => aplicarMatriz(topicos, mapaProb),
@@ -80,6 +101,17 @@ export default function ResumoPage({
       </div>
 
       <DrpsFiltro idRelatorio={idRelatorio} />
+
+      {editandoUnidade && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+          Editando <strong>{unidade}</strong>. Cada tópico começa{" "}
+          <strong>herdando</strong> a probabilidade do setor — que continua
+          valendo para as demais unidades. Ao mudar um valor aqui, ele passa a
+          ser próprio desta unidade e o do setor não é alterado. Para editar o
+          valor do setor (o padrão de todas), volte o filtro para{" "}
+          <strong>Todas as unidades</strong>.
+        </div>
+      )}
 
       {respondentes.length === 0 ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -124,6 +156,17 @@ export default function ResumoPage({
                       onChange={(e) => {
                         if (!relatorio) return;
                         const v = Number(e.target.value) as 1 | 2 | 3;
+                        if (editandoUnidade) {
+                          salvarUnidade.mutate({
+                            id_relatorio: idRelatorio,
+                            id_empresa: relatorio.id_empresa,
+                            unidade,
+                            setor,
+                            topico_idx: t.idx,
+                            probabilidade: v,
+                          });
+                          return;
+                        }
                         salvar.mutate({
                           id_relatorio: idRelatorio,
                           id_empresa: relatorio.id_empresa,
@@ -168,6 +211,29 @@ export default function ResumoPage({
                         3 — Alta
                       </option>
                     </select>
+                    {editandoUnidade &&
+                      (herdados.has(t.idx) ? (
+                        <div className="mt-1 text-[10px] font-medium text-gray-400">
+                          herdado do setor
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={!podeEditar}
+                          onClick={() =>
+                            removerUnidade.mutate({
+                              id_relatorio: idRelatorio,
+                              unidade,
+                              setor,
+                              topico_idx: t.idx,
+                            })
+                          }
+                          className="mt-1 text-[10px] font-medium text-verde-primary underline decoration-dotted hover:text-verde-dark disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
+                          title="Descarta o valor próprio desta unidade e volta a usar o valor do setor"
+                        >
+                          próprio · voltar a herdar
+                        </button>
+                      ))}
                   </td>
                   <td className="px-3 py-2 text-center">
                     <span

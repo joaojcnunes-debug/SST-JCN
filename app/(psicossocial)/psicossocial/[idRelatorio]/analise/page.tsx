@@ -31,21 +31,20 @@ import { useAtualizarEmpresa, useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
   useDrpsProbabilidades,
+  useDrpsProbabilidadesUnidade,
   useDrpsRelatorio,
   useDrpsRespondentes,
   useDrpsSalvarRelatorio,
   useDrpsTextoPadrao,
 } from "@/lib/hooks/useDrps";
+import { filtrarPorUnidade, listarSetores } from "@/lib/drps/calculos";
 import {
-  aplicarMatriz,
-  calcularResumoCompleto,
-  filtrarPorSetor,
-  listarSetores,
-} from "@/lib/drps/calculos";
-import {
-  AGRAVOS_OPCOES,
-  TOPICOS,
-} from "@/lib/drps/topicos";
+  montarBlocosPorSetor,
+  montarBlocosPorUnidade,
+  textoDoBloco,
+} from "@/lib/drps/blocos";
+import type { SetorRelatorio } from "@/lib/drps/blocos";
+import { AGRAVOS_OPCOES } from "@/lib/drps/topicos";
 import {
   useMedidasRecomendadasOpcoes,
   MEDIDAS_RECOMENDADAS_BASE,
@@ -64,33 +63,7 @@ import {
   formatCNO,
 } from "@/lib/utils";
 import type { Empresa } from "@/lib/supabase/types";
-import type {
-  DrpsProbabilidade,
-  DrpsRelatorio,
-  StatusRelatorio,
-  TopicoComMatriz,
-} from "@/lib/drps/types";
-
-interface SetorRelatorio {
-  setor: string;
-  totalRespondentes: number;
-  funcoes: string;
-  topicos: TopicoComMatriz[];
-}
-
-function montarMapaProb(
-  probabilidades: DrpsProbabilidade[],
-  setor: string
-): Record<number, 1 | 2 | 3> {
-  const m: Record<number, 1 | 2 | 3> = {};
-  for (let i = 0; i < TOPICOS.length; i++) m[i] = 1;
-  for (const p of probabilidades) {
-    if (p.setor === setor) {
-      m[p.topico_idx] = p.probabilidade as 1 | 2 | 3;
-    }
-  }
-  return m;
-}
+import type { DrpsRelatorio, StatusRelatorio } from "@/lib/drps/types";
 
 /**
  * Separa um texto multi-linha em itens predefinidos e itens extras (manuais).
@@ -136,11 +109,16 @@ export default function AnalisePage({
 }) {
   const { idRelatorio } = use(params);
   const setor = useDrpsStore((s) => s.setor);
+  const unidade = useDrpsStore((s) => s.unidade);
+  // Unidade em foco (undefined quando o filtro está em "Todas"): decide se a
+  // Análise lê/grava o texto por-unidade (v150) ou o valor por-setor de sempre.
+  const unidadeAtiva = unidade !== "Todas" ? unidade : undefined;
   const canEdit = useCanEdit();
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
   const { data: empresa } = useEmpresa(relatorio?.id_empresa);
   const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
+  const { data: overrides = [] } = useDrpsProbabilidadesUnidade(idRelatorio);
   const { data: capitulos = [] } = useDrpsTextoPadrao();
 
   const valoresVars = useMemo(() => {
@@ -244,17 +222,14 @@ export default function AnalisePage({
 
   useEffect(() => {
     if (!relatorio) return;
-    const agravosMap = relatorio.agravos_por_setor ?? {};
-    const medidasMap = relatorio.medidas_por_setor ?? {};
-    const setoresUnicos = new Set<string>([
-      ...Object.keys(agravosMap),
-      ...Object.keys(medidasMap),
-      ...listarSetores(respondentes),
-    ]);
+    // Base = mapas por setor (o padrão herdado por TODAS as unidades).
+    const baseAgravos = relatorio.agravos_por_setor ?? {};
+    const baseMedidas = relatorio.medidas_por_setor ?? {};
     const novos: Record<string, SetorEditor> = {};
-    for (const s of setoresUnicos) {
-      const a = parseMultiSelect(agravosMap[s] ?? null, AGRAVOS_OPCOES);
-      const m = parseMultiSelect(medidasMap[s] ?? null, MEDIDAS_RECOMENDADAS_BASE);
+
+    const montar = (s: string, aRaw: string | null, mRaw: string | null) => {
+      const a = parseMultiSelect(aRaw, AGRAVOS_OPCOES);
+      const m = parseMultiSelect(mRaw, MEDIDAS_RECOMENDADAS_BASE);
       novos[s] = {
         agravosSel: a.selecionados,
         agravosExtras: a.extras,
@@ -263,10 +238,30 @@ export default function AnalisePage({
         novoAgravo: "",
         novaMedida: "",
       };
+    };
+
+    if (unidadeAtiva) {
+      // Editando uma unidade (v150): só os setores DELA, herdando o texto do
+      // setor enquanto a unidade não tiver um valor próprio.
+      const daUnidade = filtrarPorUnidade(respondentes, unidadeAtiva);
+      const agravosUni = relatorio.agravos_por_unidade_setor?.[unidadeAtiva] ?? {};
+      const medidasUni = relatorio.medidas_por_unidade_setor?.[unidadeAtiva] ?? {};
+      for (const s of listarSetores(daUnidade)) {
+        montar(s, agravosUni[s] ?? baseAgravos[s] ?? null, medidasUni[s] ?? baseMedidas[s] ?? null);
+      }
+    } else {
+      const setoresUnicos = new Set<string>([
+        ...Object.keys(baseAgravos),
+        ...Object.keys(baseMedidas),
+        ...listarSetores(respondentes),
+      ]);
+      for (const s of setoresUnicos) {
+        montar(s, baseAgravos[s] ?? null, baseMedidas[s] ?? null);
+      }
     }
     setEditores(novos);
     setDirty(false);
-  }, [relatorio, respondentes]);
+  }, [relatorio, respondentes, unidadeAtiva]);
 
   function getEditor(s: string): SetorEditor {
     return editores[s] ?? editorVazio;
@@ -326,12 +321,33 @@ export default function AnalisePage({
     // estiver concluído (re-clique), preserva o timestamp anterior.
     const concluindoAgora =
       extrasArg?.status === "CONCLUIDO" && relatorio.status !== "CONCLUIDO";
+
+    // v150: numa unidade, grava SÓ no mapa por-unidade e NÃO toca no valor
+    // por-setor herdado. O submapa da unidade é substituído inteiro (o editor já
+    // traz TODOS os setores dela, então isso preserva o "limpar um setor"), e o
+    // spread externo preserva as DEMAIS unidades. Em "Todas", grava no por-setor
+    // exatamente como antes (o editor cobre todos os setores da base).
+    const destino: Partial<DrpsRelatorio> = unidadeAtiva
+      ? {
+          agravos_por_unidade_setor: {
+            ...(relatorio.agravos_por_unidade_setor ?? {}),
+            [unidadeAtiva]: agravosMap,
+          },
+          medidas_por_unidade_setor: {
+            ...(relatorio.medidas_por_unidade_setor ?? {}),
+            [unidadeAtiva]: medidasMap,
+          },
+        }
+      : {
+          agravos_por_setor: agravosMap,
+          medidas_por_setor: medidasMap,
+        };
+
     salvar.mutate(
       {
         id_relatorio: idRelatorio,
         id_empresa: relatorio.id_empresa,
-        agravos_por_setor: agravosMap,
-        medidas_por_setor: medidasMap,
+        ...destino,
         ...(extrasArg?.status ? { status: extrasArg.status } : {}),
         ...(concluindoAgora
           ? { data_conclusao: new Date().toISOString() }
@@ -341,32 +357,31 @@ export default function AnalisePage({
     );
   }
 
+  // Respondentes do recorte: filtra por unidade quando uma está selecionada, para
+  // a gravidade refletir só aquela unidade (mesmo recorte do Resumo e do laudo).
+  const respDoRecorte = useMemo(
+    () =>
+      unidadeAtiva ? filtrarPorUnidade(respondentes, unidadeAtiva) : respondentes,
+    [respondentes, unidadeAtiva]
+  );
+
   const setoresParaRelatorio = useMemo<string[]>(() => {
-    if (setor === "Todos") return listarSetores(respondentes);
+    if (setor === "Todos") return listarSetores(respDoRecorte);
     return [setor];
-  }, [setor, respondentes]);
+  }, [setor, respDoRecorte]);
 
   const relatoriosPorSetor = useMemo<SetorRelatorio[]>(() => {
-    return setoresParaRelatorio.map((s) => {
-      const filtrados = filtrarPorSetor(respondentes, s);
-      const topicos = calcularResumoCompleto(filtrados);
-      const mapaProb = montarMapaProb(probabilidades, s);
-      const topicosComMatriz = aplicarMatriz(topicos, mapaProb);
-      const cargosSet = new Set<string>();
-      for (const r of filtrados) {
-        if (r.cargo && r.cargo.trim()) cargosSet.add(r.cargo.trim());
-      }
-      const funcoes = Array.from(cargosSet)
-        .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
-        .join(", ");
-      return {
-        setor: s,
-        totalRespondentes: filtrados.length,
-        funcoes,
-        topicos: topicosComMatriz,
-      };
-    });
-  }, [setoresParaRelatorio, respondentes, probabilidades]);
+    if (!unidadeAtiva) {
+      return montarBlocosPorSetor(respondentes, probabilidades, setoresParaRelatorio);
+    }
+    // Por unidade: blocos daquela unidade, com a probabilidade por-unidade
+    // (override v150) na matriz — a mesma conta do Resumo e do laudo.
+    const setores =
+      montarBlocosPorUnidade(respondentes, probabilidades, overrides, [
+        unidadeAtiva,
+      ])[0]?.setores ?? [];
+    return setor === "Todos" ? setores : setores.filter((b) => b.setor === setor);
+  }, [unidadeAtiva, setor, respondentes, probabilidades, overrides, setoresParaRelatorio]);
 
 
   return (
@@ -768,19 +783,36 @@ export default function AnalisePage({
                 ehConsolidado={setor === "Todos"}
                 canEdit={canEdit}
                 cargoResponsavel={metaCargoResponsavel}
-                conclusao={
-                  relatorio?.conclusoes_por_setor?.[r.setor] ?? ""
-                }
+                conclusao={textoDoBloco(
+                  relatorio?.conclusoes_por_unidade_setor,
+                  relatorio?.conclusoes_por_setor,
+                  unidadeAtiva,
+                  r.setor,
+                )}
                 onSalvarConclusao={(texto) => {
                   if (!relatorio || !canEdit) return;
-                  const atual = relatorio.conclusoes_por_setor ?? {};
+                  // v150: numa unidade, grava a conclusão no override por-unidade
+                  // (merge, sem tocar no texto do setor nem nas outras unidades).
+                  const destino: Partial<DrpsRelatorio> = unidadeAtiva
+                    ? {
+                        conclusoes_por_unidade_setor: {
+                          ...(relatorio.conclusoes_por_unidade_setor ?? {}),
+                          [unidadeAtiva]: {
+                            ...(relatorio.conclusoes_por_unidade_setor?.[unidadeAtiva] ?? {}),
+                            [r.setor]: texto,
+                          },
+                        },
+                      }
+                    : {
+                        conclusoes_por_setor: {
+                          ...(relatorio.conclusoes_por_setor ?? {}),
+                          [r.setor]: texto,
+                        },
+                      };
                   salvar.mutate({
                     id_relatorio: idRelatorio,
                     id_empresa: relatorio.id_empresa,
-                    conclusoes_por_setor: {
-                      ...atual,
-                      [r.setor]: texto,
-                    },
+                    ...destino,
                   });
                 }}
                 editor={(() => {
@@ -1281,7 +1313,12 @@ function BlocoSetor({
                 />
               </div>
               <div className="hidden whitespace-pre-wrap print:block">
-                {drpsRel?.agravos_por_setor?.[relatorio.setor] ?? ""}
+                {textoDoBloco(
+                  drpsRel?.agravos_por_unidade_setor,
+                  drpsRel?.agravos_por_setor,
+                  relatorio.unidade,
+                  relatorio.setor,
+                )}
               </div>
             </td>
           </tr>
@@ -1311,7 +1348,12 @@ function BlocoSetor({
                 />
               </div>
               <div className="hidden whitespace-pre-wrap print:block">
-                {drpsRel?.medidas_por_setor?.[relatorio.setor] ?? ""}
+                {textoDoBloco(
+                  drpsRel?.medidas_por_unidade_setor,
+                  drpsRel?.medidas_por_setor,
+                  relatorio.unidade,
+                  relatorio.setor,
+                )}
               </div>
             </td>
           </tr>

@@ -22,20 +22,21 @@ import { useDrpsStore } from "@/lib/drps/store";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import {
   useDrpsProbabilidades,
+  useDrpsProbabilidadesUnidade,
   useDrpsRelatorio,
   useDrpsRespondentes,
 } from "@/lib/hooks/useDrps";
 import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
+import { listarSetores, listarUnidades } from "@/lib/drps/calculos";
 import {
-  aplicarMatriz,
-  calcularResumoCompleto,
-  filtrarPorSetor,
-  listarSetores,
-} from "@/lib/drps/calculos";
+  montarBlocosPorSetor,
+  montarBlocosPorUnidade,
+  textoDoBloco,
+} from "@/lib/drps/blocos";
+import type { SetorRelatorio } from "@/lib/drps/blocos";
 import { montarValoresVariaveis, substituirVariaveis, substituirVariaveisTexto } from "@/lib/drps/variaveis";
 import { detectRegistroTipo } from "@/lib/registro-profissional";
-import { TOPICOS } from "@/lib/drps/topicos";
 import {
   formatCNPJ,
   formatCPF,
@@ -44,30 +45,7 @@ import {
   formatCNO,
 } from "@/lib/utils";
 import type { Empresa } from "@/lib/supabase/types";
-import type {
-  DrpsProbabilidade,
-  DrpsRelatorio,
-  TopicoComMatriz,
-} from "@/lib/drps/types";
-
-interface SetorRelatorio {
-  setor: string;
-  totalRespondentes: number;
-  funcoes: string;
-  topicos: TopicoComMatriz[];
-}
-
-function montarMapaProb(
-  probabilidades: DrpsProbabilidade[],
-  setor: string
-): Record<number, 1 | 2 | 3> {
-  const m: Record<number, 1 | 2 | 3> = {};
-  for (let i = 0; i < TOPICOS.length; i++) m[i] = 1;
-  for (const p of probabilidades) {
-    if (p.setor === setor) m[p.topico_idx] = p.probabilidade as 1 | 2 | 3;
-  }
-  return m;
-}
+import type { DrpsRelatorio } from "@/lib/drps/types";
 
 export default function PsicossocialLaudoPage({
   params,
@@ -76,10 +54,12 @@ export default function PsicossocialLaudoPage({
 }) {
   const { idRelatorio } = use(params);
   const setor = useDrpsStore((s) => s.setor);
+  const unidade = useDrpsStore((s) => s.unidade);
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
   const { data: empresa } = useEmpresa(relatorio?.id_empresa);
   const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
+  const { data: overrides = [] } = useDrpsProbabilidadesUnidade(idRelatorio);
   const valoresVars = useMemo(() => {
     const base = montarValoresVariaveis(empresa, relatorio ?? null);
     const timestamps = respondentes
@@ -101,22 +81,34 @@ export default function PsicossocialLaudoPage({
     return [setor];
   }, [setor, respondentes]);
 
+  // Com unidades (v150), o laudo cascateia Unidade › Setor › Funções. A lista
+  // continua sendo de blocos de setor — cada um agora sabendo a que unidade
+  // pertence —, então tudo que consome relatoriosPorSetor segue funcionando.
+  const temUnidades = useMemo(
+    () => listarUnidades(respondentes).length > 0,
+    [respondentes]
+  );
+
   const relatoriosPorSetor = useMemo<SetorRelatorio[]>(() => {
-    return setoresParaRelatorio.map((s) => {
-      const filtrados = filtrarPorSetor(respondentes, s);
-      const topicos = calcularResumoCompleto(filtrados);
-      const mapaProb = montarMapaProb(probabilidades, s);
-      const topicosComMatriz = aplicarMatriz(topicos, mapaProb);
-      const cargosSet = new Set<string>();
-      for (const r of filtrados) {
-        if (r.cargo && r.cargo.trim()) cargosSet.add(r.cargo.trim());
-      }
-      const funcoes = Array.from(cargosSet)
-        .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
-        .join(", ");
-      return { setor: s, totalRespondentes: filtrados.length, funcoes, topicos: topicosComMatriz };
-    });
-  }, [setoresParaRelatorio, respondentes, probabilidades]);
+    if (!temUnidades) {
+      return montarBlocosPorSetor(respondentes, probabilidades, setoresParaRelatorio);
+    }
+    const blocos = montarBlocosPorUnidade(
+      respondentes,
+      probabilidades,
+      overrides,
+      unidade === "Todas" ? undefined : [unidade]
+    ).flatMap((u) => u.setores);
+    return setor === "Todos" ? blocos : blocos.filter((b) => b.setor === setor);
+  }, [
+    temUnidades,
+    setoresParaRelatorio,
+    respondentes,
+    probabilidades,
+    overrides,
+    unidade,
+    setor,
+  ]);
 
   const { pdfAssinado, recarregar } = usePdfAssinado("drps_relatorios_analise", idRelatorio);
   const { data: pdfCongelado } = usePdfCongelado("drps", idRelatorio);
@@ -197,7 +189,9 @@ export default function PsicossocialLaudoPage({
 
   const sumarioScreenNode = (
     <DrpsSumarioPrint
-      setores={relatoriosPorSetor.map((r) => r.setor)}
+      setores={relatoriosPorSetor.map((r) =>
+        r.unidade ? `${r.unidade} — ${r.setor}` : r.setor
+      )}
       valores={valoresVars}
       temConclusaoGeral={!!relatorio?.conclusao_geral}
       temMedidas={true}
@@ -208,7 +202,7 @@ export default function PsicossocialLaudoPage({
 
   const setoresScreenNode = relatoriosPorSetor.map((r, idx) => (
     <BlocoSetorLaudo
-      key={r.setor}
+      key={r.unidade ? `${r.unidade}||${r.setor}` : r.setor}
       relatorio={r}
       drpsRel={relatorio ?? null}
       empresa={empresa ?? null}
@@ -244,20 +238,25 @@ export default function PsicossocialLaudoPage({
         {numLabel(numPorSlug["drps_caracterizacao"], "Caracterização dos Trabalhadores")}
       </h2>
       <p className="mb-2 text-xs text-gray-600">
-        Distribuição quantitativa dos trabalhadores avaliados por setor e função,
+        Distribuição quantitativa dos trabalhadores avaliados por
+        {temUnidades ? " unidade de trabalho, setor e função" : " setor e função"},
         conforme os respondentes do Diagnóstico de Riscos Psicossociais.
       </p>
       <table className="drps-tabela text-xs">
         <thead>
           <tr>
-            <th className="drps-label" style={{ width: "32%", textAlign: "left" }}>Setor</th>
+            {temUnidades && (
+              <th className="drps-label" style={{ width: "26%", textAlign: "left" }}>Unidade</th>
+            )}
+            <th className="drps-label" style={{ width: temUnidades ? "24%" : "32%", textAlign: "left" }}>Setor</th>
             <th className="drps-label" style={{ textAlign: "left" }}>Funções</th>
             <th className="drps-label" style={{ width: "16%", textAlign: "center" }}>Trabalhadores</th>
           </tr>
         </thead>
         <tbody>
           {relatoriosPorSetor.map((r) => (
-            <tr key={r.setor}>
+            <tr key={r.unidade ? `${r.unidade}||${r.setor}` : r.setor}>
+              {temUnidades && <td>{r.unidade ?? "—"}</td>}
               <td>{r.setor}</td>
               <td>{r.funcoes || "—"}</td>
               <td style={{ textAlign: "center" }}>{r.totalRespondentes}</td>
@@ -266,6 +265,7 @@ export default function PsicossocialLaudoPage({
           <tr>
             <td style={{ fontWeight: 700 }}>Total</td>
             <td />
+            {temUnidades && <td />}
             <td style={{ textAlign: "center", fontWeight: 700 }}>{totalTrabalhadoresScreen}</td>
           </tr>
         </tbody>
@@ -635,6 +635,12 @@ function BlocoSetorLaudo({
             <td className="drps-label">Empresa</td>
             <td colSpan={3}>{empresa?.nome_empresa ?? "—"}</td>
           </tr>
+          {relatorio.unidade && (
+            <tr>
+              <td className="drps-label">Unidade de Trabalho</td>
+              <td colSpan={3}>{relatorio.unidade}</td>
+            </tr>
+          )}
           <tr>
             <td className="drps-label">Setor</td>
             <td colSpan={3}>{relatorio.setor}</td>
@@ -696,20 +702,35 @@ function BlocoSetorLaudo({
           <tr><td className="drps-header-section">Possíveis Agravos à Saúde Mental</td></tr>
           <tr>
             <td className="align-top whitespace-pre-wrap text-[11px]">
-              {drpsRel?.agravos_por_setor?.[relatorio.setor] ?? ""}
+              {textoDoBloco(
+                drpsRel?.agravos_por_unidade_setor,
+                drpsRel?.agravos_por_setor,
+                relatorio.unidade,
+                relatorio.setor
+              )}
             </td>
           </tr>
           <tr><td className="drps-header-section">Medidas de controle recomendadas (medidas que a empresa deve adotar)</td></tr>
           <tr>
             <td className="align-top whitespace-pre-wrap text-[11px]">
-              {drpsRel?.medidas_por_setor?.[relatorio.setor] ?? ""}
+              {textoDoBloco(
+                drpsRel?.medidas_por_unidade_setor,
+                drpsRel?.medidas_por_setor,
+                relatorio.unidade,
+                relatorio.setor
+              )}
             </td>
           </tr>
         </tbody>
       </table>
 
       {(() => {
-        const conclusao = drpsRel?.conclusoes_por_setor?.[relatorio.setor] ?? "";
+        const conclusao = textoDoBloco(
+          drpsRel?.conclusoes_por_unidade_setor,
+          drpsRel?.conclusoes_por_setor,
+          relatorio.unidade,
+          relatorio.setor
+        );
         return (
           <table className="drps-tabela mt-2">
             <tbody>
