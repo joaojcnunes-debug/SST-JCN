@@ -62,7 +62,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       supabase.from("drps_revisao").select("*").eq("id_relatorio", id).maybeSingle(),
       supabase.from("textos_padrao").select("*").eq("modulo", "psicossocial").order("ordem", { ascending: true }),
       supabase.from("drps_plano_acao_5w2h").select("*").eq("id_relatorio", id).order("ordem", { ascending: true }).order("created_at", { ascending: true }),
-      // v150 — overrides de probabilidade por unidade. Vazio nos relatórios
+      // v138 — overrides de probabilidade por unidade. Vazio nos relatórios
       // cujo formulário não pergunta a unidade (a grande maioria).
       supabase.from("drps_probabilidades_unidade").select("*").eq("id_relatorio", id),
     ]);
@@ -150,7 +150,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         )
       : rel.conclusoes_por_setor;
 
-    // Mesmo tratamento para as conclusões por unidade (v150), um nível mais
+    // Mesmo tratamento para as conclusões por unidade (v138), um nível mais
     // fundo: {unidade: {setor: html}}.
     const conclusoesPorUnidadeAssinadas = rel.conclusoes_por_unidade_setor
       ? Object.fromEntries(

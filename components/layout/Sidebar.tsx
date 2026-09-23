@@ -28,6 +28,9 @@ const ACOES: NavItem[] = [
 
 const CONFIGURACAO_BASE: NavItem[] = [
   { href: "/texto-padrao", label: "Texto Padrão", icon: FileEdit, variant: "config" },
+  // Capítulos do PDF do Plano de Ação — módulo próprio, separado do laudo de
+  // inspeção, porque o documento é entregue sozinho.
+  { href: "/acoes/texto-padrao", label: "Texto Padrão — Plano de Ação", icon: FileEdit, variant: "config" },
 ];
 
 const CONFIGURACAO_ADMIN: NavItem[] = [
@@ -44,6 +47,12 @@ export default function Sidebar() {
     { label: "Principal", items: PRINCIPAL },
   ];
   if (canEdit) sections.push({ label: "Ações", items: ACOES });
+
+  // O aviso de "no aparelho" mora na BARRA SUPERIOR (`ModuleTopbar`), não aqui.
+  // Este menu só existe no painel de inspeções, e os outros dezoito módulos têm
+  // menu próprio — repetir o item em cada um seria dezoito chances de esquecer
+  // um e deixar o técnico daquele módulo sem enxergar o que está parado no
+  // celular. A barra superior os dezenove compartilham.
   if (canEdit) {
     sections.push({
       label: "Configuração",
@@ -55,7 +64,7 @@ export default function Sidebar() {
 
   return (
     <SidebarShell
-      title="SST JCN Consultoria"
+      title="Painel SST"
       subtitle="JCN Consultoria"
       logoHref="/dashboard"
       sections={sections}

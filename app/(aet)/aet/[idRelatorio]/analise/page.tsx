@@ -1,9 +1,12 @@
 "use client";
 
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
 import { useEffect, useState, use } from "react";
 import { Save, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
+import { algumaVisivel, perguntaOculta } from "@/lib/aet/checklist";
 import {
   useAetOwasConfig,
   useAetOwasSelects,
@@ -49,7 +52,16 @@ export default function AetAnalisePage({
     CHECKLIST_PERGUNTAS_PADRAO.find((p) => p.slug === slug)?.label ?? "";
 
   const perguntasCustomDaSecao = (secao: string) =>
-    checklistPerguntas.filter((p) => p.secao === secao && !SLUGS_PADRAO.has(p.slug) && p.tipo === "tristate");
+    checklistPerguntas
+      .filter((p) => p.secao === secao && !SLUGS_PADRAO.has(p.slug) && p.tipo === "tristate")
+      .filter((p) => p.oculta !== true);
+
+  // v209: pergunta excluída na tela de configuração não é perguntada aqui — e a
+  // seção que ficou sem nenhuma linha não desenha título. A mesma régua vale na
+  // prévia e no template do PDF (lib/aet/checklist.ts).
+  const oculta = (slug: string) => perguntaOculta(checklistPerguntas, slug);
+  const secaoTemLinha = (slugs: string[], secao: string) =>
+    algumaVisivel(checklistPerguntas, slugs) || perguntasCustomDaSecao(secao).length > 0;
 
   const [setores, setSetores] = useState<AetSetor[]>([]);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
@@ -122,13 +134,7 @@ export default function AetAnalisePage({
     );
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex h-48 items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-gray-400" />
-      </div>
-    );
-  }
+  if (isLoading) return <EditorSkeleton />;
 
   if (setores.length === 0) {
     return (
@@ -234,12 +240,14 @@ export default function AetAnalisePage({
                   </div>
                 </div>
 
-                <TriStateRow
-                  label={pergunta("levantamento_acima_limite")}
-                  value={setor.checklist.levantamento_acima_limite}
-                  disabled={!canEdit}
-                  onChange={(v) => updateChecklist(setor.id, { levantamento_acima_limite: v })}
-                />
+                {!oculta("levantamento_acima_limite") && (
+                  <TriStateRow
+                    label={pergunta("levantamento_acima_limite")}
+                    value={setor.checklist.levantamento_acima_limite}
+                    disabled={!canEdit}
+                    onChange={(v) => updateChecklist(setor.id, { levantamento_acima_limite: v })}
+                  />
+                )}
 
                 <div className="flex items-start gap-3">
                   <span className="flex-1 text-xs text-gray-700">{owasSelects.find(s => s.slug === "trabalho_predominante")?.label ?? "O trabalho executado durante aos chamados decorrentes do dia-dia, são realizados preponderantemente de qual forma?"}</span>
@@ -257,49 +265,59 @@ export default function AetAnalisePage({
                   </select>
                 </div>
 
-                <TriStateRow label={pergunta("pausas_descanso")} value={setor.checklist.pausas_descanso} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_descanso: v })} />
-                <TriStateRow label={pergunta("uso_cadeira")} value={setor.checklist.uso_cadeira} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { uso_cadeira: v })} />
-                <TriStateRow label={pergunta("cadeira_adequada")} value={setor.checklist.cadeira_adequada} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { cadeira_adequada: v })} />
-                <TriStateRow label={pergunta("monitor")} value={setor.checklist.monitor} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { monitor: v })} />
+                {!oculta("pausas_descanso") && <TriStateRow label={pergunta("pausas_descanso")} value={setor.checklist.pausas_descanso} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_descanso: v })} />}
+                {!oculta("uso_cadeira") && <TriStateRow label={pergunta("uso_cadeira")} value={setor.checklist.uso_cadeira} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { uso_cadeira: v })} />}
+                {!oculta("cadeira_adequada") && <TriStateRow label={pergunta("cadeira_adequada")} value={setor.checklist.cadeira_adequada} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { cadeira_adequada: v })} />}
+                {!oculta("monitor") && <TriStateRow label={pergunta("monitor")} value={setor.checklist.monitor} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { monitor: v })} />}
                 {perguntasCustomDaSecao("Postura").map((p) => (
                   <TriStateRow key={p.slug} label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
                 ))}
 
+                {secaoTemLinha(["exigencia_levantamento"], "Exigência de Tempo") && (
                 <div className="mt-1 border-t border-gray-200 pt-3">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Exigência de Tempo</p>
-                  <TriStateRow label={pergunta("exigencia_levantamento")} value={setor.checklist.exigencia_levantamento} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { exigencia_levantamento: v })} />
+                  {!oculta("exigencia_levantamento") && <TriStateRow label={pergunta("exigencia_levantamento")} value={setor.checklist.exigencia_levantamento} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { exigencia_levantamento: v })} />}
                   {perguntasCustomDaSecao("Exigência de Tempo").map((p) => (
                     <TriStateRow key={p.slug} label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
                   ))}
                 </div>
+                )}
 
+                {secaoTemLinha(["ritmo_por_demanda"], "Ritmo de Trabalho") && (
                 <div className="border-t border-gray-200 pt-3">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Ritmo de Trabalho</p>
-                  <TriStateRow label={pergunta("ritmo_por_demanda")} value={setor.checklist.ritmo_por_demanda} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { ritmo_por_demanda: v })} />
+                  {!oculta("ritmo_por_demanda") && <TriStateRow label={pergunta("ritmo_por_demanda")} value={setor.checklist.ritmo_por_demanda} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { ritmo_por_demanda: v })} />}
                   {perguntasCustomDaSecao("Ritmo de Trabalho").map((p) => (
                     <TriStateRow key={p.slug} label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
                   ))}
                 </div>
+                )}
 
+                {secaoTemLinha(["pausas_formais", "rodizios_sistematizados"], "Adoção de Rodízios - Ergonômico") && (
                 <div className="border-t border-gray-200 pt-3">
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Adoção de Rodízios — Ergonômico</p>
-                  <TriStateRow label={pergunta("pausas_formais")} value={setor.checklist.pausas_formais} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_formais: v })} />
+                  {!oculta("pausas_formais") && <TriStateRow label={pergunta("pausas_formais")} value={setor.checklist.pausas_formais} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_formais: v })} />}
+                  {!oculta("rodizios_sistematizados") && (
                   <div className="mt-2">
                     <TriStateRow label={pergunta("rodizios_sistematizados")} value={setor.checklist.rodizios_sistematizados} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { rodizios_sistematizados: v })} />
                   </div>
+                  )}
                   {perguntasCustomDaSecao("Adoção de Rodízios - Ergonômico").map((p) => (
                     <div key={p.slug} className="mt-2">
                       <TriStateRow label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
                     </div>
                   ))}
                 </div>
+                )}
 
+                {!oculta("organizacao_trabalho") && (
                 <div className="border-t border-gray-200 pt-3">
                   <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Organização do Trabalho</p>
                   <p className="text-xs text-gray-600 leading-relaxed">
                     {checklistPerguntas.find(p => p.slug === "organizacao_trabalho")?.label ?? "As normas de produção contemplando equipamentos, modo operatório, aspectos de segurança e qualidade deverão estar descritos nas instruções internas de trabalho, elaboradas pela empresa."}
                   </p>
                 </div>
+                )}
               </div>
 
               {/* Recomendações */}

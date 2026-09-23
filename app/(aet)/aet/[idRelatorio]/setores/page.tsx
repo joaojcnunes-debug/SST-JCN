@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
+import { useEffect, useRef, useState, use } from "react";
 import {
   Plus, Trash2, Save, Loader2, ChevronDown, ChevronUp, X, Camera, Sparkles, Brain,
 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import type { ImagemPendente } from "@/lib/offline/gravar";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import {
@@ -31,11 +34,25 @@ import {
   nivelPgrFromZona,
   SEMAFORO_DEFAULT,
 } from "@/lib/hooks/useAet";
-import { apenasSetoresExistentes, consolidarPiorCaso } from "@/lib/aet/consolidar-psi";
+import {
+  apenasSetoresExistentes,
+  consolidarPiorCaso,
+  mediaFator,
+  recalcularDasRespostas,
+} from "@/lib/aet/consolidar-psi";
+import { algumaVisivel, perguntaOculta } from "@/lib/aet/checklist";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
+import {
+  AlcaReordenar,
+  MarcaDrop,
+  StatusOrdem,
+  useListaReordenavel,
+  type StatusOrdemSalva,
+} from "@/components/ui/ListaReordenavel";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import StorageImg from "@/components/ui/StorageImg";
 import HtmlConteudoAssinado from "@/components/ui/HtmlConteudoAssinado";
+import { htmlParaTexto, htmlVazio, textoParaHtml } from "@/lib/texto-rico";
 import { cn } from "@/lib/utils";
 import type {
   AetSetor,
@@ -117,7 +134,7 @@ function rKey(idSetor: string, codigoFator: string, ordem: number) {
 }
 
 /** Chave de um fator DENTRO de um setor. Observação, pergunta crítica e zona
- *  são por setor (v145) — antes eram indexadas só pelo código do fator, o que
+ *  são por setor (v135) — antes eram indexadas só pelo código do fator, o que
  *  fazia o mesmo texto aparecer em todos os setores do laudo. */
 function fKey(idSetor: string, codigoFator: string) {
   return `${idSetor}:${codigoFator}`;
@@ -141,22 +158,16 @@ function perguntaCriticaAuto(
   return worstTexto;
 }
 
+/** A conta é a MESMA da prévia e do PDF, e mora em lib/aet/consolidar-psi.ts.
+ *  Esta tela é a referência (é o que o técnico vê ao preencher); aqui só muda a
+ *  forma de achar a resposta — mapa em memória em vez de linhas do banco. */
 function calcularMediaFator(
   perguntas: Aet13FatorPergunta[],
   localRespostas: Record<string, number>,
   idSetor: string,
   codigoFator: string
 ): number | null {
-  const pFator = perguntas.filter((p) => p.codigo_fator === codigoFator);
-  if (pFator.length === 0) return null;
-  const scores: number[] = [];
-  for (const p of pFator) {
-    const r = localRespostas[rKey(idSetor, codigoFator, p.ordem)];
-    if (r == null) continue;
-    scores.push(p.logica === "direta" ? 6 - r : r);
-  }
-  if (scores.length === 0) return null;
-  return Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100;
+  return mediaFator(perguntas, codigoFator, (ordem) => localRespostas[rKey(idSetor, codigoFator, ordem)]);
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -194,6 +205,12 @@ export default function AetSetoresPage({
   // Setor accordion: Set de IDs abertos
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
   const [uploadingFoto, setUploadingFoto] = useState<string | null>(null);
+  /**
+   * As fotos anexadas e ainda não enviadas. Ficam fora do jsonb de propósito:
+   * o jsonb guarda a URL (que já é conhecida), e o arquivo viaja separado até
+   * o `gravar()`, que o leva ao MinIO antes da linha.
+   */
+  const [fotosPendentes, setFotosPendentes] = useState<ImagemPendente[]>([]);
   const [gerandoIA, setGerandoIA] = useState<string | null>(null);
 
   // PSI: fator cards — chave `${setorId}:${codigoFator}`
@@ -202,7 +219,7 @@ export default function AetSetoresPage({
   const [metaAberta, setMetaAberta] = useState(false);
 
   const [localRespostas, setLocalRespostas] = useState<Record<string, number>>({});
-  // Keyed por codigoFator — limitação do schema (sem id_setor na tabela)
+  // Keyed por fKey(setorId, codigoFator) — um valor por SETOR, não por laudo.
   const [observacoes, setObservacoes] = useState<Record<string, string>>({});
   const [perguntasCriticas, setPerguntasCriticas] = useState<Record<string, string>>({});
   const [zonasManuais, setZonasManuais] = useState<Record<string, ZonaPsi | null>>({});
@@ -224,13 +241,17 @@ export default function AetSetoresPage({
 
   // ─── Effects ──────────────────────────────────────────────────────────────
 
+  // Só carrega o estado local UMA vez por relatório. Antes isso rodava a cada
+  // objeto novo vindo do cache — com o auto-save da ordem, cada arrasto
+  // remontaria a lista e fecharia o setor que estivesse aberto.
+  const carregado = useRef<string | null>(null);
   useEffect(() => {
-    if (rel) {
-      setSetores(rel.setores ?? []);
-      if (rel.setores?.length) setAbertos(new Set([rel.setores[0].id]));
-      setConsideracoes(rel.consideracoes_finais ?? "");
-    }
-  }, [rel]);
+    if (!rel || carregado.current === idRelatorio) return;
+    carregado.current = idRelatorio;
+    setSetores(rel.setores ?? []);
+    if (rel.setores?.length) setAbertos(new Set([rel.setores[0].id]));
+    setConsideracoes(rel.consideracoes_finais ?? "");
+  }, [rel, idRelatorio]);
 
   useEffect(() => {
     if (qpsMeta) {
@@ -258,24 +279,11 @@ export default function AetSetoresPage({
     });
   }, [respostasDB]);
 
-  // Auto-fill pergunta crítica para setores abertos
-  useEffect(() => {
-    if (perguntas.length === 0 || abertos.size === 0) return;
-    setPerguntasCriticas((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      for (const setorId of Array.from(abertos)) {
-        for (const fator of fatores) {
-          if (fator.codigo === "F13") continue;
-          const k = fKey(setorId, fator.codigo);
-          if (prev[k]) continue;
-          const auto = perguntaCriticaAuto(perguntas, localRespostas, setorId, fator.codigo);
-          if (auto) { next[k] = auto; changed = true; }
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [localRespostas, abertos, fatores, perguntas]);
+  // A "Pergunta Crítica" saiu da tela (a pergunta já está na lista do próprio
+  // fator, logo acima). O auto-preenchimento foi removido junto: nenhum fator
+  // novo passa a gravar o campo. O estado continua existindo só para devolver
+  // intacto no upsert o que já está gravado — sem isso, salvar um fator antigo
+  // apagaria o texto que ainda é impresso no laudo e no PDF.
 
   useEffect(() => {
     const obs: Record<string, string> = {};
@@ -283,7 +291,9 @@ export default function AetSetoresPage({
     const zm: Record<string, ZonaPsi | null> = {};
     for (const fp of fatoresPsi) {
       const k = fKey(fp.id_setor, fp.codigo_fator);
-      obs[k] = fp.observacao ?? "";
+      // Observação virou campo com formatação: o que já está gravado em texto
+      // puro entra no editor como parágrafo (só vira HTML no banco ao salvar).
+      obs[k] = textoParaHtml(fp.observacao);
       pc[k] = fp.pergunta_critica ?? "";
       if (fp.codigo_fator === "F13") zm[k] = fp.zona ?? null;
     }
@@ -302,9 +312,17 @@ export default function AetSetoresPage({
     CHECKLIST_PERGUNTAS_PADRAO.find((p) => p.slug === slug)?.label ?? "";
 
   const perguntasCustomDaSecao = (secao: string) =>
-    checklistPerguntas.filter(
-      (p) => p.secao === secao && !SLUGS_PADRAO.has(p.slug) && p.tipo === "tristate"
-    );
+    checklistPerguntas
+      .filter((p) => p.secao === secao && !SLUGS_PADRAO.has(p.slug) && p.tipo === "tristate")
+      .filter((p) => p.oculta !== true);
+
+  // v209: esta tela é a QUARTA que desenha o checklist (com a de análise, a
+  // prévia e o template do PDF). Foi a que eu esqueci no primeiro corte — sem
+  // isto, a pergunta excluída sumia do laudo e continuava sendo PERGUNTADA
+  // aqui. Achado varrendo o próprio trabalho, em 11/09.
+  const oculta = (slug: string) => perguntaOculta(checklistPerguntas, slug);
+  const secaoTemLinha = (slugs: string[], secao: string) =>
+    algumaVisivel(checklistPerguntas, slugs) || perguntasCustomDaSecao(secao).length > 0;
 
   const adesaoPct =
     meta.n_respondentes && meta.total_elegivel && meta.total_elegivel > 0
@@ -320,6 +338,44 @@ export default function AetSetoresPage({
       return next;
     });
   }
+
+  // ─── Ordem dos setores ──────────────────────────────────────────────────────
+  // A ordem é a posição no array `setores` (jsonb): a tela, a prévia do laudo e
+  // o PDF percorrem o mesmo array. Decisão de 12/08/2026: salva sozinho, sem
+  // depender do botão Salvar.
+
+  const [statusOrdem, setStatusOrdem] = useState<StatusOrdemSalva>("parado");
+  const limparStatus = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function salvarOrdem(novos: AetSetor[]) {
+    if (limparStatus.current) clearTimeout(limparStatus.current);
+    setStatusOrdem("salvando");
+    try {
+      // As fotos pendentes vão junto: o auto-save grava o jsonb, e o jsonb já
+      // carrega a URL delas. Gravar a ordem sem levar os arquivos publicaria
+      // no laudo uma foto apontando para o nada até o salvamento seguinte.
+      await salvar.mutateAsync({
+        id: idRelatorio,
+        patch: { setores: novos },
+        silencioso: true,
+        imagens: fotosPendentes,
+      });
+      setFotosPendentes([]);
+      setStatusOrdem("salvo");
+      limparStatus.current = setTimeout(() => setStatusOrdem("parado"), 2500);
+    } catch {
+      // A ordem nova CONTINUA na tela — o arrasto não se perde. O aviso vermelho
+      // é para o usuário saber que ainda precisa apertar Salvar.
+      setStatusOrdem("erro");
+    }
+  }
+
+  const reordenar = useListaReordenavel({
+    itens: setores,
+    aoReordenar: setSetores,
+    aoSalvar: salvarOrdem,
+    habilitado: canEdit,
+  });
 
   function addSetor() {
     const novo = setorVazio();
@@ -400,26 +456,30 @@ export default function AetSetoresPage({
     });
   }
 
+  /**
+   * A foto do posto de trabalho não sobe mais no momento em que é escolhida.
+   *
+   * Antes ia direto ao MinIO ali — e sem sinal falhava com o técnico ainda
+   * diante do posto, que é exatamente onde a foto do AET é tirada. Agora o
+   * caminho e a URL são decididos aqui (montagem de string, sem rede), a URL
+   * entra no jsonb do setor, e o arquivo segue junto no próximo salvamento.
+   */
   async function addFoto(setorId: string, file: File) {
     if (uploadingFoto) return;
     setUploadingFoto(setorId);
-    const loadId = toast.loading("Enviando foto...");
     try {
       const supabase = createSupabaseBrowserClient();
       const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `aet-setores/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage
-        .from("fotos")
-        .upload(path, file, { cacheControl: "31536000", upsert: false });
-      if (error) throw error;
-      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      const caminho = `aet-setores/${crypto.randomUUID()}.${ext}`;
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(caminho);
       if (!pub?.publicUrl) throw new Error("URL pública não retornada");
       const setor = setores.find((s) => s.id === setorId);
       if (!setor) return;
+      setFotosPendentes((antes) => [...antes, { blob: file, caminho }]);
       updateSetor(setorId, { fotos: [...(setor.fotos ?? []), pub.publicUrl] });
-      toast.success("Foto adicionada", { id: loadId });
+      toast.success("Foto anexada — sobe ao salvar");
     } catch (err) {
-      toast.error(mensagemErro(err, "Falha no upload"), { id: loadId });
+      toast.error(mensagemErro(err, "Falha ao anexar a foto"));
     } finally {
       setUploadingFoto(null);
     }
@@ -481,9 +541,13 @@ export default function AetSetoresPage({
 
   function handleSave() {
     salvar.mutate(
-      { id: idRelatorio, patch: { setores } },
+      { id: idRelatorio, patch: { setores }, imagens: fotosPendentes },
       {
-        onSuccess: () => toast.success("Salvo com sucesso"),
+        // O aviso de sucesso sai do próprio hook, que sabe se foi para o
+        // servidor ou para o aparelho. A lista de pendentes só é limpa aqui, e
+        // só no sucesso: se a gravação falhar, as fotos continuam esperando o
+        // próximo salvamento em vez de sumirem em silêncio.
+        onSuccess: () => setFotosPendentes([]),
         onError: (e: Error) => toast.error(mensagemErro(e)),
       }
     );
@@ -513,13 +577,22 @@ export default function AetSetoresPage({
         };
       });
 
-      // v145: há uma linha por (setor, fator). Consolida pelo pior caso antes de
+      // v135: há uma linha por (setor, fator). Consolida pelo pior caso antes de
       // mandar à IA — senão o prompt recebe o mesmo fator repetido N vezes, sem
       // nada que os distinga.
+      //
+      // A zona vem RECALCULADA das respostas, igual ao laudo desde a v0.3.583:
+      // a gravada é um retrato do último "Salvar Fxx" e uma linha da base
+      // estava 2 zonas fora. Sem isto a IA escreveria as Considerações citando
+      // um fator que o próprio laudo imprime como verde.
       const fatoresPsiCtx = consolidarPiorCaso(
-        apenasSetoresExistentes(
-          fatoresPsi.filter((fp) => fp.avaliado),
-          setores.map((s) => s.id),
+        recalcularDasRespostas(
+          apenasSetoresExistentes(
+            fatoresPsi.filter((fp) => fp.avaliado),
+            setores.map((s) => s.id),
+          ),
+          perguntas,
+          respostasDB,
         ),
       )
         .filter((fp) => fp.zona && fp.zona !== "verde")
@@ -636,7 +709,8 @@ export default function AetSetoresPage({
           media: mediaCalc,
           pct_zona_risco: null,
           pergunta_critica: perguntasCriticas[fatorKey] || null,
-          observacao: observacoes[fatorKey] || null,
+          // `<p></p>` (editor esvaziado) é truthy mas não imprime nada.
+          observacao: htmlVazio(observacoes[fatorKey]) ? null : observacoes[fatorKey],
           zona,
         }),
       ]);
@@ -668,13 +742,18 @@ export default function AetSetoresPage({
           media: mediaCalc,
           zona,
           nivel_pgr: nivelPgrFromZona(zona),
-          pergunta_critica: perguntasCriticas[fatorKey] || null,
-          textoAtual: observacoes[fatorKey] || null,
+          // O campo saiu da tela, mas a IA continua recebendo a pergunta de pior
+          // score: usa o que já estiver gravado ou calcula na hora.
+          pergunta_critica:
+            perguntasCriticas[fatorKey] ||
+            perguntaCriticaAuto(perguntas, localRespostas, setorId, codigoFator),
+          // A IA recebe o texto limpo — as tags do editor não vão no prompt.
+          textoAtual: htmlParaTexto(observacoes[fatorKey]) || null,
         },
       });
       if (error) throw error;
       const obs = data?.data?.observacao ?? data?.observacao ?? "";
-      if (obs) setObservacoes((prev) => ({ ...prev, [fatorKey]: obs }));
+      if (obs) setObservacoes((prev) => ({ ...prev, [fatorKey]: textoParaHtml(obs) }));
       else toast.error("IA não retornou texto");
     } catch {
       toast.error("Erro ao gerar com IA");
@@ -685,21 +764,18 @@ export default function AetSetoresPage({
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
-  if (isLoading) {
-    return (
-      <div className="flex h-48 items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-gray-400" />
-      </div>
-    );
-  }
+  if (isLoading) return <EditorSkeleton />;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4">
+    <div className="mx-auto max-w-5xl space-y-4" {...reordenar.propsContainer()}>
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-gray-900">Setores / Riscos</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg font-semibold text-gray-900">Setores / Riscos</h1>
+            <StatusOrdem status={statusOrdem} />
+          </div>
           <p className="text-xs text-gray-500">Seções 9 e 13 — agentes ambientais, OWAS, checklist, recomendações e 13 Fatores PSI por setor</p>
         </div>
         <div className="flex gap-2">
@@ -847,23 +923,55 @@ export default function AetSetoresPage({
           Nenhum setor adicionado. {canEdit && "Clique em \"+ Setor\" para começar."}
         </div>
       ) : (
-        setores.map((setor, idx) => (
-          <div key={setor.id} className="rounded-xl border border-gray-200 bg-white shadow-sm">
-            {/* Header */}
-            <button
-              type="button"
+        setores.map((setor, idx) => {
+          // Setor aberto fecha enquanto se arrasta: um cartão expandido passa de
+          // mil pixels de altura e fica impossível de arrastar.
+          const open = abertos.has(setor.id) && !reordenar.arrastandoId;
+          const marca = reordenar.marcaDrop(setor.id);
+          return (
+          <div
+            key={setor.id}
+            {...reordenar.propsItem(setor.id)}
+            className={cn(
+              "group/setor relative rounded-xl border border-gray-200 bg-white shadow-sm transition",
+              reordenar.arrastandoId === setor.id && "border-dashed border-emerald-400 opacity-40",
+              reordenar.recemMovidoId === setor.id && "ring-2 ring-emerald-400",
+            )}
+          >
+            {marca && <MarcaDrop lado={marca} posicao={reordenar.posicaoDaMarca(setor.id)} />}
+
+            {/* Header — div, e não button: a alça de arrastar é um <button> e
+                botão dentro de botão é HTML inválido. */}
+            <div
+              role="button"
+              tabIndex={0}
               onClick={() => toggle(setor.id)}
-              className="flex w-full items-center justify-between px-5 py-3 text-left"
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" && e.key !== " ") return;
+                e.preventDefault();
+                toggle(setor.id);
+              }}
+              className="flex w-full cursor-pointer items-center justify-between gap-3 px-5 py-3 text-left"
             >
-              <span className="font-semibold text-gray-900">
-                Setor {idx + 1}: {setor.nome_setor || <span className="italic text-gray-400">Sem nome</span>}
-                {setor.cargos.length > 0 && (
-                  <span className="ml-2 text-sm font-normal text-gray-500">
-                    — {setor.cargos.map((c) => c.nome).filter(Boolean).join(", ")}
-                  </span>
-                )}
+              <span className="flex min-w-0 items-center gap-3">
+                <AlcaReordenar
+                  numero={idx + 1}
+                  total={setores.length}
+                  nome={setor.nome_setor || "setor sem nome"}
+                  desabilitado={!canEdit}
+                  onMover={(passo) => reordenar.moverTeclado(setor.id, passo)}
+                  {...reordenar.propsAlca(setor.id)}
+                />
+                <span className="min-w-0 font-semibold text-gray-900">
+                  {setor.nome_setor || <span className="italic text-gray-400">Sem nome</span>}
+                  {setor.cargos.length > 0 && (
+                    <span className="ml-2 text-sm font-normal text-gray-500">
+                      — {setor.cargos.map((c) => c.nome).filter(Boolean).join(", ")}
+                    </span>
+                  )}
+                </span>
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 {canEdit && (
                   <span
                     role="button"
@@ -875,11 +983,11 @@ export default function AetSetoresPage({
                     <Trash2 className="size-4" />
                   </span>
                 )}
-                {abertos.has(setor.id) ? <ChevronUp className="size-4 text-gray-400" /> : <ChevronDown className="size-4 text-gray-400" />}
+                {open ? <ChevronUp className="size-4 text-gray-400" /> : <ChevronDown className="size-4 text-gray-400" />}
               </div>
-            </button>
+            </div>
 
-            {abertos.has(setor.id) && (
+            {open && (
               <div className="border-t border-gray-100 px-5 pb-6 pt-4 space-y-6">
 
                 {/* ── Dados do setor ── */}
@@ -1068,7 +1176,7 @@ export default function AetSetoresPage({
                       <span className="w-7 text-center">N/A</span>
                     </div>
                   </div>
-                  <TriStateRow label={pergunta("levantamento_acima_limite")} value={setor.checklist.levantamento_acima_limite} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { levantamento_acima_limite: v })} />
+                  {!oculta("levantamento_acima_limite") && <TriStateRow label={pergunta("levantamento_acima_limite")} value={setor.checklist.levantamento_acima_limite} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { levantamento_acima_limite: v })} />}
                   <div className="flex items-start gap-3">
                     <span className="flex-1 text-xs text-gray-700">{owasSelects.find((s) => s.slug === "trabalho_predominante")?.label ?? "O trabalho executado durante aos chamados decorrentes do dia-dia, são realizados preponderantemente de qual forma?"}</span>
                     <select value={setor.checklist.trabalho_predominante} disabled={!canEdit}
@@ -1077,39 +1185,48 @@ export default function AetSetoresPage({
                       {selectOpts("trabalho_predominante").map((o) => <option key={o}>{o}</option>)}
                     </select>
                   </div>
-                  <TriStateRow label={pergunta("pausas_descanso")} value={setor.checklist.pausas_descanso} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_descanso: v })} />
-                  <TriStateRow label={pergunta("uso_cadeira")} value={setor.checklist.uso_cadeira} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { uso_cadeira: v })} />
-                  <TriStateRow label={pergunta("cadeira_adequada")} value={setor.checklist.cadeira_adequada} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { cadeira_adequada: v })} />
-                  <TriStateRow label={pergunta("monitor")} value={setor.checklist.monitor} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { monitor: v })} />
+                  {!oculta("pausas_descanso") && <TriStateRow label={pergunta("pausas_descanso")} value={setor.checklist.pausas_descanso} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_descanso: v })} />}
+                  {!oculta("uso_cadeira") && <TriStateRow label={pergunta("uso_cadeira")} value={setor.checklist.uso_cadeira} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { uso_cadeira: v })} />}
+                  {!oculta("cadeira_adequada") && <TriStateRow label={pergunta("cadeira_adequada")} value={setor.checklist.cadeira_adequada} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { cadeira_adequada: v })} />}
+                  {!oculta("monitor") && <TriStateRow label={pergunta("monitor")} value={setor.checklist.monitor} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { monitor: v })} />}
                   {perguntasCustomDaSecao("Postura").map((p) => (
                     <TriStateRow key={p.slug} label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
                   ))}
+                  {secaoTemLinha(["exigencia_levantamento"], "Exigência de Tempo") && (
                   <div className="mt-1 border-t border-gray-200 pt-3">
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Exigência de Tempo</p>
-                    <TriStateRow label={pergunta("exigencia_levantamento")} value={setor.checklist.exigencia_levantamento} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { exigencia_levantamento: v })} />
+                    {!oculta("exigencia_levantamento") && <TriStateRow label={pergunta("exigencia_levantamento")} value={setor.checklist.exigencia_levantamento} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { exigencia_levantamento: v })} />}
                     {perguntasCustomDaSecao("Exigência de Tempo").map((p) => (
                       <TriStateRow key={p.slug} label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
                     ))}
                   </div>
+                  )}
+                  {secaoTemLinha(["ritmo_por_demanda"], "Ritmo de Trabalho") && (
                   <div className="border-t border-gray-200 pt-3">
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Ritmo de Trabalho</p>
-                    <TriStateRow label={pergunta("ritmo_por_demanda")} value={setor.checklist.ritmo_por_demanda} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { ritmo_por_demanda: v })} />
+                    {!oculta("ritmo_por_demanda") && <TriStateRow label={pergunta("ritmo_por_demanda")} value={setor.checklist.ritmo_por_demanda} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { ritmo_por_demanda: v })} />}
                     {perguntasCustomDaSecao("Ritmo de Trabalho").map((p) => (
                       <TriStateRow key={p.slug} label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
                     ))}
                   </div>
+                  )}
+                  {secaoTemLinha(["pausas_formais", "rodizios_sistematizados"], "Adoção de Rodízios - Ergonômico") && (
                   <div className="border-t border-gray-200 pt-3">
                     <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">Adoção de Rodízios — Ergonômico</p>
-                    <TriStateRow label={pergunta("pausas_formais")} value={setor.checklist.pausas_formais} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_formais: v })} />
+                    {!oculta("pausas_formais") && <TriStateRow label={pergunta("pausas_formais")} value={setor.checklist.pausas_formais} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { pausas_formais: v })} />}
+                    {!oculta("rodizios_sistematizados") && (
                     <div className="mt-2">
                       <TriStateRow label={pergunta("rodizios_sistematizados")} value={setor.checklist.rodizios_sistematizados} disabled={!canEdit} onChange={(v) => updateChecklist(setor.id, { rodizios_sistematizados: v })} />
                     </div>
+                    )}
                     {perguntasCustomDaSecao("Adoção de Rodízios - Ergonômico").map((p) => (
                       <div key={p.slug} className="mt-2">
                         <TriStateRow label={p.label} value={setor.respostas_extras?.[p.slug] ?? "nao"} disabled={!canEdit} onChange={(v) => updateRespostaExtra(setor.id, p.slug, v)} />
                       </div>
                     ))}
                   </div>
+                  )}
+                  {!oculta("organizacao_trabalho") && (
                   <div className="border-t border-gray-200 pt-3">
                     <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Organização do Trabalho</p>
                     <p className="text-xs text-gray-600 leading-relaxed">
@@ -1117,6 +1234,7 @@ export default function AetSetoresPage({
                         "As normas de produção contemplando equipamentos, modo operatório, aspectos de segurança e qualidade deverão estar descritos nas instruções internas de trabalho, elaboradas pela empresa."}
                     </p>
                   </div>
+                  )}
                 </div>
 
                 {/* ── Parecer, Recomendações, Demais Condições ── */}
@@ -1274,15 +1392,6 @@ export default function AetSetoresPage({
                                 )}
 
                                 <div className="space-y-3 border-t border-gray-100 pt-4">
-                                  {!isF13 && (
-                                    <div>
-                                      <label className="mb-1 block text-xs font-medium text-gray-600">Pergunta Crítica</label>
-                                      <textarea rows={2} value={perguntasCriticas[fatorKey] ?? ""}
-                                        onChange={(e) => setPerguntasCriticas((prev) => ({ ...prev, [fatorKey]: e.target.value }))}
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none resize-y"
-                                        placeholder="Pergunta com pior score neste fator…" />
-                                    </div>
-                                  )}
                                   <div>
                                     <div className="mb-1 flex items-center justify-between gap-2">
                                       <label className="text-xs font-medium text-gray-600">Observação / Análise</label>
@@ -1294,9 +1403,11 @@ export default function AetSetoresPage({
                                         </button>
                                       )}
                                     </div>
-                                    <textarea rows={3} value={observacoes[fatorKey] ?? ""}
-                                      onChange={(e) => setObservacoes((prev) => ({ ...prev, [fatorKey]: e.target.value }))}
-                                      className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none"
+                                    <RichTextEditor
+                                      value={observacoes[fatorKey] ?? ""}
+                                      onChange={(html) => setObservacoes((prev) => ({ ...prev, [fatorKey]: html }))}
+                                      readOnly={!canEdit}
+                                      uploadPathPrefix="aet-psicossocial"
                                       placeholder="Análise, contexto e achados relevantes…" />
                                   </div>
                                   <div className="flex justify-end">
@@ -1374,7 +1485,8 @@ export default function AetSetoresPage({
               </div>
             )}
           </div>
-        ))
+          );
+        })
       )}
 
       {/* ── Considerações Finais (sempre o último) ── */}

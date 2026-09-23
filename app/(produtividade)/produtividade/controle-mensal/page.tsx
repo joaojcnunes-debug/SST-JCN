@@ -11,6 +11,7 @@ import {
   type ProdSnapshotMensal,
 } from "@/lib/hooks/useProdutividade";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
+import QuadroInspecoesDiaUtil from "@/components/produtividade/QuadroInspecoesDiaUtil";
 
 const MESES_LABEL = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -266,6 +267,9 @@ export default function ControleMensalPage() {
           )}
         </div>
       )}
+
+      {/* Medido no painel (não é digitado): inspeções por técnico por dia útil, por unidade. */}
+      <QuadroInspecoesDiaUtil mes={mes} ano={ano} />
 
       {importOpen && <ImportModal onClose={() => setImportOpen(false)} onApply={aplicarImport} />}
     </div>

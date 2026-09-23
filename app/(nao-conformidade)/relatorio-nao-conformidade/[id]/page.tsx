@@ -1,5 +1,7 @@
 "use client";
 
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
 import { use, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -42,6 +44,7 @@ import {
 import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
 import { useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { LevarParaCampo } from "@/components/ui/LevarParaCampo";
 import type {
   CriticidadeNC,
   RelatorioNaoConformidade,
@@ -50,6 +53,8 @@ import type {
 } from "@/lib/supabase/types";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
+import { buscar } from "@/lib/busca/texto";
 
 const MAX_FOTO_MB = 8;
 
@@ -77,13 +82,7 @@ export default function DetalheNaoConformidadePage({
   const [pickerAberto, setPickerAberto] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ title: string; desc?: string; fn: () => void } | null>(null);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center text-gray-500">
-        <Loader2 className="size-5 animate-spin" /> Carregando...
-      </div>
-    );
-  }
+  if (isLoading) return <EditorSkeleton />;
 
   if (error || !data) {
     return (
@@ -266,6 +265,13 @@ export default function DetalheNaoConformidadePage({
             : null
         }
       />
+
+      {/* Levar para o campo — antes do conteúdo, porque a decisão de copiar o
+          relatório para o aparelho é tomada ANTES de sair da base. Fora do
+          print: não faz sentido no papel. */}
+      <div className="print:hidden">
+        <LevarParaCampo idDocumento={id} dados={data} rotulo="Relatório" />
+      </div>
 
       {/* Cabeçalho */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border-0 print:shadow-none print:p-2">
@@ -1432,17 +1438,14 @@ function ChecklistPicker({
   const checklist = useMemo(() => getChecklistNR(nrCodigo), [nrCodigo]);
   const [busca, setBusca] = useState("");
 
-  const itensFiltrados = useMemo(() => {
-    if (!checklist) return [];
-    const termo = busca.trim().toLowerCase();
-    if (!termo) return checklist.itens;
-    return checklist.itens.filter(
-      (it) =>
-        it.codigo.toLowerCase().includes(termo) ||
-        it.titulo.toLowerCase().includes(termo) ||
-        (it.descricao ?? "").toLowerCase().includes(termo)
-    );
-  }, [checklist, busca]);
+  // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem da norma.
+  const { itens: itensFiltrados, aproximado: buscaAproximada } = useMemo(
+    () =>
+      buscar(checklist?.itens ?? [], busca, (it) => [it.codigo, it.titulo, it.descricao], {
+        manterOrdem: true,
+      }),
+    [checklist, busca],
+  );
 
   if (!checklist) {
     return (
@@ -1514,6 +1517,11 @@ function ChecklistPicker({
           {itensFiltrados.length === 0 && (
             <li className="p-6 text-center text-sm text-gray-500">
               Nenhum item encontrado.
+            </li>
+          )}
+          {buscaAproximada && itensFiltrados.length > 0 && (
+            <li>
+              <AvisoBuscaAproximada aproximado busca={busca} total={itensFiltrados.length} compacto />
             </li>
           )}
           {itensFiltrados.map((it) => {

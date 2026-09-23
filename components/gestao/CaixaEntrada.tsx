@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
-import { Bell, UserPlus, ArrowRightLeft, MessageSquare, AtSign, Check, CheckCheck, CalendarClock, AlertTriangle } from "lucide-react";
-import { PRIORIDADES, type GestaoNotificacao, type GestaoTarefa, type GestaoStatus, type GestaoQuadro } from "@/lib/hooks/useGestao";
+import { useMemo, useState } from "react";
+import { Bell, UserPlus, ArrowRightLeft, MessageSquare, AtSign, Check, CheckCheck, CalendarClock, AlertTriangle, ShieldQuestion, X, ChevronDown, ChevronRight } from "lucide-react";
+import { PRIORIDADES, useAprovacoesPendentes, useDecidirAprovacao, type GestaoAprovacao, type GestaoNotificacao, type GestaoTarefa, type GestaoStatus, type GestaoQuadro } from "@/lib/hooks/useGestao";
+import { useUserStore } from "@/lib/store";
 
 function quando(iso: string): string {
   const d = new Date(iso);
@@ -31,7 +32,6 @@ export default function CaixaEntrada({
   statusMap,
   onAbrirNotif,
   onMarcarLida,
-  onMarcarTodas,
   onAbrirTarefa,
 }: {
   notificacoes: GestaoNotificacao[];
@@ -40,11 +40,24 @@ export default function CaixaEntrada({
   statusMap: Map<string, GestaoStatus>;
   onAbrirNotif: (n: GestaoNotificacao) => void;
   onMarcarLida: (id: string) => void;
-  onMarcarTodas: () => void;
   onAbrirTarefa: (t: GestaoTarefa) => void;
 }) {
   const naoLidas = useMemo(() => notificacoes.filter((n) => !n.lida), [notificacoes]);
+  // Lidas ficam recolhidas: são o histórico que "Marcar todas como lidas" produz e que
+  // "Limpar notificações" apaga — sem esta seção o Limpar não teria efeito visível.
+  const lidas = useMemo(() => notificacoes.filter((n) => n.lida), [notificacoes]);
+  const [mostrarLidas, setMostrarLidas] = useState(false);
   const nomeQuadro = useMemo(() => new Map(quadros.map((q) => [q.id_quadro, q.nome])), [quadros]);
+
+  const meuEmail = useUserStore((s) => s.user?.email ?? null);
+  const { data: aprovacoes = [] } = useAprovacoesPendentes();
+  const tituloTarefa = useMemo(() => new Map(tarefas.map((t) => [t.id_tarefa, t.titulo])), [tarefas]);
+  // Mostra as pendências que ESTE usuário decide: designadas a ele ou sem aprovador fixo
+  // (gestor decide as sem dono). As demais visíveis (só por ver a tarefa) não poluem a caixa.
+  const pendencias = useMemo(() => {
+    const e = (meuEmail ?? "").toLowerCase();
+    return aprovacoes.filter((a) => !a.aprovador_email || a.aprovador_email.toLowerCase() === e);
+  }, [aprovacoes, meuEmail]);
 
   const atencao = useMemo(() => {
     return tarefas
@@ -57,10 +70,32 @@ export default function CaixaEntrada({
       .sort((a, b) => (a.prazo ?? "").localeCompare(b.prazo ?? ""));
   }, [tarefas, statusMap]);
 
-  const vazio = naoLidas.length === 0 && atencao.length === 0;
+  const vazio = naoLidas.length === 0 && atencao.length === 0 && pendencias.length === 0;
 
   return (
     <div className="mt-5 space-y-6">
+      {pendencias.length > 0 && (
+        <section>
+          <h2 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+            <ShieldQuestion className="size-4 text-amber-600" />
+            Aprovações pendentes <span className="text-gray-400">({pendencias.length})</span>
+          </h2>
+          <ul className="space-y-1.5">
+            {pendencias.map((a) => (
+              <AprovacaoLinha
+                key={a.id}
+                aprovacao={a}
+                titulo={tituloTarefa.get(a.id_tarefa) ?? a.id_tarefa}
+                onAbrir={() => {
+                  const t = tarefas.find((x) => x.id_tarefa === a.id_tarefa);
+                  if (t) onAbrirTarefa(t);
+                }}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
+
       {vazio && (
         <div className="rounded-xl border border-gray-200 bg-white py-12 text-center">
           <CheckCheck className="mx-auto size-10 text-green-500" />
@@ -71,12 +106,7 @@ export default function CaixaEntrada({
 
       {naoLidas.length > 0 && (
         <section>
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">Notificações <span className="text-gray-400">({naoLidas.length})</span></h2>
-            <button type="button" onClick={onMarcarTodas} className="inline-flex items-center gap-1 text-xs font-medium text-verde-primary hover:underline">
-              <CheckCheck className="size-3.5" /> Marcar todas como lidas
-            </button>
-          </div>
+          <h2 className="mb-2 text-sm font-semibold text-gray-700">Não lidas <span className="text-gray-400">({naoLidas.length})</span></h2>
           <ul className="space-y-1.5">
             {naoLidas.map((n) => (
               <li key={n.id} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
@@ -91,6 +121,28 @@ export default function CaixaEntrada({
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {lidas.length > 0 && (
+        <section>
+          <button type="button" onClick={() => setMostrarLidas((v) => !v)} className="mb-2 inline-flex items-center gap-1 text-sm font-semibold text-gray-500 hover:text-gray-700">
+            {mostrarLidas ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+            Lidas <span className="font-normal text-gray-400">({lidas.length})</span>
+          </button>
+          {mostrarLidas && (
+            <ul className="space-y-1.5">
+              {lidas.map((n) => (
+                <li key={n.id} className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2">
+                  <IconeNotif tipo={n.tipo} />
+                  <button type="button" onClick={() => onAbrirNotif(n)} className="flex-1 truncate text-left text-sm text-gray-500 hover:text-verde-primary" title={n.titulo}>
+                    {n.titulo}
+                  </button>
+                  <span className="shrink-0 text-[11px] text-gray-400">{quando(n.created_at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 
@@ -119,5 +171,49 @@ export default function CaixaEntrada({
         </section>
       )}
     </div>
+  );
+}
+
+function AprovacaoLinha({ aprovacao, titulo, onAbrir }: { aprovacao: GestaoAprovacao; titulo: string; onAbrir: () => void }) {
+  const [motivo, setMotivo] = useState("");
+  const decidir = useDecidirAprovacao();
+  const ocupado = decidir.isPending;
+
+  return (
+    <li className="rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2">
+      <div className="flex items-center gap-2">
+        <ShieldQuestion className="size-4 shrink-0 text-amber-600" />
+        <button type="button" onClick={onAbrir} className="flex-1 truncate text-left text-sm font-medium text-gray-700 hover:text-verde-primary" title={titulo}>
+          {titulo}
+        </button>
+        <span className="shrink-0 text-[11px] text-gray-400">{quando(aprovacao.created_at)}</span>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <input
+          type="text"
+          value={motivo}
+          onChange={(e) => setMotivo(e.target.value)}
+          placeholder="Motivo (opcional)"
+          disabled={ocupado}
+          className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 placeholder:text-gray-400 focus:border-verde-primary focus:outline-none"
+        />
+        <button
+          type="button"
+          disabled={ocupado}
+          onClick={() => decidir.mutate({ id: aprovacao.id, decisao: "aprovada", motivo: motivo || null })}
+          className="inline-flex shrink-0 items-center gap-1 rounded bg-green-600 px-2 py-1 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+        >
+          <Check className="size-3.5" /> Aprovar
+        </button>
+        <button
+          type="button"
+          disabled={ocupado}
+          onClick={() => decidir.mutate({ id: aprovacao.id, decisao: "rejeitada", motivo: motivo || null })}
+          className="inline-flex shrink-0 items-center gap-1 rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+        >
+          <X className="size-3.5" /> Rejeitar
+        </button>
+      </div>
+    </li>
   );
 }

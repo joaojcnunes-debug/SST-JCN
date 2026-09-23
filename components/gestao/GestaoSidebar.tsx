@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, CircleUser, BarChart3, Inbox, Lock } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, BarChart3, Bell, Lock, UserSquare, Users } from "lucide-react";
 import {
   useSalvarEspaco, useExcluirEspaco, useSalvarPasta, useExcluirPasta,
   useCriarQuadro, useRenomearQuadro, useExcluirQuadro,
@@ -18,13 +18,16 @@ export default function GestaoSidebar({
   quadroId,
   onSelect,
   podeEditar,
-  minhasAtivo,
-  onMinhas,
+  meuEspacoAtivo,
+  onMeuEspaco,
   painelAtivo,
   onPainel,
   inboxAtivo,
   onInbox,
   inboxCount,
+  colabAtivo = false,
+  onColab,
+  mostrarColab = false,
 }: {
   espacos: GestaoEspaco[];
   pastas: GestaoPasta[];
@@ -32,13 +35,17 @@ export default function GestaoSidebar({
   quadroId: string | null;
   onSelect: (id: string) => void;
   podeEditar: boolean;
-  minhasAtivo: boolean;
-  onMinhas: () => void;
+  meuEspacoAtivo: boolean;
+  onMeuEspaco: () => void;
   painelAtivo: boolean;
   onPainel: () => void;
   inboxAtivo: boolean;
   onInbox: () => void;
   inboxCount: number;
+  /** "Colaboradores" (v235): só para gestor/supervisor — o servidor decide quem aparece. */
+  colabAtivo?: boolean;
+  onColab?: () => void;
+  mostrarColab?: boolean;
 }) {
   const salvarEspaco = useSalvarEspaco();
   const excluirEspaco = useExcluirEspaco();
@@ -78,19 +85,32 @@ export default function GestaoSidebar({
 
   return (
     <nav className="space-y-1 text-sm">
+      {/* Meu Espaço — o espaço PESSOAL do usuário (UX-C1). Consolidou a antiga aba
+          "Minhas tarefas" (removida no ciclo 2): ao abrir, mostra a vista AGREGADA das
+          tarefas em que ele é responsável OU seguidor em qualquer quadro
+          (useMinhasTarefas, já RLS-gated). É o CONTAINER que a UX-C(2) vai completar
+          com o quadro pessoal (a lista própria onde ele cria tarefas) — quando esse
+          pacote chegar, o quadro entra logo abaixo desta entrada. */}
+      <button type="button" onClick={onMeuEspaco} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${meuEspacoAtivo ? "bg-white/[0.16] text-white" : "text-white/90 hover:bg-white/10 hover:text-white"}`}>
+        {meuEspacoAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}
+        <UserSquare className="size-4" /> Meu Espaço
+      </button>
+      <div className="mb-1 border-t border-white/[0.07]" />
       <button type="button" onClick={onInbox} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${inboxAtivo ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
         {inboxAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}
-        <Inbox className="size-4" /> Caixa de entrada
+        <Bell className="size-4" /> Notificações
         {inboxCount > 0 && <span className="ml-auto rounded-full bg-verde-accent px-1.5 text-[11px] font-bold text-verde-dark">{inboxCount}</span>}
-      </button>
-      <button type="button" onClick={onMinhas} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${minhasAtivo ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
-        {minhasAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}
-        <CircleUser className="size-4" /> Minhas tarefas
       </button>
       <button type="button" onClick={onPainel} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${painelAtivo ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
         {painelAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}
         <BarChart3 className="size-4" /> Painel
       </button>
+      {mostrarColab && onColab && (
+        <button type="button" onClick={onColab} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${colabAtivo ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
+          {colabAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}
+          <Users className="size-4" /> Colaboradores
+        </button>
+      )}
       <div className="mb-1 border-t border-white/[0.07]" />
       {espacos.map((esp) => {
         const pastasDoEspaco = pastas.filter((p) => p.id_espaco === esp.id);

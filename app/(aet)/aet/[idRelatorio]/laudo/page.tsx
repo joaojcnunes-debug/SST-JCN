@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { Fragment, use } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -50,13 +50,30 @@ import {
   SLUG_TO_DEFAULT_IMAGE,
   SLUG_TO_OWAS_FIELD,
 } from "@/lib/hooks/useAet";
-import { apenasSetoresExistentes, consolidarPiorCaso } from "@/lib/aet/consolidar-psi";
+import { algumaVisivel, perguntaOculta } from "@/lib/aet/checklist";
+import {
+  apenasSetoresExistentes,
+  consolidarPiorCaso,
+  mediaFatorDeLinhas,
+  recalcularDasRespostas,
+} from "@/lib/aet/consolidar-psi";
+import { useAetAcoes } from "@/lib/hooks/useAetAcoes";
+import { ROTULO_ACOES_GERAIS, agruparAcoesPorSetor } from "@/lib/aet/acoes";
+import { formatarPrazoAcao } from "@/lib/acoes/prazo";
+import type { AetAcao } from "@/lib/supabase/types";
+// A MESMA numeração do PDF (components/pdf/templates/AetTemplate). Antes a
+// prévia tinha os números cravados no código — mostrava "13. Análises
+// Ergonômicas" onde o PDF diz 10, e 14/15/16/17 onde o PDF tem um único
+// capítulo 11 com subtítulos. Só o 9 coincidia, por acaso.
+import { numerarCapitulos, numLabel } from "@/components/pdf/templates/shared";
+import { htmlVazio, textoParaHtml } from "@/lib/texto-rico";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import { cn } from "@/lib/utils";
 import {
+  montarEnderecoEmpresa,
   substituirVariaveis,
   substituirVariaveisTexto,
 } from "@/lib/textos-padrao/variaveis";
@@ -151,24 +168,11 @@ const ZONA_TEXT: Record<string, string> = {
   verde: "#1B5E20", amarela: "#F57F17", laranja: "#E65100", vermelha: "#C62828",
 };
 
-function calcMediaSetor(
-  perguntas: Aet13FatorPergunta[],
-  respostas: AetLaudoQpsResposta[],
-  idSetor: string,
-  codigoFator: string
-): number | null {
-  const rSetor = respostas.filter(
-    (r) => r.id_setor === idSetor && r.codigo_fator === codigoFator
-  );
-  if (rSetor.length === 0) return null;
-  const scores = rSetor.map((r) => {
-    const perg = perguntas.find(
-      (p) => p.codigo_fator === codigoFator && p.ordem === r.pergunta_ordem
-    );
-    return perg?.logica === "direta" ? 6 - r.resposta : r.resposta;
-  });
-  return scores.reduce((a, b) => a + b, 0) / scores.length;
-}
+/** A conta mora em lib/aet/consolidar-psi.ts — um lugar só para a prévia, o PDF
+ *  e as duas telas de preenchimento. Esta cópia local percorria as RESPOSTAS e
+ *  contava a resposta órfã com a nota crua: a prévia mostrava amarelo onde o
+ *  preenchimento mostra verde, exatamente como o PDF fazia. */
+const calcMediaSetor = mediaFatorDeLinhas;
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -187,6 +191,7 @@ export default function AetLaudoPage({
   const [tituloProfissional, setTituloProfissional] = useState("");
   const [registroProfissional, setRegistroProfissional] = useState("");
   const [dataElaboracao, setDataElaboracao] = useState("");
+  const [dataValidade, setDataValidade] = useState("");
   const [enderecoEmpresa, setEnderecoEmpresa] = useState("");
 
 
@@ -200,6 +205,7 @@ export default function AetLaudoPage({
   const { data: semaforo = SEMAFORO_DEFAULT } = useAet13FatoresSemaforo();
   const { data: qpsMeta } = useAetLaudoQpsMeta(idRelatorio);
   const { data: fatoresPsi = [] } = useAetLaudoFatoresPsi(idRelatorio);
+  const { data: acoes = [] } = useAetAcoes(idRelatorio);
   const { data: qpsRespostas = [] } = useAetQpsRespostas(idRelatorio);
   const { data: fatoresPerguntas = [] } = useAet13FatoresPerguntas();
 
@@ -210,6 +216,7 @@ export default function AetLaudoPage({
       setTituloProfissional(rel.titulo_profissional ?? "");
       setRegistroProfissional(rel.registro_profissional ?? "");
       setDataElaboracao(rel.data_elaboracao ?? "");
+      setDataValidade(rel.data_validade ?? "");
       setEnderecoEmpresa(rel.endereco_empresa ?? "");
     }
   }, [rel]);
@@ -235,6 +242,9 @@ export default function AetLaudoPage({
           titulo_profissional: tituloProfissional,
           registro_profissional: registroProfissional,
           data_elaboracao: dataElaboracao || null,
+          // Coluna `date`: string vazia tem que virar NULL, senão o Postgres
+          // recusa o valor (mesmo tratamento da tela de Dados).
+          data_validade: dataValidade || null,
           endereco_empresa: enderecoEmpresa || null,
         },
       },
@@ -263,6 +273,9 @@ export default function AetLaudoPage({
     || dataElaboracao !== (rel.data_elaboracao ?? "")
     || enderecoEmpresa !== (rel.endereco_empresa ?? "");
   const empresa = rel.empresas;
+  // Mesmo formatador do PDF e do EmpresaInfoPanel — o botão "Puxar do
+  // cadastro" abaixo grava exatamente o que o laudo já mostra na identificação.
+  const enderecoCadastro = montarEnderecoEmpresa(empresaFull);
 
   // ── Stats dashboard ──────────────────────────────────────────────────────
   const totalSetores = rel.setores.length;
@@ -305,59 +318,56 @@ export default function AetLaudoPage({
     endereco_empresa: enderecoEmpresa,
   });
 
+  // Numeração das seções — a MESMA regra e as MESMAS funções do PDF, para o
+  // número que aparece aqui ser o número que sai impresso. Espelha
+  // `renderizaNumerado` de components/pdf/templates/AetTemplate.
+  const consideracoesTxt = (rel.consideracoes_finais ?? "").trim();
+  // Fora da função: dentro dela o TS perde a narrowing de `rel`.
+  const temSetoresNum = rel.setores.length > 0;
+  function renderizaNumerado(c: TextoPadraoCapitulo): boolean {
+    if (c.ativo === false) return false;
+    const ehCapa = !!c.bg_imagem_url || (c.titulo ?? "").trim().toLowerCase() === "capa";
+    if (ehCapa) return false;
+    if (c.tipo !== "fixo") return true;
+    switch (c.slug_fixo) {
+      case "identificacao_empresa": return true;
+      case "aet_agentes_ambientais": return temSetoresNum;
+      case "aet_analise_ergonomica": return temSetoresNum;
+      case "aet_psicossocial": return fatoresPsi.some((f) => f.avaliado);
+      case "aet_plano_acao": return acoes.length > 0;
+      case "aet_consideracoes_finais": return !!consideracoesTxt;
+      case "aet_assinatura": return true;
+      default: return false; // sumario
+    }
+  }
+  const { numPorSlug, numPorId } = numerarCapitulos(capitulos, renderizaNumerado);
+
   // Sumário auto-calculado — derivado da estrutura do documento
   const sumarioItems = (() => {
     const items: { numero: string; titulo: string }[] = [];
     let n = 0;
 
     if (temCapitulosFixos) {
+      // Mesma lista do PDF: um item por capítulo que realmente vai aparecer.
+      // As sub-seções do psicossocial (Dados da Aplicação, Resultado Geral,
+      // Análise Detalhada) NÃO entram — no documento elas são subtítulos de um
+      // capítulo só, e contá-las aqui era o que empurrava a numeração para 20.
+      const tituloDoFixo: Record<string, string> = {
+        identificacao_empresa: "Identificação da Empresa",
+        aet_agentes_ambientais: "Agentes Ambientais para as Áreas Operacionais",
+        aet_analise_ergonomica: "Análises Ergonômicas do Trabalho",
+        aet_psicossocial: "Avaliação dos Fatores Psicossociais — QPS Nordic",
+        aet_plano_acao: "Plano de Ação (5W2H)",
+        aet_consideracoes_finais: "Considerações Finais",
+        aet_assinatura: "Assinatura do Responsável Técnico",
+      };
       for (const cap of capitulosOrdenados) {
-        if (cap.bg_imagem_url) continue;
-        if (cap.tipo === "fixo") {
-          switch (cap.slug_fixo) {
-            case "aet_agentes_ambientais":
-              if (rel.setores.length > 0) {
-                n++;
-                items.push({ numero: `${n}.`, titulo: "Agentes Ambientais para as Áreas Operacionais" });
-              }
-              break;
-            case "aet_analise_ergonomica":
-              if (rel.setores.length > 0) {
-                n++;
-                items.push({ numero: `${n}.`, titulo: "Análises Ergonômicas do Trabalho" });
-              }
-              break;
-            case "aet_psicossocial":
-              if (fatoresPsi.length > 0) {
-                const fatAvaliados = fatoresPsi.filter((f) => f.avaliado);
-                const comAnalise = fatAvaliados.filter((f) => f.observacao || f.pergunta_critica);
-                n++;
-                items.push({ numero: `${n}.`, titulo: "Avaliação dos Fatores Psicossociais — QPS Nordic" });
-                if (qpsMeta && (qpsMeta.n_respondentes != null || qpsMeta.periodo_inicio || qpsMeta.modo_aplicacao || qpsMeta.tecnico_aplicador)) {
-                  n++;
-                  items.push({ numero: `${n}.`, titulo: "Dados da Aplicação" });
-                }
-                if (fatAvaliados.length > 0) {
-                  n++;
-                  items.push({ numero: `${n}.`, titulo: "Resultado Geral por Fator" });
-                }
-                if (comAnalise.length > 0) {
-                  n++;
-                  items.push({ numero: `${n}.`, titulo: "Análise Detalhada por Fator" });
-                }
-              }
-              break;
-            case "aet_consideracoes_finais":
-              n++;
-              items.push({ numero: `${n}.`, titulo: "Considerações Finais" });
-              break;
-            case "aet_assinatura":
-              break;
-          }
-        } else {
-          n++;
-          items.push({ numero: `${n}.`, titulo: substituirVariaveisTexto(cap.titulo, valoresCapitulos) });
-        }
+        if (!renderizaNumerado(cap)) continue;
+        n++;
+        const titulo = cap.tipo === "fixo"
+          ? (cap.titulo?.trim() || tituloDoFixo[cap.slug_fixo ?? ""] || "")
+          : substituirVariaveisTexto(cap.titulo, valoresCapitulos);
+        if (titulo) items.push({ numero: `${n}.`, titulo });
       }
     } else {
       // Modo legado
@@ -402,7 +412,7 @@ export default function AetLaudoPage({
       }
       if (fatoresPsi.length > 0) {
         const fatAvaliados = fatoresPsi.filter((f) => f.avaliado);
-        const comAnalise = fatAvaliados.filter((f) => f.observacao || f.pergunta_critica);
+        const comAnalise = fatAvaliados.filter((f) => !htmlVazio(f.observacao));
         n++;
         items.push({ numero: `${n}.`, titulo: "Avaliação dos Fatores Psicossociais — QPS Nordic" });
         if (qpsMeta && (qpsMeta.n_respondentes != null || qpsMeta.periodo_inicio || qpsMeta.modo_aplicacao || qpsMeta.tecnico_aplicador)) {
@@ -554,7 +564,7 @@ export default function AetLaudoPage({
             </div>
             <div>
               <h2 className="text-sm font-bold text-gray-900">Dados do Laudo</h2>
-              <p className="text-[11px] text-gray-500">Responsável técnico, registro e data de elaboração</p>
+              <p className="text-[11px] text-gray-500">Responsável técnico, registro, data de elaboração e validade</p>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -602,8 +612,35 @@ export default function AetLaudoPage({
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
               />
             </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">Validade do Documento</label>
+              <input
+                type="date"
+                value={dataValidade}
+                onChange={(e) => setDataValidade(e.target.value)}
+                min={dataElaboracao || undefined}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+              />
+              <p className="mt-1 text-[10px] text-gray-500">
+                Sai no bloco &ldquo;Identificação da Empresa&rdquo; do laudo. Em branco, imprime &ldquo;—&rdquo;.
+              </p>
+            </div>
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-gray-600">Endereço da Empresa</label>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className="block text-xs font-medium text-gray-600">Endereço da Empresa</label>
+                {/* Os laudos criados antes do preenchimento automático ficaram
+                    com este campo vazio. O botão traz o endereço do cadastro
+                    sem obrigar a redigitar — e some quando já está igual. */}
+                {enderecoCadastro && enderecoEmpresa !== enderecoCadastro && (
+                  <button
+                    type="button"
+                    onClick={() => setEnderecoEmpresa(enderecoCadastro)}
+                    className="text-[11px] font-medium text-verde-primary hover:underline"
+                  >
+                    Puxar do cadastro
+                  </button>
+                )}
+              </div>
               <input
                 type="text"
                 value={enderecoEmpresa}
@@ -756,9 +793,13 @@ export default function AetLaudoPage({
       )}
 
       {/* ═══ DOCUMENTO ═══ */}
+      {/* Sem `force-light`: a prévia acompanha o tema do app — folha branca fixa
+          cansava a vista de quem passa o dia no laudo. A impressão continua clara
+          pelo `beforeprint` do ThemeManager e o PDF é montado no servidor
+          (/api/pdf/aet/[id]), não capturado desta tela. */}
       <div
         id="laudo-aet"
-        className="force-light rounded-2xl border border-gray-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none"
+        className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
         {/* Cabeçalho — sempre visível no print (página 2 quando há capa) */}
         <RelatorioPrintHeader
@@ -814,9 +855,42 @@ export default function AetLaudoPage({
                     content = (
                       <div className="mb-6 break-inside-avoid">
                         <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
-                          Identificação da Empresa
+                          {numLabel(numPorSlug["identificacao_empresa"], cap.titulo?.trim() || "Identificação da Empresa")}
                         </h2>
                         <EmpresaInfoPanel empresa={empresaFull ?? null} />
+                        {/* Espelho do BlocoDatasDocumento do PDF (SecoesComuns).
+                            A prévia usa EmpresaInfoPanel e o PDF usa
+                            SecaoIdentificacaoEmpresa — são dois componentes, então o
+                            bloco de datas precisa existir dos dois lados. Mesmos
+                            rótulos e mesma fonte de dado (`valoresCapitulos`). */}
+                        {(valoresCapitulos.data_elaboracao || valoresCapitulos.data_validade) && (
+                          <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 border-t border-gray-200 pt-3 sm:grid-cols-2">
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                                Data de elaboração
+                              </p>
+                              <p className="text-sm text-gray-900">
+                                {valoresCapitulos.data_elaboracao || "—"}
+                              </p>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                                Validade do documento
+                              </p>
+                              <p className="text-sm text-gray-900">
+                                {valoresCapitulos.data_validade || "—"}
+                              </p>
+                              {/* Aviso só na tela (nunca no PDF): a validade em
+                                  branco passava despercebida até o documento
+                                  ficar pronto. */}
+                              {!valoresCapitulos.data_validade && (
+                                <p className="mt-0.5 text-[10px] font-medium text-amber-700 print:hidden">
+                                  Não preenchida — informe em &ldquo;Dados do Laudo&rdquo;, acima.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                     break;
@@ -840,28 +914,17 @@ export default function AetLaudoPage({
                     break;
 
                   case "aet_agentes_ambientais":
+                    // SÓ a tabela de riscos, igual ao PDF. A prévia repetia aqui
+                    // a análise inteira do setor (OWAS, checklist, fotos, parecer
+                    // e 13 fatores) e de novo no capítulo seguinte. Levar essa
+                    // duplicação para o PDF custaria +55% de páginas (medido:
+                    // NOVAPARECIDA 124 -> 192, MEGA MASTER 47 -> 66).
                     content = rel.setores.length > 0 ? (
-                      <Section num="9" title="Agentes Ambientais para as Áreas Operacionais">
+                      <Section num={String(numPorSlug["aet_agentes_ambientais"] ?? "")} title={cap.titulo}>
                         {introFixo}
                         <div className="space-y-8">
                           {rel.setores.map((setor, idx) => (
-                            <div key={setor.id}>
-                              <SetorRiscosBlock setor={setor} idx={idx} />
-                              <div className="mt-4">
-                                <SetorAnaliseBlock
-                                  setor={setor}
-                                  idx={idx}
-                                  hideHeader
-                                  checklistPerguntas={checklistPerguntas}
-                                  owasConfig={owasConfig}
-                                  fatoresConfig={fatoresConfig}
-                                  fatoresPerguntas={fatoresPerguntas}
-                                  qpsRespostas={qpsRespostas}
-                                  fatoresPsi={fatoresPsi}
-                                  semaforo={semaforo}
-                                />
-                              </div>
-                            </div>
+                            <SetorRiscosBlock key={setor.id} setor={setor} idx={idx} />
                           ))}
                         </div>
                       </Section>
@@ -870,7 +933,7 @@ export default function AetLaudoPage({
 
                   case "aet_analise_ergonomica":
                     content = rel.setores.length > 0 ? (
-                      <Section num="13" title="Análises Ergonômicas do Trabalho">
+                      <Section num={String(numPorSlug["aet_analise_ergonomica"] ?? "")} title={cap.titulo}>
                         {introFixo}
                         <div className="space-y-8">
                           {rel.setores.map((setor, idx) => (
@@ -906,18 +969,42 @@ export default function AetLaudoPage({
                         <PsicossocialSections
                           fatoresPsi={fatoresPsi}
                           fatoresConfig={fatoresConfig}
+                          fatoresPerguntas={fatoresPerguntas}
+                          qpsRespostas={qpsRespostas}
                           semaforo={semaforo}
                           qpsMeta={qpsMeta ?? null}
                           setores={rel.setores}
                           zonaFromMedia={zonaFromMedia}
                           nivelPgrFromZona={nivelPgrFromZona}
+                          numero={numPorSlug["aet_psicossocial"]}
+                          titulo={cap.titulo}
                         />
                       </>
                     ) : null;
                     break;
 
+                  case "aet_plano_acao":
+                    // Igual ao PDF: sem ação, o capítulo não existe; a
+                    // introdução (texto do capítulo fixo) sai DEPOIS do título.
+                    content = acoes.length > 0 ? (
+                      <PlanoAcaoSection
+                        acoes={acoes}
+                        setores={rel.setores}
+                        numero={numPorSlug["aet_plano_acao"]}
+                        titulo={cap.titulo}
+                        intro={introFixo}
+                      />
+                    ) : null;
+                    break;
+
                   case "aet_consideracoes_finais":
-                    content = <ConsideracoesFinaisSection consideracoes={consideracoes} />;
+                    content = (
+                      <ConsideracoesFinaisSection
+                        consideracoes={consideracoes}
+                        numero={numPorSlug["aet_consideracoes_finais"]}
+                        titulo={cap.titulo}
+                      />
+                    );
                     break;
 
                   case "aet_assinatura":
@@ -929,6 +1016,7 @@ export default function AetLaudoPage({
                         idRelatorio={idRelatorio}
                         dataRelatorio={dataElaboracao ? dataFormatada : undefined}
                         hideAcoes
+                        numero={numPorSlug["aet_assinatura"]}
                       />
                     );
                     break;
@@ -944,7 +1032,7 @@ export default function AetLaudoPage({
 
               return (
                 <div key={cap.id_capitulo} className={oClass}>
-                  <CapituloLaudo cap={cap} valores={valoresCapitulos} />
+                  <CapituloLaudo cap={cap} valores={valoresCapitulos} numero={numPorId[cap.id_capitulo]} />
                 </div>
               );
             })}
@@ -1065,6 +1153,8 @@ export default function AetLaudoPage({
               <PsicossocialSections
                 fatoresPsi={fatoresPsi}
                 fatoresConfig={fatoresConfig}
+                fatoresPerguntas={fatoresPerguntas}
+                qpsRespostas={qpsRespostas}
                 semaforo={semaforo}
                 qpsMeta={qpsMeta ?? null}
                 setores={rel.setores}
@@ -1107,9 +1197,21 @@ function Section({ num, title, children }: { num: string; title: string; childre
     <div className="mb-8">
       <div className="mb-3 border-b-2 border-gray-700 pb-1">
         <h2 className="text-[11px] font-bold uppercase tracking-widest text-gray-700">
-          {num ? `${num} — ${title}` : title}
+          {/* "9. Título", igual ao PDF (numLabel). Era "9 — Título". */}
+          {num ? `${num}. ${title}` : title}
         </h2>
       </div>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+/** Subtítulo dentro de um capítulo — espelha o `.aet-sub` do PDF. Não recebe
+ *  número: no documento estas são sub-seções de um capítulo só. */
+function SubSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-6">
+      <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-emerald-900">{title}</h3>
       <div>{children}</div>
     </div>
   );
@@ -1129,16 +1231,20 @@ function RichBlock({ html }: { html: string }) {
 function CapituloLaudo({
   cap,
   valores = {},
+  numero,
 }: {
   cap: TextoPadraoCapitulo;
   valores?: Record<string, string>;
+  /** Número do modelo — o mesmo que o PDF imprime. Sem ele o capítulo saía sem
+   *  número na tela e numerado no documento. */
+  numero?: number;
 }) {
   if (cap.bg_imagem_url) {
     // Capa renderizada na seção antes de #laudo-aet (visível na tela e no print)
     return null;
   }
   return (
-    <Section num="" title={substituirVariaveisTexto(cap.titulo, valores)}>
+    <Section num={numero ? String(numero) : ""} title={substituirVariaveisTexto(cap.titulo, valores)}>
       {cap.conteudo && <RichBlock html={substituirVariaveis(cap.conteudo, valores)} />}
     </Section>
   );
@@ -1299,6 +1405,12 @@ function SetorAnaliseBlock({
     (checklistPerguntas.find((p) => p.slug === slug)?.secao ?? "").startsWith("Adoção")
   );
 
+  // v209: pergunta excluída na tela de configuração sai da prévia e do PDF.
+  // Seção sem nenhuma linha visível não imprime título.
+  const oculta = (slug: string) => perguntaOculta(checklistPerguntas, slug);
+  const secaoTemLinha = (slugs: string[], extras: unknown[]) =>
+    algumaVisivel(checklistPerguntas, slugs) || extras.length > 0;
+
   const extrasSemSecao = customExtras.filter(([slug]) => {
     const secao = checklistPerguntas.find((p) => p.slug === slug)?.secao ?? "";
     return (
@@ -1327,24 +1439,10 @@ function SetorAnaliseBlock({
 
       <div className="divide-y divide-gray-100">
 
-        {/* Descrição geral + cargos */}
-        {(setor.descricao_atividade || setor.cargos.some((c) => c.descricao)) && (
-          <div className="px-4 py-3">
-            {setor.descricao_atividade && (
-              <p className="mb-1 text-xs" style={{ color: "#374151" }}>
-                <strong style={{ color: "#1f2937" }}>Atividade geral:</strong>{" "}
-                {setor.descricao_atividade}
-              </p>
-            )}
-            {setor.cargos
-              .filter((c) => c.descricao)
-              .map((cargo, i) => (
-                <p key={i} className="text-xs" style={{ color: "#374151" }}>
-                  <strong style={{ color: "#1f2937" }}>{cargo.nome}:</strong> {cargo.descricao}
-                </p>
-              ))}
-          </div>
-        )}
+        {/* Bloco "Atividade geral / cargo: descrição" REMOVIDO: repetia, em outro
+            formato, exatamente o que a ficha do setor (SetorRiscosBlock) mostra
+            na tabela logo acima — atingia 26 de 26 setores da base. O PDF nunca
+            teve esse bloco; agora a prévia também não. */}
 
         {/* OWAS — cards idênticos ao setores/page.tsx */}
         {temOwas && (
@@ -1365,7 +1463,7 @@ function SetorAnaliseBlock({
                   <div key={cat.id} className="rounded-md border border-gray-200 bg-gray-50 p-3">
                     <h4
                       className="mb-2 text-[11px] font-bold uppercase tracking-wider"
-                      style={{ color: "#6b7280" }}
+                      style={{ color: "var(--text-muted)" }}
                     >
                       {cat.titulo}
                     </h4>
@@ -1429,19 +1527,19 @@ function SetorAnaliseBlock({
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2.5">
             <p
               className="text-xs font-bold uppercase tracking-wider"
-              style={{ color: "#6b7280" }}
+              style={{ color: "var(--text-muted)" }}
             >
               Checklist Ergonômico
             </p>
 
             {/* Postura */}
             <CheckSep title="Postura" />
-            <CheckRow label={pergunta("levantamento_acima_limite")} value={checklist.levantamento_acima_limite} />
+            {!oculta("levantamento_acima_limite") && <CheckRow label={pergunta("levantamento_acima_limite")} value={checklist.levantamento_acima_limite} />}
             <CheckSelect label={pergunta("trabalho_predominante")} value={checklist.trabalho_predominante} />
-            <CheckRow label={pergunta("pausas_descanso")} value={checklist.pausas_descanso} />
-            <CheckRow label={pergunta("uso_cadeira")} value={checklist.uso_cadeira} />
-            <CheckRow label={pergunta("cadeira_adequada")} value={checklist.cadeira_adequada} />
-            <CheckRow label={pergunta("monitor")} value={checklist.monitor} />
+            {!oculta("pausas_descanso") && <CheckRow label={pergunta("pausas_descanso")} value={checklist.pausas_descanso} />}
+            {!oculta("uso_cadeira") && <CheckRow label={pergunta("uso_cadeira")} value={checklist.uso_cadeira} />}
+            {!oculta("cadeira_adequada") && <CheckRow label={pergunta("cadeira_adequada")} value={checklist.cadeira_adequada} />}
+            {!oculta("monitor") && <CheckRow label={pergunta("monitor")} value={checklist.monitor} />}
             {extrasDeSecao("Postura").map(([slug, val]) => (
               <CheckRow
                 key={slug}
@@ -1451,8 +1549,10 @@ function SetorAnaliseBlock({
             ))}
 
             {/* Exigência de Tempo */}
+            {secaoTemLinha(["exigencia_levantamento"], extrasDeSecao("Exigência de Tempo")) && (
+              <>
             <CheckSep title="Exigência de Tempo" />
-            <CheckRow label={pergunta("exigencia_levantamento")} value={checklist.exigencia_levantamento} />
+            {!oculta("exigencia_levantamento") && <CheckRow label={pergunta("exigencia_levantamento")} value={checklist.exigencia_levantamento} />}
             {extrasDeSecao("Exigência de Tempo").map(([slug, val]) => (
               <CheckRow
                 key={slug}
@@ -1460,10 +1560,14 @@ function SetorAnaliseBlock({
                 value={val}
               />
             ))}
+              </>
+            )}
 
             {/* Ritmo de Trabalho */}
+            {secaoTemLinha(["ritmo_por_demanda"], extrasDeSecao("Ritmo de Trabalho")) && (
+              <>
             <CheckSep title="Ritmo de Trabalho" />
-            <CheckRow label={pergunta("ritmo_por_demanda")} value={checklist.ritmo_por_demanda} />
+            {!oculta("ritmo_por_demanda") && <CheckRow label={pergunta("ritmo_por_demanda")} value={checklist.ritmo_por_demanda} />}
             {extrasDeSecao("Ritmo de Trabalho").map(([slug, val]) => (
               <CheckRow
                 key={slug}
@@ -1471,11 +1575,15 @@ function SetorAnaliseBlock({
                 value={val}
               />
             ))}
+              </>
+            )}
 
             {/* Adoção de Rodízios */}
+            {secaoTemLinha(["pausas_formais", "rodizios_sistematizados"], extrasAdocao) && (
+              <>
             <CheckSep title="Adoção de Rodízios — Ergonômico" />
-            <CheckRow label={pergunta("pausas_formais")} value={checklist.pausas_formais} />
-            <CheckRow label={pergunta("rodizios_sistematizados")} value={checklist.rodizios_sistematizados} />
+            {!oculta("pausas_formais") && <CheckRow label={pergunta("pausas_formais")} value={checklist.pausas_formais} />}
+            {!oculta("rodizios_sistematizados") && <CheckRow label={pergunta("rodizios_sistematizados")} value={checklist.rodizios_sistematizados} />}
             {extrasAdocao.map(([slug, val]) => (
               <CheckRow
                 key={slug}
@@ -1483,12 +1591,18 @@ function SetorAnaliseBlock({
                 value={val}
               />
             ))}
+              </>
+            )}
 
             {/* Organização do Trabalho */}
+            {!oculta("organizacao_trabalho") && (
+              <>
             <CheckSep title="Organização do Trabalho" />
-            <p className="text-xs italic leading-relaxed" style={{ color: "#4b5563" }}>
+            <p className="text-xs italic leading-relaxed" style={{ color: "var(--laudo-texto-suave)" }}>
               {pergunta("organizacao_trabalho")}
             </p>
+              </>
+            )}
 
             {/* Perguntas adicionais */}
             {extrasSemSecao.length > 0 && (
@@ -1587,7 +1701,7 @@ function SetorAnaliseBlock({
             })
             .filter((x): x is { f: Aet13FatorConfig; media: number; zona: ZonaPsi | null } => x !== null);
 
-          // v145: os fatores psi são POR SETOR — sem o filtro de id_setor, este
+          // v135: os fatores psi são POR SETOR — sem o filtro de id_setor, este
           // find pegava a linha de um setor qualquer e repetia embaixo de todos.
           const f13 = fatoresPsi.find(
             (fp) => fp.id_setor === setor.id && fp.codigo_fator === "F13" && fp.avaliado && fp.zona,
@@ -1657,33 +1771,38 @@ function SetorAnaliseBlock({
                   )}
                 </tbody>
               </table>
-              {/* Observações por fator (se houver) */}
-              {psiRows.some(({ f }) => {
-                const fp = fatoresPsi.find((p) => p.id_setor === setor.id && p.codigo_fator === f.codigo);
-                return fp?.observacao || fp?.pergunta_critica;
-              }) && (
-                <div className="mt-2 space-y-2">
-                  {psiRows.map(({ f }) => {
+              {/* Observações por fator. INCLUI o F13, igual ao PDF: a tabela
+                  acima imprime a linha do F13 nos dois lados, e sem isto a
+                  prévia mostrava a nota sem o texto que a justifica (20 das 23
+                  linhas de F13 da base têm texto escrito). */}
+              {(() => {
+                const nomeF13 = fatoresConfig.find((fc) => fc.codigo === "F13")?.nome ?? "Proteção da segurança física";
+                const paraExplicar = [
+                  ...psiRows.map(({ f }) => ({ codigo: f.codigo, nome: f.nome })),
+                  ...(f13 ? [{ codigo: "F13", nome: nomeF13 }] : []),
+                ]
+                  .map((f) => {
                     const fp = fatoresPsi.find((p) => p.id_setor === setor.id && p.codigo_fator === f.codigo);
-                    if (!fp?.observacao && !fp?.pergunta_critica) return null;
-                    return (
-                      <div key={f.codigo} className="rounded border border-gray-200 p-2">
+                    return fp && !htmlVazio(fp.observacao) ? { ...f, html: fp.observacao as string } : null;
+                  })
+                  .filter((x): x is { codigo: string; nome: string; html: string } => x !== null);
+                if (paraExplicar.length === 0) return null;
+                return (
+                  <div className="mt-2 space-y-2">
+                    {paraExplicar.map((o) => (
+                      <div key={o.codigo} className="rounded border border-gray-200 p-2">
                         <p className="mb-1 text-[10px] font-bold text-gray-700">
-                          {f.codigo} — {f.nome}
+                          {o.codigo} — {o.nome}
                         </p>
-                        {fp.pergunta_critica && (
-                          <p className="text-[11px] italic text-gray-600">
-                            &ldquo;{fp.pergunta_critica}&rdquo;
-                          </p>
-                        )}
-                        {fp.observacao && (
-                          <p className="mt-1 text-[11px] leading-relaxed text-gray-700">{fp.observacao}</p>
-                        )}
+                        <div
+                          className="prose prose-xs mt-1 max-w-none text-[11px] leading-relaxed text-gray-700 [&_a]:text-gray-700 [&_a]:no-underline [&_p]:my-1"
+                          dangerouslySetInnerHTML={{ __html: textoParaHtml(o.html) }}
+                        />
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           );
         })()}
@@ -1713,7 +1832,7 @@ function CheckRow({ label, value }: { label: string; value: string }) {
   const texto = isSim ? "Sim" : isNa ? "N/A" : "Não";
   return (
     <div className="flex items-center gap-2">
-      <span className="flex-1 text-xs leading-snug" style={{ color: "#374151" }}>
+      <span className="flex-1 text-xs leading-snug" style={{ color: "var(--text-body)" }}>
         {label}
       </span>
       <span
@@ -1734,7 +1853,7 @@ function CheckRow({ label, value }: { label: string; value: string }) {
 function CheckSelect({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="flex-1 text-xs leading-snug" style={{ color: "#374151" }}>
+      <span className="flex-1 text-xs leading-snug" style={{ color: "var(--text-body)" }}>
         {label}
       </span>
       <span
@@ -1746,39 +1865,54 @@ function CheckSelect({ label, value }: { label: string; value: string }) {
   );
 }
 
-// ─── Seções 14-19 — Fatores Psicossociais (QPS) ──────────────────────────────
+// ─── Fatores Psicossociais (QPS) — UM capítulo com subtítulos ────────────────
 
 function PsicossocialSections({
   fatoresPsi,
   fatoresConfig,
+  fatoresPerguntas,
+  qpsRespostas,
   semaforo: _semaforo,
   qpsMeta,
   setores,
   zonaFromMedia: _zonaFromMedia,
   nivelPgrFromZona,
+  numero,
+  titulo,
 }: {
   fatoresPsi: AetLaudoFatorPsi[];
   fatoresConfig: Aet13FatorConfig[];
+  /** Perguntas e respostas: o quadro geral RECALCULA a média (ver abaixo). */
+  fatoresPerguntas: Aet13FatorPergunta[];
+  qpsRespostas: AetLaudoQpsResposta[];
   semaforo: Aet13FatorSemaforo[];
   qpsMeta: import("@/lib/supabase/types").AetLaudoQpsMeta | null;
   setores: AetSetor[];
   zonaFromMedia: (m: number | null) => ZonaPsi | null;
   nivelPgrFromZona: (z: ZonaPsi | null) => string;
+  /** Número do capítulo, do modelo — o mesmo que sai no PDF. */
+  numero?: number;
+  titulo?: string;
 }) {
   const nomeSetor = (idSetor: string) =>
     setores.find((s) => s.id === idSetor)?.nome_setor?.trim() || "Setor sem nome";
 
-  // v145: uma linha por (setor, fator). Descarta setores já excluídos do laudo.
-  const avaliados = apenasSetoresExistentes(
+  // v135: uma linha por (setor, fator). Descarta setores já excluídos do laudo.
+  const existentes = apenasSetoresExistentes(
     fatoresPsi.filter((f) => f.avaliado),
     setores.map((s) => s.id),
   );
+
+  // Média e zona RECALCULADAS das respostas, igual ao PDF: `media` é
+  // numeric(3,1) na produção e este quadro era o único da prévia que imprimia
+  // o valor gravado — saía "4.30" onde a tabela por setor mostra "4.25".
+  const avaliados = recalcularDasRespostas(existentes, fatoresPerguntas, qpsRespostas);
 
   // Quadro geral: cada fator na condição mais desfavorável entre os setores.
   const fatoresAvaliados = consolidarPiorCaso(avaliados);
 
   const comAnalise = avaliados
-    .filter((f) => f.observacao || f.pergunta_critica)
+    .filter((f) => !htmlVazio(f.observacao))
     .sort(
       (a, b) =>
         a.codigo_fator.localeCompare(b.codigo_fator) ||
@@ -1789,7 +1923,9 @@ function PsicossocialSections({
 
   return (
     <>
-      <Section num="14" title="Avaliação dos Fatores Psicossociais — QPS Nordic">
+      {/* UM capítulo com subtítulos, igual ao PDF. Eram 4 seções numeradas
+          (14, 15, 16, 17) — e era isso que empurrava as Considerações para 20. */}
+      <Section num={numero ? String(numero) : "14"} title={titulo?.trim() || "Avaliação dos Fatores Psicossociais — QPS Nordic"}>
         <p className="text-xs leading-relaxed text-gray-700">
           A avaliação dos fatores psicossociais foi realizada por meio do instrumento QPS Nordic
           (Questionário de Fatores Psicossociais no Trabalho), desenvolvido pelos institutos
@@ -1797,10 +1933,9 @@ function PsicossocialSections({
           13 fatores relacionados às condições psicossociais do trabalho, classificados em zonas
           de risco: verde (baixo), amarela (moderado), laranja (elevado) e vermelha (crítico).
         </p>
-      </Section>
 
       {qpsMeta && (qpsMeta.n_respondentes || qpsMeta.periodo_inicio || qpsMeta.modo_aplicacao || qpsMeta.tecnico_aplicador) && (
-        <Section num="15" title="Dados da Aplicação">
+        <SubSection title="Dados da Aplicação">
           <table className="w-full border-collapse text-xs">
             <tbody>
               {qpsMeta.n_respondentes != null && (
@@ -1845,10 +1980,10 @@ function PsicossocialSections({
               )}
             </tbody>
           </table>
-        </Section>
+        </SubSection>
       )}
 
-      <Section num="16" title="Resultado Geral por Fator">
+      <SubSection title="Resultado Geral por Fator">
         {multiSetor && (
           <p className="mb-2 text-[10px] text-gray-500">
             Consolidado dos setores avaliados pelo pior caso: cada fator é apresentado na condição
@@ -1889,10 +2024,10 @@ function PsicossocialSections({
             })}
           </tbody>
         </table>
-      </Section>
+      </SubSection>
 
       {comAnalise.length > 0 && (
-        <Section num="17" title="Análise Detalhada por Fator">
+        <SubSection title="Análise Detalhada por Fator">
           <div className="space-y-4">
             {comAnalise.map((fp) => {
               const cfg = fatoresConfig.find((f) => f.codigo === fp.codigo_fator);
@@ -1910,34 +2045,116 @@ function PsicossocialSections({
                       <span className="text-[10px] font-semibold text-gray-500">Setor: {nomeSetor(fp.id_setor)}</span>
                     )}
                   </div>
-                  {fp.pergunta_critica && (
-                    <p className="mb-1 text-xs italic text-gray-600">
-                      &ldquo;{fp.pergunta_critica}&rdquo;
-                    </p>
-                  )}
-                  {fp.observacao && (
-                    <p className="text-xs leading-relaxed text-gray-700">{fp.observacao}</p>
+                  {!htmlVazio(fp.observacao) && (
+                    <div
+                      className="prose prose-xs max-w-none text-xs leading-relaxed text-gray-700 [&_a]:text-gray-700 [&_a]:no-underline [&_p]:my-1"
+                      dangerouslySetInnerHTML={{ __html: textoParaHtml(fp.observacao) }}
+                    />
                   )}
                 </div>
               );
             })}
           </div>
-        </Section>
+        </SubSection>
       )}
+      </Section>
     </>
   );
 }
 
-// ─── Seção 20 — Considerações Finais ─────────────────────────────────────────
+// ─── Considerações Finais ────────────────────────────────────────────────────
 
-function ConsideracoesFinaisSection({ consideracoes }: { consideracoes: string }) {
+function ConsideracoesFinaisSection({
+  consideracoes,
+  numero,
+  titulo,
+}: {
+  consideracoes: string;
+  numero?: number;
+  titulo?: string;
+}) {
   return (
-    <Section num="20" title="Considerações Finais">
+    <Section num={numero ? String(numero) : "20"} title={titulo?.trim() || "Considerações Finais"}>
       {consideracoes ? (
         <RichBlock html={consideracoes} />
       ) : (
         <p className="text-xs italic text-gray-400">Sem considerações finais registradas.</p>
       )}
+    </Section>
+  );
+}
+
+// ─── Plano de Ação 5W2H ──────────────────────────────────────────────────────
+// Espelha `secaoPlanoAcao` de components/pdf/templates/AetTemplate: mesmas 9
+// colunas, mesma ordem, setor como linha de grupo, mesmo agrupamento
+// (lib/aet/acoes). Mudou lá, mude aqui.
+
+const PLANO_PRIO_COR: Record<string, string> = {
+  Critica: "text-red-700", Alta: "text-orange-700", Media: "text-amber-700", Baixa: "text-emerald-700",
+};
+const PLANO_STATUS_COR: Record<string, string> = {
+  Pendente: "text-amber-700", "Em Andamento": "text-blue-700", Concluida: "text-emerald-700", Cancelada: "text-gray-500",
+};
+const tdPlano = "border-b border-gray-100 border-r border-r-gray-50 px-1.5 py-1 align-top text-gray-900 [word-break:break-word]";
+
+function PlanoAcaoSection({
+  acoes,
+  setores,
+  numero,
+  titulo,
+  intro,
+}: {
+  acoes: AetAcao[];
+  setores: AetSetor[];
+  numero?: number;
+  titulo?: string;
+  /** Texto do capítulo fixo (textos_padrao.conteudo) — no PDF sai entre o título e a tabela. */
+  intro?: React.ReactNode;
+}) {
+  const grupos = agruparAcoesPorSetor(acoes, setores);
+  const heads = ["Prior.", "O quê", "Por quê", "Como", "Onde", "Quem", "Quando", "Quanto", "Status"];
+  const cols = ["6%", "16%", "14%", "13%", "9%", "10%", "13%", "9%", "10%"];
+  return (
+    <Section num={numero ? String(numero) : ""} title={titulo?.trim() || "Plano de Ação (5W2H)"}>
+      {intro}
+      <table className="w-full table-fixed border-collapse text-[8px]">
+        <colgroup>{cols.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>
+        <thead>
+          <tr>
+            {heads.map((h) => (
+              <th key={h} className="border-b-2 border-verde-primary border-r border-r-gray-200 bg-emerald-50 px-1.5 py-1 text-left text-[7.5px] font-bold uppercase tracking-wide text-verde-primary">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {grupos.map((g) => (
+            <Fragment key={g.setor?.id ?? "__gerais"}>
+              <tr>
+                <td colSpan={heads.length} className="bg-gray-700 px-1.5 py-1 text-[8.5px] font-bold uppercase tracking-wider text-white">
+                  {g.setor
+                    ? `Setor ${setores.indexOf(g.setor) + 1}: ${g.setor.nome_setor?.trim() || "—"}`
+                    : ROTULO_ACOES_GERAIS}
+                </td>
+              </tr>
+              {g.acoes.map((a) => (
+                <tr key={a.id_acao} className="break-inside-avoid">
+                  <td className={cn(tdPlano, "font-bold", PLANO_PRIO_COR[a.prioridade] ?? PLANO_PRIO_COR.Media)}>{a.prioridade}</td>
+                  <td className={cn(tdPlano, "font-semibold")}>{a.what_acao}</td>
+                  <td className={tdPlano}>{a.why_justificativa || "—"}</td>
+                  <td className={tdPlano}>{a.how_metodo || "—"}</td>
+                  <td className={tdPlano}>{a.where_local || "—"}</td>
+                  <td className={tdPlano}>{a.who_responsavel || "—"}</td>
+                  <td className={tdPlano}>{formatarPrazoAcao(a.when_prazo) || "—"}</td>
+                  <td className={tdPlano}>{a.how_much_custo || "—"}</td>
+                  <td className={cn(tdPlano, "font-bold", PLANO_STATUS_COR[a.status] ?? PLANO_STATUS_COR.Pendente)}>{a.status}</td>
+                </tr>
+              ))}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
     </Section>
   );
 }
@@ -1951,6 +2168,7 @@ function AssinaturaSection({
   idRelatorio,
   dataRelatorio,
   hideAcoes,
+  numero,
 }: {
   responsavel: string;
   tituloProfissional: string;
@@ -1958,6 +2176,8 @@ function AssinaturaSection({
   idRelatorio: string;
   dataRelatorio?: string;
   hideAcoes?: boolean;
+  /** Número do modelo — o PDF imprime "15. FOLHA DE ASSINATURAS". */
+  numero?: number;
 }) {
   return (
     <AssinaturaRelatorio
@@ -1967,6 +2187,7 @@ function AssinaturaSection({
       tabelaNome="aet_relatorios"
       docId={idRelatorio}
       hideAcoes={hideAcoes}
+      numero={numero}
     />
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
 import { use, useState, useEffect } from "react";
 import { Brain, ChevronDown, ChevronUp, Loader2, Save, Sparkles } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -21,6 +23,9 @@ import {
   SEMAFORO_DEFAULT,
 } from "@/lib/hooks/useAet";
 import { cn } from "@/lib/utils";
+import { mediaFator } from "@/lib/aet/consolidar-psi";
+import RichTextEditor from "@/components/drps/RichTextEditor";
+import { htmlParaTexto, htmlVazio, textoParaHtml } from "@/lib/texto-rico";
 import type { Aet13FatorPergunta, AetLaudoQpsMeta, AetLaudoQpsResposta, ZonaPsi } from "@/lib/supabase/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -71,7 +76,7 @@ const ZONA_BORDER_L: Record<ZonaPsi, string> = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Chave de um fator DENTRO de um setor. Observação, pergunta crítica e zona
- *  são por setor (v145) — antes eram indexadas só pelo código do fator, o que
+ *  são por setor (v135) — antes eram indexadas só pelo código do fator, o que
  *  fazia o mesmo texto aparecer em todos os setores do laudo. */
 function fKey(idSetor: string, codigoFator: string) {
   return `${idSetor}:${codigoFator}`;
@@ -102,22 +107,15 @@ function perguntaCriticaAuto(
   return worstTexto;
 }
 
+/** Mesma conta da tela de setores, da prévia e do PDF — mora em
+ *  lib/aet/consolidar-psi.ts. Aqui só muda a forma de achar a resposta. */
 function calcularMediaFator(
   perguntas: Aet13FatorPergunta[],
   localRespostas: Record<string, number>,
   idSetor: string,
   codigoFator: string
 ): number | null {
-  const pFator = perguntas.filter((p) => p.codigo_fator === codigoFator);
-  if (pFator.length === 0) return null;
-  const scores: number[] = [];
-  for (const p of pFator) {
-    const r = localRespostas[rKey(idSetor, codigoFator, p.ordem)];
-    if (r == null) continue;
-    scores.push(p.logica === "direta" ? 6 - r : r);
-  }
-  if (scores.length === 0) return null;
-  return Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 100) / 100;
+  return mediaFator(perguntas, codigoFator, (ordem) => localRespostas[rKey(idSetor, codigoFator, ordem)]);
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -205,24 +203,11 @@ export default function PsicossocialPage({
     });
   }, [respostasDB]);
 
-  // Auto-fill Pergunta Crítica para todos os setores abertos
-  useEffect(() => {
-    if (perguntas.length === 0 || setoresAbertos.size === 0) return;
-    setPerguntasCriticas((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      for (const setorId of Array.from(setoresAbertos)) {
-        for (const fator of fatores) {
-          if (fator.codigo === "F13") continue;
-          const k = fKey(setorId, fator.codigo);
-          if (prev[k]) continue;
-          const auto = perguntaCriticaAuto(perguntas, localRespostas, setorId, fator.codigo);
-          if (auto) { next[k] = auto; changed = true; }
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [localRespostas, setoresAbertos, fatores, perguntas]);
+  // A "Pergunta Crítica" saiu da tela (a pergunta já está na lista do próprio
+  // fator, logo acima). O auto-preenchimento foi removido junto: nenhum fator
+  // novo passa a gravar o campo. O estado continua existindo só para devolver
+  // intacto no upsert o que já está gravado — sem isso, salvar um fator antigo
+  // apagaria o texto que ainda é impresso no laudo e no PDF.
 
   // Init observacoes / perguntasCriticas / zonasManuais
   useEffect(() => {
@@ -231,7 +216,9 @@ export default function PsicossocialPage({
     const zm: Record<string, ZonaPsi | null> = {};
     for (const fp of fatoresPsi) {
       const k = fKey(fp.id_setor, fp.codigo_fator);
-      obs[k] = fp.observacao ?? "";
+      // Observação virou campo com formatação: o que já está gravado em texto
+      // puro entra no editor como parágrafo (só vira HTML no banco ao salvar).
+      obs[k] = textoParaHtml(fp.observacao);
       pc[k] = fp.pergunta_critica ?? "";
       if (fp.codigo_fator === "F13") zm[k] = fp.zona ?? null;
     }
@@ -303,7 +290,8 @@ export default function PsicossocialPage({
           media: mediaCalc,
           pct_zona_risco: null,
           pergunta_critica: perguntasCriticas[fatorKey] || null,
-          observacao: observacoes[fatorKey] || null,
+          // `<p></p>` (editor esvaziado) é truthy mas não imprime nada.
+          observacao: htmlVazio(observacoes[fatorKey]) ? null : observacoes[fatorKey],
           zona,
         }),
       ]);
@@ -335,13 +323,18 @@ export default function PsicossocialPage({
           media: mediaCalc,
           zona,
           nivel_pgr: nivelPgrFromZona(zona),
-          pergunta_critica: perguntasCriticas[fatorKey] || null,
-          textoAtual: observacoes[fatorKey] || null,
+          // O campo saiu da tela, mas a IA continua recebendo a pergunta de pior
+          // score: usa o que já estiver gravado ou calcula na hora.
+          pergunta_critica:
+            perguntasCriticas[fatorKey] ||
+            perguntaCriticaAuto(perguntas, localRespostas, setorId, codigoFator),
+          // A IA recebe o texto limpo — as tags do editor não vão no prompt.
+          textoAtual: htmlParaTexto(observacoes[fatorKey]) || null,
         },
       });
       if (error) throw error;
       const obs = data?.data?.observacao ?? data?.observacao ?? "";
-      if (obs) setObservacoes((prev) => ({ ...prev, [fatorKey]: obs }));
+      if (obs) setObservacoes((prev) => ({ ...prev, [fatorKey]: textoParaHtml(obs) }));
       else toast.error("IA não retornou texto");
     } catch {
       toast.error("Erro ao gerar com IA");
@@ -365,13 +358,7 @@ export default function PsicossocialPage({
 
   // ─── Loading ──────────────────────────────────────────────────────────────
 
-  if (loadingRel || loadingFatores || loadingMeta) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-gray-400" />
-      </div>
-    );
-  }
+  if (loadingRel || loadingFatores || loadingMeta) return <EditorSkeleton />;
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -746,23 +733,6 @@ export default function PsicossocialPage({
 
                                 {/* Pergunta crítica + Observação + Salvar */}
                                 <div className="space-y-3 border-t border-gray-100 pt-4">
-                                  {!isF13 && (
-                                    <div>
-                                      <label className="mb-1 block text-xs font-medium text-gray-600">
-                                        Pergunta Crítica
-                                      </label>
-                                      <textarea
-                                        rows={2}
-                                        value={perguntasCriticas[fatorKey] ?? ""}
-                                        onChange={(e) =>
-                                          setPerguntasCriticas((prev) => ({ ...prev, [fatorKey]: e.target.value }))
-                                        }
-                                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-y"
-                                        placeholder="Pergunta com pior score neste fator…"
-                                      />
-                                    </div>
-                                  )}
-
                                   <div>
                                     <div className="mb-1 flex items-center justify-between gap-2">
                                       <label className="text-xs font-medium text-gray-600">
@@ -782,13 +752,12 @@ export default function PsicossocialPage({
                                         </button>
                                       )}
                                     </div>
-                                    <textarea
-                                      rows={3}
+                                    <RichTextEditor
                                       value={observacoes[fatorKey] ?? ""}
-                                      onChange={(e) =>
-                                        setObservacoes((prev) => ({ ...prev, [fatorKey]: e.target.value }))
+                                      onChange={(html) =>
+                                        setObservacoes((prev) => ({ ...prev, [fatorKey]: html }))
                                       }
-                                      className="w-full resize-y rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2"
+                                      uploadPathPrefix="aet-psicossocial"
                                       placeholder="Análise, contexto e achados relevantes…"
                                     />
                                   </div>

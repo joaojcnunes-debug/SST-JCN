@@ -1,0 +1,3 @@
+# Scripts de shell precisam de LF: com CRLF o Ubuntu falha com
+# "\r: command not found", e o erro nao diz o motivo real.
+*.sh text eol=lf

@@ -3,6 +3,8 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { ChevronDown, Search, X, Building2 } from "lucide-react";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
+import { buscarEmpresas } from "@/lib/busca/empresas";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { cn, formatCNPJ } from "@/lib/utils";
 import type { ModuloEmpresa } from "@/lib/supabase/types";
 
@@ -40,17 +42,18 @@ export default function EmpresaSelect({
     [empresas, value]
   );
 
-  const filtered = useMemo(() => {
+  const { itens: filtered, aproximado, foraDaUnidade } = useMemo(() => {
     // Escopo por Unidade ativa: só empresas da unidade.
     const base = unidadeId ? empresas.filter((e) => e.id_unidade === unidadeId) : empresas;
-    if (!query.trim()) return base;
-    const q = query.toLowerCase();
-    return base.filter(
-      (e) =>
-        e.nome_empresa.toLowerCase().includes(q) ||
-        (e.cnpj ?? "").toLowerCase().includes(q) ||
-        (e.razao_social ?? "").toLowerCase().includes(q)
-    );
+    // Busca tolerante: acento, ordem das palavras, erro de digitação, CNPJ sem máscara.
+    const r = buscarEmpresas(base, query);
+    // "Não achou" pode ser a UNIDADE, não a busca: conta quantas batem fora
+    // dela para a pessoa saber que a empresa existe e onde procurar.
+    const foraDaUnidade =
+      unidadeId && query.trim()
+        ? buscarEmpresas(empresas, query).itens.filter((e) => e.id_unidade !== unidadeId).length
+        : 0;
+    return { ...r, foraDaUnidade };
   }, [empresas, query, unidadeId]);
 
   useEffect(() => {
@@ -136,7 +139,22 @@ export default function EmpresaSelect({
             )}
             {!isLoading && filtered.length === 0 && (
               <li className="px-3 py-2 text-sm text-gray-500">
-                Nenhuma empresa encontrada
+                {foraDaUnidade > 0 ? (
+                  <>
+                    Nenhuma nesta unidade —{" "}
+                    <span className="font-medium text-gray-700">
+                      {foraDaUnidade} parecida{foraDaUnidade > 1 ? "s" : ""} em outras unidades
+                    </span>
+                    . Troque a Unidade ativa no topo para vê-la.
+                  </>
+                ) : (
+                  "Nenhuma empresa encontrada"
+                )}
+              </li>
+            )}
+            {!isLoading && aproximado && filtered.length > 0 && (
+              <li>
+                <AvisoBuscaAproximada aproximado busca={query} total={filtered.length} compacto />
               </li>
             )}
             {filtered.map((e) => (

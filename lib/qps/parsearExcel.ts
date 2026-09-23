@@ -1,5 +1,14 @@
 // Parser de planilha Excel para importação de Tipos e Perguntas QPS.
-// Estrutura: aba = Tipo | Coluna A = Categoria | Coluna B = Pergunta | Coluna C = Lógica (opcional)
+// Estrutura: aba = Tipo | Coluna A = Categoria | Coluna B = Pergunta
+//            Coluna C = Lógica (opcional) | Colunas D em diante = alternativas
+//
+// As alternativas (v180) entram uma por coluna, NA ORDEM do formulário: a
+// primeira é uma ponta da escala e a última é a outra; `logica` diz qual delas
+// é a ruim. Sem elas, a pergunta segue a escala numérica do tipo.
+//
+// É por aqui que um questionário inteiro entra de uma vez. Digitar 20 perguntas
+// × 5 alternativas na tela, uma a uma, é onde alguém troca duas de lugar — e
+// trocar duas de lugar inverte a resposta no cálculo, sem aviso.
 
 import * as XLSX from "xlsx";
 
@@ -7,6 +16,8 @@ export interface PerguntaExcel {
   categoria: string;
   texto: string;
   logica: "direta" | "invertida";
+  /** Alternativas próprias, na ordem das colunas D+. `null` = escala do tipo. */
+  opcoes: string[] | null;
 }
 
 export interface TipoExcel {
@@ -56,6 +67,15 @@ export function parsearExcelQps(buffer: ArrayBuffer): TipoExcel[] {
       const categoria = String(row[0] ?? "").trim();
       const texto = String(row[1] ?? "").trim();
       const logicaRaw = String(row[2] ?? "").trim();
+      // Alternativas: da coluna D até a última preenchida. Célula vazia no meio
+      // encerra a lista — buraco no meio é engano de planilha, e continuar
+      // depois dele deslocaria a ordem, que é justamente o que vira nota.
+      const opcoes: string[] = [];
+      for (let c = 3; c < row.length; c++) {
+        const v = String(row[c] ?? "").trim();
+        if (!v) break;
+        opcoes.push(v);
+      }
 
       if (!categoria && !texto) continue;
 
@@ -73,7 +93,20 @@ export function parsearExcelQps(buffer: ArrayBuffer): TipoExcel[] {
         categorias.push(categoria);
       }
 
-      perguntas.push({ categoria, texto, logica: normLogica(logicaRaw) });
+      if (opcoes.length === 1) {
+        erros.push(
+          `Linha ${i + 1}: só uma alternativa ("${opcoes[0]}") — precisa de ao ` +
+            `menos 2, ou nenhuma para usar a escala do tipo. A pergunta entrou ` +
+            `com a escala do tipo.`,
+        );
+      }
+
+      perguntas.push({
+        categoria,
+        texto,
+        logica: normLogica(logicaRaw),
+        opcoes: opcoes.length >= 2 ? opcoes : null,
+      });
     }
 
     if (perguntas.length === 0 && erros.length === 0) continue;
@@ -90,7 +123,7 @@ export function gerarTemplateExcel(): ArrayBuffer {
   const wb = XLSX.utils.book_new();
 
   const dados = [
-    ["Categoria", "Pergunta", "Lógica (direta/invertida)"],
+    ["Categoria", "Pergunta", "Lógica (direta/invertida)", "Alternativa 1", "Alternativa 2", "Alternativa 3", "Alternativa 4", "Alternativa 5"],
     ["Demanda de Trabalho", "Sinto que tenho muito trabalho a fazer", "direta"],
     ["Demanda de Trabalho", "Consigo terminar minhas tarefas no horário", "invertida"],
     ["Demanda de Trabalho", "O ritmo de trabalho é acelerado", "direta"],
@@ -99,10 +132,18 @@ export function gerarTemplateExcel(): ArrayBuffer {
     ["Apoio Social", "Recebo apoio do meu supervisor quando necessário", "invertida"],
     ["Apoio Social", "Meu supervisor deixa claro o que espera de mim", "invertida"],
     ["Apoio Social", "Meus colegas me ajudam quando preciso", "invertida"],
+    [],
+    ["— Deixe da coluna D em diante VAZIO para a pergunta usar a escala numérica do tipo."],
+    ["— Preenchendo, as alternativas entram NA ORDEM das colunas. Com lógica 'invertida' a primeira é a pior; com 'direta', a primeira é a melhor."],
+    [],
+    ["Ambiente", "A temperatura do local de trabalho está confortável?", "invertida", "Muito quente ou muito frio", "Às vezes desconfortável", "Dá para trabalhar, mas poderia ser melhor", "Geralmente boa", "Sempre agradável"],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(dados);
-  ws["!cols"] = [{ wch: 28 }, { wch: 58 }, { wch: 22 }];
+  ws["!cols"] = [
+    { wch: 28 }, { wch: 58 }, { wch: 22 },
+    { wch: 30 }, { wch: 30 }, { wch: 30 }, { wch: 30 }, { wch: 30 },
+  ];
 
   XLSX.utils.book_append_sheet(wb, ws, "Exemplo de Tipo");
 

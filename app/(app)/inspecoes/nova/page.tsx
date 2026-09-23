@@ -9,6 +9,9 @@ import {
   Copy,
   Building2,
   Loader2,
+  Plus,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -17,6 +20,8 @@ import {
   useInspecao,
   useInspecoesByEmpresa,
 } from "@/lib/hooks/useInspecao";
+import { useUsuariosParaAssociar } from "@/lib/hooks/useInspecaoAssociados";
+import { contaDoTecnicoDigitado } from "@/lib/dashboard/vinculo-tecnicos";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId, cn } from "@/lib/utils";
 import { useUserStore } from "@/lib/store";
@@ -29,7 +34,7 @@ import type {
 } from "@/lib/supabase/types";
 
 type Step = 1 | 2 | 3;
-type Tipo = "BRANCO" | "REVISAO" | "COPIA_EMPRESA";
+type Tipo = "BRANCO" | "REVISAO" | "COPIA_EMPRESA" | "RENOVACAO";
 
 interface OpcoesCopia {
   setores: boolean;
@@ -73,6 +78,46 @@ function NovaInspecaoInner() {
     new Date().toISOString().slice(0, 10)
   );
   const [obs, setObs] = useState("");
+
+  /**
+   * QUEM VAI A CAMPO — decidido com ele em 2026-08-26.
+   *
+   * Até aqui a inspeção nascia SEM responsável (a linha de `responsaveis` só
+   * era criada ao duplicar), e por isso 127 das 430 não tinham ninguém. O
+   * dashboard então contava pelo campo `inspecoes.responsavel`, que é quem
+   * CADASTROU no sistema — nem sempre quem foi à empresa.
+   *
+   * Sugerido, não cravado: o nome de quem está criando vem preenchido, mas
+   * numa caixa visível que a pessoa troca antes de criar. Preencher sozinho e
+   * calado poria o nome errado num documento que vai ao cliente -- foi o que o
+   * Sanmyo recusou em 25/08 ("não podemos alocar qualquer técnico no lugar").
+   */
+  const [tecnicos, setTecnicos] = useState<string[]>([""]);
+  const [tecnicoSemeado, setTecnicoSemeado] = useState(false);
+  useEffect(() => {
+    // Semeia UMA vez: o `user` chega depois da primeira renderização, e sem a
+    // trava um segundo render sobrescreveria o que a pessoa já tivesse digitado.
+    if (tecnicoSemeado || !user?.nome) return;
+    setTecnicos([user.nome]);
+    setTecnicoSemeado(true);
+  }, [user, tecnicoSemeado]);
+
+  const { data: usuariosSugestao } = useUsuariosParaAssociar();
+  /**
+   * `datalist`, não `select`: técnico de unidade sem usuário no painel (o de
+   * Friburgo) precisa continuar podendo ser digitado, e sem sinal na portaria
+   * do cliente a consulta falha e o campo vira input comum, sem travar nada.
+   * Mesma régua do ResponsavelForm — se mudar aqui, mudar lá.
+   */
+  const sugestoesTecnico = useMemo(
+    () =>
+      (usuariosSugestao ?? [])
+        .map((u) => (u.nome ?? "").trim())
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, "pt-BR")),
+    [usuariosSugestao]
+  );
+
   const [opcoes, setOpcoes] = useState<OpcoesCopia>({
     setores: true,
     cargos: true,
@@ -98,8 +143,15 @@ function NovaInspecaoInner() {
   const inspecoesParaBase =
     tipo === "REVISAO" ? inspecoesDestino : inspecoesOrigemCopia;
 
+  /**
+   * Os dois tipos que NÃO copiam de uma inspeção base. Renovação (23/09) é o
+   * registro do administrativo que só atualiza a empresa ou a data dos
+   * documentos dela — não copia nada e não conta como inspeção nos gráficos.
+   */
+  const semBase = tipo === "BRANCO" || tipo === "RENOVACAO";
+
   const { data: baseFull } = useInspecao(
-    tipo !== "BRANCO" ? inspBaseId : null
+    !semBase ? inspBaseId : null
   );
 
   const proximaRevisao = useMemo(() => {
@@ -113,7 +165,7 @@ function NovaInspecaoInner() {
   const create = useMutation({
     mutationFn: async () => {
       if (!empresaDestinoId) throw new Error("Selecione a empresa");
-      if (tipo !== "BRANCO" && !inspBaseId)
+      if (!semBase && !inspBaseId)
         throw new Error("Selecione a inspeção base");
 
       const supabase = createSupabaseBrowserClient();
@@ -129,7 +181,7 @@ function NovaInspecaoInner() {
         responsavel: user?.nome ?? null,
         observacoes: obs || null,
         tipo_criacao: tipoCriacao,
-        id_inspecao_base: tipo !== "BRANCO" ? inspBaseId : null,
+        id_inspecao_base: !semBase ? inspBaseId : null,
         usuario: user?.email ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -141,7 +193,7 @@ function NovaInspecaoInner() {
       if (errInsp) throw errInsp;
 
       // Cópia de dados (REVISAO ou COPIA_EMPRESA).
-      if (tipo !== "BRANCO" && baseFull) {
+      if (!semBase && baseFull) {
         const mapaSetor = new Map<string, string>();
         const mapaCargo = new Map<string, string>();
         const mapaRisco = new Map<string, string>();
@@ -236,6 +288,10 @@ function NovaInspecaoInner() {
             id_inspecao: novaId,
             id_empresa: empresaDestinoId,
             tecnico_responsavel: r.tecnico_responsavel,
+            // Carrega o vínculo junto (v204, Fase B1): a cópia herda um fato
+            // que a inspeção de origem já tinha gravado, em vez de nascer
+            // vazia e voltar a depender do texto digitado.
+            id_usuario: r.id_usuario ?? null,
             recepcionado_por: r.recepcionado_por,
             cargo: r.cargo,
             data_hora: r.data_hora,
@@ -268,13 +324,75 @@ function NovaInspecaoInner() {
         }
       }
 
+      // Quem vai a campo -> uma linha de `responsaveis` por técnico nomeado.
+      //
+      // Roda DEPOIS da cópia de propósito: quando a pessoa duplica marcando
+      // "Responsáveis", as linhas da inspeção base já entraram, e repetir o
+      // mesmo nome criaria duas linhas para a mesma pessoa -- que o dashboard
+      // contaria duas vezes. A comparação é por nome normalizado (sem caixa,
+      // sem espaço nas pontas) porque o campo é texto livre: "LÉDIMO" e
+      // "Lédimo" são a mesma pessoa. Ver lib/dashboard/tecnicos.ts.
+      const jaCopiados = new Set(
+        (opcoes.responsaveis && !semBase ? baseFull?.responsaveis ?? [] : [])
+          .map((r) => (r.tecnico_responsavel ?? "").trim().toLocaleLowerCase("pt-BR"))
+          .filter(Boolean)
+      );
+      const nomesTecnicos: string[] = [];
+      // Renovação não tem visita, então não tem quem foi a campo: a caixa nem
+      // aparece, e o nome semeado de quem está criando não vira técnico.
+      for (const t of tipo === "RENOVACAO" ? [] : tecnicos) {
+        const nome = t.trim();
+        if (!nome) continue;
+        const chave = nome.toLocaleLowerCase("pt-BR");
+        if (jaCopiados.has(chave)) continue;
+        jaCopiados.add(chave); // cobre também o mesmo nome digitado duas vezes
+        nomesTecnicos.push(nome);
+      }
+      if (nomesTecnicos.length > 0) {
+        const agora = new Date().toISOString();
+        const novosResp = nomesTecnicos.map((nome) => ({
+          id_responsavel: gerarId("RSP"),
+          id_inspecao: novaId,
+          id_empresa: empresaDestinoId,
+          tecnico_responsavel: nome,
+          // V204, Fase B1 — grava JUNTO a conta de quem foi a campo, quando o
+          // nome digitado é de alguém do cadastro.
+          //
+          // O nome continua sendo gravado do jeito que foi escrito: é ele que
+          // aparece no laudo, e técnico de unidade sem login no painel precisa
+          // seguir podendo ser digitado. O `id_usuario` é o extra que tira a
+          // contagem do dashboard da dependência do texto.
+          //
+          // A regra NÃO está reescrita aqui: `contaDoTecnicoDigitado` chama a
+          // mesma função da tela e do script. Nome ambíguo devolve null, e null
+          // aqui nunca quer dizer "não é técnico" -- quer dizer "não dá para
+          // afirmar de qual conta é".
+          id_usuario: contaDoTecnicoDigitado(nome, usuariosSugestao ?? []),
+          // Recepção e cargo são de quem ATENDE na empresa: só se sabe na
+          // visita. Ficam vazios e são preenchidos na aba Responsáveis.
+          recepcionado_por: null,
+          cargo: null,
+          data_hora: agora,
+        }));
+        const { error: errResp } = await supabase
+          .from("responsaveis")
+          .insert(novosResp as never);
+        // Não derruba a criação: a inspeção já existe e o técnico se corrige na
+        // aba Responsáveis. Falhar aqui e abortar deixaria a inspeção órfã.
+        if (errResp) {
+          toast.error(
+            "Inspeção criada, mas o técnico não foi gravado. Preencha na aba Responsáveis."
+          );
+        }
+      }
+
       return novaId;
     },
     onSuccess: (id) => {
       qc.invalidateQueries({ queryKey: ["inspecoes"] });
       qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
       qc.invalidateQueries({ queryKey: ["dashboard-recentes"] });
-      toast.success("Inspeção criada");
+      toast.success(tipo === "RENOVACAO" ? "Renovação registrada" : "Inspeção criada");
       router.replace(`/inspecoes/${id}`);
     },
     onError: (err: Error) => {
@@ -284,7 +402,7 @@ function NovaInspecaoInner() {
 
   const podeAvancar1 = !!empresaDestinoId;
   const podeAvancar2 =
-    tipo === "BRANCO" ||
+    semBase ||
     (tipo === "REVISAO" && !!inspBaseId) ||
     (tipo === "COPIA_EMPRESA" && !!empresaOrigemId && !!inspBaseId);
 
@@ -331,7 +449,7 @@ function NovaInspecaoInner() {
         {step === 2 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Como criar?</h2>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2">
               <TipoCard
                 ativo={tipo === "BRANCO"}
                 onClick={() => {
@@ -363,6 +481,17 @@ function NovaInspecaoInner() {
                 icon={<Building2 className="size-5 text-verde-primary" />}
                 titulo="Cópia de Outra Empresa"
                 desc="Importa dados de uma inspeção de outra empresa."
+              />
+              <TipoCard
+                ativo={tipo === "RENOVACAO"}
+                onClick={() => {
+                  setTipo("RENOVACAO");
+                  setInspBaseId(null);
+                  setEmpresaOrigemId(null);
+                }}
+                icon={<RefreshCw className="size-5 text-verde-primary" />}
+                titulo="Renovação de documento"
+                desc="Não é visita a campo: registra a empresa ou a renovação dos documentos dela, sem contar nos gráficos de inspeção."
               />
             </div>
 
@@ -402,7 +531,7 @@ function NovaInspecaoInner() {
               </div>
             )}
 
-            {tipo !== "BRANCO" && inspBaseId && (
+            {!semBase && inspBaseId && (
               <OpcoesCopiaPanel opcoes={opcoes} setOpcoes={setOpcoes} />
             )}
 
@@ -428,14 +557,19 @@ function NovaInspecaoInner() {
 
         {step === 3 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Dados da inspeção</h2>
+            <h2 className="text-lg font-semibold">
+              {tipo === "RENOVACAO" ? "Dados da renovação" : "Dados da inspeção"}
+            </h2>
             <div className="rounded-md border border-verde-primary/30 bg-verde-light/50 px-3 py-2 text-sm text-gray-700">
-              Esta inspeção será gravada como{" "}
+              {tipo === "RENOVACAO" ? "Esta renovação" : "Esta inspeção"} será gravada como{" "}
               <strong>Rev. {proximaRevisao}</strong> nesta empresa.
+              {tipo === "RENOVACAO" && (
+                <> Não conta como inspeção nos gráficos nem na produtividade.</>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">
-                Data da inspeção
+                {tipo === "RENOVACAO" ? "Data do documento" : "Data da inspeção"}
               </label>
               <input
                 type="date"
@@ -444,6 +578,62 @@ function NovaInspecaoInner() {
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
               />
             </div>
+            {tipo !== "RENOVACAO" && (
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Quem vai a campo?
+              </label>
+              <div className="mt-1 space-y-2">
+                {tecnicos.map((t, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={t}
+                      list="tecnicos-campo-sugestoes"
+                      placeholder={
+                        i === 0 ? "Técnico responsável" : "Segundo técnico"
+                      }
+                      onChange={(e) =>
+                        setTecnicos((old) =>
+                          old.map((v, j) => (j === i ? e.target.value : v))
+                        )
+                      }
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                    />
+                    {tecnicos.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTecnicos((old) => old.filter((_, j) => j !== i))
+                        }
+                        aria-label="Remover este técnico"
+                        className="shrink-0 rounded-md border border-gray-300 bg-white px-2 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                      >
+                        <Trash2 className="size-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <datalist id="tecnicos-campo-sugestoes">
+                  {sugestoesTecnico.map((n) => (
+                    <option key={n} value={n} />
+                  ))}
+                </datalist>
+                <button
+                  type="button"
+                  onClick={() => setTecnicos((old) => [...old, ""])}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-verde-primary hover:text-verde-accent"
+                >
+                  <Plus className="size-4" /> adicionar outro técnico
+                </button>
+              </div>
+              <p className="mt-1.5 text-xs text-gray-500">
+                Sai no relatório e conta no dashboard. Dá para corrigir depois
+                na aba <strong>Responsáveis</strong>.
+              </p>
+            </div>
+            )}
+
             <div>
               <label className="text-sm font-medium text-gray-700">
                 Observações iniciais
@@ -472,7 +662,7 @@ function NovaInspecaoInner() {
                 className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
               >
                 {create.isPending && <Loader2 className="size-4 animate-spin" />}
-                Criar Inspeção →
+                {tipo === "RENOVACAO" ? "Registrar Renovação →" : "Criar Inspeção →"}
               </button>
             </div>
           </div>

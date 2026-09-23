@@ -17,6 +17,7 @@ import {
   Info,
   FileText,
   FileDown,
+  AlertTriangle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
@@ -44,12 +45,13 @@ import { useUserStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { ehSupervisor } from "@/lib/hooks/useUsuario";
 
 export default function TiposPage() {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
   useEffect(() => {
-    if (user && user.perfil !== "Admin") router.replace("/questionarios-psicossociais");
+    if (user && !ehSupervisor(user)) router.replace("/questionarios-psicossociais");
   }, [user, router]);
 
   const { data: tipos = [], isLoading } = useQpsTipos();
@@ -422,6 +424,11 @@ function TipoCard({
             </div>
           )}
 
+          {/* Escala de resposta — precisa bater com a do formulário que gerou o
+              CSV. Formulário 0–4 importado como 1–5 perde todo valor 0 e joga
+              o score 25 pontos para baixo. */}
+          <EscalaTipo tipo={tipo} />
+
           {/* Categorias */}
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -465,6 +472,103 @@ function TipoCard({
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Escala de resposta do tipo ───────────────────────────────────────────────
+// Só o nome era editável depois de criado, e todo tipo vindo de importação de
+// Excel nasce 1–5. Quem monta o Google Forms em 0–4 não tinha como corrigir.
+
+function EscalaTipo({ tipo }: { tipo: QpsTipo }) {
+  const atualizar = useUpdateQpsTipo();
+  const [editando, setEditando] = useState(false);
+  const [min, setMin] = useState(String(tipo.escala_min));
+  const [max, setMax] = useState(String(tipo.escala_max));
+
+  async function salvar() {
+    const nMin = parseInt(min, 10);
+    const nMax = parseInt(max, 10);
+    if (isNaN(nMin) || isNaN(nMax) || nMin >= nMax) {
+      toast.error("Escala inválida: mínimo deve ser menor que máximo");
+      return;
+    }
+    try {
+      await atualizar.mutateAsync({
+        id: tipo.id_tipo,
+        input: { escala_min: nMin, escala_max: nMax },
+      });
+      toast.success(`Escala alterada para ${nMin}–${nMax}`);
+      setEditando(false);
+    } catch {
+      toast.error("Erro ao salvar a escala");
+    }
+  }
+
+  return (
+    <div className="mb-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Escala de resposta
+        </p>
+        {editando ? (
+          <>
+            <input
+              type="number"
+              value={min}
+              onChange={(e) => setMin(e.target.value)}
+              className="w-16 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <span className="text-xs text-gray-500">a</span>
+            <input
+              type="number"
+              value={max}
+              onChange={(e) => setMax(e.target.value)}
+              className="w-16 rounded border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              onClick={salvar}
+              disabled={atualizar.isPending}
+              className="text-green-600 hover:text-green-700 disabled:opacity-50"
+            >
+              <Check className="size-4" />
+            </button>
+            <button
+              onClick={() => {
+                setMin(String(tipo.escala_min));
+                setMax(String(tipo.escala_max));
+                setEditando(false);
+              }}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="size-4" />
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="text-sm font-semibold text-gray-900">
+              {tipo.escala_min} a {tipo.escala_max}
+            </span>
+            <button
+              onClick={() => setEditando(true)}
+              className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              title="Alterar a escala"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          </>
+        )}
+      </div>
+      {editando && (
+        <p className="mt-2 text-xs text-amber-700">
+          <AlertTriangle className="mr-1 inline size-3.5" />
+          A escala precisa ser a mesma do formulário que gerou o CSV. Mudar aqui
+          <strong> recalcula o score de todos os respondentes já importados</strong>{" "}
+          neste tipo. E respostas já descartadas na importação (fora da escala
+          antiga) <strong>não voltam</strong> — nesse caso, reimporte o arquivo
+          depois de acertar a escala.
+        </p>
       )}
     </div>
   );
@@ -671,6 +775,152 @@ function CategoriaItem({
   );
 }
 
+// ─── Alternativas próprias da pergunta (v180) ─────────────────────────────────
+//
+// Até a v180 a escala era do TIPO e valia igual para todas as perguntas dele: o
+// respondente marcava um número dentro da mesma faixa. Há questionário que não é
+// assim — cada pergunta tem as suas alternativas, em quantidade diferente, e não
+// há número nenhum no formulário, só ORDEM. Aqui é onde essa ordem é cadastrada.
+//
+// Uma por linha, porque é assim que ela vem colada do formulário.
+
+/** Texto do campo → lista limpa, preservando a ordem digitada. */
+function lerAlternativas(texto: string): string[] {
+  return texto
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+}
+
+function textoDeAlternativas(opcoes: string[] | null | undefined): string {
+  return (opcoes ?? []).join("\n");
+}
+
+/**
+ * As alternativas como pílulas numeradas, com as PONTAS marcadas.
+ *
+ * A marca não é enfeite: é o único lugar onde a pessoa vê o efeito da lógica
+ * que escolheu. Digitar as alternativas na ordem certa e deixar a lógica errada
+ * inverte o risco do questionário inteiro em silêncio — o mesmo tipo de estrago
+ * que a escala 0–4 causou em agosto. Aqui ela lê "1 · Nunca · PIOR" e confere.
+ */
+function PillsAlternativas({
+  opcoes,
+  logica,
+}: {
+  opcoes: string[];
+  logica: "direta" | "invertida";
+}) {
+  const primeiraEhPior = logica === "invertida";
+  return (
+    <div className="flex flex-wrap gap-1">
+      {opcoes.map((o, i) => {
+        const ponta = i === 0 ? "primeira" : i === opcoes.length - 1 ? "ultima" : null;
+        const ehPior = ponta === (primeiraEhPior ? "primeira" : "ultima");
+        const ehMelhor = ponta === (primeiraEhPior ? "ultima" : "primeira");
+        return (
+          <span
+            key={`${i}-${o}`}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium",
+              ehPior
+                ? "border-red-200 bg-red-50 text-red-700"
+                : ehMelhor
+                ? "border-green-200 bg-green-50 text-green-700"
+                : "border-gray-200 bg-white text-gray-500"
+            )}
+          >
+            <span className="font-bold">{i + 1}</span>
+            <span className="opacity-80">{o}</span>
+            {(ehPior || ehMelhor) && (
+              <span className="text-[9px] font-bold uppercase tracking-wider">
+                {ehPior ? "pior" : "melhor"}
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Campo das alternativas + escolha do sentido, usado no cadastro e na edição.
+ *
+ * `onLogica` recebe a lógica sugerida quando a pessoa começa a digitar
+ * alternativas: um questionário de alternativas ordenadas quase sempre vai do
+ * pior para o melhor, que é a lógica "invertida". A sugestão só vale enquanto
+ * ela não escolher à mão — mexeu, manda ela.
+ */
+function EditorAlternativas({
+  valor,
+  onChange,
+  logica,
+  onLogica,
+}: {
+  valor: string;
+  onChange: (v: string) => void;
+  logica: "direta" | "invertida";
+  onLogica: (l: "direta" | "invertida") => void;
+}) {
+  const opcoes = lerAlternativas(valor);
+  const temAlternativas = opcoes.length > 0;
+  const incompleta = temAlternativas && opcoes.length < 2;
+
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-[11px] font-medium text-gray-600">
+        Alternativas desta pergunta{" "}
+        <span className="font-normal text-gray-400">
+          — uma por linha, na ordem do formulário. Vazio = usa a escala numérica do tipo.
+        </span>
+      </label>
+      <textarea
+        value={valor}
+        onChange={(e) => {
+          onChange(e.target.value);
+          if (lerAlternativas(e.target.value).length >= 2) onLogica("invertida");
+        }}
+        rows={4}
+        placeholder={"Nunca\nRaramente\nÀs vezes\nQuase sempre\nSempre"}
+        className="w-full rounded border border-gray-300 px-2 py-1.5 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
+      />
+
+      {incompleta && (
+        <p className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
+          Uma alternativa só não forma escala — coloque pelo menos 2, ou deixe o
+          campo vazio para a pergunta seguir a escala numérica do tipo.
+        </p>
+      )}
+
+      {opcoes.length >= 2 && (
+        <>
+          <div className="flex flex-wrap items-center gap-3 text-[11px]">
+            <span className="font-medium text-gray-600">Sentido:</span>
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                checked={logica === "invertida"}
+                onChange={() => onLogica("invertida")}
+              />
+              A <strong>primeira</strong> é a pior
+            </label>
+            <label className="flex items-center gap-1">
+              <input
+                type="radio"
+                checked={logica === "direta"}
+                onChange={() => onLogica("direta")}
+              />
+              A <strong>primeira</strong> é a melhor
+            </label>
+          </div>
+          <PillsAlternativas opcoes={opcoes} logica={logica} />
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Formulário nova pergunta ─────────────────────────────────────────────────
 
 function NovaPerguntaForm({
@@ -684,11 +934,20 @@ function NovaPerguntaForm({
 }) {
   const [texto, setTexto] = useState("");
   const [logica, setLogica] = useState<"direta" | "invertida">("direta");
+  const [alternativas, setAlternativas] = useState("");
   const criar = useCreateQpsPergunta();
+
+  const opcoes = lerAlternativas(alternativas);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!texto.trim()) return;
+    // Uma alternativa só não forma escala e o banco recusa (CHECK da v180).
+    // Aqui o aviso chega antes, com o motivo.
+    if (opcoes.length === 1) {
+      toast.error("Coloque pelo menos 2 alternativas, ou deixe o campo vazio");
+      return;
+    }
     try {
       await criar.mutateAsync({
         id_categoria: idCategoria,
@@ -696,6 +955,7 @@ function NovaPerguntaForm({
         logica,
         ordem: proximaOrdem,
         ativo: true,
+        opcoes: opcoes.length >= 2 ? opcoes : null,
       });
       toast.success("Pergunta adicionada");
       onClose();
@@ -714,16 +974,29 @@ function NovaPerguntaForm({
         placeholder="Texto da pergunta"
         className="w-full rounded border border-gray-300 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
       />
+      <EditorAlternativas
+        valor={alternativas}
+        onChange={setAlternativas}
+        logica={logica}
+        onLogica={setLogica}
+      />
       <div className="flex items-center gap-3">
-        <label className="text-xs font-medium text-gray-600">Lógica:</label>
-        <label className="flex items-center gap-1 text-xs">
-          <input type="radio" value="direta" checked={logica === "direta"} onChange={() => setLogica("direta")} />
-          Direta (maior = pior)
-        </label>
-        <label className="flex items-center gap-1 text-xs">
-          <input type="radio" value="invertida" checked={logica === "invertida"} onChange={() => setLogica("invertida")} />
-          Invertida (maior = melhor)
-        </label>
+        {/* Com alternativas próprias o sentido já foi escolhido acima, em cima
+            das alternativas de verdade — repetir aqui em linguagem de número
+            ("maior = pior") só confundiria. */}
+        {opcoes.length < 2 && (
+          <>
+            <label className="text-xs font-medium text-gray-600">Lógica:</label>
+            <label className="flex items-center gap-1 text-xs">
+              <input type="radio" value="direta" checked={logica === "direta"} onChange={() => setLogica("direta")} />
+              Direta (maior = pior)
+            </label>
+            <label className="flex items-center gap-1 text-xs">
+              <input type="radio" value="invertida" checked={logica === "invertida"} onChange={() => setLogica("invertida")} />
+              Invertida (maior = melhor)
+            </label>
+          </>
+        )}
         <div className="ml-auto flex gap-2">
           <button
             type="submit"
@@ -769,18 +1042,38 @@ function PerguntaItem({
 }) {
   const [editando, setEditando] = useState(false);
   const [texto, setTexto] = useState(pergunta.texto);
+  const [alternativas, setAlternativas] = useState(textoDeAlternativas(pergunta.opcoes));
+  const [logica, setLogica] = useState<"direta" | "invertida">(pergunta.logica);
   const atualizar = useUpdateQpsPergunta();
   const deletar = useDeleteQpsPergunta();
 
   const labels = labelsEscalaUi(escalaMin, escalaMax);
+  const opcoesSalvas = pergunta.opcoes ?? [];
+  const temOpcoesProprias = opcoesSalvas.length >= 2;
+  const opcoesEditadas = lerAlternativas(alternativas);
+
+  function cancelarEdicao() {
+    setTexto(pergunta.texto);
+    setAlternativas(textoDeAlternativas(pergunta.opcoes));
+    setLogica(pergunta.logica);
+    setEditando(false);
+  }
 
   async function salvar() {
     if (!texto.trim()) return;
+    if (opcoesEditadas.length === 1) {
+      toast.error("Coloque pelo menos 2 alternativas, ou esvazie o campo");
+      return;
+    }
     try {
       await atualizar.mutateAsync({
         id: pergunta.id_pergunta,
         idCategoria,
-        input: { texto: texto.trim() },
+        input: {
+          texto: texto.trim(),
+          logica,
+          opcoes: opcoesEditadas.length >= 2 ? opcoesEditadas : null,
+        },
       });
       toast.success("Pergunta atualizada");
       setEditando(false);
@@ -812,9 +1105,15 @@ function PerguntaItem({
               rows={2}
               className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
+            <EditorAlternativas
+              valor={alternativas}
+              onChange={setAlternativas}
+              logica={logica}
+              onLogica={setLogica}
+            />
             <div className="flex gap-2">
               <button onClick={salvar} className="text-xs font-medium text-green-600 hover:underline">Salvar</button>
-              <button onClick={() => { setTexto(pergunta.texto); setEditando(false); }} className="text-xs text-gray-400 hover:text-gray-600">Cancelar</button>
+              <button onClick={cancelarEdicao} className="text-xs text-gray-400 hover:text-gray-600">Cancelar</button>
             </div>
           </div>
         ) : (
@@ -827,6 +1126,15 @@ function PerguntaItem({
             ? "bg-orange-100 text-orange-600"
             : "bg-green-100 text-green-600"
         )}
+        title={
+          temOpcoesProprias
+            ? pergunta.logica === "direta"
+              ? "A primeira alternativa é a melhor"
+              : "A primeira alternativa é a pior"
+            : pergunta.logica === "direta"
+            ? "Valor maior é o pior"
+            : "Valor maior é o melhor"
+        }
       >
         {pergunta.logica === "direta" ? "Dir" : "Inv"}
       </span>
@@ -842,8 +1150,14 @@ function PerguntaItem({
       )}
       </div>
 
-      {/* Escala de resposta */}
-      {!editando && (
+      {/* Escala de resposta — as alternativas da própria pergunta quando ela
+          tem as suas; a escala numérica do tipo quando não tem. */}
+      {!editando && temOpcoesProprias && (
+        <div className="mt-1.5 ml-6">
+          <PillsAlternativas opcoes={opcoesSalvas} logica={pergunta.logica} />
+        </div>
+      )}
+      {!editando && !temOpcoesProprias && (
         <div className="mt-1.5 ml-6 flex flex-wrap gap-1">
           {Array.from({ length: escalaMax - escalaMin + 1 }, (_, i) => {
             const val = escalaMin + i;

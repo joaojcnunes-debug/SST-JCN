@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
 import { PERGUNTAS_DEFAULT } from "@/lib/aet/perguntas-default";
-import type { Empresa } from "@/lib/supabase/types";
+import type { AetAcao, Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
 import { montarValoresAet } from "@/lib/textos-padrao/variaveis-aet";
 import { montarSignatarioTecnico } from "@/lib/pdf/folha-assinatura-tecnico";
-import { assinarCapitulos, assinarUmaMidiaPdf, assinarImagensHtml } from "@/lib/pdf/assinar-midia";
+import { formatarRegistro } from "@/lib/registro-profissional";
+import { assinarCapitulos, assinarUmaMidiaPdf, assinarImagensHtml, assinarMidiaPdf } from "@/lib/pdf/assinar-midia";
+import { otimizarFotosPdf } from "@/lib/pdf/otimizar-imagem";
 import type {
   AetOwasCfg, AetFatorConfigLike, AetFatorPerguntaLike,
   AetQpsRespostaLike, AetFatorPsiLike, AetQpsMetaLike,
@@ -54,7 +56,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
     // OWAS config (aet_owas_categorias) — resolve imagem: custom (fotos) → assinada;
     // default (/owas/x.svg, relativo) → absoluta (Puppeteer não tem origem).
-    const origin = new URL(_req.url).origin;
+    // Origem INTERNA (nao a publica): o Chromium roda no container e o CF Access
+    // bloquearia server-to-server no hostname publico (SVG viraria HTML de login).
+    const origin = process.env.AUTH_INTERNAL_URL ?? "http://127.0.0.1:3000";
     const { data: rawOwas } = await supabase
       .from("aet_owas_categorias").select("*").order("ordem", { ascending: true });
     const owasConfig: AetOwasCfg[] = await Promise.all(
@@ -76,8 +80,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
     // Checklist ergonômico (labels custom; vazio → template usa o padrão interno).
     const { data: rawChecklist } = await supabase
-      .from("aet_checklist_perguntas").select("slug, secao, label");
-    const checklistPerguntas = ((rawChecklist ?? []) as { slug: string; secao: string | null; label: string }[]);
+      .from("aet_checklist_perguntas").select("slug, secao, label, oculta");
+    const checklistPerguntas = ((rawChecklist ?? []) as { slug: string; secao: string | null; label: string; oculta?: boolean | null }[]);
 
     // 13 fatores + QPS (por relatório). Configs são globais; respostas/psi/meta por id.
     const [{ data: rawFCfg }, { data: rawFPerg }, { data: rawQResp }, { data: rawFPsi }, { data: rawQMeta }] =
@@ -99,6 +103,15 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     const fatoresPsi = (rawFPsi ?? []) as unknown as AetFatorPsiLike[];
     const qpsMeta = (rawQMeta ?? null) as unknown as AetQpsMetaLike | null;
 
+    // Plano de Ação 5W2H (aet_acoes, v207) — entra no laudo como capítulo
+    // fixo `aet_plano_acao`, só quando há pelo menos uma ação.
+    const { data: rawAcoes } = await supabase
+      .from("aet_acoes")
+      .select("*")
+      .eq("id_relatorio", id)
+      .order("ordem", { ascending: true });
+    const acoes = (rawAcoes ?? []) as unknown as AetAcao[];
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const valoresVars = montarValoresAet(rel as any);
 
@@ -113,7 +126,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       docId: String(id),
       responsavelNome: rel.responsavel_elaboracao as string | null,
       cargo: (rel.titulo_profissional as string) ?? null,
-      registroProfissional: rel.registro_profissional ? `Reg. ${rel.registro_profissional}` : null,
+      // Prefixo pelo cargo: médico sai "CRM", não "Reg." (ver formatarRegistro).
+      registroProfissional: formatarRegistro(
+        rel.titulo_profissional as string | null,
+        rel.registro_profissional as string | null,
+      ),
     });
     const signatarios: Signatario[] = [signatario];
 
@@ -133,18 +150,30 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       ]);
 
     // Assina as imagens inline (<img>) gravadas no HTML rich-text de cada setor
-    // (parecer técnico e recomendações).
+    // (parecer técnico, recomendações e demais condições). Os três campos usam
+    // o mesmo editor, então os três podem ter imagem colada — sem assinar, o
+    // <img> aponta para um path do bucket privado e sai quebrado no PDF.
+    const assinarSeTexto = async (v: unknown) =>
+      typeof v === "string" ? await assinarImagensHtml(supabase, v) : v;
     const setoresAssinados = await Promise.all(
       ((rel.setores as Array<Record<string, unknown>>) ?? []).map(async (s) => ({
         ...s,
-        parecer_tecnico:
-          typeof s.parecer_tecnico === "string"
-            ? await assinarImagensHtml(supabase, s.parecer_tecnico)
-            : s.parecer_tecnico,
-        recomendacoes:
-          typeof s.recomendacoes === "string"
-            ? await assinarImagensHtml(supabase, s.recomendacoes)
-            : s.recomendacoes,
+        parecer_tecnico: await assinarSeTexto(s.parecer_tecnico),
+        recomendacoes: await assinarSeTexto(s.recomendacoes),
+        demais_condicoes: await assinarSeTexto(s.demais_condicoes),
+        // Registros fotográficos do setor. Hoje o bucket `fotos` é público e a
+        // URL gravada já baixaria; assinar é o que mantém o PDF funcionando
+        // quando ele for privatizado — e o helper devolve o valor original em
+        // qualquer falha, então não há como piorar o que já funciona.
+        //
+        // E encolhidas antes de entrar no PDF: elas saem do celular em tamanho
+        // cheio para serem impressas em 176×99. Sem isto o laudo da NOVAPARECIDA
+        // sai com 11,7 MB contra 2,7 MB — as 38 fotos viram 3/4 do arquivo.
+        // Mesma receita já em produção na apreciação (ver otimizar-imagem.ts);
+        // se o otimizador falhar, cada foto volta com a URL original.
+        fotos: Array.isArray(s.fotos)
+          ? await otimizarFotosPdf(await assinarMidiaPdf(supabase, s.fotos as string[], "fotos"))
+          : s.fotos,
       })),
     );
 
@@ -163,6 +192,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
         qpsRespostas,
         fatoresPsi,
         qpsMeta,
+        acoes,
         valoresVars,
         signatarios,
         folhaEmpresa,

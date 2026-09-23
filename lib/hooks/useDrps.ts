@@ -141,6 +141,25 @@ export function useDrpsSalvarRelatorio() {
   });
 }
 
+/** Move um relatório entre as colunas do Dashboard Geral (altera o status). */
+export function useDrpsMoverStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id_relatorio: string; status: StatusRelatorio }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("drps_relatorios")
+        .update({ status: args.status, updated_at: new Date().toISOString() } as never)
+        .eq("id_relatorio", args.id_relatorio);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drps-relatorios-geral"] });
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
 export function useDrpsExcluirRelatorio() {
   const qc = useQueryClient();
   return useMutation({
@@ -321,7 +340,7 @@ export function useDrpsSalvarProbabilidade() {
 }
 
 // ============================================================
-// PROBABILIDADES POR UNIDADE — overrides da v150
+// PROBABILIDADES POR UNIDADE — overrides da v138
 // ============================================================
 // Guarda só a exceção: o bloco (unidade, setor) que diverge do valor do setor.
 // Ausência de linha = herda. Ver montarMapaProbUnidade em lib/drps/blocos.ts.

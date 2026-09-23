@@ -1,19 +1,17 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { HardHat, HelpCircle } from "lucide-react";
+import { HardHat } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRequireModule } from "@/lib/hooks/useRequireModule";
 
+// Módulo interno gated por ModuloPermitido "epi".
 const sections: NavSection[] = [
   {
-    label: "EPI",
-    items: [
-      { href: "/epi", label: "Visão geral", icon: HardHat },
-      { href: "/epi/ajuda", label: "Ajuda", icon: HelpCircle },
-    ],
+    label: "Gestão de EPI",
+    items: [{ href: "/epi", label: "EPI", icon: HardHat }],
   },
 ];
 
@@ -23,20 +21,10 @@ export default function EpiLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <SidebarShell
-        title="EPI"
-        subtitle="JCN Consultoria"
-        logoHref="/epi"
-        sections={sections}
-      />
-      <div className="md:pl-[220px]">
-        <ModuleTopbar title="Equipamentos de Proteção Individual" />
-        <main
-          className="px-4 py-6 md:px-6"
-          style={{ viewTransitionName: "content" }}
-        >
-          {children}
-        </main>
+      <SidebarShell title="Gestão de EPI" subtitle="JCN Consultoria" logoHref="/epi" sections={sections} />
+      <div className="md:pl-[220px] print:pl-0">
+        <ModuleTopbar />
+        <main className="px-4 py-6 md:px-6" style={{ viewTransitionName: "content" }}>{children}</main>
       </div>
     </div>
   );

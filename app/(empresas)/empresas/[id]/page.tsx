@@ -1,7 +1,6 @@
 "use client";
 
 import { use, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Pencil, ClipboardList, Building2, ChartBar,
   FileText, Download, BadgeCheck, MapPin, ShieldAlert,
@@ -15,11 +14,29 @@ import { useUnidades } from "@/lib/hooks/useUnidades";
 import EmpresaForm from "@/components/empresas/EmpresaForm";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import { EmpresaDetalheSkeleton } from "@/components/empresas/EmpresaSkeletons";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { fmtData, cn } from "@/lib/utils";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 
+/**
+ * Rótulo dos PDFs de `pdfs_gerados`, por `modulo`.
+ *
+ * ⚠️ A tabela tem DOIS vocabulários, e este mapa só conhecia um. Medido em
+ * 2026-09-10 nos 437 PDFs da base: `drps` (247), `inspecoes` (68),
+ * `nao_conformidade` (42), `aep` (41), `conformidade` (20), `aet` (15),
+ * `apreciacao_maquinas` (3), `analises_quimicos` (1). As chaves `psicossocial`,
+ * `analise_quimicos` (sem o S) e `questionarios_psicossociais` NÃO aparecem em
+ * nenhuma linha — são de outros usos (auditoria, textos padrão).
+ *
+ * Sem `drps` aqui, os 247 PDFs do psicossocial — a maioria da base — saíam com
+ * o slug cru na etiqueta e na opção do filtro ("drps (37)"), enquanto todos os
+ * outros módulos saíam em português. Era o documento do psicólogo o único sem
+ * nome na tela dele.
+ */
 const MODULO_LABEL: Record<string, string> = {
+  drps: "DRPS — Psicossocial",
+  analises_quimicos: "Análise de Químicos",
   inspecoes: "Inspeção SST",
   conformidade: "Conformidade",
   nao_conformidade: "Não Conformidade",
@@ -30,7 +47,6 @@ const MODULO_LABEL: Record<string, string> = {
   aep: "AEP — Ergonomia",
   psicossocial: "DRPS — Psicossocial",
   questionarios_psicossociais: "Questionários",
-  inventario_maquinas: "Inventário",
 };
 const moduloLabel = (m: string) => MODULO_LABEL[m] ?? m;
 
@@ -50,7 +66,6 @@ interface Props {
 
 export default function EmpresaDetalhePage({ params }: Props) {
   const { id } = use(params);
-  const router = useRouter();
   const canEdit = useCanEdit();
   const [editOpen, setEditOpen] = useState(false);
   const [aba, setAba] = useState<Aba>("geral");
@@ -84,7 +99,7 @@ export default function EmpresaDetalhePage({ params }: Props) {
 
   const pdfsFiltrados = filtroMod ? pdfs.filter((p) => p.modulo === filtroMod) : pdfs;
 
-  if (isLoading) return <LoadingSkeleton rows={6} />;
+  if (isLoading) return <EmpresaDetalheSkeleton />;
   if (!empresa) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -98,13 +113,12 @@ export default function EmpresaDetalhePage({ params }: Props) {
 
   return (
     <div className="space-y-5">
-      <button
-        type="button"
-        onClick={() => router.push("/empresas")}
+      <Link
+        href="/empresas"
         className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
       >
         <ArrowLeft className="size-4" /> Voltar
-      </button>
+      </Link>
 
       {/* Cabeçalho rico */}
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">

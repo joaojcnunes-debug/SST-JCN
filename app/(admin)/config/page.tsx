@@ -483,7 +483,7 @@ function AtualizacaoTab() {
       <div>
         <h2 className="text-base font-semibold text-gray-900">Atualização do Sistema</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Baixe e instale a versão mais recente do SST JCN Consultoria diretamente aqui, sem precisar acessar nenhum site.
+          Baixe e instale a versão mais recente do Painel SST diretamente aqui, sem precisar acessar nenhum site.
         </p>
       </div>
 
@@ -575,14 +575,15 @@ function LogoUpload({ configs }: { configs: Configs }) {
     try {
       const supabase = createSupabaseBrowserClient();
       const ext = file.name.split(".").pop() ?? "png";
-      // Branding fica num bucket PÚBLICO dedicado (não em `fotos`, que será
-      // privatizado): o logo aparece na /login sem sessão e não pode ser assinado.
+      // No self-host (.107) as credenciais de MinIO do navegador têm escopo só do
+      // bucket `fotos` — escrever em `branding` dá 403. `fotos` é público, então o
+      // logo segue acessível sem sessão (/login). Prefixo _config/ isola o branding.
       const path = `_config/logo_${gerarId("LOGO")}.${ext}`;
       const { error } = await supabase.storage
-        .from("branding")
+        .from("fotos")
         .upload(path, file, { upsert: true });
       if (error) throw error;
-      const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
       save.mutate({ chave: "logo_url", valor: pub.publicUrl });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro";
@@ -670,13 +671,14 @@ function AssinaturaEmpresaUpload({ configs }: { configs: Configs }) {
     try {
       const supabase = createSupabaseBrowserClient();
       const ext = file.name.split(".").pop() ?? "png";
-      // Branding (assinatura da empresa) no bucket público dedicado — ver LogoUpload.
+      // Mesma razão do LogoUpload: no self-host o navegador só escreve em `fotos`
+      // (branding = 403). Prefixo assinaturas/ isola; `fotos` é público.
       const path = `assinaturas/empresa_${gerarId("EMP")}.${ext}`;
       const { error } = await supabase.storage
-        .from("branding")
+        .from("fotos")
         .upload(path, file, { upsert: true });
       if (error) throw error;
-      const { data: pub } = supabase.storage.from("branding").getPublicUrl(path);
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
       save.mutate({ chave: "assinatura_empresa_url", valor: pub.publicUrl });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro";

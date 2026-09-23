@@ -3,10 +3,14 @@
 import Link from "next/link";
 import { ArrowLeft, FlaskConical } from "lucide-react";
 import AnaliseForm from "@/components/quimicos/AnaliseForm";
-import { useRequireCreate } from "@/lib/hooks/useUsuario";
+import { useRequireQuimicos } from "@/lib/hooks/useUsuario";
 
 export default function NovaAnalisePage() {
-  useRequireCreate("/analise-quimicos");
+  // A RLS de analises_quimicos (v189) aceita escrita por perfil (Admin/Técnico)
+  // OU pela capability pode_escrever_quimicos — um Visualizador-flagueado escreve.
+  // Este guard espelha esse gate: expulsa só quem NÃO pode por nenhum caminho,
+  // antes de o usuário preencher tudo e gastar a chamada de IA.
+  useRequireQuimicos("/analise-quimicos");
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <Link

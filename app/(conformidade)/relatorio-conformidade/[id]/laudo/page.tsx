@@ -21,6 +21,7 @@ import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import StorageImg from "@/components/ui/StorageImg";
 import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import type { RelatorioConformidadeItem } from "@/lib/supabase/types";
+import { rotuloNR, ehSemNR } from "@/lib/conformidade/checklists";
 
 export default function LaudoConformidadePage({
   params,
@@ -74,7 +75,7 @@ export default function LaudoConformidadePage({
     responsavel: relatorio.responsavel ?? "",
     responsavel_empresa: relatorio.responsavel_empresa ?? "",
     cidade: relatorio.cidade ?? "",
-    nr_codigo: relatorio.nr_codigo,
+    nr_codigo: rotuloNR(relatorio.nr_codigo),
     nr_titulo: relatorio.nr_titulo,
     setor: relatorio.setor ?? "",
     data_inspecao: formatarDataBR(relatorio.data_inspecao),
@@ -256,7 +257,12 @@ export default function LaudoConformidadePage({
   );
 
   return (
-    <div className="force-light mx-auto max-w-4xl space-y-4 print:max-w-none print:space-y-2">
+    // Sem `force-light`: esta tela acompanha o tema do app. A ilha clara cobria a
+    // página inteira (barra de botões e painéis inclusive) e virava uma folha
+    // branca enorme no escuro. Não é necessária: a impressão já sai clara porque
+    // o ThemeManager tira o `.dark` no `beforeprint`, e o PDF é montado no
+    // servidor (/api/pdf/conformidade/[id]), não capturado desta tela.
+    <div className="mx-auto max-w-4xl space-y-4 print:max-w-none print:space-y-2">
       {/* Toolbar — não imprime */}
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <Link
@@ -328,7 +334,11 @@ export default function LaudoConformidadePage({
 
       {/* Logo JCN Consultoria */}
       <RelatorioPrintHeader
-        titulo={`Relatório de Conformidade — ${relatorio.nr_codigo}`}
+        titulo={
+          ehSemNR(relatorio.nr_codigo)
+            ? "Relatório de Conformidade"
+            : `Relatório de Conformidade — ${relatorio.nr_codigo}`
+        }
         subtitulo={empresa?.nome_empresa ?? null}
         terciario={
           relatorio.data_inspecao

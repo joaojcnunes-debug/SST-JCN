@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, ChevronsLeft, ChevronsRight, Home } from "lucide-react";
+import { ChevronRight, ChevronsLeft, ChevronsRight, Home, Smartphone } from "lucide-react";
 import { useSidebarMini, useUserStore } from "@/lib/store";
+import { useOperacoesOffline } from "@/lib/hooks/useOperacoesOffline";
 import UnidadeAtivaChip from "@/components/layout/UnidadeAtivaChip";
 import ThemeToggle from "@/components/layout/ThemeToggle";
 
@@ -28,6 +29,14 @@ const ROUTE_LABELS: Record<string, string> = {
   documentos:            "Documentos SST",
   projecoes:             "Projeções",
   registros:             "Registros",
+  // Sem isto o caminho mostraria "pendencias" cru, em minúsculas — o segmento
+  // tem 10 caracteres e passa direto pelo corte que esconde ids.
+  pendencias:            "No aparelho",
+  escala:                "Escala",
+  configuracao:          "Configuração",
+  padrao:                "Padrão Semanal",
+  conferencia:           "Conferência",
+  calendario:            "Calendário",
 };
 
 function buildCrumbs(pathname: string): { label: string; href: string }[] {
@@ -56,9 +65,44 @@ const PERFIL_COLORS: Record<string, string> = {
   Visualizador: "bg-white/10 text-white/70 ring-white/20",
 };
 
+/**
+ * O que está guardado no aparelho e ainda não subiu.
+ *
+ * MORA NA BARRA SUPERIOR, e não no menu, porque a barra é a única peça que os
+ * dezenove módulos compartilham. Colocar no menu obrigaria a repetir o item em
+ * cada um deles — e bastaria esquecer um para o técnico que trabalha ali nunca
+ * descobrir que tem registro parado no celular.
+ *
+ * SÓ APARECE QUANDO HÁ O QUE RESOLVER. É a mesma régua do menu da Frota: um
+ * indicador permanente e quase sempre vazio vira ruído; um que surge com número
+ * é aviso.
+ *
+ * De quebra, é aqui que o gatilho de "voltou a rede" passa a viver para o
+ * sistema inteiro — antes ele só existia nas telas de inspeção.
+ */
+function PendenciasChip() {
+  const { naoResolvidas } = useOperacoesOffline();
+  if (naoResolvidas === 0) return null;
+
+  return (
+    <Link
+      href="/pendencias"
+      title="Registros guardados no aparelho, aguardando envio"
+      className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs font-semibold text-white ring-1 ring-white/25 transition hover:bg-white/25"
+    >
+      <Smartphone className="size-3.5" />
+      <span className="tabular-nums">{naoResolvidas}</span>
+      <span className="hidden sm:inline">no aparelho</span>
+    </Link>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ModuleTopbar({ title }: { title: string }) {
+// Sem props: o que a barra mostra e a TRILHA, montada do pathname por
+// buildCrumbs(). O antigo prop `title` era passado por 21 lugares e nunca
+// chegou a ser desenhado.
+export default function ModuleTopbar() {
   const user = useUserStore((s) => s.user);
   const toggleSidebar = useSidebarMini((s) => s.toggle);
   const pathname = usePathname();
@@ -115,8 +159,9 @@ export default function ModuleTopbar({ title }: { title: string }) {
         </nav>
       </div>
 
-      {/* ── Direita: unidade ativa + usuário ─────────── */}
+      {/* ── Direita: pendências + unidade ativa + usuário ─────────── */}
       <div className="flex items-center gap-3">
+        <PendenciasChip />
         <ThemeToggle />
         <UnidadeAtivaChip variant="topbar" />
         {user && (

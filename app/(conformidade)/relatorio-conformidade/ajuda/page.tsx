@@ -18,6 +18,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useState, useCallback } from "react";
+import AjudaComAbas from "@/components/novidades/AjudaComAbas";
 
 interface ItemData {
   label: string;
@@ -247,7 +248,7 @@ function ItemChecklist({ label, conceito, como, atencao, marque_sim, forceOpen }
   );
 }
 
-export default function AjudaRelatorioConformidade() {
+function ConteudoAjudaRelatorioConformidade() {
   const [printMode, setPrintMode] = useState(false);
 
   const handlePrint = useCallback(() => {
@@ -280,7 +281,7 @@ export default function AjudaRelatorioConformidade() {
                 Relatório de Conformidade (RNC)
               </h1>
               <p className="mt-1 text-sm text-gray-600">
-                Como usar o módulo de auditoria normativa do SST JCN Consultoria
+                Como usar o módulo de auditoria normativa do Painel SST
               </p>
             </div>
           </div>
@@ -413,5 +414,18 @@ export default function AjudaRelatorioConformidade() {
 
       </div>
     </div>
+  );
+}
+
+/**
+ * A ajuda deste módulo ganhou a aba Atualizações (01/09). O conteúdo acima
+ * continua exatamente como estava — quem monta as abas é o AjudaComAbas, e a
+ * lista de novidades vive num componente só, compartilhado pelos 11 módulos.
+ */
+export default function AjudaRelatorioConformidade() {
+  return (
+    <AjudaComAbas titulo="Guia da Conformidade">
+      <ConteudoAjudaRelatorioConformidade />
+    </AjudaComAbas>
   );
 }

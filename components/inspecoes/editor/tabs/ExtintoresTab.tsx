@@ -1,13 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Flame, Pencil, Plus, Trash2 } from "lucide-react";
-import toast from "react-hot-toast";
 import ExtintorForm from "../ExtintorForm";
 import StorageImg from "@/components/ui/StorageImg";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useExcluirDaInspecao } from "@/lib/hooks/useExcluirDaInspecao";
 import {
   corSituacaoExtintor,
   extintorCritico,
@@ -31,7 +29,6 @@ export default function ExtintoresTab({
   extintores,
   readOnly,
 }: Props) {
-  const qc = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Extintor | null>(null);
   const [confirm, setConfirm] = useState<Extintor | null>(null);
@@ -57,21 +54,12 @@ export default function ExtintoresTab({
   );
   const semSetor = grupos.get(null) ?? [];
 
-  const del = useMutation({
-    mutationFn: async (e: Extintor) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("extintores")
-        .delete()
-        .eq("id_extintor", e.id_extintor);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success("Extintor removido");
-      setConfirm(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
+  const del = useExcluirDaInspecao({
+    idInspecao,
+    tabela: "extintores",
+    chave: "id_extintor",
+    colecao: "extintores",
+    rotulo: "Extintor removido",
   });
 
   return (
@@ -152,7 +140,9 @@ export default function ExtintoresTab({
         }
         variant="danger"
         loading={del.isPending}
-        onConfirm={() => confirm && del.mutate(confirm)}
+        onConfirm={() =>
+          confirm && del.mutate(confirm, { onSuccess: () => setConfirm(null) })
+        }
         onCancel={() => setConfirm(null)}
       />
     </div>

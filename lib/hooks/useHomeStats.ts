@@ -8,11 +8,11 @@ import type {
   RelatorioConformidade,
   RelatorioNaoConformidade,
   AnaliseQuimico,
-  Maquina,
   ApreciacaoMaquina,
   ModuloPermitido,
 } from "@/lib/supabase/types";
 import type { DrpsRelatorio } from "@/lib/drps/types";
+import { ehSemNR } from "@/lib/conformidade/checklists";
 
 // ===================================================
 // Tipos
@@ -50,7 +50,6 @@ export interface HomeStatsData {
   conformidade?: ModuloStats;
   nao_conformidade?: ModuloStats;
   analise_quimicos?: ModuloStats;
-  inventario_maquinas?: ModuloStats;
   apreciacao_maquinas?: ModuloStats;
   aet?: ModuloStats;
   aep?: ModuloStats;
@@ -104,7 +103,7 @@ function calcStats(
 // ===================================================
 
 /**
- * Agrega estatísticas dos 5 módulos com listagem (SST JCN Consultoria,
+ * Agrega estatísticas dos 5 módulos com listagem (Painel SST,
  * Psicossocial, Conformidade, RNC, Análise Químicos) + lista mesclada
  * dos últimos 8 registros pra exibir como "Atividade Recente" na home.
  *
@@ -120,9 +119,22 @@ export function useHomeStats(): HomeStatsData {
       ? user.empresas_vinculadas
       : null;
 
-  // === Inspeções (SST JCN Consultoria) ===
+  // v0.3.634: só pergunta pelos módulos que a conta TEM. Antes as 9 consultas
+  // saíam para todo mundo: o administrativo (2 módulos) abria o Início e lia
+  // DRPS, AET, AEP, QPS… — 100 % do que a trava da v236 anotou em modo LOG
+  // (175 tentativas de 11 contas em 1 dia) veio daqui e da página da Empresa.
+  // Três efeitos: para de mostrar número de módulo que a pessoa não acessa;
+  // o log de 21/10 passa a ser só quem bate mesmo na porta; e some o
+  // desperdício de 9 consultas por abertura de tela.
+  // A régua é a MESMA do hub de Módulos (`modulos_permitidos`, sem exceção
+  // para Admin) — ver app/(hub)/modulos/page.tsx.
+  const temModulo = (m: ModuloPermitido) =>
+    !!user && (user.modulos_permitidos ?? []).includes(m);
+
+  // === Inspeções (Painel SST) ===
   const inspecoesQ = useQuery({
     queryKey: ["home-stats-inspecoes", empresasVinculadas],
+    enabled: temModulo("painel"),
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
@@ -143,6 +155,7 @@ export function useHomeStats(): HomeStatsData {
   // === Relatórios de Conformidade NR ===
   const conformidadeQ = useQuery({
     queryKey: ["home-stats-conformidade", empresasVinculadas],
+    enabled: temModulo("conformidade"),
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
@@ -162,6 +175,7 @@ export function useHomeStats(): HomeStatsData {
   // === Relatórios de Não Conformidade (RNC) ===
   const ncQ = useQuery({
     queryKey: ["home-stats-rnc", empresasVinculadas],
+    enabled: temModulo("nao_conformidade"),
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
@@ -181,6 +195,7 @@ export function useHomeStats(): HomeStatsData {
   // === Análises Químicas ===
   const quimicosQ = useQuery({
     queryKey: ["home-stats-quimicos", empresasVinculadas],
+    enabled: temModulo("analise_quimicos"),
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
@@ -203,6 +218,7 @@ export function useHomeStats(): HomeStatsData {
   // === Relatórios Psicossociais (DRPS) ===
   const psicoQ = useQuery({
     queryKey: ["home-stats-psicossocial", empresasVinculadas],
+    enabled: temModulo("psicossocial"),
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
@@ -220,31 +236,10 @@ export function useHomeStats(): HomeStatsData {
     },
   });
 
-  // === Inventário de Máquinas ===
-  const maquinasQ = useQuery({
-    queryKey: ["home-stats-inventario-maquinas", empresasVinculadas],
-    queryFn: async () => {
-      const supabase = createSupabaseBrowserClient();
-      let q = supabase
-        .from("inventario_maquinas")
-        .select("id_maquina, id_empresa, nome, status, created_at, updated_at")
-        .order("updated_at", { ascending: false, nullsFirst: false })
-        .limit(200);
-      if (empresasVinculadas) {
-        // Inclui máquinas da empresa OU patrimônio JCN Consultoria (id_empresa null)
-        q = q.or(
-          `id_empresa.in.(${empresasVinculadas.join(",")}),id_empresa.is.null`
-        );
-      }
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data ?? []) as unknown as Maquina[];
-    },
-  });
-
   // === AET — Análise Ergonômica ===
   const aetQ = useQuery({
     queryKey: ["home-stats-aet", empresasVinculadas],
+    enabled: temModulo("aet"),
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
@@ -264,6 +259,7 @@ export function useHomeStats(): HomeStatsData {
   // === AEP — Análise Ergonômica Preliminar ===
   const aepQ = useQuery({
     queryKey: ["home-stats-aep", empresasVinculadas],
+    enabled: temModulo("aep"),
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
@@ -284,6 +280,7 @@ export function useHomeStats(): HomeStatsData {
   // Nota: qps_aplicacoes usa criado_em/atualizado_em (não created_at/updated_at)
   const qpsQ = useQuery({
     queryKey: ["home-stats-qps", empresasVinculadas],
+    enabled: temModulo("questionarios_psicossociais"),
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const supabase = createSupabaseBrowserClient() as any;
@@ -310,6 +307,7 @@ export function useHomeStats(): HomeStatsData {
   // === Apreciações NR-12 ===
   const apreciacoesQ = useQuery({
     queryKey: ["home-stats-apreciacao-maquinas", empresasVinculadas],
+    enabled: temModulo("apreciacao_maquinas"),
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       let q = supabase
@@ -334,7 +332,6 @@ export function useHomeStats(): HomeStatsData {
     ncQ.isLoading ||
     quimicosQ.isLoading ||
     psicoQ.isLoading ||
-    maquinasQ.isLoading ||
     apreciacoesQ.isLoading ||
     aetQ.isLoading ||
     aepQ.isLoading ||
@@ -346,14 +343,6 @@ export function useHomeStats(): HomeStatsData {
   const nao_conformidade = ncQ.data ? calcStats(ncQ.data) : undefined;
   const analise_quimicos = quimicosQ.data ? calcStats(quimicosQ.data) : undefined;
   const psicossocial = psicoQ.data ? calcStats(psicoQ.data) : undefined;
-  // Inventário: "pendente" = máquinas em manutenção (precisam de atenção)
-  const inventario_maquinas: ModuloStats | undefined = maquinasQ.data
-    ? {
-        total: maquinasQ.data.length,
-        pendente: maquinasQ.data.filter((m) => m.status === "MANUTENCAO").length,
-        recente: maquinasQ.data.filter((m) => ehRecente(dataRow(m))).length,
-      }
-    : undefined;
   const apreciacao_maquinas = apreciacoesQ.data
     ? calcStats(apreciacoesQ.data)
     : undefined;
@@ -378,13 +367,14 @@ export function useHomeStats(): HomeStatsData {
   for (const r of conformidadeQ.data ?? []) {
     atividade.push({
       modulo: "conformidade",
-      titulo: r.nr_codigo
-        ? `${r.nr_codigo}${r.nr_titulo ? ` — ${r.nr_titulo}` : ""}`
-        : `Conformidade`,
+      // Sem NR o relatório se identifica pelo título livre, não pelo sentinela.
+      titulo: ehSemNR(r.nr_codigo)
+        ? r.nr_titulo || "Conformidade"
+        : `${r.nr_codigo}${r.nr_titulo ? ` — ${r.nr_titulo}` : ""}`,
       href: `/relatorio-conformidade/${r.id_relatorio}`,
       status: r.status,
       data: dataRow(r),
-      contexto: r.nr_codigo ?? undefined,
+      contexto: ehSemNR(r.nr_codigo) ? undefined : r.nr_codigo,
       id_empresa: r.id_empresa,
       responsavel: r.responsavel,
     });
@@ -420,16 +410,6 @@ export function useHomeStats(): HomeStatsData {
       responsavel: r.responsavel_tecnico,
     });
   }
-  for (const r of maquinasQ.data ?? []) {
-    atividade.push({
-      modulo: "inventario_maquinas",
-      titulo: r.nome,
-      href: `/inventario-maquinas/${r.id_maquina}`,
-      status: r.status,
-      data: dataRow(r),
-      id_empresa: r.id_empresa,
-    });
-  }
   for (const r of apreciacoesQ.data ?? []) {
     atividade.push({
       modulo: "apreciacao_maquinas",
@@ -450,7 +430,6 @@ export function useHomeStats(): HomeStatsData {
     conformidade,
     nao_conformidade,
     analise_quimicos,
-    inventario_maquinas,
     apreciacao_maquinas,
     aet,
     aep,

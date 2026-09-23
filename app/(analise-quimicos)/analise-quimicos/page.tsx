@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { FlaskConical, Plus, History, AlertTriangle, Sparkles } from "lucide-react";
 import { useAnalisesQuimicos } from "@/lib/hooks/useAnalisesQuimicos";
-import { useCanCreate } from "@/lib/hooks/useUsuario";
+import { usePodeQuimicos } from "@/lib/hooks/useUsuario";
 
 export default function AnaliseQuimicosOverviewPage() {
-  const canCreate = useCanCreate();
+  // Perfil (Admin/Técnico) OU capability pode_escrever_quimicos — espelha a RLS v189.
+  const canCreate = usePodeQuimicos();
   const { data: analises = [], isLoading } = useAnalisesQuimicos();
 
   const total = analises.length;

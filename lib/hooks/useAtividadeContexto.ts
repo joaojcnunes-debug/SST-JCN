@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { opcoesNomesDeEmpresas } from "@/lib/empresas/nomes";
 
 /**
  * Mapas para enriquecer a "Atividade recente" da Visão geral:
@@ -21,17 +22,14 @@ export function useAtividadeContexto() {
   return useQuery<AtividadeContexto>({
     queryKey: ["atividade-contexto"],
     staleTime: 5 * 60 * 1000,
-    queryFn: async () => {
+    queryFn: async ({ client }) => {
       const sb = createSupabaseBrowserClient();
-      const [empRes, usrRes] = await Promise.all([
-        sb.from("empresas").select("id_empresa, nome_empresa"),
+      // O mapa de nomes é compartilhado com as outras consultas da tela — ver
+      // lib/empresas/nomes.ts. Vai em paralelo com `usuarios`, como antes.
+      const [nomePorEmpresa, usrRes] = await Promise.all([
+        client.fetchQuery(opcoesNomesDeEmpresas()),
         sb.from("usuarios").select("nome, empresas_vinculadas"),
       ]);
-
-      const nomePorEmpresa = new Map<string, string>();
-      for (const e of (empRes.data ?? []) as { id_empresa: string; nome_empresa: string }[]) {
-        nomePorEmpresa.set(e.id_empresa, e.nome_empresa);
-      }
 
       // Técnicos por empresa — só usuários com vínculo explícito. Se RLS bloquear
       // a leitura de usuarios, fica vazio (sem quebrar).

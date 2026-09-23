@@ -67,3 +67,14 @@ export function createSupabaseServerClient(cookieStore: CookieStore) {
     },
   });
 }
+
+/**
+ * Tipo do cliente que as funcoes deste modulo devolvem.
+ *
+ * O painel-sst declara um `ComposedSupabaseClient` proprio porque la o cliente e
+ * uma composicao de Supabase Auth + PostgREST + storage MinIO do self-host. Aqui
+ * o cliente e o do supabase-js puro, entao o tipo e so um apelido — existe para
+ * que o codigo compartilhado que recebe "o client" continue compilando sem saber
+ * de qual dos dois mundos ele veio.
+ */
+export type ComposedSupabaseClient = ReturnType<typeof createSupabaseBrowserClient>;

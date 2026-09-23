@@ -7,8 +7,9 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
-import { CATALOGO_NR12 } from "@/lib/apreciacao-maquinas/catalogo-nr12";
-import { useApreciacaoEdicaoStore } from "@/lib/apreciacao-maquinas/store";
+import { gravar } from "@/lib/offline/gravar";
+import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoes";
+import { ehErroDeRede } from "@/lib/offline/rede";
 import type {
   ApreciacaoMaquina,
   ApreciacaoMaquinaItem,
@@ -20,8 +21,6 @@ import type {
   PrioridadeAcaoApreciacao,
   RiscoResidual,
   NivelRisco,
-  Maquina,
-  FichaMaquina,
 } from "@/lib/supabase/types";
 
 const KEY_LISTA = ["apreciacoes-maquinas"] as const;
@@ -62,31 +61,59 @@ export function useApreciacoesMaquinas() {
   });
 }
 
+/** O pacote da tela de detalhe. Nomeado porque agora ele também é guardado. */
+export interface DetalheApreciacao {
+  apreciacao: ApreciacaoMaquina;
+  itens: ApreciacaoMaquinaItem[];
+}
+
+async function carregarDetalheDoServidor(id: string): Promise<DetalheApreciacao> {
+  const supabase = createSupabaseBrowserClient();
+  const [{ data: apreciacao, error: e1 }, { data: itens, error: e2 }] =
+    await Promise.all([
+      supabase
+        .from("apreciacoes_maquinas")
+        .select("*")
+        .eq("id_apreciacao", id)
+        .single(),
+      supabase
+        .from("apreciacoes_maquinas_itens")
+        .select("*")
+        .eq("id_apreciacao", id)
+        .order("ordem", { ascending: true }),
+    ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+  return {
+    apreciacao: apreciacao as unknown as ApreciacaoMaquina,
+    itens: (itens ?? []) as unknown as ApreciacaoMaquinaItem[],
+  };
+}
+
 export function useApreciacaoMaquina(id: string | null | undefined) {
   return useQuery({
     queryKey: KEY_DETALHE(id ?? ""),
     enabled: !!id,
-    queryFn: async () => {
-      const supabase = createSupabaseBrowserClient();
-      const [{ data: apreciacao, error: e1 }, { data: itens, error: e2 }] =
-        await Promise.all([
-          supabase
-            .from("apreciacoes_maquinas")
-            .select("*")
-            .eq("id_apreciacao", id!)
-            .single(),
-          supabase
-            .from("apreciacoes_maquinas_itens")
-            .select("*")
-            .eq("id_apreciacao", id!)
-            .order("ordem", { ascending: true }),
-        ]);
-      if (e1) throw e1;
-      if (e2) throw e2;
-      return {
-        apreciacao: apreciacao as unknown as ApreciacaoMaquina,
-        itens: (itens ?? []) as unknown as ApreciacaoMaquinaItem[],
-      };
+
+    // Sem rede, insistir é perder tempo do técnico olhando um spinner: o plano B
+    // está dentro da `queryFn` e responde na primeira tentativa.
+    retry: (falhas, erro) => !ehErroDeRede(erro) && falhas < 2,
+
+    queryFn: async (): Promise<DetalheApreciacao> => {
+      try {
+        const dados = await carregarDetalheDoServidor(id!);
+        // Mantém fresca só a cópia que o técnico já levou — ver `LevarParaCampo`.
+        void lerDocumentoCache(id!).then((ja) => {
+          if (ja) void guardarDocumentoCache(id!, dados);
+        });
+        return dados;
+      } catch (e) {
+        // Recusa do banco e laudo inexistente continuam sendo erro.
+        if (!ehErroDeRede(e)) throw e;
+        const guardado = await lerDocumentoCache<DetalheApreciacao>(id!);
+        if (guardado) return guardado.dados;
+        throw e;
+      }
     },
   });
 }
@@ -103,6 +130,7 @@ export interface CriarApreciacaoInput {
   responsavel_empresa: string | null;
   cidade: string | null;
   data_apreciacao: string | null;
+  /** Nº da notificação SIT/MTE (v149) — opcional, informado na criação. */
   notificacao_sit?: string | null;
 }
 
@@ -116,7 +144,6 @@ export function useCriarApreciacaoMaquina() {
 
   return useMutation({
     mutationFn: async (input: CriarApreciacaoInput) => {
-      const supabase = createSupabaseBrowserClient();
       const id_apreciacao = gerarId("APR");
 
       const cabecalho: ApreciacaoMaquina = {
@@ -131,14 +158,17 @@ export function useCriarApreciacaoMaquina() {
         responsavel_empresa: input.responsavel_empresa,
         cidade: input.cidade,
         data_apreciacao: input.data_apreciacao,
-        notificacao_sit: input.notificacao_sit ?? null,
         conclusao_tecnica: null,
         recomendacoes: null,
         risco_residual: null,
         status: "RASCUNHO",
         finalizado_em: null,
         observacoes_gerais: null,
-        incluir_checklist_pdf: false,
+        constatacoes_inspecao: null,
+        notificacao_sit: input.notificacao_sit ?? null,
+        // Padrão desde a v171: o checklist sai no PDF. Quem não quiser desmarca
+        // no editor — continua sendo escolha por laudo.
+        incluir_checklist_pdf: true,
         componentes_maquina: null,
         limite_uso: null,
         limite_espaco: null,
@@ -153,97 +183,32 @@ export function useCriarApreciacaoMaquina() {
         updated_at: null,
       };
 
-      const { error: e1 } = await supabase
-        .from("apreciacoes_maquinas")
-        .insert(cabecalho as never);
-      if (e1) throw e1;
+      const resultado = await gravar({
+        tabela: "apreciacoes_maquinas",
+        tipo: "insert",
+        linhas: [cabecalho as unknown as Record<string, unknown>],
+        filtro: null,
+        modulo: "apreciacao-maquinas",
+        id_documento: id_apreciacao,
+      });
 
-      // Só cria a 1ª ficha + checklist se uma máquina foi informada. Sem máquina,
-      // o laudo nasce vazio e as máquinas são adicionadas depois no editor.
-      if (input.id_maquina || input.maquina_descricao) {
-      // Cria a 1ª ficha de máquina do laudo (multi-máquina, v132) a partir da
-      // máquina selecionada — puxa detalhes do inventário quando vinculada.
-      let maq: Maquina | null = null;
-      if (input.id_maquina) {
-        const { data: mData } = await supabase
-          .from("inventario_maquinas")
-          .select("*")
-          .eq("id_maquina", input.id_maquina)
-          .maybeSingle();
-        maq = (mData as Maquina | null) ?? null;
-      }
-      const id_ficha = gerarId("APF");
-      const ficha: FichaMaquina = {
-        id_ficha,
-        id_apreciacao,
-        numero_ordem: 1,
-        id_maquina: input.id_maquina,
-        maquina_descricao: input.maquina_descricao,
-        equipamento: maq?.nome ?? input.maquina_descricao ?? null,
-        tipo: maq?.tipo ?? null,
-        modelo: maq?.modelo ?? null,
-        fabricante: maq?.marca ?? null,
-        serie: maq?.numero_serie ?? null,
-        ano: maq?.ano_fabricacao != null ? String(maq.ano_fabricacao) : null,
-        capacidade: maq?.capacidade_operacional ?? null,
-        setor: input.setor ?? maq?.setor ?? null,
-        componentes_maquina: null,
-        limite_uso: null,
-        limite_espaco: null,
-        limite_tempo: null,
-        limite_produtividade: null,
-        npe: null,
-        sistemas_atual: null,
-        sistemas_necessario: null,
-        constatacoes_inspecao: null,
-        parecer_tecnico: null,
-        operadores: null,
-        prioridade_manual: false,
-        foto_urls: [],
-        foto_storage_paths: [],
-        created_at: new Date().toISOString(),
-        updated_at: null,
-      };
-      const { error: ef } = await supabase
-        .from("apreciacao_fichas_maquina")
-        .insert(ficha as never);
-      if (ef) throw ef;
-
-      // Snapshot dos itens do catálogo (item_origem = null marca "veio do catálogo")
-      const itens: ApreciacaoMaquinaItem[] = CATALOGO_NR12.map((it, idx) => ({
-        id_item: gerarId("APRI"),
-        id_apreciacao,
-        id_ficha,
-        item_codigo: it.codigo,
-        item_categoria: it.categoria,
-        item_titulo: it.titulo,
-        item_descricao: it.descricao ?? null,
-        item_origem: null,
-        ordem: idx,
-        situacao: "PENDENTE",
-        observacao: null,
-        recomendacao: null,
-        probabilidade: null,
-        severidade: null,
-        nivel_risco_calculado: null,
-        id_matriz: null,
-        foto_urls: [],
-        foto_storage_paths: [],
-        foto_legendas: [],
-        created_at: new Date().toISOString(),
-        updated_at: null,
-      }));
-
-      const { error: e2 } = await supabase
-        .from("apreciacoes_maquinas_itens")
-        .insert(itens as never);
-      if (e2) throw e2;
-      }
-
-      return cabecalho;
+      // O checklist NR-12 NÃO é mais snapshotado aqui: desde a v148 ele pertence
+      // à MÁQUINA, não ao laudo. Quem copia o catálogo é a criação da ficha
+      // (useCriarFicha / useImportarInspecaoParaLaudo). Snapshotar aqui deixaria
+      // 38 itens órfãos, sem ficha, em todo laudo novo.
+      return { ...cabecalho, __destino: resultado.destino };
     },
-    onSuccess: () => {
+    onSuccess: (cab) => {
       qc.invalidateQueries({ queryKey: KEY_LISTA });
+      if (cab.__destino === "APARELHO") {
+        // Sem rede o laudo é aberto logo em seguida, e o servidor ainda não o
+        // conhece — semear o detalhe evita a tela de erro no redirecionamento.
+        qc.setQueryData(KEY_DETALHE(cab.id_apreciacao), {
+          apreciacao: cab as ApreciacaoMaquina,
+          itens: [],
+        });
+        toast.success("Apreciação guardada no aparelho", { icon: "📵" });
+      }
     },
     onError: (e: Error) => toast.error(`Erro ao criar: ${e.message}`),
   });
@@ -263,12 +228,16 @@ export function useAtualizarApreciacaoMaquina() {
       cidade?: string | null;
       data_apreciacao?: string | null;
       data_validade?: string | null;
-      notificacao_sit?: string | null;
       conclusao_tecnica?: string | null;
       recomendacoes?: string | null;
       risco_residual?: RiscoResidual | null;
       observacoes_gerais?: string | null;
+      /** V149 — nº da notificação SIT/MTE. */
+      notificacao_sit?: string | null;
+      /** V153 — imprime o checklist no PDF. */
       incluir_checklist_pdf?: boolean;
+      /** V146 — constatações de campo da máquina (ficha do laudo). */
+      constatacoes_inspecao?: string | null;
       status?: StatusApreciacao;
       // Identificação dos componentes / limites / sistemas (NR-12 HRN)
       componentes_maquina?: string[] | null;
@@ -280,7 +249,6 @@ export function useAtualizarApreciacaoMaquina() {
       sistemas_atual?: string[] | null;
       sistemas_necessario?: string[] | null;
     }) => {
-      const supabase = createSupabaseBrowserClient();
       const patch: Partial<ApreciacaoMaquina> = {
         updated_at: new Date().toISOString(),
       };
@@ -294,6 +262,8 @@ export function useAtualizarApreciacaoMaquina() {
       if (params.responsavel_empresa !== undefined)
         patch.responsavel_empresa = params.responsavel_empresa;
       if (params.cidade !== undefined) patch.cidade = params.cidade;
+      if (params.notificacao_sit !== undefined) patch.notificacao_sit = params.notificacao_sit;
+      if (params.incluir_checklist_pdf !== undefined) patch.incluir_checklist_pdf = params.incluir_checklist_pdf;
       if (params.data_apreciacao !== undefined)
         patch.data_apreciacao = params.data_apreciacao;
       if (params.data_validade !== undefined)
@@ -306,8 +276,8 @@ export function useAtualizarApreciacaoMaquina() {
         patch.risco_residual = params.risco_residual;
       if (params.observacoes_gerais !== undefined)
         patch.observacoes_gerais = params.observacoes_gerais;
-      if (params.incluir_checklist_pdf !== undefined)
-        patch.incluir_checklist_pdf = params.incluir_checklist_pdf;
+      if (params.constatacoes_inspecao !== undefined)
+        patch.constatacoes_inspecao = params.constatacoes_inspecao;
       if (params.componentes_maquina !== undefined) patch.componentes_maquina = params.componentes_maquina;
       if (params.limite_uso !== undefined) patch.limite_uso = params.limite_uso;
       if (params.limite_espaco !== undefined) patch.limite_espaco = params.limite_espaco;
@@ -323,16 +293,29 @@ export function useAtualizarApreciacaoMaquina() {
         }
       }
 
-      const { error } = await supabase
-        .from("apreciacoes_maquinas")
-        .update(patch as never)
-        .eq("id_apreciacao", params.id_apreciacao);
-      if (error) throw error;
-      return params;
+      const resultado = await gravar({
+        tabela: "apreciacoes_maquinas",
+        tipo: "update",
+        linhas: patch as Record<string, unknown>,
+        filtro: { id_apreciacao: params.id_apreciacao },
+        modulo: "apreciacao-maquinas",
+        id_documento: params.id_apreciacao,
+      });
+      return { ...params, patch, resultado };
     },
-    onSuccess: (params) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
-      qc.invalidateQueries({ queryKey: KEY_LISTA });
+    onSuccess: ({ id_apreciacao, patch, resultado }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(id_apreciacao) });
+        qc.invalidateQueries({ queryKey: KEY_LISTA });
+        return;
+      }
+      // Sem rede não há o que revalidar: mescla o patch sobre o que está na tela.
+      qc.setQueryData<DetalheApreciacao>(KEY_DETALHE(id_apreciacao), (antigo) =>
+        antigo
+          ? { ...antigo, apreciacao: { ...antigo.apreciacao, ...patch } }
+          : antigo,
+      );
+      toast.success("Alteração guardada no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
@@ -377,7 +360,6 @@ export function useAtualizarItemApreciacao() {
       nivel_risco_calculado?: NivelRisco | null;
       id_matriz?: string | null;
     }) => {
-      const supabase = createSupabaseBrowserClient();
       const patch: Partial<ApreciacaoMaquinaItem> = {
         updated_at: new Date().toISOString(),
       };
@@ -392,15 +374,37 @@ export function useAtualizarItemApreciacao() {
         patch.nivel_risco_calculado = params.nivel_risco_calculado;
       if (params.id_matriz !== undefined) patch.id_matriz = params.id_matriz;
 
-      const { error } = await supabase
-        .from("apreciacoes_maquinas_itens")
-        .update(patch as never)
-        .eq("id_item", params.id_item);
-      if (error) throw error;
-      return params;
+      /**
+       * Marcar a situação de cada item do checklist NR-12 é a ação mais
+       * repetida deste módulo — o técnico percorre os 38 itens diante da
+       * máquina, no chão de fábrica. É o fluxo que mais precisa de offline.
+       */
+      const resultado = await gravar({
+        tabela: "apreciacoes_maquinas_itens",
+        tipo: "update",
+        linhas: patch as Record<string, unknown>,
+        filtro: { id_item: params.id_item },
+        modulo: "apreciacao-maquinas",
+        id_documento: params.id_apreciacao,
+      });
+      return { ...params, patch, resultado };
     },
-    onSuccess: (params) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+    onSuccess: ({ id_apreciacao, id_item, patch, resultado }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(id_apreciacao) });
+        return;
+      }
+      // Sem rede não há o que revalidar: mescla o patch sobre o item na tela.
+      qc.setQueryData<DetalheApreciacao>(KEY_DETALHE(id_apreciacao), (antigo) =>
+        antigo
+          ? {
+              ...antigo,
+              itens: antigo.itens.map((i) =>
+                i.id_item === id_item ? { ...i, ...patch } : i,
+              ),
+            }
+          : antigo,
+      );
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
@@ -422,24 +426,49 @@ function padLegendas(legendas: string[] | null | undefined, tamanho: number): st
  */
 async function lerFotosItemFresco(
   supabase: ReturnType<typeof createSupabaseBrowserClient>,
+  qc: ReturnType<typeof useQueryClient>,
+  id_apreciacao: string,
   id_item: string
 ) {
-  const { data, error } = await supabase
-    .from("apreciacoes_maquinas_itens")
-    .select("foto_urls, foto_storage_paths, foto_legendas")
-    .eq("id_item", id_item)
-    .single();
-  if (error) throw error;
-  const row = data as unknown as {
-    foto_urls: string[] | null;
-    foto_storage_paths: string[] | null;
-    foto_legendas: string[] | null;
+  // Sem rede não existe "fresco do banco", e falhar não é a resposta certa: o
+  // que está na tela é a melhor verdade disponível. Cai para o cache SÓ em erro
+  // de rede — recusa do banco continua estourando, senão um item apagado por
+  // outra pessoa voltaria a receber foto em silêncio.
+  const doCache = () => {
+    const detalhe = qc.getQueryData<DetalheApreciacao>(KEY_DETALHE(id_apreciacao));
+    const item = detalhe?.itens.find((i) => i.id_item === id_item);
+    return {
+      urls: item?.foto_urls ?? [],
+      paths: item?.foto_storage_paths ?? [],
+      legendas: item?.foto_legendas ?? [],
+    };
   };
-  return {
-    urls: row.foto_urls ?? [],
-    paths: row.foto_storage_paths ?? [],
-    legendas: row.foto_legendas ?? [],
-  };
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return doCache();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("apreciacoes_maquinas_itens")
+      .select("foto_urls, foto_storage_paths, foto_legendas")
+      .eq("id_item", id_item)
+      .single();
+    if (error) throw error;
+    const row = data as unknown as {
+      foto_urls: string[] | null;
+      foto_storage_paths: string[] | null;
+      foto_legendas: string[] | null;
+    };
+    return {
+      urls: row.foto_urls ?? [],
+      paths: row.foto_storage_paths ?? [],
+      legendas: row.foto_legendas ?? [],
+    };
+  } catch (e) {
+    if (ehErroDeRede(e)) return doCache();
+    throw e;
+  }
 }
 
 /** Serializa as mutações de foto/legenda entre si (React Query scope). */
@@ -458,7 +487,12 @@ export function useUploadFotoItemApreciacao() {
     }) => {
       const supabase = createSupabaseBrowserClient();
 
-      const atual = await lerFotosItemFresco(supabase, params.id_item);
+      const atual = await lerFotosItemFresco(
+        supabase,
+        qc,
+        params.id_apreciacao,
+        params.id_item
+      );
       if (atual.paths.length >= MAX_FOTOS_POR_ITEM_APR) {
         throw new Error(
           `Limite de ${MAX_FOTOS_POR_ITEM_APR} fotos por item atingido.`
@@ -466,39 +500,51 @@ export function useUploadFotoItemApreciacao() {
       }
 
       const ext = (params.file.name.split(".").pop() ?? "jpg").toLowerCase();
-      const sufixo = Math.random().toString(36).slice(2, 8);
+      const sufixo = gerarId("F").slice(2);
       const path = `apreciacao-maquinas/${params.id_apreciacao}/${params.id_item}-${sufixo}.${ext}`;
 
-      const { error: upErr } = await supabase.storage
-        .from("fotos")
-        .upload(path, params.file, {
-          upsert: false,
-          contentType: params.file.type,
-        });
-      if (upErr) throw upErr;
-
+      // O arquivo não sobe aqui: `getPublicUrl` é montagem de string, então a
+      // URL já é conhecida e o `gravar()` leva o arquivo junto da linha.
       const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
 
-      const novasUrls = [...atual.urls, pub.publicUrl];
-      const novosPaths = [...atual.paths, path];
-      const novasLegendas = [...padLegendas(atual.legendas, atual.urls.length), ""];
+      const patch = {
+        foto_urls: [...atual.urls, pub.publicUrl],
+        foto_storage_paths: [...atual.paths, path],
+        foto_legendas: [...padLegendas(atual.legendas, atual.urls.length), ""],
+        updated_at: new Date().toISOString(),
+      };
 
-      const { error: updateErr } = await supabase
-        .from("apreciacoes_maquinas_itens")
-        .update({
-          foto_urls: novasUrls,
-          foto_storage_paths: novosPaths,
-          foto_legendas: novasLegendas,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id_item", params.id_item);
-      if (updateErr) throw updateErr;
+      const resultado = await gravar({
+        tabela: "apreciacoes_maquinas_itens",
+        tipo: "update",
+        linhas: patch,
+        filtro: { id_item: params.id_item },
+        modulo: "apreciacao-maquinas",
+        id_documento: params.id_apreciacao,
+        imagens: [{ blob: params.file, caminho: path }],
+      });
 
-      return { foto_url: pub.publicUrl, path };
+      return { foto_url: pub.publicUrl, path, patch, resultado };
     },
     scope: SCOPE_FOTOS_APR,
-    onSuccess: (_d, params) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+    onSuccess: ({ patch, resultado }, params) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+        return;
+      }
+      qc.setQueryData<DetalheApreciacao>(
+        KEY_DETALHE(params.id_apreciacao),
+        (antigo) =>
+          antigo
+            ? {
+                ...antigo,
+                itens: antigo.itens.map((i) =>
+                  i.id_item === params.id_item ? { ...i, ...patch } : i,
+                ),
+              }
+            : antigo,
+      );
+      toast.success("Foto guardada no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
@@ -517,24 +563,46 @@ export function useAtualizarLegendaFotoItem() {
       total_fotos: number;
     }) => {
       const supabase = createSupabaseBrowserClient();
-      const atual = await lerFotosItemFresco(supabase, params.id_item);
+      const atual = await lerFotosItemFresco(
+        supabase,
+        qc,
+        params.id_apreciacao,
+        params.id_item
+      );
       // a foto pode ter sido removida entre o blur e a gravação
-      if (params.indice >= atual.urls.length) return params;
+      if (params.indice >= atual.urls.length) return { params, patch: null, resultado: null };
       const legendas = padLegendas(atual.legendas, atual.urls.length);
       legendas[params.indice] = params.legenda;
-      const { error } = await supabase
-        .from("apreciacoes_maquinas_itens")
-        .update({
-          foto_legendas: legendas,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id_item", params.id_item);
-      if (error) throw error;
-      return params;
+      const patch = { foto_legendas: legendas, updated_at: new Date().toISOString() };
+
+      const resultado = await gravar({
+        tabela: "apreciacoes_maquinas_itens",
+        tipo: "update",
+        linhas: patch,
+        filtro: { id_item: params.id_item },
+        modulo: "apreciacao-maquinas",
+        id_documento: params.id_apreciacao,
+      });
+      return { params, patch, resultado };
     },
     scope: SCOPE_FOTOS_APR,
-    onSuccess: (_d, params) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+    onSuccess: ({ patch, resultado }, params) => {
+      if (!resultado || resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+        return;
+      }
+      qc.setQueryData<DetalheApreciacao>(
+        KEY_DETALHE(params.id_apreciacao),
+        (antigo) =>
+          antigo
+            ? {
+                ...antigo,
+                itens: antigo.itens.map((i) =>
+                  i.id_item === params.id_item ? { ...i, ...patch } : i,
+                ),
+              }
+            : antigo,
+      );
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
@@ -551,6 +619,8 @@ export function useAdicionarItemLivreApreciacao() {
   return useMutation({
     mutationFn: async (params: {
       id_apreciacao: string;
+      /** Máquina (ficha) do item livre — v148. */
+      id_ficha?: string | null;
       categoria: string;
       titulo: string;
       descricao?: string | null;
@@ -559,13 +629,11 @@ export function useAdicionarItemLivreApreciacao() {
       /** Contagem atual de itens livres pra gerar o próximo código LIVRE-N. */
       proximoIndiceLivre: number;
     }) => {
-      const supabase = createSupabaseBrowserClient();
       const id_item = gerarId("APRI");
       const row: ApreciacaoMaquinaItem = {
         id_item,
         id_apreciacao: params.id_apreciacao,
-        // item livre pertence à máquina (ficha) atualmente selecionada no editor
-        id_ficha: useApreciacaoEdicaoStore.getState().fichaAtivaId,
+        id_ficha: params.id_ficha ?? null,
         item_codigo: `LIVRE-${params.proximoIndiceLivre}`,
         item_categoria: params.categoria,
         item_titulo: params.titulo,
@@ -585,14 +653,25 @@ export function useAdicionarItemLivreApreciacao() {
         created_at: new Date().toISOString(),
         updated_at: null,
       };
-      const { error } = await supabase
-        .from("apreciacoes_maquinas_itens")
-        .insert(row as never);
-      if (error) throw error;
-      return row;
+      const resultado = await gravar({
+        tabela: "apreciacoes_maquinas_itens",
+        tipo: "insert",
+        linhas: [row as unknown as Record<string, unknown>],
+        filtro: null,
+        modulo: "apreciacao-maquinas",
+        id_documento: params.id_apreciacao,
+      });
+      return { row, resultado };
     },
-    onSuccess: (row) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_apreciacao) });
+    onSuccess: ({ row, resultado }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_apreciacao) });
+        return;
+      }
+      // Sem rede não há o que revalidar: o item entra na lista à mão.
+      qc.setQueryData<DetalheApreciacao>(KEY_DETALHE(row.id_apreciacao), (antigo) =>
+        antigo ? { ...antigo, itens: [...antigo.itens, row] } : antigo,
+      );
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
@@ -611,41 +690,61 @@ export function useExcluirItemApreciacao() {
       id_apreciacao: string;
       id_item: string;
     }) => {
-      const supabase = createSupabaseBrowserClient();
-      // Limpa fotos do storage primeiro (best-effort)
-      const { data: itemAtual } = await supabase
-        .from("apreciacoes_maquinas_itens")
-        .select("foto_storage_paths")
-        .eq("id_item", params.id_item)
-        .single();
-      const paths =
-        (itemAtual as { foto_storage_paths: string[] } | null)
-          ?.foto_storage_paths ?? [];
-      if (paths.length > 0) {
-        await supabase.storage.from("fotos").remove(paths);
+      // Limpa fotos do storage primeiro (best-effort), e só com rede: sem ela o
+      // arquivo fica órfão no MinIO — desperdício, não erro.
+      if (navigator.onLine) {
+        try {
+          const supabase = createSupabaseBrowserClient();
+          const { data: itemAtual } = await supabase
+            .from("apreciacoes_maquinas_itens")
+            .select("foto_storage_paths")
+            .eq("id_item", params.id_item)
+            .single();
+          const paths =
+            (itemAtual as { foto_storage_paths: string[] } | null)
+              ?.foto_storage_paths ?? [];
+          if (paths.length > 0) {
+            await supabase.storage.from("fotos").remove(paths);
+          }
+        } catch {
+          /* silencioso de propósito */
+        }
       }
-      const { error } = await supabase
-        .from("apreciacoes_maquinas_itens")
-        .delete()
-        .eq("id_item", params.id_item);
-      if (error) throw error;
-      return params;
+
+      const resultado = await gravar({
+        tabela: "apreciacoes_maquinas_itens",
+        tipo: "delete",
+        linhas: null,
+        filtro: { id_item: params.id_item },
+        modulo: "apreciacao-maquinas",
+        id_documento: params.id_apreciacao,
+      });
+      return { params, resultado };
     },
-    onSuccess: (params) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+    onSuccess: ({ params, resultado }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+        return;
+      }
+      qc.setQueryData<DetalheApreciacao>(KEY_DETALHE(params.id_apreciacao), (antigo) =>
+        antigo
+          ? { ...antigo, itens: antigo.itens.filter((i) => i.id_item !== params.id_item) }
+          : antigo,
+      );
+      toast.success("Remoção guardada no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
 }
 
 // ============================================================
-// Plano de Ação — STANDALONE da apreciação (não vincula com SST JCN Consultoria)
+// Plano de Ação — STANDALONE da apreciação (não vincula com Painel SST)
 // ============================================================
 
 const KEY_ACOES = (id_apreciacao: string) =>
   ["apreciacao-acoes", id_apreciacao] as const;
 
-/** Mapeia nível de risco do SST JCN Consultoria → prioridade da ação da apreciação. */
+/** Mapeia nível de risco do Painel SST → prioridade da ação da apreciação. */
 function prioridadePorNivel(
   nivel: NivelRisco | null
 ): PrioridadeAcaoApreciacao {
@@ -1006,33 +1105,64 @@ export function useRemoverFotoItemApreciacao() {
       fotos_legendas_atuais?: string[];
     }) => {
       const supabase = createSupabaseBrowserClient();
-      // Storage: best-effort
-      await supabase.storage.from("fotos").remove([params.foto_storage_path]);
+      // Storage: best-effort, e só com rede — sem ela o arquivo fica órfão no
+      // MinIO, que é desperdício de espaço e não erro.
+      if (navigator.onLine) {
+        try {
+          await supabase.storage.from("fotos").remove([params.foto_storage_path]);
+        } catch {
+          /* silencioso de propósito */
+        }
+      }
 
-      const atual = await lerFotosItemFresco(supabase, params.id_item);
-      const idx = atual.paths.indexOf(params.foto_storage_path);
-      if (idx < 0) return params; // já removida por outra mutação
-      const novasUrls = atual.urls.filter((_, i) => i !== idx);
-      const novosPaths = atual.paths.filter((_, i) => i !== idx);
-      const novasLegendas = padLegendas(atual.legendas, atual.urls.length).filter(
-        (_, i) => i !== idx
+      const atual = await lerFotosItemFresco(
+        supabase,
+        qc,
+        params.id_apreciacao,
+        params.id_item
       );
+      const idx = atual.paths.indexOf(params.foto_storage_path);
+      // Já removida por outra mutação.
+      if (idx < 0) return { params, patch: null, resultado: null };
 
-      const { error } = await supabase
-        .from("apreciacoes_maquinas_itens")
-        .update({
-          foto_urls: novasUrls,
-          foto_storage_paths: novosPaths,
-          foto_legendas: novasLegendas,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id_item", params.id_item);
-      if (error) throw error;
-      return params;
+      const patch = {
+        foto_urls: atual.urls.filter((_, i) => i !== idx),
+        foto_storage_paths: atual.paths.filter((_, i) => i !== idx),
+        foto_legendas: padLegendas(atual.legendas, atual.urls.length).filter(
+          (_, i) => i !== idx
+        ),
+        updated_at: new Date().toISOString(),
+      };
+
+      const resultado = await gravar({
+        tabela: "apreciacoes_maquinas_itens",
+        tipo: "update",
+        linhas: patch,
+        filtro: { id_item: params.id_item },
+        modulo: "apreciacao-maquinas",
+        id_documento: params.id_apreciacao,
+      });
+      return { params, patch, resultado };
     },
     scope: SCOPE_FOTOS_APR,
-    onSuccess: (_d, params) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+    onSuccess: ({ patch, resultado }, params) => {
+      if (!resultado || resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_apreciacao) });
+        return;
+      }
+      qc.setQueryData<DetalheApreciacao>(
+        KEY_DETALHE(params.id_apreciacao),
+        (antigo) =>
+          antigo
+            ? {
+                ...antigo,
+                itens: antigo.itens.map((i) =>
+                  i.id_item === params.id_item ? { ...i, ...patch } : i,
+                ),
+              }
+            : antigo,
+      );
+      toast.success("Remoção guardada no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
@@ -1095,6 +1225,9 @@ export function useEnviarAcoesParaPlanoAcao() {
           id_inspecao: apreciacao.id_inspecao ?? null,
           id_apreciacao_item: a.id_item,
           id_apreciacao_acao: a.id_acao,
+          // v184: esta ação vem da apreciação, não de risco de inspeção.
+          id_risco_origem: null,
+          id_aet_acao: null,
           what_acao: a.what_acao,
           why_justificativa: a.why_justificativa,
           where_local: a.where_local ?? apreciacao.setor,

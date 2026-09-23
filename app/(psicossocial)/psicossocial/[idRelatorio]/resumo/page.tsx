@@ -47,7 +47,7 @@ export default function ResumoPage({
   const removerUnidade = useDrpsRemoverProbabilidadeUnidade();
 
   // Editando uma unidade específica: a gravação vai para a tabela de
-  // overrides (v150), não para o valor do setor — que é o padrão herdado
+  // overrides (v138), não para o valor do setor — que é o padrão herdado
   // por TODAS as unidades e não pode ser alterado sem querer daqui.
   const editandoUnidade = unidade !== "Todas";
 

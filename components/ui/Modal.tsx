@@ -38,6 +38,14 @@ export default function Modal({
   const prevFocusRef = useRef<HTMLElement | null>(null);
   const titleId = useRef(`modal-title-${Math.random().toString(36).slice(2)}`);
 
+  // 🔑 `onClose` chega quase sempre como arrow inline (`onClose={() => setX(null)}`),
+  // ou seja: identidade NOVA a cada render do pai. Guardá-la numa ref é o que
+  // permite o efeito de foco abaixo depender só de `open` — ver o comentário lá.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (open) {
       prevFocusRef.current = document.activeElement as HTMLElement;
@@ -52,6 +60,17 @@ export default function Modal({
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
+  /**
+   * Foco inicial + armadilha de Tab. Depende SÓ de `open`, e isso é o ponto.
+   *
+   * 🐛 Enquanto dependia de `onClose`, o efeito rodava a cada render do pai —
+   * e como o pai re-renderiza a cada tecla digitada (o valor do campo é estado
+   * dele), o `.focus()` do primeiro campo roubava o cursor de volta depois de
+   * UMA letra. Quem estava no 2º campo do modal via a letra entrar e o cursor
+   * saltar para o 1º. Valia para os 83 modais do painel, não só para a Escala.
+   *
+   * `onClose` vem pela ref, que está sempre atualizada.
+   */
   useEffect(() => {
     if (!open || !dialogRef.current) return;
     const dialog = dialogRef.current;
@@ -64,7 +83,7 @@ export default function Modal({
 
     const onKey = (e: KeyboardEvent) => {
       e.stopPropagation();
-      if (e.key === "Escape") { onClose(); return; }
+      if (e.key === "Escape") { onCloseRef.current(); return; }
       if (e.key !== "Tab") return;
       const els = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
       if (!els.length) return;
@@ -79,7 +98,7 @@ export default function Modal({
 
     dialog.addEventListener("keydown", onKey);
     return () => { dialog.removeEventListener("keydown", onKey); };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open || typeof document === "undefined") return null;
 

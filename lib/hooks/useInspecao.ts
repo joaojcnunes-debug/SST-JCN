@@ -1,7 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
+import { contarPilulas, type FiltroInspecao, type LinhaContagem } from "@/lib/inspecoes/pilulas";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoes";
+import { ehErroDeRede } from "@/lib/offline/rede";
 import type {
   Cargo,
   Complemento,
@@ -38,14 +42,13 @@ export interface InspecaoFull {
   maquinas: InspecaoMaquina[];
 }
 
-export function useInspecao(id: string | null | undefined) {
-  return useQuery({
-    queryKey: ["inspecao", id],
-    enabled: !!id,
-    staleTime: 2 * 60 * 1000,
-    queryFn: async (): Promise<InspecaoFull> => {
+/**
+ * A busca no servidor, extraída para o `useInspecao` poder ter um plano B.
+ *
+ * Continua sendo exatamente a consulta de sempre — o que mudou é quem a chama.
+ */
+async function carregarDoServidor(inspId: string): Promise<InspecaoFull> {
       const supabase = createSupabaseBrowserClient();
-      const inspId = id!;
 
       const [
         inspRes,
@@ -125,6 +128,55 @@ export function useInspecao(id: string | null | undefined) {
           };
         }) as unknown as InspecaoMaquina[],
       };
+}
+
+/**
+ * Mantém fresca a cópia que o técnico já levou — e SÓ ela.
+ *
+ * Guardar toda inspeção que alguém abre encheria o aparelho com o que ninguém
+ * pediu e daria a ilusão de cobertura: o técnico sairia da base achando que está
+ * coberto porque "abriu a tela". A decisão de levar continua sendo do botão; o
+ * que isto faz é impedir que a cópia levada envelheça enquanto ele ainda tem
+ * sinal.
+ */
+async function manterCacheFresco(inspId: string, dados: InspecaoFull): Promise<void> {
+  const jaLevada = await lerDocumentoCache(inspId);
+  if (jaLevada) await guardarDocumentoCache(inspId, dados);
+}
+
+export function useInspecao(id: string | null | undefined) {
+  return useQuery({
+    queryKey: ["inspecao", id],
+    enabled: !!id,
+    staleTime: 2 * 60 * 1000,
+
+    /**
+     * Sem rede, insistir é perder tempo do técnico olhando um spinner. O plano B
+     * está dentro da `queryFn` e responde na primeira tentativa; repetir só faz
+     * sentido para erro que não é de rede.
+     */
+    retry: (falhas, erro) => !ehErroDeRede(erro) && falhas < 2,
+
+    queryFn: async (): Promise<InspecaoFull> => {
+      const inspId = id!;
+      try {
+        const dados = await carregarDoServidor(inspId);
+        // Sem `await`: a tela não deve esperar a gravação do cache para pintar.
+        void manterCacheFresco(inspId, dados);
+        return dados;
+      } catch (e) {
+        // Recusa do banco ou inspeção inexistente continuam sendo erro — cair no
+        // cache aqui esconderia o problema e mostraria dado velho como se fosse
+        // o atual.
+        if (!ehErroDeRede(e)) throw e;
+
+        const guardada = await lerDocumentoCache<InspecaoFull>(inspId);
+        if (guardada) return guardada.dados;
+
+        // Não foi levada para o campo. Melhor o erro honesto que uma tela vazia
+        // sem explicação.
+        throw e;
+      }
     },
   });
 }
@@ -199,12 +251,13 @@ export function useInspecoesByTecnico(tecnico: string) {
 
 // ─── Paginação server-side para a listagem principal ────────────────────────
 
-export type FiltroInspecao = "Todos" | "RASCUNHO" | "EM_ANDAMENTO" | "CONCLUIDA";
+export type { FiltroInspecao, ContagensInspecoes } from "@/lib/inspecoes/pilulas";
 export type OrdemInspecao = "recentes" | "antigas" | "revisao";
 
 interface InspecoesPaginadasParams {
   idEmpresa: string | null;
   tecnico: string;
+  /** Nome (ou pedaço) de quem está associado à elaboração ou é o responsável. */
   associado: string;
   idUnidade?: string | null;
   dataIni?: string;
@@ -288,7 +341,10 @@ export function useInspecoesPaginadas({
       const idsAssoc = await idsPorAssociado(supabase, associado);
       let q = aplicarFiltros(supabase.from("inspecoes").select(selLista, { count: "exact" }), base);
       q = aplicarFiltroAssociado(q, associado, idsAssoc);
-      if (filtro !== "Todos") q = q.eq("status", filtro);
+      // "Associados" filtra pela coluna calculada do banco (v239): há alguém no
+      // documento — linha em inspecao_associados ou elaboracao_responsavel.
+      if (filtro === "ASSOCIADOS") q = q.is("tem_associado", true);
+      else if (filtro !== "Todos") q = q.eq("status", filtro);
       if (ordem === "recentes") q = q.order("created_at", { ascending: false });
       else if (ordem === "antigas") q = q.order("created_at", { ascending: true });
       else q = q.order("revisao", { ascending: false }).order("created_at", { ascending: false });
@@ -300,29 +356,28 @@ export function useInspecoesPaginadas({
     },
   });
 
-  // Contagens por status — busca só a coluna status (leve) para os filtros.
-  const selCounts = idUnidade ? "status, empresas!inner(id_unidade)" : "status";
-  const counts = useQuery({
-    queryKey: ["inspecoes-counts", idEmpresa, tecnico, associado, idUnidade, dataIni, dataFim],
+  // Linhas para as pílulas: só status e quem está no documento, com os filtros
+  // de base (empresa/técnico/unidade/período). A pílula ativa e a caixa de
+  // associado ficam de fora de propósito — a conta é em memória
+  // (contarPilulas), para trocar de pílula ou digitar não ir ao banco de novo.
+  const selCounts = idUnidade
+    ? "status, elaboracao_responsavel, inspecao_associados(nome), empresas!inner(id_unidade)"
+    : "status, elaboracao_responsavel, inspecao_associados(nome)";
+  const linhas = useQuery({
+    queryKey: ["inspecoes-counts", idEmpresa, tecnico, idUnidade, dataIni, dataFim],
     staleTime: 30_000,
-    queryFn: async () => {
+    queryFn: async (): Promise<LinhaContagem[]> => {
       const supabase = createSupabaseBrowserClient();
-      const idsAssoc = await idsPorAssociado(supabase, associado);
-      let q = aplicarFiltros(supabase.from("inspecoes").select(selCounts), base);
-      q = aplicarFiltroAssociado(q, associado, idsAssoc);
-      const { data, error } = await q;
+      const { data, error } = await aplicarFiltros(supabase.from("inspecoes").select(selCounts), base);
       if (error) throw error;
-      const acc: Record<FiltroInspecao, number> = {
-        Todos: 0, RASCUNHO: 0, EM_ANDAMENTO: 0, CONCLUIDA: 0,
-      };
-      for (const row of (data ?? []) as Array<{ status: string }>) {
-        acc.Todos++;
-        const s = row.status as FiltroInspecao;
-        if (s === "RASCUNHO" || s === "EM_ANDAMENTO" || s === "CONCLUIDA") acc[s]++;
-      }
-      return acc;
+      return (data ?? []) as LinhaContagem[];
     },
   });
 
-  return { lista, counts };
+  const contagens = useMemo(
+    () => (linhas.data ? contarPilulas(linhas.data, associado) : undefined),
+    [linhas.data, associado],
+  );
+
+  return { lista, counts: { data: contagens } };
 }

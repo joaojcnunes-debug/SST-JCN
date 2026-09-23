@@ -11,7 +11,7 @@ import PainelCongelamentoPdf from "@/components/ui/PainelCongelamentoPdf";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import DrpsSumarioPrint from "@/components/drps/DrpsSumarioPrint";
 import DrpsRelatorioExtrasPrint from "@/components/drps/DrpsRelatorioExtrasPrint";
@@ -81,7 +81,7 @@ export default function PsicossocialLaudoPage({
     return [setor];
   }, [setor, respondentes]);
 
-  // Com unidades (v150), o laudo cascateia Unidade › Setor › Funções. A lista
+  // Com unidades (v138), o laudo cascateia Unidade › Setor › Funções. A lista
   // continua sendo de blocos de setor — cada um agora sabendo a que unidade
   // pertence —, então tudo que consome relatoriosPorSetor segue funcionando.
   const temUnidades = useMemo(
@@ -120,22 +120,9 @@ export default function PsicossocialLaudoPage({
     if (!pdfAssinado) return;
     setBaixando(true);
     try {
-      const supabase = createSupabaseBrowserClient();
-      // URL assinada (token único a cada clique) + no-store: ignora o cache do
-      // CDN/navegador. O caminho é o mesmo a cada (re)assinatura, e o CDN servia
-      // a versão antiga do mesmo path — daí o PDF baixado vir defasado.
-      const { data: signed, error } = await supabase.storage
-        .from("pdfs-assinados")
-        .createSignedUrl(pdfAssinado.pdf_path, 120);
-      if (error || !signed?.signedUrl) { toast.error("Não foi possível baixar o PDF."); return; }
-      const res = await fetch(`${signed.signedUrl}&t=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) { toast.error("Não foi possível baixar o PDF."); return; }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = "relatorio-drps-assinado.pdf"; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch { toast.error("Erro ao baixar o PDF."); }
+      // Bucket privado: download via rota server-side same-origin (baixar-assinado).
+      await baixarPdfAssinado(pdfAssinado.pdf_path, "relatorio-drps-assinado.pdf");
+    } catch { toast.error("Não foi possível baixar o PDF."); }
     finally { setBaixando(false); }
   }
 
@@ -403,9 +390,15 @@ export default function PsicossocialLaudoPage({
           .drps-capitulos-apos-setores { break-before: page; }
         }
         .drps-tabela { border-collapse: collapse; width: 100%; font-size: 11px; }
-        .drps-tabela td, .drps-tabela th { border: 1px solid #cbd5e1; padding: 7px 10px; vertical-align: top; }
-        .drps-label { background: #f0f9f4; font-weight: 600; color: #1e4d28; font-size: 10.5px; letter-spacing: 0.02em; width: 30%; }
-        .drps-header-section { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: center; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; }
+        /* Cores por variável, não cravadas: esta folha deixou de viver dentro de
+           uma ilha force-light, então precisa acompanhar o tema. O valor em
+           :root e em .force-light é o hexadecimal exato de antes -- tema claro e
+           impressão ficam idênticos. O PDF nem passa por aqui: o Puppeteer usa a
+           folha própria do DrpsTemplate.
+           (Sem crases neste comentário: o bloco inteiro é um template literal.) */
+        .drps-tabela td, .drps-tabela th { border: 1px solid var(--psi-borda); padding: 7px 10px; vertical-align: top; }
+        .drps-label { background: var(--psi-label-bg); font-weight: 600; color: var(--psi-verde); font-size: 10.5px; letter-spacing: 0.02em; width: 30%; }
+        .drps-header-section { background: var(--psi-faixa-bg); color: var(--psi-verde); font-weight: 700; text-align: center; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; }
         .drps-title { background: linear-gradient(180deg, #0ea5e9 0%, #00563f 100%); color: white; font-weight: 700; font-size: 13px; text-align: center; letter-spacing: 0.08em; text-transform: uppercase; padding: 10px 12px; }
         .drps-capitulo { margin-bottom: 22px; }
         .drps-setor-bloco { margin-bottom: 24px; }
@@ -418,19 +411,19 @@ export default function PsicossocialLaudoPage({
           .drps-capitulo--capa { margin: 0; padding: 0; height: calc(297mm - 2.8cm - 1mm); min-height: calc(297mm - 2.8cm - 1mm); max-height: calc(297mm - 2.8cm - 1mm); }
           .drps-capitulo--capa .drps-capitulo-conteudo { padding: 1.2cm; }
         }
-        .drps-capitulo-titulo { font-size: 14px; font-weight: 700; color: #1e4d28; border-bottom: 2px solid #0ea5e9; padding-bottom: 4px; margin-bottom: 8px; }
-        .drps-capitulo-conteudo { font-size: 11px; color: #1f2937; line-height: 1.55; }
+        .drps-capitulo-titulo { font-size: 14px; font-weight: 700; color: var(--psi-verde); border-bottom: 2px solid #0ea5e9; padding-bottom: 4px; margin-bottom: 8px; }
+        .drps-capitulo-conteudo { font-size: 11px; color: var(--laudo-texto); line-height: 1.55; }
         .drps-capitulo-conteudo p { margin: 0 0 8px 0; }
-        .drps-capitulo-conteudo h1 { font-size: 16px; font-weight: 700; color: #1e4d28; margin: 12px 0 6px; }
-        .drps-capitulo-conteudo h2 { font-size: 14px; font-weight: 700; color: #1e4d28; margin: 10px 0 6px; }
-        .drps-capitulo-conteudo h3 { font-size: 12px; font-weight: 700; color: #1e4d28; margin: 8px 0 4px; }
+        .drps-capitulo-conteudo h1 { font-size: 16px; font-weight: 700; color: var(--psi-verde); margin: 12px 0 6px; }
+        .drps-capitulo-conteudo h2 { font-size: 14px; font-weight: 700; color: var(--psi-verde); margin: 10px 0 6px; }
+        .drps-capitulo-conteudo h3 { font-size: 12px; font-weight: 700; color: var(--psi-verde); margin: 8px 0 4px; }
         .drps-capitulo-conteudo ul, .drps-capitulo-conteudo ol { margin: 0 0 8px 20px; padding: 0; }
         .drps-capitulo-conteudo li { margin: 2px 0; }
-        .drps-capitulo-conteudo a { color: #0ea5e9; text-decoration: underline; }
+        .drps-capitulo-conteudo a { color: var(--tiptap-link); text-decoration: underline; }
         .drps-capitulo-conteudo img { max-width: 100%; height: auto; border-radius: 4px; margin: 8px 0; }
         .drps-capitulo-conteudo table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 10px; }
-        .drps-capitulo-conteudo th, .drps-capitulo-conteudo td { border: 1px solid #999; padding: 5px 7px; vertical-align: top; }
-        .drps-capitulo-conteudo th { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: left; }
+        .drps-capitulo-conteudo th, .drps-capitulo-conteudo td { border: 1px solid var(--psi-borda-tab); padding: 5px 7px; vertical-align: top; }
+        .drps-capitulo-conteudo th { background: var(--psi-faixa-bg); color: var(--psi-verde); font-weight: 700; text-align: left; }
       `}</style>
 
       {/* ── Cabeçalho da página ─────────────────────────────────── */}
@@ -524,7 +517,11 @@ export default function PsicossocialLaudoPage({
           Nenhum respondente importado — não é possível gerar o laudo.
         </div>
       ) : (
-        <div className="force-light drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
+        // Sem `force-light`: a prévia acompanha o tema do app — folha branca fixa
+        // cansava a vista de quem passa o dia no laudo. A impressão continua clara
+        // pelo `beforeprint` do ThemeManager e o PDF é montado no servidor
+        // (/api/pdf/drps/[id]), não capturado desta tela.
+        <div className="drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
           {temFixos ? (
             <>
               {ordenados.map((c) =>
@@ -655,7 +652,7 @@ function BlocoSetorLaudo({
           </tr>
           <tr><td className="drps-header-section" colSpan={4}>Classificação de Risco Psicossocial</td></tr>
           <tr>
-            <td colSpan={4} className="text-center text-[11px] font-semibold uppercase tracking-wider" style={{ background: "#f0f9f4", color: "#1e4d28" }}>
+            <td colSpan={4} className="text-center text-[11px] font-semibold uppercase tracking-wider" style={{ background: "var(--psi-label-bg)", color: "var(--psi-verde)" }}>
               Quantitativo e Qualitativo
             </td>
           </tr>

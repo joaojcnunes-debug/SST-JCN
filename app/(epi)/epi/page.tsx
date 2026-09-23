@@ -1,45 +1,37 @@
 "use client";
 
+import { useState } from "react";
 import { HardHat } from "lucide-react";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import EpiGestao from "@/components/epi/EpiGestao";
-import { useEpiStore } from "@/lib/epi/store";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 
-export default function EpiHomePage() {
-  const empresaId = useEpiStore((s) => s.empresaId);
-  const setEmpresa = useEpiStore((s) => s.setEmpresa);
+/** Contexto interno: escolhe a empresa e gerencia o EPI dela. */
+export default function EpiPage() {
+  const [empresaId, setEmpresaId] = useState<string | null>(null);
   const canEdit = useCanEdit();
 
   return (
-    <div className="space-y-5">
-      <div className="flex items-start gap-3">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-verde-primary/10 text-verde-primary">
-          <HardHat className="size-6" />
-        </div>
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">Gestão de EPI</h1>
-          <p className="text-sm text-gray-600">
-            Catálogo de EPI por empresa (vinculado ao CA), estoque e colaboradores.
-          </p>
-        </div>
+    <div className="mx-auto max-w-6xl space-y-5">
+      <div>
+        <h1 className="text-xl font-bold text-gray-900">Gestão de EPI</h1>
+        <p className="mt-1 text-sm text-gray-600">Catálogo, estoque e colaboradores por empresa. Entregas, NF-e e transferências chegam nas próximas fases.</p>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-500">
-          Empresa
-        </label>
-        <div className="max-w-md">
-          <EmpresaSelect
-            value={empresaId}
-            onChange={setEmpresa}
-            placeholder="Selecione a empresa…"
-            allowAll
-          />
-        </div>
+      <div className="max-w-md">
+        <label className="mb-1 block text-xs font-medium text-gray-600">Empresa</label>
+        <EmpresaSelect value={empresaId} onChange={setEmpresaId} placeholder="Selecione a empresa…" />
       </div>
 
-      <EpiGestao empresaId={empresaId} canEdit={canEdit} />
+      {empresaId ? (
+        <EpiGestao empresaId={empresaId} canEdit={canEdit} />
+      ) : (
+        <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-10 text-center">
+          <HardHat className="mx-auto size-8 text-gray-400" />
+          <p className="mt-2 text-sm font-medium text-gray-700">Selecione uma empresa</p>
+          <p className="mt-1 text-xs text-gray-500">Escolha a empresa acima para ver o catálogo e o estoque de EPI.</p>
+        </div>
+      )}
     </div>
   );
 }

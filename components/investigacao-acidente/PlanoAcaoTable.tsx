@@ -14,6 +14,7 @@ import type {
   StatusAcaoApreciacao,
   PrioridadeAcaoApreciacao,
 } from "@/lib/supabase/types";
+import { formatarPrazoAcao } from "@/lib/acoes/prazo";
 import { cn } from "@/lib/utils";
 
 const STATUS_OPCOES: StatusAcaoApreciacao[] = ["Pendente", "Em Andamento", "Concluida", "Cancelada"];
@@ -195,7 +196,9 @@ function AcaoRow({
         <div className="hidden shrink-0 items-center gap-2 text-[11px] text-gray-500 sm:flex">
           {acao.who_responsavel && <span title="Responsável">{acao.who_responsavel}</span>}
           {acao.when_prazo && (
-            <span title="Prazo">{new Date(acao.when_prazo + "T00:00").toLocaleDateString("pt-BR")}</span>
+            <span title="Prazo" className="max-w-[10rem] truncate">
+              {formatarPrazoAcao(acao.when_prazo)}
+            </span>
           )}
         </div>
         {readOnly ? (
@@ -274,13 +277,14 @@ function AcaoRow({
               />
             </Campo>
             <Campo label="Quando (prazo)">
-              <input
-                type="date"
+              <textarea
+                rows={2}
                 value={whenPrazo}
                 onChange={(e) => setWhenPrazo(e.target.value)}
                 onBlur={salvarCampos}
                 disabled={readOnly}
                 className={inputClass}
+                placeholder="Ex.: 30 dias após a entrega dos EPIs"
               />
             </Campo>
             <Campo label="Quanto (custo)">

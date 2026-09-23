@@ -1,169 +1,134 @@
-// EpiFingerprint — helper de captura de digital para o módulo EPI (SST-JCN).
+// EpiFingerprint — helper nativo de biometria (DigitalPersona U.are.U) para o app desktop.
 //
-// Usa o SDK .NET DPUruNet (DigitalPersona U.are.U) que JÁ está instalado com o
-// RTE (o mesmo runtime que o sistema SGG usa). Captura UMA digital, extrai o
-// FMD (feature set), calcula o SHA-256 e imprime como JSON no stdout — a
-// BIOMETRIA É DESCARTADA (nada é salvo em disco). LGPD: só o hash sai, como
-// token de integridade do ato de assinatura.
+// ⚠️ REFERÊNCIA: precisa referenciar o DPUruNet.dll do RTE da DigitalPersona e ser
+// compilado/testado NUMA MÁQUINA COM O LEITOR. A API abaixo segue o SDK DPUruNet;
+// confira as assinaturas contra a versão do seu SDK e ajuste o THRESHOLD por testes.
 //
-// Uso:
-//   EpiFingerprint.exe --check    -> {"ok":true,"count":N}   (só enumera)
-//   EpiFingerprint.exe            -> aguarda o dedo e imprime o hash
+// Contrato (stdout = JSON, uma linha):
+//   EpiFingerprint.exe check                     -> {"ok":true,"disponivel":true|false}
+//   EpiFingerprint.exe enroll                    -> {"ok":true,"template":"<base64>","qualidade":N}
+//   EpiFingerprint.exe verify   (template base64 via STDIN) -> {"ok":true,"match":true|false,"score":N}
 //
-// Compilar (csc do .NET Framework):
-//   csc /target:exe /platform:anycpu ^
-//     /reference:"C:\Program Files\DigitalPersona\U.are.U RTE\Windows\Lib\DotNET\DPUruNet.dll" ^
-//     /out:EpiFingerprint.exe EpiFingerprint.cs
-// O DPUruNet.dll deve ficar ao lado do .exe em runtime; os DLLs nativos
-// (dpfpdd.dll/dpfj.dll) vêm do System32 do RTE.
+// GOTCHA (do SST-JCN): capturar em DP_PRIORITY_EXCLUSIVE — no modo cooperativo o DpHost
+// do SGG segura o leitor e dá DP_QUALITY_TIMED_OUT.
 
 using System;
-using System.Security.Cryptography;
-using System.Text;
+using System.IO;
 using DPUruNet;
 
-internal static class EpiFingerprint
+class EpiFingerprint
 {
-    // Cada tentativa espera um dedo por AttemptMs; repetimos até OverallSeconds.
-    private const int AttemptMs = 10000;
-    private const int OverallSeconds = 60;
+    // Threshold de dissimilaridade: score MENOR = mais parecido. Ajuste por testes.
+    // FAR-alvo ~1e-5 → threshold ≈ 0x7fffffff * 1e-5. Comece aqui e calibre.
+    const int MATCH_THRESHOLD = (int)(0x7fffffff * 0.00001);
+    const int CAPTURE_TIMEOUT_MS = 15000;
 
-    private static int Main(string[] args)
+    static int Main(string[] args)
     {
-        bool check = args.Length > 0 && args[0] == "--check";
-        Reader reader = null;
         try
         {
-            ReaderCollection readers = ReaderCollection.GetReaders();
-            if (check)
+            string mode = args.Length > 0 ? args[0].ToLowerInvariant() : "";
+            switch (mode)
             {
-                int n = readers.Count;
-                Out(true, null, null, null, null, n);
-                return n > 0 ? 0 : 2;
+                case "check":  return Check();
+                case "enroll": return Enroll();
+                case "verify": return Verify();
+                default:
+                    Out("{\"ok\":false,\"erro\":\"modo inválido (use check|enroll|verify)\"}");
+                    return 1;
             }
-
-            if (readers.Count == 0)
-            {
-                Out(false, null, null, null, "Nenhum leitor de digital detectado.", 0);
-                return 2;
-            }
-
-            reader = readers[0];
-            // EXCLUSIVO por padrão: em máquinas com o DpHost (SGG) rodando, o modo
-            // cooperativo não recebe o toque — o exclusivo toma o leitor durante a
-            // captura e o devolve ao dar Dispose. --cooperative força o outro modo.
-            Constants.CapturePriority prio = Array.IndexOf(args, "--cooperative") >= 0
-                ? Constants.CapturePriority.DP_PRIORITY_COOPERATIVE
-                : Constants.CapturePriority.DP_PRIORITY_EXCLUSIVE;
-            Constants.ResultCode open = reader.Open(prio);
-            if (open != Constants.ResultCode.DP_SUCCESS)
-            {
-                Out(false, null, null, null, "Falha ao abrir o leitor em " + prio + " (" + open + ").", 0);
-                return 3;
-            }
-
-            int resolution = 500;
-            if (reader.Capabilities != null && reader.Capabilities.Resolutions != null
-                && reader.Capabilities.Resolutions.Length > 0)
-            {
-                resolution = reader.Capabilities.Resolutions[0];
-            }
-
-            // Captura em laço: cada tentativa (ordem confirmada por reflexão:
-            // format, processing, timeout, resolution) espera um dedo; repete até
-            // o prazo total, aceitando só leitura de BOA qualidade.
-            CaptureResult cap = null;
-            string ultimaQualidade = null;
-            DateTime deadline = DateTime.UtcNow.AddSeconds(OverallSeconds);
-            do
-            {
-                CaptureResult attempt = reader.Capture(
-                    Constants.Formats.Fid.ANSI,
-                    Constants.CaptureProcessing.DP_IMG_PROC_DEFAULT,
-                    AttemptMs,
-                    resolution);
-                if (attempt != null)
-                {
-                    ultimaQualidade = attempt.Quality.ToString();
-                    if (attempt.ResultCode == Constants.ResultCode.DP_SUCCESS
-                        && attempt.Quality == Constants.CaptureQuality.DP_QUALITY_GOOD
-                        && attempt.Data != null)
-                    {
-                        cap = attempt;
-                        break;
-                    }
-                }
-            } while (DateTime.UtcNow < deadline);
-
-            if (cap == null)
-            {
-                Out(false, null, null, ultimaQualidade,
-                    "Nenhuma leitura válida no tempo — encoste o dedo firmemente no leitor.", 0);
-                return 4;
-            }
-            string qualidade = cap.Quality.ToString();
-
-            DataResult<Fmd> fmd = FeatureExtraction.CreateFmdFromFid(cap.Data, Constants.Formats.Fmd.ANSI);
-            if (fmd == null || fmd.ResultCode != Constants.ResultCode.DP_SUCCESS
-                || fmd.Data == null || fmd.Data.Bytes == null)
-            {
-                Out(false, null, null, qualidade, "Falha ao extrair as características da digital.", 0);
-                return 5;
-            }
-
-            string hash = Sha256Hex(fmd.Data.Bytes);
-            string device = reader.Description != null && reader.Description.Name != null
-                ? reader.Description.Name : "U.are.U";
-
-            // A partir daqui a biometria (cap.Data / fmd.Data) é abandonada; nada é persistido.
-            Out(true, hash, device, qualidade, null, 1);
-            return 0;
         }
         catch (Exception e)
         {
-            Out(false, null, null, null, e.Message, 0);
+            Out("{\"ok\":false,\"erro\":" + JsonStr(e.Message) + "}");
             return 1;
         }
-        finally
+    }
+
+    static int Check()
+    {
+        var readers = ReaderCollection.GetReaders();
+        bool disponivel = readers != null && readers.Count > 0;
+        Out("{\"ok\":true,\"disponivel\":" + (disponivel ? "true" : "false") + "}");
+        return 0;
+    }
+
+    static Reader OpenReader()
+    {
+        var readers = ReaderCollection.GetReaders();
+        if (readers == null || readers.Count == 0) throw new Exception("Nenhum leitor de digital conectado.");
+        var reader = readers[0];
+        var r = reader.Open(Constants.CapturePriority.DP_PRIORITY_EXCLUSIVE);
+        if (r != Constants.ResultCode.DP_SUCCESS) throw new Exception("Falha ao abrir o leitor (" + r + ").");
+        return reader;
+    }
+
+    static Fmd CaptureFmd(Reader reader)
+    {
+        var cap = reader.Capture(Constants.Formats.Fid.ANSI, Constants.CaptureProcessing.DP_IMG_PROC_DEFAULT,
+                                 CAPTURE_TIMEOUT_MS, reader.Capabilities.Resolutions[0]);
+        if (cap == null || cap.ResultCode != Constants.ResultCode.DP_SUCCESS)
+            throw new Exception("Captura falhou (" + (cap == null ? "null" : cap.ResultCode.ToString()) + ").");
+        if (cap.Quality != Constants.CaptureQuality.DP_QUALITY_GOOD)
+            throw new Exception("Qualidade insuficiente da digital (" + cap.Quality + ").");
+        var dr = FeatureExtraction.CreateFmdFromFid(cap.Data, Constants.Formats.Fmd.ANSI);
+        if (dr.ResultCode != Constants.ResultCode.DP_SUCCESS || dr.Data == null)
+            throw new Exception("Extração da minúcia falhou (" + dr.ResultCode + ").");
+        return dr.Data;
+    }
+
+    static int Enroll()
+    {
+        var reader = OpenReader();
+        try
         {
-            if (reader != null)
+            var fmd = CaptureFmd(reader);
+            string b64 = Convert.ToBase64String(fmd.Bytes);
+            Out("{\"ok\":true,\"template\":" + JsonStr(b64) + ",\"qualidade\":100}");
+            return 0;
+        }
+        finally { try { reader.Dispose(); } catch { } }
+    }
+
+    static int Verify()
+    {
+        string templateB64 = (Console.In.ReadToEnd() ?? "").Trim();
+        if (templateB64.Length == 0) { Out("{\"ok\":false,\"erro\":\"template não informado (stdin)\"}"); return 1; }
+        byte[] enrolledBytes = Convert.FromBase64String(templateB64);
+        Fmd enrolled = Importer.ImportFmd(enrolledBytes, Constants.Formats.Fmd.ANSI, Constants.Formats.Fmd.ANSI);
+
+        var reader = OpenReader();
+        try
+        {
+            var captured = CaptureFmd(reader);
+            var cmp = Comparison.Compare(enrolled, 0, captured, 0);
+            if (cmp.ResultCode != Constants.ResultCode.DP_SUCCESS)
+                throw new Exception("Comparação falhou (" + cmp.ResultCode + ").");
+            bool match = cmp.Score < MATCH_THRESHOLD;
+            Out("{\"ok\":true,\"match\":" + (match ? "true" : "false") + ",\"score\":" + cmp.Score + "}");
+            return 0;
+        }
+        finally { try { reader.Dispose(); } catch { } }
+    }
+
+    static void Out(string json) { Console.Out.Write(json); Console.Out.Flush(); }
+
+    static string JsonStr(string s)
+    {
+        if (s == null) return "\"\"";
+        var sb = new System.Text.StringBuilder("\"");
+        foreach (char c in s)
+        {
+            switch (c)
             {
-                try { reader.Dispose(); } catch { }
+                case '"': sb.Append("\\\""); break;
+                case '\\': sb.Append("\\\\"); break;
+                case '\n': sb.Append("\\n"); break;
+                case '\r': sb.Append("\\r"); break;
+                case '\t': sb.Append("\\t"); break;
+                default: sb.Append(c); break;
             }
         }
-    }
-
-    private static string Sha256Hex(byte[] data)
-    {
-        using (SHA256 sha = SHA256.Create())
-        {
-            byte[] h = sha.ComputeHash(data);
-            StringBuilder sb = new StringBuilder(h.Length * 2);
-            foreach (byte b in h) sb.Append(b.ToString("x2"));
-            return sb.ToString();
-        }
-    }
-
-    private static string Esc(string s)
-    {
-        if (s == null) return null;
-        return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", " ").Replace("\n", " ");
-    }
-
-    private static string J(string s)
-    {
-        return s == null ? "null" : "\"" + Esc(s) + "\"";
-    }
-
-    private static void Out(bool ok, string hash, string device, string quality, string error, int count)
-    {
-        Console.WriteLine(
-            "{\"ok\":" + (ok ? "true" : "false")
-            + ",\"fingerHash\":" + J(hash)
-            + ",\"device\":" + J(device)
-            + ",\"quality\":" + J(quality)
-            + ",\"error\":" + J(error)
-            + ",\"count\":" + count
-            + "}");
+        return sb.Append('"').ToString();
     }
 }

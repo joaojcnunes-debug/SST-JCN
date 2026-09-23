@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import { gerarId } from "@/lib/utils";
-import type { Maquina } from "@/lib/supabase/types";
+import type { Equipamento, Maquina } from "@/lib/supabase/types";
 
 /**
  * Registro de transferência de um equipamento do inventário. Guarda um snapshot
@@ -54,6 +54,13 @@ export interface Transferencia {
   cancelada_motivo?: string | null;
   assinante_nome?: string | null;
   assinado_em?: string | null;
+  // ── Os dois modelos, e é o preenchimento que diz qual é ─────────
+  /** v169: aparelho IDENTIFICADO do módulo Equipamentos. */
+  id_equipamento?: string | null;
+  /** v176: material POR QUANTIDADE. Vem sempre em par com `quantidade`, e o
+   *  banco recusa um sem o outro (`transferencias_um_modelo_ou_outro`). */
+  id_catalogo?: string | null;
+  quantidade?: number | null;
 }
 
 const KEY = ["transferencias"] as const;
@@ -250,6 +257,108 @@ export function useCriarTransferenciaPendente() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY });
+    },
+    onError: (e: Error) => toast.error(`Erro ao criar transferência: ${e.message}`),
+  });
+}
+
+export interface CriarPendenteEquipamentoInput {
+  equipamento: Equipamento;
+  /** Nome da base de origem, resolvido na tela (o equipamento guarda só o id). */
+  de_unidade: string | null;
+  para_id_unidade: string;
+  para_unidade: string;
+  para_usuario_email: string;
+  para_usuario_nome: string;
+  para_localizacao: string | null;
+  para_responsavel: string | null;
+  motivo: string | null;
+  observacoes: string | null;
+}
+
+/**
+ * Transferência de APARELHO IDENTIFICADO, a partir do módulo Equipamentos.
+ *
+ * POR QUE EXISTE, SEPARADA DA DE CIMA
+ *   `useCriarTransferenciaPendente` lê uma `Maquina` de `inventario_maquinas` —
+ *   a tabela antiga. Equipamento cadastrado no módulo novo não tem linha lá, e
+ *   por isso simplesmente não aparecia para transferir: a pessoa cadastrava o
+ *   notebook, ia transferir, e ele não estava na lista. Sem erro, sem aviso.
+ *
+ * O QUE MUDA NA LINHA GRAVADA
+ *   • `id_equipamento` é o vínculo de verdade (coluna da v169). É por ele que a
+ *     RPC `transferencia_aceitar` acha o equipamento e o move de base.
+ *   • `id_maquina` recebe `id_inventario_origem` QUANDO ELE EXISTE. Não é
+ *     redundância: enquanto as duas tabelas convivem, a mesma RPC atualiza a
+ *     linha antiga também, e sem isso o inventário ficaria dizendo que o
+ *     aparelho segue na base de onde já saiu. Em equipamento nascido no módulo
+ *     novo o campo é nulo, e o `update` da tabela velha simplesmente não acha
+ *     linha — que é o certo.
+ *   • O snapshot continua sendo gravado em `maquina_*`. São as colunas que o
+ *     PDF do termo lê; renomeá-las obrigaria a mexer no template e no histórico
+ *     já gravado, para ganhar nada.
+ *
+ * NÃO MOVE NADA AQUI. O aparelho só muda de base no aceite assinado — ao
+ * contrário do material por quantidade, que sai do saldo já no registro. A
+ * assimetria é proposital e está escrita na tela: aparelho identificado não
+ * "some" da origem enquanto ninguém confirma, porque ele é um só e some de
+ * verdade se ninguém souber onde está.
+ */
+export function useCriarTransferenciaEquipamento() {
+  const qc = useQueryClient();
+  const user = useUserStore((s) => s.user);
+
+  return useMutation({
+    mutationFn: async (input: CriarPendenteEquipamentoInput): Promise<void> => {
+      const sb = createSupabaseBrowserClient();
+      const e = input.equipamento;
+      const now = new Date().toISOString();
+
+      const row = {
+        id_transferencia: gerarId("TRF"),
+        id_equipamento: e.id_equipamento,
+        id_maquina: e.id_inventario_origem,
+        status: "pendente" as const,
+        // Origem = onde o equipamento está AGORA, lida do cadastro e não digitada.
+        de_id_unidade: e.id_unidade,
+        de_unidade: input.de_unidade,
+        de_localizacao: e.localizacao,
+        de_responsavel: e.responsavel,
+        // Destino
+        para_id_unidade: input.para_id_unidade,
+        para_unidade: input.para_unidade,
+        para_localizacao: input.para_localizacao,
+        para_responsavel: input.para_responsavel,
+        para_usuario_email: input.para_usuario_email.toLowerCase(),
+        para_usuario_nome: input.para_usuario_nome,
+        transportado_por: user?.nome ?? null,
+        motivo: input.motivo,
+        observacoes: input.observacoes,
+        // Snapshot — o termo em PDF é lido daqui, não do cadastro, para
+        // continuar íntegro se o equipamento for editado ou excluído depois.
+        maquina_nome: e.nome,
+        maquina_tipo: e.tipo,
+        maquina_categoria: "equipamentos",
+        maquina_codigo_interno: e.codigo_interno,
+        maquina_tag: e.tag,
+        maquina_marca: e.fabricante,
+        maquina_modelo: e.modelo,
+        maquina_numero_serie: e.numero_serie,
+        maquina_numero_patrimonio: e.numero_patrimonio,
+        maquina_foto_url: e.foto_url,
+        responsavel_nome: user?.nome ?? null,
+        responsavel_email: user?.email ?? null,
+        data_hora: now,
+        created_at: now,
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (sb as any).from("transferencias").insert(row);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ["equipamentos"] });
     },
     onError: (e: Error) => toast.error(`Erro ao criar transferência: ${e.message}`),
   });

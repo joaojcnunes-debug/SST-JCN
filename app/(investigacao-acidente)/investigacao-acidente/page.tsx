@@ -11,6 +11,8 @@ import { useCanCreate, useCanDelete } from "@/lib/hooks/useUsuario";
 import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
+import { buscar } from "@/lib/busca/texto";
 import type { InvestigacaoListItem } from "@/lib/hooks/useInvestigacaoAcidente";
 
 const GRAV: Record<string, { cls: string; label: string }> = {
@@ -36,15 +38,11 @@ export default function InvestigacoesPage() {
 
   const lista = useMemo(() => listaAll.filter((i) => inUnidade(i.id_empresa)), [listaAll, inUnidade]);
 
-  const filtradas = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    if (!q) return lista;
-    return lista.filter(
-      (i) =>
-        i.empresaNome.toLowerCase().includes(q) ||
-        (i.acidentado_nome ?? "").toLowerCase().includes(q),
-    );
-  }, [lista, busca]);
+  // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem por data.
+  const { itens: filtradas, aproximado } = useMemo(
+    () => buscar(lista, busca, (i) => [i.empresaNome, i.acidentado_nome], { manterOrdem: true }),
+    [lista, busca],
+  );
 
   return (
     <div className="space-y-4">
@@ -89,6 +87,10 @@ export default function InvestigacoesPage() {
             {busca ? `Nenhum resultado para "${busca}"` : "Registre a primeira investigação de acidente"}
           </p>
         </div>
+      )}
+
+      {!isLoading && (
+        <AvisoBuscaAproximada aproximado={aproximado} busca={busca} total={filtradas.length} />
       )}
 
       {!isLoading && filtradas.length > 0 && (

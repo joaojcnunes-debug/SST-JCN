@@ -45,6 +45,14 @@ function LoginInner() {
 
   const autoTriedRef = useRef(false);
 
+  // Presença (v219): um Admin encerrou a sessão desta pessoa — dizer por que caiu.
+  useEffect(() => {
+    if (params.get("encerrada") === "1") {
+      toast.error("Sua sessão foi encerrada por um administrador. Entre de novo se precisar.", { duration: 8000 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Auto-login: tenta com credenciais salvas na primeira renderização
   useEffect(() => {
     if (autoTriedRef.current) return;
@@ -55,6 +63,9 @@ function LoginInner() {
       sessionStorage.removeItem("intentional-logout");
       return;
     }
+    // Sessão encerrada por Admin (v219): o Electron com senha salva NÃO pode
+    // voltar sozinho, senão o "encerrar" dura 2 segundos.
+    if (params.get("encerrada") === "1") return;
 
     const api = getElectron();
     if (!api?.loadCredentials) return;
@@ -128,7 +139,7 @@ function LoginInner() {
 
       setUser(perfil);
       const raw = params.get("next") ?? "";
-      const defaultHome = perfil.perfil === "Cliente" ? "/portal-cliente/inicio" : "/visao-geral";
+      const defaultHome = perfil.perfil === "Cliente" ? "/portal-cliente/inicio" : "/inicio";
       const next = raw.startsWith("/") && !raw.startsWith("//") ? raw : defaultHome;
       router.replace(next);
     } catch (err) {
@@ -190,7 +201,7 @@ function LoginInner() {
               referrerPolicy="no-referrer"
               onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/logo-jcn.svg"; }}
             />
-            <h1 className="mt-4 text-2xl font-bold tracking-tight text-gray-900">SST JCN Consultoria</h1>
+            <h1 className="mt-4 text-2xl font-bold tracking-tight text-gray-900">Painel SST</h1>
             <p className="mt-1 text-sm text-gray-400">JCN Consultoria · Segurança e Saúde do Trabalho</p>
           </div>
 
@@ -261,7 +272,7 @@ function LoginInner() {
           </form>
 
           <p className="mt-7 text-center text-xs text-gray-400">
-            © {new Date().getFullYear()} JCN Consultoria · SST JCN Consultoria
+            © {new Date().getFullYear()} JCN Consultoria · Painel SST
           </p>
 
           {typeof window !== "undefined" && getElectron() && (
@@ -288,7 +299,7 @@ function UpdateButton() {
     try {
       // Verifica versão disponível
       const resp = await fetch(
-        "https://api.github.com/repos/joaojcnunes-debug/SST-JCN/releases/latest",
+        "https://api.github.com/repos/joaojefferson-hash/Painel-SST--JCN Consultoria/releases/latest",
         { headers: { Accept: "application/vnd.github.v3+json" } }
       );
       if (!resp.ok) throw new Error("Falha ao consultar GitHub");

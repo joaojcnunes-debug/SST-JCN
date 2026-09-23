@@ -44,20 +44,10 @@ export interface RegistrarPdfOpts {
   empresaCnpj?: string;
   setor?: string;
   responsavelTecnico?: string;
-  usuarioEmail?: string;
 }
 
 export interface RegistrarPdfArgs extends RegistrarPdfOpts {
   pdfBuffer: ArrayBuffer;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-async function computeSha256(buffer: ArrayBuffer): Promise<string> {
-  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
 }
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
@@ -84,17 +74,18 @@ export function usePdfsGerados(filtros?: { modulo?: string; limit?: number }) {
       // Gera URLs assinadas (1h) para PDFs no bucket privado.
       // Registros antigos (path começa com "pdfs-gerados/") estão no bucket
       // público "fotos" e mantêm a URL pública armazenada.
-      const comUrls = await Promise.all(
-        rows.map(async (row) => {
-          if (!row.pdf_storage_path || row.pdf_storage_path.startsWith("pdfs-gerados/")) {
-            return row;
-          }
-          const { data: signed } = await supabase.storage
-            .from("pdfs-gerados")
-            .createSignedUrl(row.pdf_storage_path, 3600);
-          return { ...row, pdf_url: signed?.signedUrl ?? null };
-        })
-      );
+      // Bucket privado: pdf_url aponta p/ a rota server-side same-origin (stream com
+      // creds server). Registros antigos ("pdfs-gerados/") ficam no bucket publico
+      // "fotos" e mantem a URL publica armazenada.
+      const comUrls = rows.map((row) => {
+        if (!row.pdf_storage_path || row.pdf_storage_path.startsWith("pdfs-gerados/")) {
+          return row;
+        }
+        return {
+          ...row,
+          pdf_url: `/api/pdf/gerado?path=${encodeURIComponent(row.pdf_storage_path)}`,
+        };
+      });
       return comUrls;
     },
   });
@@ -116,15 +107,10 @@ export function usePdfsPorEmpresa(empresaId: string | null | undefined) {
       if (error) throw error;
       const rows = (data ?? []) as unknown as PdfGerado[];
       // URLs assinadas (1h) p/ PDFs no bucket privado; antigos ficam com a URL pública.
-      return Promise.all(
-        rows.map(async (row) => {
-          if (!row.pdf_storage_path || row.pdf_storage_path.startsWith("pdfs-gerados/")) return row;
-          const { data: signed } = await supabase.storage
-            .from("pdfs-gerados")
-            .createSignedUrl(row.pdf_storage_path, 3600);
-          return { ...row, pdf_url: signed?.signedUrl ?? row.pdf_url };
-        }),
-      );
+      return rows.map((row) => {
+        if (!row.pdf_storage_path || row.pdf_storage_path.startsWith("pdfs-gerados/")) return row;
+        return { ...row, pdf_url: `/api/pdf/gerado?path=${encodeURIComponent(row.pdf_storage_path)}` };
+      });
     },
   });
 }
@@ -205,25 +191,25 @@ export function usePdfCongelado(modulo?: string, idReferencia?: string) {
       if (error) throw error;
       const row = ((data ?? [])[0] ?? null) as PdfGerado | null;
       if (!row?.pdf_storage_path) return row;
-      const { data: signed } = await supabase.storage
-        .from("pdfs-gerados")
-        .createSignedUrl(row.pdf_storage_path, 3600);
-      return { ...row, pdf_url: signed?.signedUrl ?? row.pdf_url };
+      return { ...row, pdf_url: `/api/pdf/gerado?path=${encodeURIComponent(row.pdf_storage_path)}` };
     },
   });
 }
 
 /**
  * Aprova/congela a versão atual do laudo: gera o PDF base (via rota vetorial,
- * já com anexos), faz upload imutável, calcula o sha256 e grava em pdfs_gerados
- * com status='congelado' e versão incrementada. A assinatura usa esse arquivo.
+ * já com anexos) no navegador e o envia à rota /api/pdf/congelar, que faz o
+ * upload imutável, calcula o sha256 e grava em pdfs_gerados com
+ * status='congelado' e versão incrementada. A assinatura usa esse arquivo.
+ *
+ * O upload/gravação roda no SERVIDOR de propósito: o bucket `pdfs-gerados` é
+ * privado e as creds do browser só escrevem em `fotos` — subir direto do
+ * cliente devolve AccessDenied do MinIO (mesmo motivo de /api/sign-pdf).
  */
 export function useCongelarPdf() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ apiPdfUrl, ...opts }: RegistrarPdfOpts & { apiPdfUrl: string }) => {
-      const supabase = createSupabaseBrowserClient();
-
       // A base congelada é o arquivo que será ASSINADO. Por isso gera já com o
       // selo digital (assinado=1) — senão a base sai com a linha de assinatura
       // manual em branco e a re-assinatura (que assina a base) reproduz isso.
@@ -235,61 +221,25 @@ export function useCongelarPdf() {
         throw new Error((err as { error?: string }).error ?? "Falha ao gerar o PDF base");
       }
       const buffer = await res.arrayBuffer();
-      const hash = await computeSha256(buffer);
 
-      const { data: ult } = await supabase
-        .from("pdfs_gerados")
-        .select("versao")
-        .eq("modulo", opts.modulo)
-        .eq("id_relatorio", opts.idRelatorio ?? "")
-        .order("versao", { ascending: false })
-        .limit(1);
-      const proxVersao =
-        (((ult ?? [])[0] as { versao?: number } | undefined)?.versao ?? 0) + 1;
+      const fd = new FormData();
+      fd.append("pdf", new Blob([buffer], { type: "application/pdf" }), "base.pdf");
+      fd.append("modulo", opts.modulo);
+      fd.append("idRelatorio", opts.idRelatorio ?? "");
+      if (opts.tipoDocumento) fd.append("tipoDocumento", opts.tipoDocumento);
+      if (opts.empresaId) fd.append("empresaId", opts.empresaId);
+      if (opts.empresaNome) fd.append("empresaNome", opts.empresaNome);
+      if (opts.empresaCnpj) fd.append("empresaCnpj", opts.empresaCnpj);
+      if (opts.setor) fd.append("setor", opts.setor);
+      if (opts.responsavelTecnico) fd.append("responsavelTecnico", opts.responsavelTecnico);
 
-      const storagePath = `${opts.modulo}/${opts.idRelatorio}-v${proxVersao}-${hash.slice(0, 8)}.pdf`;
-      const { error: upErr } = await supabase.storage
-        .from("pdfs-gerados")
-        .upload(storagePath, new Uint8Array(buffer), {
-          contentType: "application/pdf",
-          cacheControl: "3600",
-          upsert: true,
-        });
-      if (upErr) throw upErr;
-
-      const { data: { user } } = await supabase.auth.getUser();
-
-      // Marca as versões congeladas anteriores deste documento como substituídas,
-      // garantindo que só a nova permaneça vigente (status='congelado').
-      await supabase
-        .from("pdfs_gerados")
-        .update({ status: "substituido" } as never)
-        .eq("modulo", opts.modulo)
-        .eq("id_relatorio", opts.idRelatorio ?? "")
-        .eq("status", "congelado");
-
-      const { error } = await supabase
-        .from("pdfs_gerados")
-        .insert({
-          modulo: opts.modulo,
-          tipo_documento: opts.tipoDocumento ?? null,
-          id_relatorio: opts.idRelatorio ?? null,
-          empresa_id: opts.empresaId ?? null,
-          empresa_nome: opts.empresaNome ?? null,
-          empresa_cnpj: opts.empresaCnpj ?? null,
-          setor: opts.setor ?? null,
-          responsavel_tecnico: opts.responsavelTecnico ?? null,
-          usuario_email: user?.email ?? null,
-          pdf_storage_path: storagePath,
-          pdf_url: null,
-          hash_sha256: hash,
-          status: "congelado",
-          versao: proxVersao,
-          congelado_em: new Date().toISOString(),
-          congelado_por: user?.email ?? null,
-        } as never);
-      if (error) throw error;
-      return { versao: proxVersao, hash, modulo: opts.modulo, idRelatorio: opts.idRelatorio ?? "" };
+      const salvo = await fetch("/api/pdf/congelar", { method: "POST", body: fd });
+      const out = await salvo.json().catch(() => ({ error: "Falha ao congelar o documento" }));
+      if (!salvo.ok) {
+        throw new Error((out as { error?: string }).error ?? "Falha ao congelar o documento");
+      }
+      const { versao, hash } = out as { versao: number; hash: string };
+      return { versao, hash, modulo: opts.modulo, idRelatorio: opts.idRelatorio ?? "" };
     },
     onSuccess: (d) => {
       qc.invalidateQueries({ queryKey: KEY_CONGELADO(d.modulo, d.idRelatorio) });
@@ -310,44 +260,32 @@ export function useRegistrarPdf() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ pdfBuffer, ...opts }: RegistrarPdfArgs) => {
-      const supabase = createSupabaseBrowserClient();
+      // O upload vai pela ROTA DE SERVIDOR: `pdfs-gerados` e bucket PRIVADO e a
+      // credencial do browser tem escopo `fotos`/`anexos`. Ate o cutover de
+      // 2026-06-26 isto subia direto daqui e funcionava, porque o storage era o
+      // Supabase; desde entao o MinIO devolve AccessDenied em 100% das chamadas
+      // -- e ninguem viu, porque o onError abaixo e silencioso de proposito.
+      // O hash e o nome do arquivo agora sao calculados no servidor.
+      const form = new FormData();
+      form.append("pdf", new Blob([pdfBuffer], { type: "application/pdf" }), "documento.pdf");
+      form.append("modulo", opts.modulo);
+      const opcional = (chave: string, valor?: string) => {
+        if (valor) form.append(chave, valor);
+      };
+      opcional("tipoDocumento", opts.tipoDocumento);
+      opcional("idRelatorio", opts.idRelatorio);
+      opcional("empresaId", opts.empresaId);
+      opcional("empresaNome", opts.empresaNome);
+      opcional("empresaCnpj", opts.empresaCnpj);
+      opcional("setor", opts.setor);
+      opcional("responsavelTecnico", opts.responsavelTecnico);
 
-      // Compute SHA-256 fingerprint
-      const hash = await computeSha256(pdfBuffer);
-
-      // Upload ao bucket privado "pdfs-gerados"
-      const nomeArquivo = `${opts.modulo}-${Date.now()}-${hash.slice(0, 8)}.pdf`;
-      const storagePath = `${opts.modulo}/${nomeArquivo}`;
-      const { error: upErr } = await supabase.storage
-        .from("pdfs-gerados")
-        .upload(storagePath, new Uint8Array(pdfBuffer), {
-          contentType: "application/pdf",
-          cacheControl: "3600",
-          upsert: false,
-        });
-      if (upErr) throw upErr;
-
-      // Inserir registro (pdf_url fica null — gerada sob demanda via signed URL)
-      const { data, error } = await supabase
-        .from("pdfs_gerados")
-        .insert({
-          modulo: opts.modulo,
-          tipo_documento: opts.tipoDocumento ?? null,
-          id_relatorio: opts.idRelatorio ?? null,
-          empresa_id: opts.empresaId ?? null,
-          empresa_nome: opts.empresaNome ?? null,
-          empresa_cnpj: opts.empresaCnpj ?? null,
-          setor: opts.setor ?? null,
-          responsavel_tecnico: opts.responsavelTecnico ?? null,
-          usuario_email: opts.usuarioEmail ?? null,
-          pdf_storage_path: storagePath,
-          pdf_url: null,
-          hash_sha256: hash,
-        } as never)
-        .select("id")
-        .single();
-      if (error) throw error;
-      return data as { id: string };
+      const res = await fetch("/api/pdf/registrar", { method: "POST", body: form });
+      const json = (await res.json().catch(() => null)) as { id?: string; error?: string } | null;
+      if (!res.ok || !json?.id) {
+        throw new Error(json?.error ?? `registro falhou (${res.status})`);
+      }
+      return { id: json.id };
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: KEY() });

@@ -13,6 +13,7 @@ const STATUS_LABEL: Record<StatusQpsAplicacao, string> = {
   RASCUNHO: "Rascunho",
   EM_ANDAMENTO: "Em andamento",
   CONCLUIDO: "Concluído",
+  ENVIADO_CLIENTE: "Enviado p/ cliente",
   DELETADO: "Deletado",
 };
 
@@ -20,6 +21,7 @@ const STATUS_COR: Record<StatusQpsAplicacao, string> = {
   RASCUNHO: "bg-gray-100 text-gray-600",
   EM_ANDAMENTO: "bg-blue-100 text-blue-700",
   CONCLUIDO: "bg-green-100 text-green-700",
+  ENVIADO_CLIENTE: "bg-indigo-100 text-indigo-700",
   DELETADO: "bg-red-100 text-red-600",
 };
 
@@ -46,6 +48,7 @@ export default function QpsListaPage() {
     rascunho: aplicacoes.filter((a) => a.status === "RASCUNHO").length,
     em_andamento: aplicacoes.filter((a) => a.status === "EM_ANDAMENTO").length,
     concluido: aplicacoes.filter((a) => a.status === "CONCLUIDO").length,
+    enviado: aplicacoes.filter((a) => a.status === "ENVIADO_CLIENTE").length,
   };
 
   return (
@@ -96,11 +99,14 @@ export default function QpsListaPage() {
       {idEmpresa && (
         <>
           {/* Contadores */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <StatCard label="Total" value={contadores.total} color="indigo" />
             <StatCard label="Rascunho" value={contadores.rascunho} color="gray" />
             <StatCard label="Em andamento" value={contadores.em_andamento} color="blue" />
             <StatCard label="Concluído" value={contadores.concluido} color="green" />
+            {/* v206. Sem este cartão o "Total" deixaria de fechar com a soma
+                dos outros assim que a primeira aplicação fosse entregue. */}
+            <StatCard label="Enviado p/ cliente" value={contadores.enviado} color="violet" />
           </div>
 
           {/* Tabela */}
@@ -205,13 +211,15 @@ function StatCard({
 }: {
   label: string;
   value: number;
-  color: "indigo" | "gray" | "blue" | "green";
+  color: "indigo" | "gray" | "blue" | "green" | "violet";
 }) {
   const colors = {
     indigo: "border-indigo-200 bg-indigo-50 text-indigo-700",
     gray: "border-gray-200 bg-gray-50 text-gray-600",
     blue: "border-blue-200 bg-blue-50 text-blue-700",
     green: "border-green-200 bg-green-50 text-green-700",
+    // A camada de tema em globals.css já remapeia violet-200/50/700 no escuro.
+    violet: "border-violet-200 bg-violet-50 text-violet-700",
   };
   return (
     <div className={cn("rounded-xl border p-4 text-center", colors[color])}>

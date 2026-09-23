@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
-import FotoSlots, { uploadFotoSlots, type FotoSlot } from "@/components/ui/FotoSlots";
+import AvisoRascunho from "@/components/ui/AvisoRascunho";
+import FotoSlots, { prepararFotoSlots, type FotoSlot } from "@/components/ui/FotoSlots";
+import { useRascunho } from "@/lib/hooks/useRascunho";
+import { gravar } from "@/lib/offline/gravar";
+import { operacaoPendenteQueCria } from "@/lib/offline/operacoes";
+import type { InspecaoFull } from "@/lib/hooks/useInspecao";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId, cn } from "@/lib/utils";
 import type { Extintor, Setor } from "@/lib/supabase/types";
@@ -90,6 +95,37 @@ export default function ExtintorForm({
     );
   }, [open, editing]);
 
+  // ── Rascunho contra queda de luz ──────────────────────────────────────────
+  // Só ao ADICIONAR: num registro que já existe, o valor do banco é a verdade.
+  // Fotos ficam de fora — `File` não é serializável.
+  const rascunhoValor = useMemo(
+    () => ({
+      idSetor, tipoAgente, capacidade, numeroIdentificacao, localizacao,
+      dataValidade, situacao, naoConformidades, outraCausa, observacoes, ordem,
+    }),
+    [idSetor, tipoAgente, capacidade, numeroIdentificacao, localizacao,
+     dataValidade, situacao, naoConformidades, outraCausa, observacoes, ordem],
+  );
+  const rascunho = useRascunho(`extintor:${idInspecao}`, rascunhoValor, {
+    ativo: open && !editing,
+  });
+
+  function recuperarRascunho() {
+    const v = rascunho.recuperar();
+    if (!v) return;
+    setIdSetor(v.idSetor);
+    setTipoAgente(v.tipoAgente);
+    setCapacidade(v.capacidade);
+    setNumeroIdentificacao(v.numeroIdentificacao);
+    setLocalizacao(v.localizacao);
+    setDataValidade(v.dataValidade);
+    setSituacao(v.situacao);
+    setNaoConformidades(v.naoConformidades);
+    setOutraCausa(v.outraCausa);
+    setObservacoes(v.observacoes);
+    setOrdem(v.ordem);
+  }
+
   // A causa digitada só vale se não repetir uma já marcada.
   const causasFinais = [
     ...naoConformidades,
@@ -116,7 +152,9 @@ export default function ExtintorForm({
       const supabase = createSupabaseBrowserClient();
       const idExtintor = editing?.id_extintor ?? gerarId("EXT");
 
-      const { urls, paths } = await uploadFotoSlots(
+      // Decide caminhos e URLs sem subir nada — quem sobe é o `gravar()`, com
+      // rede ou guardando no aparelho.
+      const { urls, paths, imagens, paraRemover } = prepararFotoSlots(
         supabase,
         slots,
         editing?.fotos_storage_paths ?? [],
@@ -149,14 +187,58 @@ export default function ExtintorForm({
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from("extintores")
-        .upsert(payload as never, { onConflict: "id_extintor" });
-      if (error) throw error;
+      // O extintor pode estar num setor cadastrado agora, ainda na fila.
+      const criadorDoSetor = idSetor
+        ? await operacaoPendenteQueCria("setores", "id_setor", idSetor)
+        : null;
+
+      const resultado = await gravar({
+        tabela: "extintores",
+        tipo: "upsert",
+        linhas: payload,
+        filtro: null,
+        conflito: "id_extintor",
+        modulo: "inspecoes",
+        id_documento: idInspecao,
+        imagens,
+        depende_de: criadorDoSetor ? [criadorDoSetor] : undefined,
+      });
+
+      // Faxina das fotos trocadas: só com rede, e sem derrubar a gravação.
+      if (resultado.destino === "SERVIDOR" && paraRemover.length > 0) {
+        try {
+          await supabase.storage.from("fotos").remove(paraRemover);
+        } catch {
+          /* silencioso de propósito */
+        }
+      }
+
+      return { resultado, linha: payload as unknown as Extintor };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success(editing ? "Extintor atualizado" : "Extintor cadastrado");
+    onSuccess: ({ resultado, linha }) => {
+      // Salvou: o rascunho perdeu a razão de existir.
+      rascunho.limpar();
+
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+        toast.success(editing ? "Extintor atualizado" : "Extintor cadastrado");
+      } else {
+        // Sem rede não há o que revalidar: a lista da tela é atualizada à mão.
+        qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) => {
+          if (!antigo) return antigo;
+          const jaExiste = antigo.extintores.some((x) => x.id_extintor === linha.id_extintor);
+          return {
+            ...antigo,
+            extintores: jaExiste
+              ? antigo.extintores.map((x) =>
+                  x.id_extintor === linha.id_extintor ? linha : x,
+                )
+              : [...antigo.extintores, linha],
+          };
+        });
+        toast.success("Extintor guardado no aparelho", { icon: "📵" });
+      }
+
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -175,6 +257,13 @@ export default function ExtintorForm({
       size="lg"
     >
       <form onSubmit={onSubmit} className="space-y-4">
+        {rascunho.pendente && (
+          <AvisoRascunho
+            idadeMin={rascunho.pendente.idadeMin}
+            onRecuperar={recuperarRascunho}
+            onDescartar={rascunho.descartar}
+          />
+        )}
         {/* Setor */}
         <div>
           <label className={lblCls}>Setor</label>

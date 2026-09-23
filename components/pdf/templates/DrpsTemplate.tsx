@@ -93,7 +93,7 @@ const STYLE_BLOCK = `
 .drps-conc th { background: #d4edda; color: #1e4d28; font-weight: 700; }
 .drps-conc ul { margin: 0; padding-left: 1.1em; }
 .drps-conc li { margin: 1px 0; }
-.drps-unidade-cabecalho { font-size: 12px; font-weight: 700; color: #1e4d28; background: #e8f5e9; border-left: 4px solid #006B54; padding: 6px 8px; margin-bottom: 8px; page-break-after: avoid; }
+.drps-unidade-cabecalho { font-size: 12px; font-weight: 700; color: #1e4d28; background: #e8f5e9; border-left: 4px solid #0ea5e9; padding: 6px 8px; margin-bottom: 8px; page-break-after: avoid; }
 .textos-padrao-capitulo--nova-pagina { page-break-before: always; }
 .textos-padrao-capitulo--continua { page-break-before: auto; }
 .tp-cap { margin-bottom: 16pt; }
@@ -313,7 +313,7 @@ export default function DrpsTemplate({
 }: DrpsTemplateProps) {
   const blocos = montarBlocosPorSetor(respondentes, probabilidades);
 
-  // Cascata Unidade › Setor › Função (v150). Só entra quando o formulário do
+  // Cascata Unidade › Setor › Função (v138). Só entra quando o formulário do
   // cliente pergunta a unidade; sem isso a lista é vazia e o laudo sai
   // agrupado só por setor, exatamente como sempre saiu.
   const temUnidades = listarUnidades(respondentes).length > 0;
@@ -330,7 +330,7 @@ export default function DrpsTemplate({
   );
   // Uma linha do 5W2H só conta se algum campo foi preenchido. Salvar o plano de
   // ação sem digitar nada grava uma linha em branco, e ela fazia a seção inteira
-  // aparecer no laudo como um quadro de traços ("—") com status "Pendente".
+  // aparecer no laudo como um quadro de trações ("—") com status "Pendente".
   // Filtra na renderização em vez de apagar o registro: o dado do usuário fica.
   const planoAcaoComConteudo = planoAcao.filter((l) =>
     [l.acao, l.justificativa, l.onde, l.prazo, l.responsavel, l.como, l.quanto_custa]

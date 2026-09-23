@@ -5,6 +5,7 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer,
   BarChart, Bar, XAxis, Tooltip,
 } from "recharts";
+import { BalaoUmValor } from "@/components/ui/BalaoGrafico";
 
 export interface FatiaTipo {
   tipo: string;
@@ -63,7 +64,7 @@ function DonutCard({
       </div>
       <div className="flex items-center gap-4">
         <div className="relative size-[150px] shrink-0">
-          <ResponsiveContainer width={150} height={150}>
+          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={fatias} dataKey="valor" nameKey="label" innerRadius={48} outerRadius={72} paddingAngle={2} stroke="none">
                 {fatias.map((f) => <Cell key={f.label} fill={f.cor} />)}
@@ -118,20 +119,17 @@ export default function GraficosVisaoGeral({
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-sm text-gray-500">
-              <span className="font-semibold text-gray-900">{totalInsp}</span> nos últimos {inspecoesPorMes.length} meses
+              <span className="font-semibold text-gray-900">{totalInsp}</span> concluídas nos últimos {inspecoesPorMes.length} meses
             </p>
             <Link href="/dashboard" className="text-xs font-semibold text-verde-primary hover:underline">Ver →</Link>
           </div>
           <div className="h-[150px]">
-            <ResponsiveContainer width="100%" height={150} minWidth={0}>
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart data={inspecoesPorMes} margin={{ top: 6, right: 6, left: -22, bottom: 0 }}>
                 <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  cursor={{ fill: "var(--surface-3)" }}
-                  contentStyle={{ borderRadius: 8, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", fontSize: 12 }}
-                  formatter={(v) => [`${v} inspeções`, ""]}
-                  labelFormatter={(l) => `Mês: ${l}`}
-                />
+                {/* Balão padrão dos gráficos (v0.3.572): o formatter com nome
+                    vazio imprimia ": 16 inspeções". */}
+                <Tooltip cursor={{ fill: "var(--surface-3)" }} content={<BalaoUmValor rotulo="Concluídas" cor="#0284c7" />} />
                 <Bar dataKey="valor" fill="#0284c7" radius={[4, 4, 0, 0]} maxBarSize={42} />
               </BarChart>
             </ResponsiveContainer>
@@ -157,7 +155,7 @@ export default function GraficosVisaoGeral({
         <DonutCard
           titulo="Composição dos laudos"
           unidade="laudos"
-          link={{ href: "/inicio", label: "Ver módulos" }}
+          link={{ href: "/modulos", label: "Ver módulos" }}
           fatias={laudoFatias}
         />
       </section>

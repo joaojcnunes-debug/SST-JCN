@@ -73,12 +73,46 @@ function Campo({ label, valor }: { label: string; valor: string }) {
   );
 }
 
+/**
+ * Datas do próprio documento (não da empresa). Chegam JÁ FORMATADAS em
+ * dd/mm/aaaa — quem chama pega de `valoresVars`, que é o mesmo dicionário usado
+ * nas variáveis {{...}} dos textos padrão. Assim a data impressa no bloco e a
+ * data impressa via {{data_elaboracao}} nunca podem divergir.
+ */
+export interface DatasDocumento {
+  dataElaboracao?: string | null;
+  dataValidade?: string | null;
+}
+
+/** Só entra no laudo quando há pelo menos uma das duas datas preenchidas. */
+function BlocoDatasDocumento({ datas }: { datas: DatasDocumento | null | undefined }) {
+  if (!datas || (!datas.dataElaboracao && !datas.dataValidade)) return null;
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        borderTop: "1px solid #E5E7EB",
+        paddingTop: 10,
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: "8px 24px",
+      }}
+    >
+      <Campo label="Data de elaboração" valor={datas.dataElaboracao ?? ""} />
+      <Campo label="Validade do documento" valor={datas.dataValidade ?? ""} />
+    </div>
+  );
+}
+
 export function SecaoIdentificacaoEmpresa({
   empresa,
   numero,
+  datasDocumento,
 }: {
   empresa: Partial<Empresa> | null | undefined;
   numero?: number;
+  /** Opcional: só os laudos que passam é que ganham o bloco de datas. */
+  datasDocumento?: DatasDocumento | null;
 }) {
   const titulo = numero ? `${numero}. Identificação da Empresa` : "Identificação da Empresa";
   if (!empresa) {
@@ -86,6 +120,8 @@ export function SecaoIdentificacaoEmpresa({
       <section style={{ marginBottom: 18, fontFamily: "Arial, Helvetica, sans-serif" }}>
         {tituloSecao(titulo)}
         <p style={{ fontSize: 11, color: CINZA_LEVE }}>Empresa não informada.</p>
+        {/* Sem cadastro da empresa as datas do documento continuam válidas. */}
+        <BlocoDatasDocumento datas={datasDocumento} />
       </section>
     );
   }
@@ -121,6 +157,7 @@ export function SecaoIdentificacaoEmpresa({
         <Campo label="Telefone" valor={formatTelefone(empresa.telefone)} />
         <Campo label="E-mail" valor={empresa.email ?? VAZIO} />
       </div>
+      <BlocoDatasDocumento datas={datasDocumento} />
     </section>
   );
 }

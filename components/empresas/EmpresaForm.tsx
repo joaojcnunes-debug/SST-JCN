@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
@@ -15,6 +16,9 @@ import {
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useGrauRiscoNorma } from "@/lib/nr4/grau-risco";
+import { useUnidadeAtiva, useUserStore } from "@/lib/store";
+import { detectarDuplicatas } from "@/lib/empresas/duplicatas";
+import AlertaEmpresaDuplicada from "@/components/empresas/AlertaEmpresaDuplicada";
 
 // Toda empresa é habilitada em todos os quadros (filtro por módulo removido).
 const TODOS_MODULOS: ModuloEmpresa[] = MODULOS_EMPRESA.map((m) => m.value);
@@ -45,10 +49,31 @@ export default function EmpresaForm({
   onCreated,
 }: Props) {
   const qc = useQueryClient();
+  const router = useRouter();
   const isEdit = !!empresa;
   const [buscandoCnpj, setBuscandoCnpj] = useState(false);
-  const { data: unidades = [] } = useUnidades();
+  const { data: todasUnidades = [] } = useUnidades();
   const { data: todasEmpresas = [] } = useEmpresas();
+  const user = useUserStore((s) => s.user);
+  const unidadeAtivaId = useUnidadeAtiva((s) => s.id);
+  const unidadeAtivaNome = useUnidadeAtiva((s) => s.nome);
+  const setUnidadeAtiva = useUnidadeAtiva((s) => s.setUnidade);
+
+  // Quem não é Admin só ENXERGA empresa de unidade que tem (RLS
+  // `caller_pode_ver_empresa`). Se pudesse cadastrar em outra unidade, criaria
+  // uma empresa que nunca mais veria — e cadastraria de novo. Por isso a lista
+  // de unidades do formulário é a do usuário; a da empresa em edição fica
+  // sempre, para o select não "perder" o valor.
+  const unidades = useMemo(() => {
+    const minhas = user?.perfil !== "Admin" && user?.unidades && user.unidades.length > 0
+      ? new Set(user.unidades)
+      : null;
+    if (!minhas) return todasUnidades;
+    return todasUnidades.filter((u) => minhas.has(u.id_unidade) || u.id_unidade === empresa?.id_unidade);
+  }, [todasUnidades, user?.perfil, user?.unidades, empresa?.id_unidade]);
+  const nomeUnidade = (id: string | null | undefined) =>
+    todasUnidades.find((u) => u.id_unidade === id)?.nome ?? (id ? id : "sem unidade");
+  const [cadastrarMesmoAssim, setCadastrarMesmoAssim] = useState(false);
 
   const [form, setForm] = useState({
     tipo_estabelecimento: "CLIENTE" as TipoEstabelecimento,
@@ -87,7 +112,7 @@ export default function EmpresaForm({
   useEffect(() => {
     if (open) {
       setForm({
-        // Cadastros anteriores à v148 não têm a coluna — são todos clientes.
+        // Cadastros anteriores à v140 não têm a coluna — são todos clientes.
         tipo_estabelecimento: empresa?.tipo_estabelecimento ?? "CLIENTE",
         id_empresa_contratante: empresa?.id_empresa_contratante ?? "",
         nome_empresa: empresa?.nome_empresa ?? "",
@@ -122,6 +147,35 @@ export default function EmpresaForm({
       });
     }
   }, [open, empresa]);
+
+  // Trava de duplicata: enquanto a pessoa digita, compara com o que já existe.
+  const duplicatas = useMemo(
+    () =>
+      detectarDuplicatas(todasEmpresas, {
+        nome: form.nome_empresa,
+        cnpj: form.cnpj,
+        cpf: form.cpf,
+        ignorarId: empresa?.id_empresa ?? null,
+      }),
+    [todasEmpresas, form.nome_empresa, form.cnpj, form.cpf, empresa?.id_empresa],
+  );
+  const cnpjDigitado = form.cnpj.replace(/\D/g, "");
+  useEffect(() => setCadastrarMesmoAssim(false), [cnpjDigitado, form.cpf, open]);
+
+  /** "Usar esta empresa": em vez de cadastrar, aponta para a que já existe. */
+  function usarExistente(e: Empresa) {
+    onClose();
+    if (onCreated) {
+      onCreated(e.id_empresa);
+      return;
+    }
+    // Sem quem receba o id (tela Empresas): abre a ficha — e se ela estiver
+    // fora da Unidade ativa, muda o escopo para a unidade dela.
+    if (e.id_unidade && unidadeAtivaId && e.id_unidade !== unidadeAtivaId) {
+      setUnidadeAtiva(e.id_unidade, nomeUnidade(e.id_unidade));
+    }
+    router.push(`/empresas/${e.id_empresa}`);
+  }
 
   /**
    * Busca os dados da empresa na base da Receita Federal (via BrasilAPI,
@@ -160,7 +214,7 @@ export default function EmpresaForm({
         ...f,
         razao_social: razao || f.razao_social,
         nome_empresa: razao || fantasia || f.nome_empresa,
-        // Antes da v148 o fantasia só servia de reserva para o Nome e era
+        // Antes da v140 o fantasia só servia de reserva para o Nome e era
         // descartado; agora tem coluna própria e é guardado.
         nome_fantasia: fantasia || f.nome_fantasia,
         logradouro: str(d.logradouro) || f.logradouro,
@@ -192,7 +246,7 @@ export default function EmpresaForm({
       const ehTerceiros = form.tipo_estabelecimento === "TERCEIROS";
       const payload = {
         tipo_estabelecimento: form.tipo_estabelecimento,
-        // O banco recusa contratante em cadastro CLIENTE (v148). Zerar aqui
+        // O banco recusa contratante em cadastro CLIENTE (v140). Zerar aqui
         // cobre o caso de quem marcou terceiros, escolheu a contratante e
         // voltou atrás antes de salvar.
         id_empresa_contratante: ehTerceiros
@@ -261,7 +315,22 @@ export default function EmpresaForm({
     },
     onSuccess: (novoId) => {
       qc.invalidateQueries({ queryKey: ["empresas"] });
-      toast.success(isEdit ? "Empresa atualizada" : "Empresa criada");
+      // Empresa criada FORA da Unidade ativa sumiria da lista, do seletor e da
+      // lista de inspeções — a pessoa achava que não salvou e cadastrava de
+      // novo (29 cópias da mesma empresa em 16/09/2026). O escopo segue a
+      // empresa recém-criada, e a pessoa é avisada disso.
+      const unidadeNova = form.id_unidade || null;
+      if (!isEdit && unidadeNova && unidadeAtivaId && unidadeNova !== unidadeAtivaId) {
+        const de = unidadeAtivaNome ?? nomeUnidade(unidadeAtivaId);
+        const para = nomeUnidade(unidadeNova);
+        setUnidadeAtiva(unidadeNova, para);
+        toast.success(
+          `Empresa criada em ${para}. A Unidade ativa passou de ${de} para ${para} — é lá que ela aparece.`,
+          { duration: 8000 },
+        );
+      } else {
+        toast.success(isEdit ? "Empresa atualizada" : "Empresa criada");
+      }
       if (!isEdit && novoId && onCreated) onCreated(novoId);
       onClose();
     },
@@ -271,39 +340,6 @@ export default function EmpresaForm({
   });
 
   const ehTerceiros = form.tipo_estabelecimento === "TERCEIROS";
-
-  // Contratante só pode ser uma empresa cliente — um terceiro não é
-  // contratante de outro. Exclui também a própria empresa em edição, que o
-  // banco recusaria (empresas_contratante_nao_e_ela_mesma_chk).
-  const contratantesDisponiveis = todasEmpresas.filter(
-    (e) =>
-      (e.tipo_estabelecimento ?? "CLIENTE") === "CLIENTE" &&
-      e.id_empresa !== empresa?.id_empresa,
-  );
-
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!form.nome_empresa.trim()) {
-      toast.error("Nome é obrigatório");
-      return;
-    }
-    if (!form.id_unidade) {
-      toast.error("Selecione a unidade da empresa");
-      return;
-    }
-    if (ehTerceiros && !form.id_empresa_contratante) {
-      toast.error("Selecione a empresa contratante do estabelecimento");
-      return;
-    }
-    // Grau de risco é obrigatório para a empresa cliente, mas não para um
-    // estabelecimento de terceiros: o técnico em campo nem sempre sabe o grau
-    // do canteiro alheio, e travar o cadastro por isso o faria desistir.
-    if (!ehTerceiros && !form.grau_risco) {
-      toast.error("Grau de risco é obrigatório");
-      return;
-    }
-    mutation.mutate();
-  }
 
   // ─── Grau de risco pela NR-4 ──────────────────────────────────────────────
   // A norma responde a partir do CNAE, que a busca por CNPJ já trouxe.
@@ -324,7 +360,8 @@ export default function EmpresaForm({
 
   // Preenchimento automático — SÓ em cadastro novo e SÓ uma vez por CNAE.
   // Em edição nada é preenchido sozinho: cadastro que já existe se avisa, não
-  // se altera. O controle por CNAE permite ao usuário apagar o valor sugerido
+  // se altera (228 empresas estão sem grau hoje e nenhuma vai mudar sozinha).
+  // O controle por CNAE é o que permite ao usuário apagar o valor sugerido
   // sem que ele volte no próximo render.
   const autoPreenchido = useRef<string | null>(null);
   useEffect(() => {
@@ -339,6 +376,43 @@ export default function EmpresaForm({
   useEffect(() => {
     if (open) autoPreenchido.current = null;
   }, [open]);
+
+  // Contratante só pode ser uma empresa cliente — um terceiro não é
+  // contratante de outro. Exclui também a própria empresa em edição, que o
+  // banco recusaria (empresas_contratante_nao_e_ela_mesma_chk).
+  const contratantesDisponiveis = todasEmpresas.filter(
+    (e) =>
+      (e.tipo_estabelecimento ?? "CLIENTE") === "CLIENTE" &&
+      e.id_empresa !== empresa?.id_empresa,
+  );
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!form.nome_empresa.trim()) {
+      toast.error("Nome é obrigatório");
+      return;
+    }
+    if (!form.id_unidade) {
+      toast.error("Selecione a unidade da empresa");
+      return;
+    }
+    if (!isEdit && duplicatas.mesmoCodigo.length > 0 && !cadastrarMesmoAssim) {
+      toast.error("Esta empresa já está cadastrada — use a existente ou marque \"cadastrar mesmo assim\".");
+      return;
+    }
+    if (ehTerceiros && !form.id_empresa_contratante) {
+      toast.error("Selecione a empresa contratante do estabelecimento");
+      return;
+    }
+    // Grau de risco é obrigatório para a empresa cliente, mas não para um
+    // estabelecimento de terceiros: o técnico em campo nem sempre sabe o grau
+    // do canteiro alheio, e travar o cadastro por isso o faria desistir.
+    if (!ehTerceiros && !form.grau_risco) {
+      toast.error("Grau de risco é obrigatório");
+      return;
+    }
+    mutation.mutate();
+  }
 
   return (
     <Modal
@@ -483,6 +557,16 @@ export default function EmpresaForm({
           </div>
         </div>
 
+        {!isEdit && (
+          <AlertaEmpresaDuplicada
+            duplicatas={duplicatas}
+            nomeUnidade={nomeUnidade}
+            onUsar={usarExistente}
+            cadastrarMesmoAssim={cadastrarMesmoAssim}
+            onCadastrarMesmoAssim={setCadastrarMesmoAssim}
+          />
+        )}
+
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
             Identificadores alternativos (opcionais)
@@ -552,6 +636,12 @@ export default function EmpresaForm({
           </select>
           <p className="mt-1 text-xs text-gray-500">
             Só usuários com esta unidade (e Admins) verão a empresa.
+            {!isEdit && unidadeAtivaId && form.id_unidade && form.id_unidade !== unidadeAtivaId && (
+              <span className="mt-0.5 block text-amber-700">
+                Você está vendo <strong>{unidadeAtivaNome ?? nomeUnidade(unidadeAtivaId)}</strong>; ao criar, a Unidade ativa
+                passa para <strong>{nomeUnidade(form.id_unidade)}</strong> para a empresa aparecer.
+              </span>
+            )}
           </p>
           {unidades.length === 0 && (
             <p className="mt-1 text-xs text-amber-600">
@@ -766,18 +856,6 @@ export default function EmpresaForm({
             <option value="3">Grau 3</option>
             <option value="4">Grau 4</option>
           </select>
-          {ehTerceiros && !form.grau_risco ? (
-            <p className="mt-1 text-xs text-amber-600">
-              Não é obrigatório em estabelecimento de terceiros — mas sem ele o
-              relatório não consegue dimensionar o risco do local. Preencha
-              assim que souber.
-            </p>
-          ) : (
-            <p className="mt-1 text-xs text-gray-500">
-              Conforme o Quadro I da NR-4, de acordo com o CNAE da empresa.
-            </p>
-          )}
-
           {/* A norma discorda do que está gravado. NUNCA sobrescreve sozinho:
               pode haver decisão técnica por trás do valor atual. */}
           {divergeDaNorma && (
@@ -818,6 +896,20 @@ export default function EmpresaForm({
               </button>
             </div>
           )}
+
+          {ehTerceiros && !form.grau_risco ? (
+            <p className="mt-1 text-xs text-amber-600">
+              Não é obrigatório em estabelecimento de terceiros — mas sem ele o
+              relatório não consegue dimensionar o risco do local. Preencha
+              assim que souber.
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-gray-500">
+              {grauNorma != null && grauAtual === grauNorma
+                ? "Confere com o Anexo I da NR-4 para o CNAE informado."
+                : "Conforme o Anexo I da NR-4, de acordo com o CNAE da empresa."}
+            </p>
+          )}
         </div>
 
         <div>
@@ -853,10 +945,16 @@ export default function EmpresaForm({
           </button>
           <button
             type="submit"
-            disabled={mutation.isPending}
+            disabled={mutation.isPending || (!isEdit && duplicatas.mesmoCodigo.length > 0 && !cadastrarMesmoAssim)}
             className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
           >
-            {mutation.isPending ? "Salvando..." : isEdit ? "Salvar" : "Criar"}
+            {mutation.isPending
+              ? "Salvando..."
+              : isEdit
+                ? "Salvar"
+                : duplicatas.mesmoCodigo.length > 0 && !cadastrarMesmoAssim
+                  ? "Já cadastrada"
+                  : "Criar"}
           </button>
         </div>
       </form>

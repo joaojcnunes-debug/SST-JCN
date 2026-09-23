@@ -179,7 +179,7 @@ export default function PlanoAcaoTable({
               type="button"
               onClick={handleEnviarPlanoSST}
               disabled={enviarPlanoSST.isPending}
-              title="Copia as ações deste plano de adequação pro Plano de Ação central do SST JCN Consultoria (sem duplicar)"
+              title="Copia as ações deste plano de adequação pro Plano de Ação central do Painel SST (sem duplicar)"
               className="inline-flex items-center gap-1.5 rounded-md border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
             >
               {enviarPlanoSST.isPending ? (

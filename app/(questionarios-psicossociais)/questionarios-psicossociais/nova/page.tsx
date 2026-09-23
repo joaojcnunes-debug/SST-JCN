@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpen, Loader2, ChevronLeft } from "lucide-react";
+import { BookOpen, Loader2, ChevronLeft, Building2 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
+import { useCanCreate } from "@/lib/hooks/useUsuario";
+import EmpresaForm from "@/components/empresas/EmpresaForm";
 import { useQpsTipos, useCreateQpsAplicacao } from "@/lib/hooks/useQuestionarios";
 import { useUserStore } from "@/lib/store";
 
@@ -14,6 +16,8 @@ interface Form {
   id_tipo: string;
   titulo: string;
   responsavel: string;
+  unidade_cliente: string;
+  trabalhadores_previstos: string;
   periodo_inicio: string;
   periodo_fim: string;
 }
@@ -23,6 +27,8 @@ const empty: Form = {
   id_tipo: "",
   titulo: "",
   responsavel: "",
+  unidade_cliente: "",
+  trabalhadores_previstos: "",
   periodo_inicio: "",
   periodo_fim: "",
 };
@@ -30,7 +36,9 @@ const empty: Form = {
 export default function NovaAplicacaoPage() {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
+  const canCreate = useCanCreate();
   const [form, setForm] = useState<Form>(empty);
+  const [novaEmpresaOpen, setNovaEmpresaOpen] = useState(false);
 
   const { data: empresas = [], isLoading: loadingEmpresas } = useEmpresas();
   const { data: tipos = [], isLoading: loadingTipos } = useQpsTipos();
@@ -52,6 +60,12 @@ export default function NovaAplicacaoPage() {
         id_tipo: form.id_tipo,
         titulo: form.titulo.trim(),
         responsavel: form.responsavel.trim() || null,
+        unidade_cliente: form.unidade_cliente.trim() || null,
+        // Campo em branco vira NULL, não 0: "não informado" e "ninguém deveria
+        // responder" são coisas diferentes, e o CHECK da v201 recusa 0.
+        trabalhadores_previstos: form.trabalhadores_previstos
+          ? Number(form.trabalhadores_previstos)
+          : null,
         periodo_inicio: form.periodo_inicio || null,
         periodo_fim: form.periodo_fim || null,
         usuario_email: user?.email ?? null,
@@ -98,19 +112,34 @@ export default function NovaAplicacaoPage() {
                 <Loader2 className="size-4 animate-spin" /> Carregando...
               </div>
             ) : (
-              <select
-                value={form.id_empresa}
-                onChange={(e) => setF("id_empresa", e.target.value)}
-                required
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="">Selecione a empresa</option>
-                {empresas.map((e) => (
-                  <option key={e.id_empresa} value={e.id_empresa}>
-                    {e.nome_empresa}
-                  </option>
-                ))}
-              </select>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <select
+                  value={form.id_empresa}
+                  onChange={(e) => setF("id_empresa", e.target.value)}
+                  required
+                  className="w-full flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">Selecione a empresa</option>
+                  {empresas.map((e) => (
+                    <option key={e.id_empresa} value={e.id_empresa}>
+                      {e.nome_empresa}
+                    </option>
+                  ))}
+                </select>
+                {/* Cliente novo não obriga a sair da aplicação e ir ao módulo
+                    Empresas: é o mesmo cadastro completo (com busca por CNPJ e
+                    grau de risco pela NR-4), aberto aqui, e a empresa criada já
+                    volta selecionada. Mesmo arranjo do módulo Psicossocial. */}
+                {canCreate && (
+                  <button
+                    type="button"
+                    onClick={() => setNovaEmpresaOpen(true)}
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-verde-primary bg-white px-3 py-2 text-sm font-semibold text-verde-primary shadow-sm hover:bg-verde-light"
+                  >
+                    <Building2 className="size-4" /> Nova Empresa
+                  </button>
+                )}
+              </div>
             )}
           </div>
 
@@ -184,6 +213,23 @@ export default function NovaAplicacaoPage() {
             />
           </div>
 
+          {/* Unidade do cliente */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              Unidade / Filial do cliente
+            </label>
+            <input
+              type="text"
+              value={form.unidade_cliente}
+              onChange={(e) => setF("unidade_cliente", e.target.value)}
+              placeholder="Ex: Loja 28"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p className="mt-1.5 text-xs text-gray-500">
+              A filial do cliente, quando a mesma empresa tem várias. Não é a unidade da JCN Consultoria.
+            </p>
+          </div>
+
           {/* Período inicio */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
@@ -210,6 +256,25 @@ export default function NovaAplicacaoPage() {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
+
+          {/* Trabalhadores previstos */}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-700">
+              Trabalhadores previstos
+            </label>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={form.trabalhadores_previstos}
+              onChange={(e) => setF("trabalhadores_previstos", e.target.value)}
+              placeholder="Ex: 150"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <p className="mt-1.5 text-xs text-gray-500">
+              Quantos deveriam responder. É o que permite calcular a taxa de participação.
+            </p>
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 border-t border-gray-100 pt-4">
@@ -229,6 +294,12 @@ export default function NovaAplicacaoPage() {
           </button>
         </div>
       </form>
+
+      <EmpresaForm
+        open={novaEmpresaOpen}
+        onClose={() => setNovaEmpresaOpen(false)}
+        onCreated={(id) => setF("id_empresa", id)}
+      />
     </div>
   );
 }

@@ -4,11 +4,16 @@ import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 type DocWithVT = Document & {
-  startViewTransition?: (cb: () => void | Promise<void>) => { finished: Promise<void> };
+  startViewTransition?: (cb: () => void | Promise<void>) => {
+    /** Rejeita quando o navegador PULA a transição. Opcional: nem toda
+     *  implementação a expõe, e é por isso que o acesso abaixo é `?.`. */
+    ready?: Promise<void>;
+    finished: Promise<void>;
+  };
 };
 
-/** Página principal (hub). Ir PARA ela = "voltar"; sair DELA = "avançar". */
-const HUB = "/visao-geral";
+/** Página principal (home). Ir PARA ela = "voltar"; sair DELA = "avançar". */
+const HUB = "/inicio";
 
 /**
  * Transição suave entre páginas via View Transitions API (Chromium/Electron).
@@ -27,12 +32,17 @@ export default function PageTransitions() {
   const runningRef = useRef(false);
 
   // Navegação concluída (pathname mudou) → fecha a transição pendente.
+  //
+  // 🪤 AQUI NÃO SE ZERA `runningRef`. Zerava, e era a causa da exceção
+  // "Transition was aborted because of invalid state" (medida 2× em 01/09):
+  // pathname troca ANTES de a animação terminar, e a janela entre os dois
+  // eventos aceitava uma segunda `startViewTransition` que abortava a primeira.
+  // Quem zera agora é o fim da própria animação, lá embaixo.
   useEffect(() => {
     if (finishRef.current) {
       finishRef.current();
       finishRef.current = null;
     }
-    runningRef.current = false;
   }, [pathname]);
 
   useEffect(() => {
@@ -72,10 +82,29 @@ export default function PageTransitions() {
               }, 700);
             }),
         );
-        transicao.finished.finally(() => {
+        // `.finished` REJEITA quando a transição é abortada, e `.finally()` não
+        // consome rejeição — sobrava uma exceção não tratada no console a cada
+        // troca de rota. `then(f, f)` trata os dois desfechos com a mesma
+        // limpeza: abortada ou concluída, o estado tem que voltar ao lugar.
+        const encerrar = () => {
           if (root.dataset.vt === direcao) delete root.dataset.vt;
           runningRef.current = false;
-        });
+        };
+        transicao.finished.then(encerrar, encerrar);
+
+        // 🪤 A API tem TRÊS promessas e só a `finished` estava sendo escutada.
+        // Quando o navegador PULA a transição, quem rejeita é a `ready` — a
+        // `finished` resolve normalmente. Sem ninguém escutando, sobrava uma
+        // rejeição não tratada estourando no console.
+        //
+        // Medido em 03/09, 4 trocas de tela, mesma build:
+        //   aba VISÍVEL → 0 rejeições · aba OCULTA → 8 rejeições
+        //
+        // O navegador pula a transição quando o documento está oculto, e isso
+        // é o comportamento CERTO dele — não há o que consertar no desfecho.
+        // O defeito era só deixar a rejeição vazar. Daí engolir, e nada mais:
+        // a limpeza de estado continua sendo trabalho da `finished`.
+        transicao.ready?.catch(() => {});
       } catch {
         delete root.dataset.vt;
         runningRef.current = false;

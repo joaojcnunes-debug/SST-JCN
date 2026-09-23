@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
+import { perfilPodeAssinarPorOutro } from "@/lib/auth/assinatura-por-outro";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -82,12 +83,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // SEC: apenas Admin pode assinar em nome de outro profissional.
+  // SEC: só perfis autorizados assinam em nome de outro profissional.
+  // ⚠️ Este caminho NÃO pede senha nenhuma — quem passa aqui carimba a
+  // assinatura do colega direto. Lista em lib/auth/assinatura-por-outro.ts.
   if (signatoryEmail !== user.email) {
     const { data: rawPerfil } = await supabase
       .from("usuarios").select("perfil").eq("email", user.email).single();
     const perfilLogado = rawPerfil as { perfil: string } | null;
-    if (perfilLogado?.perfil !== "Admin") {
+    if (!perfilPodeAssinarPorOutro(perfilLogado?.perfil)) {
       return NextResponse.json(
         { error: "Sem permissão para assinar em nome de outro profissional." },
         { status: 403 },
@@ -141,24 +144,38 @@ export async function POST(req: NextRequest) {
   // Se há rota de geração (Puppeteer), regenera server-side já com a imagem.
   if (body.apiPdfUrl) {
     try {
-      const origin = req.nextUrl.origin;
-      const url = body.apiPdfUrl.startsWith("http")
-        ? body.apiPdfUrl
-        : `${origin}${body.apiPdfUrl}`;
+      // CF Access bloqueia chamadas server-to-server na URL publica (retorna HTML
+      // de login) -> regenera o PDF pela porta INTERNA do app. Reescreve a base
+      // publica p/ a interna; URLs relativas ganham a base interna.
+      const internalBase = process.env.AUTH_INTERNAL_URL ?? "http://127.0.0.1:3000";
+      const publicBase = process.env.NEXT_PUBLIC_SUPABASE_URL ?? req.nextUrl.origin;
+      let url = body.apiPdfUrl;
+      if (!url.startsWith("http")) {
+        url = `${internalBase}${url}`;
+      } else if (publicBase && url.startsWith(publicBase)) {
+        url = internalBase + url.slice(publicBase.length);
+      }
+      console.error("[sign-image] gerando PDF assinado via:", url);
       const res = await fetch(url, {
         headers: { cookie: req.headers.get("cookie") ?? "" },
       });
-      if (!res.ok) throw new Error("Falha ao gerar o PDF");
+      if (!res.ok) {
+        const snippet = (await res.text().catch(() => "")).slice(0, 400);
+        console.error("[sign-image] gerar PDF !ok", JSON.stringify({ url, status: res.status, ct: res.headers.get("content-type"), snippet }));
+        throw new Error(`gerar PDF status ${res.status}`);
+      }
       const bytes = new Uint8Array(await res.arrayBuffer());
       const erro = await salvarPdf(supabase, tabelaNome, docId, bytes);
       if (erro) {
+        console.error("[sign-image] salvarPdf erro:", erro);
         return NextResponse.json(
           { error: "Assinatura registrada, mas falha ao salvar o PDF." },
           { status: 500 },
         );
       }
       return NextResponse.json({ success: true });
-    } catch {
+    } catch (e) {
+      console.error("[sign-image] erro ao gerar/salvar PDF:", e instanceof Error ? (e.stack ?? e.message) : String(e));
       return NextResponse.json(
         { error: "Assinatura registrada, mas falha ao gerar o PDF. Tente novamente." },
         { status: 500 },

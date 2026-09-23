@@ -1,5 +1,7 @@
 "use client";
 
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -34,13 +36,8 @@ import {
 import PlanoAcaoTable from "@/components/apreciacao-maquinas/PlanoAcaoTable";
 import RiscoHrnTable from "@/components/apreciacao-maquinas/RiscoHrnTable";
 import FichasMaquinaPanel from "@/components/apreciacao-maquinas/FichasMaquinaPanel";
-import { useApreciacaoEdicaoStore } from "@/lib/apreciacao-maquinas/store";
-import {
-  useFichasMaquina,
-  useAtualizarFicha,
-  useUploadFotoFicha,
-  useRemoverFotoFicha,
-} from "@/lib/hooks/useFichasMaquina";
+import { useFichasMaquina, useAtualizarFicha, useUploadFotoFicha, useRemoverFotoFicha, MAX_FOTOS_FICHA } from "@/lib/hooks/useFichasMaquina";
+import { useApreciacaoMaquinasStore } from "@/lib/apreciacao-maquinas/store";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import {
   montarValoresEmpresa,
@@ -51,6 +48,7 @@ import { useMaquina } from "@/lib/hooks/useInventarioMaquinas";
 import { useCanEdit, useCanDelete } from "@/lib/hooks/useUsuario";
 import ItemApreciacaoCard from "@/components/apreciacao-maquinas/ItemApreciacaoCard";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
+import { LevarParaCampo } from "@/components/ui/LevarParaCampo";
 import { cn, formatCNPJ } from "@/lib/utils";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
@@ -71,7 +69,7 @@ import {
   type NpeHrn,
 } from "@/lib/supabase/types";
 
-/** Mapeia NivelRisco (matriz SST JCN Consultoria) pra RiscoResidual (Apreciação). */
+/** Mapeia NivelRisco (matriz Painel SST) pra RiscoResidual (Apreciação). */
 const NIVEL_PARA_RISCO_RESIDUAL: Record<NivelRisco, RiscoResidual> = {
   Trivial: "BAIXO",
   Baixo: "BAIXO",
@@ -105,12 +103,15 @@ export default function DetalheApreciacaoPage() {
   );
 
   const apreciacao = data?.apreciacao;
-  const fichaAtivaId = useApreciacaoEdicaoStore((s) => s.fichaAtivaId);
+
+  // ── Multi-máquina (v148): o editor gira em torno da MÁQUINA ativa ─────────
+  const fichaAtivaId = useApreciacaoMaquinasStore((s) => s.fichaAtivaId);
   const { data: fichas = [] } = useFichasMaquina(id);
   const fichaAtiva = fichas.find((f) => f.id_ficha === fichaAtivaId) ?? null;
   const atualizarFicha = useAtualizarFicha(id ?? "");
   const uploadFotoFicha = useUploadFotoFicha(id ?? "");
   const removerFotoFicha = useRemoverFotoFicha(id ?? "");
+
   // O checklist é POR MÁQUINA: filtra os itens do laudo pela ficha ativa.
   const todosItens = useMemo(() => data?.itens ?? [], [data]);
   const itens = useMemo(
@@ -122,19 +123,16 @@ export default function DetalheApreciacaoPage() {
   );
 
   // Estado do cabeçalho (form editável)
-  const [titulo, setTitulo] = useState("");
-  const [setor, setSetor] = useState("");
   const [responsavel, setResponsavel] = useState("");
   const [responsavelEmpresa, setResponsavelEmpresa] = useState("");
-  const [cidade, setCidade] = useState("");
   const [dataApreciacao, setDataApreciacao] = useState("");
   const [dataValidade, setDataValidade] = useState("");
+  const [notificacaoSit, setNotificacaoSit] = useState("");
+  const [incluirChecklist, setIncluirChecklist] = useState(false);
   const [conclusao, setConclusao] = useState("");
   const [recomendacoes, setRecomendacoes] = useState("");
   const [riscoResidual, setRiscoResidual] = useState<RiscoResidual | "">("");
   const [observacoes, setObservacoes] = useState("");
-  const [notificacaoSit, setNotificacaoSit] = useState("");
-  const [incluirChecklist, setIncluirChecklist] = useState(false);
   // Parecer da IA aguardando revisão (modal aceitar/editar/rejeitar)
   const [revisaoParecer, setRevisaoParecer] = useState<CampoRevisaoIA[] | null>(null);
 
@@ -149,9 +147,8 @@ export default function DetalheApreciacaoPage() {
   const [npe, setNpe] = useState<NpeHrn | "">("");
   const [sistemasAtual, setSistemasAtual] = useState<string[]>([]);
   const [sistemasNecessario, setSistemasNecessario] = useState<string[]>([]);
-  const [operadores, setOperadores] = useState<{ nome: string; cargo: string }[]>(
-    []
-  );
+  const [operadores, setOperadores] = useState<{ nome: string; cargo: string }[]>([]);
+  // Mantidos no painel (o JCN não edita): constatações e parecer por máquina.
   const [constatacoes, setConstatacoes] = useState("");
   const [parecer, setParecer] = useState("");
 
@@ -166,22 +163,20 @@ export default function DetalheApreciacaoPage() {
   // Sincroniza estado quando carrega
   useEffect(() => {
     if (!apreciacao) return;
-    setTitulo(apreciacao.titulo ?? "");
-    setSetor(apreciacao.setor ?? "");
     setResponsavel(apreciacao.responsavel ?? "");
     setResponsavelEmpresa(apreciacao.responsavel_empresa ?? "");
-    setCidade(apreciacao.cidade ?? "");
     setDataApreciacao(apreciacao.data_apreciacao ?? "");
     setDataValidade(apreciacao.data_validade ?? "");
+    setNotificacaoSit(apreciacao.notificacao_sit ?? "");
+    setIncluirChecklist(apreciacao.incluir_checklist_pdf ?? false);
     setConclusao(apreciacao.conclusao_tecnica ?? "");
     setRecomendacoes(apreciacao.recomendacoes ?? "");
     setRiscoResidual(apreciacao.risco_residual ?? "");
     setObservacoes(apreciacao.observacoes_gerais ?? "");
-    setNotificacaoSit(apreciacao.notificacao_sit ?? "");
-    setIncluirChecklist(apreciacao.incluir_checklist_pdf ?? false);
   }, [apreciacao]);
 
-  // Identificação (componentes/limites/npe/sistemas) é POR MÁQUINA (ficha ativa).
+  // Identificação (componentes/limites/NPE/sistemas/operadores/constatações/parecer)
+  // é POR MÁQUINA (ficha ativa). A auto-seleção da 1ª ficha fica no FichasMaquinaPanel.
   useEffect(() => {
     setComponentes(fichaAtiva?.componentes_maquina ?? []);
     setLimiteUso(fichaAtiva?.limite_uso ?? "");
@@ -237,19 +232,16 @@ export default function DetalheApreciacaoPage() {
     todosItens.every((i) => i.situacao !== "PENDENTE");
 
   const dirty = !!apreciacao && (
-    titulo !== (apreciacao.titulo ?? "")
-    || setor !== (apreciacao.setor ?? "")
-    || responsavel !== (apreciacao.responsavel ?? "")
+    responsavel !== (apreciacao.responsavel ?? "")
     || responsavelEmpresa !== (apreciacao.responsavel_empresa ?? "")
-    || cidade !== (apreciacao.cidade ?? "")
     || dataApreciacao !== (apreciacao.data_apreciacao ?? "")
     || dataValidade !== (apreciacao.data_validade ?? "")
-    || observacoes !== (apreciacao.observacoes_gerais ?? "")
     || notificacaoSit !== (apreciacao.notificacao_sit ?? "")
+    || incluirChecklist !== (apreciacao.incluir_checklist_pdf ?? false)
+    || observacoes !== (apreciacao.observacoes_gerais ?? "")
     || conclusao !== (apreciacao.conclusao_tecnica ?? "")
     || recomendacoes !== (apreciacao.recomendacoes ?? "")
     || riscoResidual !== (apreciacao.risco_residual ?? "")
-    || incluirChecklist !== (apreciacao.incluir_checklist_pdf ?? false)
   );
 
   async function handleSalvarCabecalho() {
@@ -257,16 +249,13 @@ export default function DetalheApreciacaoPage() {
     try {
       await atualizar.mutateAsync({
         id_apreciacao: id,
-        titulo: titulo.trim() || null,
-        setor: setor.trim() || null,
         responsavel: responsavel.trim() || null,
         responsavel_empresa: responsavelEmpresa.trim() || null,
-        cidade: cidade.trim() || null,
         data_apreciacao: dataApreciacao || null,
         data_validade: dataValidade || null,
-        observacoes_gerais: observacoes.trim() || null,
         notificacao_sit: notificacaoSit.trim() || null,
         incluir_checklist_pdf: incluirChecklist,
+        observacoes_gerais: observacoes.trim() || null,
       });
       toast.success("Dados gerais salvos");
     } catch (err) {
@@ -274,6 +263,7 @@ export default function DetalheApreciacaoPage() {
       toast.error("Falha ao salvar");
     }
   }
+
 
   async function handleSalvarConclusao() {
     if (!id) return;
@@ -317,7 +307,8 @@ export default function DetalheApreciacaoPage() {
         parecer_tecnico: parecer.trim() || null,
       });
       toast.success("Identificação da máquina salva");
-    } catch {
+    } catch (err) {
+      console.error(err);
       toast.error("Falha ao salvar identificação");
     }
   }
@@ -494,13 +485,7 @@ export default function DetalheApreciacaoPage() {
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16 text-gray-500">
-        <Loader2 className="size-5 animate-spin" />
-      </div>
-    );
-  }
+  if (isLoading) return <EditorSkeleton />;
 
   if (error || !apreciacao) {
     return (
@@ -567,6 +552,12 @@ export default function DetalheApreciacaoPage() {
             : null
         }
       />
+
+      {/* Levar para o campo — antes do conteúdo, porque a decisão de copiar o
+          laudo para o aparelho é tomada ANTES de sair da base. Fora do print. */}
+      <div className="print:hidden">
+        <LevarParaCampo idDocumento={id} dados={data} rotulo="Apreciação" />
+      </div>
 
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
@@ -788,7 +779,9 @@ export default function DetalheApreciacaoPage() {
             className={inputClass}
           />
         </Campo>
-        <label className="mt-3 flex items-center gap-2 text-xs text-gray-700 print:hidden">
+
+        {/* v153: escolher se o checklist NR-12 sai no PDF (por laudo). */}
+        <label className="flex items-center gap-2 text-xs text-gray-700">
           <input
             type="checkbox"
             checked={incluirChecklist}
@@ -798,6 +791,7 @@ export default function DetalheApreciacaoPage() {
           />
           Imprimir o checklist NR-12 no PDF (além da ficha de risco por máquina)
         </label>
+
         {!readOnly && (
           <div className="mt-3 flex justify-end print:hidden">
             <button
@@ -824,7 +818,7 @@ export default function DetalheApreciacaoPage() {
         disabled={readOnly}
       />
 
-      {/* ── SEÇÃO: Identificação dos Componentes + Limites ──────────────────── */}
+      {/* ── SEÇÃO: Identificação dos Componentes ──────────────────────────────── */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4 print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
         <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
           <Cog className="size-4 text-orange-600" /> Identificação dos Componentes
@@ -839,6 +833,8 @@ export default function DetalheApreciacaoPage() {
         <p className="text-[11px] text-gray-500">
           Marque os tipos de componentes presentes nesta máquina (ABNT ISO/TR 14121-2:2018).
         </p>
+
+        {/* Operadores / Responsáveis (por máquina) */}
         <div>
           <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
             Operadores / Responsáveis
@@ -851,9 +847,7 @@ export default function DetalheApreciacaoPage() {
                   value={op.nome}
                   onChange={(e) =>
                     setOperadores((prev) =>
-                      prev.map((o, j) =>
-                        j === i ? { ...o, nome: e.target.value } : o
-                      )
+                      prev.map((o, j) => (j === i ? { ...o, nome: e.target.value } : o))
                     )
                   }
                   disabled={readOnly}
@@ -865,9 +859,7 @@ export default function DetalheApreciacaoPage() {
                   value={op.cargo}
                   onChange={(e) =>
                     setOperadores((prev) =>
-                      prev.map((o, j) =>
-                        j === i ? { ...o, cargo: e.target.value } : o
-                      )
+                      prev.map((o, j) => (j === i ? { ...o, cargo: e.target.value } : o))
                     )
                   }
                   disabled={readOnly}
@@ -877,9 +869,7 @@ export default function DetalheApreciacaoPage() {
                 {!readOnly && (
                   <button
                     type="button"
-                    onClick={() =>
-                      setOperadores((prev) => prev.filter((_, j) => j !== i))
-                    }
+                    onClick={() => setOperadores((prev) => prev.filter((_, j) => j !== i))}
                     className="shrink-0 rounded-md border border-red-200 bg-red-50 px-2 text-red-600 hover:bg-red-100"
                     aria-label="Remover pessoa"
                   >
@@ -891,9 +881,7 @@ export default function DetalheApreciacaoPage() {
             {!readOnly && (
               <button
                 type="button"
-                onClick={() =>
-                  setOperadores((prev) => [...prev, { nome: "", cargo: "" }])
-                }
+                onClick={() => setOperadores((prev) => [...prev, { nome: "", cargo: "" }])}
                 className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
               >
                 + Adicionar pessoa
@@ -901,34 +889,6 @@ export default function DetalheApreciacaoPage() {
             )}
           </div>
         </div>
-
-        <label className="block">
-          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-            Constatações da inspeção
-          </span>
-          <textarea
-            rows={3}
-            value={constatacoes}
-            onChange={(e) => setConstatacoes(e.target.value)}
-            disabled={readOnly}
-            placeholder="Descreva o estado atual da máquina, não conformidades e riscos observados na inspeção."
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
-          />
-        </label>
-
-        <label className="block">
-          <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-            Parecer técnico
-          </span>
-          <textarea
-            rows={3}
-            value={parecer}
-            onChange={(e) => setParecer(e.target.value)}
-            disabled={readOnly}
-            placeholder="Conclusão técnica sobre a máquina: adequação à NR-12, medidas necessárias e priorização."
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
-          />
-        </label>
 
         {/* Registro fotográfico da máquina */}
         {fichaAtiva && (
@@ -949,7 +909,7 @@ export default function DetalheApreciacaoPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        removerFotoFicha.mutate({ id_ficha: fichaAtiva.id_ficha, indice: i })
+                        removerFotoFicha.mutate({ ficha: fichaAtiva, indice: i })
                       }
                       className="absolute -right-1.5 -top-1.5 rounded-full bg-red-600 p-0.5 text-white hover:bg-red-700"
                       aria-label="Remover foto"
@@ -959,7 +919,7 @@ export default function DetalheApreciacaoPage() {
                   )}
                 </div>
               ))}
-              {!readOnly && (fichaAtiva.foto_urls?.length ?? 0) < 6 && (
+              {!readOnly && (fichaAtiva.foto_urls?.length ?? 0) < MAX_FOTOS_FICHA && (
                 <label className="flex size-20 cursor-pointer flex-col items-center justify-center gap-0.5 rounded border-2 border-dashed border-gray-300 text-[10px] text-gray-500 hover:bg-gray-50">
                   {uploadFotoFicha.isPending ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -975,7 +935,7 @@ export default function DetalheApreciacaoPage() {
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) uploadFotoFicha.mutate({ id_ficha: fichaAtiva.id_ficha, file });
+                      if (file) uploadFotoFicha.mutate({ ficha: fichaAtiva, file });
                       e.target.value = "";
                     }}
                   />
@@ -984,6 +944,7 @@ export default function DetalheApreciacaoPage() {
             </div>
           </div>
         )}
+
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {COMPONENTES_MAQUINA_NR12.map((comp) => {
             const checked = componentes.includes(comp);
@@ -1075,21 +1036,51 @@ export default function DetalheApreciacaoPage() {
           </div>
         </div>
 
+        {/* Constatações da inspeção + parecer técnico (por máquina). Mantido no
+            painel — o SST-JCN não edita esses campos. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Campo label="Constatações da inspeção" htmlFor="constat">
+            <textarea
+              id="constat"
+              rows={3}
+              value={constatacoes}
+              onChange={(e) => setConstatacoes(e.target.value)}
+              disabled={readOnly}
+              className={inputClass}
+            />
+          </Campo>
+          <Campo label="Parecer técnico da máquina" htmlFor="parecer">
+            <textarea
+              id="parecer"
+              rows={3}
+              value={parecer}
+              onChange={(e) => setParecer(e.target.value)}
+              disabled={readOnly}
+              className={inputClass}
+            />
+          </Campo>
+        </div>
+
         {!readOnly && (
           <div className="flex justify-end print:hidden">
             <button type="button" onClick={handleSalvarAnalise} disabled={atualizarFicha.isPending}
               className="inline-flex items-center gap-1.5 rounded-md bg-orange-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-50">
               {atualizarFicha.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-              Salvar componentes e sistemas
+              Salvar identificação da máquina
             </button>
           </div>
         )}
       </section>
 
-      {/* ── SEÇÃO: Análise de Riscos HRN ──────────────────────────────────── */}
+      {/* ── SEÇÃO: Análise de Riscos — HRN ────────────────────────────────── */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3 print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
         <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-700">
           <Activity className="size-4 text-orange-600" /> Análise de Riscos — HRN
+          {fichaAtiva && (
+            <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold normal-case tracking-normal text-orange-700">
+              {fichaAtiva.maquina_descricao || fichaAtiva.equipamento || "máquina"}
+            </span>
+          )}
         </h2>
         <p className="text-[11px] text-gray-500">
           Avaliação por tipo de perigo da <strong>máquina selecionada</strong>:

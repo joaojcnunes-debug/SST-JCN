@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, KanbanSquare, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CircleUser, CheckSquare, BarChart3, FileText, Inbox, Lock, Users } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, ListChecks } from "lucide-react";
+import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
-import { useCanEdit, useIsAdmin } from "@/lib/hooks/useUsuario";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import {
   useQuadros, useTarefas, useReordenar, useUsuariosLista, useSalvarTarefa, useAcaoMassa,
-  useMinhasTarefas, useTodosStatus, useNotificacoes, useMarcarLida, useMeusAcessos,
+  useMinhasTarefas, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
   usePreferenciaVisao, useSalvarPreferenciaVisao,
   useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro,
-  useEspacos, usePastas, useTodasDependencias, useAutomacaoRunner, useAutomacaoTick, useTempoQuadro, useAnexosCountQuadro,
+  useEspacos, usePastas, useTodasDependencias, useAutomacaoTick, useTempoQuadro, useAnexosCountQuadro,
   corAvatar, formatarDuracao,
   PRIORIDADES, FILTRO_VAZIO, contarFiltros,
   type GestaoTarefa, type StatusTarefa, type VistaGestao, type AgruparPor, type GestaoStatus, type GestaoNotificacao, type PrioridadeTarefa, type FiltrosGestao,
@@ -26,13 +26,14 @@ import AutomacoesManagerModal from "@/components/gestao/AutomacoesManagerModal";
 import TempoRelatorioModal from "@/components/gestao/TempoRelatorioModal";
 import EtiquetasManagerModal from "@/components/gestao/EtiquetasManagerModal";
 import FormulariosManagerModal from "@/components/gestao/FormulariosManagerModal";
+import ModelosManagerModal from "@/components/gestao/ModelosManagerModal";
 import CalendarioModal from "@/components/gestao/CalendarioModal";
-import CompartilharModal from "@/components/gestao/CompartilharModal";
 import MembrosModal from "@/components/gestao/MembrosModal";
-import { useMeuPapelGestao } from "@/lib/hooks/useGestaoAcesso";
+import { useMeuPapelGestao, useMeuNivel, nivelPodeEditar, useColaboradores } from "@/lib/hooks/useGestaoAcesso";
+import ColaboradoresView from "@/components/gestao/ColaboradoresView";
 import TarefaCard from "@/components/gestao/TarefaCard";
 import FiltrosPanel from "@/components/gestao/FiltrosPanel";
-import MinhasTarefas from "@/components/gestao/MinhasTarefas";
+import MeuEspaco from "@/components/gestao/MeuEspaco";
 import CaixaEntrada from "@/components/gestao/CaixaEntrada";
 import PainelGestao from "@/components/gestao/PainelGestao";
 import BarraAcoesMassa from "@/components/gestao/BarraAcoesMassa";
@@ -40,6 +41,8 @@ import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import VistaLista from "@/components/gestao/VistaLista";
 import VistaCalendario from "@/components/gestao/VistaCalendario";
 import VistaTimeline from "@/components/gestao/VistaTimeline";
+import { buscar } from "@/lib/busca/texto";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 function diasAte(iso: string): number {
   const hoje = new Date();
@@ -54,15 +57,11 @@ const VISTAS: { value: VistaGestao; label: string; icon: typeof KanbanSquare }[]
   { value: "timeline", label: "Timeline", icon: GanttChartSquare },
 ];
 
-export default function GestaoJCNPage() {
+export default function GestaoChabraPage() {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
-  const canEditGlobal = useCanEdit();
-  const isAdmin = useIsAdmin();
-  const { data: meusAcessos } = useMeusAcessos();
   const { data: meuPapelGestao, isFetched: papelGestaoFetched } = useMeuPapelGestao();
   const souGestor = meuPapelGestao === "owner" || meuPapelGestao === "admin";
-  const podeEditarGlobal = isAdmin || canEditGlobal;
   const { data: configs } = useConfiguracoes();
   const { data: quadros = [], isLoading: loadingQuadros } = useQuadros();
   const { data: espacos = [] } = useEspacos();
@@ -72,8 +71,16 @@ export default function GestaoJCNPage() {
 
   const [quadroId, setQuadroId] = useState<string | null>(null);
   const quadro = quadros.find((q) => q.id_quadro === quadroId) ?? quadros[0] ?? null;
-  // Permissão de edição da lista selecionada (admin sempre; aberta = global; restrita = papel editor).
-  const podeEditar = !quadro ? podeEditarGlobal : isAdmin ? true : !quadro.restrito ? canEditGlobal : meusAcessos?.get(quadro.id_quadro) === "editor";
+  // Edição decidida pelo MESMO resolver do banco (v117: gestao_meu_nivel → view/comment/edit/full).
+  // Fail-closed nos dois estados: sem quadro a query fica enabled:false e meuNivel = undefined;
+  // enquanto não resolveu ou em erro, meuNivel = undefined. nivelPodeEditar(undefined) = false.
+  // Sem `?? true`, sem `|| true`, sem atalho de perfil no cliente (o resolver já devolve `full`
+  // para Admin/gestor server-side).
+  const { data: meuNivel } = useMeuNivel("list", quadro?.id_quadro);
+  const podeEditar = !!quadro && nivelPodeEditar(meuNivel);
+  // Menu Configurar — itens sensíveis (Compartilhar, Assinar calendário, Automações) exigem
+  // gestor do roster OU nível `full`; os demais itens seguem em podeEditar (decisão 5 da rubrica).
+  const podeConfigurarAvancado = souGestor || meuNivel === "full";
   useEffect(() => {
     if (!quadroId && quadros.length) setQuadroId(quadros[0].id_quadro);
   }, [quadros, quadroId]);
@@ -84,8 +91,12 @@ export default function GestaoJCNPage() {
   const { data: statusList = [], isLoading: loadingStatus } = useStatusQuadro(quadro?.id_quadro);
   const { data: campos = [] } = useCamposQuadro(quadro?.id_quadro);
   const { data: etiquetasCat = [] } = useEtiquetasQuadro(quadro?.id_quadro);
-  const runAuto = useAutomacaoRunner(quadro?.id_quadro);
   useAutomacaoTick();  // fallback de agendamento sem pg_cron (.107): scan de prazos 1x/dia
+  useEffect(() => {
+    // F3.A: reflete tarefas com prazo na Agenda Google dos vinculados conectados. Best-effort ao
+    // abrir a Gestão; dedup por minuto no server. Nunca derruba a página (fila drena na próxima).
+    void fetch("/api/gestao/google/sync").catch(() => {});
+  }, []);
   const salvar = useSalvarTarefa();
   const acaoMassa = useAcaoMassa();
   const { data: tempoEntries = [] } = useTempoQuadro(quadro?.id_quadro, tarefas.map((t) => t.id_tarefa));
@@ -115,23 +126,52 @@ export default function GestaoJCNPage() {
   const [relatorioOpen, setRelatorioOpen] = useState(false);
   const [etiquetasOpen, setEtiquetasOpen] = useState(false);
   const [formulariosOpen, setFormulariosOpen] = useState(false);
+  const [modelosOpen, setModelosOpen] = useState(false);
   const [calendarioOpen, setCalendarioOpen] = useState(false);
-  const [compartilharOpen, setCompartilharOpen] = useState(false);
   const [membrosOpen, setMembrosOpen] = useState(false);
   const [quadroAgrupar, setQuadroAgrupar] = useState<"status" | "responsavel" | "prioridade" | "etiqueta">("status");
   const [online, setOnline] = useState(true);
   const [boardScrolled, setBoardScrolled] = useState(false);
-  const [minhasView, setMinhasView] = useState(false);
+  const [menuAberto, setMenuAberto] = useState(false);
   const [painelView, setPainelView] = useState(false);
   const [inboxView, setInboxView] = useState(false);
+  // "Meu Espaço" (UX-C1): container pessoal, mutuamente exclusivo com as demais vistas
+  // de topo (inbox/painel/quadro). Consolidou a antiga aba "Minhas tarefas" (removida no
+  // ciclo 2) — é a única vista que exibe a agregação useMinhasTarefas (responsável+
+  // seguidor). A UX-C(2) preenche este container com o quadro pessoal.
+  const [meuEspacoView, setMeuEspacoView] = useState(false);
+  // "Colaboradores" (v235): gestor/supervisor acompanham o Meu Quadro dos colaboradores. A entrada
+  // só aparece quando o servidor devolve alguém (gestor: todos; supervisor: as equipes dele).
+  const [colabView, setColabView] = useState(false);
+  const { data: colaboradores = [] } = useColaboradores(!!user && user.perfil !== "Cliente");
+  const mostrarColab = souGestor || colaboradores.length > 0;
   const [selecaoModo, setSelecaoModo] = useState(false);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const { data: minhas = [] } = useMinhasTarefas(minhasView || inboxView);
-  const { data: todosStatus = [] } = useTodosStatus(minhasView || inboxView);
+  const { data: minhas = [] } = useMinhasTarefas(meuEspacoView || inboxView);
+  const { data: todosStatus = [] } = useTodosStatus(meuEspacoView || inboxView);
   const statusGlobalMap = useMemo(() => new Map(todosStatus.map((s) => [`${s.id_quadro}|${s.slug}`, s])), [todosStatus]);
   const { data: notificacoes = [] } = useNotificacoes();
   const marcarLida = useMarcarLida();
+  const limparNotif = useLimparNotificacoes();
   const inboxCount = useMemo(() => notificacoes.filter((n) => !n.lida).length, [notificacoes]);
+
+  // Altura das colunas do Quadro = o que sobra da tela abaixo da barra de ferramentas
+  // (pedido do operador: a área de cards usa o espaço livre, com rolagem interna). Medido
+  // no DOM porque a barra quebra linha em larguras menores e o topo do quadro muda.
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [boardTop, setBoardTop] = useState(0);
+  useLayoutEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    const medir = () => setBoardTop((prev) => { const v = Math.round(el.getBoundingClientRect().top + window.scrollY); return v !== prev ? v : prev; });
+    medir();
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(medir) : null;
+    if (ro && el.parentElement) ro.observe(el.parentElement);
+    window.addEventListener("resize", medir);
+    return () => { ro?.disconnect(); window.removeEventListener("resize", medir); };
+  }, [vista, inboxView, painelView, meuEspacoView, loadingQuadros, loadingTarefas, loadingStatus]);
+  // 3.5rem = rodapé (dica "Arraste os cards" + pb-7); piso de 320px para telas baixas.
+  const alturaColuna = boardTop > 0 ? `max(320px, calc(100vh - ${boardTop}px - 3.5rem))` : undefined;
 
   useEffect(() => {
     if (user?.perfil === "Cliente") { router.replace("/portal-cliente/inicio"); return; }
@@ -186,6 +226,20 @@ export default function GestaoJCNPage() {
   }, [tempoEntries]);
 
   const temFiltro = !!(busca.trim() || soMinhas || contarFiltros(filtros));
+  // Busca tolerante (acento, ordem das palavras, erro de digitação) sobre título,
+  // descrição, responsável, etiquetas e campos do formulário. Resolvida uma vez
+  // aqui e consultada por id no predicado, que roda coluna a coluna no quadro.
+  const { idsDaBusca, buscaAproximada } = useMemo(() => {
+    if (!busca.trim()) return { idsDaBusca: null, buscaAproximada: false };
+    const r = buscar(items, busca, (t) => [
+      t.titulo,
+      t.descricao,
+      t.responsavel,
+      ...(t.etiquetas ?? []),
+      ...Object.values(t.campos ?? {}).map((v) => (Array.isArray(v) ? v.join(" ") : v == null ? "" : String(v))),
+    ]);
+    return { idsDaBusca: new Set(r.itens.map((t) => t.id_tarefa)), buscaAproximada: r.aproximado };
+  }, [items, busca]);
   const passaFiltro = (t: GestaoTarefa) => {
     if (soMinhas && (t.responsavel ?? "") !== (user?.nome ?? "")) return false;
     if (filtros.semResponsavel && (t.responsavel ?? "").trim()) return false;
@@ -204,12 +258,7 @@ export default function GestaoJCNPage() {
         if (filtros.prazo === "semana" && !(d >= 0 && d <= 7)) return false;
       }
     }
-    const q = busca.trim().toLowerCase();
-    if (q) {
-      const valoresCampos = Object.values(t.campos ?? {}).map((v) => (Array.isArray(v) ? v.join(" ") : v ?? "")).join(" ");
-      const hay = `${t.titulo} ${t.descricao ?? ""} ${t.responsavel ?? ""} ${(t.etiquetas ?? []).join(" ")} ${valoresCampos}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
+    if (idsDaBusca && !idsDaBusca.has(t.id_tarefa)) return false;
     return true;
   };
 
@@ -291,9 +340,6 @@ export default function GestaoJCNPage() {
     const reindex = col.map((t, i) => ({ ...t, ordem: i }));
     setItems([...fora, ...reindex]);
     reordenar.mutate(reindex.map((t) => ({ id_tarefa: t.id_tarefa, status: targetStatus, ordem: t.ordem })));
-    if (dragged.status !== targetStatus) {
-      runAuto({ gatilho: "status_muda", tarefa: { ...dragged, status: targetStatus }, de: dragged.status, para: targetStatus });
-    }
   }
 
   // Soltar num grupo: por status reaproveita soltar(); nos demais, define o campo do grupo.
@@ -327,47 +373,121 @@ export default function GestaoJCNPage() {
     if (await confirmar({ title: `Excluir ${selecionados.size} tarefa(s)?`, description: "Esta ação não pode ser desfeita." })) acaoMassa.mutate({ ids: [...selecionados], excluir: true }, { onSuccess: limparSel });
   }
 
+  /**
+   * A árvore de Espaços/pastas/Inbox, desenhada uma vez e montada em dois
+   * lugares: a barra do desktop e a gaveta do celular. `aoNavegar` fecha a
+   * gaveta ao escolher uma lista.
+   */
+  const menuLateral = (aoNavegar: () => void) => (
+    <>
+      <Link href="/inicio" className="flex items-center gap-2.5 border-b border-white/[0.09] px-4 py-3.5 transition-colors hover:bg-white/[0.05]">
+        {configs?.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={configs.logo_url} alt="Logo JCN Consultoria" className="force-light h-8 w-auto max-w-[36px] shrink-0 rounded-md bg-white object-contain p-0.5 shadow" referrerPolicy="no-referrer" onError={(e) => { const img = e.currentTarget as HTMLImageElement; if (!img.src.endsWith("/logo-jcn.svg")) img.src = "/logo-jcn.svg"; }} />
+        ) : (
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-verde-primary text-white shadow"><KanbanSquare className="size-4" /></span>
+        )}
+        <div className="min-w-0 leading-tight">
+          <p className="truncate text-[13px] font-bold tracking-tight text-white">Gestão JCN Consultoria</p>
+          <p className="inline-flex items-center gap-1 text-[10px] tracking-wide text-white/50"><ArrowLeft className="size-3" /> Visão geral</p>
+        </div>
+      </Link>
+      <div className="flex-1 overflow-y-auto px-2 py-2">
+        <p className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">Espaços</p>
+        <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={painelView || inboxView || meuEspacoView || colabView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setPainelView(false); setInboxView(false); setMeuEspacoView(false); setColabView(false); aoNavegar(); }} podeEditar={souGestor} meuEspacoAtivo={meuEspacoView} onMeuEspaco={() => { setMeuEspacoView(true); setPainelView(false); setInboxView(false); setColabView(false); aoNavegar(); }} painelAtivo={painelView} onPainel={() => { setPainelView(true); setInboxView(false); setMeuEspacoView(false); setColabView(false); aoNavegar(); }} inboxAtivo={inboxView} onInbox={() => { setInboxView(true); setPainelView(false); setMeuEspacoView(false); setColabView(false); aoNavegar(); }} inboxCount={inboxCount} mostrarColab={mostrarColab} colabAtivo={colabView} onColab={() => { setColabView(true); setPainelView(false); setInboxView(false); setMeuEspacoView(false); aoNavegar(); }} />
+      </div>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-app-bg">
-      {/* Menu lateral fixo (verde, igual ao app) */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col lg:flex print:hidden" style={{ background: "linear-gradient(180deg, #1a3d26 0%, #112a1a 60%, #0d2016 100%)" }}>
-        <Link href="/visao-geral" className="flex items-center gap-2.5 border-b border-white/[0.09] px-4 py-3.5 transition-colors hover:bg-white/[0.05]">
-          {configs?.logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={configs.logo_url} alt="Logo JCN Consultoria" className="force-light h-8 w-auto max-w-[36px] shrink-0 rounded-md bg-white object-contain p-0.5 shadow" referrerPolicy="no-referrer" onError={(e) => { const el = e.currentTarget as HTMLImageElement; if (!el.src.endsWith("/logo-jcn.svg")) el.src = "/logo-jcn.svg"; }} />
-          ) : (
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-verde-primary text-white shadow"><KanbanSquare className="size-4" /></span>
-          )}
-          <div className="min-w-0 leading-tight">
-            <p className="truncate text-[13px] font-bold tracking-tight text-white">Gestão JCN Consultoria</p>
-            <p className="inline-flex items-center gap-1 text-[10px] tracking-wide text-white/50"><ArrowLeft className="size-3" /> Visão geral</p>
-          </div>
-        </Link>
-        <div className="flex-1 overflow-y-auto px-2 py-2">
-          <p className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">Espaços</p>
-          <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={minhasView || painelView || inboxView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setMinhasView(false); setPainelView(false); setInboxView(false); }} podeEditar={podeEditarGlobal} minhasAtivo={minhasView} onMinhas={() => { setMinhasView(true); setPainelView(false); setInboxView(false); }} painelAtivo={painelView} onPainel={() => { setPainelView(true); setMinhasView(false); setInboxView(false); }} inboxAtivo={inboxView} onInbox={() => { setInboxView(true); setMinhasView(false); setPainelView(false); }} inboxCount={inboxCount} />
-        </div>
+      {/* Hambúrguer (celular): abaixo de 768px a árvore some, e sem ele
+          Espaços, pastas e Inbox ficavam inalcançáveis. */}
+      <button
+        type="button"
+        onClick={() => setMenuAberto(true)}
+        aria-label="Abrir listas"
+        className="fixed left-3 top-3 z-30 flex size-10 items-center justify-center rounded-md text-white shadow md:hidden print:hidden"
+        style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)" }}
+      >
+        <MenuIcon className="size-5" />
+      </button>
+
+      {/* Menu lateral fixo (verde, igual ao app). `md:flex` + 220px: o resto do
+          painel abre a barra a partir de 768px e esta abria só em 1024px —
+          entre os dois números a /gestao ficava sem navegação nenhuma. */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)" }}>
+        {menuLateral(() => {})}
       </aside>
 
+      {/* Gaveta do celular */}
+      {menuAberto && (
+        <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setMenuAberto(false)}>
+          <aside
+            className="absolute inset-y-0 left-0 flex w-[248px] flex-col shadow-2xl"
+            style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setMenuAberto(false)}
+              aria-label="Fechar listas"
+              className="absolute right-2 top-2 z-10 rounded p-1 text-white/70 hover:bg-white/10"
+            >
+              <X className="size-5" />
+            </button>
+            {menuLateral(() => setMenuAberto(false))}
+          </aside>
+        </div>
+      )}
+
       {/* Conteúdo: desloca pela sidebar e ocupa toda a largura restante */}
-      <div className="lg:pl-64">
-        <div className="px-5 py-7 sm:px-8">
+      <div className="md:pl-[220px] print:pl-0">
+        {/* `pt-16` abaixo de 768px é o espaço do hambúrguer, que é fixo. */}
+        <div className="px-5 pb-7 pt-16 sm:px-8 md:pt-7">
           {!online && (
             <div className="fixed inset-x-0 top-0 z-[60] bg-amber-500 px-3 py-1.5 text-center text-sm font-medium text-white shadow-md">
               Sem conexão — as alterações podem não ser salvas até reconectar.
             </div>
           )}
-          <Link href="/visao-geral" className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 lg:hidden">
+          <Link href="/inicio" className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 md:hidden">
             <ArrowLeft className="size-4" /> Visão geral
           </Link>
 
         {inboxView ? (
           <div>
-            <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary"><Inbox className="size-6" /></span>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Caixa de entrada</h1>
-                <p className="text-sm text-gray-500">Notificações e tarefas que precisam de você</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary"><Bell className="size-6" /></span>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl font-bold text-gray-900">Notificações</h1>
+                <p className="text-sm text-gray-500">Avisos, aprovações e tarefas que precisam de você</p>
+              </div>
+              {/* Ações globais da caixa: "marcar todas" só faz sentido com não lidas; "limpar"
+                  apaga TODAS as minhas (lidas e não lidas) — por isso confirma antes. */}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={inboxCount === 0 || marcarLida.isPending}
+                  onClick={() => marcarLida.mutate({ todas: true })}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <CheckCheck className="size-4" /> Marcar todas como lidas
+                </button>
+                <button
+                  type="button"
+                  disabled={notificacoes.length === 0 || limparNotif.isPending}
+                  onClick={async () => {
+                    if (await confirmar({ title: "Limpar todas as notificações?", description: `As ${notificacoes.length} notificações (lidas e não lidas) serão apagadas. Aprovações pendentes e prazos continuam aparecendo.`, confirmLabel: "Limpar", variant: "danger" })) {
+                      limparNotif.mutate(undefined, {
+                        onSuccess: () => toast.success("Notificações limpas."),
+                        onError: (e) => toast.error(e instanceof Error ? e.message : "Não foi possível limpar as notificações."),
+                      });
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Trash2 className="size-4" /> Limpar notificações
+                </button>
               </div>
             </div>
             <CaixaEntrada
@@ -375,22 +495,10 @@ export default function GestaoJCNPage() {
               tarefas={minhas}
               quadros={quadros}
               statusMap={statusGlobalMap}
-              onAbrirNotif={(n) => { marcarLida.mutate({ id: n.id }); if (n.id_quadro) setQuadroId(n.id_quadro); setInboxView(false); const t = n.id_tarefa ? minhas.find((x) => x.id_tarefa === n.id_tarefa) : undefined; if (t) { setEditando(t); setModalOpen(true); } }}
+              onAbrirNotif={(n) => { if (!n.lida) marcarLida.mutate({ id: n.id }); if (n.id_quadro) setQuadroId(n.id_quadro); setInboxView(false); const t = n.id_tarefa ? minhas.find((x) => x.id_tarefa === n.id_tarefa) : undefined; if (t) { setEditando(t); setModalOpen(true); } }}
               onMarcarLida={(id) => marcarLida.mutate({ id })}
-              onMarcarTodas={() => marcarLida.mutate({ todas: true })}
               onAbrirTarefa={(t) => { setQuadroId(t.id_quadro); setInboxView(false); setEditando(t); setModalOpen(true); }}
             />
-          </div>
-        ) : minhasView ? (
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary"><CircleUser className="size-6" /></span>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Minhas tarefas</h1>
-                <p className="text-sm text-gray-500">{minhas.length} tarefa(s) em todos os quadros</p>
-              </div>
-            </div>
-            <MinhasTarefas tarefas={minhas} quadros={quadros} statusMap={statusGlobalMap} onAbrir={(t) => { setQuadroId(t.id_quadro); setMinhasView(false); setEditando(t); setModalOpen(true); }} />
           </div>
         ) : painelView ? (
           <div>
@@ -402,6 +510,30 @@ export default function GestaoJCNPage() {
               </div>
             </div>
             <PainelGestao tarefas={items} statuses={statuses} tempoPorTarefa={tempoPorTarefa} />
+          </div>
+        ) : colabView ? (
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary"><Users className="size-6" /></span>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Colaboradores</h1>
+                <p className="text-sm text-gray-500">Acompanhe o Meu Quadro de cada colaborador — {colaboradores.length} visíve{colaboradores.length === 1 ? "l" : "is"}</p>
+              </div>
+            </div>
+            <ColaboradoresView onAbrirQuadro={(id) => { setQuadroId(id); setColabView(false); }} />
+          </div>
+        ) : meuEspacoView ? (
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary"><UserSquare className="size-6" /></span>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Meu Espaço</h1>
+                <p className="text-sm text-gray-500">Tarefas em que sou responsável ou seguidor — {minhas.length} em todos os quadros</p>
+              </div>
+            </div>
+            {/* UX-C1: vista agregada. O container MeuEspaco reserva o ponto de extensão
+                para o quadro pessoal (UX-C2), sem construí-lo aqui. */}
+            <MeuEspaco tarefas={minhas} quadros={quadros} statusMap={statusGlobalMap} souGestor={souGestor} onAbrir={(t) => { setQuadroId(t.id_quadro); setMeuEspacoView(false); setEditando(t); setModalOpen(true); }} onAbrirQuadro={(id) => { setQuadroId(id); setMeuEspacoView(false); }} />
           </div>
         ) : (
         <>
@@ -416,7 +548,7 @@ export default function GestaoJCNPage() {
         </div>
 
         {/* Seletor de lista (mobile, já que a árvore fica oculta em telas pequenas) */}
-        <div className="mt-4 lg:hidden">
+        <div className="mt-4 md:hidden">
           <select value={quadro?.id_quadro ?? ""} onChange={(e) => setQuadroId(e.target.value)} className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
             {quadros.map((q) => <option key={q.id_quadro} value={q.id_quadro}>{q.nome}</option>)}
           </select>
@@ -446,8 +578,8 @@ export default function GestaoJCNPage() {
             </button>
           )}
           {souGestor && (
-            <button type="button" onClick={() => setMembrosOpen(true)} title="Membros da Gestão" className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
-              <Users className="size-4" /> Membros
+            <button type="button" onClick={() => setMembrosOpen(true)} title="Membros e acessos da Gestão — quem vê cada quadro" className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+              <Users className="size-4" /> Membros e acessos
             </button>
           )}
           {podeEditar && (
@@ -462,10 +594,16 @@ export default function GestaoJCNPage() {
                     <button type="button" onClick={() => { setConfigOpen(false); setManagerOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><SlidersHorizontal className="size-4 text-gray-400" /> Status</button>
                     <button type="button" onClick={() => { setConfigOpen(false); setCamposOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Tags className="size-4 text-gray-400" /> Campos personalizados</button>
                     <button type="button" onClick={() => { setConfigOpen(false); setEtiquetasOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Tag className="size-4 text-gray-400" /> Etiquetas</button>
-                    <button type="button" onClick={() => { setConfigOpen(false); setAutoOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Zap className="size-4 text-gray-400" /> Automações</button>
+                    {podeConfigurarAvancado && (
+                      <button type="button" onClick={() => { setConfigOpen(false); setAutoOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Zap className="size-4 text-gray-400" /> Automações</button>
+                    )}
                     <button type="button" onClick={() => { setConfigOpen(false); setFormulariosOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><FileText className="size-4 text-gray-400" /> Formulários</button>
-                    <button type="button" onClick={() => { setConfigOpen(false); setCalendarioOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><CalendarDays className="size-4 text-gray-400" /> Assinar calendário</button>
-                    <button type="button" onClick={() => { setConfigOpen(false); setCompartilharOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Lock className="size-4 text-gray-400" /> Compartilhar / acesso</button>
+                    {podeConfigurarAvancado && (
+                      <button type="button" onClick={() => { setConfigOpen(false); setModelosOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><ListChecks className="size-4 text-gray-400" /> Modelos de checklist</button>
+                    )}
+                    {podeConfigurarAvancado && (
+                      <button type="button" onClick={() => { setConfigOpen(false); setCalendarioOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><CalendarDays className="size-4 text-gray-400" /> Assinar calendário</button>
+                    )}
                     <button type="button" onClick={() => { setConfigOpen(false); setRelatorioOpen(true); }} className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"><Clock className="size-4 text-gray-400" /> Relatório de tempo</button>
                   </div>
                 </>
@@ -504,6 +642,13 @@ export default function GestaoJCNPage() {
           )}
         </div>
 
+        <AvisoBuscaAproximada
+          aproximado={buscaAproximada}
+          busca={busca}
+          total={idsDaBusca?.size ?? 0}
+          className="mt-4"
+        />
+
         {(loadingQuadros || loadingTarefas || loadingStatus) ? (
           <div className="mt-5 flex gap-3 overflow-hidden">
             {[0, 1, 2, 3].map((i) => (
@@ -517,7 +662,7 @@ export default function GestaoJCNPage() {
             ))}
           </div>
         ) : vista === "quadro" ? (
-          <div className="relative mt-5">
+          <div ref={boardRef} className="relative mt-5">
           {boardScrolled && <div className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-10 bg-gradient-to-r from-[var(--esteira-fade)] to-transparent" />}
           <div className="flex gap-3 overflow-x-auto pb-2" onScroll={(e) => { const s = e.currentTarget.scrollLeft > 4; setBoardScrolled((p) => (p !== s ? s : p)); }}>
             {gruposQuadro.map((col) => {
@@ -531,8 +676,12 @@ export default function GestaoJCNPage() {
                   onDragOver={(e) => { if (dragId) { e.preventDefault(); setColHover(col.slug); setDropAlvo({ col: col.slug, beforeId: null }); } }}
                   onDragLeave={(e) => { if (dragId && !e.currentTarget.contains(e.relatedTarget as Node)) setColHover((c) => (c === col.slug ? null : c)); }}
                   onDrop={() => soltarGrupo(col.slug)}
-                  className={`flex w-72 shrink-0 flex-col rounded-xl border bg-gray-50/60 p-2.5 transition ${colHover === col.slug ? "border-verde-primary ring-2 ring-verde-primary/20" : "border-gray-200"}`}
-                  style={{ minHeight: "calc(100vh - 15rem)" }}
+                  /* Altura = o que sobra da tela (alturaColuna, medida no DOM) e a
+                     lista de cards rola por dentro — o quadro cabe na tela e as
+                     colunas param no rodapé. Sem a medida (1º paint), cai no
+                     `min-h` e na altura da coluna mais alta, como antes. */
+                  style={alturaColuna ? { height: alturaColuna } : undefined}
+                  className={`flex min-h-[220px] w-72 shrink-0 flex-col rounded-xl border bg-gray-50/60 p-2.5 transition ${colHover === col.slug ? "border-verde-primary ring-2 ring-verde-primary/20" : "border-gray-200"}`}
                 >
                   <div className="mb-2 flex items-center justify-between px-1">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -549,7 +698,7 @@ export default function GestaoJCNPage() {
                     )}
                   </div>
 
-                  <div className="min-h-[40px] flex-1 space-y-2">
+                  <div className="min-h-[40px] flex-1 space-y-2 overflow-y-auto overscroll-contain p-0.5">
                     {lista.map((t) => (
                       <div key={t.id_tarefa}>
                         {quadroAgrupar === "status" && dropAlvo?.col === col.slug && dropAlvo.beforeId === t.id_tarefa && dragId !== t.id_tarefa && (
@@ -597,7 +746,6 @@ export default function GestaoJCNPage() {
             onAgruparPor={mudarAgrupar}
             podeEditar={podeEditar}
             onAbrir={(t) => { setEditando(t); setModalOpen(true); }}
-            aoMudarStatus={(t, de, para) => runAuto({ gatilho: "status_muda", tarefa: { ...t, status: para }, de, para })}
           />
         ) : vista === "calendario" ? (
           <VistaCalendario
@@ -639,7 +787,6 @@ export default function GestaoJCNPage() {
           tarefasQuadro={items}
           podeEditar={podeEditar}
           etiquetasSugeridas={etiquetasSugeridas}
-          aoAutomatizar={runAuto}
         />
       )}
 
@@ -699,18 +846,18 @@ export default function GestaoJCNPage() {
       )}
 
       {quadro && (
-        <CalendarioModal
-          open={calendarioOpen}
-          onClose={() => setCalendarioOpen(false)}
-          quadro={quadro}
+        <ModelosManagerModal
+          open={modelosOpen}
+          onClose={() => setModelosOpen(false)}
+          idQuadro={quadro.id_quadro}
           podeEditar={podeEditar}
         />
       )}
 
       {quadro && (
-        <CompartilharModal
-          open={compartilharOpen}
-          onClose={() => setCompartilharOpen(false)}
+        <CalendarioModal
+          open={calendarioOpen}
+          onClose={() => setCalendarioOpen(false)}
           quadro={quadro}
           podeEditar={podeEditar}
         />

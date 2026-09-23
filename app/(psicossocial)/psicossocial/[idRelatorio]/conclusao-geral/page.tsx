@@ -1,5 +1,7 @@
 "use client";
 
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
 import { use, useMemo, useState } from "react";
 import {
   CheckCircle2,
@@ -195,13 +197,7 @@ export default function ConclusaoGeralPage({
 
   const carregando = loadRelatorio || loadResp || loadProb;
 
-  if (carregando) {
-    return (
-      <div className="flex items-center justify-center py-16 text-gray-500">
-        <Loader2 className="size-5 animate-spin" />
-      </div>
-    );
-  }
+  if (carregando) return <EditorSkeleton />;
 
   if (!relatorio) {
     return (

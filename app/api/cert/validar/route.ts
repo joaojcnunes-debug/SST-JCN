@@ -7,6 +7,7 @@ import {
   createSupabaseServiceClient,
 } from "@/lib/supabase/client";
 import type { Usuario } from "@/lib/supabase/types";
+import { perfilPodeAssinarPorOutro } from "@/lib/auth/assinatura-por-outro";
 
 /**
  * Lê o .pfx do bucket (via service_role), valida a senha e extrai a validade
@@ -36,14 +37,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Senha do certificado é obrigatória" }, { status: 400 });
   }
 
-  // SEC: só Admin pode verificar o certificado de outro profissional
+  // SEC: só perfis autorizados verificam o certificado de outro profissional.
+  // Precisa acompanhar a lista de /api/sign-pdf — se esta rota recusar e a
+  // outra aceitar, a tela valida e a assinatura falha depois (ou o contrário).
   if (signatoryEmail && signatoryEmail !== user.email) {
     const { data: rawPerfil } = await supabase
       .from("usuarios")
       .select("perfil")
       .eq("email", user.email)
       .single();
-    if ((rawPerfil as { perfil: string } | null)?.perfil !== "Admin") {
+    if (!perfilPodeAssinarPorOutro((rawPerfil as { perfil: string } | null)?.perfil)) {
       return NextResponse.json(
         { error: "Sem permissão para verificar o certificado de outro profissional." },
         { status: 403 }

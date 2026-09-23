@@ -77,9 +77,12 @@ function useDebounced<T>(value: T, delay = 600): T {
 export default function ItemApreciacaoCard({
   item,
   disabled = false,
+  compacto = false,
 }: {
   item: ApreciacaoMaquinaItem;
   disabled?: boolean;
+  /** Densidade reduzida — usado na tela do laudo, que só lê. */
+  compacto?: boolean;
 }) {
   const atualizar = useAtualizarItemApreciacao();
   const uploadFoto = useUploadFotoItemApreciacao();
@@ -286,7 +289,10 @@ export default function ItemApreciacaoCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-white p-4 shadow-sm space-y-3",
+        "rounded-lg border bg-white shadow-sm",
+        // No laudo (leitura) o card não precisa do respiro do modo edição: são
+        // dezenas deles seguidos e o miolo vira parede de caixa.
+        compacto ? "p-2 space-y-1.5 print:p-1.5" : "p-4 space-y-3",
         corBorda
       )}
     >
@@ -388,7 +394,7 @@ export default function ItemApreciacaoCard({
         Situação: {SITUACAO_APRECIACAO_LABELS[item.situacao]}
       </div>
 
-      {/* Avaliação de risco — só pra NAO_CONFORME, usa matriz ativa do SST JCN Consultoria */}
+      {/* Avaliação de risco — só pra NAO_CONFORME, usa matriz ativa do Painel SST */}
       {ehNaoConforme && matrizAtiva && (
         <div className="rounded-md border border-orange-200 bg-orange-50/40 p-2">
           <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-orange-700">

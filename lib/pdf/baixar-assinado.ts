@@ -1,26 +1,19 @@
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-
 /**
- * Baixa um PDF do bucket `pdfs-assinados` de forma À PROVA DE CACHE.
+ * Baixa um PDF do bucket PRIVADO `pdfs-assinados` de forma À PROVA DE CACHE.
  *
- * O caminho do arquivo é o mesmo a cada (re)assinatura (sobrescrito via upsert),
- * então o CDN/navegador servia a versão ANTIGA do mesmo path — o laudo baixado
- * vinha defasado (empresa/assinatura de uma versão anterior). Usar uma URL
- * assinada (token único por chamada) + `fetch` com `no-store` força sempre a
- * versão atual do servidor.
+ * Self-host: o bucket é privado e as creds do browser têm escopo `fotos` (público),
+ * então NÃO dá pra presignar/baixar direto do storage pelo cliente. O download passa
+ * pela rota server-side /api/pdf/assinado (mesma origem, com sessão), que baixa do
+ * MinIO com as creds server e devolve os bytes. `?t=` + `no-store` evitam cache.
  */
 export async function baixarPdfAssinado(
   pdfPath: string,
   downloadName: string,
 ): Promise<void> {
-  const supabase = createSupabaseBrowserClient();
-  const { data: signed, error } = await supabase.storage
-    .from("pdfs-assinados")
-    .createSignedUrl(pdfPath, 120);
-  if (error || !signed?.signedUrl) {
-    throw new Error("Não foi possível gerar o link do PDF assinado.");
-  }
-  const res = await fetch(`${signed.signedUrl}&t=${Date.now()}`, { cache: "no-store" });
+  const res = await fetch(
+    `/api/pdf/assinado?path=${encodeURIComponent(pdfPath)}&t=${Date.now()}`,
+    { cache: "no-store" },
+  );
   if (!res.ok) throw new Error("Não foi possível baixar o PDF assinado.");
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);

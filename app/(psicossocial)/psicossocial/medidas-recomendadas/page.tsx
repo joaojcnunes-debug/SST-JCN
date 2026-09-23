@@ -1,5 +1,7 @@
 "use client";
 
+import { LinhasSkeleton } from "@/components/ui/PageSkeletons";
+
 import { useState } from "react";
 import { ClipboardList, Plus, Pencil, Trash2, Check, X, RotateCcw, Loader2, Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -102,9 +104,7 @@ export default function MedidasRecomendadasPage() {
       {/* Lista */}
       <div className="glass overflow-hidden rounded-2xl">
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 p-10 text-sm text-gray-500">
-            <Loader2 className="size-4 animate-spin" /> Carregando...
-          </div>
+          <LinhasSkeleton bare linhas={5} />
         ) : medidas.length === 0 ? (
           <div className="p-10 text-center text-sm text-gray-500">
             Nenhuma medida cadastrada.{canEdit ? " Use “Restaurar base” ou adicione acima." : ""}

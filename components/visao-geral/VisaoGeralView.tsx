@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import AvisoRevisaoTrava from "@/components/sistema/AvisoRevisaoTrava";
 import {
   LayoutDashboard,
   Boxes,
@@ -18,6 +19,8 @@ import {
   KanbanSquare,
   Moon,
   Sun,
+  Menu as MenuIcon,
+  X,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -95,12 +98,6 @@ export default function VisaoGeralView({
   const totais = data?.totais;
   const unidades = data?.unidades ?? [];
   const setUnidadeAtiva = useUnidadeAtiva((s) => s.setUnidade);
-  // Toggle de tema também aqui (a tela inicial não usa a ModuleTopbar).
-  const tema = useTema((s) => s.tema);
-  const toggleTema = useTema((s) => s.toggle);
-  const [temaMontado, setTemaMontado] = useState(false);
-  useEffect(() => setTemaMontado(true), []);
-  const escuro = temaMontado && tema === "dark";
   const escopoRestrito = userPerfil === "Tecnico" && vinculadasCount > 0;
   const totalPendencias = (pendencias ?? []).reduce((s, p) => s + p.pendente, 0);
   const vencidos = vencimentos?.vencidos ?? [];
@@ -112,98 +109,168 @@ export default function VisaoGeralView({
   const hora = agora?.getHours() ?? -1;
   const saudacao = hora < 0 ? "Olá" : hora < 12 ? "Bom dia" : hora < 18 ? "Boa tarde" : "Boa noite";
   const primeiroNome = (userNome ?? "").split(" ")[0];
+  // Toggle de tema também aqui (a tela inicial não usa a ModuleTopbar).
+  const tema = useTema((s) => s.tema);
+  const toggleTema = useTema((s) => s.toggle);
+  const [temaMontado, setTemaMontado] = useState(false);
+  const [menuAberto, setMenuAberto] = useState(false);
+  useEffect(() => setTemaMontado(true), []);
+  const escuro = temaMontado && tema === "dark";
   const dataFmt = agora
     ? agora.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })
     : "";
   const dataExtenso = dataFmt ? dataFmt.charAt(0).toUpperCase() + dataFmt.slice(1) : "";
 
+  /**
+   * O menu desta tela, desenhado UMA vez e montado em dois lugares: a barra
+   * fixa do desktop e a gaveta do celular. `aoNavegar` fecha a gaveta — no
+   * desktop é um no-op.
+   *
+   * Função comum, chamada como `{menuLateral(fn)}`, e NÃO um componente
+   * declarado aqui dentro: componente aninhado remonta a cada render do pai e
+   * levaria junto o scroll da lista de unidades.
+   */
+  const menuLateral = (aoNavegar: () => void) => (
+    <>
+      <div className="flex items-center gap-2.5 px-1">
+        {logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt="Logo"
+            className="force-light h-9 w-auto max-w-[40px] rounded-md bg-white object-contain p-0.5"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              const img = e.currentTarget as HTMLImageElement;
+              if (!img.src.endsWith("/logo-jcn.svg")) img.src = "/logo-jcn.svg";
+            }}
+          />
+        ) : (
+          <div className="flex size-9 items-center justify-center rounded-md bg-white/15">
+            <Shield className="size-5" />
+          </div>
+        )}
+        <div className="leading-tight">
+          <p className="text-sm font-bold">JCN Consultoria</p>
+          <p className="text-[10px] uppercase tracking-wider text-white/55">Painel SST</p>
+        </div>
+      </div>
+
+      <nav className="mt-7 space-y-0.5">
+        <NavItem active icon={<LayoutDashboard className="size-[15px]" />} label="Visão geral" />
+        <Link href="/modulos" onClick={aoNavegar}>
+          <NavItem icon={<Boxes className="size-[15px]" />} label="Módulos" />
+        </Link>
+        <Link href="/empresas" onClick={aoNavegar}>
+          <NavItem icon={<Building2 className="size-[15px]" />} label="Empresas" />
+        </Link>
+        <Link href="/validades" onClick={aoNavegar}>
+          <NavItem icon={<FileClock className="size-[15px]" />} label="Validades" />
+        </Link>
+        <Link href="/gestao" onClick={aoNavegar}>
+          <NavItem icon={<KanbanSquare className="size-[15px]" />} label="Gestão JCN Consultoria" />
+        </Link>
+      </nav>
+
+      <p className="mb-1 mt-7 px-3 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+        Unidades
+      </p>
+      <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
+        {unidades
+          .filter((u) => u.id_unidade)
+          .map((u) => (
+            <Link
+              key={u.id_unidade}
+              href="/modulos"
+              onClick={() => { setUnidadeAtiva(u.id_unidade!, u.nome); aoNavegar(); }}
+            >
+              <NavItem icon={<MapPin className="size-[15px]" />} label={u.nome} badge={u.empresas} />
+            </Link>
+          ))}
+      </div>
+
+      <div className="mt-auto border-t border-white/10 pt-3">
+        {userNome && (
+          <div className="px-3 pb-2 leading-tight">
+            <p className="truncate text-sm font-semibold text-white/90">{userNome}</p>
+            <p className="text-[11px] text-white/50">{userPerfil}</p>
+          </div>
+        )}
+        {isAdmin && (
+          <Link href="/usuarios" onClick={aoNavegar}>
+            <NavItem icon={<Settings className="size-[15px]" />} label="Sistema" />
+          </Link>
+        )}
+        <button type="button" onClick={toggleTema} className="w-full">
+          <NavItem
+            icon={escuro ? <Sun className="size-[15px]" /> : <Moon className="size-[15px]" />}
+            label={escuro ? "Modo claro" : "Modo escuro"}
+          />
+        </button>
+        <button type="button" onClick={onLogout} className="w-full">
+          <NavItem icon={<LogOut className="size-[15px]" />} label="Sair" />
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex min-h-screen bg-app-bg">
-      {/* ── Sidebar ──────────────────────────────────────────── */}
-      <aside
-        className="hidden w-60 shrink-0 flex-col px-4 py-5 text-white md:flex"
+      {/* ── Menu ─────────────────────────────────────────────── */}
+      {/* Hambúrguer (celular). Sem ele, abaixo de 768px esta tela não tinha
+          NENHUMA navegação — nem o "Sair", que só existe no menu. */}
+      <button
+        type="button"
+        onClick={() => setMenuAberto(true)}
+        aria-label="Abrir menu"
+        className="fixed left-3 top-3 z-40 flex size-10 items-center justify-center rounded-md text-white shadow md:hidden print:hidden"
         style={{ backgroundColor: VERDE_SIDEBAR }}
       >
-        <div className="flex items-center gap-2.5 px-1">
-          {logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={logoUrl}
-              alt="Logo"
-              className="force-light h-9 w-auto max-w-[40px] rounded-md bg-white object-contain p-0.5"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="flex size-9 items-center justify-center rounded-md bg-white/15">
-              <Shield className="size-5" />
-            </div>
-          )}
-          <div className="leading-tight">
-            <p className="text-sm font-bold">JCN Consultoria</p>
-            <p className="text-[10px] uppercase tracking-wider text-white/55">SST JCN Consultoria</p>
-          </div>
-        </div>
+        <MenuIcon className="size-5" />
+      </button>
 
-        <nav className="mt-7 space-y-0.5">
-          <NavItem active icon={<LayoutDashboard className="size-[15px]" />} label="Visão geral" />
-          <Link href="/inicio">
-            <NavItem icon={<Boxes className="size-[15px]" />} label="Módulos" />
-          </Link>
-          <Link href="/empresas">
-            <NavItem icon={<Building2 className="size-[15px]" />} label="Empresas" />
-          </Link>
-          <Link href="/validades">
-            <NavItem icon={<FileClock className="size-[15px]" />} label="Validades" />
-          </Link>
-          <Link href="/gestao">
-            <NavItem icon={<KanbanSquare className="size-[15px]" />} label="Gestão JCN Consultoria" />
-          </Link>
-        </nav>
-
-        <p className="mb-1 mt-7 px-3 text-[10px] font-semibold uppercase tracking-wider text-white/40">
-          Unidades
-        </p>
-        <div className="space-y-0.5 overflow-y-auto">
-          {unidades
-            .filter((u) => u.id_unidade)
-            .map((u) => (
-              <Link
-                key={u.id_unidade}
-                href="/inicio"
-                onClick={() => setUnidadeAtiva(u.id_unidade!, u.nome)}
-              >
-                <NavItem icon={<MapPin className="size-[15px]" />} label={u.nome} badge={u.empresas} />
-              </Link>
-            ))}
-        </div>
-
-        <div className="mt-auto border-t border-white/10 pt-3">
-          {userNome && (
-            <div className="px-3 pb-2 leading-tight">
-              <p className="truncate text-sm font-semibold text-white/90">{userNome}</p>
-              <p className="text-[11px] text-white/50">{userPerfil}</p>
-            </div>
-          )}
-          {isAdmin && (
-            <Link href="/usuarios">
-              <NavItem icon={<Settings className="size-[15px]" />} label="Sistema" />
-            </Link>
-          )}
-          <button type="button" onClick={toggleTema} className="w-full">
-            <NavItem
-              icon={escuro ? <Sun className="size-[15px]" /> : <Moon className="size-[15px]" />}
-              label={escuro ? "Modo claro" : "Modo escuro"}
-            />
-          </button>
-          <button type="button" onClick={onLogout} className="w-full">
-            <NavItem icon={<LogOut className="size-[15px]" />} label="Sair" />
-          </button>
-        </div>
+      {/* Barra do desktop. `sticky` + `h-screen`: como item de um flex row ela
+          esticava até a altura do documento (2.354px medidos), e rolar 800px
+          deixava 1.554px de coluna verde vazia na tela. */}
+      <aside
+        className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col px-4 py-5 text-white md:flex print:hidden"
+        style={{ backgroundColor: VERDE_SIDEBAR }}
+      >
+        {menuLateral(() => {})}
       </aside>
 
+      {/* Gaveta do celular */}
+      {menuAberto && (
+        <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setMenuAberto(false)}>
+          <aside
+            className="absolute inset-y-0 left-0 flex w-[248px] flex-col px-4 py-5 text-white shadow-2xl"
+            style={{ backgroundColor: VERDE_SIDEBAR }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setMenuAberto(false)}
+              aria-label="Fechar menu"
+              className="absolute right-2 top-2 rounded p-1 text-white/70 hover:bg-white/10"
+            >
+              <X className="size-5" />
+            </button>
+            {menuLateral(() => setMenuAberto(false))}
+          </aside>
+        </div>
+      )}
+
       {/* ── Conteúdo ─────────────────────────────────────────── */}
-      <main className="flex-1 overflow-x-hidden px-5 py-7 sm:px-8">
+      {/* `overflow-x-clip`, e não `hidden`: pela CSS Overflow 3, um eixo em
+          `hidden` computa o OUTRO para `auto` — este <main> era um scroll
+          container sem ninguém ter pedido, e qualquer `sticky` colocado aqui
+          dentro morreria em silêncio. `clip` corta igual e não faz isso.
+          O `pt-16` abaixo de 768px é o espaço do hambúrguer, que é fixo. */}
+      <main className="min-w-0 flex-1 overflow-x-clip px-5 pb-7 pt-16 sm:px-8 md:pt-7">
         <div className="mx-auto max-w-6xl">
+          {/* Lembrete da revisão da trava por módulo (v236): aparece sozinho na
+              semana da data e só para quem pode ver. Ver o componente. */}
+          <AvisoRevisaoTrava />
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="reveal-up">
               <h1 className="text-3xl font-bold text-gray-900">
@@ -476,7 +543,7 @@ function UnidadeCard({ u, delay = 0 }: { u: UnidadeResumo; delay?: number }) {
   const setUnidadeAtiva = useUnidadeAtiva((s) => s.setUnidade);
   // Unidade real → ativa o escopo e vai pro hub de módulos. "Sem unidade" mantém
   // o atalho para as empresas sem unidade (não há escopo de unidade real).
-  const href = semUnidade ? "/empresas?unidade=__sem__" : "/inicio";
+  const href = semUnidade ? "/empresas?unidade=__sem__" : "/modulos";
   const onPick = semUnidade ? undefined : () => setUnidadeAtiva(u.id_unidade!, u.nome);
   return (
     <Link
@@ -524,7 +591,6 @@ const MODULO_ACCENT: Record<string, string> = {
   nao_conformidade: "#dc2626",
   psicossocial: "#7c3aed",
   analise_quimicos: "#d97706",
-  inventario_maquinas: "#475569",
   apreciacao_maquinas: "#0ea5e9",
   aet: "#16a34a",
   aep: "#0891b2",

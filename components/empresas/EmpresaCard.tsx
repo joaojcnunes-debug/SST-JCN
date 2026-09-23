@@ -80,7 +80,7 @@ export default function EmpresaCard({
               {empresa.nome_empresa}
             </h3>
             {/* Bate o olho e vê que este cadastro não é um cliente, e sim um
-                local de terceiros — senão ele se confunde com os cadastros de cliente. */}
+                local de terceiros — senão ele se confunde com os outros 474. */}
             {ehTerceiros && (
               <span
                 title={

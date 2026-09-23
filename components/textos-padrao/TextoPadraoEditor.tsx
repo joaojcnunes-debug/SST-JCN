@@ -54,6 +54,8 @@ import {
   MODULO_CONFIGS,
 } from "@/lib/textos-padrao/types";
 import { VARIAVEIS_POR_MODULO } from "@/lib/textos-padrao/variaveis";
+import { buscar } from "@/lib/busca/texto";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -140,12 +142,10 @@ export default function TextoPadraoEditor({ modulo }: Props) {
 
   // Editáveis agrupados por posição no laudo (reflete a ordem real do PDF):
   // tudo que não for "fim" entra antes do corpo do laudo; "fim" vai depois.
+  // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem dos capítulos.
   const aplicaBusca = (lista: TextoPadraoCapitulo[]) =>
-    busca.trim()
-      ? lista.filter((c) =>
-          c.titulo.toLowerCase().includes(busca.trim().toLowerCase())
-        )
-      : lista;
+    buscar(lista, busca, (c) => [c.titulo], { manterOrdem: true }).itens;
+  const buscaAproximada = buscar(capitulos, busca, (c) => [c.titulo], { manterOrdem: true }).aproximado;
   const editavelInicio = aplicaBusca(
     capitulosEditaveis.filter((c) => (c.posicao_pdf ?? "inicio") !== "fim")
   );
@@ -320,6 +320,12 @@ export default function TextoPadraoEditor({ modulo }: Props) {
               <> · {capitulosEditaveis.filter((c) => !c.ativo).length} oculto{capitulosEditaveis.filter((c) => !c.ativo).length !== 1 ? "s" : ""}</>
             )}
           </p>
+
+          <AvisoBuscaAproximada
+            aproximado={buscaAproximada}
+            busca={busca}
+            total={unificado ? aplicaBusca(capitulos).length : editavelInicio.length + editavelFim.length}
+          />
 
           {/* Modo UNIFICADO (ex: AEP): lista única reordenável — arraste
               qualquer bloco (texto editável ou seção do sistema) em qualquer
@@ -1279,6 +1285,42 @@ const TEMPLATES_POR_MODULO: Record<
       titulo: "3. Considerações Finais",
       conteudo:
         '<p style="text-align: justify">Os resultados deste diagnóstico devem ser utilizados como subsídio para a elaboração do Plano de Ação de Controle dos Riscos Psicossociais, com priorização das medidas de acordo com a gravidade e probabilidade identificadas. Recomenda-se nova avaliação em prazo não superior a 12 meses.</p>',
+    },
+  ],
+  // v226 — modelo inicial do laudo da QAP. Fala do questionário, não do DRPS:
+  // a régua é a mesma, mas categorias/perguntas são as do tipo aplicado.
+  qps: [
+    {
+      titulo: "1. Introdução",
+      conteudo:
+        '<p style="text-align: justify">Este relatório apresenta os resultados da aplicação do <strong>{{tipo_questionario}}</strong> na empresa <strong>{{empresa_nome}}</strong> (CNPJ {{cnpj}}), em conformidade com a <strong>NR-01</strong> (GRO/PGR), como instrumento de identificação e avaliação dos fatores de risco psicossocial no trabalho.</p>',
+    },
+    {
+      titulo: "2. Metodologia",
+      conteudo:
+        '<p style="text-align: justify">O questionário foi respondido por <strong>{{total_respondentes}}</strong> trabalhador(es), com as respostas agrupadas por setor. Cada categoria recebe uma <strong>gravidade</strong> calculada a partir das respostas (mesma régua do DRPS: média por pergunta, arredondamento e inversão das perguntas invertidas, cortes por categoria) e uma <strong>probabilidade</strong> informada pelo responsável técnico; o cruzamento das duas na matriz 3×3 define o nível de risco (Baixo, Médio, Alto ou Crítico).</p>',
+    },
+    {
+      titulo: "3. Considerações Finais",
+      conteudo:
+        '<p style="text-align: justify">Os resultados devem subsidiar o Plano de Ação de controle dos riscos psicossociais, com priorização das medidas conforme a gravidade e a probabilidade identificadas. Recomenda-se nova aplicação em prazo não superior a 12 meses ou sempre que houver mudança relevante na organização do trabalho.</p>',
+    },
+  ],
+  plano_acao: [
+    {
+      titulo: "1. Apresentação",
+      conteudo:
+        '<p style="text-align: justify">Este documento apresenta o Plano de Ação da empresa <strong>{{empresa_nome}}</strong> (CNPJ {{cnpj}}), estruturado na metodologia <strong>5W2H</strong> e destinado ao tratamento dos riscos e não conformidades identificados nas avaliações de Segurança e Saúde do Trabalho, conforme a <strong>NR-01</strong> (GRO/PGR).</p>',
+    },
+    {
+      titulo: "2. Como acompanhar",
+      conteudo:
+        '<p style="text-align: justify">Cada ação registra o que será feito, a justificativa, o local, o responsável, o prazo, o método e o custo previsto. Cabe à empresa acompanhar os prazos e comunicar a conclusão das medidas, mantendo as evidências à disposição da fiscalização. As ações concluídas permanecem no histórico como registro da tratativa.</p>',
+    },
+    {
+      titulo: "3. Considerações Finais",
+      conteudo:
+        '<p style="text-align: justify">Este plano contempla {{total_acoes}} ação(ões) na data de {{data_atual}} e deve ser revisado sempre que houver alteração das condições de trabalho, ocorrência de acidente ou nova avaliação de riscos.</p>',
     },
   ],
 };

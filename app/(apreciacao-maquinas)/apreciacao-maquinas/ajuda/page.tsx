@@ -21,6 +21,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useState, useCallback } from "react";
+import AjudaComAbas from "@/components/novidades/AjudaComAbas";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -288,7 +289,7 @@ function ItemChecklist({ label, conceito, como, atencao, marque_sim, forceOpen }
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
-export default function ApreciacaoMaquinasAjudaPage() {
+function ConteudoApreciacaoMaquinasAjudaPage() {
   const [printMode, setPrintMode] = useState(false);
 
   const handlePrint = useCallback(() => {
@@ -654,5 +655,18 @@ export default function ApreciacaoMaquinasAjudaPage() {
       </div>
 
     </div>
+  );
+}
+
+/**
+ * A ajuda deste módulo ganhou a aba Atualizações (01/09). O conteúdo acima
+ * continua exatamente como estava — quem monta as abas é o AjudaComAbas, e a
+ * lista de novidades vive num componente só, compartilhado pelos 11 módulos.
+ */
+export default function ApreciacaoMaquinasAjudaPage() {
+  return (
+    <AjudaComAbas titulo="Guia da Apreciação">
+      <ConteudoApreciacaoMaquinasAjudaPage />
+    </AjudaComAbas>
   );
 }

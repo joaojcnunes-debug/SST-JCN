@@ -7,7 +7,8 @@ export type ModuloAnexo =
   | "analise_quimicos"
   | "apreciacao_maquinas"
   | "aep"
-  | "psicossocial";
+  | "psicossocial"
+  | "qps";
 
 export type TipoAnexo = "pdf" | "imagem" | "arquivo";
 

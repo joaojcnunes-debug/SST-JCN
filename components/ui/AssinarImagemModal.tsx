@@ -53,6 +53,7 @@ export default function AssinarImagemModal({
 }: Props) {
   const user = useUserStore((s) => s.user);
   const [signatarios, setSignatarios] = useState<Signatario[]>([]);
+  const [carregado, setCarregado] = useState(false);
   const [emailSelecionado, setEmailSelecionado] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,6 +61,7 @@ export default function AssinarImagemModal({
   useEffect(() => {
     if (!open) return;
     setErro(null);
+    setCarregado(false);
     createSupabaseBrowserClient()
       .from("usuarios")
       .select("id_usuario, nome, email, cargo, assinatura_url")
@@ -77,13 +79,30 @@ export default function AssinarImagemModal({
             ? lista.find((s) => nameMatches(s.nome, defaultSignatoryName))
             : null;
         const logado = lista.find((s) => s.email === user?.email);
-        setEmailSelecionado(
-          porEmail?.email ?? porNome?.email ?? logado?.email ?? lista[0]?.email ?? "",
-        );
+        // Sem fallback para o 1º da lista: quem não tem imagem cadastrada
+        // (nem o responsável do documento) abria o modal com OUTRA pessoa já
+        // selecionada e o botão verde — e este caminho não pede senha. Fica
+        // vazio e o aviso abaixo explica o porquê.
+        setEmailSelecionado(porEmail?.email ?? porNome?.email ?? logado?.email ?? "");
+        setCarregado(true);
       });
   }, [open, user?.email, defaultSignatoryName, defaultSignatoryEmail]);
 
   const atual = signatarios.find((s) => s.email === emailSelecionado);
+
+  // Avisos: só depois da lista chegar (antes, "ninguém tem imagem" seria mentira).
+  const logadoSemImagem =
+    carregado && !!user?.email && !signatarios.some((s) => s.email === user.email);
+  const responsavelNome = defaultSignatoryName?.trim() ?? "";
+  const responsavelEhOLogado =
+    !!user?.nome && !!responsavelNome && nameMatches(user.nome, responsavelNome);
+  const responsavelSemImagem =
+    carregado &&
+    !!responsavelNome &&
+    !responsavelEhOLogado &&
+    !(defaultSignatoryEmail && signatarios.some((s) => s.email === defaultSignatoryEmail)) &&
+    !signatarios.some((s) => nameMatches(s.nome, responsavelNome));
+  const assinandoPorOutro = !!atual && !!user?.email && atual.email !== user.email;
 
   async function handleConfirm() {
     if (!emailSelecionado) {
@@ -120,6 +139,7 @@ export default function AssinarImagemModal({
               disabled={loading}
               className="w-full rounded-md border border-verde-primary/30 bg-verde-primary/5 px-3 py-2 text-sm font-medium text-gray-800 focus:border-verde-primary focus:outline-none disabled:opacity-60"
             >
+              <option value="">Selecione o profissional...</option>
               {signatarios.map((s) => (
                 <option key={s.id_usuario} value={s.email}>
                   {s.nome}
@@ -127,6 +147,12 @@ export default function AssinarImagemModal({
                 </option>
               ))}
             </select>
+            {assinandoPorOutro && (
+              <p className="mt-1.5 text-[11px] font-medium text-amber-700">
+                Você está assinando em nome de <strong>{atual!.nome}</strong> — a imagem
+                carimbada será a dele(a), não a sua.
+              </p>
+            )}
             {atual?.assinatura_url && (
               <div className="mt-2 flex items-center gap-2 rounded-md border border-gray-200 bg-white p-2">
                 <StorageImg
@@ -138,6 +164,25 @@ export default function AssinarImagemModal({
                   Imagem que será carimbada na folha de assinaturas
                 </span>
               </div>
+            )}
+          </div>
+        )}
+
+        {(logadoSemImagem || responsavelSemImagem) && (
+          <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            {logadoSemImagem && (
+              <p>
+                <strong>Você não tem imagem de assinatura cadastrada</strong> no seu
+                perfil — por isso seu nome não aparece na lista. Peça a um
+                administrador para cadastrar a imagem em <em>Usuários</em>, ou use
+                “Assinar PDF A1”.
+              </p>
+            )}
+            {responsavelSemImagem && (
+              <p>
+                O responsável do documento (<strong>{responsavelNome}</strong>) não tem
+                imagem de assinatura cadastrada.
+              </p>
             )}
           </div>
         )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -38,6 +38,8 @@ export interface GestaoQuadro {
   ordem: number;
   ics_token: string | null;
   restrito: boolean;
+  /** v235: quadro pessoal ("Meu Quadro") do usuário — sem espaço/pasta; vive em Meu Espaço/Colaboradores. */
+  dono_email?: string | null;
 }
 
 export interface GestaoStatus {
@@ -53,6 +55,18 @@ export interface GestaoStatus {
 export interface Subtarefa {
   texto: string;
   feito: boolean;
+  responsavel_email: string | null;
+}
+
+export type TipoVinculo = "responsavel" | "seguidor";
+
+export interface GestaoVinculado {
+  id: string;
+  id_tarefa: string;
+  usuario_email: string;
+  tipo: TipoVinculo;
+  origem: string;
+  created_at: string;
 }
 
 export interface Recorrencia {
@@ -670,6 +684,111 @@ export function useUsuarios() {
   });
 }
 
+// ---- Vínculos por tarefa (responsável | seguidor por e-mail — v187/F1.2) ----
+
+/** Vínculos de UMA tarefa (para pré-popular o seletor do modal). */
+export function useVinculados(idTarefa: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-vinculados", idTarefa],
+    enabled: !!idTarefa,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_tarefa_vinculados")
+        .select("id,id_tarefa,usuario_email,tipo,origem,created_at")
+        .eq("id_tarefa", idTarefa!)
+        .order("tipo", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as GestaoVinculado[];
+    },
+  });
+}
+
+/** Todos os vínculos de um quadro, agrupados por id_tarefa (uma leitura compartilhada
+ *  entre todos os cards via cache do react-query — o card lê o seu recorte por id_tarefa). */
+export function useVinculadosQuadro(idQuadro: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-vinculados-quadro", idQuadro],
+    enabled: !!idQuadro,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_tarefa_vinculados")
+        .select("id,id_tarefa,usuario_email,tipo,origem,created_at,gestao_tarefas!inner(id_quadro)")
+        .eq("gestao_tarefas.id_quadro", idQuadro!);
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as GestaoVinculado[];
+      const mapa = new Map<string, GestaoVinculado[]>();
+      for (const v of rows) {
+        const arr = mapa.get(v.id_tarefa) ?? [];
+        arr.push(v);
+        mapa.set(v.id_tarefa, arr);
+      }
+      return mapa;
+    },
+  });
+}
+
+/** Reconcilia os vínculos de uma tarefa: 1 responsável + N seguidores, por e-mail.
+ *  Estratégia = DELTA + RPC logado (F1.3-C): lê os vínculos atuais, calcula adicionar
+ *  (desejados − atuais) e remover (atuais − desejados) por e-mail+tipo, e chama
+ *  gestao_vincular/gestao_desvincular (SECURITY DEFINER, v195) por mudança. O RPC autoriza
+ *  (comum só a si; gestor qualquer um), grava a trilha de autoria e mantém o trigger-espelho
+ *  v187 refletindo responsavel = usuarios.NOME. O DML direto foi revogado na v196 — não
+ *  há mais delete-all+reinsert. E-mails em minúsculas. */
+export function useSalvarVinculados() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id_tarefa: string; responsavelEmail: string | null; seguidoresEmails: string[] }) => {
+      const sb = createSupabaseBrowserClient();
+      const rpc = (sb as unknown as {
+        rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+      }).rpc;
+      const resp = p.responsavelEmail ? p.responsavelEmail.trim().toLowerCase() : null;
+      const segs = [...new Set(p.seguidoresEmails.map((e) => e.trim().toLowerCase()).filter(Boolean))].filter((e) => e !== resp);
+
+      // Estado desejado, por chave e-mail+tipo.
+      const desejado = new Map<string, { email: string; tipo: TipoVinculo }>();
+      if (resp) desejado.set(`${resp}|responsavel`, { email: resp, tipo: "responsavel" });
+      for (const e of segs) desejado.set(`${e}|seguidor`, { email: e, tipo: "seguidor" });
+
+      // Estado atual (SELECT direto preservado na v196).
+      const { data: atuaisRows, error: selErr } = await sb
+        .from("gestao_tarefa_vinculados")
+        .select("usuario_email,tipo")
+        .eq("id_tarefa", p.id_tarefa);
+      if (selErr) throw selErr;
+      const atual = new Map<string, { email: string; tipo: TipoVinculo }>();
+      for (const r of (atuaisRows ?? []) as unknown as { usuario_email: string; tipo: TipoVinculo }[]) {
+        atual.set(`${r.usuario_email}|${r.tipo}`, { email: r.usuario_email, tipo: r.tipo });
+      }
+
+      // Delta: remover (atuais − desejados), depois adicionar (desejados − atuais).
+      for (const [k, v] of atual) {
+        if (!desejado.has(k)) {
+          const { error } = await rpc("gestao_desvincular", { p_id_tarefa: p.id_tarefa, p_email: v.email, p_tipo: v.tipo });
+          if (error) throw error;
+        }
+      }
+      for (const [k, v] of desejado) {
+        if (!atual.has(k)) {
+          const { error } = await rpc("gestao_vincular", { p_id_tarefa: p.id_tarefa, p_email: v.email, p_tipo: v.tipo });
+          if (error) throw error;
+        }
+      }
+    },
+    onSuccess: (_d, p) => {
+      qc.invalidateQueries({ queryKey: ["gestao-vinculados", p.id_tarefa] });
+      qc.invalidateQueries({ queryKey: ["gestao-vinculados-quadro"] });
+      qc.invalidateQueries({ queryKey: ["gestao-minhas"] });
+      qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+    },
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível salvar os vinculados.")),
+  });
+}
+
 /** E-mails mencionados (@nome ou @primeiroNome) num texto. */
 export function detectarMencoes(texto: string, usuarios: { nome: string; email: string }[]): string[] {
   const t = texto.toLowerCase();
@@ -704,6 +823,24 @@ export function useMarcarLida() {
       const sb = createSupabaseBrowserClient();
       const base = sb.from("gestao_notificacoes").update({ lida: true } as never);
       const { error } = p.id ? await base.eq("id", p.id) : await base.eq("lida", false);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-notificacoes"] }),
+  });
+}
+
+/** Apaga TODAS as notificações do usuário logado (lidas e não lidas). A policy
+ *  notif_del (v228) limita ao próprio destinatário; o filtro por e-mail aqui é só
+ *  para não emitir DELETE sem predicado. `ilike` sem curinga = igualdade sem caixa,
+ *  como o lower() da policy. */
+export function useLimparNotificacoes() {
+  const qc = useQueryClient();
+  const email = useUserStore((s) => s.user?.email ?? null);
+  return useMutation({
+    mutationFn: async () => {
+      if (!email) throw new Error("Sem usuário logado.");
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.from("gestao_notificacoes").delete().ilike("destinatario", email);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-notificacoes"] }),
@@ -911,7 +1048,42 @@ export function useExcluirTempo() {
   });
 }
 
-export type GatilhoAutomacao = "status_muda" | "tarefa_criada" | "prazo_proximo" | "prazo_vencido";
+export type GatilhoAutomacao =
+  | "status_muda" | "tarefa_criada" | "prazo_proximo" | "prazo_vencido"
+  // motor v2 (F2.2a/b): gatilhos novos
+  | "subtarefa_concluida" | "tarefa_movida_quadro" | "tarefa_aprovada";
+
+/** Uma cláusula do construtor E/OU. Campos aceitos pelo motor (gestao_automacao_cond_teste):
+ *  status, status_de, status_para, prioridade, quadro, etiqueta, campo:<id>. Ops: '=' '!=' 'in' 'contains'. */
+export interface ClausulaCondicao { campo: string; op: string; valor: string }
+
+/** Condição da automação. Duas formas mutuamente reconhecidas pelo motor:
+ *  - PLANA (legado v120): de/para (status_muda) e dias_antes (prazo). Regressão zero — segue editável.
+ *  - E/OU (motor v2, gestao_automacao_cond_bate): {all:[…], any:[…]}. Presença de all|any liga o caminho novo. */
+export interface CondicaoAutomacao {
+  de?: string;
+  para?: string;
+  dias_antes?: string;
+  all?: ClausulaCondicao[];
+  any?: ClausulaCondicao[];
+}
+
+/** Ação da automação. `tipo` é o discriminador lido pelo motor (gestao_automacao_aplicar).
+ *  Cada ramo consome só as chaves abaixo (o motor ignora as demais). */
+export interface AcaoAutomacao {
+  tipo?: string;
+  valor?: string;
+  campo_id?: string;
+  // ações do motor v2 (F2.2a/b/c)
+  modelo_slug?: string;                       // criar_subtarefas_modelo
+  aprovador_email?: string;                   // solicitar_aprovacao (opcional)
+  id_quadro_destino?: string;                 // mover/criar_tarefa_quadro
+  status_destino?: string;                    // mover_tarefa_quadro
+  titulo_template?: string;                   // criar_tarefa_quadro ({{titulo}})
+  copiar_campos?: string;                     // criar_tarefa_quadro — o motor lê texto ('true'|'1')
+  emails?: string[];                          // adicionar_vinculados
+  vinculo_tipo?: string;                      // adicionar_vinculados: responsavel|seguidor (ver nota do executor)
+}
 
 export interface GestaoAutomacao {
   id: string;
@@ -919,8 +1091,8 @@ export interface GestaoAutomacao {
   nome: string;
   ativo: boolean;
   gatilho: GatilhoAutomacao;
-  condicao: { de?: string; para?: string; dias_antes?: string };
-  acao: { tipo?: string; valor?: string; campo_id?: string };
+  condicao: CondicaoAutomacao;
+  acao: AcaoAutomacao;
   ordem: number;
 }
 
@@ -996,18 +1168,6 @@ export function useAutomacaoTick() {
   }, []);
 }
 
-/** Automações agora rodam NO SERVIDOR (v120: trigger em gestao_tarefas + pg_cron para prazos).
- *  O executor client-side foi aposentado para não aplicar a ação duas vezes. Mantido como no-op
- *  (mesma assinatura) para não quebrar os call sites em gestao/page.tsx. */
-export function useAutomacaoRunner(_idQuadro: string | null | undefined) {
-  return useCallback(
-    (_ctx: { gatilho: "status_muda" | "tarefa_criada"; tarefa: GestaoTarefa; de?: string; para?: string }) => {
-      /* no-op: ver public.gestao_automacao_trg / gestao_automacao_prazos (v120) */
-    },
-    [],
-  );
-}
-
 export function useTarefas(idQuadro: string | null | undefined) {
   return useQuery({
     queryKey: ["gestao-tarefas", idQuadro],
@@ -1026,17 +1186,29 @@ export function useTarefas(idQuadro: string | null | undefined) {
   });
 }
 
-/** Minhas tarefas em TODOS os quadros (responsável = usuário logado). */
+/** Minhas tarefas em TODOS os quadros: onde estou vinculado (responsável OU seguidor),
+ *  por e-mail — não mais por nome (v187/F1.2). O e-mail é gravado em minúsculas na tabela;
+ *  o filtro por igualdade exata sobre o valor normalizado equivale a lower(usuario_email). */
 export function useMinhasTarefas(enabled = true) {
-  const nome = useUserStore((s) => s.user?.nome ?? null);
+  const email = useUserStore((s) => s.user?.email ?? null);
   return useQuery({
-    queryKey: ["gestao-minhas", nome],
-    enabled: enabled && !!nome,
+    queryKey: ["gestao-minhas", email],
+    enabled: enabled && !!email,
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb.from("gestao_tarefas").select("*").eq("responsavel", nome!).order("prazo", { ascending: true, nullsFirst: false });
+      const { data, error } = await sb
+        .from("gestao_tarefa_vinculados")
+        .select("tarefa:gestao_tarefas!inner(*)")
+        .eq("usuario_email", (email as string).toLowerCase());
       if (error) throw error;
-      return (data ?? []) as unknown as GestaoTarefa[];
+      const rows = (data ?? []) as unknown as { tarefa: GestaoTarefa | null }[];
+      const porId = new Map<string, GestaoTarefa>();
+      for (const r of rows) if (r.tarefa) porId.set(r.tarefa.id_tarefa, r.tarefa);
+      return [...porId.values()].sort((a, b) => {
+        if (!a.prazo) return 1;
+        if (!b.prazo) return -1;
+        return a.prazo.localeCompare(b.prazo);
+      });
     },
   });
 }
@@ -1075,6 +1247,7 @@ export function useUsuariosLista() {
 
 export function useSalvarTarefa() {
   const qc = useQueryClient();
+  const email = useUserStore((s) => s.user?.email ?? null);
   return useMutation({
     mutationFn: async (t: Partial<GestaoTarefa> & { id_quadro: string }) => {
       const sb = createSupabaseBrowserClient();
@@ -1093,10 +1266,12 @@ export function useSalvarTarefa() {
           data_inicio: t.data_inicio ?? null,
           ordem: t.ordem ?? 0,
           etiquetas: t.etiquetas ?? [],
-          subtarefas: t.subtarefas ?? [],
+          // subtarefas NAO e gravado aqui (F2.1/v199): vive em gestao_subtarefas e o
+          // trigger-espelho reescreve o jsonb da coluna. A coluna nasce '[]' (default).
           campos: t.campos ?? {},
           recorrencia: t.recorrencia ?? null,
           pontos: t.pontos ?? null,
+          created_by: email,
           created_at: now,
           updated_at: now,
         } as never);
@@ -1104,6 +1279,10 @@ export function useSalvarTarefa() {
         return id;
       }
       const { id_tarefa, ...patch } = t;
+      // subtarefas nao e mais escrito por aqui (F2.1/v199): a tabela gestao_subtarefas e a
+      // fonte de verdade e o trigger-espelho mantem o jsonb. Remove do patch p/ nao
+      // sobrescrever o espelho com o estado (possivelmente defasado) carregado no cliente.
+      delete (patch as Partial<GestaoTarefa>).subtarefas;
       const { error } = await sb
         .from("gestao_tarefas")
         .update({ ...patch, updated_at: now } as never)
@@ -1111,7 +1290,15 @@ export function useSalvarTarefa() {
       if (error) throw error;
       return id_tarefa;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-tarefas"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+      // Meu Espaço (vista agregada por e-mail) também mostra a tarefa salva.
+      qc.invalidateQueries({ queryKey: ["gestao-minhas"] });
+      // G1: o trigger v216 grava o histórico da tarefa no update/insert; refazer a linha do
+      // tempo da sidebar (prefixo pega a query montada da tarefa aberta) — antes só um comentário
+      // invalidava, então movimentações/campos alterados não subiam até comentar.
+      qc.invalidateQueries({ queryKey: ["gestao-tarefa-timeline"] });
+    },
     onError: (e) => toast.error(mensagemErro(e, "Não foi possível salvar a tarefa.")),
   });
 }
@@ -1127,7 +1314,11 @@ export function useMoverTarefa() {
         .eq("id_tarefa", p.id_tarefa);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-tarefas"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+      // G1: mover de coluna gera histórico (status) via trigger v216 → refazer a timeline.
+      qc.invalidateQueries({ queryKey: ["gestao-tarefa-timeline"] });
+    },
     onError: (e) => toast.error(mensagemErro(e, "Não foi possível mover a tarefa.")),
   });
 }
@@ -1148,7 +1339,11 @@ export function useReordenar() {
         ),
       );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-tarefas"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+      // G1: drag-and-drop muda status/ordem → histórico via trigger v216 → refazer a timeline.
+      qc.invalidateQueries({ queryKey: ["gestao-tarefa-timeline"] });
+    },
     onError: (e) => toast.error(mensagemErro(e, "Não foi possível reordenar.")),
   });
 }
@@ -1168,7 +1363,11 @@ export function useAcaoMassa() {
       const { error } = await sb.from("gestao_tarefas").update({ ...p.patch, updated_at: new Date().toISOString() } as never).in("id_tarefa", p.ids);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-tarefas"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+      // G1: ação em massa pode alterar status/prioridade/prazo → histórico via trigger v216.
+      qc.invalidateQueries({ queryKey: ["gestao-tarefa-timeline"] });
+    },
     onError: (e) => toast.error(mensagemErro(e, "Não foi possível aplicar a ação.")),
   });
 }
@@ -1287,7 +1486,30 @@ export async function gerarIaGestao(body: { acao: "subtarefas" | "descricao"; ti
 }
 
 // ---- Formulários de entrada (captação por link público) ----
-export interface PerguntaFormulario { label: string; obrigatorio: boolean }
+// Tipos de pergunta (F1 GESTAO-KANBAN-03). `tipo` default "texto".
+export type TipoPergunta =
+  | "texto" | "texto_longo" | "email" | "cnpj" | "cpf" | "telefone"
+  | "data" | "data_hora" | "selecao" | "multipla";
+// `destino` diz onde a resposta é gravada na tarefa:
+//   "descricao" (default) | "etiquetas" | "prazo" | "campo:<id do gestao_campos>"
+// F1.5 (v230): `id` estável (referenciado por condicao/titulo_composicao), `ajuda` (texto sob o
+// rótulo), `condicao` (só aparece quando a pergunta de origem tem a opção) e `pendente_anexo`
+// (era anexo no Runrun; upload público fica para a F2 — vira texto e a tarefa nasce marcada).
+export interface CondicaoPergunta { pergunta: string; opcao: string }
+export interface PerguntaFormulario {
+  id?: string;
+  label: string;
+  obrigatorio: boolean;
+  tipo?: TipoPergunta;
+  opcoes?: string[];
+  destino?: string;
+  ajuda?: string;
+  condicao?: CondicaoPergunta | null;
+  pendente_anexo?: boolean;
+}
+// Token de composição do título: "form_title" | "p:<id da pergunta>". Vazio/null = o
+// respondente digita o título.
+export type TokenTitulo = string;
 export interface GestaoFormulario {
   id: string;
   id_quadro: string;
@@ -1301,10 +1523,18 @@ export interface GestaoFormulario {
   prioridade_padrao: string;
   status_inicial: string | null;
   responsavel_padrao: string | null;
+  responsavel_email: string | null;
   etiquetas_padrao: string[];
   perguntas: PerguntaFormulario[];
+  titulo_composicao: TokenTitulo[] | null;
+  runrun_form_id: number | null;
+  origem: Record<string, unknown> | null;
   created_by: string | null;
   created_at: string;
+}
+/** Id estável para pergunta nova (curto, legível no jsonb). */
+export function novoIdPergunta(): string {
+  return "q" + crypto.randomUUID().replace(/-/g, "").slice(0, 8);
 }
 
 export function useFormulariosQuadro(idQuadro: string | null | undefined) {
@@ -1341,8 +1571,10 @@ export function useSalvarFormulario() {
           prioridade_padrao: f.prioridade_padrao ?? "Media",
           status_inicial: f.status_inicial ?? null,
           responsavel_padrao: f.responsavel_padrao ?? null,
+          responsavel_email: f.responsavel_email ?? null,
           etiquetas_padrao: f.etiquetas_padrao ?? [],
           perguntas: f.perguntas ?? [],
+          titulo_composicao: f.titulo_composicao ?? null,
           created_by: email,
         } as never);
         if (error) throw error;
@@ -1370,23 +1602,99 @@ export function useExcluirFormulario() {
   });
 }
 
+// ---- Modelos de checklist de subtarefa (tabela gestao_subtarefa_modelos; F2.2c) ----
+// Config de quadro (como gestao_formularios): CRUD direto gated pela RLS (gestao_pode_editar_q).
+// A automação `criar_subtarefas_modelo {modelo_slug}` materializa os itens em gestao_subtarefas.
+export interface ItemModelo { texto: string; etapa?: string | null; tipo?: string | null }
+export interface GestaoSubtarefaModelo {
+  id: string;
+  id_quadro: string;
+  slug: string;
+  titulo: string;
+  itens: ItemModelo[];
+  created_at: string;
+}
+
+export function useModelos(idQuadro: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-modelos", idQuadro],
+    enabled: !!idQuadro,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.from("gestao_subtarefa_modelos").select("*").eq("id_quadro", idQuadro!).order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as GestaoSubtarefaModelo[];
+    },
+  });
+}
+
+export function useSalvarModelo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (m: Partial<GestaoSubtarefaModelo> & { id_quadro: string }) => {
+      const sb = createSupabaseBrowserClient();
+      if (!m.id) {
+        const { error } = await sb.from("gestao_subtarefa_modelos").insert({
+          id: crypto.randomUUID(),
+          id_quadro: m.id_quadro,
+          slug: (m.slug ?? "").trim() || "modelo",
+          titulo: (m.titulo ?? "").trim() || "Novo modelo",
+          itens: m.itens ?? [],
+        } as never);
+        if (error) throw error;
+        return;
+      }
+      const { id, ...patch } = m;
+      const { error } = await sb.from("gestao_subtarefa_modelos").update(patch as never).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-modelos"] }),
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível salvar o modelo.")),
+  });
+}
+
+export function useExcluirModelo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.from("gestao_subtarefa_modelos").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-modelos"] }),
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível excluir o modelo.")),
+  });
+}
+
 // ---- Acessos por lista (permissões finas) ----
 export interface GestaoAcesso {
   id: string;
   id_quadro: string;
-  usuario_email: string;
+  /** null quando o principal é uma EQUIPE (v235). */
+  usuario_email: string | null;
+  /** v235: grant de equipe (principal = equipe, não pessoa). */
+  id_equipe?: string | null;
   papel: "viewer" | "editor";
+  nivel: "view" | "comment" | "edit" | "full";
   created_at: string;
 }
 
-/** Acessos cadastrados numa lista (para o modal Compartilhar). */
-export function useAcessosQuadro(idQuadro: string | null | undefined) {
+/** TODOS os grants de acesso a quadro (list-level), p/ o modal unificado "Membros e
+ *  acessos". A RLS `gestao_acessos_sel = gestao_pode_ver(id_quadro)` filtra aos quadros
+ *  que o chamador vê — como só gestor (owner/admin) abre o modal, vê todos. Só grants
+ *  com `id_quadro` (o modal gere acesso POR QUADRO). Key sob o prefixo `gestao-acessos`
+ *  → `useAlterarAcesso` já invalida. */
+export function useAcessosGestao() {
   return useQuery({
-    queryKey: ["gestao-acessos", idQuadro],
-    enabled: !!idQuadro,
+    queryKey: ["gestao-acessos", "todos"],
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb.from("gestao_acessos").select("*").eq("id_quadro", idQuadro!).order("usuario_email", { ascending: true });
+      const { data, error } = await sb
+        .from("gestao_acessos")
+        .select("*")
+        .not("id_quadro", "is", null)
+        .order("id_quadro", { ascending: true })
+        .order("usuario_email", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as GestaoAcesso[];
     },
@@ -1410,37 +1718,11 @@ export function useMeusAcessos() {
   });
 }
 
-async function upsertAcesso(idQuadro: string, email: string, papel: "viewer" | "editor") {
-  const sb = createSupabaseBrowserClient();
-  const lower = email.toLowerCase();
-  // Grava também o modelo novo (nivel/recurso) — o resolver da v117 lê `nivel`, não `papel`.
-  // viewer→view, editor→edit; recurso é sempre a lista (list) deste quadro.
-  const nivel = papel === "editor" ? "edit" : "view";
-  const campos = { papel, nivel, recurso_tipo: "list", recurso_id: idQuadro };
-  const { data: ex } = await sb.from("gestao_acessos").select("id").eq("id_quadro", idQuadro).eq("usuario_email", lower).maybeSingle();
-  if (ex) { const { error } = await sb.from("gestao_acessos").update(campos as never).eq("id", (ex as { id: string }).id); if (error) throw error; }
-  else { const { error } = await sb.from("gestao_acessos").insert({ id: crypto.randomUUID(), id_quadro: idQuadro, usuario_email: lower, ...campos } as never); if (error) throw error; }
-}
-
-// useSalvarAcesso/useExcluirAcesso removidos na Fase 4b: o compartilhamento por lista agora passa
-// por gestao_alterar_acesso (useAlterarAcesso) — com motivo + log LGPD. upsertAcesso segue abaixo,
-// usado só pelo auto-grant de useToggleRestrito (não se trancar fora ao restringir).
-
-/** Liga/desliga "lista restrita". Ao ligar, garante o usuário atual como editor ANTES (não se trancar fora). */
-export function useToggleRestrito() {
-  const qc = useQueryClient();
-  const email = useUserStore((s) => s.user?.email ?? null);
-  return useMutation({
-    mutationFn: async (p: { id_quadro: string; restrito: boolean }) => {
-      const sb = createSupabaseBrowserClient();
-      if (p.restrito && email) await upsertAcesso(p.id_quadro, email, "editor");
-      const { error } = await sb.from("gestao_quadros").update({ restrito: p.restrito } as never).eq("id_quadro", p.id_quadro);
-      if (error) throw error;
-    },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["gestao-quadros"] }); qc.invalidateQueries({ queryKey: ["gestao-acessos"] }); qc.invalidateQueries({ queryKey: ["gestao-meus-acessos"] }); },
-    onError: (e) => toast.error(mensagemErro(e, "Não foi possível alterar a restrição.")),
-  });
-}
+// useSalvarAcesso/useExcluirAcesso removidos na Fase 4b: o compartilhamento por lista passa por
+// gestao_alterar_acesso (useAlterarAcesso) — com motivo + log LGPD. O front NÃO tem INSERT/UPDATE
+// direto em gestao_acessos (v186 revoga o DML de authenticated).
+// useAcessosQuadro/useToggleRestrito removidos junto do CompartilharModal (2026-09-17): o acesso vive
+// no modal unificado "Membros e acessos" (useAcessosGestao) e a v227 tornou `restrito` inerte p/ acesso.
 
 /** Gera/regenera (ou remove) o token do feed ICS de uma lista. */
 export function useDefinirIcsToken() {
@@ -1515,6 +1797,93 @@ export function useExcluirComentario() {
   });
 }
 
+// ---- Subtarefas (tabela gestao_subtarefas; F2.1 — GESTAO-UX-01-UXB-F21) ----
+// A tabela e a FONTE DE VERDADE da edicao; gestao_tarefas.subtarefas (jsonb) e ESPELHO
+// mantido pelo trigger v199 (para o card e demais leitores do jsonb seguirem intactos).
+export interface GestaoSubtarefa {
+  id: string;
+  id_tarefa: string;
+  texto: string;
+  feito: boolean;
+  ordem: number;
+  etapa: string | null;
+  tipo: string | null;
+  responsavel_email: string | null;
+  created_at: string;
+}
+
+/** Subtarefas de uma tarefa, ordenadas por (ordem, created_at). */
+export function useSubtarefas(idTarefa: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-subtarefas", idTarefa],
+    enabled: !!idTarefa,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_subtarefas")
+        .select("id,id_tarefa,texto,feito,ordem,etapa,tipo,responsavel_email,created_at")
+        .eq("id_tarefa", idTarefa!)
+        .order("ordem", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as GestaoSubtarefa[];
+    },
+  });
+}
+
+/** Reconcilia as subtarefas de uma tarefa a partir do estado do modal (Subtarefa[] =
+ *  {texto,feito} na ordem visual). Estrategia = delete-all + insert ordenado — satelite
+ *  com DML direto (grants iguais a gestao_anexos; sem RPC), espelhando a reconciliacao
+ *  delete+insert. O trigger-espelho v199 reescreve gestao_tarefas.subtarefas (jsonb). A
+ *  UX-A e preservada: o flush de novaSub acontece no modal e chega aqui como +1 item;
+ *  a IA chega como N itens; ordem = indice visual. */
+export function useSalvarSubtarefas() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id_tarefa: string; subtarefas: (Subtarefa & { id?: string })[]; reconciliar?: boolean }) => {
+      const sb = createSupabaseBrowserClient();
+      const limpos = p.subtarefas
+        .map((s, i) => ({ id: s.id, texto: (s.texto ?? "").trim(), feito: !!s.feito, responsavel_email: s.responsavel_email ?? null, ordem: i }))
+        .filter((s) => s.texto !== "");
+
+      // CRIACAO (reconciliar:false): append — NAO apaga (preserva subtarefas que uma automacao
+      // criou server-side no insert da tarefa, ex.: esteira/checklists em tarefa_criada) e posiciona
+      // as novas do modal apos as existentes. So insere as que ainda nao tem id.
+      if (p.reconciliar === false) {
+        const { data } = await sb.from("gestao_subtarefas").select("ordem").eq("id_tarefa", p.id_tarefa).order("ordem", { ascending: false }).limit(1);
+        const base = (((data?.[0] as { ordem?: number } | undefined)?.ordem) ?? -1) + 1;
+        const novas = limpos.filter((s) => !s.id).map((s, i) => ({ id: gerarId("SUB"), id_tarefa: p.id_tarefa, texto: s.texto, feito: s.feito, responsavel_email: s.responsavel_email, ordem: base + i }));
+        if (novas.length) { const { error } = await sb.from("gestao_subtarefas").insert(novas as never); if (error) throw error; }
+        return;
+      }
+
+      // EDICAO: diff por id. UPDATE nas existentes (o flip de feito false->true dispara o gatilho
+      // subtarefa_concluida -> move a esteira; INSERT nao dispararia). INSERT nas sem id (novas do
+      // modal). DELETE so nas que o usuario removeu (id em `atuais`, lido ANTES de qualquer UPDATE,
+      // e ausente do modal) — subtarefas criadas por automacao durante este save entram DEPOIS da
+      // leitura de `atuais`, entao nunca sao apagadas.
+      const { data: atuais } = await sb.from("gestao_subtarefas").select("id").eq("id_tarefa", p.id_tarefa);
+      const idsLocais = new Set(limpos.filter((s) => s.id).map((s) => s.id as string));
+      const remover = (atuais ?? []).map((r) => (r as { id: string }).id).filter((id) => !idsLocais.has(id));
+      if (remover.length) { const { error } = await sb.from("gestao_subtarefas").delete().in("id", remover); if (error) throw error; }
+      for (const s of limpos) {
+        if (s.id) {
+          const { error } = await sb.from("gestao_subtarefas").update({ texto: s.texto, feito: s.feito, responsavel_email: s.responsavel_email, ordem: s.ordem } as never).eq("id", s.id);
+          if (error) throw error;
+        } else {
+          const { error } = await sb.from("gestao_subtarefas").insert({ id: gerarId("SUB"), id_tarefa: p.id_tarefa, texto: s.texto, feito: s.feito, responsavel_email: s.responsavel_email, ordem: s.ordem } as never);
+          if (error) throw error;
+        }
+      }
+    },
+    onSuccess: (_d, p) => {
+      qc.invalidateQueries({ queryKey: ["gestao-subtarefas", p.id_tarefa] });
+      qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+    },
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível salvar as subtarefas.")),
+  });
+}
+
 export interface PreferenciaVisao {
   vista: VistaGestao;
   agrupar_por: AgruparPor | null;
@@ -1572,5 +1941,69 @@ export function useSalvarPreferenciaVisao() {
     onError: () => {
       // Preferência é best-effort; não interrompe o uso se falhar.
     },
+  });
+}
+
+// ---- Aprovações (motor v2 / F2.2b) ------------------------------------------
+
+export type StatusAprovacao = "pendente" | "aprovada" | "rejeitada";
+
+export interface GestaoAprovacao {
+  id: string;
+  id_tarefa: string;
+  solicitado_por: string | null;
+  aprovador_email: string | null;
+  status: StatusAprovacao;
+  motivo: string | null;
+  decidido_em: string | null;
+  created_at: string;
+}
+
+/** Aprovações PENDENTES visíveis ao usuário (RLS já limita: vê a tarefa OU é o aprovador).
+ *  Uma leitura compartilhada — a Caixa de Entrada lista, o card lê seu recorte por id_tarefa. */
+export function useAprovacoesPendentes() {
+  const email = useUserStore((s) => s.user?.email ?? null);
+  return useQuery({
+    queryKey: ["gestao-aprovacoes", email],
+    enabled: !!email,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_aprovacoes")
+        .select("id,id_tarefa,solicitado_por,aprovador_email,status,motivo,decidido_em,created_at")
+        .eq("status", "pendente")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as GestaoAprovacao[];
+    },
+  });
+}
+
+/** Há aprovação pendente nesta tarefa? (badge no card — lê o cache compartilhado). */
+export function useAprovacaoTarefa(idTarefa: string | null | undefined) {
+  const { data } = useAprovacoesPendentes();
+  return (data ?? []).some((a) => a.id_tarefa === idTarefa);
+}
+
+/** Decide uma aprovação via RPC logado (SECURITY DEFINER autoriza: aprovador designado OU gestor).
+ *  Ao aprovar, o RPC dispara o gatilho `tarefa_aprovada` (encadeia as automações). */
+export function useDecidirAprovacao() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id: string; decisao: Exclude<StatusAprovacao, "pendente">; motivo?: string | null }) => {
+      const sb = createSupabaseBrowserClient();
+      const rpc = (sb as unknown as {
+        rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+      }).rpc;
+      const { error } = await rpc("gestao_decidir_aprovacao", { p_id: p.id, p_decisao: p.decisao, p_motivo: p.motivo ?? null });
+      if (error) throw error;
+    },
+    onSuccess: (_d, p) => {
+      qc.invalidateQueries({ queryKey: ["gestao-aprovacoes"] });
+      qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+      toast.success(p.decisao === "aprovada" ? "Aprovação concedida." : "Aprovação rejeitada.");
+    },
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível registrar a decisão.")),
   });
 }

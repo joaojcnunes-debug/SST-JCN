@@ -24,6 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useState, useCallback } from "react";
+import AjudaComAbas from "@/components/novidades/AjudaComAbas";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -423,7 +424,7 @@ const PASSOS = [
     descricao: "Na aba Setores / Triagem, adicione cada setor ou posto de trabalho. Nomes específicos facilitam a comunicação com o cliente — prefira \"Linha de Montagem 01\" a \"Produção\".",
     dicas: ["Setores com tarefas muito distintas devem ser separados mesmo se fisicamente próximos.", "Setores idênticos (3 linhas com a mesma tarefa) podem ser avaliados um e replicado com nota explicativa."] },
   { numero: "03", titulo: "Aplicar a Triagem Ergonômica",    icone: ClipboardCheck, cor: "orange",
-    descricao: "Para cada setor, responda os checklists de Ergonomia Física, Cognitiva e Organizacional com Sim / Não / N/A. Cada Sim gera um alerta e deve embasar um risco na Matriz.",
+    descricao: "Para cada setor, responda os checklists de Ergonomia Física, Cognitiva e Organizacional com Sim / Não / N/A — na Organizacional há também N/I, para o fator que não foi possível verificar. Cada Sim gera um alerta e deve embasar um risco na Matriz.",
     dicas: ["Responda durante a observação in loco — não depois, de memória.", "Leia as orientações de cada item nesta página de Ajuda antes da visita para saber o que observar."] },
   { numero: "04", titulo: "Registrar Riscos na Matriz",       icone: TriangleAlert,  cor: "yellow",
     descricao: "Clique em \"+ Risco\" para registrar cada risco formalmente: tipo, descrição, probabilidade e severidade. O sistema calcula o Nível: Trivial, De Atenção, Moderado, Alto ou Crítico.",
@@ -543,7 +544,7 @@ function CategoriaChecklist({
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
-export default function AepAjudaPage() {
+function ConteudoAepAjudaPage() {
   const [printMode, setPrintMode] = useState(false);
 
   const handlePrint = useCallback(() => {
@@ -644,9 +645,9 @@ export default function AepAjudaPage() {
       <div>
         <div className="mb-4 flex items-center gap-2">
           <ClipboardCheck className="size-5 text-gray-600" />
-          <h2 className="font-semibold text-gray-800">Botões Sim / Não / N/A — critério técnico de uso</h2>
+          <h2 className="font-semibold text-gray-800">Botões Sim / Não / N/A / N/I — critério técnico de uso</h2>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { btn: "Sim", bc: "bg-red-500", titulo: "Fator presente e confirmado", cor: "border-red-200 bg-red-50", tc: "text-red-700",
               desc: "O fator de risco foi identificado durante a visita ou entrevista com evidência suficiente. Gera um alerta e DEVE embasar um risco na Matriz de Riscos. Não marque Sim por precaução — marque quando há evidência." },
@@ -654,6 +655,8 @@ export default function AepAjudaPage() {
               desc: "O fator foi especificamente avaliado in loco (não apenas suposto) e não foi identificado. Registra que a condição foi verificada. 'Não' é um resultado técnico válido e importante — indica que você avaliou." },
             { btn: "N/A", bc: "bg-gray-400", titulo: "Genuinamente inaplicável", cor: "border-gray-200 bg-gray-50", tc: "text-gray-700",
               desc: "O item não existe no contexto do setor — não pela ausência do risco, mas pela ausência da condição que o geraria. Ex.: vibração de ferramentas em setor 100% administrativo. Em dúvida entre N/A e Não, sempre prefira Não." },
+            { btn: "N/I", bc: "bg-amber-600", titulo: "Não identificável (só na Organizacional)", cor: "border-amber-200 bg-amber-50", tc: "text-amber-700",
+              desc: "Não foi possível verificar se há ou não aquele fator de risco — faltou acesso à informação, o aspecto não pôde ser observado na visita ou o relato foi insuficiente. Diferente de N/A (o fator não se aplica ao setor) e de Não (o fator foi avaliado e está ausente). É o registro honesto de uma lacuna da avaliação: não gera alerta nem embasa risco na Matriz." },
           ].map((c, i) => (
             <div key={i} className={`rounded-xl border p-4 ${c.cor}`}>
               <div className="flex items-center gap-2 mb-2">
@@ -879,5 +882,18 @@ export default function AepAjudaPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * A ajuda deste módulo ganhou a aba Atualizações (01/09). O conteúdo acima
+ * continua exatamente como estava — quem monta as abas é o AjudaComAbas, e a
+ * lista de novidades vive num componente só, compartilhado pelos 11 módulos.
+ */
+export default function AepAjudaPage() {
+  return (
+    <AjudaComAbas titulo="Guia da AEP">
+      <ConteudoAepAjudaPage />
+    </AjudaComAbas>
   );
 }

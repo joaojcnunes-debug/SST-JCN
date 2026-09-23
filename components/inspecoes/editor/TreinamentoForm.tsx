@@ -4,9 +4,12 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import AvisoRascunho from "@/components/ui/AvisoRascunho";
+import { gravar } from "@/lib/offline/gravar";
+import type { InspecaoFull } from "@/lib/hooks/useInspecao";
 import { gerarId } from "@/lib/utils";
 import { useTipoIcone } from "@/lib/hooks/useV3";
+import { useRascunho } from "@/lib/hooks/useRascunho";
 import type {
   Cargo,
   Risco,
@@ -110,6 +113,32 @@ export default function TreinamentoForm({
     setIdsRiscos(vinculados.riscos);
   }, [open, editing, vinculados]);
 
+  // Rascunho contra queda de luz — só ao criar; nada volta sem clique.
+  const rascunhoValor = useMemo(
+    () => ({ nr, titulo, cargaHoraria, periodicidade, descricao, observacoes,
+             ordem, idsSetores, idsCargos, idsRiscos }),
+    [nr, titulo, cargaHoraria, periodicidade, descricao, observacoes,
+     ordem, idsSetores, idsCargos, idsRiscos],
+  );
+  const rascunho = useRascunho(`treinamento:${idInspecao}`, rascunhoValor, {
+    ativo: open && !editing,
+  });
+
+  function recuperarRascunho() {
+    const v = rascunho.recuperar();
+    if (!v) return;
+    setNr(v.nr);
+    setTitulo(v.titulo);
+    setCargaHoraria(v.cargaHoraria);
+    setPeriodicidade(v.periodicidade);
+    setDescricao(v.descricao);
+    setObservacoes(v.observacoes);
+    setOrdem(v.ordem);
+    setIdsSetores(v.idsSetores);
+    setIdsCargos(v.idsCargos);
+    setIdsRiscos(v.idsRiscos);
+  }
+
   // Risco precisa de nome legível — montamos label "Tipo · Agente · Setor"
   const riscosLabels = useMemo(() => {
     const setorPorId = new Map(setores.map((s) => [s.id_setor, s.setor_ghe]));
@@ -126,7 +155,6 @@ export default function TreinamentoForm({
       if (!nr.trim()) throw new Error("NR é obrigatória");
       if (!titulo.trim()) throw new Error("Título é obrigatório");
 
-      const supabase = createSupabaseBrowserClient();
       const idTreinamento = editing?.id_treinamento ?? gerarId("TRE");
       const payload: Partial<TreinamentoNR> & { id_treinamento: string } = {
         id_treinamento: idTreinamento,
@@ -143,57 +171,131 @@ export default function TreinamentoForm({
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from("treinamentos_nr")
-        .upsert(payload as never, { onConflict: "id_treinamento" });
-      if (error) throw error;
+      /**
+       * Sete operações no pior caso: o treinamento, três limpezas de relação e
+       * três reinserções. Encadeadas por dependência, e não só pela ordem.
+       *
+       * A ordem sozinha já colocaria cada uma no lugar certo — a fila é
+       * sequencial. O que a cascata evita é o caso feio: se a limpeza de setores
+       * for recusada, a reinserção NÃO pode ser tentada, senão o treinamento
+       * termina com os setores antigos e os novos juntos. Melhor segurar e
+       * mostrar uma pendência do que gravar um vínculo que ninguém pediu.
+       */
+      const anteriores: string[] = [];
+      const passo = async (pedido: Parameters<typeof gravar>[0]) => {
+        const r = await gravar({
+          ...pedido,
+          depende_de: anteriores.length > 0 ? [...anteriores] : undefined,
+        });
+        if (r.destino === "APARELHO") anteriores.push(r.idOperacao);
+        return r;
+      };
+
+      const principal = await passo({
+        tabela: "treinamentos_nr",
+        tipo: "upsert",
+        linhas: payload as Record<string, unknown>,
+        filtro: null,
+        conflito: "id_treinamento",
+        modulo: "inspecoes",
+        id_documento: idInspecao,
+      });
 
       // Reseta relações M:N do treinamento (delete-all → reinsert-novas)
       if (editing) {
-        await Promise.all([
-          supabase.from("treinamentos_setor").delete().eq("id_treinamento", idTreinamento),
-          supabase.from("treinamentos_cargo").delete().eq("id_treinamento", idTreinamento),
-          supabase.from("treinamentos_risco").delete().eq("id_treinamento", idTreinamento),
-        ]);
+        for (const tabela of [
+          "treinamentos_setor",
+          "treinamentos_cargo",
+          "treinamentos_risco",
+        ]) {
+          await passo({
+            tabela,
+            tipo: "delete",
+            linhas: null,
+            filtro: { id_treinamento: idTreinamento },
+            modulo: "inspecoes",
+            id_documento: idInspecao,
+          });
+        }
       }
 
-      if (idsSetores.length > 0) {
-        const { error: e1 } = await supabase
-          .from("treinamentos_setor")
-          .insert(
-            idsSetores.map((id) => ({
-              id_treinamento: idTreinamento,
-              id_setor: id,
-            })) as never
-          );
-        if (e1) throw e1;
+      const relacoes: { tabela: string; coluna: string; ids: string[] }[] = [
+        { tabela: "treinamentos_setor", coluna: "id_setor", ids: idsSetores },
+        { tabela: "treinamentos_cargo", coluna: "id_cargo", ids: idsCargos },
+        { tabela: "treinamentos_risco", coluna: "id_risco", ids: idsRiscos },
+      ];
+
+      for (const { tabela, coluna, ids } of relacoes) {
+        if (ids.length === 0) continue;
+        await passo({
+          tabela,
+          tipo: "insert",
+          linhas: ids.map((id) => ({ id_treinamento: idTreinamento, [coluna]: id })),
+          filtro: null,
+          modulo: "inspecoes",
+          id_documento: idInspecao,
+        });
       }
-      if (idsCargos.length > 0) {
-        const { error: e2 } = await supabase
-          .from("treinamentos_cargo")
-          .insert(
-            idsCargos.map((id) => ({
-              id_treinamento: idTreinamento,
-              id_cargo: id,
-            })) as never
-          );
-        if (e2) throw e2;
-      }
-      if (idsRiscos.length > 0) {
-        const { error: e3 } = await supabase
-          .from("treinamentos_risco")
-          .insert(
-            idsRiscos.map((id) => ({
-              id_treinamento: idTreinamento,
-              id_risco: id,
-            })) as never
-          );
-        if (e3) throw e3;
-      }
+
+      return {
+        destino: principal.destino,
+        linha: payload as unknown as TreinamentoNR,
+        idTreinamento,
+      };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success(editing ? "Treinamento atualizado" : "Treinamento criado");
+    onSuccess: ({ destino, linha, idTreinamento }) => {
+      rascunho.limpar();
+
+      if (destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+        toast.success(editing ? "Treinamento atualizado" : "Treinamento criado");
+      } else {
+        // Sem rede não há o que revalidar: a lista da tela é atualizada à mão,
+        // relações inclusive — senão o treinamento apareceria sem os setores e
+        // cargos que o técnico acabou de marcar.
+        qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) => {
+          if (!antigo) return antigo;
+          const jaExiste = antigo.treinamentos.some(
+            (t) => t.id_treinamento === idTreinamento,
+          );
+          const semAsAntigas = <T extends { id_treinamento: string }>(lista: T[]) =>
+            lista.filter((x) => x.id_treinamento !== idTreinamento);
+          return {
+            ...antigo,
+            treinamentos: jaExiste
+              ? antigo.treinamentos.map((t) =>
+                  t.id_treinamento === idTreinamento ? linha : t,
+                )
+              : [...antigo.treinamentos, linha],
+            treinamentosSetor: [
+              ...semAsAntigas(antigo.treinamentosSetor),
+              ...idsSetores.map(
+                (id) =>
+                  ({ id_treinamento: idTreinamento, id_setor: id }) as unknown as
+                    (typeof antigo.treinamentosSetor)[number],
+              ),
+            ],
+            treinamentosCargo: [
+              ...semAsAntigas(antigo.treinamentosCargo),
+              ...idsCargos.map(
+                (id) =>
+                  ({ id_treinamento: idTreinamento, id_cargo: id }) as unknown as
+                    (typeof antigo.treinamentosCargo)[number],
+              ),
+            ],
+            treinamentosRisco: [
+              ...semAsAntigas(antigo.treinamentosRisco),
+              ...idsRiscos.map(
+                (id) =>
+                  ({ id_treinamento: idTreinamento, id_risco: id }) as unknown as
+                    (typeof antigo.treinamentosRisco)[number],
+              ),
+            ],
+          };
+        });
+        toast.success("Treinamento guardado no aparelho", { icon: "📵" });
+      }
+
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -218,6 +320,13 @@ export default function TreinamentoForm({
       size="xl"
     >
       <form onSubmit={onSubmit} className="space-y-4">
+        {rascunho.pendente && (
+          <AvisoRascunho
+            idadeMin={rascunho.pendente.idadeMin}
+            onRecuperar={recuperarRascunho}
+            onDescartar={rascunho.descartar}
+          />
+        )}
         {/* Linha 1: NR + Título */}
         <div className="grid gap-3 md:grid-cols-[200px_1fr]">
           <div>

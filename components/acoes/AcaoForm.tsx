@@ -7,7 +7,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useSaveAcao } from "@/lib/hooks/useAcoes";
-import { useCurrentUser, useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useCurrentUser, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import { useTipoIcone } from "@/lib/hooks/useV3";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
@@ -75,7 +75,7 @@ export default function AcaoForm({ open, onClose, editing }: Props) {
   const { data: empresas = [] } = useEmpresas();
   const save = useSaveAcao();
   const user = useCurrentUser();
-  const isAdmin = useIsAdmin();
+  const isAdmin = useIsSupervisor(); // v229: gerar 5W2H com IA é de quem supervisiona o laudo
   const iconeDe = useTipoIcone();
   const [gerandoIA, setGerandoIA] = useState(false);
 

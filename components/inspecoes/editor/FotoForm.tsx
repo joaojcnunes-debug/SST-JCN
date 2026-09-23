@@ -5,6 +5,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { gravar } from "@/lib/offline/gravar";
+import { operacaoPendenteQueCria } from "@/lib/offline/operacoes";
+import type { InspecaoFull } from "@/lib/hooks/useInspecao";
 import { gerarId } from "@/lib/utils";
 import { CATEGORIAS_FOTO } from "@/lib/constants";
 import type { CategoriaFoto, Foto, Setor } from "@/lib/supabase/types";
@@ -47,21 +50,38 @@ export default function FotoForm({
     }
   }, [open, foto]);
 
+  /**
+   * O primeiro formulário da inspeção que leva ARQUIVO para o offline.
+   *
+   * O que torna isso possível sem rede: `getPublicUrl` é montagem de string, não
+   * chamada de rede. Então a URL final da foto é conhecida no momento da
+   * captura, e a linha pode ser gravada já apontando para o lugar certo — o
+   * arquivo chega depois, no mesmo caminho, quando a fila subir.
+   *
+   * A foto é guardada como saiu da câmera, sem redução. É o mesmo que o caminho
+   * online sempre fez, e manter igual evita que a mesma inspeção acabe com fotos
+   * nítidas e fotos reduzidas conforme o técnico tinha sinal ou não. O custo é
+   * espaço no aparelho — ver a nota em `docs/inspecoes/TESTE-OFFLINE.md`.
+   */
   const mutation = useMutation({
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
 
       if (isEdit && foto) {
-        const { error } = await supabase
-          .from("fotos")
-          .update({
-            categoria,
-            id_setor: idSetor || null,
-            legenda: legenda.trim() || null,
-          } as never)
-          .eq("id_foto", foto.id_foto);
-        if (error) throw error;
-        return;
+        const payload = {
+          categoria,
+          id_setor: idSetor || null,
+          legenda: legenda.trim() || null,
+        };
+        const resultado = await gravar({
+          tabela: "fotos",
+          tipo: "update",
+          linhas: payload,
+          filtro: { id_foto: foto.id_foto },
+          modulo: "inspecoes",
+          id_documento: idInspecao,
+        });
+        return { resultado, linha: { ...foto, ...payload } as Foto };
       }
 
       if (!file) throw new Error("Selecione um arquivo");
@@ -70,12 +90,6 @@ export default function FotoForm({
       const path = `${idEmpresa}/${idInspecao}/${gerarId("FT")}.${ext}`;
 
       setProgress(20);
-      const { error: upErr } = await supabase.storage
-        .from("fotos")
-        .upload(path, file, { upsert: false });
-      if (upErr) throw upErr;
-      setProgress(70);
-
       const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
 
       const insertRow = {
@@ -90,15 +104,47 @@ export default function FotoForm({
         data_upload: new Date().toISOString(),
         usuario: user?.email ?? null,
       };
-      const { error: insErr } = await supabase
-        .from("fotos")
-        .insert(insertRow as never);
-      if (insErr) throw insErr;
+
+      // A foto pode ser de um setor cadastrado agora, ainda na fila.
+      const criadorDoSetor = idSetor
+        ? await operacaoPendenteQueCria("setores", "id_setor", idSetor)
+        : null;
+
+      setProgress(70);
+      const resultado = await gravar({
+        tabela: "fotos",
+        tipo: "insert",
+        linhas: [insertRow],
+        filtro: null,
+        modulo: "inspecoes",
+        id_documento: idInspecao,
+        imagens: [{ blob: file, caminho: path }],
+        depende_de: criadorDoSetor ? [criadorDoSetor] : undefined,
+      });
       setProgress(100);
+      return { resultado, linha: insertRow as unknown as Foto };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success(isEdit ? "Foto atualizada" : "Foto enviada");
+    onSuccess: ({ resultado, linha }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+        toast.success(isEdit ? "Foto atualizada" : "Foto enviada");
+      } else {
+        // Sem rede não há o que revalidar: a lista da tela é atualizada à mão.
+        qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) => {
+          if (!antigo) return antigo;
+          return {
+            ...antigo,
+            fotos: isEdit
+              ? antigo.fotos.map((f) => (f.id_foto === linha.id_foto ? linha : f))
+              : [...antigo.fotos, linha],
+          };
+        });
+        toast.success(
+          isEdit ? "Alteração guardada no aparelho" : "Foto guardada no aparelho",
+          { icon: "📵" }
+        );
+      }
+
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),

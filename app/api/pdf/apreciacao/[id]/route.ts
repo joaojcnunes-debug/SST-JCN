@@ -5,15 +5,16 @@ import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
 import type {
   ApreciacaoItemLocal,
   ApreciacaoAcaoLocal,
-  ApreciacaoRiscoLocal,
-  ApreciacaoFichaLocal,
+  RiscoFichaLocal,
+  FichaMaquinaLocal,
+  FichaPdfLocal,
 } from "@/components/pdf/templates/ApreciacaoTemplate";
 import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import { montarValoresEmpresa, formatarDataBR } from "@/lib/textos-padrao/variaveis";
 import { montarSignatarioTecnico } from "@/lib/pdf/folha-assinatura-tecnico";
-import { detectRegistroTipo, getRegistroValue } from "@/lib/registro-profissional";
 import { assinarMidiaPdf, assinarCapitulos } from "@/lib/pdf/assinar-midia";
+import { otimizarFotosPdf } from "@/lib/pdf/otimizar-imagem";
 
 import { aplicarAnexosNoPdf } from "@/lib/anexos/server";
 
@@ -41,122 +42,43 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     }
     const ap = rawAp as Record<string, unknown>;
 
-    // Fichas de máquina (multi-máquina), ordenadas.
-    const { data: rawFichas } = await supabase
-      .from("apreciacao_fichas_maquina")
-      .select("*")
-      .eq("id_apreciacao", id)
-      .order("numero_ordem", { ascending: true });
-    const fichasRaw = (rawFichas ?? []) as Record<string, unknown>[];
-
-    // Itens (checklist) de todas as fichas.
     const { data: rawItens } = await supabase
       .from("apreciacoes_maquinas_itens")
       .select("*")
       .eq("id_apreciacao", id)
       .order("ordem", { ascending: true });
-    const itensComFicha = ((rawItens ?? []) as Record<string, unknown>[]).map((i) => ({
+    const rawItensArr = (rawItens ?? []) as Record<string, unknown>[];
+    const itens: ApreciacaoItemLocal[] = rawItensArr.map((i) => ({
+      id_item: String(i.id_item),
       id_ficha: (i.id_ficha as string) ?? null,
-      item: {
-        id_item: String(i.id_item),
-        item_codigo: (i.item_codigo as string) ?? "",
-        item_categoria: (i.item_categoria as string) ?? "",
-        item_titulo: (i.item_titulo as string) ?? "",
-        item_descricao: (i.item_descricao as string) ?? null,
-        item_origem: (i.item_origem as string) ?? null,
-        situacao: (i.situacao as string) ?? "PENDENTE",
-        observacao: (i.observacao as string) ?? null,
-        recomendacao: (i.recomendacao as string) ?? null,
-        probabilidade: (i.probabilidade as string) ?? null,
-        severidade: (i.severidade as string) ?? null,
-        nivel_risco_calculado: (i.nivel_risco_calculado as string) ?? null,
-        foto_urls: Array.isArray(i.foto_urls) ? (i.foto_urls as string[]) : [],
-        foto_legendas: Array.isArray(i.foto_legendas) ? (i.foto_legendas as string[]) : [],
-      } as ApreciacaoItemLocal,
+      item_codigo: (i.item_codigo as string) ?? "",
+      item_categoria: (i.item_categoria as string) ?? "",
+      item_titulo: (i.item_titulo as string) ?? "",
+      item_descricao: (i.item_descricao as string) ?? null,
+      item_origem: (i.item_origem as string) ?? null,
+      situacao: (i.situacao as string) ?? "PENDENTE",
+      observacao: (i.observacao as string) ?? null,
+      recomendacao: (i.recomendacao as string) ?? null,
+      probabilidade: (i.probabilidade as string) ?? null,
+      severidade: (i.severidade as string) ?? null,
+      nivel_risco_calculado: (i.nivel_risco_calculado as string) ?? null,
+      foto_urls: Array.isArray(i.foto_urls) ? (i.foto_urls as string[]) : [],
+      foto_legendas: Array.isArray(i.foto_legendas) ? (i.foto_legendas as string[]) : [],
     }));
 
-    // Fotos → URLs assinadas p/ o Puppeteer (fallback p/ original em falha).
+    // Fotos → URLs assinadas p/ o Puppeteer (fallback p/ original em falha) e
+    // depois reduzidas (1536px de câmera para um espaço de 120px no papel).
     await Promise.all(
-      itensComFicha.map(async (x) => {
-        x.item.foto_urls = await assinarMidiaPdf(supabase, x.item.foto_urls, "fotos");
-      }),
-    );
-
-    // Riscos HRN de todas as fichas.
-    const { data: rawRiscos } = await supabase
-      .from("apreciacao_riscos_hrn")
-      .select("*")
-      .eq("id_apreciacao", id)
-      .order("ordem", { ascending: true });
-    const riscosComFicha = ((rawRiscos ?? []) as Record<string, unknown>[]).map((r) => ({
-      id_ficha: (r.id_ficha as string) ?? null,
-      risco: {
-        tipo_perigo: (r.tipo_perigo as string) ?? "",
-        origem: (r.origem as string) ?? null,
-        potenciais_consequencias: (r.potenciais_consequencias as string) ?? null,
-        pod: (r.pod as string) ?? null,
-        fep: (r.fep as string) ?? null,
-        gpd: (r.gpd as string) ?? null,
-        classificacao_risco: (r.classificacao_risco as string) ?? null,
-        pod_residual: (r.pod_residual as string) ?? null,
-        fep_residual: (r.fep_residual as string) ?? null,
-        gpd_residual: (r.gpd_residual as string) ?? null,
-        classificacao_residual: (r.classificacao_residual as string) ?? null,
-        nivel_acoes: (r.nivel_acoes as string) ?? null,
-        medidas_preventivas: (r.medidas_preventivas as string) ?? null,
-        itens_nr12: Array.isArray(r.itens_nr12) ? (r.itens_nr12 as string[]) : null,
-        categoria_seguranca: (r.categoria_seguranca as string) ?? null,
-      } as ApreciacaoRiscoLocal,
-    }));
-
-    const todosItens = itensComFicha.map((x) => x.item);
-
-    // Monta as fichas (identificação + itens + riscos por máquina).
-    const fichas: ApreciacaoFichaLocal[] = fichasRaw.map((fr) => {
-      const idf = fr.id_ficha as string;
-      return {
-        nome:
-          (fr.equipamento as string) ||
-          (fr.maquina_descricao as string) ||
-          `Máquina ${(fr.numero_ordem as number) ?? ""}`,
-        numero_ordem: (fr.numero_ordem as number) ?? 1,
-        setor: (fr.setor as string) ?? null,
-        tipo: (fr.tipo as string) ?? null,
-        modelo: (fr.modelo as string) ?? null,
-        fabricante: (fr.fabricante as string) ?? null,
-        serie: (fr.serie as string) ?? null,
-        ano: (fr.ano as string) ?? null,
-        capacidade: (fr.capacidade as string) ?? null,
-        componentes_maquina: Array.isArray(fr.componentes_maquina) ? (fr.componentes_maquina as string[]) : null,
-        limite_uso: (fr.limite_uso as string) ?? null,
-        limite_espaco: (fr.limite_espaco as string) ?? null,
-        limite_tempo: (fr.limite_tempo as string) ?? null,
-        limite_produtividade: (fr.limite_produtividade as string) ?? null,
-        npe: (fr.npe as string) ?? null,
-        sistemas_atual: Array.isArray(fr.sistemas_atual) ? (fr.sistemas_atual as string[]) : null,
-        sistemas_necessario: Array.isArray(fr.sistemas_necessario) ? (fr.sistemas_necessario as string[]) : null,
-        constatacoes_inspecao: (fr.constatacoes_inspecao as string) ?? null,
-        parecer_tecnico: (fr.parecer_tecnico as string) ?? null,
-        operadores: Array.isArray(fr.operadores)
-          ? (fr.operadores as { nome: string; cargo: string }[])
-          : null,
-        foto_urls: Array.isArray(fr.foto_urls) ? (fr.foto_urls as string[]) : [],
-        prioridade_manual: !!fr.prioridade_manual,
-        itens: itensComFicha.filter((x) => x.id_ficha === idf).map((x) => x.item),
-        riscos: riscosComFicha.filter((x) => x.id_ficha === idf).map((x) => x.risco),
-      } as ApreciacaoFichaLocal;
-    });
-
-    // Assina as fotos das fichas (registro fotográfico da máquina) p/ o Puppeteer.
-    await Promise.all(
-      fichas.map(async (f) => {
-        f.foto_urls = await assinarMidiaPdf(supabase, f.foto_urls, "fotos");
+      itens.map(async (it) => {
+        it.foto_urls = await otimizarFotosPdf(
+          await assinarMidiaPdf(supabase, it.foto_urls, "fotos"),
+        );
       }),
     );
 
     // Mapa id_item → "codigo — titulo" para a coluna Origem do plano de ação.
     const itemLabel = new Map<string, string>();
-    todosItens.forEach((i) => itemLabel.set(i.id_item, `${i.item_codigo} — ${i.item_titulo}`));
+    itens.forEach((i) => itemLabel.set(i.id_item, `${i.item_codigo} — ${i.item_titulo}`));
 
     const { data: rawAcoes } = await supabase
       .from("apreciacao_acoes")
@@ -191,13 +113,118 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       empresa = (rawEmp as unknown as Empresa) ?? null;
     }
 
-    // Nome exibido: 1 máquina → o nome dela; várias → contagem.
-    const maquinaNome =
-      fichas.length === 1
-        ? fichas[0].nome
-        : fichas.length > 1
-          ? `${fichas.length} máquinas`
-          : ((ap.maquina_descricao as string) ?? "Máquina");
+    // Linhas de risco da ficha (seção 4). Ficaram anos sem ser consultadas aqui
+    // — por isso a tabela estava vazia: ninguém preenchia o que não era impresso.
+    const { data: rawRiscos } = await supabase
+      .from("apreciacao_riscos_hrn")
+      .select("*")
+      .eq("id_apreciacao", id)
+      .order("ordem", { ascending: true });
+    const riscos: RiscoFichaLocal[] = ((rawRiscos ?? []) as Record<string, unknown>[]).map((r) => ({
+      id_risco: String(r.id_risco),
+      id_ficha: (r.id_ficha as string) ?? null,
+      tipo_perigo: (r.tipo_perigo as string) ?? "",
+      origem: (r.origem as string) ?? null,
+      potenciais_consequencias: (r.potenciais_consequencias as string) ?? null,
+      item_nr12: (r.item_nr12 as string) ?? null,
+      itens_nr12: Array.isArray(r.itens_nr12) ? (r.itens_nr12 as string[]) : null,
+      categoria_seguranca: (r.categoria_seguranca as string) ?? null,
+      pod: (r.pod as string) ?? null,
+      fep: (r.fep as string) ?? null,
+      gpd: (r.gpd as string) ?? null,
+      classificacao_risco: (r.classificacao_risco as string) ?? null,
+      medidas_engenharia: (r.medidas_engenharia as string) ?? null,
+      medidas_administrativas: (r.medidas_administrativas as string) ?? null,
+      medidas_preventivas: (r.medidas_preventivas as string) ?? null,
+      pod_residual: (r.pod_residual as string) ?? null,
+      fep_residual: (r.fep_residual as string) ?? null,
+      gpd_residual: (r.gpd_residual as string) ?? null,
+      classificacao_residual: (r.classificacao_residual as string) ?? null,
+    }));
+
+    // ── Máquinas do laudo (v148) — cada uma com seus riscos e fotos ─────────
+    const { data: rawFichas } = await supabase
+      .from("apreciacao_fichas_maquina")
+      .select("*")
+      .eq("id_apreciacao", id)
+      .order("numero_ordem", { ascending: true });
+
+    const fichas: FichaPdfLocal[] = await Promise.all(
+      ((rawFichas ?? []) as Record<string, unknown>[]).map(async (f) => {
+        const urls = Array.isArray(f.foto_urls) ? (f.foto_urls as string[]) : [];
+        return {
+          id_ficha: String(f.id_ficha),
+          numero_ordem: Number(f.numero_ordem ?? 0),
+          nome:
+            (f.maquina_descricao as string)
+            ?? (f.equipamento as string)
+            ?? "Máquina",
+          tipo: (f.tipo as string) ?? null,
+          modelo: (f.modelo as string) ?? null,
+          fabricante: (f.fabricante as string) ?? null,
+          serie: (f.serie as string) ?? null,
+          ano: (f.ano as string) ?? null,
+          capacidade: (f.capacidade as string) ?? null,
+          setor: (f.setor as string) ?? null,
+          operadores: Array.isArray(f.operadores)
+            ? (f.operadores as { nome: string; cargo: string }[])
+            : null,
+          constatacoes_inspecao: (f.constatacoes_inspecao as string) ?? null,
+          parecer_tecnico: (f.parecer_tecnico as string) ?? null,
+          // Máx. 3 no PDF: a ficha tem que caber numa página.
+          fotos: await otimizarFotosPdf(
+            (await assinarMidiaPdf(supabase, urls.slice(0, 3), "fotos")).filter(Boolean),
+          ),
+          riscos: riscos.filter((r) => r.id_ficha === String(f.id_ficha)),
+        };
+      }),
+    );
+
+    // Nome e bloco "Inventário" da ficha: vínculo no inventário ou descrição livre.
+    let maquinaNome = (ap.maquina_descricao as string) ?? "Máquina";
+    let maquina: FichaMaquinaLocal | null = null;
+    let fotosMaquina: string[] = [];
+    if (ap.id_maquina) {
+      const { data: rawMaq } = await supabase
+        .from("inventario_maquinas")
+        .select(
+          "nome, tipo, marca, modelo, numero_serie, ano_fabricacao, capacidade_operacional, setor, operadores, foto_url, id_maquina_inspecao",
+        )
+        .eq("id_maquina", ap.id_maquina as string)
+        .single();
+      const maq = rawMaq as Record<string, unknown> | null;
+      if (maq) {
+        if (maq.nome) maquinaNome = String(maq.nome);
+        if (maq.foto_url) fotosMaquina = [String(maq.foto_url)];
+        // Sem foto no cadastro: usa o registro fotográfico da inspeção de origem
+        // (as máquinas importadas de inspeção vieram todas com foto).
+        if (!fotosMaquina.length && maq.id_maquina_inspecao) {
+          const { data: rawInsp } = await supabase
+            .from("inspecao_maquinas")
+            .select("foto_urls")
+            .eq("id_maquina_inspecao", maq.id_maquina_inspecao as string)
+            .single();
+          const arr = (rawInsp as { foto_urls?: string[] } | null)?.foto_urls;
+          if (Array.isArray(arr)) fotosMaquina = arr.slice(0, 3);
+        }
+        maquina = {
+          tipo: (maq.tipo as string) ?? null,
+          marca: (maq.marca as string) ?? null,
+          modelo: (maq.modelo as string) ?? null,
+          numero_serie: (maq.numero_serie as string) ?? null,
+          ano_fabricacao: maq.ano_fabricacao ? String(maq.ano_fabricacao) : null,
+          capacidade: (maq.capacidade_operacional as string) ?? null,
+          setor: (maq.setor as string) ?? (ap.setor as string) ?? null,
+          operadores: (maq.operadores as string) ?? null,
+          fotos: [],
+        };
+      }
+    }
+    if (maquina) {
+      maquina.fotos = await otimizarFotosPdf(
+        (await assinarMidiaPdf(supabase, fotosMaquina, "fotos")).filter(Boolean),
+      );
+    }
 
     const valores: Record<string, string> = {
       ...montarValoresEmpresa(empresa),
@@ -208,8 +235,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       responsavel_empresa: (ap.responsavel_empresa as string) ?? "",
       cidade: (ap.cidade as string) ?? "",
       data_apreciacao: formatarDataBR(ap.data_apreciacao as string | null),
-      total_itens: String(todosItens.length),
-      total_nao_conforme: String(todosItens.filter((i) => i.situacao === "NAO_CONFORME").length),
+      total_itens: String(itens.length),
+      total_nao_conforme: String(itens.filter((i) => i.situacao === "NAO_CONFORME").length),
       risco_residual: (ap.risco_residual as string) ?? "",
       carimbo: (ap.responsavel as string) ?? "",
       importado: formatarDataBR(ap.created_at as string | null),
@@ -221,37 +248,6 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
     valores.usuario_logado = perfilLogado?.nome ?? user.email ?? "";
     valores.tipo_relatorio = "Apreciação de Risco — Máquinas (NR-12)";
-
-    // Responsável Técnico (assinante): busca o usuário pelo nome p/ registro + ART.
-    let responsavelTecnico: {
-      nome: string;
-      cargo: string | null;
-      registroLabel: string;
-      registro: string | null;
-      art: string | null;
-    } | null = null;
-    if (ap.responsavel) {
-      const { data: usrs } = await supabase
-        .from("usuarios")
-        .select("nome, cargo, crea, art, crp, crm, registro_mte")
-        .eq("ativo_sistema", true);
-      const normn = (s: string) => s.toLowerCase().trim().replace(/\s+/g, " ");
-      const alvo = normn(ap.responsavel as string);
-      const u = ((usrs ?? []) as Record<string, unknown>[]).find((x) => {
-        const n = normn(String(x.nome ?? ""));
-        return n && (n === alvo || alvo.includes(n) || n.includes(alvo));
-      });
-      if (u) {
-        const reg = detectRegistroTipo(u.cargo as string | null);
-        responsavelTecnico = {
-          nome: String(u.nome),
-          cargo: (u.cargo as string) ?? null,
-          registroLabel: reg.label,
-          registro: getRegistroValue(u as never) || null,
-          art: (u.art as string) ?? null,
-        };
-      }
-    }
 
     const { signatario, dataHoraAssinatura } = await montarSignatarioTecnico(supabase, {
       tabela: "apreciacoes_maquinas",
@@ -283,24 +279,27 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           responsavel: (ap.responsavel as string) ?? null,
           responsavel_empresa: (ap.responsavel_empresa as string) ?? null,
           data_apreciacao: (ap.data_apreciacao as string) ?? null,
-          notificacao_sit: (ap.notificacao_sit as string) ?? null,
           risco_residual: (ap.risco_residual as string) ?? null,
           observacoes_gerais: (ap.observacoes_gerais as string) ?? null,
           conclusao_tecnica: (ap.conclusao_tecnica as string) ?? null,
           recomendacoes: (ap.recomendacoes as string) ?? null,
+          constatacoes_inspecao: (ap.constatacoes_inspecao as string) ?? null,
         },
         maquinaNome,
         empresa,
-        fichas,
+        itens,
         acoes,
+        riscos,
+        maquina,
+        fichas,
+        notificacaoSit: (ap.notificacao_sit as string) ?? null,
+        incluirChecklist: Boolean(ap.incluir_checklist_pdf),
         capitulos,
         valores,
         signatarios,
         folhaEmpresa,
         dataHoraAssinatura,
         identificadorDocumento,
-        incluirChecklist: Boolean(ap.incluir_checklist_pdf),
-        responsavelTecnico,
       }),
     );
 

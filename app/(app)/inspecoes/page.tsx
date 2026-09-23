@@ -20,7 +20,7 @@ import {
 } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useUnidades } from "@/lib/hooks/useUnidades";
-import { useCanCreate, useCanDelete, useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useCanCreate, useCanDelete, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import { useUnidadeAtiva } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { registrarSoftNaLixeira } from "@/lib/hooks/useLixeira";
@@ -34,6 +34,9 @@ const FILTROS: { value: FiltroInspecao; label: string }[] = [
   { value: "RASCUNHO", label: "Rascunho" },
   { value: "EM_ANDAMENTO", label: "Em Andamento" },
   { value: "CONCLUIDA", label: "Concluídas" },
+  // Pedido de 16/09, afinado em 21/09: as inspeções que têm alguém associado ao
+  // documento (SGG) — mesma pílula, mesmo jeito das outras.
+  { value: "ASSOCIADOS", label: "Associados" },
 ];
 
 const ORDENS: { value: OrdemInspecao; label: string }[] = [
@@ -56,7 +59,8 @@ function InspecoesInner() {
   const pathname = usePathname();
   const canCreate = useCanCreate();
   const canDelete = useCanDelete();
-  const isAdmin = useIsAdmin();
+  // v229: trocar o técnico responsável é ato de supervisão (nível Aprovação), não só de Admin.
+  const isAdmin = useIsSupervisor();
   const qc = useQueryClient();
   const [confirmDel, setConfirmDel] = useState<Inspecao | null>(null);
   const [editResp, setEditResp] = useState<Inspecao | null>(null);
@@ -134,6 +138,7 @@ function InspecoesInner() {
     page,
     pageSize: PAGE_SIZE,
   });
+  const countData = counts.data;
 
   const items = lista.data?.items ?? [];
   const total = lista.data?.total ?? 0;
@@ -141,7 +146,6 @@ function InspecoesInner() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const isLoading = lista.isLoading;
   const isFetching = lista.isFetching;
-  const countData = counts.data;
 
   return (
     <div className="space-y-4">
@@ -246,6 +250,17 @@ function InspecoesInner() {
         </div>
       )}
 
+      {/* A contagem "Todos (N)" é só desta unidade — quem não sabe acha que a inspeção sumiu. */}
+      {idUnidade && !empresaId && (
+        <p className="text-xs text-gray-500">
+          Mostrando só as inspeções de{" "}
+          <strong>{unidades.find((u) => u.id_unidade === idUnidade)?.nome ?? "esta unidade"}</strong> —{" "}
+          <button type="button" onClick={() => setIdUnidade("")} className="font-semibold text-verde-primary hover:underline">
+            ver todas as unidades
+          </button>
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
           {FILTROS.map((f) => (
             <button
@@ -261,7 +276,7 @@ function InspecoesInner() {
             >
               {f.label}
               {countData && (
-                <span className="ml-1.5 opacity-75">({countData[f.value]})</span>
+                <span className="ml-1.5 opacity-75">({countData.status[f.value]})</span>
               )}
             </button>
           ))}
@@ -289,7 +304,7 @@ function InspecoesInner() {
           </div>
         ) : items.length === 0 ? (
           <div className="p-14 text-center text-sm text-gray-500">
-            Nenhuma inspeção {filtro !== "Todos" ? "nesse status" : "encontrada"}.
+            Nenhuma inspeção {filtro !== "Todos" ? "nesse filtro" : "encontrada"}.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -303,8 +318,8 @@ function InspecoesInner() {
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-400">Rev.</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Data</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Responsável</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Associados</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Associados</th>
                   <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400">Ações</th>
                 </tr>
               </thead>

@@ -5,6 +5,9 @@ import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
+import { gravar, type ImagemPendente } from "@/lib/offline/gravar";
+import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoes";
+import { ehErroDeRede } from "@/lib/offline/rede";
 import type {
   AepCargoSetor,
   AepChecklistCognitiva,
@@ -16,6 +19,7 @@ import type {
   AepTextoPadraoCapitulo,
   ClassificacaoRiscoAET,
   RespostaChecklist,
+  RespostaChecklistAep,
   StatusAEP,
   TipoRiscoAET,
 } from "@/lib/supabase/types";
@@ -26,6 +30,16 @@ function toResposta(v: unknown): RespostaChecklist {
   if (v === true || v === "sim") return "sim";
   if (v === "nao_aplica") return "nao_aplica";
   return "nao";
+}
+
+/**
+ * Só a Ergonomia Organizacional aceita "N/I — não identificável". Precisa de um
+ * normalizador próprio: o `toResposta` acima derruba qualquer valor
+ * desconhecido para "nao", e o N/I gravado no jsonb sumiria na leitura.
+ */
+function toRespostaOrg(v: unknown): RespostaChecklistAep {
+  if (v === "nao_identificado") return "nao_identificado";
+  return toResposta(v);
 }
 
 function normalizarChecklistFisica(raw: unknown): AepChecklistFisica {
@@ -57,19 +71,19 @@ function normalizarChecklistCognitiva(raw: unknown): AepChecklistCognitiva {
 function normalizarChecklistOrganizacional(raw: unknown): AepChecklistOrganizacional {
   const c = (raw ?? {}) as Record<string, unknown>;
   return {
-    assedio: toResposta(c.assedio),
-    falta_suporte: toResposta(c.falta_suporte),
-    gestao_mudancas: toResposta(c.gestao_mudancas),
-    clareza_papel: toResposta(c.clareza_papel),
-    recompensas: toResposta(c.recompensas),
-    baixo_controle: toResposta(c.baixo_controle),
-    justica_organizacional: toResposta(c.justica_organizacional),
-    eventos_traumaticos: toResposta(c.eventos_traumaticos),
-    subcarga: toResposta(c.subcarga),
-    sobrecarga: toResposta(c.sobrecarga),
-    maus_relacionamentos: toResposta(c.maus_relacionamentos),
-    comunicacao_dificil: toResposta(c.comunicacao_dificil),
-    trabalho_remoto: toResposta(c.trabalho_remoto),
+    assedio: toRespostaOrg(c.assedio),
+    falta_suporte: toRespostaOrg(c.falta_suporte),
+    gestao_mudancas: toRespostaOrg(c.gestao_mudancas),
+    clareza_papel: toRespostaOrg(c.clareza_papel),
+    recompensas: toRespostaOrg(c.recompensas),
+    baixo_controle: toRespostaOrg(c.baixo_controle),
+    justica_organizacional: toRespostaOrg(c.justica_organizacional),
+    eventos_traumaticos: toRespostaOrg(c.eventos_traumaticos),
+    subcarga: toRespostaOrg(c.subcarga),
+    sobrecarga: toRespostaOrg(c.sobrecarga),
+    maus_relacionamentos: toRespostaOrg(c.maus_relacionamentos),
+    comunicacao_dificil: toRespostaOrg(c.comunicacao_dificil),
+    trabalho_remoto: toRespostaOrg(c.trabalho_remoto),
   };
 }
 
@@ -95,6 +109,19 @@ function normalizarSetor(s: unknown): AepSetor {
     checklist_fisica: normalizarChecklistFisica(setor.checklist_fisica),
     checklist_cognitiva: normalizarChecklistCognitiva(setor.checklist_cognitiva),
     checklist_organizacional: normalizarChecklistOrganizacional(setor.checklist_organizacional),
+    // ⚠️ Este normalizador reconstrói o setor campo a campo — o que não estiver
+    // aqui é DESCARTADO em toda leitura. Foi por isso que os sinais precisaram
+    // entrar explicitamente. Só aceita array de string, para lixo no jsonb não
+    // virar erro de tela.
+    sinais_organizacional: (() => {
+      const bruto = setor.sinais_organizacional;
+      if (typeof bruto !== "object" || bruto === null) return {};
+      const out: Record<string, string[]> = {};
+      for (const [k, v] of Object.entries(bruto as Record<string, unknown>)) {
+        if (Array.isArray(v)) out[k] = v.filter((x): x is string => typeof x === "string");
+      }
+      return out;
+    })(),
     parecer_tecnico: (setor.parecer_tecnico as string) ?? "",
     recomendacoes: (setor.recomendacoes as string) ?? "",
     necessita_aet: Boolean(setor.necessita_aet),
@@ -126,6 +153,7 @@ export function setorVazioAep(): AepSetor {
     trabalhadores_consultados: "",
     cargos: [],
     observacoes_checklist: {},
+    sinais_organizacional: {},
     riscos: [],
     checklist_fisica: {
       postura: "nao",
@@ -183,7 +211,9 @@ export function calcNecessitaAet(setor: AepSetor): boolean {
     (r) => r.classificacao_risco === "Alto" || r.classificacao_risco === "Crítico"
   );
   const moderados = setor.riscos.filter((r) => r.classificacao_risco === "Moderado");
-  return altos.length > 0 || moderados.length >= 3;
+  // "Múltiplos riscos Moderados" — o texto da tarja e do laudo diz múltiplos, que
+  // é 2 ou mais. O limiar era 3 e contradizia a própria redação (pedido 10/08).
+  return altos.length > 0 || moderados.length >= 2;
 }
 
 export function riscoMaximoAep(setor: AepSetor): ClassificacaoRiscoAET | null {
@@ -243,15 +273,33 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 export function useAepRelatorio(id: string) {
   return useQuery({
     queryKey: ["aep-relatorio", id],
+
+    // Sem rede, insistir é perder tempo: o plano B está dentro da `queryFn`.
+    retry: (falhas, erro) => !ehErroDeRede(erro) && falhas < 2,
+
     queryFn: async () => {
-      const supabase = createSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("aep_relatorios")
-        .select("*, empresas(nome_empresa, cnpj)")
-        .eq("id_relatorio", id)
-        .single();
-      if (error) throw error;
-      return normalizarRelatorio(data);
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data, error } = await supabase
+          .from("aep_relatorios")
+          .select("*, empresas(nome_empresa, cnpj)")
+          .eq("id_relatorio", id)
+          .single();
+        if (error) throw error;
+        const relatorio = normalizarRelatorio(data);
+        // Mantém fresca só a cópia que o técnico levou — ver `LevarParaCampo`.
+        void lerDocumentoCache(id).then((ja) => {
+          if (ja) void guardarDocumentoCache(id, relatorio);
+        });
+        return relatorio;
+      } catch (e) {
+        // Recusa do banco e laudo inexistente continuam sendo erro.
+        if (!ehErroDeRede(e)) throw e;
+        const guardado =
+          await lerDocumentoCache<ReturnType<typeof normalizarRelatorio>>(id);
+        if (guardado) return guardado.dados;
+        throw e;
+      }
     },
     enabled: !!id && UUID_RE.test(id),
   });
@@ -265,6 +313,9 @@ export function useCriarAep() {
       responsavel_elaboracao: string;
       titulo_profissional: string;
       registro_profissional: string;
+      /** Uma linha, montada do cadastro da empresa na tela de criação.
+       *  Alimenta {{endereco_empresa}} dos Textos Padrão do laudo. */
+      endereco_empresa?: string | null;
       data_elaboracao?: string | null;
     }) => {
       const supabase = createSupabaseBrowserClient();
@@ -287,23 +338,57 @@ export function useCriarAep() {
 export function useSalvarAep() {
   const qc = useQueryClient();
   return useMutation({
+    // `silencioso` não vai para o banco: serve para o auto-save da ordem dos
+    // setores não cuspir um toast "Salvo com sucesso!" a cada arrasto.
     mutationFn: async ({
       id,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- lido no onSuccess; aqui só precisa ficar de fora do patch que vai pro banco.
+      silencioso,
+      imagens,
       ...patch
-    }: Partial<AepRelatorio> & { id: string }) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("aep_relatorios")
-        .update({ ...patch, updated_at: new Date().toISOString() } as never)
-        .eq("id_relatorio", id);
-      if (error) throw error;
+    }: Partial<AepRelatorio> & {
+      id: string;
+      silencioso?: boolean;
+      /**
+       * Fotos dos setores que ainda não subiram. Vão junto do patch porque a
+       * URL delas já está dentro do jsonb — gravar o jsonb antes do arquivo
+       * publicaria no laudo uma foto apontando para o nada.
+       */
+      imagens?: ImagemPendente[];
+    }) => {
+      return gravar({
+        tabela: "aep_relatorios",
+        tipo: "update",
+        linhas: { ...patch, updated_at: new Date().toISOString() },
+        filtro: { id_relatorio: id },
+        modulo: "aep",
+        id_documento: id,
+        imagens,
+      });
     },
-    onSuccess: (_d, vars) => {
-      qc.invalidateQueries({ queryKey: ["aep-relatorio", vars.id] });
+    onSuccess: (resultado, vars) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- os arquivos já foram entregues ao gravar(); aqui só precisam ficar de fora do patch aplicado ao cache.
+      const { id, silencioso, imagens, ...patch } = vars;
+      // Sem rede o patch é aplicado no cache do mesmo jeito que o auto-save já
+      // fazia: não há o que revalidar, e a tela precisa continuar mostrando o
+      // que o técnico acabou de digitar.
+      if (silencioso || resultado.destino === "APARELHO") {
+        // Auto-save da ordem: atualiza o cache no lugar de invalidar. Um
+        // refetch aqui devolveria um objeto novo, a tela remontaria o estado
+        // local a cada arrasto e o setor aberto se fecharia sozinho.
+        qc.setQueryData(["aep-relatorio", id], (antigo: AepRelatorio | undefined) =>
+          antigo ? { ...antigo, ...patch } : antigo,
+        );
+        if (!silencioso) toast.success("Guardado no aparelho", { icon: "📵" });
+        return;
+      }
+      qc.invalidateQueries({ queryKey: ["aep-relatorio", id] });
       qc.invalidateQueries({ queryKey: ["aep-relatorios"] });
       toast.success("Salvo com sucesso!");
     },
-    onError: (e: Error) => toast.error(`Erro ao salvar: ${e.message}`),
+    onError: (e: Error, vars) => {
+      if (!vars.silencioso) toast.error(`Erro ao salvar: ${e.message}`);
+    },
   });
 }
 

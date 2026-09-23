@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Image as ImageIcon } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import { useMutation } from "@tanstack/react-query";
 import FotoForm from "../FotoForm";
 import StorageImg from "@/components/ui/StorageImg";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { useExcluirDaInspecao } from "@/lib/hooks/useExcluirDaInspecao";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { CATEGORIAS_FOTO, CATEGORIA_FOTO_ICONE } from "@/lib/constants";
 import type { CategoriaFoto, Foto, Setor } from "@/lib/supabase/types";
@@ -26,7 +26,6 @@ export default function FotosTab({
   setores,
   readOnly,
 }: Props) {
-  const qc = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Foto | null>(null);
   const [confirm, setConfirm] = useState<Foto | null>(null);
@@ -41,25 +40,40 @@ export default function FotosTab({
     return acc;
   }, [fotos]);
 
+  /**
+   * A linha da foto some pela fila; o ARQUIVO só é apagado quando há rede.
+   *
+   * Sem rede não existe como apagar do MinIO — e enfileirar a remoção do arquivo
+   * exigiria a fila entender storage, que hoje ela só sabe escrever. O resultado
+   * é um arquivo órfão: ocupa espaço e não aparece em lugar nenhum, porque a
+   * linha que apontava para ele deixou de existir. Desperdício, não erro — a
+   * mesma postura que a galeria da Frota já adota.
+   */
+  const excluir = useExcluirDaInspecao({
+    idInspecao,
+    tabela: "fotos",
+    chave: "id_foto",
+    colecao: "fotos",
+    rotulo: "Foto removida",
+  });
+
   const del = useMutation({
     mutationFn: async (f: Foto) => {
-      const supabase = createSupabaseBrowserClient();
-      // Apaga registro e arquivo do storage (best-effort).
-      if (f.storage_path) {
-        await supabase.storage.from("fotos").remove([f.storage_path]);
+      if (f.storage_path && navigator.onLine) {
+        try {
+          const supabase = createSupabaseBrowserClient();
+          await supabase.storage.from("fotos").remove([f.storage_path]);
+        } catch {
+          // Best-effort, como antes: o arquivo ficar para trás não pode impedir
+          // a linha de sair.
+        }
       }
-      const { error } = await supabase
-        .from("fotos")
-        .delete()
-        .eq("id_foto", f.id_foto);
-      if (error) throw error;
+      await excluir.mutateAsync(f);
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success("Foto removida");
-      setConfirm(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => setConfirm(null),
+    // Sem `onError` de propósito: quem avisa é o `useExcluirDaInspecao`, e um
+    // segundo toast aqui empilharia dois erros iguais na tela para a mesma
+    // falha.
   });
 
   return (

@@ -5,6 +5,7 @@ import {
   BookOpen,
   Brain,
   ClipboardCheck,
+  ClipboardPen,
   HelpCircle,
   Info,
   LayoutDashboard,
@@ -18,18 +19,19 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useRequireModule } from "@/lib/hooks/useRequireModule";
 import { useUserStore } from "@/lib/store";
 import { usePathname } from "next/navigation";
+import { ehSupervisor } from "@/lib/hooks/useUsuario";
 
 export default function AepLayout({ children }: { children: ReactNode }) {
   useAuth();
   useRequireModule("aep");
 
   const user = useUserStore((s) => s.user);
-  const isAdmin = user?.perfil === "Admin";
+  const isAdmin = ehSupervisor(user); // v229: configuração do módulo é de quem supervisiona
   const pathname = usePathname();
 
   const match = pathname.match(/\/aep\/([^/]+)\//);
   const idRelatorio = match?.[1];
-  const isConfigPage = ["dashboard", "novo", "texto-padrao", "ajuda"].includes(idRelatorio ?? "");
+  const isConfigPage = ["dashboard", "novo", "formulario-branco", "texto-padrao", "ajuda"].includes(idRelatorio ?? "");
 
   const sections = useMemo<NavSection[]>(() => {
     const base: NavSection[] = [
@@ -39,6 +41,7 @@ export default function AepLayout({ children }: { children: ReactNode }) {
           { href: "/aep/dashboard",             label: "Dashboard",            icon: LayoutDashboard, variant: "dashboard" },
           { href: "/aep",                       label: "Análises",             icon: List },
           { href: "/aep/novo",                  label: "Nova Análise",         icon: Plus, variant: "action" },
+          { href: "/aep/formulario-branco",     label: "Formulário em Branco", icon: ClipboardPen },
           { href: "/sinalizacao-psicossocial",  label: "Sinalização Psicoss.", icon: Brain },
           { href: "/aep/ajuda",                 label: "Ajuda",                icon: HelpCircle },
         ],
@@ -78,7 +81,7 @@ export default function AepLayout({ children }: { children: ReactNode }) {
         sections={sections}
       />
       <div className="md:pl-[220px] print:pl-0">
-        <ModuleTopbar title="AEP – Análise Ergonômica Preliminar" />
+        <ModuleTopbar />
         <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>{children}</main>
       </div>
     </div>

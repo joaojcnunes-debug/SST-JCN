@@ -3,14 +3,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { gravar } from "@/lib/offline/gravar";
 import { gerarId } from "@/lib/utils";
 import { CATALOGO_NR12 } from "@/lib/apreciacao-maquinas/catalogo-nr12";
-import type { FichaMaquina } from "@/lib/supabase/types";
+import type { FichaMaquina, OperadorFicha } from "@/lib/supabase/types";
+
+/**
+ * Fichas de máquina de um laudo (v148). Um laudo cobre N máquinas; cada ficha
+ * carrega o snapshot da máquina, seus riscos HRN e seu checklist NR-12.
+ */
 
 const KEY = (idApreciacao: string | null | undefined) =>
   ["fichas-maquina", idApreciacao] as const;
 
-/** Fichas de máquina de um laudo (ordenadas). */
+/** Teto de fotos por máquina — o PDF imprime a ficha em uma página. */
+export const MAX_FOTOS_FICHA = 6;
+
 export function useFichasMaquina(idApreciacao: string | null | undefined) {
   return useQuery({
     queryKey: KEY(idApreciacao),
@@ -29,7 +37,6 @@ export function useFichasMaquina(idApreciacao: string | null | undefined) {
 }
 
 export interface FichaMaquinaInput {
-  id_maquina?: string | null;
   maquina_descricao?: string | null;
   equipamento?: string | null;
   tipo?: string | null;
@@ -39,6 +46,7 @@ export interface FichaMaquinaInput {
   ano?: string | null;
   capacidade?: string | null;
   setor?: string | null;
+  id_maquina?: string | null;
   componentes_maquina?: string[] | null;
   limite_uso?: string | null;
   limite_espaco?: string | null;
@@ -49,96 +57,105 @@ export interface FichaMaquinaInput {
   sistemas_necessario?: string[] | null;
   constatacoes_inspecao?: string | null;
   parecer_tecnico?: string | null;
-  operadores?: { nome: string; cargo: string }[] | null;
+  operadores?: OperadorFicha[] | null;
   prioridade_manual?: boolean;
+  foto_urls?: string[];
+  foto_storage_paths?: string[];
+}
+
+/**
+ * Snapshot do checklist NR-12 para uma ficha recém-criada. É cópia de propósito:
+ * mudar o catálogo depois NÃO altera laudo já emitido.
+ */
+async function snapshotChecklist(
+  idApreciacao: string,
+  idFicha: string,
+  dependeDe?: string[],
+) {
+  const linhas = CATALOGO_NR12.map((item, i) => ({
+    id_item: gerarId("APRI"),
+    id_apreciacao: idApreciacao,
+    id_ficha: idFicha,
+    item_codigo: item.codigo,
+    item_categoria: item.categoria,
+    item_titulo: item.titulo,
+    item_descricao: item.descricao ?? null,
+    item_origem: "CATALOGO",
+    situacao: "PENDENTE",
+    ordem: i,
+    foto_urls: [],
+    foto_storage_paths: [],
+    foto_legendas: [],
+  }));
+  // Os itens dependem da ficha: a FK aponta para ela, e mandar os 38 itens
+  // primeiro faria o banco recusar um checklist perfeitamente correto.
+  await gravar({
+    tabela: "apreciacoes_maquinas_itens",
+    tipo: "insert",
+    linhas,
+    filtro: null,
+    modulo: "apreciacao-maquinas",
+    id_documento: idApreciacao,
+    depende_de: dependeDe,
+  });
+  return linhas;
 }
 
 export function useCriarFicha(idApreciacao: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: FichaMaquinaInput): Promise<FichaMaquina> => {
-      const supabase = createSupabaseBrowserClient();
+      /**
+       * `numero_ordem` sai do que a TELA já tem, e não de uma consulta ao banco.
+       *
+       * A consulta anterior (`order desc limit 1`) não existe sem rede, e é
+       * dispensável: a lista de fichas já está carregada — é ela que o técnico
+       * está vendo. Com rede o resultado é o mesmo; sem rede continua havendo
+       * um número, em vez de a máquina não poder ser cadastrada.
+       */
+      const jaNaTela = qc.getQueryData<FichaMaquina[]>(KEY(idApreciacao)) ?? [];
+      const ultimo = jaNaTela.reduce((max, f) => Math.max(max, f.numero_ordem ?? 0), 0);
 
-      // Próximo número de ordem (maior existente + 1).
-      const { data: ultima } = await supabase
-        .from("apreciacao_fichas_maquina")
-        .select("numero_ordem")
-        .eq("id_apreciacao", idApreciacao)
-        .order("numero_ordem", { ascending: false })
-        .limit(1);
-      const numero_ordem =
-        (((ultima?.[0] as { numero_ordem?: number } | undefined)?.numero_ordem) ?? 0) + 1;
-
-      const row: FichaMaquina = {
+      const row = {
         id_ficha: gerarId("APF"),
         id_apreciacao: idApreciacao,
-        numero_ordem,
-        id_maquina: input.id_maquina ?? null,
-        maquina_descricao: input.maquina_descricao ?? null,
-        equipamento: input.equipamento ?? null,
-        tipo: input.tipo ?? null,
-        modelo: input.modelo ?? null,
-        fabricante: input.fabricante ?? null,
-        serie: input.serie ?? null,
-        ano: input.ano ?? null,
-        capacidade: input.capacidade ?? null,
-        setor: input.setor ?? null,
-        componentes_maquina: input.componentes_maquina ?? null,
-        limite_uso: input.limite_uso ?? null,
-        limite_espaco: input.limite_espaco ?? null,
-        limite_tempo: input.limite_tempo ?? null,
-        limite_produtividade: input.limite_produtividade ?? null,
-        npe: input.npe ?? null,
-        sistemas_atual: input.sistemas_atual ?? null,
-        sistemas_necessario: input.sistemas_necessario ?? null,
-        constatacoes_inspecao: input.constatacoes_inspecao ?? null,
-        parecer_tecnico: input.parecer_tecnico ?? null,
-        operadores: input.operadores ?? null,
-        prioridade_manual: input.prioridade_manual ?? false,
+        numero_ordem: ultimo + 1,
+        prioridade_manual: false,
         foto_urls: [],
         foto_storage_paths: [],
-        created_at: new Date().toISOString(),
-        updated_at: null,
+        ...input,
       };
-      const { error } = await supabase
-        .from("apreciacao_fichas_maquina")
-        .insert(row as never);
-      if (error) throw error;
+      const resultado = await gravar({
+        tabela: "apreciacao_fichas_maquina",
+        tipo: "insert",
+        linhas: [row],
+        filtro: null,
+        modulo: "apreciacao-maquinas",
+        id_documento: idApreciacao,
+      });
 
-      // Snapshot do checklist NR-12 para ESTA máquina (por ficha).
-      const itens = CATALOGO_NR12.map((it, idx) => ({
-        id_item: gerarId("APRI"),
-        id_apreciacao: idApreciacao,
-        id_ficha: row.id_ficha,
-        item_codigo: it.codigo,
-        item_categoria: it.categoria,
-        item_titulo: it.titulo,
-        item_descricao: it.descricao ?? null,
-        item_origem: null,
-        ordem: idx,
-        situacao: "PENDENTE",
-        observacao: null,
-        recomendacao: null,
-        probabilidade: null,
-        severidade: null,
-        nivel_risco_calculado: null,
-        id_matriz: null,
-        foto_urls: [] as string[],
-        foto_storage_paths: [] as string[],
-        foto_legendas: [] as string[],
-        created_at: new Date().toISOString(),
-        updated_at: null,
-      }));
-      const { error: eItens } = await supabase
-        .from("apreciacoes_maquinas_itens")
-        .insert(itens as never);
-      if (eItens) throw eItens;
+      await snapshotChecklist(
+        idApreciacao,
+        row.id_ficha,
+        resultado.destino === "APARELHO" ? [resultado.idOperacao] : undefined,
+      );
 
-      return row;
+      return { ...row, __destino: resultado.destino } as unknown as FichaMaquina;
     },
-    onSuccess: () => {
+    onSuccess: (ficha) => {
+      const destino = (ficha as unknown as { __destino?: string }).__destino;
+      if (destino === "APARELHO") {
+        // Sem rede não há o que revalidar: a máquina entra na lista à mão,
+        // senão o técnico a cadastraria e ela não apareceria para ser
+        // preenchida.
+        qc.setQueryData<FichaMaquina[]>(KEY(idApreciacao), (antigo) => [
+          ...(antigo ?? []),
+          ficha,
+        ]);
+        toast.success("Máquina guardada no aparelho", { icon: "📵" });
+        return;
+      }
       qc.invalidateQueries({ queryKey: KEY(idApreciacao) });
-      // o editor lê o checklist via useApreciacaoMaquina (KEY_DETALHE)
       qc.invalidateQueries({ queryKey: ["apreciacao-maquina", idApreciacao] });
     },
     onError: (e: Error) => toast.error(`Erro ao adicionar máquina: ${e.message}`),
@@ -148,58 +165,224 @@ export function useCriarFicha(idApreciacao: string) {
 export function useAtualizarFicha(idApreciacao: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (
-      params: { id_ficha: string } & Partial<FichaMaquinaInput>
-    ) => {
-      const supabase = createSupabaseBrowserClient();
+    mutationFn: async (params: { id_ficha: string } & FichaMaquinaInput) => {
       const { id_ficha, ...patch } = params;
-      const { error } = await supabase
-        .from("apreciacao_fichas_maquina")
-        .update({ ...patch, updated_at: new Date().toISOString() } as never)
-        .eq("id_ficha", id_ficha);
-      if (error) throw error;
-      return params;
+      const completo = { ...patch, updated_at: new Date().toISOString() };
+      const resultado = await gravar({
+        tabela: "apreciacao_fichas_maquina",
+        tipo: "update",
+        linhas: completo,
+        filtro: { id_ficha },
+        modulo: "apreciacao-maquinas",
+        id_documento: idApreciacao,
+      });
+      return { id_ficha, patch: completo, resultado };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY(idApreciacao) }),
-    onError: (e: Error) => toast.error(`Erro ao atualizar máquina: ${e.message}`),
+    onSuccess: ({ id_ficha, patch, resultado }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY(idApreciacao) });
+        return;
+      }
+      // Sem rede não há o que revalidar: mescla o patch sobre a ficha na tela.
+      qc.setQueryData<FichaMaquina[]>(KEY(idApreciacao), (antigo) =>
+        (antigo ?? []).map((f) =>
+          f.id_ficha === id_ficha ? ({ ...f, ...patch } as FichaMaquina) : f,
+        ),
+      );
+    },
+    onError: (e: Error) => toast.error(`Erro ao salvar máquina: ${e.message}`),
   });
 }
 
 export function useExcluirFicha(idApreciacao: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id_ficha: string) => {
-      const supabase = createSupabaseBrowserClient();
-
-      // Remove as fotos da própria ficha do Storage (as filhas caem por cascade).
-      const { data: ficha } = await supabase
-        .from("apreciacao_fichas_maquina")
-        .select("foto_storage_paths")
-        .eq("id_ficha", id_ficha)
-        .maybeSingle();
-      const paths =
-        (ficha as { foto_storage_paths?: string[] } | null)?.foto_storage_paths ?? [];
-      if (paths.length > 0) {
-        await supabase.storage.from("fotos").remove(paths);
+    mutationFn: async (ficha: FichaMaquina) => {
+      // Limpa as fotos do bucket antes — a linha some por cascata e levaria
+      // junto a referência, deixando arquivo órfão no Storage. Só com rede:
+      // sem ela o órfão acontece de qualquer jeito, e travar a exclusão por
+      // causa disso seria pior.
+      if (ficha.foto_storage_paths?.length && navigator.onLine) {
+        try {
+          const supabase = createSupabaseBrowserClient();
+          await supabase.storage.from("fotos").remove(ficha.foto_storage_paths);
+        } catch {
+          /* silencioso de propósito */
+        }
       }
-
-      const { error } = await supabase
-        .from("apreciacao_fichas_maquina")
-        .delete()
-        .eq("id_ficha", id_ficha);
-      if (error) throw error;
-      return id_ficha;
+      const resultado = await gravar({
+        tabela: "apreciacao_fichas_maquina",
+        tipo: "delete",
+        linhas: null,
+        filtro: { id_ficha: ficha.id_ficha },
+        modulo: "apreciacao-maquinas",
+        id_documento: idApreciacao,
+      });
+      return { id_ficha: ficha.id_ficha, resultado };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: KEY(idApreciacao) });
-      // As linhas HRN/itens da ficha somem por cascade — invalida as visões.
-      qc.invalidateQueries({ queryKey: ["riscos-hrn"] });
-      qc.invalidateQueries({ queryKey: ["riscos-hrn-ficha"] });
+    onSuccess: ({ id_ficha, resultado }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY(idApreciacao) });
+        qc.invalidateQueries({ queryKey: ["apreciacao-maquina", idApreciacao] });
+        return;
+      }
+      qc.setQueryData<FichaMaquina[]>(KEY(idApreciacao), (antigo) =>
+        (antigo ?? []).filter((f) => f.id_ficha !== id_ficha),
+      );
+      toast.success("Remoção guardada no aparelho", { icon: "📵" });
     },
-    onError: (e: Error) => toast.error(`Erro ao excluir máquina: ${e.message}`),
+    onError: (e: Error) => toast.error(`Erro ao remover máquina: ${e.message}`),
   });
 }
 
+/** Recebe os ids na ordem desejada e regrava `numero_ordem`. */
+export function useReordenarFichas(idApreciacao: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (idsNaOrdem: string[]) => {
+      // Uma operação por ficha, sem dependência entre elas: são linhas
+      // diferentes, e a ordem entre os updates não muda o resultado.
+      let destino = "SERVIDOR";
+      for (let i = 0; i < idsNaOrdem.length; i++) {
+        const r = await gravar({
+          tabela: "apreciacao_fichas_maquina",
+          tipo: "update",
+          linhas: { numero_ordem: i + 1 },
+          filtro: { id_ficha: idsNaOrdem[i] },
+          modulo: "apreciacao-maquinas",
+          id_documento: idApreciacao,
+        });
+        if (r.destino === "APARELHO") destino = "APARELHO";
+      }
+      return { idsNaOrdem, destino };
+    },
+    onSuccess: ({ idsNaOrdem, destino }) => {
+      if (destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY(idApreciacao) });
+        return;
+      }
+      // Sem rede não há o que revalidar: a ordem nova é aplicada à mão, senão
+      // o arrasto voltaria sozinho para a posição anterior.
+      qc.setQueryData<FichaMaquina[]>(KEY(idApreciacao), (antigo) =>
+        (antigo ?? [])
+          .map((f) => {
+            const pos = idsNaOrdem.indexOf(f.id_ficha);
+            return pos < 0 ? f : ({ ...f, numero_ordem: pos + 1 } as FichaMaquina);
+          })
+          .sort((a, b) => (a.numero_ordem ?? 0) - (b.numero_ordem ?? 0)),
+      );
+    },
+    onError: (e: Error) => toast.error(`Erro ao reordenar: ${e.message}`),
+  });
+}
+
+export function useUploadFotoFicha(idApreciacao: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { ficha: FichaMaquina; file: File }) => {
+      const supabase = createSupabaseBrowserClient();
+      const atuaisUrls = params.ficha.foto_urls ?? [];
+      const atuaisPaths = params.ficha.foto_storage_paths ?? [];
+      if (atuaisPaths.length >= MAX_FOTOS_FICHA) {
+        throw new Error(`Limite de ${MAX_FOTOS_FICHA} fotos por máquina atingido.`);
+      }
+
+      const ext = (params.file.name.split(".").pop() ?? "jpg").toLowerCase();
+      const sufixo = gerarId("F").slice(2);
+      const path = `apreciacao-maquinas/${idApreciacao}/ficha-${params.ficha.id_ficha}-${sufixo}.${ext}`;
+
+      // O arquivo não sobe aqui: `getPublicUrl` é montagem de string, então a
+      // URL já é conhecida e o `gravar()` leva o arquivo junto da linha.
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+
+      const patch = {
+        foto_urls: [...atuaisUrls, pub.publicUrl],
+        foto_storage_paths: [...atuaisPaths, path],
+        updated_at: new Date().toISOString(),
+      };
+
+      const resultado = await gravar({
+        tabela: "apreciacao_fichas_maquina",
+        tipo: "update",
+        linhas: patch,
+        filtro: { id_ficha: params.ficha.id_ficha },
+        modulo: "apreciacao-maquinas",
+        id_documento: idApreciacao,
+        imagens: [{ blob: params.file, caminho: path }],
+      });
+      return { path, patch, resultado, idFicha: params.ficha.id_ficha };
+    },
+    onSuccess: ({ patch, resultado, idFicha }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY(idApreciacao) });
+        return;
+      }
+      qc.setQueryData<FichaMaquina[]>(KEY(idApreciacao), (antigo) =>
+        (antigo ?? []).map((f) =>
+          f.id_ficha === idFicha ? ({ ...f, ...patch } as FichaMaquina) : f,
+        ),
+      );
+      toast.success("Foto guardada no aparelho", { icon: "📵" });
+    },
+    onError: (e: Error) => toast.error(`Erro ao enviar foto: ${e.message}`),
+  });
+}
+
+export function useRemoverFotoFicha(idApreciacao: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { ficha: FichaMaquina; indice: number }) => {
+      const urls = [...(params.ficha.foto_urls ?? [])];
+      const paths = [...(params.ficha.foto_storage_paths ?? [])];
+      const path = paths[params.indice];
+
+      urls.splice(params.indice, 1);
+      paths.splice(params.indice, 1);
+
+      // Apagar o arquivo só com rede — sem ela fica órfão no MinIO, que é
+      // desperdício de espaço e não erro.
+      if (path && navigator.onLine) {
+        try {
+          const supabase = createSupabaseBrowserClient();
+          await supabase.storage.from("fotos").remove([path]);
+        } catch {
+          /* silencioso de propósito */
+        }
+      }
+
+      const patch = {
+        foto_urls: urls,
+        foto_storage_paths: paths,
+        updated_at: new Date().toISOString(),
+      };
+
+      const resultado = await gravar({
+        tabela: "apreciacao_fichas_maquina",
+        tipo: "update",
+        linhas: patch,
+        filtro: { id_ficha: params.ficha.id_ficha },
+        modulo: "apreciacao-maquinas",
+        id_documento: idApreciacao,
+      });
+      return { patch, resultado, idFicha: params.ficha.id_ficha };
+    },
+    onSuccess: ({ patch, resultado, idFicha }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY(idApreciacao) });
+        return;
+      }
+      qc.setQueryData<FichaMaquina[]>(KEY(idApreciacao), (antigo) =>
+        (antigo ?? []).map((f) =>
+          f.id_ficha === idFicha ? ({ ...f, ...patch } as FichaMaquina) : f,
+        ),
+      );
+      toast.success("Remoção guardada no aparelho", { icon: "📵" });
+    },
+    onError: (e: Error) => toast.error(`Erro ao remover foto: ${e.message}`),
+  });
+}
+
+/** Nº de máquinas por laudo — alimenta o badge "N máq." da Visão Geral. */
 export interface ApreciacaoDashboard {
   /** nº de máquinas (fichas) por laudo */
   fichasCount: Record<string, number>;
@@ -243,233 +426,145 @@ export function useApreciacaoDashboard() {
   });
 }
 
-export const MAX_FOTOS_FICHA = 6;
-
-async function lerFotosFichaFresco(
-  supabase: ReturnType<typeof createSupabaseBrowserClient>,
-  id_ficha: string
-) {
-  const { data, error } = await supabase
-    .from("apreciacao_fichas_maquina")
-    .select("foto_urls, foto_storage_paths")
-    .eq("id_ficha", id_ficha)
-    .single();
-  if (error) throw error;
-  const row = data as { foto_urls: string[] | null; foto_storage_paths: string[] | null };
-  return { urls: row.foto_urls ?? [], paths: row.foto_storage_paths ?? [] };
-}
-
-/** Envia uma foto (registro fotográfico) da máquina/ficha. */
-export function useUploadFotoFicha(idApreciacao: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (params: { id_ficha: string; file: File }) => {
-      const supabase = createSupabaseBrowserClient();
-      const atual = await lerFotosFichaFresco(supabase, params.id_ficha);
-      if (atual.paths.length >= MAX_FOTOS_FICHA) {
-        throw new Error(`Limite de ${MAX_FOTOS_FICHA} fotos por máquina.`);
-      }
-      const ext = (params.file.name.split(".").pop() ?? "jpg").toLowerCase();
-      const sufixo = Math.random().toString(36).slice(2, 8);
-      const path = `apreciacao-maquinas/${idApreciacao}/ficha-${params.id_ficha}-${sufixo}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from("fotos")
-        .upload(path, params.file, { upsert: false, contentType: params.file.type });
-      if (upErr) throw upErr;
-      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
-      const { error: updErr } = await supabase
-        .from("apreciacao_fichas_maquina")
-        .update({
-          foto_urls: [...atual.urls, pub.publicUrl],
-          foto_storage_paths: [...atual.paths, path],
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id_ficha", params.id_ficha);
-      if (updErr) throw updErr;
-      return pub.publicUrl;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY(idApreciacao) }),
-    onError: (e: Error) => toast.error(`Erro ao enviar foto: ${e.message}`),
-  });
-}
-
-/** Remove a foto de índice `indice` da ficha. */
-export function useRemoverFotoFicha(idApreciacao: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (params: { id_ficha: string; indice: number }) => {
-      const supabase = createSupabaseBrowserClient();
-      const atual = await lerFotosFichaFresco(supabase, params.id_ficha);
-      const pathRem = atual.paths[params.indice];
-      const urls = atual.urls.filter((_, i) => i !== params.indice);
-      const paths = atual.paths.filter((_, i) => i !== params.indice);
-      if (pathRem) await supabase.storage.from("fotos").remove([pathRem]);
-      const { error } = await supabase
-        .from("apreciacao_fichas_maquina")
-        .update({
-          foto_urls: urls,
-          foto_storage_paths: paths,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id_ficha", params.id_ficha);
-      if (error) throw error;
-      return params;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY(idApreciacao) }),
-    onError: (e: Error) => toast.error(`Erro ao remover foto: ${e.message}`),
-  });
-}
-
-/** Reordena as fichas: recebe os id_ficha na ordem desejada. */
-export function useReordenarFichas(idApreciacao: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (idsNaOrdem: string[]) => {
-      const supabase = createSupabaseBrowserClient();
-      await Promise.all(
-        idsNaOrdem.map((id_ficha, idx) =>
-          supabase
-            .from("apreciacao_fichas_maquina")
-            .update({ numero_ordem: idx + 1 } as never)
-            .eq("id_ficha", id_ficha)
-        )
-      );
-      return idsNaOrdem;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY(idApreciacao) }),
-    onError: (e: Error) => toast.error(`Erro ao reordenar: ${e.message}`),
-  });
-}
-
 /**
- * Auto-importa as máquinas da INSPEÇÃO da empresa como fichas do laudo,
- * AGRUPADAS POR SETOR, trazendo dados + operadores (texto) + fotos + checklist.
- * Usado ao criar uma nova apreciação.
+ * Auto-import: traz as máquinas da INSPEÇÃO da empresa como fichas do laudo,
+ * agrupadas por setor.
+ *
+ * ⚠️ O nome do setor vem de `setores.setor_ghe` — a tabela NÃO tem coluna
+ * `nome`. Ler `nome` devolve vazio e todas as máquinas caem em "Sem setor".
  */
 export function useImportarInspecaoParaLaudo() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { idApreciacao: string; idEmpresa: string }) => {
+    mutationFn: async (params: { id_apreciacao: string; id_empresa: string }) => {
       const supabase = createSupabaseBrowserClient();
-      const { data: maqsData } = await supabase
+
+      const { data: rawMaqs, error: maqErr } = await supabase
         .from("inspecao_maquinas")
         .select("*")
-        .eq("id_empresa", params.idEmpresa)
-        .eq("ativo", true);
-      const maqs = (maqsData ?? []) as Record<string, unknown>[];
-      if (maqs.length === 0) return 0;
+        .eq("id_empresa", params.id_empresa)
+        .eq("ativo", true)
+        .order("ordem", { ascending: true });
+      if (maqErr) throw maqErr;
+      const maquinas = (rawMaqs ?? []) as Record<string, unknown>[];
+      if (!maquinas.length) return { importadas: 0 };
 
-      // Resolve os nomes dos setores p/ ordenar/agrupar.
-      const setorIds = Array.from(
-        new Set(maqs.map((m) => m.id_setor).filter(Boolean))
-      ) as string[];
-      const setorNome = new Map<string, string>();
-      if (setorIds.length) {
-        const { data: setores } = await supabase
+      // Resolve o nome do setor de cada máquina (setor_ghe, fallback descricao).
+      const idsSetor = Array.from(
+        new Set(maquinas.map((m) => m.id_setor).filter(Boolean) as string[]),
+      );
+      const nomePorSetor = new Map<string, string>();
+      if (idsSetor.length) {
+        const { data: rawSetores } = await supabase
           .from("setores")
           .select("id_setor, setor_ghe, descricao")
-          .in("id_setor", setorIds);
-        (setores ?? []).forEach((s) => {
-          const row = s as {
-            id_setor: string;
-            setor_ghe: string | null;
-            descricao: string | null;
-          };
-          setorNome.set(row.id_setor, row.setor_ghe || row.descricao || "");
-        });
+          .in("id_setor", idsSetor);
+        for (const s of (rawSetores ?? []) as {
+          id_setor: string;
+          setor_ghe: string | null;
+          descricao: string | null;
+        }[]) {
+          nomePorSetor.set(s.id_setor, (s.setor_ghe ?? s.descricao ?? "").trim());
+        }
       }
 
-      const sorted = [...maqs].sort((a, b) => {
-        const sa = setorNome.get(a.id_setor as string) ?? "";
-        const sb = setorNome.get(b.id_setor as string) ?? "";
+      // Não reimporta o que já está no laudo (usa nome+série como chave).
+      const { data: rawExistentes } = await supabase
+        .from("apreciacao_fichas_maquina")
+        .select("maquina_descricao, serie, numero_ordem")
+        .eq("id_apreciacao", params.id_apreciacao);
+      const existentes = (rawExistentes ?? []) as {
+        maquina_descricao: string | null;
+        serie: string | null;
+        numero_ordem: number;
+      }[];
+      const chave = (nome: string | null, serie: string | null) =>
+        `${(nome ?? "").trim().toLowerCase()}|${(serie ?? "").trim().toLowerCase()}`;
+      const jaTem = new Set(existentes.map((e) => chave(e.maquina_descricao, e.serie)));
+      let ordem = existentes.reduce((max, e) => Math.max(max, e.numero_ordem ?? 0), 0);
+
+      // Ordena por setor para as fichas nascerem agrupadas.
+      const ordenadas = [...maquinas].sort((a, b) => {
+        const sa = nomePorSetor.get(String(a.id_setor ?? "")) ?? "";
+        const sb = nomePorSetor.get(String(b.id_setor ?? "")) ?? "";
         if (sa !== sb) return sa.localeCompare(sb, "pt-BR");
-        return ((a.ordem as number) ?? 0) - ((b.ordem as number) ?? 0);
+        return Number(a.ordem ?? 0) - Number(b.ordem ?? 0);
       });
 
-      let ordem = 0;
-      for (const m of sorted) {
+      const novas: Record<string, unknown>[] = [];
+      const itensChecklist: Record<string, unknown>[] = [];
+
+      for (const m of ordenadas) {
+        const nome = (m.nome as string) ?? null;
+        if (jaTem.has(chave(nome, (m.numero_serie as string) ?? null))) continue;
+        jaTem.add(chave(nome, (m.numero_serie as string) ?? null));
+
+        const idFicha = gerarId("APF");
         ordem += 1;
-        const ops = (Array.isArray(m.operadores)
-          ? (m.operadores as { nome?: string; cargo?: string }[])
-          : []
-        )
-          .map((o) => ({ nome: (o.nome ?? "").trim(), cargo: (o.cargo ?? "").trim() }))
-          .filter((o) => o.nome || o.cargo);
-        const operadores = ops.length ? ops : null;
-        const id_ficha = gerarId("APF");
-        const ficha = {
-          id_ficha,
-          id_apreciacao: params.idApreciacao,
+        novas.push({
+          id_ficha: idFicha,
+          id_apreciacao: params.id_apreciacao,
           numero_ordem: ordem,
-          id_maquina: null,
-          maquina_descricao: (m.nome as string) ?? null,
-          equipamento: (m.nome as string) ?? null,
+          maquina_descricao: nome,
+          equipamento: nome,
           tipo: (m.tipo as string) ?? null,
           modelo: (m.modelo as string) ?? null,
           fabricante: (m.marca as string) ?? null,
           serie: (m.numero_serie as string) ?? null,
-          ano: m.ano_fabricacao != null ? String(m.ano_fabricacao) : null,
-          capacidade: (m.potencia as string) ?? null,
-          setor: setorNome.get(m.id_setor as string) ?? null,
-          componentes_maquina: null,
-          limite_uso: null,
-          limite_espaco: null,
-          limite_tempo: null,
-          limite_produtividade: null,
-          npe: null,
-          sistemas_atual: null,
-          sistemas_necessario: null,
+          ano: m.ano_fabricacao ? String(m.ano_fabricacao) : null,
+          capacidade: null,
+          setor: nomePorSetor.get(String(m.id_setor ?? "")) ?? null,
           constatacoes_inspecao: (m.observacoes as string) ?? null,
-          parecer_tecnico: null,
-          operadores,
+          parecer_tecnico: (m.parecer_ia as string) ?? null,
+          operadores: (m.operadores as OperadorFicha[]) ?? null,
           prioridade_manual: false,
           foto_urls: Array.isArray(m.foto_urls) ? (m.foto_urls as string[]) : [],
-          foto_storage_paths: Array.isArray(m.foto_storage_paths)
-            ? (m.foto_storage_paths as string[])
-            : [],
-          created_at: new Date().toISOString(),
-          updated_at: null,
-        };
-        const { error: ef } = await supabase
-          .from("apreciacao_fichas_maquina")
-          .insert(ficha as never);
-        if (ef) throw ef;
+          // Os arquivos seguem sendo da inspeção: não copiamos os paths, senão
+          // excluir a ficha apagaria a foto da inspeção de origem.
+          foto_storage_paths: [],
+        });
 
-        const itens = CATALOGO_NR12.map((it, idx) => ({
-          id_item: gerarId("APRI"),
-          id_apreciacao: params.idApreciacao,
-          id_ficha,
-          item_codigo: it.codigo,
-          item_categoria: it.categoria,
-          item_titulo: it.titulo,
-          item_descricao: it.descricao ?? null,
-          item_origem: null,
-          ordem: idx,
-          situacao: "PENDENTE",
-          observacao: null,
-          recomendacao: null,
-          probabilidade: null,
-          severidade: null,
-          nivel_risco_calculado: null,
-          id_matriz: null,
-          foto_urls: [] as string[],
-          foto_storage_paths: [] as string[],
-          foto_legendas: [] as string[],
-          created_at: new Date().toISOString(),
-          updated_at: null,
-        }));
-        const { error: ei } = await supabase
-          .from("apreciacoes_maquinas_itens")
-          .insert(itens as never);
-        if (ei) throw ei;
+        CATALOGO_NR12.forEach((item, i) => {
+          itensChecklist.push({
+            id_item: gerarId("APRI"),
+            id_apreciacao: params.id_apreciacao,
+            id_ficha: idFicha,
+            item_codigo: item.codigo,
+            item_categoria: item.categoria,
+            item_titulo: item.titulo,
+            item_descricao: item.descricao ?? null,
+            item_origem: "CATALOGO",
+            situacao: "PENDENTE",
+            ordem: i,
+            foto_urls: [],
+            foto_storage_paths: [],
+            foto_legendas: [],
+          });
+        });
       }
-      return sorted.length;
+
+      if (!novas.length) return { importadas: 0 };
+
+      const { error: insErr } = await supabase
+        .from("apreciacao_fichas_maquina")
+        .insert(novas as never);
+      if (insErr) throw insErr;
+
+      const { error: itErr } = await supabase
+        .from("apreciacoes_maquinas_itens")
+        .insert(itensChecklist as never);
+      if (itErr) throw itErr;
+
+      return { importadas: novas.length };
     },
-    onSuccess: (_n, params) => {
-      qc.invalidateQueries({ queryKey: KEY(params.idApreciacao) });
-      qc.invalidateQueries({ queryKey: ["apreciacao-maquina", params.idApreciacao] });
+    onSuccess: (r, vars) => {
+      qc.invalidateQueries({ queryKey: KEY(vars.id_apreciacao) });
+      qc.invalidateQueries({ queryKey: ["apreciacao-maquina", vars.id_apreciacao] });
+      qc.invalidateQueries({ queryKey: ["apreciacao-dashboard"] });
+      if (r.importadas > 0) {
+        toast.success(`${r.importadas} máquina(s) importada(s) da inspeção`);
+      }
     },
-    onError: (e: Error) =>
-      toast.error(`Erro ao importar máquinas da inspeção: ${e.message}`),
+    onError: (e: Error) => toast.error(`Erro ao importar da inspeção: ${e.message}`),
   });
 }

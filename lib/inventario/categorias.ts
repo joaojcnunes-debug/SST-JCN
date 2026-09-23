@@ -11,9 +11,21 @@ import { CATEGORIA_INVENTARIO_LABELS } from "@/lib/supabase/types";
 
 export type AbaInventario = CategoriaInventario;
 
-/** Ordem e rótulos das abas (mesma ordem pedida: Equipamentos, Máquinas, Medição). */
+/**
+ * Abas visíveis no inventário NR-12.
+ *
+ * ⚠️ "Equipamentos" SAIU desta lista em 2026-08-11 (Fase 3): o patrimônio
+ * interno da JCN Consultoria ganhou módulo próprio em `/equipamentos`, com tabela e
+ * formulário próprios. A categoria continua existindo no tipo e no banco —
+ * as 99 linhas originais seguem em `inventario_maquinas` como rede de
+ * segurança até o cutover (v168) — mas deixa de ser uma aba aqui.
+ *
+ * O briefing (§3.2) mandava remover a categoria do enum `CategoriaInventario`
+ * e do `CHECK` da v115 nesta mesma entrega. **Não dá ainda**: essas linhas
+ * existem e têm `categoria_inventario = 'equipamentos'`; derrubar o `CHECK`
+ * agora as tornaria inválidas. Isso vai junto com o v168.
+ */
 export const ABAS_INVENTARIO: { id: AbaInventario; label: string }[] = [
-  { id: "equipamentos", label: CATEGORIA_INVENTARIO_LABELS.equipamentos },
   { id: "maquinas", label: CATEGORIA_INVENTARIO_LABELS.maquinas },
   { id: "medicoes", label: CATEGORIA_INVENTARIO_LABELS.medicoes },
 ];

@@ -239,7 +239,7 @@ export default function RegistrosPage() {
           {[
             { campo: "Docs Gerados",     desc: "Documentos SST finalizados" },
             { campo: "Visitas",          desc: "Visitas técnicas realizadas" },
-            { campo: "Levantamentos",    desc: "Levantamentos enviados ao SST JCN Consultoria" },
+            { campo: "Levantamentos",    desc: "Levantamentos enviados ao Painel SST" },
             { campo: "Docs SSG",         desc: "Documentos enviados ao SSG" },
           ].map((i) => (
             <div key={i.campo}>

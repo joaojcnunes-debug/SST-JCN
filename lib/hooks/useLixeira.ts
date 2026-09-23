@@ -76,11 +76,11 @@ export interface ExcluirComLixeiraArgs {
  *
  * Se a EXCLUSÃO falhar, o snapshot é desfeito: sem isso ele fica na Lixeira
  * como "excluído" apontando para um registro que continua vivo, e "Restaurar"
- * ainda dá erro de chave duplicada. No painel-sst isso aconteceu em 2026-07-29
- * — as FKs sem cascata barravam o DELETE e cada tentativa deixava um fantasma.
+ * ainda dá erro de chave duplicada. Foi o que aconteceu em 2026-07-29 — as FKs
+ * sem cascata (v142) barravam o DELETE e cada tentativa deixava um fantasma.
  * A ordem NÃO é invertida de propósito: gravar o snapshot depois do DELETE
  * trocaria o fantasma por risco de apagar sem cópia de recuperação.
- * As policies que permitem esta compensação são a v147.
+ * A policy que permite esta compensação é a v143.
  */
 export async function excluirComLixeira(args: ExcluirComLixeiraArgs): Promise<void> {
   const supabase = createSupabaseBrowserClient();

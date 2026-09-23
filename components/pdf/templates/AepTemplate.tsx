@@ -12,6 +12,9 @@ import FolhaAssinaturas from "@/components/pdf/FolhaAssinaturas";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
 import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/SecoesComuns";
 import { classeQuebraFixoNova, numerarCapitulos, numLabel } from "@/components/pdf/templates/shared";
+// Módulo puro (sem "use client", sem hook) — pode entrar no template do Puppeteer.
+import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
+import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
 import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import {
@@ -22,6 +25,8 @@ import {
 // ── Tipos locais (não importa de useAep.ts — é "use client") ──────────────────
 
 type RespostaChecklist = "sim" | "nao" | "nao_aplica";
+/** Só a Ergonomia Organizacional tem o quarto estado (N/I, não identificável). */
+type RespostaChecklistAep = RespostaChecklist | "nao_identificado";
 
 interface AepChecklistFisica {
   postura: RespostaChecklist;
@@ -44,19 +49,19 @@ interface AepChecklistCognitiva {
 }
 
 interface AepChecklistOrganizacional {
-  assedio: RespostaChecklist;
-  falta_suporte: RespostaChecklist;
-  gestao_mudancas: RespostaChecklist;
-  clareza_papel: RespostaChecklist;
-  recompensas: RespostaChecklist;
-  baixo_controle: RespostaChecklist;
-  justica_organizacional: RespostaChecklist;
-  eventos_traumaticos: RespostaChecklist;
-  subcarga: RespostaChecklist;
-  sobrecarga: RespostaChecklist;
-  maus_relacionamentos: RespostaChecklist;
-  comunicacao_dificil: RespostaChecklist;
-  trabalho_remoto: RespostaChecklist;
+  assedio: RespostaChecklistAep;
+  falta_suporte: RespostaChecklistAep;
+  gestao_mudancas: RespostaChecklistAep;
+  clareza_papel: RespostaChecklistAep;
+  recompensas: RespostaChecklistAep;
+  baixo_controle: RespostaChecklistAep;
+  justica_organizacional: RespostaChecklistAep;
+  eventos_traumaticos: RespostaChecklistAep;
+  subcarga: RespostaChecklistAep;
+  sobrecarga: RespostaChecklistAep;
+  maus_relacionamentos: RespostaChecklistAep;
+  comunicacao_dificil: RespostaChecklistAep;
+  trabalho_remoto: RespostaChecklistAep;
 }
 
 interface AepRisco {
@@ -80,6 +85,8 @@ export interface AepSetorLocal {
   metodo_coleta?: string;
   trabalhadores_consultados?: string;
   observacoes_checklist?: Record<string, string>;
+  /** Sinais marcados nos fatores organizacionais respondidos "sim" (v0.3.503). */
+  sinais_organizacional?: Record<string, string[]>;
   cargos?: { id: string; cargo: string; descricao: string; quantidade: number }[];
   riscos: AepRisco[];
   checklist_fisica: AepChecklistFisica;
@@ -174,11 +181,24 @@ function riscoMaximoSetor(setor: AepSetorLocal): string | null {
   return null;
 }
 
-function labelResposta(v: RespostaChecklist) {
+function labelResposta(v: RespostaChecklistAep) {
   if (v === "sim") return { label: "Sim", color: "#dc2626", fontWeight: 700 as const };
   if (v === "nao") return { label: "Não", color: "#15803d", fontWeight: 400 as const };
+  // Âmbar (a cor de aviso do painel): N/I é lacuna de avaliação, não risco.
+  if (v === "nao_identificado") return { label: "N/I", color: "#d97706", fontWeight: 600 as const };
   return { label: "N/A", color: "#9ca3af", fontWeight: 400 as const };
 }
+
+/** Legenda das siglas, impressa no pé da Ergonomia Organizacional. */
+const LEGENDA_ORG: { sigla: string; cor: string; titulo: string; texto: string }[] = [
+  { sigla: "N/A", cor: "#9ca3af", titulo: "Não aplicável", texto: "quando o fator de risco não se aplica" },
+  {
+    sigla: "N/I",
+    cor: "#d97706",
+    titulo: "Não identificável",
+    texto: "quando não for possível verificar se há ou não aquele fator de risco",
+  },
+];
 
 // ── Bloco CSS inline ──────────────────────────────────────────────────────────
 
@@ -262,8 +282,46 @@ body {
 .textos-padrao-capitulo-conteudo td      { border: 1px solid #999; padding: 5px 7px; vertical-align: top; }
 .textos-padrao-capitulo-conteudo th      { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: left; }
 /* Break rules para o laudo */
-.setor-block { break-inside: auto; }
+/* Cada setor abre em folha própria. O 1º não força quebra: ele segue o título
+   do capítulo de triagem, que ficaria sozinho numa página em branco. */
+/* page-break-before (legado), não break-before: always — em mídia paginada o
+   valor "always" não é válido e o Chrome ignora a regra em silêncio. */
+.setor-block                { break-inside: auto; page-break-before: always; }
+.setor-block:first-of-type  { page-break-before: auto; }
+/* Física e Cognitiva são curtas: viram nas folhas inteiras.
+   A Organizacional tem 13 linhas e, se também for indivisível, sozinha deixa
+   um terço de folha vazio e joga o fim do parecer para uma página quase em
+   branco. Ela pode partir — o que não pode é o cabeçalho colorido ficar
+   pendurado no pé da folha, nem uma linha ser cortada ao meio. */
+.setor-check                { break-inside: avoid; }
+.setor-check--divisivel     { break-inside: auto; }
+.setor-check-cab            { break-after: avoid; }
+.setor-check-linha          { break-inside: avoid; }
+/* Linha de tabela não parte no meio da célula; o cabeçalho repete na virada. */
+.setor-ficha tr,
+.setor-tabela tr            { break-inside: avoid; }
+.setor-tabela thead         { display: table-header-group; }
+/* "Recomendações" / "Parecer" nunca ficam sem o texto que rotulam. */
+.setor-texto p:first-child  { break-after: avoid; }
+.setor-texto p              { orphans: 3; widows: 3; }
 `;
+
+// ── Numeração dos capítulos ───────────────────────────────────────────────────
+
+/**
+ * Tira o número escrito à mão no começo do título do capítulo ("1 – Apresentação").
+ * O laudo já numera sozinho, na ordem em que os capítulos entram, então sem isto
+ * o PDF imprime "2. 1 – Apresentação" no sumário e no corpo.
+ *
+ * Só remove quando o título COMEÇA com 1 ou 2 dígitos seguidos de traço ou ponto
+ * — "5S – Programa" e "150 anos" continuam intactos. Nada é alterado no cadastro:
+ * a limpeza vale só na hora de imprimir.
+ */
+const semNumeroManual = (t: string): string => t.replace(/^\s*\d{1,2}\s*[–—.\-)]\s*/, "");
+
+/** `numLabel` do shared, com o número manual do título já removido. */
+const numLabelAep = (num: number | undefined, txt: string): string =>
+  numLabel(num, semNumeroManual(txt));
 
 // ── Sub-componentes ───────────────────────────────────────────────────────────
 
@@ -379,6 +437,7 @@ function SetorBlock({
 
       {/* Tabela de identificação */}
       <table
+        className="setor-ficha"
         style={{
           marginBottom: 12,
           width: "100%",
@@ -488,7 +547,7 @@ function SetorBlock({
         }}
       >
         {/* Física */}
-        <div style={{ borderRadius: 4, border: "1px solid #bfdbfe" }}>
+        <div className="setor-check" style={{ borderRadius: 4, border: "1px solid #bfdbfe" }}>
           <div
             style={{
               backgroundColor: "#eff6ff",
@@ -517,7 +576,7 @@ function SetorBlock({
         </div>
 
         {/* Cognitiva */}
-        <div style={{ borderRadius: 4, border: "1px solid #e9d5ff" }}>
+        <div className="setor-check" style={{ borderRadius: 4, border: "1px solid #e9d5ff" }}>
           <div
             style={{
               backgroundColor: "#faf5ff",
@@ -546,8 +605,9 @@ function SetorBlock({
         </div>
 
         {/* Organizacional */}
-        <div style={{ borderRadius: 4, border: "1px solid #fde68a" }}>
+        <div className="setor-check setor-check--divisivel" style={{ borderRadius: 4, border: "1px solid #fde68a" }}>
           <div
+            className="setor-check-cab"
             style={{
               backgroundColor: "#fffbeb",
               padding: "4px 8px",
@@ -562,22 +622,54 @@ function SetorBlock({
           {CHECKLIST_ORG_LABELS.map(([k, l]) => {
             const r = labelResposta(setor.checklist_organizacional[k]);
             const obs = setor.observacoes_checklist?.[k];
+            // Só há sinais em fator marcado "sim". Cor cravada de propósito: este
+            // template é montado pelo Puppeteer, que não enxerga as variáveis de
+            // tema do app — usar var() aqui produz estilo inválido.
+            const sinais = rotulosDosSinais(k, setor.sinais_organizacional);
             return (
-              <div key={k} style={{ borderTop: "1px solid #f3f4f6", padding: "2px 8px" }}>
+              <div key={k} className="setor-check-linha" style={{ borderTop: "1px solid #f3f4f6", padding: "2px 8px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span style={{ color: "#4b5563", flex: 1, minWidth: 0, wordBreak: "break-word", marginRight: 4 }}>{l}</span>
                   <span style={{ color: r.color, fontWeight: r.fontWeight, flexShrink: 0 }}>{r.label}</span>
                 </div>
+                {sinais.length > 0 && (
+                  <ul style={{ margin: "2px 0 0", paddingLeft: 14, fontSize: 9, color: "#4b5563" }}>
+                    {sinais.map((s) => (
+                      <li key={s} style={{ wordBreak: "break-word" }}>{s}</li>
+                    ))}
+                  </ul>
+                )}
                 {obs && <p style={{ margin: "2px 0 0", fontSize: 9, fontStyle: "italic", color: "#6b7280" }}>Obs.: {obs}</p>}
               </div>
             );
           })}
+          {/* Legenda das siglas. Sem flex de propósito: flex corta no salto de
+              página (ver as armadilhas do PDF), e aqui basta texto corrido. */}
+          <div
+            className="setor-check-linha"
+            style={{
+              borderTop: "1px solid #f3f4f6",
+              backgroundColor: "#f9fafb",
+              padding: "3px 8px",
+              fontSize: 9,
+              lineHeight: 1.35,
+              color: "#6b7280",
+            }}
+          >
+            {LEGENDA_ORG.map((x) => (
+              <p key={x.sigla} style={{ margin: 0 }}>
+                <span style={{ color: x.cor, fontWeight: 700 }}>{x.sigla}</span>
+                {` — ${x.titulo} (${x.texto})`}
+              </p>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Matriz de riscos */}
       {setor.riscos.length > 0 && (
         <table
+          className="setor-tabela"
           style={{
             marginBottom: 12,
             width: "100%",
@@ -632,7 +724,7 @@ function SetorBlock({
           }}
         >
           {setor.recomendacoes && (
-            <div>
+            <div className="setor-texto">
               <p style={{ margin: "0 0 4px", fontWeight: 600, color: "#374151" }}>
                 Recomendações
               </p>
@@ -642,7 +734,7 @@ function SetorBlock({
             </div>
           )}
           {setor.parecer_tecnico && (
-            <div>
+            <div className="setor-texto">
               <p style={{ margin: "0 0 4px", fontWeight: 600, color: "#374151" }}>
                 Parecer Técnico Preliminar
               </p>
@@ -694,8 +786,9 @@ export default function AepTemplate({
       case "identificacao_empresa": return true;
       case "aep_escalonamento":     return true;
       case "aep_triagem":           return true;
-      // aep_consideracoes só renderiza seção quando há conclusão preenchida.
-      case "aep_consideracoes":     return !!rel.conclusao?.trim();
+      // Sempre numerada: sem conclusão digitada, a seção sai com o texto
+      // gerado (lib/aep/consideracoes). Antes ela sumia do sumário e do corpo.
+      case "aep_consideracoes":     return true;
       case "aep_assinatura":        return true;
       default:                      return false; // sumario
     }
@@ -707,7 +800,9 @@ export default function AepTemplate({
   const sumarioTitulos = blocosOrdenados
     .filter((c) => renderizaNumerado(c))
     .map((c) =>
-      c.tipo === "fixo" ? c.titulo : substituirVariaveisTexto(c.titulo, valoresVars),
+      semNumeroManual(
+        c.tipo === "fixo" ? c.titulo : substituirVariaveisTexto(c.titulo, valoresVars),
+      ),
     )
     .filter((t) => t && t.trim());
 
@@ -716,7 +811,7 @@ export default function AepTemplate({
     const orientacao = c.orientacao ?? "retrato";
     const novaPagina = ehCapa || (c.quebra_pagina ?? "nova") === "nova";
     const conteudo = substituirVariaveis(c.conteudo, valoresVars);
-    const titulo = numLabel(numPorId[c.id_capitulo], substituirVariaveisTexto(c.titulo, valoresVars));
+    const titulo = numLabelAep(numPorId[c.id_capitulo], substituirVariaveisTexto(c.titulo, valoresVars));
     const classes = [
       "textos-padrao-capitulo",
       orientacao === "paisagem"
@@ -768,7 +863,7 @@ export default function AepTemplate({
 
   const secaoIndicadores = (
     <div style={{ marginBottom: 24 }}>
-      <SectionTitulo titulo={numLabel(numPorSlug["aep_escalonamento"], tituloPorSlug["aep_escalonamento"] ?? "Indicadores de Necessidade de AET Completa")} />
+      <SectionTitulo titulo={numLabelAep(numPorSlug["aep_escalonamento"], tituloPorSlug["aep_escalonamento"] ?? "Indicadores de Necessidade de AET Completa")} />
       {setoresComAet.length > 0 ? (
         <>
           <div
@@ -808,21 +903,43 @@ export default function AepTemplate({
 
   const secaoTriagem = (
     <div style={{ marginBottom: 24 }}>
-      <SectionTitulo titulo={numLabel(numPorSlug["aep_triagem"], tituloPorSlug["aep_triagem"] ?? "Triagem Ergonômica por Setor")} />
+      <SectionTitulo titulo={numLabelAep(numPorSlug["aep_triagem"], tituloPorSlug["aep_triagem"] ?? "Triagem Ergonômica por Setor")} />
       {rel.setores.map((setor, idx) => (
         <SetorBlock key={setor.id} setor={setor} idx={idx} />
       ))}
     </div>
   );
 
-  const secaoConsideracoes = rel.conclusao?.trim() ? (
+  // Texto do técnico manda; em branco, entra a conclusão automática — a seção
+  // nunca mais sai vazia (era o que deixava o laudo terminar sem conclusão).
+  const paragrafosConsideracoes = rel.conclusao?.trim()
+    ? [rel.conclusao.trim()]
+    : gerarConsideracoesAep({
+        setores: rel.setores,
+        empresaNome: rel.empresas?.nome_empresa ?? null,
+        dataValidadeBR: valoresVars["data_validade"] ?? null,
+      });
+
+  const secaoConsideracoes = (
     <div style={{ marginBottom: 24 }}>
-      <SectionTitulo titulo={numLabel(numPorSlug["aep_consideracoes"], tituloPorSlug["aep_consideracoes"] ?? "Considerações Finais e Encaminhamentos")} />
-      <p style={{ margin: 0, fontSize: 11, lineHeight: 1.7, color: "#374151", whiteSpace: "pre-line" }}>
-        {rel.conclusao}
-      </p>
+      <SectionTitulo titulo={numLabelAep(numPorSlug["aep_consideracoes"], tituloPorSlug["aep_consideracoes"] ?? "Considerações Finais e Encaminhamentos")} />
+      {paragrafosConsideracoes.map((texto, i) => (
+        <p
+          key={i}
+          style={{
+            margin: 0,
+            marginBottom: i === paragrafosConsideracoes.length - 1 ? 0 : 8,
+            fontSize: 11,
+            lineHeight: 1.7,
+            color: "#374151",
+            whiteSpace: "pre-line",
+          }}
+        >
+          {texto}
+        </p>
+      ))}
     </div>
-  ) : null;
+  );
 
   const temAssinaturaFixo = capitulos.some(
     (c) => c.tipo === "fixo" && c.slug_fixo === "aep_assinatura" && c.ativo !== false,
@@ -846,7 +963,20 @@ export default function AepTemplate({
       let conteudoFixo: React.ReactNode = null;
       switch (c.slug_fixo) {
         case "identificacao_empresa":
-          conteudoFixo = <SecaoIdentificacaoEmpresa empresa={empresa} numero={numPorSlug["identificacao_empresa"]} />;
+          // As datas saem de `valoresVars` — o MESMO dicionário de {{...}}, já
+          // formatado em dd/mm/aaaa. Antes o laudo não tinha onde imprimi-las:
+          // a elaboração só aparecia se alguém digitasse {{data_elaboracao}} num
+          // texto padrão, e a validade não existia nem como variável.
+          conteudoFixo = (
+            <SecaoIdentificacaoEmpresa
+              empresa={empresa}
+              numero={numPorSlug["identificacao_empresa"]}
+              datasDocumento={{
+                dataElaboracao: valoresVars["data_elaboracao"],
+                dataValidade: valoresVars["data_validade"],
+              }}
+            />
+          );
           break;
         case "sumario":
           conteudoFixo = <SecaoSumario titulos={sumarioTitulos} />;

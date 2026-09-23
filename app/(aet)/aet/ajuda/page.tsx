@@ -24,6 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useState, useCallback } from "react";
+import AjudaComAbas from "@/components/novidades/AjudaComAbas";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -359,11 +360,25 @@ const PASSOS = [
   },
   {
     n: "06",
+    titulo: "Montar o Plano de Ação (5W2H)",
+    icone: ListChecks,
+    cor: "emerald",
+    descricao:
+      "Na aba Plano de Ação, transforme as recomendações em ações: uma linha por ação, agrupadas pelos setores do laudo, com o quê, por quê, onde, quem, quando, como e quanto. O plano entra no laudo impresso quando tem pelo menos uma ação.",
+    dicas: [
+      "A recomendação do setor fica à mão na própria tela — abra \"Ver recomendações do setor\" antes de escrever.",
+      "\"Gerar com IA\" rascunha só os campos vazios a partir da recomendação; revise o texto antes de deixar no laudo.",
+      "O prazo é texto livre: \"imediato\", \"na próxima parada de manutenção\", \"30 dias após a entrega das cadeiras\".",
+      "Com o plano pronto, use \"Enviar para o Plano de Ação do PGR\": as ações são copiadas para o plano central da empresa (NR-17, item 17.3.6, alínea \"b\"). O que já foi não duplica.",
+    ],
+  },
+  {
+    n: "07",
     titulo: "Gerar o laudo final",
     icone: Printer,
     cor: "blue",
     descricao:
-      "Na aba Laudo / Imprimir, visualize o PDF com todos os setores, fatores avaliados e recomendações. Revise antes de entregar.",
+      "Na aba Laudo / Imprimir, visualize o PDF com todos os setores, fatores avaliados, recomendações e o plano de ação. Revise antes de entregar.",
     dicas: [
       "O laudo inclui a assinatura eletrônica do técnico responsável.",
       "Entregue sempre o PDF — nunca o acesso ao sistema — para o cliente.",
@@ -469,7 +484,7 @@ function ItemChecklist({ label, conceito, como, atencao, marque_sim, forceOpen }
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
-export default function AetAjudaPage() {
+function ConteudoAetAjudaPage() {
   const [printMode, setPrintMode] = useState(false);
 
   const handlePrint = useCallback(() => {
@@ -1002,5 +1017,18 @@ export default function AetAjudaPage() {
       </div>
 
     </div>
+  );
+}
+
+/**
+ * A ajuda deste módulo ganhou a aba Atualizações (01/09). O conteúdo acima
+ * continua exatamente como estava — quem monta as abas é o AjudaComAbas, e a
+ * lista de novidades vive num componente só, compartilhado pelos 11 módulos.
+ */
+export default function AetAjudaPage() {
+  return (
+    <AjudaComAbas titulo="Guia do AET">
+      <ConteudoAetAjudaPage />
+    </AjudaComAbas>
   );
 }

@@ -1,24 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, use } from "react";
+import { useEffect, useMemo, useState, use } from "react";
 import {
   Save,
-  Plus,
-  X,
   CheckCircle2,
-  ChevronDown,
   Sparkles,
   Loader2,
   Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import ComboTagInline from "@/components/drps/ComboTagInline";
 import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import DrpsSumarioPrint from "@/components/drps/DrpsSumarioPrint";
-import ComboTagInline from "@/components/drps/ComboTagInline";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import StorageImg from "@/components/ui/StorageImg";
 import HtmlConteudoAssinado from "@/components/ui/HtmlConteudoAssinado";
@@ -111,7 +108,7 @@ export default function AnalisePage({
   const setor = useDrpsStore((s) => s.setor);
   const unidade = useDrpsStore((s) => s.unidade);
   // Unidade em foco (undefined quando o filtro está em "Todas"): decide se a
-  // Análise lê/grava o texto por-unidade (v150) ou o valor por-setor de sempre.
+  // Análise lê/grava o texto por-unidade (v138) ou o valor por-setor de sempre.
   const unidadeAtiva = unidade !== "Todas" ? unidade : undefined;
   const canEdit = useCanEdit();
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
@@ -241,7 +238,7 @@ export default function AnalisePage({
     };
 
     if (unidadeAtiva) {
-      // Editando uma unidade (v150): só os setores DELA, herdando o texto do
+      // Editando uma unidade (v138): só os setores DELA, herdando o texto do
       // setor enquanto a unidade não tiver um valor próprio.
       const daUnidade = filtrarPorUnidade(respondentes, unidadeAtiva);
       const agravosUni = relatorio.agravos_por_unidade_setor?.[unidadeAtiva] ?? {};
@@ -322,7 +319,7 @@ export default function AnalisePage({
     const concluindoAgora =
       extrasArg?.status === "CONCLUIDO" && relatorio.status !== "CONCLUIDO";
 
-    // v150: numa unidade, grava SÓ no mapa por-unidade e NÃO toca no valor
+    // v138: numa unidade, grava SÓ no mapa por-unidade e NÃO toca no valor
     // por-setor herdado. O submapa da unidade é substituído inteiro (o editor já
     // traz TODOS os setores dela, então isso preserva o "limpar um setor"), e o
     // spread externo preserva as DEMAIS unidades. Em "Todas", grava no por-setor
@@ -375,7 +372,7 @@ export default function AnalisePage({
       return montarBlocosPorSetor(respondentes, probabilidades, setoresParaRelatorio);
     }
     // Por unidade: blocos daquela unidade, com a probabilidade por-unidade
-    // (override v150) na matriz — a mesma conta do Resumo e do laudo.
+    // (override v138) na matriz — a mesma conta do Resumo e do laudo.
     const setores =
       montarBlocosPorUnidade(respondentes, probabilidades, overrides, [
         unidadeAtiva,
@@ -387,9 +384,13 @@ export default function AnalisePage({
   return (
     <div className="space-y-4">
       <style>{`
+        /* Cores por variável: esta tela nunca teve ilha force-light, então a folha
+           acompanha o tema. O valor claro de cada variável é o hexadecimal exato
+           de antes -- tema claro e impressão ficam idênticos.
+           (Sem crases neste comentário: o bloco inteiro é um template literal.) */
         .drps-print-container {
           font-family: var(--font-sans), Inter, system-ui, sans-serif;
-          color: #111827;
+          color: var(--text-strong);
           font-size: 11px;
           line-height: 1.55;
         }
@@ -413,7 +414,7 @@ export default function AnalisePage({
           font-size: 11px;
         }
         .drps-tabela td, .drps-tabela th {
-          border: 1px solid #cbd5e1;
+          border: 1px solid var(--psi-borda);
           padding: 7px 10px;
           vertical-align: top;
         }
@@ -503,7 +504,7 @@ export default function AnalisePage({
         }
         .drps-capitulo-conteudo {
           font-size: 11px;
-          color: #1f2937;
+          color: var(--laudo-texto);
           line-height: 1.55;
         }
         .drps-capitulo-conteudo p { margin: 0 0 8px 0; }
@@ -513,7 +514,7 @@ export default function AnalisePage({
         .drps-capitulo-conteudo ul,
         .drps-capitulo-conteudo ol { margin: 0 0 8px 20px; padding: 0; }
         .drps-capitulo-conteudo li { margin: 2px 0; }
-        .drps-capitulo-conteudo a { color: #0ea5e9; text-decoration: underline; }
+        .drps-capitulo-conteudo a { color: var(--tiptap-link); text-decoration: underline; }
         .drps-capitulo-conteudo img {
           max-width: 100%;
           height: auto;
@@ -528,7 +529,7 @@ export default function AnalisePage({
         }
         .drps-capitulo-conteudo th,
         .drps-capitulo-conteudo td {
-          border: 1px solid #999;
+          border: 1px solid var(--psi-borda-tab);
           padding: 5px 7px;
           vertical-align: top;
         }
@@ -791,7 +792,7 @@ export default function AnalisePage({
                 )}
                 onSalvarConclusao={(texto) => {
                   if (!relatorio || !canEdit) return;
-                  // v150: numa unidade, grava a conclusão no override por-unidade
+                  // v138: numa unidade, grava a conclusão no override por-unidade
                   // (merge, sem tocar no texto do setor nem nas outras unidades).
                   const destino: Partial<DrpsRelatorio> = unidadeAtiva
                     ? {
@@ -1207,7 +1208,10 @@ function BlocoSetor({
             <td
               colSpan={4}
               className="text-center text-[11px] font-semibold uppercase tracking-wider"
-              style={{ background: "var(--psi-label-bg)", color: "var(--psi-verde)" }}
+              style={{
+                background: "var(--psi-label-bg)",
+                color: "var(--psi-verde)",
+              }}
             >
               Quantitativo e Qualitativo
             </td>
@@ -1416,3 +1420,4 @@ function BlocoSetor({
     </section>
   );
 }
+

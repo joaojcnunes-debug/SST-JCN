@@ -4,7 +4,7 @@ aliases:
   - V3 SST
   - Relatórios Painel SST
   - Matrizes Editáveis SST
-  - Relatório Chabra
+  - Relatório JCN Consultoria
 tags:
   - projeto/painel-sst
   - chabra
@@ -144,7 +144,7 @@ respostas_custom: Object.keys(form.respostas_custom).length > 0
 - `chave` é imutável após criação (disabled no edit) — evita quebrar respostas antigas
 
 ### Renderização no relatório
-- **Relatório Chabra (`/relatorio`):** bloco azul "Perguntas customizadas" no card de risco
+- **Relatório JCN Consultoria (`/relatorio`):** bloco azul "Perguntas customizadas" no card de risco
 - **PGR (`/pgr`):** seção "Detalhamento Adicional" loop sobre `Object.entries(respostas_custom)`
 
 ---
@@ -213,17 +213,17 @@ export function calcularNivelComMatriz(
 
 O painel-sst evoluiu pra ter **3 saídas de relatório** distintas, cada uma pra um propósito específico:
 
-### 1. `/inspecoes/[id]/relatorio` — Executivo (Formato Chabra)
+### 1. `/inspecoes/[id]/relatorio` — Executivo (Formato JCN Consultoria)
 
-**Propósito:** apresentar ao cliente, layout polido, formato igual ao PDF que a Chabra usa em produção.
+**Propósito:** apresentar ao cliente, layout polido, formato igual ao PDF que a JCN Consultoria usa em produção.
 
 **Estrutura:**
-1. **Capa** com faixa verde lateral, logo da empresa (configs.logo_url) ou placeholder Chabra, card destacado nome+CNPJ, data
+1. **Capa** com faixa verde lateral, logo da empresa (configs.logo_url) ou placeholder JCN Consultoria, card destacado nome+CNPJ, data
 2. **Identificação** + **Resumo Geral** (cards numéricos: Setores | Cargos | Riscos | **Não Conformes** destacado)
 3. **Por SETOR** (não por tipo de risco):
    - Status Conforme/Não Conforme (auto-derivado de `setor.nao_conformidade.trim() !== ""`)
    - Descrição + cargos + fotos + cards de risco agrupados por tipo
-4. **Cards de risco** estilo PDF Chabra:
+4. **Cards de risco** estilo PDF JCN Consultoria:
    - Border-left colorida pelo nível
    - Fonte geradora destacada (laranja)
    - Grid 4 colunas (Probab/Sev/Meio/Situação...)
@@ -234,7 +234,7 @@ O painel-sst evoluiu pra ter **3 saídas de relatório** distintas, cada uma pra
 5. **Final:** Observações + Responsáveis + Assinaturas (Técnico + Empresa)
 6. **CSS @print A4 portrait** com `page-break-after` na capa
 
-**Inspirado em:** `Relatorio SPE.pdf` (relatório real da Chabra, abril/2026)
+**Inspirado em:** `Relatorio SPE.pdf` (relatório real da JCN Consultoria, abril/2026)
 
 ### 2. `/inspecoes/[id]/pgr` — Técnico (NR-1)
 
@@ -265,7 +265,7 @@ O painel-sst evoluiu pra ter **3 saídas de relatório** distintas, cada uma pra
 
 ```
 [Editor de Inspeção topbar]
-├── Relatório       → /inspecoes/[id]/relatorio   (Chabra executivo)
+├── Relatório       → /inspecoes/[id]/relatorio   (JCN Consultoria executivo)
 ├── PGR             → /inspecoes/[id]/pgr         (NR-1 técnico)
 └── (Página da empresa) → /empresas/[id]/relatorio (Consolidado)
 ```
@@ -365,7 +365,7 @@ Foi pulado nesta sessão por escolha do usuário (escopo mínimo). Capturado pra
 **O que:** lista de pessoas com hierarquia/cargo/telefone (similar ao "Brigadistas" da NR-23).
 **Schema:** `CREATE TABLE pae (id, id_inspecao, ordem, nome, cargo, telefone, ...)`
 **UI:** nova aba no editor (similar a Responsáveis)
-**Render:** seção dedicada no relatório (aparece no PDF da Chabra)
+**Render:** seção dedicada no relatório (aparece no PDF da JCN Consultoria)
 
 ### 2. Máquinas e Equipamentos por setor
 **O que:** equipamentos cadastrados em cada setor (Traçador, Furadeira) com Frequência (Diário/Semanal/...) e Operador e Status de Proteção.
@@ -421,7 +421,7 @@ Foi pulado nesta sessão por escolha do usuário (escopo mínimo). Capturado pra
 | `components/config/PerguntasTab.tsx` | CRUD de perguntas selecionando tipo |
 | `components/config/MatrizesTab.tsx` | Editor visual N×M com lookup table |
 | `components/inspecoes/editor/RiscoForm.tsx` | Form que carrega tipos/matriz/perguntas dinâmicos |
-| `app/(app)/inspecoes/[id]/relatorio/page.tsx` | Relatório executivo Chabra (V3+) |
+| `app/(app)/inspecoes/[id]/relatorio/page.tsx` | Relatório executivo JCN Consultoria (V3+) |
 | `app/(app)/inspecoes/[id]/pgr/page.tsx` | Relatório PGR/NR-1 técnico |
 | `app/(app)/empresas/[id]/relatorio/page.tsx` | Relatório consolidado por empresa |
 

@@ -4,8 +4,13 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
-import FotoSlots, { uploadFotoSlots, type FotoSlot } from "@/components/ui/FotoSlots";
+import AvisoRascunho from "@/components/ui/AvisoRascunho";
+import FotoSlots, { prepararFotoSlots, type FotoSlot } from "@/components/ui/FotoSlots";
+import { useRascunho } from "@/lib/hooks/useRascunho";
 import ComboTagInline from "@/components/drps/ComboTagInline";
+import { gravar } from "@/lib/offline/gravar";
+import { operacaoPendenteQueCria } from "@/lib/offline/operacoes";
+import type { InspecaoFull } from "@/lib/hooks/useInspecao";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { useTipoIcone } from "@/lib/hooks/useV3";
@@ -83,6 +88,15 @@ export default function EpiForm({
   // único que sirva, então os campos somem e o usuário edita item a item.
   const varios = !isEdit && itens.length > 1;
 
+  // Rascunho contra queda de luz — guarda também o que já foi escolhido/digitado.
+  const rascunhoValor = useMemo(
+    () => ({ form, escolhidos, extras }),
+    [form, escolhidos, extras],
+  );
+  const rascunho = useRascunho(`epi:${idInspecao}`, rascunhoValor, {
+    ativo: open && !isEdit,
+  });
+
   useEffect(() => {
     if (!open) return;
     setEscolhidos([]);
@@ -126,9 +140,12 @@ export default function EpiForm({
 
       // Com vários itens não há foto a subir: o upload só acontece quando o
       // registro é único, senão a mesma foto iria parar em N equipamentos.
-      const { urls, paths } = varios
-        ? { urls: [] as string[], paths: [] as string[] }
-        : await uploadFotoSlots(
+      //
+      // `prepararFotoSlots` decide os caminhos sem subir nada — quem sobe é o
+      // `gravar()`, no momento certo, tenha rede ou não.
+      const preparado = varios
+        ? { urls: [] as string[], paths: [] as string[], imagens: [], paraRemover: [] }
+        : prepararFotoSlots(
             supabase,
             slots,
             epi?.fotos_storage_paths ?? [],
@@ -136,6 +153,15 @@ export default function EpiForm({
             `epi_epc/${idEmpresa}/${idInspecao}`,
             gerarId,
           );
+      const { urls, paths, imagens, paraRemover } = preparado;
+
+      // O EPI aponta para um risco, que pode ter sido criado offline e ainda
+      // estar na fila. Enquanto o RiscoForm não entrar no offline isto devolve
+      // sempre null — mas já fica certo para quando entrar.
+      const criadorDoRisco = form.id_risco
+        ? await operacaoPendenteQueCria("riscos", "id_risco", form.id_risco)
+        : null;
+      const depende_de = criadorDoRisco ? [criadorDoRisco] : undefined;
 
       const comum = {
         id_risco: form.id_risco,
@@ -144,44 +170,97 @@ export default function EpiForm({
         id_setor: r?.id_setor ?? null,
       };
 
+      let resultado;
+      let linhas: EpiEpc[];
+
       if (isEdit && epi) {
-        const { error } = await supabase
-          .from("epi_epc")
-          .update({
-            ...comum,
-            descricao: form.descricao.trim(),
-            ca: form.ca.trim() || null,
-            fotos_urls: urls,
-            fotos_storage_paths: paths,
-          } as never)
-          .eq("id_protecao", epi.id_protecao);
-        if (error) throw error;
-        return 1;
+        const payload = {
+          ...comum,
+          descricao: form.descricao.trim(),
+          ca: form.ca.trim() || null,
+          fotos_urls: urls,
+          fotos_storage_paths: paths,
+        };
+        resultado = await gravar({
+          tabela: "epi_epc",
+          tipo: "update",
+          linhas: payload,
+          filtro: { id_protecao: epi.id_protecao },
+          modulo: "inspecoes",
+          id_documento: idInspecao,
+          imagens,
+          depende_de,
+        });
+        linhas = [{ ...epi, ...payload } as EpiEpc];
+      } else {
+        // Uma linha por equipamento escolhido, num insert só — se algo falhar,
+        // não fica meia lista gravada.
+        const rows = itens.map((descricao) => ({
+          id_protecao: gerarId("EPI"),
+          id_inspecao: idInspecao,
+          id_empresa: idEmpresa,
+          ...comum,
+          descricao,
+          ca: varios ? null : form.ca.trim() || null,
+          fotos_urls: urls,
+          fotos_storage_paths: paths,
+        }));
+        resultado = await gravar({
+          tabela: "epi_epc",
+          tipo: "insert",
+          linhas: rows,
+          filtro: null,
+          modulo: "inspecoes",
+          id_documento: idInspecao,
+          imagens,
+          depende_de,
+        });
+        linhas = rows as unknown as EpiEpc[];
       }
 
-      // Adicionar: uma linha por equipamento escolhido, num insert só — se algo
-      // falhar, não fica meia lista gravada.
-      const rows = itens.map((descricao) => ({
-        id_protecao: gerarId("EPI"),
-        id_inspecao: idInspecao,
-        id_empresa: idEmpresa,
-        ...comum,
-        descricao,
-        ca: varios ? null : form.ca.trim() || null,
-        fotos_urls: urls,
-        fotos_storage_paths: paths,
-      }));
-      const { error } = await supabase.from("epi_epc").insert(rows as never);
-      if (error) throw error;
-      return rows.length;
+      // Faxina das fotos trocadas: só com rede, e sem deixar a gravação cair por
+      // causa dela. Arquivo órfão no MinIO é desperdício de espaço, não erro —
+      // já a gravação perdida seria trabalho perdido.
+      if (resultado.destino === "SERVIDOR" && paraRemover.length > 0) {
+        try {
+          await supabase.storage.from("fotos").remove(paraRemover);
+        } catch {
+          /* silencioso de propósito */
+        }
+      }
+
+      return { resultado, linhas };
     },
-    onSuccess: (n) => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      // A lista de sugestões passa a considerar o que acabou de ser cadastrado.
-      qc.invalidateQueries({ queryKey: ["epi-sugestoes"] });
-      toast.success(
-        isEdit ? "Atualizado" : n > 1 ? `${n} equipamentos adicionados` : "Adicionado",
-      );
+    onSuccess: ({ resultado, linhas }) => {
+      rascunho.limpar();
+      const n = linhas.length;
+
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+        // A lista de sugestões passa a considerar o que acabou de ser cadastrado.
+        qc.invalidateQueries({ queryKey: ["epi-sugestoes"] });
+        toast.success(
+          isEdit ? "Atualizado" : n > 1 ? `${n} equipamentos adicionados` : "Adicionado",
+        );
+      } else {
+        // Sem rede não há o que revalidar: a lista da tela é atualizada à mão.
+        qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) => {
+          if (!antigo) return antigo;
+          return {
+            ...antigo,
+            epis: isEdit
+              ? antigo.epis.map((e) =>
+                  e.id_protecao === linhas[0].id_protecao ? linhas[0] : e,
+                )
+              : [...antigo.epis, ...linhas],
+          };
+        });
+        toast.success(
+          n > 1 ? `${n} equipamentos guardados no aparelho` : "Guardado no aparelho",
+          { icon: "📵" },
+        );
+      }
+
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -211,6 +290,19 @@ export default function EpiForm({
       title={isEdit ? "Editar Proteção" : "Adicionar EPI/EPC"}
     >
       <form onSubmit={onSubmit} className="space-y-4">
+        {rascunho.pendente && (
+          <AvisoRascunho
+            idadeMin={rascunho.pendente.idadeMin}
+            onRecuperar={() => {
+              const v = rascunho.recuperar();
+              if (!v) return;
+              setForm(v.form);
+              setEscolhidos(v.escolhidos);
+              setExtras(v.extras);
+            }}
+            onDescartar={rascunho.descartar}
+          />
+        )}
         {/* 1. Setor — filtra os riscos abaixo */}
         <div>
           <label className={lblCls}>Setor</label>

@@ -1,11 +1,15 @@
 "use client";
 
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
 import { use, useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import { useAetRelatorio, useSalvarAet } from "@/lib/hooks/useAet";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
+import { mesmoNome } from "@/lib/registro-profissional";
+import { LevarParaCampo } from "@/components/ui/LevarParaCampo";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
@@ -94,13 +98,7 @@ export default function AetDadosPage({
   const salvar = useSalvarAet();
   const canEdit = useCanEdit();
 
-  if (isLoading) {
-    return (
-      <div className="flex h-48 items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-gray-400" />
-      </div>
-    );
-  }
+  if (isLoading) return <EditorSkeleton />;
 
   function salvarSecao(key: string, html: string) {
     const textos_secoes = { ...(rel?.textos_secoes ?? {}), [key]: html };
@@ -134,6 +132,12 @@ export default function AetDadosPage({
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <h1 className="text-lg font-semibold text-gray-900">Dados Gerais</h1>
+
+      {/* Levar para o campo — esta é a tela de entrada do laudo (a raiz
+          redireciona para cá), então é aqui que a decisão de copiar para o
+          aparelho tem que caber. A coleta acontece na aba Setores, já sem
+          sinal. */}
+      <LevarParaCampo idDocumento={idRelatorio} dados={rel} rotulo="AET" />
 
       {/* Seção 1 – Caracterização */}
       <CaracterizacaoCard
@@ -248,7 +252,27 @@ function CaracterizacaoCard({
             </label>
             <ProfissionalSelect
               value={form.responsavel_elaboracao}
-              onChange={(nome, cargo) => { set("responsavel_elaboracao", nome); set("titulo_profissional", cargo ?? ""); }}
+              onChange={(nome, cargo, _cert, regValue) => {
+                set("responsavel_elaboracao", nome);
+                set("titulo_profissional", cargo ?? "");
+                if (regValue) set("registro_profissional", regValue);
+              }}
+              // Laudo ANTIGO: nasceu antes do preenchimento automático e ficou
+              // sem registro. Aqui a gente só SUGERE — em campo vazio, nunca
+              // sobrescrevendo — e nada vai para o banco sem clicar em Salvar.
+              // Ver mesmoNome(): o match do select é difuso e não serve para
+              // decidir de quem é o registro.
+              onMatchFound={({ nome, cargo, registro }) => {
+                // Visualizador não salva: mostrar valor que não está no laudo
+                // seria mentir sobre o documento.
+                if (!canEdit) return;
+                if (!mesmoNome(nome, form.responsavel_elaboracao)) return;
+                const titulo = form.titulo_profissional || cargo || "";
+                const reg = form.registro_profissional || registro || "";
+                if (titulo === form.titulo_profissional && reg === form.registro_profissional) return;
+                setForm((f) => ({ ...f, titulo_profissional: titulo, registro_profissional: reg }));
+                setDirty(true);
+              }}
               className={!canEdit ? "pointer-events-none opacity-60" : ""}
             />
           </div>

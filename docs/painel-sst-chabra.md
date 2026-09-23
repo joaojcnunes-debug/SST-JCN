@@ -1,6 +1,6 @@
 ---
-title: Painel SST Chabra
-aliases: [Painel SST, SST Chabra, painel-sst, painel-sst-chabra]
+title: Painel SST JCN Consultoria
+aliases: [Painel SST, SST JCN Consultoria, painel-sst, painel-sst-chabra]
 tags:
   - projeto/painel-sst
   - chabra
@@ -15,9 +15,17 @@ versao_atual: V3
 licenca: interno
 ---
 
-# Painel SST Chabra
+> [!warning] Documento da era Vercel + Supabase (2026-05). Desde 2026-06 a produção é
+> **100% self-host na `.107`** (`https://painel-sst.chabra.com.br`: app + PostgREST + GoTrue +
+> MinIO) e o projeto Supabase `vifatwpfqhhantordxlq` foi **desligado em 2026-09** (backup final
+> em `/srv/backups/arquivo/supabase-final-2026-09-14`). Referências a `supabase.com/dashboard`,
+> `vercel.app` e `supabase functions deploy` abaixo são históricas — o fluxo vigente está em
+> `deploy/README.md` (build/deploy na `.107`, migrations em `supabase/migrations/` aplicadas no
+> Postgres da `.107`, Edge Functions portadas para `app/api/fn/*`).
 
-> Sistema interno da Chabra pra gestão de inspeções de Segurança e Saúde do Trabalho. Substitui um sistema anterior em Google Apps Script. Em produção desde **2026-05-06**.
+# Painel SST JCN Consultoria
+
+> Sistema interno da JCN Consultoria pra gestão de inspeções de Segurança e Saúde do Trabalho. Substitui um sistema anterior em Google Apps Script. Em produção desde **2026-05-06**.
 
 ## Sumário
 
@@ -40,12 +48,12 @@ licenca: interno
 
 | Recurso | URL / Caminho |
 |---|---|
-| Produção | https://painel-sst-chabra.vercel.app |
-| Código (GitHub) | https://github.com/joaojefferson-hash/Painel-SST--Chabra |
-| Banco/Auth/Storage (Supabase) | https://supabase.com/dashboard/project/vifatwpfqhhantordxlq |
+| Produção | https://painel-sst.chabra.com.br (`.107`; o `painel-sst-chabra.vercel.app` é histórico) |
+| Código (GitHub) | https://github.com/joaojefferson-hash/Painel-SST--JCN Consultoria |
+| Banco/Auth/Storage | Postgres `painel_sst` + GoTrue + MinIO na `.107` (Supabase `vifatwpfqhhantordxlq` desligado 2026-09) |
 | Código local | `C:\Users\PC\painel-sst` |
 | Admin de teste | `joao.jefferson@chabra.com.br` |
-| Project ref Supabase | `vifatwpfqhhantordxlq` (us-east-2 Ohio, free tier `t4g.nano`) |
+| Project ref Supabase (histórico) | `vifatwpfqhhantordxlq` — projeto **excluído**; não use |
 | Bucket Storage | `fotos` (público) |
 
 ---
@@ -53,20 +61,20 @@ licenca: interno
 ## Stack técnica
 
 - **[[Next.js 15]]** com App Router + TypeScript strict
-- **[[Tailwind CSS v4]]** — cores Chabra via `@theme` em `app/globals.css` (sem `tailwind.config.ts`!)
+- **[[Tailwind CSS v4]]** — cores JCN Consultoria via `@theme` em `app/globals.css` (sem `tailwind.config.ts`!)
 - **[[Supabase]]** — Postgres + Auth (email/senha) + Storage + Edge Functions (Deno)
 - **[[TanStack Query v5]]** — cache de servidor, staleTime 2-10min conforme volatilidade
 - **[[Zustand]]** — estado do usuário logado com `persist` middleware (localStorage)
-- **react-hot-toast** — notificações verde/vermelho com cores Chabra
+- **react-hot-toast** — notificações verde/vermelho com cores JCN Consultoria
 - **lucide-react** — ícones
 - **date-fns** com locale `ptBR`
 - Deploy: **[[Vercel]]** com auto-deploy via push em `main` (~2 min)
 
-### Cores da marca Chabra
+### Cores da marca JCN Consultoria
 
 ```css
---verde-primary:  #006B54;   /* topbar, botões primários */
---verde-accent:   #00835A;   /* hover */
+--verde-primary:  #0ea5e9;   /* topbar, botões primários */
+--verde-accent:   #0284c7;   /* hover */
 --verde-dark:     #1e4d28;   /* sidebar */
 --verde-light:    #e8f5e9;   /* backgrounds suaves */
 --verde-border:   #c8e6c9;
@@ -236,7 +244,7 @@ Em [`supabase/schema.sql`](file:///C:/Users/PC/painel-sst/supabase/schema.sql) (
 ### Como aplicar migração nova
 
 1. Editar `supabase/schema.sql` com `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
-2. Rodar manualmente em https://supabase.com/dashboard/project/vifatwpfqhhantordxlq/sql/new
+2. ~~Rodar no SQL Editor do Supabase~~ → aplicar no Postgres da `.107` (`deploy/migrate.ps1` / `psql -d painel_sst`)
 3. **NUNCA usar `CREATE POLICY IF NOT EXISTS`** — não existe em Postgres! Use `DROP POLICY IF EXISTS ... ; CREATE POLICY ...`
 
 ---
@@ -396,7 +404,7 @@ Reutiliza esses mapas pra criar EPIs/Fotos com `id_setor` e `id_risco` corretos.
 - Cores customizadas vão em `app/globals.css`:
   ```css
   @theme {
-    --color-verde-primary: #006B54;
+    --color-verde-primary: #0ea5e9;
   }
   ```
 - A classe `bg-verde-primary` é gerada automaticamente da var `--color-*`
@@ -414,7 +422,7 @@ Reutiliza esses mapas pra criar EPIs/Fotos com `id_setor` e `id_risco` corretos.
 - Pra ativar:
   ```bash
   supabase login
-  supabase link --project-ref vifatwpfqhhantordxlq
+  # (histórico) supabase link --project-ref vifatwpfqhhantordxlq -- projeto desligado; hoje é a rota app/api/fn/welcome-email
   supabase secrets set RESEND_API_KEY=re_xxxxx
   supabase secrets set APP_URL=https://painel-sst-chabra.vercel.app
   supabase functions deploy welcome-email --no-verify-jwt
@@ -442,7 +450,7 @@ Auto via push em `main`. Vercel rebuilda em ~2 min. Sem comando manual.
 ### Adicionar nova migração SQL
 
 1. Criar `migration_v{N}.sql` (ou apenas anexar em `schema.sql`)
-2. SQL Editor do Supabase: https://supabase.com/dashboard/project/vifatwpfqhhantordxlq/sql/new
+2. ~~SQL Editor do Supabase~~ → Postgres da `.107` (ver `deploy/README.md`)
 3. Cola, **Run**, confirmar quando avisar de "operações destrutivas"
 4. Atualizar `lib/supabase/types.ts` com tipo novo se for nova tabela
 5. `npm run build` local antes do push
@@ -537,4 +545,4 @@ Pra Técnico: trocar perfil pra `'Tecnico'` e adicionar `empresas_vinculadas TEX
 - [[NR-01]]
 - [[NR-04]]
 - [[PGR]]
-- [[Chabra]]
+- [[JCN Consultoria]]

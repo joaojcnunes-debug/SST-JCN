@@ -13,7 +13,7 @@ import {
  * Filtro do editor de relatório DRPS.
  *
  * Setor sempre; unidade de trabalho só quando o formulário do cliente tem a
- * pergunta (v149/v150) — a maioria dos relatórios não tem, e para esses a tela
+ * pergunta (v137/v138) — a maioria dos relatórios não tem, e para esses a tela
  * fica exatamente como era. Escolhida uma unidade, a lista de setores passa a
  * ser só a daquela unidade.
  */

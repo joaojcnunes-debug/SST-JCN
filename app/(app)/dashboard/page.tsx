@@ -28,7 +28,16 @@ import {
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { mesAbsSP, mesAbsAgoraSP, rotuloMesAbs } from "@/lib/dashboard/mes";
+import { RENOVACAO, type MesInspecoes } from "@/lib/dashboard/inspecoes";
+import { useInspecoesPorMes } from "@/lib/hooks/useInspecoesPorMes";
+import {
+  porAssociado as agruparPorAssociado,
+  serieMensalAssociacoes,
+  type AssociacaoDoc,
+  type DocumentoContavel,
+} from "@/lib/dashboard/documentos";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
+import { BalaoGrafico, BalaoUmValor, LinhaBalao } from "@/components/ui/BalaoGrafico";
 import { TabelaSkeleton } from "@/components/ui/PageSkeletons";
 import { cn, fmtData } from "@/lib/utils";
 import { useUserStore, useTema } from "@/lib/store";
@@ -59,12 +68,20 @@ interface MesData {
 
 async function fetchStats(): Promise<DashboardStats> {
   const supabase = createSupabaseBrowserClient();
+  // Renovação de documento (23/09) não é inspeção: fica fora dos quatro cards.
+  // `or` com `is.null` e não `neq` sozinho — no PostgREST `neq` descarta a
+  // linha com valor nulo, e registro antigo sem `tipo_criacao` sumiria junto.
+  const inspecoes = () =>
+    supabase
+      .from("inspecoes")
+      .select("id_inspecao", { count: "exact", head: true })
+      .or(`tipo_criacao.is.null,tipo_criacao.neq.${RENOVACAO}`);
   const [empAtivas, total, andamento, concluidas, rascunho] = await Promise.all([
     supabase.from("empresas").select("id_empresa", { count: "exact", head: true }).eq("status", "Ativo"),
-    supabase.from("inspecoes").select("id_inspecao", { count: "exact", head: true }).neq("status", "DELETADA"),
-    supabase.from("inspecoes").select("id_inspecao", { count: "exact", head: true }).eq("status", "EM_ANDAMENTO"),
-    supabase.from("inspecoes").select("id_inspecao", { count: "exact", head: true }).eq("status", "CONCLUIDA"),
-    supabase.from("inspecoes").select("id_inspecao", { count: "exact", head: true }).eq("status", "RASCUNHO"),
+    inspecoes().neq("status", "DELETADA"),
+    inspecoes().eq("status", "EM_ANDAMENTO"),
+    inspecoes().eq("status", "CONCLUIDA"),
+    inspecoes().eq("status", "RASCUNHO"),
   ]);
   return {
     empresasAtivas: empAtivas.count ?? 0,
@@ -75,32 +92,9 @@ async function fetchStats(): Promise<DashboardStats> {
   };
 }
 
-async function fetchInspecoesPorMes(): Promise<MesData[]> {
-  const supabase = createSupabaseBrowserClient();
-  const agora = mesAbsAgoraSP();
-  const desde = new Date();
-  desde.setMonth(desde.getMonth() - 6); // cutoff amplo; o bucket final é por mês de SP
-
-  // "Concluídas por mês" agrupa pela DATA DE CONCLUSÃO real (concluida_em, v146),
-  // não pela criação. Fallback created_at por segurança.
-  const { data } = await supabase
-    .from("inspecoes")
-    .select("concluida_em, created_at")
-    .eq("status", "CONCLUIDA")
-    .gte("concluida_em", desde.toISOString());
-
-  const months: MesData[] = Array.from({ length: 6 }, (_, i) => ({
-    mes: rotuloMesAbs(agora - (5 - i)),
-    total: 0,
-  }));
-
-  (data ?? []).forEach(({ concluida_em, created_at }) => {
-    const idx = 5 - (agora - mesAbsSP(concluida_em || created_at));
-    if (idx >= 0 && idx < 6) months[idx].total++;
-  });
-
-  return months;
-}
+// Inspeções por mês: a consulta e a régua moram em lib/hooks/useInspecoesPorMes,
+// compartilhado com o mini-gráfico da tela Início (15/09) — antes cada um
+// contava por conta própria e os dois divergiam (agosto: 153 × 140).
 
 async function fetchDocumentosPorMes(): Promise<MesData[]> {
   const supabase = createSupabaseBrowserClient();
@@ -128,40 +122,26 @@ async function fetchDocumentosPorMes(): Promise<MesData[]> {
   return months;
 }
 
-// Inspeções associadas por mês: nº de inspeções DISTINTAS que receberam uma associação
-// naquele mês (por created_at da tabela inspecao_associados). Degrada p/ zeros se a
-// tabela ainda não existir.
-async function fetchInspecoesAssociadasPorMes(): Promise<MesData[]> {
+// Documentos que ganharam um associado no mês. A conta (e o filtro de inspeção
+// deletada) mora em lib/dashboard/documentos, junto com a do donut por pessoa —
+// as duas respondiam a mesma pergunta com números diferentes.
+async function fetchDocumentosAssociadosPorMes(): Promise<MesData[]> {
   const supabase = createSupabaseBrowserClient();
-  const agora = mesAbsAgoraSP();
-  const desde = new Date();
-  desde.setMonth(desde.getMonth() - 6);
-
-  const [assoc, inspValidas] = await Promise.all([
-    fetchAllRows<{ created_at: string; id_inspecao: string }>(
+  const [assoc, docs] = await Promise.all([
+    fetchAllRows<AssociacaoDoc>(
       (de, ate) =>
-        supabase.from("inspecao_associados").select("created_at, id_inspecao").gte("created_at", desde.toISOString()).range(de, ate),
+        supabase.from("inspecao_associados").select("created_at, nome, id_inspecao").range(de, ate),
     ),
-    fetchAllRows<{ id_inspecao: string }>(
-      (de, ate) => supabase.from("inspecoes").select("id_inspecao").neq("status", "DELETADA").range(de, ate),
+    fetchAllRows<DocumentoContavel>(
+      (de, ate) =>
+        supabase
+          .from("inspecoes")
+          .select("id_inspecao, status, elaboracao_responsavel, elaboracao_status")
+          .neq("status", "DELETADA")
+          .range(de, ate),
     ),
   ]);
-  const validos = new Set(inspValidas.map((r) => r.id_inspecao));
-
-  const months: MesData[] = Array.from({ length: 6 }, (_, i) => ({
-    mes: rotuloMesAbs(agora - (5 - i)),
-    total: 0,
-  }));
-  const setsPorMes = Array.from({ length: 6 }, () => new Set<string>());
-
-  for (const r of assoc) {
-    if (!r.created_at || !validos.has(r.id_inspecao)) continue; // ignora associações de inspeções deletadas
-    const idx = 5 - (agora - mesAbsSP(r.created_at));
-    if (idx >= 0 && idx < 6) setsPorMes[idx].add(r.id_inspecao);
-  }
-  for (let i = 0; i < 6; i++) months[i].total = setsPorMes[i].size;
-
-  return months;
+  return serieMensalAssociacoes(assoc, docs, mesAbsAgoraSP(), 6, (abs) => rotuloMesAbs(abs), mesAbsSP);
 }
 
 async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: number }[]> {
@@ -186,40 +166,37 @@ async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: numb
   ];
 }
 
-// Documentos por associado à elaboração: nº de inspeções distintas por pessoa.
-// Une a tabela inspecao_associados com quem assumiu (elaboracao_responsavel), como na
-// coluna da lista. Top 6 pessoas + "Outros". Degrada se a tabela ainda não existir.
+// Documentos por pessoa (donut). Top 6 + "Outros". A união das duas fontes
+// (associados + quem assumiu a elaboração) mora em lib/dashboard/documentos: a
+// tela de detalhe usava só a primeira e perdia 109 documentos, trocando até a
+// ordem do pódio.
 async function fetchDocumentosPorAssociado(): Promise<{ name: string; value: number }[]> {
   const supabase = createSupabaseBrowserClient();
-  const [assoc, insp] = await Promise.all([
-    fetchAllRows<{ nome: string; id_inspecao: string }>(
-      (de, ate) => supabase.from("inspecao_associados").select("nome, id_inspecao").range(de, ate),
-    ),
-    // Universo de inspeções NÃO-deletadas (id + quem assumiu a elaboração).
-    fetchAllRows<{ id_inspecao: string; elaboracao_responsavel: string | null }>(
+  const [assoc, docs] = await Promise.all([
+    fetchAllRows<AssociacaoDoc>(
       (de, ate) =>
-        supabase.from("inspecoes").select("id_inspecao, elaboracao_responsavel").neq("status", "DELETADA").range(de, ate),
+        supabase.from("inspecao_associados").select("created_at, nome, id_inspecao").range(de, ate),
+    ),
+    fetchAllRows<DocumentoContavel>(
+      (de, ate) =>
+        supabase
+          .from("inspecoes")
+          .select("id_inspecao, status, elaboracao_responsavel, elaboracao_status")
+          .neq("status", "DELETADA")
+          .range(de, ate),
     ),
   ]);
-  const validos = new Set(insp.map((r) => r.id_inspecao));
 
-  const porPessoa = new Map<string, { nome: string; docs: Set<string> }>();
-  const add = (nome: string | null, idInsp: string) => {
-    const n = (nome ?? "").trim();
-    if (!n || !idInsp) return;
-    const key = n.toLowerCase();
-    const e = porPessoa.get(key) ?? { nome: n, docs: new Set<string>() };
-    e.docs.add(idInsp);
-    porPessoa.set(key, e);
-  };
-  // Associações — só de inspeções não-deletadas (antes contava as deletadas).
-  for (const r of assoc) if (validos.has(r.id_inspecao)) add(r.nome, r.id_inspecao);
-  // Quem assumiu a elaboração (já filtrado por não-deletadas).
-  for (const r of insp) if (r.elaboracao_responsavel) add(r.elaboracao_responsavel, r.id_inspecao);
-
-  const ordenado = [...porPessoa.values()]
-    .map((e) => ({ name: e.nome, value: e.docs.size }))
-    .sort((a, b) => b.value - a.value);
+  // Documentos ASSOCIADOS a cada pessoa NO MÊS CORRENTE — o mesmo número, no
+  // mesmo recorte, que a tela de detalhe mostra ao abrir (decisão de 15/09).
+  //
+  // Até 15/09 era o acumulado de sempre e media ENTREGUES; a tela abria no
+  // mês e também media entregues — dois recortes sob o mesmo título, e ele
+  // viu os números diferentes. Mês corrente nos dois, e não acumulado, para
+  // manter a lição de 27/08: acumulado num painel é lido como produção do mês.
+  const ordenado = agruparPorAssociado(assoc, docs, { mes: mesAbsAgoraSP(), mesDe: mesAbsSP })
+    .map((p) => ({ name: p.nome, value: p.total }))
+    .filter((p) => p.value > 0);
   const TOP = 6;
   if (ordenado.length <= TOP) return ordenado;
   const outros = ordenado.slice(TOP).reduce((s, x) => s + x.value, 0);
@@ -271,16 +248,18 @@ const KPI_CONFIG = [
 // ─── Gráfico mensal reutilizável (Técnicos / ADM) ──────────────────────────────
 
 function GraficoMes({
-  titulo, data, loading, link, linkLabel, linkTitle, singular, plural, className,
+  titulo, sub, data, loading, link, linkLabel, linkTitle, rotulo, className,
 }: {
   titulo: string;
+  /** Linha de apoio sob o título. Sem ela, só o período. */
+  sub?: string;
   data: MesData[] | undefined;
   loading: boolean;
   link?: string;
   linkLabel?: string;
   linkTitle?: string;
-  singular: string;
-  plural: string;
+  /** O que o número É no balão: "Documentos". Sem unidade colada. */
+  rotulo: string;
   className?: string;
 }) {
   return (
@@ -288,7 +267,7 @@ function GraficoMes({
       <div className="mb-4 flex items-start justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-gray-800">{titulo}</h2>
-          <p className="mt-0.5 text-xs text-gray-400">Últimos 6 meses</p>
+          <p className="mt-0.5 text-xs text-gray-400">Últimos 6 meses{sub ? ` · ${sub}` : ""}</p>
         </div>
         {link && (
           <Link
@@ -307,15 +286,10 @@ function GraficoMes({
       ) : (
         <div className="min-h-40 flex-1">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} barSize={24} margin={{ top: 4, right: 4, left: -16, bottom: 0 }}>
+          <BarChart data={data} barSize={24} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
             <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-            <Tooltip
-              cursor={{ fill: "var(--grafico-cursor)" }}
-              contentStyle={{ borderRadius: 10, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: 12, padding: "6px 12px" }}
-              formatter={(v) => [`${v} ${Number(v) !== 1 ? plural : singular}`, ""]}
-              labelStyle={{ fontWeight: 600, color: "#111827", marginBottom: 2 }}
-            />
+            <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
+            <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo={rotulo} />} />
             <Bar dataKey="total" radius={[6, 6, 0, 0]}>
               {(data ?? []).map((_, idx, arr) => (
                 <Cell key={idx} fill={idx === arr.length - 1 ? "#0ea5e9" : "#0ea5e960"} />
@@ -329,7 +303,106 @@ function GraficoMes({
   );
 }
 
+// ─── Inspeções por mês — CONCLUÍDAS, pela data de conclusão ─────────────────
+//
+// Terceiro desenho deste cartão, e o mais simples — pedido de 15/09.
+//
+//  • Até 24/08 contava concluídas, mas o título não dizia isso.
+//  • De 24/08 a 08/09, duas barras (visita × finalização) que pareciam
+//    comparáveis e não eram.
+//  • De 08/09 a 15/09, a SAFRA: as visitas do mês divididas em concluídas × em
+//    aberto. Coerente por dentro, mas discordava do botão "Ver detalhe" ao
+//    lado — agosto era 140 aqui (visitas) e 153 lá (conclusões), e quem lia os
+//    dois achava que um deles estava errado. Não estava: eram perguntas
+//    diferentes, e é justamente isso que não compensa explicar num cartão.
+//
+// Agora o cartão responde a UMA pergunta, a mesma da tela de detalhe: quantas
+// inspeções foram CONCLUÍDAS em cada mês — `concluidas`, por `mesDeConclusao`,
+// a régua de lib/dashboard/inspecoes. Os dois números fecham por construção.
+//
+// ⚠️ O preço, que a tela de detalhe já paga e avisa: antes de 04/08/2026 a
+// data de conclusão é ESTIMADA (backfill da v154, herdou a última alteração),
+// então mês antigo aparece menor do que o trabalho que houve. Medido em 15/09:
+// maio/26 tem 111 visitas e 16 conclusões; julho, 157 visitas e 219
+// conclusões (219 estimadas). A linha de apoio avisa enquanto houver mês assim
+// na janela, e o aviso some sozinho quando os 6 meses passarem de julho/26.
+// A safra continua calculada em `serieMensal` (e travada em teste), só não é
+// mais desenhada aqui.
+
+const COR_CONCLUIDAS = "#0ea5e9";
+
+function GraficoInspecoesMes({
+  data, loading, className,
+}: {
+  data: MesInspecoes[] | undefined;
+  loading: boolean;
+  className?: string;
+}) {
+  // Quantas conclusões da janela têm data estimada (backfill da v154). Some
+  // sozinho quando a janela passar de julho/26.
+  const estimadas = (data ?? []).reduce((s, m) => s + m.concluidasAprox, 0);
+  return (
+    <div className={`glass reveal-up flex flex-col rounded-2xl p-5 ${className ?? ""}`}>
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-800">Inspeções por Mês</h2>
+          <p className="mt-0.5 text-xs text-gray-400">
+            Últimos 6 meses · concluídas, pela data de conclusão · o mesmo número do detalhe
+            {estimadas > 0 && <> · antes de 04/08/26 a data é estimada</>}
+          </p>
+        </div>
+        <Link
+          href="/dashboard/inspecoes-concluidas"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-verde-light px-2.5 py-1.5 text-xs font-semibold text-verde-primary transition-colors hover:bg-verde-primary hover:text-white"
+          title="Abrir o detalhe por mês e por pessoa"
+        >
+          <TrendingUp className="size-3.5" />
+          Ver detalhe
+          <ArrowRight className="size-3" />
+        </Link>
+      </div>
+      {loading ? (
+        <div className="min-h-40 flex-1 animate-pulse rounded-xl bg-gray-100" />
+      ) : (
+        <div className="min-h-40 flex-1">
+          <ResponsiveContainer width="100%" height="100%">
+            {/* Eixo Y: `left: -16` com `width={28}` empurrava os números para fora
+                do cartão — só sobrava a metade direita de cada algarismo. Visto
+                em 15/09; os 5 gráficos de barras do dashboard tinham o mesmo par. */}
+            <BarChart data={data} barSize={24} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+              <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
+              <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo="Concluídas" cor={COR_CONCLUIDAS} />} />
+              <Bar dataKey="concluidas" name="Concluídas" fill={COR_CONCLUIDAS} radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Donut reutilizável (Por Status / Documentos por Situação) ─────────────────
+
+/** Balão do donut: a fatia já se chama pelo rótulo, então não precisa de título. */
+function BalaoDonut({
+  colors, data, active, payload,
+}: {
+  colors: string[];
+  data: { name: string; value: number }[];
+  active?: boolean;
+  payload?: { name?: string; value?: number; payload?: { fill?: string } }[];
+}) {
+  const item = active ? payload?.[0] : undefined;
+  if (!item || item.value == null) return null;
+  const idx = data.findIndex((d) => d.name === item.name);
+  const cor = item.payload?.fill ?? colors[(idx < 0 ? 0 : idx) % colors.length];
+  return (
+    <BalaoGrafico>
+      <LinhaBalao texto={item.name ?? ""} valor={item.value} cor={cor} />
+    </BalaoGrafico>
+  );
+}
 
 function GraficoDonut({
   titulo, sub, data, colors, loading, className,
@@ -369,7 +442,9 @@ function GraficoDonut({
                   <Cell key={item.name} fill={colors[data.findIndex((x) => x.name === item.name) % colors.length]} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ borderRadius: 10, border: "1px solid var(--border-app)", background: "var(--surface)", color: "var(--text-strong)", fontSize: 12, padding: "6px 12px" }} />
+              {/* No donut o "nome" da fatia é o próprio rótulo (Em Andamento,
+                  Concluídas), então o balão de uma medida serve: título = fatia. */}
+              <Tooltip content={<BalaoDonut colors={colors} data={data} />} />
             </PieChart>
           </ResponsiveContainer>
 
@@ -423,10 +498,7 @@ export default function DashboardPage() {
     queryFn: fetchStats,
   });
 
-  const { data: porMes, isLoading: loadingMes } = useQuery({
-    queryKey: ["dashboard-por-mes"],
-    queryFn: fetchInspecoesPorMes,
-  });
+  const { data: porMes, isLoading: loadingMes } = useInspecoesPorMes();
 
   const { data: porMesAdm, isLoading: loadingMesAdm } = useQuery({
     queryKey: ["dashboard-por-mes-adm"],
@@ -444,7 +516,7 @@ export default function DashboardPage() {
   });
   const { data: assocPorMes, isLoading: loadingAssocMes } = useQuery({
     queryKey: ["dashboard-assoc-por-mes"],
-    queryFn: fetchInspecoesAssociadasPorMes,
+    queryFn: fetchDocumentosAssociadosPorMes,
   });
   const assocColors = useMemo(
     () => docAssociado.map((d) => (d.name === "Outros" ? "#9ca3af" : corAvatar(d.name))),
@@ -511,16 +583,10 @@ export default function DashboardPage() {
       <section className="grid items-stretch gap-4 lg:auto-rows-fr lg:grid-cols-3">
 
         {/* Linha 1: Inspeções (Técnicos) + Por Status */}
-        <GraficoMes
+        <GraficoInspecoesMes
           className="lg:col-span-2"
-          titulo="Inspeções por Mês (Técnicos)"
           data={porMes}
           loading={loadingMes}
-          link="/dashboard/inspecoes-concluidas"
-          linkLabel="Ver por técnico"
-          linkTitle="Abrir dashboard de inspeções concluídas (por mês e por técnico)"
-          singular="inspeção"
-          plural="inspeções"
         />
         <GraficoDonut
           titulo="Por Status"
@@ -539,8 +605,7 @@ export default function DashboardPage() {
           link="/dashboard/documentos-emitidos"
           linkLabel="Ver por ADM"
           linkTitle="Produção de documentos por ADM (elaborados no SGG e enviados), por mês"
-          singular="documento"
-          plural="documentos"
+          rotulo="Documentos"
         />
         <GraficoDonut
           titulo="Documentos por Situação"
@@ -550,22 +615,24 @@ export default function DashboardPage() {
           loading={loadingDocSit}
         />
 
-        {/* Linha 3: Inspeções Associadas por Mês (barra) + Documentos por Associado (donut) */}
+        {/* Linha 3: Documentos em elaboração (barra) + por pessoa (donut). Os dois
+            medem trabalho de ESCRITÓRIO; até 27/08/2026 o título dizia
+            "Inspeções Associadas" e era lido como produção de campo. */}
         <GraficoMes
           className="lg:col-span-2"
-          titulo="Inspeções Associadas por Mês"
+          titulo="Documentos Associados por Mês"
+          sub="documentos que ganharam associado no mês (escritório)"
           data={assocPorMes}
           loading={loadingAssocMes}
           link="/dashboard/por-associados"
-          linkLabel="Ver por associados"
-          linkTitle="Detalhe das inspeções associadas por mês e por associado"
-          singular="associação"
-          plural="associações"
+          linkLabel="Ver por pessoa"
+          linkTitle="Documentos do SGG por mês e por pessoa do administrativo — não é inspeção de campo"
+          rotulo="Documentos"
         />
         <GraficoDonut
           className="lg:col-start-3"
           titulo="Documentos por Associado"
-          sub="Associados à elaboração"
+          sub="Associados neste mês (SGG) — não é campo"
           data={docAssociado}
           colors={assocColors}
           loading={loadingDocAssoc}

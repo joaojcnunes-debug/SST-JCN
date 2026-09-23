@@ -1,8 +1,8 @@
 "use client";
 
 import { use, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Printer, BadgeCheck, Download, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, BadgeCheck, Download, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import { usePdfAssinado } from "@/lib/hooks/usePdfsGerados";
@@ -44,7 +44,6 @@ function arrayEmpty(n: number): null[] {
 
 export default function FichaInspecaoPage({ params }: Props) {
   const { id } = use(params);
-  const router = useRouter();
   const { data, isLoading } = useInspecao(id);
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
 
@@ -177,13 +176,12 @@ export default function FichaInspecaoPage({ params }: Props) {
       `}</style>
 
       <div className="flex items-center justify-between ficha-no-print">
-        <button
-          type="button"
-          onClick={() => router.push(`/inspecoes/${id}`)}
+        <Link
+          href={`/inspecoes/${id}`}
           className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
         >
           <ArrowLeft className="size-4" /> Voltar à inspeção
-        </button>
+        </Link>
         <div className="flex items-center gap-2">
           {pdfAssinado ? (
             <>

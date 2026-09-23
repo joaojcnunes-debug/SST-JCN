@@ -1,4 +1,7 @@
-export default function AjudaPage() {
+import AjudaComAbas from "@/components/novidades/AjudaComAbas";
+
+
+function ConteudoAjudaPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -85,5 +88,18 @@ function Secao({
       <h2 className="mb-2 text-sm font-semibold text-gray-900">{titulo}</h2>
       <div className="space-y-1 text-sm text-gray-700">{children}</div>
     </div>
+  );
+}
+
+/**
+ * A ajuda deste módulo ganhou a aba Atualizações (01/09). O conteúdo acima
+ * continua exatamente como estava — quem monta as abas é o AjudaComAbas, e a
+ * lista de novidades vive num componente só, compartilhado pelos 11 módulos.
+ */
+export default function AjudaPage() {
+  return (
+    <AjudaComAbas titulo="Guia do DRPS">
+      <ConteudoAjudaPage />
+    </AjudaComAbas>
   );
 }

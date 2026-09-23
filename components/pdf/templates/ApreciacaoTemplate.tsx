@@ -1,17 +1,19 @@
 import React from "react";
 import FolhaAssinaturas from "@/components/pdf/FolhaAssinaturas";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
-import { SecaoSumario } from "@/components/pdf/SecoesComuns";
-import type { Empresa } from "@/lib/supabase/types";
+import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/SecoesComuns";
 import {
   POD_HRN_LABELS,
   FEP_HRN_LABELS,
   GPD_HRN_LABELS,
-  NPE_HRN_LABELS,
   CLASSIFICACAO_HRN_LABELS,
   calcularIndiceHrn,
-  calcularClassificacaoHrn,
+  type PodHrn,
+  type FepHrn,
+  type GpdHrn,
+  type ClassificacaoRiscoHrn,
 } from "@/lib/supabase/types";
+import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import { substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
 import { TP_STYLE, renderEditaveis, temSecoesSistema, renderUnificado, numerarCapitulos, numLabel } from "./shared";
@@ -23,6 +25,8 @@ import {
 
 export interface ApreciacaoItemLocal {
   id_item: string;
+  /** Máquina a que o item pertence (v148). Null só em laudo pré-v148. */
+  id_ficha: string | null;
   item_codigo: string;
   item_categoria: string;
   item_titulo: string;
@@ -36,51 +40,6 @@ export interface ApreciacaoItemLocal {
   nivel_risco_calculado: string | null;
   foto_urls: string[];
   foto_legendas: string[];
-}
-
-export interface ApreciacaoRiscoLocal {
-  tipo_perigo: string;
-  origem: string | null;
-  potenciais_consequencias: string | null;
-  pod: string | null;
-  fep: string | null;
-  gpd: string | null;
-  classificacao_risco: string | null;
-  pod_residual: string | null;
-  fep_residual: string | null;
-  gpd_residual: string | null;
-  classificacao_residual: string | null;
-  nivel_acoes: string | null;
-  medidas_preventivas: string | null;
-  itens_nr12: string[] | null;
-  categoria_seguranca: string | null;
-}
-
-export interface ApreciacaoFichaLocal {
-  nome: string;
-  numero_ordem: number;
-  setor: string | null;
-  tipo: string | null;
-  modelo: string | null;
-  fabricante: string | null;
-  serie: string | null;
-  ano: string | null;
-  capacidade: string | null;
-  componentes_maquina: string[] | null;
-  limite_uso: string | null;
-  limite_espaco: string | null;
-  limite_tempo: string | null;
-  limite_produtividade: string | null;
-  npe: string | null;
-  sistemas_atual: string[] | null;
-  sistemas_necessario: string[] | null;
-  constatacoes_inspecao: string | null;
-  parecer_tecnico: string | null;
-  operadores: { nome: string; cargo: string }[] | null;
-  foto_urls: string[];
-  prioridade_manual: boolean;
-  itens: ApreciacaoItemLocal[];
-  riscos: ApreciacaoRiscoLocal[];
 }
 
 export interface ApreciacaoAcaoLocal {
@@ -97,6 +56,106 @@ export interface ApreciacaoAcaoLocal {
   origem_label: string | null;
 }
 
+/** Uma linha da tabela de risco da ficha (seção 4 do laudo). */
+export interface RiscoFichaLocal {
+  id_risco: string;
+  /** Máquina a que o perigo pertence (v148) — usado para agrupar. */
+  id_ficha: string | null;
+  tipo_perigo: string;
+  origem: string | null;
+  potenciais_consequencias: string | null;
+  item_nr12: string | null;
+  /** V149 — itens da norma como lista; `item_nr12` é o legado. */
+  itens_nr12: string[] | null;
+  /** V149 — categoria de segurança (NBR 14153), sai junto das medidas. */
+  categoria_seguranca: string | null;
+  pod: string | null;
+  fep: string | null;
+  gpd: string | null;
+  classificacao_risco: string | null;
+  medidas_engenharia: string | null;
+  medidas_administrativas: string | null;
+  /** Legado pré-v146: só é impresso quando Eng./Adm. estão vazias. */
+  medidas_preventivas: string | null;
+  pod_residual: string | null;
+  fep_residual: string | null;
+  gpd_residual: string | null;
+  classificacao_residual: string | null;
+}
+
+/** Bloco "Inventário" da ficha — vem do cadastro da máquina. */
+export interface FichaMaquinaLocal {
+  tipo: string | null;
+  marca: string | null;
+  modelo: string | null;
+  numero_serie: string | null;
+  ano_fabricacao: string | null;
+  capacidade: string | null;
+  setor: string | null;
+  operadores: string | null;
+  fotos: string[];
+}
+
+/** Uma máquina do laudo, com o que ela imprime. */
+export interface FichaPdfLocal {
+  id_ficha: string;
+  numero_ordem: number;
+  nome: string;
+  tipo: string | null;
+  modelo: string | null;
+  fabricante: string | null;
+  serie: string | null;
+  ano: string | null;
+  capacidade: string | null;
+  setor: string | null;
+  operadores: { nome: string; cargo: string }[] | null;
+  constatacoes_inspecao: string | null;
+  parecer_tecnico: string | null;
+  fotos: string[];
+  riscos: RiscoFichaLocal[];
+}
+
+/**
+ * Agrupa por setor: setores na ordem da 1ª aparição, máquinas por `numero_ordem`.
+ * A numeração impressa (4.1, 4.2…) é a posição na lista achatada — por isso ela
+ * acompanha o agrupamento e não o `numero_ordem` cru.
+ */
+function agruparPorSetor(fichas: FichaPdfLocal[]) {
+  const SEM_SETOR = "Sem setor";
+  const ordem: string[] = [];
+  const mapa = new Map<string, FichaPdfLocal[]>();
+  for (const f of [...fichas].sort((a, b) => (a.numero_ordem ?? 0) - (b.numero_ordem ?? 0))) {
+    const setor = (f.setor ?? "").trim() || SEM_SETOR;
+    if (!mapa.has(setor)) {
+      mapa.set(setor, []);
+      ordem.push(setor);
+    }
+    mapa.get(setor)!.push(f);
+  }
+  const grupos = ordem.map((setor) => ({ setor, fichas: mapa.get(setor)! }));
+  const flat = grupos.flatMap((g) => g.fichas);
+  const pos = new Map(flat.map((f, i) => [f.id_ficha, i + 1]));
+  return { grupos, flat, seqDe: (f: FichaPdfLocal) => pos.get(f.id_ficha) ?? 0 };
+}
+
+/** Maior risco (residual quando houver, senão o inicial) de uma máquina. */
+function maiorRisco(f: FichaPdfLocal): { indice: number; classe: string } | null {
+  let melhor: { indice: number; classe: string } | null = null;
+  for (const r of f.riscos) {
+    const temResidual = r.pod_residual && r.fep_residual && r.gpd_residual;
+    const indice = temResidual
+      ? calcularIndiceHrn(r.pod_residual, r.fep_residual, r.gpd_residual)
+      : calcularIndiceHrn(r.pod, r.fep, r.gpd);
+    const classeBruta = temResidual ? r.classificacao_residual : r.classificacao_risco;
+    if (indice === null) continue;
+    const classe = classeBruta
+      ? CLASSIFICACAO_HRN_LABELS[classeBruta as ClassificacaoRiscoHrn]
+      : "";
+    if (!melhor || indice > melhor.indice) melhor = { indice, classe };
+  }
+  return melhor;
+}
+
 export interface ApreciacaoTemplateProps {
   apreciacao: {
     titulo: string | null;
@@ -105,34 +164,30 @@ export interface ApreciacaoTemplateProps {
     responsavel: string | null;
     responsavel_empresa: string | null;
     data_apreciacao: string | null;
-    notificacao_sit: string | null;
     risco_residual: string | null;
     observacoes_gerais: string | null;
     conclusao_tecnica: string | null;
     recomendacoes: string | null;
+    constatacoes_inspecao: string | null;
   };
-  maquinaNome?: string;
+  maquinaNome: string;
   empresa?: Partial<Empresa> | null;
-  fichas: ApreciacaoFichaLocal[];
+  itens: ApreciacaoItemLocal[];
   acoes: ApreciacaoAcaoLocal[];
+  riscos: RiscoFichaLocal[];
+  maquina: FichaMaquinaLocal | null;
+  /** Máquinas do laudo (v148). Vazio = laudo antigo, sem ficha. */
+  fichas: FichaPdfLocal[];
+  notificacaoSit: string | null;
+  /** v153: imprime também o checklist de 37 itens (além da ficha HRN). */
+  incluirChecklist?: boolean;
   capitulos: TextoPadraoCapitulo[];
   valores: Record<string, string>;
   signatarios: Signatario[];
   folhaEmpresa: { razaoSocial: string; cnpj: string } | null;
   dataHoraAssinatura: string;
   identificadorDocumento: string;
-  /** Imprimir o checklist NR-12 (37 itens) por máquina, além da ficha HRN (v142). */
-  incluirChecklist?: boolean;
-  responsavelTecnico?: {
-    nome: string;
-    cargo: string | null;
-    registroLabel: string;
-    registro: string | null;
-    art: string | null;
-  } | null;
 }
-
-type ResponsavelTecnico = NonNullable<ApreciacaoTemplateProps["responsavelTecnico"]>;
 
 const LARANJA = "#c2410c";
 
@@ -146,31 +201,11 @@ const SITUACAO_LABELS: Record<string, string> = {
 const STYLE_BLOCK = `
 * { box-sizing: border-box; }
 ${TP_STYLE}
-/* Orientação por capítulo (Texto Padrão): requer gerarPdf preferCssPageSize/capaFullBleed. */
-@page paisagem { size: A4 landscape; }
-@page retrato { size: A4 portrait; }
-.cap-paisagem { page: paisagem; break-before: page; }
-.cap-retrato { page: retrato; break-before: page; }
 .sec-titulo { font-size: 13pt; font-weight: 700; color: ${LARANJA}; border-bottom: 2px solid ${LARANJA}; padding-bottom: 3px; margin: 14pt 0 8pt; }
 .cat-titulo { font-size: 10.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: #9a3412; border-bottom: 1px solid #fdba74; padding-bottom: 2px; margin: 10pt 0 6pt; }
-.maq-titulo { font-size: 11.5pt; font-weight: 700; color: #fff; background: ${LARANJA}; border-radius: 5px; padding: 5px 10px; margin: 12pt 0 8pt; page-break-after: avoid; }
-.maq-prio { font-size: 8px; font-weight: 700; background: #fde68a; color: #92400e; border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: middle; }
-.setor-titulo { font-size: 12pt; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #9a3412; background: #fff7ed; border-left: 4px solid ${LARANJA}; padding: 4px 10px; margin: 14pt 0 8pt; page-break-after: avoid; }
-.setor-row td { font-size: 10pt; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: #9a3412; background: #fff7ed; }
 .dados { width: 100%; border-collapse: collapse; font-size: 10.5pt; margin-bottom: 8pt; }
 .dados td { border: 1px solid #e5e7eb; padding: 4px 8px; vertical-align: top; }
 .dados .rot { width: 28%; font-size: 9px; font-weight: 700; text-transform: uppercase; color: #6b7280; }
-.inv-cab { background: ${LARANJA}; color: #fff; font-size: 9pt; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 4px 8px; }
-.placa { font-style: italic; color: #9ca3af; font-size: 9pt; }
-.constat { font-size: 9.5pt; color: #374151; margin: 4pt 0 6pt; line-height: 1.45; }
-.constat strong { color: #111827; }
-.hrn { width: 100%; border-collapse: collapse; font-size: 9pt; margin: 4pt 0 8pt; }
-.hrn th, .hrn td { border: 1px solid #e5e7eb; padding: 3px 5px; vertical-align: top; text-align: left; }
-.hrn th { background: #fff7ed; color: #9a3412; font-weight: 700; font-size: 8pt; text-transform: uppercase; }
-.hrn tr { page-break-inside: avoid; }
-.hrn .rcel { text-align: center; border-radius: 3px; padding: 2px 3px; }
-.hrn .rcel .lbls { font-size: 7pt; line-height: 1.15; }
-.hrn .rcel .idx { font-weight: 700; font-size: 8.5pt; }
 .ap-item { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; page-break-inside: avoid; }
 .ap-item .cab { display: flex; align-items: flex-start; gap: 8px; }
 .ap-cod { font-family: monospace; font-size: 10px; font-weight: 700; border-radius: 4px; padding: 2px 6px; background: #f3f4f6; color: #4b5563; white-space: nowrap; }
@@ -192,6 +227,79 @@ ${TP_STYLE}
 .acao .what { font-size: 10.5pt; font-weight: 600; color: #111827; }
 .acao .meta { font-size: 9pt; color: #4b5563; margin: 3px 0 0; }
 .stat { font-size: 8px; font-weight: 700; border: 1px solid; border-radius: 999px; padding: 1px 6px; }
+
+/* ── Ficha de risco por máquina (seção 4 do laudo) ─────────────────────── */
+.ficha-maq { font-size: 12pt; font-weight: 700; color: #111827; margin: 0 0 6pt; }
+.ficha-rot { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #6b7280; margin: 0 0 3pt; }
+.inv-grid { display: flex; flex-wrap: wrap; border: 1px solid #e5e7eb; margin-bottom: 8pt; }
+.inv-campo { flex: 1 1 110px; border-right: 1px solid #e5e7eb; padding: 3px 7px; }
+.inv-campo:last-child { border-right: 0; }
+.inv-k { display: block; font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; }
+.inv-v { font-size: 9.5pt; color: #111827; }
+/* Cabeca da ficha por maquina: inventario NA VERTICAL a esquerda, fotos a direita.
+   E este arranjo que faz a ficha caber em A4 retrato — a faixa horizontal de 7
+   campos (.inv-grid) atravessava a folha e obrigava paisagem. Espelha o laudo de
+   referencia do RT. O .inv-grid segue intocado para a secao legada (FichaSection). */
+.ficha-topo { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 8pt; }
+.ficha-topo .col-inv { flex: 1 1 58%; min-width: 0; }
+.ficha-topo .col-fotos { flex: 0 0 36%; }
+.inv-lista { border: 1px solid #e5e7eb; }
+.inv-linha { display: flex; border-bottom: 1px solid #e5e7eb; }
+.inv-linha:last-child { border-bottom: 0; }
+.inv-linha:nth-child(odd) { background: #f9fafb; }
+.inv-linha .k { flex: 0 0 36%; padding: 3px 7px; font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; border-right: 1px solid #e5e7eb; align-self: stretch; }
+.inv-linha .v { flex: 1 1 auto; min-width: 0; padding: 3px 7px; font-size: 9pt; color: #111827; overflow-wrap: break-word; }
+.col-fotos .f { margin-bottom: 5px; }
+.col-fotos .f:last-child { margin-bottom: 0; }
+/* Altura casada com a lista de inventario (7 linhas ~ 190px): 3 fotos empilhadas
+   a 112px estouravam a folha e empurravam o parecer para a pagina seguinte. */
+.col-fotos img { display: block; width: 100%; height: 90px; object-fit: cover; border: 1px solid #d1d5db; border-radius: 4px; }
+/* Rotulo e texto do parecer andam juntos — sem isso o "PARECER TECNICO" fica
+   orfao no rodape e o texto comeca na folha seguinte. */
+.ficha-parecer { break-inside: avoid; page-break-inside: avoid; }
+.ficha-linha { font-size: 9.5pt; margin: 0 0 7pt; line-height: 1.45; }
+.ficha-linha .rot { font-weight: 700; }
+.hrn { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-top: 3pt; }
+.hrn th { background: #fff7ed; border: 1px solid #d1d5db; padding: 4px 5px; text-align: left; font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #9a3412; }
+.hrn td { border: 1px solid #e5e7eb; padding: 4px 5px; vertical-align: top; }
+.hrn tr { page-break-inside: avoid; }
+.hrn .idx { font-family: monospace; font-weight: 700; white-space: nowrap; }
+.med-k { font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #4b5563; }
+
+/* ── Orientação por capítulo (opt-in no renderUnificado) ────────────────── */
+@page paisagem { size: A4 landscape; }
+.cap-paisagem { page: paisagem; }
+
+/* ── Agrupamento por setor ──────────────────────────────────────────────── */
+.setor-row td { background: #f3f4f6; font-weight: 700; font-size: 8px; text-transform: uppercase; letter-spacing: .06em; color: #4b5563; }
+.setor-titulo { font-size: 11pt; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: ${LARANJA}; border-bottom: 1px solid #fdba74; padding-bottom: 2px; margin: 0 0 8pt; }
+.ficha-bloco { page-break-inside: auto; }
+.ficha-bloco.quebra { page-break-before: always; }
+
+/* ── Checklist NR-12 agrupado por máquina ───────────────────────────────── */
+/* O checklist vem depois das fichas HRN, no mesmo capítulo: sem esta quebra a
+   primeira máquina do checklist nasce colada no rodapé da última ficha. */
+.checklist-bloco { page-break-before: always; }
+.chk-maq { page-break-inside: auto; }
+.chk-maq.quebra { page-break-before: always; }
+.chk-cont { font-size: 9pt; font-weight: 400; color: #6b7280; }
+/* Operadores da máquina em tabela. Compacta de propósito: a ficha tem de caber
+   numa folha junto com inventário, fotos, tabela HRN e parecer. */
+.oper-bloco { margin-bottom: 7pt; break-inside: avoid; page-break-inside: avoid; }
+.oper-tab { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+.oper-tab th { background: #f9fafb; border: 1px solid #e5e7eb; padding: 2px 5px; text-align: left; font-size: 7px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; }
+.oper-tab td { border: 1px solid #e5e7eb; padding: 2px 5px; vertical-align: top; }
+.oper-tab tr { page-break-inside: avoid; }
+.oper-tab .idx { font-family: monospace; color: #6b7280; white-space: nowrap; }
+
+/* Tabela de referência normativa: sai uma vez, antes das máquinas. */
+.ref-bloco { margin-bottom: 10pt; }
+.ref-nota { font-size: 9pt; color: #4b5563; margin: 0 0 6pt; }
+.ref-tab { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+.ref-tab th { background: #fff7ed; border: 1px solid #d1d5db; padding: 4px 5px; text-align: left; font-size: 7.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #9a3412; }
+.ref-tab td { border: 1px solid #e5e7eb; padding: 4px 5px; vertical-align: top; }
+.ref-tab tr { page-break-inside: avoid; }
+.ref-tab .idx { font-family: monospace; font-weight: 700; white-space: nowrap; }
 `;
 
 function corSituacao(s: string) {
@@ -215,92 +323,175 @@ function corStatusAcao(s: string) {
   return { bg: "#fef3c7", fg: "#b45309", bd: "#fcd34d" };
 }
 
-function corClasseHrn(c: string | null) {
-  if (c === "ALTO") return { bg: "#fee2e2", fg: "#b91c1c" };
-  if (c === "MEDIO") return { bg: "#fef3c7", fg: "#b45309" };
-  if (c === "BAIXO") return { bg: "#d1fae5", fg: "#047857" };
-  if (c === "DESPREZIVEL") return { bg: "#f3f4f6", fg: "#4b5563" };
-  return { bg: "#f3f4f6", fg: "#6b7280" };
-}
+/**
+ * Checklist NR-12 — agrupado POR MÁQUINA e, dentro dela, por categoria.
+ *
+ * Antes agrupava SÓ por categoria. Com N máquinas no laudo, o mesmo requisito
+ * saía N vezes seguidas — mesmo código, mesmo título, mesma descrição — e nada
+ * dizia de qual máquina era cada situação: numa página apareciam "12.2.4
+ * Conforme", "12.2.4 Pendente", "12.2.4 Conforme" e o leitor não tinha como
+ * saber qual máquina estava pendente. Medido no PDF real em 2026-08-05.
+ */
+function ChecklistSection({
+  itens,
+  fichas,
+  titulo,
+}: {
+  itens: ApreciacaoItemLocal[];
+  fichas: FichaPdfLocal[];
+  titulo: string;
+}) {
+  const { grupos, seqDe } = agruparPorSetor(fichas);
 
-const lbl = (map: Record<string, string>, v: string | null) =>
-  v ? map[v] ?? v : "—";
+  const porFicha = new Map<string, ApreciacaoItemLocal[]>();
+  for (const it of itens) {
+    if (!it.id_ficha) continue;
+    const lista = porFicha.get(it.id_ficha);
+    if (lista) lista.push(it);
+    else porFicha.set(it.id_ficha, [it]);
+  }
 
-function ItemBloco({ item }: { item: ApreciacaoItemLocal }) {
-  const cs = corSituacao(item.situacao);
-  const ehLivre = item.item_origem === "LIVRE";
-  const temRisco =
-    item.situacao === "NAO_CONFORME" &&
-    (item.probabilidade || item.severidade || item.nivel_risco_calculado);
+  // Laudo pré-v148 (item sem ficha) ou item cuja ficha sumiu: sai numa lista
+  // única no fim em vez de desaparecer do documento.
+  const idsFicha = new Set(fichas.map((f) => f.id_ficha));
+  const soltos = itens.filter((i) => !i.id_ficha || !idsFicha.has(i.id_ficha));
+
+  let setorAnterior = "";
+
   return (
-    <div className="ap-item">
-      <div className="cab">
-        <span className={`ap-cod ${ehLivre ? "livre" : ""}`}>{item.item_codigo}</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#111827" }}>
-            {item.item_titulo}{ehLivre ? " · Livre" : ""}
-          </p>
-          {item.item_descricao && (
-            <p style={{ margin: "2px 0 0", fontSize: 10, color: "#4b5563" }}>{item.item_descricao}</p>
-          )}
-        </div>
-        <span className="sit" style={{ background: cs.bg, color: cs.fg, borderColor: cs.bd }}>
-          {SITUACAO_LABELS[item.situacao] ?? item.situacao}
-        </span>
-      </div>
-
-      {temRisco && (
-        <div className="risco">
-          <p className="rot">Avaliação de risco</p>
-          <span>Probabilidade: <strong>{item.probabilidade || "—"}</strong> · Severidade: <strong>{item.severidade || "—"}</strong>{item.nivel_risco_calculado ? <> · Nível: <strong>{item.nivel_risco_calculado}</strong></> : null}</span>
-        </div>
-      )}
-
-      {item.foto_urls.length > 0 && (
-        <div className="fotos">
-          {item.foto_urls.map((url, i) => (
-            <div key={`${url}-${i}`} className="f">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt={`Foto ${item.item_codigo}`} />
-              {item.foto_legendas?.[i] ? <p className="leg">{item.foto_legendas[i]}</p> : null}
+    <div className="checklist-bloco">
+      <p className="sec-titulo">{titulo} ({itens.length})</p>
+      <ReferenciasChecklist itens={itens} />
+      {/* TODA máquina abre em folha nova, inclusive a primeira: sem isso ela
+          nasce logo abaixo da tabela de referência e o cabeçalho (setor, nome da
+          máquina, categoria) fica órfão no rodapé, porque o 1º cartão tem
+          `page-break-inside: avoid` e pula para a página seguinte sozinho. */}
+      {grupos.flatMap((g) =>
+        g.fichas.map((f) => {
+          const desta = porFicha.get(f.id_ficha) ?? [];
+          if (desta.length === 0) return null;
+          const abreSetor = g.setor !== setorAnterior;
+          setorAnterior = g.setor;
+          return (
+            <div key={f.id_ficha} className="chk-maq quebra">
+              {abreSetor && <p className="setor-titulo">Setor: {g.setor}</p>}
+              <p className="ficha-maq">
+                {seqDe(f)}. {f.nome || "Máquina"}{" "}
+                <span className="chk-cont">({desta.length} itens)</span>
+              </p>
+              <CategoriasChecklist itens={desta} />
             </div>
-          ))}
-        </div>
+          );
+        }),
       )}
-
-      {item.observacao && (
-        <div className="campo">
-          <p className="rot">Observação técnica</p>
-          <p className="val">{item.observacao}</p>
-        </div>
-      )}
-      {item.recomendacao && (
-        <div className="campo">
-          <p className="rot rec">Recomendação / ação corretiva</p>
-          <p className="val">{item.recomendacao}</p>
+      {soltos.length > 0 && (
+        <div className="chk-maq quebra">
+          <p className="ficha-maq">Itens sem máquina vinculada ({soltos.length})</p>
+          <CategoriasChecklist itens={soltos} />
         </div>
       )}
     </div>
   );
 }
 
-function ChecklistGrupos({ itens }: { itens: ApreciacaoItemLocal[] }) {
+/**
+ * Tabela de referência — o que a NR-12 exige em cada item, UMA vez só.
+ *
+ * O texto normativo é idêntico nas N máquinas (todas copiam o mesmo catálogo).
+ * Repeti-lo em cada um dos 148 cartões inchava o laudo sem acrescentar
+ * informação. Aqui ele sai uma vez, e o cartão de cada máquina fica com o que é
+ * dela: situação, foto, observação e recomendação.
+ */
+function ReferenciasChecklist({ itens }: { itens: ApreciacaoItemLocal[] }) {
+  // Os itens vêm ordenados por `ordem`, que se repete a cada máquina — a
+  // deduplicação por código na ordem de chegada devolve a sequência do catálogo.
+  const vistos = new Set<string>();
+  const unicos: ApreciacaoItemLocal[] = [];
+  for (const i of itens) {
+    if (vistos.has(i.item_codigo)) continue;
+    vistos.add(i.item_codigo);
+    unicos.push(i);
+  }
+
+  const grupos = CATEGORIAS_NR12_ORDEM.map((cat) => ({
+    categoria: cat as CategoriaNR12,
+    label: CATEGORIAS_NR12_LABELS[cat as CategoriaNR12],
+    itens: unicos.filter((i) => i.item_categoria === cat),
+  })).filter((g) => g.itens.length > 0);
+
+  const semCategoria = unicos.filter(
+    (i) => !CATEGORIAS_NR12_ORDEM.includes(i.item_categoria as CategoriaNR12),
+  );
+
+  if (unicos.length === 0) return null;
+
+  return (
+    <div className="ref-bloco">
+      <p className="ficha-rot">
+        Referências normativas dos itens ({unicos.length} requisitos)
+      </p>
+      <p className="ref-nota">
+        O que a norma exige em cada item, listado uma única vez. Nas máquinas a
+        seguir, cada item traz a situação constatada em campo.
+      </p>
+      <table className="ref-tab">
+        <thead>
+          <tr>
+            <th style={{ width: "11%" }}>Cód.</th>
+            <th style={{ width: "31%" }}>Requisito</th>
+            <th style={{ width: "58%" }}>O que a norma exige</th>
+          </tr>
+        </thead>
+        <tbody>
+          {grupos.map((g) => (
+            <React.Fragment key={g.categoria}>
+              <tr className="setor-row">
+                <td colSpan={3}>{g.label} ({g.itens.length})</td>
+              </tr>
+              {g.itens.map((i) => (
+                <tr key={i.item_codigo}>
+                  <td className="idx">{i.item_codigo}</td>
+                  <td>{i.item_titulo}</td>
+                  <td>{i.item_descricao || "—"}</td>
+                </tr>
+              ))}
+            </React.Fragment>
+          ))}
+          {semCategoria.length > 0 && (
+            <React.Fragment>
+              <tr className="setor-row">
+                <td colSpan={3}>Outros ({semCategoria.length})</td>
+              </tr>
+              {semCategoria.map((i) => (
+                <tr key={i.item_codigo}>
+                  <td className="idx">{i.item_codigo}</td>
+                  <td>{i.item_titulo}</td>
+                  <td>{i.item_descricao || "—"}</td>
+                </tr>
+              ))}
+            </React.Fragment>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** As categorias do checklist de UMA máquina. */
+function CategoriasChecklist({ itens }: { itens: ApreciacaoItemLocal[] }) {
   const grupos = CATEGORIAS_NR12_ORDEM.map((cat) => ({
     categoria: cat as CategoriaNR12,
     label: CATEGORIAS_NR12_LABELS[cat as CategoriaNR12],
     itens: itens.filter((i) => i.item_categoria === cat),
   })).filter((g) => g.itens.length > 0);
 
-  if (grupos.length === 0) {
-    return <p style={{ fontSize: 10, color: "#6b7280" }}>Sem itens de checklist.</p>;
-  }
   return (
     <>
       {grupos.map((g) => (
         <div key={g.categoria}>
           <p className="cat-titulo">{g.label} ({g.itens.length})</p>
           {g.itens.map((item) => (
-            <ItemBloco key={item.id_item} item={item} />
+            <ItemChecklistPdf key={item.id_item} item={item} />
           ))}
         </div>
       ))}
@@ -308,382 +499,676 @@ function ChecklistGrupos({ itens }: { itens: ApreciacaoItemLocal[] }) {
   );
 }
 
-const PLACA_FALLBACK =
-  "Placa de identificação não localizada na inspeção; recomenda-se identificação patrimonial interna e complementação documental.";
+/**
+ * Emenda as quebras de linha que são só rebordo do texto digitado.
+ *
+ * 97 das 148 observações do laudo da Green Fruit vêm com "\n" gravado, e 75
+ * delas com a quebra no MEIO da frase. Como o PDF usa `white-space: pre-wrap`,
+ * elas eram respeitadas e a frase partia no meio da página ("...materiais
+ * soltos ou ⏎ obstáculos que..."). O texto gravado NÃO é alterado — só a
+ * renderização.
+ *
+ * Como distinguir rebordo de quebra intencional: medido na base, 93 das 94
+ * quebras internas caem depois de uma linha de 80+ caracteres (mediana na
+ * coluna 117, máximo 128) — assinatura de quebra automática, ninguém escreve
+ * parágrafo de uma linha só com 117 caracteres exatos. Então:
+ *   - linha anterior longa (>= 80) → é rebordo, emenda;
+ *   - linha curta → só emenda se ela não fechar frase e a seguinte começar em
+ *     minúscula;
+ *   - lista ("- item", "1. item") e linha terminada em ":" nunca são emendadas;
+ *   - parágrafo de verdade (linha em branco) é preservado inteiro.
+ */
+function juntarQuebrasSoltas(texto: string): string {
+  return texto
+    .split(/\n{2,}/)
+    .map((paragrafo) => {
+      const linhas = paragrafo.split("\n");
+      let saida = linhas[0];
+      for (let i = 1; i < linhas.length; i++) {
+        const anterior = linhas[i - 1].trimEnd();
+        const atual = linhas[i];
+        const ehLista = /^\s*([-–—•*]|\d+[.)])\s/.test(atual);
+        const rebordo =
+          !ehLista
+          && !/:$/.test(anterior)
+          && (anterior.length >= 80
+            || (!/[.;!?]$/.test(anterior) && /^\s*\p{Ll}/u.test(atual)));
+        saida += rebordo ? ` ${atual.trimStart()}` : `\n${atual}`;
+      }
+      return saida;
+    })
+    .join("\n\n")
+    .trim();
+}
 
-function Inventario({ f }: { f: ApreciacaoFichaLocal }) {
-  const core: [string, string | null][] = [
-    ["Tipo", f.tipo],
-    ["Modelo", f.modelo],
-    ["Fabricante", f.fabricante],
-    ["Nº de Série", f.serie],
-    ["Ano", f.ano],
-    ["Capacidade", f.capacidade],
-    ["Setor", f.setor],
-  ];
-  const componentes = f.componentes_maquina?.length ? f.componentes_maquina.join(", ") : null;
-  const limites = [
-    f.limite_uso && `Uso: ${f.limite_uso}`,
-    f.limite_espaco && `Espaço: ${f.limite_espaco}`,
-    f.limite_tempo && `Tempo: ${f.limite_tempo}`,
-    f.limite_produtividade && `Produtividade: ${f.limite_produtividade}`,
-  ].filter(Boolean).join(" · ");
-  const sisAtual = f.sistemas_atual?.length ? f.sistemas_atual.join(", ") : null;
-  const sisNec = f.sistemas_necessario?.length ? f.sistemas_necessario.join(", ") : null;
+/** Um item do checklist: código, situação, fotos, observação e recomendação. */
+function ItemChecklistPdf({ item }: { item: ApreciacaoItemLocal }) {
+  const cs = corSituacao(item.situacao);
+  const ehLivre = item.item_origem === "LIVRE";
+  const temRisco =
+    item.situacao === "NAO_CONFORME"
+    && (item.probabilidade || item.severidade || item.nivel_risco_calculado);
 
   return (
-    <table className="dados">
-      <tbody>
-        <tr><td className="inv-cab" colSpan={2}>Inventário</td></tr>
-        {core.map(([rot, val]) => (
-          <tr key={rot}>
-            <td className="rot">{rot}</td>
-            <td>{val ? val : <span className="placa">{PLACA_FALLBACK}</span>}</td>
-          </tr>
-        ))}
-        {componentes && (<tr><td className="rot">Componentes (NR-12)</td><td>{componentes}</td></tr>)}
-        {limites && (<tr><td className="rot">Limites</td><td>{limites}</td></tr>)}
-        {f.npe && (<tr><td className="rot">Pessoas expostas</td><td>{lbl(NPE_HRN_LABELS, f.npe)}</td></tr>)}
-        {sisAtual && (<tr><td className="rot">Sistemas atuais</td><td>{sisAtual}</td></tr>)}
-        {sisNec && (<tr><td className="rot">Sistemas necessários</td><td>{sisNec}</td></tr>)}
-      </tbody>
-    </table>
+              <div className="ap-item">
+                <div className="cab">
+                  <span className={`ap-cod ${ehLivre ? "livre" : ""}`}>{item.item_codigo}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#111827" }}>
+                      {item.item_titulo}{ehLivre ? " · Livre" : ""}
+                    </p>
+                    {/* A descrição normativa NÃO sai aqui: ela é idêntica nas N
+                        máquinas e já foi impressa uma vez em ReferenciasChecklist.
+                        Item LIVRE é a exceção — o texto é dele, não do catálogo. */}
+                    {ehLivre && item.item_descricao && (
+                      <p style={{ margin: "2px 0 0", fontSize: 10, color: "#4b5563" }}>{item.item_descricao}</p>
+                    )}
+                  </div>
+                  <span className="sit" style={{ background: cs.bg, color: cs.fg, borderColor: cs.bd }}>
+                    {SITUACAO_LABELS[item.situacao] ?? item.situacao}
+                  </span>
+                </div>
+
+                {temRisco && (
+                  <div className="risco">
+                    <p className="rot">Avaliação de risco</p>
+                    <span>Probabilidade: <strong>{item.probabilidade || "—"}</strong> · Severidade: <strong>{item.severidade || "—"}</strong>{item.nivel_risco_calculado ? <> · Nível: <strong>{item.nivel_risco_calculado}</strong></> : null}</span>
+                  </div>
+                )}
+
+                {item.foto_urls.length > 0 && (
+                  <div className="fotos">
+                    {item.foto_urls.map((url, i) => (
+                      <div key={`${url}-${i}`} className="f">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt={`Foto ${item.item_codigo}`} />
+                        {item.foto_legendas?.[i] ? <p className="leg">{item.foto_legendas[i]}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {item.observacao && (
+                  <div className="campo">
+                    <p className="rot">Observação técnica</p>
+                    <p className="val">{juntarQuebrasSoltas(item.observacao)}</p>
+                  </div>
+                )}
+                {item.recomendacao && (
+                  <div className="campo">
+                    <p className="rot rec">Recomendação / ação corretiva</p>
+                    <p className="val">{juntarQuebrasSoltas(item.recomendacao)}</p>
+                  </div>
+                )}
+              </div>
   );
 }
 
+/**
+ * Célula de risco no formato do laudo: os três fatores por extenso e, na linha
+ * de baixo, "índice · CLASSIFICAÇÃO" (ex.: "24 · MÉDIO"). O índice é recalculado
+ * na hora; a classificação é a que o técnico gravou — se ele sobrescreveu a
+ * sugestão, o que sai impresso é a dele.
+ */
 function CelulaRisco({
   pod,
   fep,
   gpd,
-  classe,
+  classificacao,
 }: {
   pod: string | null;
   fep: string | null;
   gpd: string | null;
-  classe: string | null;
+  classificacao: string | null;
 }) {
-  const idx = calcularIndiceHrn(pod, fep, gpd);
-  // Recalcula a classe pelas faixas atuais (índice e classe sempre coerentes).
-  const classeCalc = calcularClassificacaoHrn(pod, fep, gpd) ?? classe;
-  const c = corClasseHrn(classeCalc);
-  const classeLabel = classeCalc
-    ? (CLASSIFICACAO_HRN_LABELS[classeCalc as keyof typeof CLASSIFICACAO_HRN_LABELS] ?? classeCalc).toUpperCase()
-    : "—";
-  return (
-    <div className="rcel" style={{ background: c.bg, color: c.fg }}>
-      <div className="lbls">
-        {lbl(POD_HRN_LABELS, pod)}·{lbl(FEP_HRN_LABELS, fep)}·{lbl(GPD_HRN_LABELS, gpd)}
-      </div>
-      <div className="idx">
-        {idx != null ? idx : "—"} · {classeLabel}
-      </div>
-    </div>
-  );
-}
-
-function HrnTable({ riscos }: { riscos: ApreciacaoRiscoLocal[] }) {
-  if (riscos.length === 0) return null;
-  return (
-    <table className="hrn">
-      <thead>
-        <tr>
-          <th style={{ width: "13%" }}>Perigo</th>
-          <th style={{ width: "23%" }}>Origem / Consequências</th>
-          <th style={{ width: "10%" }}>Item NR-12</th>
-          <th style={{ width: "13%" }}>Risco Inicial</th>
-          <th style={{ width: "28%" }}>Medidas de Controle</th>
-          <th style={{ width: "13%" }}>Risco Residual</th>
-        </tr>
-      </thead>
-      <tbody>
-        {riscos.map((r, i) => {
-          const classeResidual =
-            r.classificacao_residual ||
-            calcularClassificacaoHrn(r.pod_residual, r.fep_residual, r.gpd_residual);
-          const origemCons = [r.origem, r.potenciais_consequencias].filter(Boolean).join(" → ");
-          return (
-            <tr key={i}>
-              <td><strong>{r.tipo_perigo}</strong></td>
-              <td>{origemCons || "—"}</td>
-              <td style={{ fontSize: "8pt", color: "#374151" }}>
-                {r.itens_nr12?.length ? r.itens_nr12.join(", ") : "—"}
-              </td>
-              <td>
-                <CelulaRisco pod={r.pod} fep={r.fep} gpd={r.gpd} classe={r.classificacao_risco} />
-              </td>
-              <td style={{ whiteSpace: "pre-wrap", fontSize: "8pt" }}>
-                {r.medidas_preventivas || "—"}
-                {r.categoria_seguranca ? (
-                  <div style={{ marginTop: 2, color: "#9a3412", fontWeight: 700 }}>
-                    Cat. segurança (NBR 14153): {r.categoria_seguranca}
-                  </div>
-                ) : null}
-              </td>
-              <td>
-                <CelulaRisco pod={r.pod_residual} fep={r.fep_residual} gpd={r.gpd_residual} classe={classeResidual} />
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-function IdentificacaoLaudo({
-  empresa,
-  apreciacao,
-  rt,
-  numero,
-}: {
-  empresa?: Partial<Empresa> | null;
-  apreciacao: ApreciacaoTemplateProps["apreciacao"];
-  rt?: ResponsavelTecnico | null;
-  numero?: number;
-}) {
-  const e = empresa ?? {};
-  const endereco = [
-    [e.logradouro, e.numero].filter(Boolean).join(", "),
-    e.complemento,
-    e.bairro,
-    [e.municipio, e.uf].filter(Boolean).join(" / "),
-    e.cep ? `CEP ${e.cep}` : null,
+  const fatores = [
+    pod ? POD_HRN_LABELS[pod as PodHrn] : null,
+    fep ? FEP_HRN_LABELS[fep as FepHrn] : null,
+    gpd ? GPD_HRN_LABELS[gpd as GpdHrn] : null,
   ]
     .filter(Boolean)
-    .join(" – ");
-  const cnae = [e.cnae_principal, e.cnae_descricao].filter(Boolean).join(" — ");
-  const cnpjCnae =
-    [e.cnpj, cnae].filter(Boolean).join(" — ") +
-    (e.grau_risco != null ? ` — Grau de Risco ${e.grau_risco}` : "");
+    .join(" · ");
+  const indice = calcularIndiceHrn(pod, fep, gpd);
+  const nome = classificacao
+    ? CLASSIFICACAO_HRN_LABELS[classificacao as ClassificacaoRiscoHrn]
+    : null;
+  const resumo = [indice !== null ? String(indice) : null, nome ? nome.toUpperCase() : null]
+    .filter(Boolean)
+    .join(" · ");
+
+  if (!fatores && !resumo) return <>—</>;
+  return (
+    <>
+      {fatores}
+      {fatores && resumo ? <br /> : null}
+      {resumo ? <span className="idx">{resumo}</span> : null}
+    </>
+  );
+}
+
+/**
+ * Ficha de risco da máquina — a seção 4 do laudo de referência: identificação
+ * de inventário, foto, operadores, constatações de campo, tabela
+ * perigo → risco inicial → medidas → risco residual e o parecer técnico.
+ *
+ * Ocupa a posição do capítulo "apreciacao_risco", que antes imprimia só a
+ * conclusão técnica em texto livre (o parecer continua saindo, no fim da ficha).
+ */
+function FichaSection({
+  titulo,
+  maquinaNome,
+  maquina,
+  constatacoes,
+  riscos,
+  parecer,
+  recomendacoes,
+}: {
+  titulo: string;
+  maquinaNome: string;
+  maquina: FichaMaquinaLocal | null;
+  constatacoes: string | null;
+  riscos: RiscoFichaLocal[];
+  parecer: string | null;
+  recomendacoes: string | null;
+}) {
+  const campos: [string, string | null][] = maquina
+    ? [
+        ["Tipo", maquina.tipo],
+        ["Fabricante", maquina.marca],
+        ["Modelo", maquina.modelo],
+        ["Nº de Série", maquina.numero_serie],
+        ["Ano", maquina.ano_fabricacao],
+        ["Capacidade", maquina.capacidade],
+        ["Setor", maquina.setor],
+      ]
+    : [];
+
   return (
     <div>
-      <p className="sec-titulo">{numero ? `${numero}. ` : ""}Identificação</p>
-      <table className="dados">
-        <tbody>
-          <tr><td className="inv-cab" colSpan={2}>Empresa Contratante</td></tr>
-          <tr><td className="rot">Razão Social</td><td>{e.razao_social || e.nome_empresa || "—"}</td></tr>
-          <tr><td className="rot">Endereço</td><td>{endereco || "—"}</td></tr>
-          <tr><td className="rot">CNPJ / CNAE</td><td>{cnpjCnae || "—"}</td></tr>
-          {apreciacao.responsavel_empresa && (
-            <tr><td className="rot">Responsável (empresa)</td><td>{apreciacao.responsavel_empresa}</td></tr>
-          )}
-        </tbody>
-      </table>
-      <table className="dados">
-        <tbody>
-          <tr><td className="inv-cab" colSpan={2}>Empresa Contratada</td></tr>
-          <tr><td className="rot">Razão Social</td><td>JCN Consultoria em Segurança do Trabalho</td></tr>
-          {(rt?.nome || apreciacao.responsavel) && (
-            <tr>
-              <td className="rot">Responsável Técnico</td>
-              <td>
-                {rt?.nome ?? apreciacao.responsavel}
-                {rt?.cargo ? ` — ${rt.cargo}` : ""}
-                {rt?.registro ? ` — ${rt.registroLabel} ${rt.registro}` : ""}
-              </td>
-            </tr>
-          )}
-          {rt?.art && (
-            <tr><td className="rot">ART Vinculada</td><td>{rt.art}</td></tr>
-          )}
-          {apreciacao.cidade && (
-            <tr><td className="rot">Cidade</td><td>{apreciacao.cidade}</td></tr>
-          )}
-        </tbody>
-      </table>
-      {apreciacao.notificacao_sit && (
-        <p className="constat">
-          <strong>Documento elaborado em atendimento à Notificação SIT/MTE nº </strong>
-          {apreciacao.notificacao_sit}.
+      <p className="sec-titulo">{titulo}</p>
+      <p className="ficha-maq">{maquinaNome}</p>
+
+      {campos.length > 0 && (
+        <>
+          <p className="ficha-rot">Inventário</p>
+          <div className="inv-grid">
+            {campos.map(([k, v]) => (
+              <div key={k} className="inv-campo">
+                <span className="inv-k">{k}</span>
+                <span className="inv-v">{v && v.trim() ? v : "—"}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {maquina && maquina.fotos.length > 0 && (
+        <div className="fotos">
+          {maquina.fotos.map((url, i) => (
+            <div key={`${url}-${i}`} className="f">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt={`Foto de ${maquinaNome}`} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {maquina?.operadores && (
+        <p className="ficha-linha">
+          <span className="rot">Operadores / Responsáveis: </span>
+          {maquina.operadores}
         </p>
+      )}
+
+      {constatacoes && (
+        <p className="ficha-linha">
+          <span className="rot">Constatações da inspeção: </span>
+          {constatacoes}
+        </p>
+      )}
+
+      {riscos.length > 0 && (
+        <>
+          <p className="ficha-rot">Apreciação de risco</p>
+          <table className="hrn">
+            <thead>
+              <tr>
+                <th style={{ width: "13%" }}>Perigo</th>
+                <th style={{ width: "21%" }}>Origem / Consequências</th>
+                <th style={{ width: "9%" }}>Item NR-12</th>
+                <th style={{ width: "14%" }}>Risco Inicial</th>
+                <th style={{ width: "29%" }}>Medidas de Controle</th>
+                <th style={{ width: "14%" }}>Risco Residual</th>
+              </tr>
+            </thead>
+            <tbody>
+              {riscos.map((r) => {
+                const origem = [r.origem, r.potenciais_consequencias].filter(Boolean).join(" → ");
+                const temSeparadas = !!(r.medidas_engenharia || r.medidas_administrativas);
+                return (
+                  <tr key={r.id_risco}>
+                    <td>{r.tipo_perigo || "—"}</td>
+                    <td>{origem || "—"}</td>
+                    <td>{r.item_nr12 || "—"}</td>
+                    <td>
+                      <CelulaRisco pod={r.pod} fep={r.fep} gpd={r.gpd} classificacao={r.classificacao_risco} />
+                    </td>
+                    <td>
+                      {temSeparadas ? (
+                        <>
+                          {r.medidas_engenharia && (
+                            <>
+                              <span className="med-k">Eng.:</span> {r.medidas_engenharia}
+                              {r.medidas_administrativas ? <br /> : null}
+                            </>
+                          )}
+                          {r.medidas_administrativas && (
+                            <>
+                              <span className="med-k">Adm.:</span> {r.medidas_administrativas}
+                            </>
+                          )}
+                        </>
+                      ) : (
+                        r.medidas_preventivas || "—"
+                      )}
+                    </td>
+                    <td>
+                      <CelulaRisco
+                        pod={r.pod_residual}
+                        fep={r.fep_residual}
+                        gpd={r.gpd_residual}
+                        classificacao={r.classificacao_residual}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {parecer && (
+        <div className="campo">
+          <p className="rot">Parecer técnico</p>
+          <p className="val">{parecer}</p>
+        </div>
+      )}
+      {recomendacoes && (
+        <div className="campo">
+          <p className="rot">Recomendações finais</p>
+          <p className="val">{recomendacoes}</p>
+        </div>
       )}
     </div>
   );
 }
 
+/** Seção "Método de Cálculo do Risco" — a régua que o laudo declara usar. */
 function MetodoHrn({ titulo }: { titulo: string }) {
+  const fatores: [string, string, [string, number][]][] = [
+    ["POD", "Probabilidade de ocorrência do dano", (Object.entries(POD_HRN_LABELS) as [string, string][]).map(([, v], i) => [v, 4 - i] as [string, number])],
+    ["FEP", "Frequência de exposição ao perigo", (Object.entries(FEP_HRN_LABELS) as [string, string][]).map(([, v], i) => [v, 4 - i] as [string, number])],
+    ["GPD", "Gravidade potencial do dano", (Object.entries(GPD_HRN_LABELS) as [string, string][]).map(([, v], i) => [v, 4 - i] as [string, number])],
+  ];
+
   return (
     <div>
       <p className="sec-titulo">{titulo}</p>
-      <p className="constat">
-        Índice de Risco = <strong>POD × FEP × GPD</strong>, conforme ABNT ISO/TR
-        14121-2:2018. O risco residual é recalculado após as medidas de proteção,
-        reduzindo prioritariamente a probabilidade (POD).
+      <p style={{ fontSize: 10.5, color: "#374151", margin: "0 0 8pt" }}>
+        A avaliação segue o método HRN (<em>Hazard Rating Number</em>), referenciado pela
+        ABNT NBR ISO/TR 14121-2. O índice de risco é o produto de três fatores:
+        <strong> POD × FEP × GPD</strong>, resultando num valor de 1 a 64.
       </p>
-      <table className="hrn" style={{ marginBottom: 6 }}>
-        <thead>
-          <tr>
-            <th style={{ width: "10%" }}>Valor</th>
-            <th>POD</th>
-            <th>FEP</th>
-            <th>GPD</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>1</td><td>Remota</td><td>Anualmente</td><td>Baixa</td></tr>
-          <tr><td>2</td><td>Improvável</td><td>Mensalmente</td><td>Moderada</td></tr>
-          <tr><td>3</td><td>Provável</td><td>Semanalmente</td><td>Grave</td></tr>
-          <tr><td>4</td><td>Muito provável</td><td>Diariamente</td><td>Catastrófica</td></tr>
-        </tbody>
-      </table>
-      <table className="hrn">
-        <tbody>
-          <tr>
-            <td style={{ background: "#fee2e2", textAlign: "center" }}><strong>ALTO</strong><br />índice &gt; 36</td>
-            <td style={{ background: "#fef3c7", textAlign: "center" }}><strong>MÉDIO</strong><br />19–36</td>
-            <td style={{ background: "#d1fae5", textAlign: "center" }}><strong>BAIXO</strong><br />9–18</td>
-            <td style={{ background: "#f3f4f6", textAlign: "center" }}><strong>DESPREZÍVEL</strong><br />índice ≤ 8</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
-/** Hierarquia Empresa → Setor → Máquina: agrupa as fichas por setor.
- *  Setores na ordem da 1ª aparição (menor numero_ordem); máquinas por ordem. */
-function agruparFichasPorSetor(fichas: ApreciacaoFichaLocal[]) {
-  const SEM = "Sem setor";
-  const byNum = [...fichas].sort(
-    (a, b) => (a.numero_ordem ?? 0) - (b.numero_ordem ?? 0)
-  );
-  const ordem: string[] = [];
-  const map = new Map<string, ApreciacaoFichaLocal[]>();
-  for (const f of byNum) {
-    const key = f.setor && f.setor.trim() ? f.setor.trim() : SEM;
-    if (!map.has(key)) {
-      map.set(key, []);
-      ordem.push(key);
-    }
-    map.get(key)!.push(f);
-  }
-  const grupos = ordem.map((setor) => ({ setor, fichas: map.get(setor)! }));
-  const flat = grupos.flatMap((g) => g.fichas);
-  const seqDe = (f: ApreciacaoFichaLocal) => flat.indexOf(f) + 1;
-  return { grupos, flat, seqDe };
-}
-
-function RelacaoMaquinas({ fichas, titulo }: { fichas: ApreciacaoFichaLocal[]; titulo: string }) {
-  const { grupos, seqDe } = agruparFichasPorSetor(fichas);
-  return (
-    <div>
-      <p className="sec-titulo">{titulo} ({fichas.length})</p>
       <table className="hrn">
         <thead>
           <tr>
-            <th style={{ width: "5%" }}>Nº</th>
-            <th>Equipamento</th>
-            <th>Tipo</th>
-            <th>Modelo / Fab.</th>
-            <th>Série</th>
-            <th>Ano</th>
+            <th style={{ width: "10%" }}>Fator</th>
+            <th style={{ width: "38%" }}>Significado</th>
+            <th style={{ width: "52%" }}>Níveis (pontuação)</th>
           </tr>
         </thead>
         <tbody>
-          {grupos.map((g) => (
-            <React.Fragment key={g.setor}>
-              <tr>
-                <td colSpan={6} className="setor-row">
-                  Setor: {g.setor} ({g.fichas.length})
-                </td>
-              </tr>
-              {g.fichas.map((f) => (
-                <tr key={f.numero_ordem}>
-                  <td>{seqDe(f)}</td>
-                  <td><strong>{f.nome}</strong></td>
-                  <td>{f.tipo || "—"}</td>
-                  <td>{[f.modelo, f.fabricante].filter(Boolean).join(" / ") || "—"}</td>
-                  <td>{f.serie || "—"}</td>
-                  <td>{f.ano || "—"}</td>
-                </tr>
-              ))}
-            </React.Fragment>
+          {fatores.map(([sigla, nome, niveis]) => (
+            <tr key={sigla}>
+              <td><strong>{sigla}</strong></td>
+              <td>{nome}</td>
+              <td>{niveis.map(([label, score]) => `${label} (${score})`).join(" · ")}</td>
+            </tr>
           ))}
         </tbody>
       </table>
+
+      <p className="ficha-rot" style={{ marginTop: "8pt" }}>Faixas de classificação</p>
+      <table className="hrn">
+        <thead>
+          <tr>
+            <th style={{ width: "25%" }}>Índice</th>
+            <th style={{ width: "25%" }}>Classificação</th>
+            <th style={{ width: "50%" }}>Ação indicada</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td className="idx">1 a 8</td><td>DESPREZÍVEL</td><td>Manter as condições existentes e monitorar.</td></tr>
+          <tr><td className="idx">9 a 18</td><td>BAIXO</td><td>Adotar medidas quando praticável; acompanhar.</td></tr>
+          <tr><td className="idx">19 a 36</td><td>MÉDIO</td><td>Implementar medidas de controle em prazo definido.</td></tr>
+          <tr><td className="idx">37 a 64</td><td>ALTO</td><td>Ação imediata; restringir a operação até o controle.</td></tr>
+        </tbody>
+      </table>
+      <p style={{ fontSize: 9, color: "#6b7280", margin: "4pt 0 0" }}>
+        As faixas são critério do responsável técnico que assina — nenhuma norma as fixa.
+        O risco residual é o mesmo cálculo refeito após as medidas de controle.
+      </p>
     </div>
   );
 }
 
-// O checklist de 37 itens por máquina (além da ficha de risco HRN) é OPCIONAL por
-// laudo (v142): controlado por `incluirChecklist`, gravado em
-// apreciacoes_maquinas.incluir_checklist_pdf. Default false = só a análise HRN
-// (padrão do laudo TERE PÃO).
-function MaquinasSection({
-  fichas,
-  titulo,
-  incluirChecklist,
-}: {
-  fichas: ApreciacaoFichaLocal[];
-  titulo: string;
-  incluirChecklist?: boolean;
-}) {
-  const { flat } = agruparFichasPorSetor(fichas);
-  let prevSetor: string | null = null;
+/** Seção "Relação de Máquinas" — tabela consolidada, agrupada por setor. */
+function RelacaoMaquinas({ fichas, titulo }: { fichas: FichaPdfLocal[]; titulo: string }) {
+  const { grupos, seqDe } = agruparPorSetor(fichas);
   return (
     <div>
-      <p className="sec-titulo">
-        {titulo} ({fichas.length} máquina{fichas.length === 1 ? "" : "s"})
-      </p>
-      {flat.map((f, idx) => {
-        const setorAtual = f.setor && f.setor.trim() ? f.setor.trim() : "Sem setor";
-        const novoSetor = setorAtual !== prevSetor;
-        prevSetor = setorAtual;
-        return (
-        <div key={idx} style={idx > 0 ? { pageBreakBefore: "always" } : undefined}>
-          {novoSetor && <p className="setor-titulo">Setor: {setorAtual}</p>}
-          <p className="maq-titulo">
-            {idx + 1}. {f.nome}
-            {f.prioridade_manual ? <span className="maq-prio">PRIORIDADE</span> : null}
-          </p>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <Inventario f={f} />
+      <p className="sec-titulo">{titulo} ({fichas.length})</p>
+      {fichas.length === 0 ? (
+        <p style={{ fontSize: 10.5, color: "#6b7280" }}>Nenhuma máquina cadastrada no laudo.</p>
+      ) : (
+        <table className="hrn">
+          <thead>
+            <tr>
+              <th style={{ width: "6%" }}>Ref.</th>
+              <th style={{ width: "26%" }}>Máquina / Equipamento</th>
+              <th style={{ width: "16%" }}>Fabricante</th>
+              <th style={{ width: "14%" }}>Modelo</th>
+              <th style={{ width: "14%" }}>Nº de Série</th>
+              <th style={{ width: "8%" }}>Ano</th>
+              <th style={{ width: "16%" }}>Maior risco</th>
+            </tr>
+          </thead>
+          <tbody>
+            {grupos.map((g) => (
+              <React.Fragment key={g.setor}>
+                <tr className="setor-row">
+                  <td colSpan={7}>{g.setor} ({g.fichas.length})</td>
+                </tr>
+                {g.fichas.map((f) => {
+                  const risco = maiorRisco(f);
+                  return (
+                    <tr key={f.id_ficha}>
+                      <td className="idx">{seqDe(f)}</td>
+                      <td>{f.nome || "—"}</td>
+                      <td>{f.fabricante || "—"}</td>
+                      <td>{f.modelo || "—"}</td>
+                      <td>{f.serie || "—"}</td>
+                      <td>{f.ano || "—"}</td>
+                      <td>{risco ? <span className="idx">{risco.indice} · {risco.classe.toUpperCase()}</span> : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+// v153: o capítulo `apreciacao_checklist` sempre imprime a "Apreciação de Risco
+// por Máquina" (ficha HRN). O checklist de 37 itens é OPCIONAL, por laudo, via a
+// prop `incluirChecklist` (coluna `apreciacoes_maquinas.incluir_checklist_pdf`):
+// quando ligado, sai ADICIONALMENTE à ficha de risco.
+
+/** Seção "Apreciação de Risco por Máquina" — uma ficha por página. */
+function MaquinasSection({ fichas, titulo }: { fichas: FichaPdfLocal[]; titulo: string }) {
+  const { grupos, seqDe } = agruparPorSetor(fichas);
+  let setorAnterior = "";
+
+  return (
+    <div>
+      <p className="sec-titulo">{titulo}</p>
+      {fichas.length === 0 && (
+        <p style={{ fontSize: 10.5, color: "#6b7280" }}>Nenhuma máquina cadastrada no laudo.</p>
+      )}
+      {grupos.flatMap((g) =>
+        g.fichas.map((f, i) => {
+          const abreSetor = g.setor !== setorAnterior;
+          setorAnterior = g.setor;
+          const primeira = seqDe(f) === 1;
+          return (
+            <div key={f.id_ficha} className={primeira ? "ficha-bloco" : "ficha-bloco quebra"}>
+              {abreSetor && i === 0 && <p className="setor-titulo">Setor: {g.setor}</p>}
+              <FichaMaquinaPdf ficha={f} seq={seqDe(f)} />
             </div>
-            {f.foto_urls.length > 0 && (
-              <div className="fotos" style={{ width: 250, marginTop: 0 }}>
-                {f.foto_urls.slice(0, 4).map((url, i) => (
-                  <div key={`${url}-${i}`} className="f">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={url} alt={`Foto ${f.nome}`} />
-                  </div>
-                ))}
+          );
+        }),
+      )}
+    </div>
+  );
+}
+
+function FichaMaquinaPdf({ ficha, seq }: { ficha: FichaPdfLocal; seq: number }) {
+  const campos: [string, string | null][] = [
+    ["Tipo", ficha.tipo],
+    ["Fabricante", ficha.fabricante],
+    ["Modelo", ficha.modelo],
+    ["Nº de Série", ficha.serie],
+    ["Ano", ficha.ano],
+    ["Capacidade", ficha.capacidade],
+    ["Setor", ficha.setor],
+  ];
+  // Tabela, e não frase corrida: com 9 operadores a linha "Nome — Cargo; Nome —
+  // Cargo; ..." virava um parágrafo de 5 linhas em CAIXA ALTA, ilegível e sem
+  // como conferir quem é quem.
+  const operadores = (ficha.operadores ?? []).filter(
+    (o) => (o?.nome ?? "").trim() || (o?.cargo ?? "").trim(),
+  );
+
+  return (
+    <div>
+      <p className="ficha-maq">{seq}. {ficha.nome || "Máquina"}</p>
+
+      <div className="ficha-topo">
+        <div className="col-inv">
+          <p className="ficha-rot">Inventário</p>
+          <div className="inv-lista">
+            {campos.map(([k, v]) => (
+              <div key={k} className="inv-linha">
+                <span className="k">{k}</span>
+                <span className="v">{v && v.trim() ? v : "—"}</span>
               </div>
-            )}
+            ))}
           </div>
-          {f.operadores && f.operadores.length > 0 && (
-            <p className="constat">
-              <strong>Operadores/Responsáveis: </strong>
-              {f.operadores
-                .map((o) =>
-                  [o.nome, o.cargo].filter(Boolean).join(" — ")
-                )
-                .filter(Boolean)
-                .join("; ")}
-            </p>
-          )}
-          {f.constatacoes_inspecao && (
-            <p className="constat">
-              <strong>Constatações da inspeção: </strong>
-              {f.constatacoes_inspecao}
-            </p>
-          )}
-          <HrnTable riscos={f.riscos} />
-          {f.parecer_tecnico && (
-            <p className="constat">
-              <strong>Parecer técnico: </strong>
-              {f.parecer_tecnico}
-            </p>
-          )}
-          {incluirChecklist && (
+        </div>
+
+        {ficha.fotos.length > 0 && (
+          <div className="col-fotos">
+            {ficha.fotos.map((url, i) => (
+              <div key={`${url}-${i}`} className="f">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`Foto de ${ficha.nome}`} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {operadores.length > 0 && (
+        <div className="oper-bloco">
+          <p className="ficha-rot">Operadores / Responsáveis ({operadores.length})</p>
+          <table className="oper-tab">
+            <thead>
+              <tr>
+                <th style={{ width: "6%" }}>#</th>
+                <th style={{ width: "56%" }}>Nome</th>
+                <th style={{ width: "38%" }}>Função</th>
+              </tr>
+            </thead>
+            <tbody>
+              {operadores.map((o, i) => (
+                <tr key={`${o.nome}-${i}`}>
+                  <td className="idx">{i + 1}</td>
+                  <td>{(o.nome ?? "").trim() || "—"}</td>
+                  <td>{(o.cargo ?? "").trim() || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {ficha.constatacoes_inspecao && (
+        <p className="ficha-linha">
+          <span className="rot">Constatações da inspeção: </span>{ficha.constatacoes_inspecao}
+        </p>
+      )}
+
+      {ficha.riscos.length > 0 && (
+        <>
+          <p className="ficha-rot">Apreciação de risco</p>
+          <table className="hrn">
+            <thead>
+              <tr>
+                <th style={{ width: "13%" }}>Perigo</th>
+                <th style={{ width: "21%" }}>Origem / Consequências</th>
+                <th style={{ width: "9%" }}>Item NR-12</th>
+                <th style={{ width: "14%" }}>Risco Inicial</th>
+                <th style={{ width: "29%" }}>Medidas de Controle</th>
+                <th style={{ width: "14%" }}>Risco Residual</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ficha.riscos.map((r) => {
+                const origem = [r.origem, r.potenciais_consequencias].filter(Boolean).join(" → ");
+                const itens = (r.itens_nr12 ?? (r.item_nr12 ? [r.item_nr12] : [])).join("; ");
+                const temSeparadas = !!(r.medidas_engenharia || r.medidas_administrativas);
+                return (
+                  <tr key={r.id_risco}>
+                    <td>{r.tipo_perigo || "—"}</td>
+                    <td>{origem || "—"}</td>
+                    <td>{itens || "—"}</td>
+                    <td><CelulaRisco pod={r.pod} fep={r.fep} gpd={r.gpd} classificacao={r.classificacao_risco} /></td>
+                    <td>
+                      {temSeparadas ? (
+                        <>
+                          {r.medidas_engenharia && (
+                            <>
+                              <span className="med-k">Eng.:</span> {r.medidas_engenharia}
+                              {r.medidas_administrativas ? <br /> : null}
+                            </>
+                          )}
+                          {r.medidas_administrativas && (
+                            <><span className="med-k">Adm.:</span> {r.medidas_administrativas}</>
+                          )}
+                        </>
+                      ) : (
+                        r.medidas_preventivas || "—"
+                      )}
+                      {r.categoria_seguranca && (
+                        <>
+                          <br />
+                          <span className="med-k">Cat. segurança:</span> {r.categoria_seguranca}
+                        </>
+                      )}
+                    </td>
+                    <td>
+                      <CelulaRisco
+                        pod={r.pod_residual}
+                        fep={r.fep_residual}
+                        gpd={r.gpd_residual}
+                        classificacao={r.classificacao_residual}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {ficha.parecer_tecnico && (
+        <div className="campo ficha-parecer">
+          <p className="rot">Parecer técnico</p>
+          <p className="val">{ficha.parecer_tecnico}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Conclusão geral — resumo do risco residual do parque + máquinas críticas. */
+function ConclusaoGeral({
+  fichas,
+  parecer,
+  recomendacoes,
+  titulo,
+}: {
+  fichas: FichaPdfLocal[];
+  parecer: string | null;
+  recomendacoes: string | null;
+  titulo: string;
+}) {
+  const { flat, seqDe } = agruparPorSetor(fichas);
+  const contagem: Record<string, number> = {};
+  const criticas: { seq: number; nome: string; indice: number; classe: string }[] = [];
+
+  for (const f of flat) {
+    const risco = maiorRisco(f);
+    if (!risco) continue;
+    const classe = risco.classe || "—";
+    contagem[classe] = (contagem[classe] ?? 0) + 1;
+    if (risco.indice > 18) {
+      criticas.push({ seq: seqDe(f), nome: f.nome, indice: risco.indice, classe });
+    }
+  }
+  criticas.sort((a, b) => b.indice - a.indice);
+
+  return (
+    <div>
+      <p className="sec-titulo">{titulo}</p>
+
+      {flat.length > 0 && (
+        <>
+          <p style={{ fontSize: 10.5, color: "#374151", margin: "0 0 6pt" }}>
+            Foram avaliadas <strong>{flat.length}</strong> máquina(s). A classificação abaixo
+            considera, por máquina, o <strong>maior risco residual</strong> — ou o risco
+            inicial, quando não há residual lançado.
+          </p>
+          <table className="hrn">
+            <thead>
+              <tr><th style={{ width: "50%" }}>Classificação</th><th style={{ width: "50%" }}>Máquinas</th></tr>
+            </thead>
+            <tbody>
+              {Object.entries(contagem).map(([classe, n]) => (
+                <tr key={classe}><td>{classe.toUpperCase()}</td><td className="idx">{n}</td></tr>
+              ))}
+            </tbody>
+          </table>
+
+          {criticas.length > 0 && (
             <>
-              <p className="cat-titulo">Checklist NR-12</p>
-              <ChecklistGrupos itens={f.itens} />
+              <p className="ficha-rot" style={{ marginTop: "8pt" }}>Máquinas que exigem ação prioritária</p>
+              <p style={{ fontSize: 10, color: "#374151", margin: 0 }}>
+                {criticas.map((c) => `${c.seq}. ${c.nome} (${c.indice} · ${c.classe.toUpperCase()})`).join(" · ")}
+              </p>
             </>
           )}
-        </div>
-        );
-      })}
+
+          <p style={{ fontSize: 9.5, color: "#4b5563", margin: "8pt 0 0" }}>
+            As medidas indicadas devem ser incorporadas ao inventário de riscos do PGR
+            (NR-01) e, quando envolverem sistemas de segurança, atender à categoria de
+            segurança apontada por máquina (ABNT NBR 14153).
+          </p>
+        </>
+      )}
+
+      {parecer && (
+        <div className="campo"><p className="rot">Parecer técnico</p><p className="val">{parecer}</p></div>
+      )}
+      {recomendacoes && (
+        <div className="campo"><p className="rot">Recomendações finais</p><p className="val">{recomendacoes}</p></div>
+      )}
     </div>
   );
 }
@@ -725,54 +1210,38 @@ function PlanoAcaoSection({ acoes, titulo }: { acoes: ApreciacaoAcaoLocal[]; tit
 
 export default function ApreciacaoTemplate({
   apreciacao,
+  maquinaNome,
   empresa,
-  fichas,
+  itens,
   acoes,
+  riscos,
+  maquina,
+  fichas,
+  incluirChecklist,
   capitulos,
   valores,
   signatarios,
   folhaEmpresa,
   dataHoraAssinatura,
   identificadorDocumento,
-  incluirChecklist,
-  responsavelTecnico,
 }: ApreciacaoTemplateProps) {
   // Título cadastrado de cada seção fixa (p/ cabeçalho numerado no corpo).
   const tituloPorSlug: Record<string, string> = {};
   for (const c of capitulos) if (c.slug_fixo) tituloPorSlug[c.slug_fixo] = c.titulo;
 
-  // Máquinas com risco residual MÉDIO+ ou marcadas como prioridade (conclusão).
-  const maquinasCriticas = fichas.filter(
-    (f) =>
-      f.prioridade_manual ||
-      f.riscos.some((r) => {
-        const c = r.classificacao_residual || r.classificacao_risco;
-        return c === "ALTO" || c === "MEDIO";
-      }),
-  );
-
-  // Resumo dos riscos residuais por classe (todas as máquinas).
-  const resumoResidual = { ALTO: 0, MEDIO: 0, BAIXO: 0, DESPREZIVEL: 0 };
-  fichas.forEach((f) =>
-    f.riscos.forEach((r) => {
-      const c =
-        calcularClassificacaoHrn(r.pod_residual, r.fep_residual, r.gpd_residual) ||
-        r.classificacao_residual ||
-        calcularClassificacaoHrn(r.pod, r.fep, r.gpd);
-      if (c && c in resumoResidual) resumoResidual[c as keyof typeof resumoResidual] += 1;
-    }),
-  );
-  const temRiscos = fichas.some((f) => f.riscos.length > 0);
-
-  // Conclusão Técnica renderiza quando há parecer/recomendações, máquinas críticas ou riscos.
+  // A ficha (antiga "Conclusão Técnica") só renderiza quando tem o que mostrar:
+  // parecer, constatações, linhas de risco ou dados de inventário da máquina.
   const temConclusao = !!(
-    apreciacao.conclusao_tecnica ||
-    apreciacao.recomendacoes ||
-    maquinasCriticas.length > 0 ||
-    temRiscos
+    apreciacao.conclusao_tecnica
+    || apreciacao.recomendacoes
+    || apreciacao.constatacoes_inspecao
+    || riscos.length > 0
+    || maquina
   );
 
-  // Plano de Ação só entra quando há ao menos uma ação COM conteúdo (padrão DRPS).
+  // Plano de Ação só entra no PDF quando há ao menos uma ação COM conteúdo.
+  // Mesmo padrão do DRPS (drps_plano_acao_5w2h): salvar o plano em branco grava
+  // uma linha vazia — filtra na renderização em vez de apagar o registro.
   const acoesComConteudo = acoes.filter((a) =>
     [a.what_acao, a.why_justificativa, a.where_local, a.when_prazo, a.who_responsavel, a.how_metodo, a.how_much_custo]
       .some((v) => (v ?? "").trim().length > 0),
@@ -787,9 +1256,9 @@ export default function ApreciacaoTemplate({
     switch (c.slug_fixo) {
       case "identificacao_empresa": return true;
       case "apreciacao_metodo":     return true;
-      case "apreciacao_relacao":    return true;
       case "apreciacao_checklist":  return true;
-      case "apreciacao_risco":      return temConclusao; // só numera se há conteúdo
+      case "apreciacao_relacao":    return fichas.length > 0;
+      case "apreciacao_risco":      return fichas.length > 0 || temConclusao;
       case "apreciacao_plano":      return acoesComConteudo.length > 0;
       case "apreciacao_assinatura": return true;
       // sumário não numera; apreciacao_identificacao não renderiza seção própria
@@ -814,6 +1283,9 @@ export default function ApreciacaoTemplate({
     (c) => c.tipo === "fixo" && c.slug_fixo === "apreciacao_assinatura" && c.ativo !== false,
   );
 
+  // Folha de assinaturas: quando há capítulo "apreciacao_assinatura", renderiza
+  // na posição dele (numerada, quebra controlada pelo wrapper); senão, cai no
+  // fim (fallback).
   const folhaNode = (
     <FolhaAssinaturas
       signatarios={signatarios}
@@ -825,60 +1297,55 @@ export default function ApreciacaoTemplate({
     />
   );
 
-  // Seções próprias: Método, Relação de Máquinas e Apreciação por Máquina.
+  // Seções do sistema como nós nomeados (reutilizados nos dois modos).
+  const checklistNode = (
+    <ChecklistSection
+      itens={itens}
+      fichas={fichas}
+      titulo="Checklist NR-12"
+    />
+  );
   const metodoNode = (
     <MetodoHrn
-      titulo={numLabel(numPorSlug["apreciacao_metodo"], tituloPorSlug["apreciacao_metodo"] ?? "Objetivo, Base Normativa e Método")}
+      titulo={numLabel(numPorSlug["apreciacao_metodo"], tituloPorSlug["apreciacao_metodo"] ?? "Método de Cálculo do Risco")}
     />
   );
   const relacaoNode = (
     <RelacaoMaquinas
       fichas={fichas}
-      titulo={numLabel(numPorSlug["apreciacao_relacao"], tituloPorSlug["apreciacao_relacao"] ?? "Relação de Máquinas e Equipamentos")}
+      titulo={numLabel(numPorSlug["apreciacao_relacao"], tituloPorSlug["apreciacao_relacao"] ?? "Relação de Máquinas")}
     />
   );
   const maquinasNode = (
     <MaquinasSection
       fichas={fichas}
       titulo={numLabel(numPorSlug["apreciacao_checklist"], tituloPorSlug["apreciacao_checklist"] ?? "Apreciação de Risco por Máquina")}
-      incluirChecklist={incluirChecklist}
     />
   );
-  const conclusaoNode = temConclusao ? (
-    <div>
-      <p className="sec-titulo">{numLabel(numPorSlug["apreciacao_risco"], tituloPorSlug["apreciacao_risco"] ?? "Conclusão Técnica")}</p>
-      {temRiscos && (
-        <div className="campo">
-          <p className="rot">Resumo dos riscos residuais (todas as máquinas)</p>
-          <p className="val">
-            {resumoResidual.ALTO} Alto · {resumoResidual.MEDIO} Médio · {resumoResidual.BAIXO} Baixo · {resumoResidual.DESPREZIVEL} Desprezível
-          </p>
-        </div>
+
+  // Com máquinas, a seção vira a CONCLUSÃO GERAL do parque. Sem nenhuma ficha
+  // (laudo que não passou pela v148), cai na ficha única de antes — assim
+  // nenhum laudo fica sem seção.
+  const conclusaoNode = fichas.length > 0 ? (
+    <ConclusaoGeral
+      fichas={fichas}
+      parecer={apreciacao.conclusao_tecnica}
+      recomendacoes={apreciacao.recomendacoes}
+      titulo={numLabel(numPorSlug["apreciacao_risco"], tituloPorSlug["apreciacao_risco"] ?? "Conclusão Geral")}
+    />
+  ) : temConclusao ? (
+    <FichaSection
+      titulo={numLabel(
+        numPorSlug["apreciacao_risco"],
+        tituloPorSlug["apreciacao_risco"] ?? "Apreciação de Risco",
       )}
-      {maquinasCriticas.length > 0 && (
-        <div className="campo">
-          <p className="rot">Máquinas com risco residual relevante (Médio ou superior) ou prioridade</p>
-          <p className="val">
-            {maquinasCriticas
-              .map((f) => `Máquina ${f.numero_ordem}: ${f.nome}${f.prioridade_manual ? " (prioridade)" : ""}`)
-              .join("\n")}
-          </p>
-        </div>
-      )}
-      {apreciacao.conclusao_tecnica && (
-        <div className="campo"><p className="rot">Parecer técnico</p><p className="val">{apreciacao.conclusao_tecnica}</p></div>
-      )}
-      {apreciacao.recomendacoes && (
-        <div className="campo"><p className="rot">Recomendações finais</p><p className="val">{apreciacao.recomendacoes}</p></div>
-      )}
-      <p className="constat" style={{ marginTop: 6 }}>
-        Recomenda-se a integração desta apreciação ao Programa de Gerenciamento de
-        Riscos (PGR), conforme NR-01; a validação da categoria de segurança dos
-        circuitos de comando (ABNT NBR 14153 / ISO 13849); e a reavaliação
-        periódica ou sempre que houver modificação significativa na máquina ou no
-        processo.
-      </p>
-    </div>
+      maquinaNome={maquinaNome}
+      maquina={maquina}
+      constatacoes={apreciacao.constatacoes_inspecao}
+      riscos={riscos}
+      parecer={apreciacao.conclusao_tecnica}
+      recomendacoes={apreciacao.recomendacoes}
+    />
   ) : null;
   const planoNode = acoesComConteudo.length > 0 ? (
     <PlanoAcaoSection
@@ -887,28 +1354,35 @@ export default function ApreciacaoTemplate({
     />
   ) : null;
 
+  // Mapeia os slugs fixos do módulo às seções (cabeçalho fica fixo no topo;
+  // a folha de assinatura entra na posição do capítulo "apreciacao_assinatura").
   function renderSecaoApreciacao(slug: string): React.ReactNode {
     switch (slug) {
-      case "identificacao_empresa": return <IdentificacaoLaudo empresa={empresa} apreciacao={apreciacao} rt={responsavelTecnico} numero={numPorSlug["identificacao_empresa"]} />;
+      case "identificacao_empresa": return <SecaoIdentificacaoEmpresa empresa={empresa} numero={numPorSlug["identificacao_empresa"]} />;
       case "sumario":               return <SecaoSumario titulos={sumarioTitulos} />;
       case "apreciacao_metodo":     return metodoNode;
+      case "apreciacao_checklist":  return incluirChecklist ? (<>{maquinasNode}{checklistNode}</>) : maquinasNode;
       case "apreciacao_relacao":    return relacaoNode;
-      case "apreciacao_checklist":  return maquinasNode;
       case "apreciacao_risco":      return conclusaoNode;
       case "apreciacao_plano":      return planoNode;
       case "apreciacao_assinatura": return folhaNode;
-      default:                      return null; // apreciacao_identificacao (dados no cabeçalho)
+      default:                      return null;
     }
   }
 
   const corpo = temSecoesSistema(capitulos)
-    ? renderUnificado(capitulos, valores, renderSecaoApreciacao, { numPorId })
+    ? renderUnificado(capitulos, valores, renderSecaoApreciacao, {
+        numPorId,
+        // Relação e ficha por máquina são tabelas largas — nascem em paisagem.
+        orientacaoPorCapitulo: true,
+      })
     : (
       <>
         {renderEditaveis(capitulos, valores, "inicio")}
         {metodoNode}
         {relacaoNode}
         {maquinasNode}
+        {incluirChecklist ? checklistNode : null}
         {conclusaoNode}
         {planoNode}
         {renderEditaveis(capitulos, valores, "fim")}

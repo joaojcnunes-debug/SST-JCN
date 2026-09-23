@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, CheckCircle2, Send } from "lucide-react";
+import { Loader2, CheckCircle2, Send, Paperclip } from "lucide-react";
+import { faltando, perguntaVisivel, ordemExibicao, type PerguntaBase } from "@/lib/gestao/formularios";
 
 const PRIORIDADES = [
   { value: "Baixa", label: "Baixa" },
@@ -10,6 +11,8 @@ const PRIORIDADES = [
   { value: "Urgente", label: "Urgente" },
 ];
 
+// F1.5: id/ajuda/condicao/pendente_anexo vêm da rota; regras puras em lib/gestao/formularios.ts.
+type Pergunta = PerguntaBase;
 interface FormDef {
   titulo: string;
   descricao: string | null;
@@ -17,13 +20,13 @@ interface FormDef {
   mostra_prazo: boolean;
   mostra_prioridade: boolean;
   prioridade_padrao: string;
-  perguntas: { label: string; obrigatorio: boolean }[];
+  titulo_composto?: boolean;
+  perguntas: Pergunta[];
 }
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-const ENDPOINT = `${URL}/functions/v1/gestao-form-submit`;
-const HEADERS = { "Content-Type": "application/json", apikey: ANON, Authorization: `Bearer ${ANON}` };
+// Rota Next same-origin (porta a Edge Function gestao-form-submit p/ a .107).
+const ENDPOINT = "/api/gestao/form";
+const HEADERS = { "Content-Type": "application/json" };
 
 const inputCls = "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#0ea5e9] focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]";
 
@@ -36,7 +39,7 @@ export default function FormularioPublico({ token }: { token: string }) {
   const [descricao, setDescricao] = useState("");
   const [prazo, setPrazo] = useState("");
   const [prioridade, setPrioridade] = useState("Media");
-  const [respostas, setRespostas] = useState<string[]>([]);
+  const [respostas, setRespostas] = useState<(string | string[])[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [enviado, setEnviado] = useState(false);
@@ -49,7 +52,7 @@ export default function FormularioPublico({ token }: { token: string }) {
         if (!r.ok) { setErroCarga(j.error ?? "Formulário indisponível."); return; }
         setDef(j as FormDef);
         setPrioridade((j as FormDef).prioridade_padrao ?? "Media");
-        setRespostas(new Array(((j as FormDef).perguntas ?? []).length).fill(""));
+        setRespostas(((j as FormDef).perguntas ?? []).map((p) => (p.tipo === "multipla" ? [] : "")));
       } catch {
         setErroCarga("Não foi possível carregar o formulário.");
       } finally {
@@ -61,7 +64,10 @@ export default function FormularioPublico({ token }: { token: string }) {
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
-    if (!titulo.trim()) { setErro("Informe o título da solicitação."); return; }
+    if (!def?.titulo_composto && !titulo.trim()) { setErro("Informe o título da solicitação."); return; }
+    // Obrigatórias só entre as visíveis (mesma regra do servidor) — erro claro antes do POST.
+    const faltam = def ? faltando(def.perguntas, respostas) : [];
+    if (faltam.length) { setErro(`Responda: ${faltam[0].label}`); return; }
     setEnviando(true);
     try {
       const r = await fetch(ENDPOINT, {
@@ -86,7 +92,7 @@ export default function FormularioPublico({ token }: { token: string }) {
       <div className="mx-auto max-w-lg">
         <div className="mb-5 text-center">
           <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#1e4d28] to-[#0ea5e9] text-2xl">🛡️</div>
-          <p className="mt-2 text-sm font-semibold text-[#0c4a6e]">JCN Consultoria · Gestão</p>
+          <p className="mt-2 text-sm font-semibold text-[#00432F]">JCN Consultoria · Gestão</p>
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -99,7 +105,7 @@ export default function FormularioPublico({ token }: { token: string }) {
               <CheckCircle2 className="mx-auto size-12 text-[#16a34a]" />
               <p className="mt-3 text-lg font-semibold text-gray-800">Solicitação enviada!</p>
               <p className="mt-1 text-sm text-gray-500">Recebemos sua solicitação. Obrigado.</p>
-              <button type="button" onClick={() => { setEnviado(false); setTitulo(""); setDescricao(""); setPrazo(""); setRespostas((r) => r.map(() => "")); }} className="mt-4 text-sm font-medium text-[#0ea5e9] hover:underline">
+              <button type="button" onClick={() => { setEnviado(false); setTitulo(""); setDescricao(""); setPrazo(""); setRespostas((def?.perguntas ?? []).map((p) => (p.tipo === "multipla" ? [] : ""))); }} className="mt-4 text-sm font-medium text-[#0ea5e9] hover:underline">
                 Enviar outra
               </button>
             </div>
@@ -110,10 +116,12 @@ export default function FormularioPublico({ token }: { token: string }) {
                 {def.descricao && <p className="mt-1 whitespace-pre-line text-sm text-gray-500">{def.descricao}</p>}
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Título / Assunto *</label>
-                <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Resuma sua solicitação" className={inputCls} />
-              </div>
+              {!def.titulo_composto && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">Título / Assunto *</label>
+                  <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Resuma sua solicitação" className={inputCls} />
+                </div>
+              )}
 
               {def.mostra_descricao && (
                 <div>
@@ -122,12 +130,49 @@ export default function FormularioPublico({ token }: { token: string }) {
                 </div>
               )}
 
-              {def.perguntas.map((p, i) => (
-                <div key={i}>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">{p.label} {p.obrigatorio && "*"}</label>
-                  <input value={respostas[i] ?? ""} onChange={(e) => setRespostas((r) => r.map((x, j) => (j === i ? e.target.value : x)))} className={inputCls} />
-                </div>
-              ))}
+              {ordemExibicao(def.perguntas).map((i) => {
+                const p = def.perguntas[i];
+                const tipo = p.tipo ?? "texto";
+                const val = respostas[i];
+                const setVal = (v: string | string[]) => setRespostas((r) => r.map((x, j) => (j === i ? v : x)));
+                // Pergunta condicional: só aparece quando a de origem tem a opção escolhida.
+                if (!perguntaVisivel(p, def.perguntas, respostas)) return null;
+                return (
+                  <div key={p.id ?? i}>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">{p.label} {p.obrigatorio && "*"}</label>
+                    {p.ajuda && <p className="mb-1 text-[11px] text-gray-400">{p.ajuda}</p>}
+                    {p.pendente_anexo && (
+                      <p className="mb-1 inline-flex items-center gap-1 text-[11px] text-amber-700"><Paperclip className="size-3" /> Descreva os documentos ou cole links; os arquivos serão solicitados pela equipe.</p>
+                    )}
+                    {tipo === "texto_longo" ? (
+                      <textarea value={(val as string) ?? ""} onChange={(e) => setVal(e.target.value)} rows={3} className={inputCls} />
+                    ) : tipo === "selecao" ? (
+                      <select value={(val as string) ?? ""} onChange={(e) => setVal(e.target.value)} className={inputCls}>
+                        <option value="">Selecione…</option>
+                        {(p.opcoes ?? []).map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : tipo === "multipla" ? (
+                      <div className="space-y-1 rounded-lg border border-gray-300 p-2">
+                        {(p.opcoes ?? []).map((o) => {
+                          const arr = Array.isArray(val) ? val : [];
+                          return (
+                            <label key={o} className="flex items-center gap-2 text-sm text-gray-700">
+                              <input type="checkbox" checked={arr.includes(o)} onChange={(e) => setVal(e.target.checked ? [...arr, o] : arr.filter((x) => x !== o))} /> {o}
+                            </label>
+                          );
+                        })}
+                        {(p.opcoes ?? []).length === 0 && <p className="text-xs text-gray-400">Sem opções.</p>}
+                      </div>
+                    ) : (
+                      <input
+                        type={tipo === "data" ? "date" : tipo === "data_hora" ? "datetime-local" : tipo === "email" ? "email" : tipo === "telefone" ? "tel" : "text"}
+                        inputMode={tipo === "cnpj" || tipo === "cpf" || tipo === "telefone" ? "numeric" : undefined}
+                        value={(val as string) ?? ""} onChange={(e) => setVal(e.target.value)} className={inputCls}
+                      />
+                    )}
+                  </div>
+                );
+              })}
 
               <div className="grid grid-cols-2 gap-3">
                 {def.mostra_prazo && (
@@ -154,7 +199,7 @@ export default function FormularioPublico({ token }: { token: string }) {
             </form>
           ) : null}
         </div>
-        <p className="mt-4 text-center text-xs text-gray-400">SST JCN Consultoria · JCN Consultoria</p>
+        <p className="mt-4 text-center text-xs text-gray-400">Painel SST · JCN Consultoria</p>
       </div>
     </div>
   );

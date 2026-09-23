@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { X, ChevronDown, Plus } from "lucide-react";
+import { buscar } from "@/lib/busca/texto";
 
 /**
  * Campo ÚNICO (combobox + tags): digita para filtrar/escolher da lista OU
@@ -56,9 +57,12 @@ export default function ComboTagInline({
 
   const q = novoValor.trim().toLowerCase();
   const norm = (s: string) => s.trim().toLowerCase();
-  const filtradas = opcoes
-    .filter((o) => !selecionados.includes(o))
-    .filter((o) => (q ? norm(o).includes(q) : true));
+  // Sugestões tolerantes a acento e erro de digitação, ranqueadas por semelhança.
+  const filtradas = buscar(
+    opcoes.filter((o) => !selecionados.includes(o)),
+    novoValor,
+    (o) => [o],
+  ).itens;
   const jaExiste =
     opcoes.some((o) => norm(o) === q) ||
     selecionados.some((s) => norm(s) === q) ||

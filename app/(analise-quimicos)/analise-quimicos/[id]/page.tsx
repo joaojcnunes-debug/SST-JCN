@@ -1,14 +1,14 @@
 "use client";
 
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
 import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Trash2,
-  FlaskConical,
-  Loader2,
-  FileText,
+  FlaskConical,  FileText,
   Pencil,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -47,13 +47,7 @@ export default function AnaliseDetalhePage({
     setValidade(analise?.data_validade ?? "");
   }, [analise?.data_validade]);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center text-gray-500">
-        <Loader2 className="size-5 animate-spin" /> Carregando análise...
-      </div>
-    );
-  }
+  if (isLoading) return <EditorSkeleton />;
 
   if (error || !analise) {
     return (

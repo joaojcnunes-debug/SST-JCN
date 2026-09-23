@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { Save, Loader2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { gravar } from "@/lib/offline/gravar";
+import type { InspecaoFull } from "@/lib/hooks/useInspecao";
 
 interface Props {
   idInspecao: string;
@@ -28,20 +29,34 @@ export default function ObservacoesTab({
 
   const save = useMutation({
     mutationFn: async () => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("inspecoes")
-        .update({
-          observacoes: text || null,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id_inspecao", idInspecao);
-      if (error) throw error;
+      const payload = {
+        observacoes: text || null,
+        updated_at: new Date().toISOString(),
+      };
+      const resultado = await gravar({
+        tabela: "inspecoes",
+        tipo: "update",
+        linhas: payload,
+        filtro: { id_inspecao: idInspecao },
+        modulo: "inspecoes",
+        id_documento: idInspecao,
+      });
+      return { resultado, payload };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success("Observações salvas");
+    onSuccess: ({ resultado, payload }) => {
       setDirty(false);
+
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+        toast.success("Observações salvas");
+      } else {
+        // A observação vive na própria linha da inspeção, e não numa lista —
+        // por isso o patch aqui é em `inspecao`, e não num filtro de array.
+        qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) =>
+          antigo ? { ...antigo, inspecao: { ...antigo.inspecao, ...payload } } : antigo,
+        );
+        toast.success("Observações guardadas no aparelho", { icon: "📵" });
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });

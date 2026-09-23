@@ -1,0 +1,3367 @@
+[
+ {
+  "cnae_classe": "01113",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de cereais"
+ },
+ {
+  "cnae_classe": "01121",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de algodão herbáceo e de outras fibras de lavoura temporária"
+ },
+ {
+  "cnae_classe": "01130",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de cana-de-açúcar"
+ },
+ {
+  "cnae_classe": "01148",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de fumo"
+ },
+ {
+  "cnae_classe": "01156",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de soja"
+ },
+ {
+  "cnae_classe": "01164",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de oleaginosas de lavoura temporária, exceto soja"
+ },
+ {
+  "cnae_classe": "01199",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de plantas de lavoura temporária não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "01211",
+  "grau_risco": 3,
+  "denominacao": "Horticultura"
+ },
+ {
+  "cnae_classe": "01229",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de flores e plantas ornamentais"
+ },
+ {
+  "cnae_classe": "01318",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de laranja"
+ },
+ {
+  "cnae_classe": "01326",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de uva"
+ },
+ {
+  "cnae_classe": "01334",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de frutas de lavoura permanente, exceto laranja e uva"
+ },
+ {
+  "cnae_classe": "01342",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de café"
+ },
+ {
+  "cnae_classe": "01351",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de cacau"
+ },
+ {
+  "cnae_classe": "01393",
+  "grau_risco": 3,
+  "denominacao": "Cultivo de plantas de lavoura permanente não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "01415",
+  "grau_risco": 3,
+  "denominacao": "Produção de sementes certificadas"
+ },
+ {
+  "cnae_classe": "01423",
+  "grau_risco": 3,
+  "denominacao": "Produção de mudas e outras formas de propagação vegetal, certificadas"
+ },
+ {
+  "cnae_classe": "01512",
+  "grau_risco": 3,
+  "denominacao": "Criação de bovinos"
+ },
+ {
+  "cnae_classe": "01521",
+  "grau_risco": 3,
+  "denominacao": "Criação de outros animais de grande porte"
+ },
+ {
+  "cnae_classe": "01539",
+  "grau_risco": 3,
+  "denominacao": "Criação de caprinos e ovinos"
+ },
+ {
+  "cnae_classe": "01547",
+  "grau_risco": 3,
+  "denominacao": "Criação de suínos"
+ },
+ {
+  "cnae_classe": "01555",
+  "grau_risco": 3,
+  "denominacao": "Criação de aves"
+ },
+ {
+  "cnae_classe": "01598",
+  "grau_risco": 3,
+  "denominacao": "Criação de animais não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "01610",
+  "grau_risco": 3,
+  "denominacao": "Atividades de apoio à agricultura"
+ },
+ {
+  "cnae_classe": "01628",
+  "grau_risco": 3,
+  "denominacao": "Atividades de apoio à pecuária"
+ },
+ {
+  "cnae_classe": "01636",
+  "grau_risco": 3,
+  "denominacao": "Atividades de pós-colheita"
+ },
+ {
+  "cnae_classe": "01709",
+  "grau_risco": 3,
+  "denominacao": "Caça e serviços relacionados"
+ },
+ {
+  "cnae_classe": "02101",
+  "grau_risco": 3,
+  "denominacao": "Produção florestal - florestas plantadas"
+ },
+ {
+  "cnae_classe": "02209",
+  "grau_risco": 4,
+  "denominacao": "Produção florestal - florestas nativas"
+ },
+ {
+  "cnae_classe": "02306",
+  "grau_risco": 3,
+  "denominacao": "Atividades de apoio à produção florestal"
+ },
+ {
+  "cnae_classe": "03116",
+  "grau_risco": 3,
+  "denominacao": "Pesca em água salgada"
+ },
+ {
+  "cnae_classe": "03124",
+  "grau_risco": 3,
+  "denominacao": "Pesca em água doce"
+ },
+ {
+  "cnae_classe": "03213",
+  "grau_risco": 3,
+  "denominacao": "Aqüicultura em água salgada e salobra"
+ },
+ {
+  "cnae_classe": "03221",
+  "grau_risco": 3,
+  "denominacao": "Aqüicultura em água doce"
+ },
+ {
+  "cnae_classe": "05003",
+  "grau_risco": 4,
+  "denominacao": "Extração de carvão mineral"
+ },
+ {
+  "cnae_classe": "06000",
+  "grau_risco": 4,
+  "denominacao": "Extração de petróleo e gás natural"
+ },
+ {
+  "cnae_classe": "07103",
+  "grau_risco": 4,
+  "denominacao": "Extração de minério de ferro"
+ },
+ {
+  "cnae_classe": "07219",
+  "grau_risco": 4,
+  "denominacao": "Extração de minério de alumínio"
+ },
+ {
+  "cnae_classe": "07227",
+  "grau_risco": 4,
+  "denominacao": "Extração de minério de estanho"
+ },
+ {
+  "cnae_classe": "07235",
+  "grau_risco": 4,
+  "denominacao": "Extração de minério de manganês"
+ },
+ {
+  "cnae_classe": "07243",
+  "grau_risco": 4,
+  "denominacao": "Extração de minério de metais preciosos"
+ },
+ {
+  "cnae_classe": "07251",
+  "grau_risco": 4,
+  "denominacao": "Extração de minerais radioativos"
+ },
+ {
+  "cnae_classe": "07294",
+  "grau_risco": 4,
+  "denominacao": "Extração de minerais metálicos não-ferrosos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "08100",
+  "grau_risco": 4,
+  "denominacao": "Extração de pedra, areia e argila"
+ },
+ {
+  "cnae_classe": "08916",
+  "grau_risco": 4,
+  "denominacao": "Extração de minerais para fabricação de adubos, fertilizantes e outros produtos químicos"
+ },
+ {
+  "cnae_classe": "08924",
+  "grau_risco": 4,
+  "denominacao": "Extração e refino de sal marinho e sal-gema"
+ },
+ {
+  "cnae_classe": "08932",
+  "grau_risco": 4,
+  "denominacao": "Extração de gemas (pedras preciosas e semipreciosas)"
+ },
+ {
+  "cnae_classe": "08991",
+  "grau_risco": 4,
+  "denominacao": "Extração de minerais não-metálicos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "09106",
+  "grau_risco": 4,
+  "denominacao": "Atividades de apoio à extração de petróleo e gás natural"
+ },
+ {
+  "cnae_classe": "09904",
+  "grau_risco": 4,
+  "denominacao": "Atividades de apoio à extração de minerais, exceto petróleo e gás natural"
+ },
+ {
+  "cnae_classe": "10112",
+  "grau_risco": 3,
+  "denominacao": "Abate de reses, exceto suínos"
+ },
+ {
+  "cnae_classe": "10121",
+  "grau_risco": 3,
+  "denominacao": "Abate de suínos, aves e outros pequenos animais"
+ },
+ {
+  "cnae_classe": "10139",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos de carne"
+ },
+ {
+  "cnae_classe": "10201",
+  "grau_risco": 3,
+  "denominacao": "Preservação do pescado e fabricação de produtos do pescado"
+ },
+ {
+  "cnae_classe": "10317",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de conservas de frutas"
+ },
+ {
+  "cnae_classe": "10325",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de conservas de legumes e outros vegetais"
+ },
+ {
+  "cnae_classe": "10333",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de sucos de frutas, hortaliças e legumes"
+ },
+ {
+  "cnae_classe": "10414",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de óleos vegetais em bruto, exceto óleo de milho"
+ },
+ {
+  "cnae_classe": "10422",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de óleos vegetais refinados, exceto óleo de milho"
+ },
+ {
+  "cnae_classe": "10431",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de margarina e outras gorduras vegetais e de óleos não-comestíveis de animais"
+ },
+ {
+  "cnae_classe": "10511",
+  "grau_risco": 3,
+  "denominacao": "Preparação do leite"
+ },
+ {
+  "cnae_classe": "10520",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de laticínios"
+ },
+ {
+  "cnae_classe": "10538",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de sorvetes e outros gelados comestíveis"
+ },
+ {
+  "cnae_classe": "10619",
+  "grau_risco": 3,
+  "denominacao": "Beneficiamento de arroz e fabricação de produtos do arroz"
+ },
+ {
+  "cnae_classe": "10627",
+  "grau_risco": 3,
+  "denominacao": "Moagem de trigo e fabricação de derivados"
+ },
+ {
+  "cnae_classe": "10635",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de farinha de mandioca e derivados"
+ },
+ {
+  "cnae_classe": "10643",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de farinha de milho e derivados, exceto óleos de milho"
+ },
+ {
+  "cnae_classe": "10651",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de amidos e féculas de vegetais e de óleos de milho"
+ },
+ {
+  "cnae_classe": "10660",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de alimentos para animais"
+ },
+ {
+  "cnae_classe": "10694",
+  "grau_risco": 3,
+  "denominacao": "Moagem e fabricação de produtos de origem vegetal não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "10716",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de açúcar em bruto"
+ },
+ {
+  "cnae_classe": "10724",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de açúcar refinado"
+ },
+ {
+  "cnae_classe": "10813",
+  "grau_risco": 3,
+  "denominacao": "Torrefação e moagem de café"
+ },
+ {
+  "cnae_classe": "10821",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos à base de café"
+ },
+ {
+  "cnae_classe": "10911",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos de panificação"
+ },
+ {
+  "cnae_classe": "10929",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de biscoitos e bolachas"
+ },
+ {
+  "cnae_classe": "10937",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos derivados do cacau, de chocolates e confeitos"
+ },
+ {
+  "cnae_classe": "10945",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de massas alimentícias"
+ },
+ {
+  "cnae_classe": "10953",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de especiarias, molhos, temperos e condimentos"
+ },
+ {
+  "cnae_classe": "10961",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de alimentos e pratos prontos"
+ },
+ {
+  "cnae_classe": "10996",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos alimentícios não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "11119",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de aguardentes e outras bebidas destiladas"
+ },
+ {
+  "cnae_classe": "11127",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de vinho"
+ },
+ {
+  "cnae_classe": "11135",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de malte, cervejas e chopes"
+ },
+ {
+  "cnae_classe": "11216",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de águas envasadas"
+ },
+ {
+  "cnae_classe": "11224",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de refrigerantes e de outras bebidas não-alcoólicas"
+ },
+ {
+  "cnae_classe": "12107",
+  "grau_risco": 3,
+  "denominacao": "Processamento industrial do fumo"
+ },
+ {
+  "cnae_classe": "12204",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos do fumo"
+ },
+ {
+  "cnae_classe": "13111",
+  "grau_risco": 3,
+  "denominacao": "Preparação e fiação de fibras de algodão"
+ },
+ {
+  "cnae_classe": "13120",
+  "grau_risco": 3,
+  "denominacao": "Preparação e fiação de fibras têxteis naturais, exceto algodão"
+ },
+ {
+  "cnae_classe": "13138",
+  "grau_risco": 3,
+  "denominacao": "Fiação de fibras artificiais e sintéticas"
+ },
+ {
+  "cnae_classe": "13146",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de linhas para costurar e bordar"
+ },
+ {
+  "cnae_classe": "13219",
+  "grau_risco": 3,
+  "denominacao": "Tecelagem de fios de algodão"
+ },
+ {
+  "cnae_classe": "13227",
+  "grau_risco": 3,
+  "denominacao": "Tecelagem de fios de fibras têxteis naturais, exceto algodão"
+ },
+ {
+  "cnae_classe": "13235",
+  "grau_risco": 3,
+  "denominacao": "Tecelagem de fios de fibras artificiais e sintéticas"
+ },
+ {
+  "cnae_classe": "13308",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de tecidos de malha"
+ },
+ {
+  "cnae_classe": "13405",
+  "grau_risco": 3,
+  "denominacao": "Acabamentos em fios, tecidos e artefatos têxteis"
+ },
+ {
+  "cnae_classe": "13511",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artefatos têxteis para uso doméstico"
+ },
+ {
+  "cnae_classe": "13529",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artefatos de tapeçaria"
+ },
+ {
+  "cnae_classe": "13537",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artefatos de cordoaria"
+ },
+ {
+  "cnae_classe": "13545",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de tecidos especiais, inclusive artefatos"
+ },
+ {
+  "cnae_classe": "13596",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de outros produtos têxteis não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "14118",
+  "grau_risco": 2,
+  "denominacao": "Confecção de roupas íntimas"
+ },
+ {
+  "cnae_classe": "14126",
+  "grau_risco": 2,
+  "denominacao": "Confecção de peças do vestuário, exceto roupas íntimas"
+ },
+ {
+  "cnae_classe": "14134",
+  "grau_risco": 2,
+  "denominacao": "Confecção de roupas profissionais"
+ },
+ {
+  "cnae_classe": "14142",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de acessórios do vestuário, exceto para segurança e proteção"
+ },
+ {
+  "cnae_classe": "14215",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de meias"
+ },
+ {
+  "cnae_classe": "14223",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de artigos do vestuário, produzidos em malharias e tricotagens, exceto meias"
+ },
+ {
+  "cnae_classe": "15106",
+  "grau_risco": 3,
+  "denominacao": "Curtimento e outras preparações de couro"
+ },
+ {
+  "cnae_classe": "15211",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de artigos para viagem, bolsas e semelhantes de qualquer material"
+ },
+ {
+  "cnae_classe": "15297",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de artefatos de couro não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "15319",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de calçados de couro"
+ },
+ {
+  "cnae_classe": "15327",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de tênis de qualquer material"
+ },
+ {
+  "cnae_classe": "15335",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de calçados de material sintético"
+ },
+ {
+  "cnae_classe": "15394",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de calçados de materiais não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "15408",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de partes para calçados, de qualquer material"
+ },
+ {
+  "cnae_classe": "16102",
+  "grau_risco": 3,
+  "denominacao": "Desdobramento de madeira"
+ },
+ {
+  "cnae_classe": "16218",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de madeira laminada e de chapas de madeira compensada, prensada e aglomerada"
+ },
+ {
+  "cnae_classe": "16226",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de estruturas de madeira e de artigos de carpintaria para construção"
+ },
+ {
+  "cnae_classe": "16234",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artefatos de tanoaria e de embalagens de madeira"
+ },
+ {
+  "cnae_classe": "16293",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artefatos de madeira, palha, cortiça, vime e material trançado não especificados anteriormente, exceto móveis"
+ },
+ {
+  "cnae_classe": "17109",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de celulose e outras pastas para a fabricação de papel"
+ },
+ {
+  "cnae_classe": "17214",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de papel"
+ },
+ {
+  "cnae_classe": "17222",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de cartolina e papel-cartão"
+ },
+ {
+  "cnae_classe": "17311",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de embalagens de papel"
+ },
+ {
+  "cnae_classe": "17320",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de embalagens de cartolina e papel-cartão"
+ },
+ {
+  "cnae_classe": "17338",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de chapas e de embalagens de papelão ondulado"
+ },
+ {
+  "cnae_classe": "17419",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de produtos de papel, cartolina, papel-cartão e papelão ondulado para uso comercial e de escritório"
+ },
+ {
+  "cnae_classe": "17427",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de produtos de papel para usos doméstico e higiênico-sanitário"
+ },
+ {
+  "cnae_classe": "17494",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de produtos de pastas celulósicas, papel, cartolina, papel-cartão e papelão ondulado não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "18113",
+  "grau_risco": 3,
+  "denominacao": "Impressão de jornais, livros, revistas e outras publicações periódicas"
+ },
+ {
+  "cnae_classe": "18121",
+  "grau_risco": 3,
+  "denominacao": "Impressão de material de segurança"
+ },
+ {
+  "cnae_classe": "18130",
+  "grau_risco": 3,
+  "denominacao": "Impressão de materiais para outros usos"
+ },
+ {
+  "cnae_classe": "18211",
+  "grau_risco": 3,
+  "denominacao": "Serviços de pré-impressão"
+ },
+ {
+  "cnae_classe": "18229",
+  "grau_risco": 3,
+  "denominacao": "Serviços de acabamentos gráficos"
+ },
+ {
+  "cnae_classe": "18300",
+  "grau_risco": 3,
+  "denominacao": "Reprodução de materiais gravados em qualquer suporte"
+ },
+ {
+  "cnae_classe": "19101",
+  "grau_risco": 3,
+  "denominacao": "Coquerias"
+ },
+ {
+  "cnae_classe": "19217",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos do refino de petróleo"
+ },
+ {
+  "cnae_classe": "19225",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos derivados do petróleo, exceto produtos do refino"
+ },
+ {
+  "cnae_classe": "19314",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de álcool"
+ },
+ {
+  "cnae_classe": "19322",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de biocombustíveis, exceto álcool"
+ },
+ {
+  "cnae_classe": "20118",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de cloro e álcalis"
+ },
+ {
+  "cnae_classe": "20126",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de intermediários para fertilizantes"
+ },
+ {
+  "cnae_classe": "20134",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de adubos e fertilizantes"
+ },
+ {
+  "cnae_classe": "20142",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de gases industriais"
+ },
+ {
+  "cnae_classe": "20193",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos químicos inorgânicos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "20215",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos petroquímicos básicos"
+ },
+ {
+  "cnae_classe": "20223",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de intermediários para plastificantes, resinas e fibras"
+ },
+ {
+  "cnae_classe": "20291",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos químicos orgânicos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "20312",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de resinas termoplásticas"
+ },
+ {
+  "cnae_classe": "20321",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de resinas termofixas"
+ },
+ {
+  "cnae_classe": "20339",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de elastômeros"
+ },
+ {
+  "cnae_classe": "20401",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de fibras artificiais e sintéticas"
+ },
+ {
+  "cnae_classe": "20517",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de defensivos agrícolas"
+ },
+ {
+  "cnae_classe": "20525",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de desinfetantes domissanitários"
+ },
+ {
+  "cnae_classe": "20614",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de sabões e detergentes sintéticos"
+ },
+ {
+  "cnae_classe": "20622",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos de limpeza e polimento"
+ },
+ {
+  "cnae_classe": "20631",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de cosméticos, produtos de perfumaria e de higiene pessoal"
+ },
+ {
+  "cnae_classe": "20711",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de tintas, vernizes, esmaltes e lacas"
+ },
+ {
+  "cnae_classe": "20720",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de tintas de impressão"
+ },
+ {
+  "cnae_classe": "20738",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de impermeabilizantes, solventes e produtos afins"
+ },
+ {
+  "cnae_classe": "20916",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de adesivos e selantes"
+ },
+ {
+  "cnae_classe": "20924",
+  "grau_risco": 4,
+  "denominacao": "Fabricação de explosivos"
+ },
+ {
+  "cnae_classe": "20932",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de aditivos de uso industrial"
+ },
+ {
+  "cnae_classe": "20941",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de catalisadores"
+ },
+ {
+  "cnae_classe": "20991",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos químicos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "21106",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos farmoquímicos"
+ },
+ {
+  "cnae_classe": "21211",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de medicamentos para uso humano"
+ },
+ {
+  "cnae_classe": "21220",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de medicamentos para uso veterinário"
+ },
+ {
+  "cnae_classe": "21238",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de preparações farmacêuticas"
+ },
+ {
+  "cnae_classe": "22111",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de pneumáticos e de câmaras-de-ar"
+ },
+ {
+  "cnae_classe": "22129",
+  "grau_risco": 3,
+  "denominacao": "Reforma de pneumáticos usados"
+ },
+ {
+  "cnae_classe": "22196",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artefatos de borracha não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "22218",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de laminados planos e tubulares de material plástico"
+ },
+ {
+  "cnae_classe": "22226",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de embalagens de material plástico"
+ },
+ {
+  "cnae_classe": "22234",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de tubos e acessórios de material plástico para uso na construção"
+ },
+ {
+  "cnae_classe": "22293",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artefatos de material plástico não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "23117",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de vidro plano e de segurança"
+ },
+ {
+  "cnae_classe": "23125",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de embalagens de vidro"
+ },
+ {
+  "cnae_classe": "23192",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artigos de vidro"
+ },
+ {
+  "cnae_classe": "23206",
+  "grau_risco": 4,
+  "denominacao": "Fabricação de cimento"
+ },
+ {
+  "cnae_classe": "23303",
+  "grau_risco": 4,
+  "denominacao": "Fabricação de artefatos de concreto, cimento, fibrocimento, gesso e materiais semelhantes"
+ },
+ {
+  "cnae_classe": "23419",
+  "grau_risco": 4,
+  "denominacao": "Fabricação de produtos cerâmicos refratários"
+ },
+ {
+  "cnae_classe": "23427",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos cerâmicos não-refratários para uso estrutural na construção"
+ },
+ {
+  "cnae_classe": "23494",
+  "grau_risco": 4,
+  "denominacao": "Fabricação de produtos cerâmicos não-refratários não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "23915",
+  "grau_risco": 3,
+  "denominacao": "Aparelhamento e outros trabalhos em pedras"
+ },
+ {
+  "cnae_classe": "23923",
+  "grau_risco": 4,
+  "denominacao": "Fabricação de cal e gesso"
+ },
+ {
+  "cnae_classe": "23991",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos de minerais não-metálicos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "24113",
+  "grau_risco": 4,
+  "denominacao": "Produção de ferro-gusa"
+ },
+ {
+  "cnae_classe": "24121",
+  "grau_risco": 4,
+  "denominacao": "Produção de ferroligas"
+ },
+ {
+  "cnae_classe": "24211",
+  "grau_risco": 4,
+  "denominacao": "Produção de semi-acabados de aço"
+ },
+ {
+  "cnae_classe": "24229",
+  "grau_risco": 4,
+  "denominacao": "Produção de laminados planos de aço"
+ },
+ {
+  "cnae_classe": "24237",
+  "grau_risco": 4,
+  "denominacao": "Produção de laminados longos de aço"
+ },
+ {
+  "cnae_classe": "24245",
+  "grau_risco": 4,
+  "denominacao": "Produção de relaminados, trefilados e perfilados de aço"
+ },
+ {
+  "cnae_classe": "24318",
+  "grau_risco": 4,
+  "denominacao": "Produção de tubos de aço com costura"
+ },
+ {
+  "cnae_classe": "24393",
+  "grau_risco": 4,
+  "denominacao": "Produção de outros tubos de ferro e aço"
+ },
+ {
+  "cnae_classe": "24415",
+  "grau_risco": 4,
+  "denominacao": "Metalurgia do alumínio e suas ligas"
+ },
+ {
+  "cnae_classe": "24423",
+  "grau_risco": 4,
+  "denominacao": "Metalurgia dos metais preciosos"
+ },
+ {
+  "cnae_classe": "24431",
+  "grau_risco": 4,
+  "denominacao": "Metalurgia do cobre"
+ },
+ {
+  "cnae_classe": "24491",
+  "grau_risco": 4,
+  "denominacao": "Metalurgia dos metais não-ferrosos e suas ligas não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "24512",
+  "grau_risco": 4,
+  "denominacao": "Fundição de ferro e aço"
+ },
+ {
+  "cnae_classe": "24521",
+  "grau_risco": 4,
+  "denominacao": "Fundição de metais não-ferrosos e suas ligas"
+ },
+ {
+  "cnae_classe": "25110",
+  "grau_risco": 4,
+  "denominacao": "Fabricação de estruturas metálicas"
+ },
+ {
+  "cnae_classe": "25128",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de esquadrias de metal"
+ },
+ {
+  "cnae_classe": "25136",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de obras de caldeiraria pesada"
+ },
+ {
+  "cnae_classe": "25217",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de tanques, reservatórios metálicos e caldeiras para aquecimento central"
+ },
+ {
+  "cnae_classe": "25225",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de caldeiras geradoras de vapor, exceto para aquecimento central e para veículos"
+ },
+ {
+  "cnae_classe": "25314",
+  "grau_risco": 4,
+  "denominacao": "Produção de forjados de aço e de metais não-ferrosos e suas ligas"
+ },
+ {
+  "cnae_classe": "25322",
+  "grau_risco": 4,
+  "denominacao": "Produção de artefatos estampados de metal; metalurgia do pó"
+ },
+ {
+  "cnae_classe": "25390",
+  "grau_risco": 4,
+  "denominacao": "Serviços de usinagem, solda, tratamento e revestimento em metais"
+ },
+ {
+  "cnae_classe": "25411",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artigos de cutelaria"
+ },
+ {
+  "cnae_classe": "25420",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artigos de serralheria, exceto esquadrias"
+ },
+ {
+  "cnae_classe": "25438",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de ferramentas"
+ },
+ {
+  "cnae_classe": "25501",
+  "grau_risco": 4,
+  "denominacao": "Fabricação de equipamento bélico pesado, armas de fogo e munições"
+ },
+ {
+  "cnae_classe": "25918",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de embalagens metálicas"
+ },
+ {
+  "cnae_classe": "25926",
+  "grau_risco": 4,
+  "denominacao": "Fabricação de produtos de trefilados de metal"
+ },
+ {
+  "cnae_classe": "25934",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artigos de metal para uso doméstico e pessoal"
+ },
+ {
+  "cnae_classe": "25993",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos de metal não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "26108",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de componentes eletrônicos"
+ },
+ {
+  "cnae_classe": "26213",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de equipamentos de informática"
+ },
+ {
+  "cnae_classe": "26221",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de periféricos para equipamentos de informática"
+ },
+ {
+  "cnae_classe": "26311",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de equipamentos transmissores de comunicação"
+ },
+ {
+  "cnae_classe": "26329",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de aparelhos telefônicos e de outros equipamentos de comunicação"
+ },
+ {
+  "cnae_classe": "26400",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de aparelhos de recepção, reprodução, gravação e amplificação de áudio e vídeo"
+ },
+ {
+  "cnae_classe": "26515",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de aparelhos e equipamentos de medida, teste e controle"
+ },
+ {
+  "cnae_classe": "26523",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de cronômetros e relógios"
+ },
+ {
+  "cnae_classe": "26604",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de aparelhos eletromédicos e eletroterapêuticos e equipamentos de irradiação"
+ },
+ {
+  "cnae_classe": "26701",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de equipamentos e instrumentos ópticos, fotográficos e cinematográficos"
+ },
+ {
+  "cnae_classe": "26809",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de mídias virgens, magnéticas e ópticas"
+ },
+ {
+  "cnae_classe": "27104",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de geradores, transformadores e motores elétricos"
+ },
+ {
+  "cnae_classe": "27210",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de pilhas, baterias e acumuladores elétricos, exceto para veículos automotores"
+ },
+ {
+  "cnae_classe": "27228",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de baterias e acumuladores para veículos automotores"
+ },
+ {
+  "cnae_classe": "27317",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de aparelhos e equipamentos para distribuição e controle de energia elétrica"
+ },
+ {
+  "cnae_classe": "27325",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de material elétrico para instalações em circuito de consumo"
+ },
+ {
+  "cnae_classe": "27333",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de fios, cabos e condutores elétricos isolados"
+ },
+ {
+  "cnae_classe": "27406",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de lâmpadas e outros equipamentos de iluminação"
+ },
+ {
+  "cnae_classe": "27511",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de fogões, refrigeradores e máquinas de lavar e secar para uso doméstico"
+ },
+ {
+  "cnae_classe": "27597",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de aparelhos eletrodomésticos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "27902",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de equipamentos e aparelhos elétricos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "28119",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de motores e turbinas, exceto para aviões e veículos rodoviários"
+ },
+ {
+  "cnae_classe": "28127",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de equipamentos hidráulicos e pneumáticos, exceto válvulas"
+ },
+ {
+  "cnae_classe": "28135",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de válvulas, registros e dispositivos semelhantes"
+ },
+ {
+  "cnae_classe": "28143",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de compressores"
+ },
+ {
+  "cnae_classe": "28151",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de equipamentos de transmissão para fins industriais"
+ },
+ {
+  "cnae_classe": "28216",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de aparelhos e equipamentos para instalações térmicas"
+ },
+ {
+  "cnae_classe": "28224",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas, equipamentos e aparelhos para transporte e elevação de cargas e pessoas"
+ },
+ {
+  "cnae_classe": "28232",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e aparelhos de refrigeração e ventilação para uso industrial e comercial"
+ },
+ {
+  "cnae_classe": "28241",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de aparelhos e equipamentos de ar-condicionado"
+ },
+ {
+  "cnae_classe": "28259",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e equipamentos para saneamento básico e ambiental"
+ },
+ {
+  "cnae_classe": "28291",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e equipamentos de uso geral não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "28313",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de tratores agrícolas"
+ },
+ {
+  "cnae_classe": "28321",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de equipamentos para irrigação agrícola"
+ },
+ {
+  "cnae_classe": "28330",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e equipamentos para a agricultura e pecuária, exceto para irrigação"
+ },
+ {
+  "cnae_classe": "28402",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas-ferramenta"
+ },
+ {
+  "cnae_classe": "28518",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e equipamentos para a prospecção e extração de petróleo"
+ },
+ {
+  "cnae_classe": "28526",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de outras máquinas e equipamentos para uso na extração mineral, exceto na extração de petróleo"
+ },
+ {
+  "cnae_classe": "28534",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de tratores, exceto agrícolas"
+ },
+ {
+  "cnae_classe": "28542",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e equipamentos para terraplenagem, pavimentação e construção, exceto tratores"
+ },
+ {
+  "cnae_classe": "28615",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas para a indústria metalúrgica, exceto máquinas-ferramenta"
+ },
+ {
+  "cnae_classe": "28623",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e equipamentos para as indústrias de alimentos, bebidas e fumo"
+ },
+ {
+  "cnae_classe": "28631",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e equipamentos para a indústria têxtil"
+ },
+ {
+  "cnae_classe": "28640",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e equipamentos para as indústrias do vestuário, do couro e de calçados"
+ },
+ {
+  "cnae_classe": "28658",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e equipamentos para as indústrias de celulose, papel e papelão e artefatos"
+ },
+ {
+  "cnae_classe": "28666",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e equipamentos para a indústria do plástico"
+ },
+ {
+  "cnae_classe": "28691",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de máquinas e equipamentos para uso industrial específico não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "29107",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de automóveis, camionetas e utilitários"
+ },
+ {
+  "cnae_classe": "29204",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de caminhões e ônibus"
+ },
+ {
+  "cnae_classe": "29301",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de cabines, carrocerias e reboques para veículos automotores"
+ },
+ {
+  "cnae_classe": "29417",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de peças e acessórios para o sistema motor de veículos automotores"
+ },
+ {
+  "cnae_classe": "29425",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de peças e acessórios para os sistemas de marcha e transmissão de veículos automotores"
+ },
+ {
+  "cnae_classe": "29433",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de peças e acessórios para o sistema de freios de veículos automotores"
+ },
+ {
+  "cnae_classe": "29441",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de peças e acessórios para o sistema de direção e suspensão de veículos automotores"
+ },
+ {
+  "cnae_classe": "29450",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de material elétrico e eletrônico para veículos automotores, exceto baterias"
+ },
+ {
+  "cnae_classe": "29492",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de peças e acessórios para veículos automotores não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "29506",
+  "grau_risco": 3,
+  "denominacao": "Recondicionamento e recuperação de motores para veículos automotores"
+ },
+ {
+  "cnae_classe": "30113",
+  "grau_risco": 3,
+  "denominacao": "Construção de embarcações e estruturas flutuantes"
+ },
+ {
+  "cnae_classe": "30121",
+  "grau_risco": 3,
+  "denominacao": "Construção de embarcações para esporte e lazer"
+ },
+ {
+  "cnae_classe": "30318",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de locomotivas, vagões e outros materiais rodantes"
+ },
+ {
+  "cnae_classe": "30326",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de peças e acessórios para veículos ferroviários"
+ },
+ {
+  "cnae_classe": "30415",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de aeronaves"
+ },
+ {
+  "cnae_classe": "30423",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de turbinas, motores e outros componentes e peças para aeronaves"
+ },
+ {
+  "cnae_classe": "30504",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de veículos militares de combate"
+ },
+ {
+  "cnae_classe": "30911",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de motocicletas"
+ },
+ {
+  "cnae_classe": "30920",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de bicicletas e triciclos não-motorizados"
+ },
+ {
+  "cnae_classe": "30997",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de equipamentos de transporte não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "31012",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de móveis com predominância de madeira"
+ },
+ {
+  "cnae_classe": "31021",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de móveis com predominância de metal"
+ },
+ {
+  "cnae_classe": "31039",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de móveis de outros materiais, exceto madeira e metal"
+ },
+ {
+  "cnae_classe": "31047",
+  "grau_risco": 2,
+  "denominacao": "Fabricação de colchões"
+ },
+ {
+  "cnae_classe": "32116",
+  "grau_risco": 3,
+  "denominacao": "Lapidação de gemas e fabricação de artefatos de ourivesaria e joalheria"
+ },
+ {
+  "cnae_classe": "32124",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de bijuterias e artefatos semelhantes"
+ },
+ {
+  "cnae_classe": "32205",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de instrumentos musicais"
+ },
+ {
+  "cnae_classe": "32302",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de artefatos para pesca e esporte"
+ },
+ {
+  "cnae_classe": "32400",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de brinquedos e jogos recreativos"
+ },
+ {
+  "cnae_classe": "32507",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de instrumentos e materiais para uso médico e odontológico e de artigos ópticos"
+ },
+ {
+  "cnae_classe": "32914",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de escovas, pincéis e vassouras"
+ },
+ {
+  "cnae_classe": "32922",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de equipamentos e acessórios para segurança e proteção pessoal e profissional"
+ },
+ {
+  "cnae_classe": "32990",
+  "grau_risco": 3,
+  "denominacao": "Fabricação de produtos diversos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "33112",
+  "grau_risco": 3,
+  "denominacao": "Manutenção e reparação de tanques, reservatórios metálicos e caldeiras, exceto para veículos"
+ },
+ {
+  "cnae_classe": "33121",
+  "grau_risco": 3,
+  "denominacao": "Manutenção e reparação de equipamentos eletrônicos e ópticos"
+ },
+ {
+  "cnae_classe": "33139",
+  "grau_risco": 3,
+  "denominacao": "Manutenção e reparação de máquinas e equipamentos elétricos"
+ },
+ {
+  "cnae_classe": "33147",
+  "grau_risco": 3,
+  "denominacao": "Manutenção e reparação de máquinas e equipamentos da indústria mecânica"
+ },
+ {
+  "cnae_classe": "33155",
+  "grau_risco": 3,
+  "denominacao": "Manutenção e reparação de veículos ferroviários"
+ },
+ {
+  "cnae_classe": "33163",
+  "grau_risco": 3,
+  "denominacao": "Manutenção e reparação de aeronaves"
+ },
+ {
+  "cnae_classe": "33171",
+  "grau_risco": 3,
+  "denominacao": "Manutenção e reparação de embarcações"
+ },
+ {
+  "cnae_classe": "33198",
+  "grau_risco": 3,
+  "denominacao": "Manutenção e reparação de equipamentos e produtos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "33210",
+  "grau_risco": 3,
+  "denominacao": "Instalação de máquinas e equipamentos industriais"
+ },
+ {
+  "cnae_classe": "33295",
+  "grau_risco": 3,
+  "denominacao": "Instalação de equipamentos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "35115",
+  "grau_risco": 3,
+  "denominacao": "Geração de energia elétrica"
+ },
+ {
+  "cnae_classe": "35123",
+  "grau_risco": 3,
+  "denominacao": "Transmissão de energia elétrica"
+ },
+ {
+  "cnae_classe": "35131",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de energia elétrica"
+ },
+ {
+  "cnae_classe": "35140",
+  "grau_risco": 3,
+  "denominacao": "Distribuição de energia elétrica"
+ },
+ {
+  "cnae_classe": "35204",
+  "grau_risco": 3,
+  "denominacao": "Produção de gás; processamento de gás natural; distribuição de combustíveis gasosos por redes urbanas"
+ },
+ {
+  "cnae_classe": "35301",
+  "grau_risco": 3,
+  "denominacao": "Produção e distribuição de vapor, água quente e ar-condicionado"
+ },
+ {
+  "cnae_classe": "36006",
+  "grau_risco": 3,
+  "denominacao": "Captação, tratamento e distribuição de água"
+ },
+ {
+  "cnae_classe": "37011",
+  "grau_risco": 3,
+  "denominacao": "Gestão de redes de esgoto"
+ },
+ {
+  "cnae_classe": "37029",
+  "grau_risco": 3,
+  "denominacao": "Atividades relacionadas a esgoto, exceto a gestão de redes"
+ },
+ {
+  "cnae_classe": "38114",
+  "grau_risco": 3,
+  "denominacao": "Coleta de resíduos não-perigosos"
+ },
+ {
+  "cnae_classe": "38122",
+  "grau_risco": 3,
+  "denominacao": "Coleta de resíduos perigosos"
+ },
+ {
+  "cnae_classe": "38211",
+  "grau_risco": 3,
+  "denominacao": "Tratamento e disposição de resíduos não-perigosos"
+ },
+ {
+  "cnae_classe": "38220",
+  "grau_risco": 3,
+  "denominacao": "Tratamento e disposição de resíduos perigosos"
+ },
+ {
+  "cnae_classe": "38319",
+  "grau_risco": 3,
+  "denominacao": "Recuperação de materiais metálicos"
+ },
+ {
+  "cnae_classe": "38327",
+  "grau_risco": 3,
+  "denominacao": "Recuperação de materiais plásticos"
+ },
+ {
+  "cnae_classe": "38394",
+  "grau_risco": 3,
+  "denominacao": "Recuperação de materiais não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "39005",
+  "grau_risco": 3,
+  "denominacao": "Descontaminação e outros serviços de gestão de resíduos"
+ },
+ {
+  "cnae_classe": "41107",
+  "grau_risco": 1,
+  "denominacao": "Incorporação de empreendimentos imobiliários"
+ },
+ {
+  "cnae_classe": "41204",
+  "grau_risco": 3,
+  "denominacao": "Construção de edifícios"
+ },
+ {
+  "cnae_classe": "42111",
+  "grau_risco": 4,
+  "denominacao": "Construção de rodovias e ferrovias"
+ },
+ {
+  "cnae_classe": "42120",
+  "grau_risco": 4,
+  "denominacao": "Construção de obras-de-arte especiais"
+ },
+ {
+  "cnae_classe": "42138",
+  "grau_risco": 3,
+  "denominacao": "Obras de urbanização - ruas, praças e calçadas"
+ },
+ {
+  "cnae_classe": "42219",
+  "grau_risco": 4,
+  "denominacao": "Obras para geração e distribuição de energia elétrica e para telecomunicações"
+ },
+ {
+  "cnae_classe": "42227",
+  "grau_risco": 4,
+  "denominacao": "Construção de redes de abastecimento de água, coleta de esgoto e construções correlatas"
+ },
+ {
+  "cnae_classe": "42235",
+  "grau_risco": 4,
+  "denominacao": "Construção de redes de transportes por dutos, exceto para água e esgoto"
+ },
+ {
+  "cnae_classe": "42910",
+  "grau_risco": 4,
+  "denominacao": "Obras portuárias, marítimas e fluviais"
+ },
+ {
+  "cnae_classe": "42928",
+  "grau_risco": 4,
+  "denominacao": "Montagem de instalações industriais e de estruturas metálicas"
+ },
+ {
+  "cnae_classe": "42995",
+  "grau_risco": 3,
+  "denominacao": "Obras de engenharia civil não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "43118",
+  "grau_risco": 4,
+  "denominacao": "Demolição e preparação de canteiros de obras"
+ },
+ {
+  "cnae_classe": "43126",
+  "grau_risco": 4,
+  "denominacao": "Perfurações e sondagens"
+ },
+ {
+  "cnae_classe": "43134",
+  "grau_risco": 3,
+  "denominacao": "Obras de terraplenagem"
+ },
+ {
+  "cnae_classe": "43193",
+  "grau_risco": 3,
+  "denominacao": "Serviços de preparação do terreno não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "43215",
+  "grau_risco": 3,
+  "denominacao": "Instalações elétricas"
+ },
+ {
+  "cnae_classe": "43223",
+  "grau_risco": 3,
+  "denominacao": "Instalações hidráulicas, de sistemas de ventilação e refrigeração"
+ },
+ {
+  "cnae_classe": "43291",
+  "grau_risco": 3,
+  "denominacao": "Obras de instalações em construções não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "43304",
+  "grau_risco": 3,
+  "denominacao": "Obras de acabamento"
+ },
+ {
+  "cnae_classe": "43916",
+  "grau_risco": 4,
+  "denominacao": "Obras de fundações"
+ },
+ {
+  "cnae_classe": "43991",
+  "grau_risco": 3,
+  "denominacao": "Serviços especializados para construção não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "45111",
+  "grau_risco": 2,
+  "denominacao": "Comércio a varejo e por atacado de veículos automotores"
+ },
+ {
+  "cnae_classe": "45129",
+  "grau_risco": 2,
+  "denominacao": "Representantes comerciais e agentes do comércio de veículos automotores"
+ },
+ {
+  "cnae_classe": "45200",
+  "grau_risco": 3,
+  "denominacao": "Manutenção e reparação de veículos automotores"
+ },
+ {
+  "cnae_classe": "45307",
+  "grau_risco": 2,
+  "denominacao": "Comércio de peças e acessórios para veículos automotores"
+ },
+ {
+  "cnae_classe": "45412",
+  "grau_risco": 2,
+  "denominacao": "Comércio por atacado e a varejo de motocicletas, peças e acessórios"
+ },
+ {
+  "cnae_classe": "45421",
+  "grau_risco": 2,
+  "denominacao": "Representantes comerciais e agentes do comércio de motocicletas, peças e acessórios"
+ },
+ {
+  "cnae_classe": "45439",
+  "grau_risco": 3,
+  "denominacao": "Manutenção e reparação de motocicletas"
+ },
+ {
+  "cnae_classe": "46117",
+  "grau_risco": 2,
+  "denominacao": "Representantes comerciais e agentes do comércio de matérias-primas agrícolas e animais vivos"
+ },
+ {
+  "cnae_classe": "46125",
+  "grau_risco": 2,
+  "denominacao": "Representantes comerciais e agentes do comércio de combustíveis, minerais, produtos siderúrgicos e químicos"
+ },
+ {
+  "cnae_classe": "46133",
+  "grau_risco": 2,
+  "denominacao": "Representantes comerciais e agentes do comércio de madeira, material de construção e ferragens"
+ },
+ {
+  "cnae_classe": "46141",
+  "grau_risco": 2,
+  "denominacao": "Representantes comerciais e agentes do comércio de máquinas, equipamentos, embarcações e aeronaves"
+ },
+ {
+  "cnae_classe": "46150",
+  "grau_risco": 2,
+  "denominacao": "Representantes comerciais e agentes do comércio de eletrodomésticos, móveis e artigos de uso doméstico"
+ },
+ {
+  "cnae_classe": "46168",
+  "grau_risco": 2,
+  "denominacao": "Representantes comerciais e agentes do comércio de têxteis, vestuário, calçados e artigos de viagem"
+ },
+ {
+  "cnae_classe": "46176",
+  "grau_risco": 2,
+  "denominacao": "Representantes comerciais e agentes do comércio de produtos alimentícios, bebidas e fumo"
+ },
+ {
+  "cnae_classe": "46184",
+  "grau_risco": 2,
+  "denominacao": "Representantes comerciais e agentes do comércio especializado em produtos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "46192",
+  "grau_risco": 2,
+  "denominacao": "Representantes comerciais e agentes do comércio de mercadorias em geral não especializado"
+ },
+ {
+  "cnae_classe": "46214",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de café em grão"
+ },
+ {
+  "cnae_classe": "46222",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de soja"
+ },
+ {
+  "cnae_classe": "46231",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de animais vivos, alimentos para animais e matérias-primas agrícolas, exceto café e soja"
+ },
+ {
+  "cnae_classe": "46311",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de leite e laticínios"
+ },
+ {
+  "cnae_classe": "46320",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de cereais e leguminosas beneficiados, farinhas, amidos e féculas"
+ },
+ {
+  "cnae_classe": "46338",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de hortifrutigranjeiros"
+ },
+ {
+  "cnae_classe": "46346",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de carnes, produtos da carne e pescado"
+ },
+ {
+  "cnae_classe": "46354",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de bebidas"
+ },
+ {
+  "cnae_classe": "46362",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de produtos do fumo"
+ },
+ {
+  "cnae_classe": "46371",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista especializado em produtos alimentícios não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "46397",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de produtos alimentícios em geral"
+ },
+ {
+  "cnae_classe": "46419",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de tecidos, artefatos de tecidos e de armarinho"
+ },
+ {
+  "cnae_classe": "46427",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de artigos do vestuário e acessórios"
+ },
+ {
+  "cnae_classe": "46435",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de calçados e artigos de viagem"
+ },
+ {
+  "cnae_classe": "46443",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de produtos farmacêuticos para uso humano e veterinário"
+ },
+ {
+  "cnae_classe": "46451",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de instrumentos e materiais para uso médico, cirúrgico, ortopédico e odontológico"
+ },
+ {
+  "cnae_classe": "46460",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de cosméticos, produtos de perfumaria e de higiene pessoal"
+ },
+ {
+  "cnae_classe": "46478",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de artigos de escritório e de papelaria; livros, jornais e outras publicações"
+ },
+ {
+  "cnae_classe": "46494",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de equipamentos e artigos de uso pessoal e doméstico não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "46516",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de computadores, periféricos e suprimentos de informática"
+ },
+ {
+  "cnae_classe": "46524",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de componentes eletrônicos e equipamentos de telefonia e comunicação"
+ },
+ {
+  "cnae_classe": "46613",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de máquinas, aparelhos e equipamentos para uso agropecuário; partes e peças"
+ },
+ {
+  "cnae_classe": "46621",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de máquinas, equipamentos para terraplenagem, mineração e construção; partes e peças"
+ },
+ {
+  "cnae_classe": "46630",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de máquinas e equipamentos para uso industrial; partes e peças"
+ },
+ {
+  "cnae_classe": "46648",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de máquinas, aparelhos e equipamentos para uso odonto- médico- hospitalar; partes e peças"
+ },
+ {
+  "cnae_classe": "46656",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de máquinas e equipamentos para uso comercial; partes e peças"
+ },
+ {
+  "cnae_classe": "46699",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de máquinas, aparelhos e equipamentos não especificados anteriormente; partes e peças"
+ },
+ {
+  "cnae_classe": "46711",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de madeira e produtos derivados"
+ },
+ {
+  "cnae_classe": "46729",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de ferragens e ferramentas"
+ },
+ {
+  "cnae_classe": "46737",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de material elétrico"
+ },
+ {
+  "cnae_classe": "46745",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de cimento"
+ },
+ {
+  "cnae_classe": "46796",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista especializado de materiais de construção não especificados anteriormente e de materiais de construção em geral"
+ },
+ {
+  "cnae_classe": "46818",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de combustíveis sólidos, líquidos e gasosos, exceto gás natural e GLP"
+ },
+ {
+  "cnae_classe": "46826",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de gás liqüefeito de petróleo (GLP)"
+ },
+ {
+  "cnae_classe": "46834",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de defensivos agrícolas, adubos, fertilizantes e corretivos do solo"
+ },
+ {
+  "cnae_classe": "46842",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de produtos químicos e petroquímicos, exceto agroquímicos"
+ },
+ {
+  "cnae_classe": "46851",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de produtos siderúrgicos e metalúrgicos, exceto para construção"
+ },
+ {
+  "cnae_classe": "46869",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de papel e papelão em bruto e de embalagens"
+ },
+ {
+  "cnae_classe": "46877",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista de resíduos e sucatas"
+ },
+ {
+  "cnae_classe": "46893",
+  "grau_risco": 3,
+  "denominacao": "Comércio atacadista especializado de outros produtos intermediários não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "46915",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de mercadorias em geral, com predominância de produtos alimentícios"
+ },
+ {
+  "cnae_classe": "46923",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de mercadorias em geral, com predominância de insumos agropecuários"
+ },
+ {
+  "cnae_classe": "46931",
+  "grau_risco": 2,
+  "denominacao": "Comércio atacadista de mercadorias em geral, sem predominância de alimentos ou de insumos agropecuários"
+ },
+ {
+  "cnae_classe": "47113",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios - hipermercados e supermercados"
+ },
+ {
+  "cnae_classe": "47121",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios - minimercados, mercearias e armazéns"
+ },
+ {
+  "cnae_classe": "47130",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de mercadorias em geral, sem predominância de produtos alimentícios"
+ },
+ {
+  "cnae_classe": "47211",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de produtos de padaria, laticínio, doces, balas e semelhantes"
+ },
+ {
+  "cnae_classe": "47229",
+  "grau_risco": 3,
+  "denominacao": "Comércio varejista de carnes e pescados - açougues e peixarias"
+ },
+ {
+  "cnae_classe": "47237",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de bebidas"
+ },
+ {
+  "cnae_classe": "47245",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de hortifrutigranjeiros"
+ },
+ {
+  "cnae_classe": "47296",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de produtos alimentícios em geral ou especializado em produtos alimentícios não especificados anteriormente; produtos do fumo"
+ },
+ {
+  "cnae_classe": "47318",
+  "grau_risco": 3,
+  "denominacao": "Comércio varejista de combustíveis para veículos automotores"
+ },
+ {
+  "cnae_classe": "47326",
+  "grau_risco": 3,
+  "denominacao": "Comércio varejista de lubrificantes"
+ },
+ {
+  "cnae_classe": "47415",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de tintas e materiais para pintura"
+ },
+ {
+  "cnae_classe": "47423",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de material elétrico"
+ },
+ {
+  "cnae_classe": "47431",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de vidros"
+ },
+ {
+  "cnae_classe": "47440",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de ferragens, madeira e materiais de construção"
+ },
+ {
+  "cnae_classe": "47512",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista especializado de equipamentos e suprimentos de informática"
+ },
+ {
+  "cnae_classe": "47521",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista especializado de equipamentos de telefonia e comunicação"
+ },
+ {
+  "cnae_classe": "47539",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista especializado de eletrodomésticos e equipamentos de áudio e vídeo"
+ },
+ {
+  "cnae_classe": "47547",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista especializado de móveis, colchoaria e artigos de iluminação"
+ },
+ {
+  "cnae_classe": "47555",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista especializado de tecidos e artigos de cama, mesa e banho"
+ },
+ {
+  "cnae_classe": "47563",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista especializado de instrumentos musicais e acessórios"
+ },
+ {
+  "cnae_classe": "47571",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista especializado de peças e acessórios para aparelhos eletroeletrônicos para uso doméstico, exceto informática e comunicação"
+ },
+ {
+  "cnae_classe": "47598",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de artigos de uso doméstico não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "47610",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de livros, jornais, revistas e papelaria"
+ },
+ {
+  "cnae_classe": "47628",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de discos, CDs, DVDs e fitas"
+ },
+ {
+  "cnae_classe": "47636",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de artigos recreativos e esportivos"
+ },
+ {
+  "cnae_classe": "47717",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de produtos farmacêuticos para uso humano e veterinário"
+ },
+ {
+  "cnae_classe": "47725",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de cosméticos, produtos de perfumaria e de higiene pessoal"
+ },
+ {
+  "cnae_classe": "47733",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de artigos médicos e ortopédicos"
+ },
+ {
+  "cnae_classe": "47741",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de artigos de óptica"
+ },
+ {
+  "cnae_classe": "47814",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de artigos do vestuário e acessórios"
+ },
+ {
+  "cnae_classe": "47822",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de calçados e artigos de viagem"
+ },
+ {
+  "cnae_classe": "47831",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de jóias e relógios"
+ },
+ {
+  "cnae_classe": "47849",
+  "grau_risco": 3,
+  "denominacao": "Comércio varejista de gás liqüefeito de petróleo (GLP)"
+ },
+ {
+  "cnae_classe": "47857",
+  "grau_risco": 2,
+  "denominacao": "Comércio varejista de artigos usados"
+ },
+ {
+  "cnae_classe": "47890",
+  "grau_risco": 1,
+  "denominacao": "Comércio varejista de outros produtos novos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "47903",
+  "grau_risco": 2,
+  "denominacao": "Comércio ambulante e outros tipos de comércio varejista"
+ },
+ {
+  "cnae_classe": "49116",
+  "grau_risco": 3,
+  "denominacao": "Transporte ferroviário de carga"
+ },
+ {
+  "cnae_classe": "49124",
+  "grau_risco": 3,
+  "denominacao": "Transporte metroferroviário de passageiros"
+ },
+ {
+  "cnae_classe": "49213",
+  "grau_risco": 3,
+  "denominacao": "Transporte rodoviário coletivo de passageiros, com itinerário fixo, municipal e em região metropolitana"
+ },
+ {
+  "cnae_classe": "49221",
+  "grau_risco": 3,
+  "denominacao": "Transporte rodoviário coletivo de passageiros, com itinerário fixo, intermunicipal, interestadual e internacional"
+ },
+ {
+  "cnae_classe": "49230",
+  "grau_risco": 3,
+  "denominacao": "Transporte rodoviário de táxi"
+ },
+ {
+  "cnae_classe": "49248",
+  "grau_risco": 3,
+  "denominacao": "Transporte escolar"
+ },
+ {
+  "cnae_classe": "49299",
+  "grau_risco": 3,
+  "denominacao": "Transporte rodoviário coletivo de passageiros, sob regime de fretamento, e outros transportes rodoviários não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "49302",
+  "grau_risco": 3,
+  "denominacao": "Transporte rodoviário de carga"
+ },
+ {
+  "cnae_classe": "49400",
+  "grau_risco": 3,
+  "denominacao": "Transporte dutoviário"
+ },
+ {
+  "cnae_classe": "49507",
+  "grau_risco": 3,
+  "denominacao": "Trens turísticos, teleféricos e similares"
+ },
+ {
+  "cnae_classe": "50114",
+  "grau_risco": 3,
+  "denominacao": "Transporte marítimo de cabotagem"
+ },
+ {
+  "cnae_classe": "50122",
+  "grau_risco": 3,
+  "denominacao": "Transporte marítimo de longo curso"
+ },
+ {
+  "cnae_classe": "50211",
+  "grau_risco": 3,
+  "denominacao": "Transporte por navegação interior de carga"
+ },
+ {
+  "cnae_classe": "50220",
+  "grau_risco": 3,
+  "denominacao": "Transporte por navegação interior de passageiros em linhas regulares"
+ },
+ {
+  "cnae_classe": "50301",
+  "grau_risco": 3,
+  "denominacao": "Navegação de apoio"
+ },
+ {
+  "cnae_classe": "50912",
+  "grau_risco": 3,
+  "denominacao": "Transporte por navegação de travessia"
+ },
+ {
+  "cnae_classe": "50998",
+  "grau_risco": 3,
+  "denominacao": "Transportes aquaviários não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "51111",
+  "grau_risco": 3,
+  "denominacao": "Transporte aéreo de passageiros regular"
+ },
+ {
+  "cnae_classe": "51129",
+  "grau_risco": 3,
+  "denominacao": "Transporte aéreo de passageiros não-regular"
+ },
+ {
+  "cnae_classe": "51200",
+  "grau_risco": 3,
+  "denominacao": "Transporte aéreo de carga"
+ },
+ {
+  "cnae_classe": "51307",
+  "grau_risco": 3,
+  "denominacao": "Transporte espacial"
+ },
+ {
+  "cnae_classe": "52117",
+  "grau_risco": 3,
+  "denominacao": "Armazenamento"
+ },
+ {
+  "cnae_classe": "52125",
+  "grau_risco": 3,
+  "denominacao": "Carga e descarga"
+ },
+ {
+  "cnae_classe": "52214",
+  "grau_risco": 3,
+  "denominacao": "Concessionárias de rodovias, pontes, túneis e serviços relacionados"
+ },
+ {
+  "cnae_classe": "52222",
+  "grau_risco": 3,
+  "denominacao": "Terminais rodoviários e ferroviários"
+ },
+ {
+  "cnae_classe": "52231",
+  "grau_risco": 3,
+  "denominacao": "Estacionamento de veículos"
+ },
+ {
+  "cnae_classe": "52290",
+  "grau_risco": 3,
+  "denominacao": "Atividades auxiliares dos transportes terrestres não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "52311",
+  "grau_risco": 3,
+  "denominacao": "Gestão de portos e terminais"
+ },
+ {
+  "cnae_classe": "52320",
+  "grau_risco": 3,
+  "denominacao": "Atividades de agenciamento marítimo"
+ },
+ {
+  "cnae_classe": "52397",
+  "grau_risco": 3,
+  "denominacao": "Atividades auxiliares dos transportes aquaviários não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "52401",
+  "grau_risco": 3,
+  "denominacao": "Atividades auxiliares dos transportes aéreos"
+ },
+ {
+  "cnae_classe": "52508",
+  "grau_risco": 3,
+  "denominacao": "Atividades relacionadas à organização do transporte de carga"
+ },
+ {
+  "cnae_classe": "53105",
+  "grau_risco": 2,
+  "denominacao": "Atividades de Correio"
+ },
+ {
+  "cnae_classe": "53202",
+  "grau_risco": 2,
+  "denominacao": "Atividades de malote e de entrega"
+ },
+ {
+  "cnae_classe": "55108",
+  "grau_risco": 2,
+  "denominacao": "Hotéis e similares"
+ },
+ {
+  "cnae_classe": "55906",
+  "grau_risco": 2,
+  "denominacao": "Outros tipos de alojamento não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "56112",
+  "grau_risco": 2,
+  "denominacao": "Restaurantes e outros estabelecimentos de serviços de alimentação e bebidas"
+ },
+ {
+  "cnae_classe": "56121",
+  "grau_risco": 2,
+  "denominacao": "Serviços ambulantes de alimentação"
+ },
+ {
+  "cnae_classe": "56201",
+  "grau_risco": 2,
+  "denominacao": "Serviços de catering, bufê e outros serviços de comida preparada"
+ },
+ {
+  "cnae_classe": "58115",
+  "grau_risco": 3,
+  "denominacao": "Edição de livros"
+ },
+ {
+  "cnae_classe": "58123",
+  "grau_risco": 3,
+  "denominacao": "Edição de jornais"
+ },
+ {
+  "cnae_classe": "58131",
+  "grau_risco": 3,
+  "denominacao": "Edição de revistas"
+ },
+ {
+  "cnae_classe": "58191",
+  "grau_risco": 3,
+  "denominacao": "Edição de cadastros, listas e outros produtos gráficos"
+ },
+ {
+  "cnae_classe": "58212",
+  "grau_risco": 3,
+  "denominacao": "Edição integrada à impressão de livros"
+ },
+ {
+  "cnae_classe": "58221",
+  "grau_risco": 3,
+  "denominacao": "Edição integrada à impressão de jornais"
+ },
+ {
+  "cnae_classe": "58239",
+  "grau_risco": 3,
+  "denominacao": "Edição integrada à impressão de revistas"
+ },
+ {
+  "cnae_classe": "58298",
+  "grau_risco": 3,
+  "denominacao": "Edição integrada à impressão de cadastros, listas e outros produtos gráficos"
+ },
+ {
+  "cnae_classe": "59111",
+  "grau_risco": 2,
+  "denominacao": "Atividades de produção cinematográfica, de vídeos e de programas de televisão"
+ },
+ {
+  "cnae_classe": "59120",
+  "grau_risco": 2,
+  "denominacao": "Atividades de pós-produção cinematográfica, de vídeos e de programas de televisão"
+ },
+ {
+  "cnae_classe": "59138",
+  "grau_risco": 2,
+  "denominacao": "Distribuição cinematográfica, de vídeo e de programas de televisão"
+ },
+ {
+  "cnae_classe": "59146",
+  "grau_risco": 2,
+  "denominacao": "Atividades de exibição cinematográfica"
+ },
+ {
+  "cnae_classe": "59201",
+  "grau_risco": 2,
+  "denominacao": "Atividades de gravação de som e de edição de música"
+ },
+ {
+  "cnae_classe": "60101",
+  "grau_risco": 2,
+  "denominacao": "Atividades de rádio"
+ },
+ {
+  "cnae_classe": "60217",
+  "grau_risco": 2,
+  "denominacao": "Atividades de televisão aberta"
+ },
+ {
+  "cnae_classe": "60225",
+  "grau_risco": 2,
+  "denominacao": "Programadoras e atividades relacionadas à televisão por assinatura"
+ },
+ {
+  "cnae_classe": "61108",
+  "grau_risco": 2,
+  "denominacao": "Telecomunicações por fio"
+ },
+ {
+  "cnae_classe": "61205",
+  "grau_risco": 2,
+  "denominacao": "Telecomunicações sem fio"
+ },
+ {
+  "cnae_classe": "61302",
+  "grau_risco": 2,
+  "denominacao": "Telecomunicações por satélite"
+ },
+ {
+  "cnae_classe": "61418",
+  "grau_risco": 2,
+  "denominacao": "Operadoras de televisão por assinatura por cabo"
+ },
+ {
+  "cnae_classe": "61426",
+  "grau_risco": 2,
+  "denominacao": "Operadoras de televisão por assinatura por microondas"
+ },
+ {
+  "cnae_classe": "61434",
+  "grau_risco": 2,
+  "denominacao": "Operadoras de televisão por assinatura por satélite"
+ },
+ {
+  "cnae_classe": "61906",
+  "grau_risco": 2,
+  "denominacao": "Outras atividades de telecomunicações"
+ },
+ {
+  "cnae_classe": "62015",
+  "grau_risco": 2,
+  "denominacao": "Desenvolvimento de programas de computador sob encomenda"
+ },
+ {
+  "cnae_classe": "62023",
+  "grau_risco": 2,
+  "denominacao": "Desenvolvimento e licenciamento de programas de computador customizáveis"
+ },
+ {
+  "cnae_classe": "62031",
+  "grau_risco": 2,
+  "denominacao": "Desenvolvimento e licenciamento de programas de computador não-customizáveis"
+ },
+ {
+  "cnae_classe": "62040",
+  "grau_risco": 2,
+  "denominacao": "Consultoria em tecnologia da informação"
+ },
+ {
+  "cnae_classe": "62091",
+  "grau_risco": 2,
+  "denominacao": "Suporte técnico, manutenção e outros serviços em tecnologia da informação"
+ },
+ {
+  "cnae_classe": "63119",
+  "grau_risco": 2,
+  "denominacao": "Tratamento de dados, provedores de serviços de aplicação e serviços de hospedagem na internet"
+ },
+ {
+  "cnae_classe": "63194",
+  "grau_risco": 2,
+  "denominacao": "Portais, provedores de conteúdo e outros serviços de informação na internet"
+ },
+ {
+  "cnae_classe": "63917",
+  "grau_risco": 2,
+  "denominacao": "Agências de notícias"
+ },
+ {
+  "cnae_classe": "63992",
+  "grau_risco": 2,
+  "denominacao": "Outras atividades de prestação de serviços de informação não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "64107",
+  "grau_risco": 1,
+  "denominacao": "Banco Central"
+ },
+ {
+  "cnae_classe": "64212",
+  "grau_risco": 1,
+  "denominacao": "Bancos comerciais"
+ },
+ {
+  "cnae_classe": "64221",
+  "grau_risco": 1,
+  "denominacao": "Bancos múltiplos, com carteira comercial"
+ },
+ {
+  "cnae_classe": "64239",
+  "grau_risco": 1,
+  "denominacao": "Caixas econômicas"
+ },
+ {
+  "cnae_classe": "64247",
+  "grau_risco": 1,
+  "denominacao": "Crédito cooperativo"
+ },
+ {
+  "cnae_classe": "64310",
+  "grau_risco": 1,
+  "denominacao": "Bancos múltiplos, sem carteira comercial"
+ },
+ {
+  "cnae_classe": "64328",
+  "grau_risco": 1,
+  "denominacao": "Bancos de investimento"
+ },
+ {
+  "cnae_classe": "64336",
+  "grau_risco": 1,
+  "denominacao": "Bancos de desenvolvimento"
+ },
+ {
+  "cnae_classe": "64344",
+  "grau_risco": 1,
+  "denominacao": "Agências de fomento"
+ },
+ {
+  "cnae_classe": "64352",
+  "grau_risco": 1,
+  "denominacao": "Crédito imobiliário"
+ },
+ {
+  "cnae_classe": "64361",
+  "grau_risco": 1,
+  "denominacao": "Sociedades de crédito, financiamento e investimento - financeiras"
+ },
+ {
+  "cnae_classe": "64379",
+  "grau_risco": 1,
+  "denominacao": "Sociedades de crédito ao microempreendedor"
+ },
+ {
+  "cnae_classe": "64387",
+  "grau_risco": 1,
+  "denominacao": "Bancos de câmbio e outras instituições de intermediação não-monetária"
+ },
+ {
+  "cnae_classe": "64409",
+  "grau_risco": 1,
+  "denominacao": "Arrendamento mercantil"
+ },
+ {
+  "cnae_classe": "64506",
+  "grau_risco": 1,
+  "denominacao": "Sociedades de capitalização"
+ },
+ {
+  "cnae_classe": "64611",
+  "grau_risco": 1,
+  "denominacao": "Holdings de instituições financeiras"
+ },
+ {
+  "cnae_classe": "64620",
+  "grau_risco": 1,
+  "denominacao": "Holdings de instituições não-financeiras"
+ },
+ {
+  "cnae_classe": "64638",
+  "grau_risco": 1,
+  "denominacao": "Outras sociedades de participação, exceto holdings"
+ },
+ {
+  "cnae_classe": "64701",
+  "grau_risco": 1,
+  "denominacao": "Fundos de investimento"
+ },
+ {
+  "cnae_classe": "64913",
+  "grau_risco": 1,
+  "denominacao": "Sociedades de fomento mercantil - factoring"
+ },
+ {
+  "cnae_classe": "64921",
+  "grau_risco": 1,
+  "denominacao": "Securitização de créditos"
+ },
+ {
+  "cnae_classe": "64930",
+  "grau_risco": 1,
+  "denominacao": "Administração de consórcios para aquisição de bens e direitos"
+ },
+ {
+  "cnae_classe": "64999",
+  "grau_risco": 1,
+  "denominacao": "Outras atividades de serviços financeiros não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "65111",
+  "grau_risco": 1,
+  "denominacao": "Seguros de vida"
+ },
+ {
+  "cnae_classe": "65120",
+  "grau_risco": 1,
+  "denominacao": "Seguros não-vida"
+ },
+ {
+  "cnae_classe": "65201",
+  "grau_risco": 1,
+  "denominacao": "Seguros-saúde"
+ },
+ {
+  "cnae_classe": "65308",
+  "grau_risco": 1,
+  "denominacao": "Resseguros"
+ },
+ {
+  "cnae_classe": "65413",
+  "grau_risco": 1,
+  "denominacao": "Previdência complementar fechada"
+ },
+ {
+  "cnae_classe": "65421",
+  "grau_risco": 1,
+  "denominacao": "Previdência complementar aberta"
+ },
+ {
+  "cnae_classe": "65502",
+  "grau_risco": 1,
+  "denominacao": "Planos de saúde"
+ },
+ {
+  "cnae_classe": "66118",
+  "grau_risco": 1,
+  "denominacao": "Administração de bolsas e mercados de balcão organizados"
+ },
+ {
+  "cnae_classe": "66126",
+  "grau_risco": 1,
+  "denominacao": "Atividades de intermediários em transações de títulos, valores mobiliários e mercadorias"
+ },
+ {
+  "cnae_classe": "66134",
+  "grau_risco": 1,
+  "denominacao": "Administração de cartões de crédito"
+ },
+ {
+  "cnae_classe": "66193",
+  "grau_risco": 1,
+  "denominacao": "Atividades auxiliares dos serviços financeiros não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "66215",
+  "grau_risco": 1,
+  "denominacao": "Avaliação de riscos e perdas"
+ },
+ {
+  "cnae_classe": "66223",
+  "grau_risco": 1,
+  "denominacao": "Corretores e agentes de seguros, de planos de previdência complementar e de saúde"
+ },
+ {
+  "cnae_classe": "66291",
+  "grau_risco": 1,
+  "denominacao": "Atividades auxiliares dos seguros, da previdência complementar e dos planos de saúde não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "66304",
+  "grau_risco": 1,
+  "denominacao": "Atividades de administração de fundos por contrato ou comissão"
+ },
+ {
+  "cnae_classe": "68102",
+  "grau_risco": 1,
+  "denominacao": "Atividades imobiliárias de imóveis próprios"
+ },
+ {
+  "cnae_classe": "68218",
+  "grau_risco": 1,
+  "denominacao": "Intermediação na compra, venda e aluguel de imóveis"
+ },
+ {
+  "cnae_classe": "68226",
+  "grau_risco": 1,
+  "denominacao": "Gestão e administração da propriedade imobiliária"
+ },
+ {
+  "cnae_classe": "69117",
+  "grau_risco": 1,
+  "denominacao": "Atividades jurídicas, exceto cartórios"
+ },
+ {
+  "cnae_classe": "69125",
+  "grau_risco": 1,
+  "denominacao": "Cartórios"
+ },
+ {
+  "cnae_classe": "69206",
+  "grau_risco": 1,
+  "denominacao": "Atividades de contabilidade, consultoria e auditoria contábil e tributária"
+ },
+ {
+  "cnae_classe": "70107",
+  "grau_risco": 1,
+  "denominacao": "Sedes de empresas e unidades administrativas locais"
+ },
+ {
+  "cnae_classe": "70204",
+  "grau_risco": 1,
+  "denominacao": "Atividades de consultoria em gestão empresarial"
+ },
+ {
+  "cnae_classe": "71111",
+  "grau_risco": 1,
+  "denominacao": "Serviços de arquitetura"
+ },
+ {
+  "cnae_classe": "71120",
+  "grau_risco": 1,
+  "denominacao": "Serviços de engenharia"
+ },
+ {
+  "cnae_classe": "71197",
+  "grau_risco": 1,
+  "denominacao": "Atividades técnicas relacionadas à arquitetura e engenharia"
+ },
+ {
+  "cnae_classe": "71201",
+  "grau_risco": 2,
+  "denominacao": "Testes e análises técnicas"
+ },
+ {
+  "cnae_classe": "72100",
+  "grau_risco": 2,
+  "denominacao": "Pesquisa e desenvolvimento experimental em ciências físicas e naturais"
+ },
+ {
+  "cnae_classe": "72207",
+  "grau_risco": 2,
+  "denominacao": "Pesquisa e desenvolvimento experimental em ciências sociais e humanas"
+ },
+ {
+  "cnae_classe": "73114",
+  "grau_risco": 1,
+  "denominacao": "Agências de publicidade"
+ },
+ {
+  "cnae_classe": "73122",
+  "grau_risco": 1,
+  "denominacao": "Agenciamento de espaços para publicidade, exceto em veículos de comunicação"
+ },
+ {
+  "cnae_classe": "73190",
+  "grau_risco": 1,
+  "denominacao": "Atividades de publicidade não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "73203",
+  "grau_risco": 1,
+  "denominacao": "Pesquisas de mercado e de opinião pública"
+ },
+ {
+  "cnae_classe": "74102",
+  "grau_risco": 1,
+  "denominacao": "Design e decoração de interiores"
+ },
+ {
+  "cnae_classe": "74200",
+  "grau_risco": 2,
+  "denominacao": "Atividades fotográficas e similares"
+ },
+ {
+  "cnae_classe": "74901",
+  "grau_risco": 1,
+  "denominacao": "Atividades profissionais, científicas e técnicas não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "75001",
+  "grau_risco": 3,
+  "denominacao": "Atividades veterinárias"
+ },
+ {
+  "cnae_classe": "77110",
+  "grau_risco": 1,
+  "denominacao": "Locação de automóveis sem condutor"
+ },
+ {
+  "cnae_classe": "77195",
+  "grau_risco": 1,
+  "denominacao": "Locação de meios de transporte, exceto automóveis, sem condutor"
+ },
+ {
+  "cnae_classe": "77217",
+  "grau_risco": 1,
+  "denominacao": "Aluguel de equipamentos recreativos e esportivos"
+ },
+ {
+  "cnae_classe": "77225",
+  "grau_risco": 1,
+  "denominacao": "Aluguel de fitas de vídeo, DVDs e similares"
+ },
+ {
+  "cnae_classe": "77233",
+  "grau_risco": 1,
+  "denominacao": "Aluguel de objetos do vestuário, jóias e acessórios"
+ },
+ {
+  "cnae_classe": "77292",
+  "grau_risco": 1,
+  "denominacao": "Aluguel de objetos pessoais e domésticos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "77314",
+  "grau_risco": 1,
+  "denominacao": "Aluguel de máquinas e equipamentos agrícolas sem operador"
+ },
+ {
+  "cnae_classe": "77322",
+  "grau_risco": 1,
+  "denominacao": "Aluguel de máquinas e equipamentos para construção sem operador"
+ },
+ {
+  "cnae_classe": "77331",
+  "grau_risco": 1,
+  "denominacao": "Aluguel de máquinas e equipamentos para escritório"
+ },
+ {
+  "cnae_classe": "77390",
+  "grau_risco": 1,
+  "denominacao": "Aluguel de máquinas e equipamentos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "77403",
+  "grau_risco": 1,
+  "denominacao": "Gestão de ativos intangíveis não-financeiros"
+ },
+ {
+  "cnae_classe": "78108",
+  "grau_risco": 1,
+  "denominacao": "Seleção e agenciamento de mão-de-obra"
+ },
+ {
+  "cnae_classe": "78205",
+  "grau_risco": 1,
+  "denominacao": "Locação de mão-de-obra temporária"
+ },
+ {
+  "cnae_classe": "78302",
+  "grau_risco": 1,
+  "denominacao": "Fornecimento e gestão de recursos humanos para terceiros"
+ },
+ {
+  "cnae_classe": "79112",
+  "grau_risco": 1,
+  "denominacao": "Agências de viagens"
+ },
+ {
+  "cnae_classe": "79121",
+  "grau_risco": 1,
+  "denominacao": "Operadores turísticos"
+ },
+ {
+  "cnae_classe": "79902",
+  "grau_risco": 1,
+  "denominacao": "Serviços de reservas e outros serviços de turismo não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "80111",
+  "grau_risco": 3,
+  "denominacao": "Atividades de vigilância e segurança privada"
+ },
+ {
+  "cnae_classe": "80129",
+  "grau_risco": 3,
+  "denominacao": "Atividades de transporte de valores"
+ },
+ {
+  "cnae_classe": "80200",
+  "grau_risco": 3,
+  "denominacao": "Atividades de monitoramento de sistemas de segurança"
+ },
+ {
+  "cnae_classe": "80307",
+  "grau_risco": 3,
+  "denominacao": "Atividades de investigação particular"
+ },
+ {
+  "cnae_classe": "81117",
+  "grau_risco": 2,
+  "denominacao": "Serviços combinados para apoio a edifícios, exceto condomínios prediais"
+ },
+ {
+  "cnae_classe": "81125",
+  "grau_risco": 2,
+  "denominacao": "Condomínios prediais"
+ },
+ {
+  "cnae_classe": "81214",
+  "grau_risco": 3,
+  "denominacao": "Limpeza em prédios e em domicílios"
+ },
+ {
+  "cnae_classe": "81222",
+  "grau_risco": 3,
+  "denominacao": "Imunização e controle de pragas urbanas"
+ },
+ {
+  "cnae_classe": "81290",
+  "grau_risco": 3,
+  "denominacao": "Atividades de limpeza não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "81303",
+  "grau_risco": 1,
+  "denominacao": "Atividades paisagísticas"
+ },
+ {
+  "cnae_classe": "82113",
+  "grau_risco": 1,
+  "denominacao": "Serviços combinados de escritório e apoio administrativo"
+ },
+ {
+  "cnae_classe": "82199",
+  "grau_risco": 2,
+  "denominacao": "Fotocópias, preparação de documentos e outros serviços especializados de apoio administrativo"
+ },
+ {
+  "cnae_classe": "82202",
+  "grau_risco": 2,
+  "denominacao": "Atividades de teleatendimento"
+ },
+ {
+  "cnae_classe": "82300",
+  "grau_risco": 2,
+  "denominacao": "Atividades de organização de eventos, exceto culturais e esportivos"
+ },
+ {
+  "cnae_classe": "82911",
+  "grau_risco": 2,
+  "denominacao": "Atividades de cobrança e informações cadastrais"
+ },
+ {
+  "cnae_classe": "82920",
+  "grau_risco": 2,
+  "denominacao": "Envasamento e empacotamento sob contrato"
+ },
+ {
+  "cnae_classe": "82997",
+  "grau_risco": 2,
+  "denominacao": "Atividades de serviços prestados principalmente às empresas não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "84116",
+  "grau_risco": 1,
+  "denominacao": "Administração pública em geral"
+ },
+ {
+  "cnae_classe": "84124",
+  "grau_risco": 1,
+  "denominacao": "Regulação das atividades de saúde, educação, serviços culturais e outros serviços sociais"
+ },
+ {
+  "cnae_classe": "84132",
+  "grau_risco": 1,
+  "denominacao": "Regulação das atividades econômicas"
+ },
+ {
+  "cnae_classe": "84213",
+  "grau_risco": 1,
+  "denominacao": "Relações exteriores"
+ },
+ {
+  "cnae_classe": "84221",
+  "grau_risco": 1,
+  "denominacao": "Defesa"
+ },
+ {
+  "cnae_classe": "84230",
+  "grau_risco": 1,
+  "denominacao": "Justiça"
+ },
+ {
+  "cnae_classe": "84248",
+  "grau_risco": 1,
+  "denominacao": "Segurança e ordem pública"
+ },
+ {
+  "cnae_classe": "84256",
+  "grau_risco": 1,
+  "denominacao": "Defesa Civil"
+ },
+ {
+  "cnae_classe": "84302",
+  "grau_risco": 1,
+  "denominacao": "Seguridade social obrigatória"
+ },
+ {
+  "cnae_classe": "85112",
+  "grau_risco": 2,
+  "denominacao": "Educação infantil - creche"
+ },
+ {
+  "cnae_classe": "85121",
+  "grau_risco": 2,
+  "denominacao": "Educação infantil - pré-escola"
+ },
+ {
+  "cnae_classe": "85139",
+  "grau_risco": 2,
+  "denominacao": "Ensino fundamental"
+ },
+ {
+  "cnae_classe": "85201",
+  "grau_risco": 2,
+  "denominacao": "Ensino médio"
+ },
+ {
+  "cnae_classe": "85317",
+  "grau_risco": 2,
+  "denominacao": "Educação superior - graduação"
+ },
+ {
+  "cnae_classe": "85325",
+  "grau_risco": 2,
+  "denominacao": "Educação superior - graduação e pós-graduação"
+ },
+ {
+  "cnae_classe": "85333",
+  "grau_risco": 2,
+  "denominacao": "Educação superior - pós-graduação e extensão"
+ },
+ {
+  "cnae_classe": "85414",
+  "grau_risco": 2,
+  "denominacao": "Educação profissional de nível técnico"
+ },
+ {
+  "cnae_classe": "85422",
+  "grau_risco": 2,
+  "denominacao": "Educação profissional de nível tecnológico"
+ },
+ {
+  "cnae_classe": "85503",
+  "grau_risco": 2,
+  "denominacao": "Atividades de apoio à educação"
+ },
+ {
+  "cnae_classe": "85911",
+  "grau_risco": 2,
+  "denominacao": "Ensino de esportes"
+ },
+ {
+  "cnae_classe": "85929",
+  "grau_risco": 2,
+  "denominacao": "Ensino de arte e cultura"
+ },
+ {
+  "cnae_classe": "85937",
+  "grau_risco": 2,
+  "denominacao": "Ensino de idiomas"
+ },
+ {
+  "cnae_classe": "85996",
+  "grau_risco": 2,
+  "denominacao": "Atividades de ensino não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "86101",
+  "grau_risco": 3,
+  "denominacao": "Atividades de atendimento hospitalar"
+ },
+ {
+  "cnae_classe": "86216",
+  "grau_risco": 3,
+  "denominacao": "Serviços móveis de atendimento a urgências"
+ },
+ {
+  "cnae_classe": "86224",
+  "grau_risco": 3,
+  "denominacao": "Serviços de remoção de pacientes, exceto os serviços móveis de atendimento a urgências"
+ },
+ {
+  "cnae_classe": "86305",
+  "grau_risco": 3,
+  "denominacao": "Atividades de atenção ambulatorial executadas por médicos e odontólogos"
+ },
+ {
+  "cnae_classe": "86402",
+  "grau_risco": 3,
+  "denominacao": "Atividades de serviços de complementação diagnóstica e terapêutica"
+ },
+ {
+  "cnae_classe": "86500",
+  "grau_risco": 2,
+  "denominacao": "Atividades de profissionais da área de saúde, exceto médicos e odontólogos"
+ },
+ {
+  "cnae_classe": "86607",
+  "grau_risco": 1,
+  "denominacao": "Atividades de apoio à gestão de saúde"
+ },
+ {
+  "cnae_classe": "86909",
+  "grau_risco": 1,
+  "denominacao": "Atividades de atenção à saúde humana não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "87115",
+  "grau_risco": 1,
+  "denominacao": "Atividades de assistência a idosos, deficientes físicos, imunodeprimidos e convalescentes prestadas em residências coletivas e particulares"
+ },
+ {
+  "cnae_classe": "87123",
+  "grau_risco": 1,
+  "denominacao": "Atividades de fornecimento de infra-estrutura de apoio e assistência a paciente no domicílio"
+ },
+ {
+  "cnae_classe": "87204",
+  "grau_risco": 1,
+  "denominacao": "Atividades de assistência psicossocial e à saúde a portadores de distúrbios psíquicos, deficiência mental e dependência química"
+ },
+ {
+  "cnae_classe": "87301",
+  "grau_risco": 1,
+  "denominacao": "Atividades de assistência social prestadas em residências coletivas e particulares"
+ },
+ {
+  "cnae_classe": "88006",
+  "grau_risco": 1,
+  "denominacao": "Serviços de assistência social sem alojamento"
+ },
+ {
+  "cnae_classe": "90019",
+  "grau_risco": 2,
+  "denominacao": "Artes cênicas, espetáculos e atividades complementares"
+ },
+ {
+  "cnae_classe": "90027",
+  "grau_risco": 2,
+  "denominacao": "Criação artística"
+ },
+ {
+  "cnae_classe": "90035",
+  "grau_risco": 1,
+  "denominacao": "Gestão de espaços para artes cênicas, espetáculos e outras atividades artísticas"
+ },
+ {
+  "cnae_classe": "91015",
+  "grau_risco": 2,
+  "denominacao": "Atividades de bibliotecas e arquivos"
+ },
+ {
+  "cnae_classe": "91023",
+  "grau_risco": 2,
+  "denominacao": "Atividades de museus e de exploração, restauração artística e conservação de lugares e prédios históricos e atrações similares"
+ },
+ {
+  "cnae_classe": "91031",
+  "grau_risco": 2,
+  "denominacao": "Atividades de jardins botânicos, zoológicos, parques nacionais, reservas ecológicas e áreas de proteção ambiental"
+ },
+ {
+  "cnae_classe": "92003",
+  "grau_risco": 1,
+  "denominacao": "Atividades de exploração de jogos de azar e apostas"
+ },
+ {
+  "cnae_classe": "93115",
+  "grau_risco": 1,
+  "denominacao": "Gestão de instalações de esportes"
+ },
+ {
+  "cnae_classe": "93123",
+  "grau_risco": 2,
+  "denominacao": "Clubes sociais, esportivos e similares"
+ },
+ {
+  "cnae_classe": "93131",
+  "grau_risco": 2,
+  "denominacao": "Atividades de condicionamento físico"
+ },
+ {
+  "cnae_classe": "93191",
+  "grau_risco": 2,
+  "denominacao": "Atividades esportivas não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "93212",
+  "grau_risco": 2,
+  "denominacao": "Parques de diversão e parques temáticos"
+ },
+ {
+  "cnae_classe": "93298",
+  "grau_risco": 2,
+  "denominacao": "Atividades de recreação e lazer não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "94111",
+  "grau_risco": 1,
+  "denominacao": "Atividades de organizações associativas patronais e empresariais"
+ },
+ {
+  "cnae_classe": "94120",
+  "grau_risco": 1,
+  "denominacao": "Atividades de organizações associativas profissionais"
+ },
+ {
+  "cnae_classe": "94201",
+  "grau_risco": 1,
+  "denominacao": "Atividades de organizações sindicais"
+ },
+ {
+  "cnae_classe": "94308",
+  "grau_risco": 1,
+  "denominacao": "Atividades de associações de defesa de direitos sociais"
+ },
+ {
+  "cnae_classe": "94910",
+  "grau_risco": 1,
+  "denominacao": "Atividades de organizações religiosas"
+ },
+ {
+  "cnae_classe": "94928",
+  "grau_risco": 1,
+  "denominacao": "Atividades de organizações políticas"
+ },
+ {
+  "cnae_classe": "94936",
+  "grau_risco": 1,
+  "denominacao": "Atividades de organizações associativas ligadas à cultura e à arte"
+ },
+ {
+  "cnae_classe": "94995",
+  "grau_risco": 1,
+  "denominacao": "Atividades associativas não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "95118",
+  "grau_risco": 3,
+  "denominacao": "Reparação e manutenção de computadores e de equipamentos periféricos"
+ },
+ {
+  "cnae_classe": "95126",
+  "grau_risco": 3,
+  "denominacao": "Reparação e manutenção de equipamentos de comunicação"
+ },
+ {
+  "cnae_classe": "95215",
+  "grau_risco": 3,
+  "denominacao": "Reparação e manutenção de equipamentos eletroeletrônicos de uso pessoal e doméstico"
+ },
+ {
+  "cnae_classe": "95291",
+  "grau_risco": 3,
+  "denominacao": "Reparação e manutenção de objetos e equipamentos pessoais e domésticos não especificados anteriormente"
+ },
+ {
+  "cnae_classe": "96017",
+  "grau_risco": 2,
+  "denominacao": "Lavanderias, tinturarias e toalheiros"
+ },
+ {
+  "cnae_classe": "96025",
+  "grau_risco": 2,
+  "denominacao": "Cabeleireiros e outras atividades de tratamento de beleza"
+ },
+ {
+  "cnae_classe": "96033",
+  "grau_risco": 2,
+  "denominacao": "Atividades funerárias e serviços relacionados"
+ },
+ {
+  "cnae_classe": "96092",
+  "grau_risco": 2,
+  "denominacao": "Atividades de serviços pessoais não especificadas anteriormente"
+ },
+ {
+  "cnae_classe": "97005",
+  "grau_risco": 2,
+  "denominacao": "Serviços domésticos"
+ },
+ {
+  "cnae_classe": "99008",
+  "grau_risco": 1,
+  "denominacao": "Organismos internacionais e outras instituições extraterritoriais"
+ }
+]

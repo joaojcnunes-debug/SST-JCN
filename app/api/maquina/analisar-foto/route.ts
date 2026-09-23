@@ -3,7 +3,13 @@ import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+// llama-4-scout morreu no Groq em 17/07/2026 (medido 404 em 14/09). O qwen3.6
+// exige reasoning_effort "none": com raciocinio ligado gasta os max_tokens
+// pensando e o JSON mode devolve 400 json_validate_failed (medido 14/09).
+const VISION_MODEL = "qwen/qwen3.6-27b";
+// Era 4. Cada foto custa ~1.870 tokens de entrada num plano de 8.000/min:
+// 4 fotos encostam no teto, 3 cabem com folga.
+const MAX_FOTOS = 3;
 
 const SYSTEM_PROMPT = `Você é um especialista em máquinas e equipamentos industriais brasileiros.
 Sua tarefa: analisar a foto de uma máquina ou de sua plaqueta de identificação (nameplate) e extrair os dados técnicos.
@@ -22,20 +28,19 @@ Responda APENAS com JSON válido (sem markdown, sem cercas, sem texto fora do JS
   "potencia": "potência se visível (ex: 5 CV, 3.7 kW, 1.5 HP) — string ou null",
   "tag": "TAG ou número de patrimônio se visível em etiqueta/plaqueta — string ou null",
   "descricao_tecnica": "descrição técnica elaborada (3 a 5 frases): função/finalidade da máquina, principais partes móveis e/ou cortantes (ex: rosca sem-fim, lâminas, eixos, polias), e as ZONAS DE PERIGO segundo a NR-12 (pontos de prensagem, corte, arrasto, esmagamento — ex: boca de alimentação, área de descarga). Seja específico para o tipo de máquina identificado. — string ou null",
-  "protecao_fixa": "true se proteções fixas (grades, carenagens parafusadas) são INEQUIVOCAMENTE visíveis cobrindo zonas de risco; false se a zona de risco está claramente exposta sem proteção; null se não dá pra avaliar — boolean ou null",
-  "protecao_movel": "true se proteções móveis (portas, tampas articuladas sobre zona de risco) são INEQUIVOCAMENTE visíveis — boolean ou null",
-  "intertravamento": "true SOMENTE se a chave/dispositivo de intertravamento for visível na proteção — boolean ou null",
-  "botao_emergencia": "true SOMENTE se o botão de emergência (cogumelo vermelho sobre fundo amarelo) for claramente visível — boolean ou null",
-  "sistema_bloqueio": "true SOMENTE se cadeado/seccionadora bloqueável (LOTO) for claramente visível — boolean ou null",
-  "aterramento": "true SOMENTE se cabo/ponto de aterramento for claramente visível — boolean ou null",
-  "sinalizacao": "true SOMENTE se sinalização de segurança (placas, pictogramas, faixas de advertência) for claramente visível — boolean ou null",
-  "necessita_adequacao_nr12": "true se a máquina aparenta NÃO atender plenamente à NR-12 (zonas de risco expostas, proteções/dispositivos de segurança ausentes ou insuficientes); false somente se aparenta estar plenamente adequada; null se não der pra avaliar — boolean ou null",
-  "grau_risco": "grau de risco estimado da máquina conforme a gravidade dos perigos visíveis e o tipo de equipamento: 'BAIXO', 'MEDIO', 'ALTO' ou 'CRITICO' — string ou null"
+  "necessita_adequacao_nr12": "true se a máquina aparenta NÃO atender plenamente à NR-12 (zonas de risco expostas, proteções/dispositivos de segurança ausentes ou insuficientes); false somente se aparenta estar plenamente adequada; null se não der pra avaliar — boolean ou null"
 }
 
-REGRA CRÍTICA dos campos booleanos de segurança: a AUSÊNCIA de evidência NÃO é evidência de presença. Só responda true se o dispositivo estiver inequivocamente visível e identificável na imagem. Se você não consegue VER o dispositivo, responda null (NUNCA true). É preferível deixar null e o técnico preencher do que afirmar uma proteção que não existe.
-Para 'necessita_adequacao_nr12' e 'grau_risco': baseie-se nos perigos visíveis e no tipo de máquina (ex: serras, prensas, máquinas com rosca sem-fim ou lâminas expostas tendem a ALTO/CRITICO). Na dúvida, null.
-Não invente dados de identificação (modelo, série, ano, potência, tensão) que não estejam legíveis na plaqueta — use null.`;
+NÃO responda sobre a presença de dispositivos de segurança específicos (proteção fixa,
+proteção móvel, intertravamento, botão de emergência, sistema de bloqueio/LOTO,
+aterramento, sinalização) nem sobre grau de risco. Esses campos foram removidos deste
+contrato de propósito — quem os preenche é o técnico em campo. Se você mencioná-los,
+faça-o apenas dentro de 'descricao_tecnica', como observação, nunca como afirmação de
+conformidade.
+
+Para 'necessita_adequacao_nr12': baseie-se nos perigos visíveis e no tipo de máquina. Na dúvida, null.
+Não invente dados de identificação (modelo, série, ano, potência, tensão) que não estejam legíveis na plaqueta — use null.
+Nunca devolva a string "null" — devolva o valor nulo do JSON.`;
 
 export async function POST(req: NextRequest) {
   const cookieStore = await cookies();
@@ -57,7 +62,7 @@ export async function POST(req: NextRequest) {
         : [];
     if (images.length === 0) throw new Error("Nenhuma imagem enviada");
     dataUrls = images
-      .slice(0, 4)
+      .slice(0, MAX_FOTOS)
       .map((i) => `data:${i.mime ?? "image/jpeg"};base64,${i.b64}`);
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Payload inválido" }, { status: 400 });
@@ -80,6 +85,7 @@ export async function POST(req: NextRequest) {
           },
         ],
         response_format: { type: "json_object" },
+        reasoning_effort: "none",
         temperature: 0.1,
         max_tokens: 900,
       }),

@@ -2,6 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useUserStore } from "@/lib/store";
+import type { ModuloPermitido } from "@/lib/supabase/types";
 
 /** Registro nativo normalizado de qualquer módulo, vinculado a uma empresa. */
 export interface RegistroModulo {
@@ -39,8 +41,12 @@ const MODULOS: ModuloCfg[] = [
   { modulo: "aet", label: "AET — Ergonomia", tabela: "aet_relatorios", pk: "id_relatorio", dataCol: "created_at", statusCol: "status", rota: (id) => `/aet/${id}` },
   { modulo: "aep", label: "AEP — Ergonomia", tabela: "aep_relatorios", pk: "id_relatorio", dataCol: "created_at", statusCol: "status", rota: (id) => `/aep/${id}` },
   { modulo: "psicossocial", label: "DRPS — Psicossocial", tabela: "drps_relatorios", pk: "id_relatorio", dataCol: "created_at", statusCol: "status", excluirStatus: ["DELETADO", "DELETADA"], rota: (id) => `/psicossocial/${id}` },
-  { modulo: "questionarios", label: "Questionários", tabela: "qps_aplicacoes", pk: "id_aplicacao", dataCol: "criado_em", statusCol: "status", tituloCol: "titulo", excluirStatus: ["DELETADO", "DELETADA"], rota: (id) => `/questionarios-psicossociais/${id}` },
-  { modulo: "inventario_maquinas", label: "Inventário de Máquinas", tabela: "inventario_maquinas", pk: "id_maquina", dataCol: "created_at", tituloCol: "nome", rota: () => `/inventario-maquinas` },
+  // 🪤 o módulo aqui se chamava "questionarios", mas em `modulos_permitidos`
+  // (e no banco) ele é "questionarios_psicossociais" — com o nome curto o
+  // filtro por módulo da v0.3.634 esconderia os questionários de TODO MUNDO.
+  // O nome só era usado como chave de lista e no filtro `?mod=` da própria
+  // página, então corrigir é seguro.
+  { modulo: "questionarios_psicossociais", label: "Questionários", tabela: "qps_aplicacoes", pk: "id_aplicacao", dataCol: "criado_em", statusCol: "status", tituloCol: "titulo", excluirStatus: ["DELETADO", "DELETADA"], rota: (id) => `/questionarios-psicossociais/${id}` },
 ];
 
 /**
@@ -49,14 +55,26 @@ const MODULOS: ModuloCfg[] = [
  * sem derrubar a página. Retorna na mesma ordem de MODULOS.
  */
 export function useRegistrosEmpresa(idEmpresa: string | null | undefined) {
+  // v0.3.634: pergunta só pelos módulos que a conta TEM. Antes a página da
+  // empresa listava os documentos dos 8 módulos (título e status) para todo
+  // mundo — a Supervisora do administrativo via DRPS e QPS, que ela não abre.
+  // Junto com useHomeStats, era 100 % do que a trava da v236 anotou em modo
+  // LOG. A régua é a mesma do hub de Módulos (`modulos_permitidos`).
+  // ⏳ 21/10/2026, com ele: decidir se a página avisa "N documentos em módulos
+  // que você não acessa" ou se some calado (hoje: some calado).
+  const permitidos = useUserStore((s) => s.user?.modulos_permitidos);
+  const chaveModulos = (permitidos ?? []).join("|");
   return useQuery({
-    queryKey: ["registros-empresa", idEmpresa],
+    queryKey: ["registros-empresa", idEmpresa, chaveModulos],
     enabled: !!idEmpresa,
     staleTime: 30 * 1000,
     queryFn: async (): Promise<GrupoRegistros[]> => {
       const supabase = createSupabaseBrowserClient();
+      const doUsuario = MODULOS.filter((c) =>
+        (permitidos ?? []).includes(c.modulo as ModuloPermitido),
+      );
       const grupos = await Promise.all(
-        MODULOS.map(async (cfg): Promise<GrupoRegistros> => {
+        doUsuario.map(async (cfg): Promise<GrupoRegistros> => {
           const cols = [cfg.pk, cfg.dataCol, cfg.statusCol, cfg.tituloCol].filter(Boolean).join(", ");
           try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

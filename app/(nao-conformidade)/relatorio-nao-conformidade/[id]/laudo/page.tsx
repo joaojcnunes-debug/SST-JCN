@@ -241,7 +241,12 @@ export default function LaudoNaoConformidadePage({
   );
 
   return (
-    <div className="force-light mx-auto max-w-4xl space-y-4 print:max-w-none print:space-y-2">
+    // Sem `force-light`: esta tela acompanha o tema do app. A ilha clara cobria a
+    // página inteira (barra de botões e painéis inclusive) e virava uma folha
+    // branca enorme no escuro. Não é necessária: a impressão já sai clara porque
+    // o ThemeManager tira o `.dark` no `beforeprint`, e o PDF é montado no
+    // servidor (/api/pdf/nao-conformidade/[id]), não capturado desta tela.
+    <div className="mx-auto max-w-4xl space-y-4 print:max-w-none print:space-y-2">
       {/* Toolbar — não imprime */}
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <Link

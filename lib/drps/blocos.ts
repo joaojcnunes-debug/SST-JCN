@@ -57,7 +57,7 @@ export function montarMapaProb(
 }
 
 /**
- * Herança com override (v150): parte do valor do SETOR e sobrepõe apenas os
+ * Herança com override (v138): parte do valor do SETOR e sobrepõe apenas os
  * tópicos que a psicóloga diferenciou naquela unidade. Devolve também quais
  * tópicos ficaram herdados, para a tela poder sinalizar.
  *
@@ -87,7 +87,7 @@ export function montarMapaProbUnidade(
 }
 
 /**
- * Texto do bloco com herança (v150): usa o override da unidade quando existe e
+ * Texto do bloco com herança (v138): usa o override da unidade quando existe e
  * não está vazio, senão o texto do setor — que é o que sempre valeu e continua
  * valendo. Relatório sem unidade cai direto no texto de setor.
  *
@@ -145,7 +145,7 @@ export function montarBlocosPorSetor(
 }
 
 /**
- * Cascata Unidade › Setor › Função (v150). Uma unidade só entra se tiver
+ * Cascata Unidade › Setor › Função (v138). Uma unidade só entra se tiver
  * respondente — foi a decisão do RT: "se não tiver respondente em uma unidade
  * pode ser ignorado no relatório". O mesmo vale para o setor dentro dela.
  *

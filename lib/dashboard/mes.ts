@@ -22,6 +22,26 @@ export function mesAbsSP(iso: string | Date): number {
   return ano * 12 + mes;
 }
 
+/**
+ * Mês absoluto de uma DATA PURA ("AAAA-MM-DD"), sem passar por fuso nenhum.
+ *
+ * `mesAbsSP` acima existe para INSTANTES (`timestamptz`), e converte para o
+ * fuso de São Paulo. Data pura não é instante: `inspecoes.data_inspecao` é o
+ * dia da visita, não um horário. Passá-la pelo `mesAbsSP` faria
+ * `new Date("2026-07-01")` virar meia-noite UTC e, em São Paulo, retroceder
+ * para 30/06 — jogando toda visita do dia 1º para o mês anterior. São 18
+ * inspeções da base hoje (1 em abril, 8 em junho, 9 em julho).
+ *
+ * Aqui o ano e o mês são lidos direto do texto, que é o único jeito certo:
+ * uma data de calendário não tem fuso.
+ */
+export function mesAbsDataSP(data: string | null | undefined): number | null {
+  if (!data) return null;
+  const m = /^(\d{4})-(\d{2})/.exec(data.trim());
+  if (!m) return null;
+  return Number(m[1]) * 12 + (Number(m[2]) - 1);
+}
+
 /** Mês absoluto de "agora" em São Paulo. */
 export function mesAbsAgoraSP(): number {
   return mesAbsSP(new Date());

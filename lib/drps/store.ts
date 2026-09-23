@@ -14,7 +14,7 @@ interface DrpsState {
   setor: string;
   setSetor: (s: string) => void;
   /**
-   * Unidade de trabalho filtrada (v150). Default "Todas" = não filtra.
+   * Unidade de trabalho filtrada (v138). Default "Todas" = não filtra.
    * Só tem efeito nos relatórios cujo formulário pergunta a unidade; nos
    * demais o filtro nem aparece e isto fica em "Todas".
    */
