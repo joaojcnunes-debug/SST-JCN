@@ -15,6 +15,8 @@ import {
   LabelList,
 } from "recharts";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { mesAbsSP, rotuloMesAbs } from "@/lib/dashboard/mes";
 import { corAvatar } from "@/lib/hooks/useGestao";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 
@@ -26,21 +28,25 @@ interface AssocRow {
 
 async function fetchAssociados(): Promise<AssocRow[]> {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
-    .from("inspecao_associados")
-    .select("created_at, nome, id_inspecao");
-  if (error) throw error;
-  return (data ?? []) as unknown as AssocRow[];
+  const [assoc, inspValidas] = await Promise.all([
+    fetchAllRows<AssocRow>(
+      (de, ate) => supabase.from("inspecao_associados").select("created_at, nome, id_inspecao").range(de, ate),
+    ),
+    fetchAllRows<{ id_inspecao: string }>(
+      (de, ate) => supabase.from("inspecoes").select("id_inspecao").neq("status", "DELETADA").range(de, ate),
+    ),
+  ]);
+  const validos = new Set(inspValidas.map((r) => r.id_inspecao));
+  // Só associações de inspeções NÃO-deletadas (antes contava as apagadas).
+  return assoc.filter((r) => r.id_inspecao != null && validos.has(r.id_inspecao));
 }
 
+// Mês CANÔNICO no fuso de São Paulo (não depende do fuso do navegador).
 function chaveMes(d: Date) {
-  return `${d.getFullYear()}-${d.getMonth()}`;
+  return String(mesAbsSP(d));
 }
 function mesLabel(d: Date) {
-  return d
-    .toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
-    .replace(".", "")
-    .replace(/^\w/, (c) => c.toUpperCase());
+  return rotuloMesAbs(mesAbsSP(d), true);
 }
 
 export default function PorAssociadosDashboard() {

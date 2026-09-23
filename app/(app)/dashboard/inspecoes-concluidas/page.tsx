@@ -15,32 +15,32 @@ import {
   LabelList,
 } from "recharts";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { mesAbsSP, rotuloMesAbs } from "@/lib/dashboard/mes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 
 interface ConcluidaRow {
+  concluida_em: string | null;
   created_at: string;
   responsavel: string | null;
 }
 
 async function fetchConcluidas(): Promise<ConcluidaRow[]> {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
-    .from("inspecoes")
-    .select("created_at, responsavel")
-    .eq("status", "CONCLUIDA");
-  if (error) throw error;
-  return (data ?? []) as unknown as ConcluidaRow[];
+  // Agrupa pela data de CONCLUSÃO (concluida_em, v146; fallback created_at); pagina p/ não cortar em 1000.
+  return fetchAllRows<ConcluidaRow>(
+    (de, ate) =>
+      supabase.from("inspecoes").select("concluida_em, created_at, responsavel").eq("status", "CONCLUIDA").range(de, ate),
+  );
 }
 
+// Mês CANÔNICO no fuso de São Paulo (não depende do fuso do navegador).
 function chaveMes(d: Date) {
-  return `${d.getFullYear()}-${d.getMonth()}`;
+  return String(mesAbsSP(d));
 }
 
 function mesLabel(d: Date) {
-  return d
-    .toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
-    .replace(".", "")
-    .replace(/^\w/, (c) => c.toUpperCase());
+  return rotuloMesAbs(mesAbsSP(d), true);
 }
 
 export default function InspecoesConcluidasDashboard() {
@@ -59,8 +59,8 @@ export default function InspecoesConcluidasDashboard() {
     const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
     return { chave: chaveMes(d), mes: mesLabel(d), total: 0 };
   });
-  rows.forEach(({ created_at }) => {
-    const k = chaveMes(new Date(created_at));
+  rows.forEach(({ concluida_em, created_at }) => {
+    const k = chaveMes(new Date(concluida_em || created_at));
     const item = porMes.find((m) => m.chave === k);
     if (item) item.total++;
   });
@@ -68,7 +68,7 @@ export default function InspecoesConcluidasDashboard() {
   const mesSelLabel = mesSel ? porMes.find((m) => m.chave === mesSel)?.mes ?? null : null;
 
   // Por técnico — filtrado pelo mês selecionado (ou todos)
-  const rowsTec = mesSel ? rows.filter((r) => chaveMes(new Date(r.created_at)) === mesSel) : rows;
+  const rowsTec = mesSel ? rows.filter((r) => chaveMes(new Date(r.concluida_em || r.created_at)) === mesSel) : rows;
   const mapaTec = new Map<string, number>();
   rowsTec.forEach(({ responsavel }) => {
     const t = (responsavel ?? "").trim() || "Sem responsável";

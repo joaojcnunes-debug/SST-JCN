@@ -86,6 +86,8 @@ export default function InspecaoEditorPage({ params }: Props) {
         .from("inspecoes")
         .update({
           status: novoStatus,
+          // Data de conclusão real: carimba ao CONCLUIR, limpa ao REABRIR.
+          concluida_em: novoStatus === "CONCLUIDA" ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         } as never)
         .eq("id_inspecao", id);

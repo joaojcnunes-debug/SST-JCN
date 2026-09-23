@@ -430,6 +430,8 @@ export interface Inspecao {
   elaboracao_responsavel: string | null;
   elaboracao_status: "PENDENTE" | "EM_ELABORACAO" | "CONCLUIDO" | null;
   elaboracao_concluida_em: string | null;
+  /** V154 — data real de conclusão da inspeção (carimbada ao concluir). */
+  concluida_em: string | null;
   created_at: string;
   updated_at: string | null;
   empresas?: { nome_empresa: string } | null;

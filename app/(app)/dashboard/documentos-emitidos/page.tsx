@@ -15,6 +15,8 @@ import {
   LabelList,
 } from "recharts";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { mesAbsSP, rotuloMesAbs } from "@/lib/dashboard/mes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 
 interface DocRow {
@@ -24,22 +26,18 @@ interface DocRow {
 
 async function fetchDocumentos(): Promise<DocRow[]> {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
-    .from("inspecoes")
-    .select("elaboracao_concluida_em, elaboracao_responsavel")
-    .eq("elaboracao_status", "CONCLUIDO");
-  if (error) throw error;
-  return (data ?? []) as unknown as DocRow[];
+  return fetchAllRows<DocRow>(
+    (de, ate) =>
+      supabase.from("inspecoes").select("elaboracao_concluida_em, elaboracao_responsavel").eq("elaboracao_status", "CONCLUIDO").range(de, ate),
+  );
 }
 
+// Mês CANÔNICO no fuso de São Paulo (não depende do fuso do navegador).
 function chaveMes(d: Date) {
-  return `${d.getFullYear()}-${d.getMonth()}`;
+  return String(mesAbsSP(d));
 }
 function mesLabel(d: Date) {
-  return d
-    .toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
-    .replace(".", "")
-    .replace(/^\w/, (c) => c.toUpperCase());
+  return rotuloMesAbs(mesAbsSP(d), true);
 }
 
 export default function DocumentosEmitidosDashboard() {

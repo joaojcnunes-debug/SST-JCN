@@ -26,6 +26,8 @@ import {
   Cell,
 } from "recharts";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { mesAbsSP, mesAbsAgoraSP, rotuloMesAbs } from "@/lib/dashboard/mes";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { TabelaSkeleton } from "@/components/ui/PageSkeletons";
 import { cn, fmtData } from "@/lib/utils";
@@ -59,7 +61,7 @@ async function fetchStats(): Promise<DashboardStats> {
   const supabase = createSupabaseBrowserClient();
   const [empAtivas, total, andamento, concluidas, rascunho] = await Promise.all([
     supabase.from("empresas").select("id_empresa", { count: "exact", head: true }).eq("status", "Ativo"),
-    supabase.from("inspecoes").select("id_inspecao", { count: "exact", head: true }),
+    supabase.from("inspecoes").select("id_inspecao", { count: "exact", head: true }).neq("status", "DELETADA"),
     supabase.from("inspecoes").select("id_inspecao", { count: "exact", head: true }).eq("status", "EM_ANDAMENTO"),
     supabase.from("inspecoes").select("id_inspecao", { count: "exact", head: true }).eq("status", "CONCLUIDA"),
     supabase.from("inspecoes").select("id_inspecao", { count: "exact", head: true }).eq("status", "RASCUNHO"),
@@ -75,30 +77,25 @@ async function fetchStats(): Promise<DashboardStats> {
 
 async function fetchInspecoesPorMes(): Promise<MesData[]> {
   const supabase = createSupabaseBrowserClient();
-  const now = new Date();
-  const sixAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const agora = mesAbsAgoraSP();
+  const desde = new Date();
+  desde.setMonth(desde.getMonth() - 6); // cutoff amplo; o bucket final é por mês de SP
 
+  // "Concluídas por mês" agrupa pela DATA DE CONCLUSÃO real (concluida_em, v146),
+  // não pela criação. Fallback created_at por segurança.
   const { data } = await supabase
     .from("inspecoes")
-    .select("created_at")
+    .select("concluida_em, created_at")
     .eq("status", "CONCLUIDA")
-    .gte("created_at", sixAgo.toISOString());
+    .gte("concluida_em", desde.toISOString());
 
-  // Skeleton dos últimos 6 meses
-  const months: MesData[] = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-    return {
-      mes: d.toLocaleDateString("pt-BR", { month: "short" })
-        .replace(".", "")
-        .replace(/^\w/, (c) => c.toUpperCase()),
-      total: 0,
-    };
-  });
+  const months: MesData[] = Array.from({ length: 6 }, (_, i) => ({
+    mes: rotuloMesAbs(agora - (5 - i)),
+    total: 0,
+  }));
 
-  (data ?? []).forEach(({ created_at }) => {
-    const d = new Date(created_at);
-    const diff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
-    const idx = 5 - diff;
+  (data ?? []).forEach(({ concluida_em, created_at }) => {
+    const idx = 5 - (agora - mesAbsSP(concluida_em || created_at));
     if (idx >= 0 && idx < 6) months[idx].total++;
   });
 
@@ -107,30 +104,24 @@ async function fetchInspecoesPorMes(): Promise<MesData[]> {
 
 async function fetchDocumentosPorMes(): Promise<MesData[]> {
   const supabase = createSupabaseBrowserClient();
-  const now = new Date();
-  const sixAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const agora = mesAbsAgoraSP();
+  const desde = new Date();
+  desde.setMonth(desde.getMonth() - 6);
 
   const { data } = await supabase
     .from("inspecoes")
     .select("elaboracao_concluida_em")
     .eq("elaboracao_status", "CONCLUIDO")
-    .gte("elaboracao_concluida_em", sixAgo.toISOString());
+    .gte("elaboracao_concluida_em", desde.toISOString());
 
-  const months: MesData[] = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-    return {
-      mes: d.toLocaleDateString("pt-BR", { month: "short" })
-        .replace(".", "")
-        .replace(/^\w/, (c) => c.toUpperCase()),
-      total: 0,
-    };
-  });
+  const months: MesData[] = Array.from({ length: 6 }, (_, i) => ({
+    mes: rotuloMesAbs(agora - (5 - i)),
+    total: 0,
+  }));
 
   (data ?? []).forEach(({ elaboracao_concluida_em }) => {
     if (!elaboracao_concluida_em) return;
-    const d = new Date(elaboracao_concluida_em);
-    const diff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
-    const idx = 5 - diff;
+    const idx = 5 - (agora - mesAbsSP(elaboracao_concluida_em));
     if (idx >= 0 && idx < 6) months[idx].total++;
   });
 
@@ -142,30 +133,30 @@ async function fetchDocumentosPorMes(): Promise<MesData[]> {
 // tabela ainda não existir.
 async function fetchInspecoesAssociadasPorMes(): Promise<MesData[]> {
   const supabase = createSupabaseBrowserClient();
-  const now = new Date();
-  const sixAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+  const agora = mesAbsAgoraSP();
+  const desde = new Date();
+  desde.setMonth(desde.getMonth() - 6);
 
-  const { data } = await supabase
-    .from("inspecao_associados")
-    .select("created_at, id_inspecao")
-    .gte("created_at", sixAgo.toISOString());
+  const [assoc, inspValidas] = await Promise.all([
+    fetchAllRows<{ created_at: string; id_inspecao: string }>(
+      (de, ate) =>
+        supabase.from("inspecao_associados").select("created_at, id_inspecao").gte("created_at", desde.toISOString()).range(de, ate),
+    ),
+    fetchAllRows<{ id_inspecao: string }>(
+      (de, ate) => supabase.from("inspecoes").select("id_inspecao").neq("status", "DELETADA").range(de, ate),
+    ),
+  ]);
+  const validos = new Set(inspValidas.map((r) => r.id_inspecao));
 
-  const months: MesData[] = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-    return {
-      mes: d.toLocaleDateString("pt-BR", { month: "short" })
-        .replace(".", "")
-        .replace(/^\w/, (c) => c.toUpperCase()),
-      total: 0,
-    };
-  });
+  const months: MesData[] = Array.from({ length: 6 }, (_, i) => ({
+    mes: rotuloMesAbs(agora - (5 - i)),
+    total: 0,
+  }));
   const setsPorMes = Array.from({ length: 6 }, () => new Set<string>());
 
-  for (const r of (data ?? []) as { created_at: string; id_inspecao: string }[]) {
-    if (!r.created_at) continue;
-    const d = new Date(r.created_at);
-    const diff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
-    const idx = 5 - diff;
+  for (const r of assoc) {
+    if (!r.created_at || !validos.has(r.id_inspecao)) continue; // ignora associações de inspeções deletadas
+    const idx = 5 - (agora - mesAbsSP(r.created_at));
     if (idx >= 0 && idx < 6) setsPorMes[idx].add(r.id_inspecao);
   }
   for (let i = 0; i < 6; i++) months[i].total = setsPorMes[i].size;
@@ -175,13 +166,13 @@ async function fetchInspecoesAssociadasPorMes(): Promise<MesData[]> {
 
 async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: number }[]> {
   const supabase = createSupabaseBrowserClient();
-  const { data } = await supabase
-    .from("inspecoes")
-    .select("status, elaboracao_status")
-    .neq("status", "DELETADA");
+  const data = await fetchAllRows<{ status: string; elaboracao_status: string | null }>(
+    (de, ate) =>
+      supabase.from("inspecoes").select("status, elaboracao_status").neq("status", "DELETADA").range(de, ate),
+  );
 
   let pendentes = 0, assumidos = 0, concluidos = 0;
-  for (const row of (data ?? []) as { status: string; elaboracao_status: string | null }[]) {
+  for (const row of data) {
     if (row.elaboracao_status === "CONCLUIDO") concluidos++;
     else if (row.elaboracao_status === "EM_ELABORACAO") assumidos++;
     else if (row.status === "CONCLUIDA") pendentes++; // inspeção concluída aguardando documento
@@ -200,14 +191,17 @@ async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: numb
 // coluna da lista. Top 6 pessoas + "Outros". Degrada se a tabela ainda não existir.
 async function fetchDocumentosPorAssociado(): Promise<{ name: string; value: number }[]> {
   const supabase = createSupabaseBrowserClient();
-  const [assocRes, respRes] = await Promise.all([
-    supabase.from("inspecao_associados").select("nome, id_inspecao"),
-    supabase
-      .from("inspecoes")
-      .select("elaboracao_responsavel, id_inspecao")
-      .neq("status", "DELETADA")
-      .not("elaboracao_responsavel", "is", null),
+  const [assoc, insp] = await Promise.all([
+    fetchAllRows<{ nome: string; id_inspecao: string }>(
+      (de, ate) => supabase.from("inspecao_associados").select("nome, id_inspecao").range(de, ate),
+    ),
+    // Universo de inspeções NÃO-deletadas (id + quem assumiu a elaboração).
+    fetchAllRows<{ id_inspecao: string; elaboracao_responsavel: string | null }>(
+      (de, ate) =>
+        supabase.from("inspecoes").select("id_inspecao, elaboracao_responsavel").neq("status", "DELETADA").range(de, ate),
+    ),
   ]);
+  const validos = new Set(insp.map((r) => r.id_inspecao));
 
   const porPessoa = new Map<string, { nome: string; docs: Set<string> }>();
   const add = (nome: string | null, idInsp: string) => {
@@ -218,10 +212,10 @@ async function fetchDocumentosPorAssociado(): Promise<{ name: string; value: num
     e.docs.add(idInsp);
     porPessoa.set(key, e);
   };
-  for (const r of (assocRes.data ?? []) as { nome: string; id_inspecao: string }[]) add(r.nome, r.id_inspecao);
-  for (const r of (respRes.data ?? []) as { elaboracao_responsavel: string | null; id_inspecao: string }[]) {
-    add(r.elaboracao_responsavel, r.id_inspecao);
-  }
+  // Associações — só de inspeções não-deletadas (antes contava as deletadas).
+  for (const r of assoc) if (validos.has(r.id_inspecao)) add(r.nome, r.id_inspecao);
+  // Quem assumiu a elaboração (já filtrado por não-deletadas).
+  for (const r of insp) if (r.elaboracao_responsavel) add(r.elaboracao_responsavel, r.id_inspecao);
 
   const ordenado = [...porPessoa.values()]
     .map((e) => ({ name: e.nome, value: e.docs.size }))
@@ -238,7 +232,8 @@ async function fetchInspecoesRecentes(): Promise<InspecaoComEmpresa[]> {
   const { data: insp, error } = await supabase
     .from("inspecoes")
     .select("*")
-    .order("created_at", { ascending: false })
+    .neq("status", "DELETADA")
+    .order("data_inspecao", { ascending: false, nullsFirst: false })
     .limit(8);
   if (error) throw error;
 
