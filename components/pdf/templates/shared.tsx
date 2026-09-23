@@ -46,6 +46,19 @@ export function classeQuebraFixo(c: TextoPadraoCapitulo): string | undefined {
   return undefined;
 }
 
+/**
+ * Como classeQuebraFixo, mas com default "nova": quando `quebra_pagina` está
+ * vazio, a seção começa em PÁGINA NOVA (em vez de não quebrar). Use nos laudos
+ * em que cada tópico deve começar em sua própria página — igual aos capítulos
+ * editáveis. Só "continua" mantém a seção colada à anterior. Sempre retorna uma
+ * classe (nunca undefined), evitando a seção fixa espremida no fim da página.
+ */
+export function classeQuebraFixoNova(c: TextoPadraoCapitulo): string {
+  return c.quebra_pagina === "continua"
+    ? "textos-padrao-capitulo--continua"
+    : "textos-padrao-capitulo--nova-pagina";
+}
+
 /** Filtra/ordena os capítulos editáveis de uma posição (mesma regra do print). */
 export function editaveisPorPosicao(
   capitulos: TextoPadraoCapitulo[],

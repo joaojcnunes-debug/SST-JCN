@@ -11,7 +11,7 @@ import React from "react";
 import FolhaAssinaturas from "@/components/pdf/FolhaAssinaturas";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
 import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/SecoesComuns";
-import { classeQuebraFixo, numerarCapitulos, numLabel } from "@/components/pdf/templates/shared";
+import { classeQuebraFixoNova, numerarCapitulos, numLabel } from "@/components/pdf/templates/shared";
 import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import {
@@ -867,7 +867,7 @@ export default function AepTemplate({
           conteudoFixo = null;
       }
       return conteudoFixo ? (
-        <div key={c.id_capitulo} className={classeQuebraFixo(c)} data-slug={c.slug_fixo ?? undefined}>{conteudoFixo}</div>
+        <div key={c.id_capitulo} className={classeQuebraFixoNova(c)} data-slug={c.slug_fixo ?? undefined}>{conteudoFixo}</div>
       ) : null;
     }
     return renderEditavel(c);

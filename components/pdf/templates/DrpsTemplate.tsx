@@ -5,7 +5,7 @@ import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/Secoes
 import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import { substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
-import { renderEditaveis, renderEditavelUm, classeQuebraFixo } from "./shared";
+import { renderEditaveis, renderEditavelUm, classeQuebraFixoNova } from "./shared";
 import {
   aplicarMatriz,
   calcularResumoCompleto,
@@ -569,7 +569,7 @@ export default function DrpsTemplate({
     .filter((t) => t && t.trim());
 
   // quebraAntes=false: a quebra da folha é controlada pelo wrapper do capítulo
-  // "Assinatura Técnica" (classeQuebraFixo), respeitando Nova página/Continuação.
+  // "Assinatura Técnica" (classeQuebraFixoNova: default nova página, "continua" cola).
   const folhaNode = (
     <FolhaAssinaturas
       signatarios={signatarios}
@@ -632,7 +632,7 @@ export default function DrpsTemplate({
           c.tipo === "fixo" ? (
             <div
               key={c.id_capitulo}
-              className={`${classeQuebraFixo(c)}${c.orientacao === "paisagem" ? " drps-cap-paisagem" : ""}`}
+              className={`${classeQuebraFixoNova(c)}${c.orientacao === "paisagem" ? " drps-cap-paisagem" : ""}`}
               data-slug={c.slug_fixo ?? undefined}
             >{renderSecao(c.slug_fixo ?? "")}</div>
           ) : (
