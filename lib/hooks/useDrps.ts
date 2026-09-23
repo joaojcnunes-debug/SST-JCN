@@ -626,6 +626,8 @@ export function useDrpsExcluirCapitulo() {
 export interface DrpsRelatorioComEmpresa extends DrpsRelatorio {
   empresa_nome: string | null;
   empresa_cnpj: string | null;
+  empresa_municipio: string | null;
+  empresa_uf: string | null;
 }
 
 export function useDrpsRelatoriosGeral() {
@@ -636,14 +638,14 @@ export function useDrpsRelatoriosGeral() {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("drps_relatorios")
-        .select("*, empresas(id_empresa, nome_empresa, cnpj)")
+        .select("*, empresas(id_empresa, nome_empresa, cnpj, municipio, uf)")
         .neq("status", "DELETADO")
         .order("updated_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
       type Row = DrpsRelatorio & {
         empresas:
-          | { id_empresa: string; nome_empresa: string; cnpj: string | null }
+          | { id_empresa: string; nome_empresa: string; cnpj: string | null; municipio: string | null; uf: string | null }
           | null;
       };
       const rows = (data ?? []) as unknown as Row[];
@@ -651,6 +653,8 @@ export function useDrpsRelatoriosGeral() {
         ...r,
         empresa_nome: r.empresas?.nome_empresa ?? null,
         empresa_cnpj: r.empresas?.cnpj ?? null,
+        empresa_municipio: r.empresas?.municipio ?? null,
+        empresa_uf: r.empresas?.uf ?? null,
       }));
     },
   });

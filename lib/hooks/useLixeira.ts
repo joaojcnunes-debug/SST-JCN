@@ -73,25 +73,45 @@ export interface ExcluirComLixeiraArgs {
 /**
  * Exclusão com lixeira: salva um snapshot recuperável, registra na auditoria
  * e então exclui da tabela. Se o snapshot falhar, NÃO exclui (segurança).
+ *
+ * Se a EXCLUSÃO falhar, o snapshot é desfeito: sem isso ele fica na Lixeira
+ * como "excluído" apontando para um registro que continua vivo, e "Restaurar"
+ * ainda dá erro de chave duplicada. No painel-sst isso aconteceu em 2026-07-29
+ * — as FKs sem cascata barravam o DELETE e cada tentativa deixava um fantasma.
+ * A ordem NÃO é invertida de propósito: gravar o snapshot depois do DELETE
+ * trocaria o fantasma por risco de apagar sem cópia de recuperação.
+ * As policies que permitem esta compensação são a v147.
  */
 export async function excluirComLixeira(args: ExcluirComLixeiraArgs): Promise<void> {
   const supabase = createSupabaseBrowserClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { error: snapErr } = await supabase.from("registros_excluidos").insert({
-    tabela: args.tabela,
-    registro_id: args.id,
-    chave: args.chave,
-    tipo_exclusao: "hard",
-    rotulo: args.rotulo ?? null,
-    dados: args.dados,
-    modulo: args.modulo ?? null,
-    excluido_por: user?.email ?? null,
-  } as never);
+  const { data: snap, error: snapErr } = await supabase
+    .from("registros_excluidos")
+    .insert({
+      tabela: args.tabela,
+      registro_id: args.id,
+      chave: args.chave,
+      tipo_exclusao: "hard",
+      rotulo: args.rotulo ?? null,
+      dados: args.dados,
+      modulo: args.modulo ?? null,
+      excluido_por: user?.email ?? null,
+    } as never)
+    .select("id")
+    .single();
   if (snapErr) throw snapErr;
 
   const { error: delErr } = await supabase.from(args.tabela).delete().eq(args.chave, args.id);
-  if (delErr) throw delErr;
+  if (delErr) {
+    const idSnapshot = (snap as { id?: string } | null)?.id;
+    if (idSnapshot) {
+      // Best-effort: se a compensação também falhar, o erro que interessa
+      // mostrar ao usuário é o do DELETE, não o dela.
+      await supabase.from("registros_excluidos").delete().eq("id", idSnapshot);
+    }
+    throw delErr;
+  }
 
   registrarAuditoria({
     modulo: args.modulo ?? args.tabela,

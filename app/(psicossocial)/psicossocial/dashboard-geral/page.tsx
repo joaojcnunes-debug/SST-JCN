@@ -12,6 +12,7 @@ import {
   Building2,
   Send,
   GripVertical,
+  MapPin,
   Search,
   X,
 } from "lucide-react";
@@ -236,6 +237,7 @@ function Coluna({
   onSoltar: () => void;
 }) {
   const { titulo, descricao, cor, bg, border, Icone } = config;
+  // Filtro de busca por coluna (empresa, cidade, CNPJ ou responsável).
   const [busca, setBusca] = useState("");
   const visiveis = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -244,10 +246,12 @@ function Coluna({
     return items.filter((r) => {
       const nome = (r.empresa_nome ?? "").toLowerCase();
       const resp = (r.responsavel_tecnico ?? "").toLowerCase();
+      const cidade = (r.empresa_municipio ?? "").toLowerCase();
       const cnpj = (r.empresa_cnpj ?? "").replace(/\D/g, "");
       return (
         nome.includes(q) ||
         resp.includes(q) ||
+        cidade.includes(q) ||
         (digitos.length > 0 && cnpj.includes(digitos))
       );
     });
@@ -316,7 +320,7 @@ function Coluna({
               type="text"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Filtrar empresa, CNPJ ou responsável…"
+              placeholder="Filtrar empresa, cidade, CNPJ ou responsável…"
               aria-label={`Filtrar ${titulo}`}
               className="w-full rounded-md border border-gray-200 py-1.5 pl-7 pr-7 text-xs focus:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300"
             />
@@ -382,6 +386,16 @@ function Coluna({
                     <p className="mt-0.5 truncate text-xs font-mono text-gray-700">
                       {r.empresa_cnpj ? formatCNPJ(r.empresa_cnpj) : "—"}
                     </p>
+                    {r.empresa_municipio && (
+                      <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-gray-500">
+                        <MapPin className="size-3 shrink-0" />
+                        <span className="truncate">
+                          {[r.empresa_municipio, r.empresa_uf]
+                            .filter(Boolean)
+                            .join(" / ")}
+                        </span>
+                      </div>
+                    )}
                     <div className="mt-1.5 flex items-center gap-2 text-xs">
                       <FileText className="size-3.5 text-verde-primary" />
                       <strong className="text-verde-primary">

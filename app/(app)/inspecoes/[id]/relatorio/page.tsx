@@ -437,7 +437,11 @@ export default function RelatorioJCNPage({ params }: Props) {
                 <button
                   type="button"
                   disabled={salvarElab.isPending}
-                  onClick={() => salvarElab.mutate({ elaboracao_status: "EM_ELABORACAO", elaboracao_concluida_em: null })}
+                  // Reenvia o responsável atual: a RPC grava o que recebe no ramo
+                  // EM_ELABORACAO, então reabrir sem ele apagava o nome e travava o
+                  // documento — sem responsável ninguém (fora Admin) consegue assumir
+                  // nem se associar, e o card fica "Em elaboração por —".
+                  onClick={() => salvarElab.mutate({ elaboracao_status: "EM_ELABORACAO", elaboracao_responsavel: inspecao.elaboracao_responsavel, elaboracao_concluida_em: null })}
                   className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
                 >
                   Reabrir
