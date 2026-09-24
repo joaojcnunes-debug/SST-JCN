@@ -29,7 +29,10 @@ export default function RegistrarServiceWorker() {
     if ((window as Window & { electronAPI?: { isElectron?: boolean } }).electronAPI?.isElectron) return;
     if (!("serviceWorker" in navigator)) return;
 
-    const versao = process.env.NEXT_PUBLIC_APP_VERSION ?? "0";
+    // Id de build (SHA do commit na Vercel), nao a versao: dois deploys com a
+    // mesma versao precisam gerar workers diferentes. Ver next.config.ts.
+    const versao =
+      process.env.NEXT_PUBLIC_BUILD_ID ?? process.env.NEXT_PUBLIC_APP_VERSION ?? "0";
     navigator.serviceWorker.register(`/sw.js?v=${versao}`, { scope: "/" }).catch((erro) => {
       // Falha aqui não pode derrubar nada: sem service worker o app continua
       // funcionando normalmente, só perde o "abre offline". Registrar em log e

@@ -5,10 +5,13 @@ import { version } from "./package.json";
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
+    // Identidade do service worker. A versao do package.json sozinha nao serve
+    // na web: um deploy sem bump manteria `/sw.js?v=<mesma>` e o navegador nao
+    // veria worker novo — todo mundo preso na casca em cache. Na Vercel entra o
+    // SHA do commit, que muda a cada deploy; fora dela, cai na versao.
+    NEXT_PUBLIC_BUILD_ID:
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? version,
   },
-  // Necessário para empacotar o Next.js dentro do Electron (produção desktop).
-  // Compatível com Vercel — ignorado pela plataforma no deploy web.
-  output: "standalone",
   // Silencia o aviso "multiple lockfiles detected" — força este projeto
   // como raiz mesmo quando há um lockfile no diretório pai.
   outputFileTracingRoot: path.join(__dirname),
