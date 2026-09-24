@@ -43,10 +43,10 @@ export async function GET(req: NextRequest) {
   const linhas: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Chabra//Gestao SST//PT-BR",
+    "PRODID:-//JCN Consultoria//Gestao SST//PT-BR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escICS(q.nome)} · Chabra`,
+    `X-WR-CALNAME:${escICS(q.nome)} · JCN`,
   ];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const t of (tarefas ?? []) as any[]) {

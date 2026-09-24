@@ -77,7 +77,7 @@ test('atendidas: emissão é conclusão — inclui documento já substituído', 
   assert.deepStrictEqual(r.unidades[0].atendidas, { 2: { P: 2 } }, 'duas empresas concluídas em fevereiro');
 });
 
-test('porte e condição vêm da classificação da Chabra (por CNPJ, senão por código)', () => {
+test('porte e condição vêm da classificação do cliente (por CNPJ, senão por código)', () => {
   const classificacao = {
     porCnpj: { 12345678000199: { porte: 'G', condicao: 'exclusiva_tst' } },
     porCodigo: { E2: { porte: 'M', condicao: 'mensal' } },

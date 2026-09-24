@@ -39,10 +39,10 @@ Deno.serve(async (req) => {
   const linhas: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Chabra//Gestao SST//PT-BR",
+    "PRODID:-//JCN Consultoria//Gestao SST//PT-BR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escICS(quadro.nome)} · Chabra`,
+    `X-WR-CALNAME:${escICS(quadro.nome)} · JCN`,
   ];
   for (const t of (tarefas ?? [])) {
     if (concluidos.has(t.status)) continue;

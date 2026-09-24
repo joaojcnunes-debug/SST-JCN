@@ -13,7 +13,7 @@ export const ROTULO_MODULO_AUDITORIA: Record<string, string> = {
   questionarios_psicossociais: "Questionários",
   aet: "AET",
   aep: "AEP",
-  gestao_chabra: "Gestão Chabra (tarefas)",
+  gestao_chabra: "Gestão JCN (tarefas)",
   sistema: "Sistema",
   pdfs: "PDFs gerados",
 };
