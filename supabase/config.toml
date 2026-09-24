@@ -1,0 +1,14 @@
+# Projeto Supabase do SST-JCN.
+#
+# O project_id abaixo é o que ancora a CLI e a integração da Supabase com o
+# GitHub. Ele existe por um motivo concreto: até 2026-09-24 o vínculo local
+# (supabase/.temp/linked-project.json, que NÃO vai para o repositório) apontava
+# para vifatwpfqhhantordxlq — o projeto do painel-sst, não deste. Um
+# `supabase db push` daqui teria mandado migration do JCN para a produção do
+# painel. Com o project_id versionado, quem clonar o repositório já parte do
+# alvo certo.
+project_id = "ieesssxgjzywrtiqdvmz"
+
+[db]
+# Mesma major do projeto hospedado.
+major_version = 17
