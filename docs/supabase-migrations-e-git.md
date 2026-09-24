@@ -1,5 +1,17 @@
 # Migrations, a CLI da Supabase e a integração com o GitHub
 
+> **Atualizado em 2026-09-24.** Ao investigar, descobri que a integração **já
+> estava ligada** neste projeto desde 2026-06-02, apontando para o branch
+> `main`, e em `MIGRATIONS_FAILED` desde então. Ela nunca aplicou nada: das 178
+> linhas do rastreador, 157 foram escritas por `joaojcnunes@gmail.com` (painel
+> da Supabase e MCP) e 21 são anteriores, sem autor registrado — nenhuma por
+> ela. A causa provável é o formato do nome do arquivo.
+
+> Em resposta, `supabase/migrations/` foi **esvaziado**: os 240 arquivos
+> `vNNN_*.sql` (todos já aplicados) foram para `supabase/historico/` e os 62 não
+> aplicados para `supabase/fila/`. Com o diretório vazio, um merge em `main` não
+> tem o que aplicar — antes disso, levaria 97 arquivos para um banco em produção.
+
 **Resumo: não ligue a integração da Supabase com o GitHub apontando para
 `supabase/migrations/` como o diretório está hoje. Ela tentaria reaplicar 240
 arquivos num banco em produção.**
