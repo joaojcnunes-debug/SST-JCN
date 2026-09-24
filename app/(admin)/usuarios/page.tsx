@@ -528,21 +528,38 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           if (form.senha && form.senha.length > 0 && form.senha.length < 6) {
             throw new Error("A nova senha deve ter ao menos 6 caracteres");
           }
-          const resp = await fetch("/api/usuarios/credenciais", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              id_usuario: usuario.id_usuario,
-              email_atual: emailAntigo,
-              email_novo: emailNovo !== emailAntigo ? emailNovo : undefined,
-              nova_senha: form.senha && form.senha.length > 0 ? form.senha : undefined,
-            }),
-          });
-          const data = (await resp.json().catch(() => null)) as
-            | { ok?: boolean; error?: string }
-            | null;
-          if (!resp.ok || !data?.ok) {
-            throw new Error(data?.error ?? "Falha ao atualizar credenciais");
+          // Trocar só a PRÓPRIA senha não precisa da Admin API: a sessão logada
+          // resolve direto no Auth, sem depender da SUPABASE_SERVICE_ROLE_KEY.
+          const {
+            data: { user: eu },
+          } = await supabase.auth.getUser();
+          const soMinhaSenha =
+            emailNovo === emailAntigo && eu?.email?.toLowerCase() === emailAntigo;
+          if (soMinhaSenha) {
+            const { error: senhaErr } = await supabase.auth.updateUser({
+              password: form.senha,
+            });
+            // Senha igual à atual não é erro para quem só quer salvar o cadastro.
+            if (senhaErr && senhaErr.code !== "same_password") {
+              throw new Error(senhaErr.message);
+            }
+          } else {
+            const resp = await fetch("/api/usuarios/credenciais", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id_usuario: usuario.id_usuario,
+                email_atual: emailAntigo,
+                email_novo: emailNovo !== emailAntigo ? emailNovo : undefined,
+                nova_senha: form.senha && form.senha.length > 0 ? form.senha : undefined,
+              }),
+            });
+            const data = (await resp.json().catch(() => null)) as
+              | { ok?: boolean; error?: string }
+              | null;
+            if (!resp.ok || !data?.ok) {
+              throw new Error(data?.error ?? "Falha ao atualizar credenciais");
+            }
           }
         }
 
@@ -808,6 +825,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             <Lock className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
             <input
               type="password"
+              // Sem isto o Chrome cola a senha salva do login neste campo e todo
+              // "Salvar" vira uma troca de senha — mesmo sem o usuário querer.
+              autoComplete="new-password"
               value={form.senha}
               onChange={(e) => setForm({ ...form, senha: e.target.value })}
               className={cn(inputCls, "pl-8")}

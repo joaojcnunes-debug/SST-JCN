@@ -15,7 +15,19 @@ export const dynamic = "force-dynamic";
  * dois produz os dois defeitos clássicos: identidade órfã que loga e não é
  * ninguém, ou perfil fantasma que aparece na lista e não entra.
  */
-export async function POST(req: NextRequest) {
+/**
+ * Toda falha inesperada sai como { ok, error } em JSON. Sem isto, uma excecao
+ * (a mais provavel: SUPABASE_SERVICE_ROLE_KEY ausente, que faz
+ * createSupabaseServiceClient lancar) viraria 500 com corpo de erro do Next,
+ * sem o campo `error` — e a tela cairia no texto generico do catch, que nao
+ * diz nada a quem esta tentando resolver.
+ */
+function erroJson(e: unknown) {
+  const msg = e instanceof Error ? e.message : String(e);
+  return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+}
+
+async function handler(req: NextRequest) {
   const supabase = createSupabaseServerClient(await cookies());
   const {
     data: { user: caller },
@@ -77,4 +89,12 @@ export async function POST(req: NextRequest) {
     );
   }
   return NextResponse.json({ ok: true });
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    return await handler(req);
+  } catch (e) {
+    return erroJson(e);
+  }
 }
