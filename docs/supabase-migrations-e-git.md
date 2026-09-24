@@ -17,10 +17,12 @@ Existem **duas linhagens de migration** neste repositório, e elas não se falam
 `v163_equipamentos_modulo`, `v60_extintores`…
 
 **A linhagem do painel** é a que está nos arquivos. `supabase/migrations/` tem
-302 arquivos `vNNN_nome.sql`, copiados do painel-sst durante a equalização. 240
-estão versionados; 62 continuam fora do git de propósito — é a fila do que
-**não** foi aplicado (correções de dados do painel sem alvo aqui, a cadeia de
-biometria que depende de uma chave inexistente, e a v254, que espera uma release).
+240 arquivos `vNNN_nome.sql`, copiados do painel-sst durante a equalização.
+
+Os 62 que **não** foram aplicados saíram de `migrations/` em 2026-09-24 e hoje
+vivem em `supabase/fila/`, versionados e com um README explicando cada grupo.
+Antes ficavam soltos no mesmo diretório e fora do git: só existiam no disco de
+quem sincronizou, e um `supabase db push` distraído os aplicaria junto.
 
 As duas só coincidem onde migrations do painel foram aplicadas nesta sessão
 (v209 em diante). A maior parte dos 240 arquivos versionados não tem
@@ -45,7 +47,9 @@ idempotente: há `drop constraint`, `alter column type`, `delete`, `update` e
 O procedimento padrão da Supabase para este caso é **fechar uma linha de base**:
 
 1. `supabase db pull` gera um único arquivo com o schema atual, já no formato de
-   timestamp.
+   timestamp. **Exige CLI autenticada** (`supabase login`) — sem isso não há
+   `pg_dump`. Os dumps que existem no repositório não servem: `supabase/schema.sql`
+   é de maio/2026 e parcial, e `supabase/schema_dump.sql` está vazio.
 2. Esse arquivo vira a migration inicial; o histórico antigo sai de
    `supabase/migrations/` e vai para uma pasta de arquivo (`supabase/historico/`,
    por exemplo), preservado mas fora do alcance da CLI.
