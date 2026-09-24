@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
   // Baixa o certificado .pfx do bucket privado via SERVICE_ROLE (o bucket é
   // travado para acesso direto do cliente; só o servidor, após validar
   // auth + permissão acima, pode ler o .pfx).
-  const serviceClient = createSupabaseServiceClient();
+  const serviceClient = createSupabaseServiceClient({ email: user.email, origem: "assinar-pdf" });
   const { data: certBlob, error: certError } = await serviceClient.storage
     .from("certificados")
     .download(usuario.certificado_pfx_path);

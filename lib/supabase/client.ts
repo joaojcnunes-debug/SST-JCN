@@ -37,13 +37,37 @@ type CookieStore = {
  * Nunca importar/chamar em código client (a chave não tem prefixo NEXT_PUBLIC,
  * então é undefined no browser e a função lança erro).
  */
-export function createSupabaseServiceClient() {
+// v256 — QUEM está por trás da gravação. O token de serviço não carrega pessoa,
+// e a auditoria (v212) gravava "Servidor (rota de serviço)" sem nome. A rota
+// passa o e-mail de quem ela já autenticou (se houver) e de ONDE veio a
+// gravação; o gatilho de auditoria só lê esses cabeçalhos quando o role é
+// service_role — do navegador eles são ignorados, não dá para se passar por outro.
+//
+// No JCN os cabeçalhos entram por `global.headers` do SDK do Supabase, e não
+// pelo fetch do cliente PostgREST próprio como no painel self-host. Mesmo
+// contrato do lado do banco: X-Painel-Ator e X-Painel-Origem.
+export interface AtorServico {
+  /** E-mail do usuário que a rota autenticou; null quando não há pessoa (webhook, formulário público). */
+  email: string | null | undefined;
+  /** De onde veio a gravação, curto e ASCII — ex.: "usuarios/criar", "formulario-publico". */
+  origem: string;
+}
+
+function cabecalhosDoAtor(ator: AtorServico): Record<string, string> {
+  const h: Record<string, string> = { "X-Painel-Origem": ator.origem.replace(/[^ -~]/g, "") };
+  const email = ator.email?.trim().toLowerCase();
+  if (email && /^[!-~]+$/.test(email)) h["X-Painel-Ator"] = email;
+  return h;
+}
+
+export function createSupabaseServiceClient(ator: AtorServico) {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
   if (!serviceKey) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY não configurada no servidor.");
   }
   return createClient<Database>(url, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: cabecalhosDoAtor(ator) },
   });
 }
 

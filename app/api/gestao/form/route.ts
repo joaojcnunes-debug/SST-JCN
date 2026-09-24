@@ -34,7 +34,7 @@ function gerarIdTarefa(): string {
 export async function GET(req: NextRequest) {
   const token = new URL(req.url).searchParams.get("token");
   if (!token) return NextResponse.json({ error: "Token ausente." }, { status: 400 });
-  const sb = createSupabaseServiceClient();
+  const sb = createSupabaseServiceClient({ email: null, origem: "formulario-publico" });
   const { data } = await sb.from("gestao_formularios").select("*").eq("token", token).maybeSingle();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const f = data as any;
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     | null;
   if (!body?.token) return NextResponse.json({ error: "Token ausente." }, { status: 400 });
 
-  const sb = createSupabaseServiceClient();
+  const sb = createSupabaseServiceClient({ email: null, origem: "formulario-publico" });
   const { data } = await sb.from("gestao_formularios").select("*").eq("token", body.token).maybeSingle();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const f = data as any;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createSupabaseServiceClient, createSupabaseServerClient } from "@/lib/supabase/client";
-import { podeProcessar, montarEvento, type TarefaEvento } from "@/lib/gestao/google/helpers";
+import { podeProcessar, montarEvento, planejarDestinatarios, type TarefaEvento } from "@/lib/gestao/google/helpers";
 import { puxarInboundTodas } from "@/lib/gestao/google/inbound";
 
 export const runtime = "nodejs";
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "OAuth do Google não configurado." }, { status: 500 });
   }
 
-  const sb = createSupabaseServiceClient();
+  const sb = createSupabaseServiceClient({ email: user.email, origem: "google-agenda/sincronizar" });
 
   // Drena a fila pendente (limite defensivo por chamada).
   const { data: pend } = await sb
@@ -131,9 +131,14 @@ async function processarItem(
     if (concluidos.has(tarefa.status)) ehDelete = true;
   }
 
-  // Vinculados da tarefa que conectaram a conta (ativo=true). Junta e-mail↔conta.
+  // Vinculados atuais + quem JÁ TEM evento desta tarefa (o mapa): tarefa apagada leva os
+  // vinculados em cascata, e quem saiu da tarefa não está mais na lista — sem o mapa, o evento
+  // dessas pessoas ficava esquecido na agenda. Ver planejarDestinatarios.
   const { data: vinc } = await sb.from("gestao_tarefa_vinculados").select("usuario_email").eq("id_tarefa", idTarefa);
-  const emails = Array.from(new Set(((vinc ?? []) as { usuario_email: string }[]).map((v) => v.usuario_email)));
+  const vinculados = ((vinc ?? []) as { usuario_email: string }[]).map((v) => v.usuario_email);
+  const { data: mapeados } = await sb.from("gestao_google_eventos").select("usuario_email").eq("id_tarefa", idTarefa);
+  const comEvento = ((mapeados ?? []) as { usuario_email: string }[]).map((m) => m.usuario_email);
+  const emails = Array.from(new Set([...vinculados, ...comEvento]));
 
   const { data: contas } = await sb
     .from("gestao_google_contas")
@@ -142,12 +147,18 @@ async function processarItem(
     .eq("ativo", true);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const conectados = (contas ?? []) as any[];
+  const calendarioDe = new Map(conectados.map((c) => [c.usuario_email as string, (c.calendar_id as string) || "primary"]));
 
+  const plano = planejarDestinatarios({
+    vinculados,
+    comEvento,
+    conectados: conectados.map((c) => c.usuario_email as string),
+    ehDelete,
+  });
   const body = !ehDelete && tarefa ? montarEvento(tarefa as TarefaEvento) : null;
 
-  for (const conta of conectados) {
-    const email: string = conta.usuario_email;
-    const calendarId: string = conta.calendar_id || "primary";
+  for (const { email, acao } of plano) {
+    const calendarId: string = calendarioDe.get(email) ?? "primary";
 
     // refresh_token decifrado no banco (chave por parâmetro; nunca sai em texto plano à toa).
     const { data: refreshToken } = await sb.rpc("gestao_google_ler_token", { p_email: email, p_enc_key: cfg.encKey } as never);
@@ -167,7 +178,7 @@ async function processarItem(
     const authH = { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" };
     const encCal = encodeURIComponent(calendarId);
 
-    if (ehDelete) {
+    if (acao === "delete") {
       if (mapa?.event_id) {
         await fetch(`${CAL_BASE}/${encCal}/events/${encodeURIComponent(mapa.event_id)}`, {
           method: "DELETE",

@@ -86,6 +86,30 @@ export function montarEvento(t: TarefaEvento): CalendarEvent {
   };
 }
 
+/**
+ * Decide, conta a conta, o que o worker faz com a agenda (puro/testável). Os destinatários são
+ * os vinculados ATUAIS mais quem JÁ TEM evento no mapa (gestao_google_eventos): sem o mapa, apagar
+ * a tarefa (os vinculados somem em cascata antes do worker rodar) ou tirar alguém dela deixava o
+ * evento esquecido na agenda. Quem está no mapa e não está mais vinculado → delete; tarefa a
+ * desagendar → delete para todos; os demais → upsert. Só contas conectadas entram.
+ */
+export function planejarDestinatarios(args: {
+  vinculados: string[];
+  comEvento: string[];
+  conectados: string[];
+  ehDelete: boolean;
+}): { email: string; acao: "upsert" | "delete" }[] {
+  const vinc = new Set(args.vinculados);
+  const conectados = new Set(args.conectados);
+  const todos = Array.from(new Set([...args.vinculados, ...args.comEvento]));
+  return todos
+    .filter((email) => conectados.has(email))
+    .map((email) => ({
+      email,
+      acao: args.ehDelete || !vinc.has(email) ? ("delete" as const) : ("upsert" as const),
+    }));
+}
+
 function menosUmDia(d: string): string {
   const dt = new Date(d + "T00:00:00Z");
   dt.setUTCDate(dt.getUTCDate() - 1);

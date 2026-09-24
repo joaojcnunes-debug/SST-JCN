@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const serviceClient = createSupabaseServiceClient();
+  const serviceClient = createSupabaseServiceClient({ email: user.email, origem: "cert/validar" });
   const { data: certBlob, error: certError } = await serviceClient.storage
     .from("certificados")
     .download(usuario.certificado_pfx_path);

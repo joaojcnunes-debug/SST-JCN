@@ -31,6 +31,7 @@ import { abrirMidiaAssinada } from "@/lib/storage/abrir-midia-assinada";
 import { useInspecao, useSalvarElaboracao } from "@/lib/hooks/useInspecao";
 import { ehSupervisor, useCurrentUser } from "@/lib/hooks/useUsuario";
 import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
+import EnviarRiscosSgg from "@/components/inspecoes/EnviarRiscosSgg";
 import { useAssociarUsuario, useInspecaoAssociados } from "@/lib/hooks/useInspecaoAssociados";
 import { situacaoDocumento } from "@/lib/inspecoes/documento";
 import { FileSignature } from "lucide-react";
@@ -479,6 +480,7 @@ export default function RelatorioChabraPage({ params }: Props) {
             concluidaEm={inspecao.elaboracao_concluida_em}
           />
         )}
+        <EnviarRiscosSgg idInspecao={id} setores={ctx.setores} />
       </div>
 
       {/* Dados da empresa (não imprime) */}
@@ -553,7 +555,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={configs.logo_url}
-                  alt="Logo JCN Consultoria"
+                  alt="Logo Chabra"
                   className="max-h-44 w-auto object-contain"
                   referrerPolicy="no-referrer"
                 />
@@ -563,7 +565,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                     <ShieldCheck className="size-16" strokeWidth={1.5} />
                   </div>
                   <p className="mt-3 text-2xl font-extrabold tracking-tight text-red-alert">
-                    JCN Consultoria
+                    Chabra
                   </p>
                   <p className="text-[10px] uppercase tracking-wider text-gray-600">
                     Segurança e Medicina do Trabalho
@@ -575,7 +577,7 @@ export default function RelatorioChabraPage({ params }: Props) {
 
           {/* Rodapé da capa */}
           <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-center text-[10px] text-gray-500">
-            Documento gerado em {fmtDataHora(new Date())} · JCN Consultoria Saúde e
+            Documento gerado em {fmtDataHora(new Date())} · Chabra Saúde e
             Segurança do Trabalho
           </p>
         </section>
@@ -688,7 +690,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                 label="Não Conformes"
                 valor={ctx.naoConformes}
                 cor={ctx.naoConformes > 0 ? "#ffffff" : "#ffffff"}
-                bg={ctx.naoConformes > 0 ? "#D32F2F" : "#0ea5e9"}
+                bg={ctx.naoConformes > 0 ? "#D32F2F" : "#006B54"}
                 destacado
               />
             </div>
@@ -986,7 +988,7 @@ export default function RelatorioChabraPage({ params }: Props) {
           />
 
           <p className="mt-8 text-center text-[10px] text-gray-400">
-            Documento gerado em {fmtDataHora(new Date())} · SST JCN Consultoria
+            Documento gerado em {fmtDataHora(new Date())} · Painel SST Chabra
           </p>
         </section>
       </article>
@@ -1240,7 +1242,7 @@ const QUIM_LABELS_DEFAULT: Record<string, string> = {
 };
 
 // =========================================================================
-// RISCO CARD (estilo PDF JCN Consultoria)
+// RISCO CARD (estilo PDF Chabra)
 // =========================================================================
 
 function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]; perguntasMap: Map<string, string> }) {

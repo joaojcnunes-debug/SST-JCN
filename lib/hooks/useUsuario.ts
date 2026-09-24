@@ -175,6 +175,24 @@ export function useRequireCreate(
  * Visualizador. NÃO afrouxa `perfilEscreveNaRls` para os outros módulos: a capability
  * só é consultada AQUI, no fluxo de químicos.
  */
+/**
+ * Capability de enviar riscos ao SGG (SGG-RISCOS-01 fase 3).
+ *
+ * Diferente de `usePodeQuimicos`: NAO herda `pode_criar/pode_editar`. Enviar ao
+ * SGG escreve no CRM do cliente e a API nao tem DELETE, entao o direito e
+ * explicito — `Admin` (que já vê tudo) ou a flag `pode_enviar_sgg`.
+ * ATENÇÃO: ainda NÃO há tela para conceder essa flag (medido 23/09: zero
+ * ocorrências em app/(admin)/usuarios). Hoje a concessão é UPDATE manual
+ * no banco — não escreva aqui que ela sai por /usuarios.
+ * O gate real e server-side na rota; este hook so evita mostrar um botao que
+ * daria 403.
+ */
+export function usePodeEnviarSgg() {
+  const user = useUserStore((s) => s.user);
+  if (!user?.ativo_sistema) return false;
+  return user.perfil === "Admin" || user.pode_enviar_sgg === true;
+}
+
 export function usePodeQuimicos() {
   const podePerfil = useCanCreate({ exigeEditar: true });
   const user = useUserStore((s) => s.user);

@@ -115,6 +115,15 @@ describe("quemGravou", () => {
     assert.equal(quemGravou(evento({ usuario_email: null, usuario_role: "service_role" }), nomes), "Servidor (rota de serviço)");
     assert.equal(quemGravou(evento({ usuario_email: null, usuario_role: "chabra_admin" }), nomes), "Banco (chabra_admin)");
   });
+
+  test("v256: rota de serviço com ator mostra a pessoa; sem pessoa mostra a origem", () => {
+    assert.equal(
+      quemGravou(evento({ usuario_email: "alguem@chabra.com.br", usuario_role: "service_role", usuario_origem: "usuarios/criar" }), nomes),
+      "Alguém",
+    );
+    assert.equal(quemGravou(evento({ usuario_email: null, usuario_role: "service_role", usuario_origem: "formulario-publico" }), nomes), "Formulário público");
+    assert.equal(quemGravou(evento({ usuario_email: null, usuario_role: "service_role", usuario_origem: "outra/rota" }), nomes), "Servidor (outra/rota)");
+  });
 });
 
 describe("rotaDoRegistro", () => {
@@ -148,10 +157,10 @@ describe("agruparPorDia", () => {
 
 describe("rotuloModulo", () => {
   test("os 3 ids que só existem na trilha têm rótulo", () => {
-    assert.equal(rotuloModulo("gestao_chabra"), "Gestão JCN Consultoria (tarefas)");
+    assert.equal(rotuloModulo("gestao_chabra"), "Gestão Chabra (tarefas)");
     assert.equal(rotuloModulo("sistema"), "Sistema");
     assert.equal(rotuloModulo("pdfs"), "PDFs gerados");
-    assert.equal(rotuloModulo("frota"), "Frota JCN Consultoria – Checklist de Veículos");
+    assert.equal(rotuloModulo("frota"), "Frota Chabra – Checklist de Veículos");
   });
 });
 

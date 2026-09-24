@@ -21,15 +21,16 @@ import {
   ClipboardList,
   ClipboardCheck,
   BookOpen,
-  FileClock,
-  TrendingUp,
+  FileClock,
   Siren,
   CalendarClock,
+  CalendarDays,
   HardHat,
   HardDrive,
   Truck,
   KanbanSquare,
   Radio,
+  Gauge,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
@@ -53,6 +54,8 @@ interface HubCardCfg {
   categoria: Categoria;
   skipStats?: boolean;
   staticLabel?: string;
+  /** Some quando a conta tem este outro módulo (que já leva ao mesmo lugar). */
+  ocultarSeTiver?: ModuloPermitido;
 }
 
 const CARDS: HubCardCfg[] = [
@@ -63,7 +66,7 @@ const CARDS: HubCardCfg[] = [
     title: "Inspeções",
     description: "Inspeções, riscos, ações 5W2H, treinamentos e relatórios",
     icon: <Shield className="size-12" />,
-    accent: "#0284c7",
+    accent: "#00835A",
     categoria: "seguranca",
   },
   {
@@ -96,7 +99,7 @@ const CARDS: HubCardCfg[] = [
   {
     modulo: "analise_quimicos",
     href: "/analise-quimicos",
-    title: "Análise de Químicos JCN Consultoria",
+    title: "Análise de Químicos Chabra",
     description: "Análise quantitativa de agentes químicos e FISPQ",
     icon: <FlaskConical className="size-12" />,
     accent: "#0EA5E9",
@@ -172,34 +175,36 @@ const CARDS: HubCardCfg[] = [
     skipStats: true,
     staticLabel: "Dashboard · Fatores organizacionais",
   },
-  // ── JCN Consultoria Sistema Interno ─────────────────────────────────────────
+  // ── Chabra Sistema Interno ─────────────────────────────────────────
   // O card "Inventário de Equipamentos" saiu daqui em 2026-09-14: o patrimônio
   // interno já vivia em /equipamentos e as máquinas de cliente continuam na
   // Relação de Máquinas (Apreciação) e na aba Máquinas da inspeção.
   {
     modulo: "equipamentos",
     href: "/equipamentos",
-    title: "Equipamentos JCN Consultoria",
+    title: "Equipamentos Chabra",
     description: "Patrimônio interno por base: notebooks, monitores, ar-condicionado e o que mais for da casa",
     icon: <HardDrive className="size-12" />,
     accent: "#1D4ED8",
     categoria: "interno",
   },
   {
-    modulo: "produtividade",
-    href: "/produtividade",
-    title: "Projeção de Produtividade CHABRA",
-    description: "Controle de unidades, documentos SST, produtividade da equipe e projeção de capacidade operacional",
-    icon: <TrendingUp className="size-12" />,
-    accent: "#0F766E",
+    modulo: "dimensionamento",
+    href: "/dimensionamento",
+    title: "Dimensionamento de Quadro (SST)",
+    description: "Quantas pessoas para eliminar os documentos vencidos no prazo: carteira que vence, equipe real e deficit por area",
+    icon: <Gauge className="size-12" />,
+    accent: "#0D9488",
     categoria: "interno",
+    // skipStats + staticLabel: o card mostra rotulo fixo em vez de contagem, e
+    // useHomeStats.ts nao precisa ser tocado. Mesmo caminho de produtividade e frota.
     skipStats: true,
-    staticLabel: "Dashboard · Projeção de capacidade",
+    staticLabel: "Headcount · so administradores",
   },
   {
     modulo: "frota",
     href: "/frota",
-    title: "Frota JCN Consultoria",
+    title: "Frota Chabra",
     description: "Checklist de saída de veículo: fotos obrigatórias, avarias, sinistros e abastecimento por base",
     icon: <Truck className="size-12" />,
     accent: "#1B3A8C",
@@ -210,24 +215,36 @@ const CARDS: HubCardCfg[] = [
     skipStats: true,
     staticLabel: "Veículos · controle de saída",
   },
-  // A "Escala de Supervisores" NÃO tem card aqui desde 2026-09-14: a porta dela
-  // é a Gestão Gerencial (card na tela inicial + item do menu), que já existia
-  // e duplicava esta. Toda conta com `escala_supervisores` ganhou
-  // `gestao_gerencial` na v211 (46 contas) — sem isso, quem só tinha a Escala
-  // ficaria sem caminho. Ao liberar a Escala para alguém novo, libere a Gestão
-  // Gerencial junto.
+  // A "Escala de Supervisores" saiu daqui em 2026-09-14: a porta dela é a
+  // Gestão Gerencial (card na tela inicial + item do menu). Em 2026-09-23 o card
+  // voltou SÓ para quem tem a Escala sem a Gestão Gerencial — a v229 refez os
+  // módulos por função e deixou 5 contas com a Escala e nenhum caminho até ela.
+  // Quem tem as duas continua entrando pela Gestão Gerencial, sem card repetido.
+  {
+    modulo: "escala_supervisores",
+    href: "/escala",
+    title: "Escala de Supervisores",
+    description:
+      "Quem cobre qual unidade em cada dia útil: padrão semanal, grade mensal, feriados e conferência das regras",
+    icon: <CalendarDays className="size-12" />,
+    accent: "#0891B2",
+    categoria: "interno",
+    skipStats: true,
+    staticLabel: "Escala · supervisores por unidade",
+    ocultarSeTiver: "gestao_gerencial",
+  },
 ];
 
 const CATEGORIES: { id: Categoria; label: string; icon: React.ReactNode }[] = [
   { id: "seguranca",    label: "Segurança do Trabalho",      icon: <Shield className="size-4" /> },
   { id: "psicossocial", label: "NR — Fatores Psicossocial",  icon: <Brain className="size-4" /> },
-  { id: "interno",      label: "JCN Consultoria Sistema Interno",     icon: <Boxes className="size-4" /> },
+  { id: "interno",      label: "Chabra Sistema Interno",     icon: <Boxes className="size-4" /> },
 ];
 
 const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; icon: React.ReactNode }> = {
   seguranca: {
     descricao: "Inspeções, conformidade NR, laudos NR-12, ergonomia e análise de agentes químicos",
-    accent: "#0284c7",
+    accent: "#00835A",
     icon: <Shield className="size-12" />,
   },
   psicossocial: {
@@ -236,7 +253,7 @@ const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; ic
     icon: <Brain className="size-12" />,
   },
   interno: {
-    descricao: "Patrimônio JCN Consultoria, inventário de equipamentos e sistemas de gestão interna",
+    descricao: "Patrimônio Chabra, inventário de equipamentos e sistemas de gestão interna",
     accent: "#2563EB",
     icon: <Boxes className="size-12" />,
   },
@@ -301,7 +318,7 @@ function InicioContent() {
   const logout = useUserStore((s) => s.logout);
   const { data: configs } = useConfiguracoes();
   const stats = useHomeStats();
-  // A Gestão JCN Consultoria não é um `modulos_permitidos`: quem entra é decidido pelo
+  // A Gestão Chabra não é um `modulos_permitidos`: quem entra é decidido pelo
   // roster (gestao_membros) e a própria /gestao devolve não-membro pra /inicio.
   // Sem esse portão aqui o card apareceria pra todo mundo e quicaria.
   const { data: papelGestao } = useMeuPapelGestao();
@@ -313,7 +330,9 @@ function InicioContent() {
   const modulosPermitidos = new Set(user?.modulos_permitidos ?? []);
 
   // Cards visíveis ordenados por pendência dentro de cada categoria.
-  const cardsDisponiveis = CARDS.filter((c) => modulosPermitidos.has(c.modulo))
+  const cardsDisponiveis = CARDS.filter(
+    (c) => modulosPermitidos.has(c.modulo) && !(c.ocultarSeTiver && modulosPermitidos.has(c.ocultarSeTiver)),
+  )
     .map((c, idx) => ({
       cfg: c,
       pendente: statsPorModulo(stats, c.modulo)?.pendente ?? 0,
@@ -348,7 +367,7 @@ function InicioContent() {
         className="min-h-screen"
         style={{
           background:
-            "linear-gradient(135deg, #1e4d28 0%, #0ea5e9 60%, #0284c7 100%)",
+            "linear-gradient(135deg, #1e4d28 0%, #006B54 60%, #00835A 100%)",
         }}
       />
     );
@@ -374,7 +393,7 @@ function InicioContent() {
       className="min-h-screen flex flex-col"
       style={{
         background:
-          "linear-gradient(135deg, #1e4d28 0%, #0ea5e9 60%, #0284c7 100%)",
+          "linear-gradient(135deg, #1e4d28 0%, #006B54 60%, #00835A 100%)",
       }}
     >
       <header className="flex items-center justify-between px-6 py-4">
@@ -399,7 +418,7 @@ function InicioContent() {
               referrerPolicy="no-referrer"
               onError={(e) => {
                 const img = e.currentTarget as HTMLImageElement;
-                if (!img.src.endsWith("/logo-jcn.svg")) img.src = "/logo-jcn.svg";
+                if (!img.src.endsWith("/logo-chabra.png")) img.src = "/logo-chabra.png";
               }}
             />
           ) : (
@@ -408,7 +427,7 @@ function InicioContent() {
             </div>
           )}
           <div className="leading-tight">
-            <p className="text-sm font-bold text-white">JCN Consultoria</p>
+            <p className="text-sm font-bold text-white">Chabra</p>
             <p className="text-[11px] text-white/70">
               Segurança e Saúde do Trabalho
             </p>
@@ -475,7 +494,7 @@ function InicioContent() {
               Psicossocial e outros).
             </p>
             <p className="mt-3 text-xs text-white/60">
-              Admin: <span className="font-mono">suporte.ti@jcnconsultoria.com.br</span>
+              Admin: <span className="font-mono">suporte.ti@chabra.com.br</span>
             </p>
           </div>
         ) : categoriaAtiva === null ? (
@@ -483,7 +502,7 @@ function InicioContent() {
           (() => {
             const visibleCats = CATEGORIES.filter((c) => cardsDisponiveis.some((d) => d.categoria === c.id));
             // +1 Empresa (todos internos) + Gestão Gerencial (quem tem o módulo)
-            // + PDFs (admin) + Gestão JCN Consultoria (quem está no roster) + Presença (admin ou gerência, v231).
+            // + PDFs (admin) + Gestão Chabra (quem está no roster) + Presença (admin ou gerência, v231).
             const totalCards =
               visibleCats.length + 1 + (modulosPermitidos.has("gestao_gerencial") ? 1 : 0) + (isAdmin ? 1 : 0) + (vePresenca ? 1 : 0) + (temGestaoChabra ? 1 : 0);
             return (
@@ -582,7 +601,7 @@ function InicioContent() {
         )}
 
         <p className="mt-10 text-center text-xs text-white/50">
-          © {new Date().getFullYear()} JCN Consultoria · Sistemas Internos
+          © {new Date().getFullYear()} Chabra · Sistemas Internos
           {process.env.NEXT_PUBLIC_APP_VERSION && (
             <span className="ml-2 opacity-60">
               v{process.env.NEXT_PUBLIC_APP_VERSION}
@@ -602,7 +621,7 @@ export default function InicioPage() {
           className="min-h-screen"
           style={{
             background:
-              "linear-gradient(135deg, #1e4d28 0%, #0ea5e9 60%, #0284c7 100%)",
+              "linear-gradient(135deg, #1e4d28 0%, #006B54 60%, #00835A 100%)",
           }}
         />
       }
@@ -755,7 +774,7 @@ function PdfDirectCard() {
 }
 
 function GestaoChabraDirectCard() {
-  // Verde do quadro, mas NÃO o #0369a1 do cabeçalho da /gestao: aquele tom some
+  // Verde do quadro, mas NÃO o #1A3D26 do cabeçalho da /gestao: aquele tom some
   // dentro do card no modo noturno (medido na prévia) e ainda se confunde com o
   // #00432F da Gestão Gerencial, que fica no card ao lado.
   const accent = "#15803D";
@@ -772,7 +791,7 @@ function GestaoChabraDirectCard() {
           <KanbanSquare className="size-12" />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold text-gray-900">Gestão JCN Consultoria</h2>
+          <h2 className="text-lg font-bold text-gray-900">Gestão Chabra</h2>
           <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
             Quadros de tarefas da equipe: espaços, prazos, responsáveis e automações
           </p>
@@ -798,7 +817,7 @@ function GestaoChabraDirectCard() {
 
 function PresencaDirectCard() {
   // Presença no painel (v218): quem está mexendo agora, quando entrou e quanto
-  // ficou ativo. Admin e gerência (v231). Mora aqui, depois do Gestão JCN Consultoria, por decisão dele
+  // ficou ativo. Admin e gerência (v231). Mora aqui, depois do Gestão Chabra, por decisão dele
   // em 16/09 — saiu da tela Início no mesmo dia.
   const accent = "#0E7490";
   return (

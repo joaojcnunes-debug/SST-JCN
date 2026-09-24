@@ -13,7 +13,7 @@ export const ROTULO_MODULO_AUDITORIA: Record<string, string> = {
   questionarios_psicossociais: "Questionários",
   aet: "AET",
   aep: "AEP",
-  gestao_chabra: "Gestão JCN Consultoria (tarefas)",
+  gestao_chabra: "Gestão Chabra (tarefas)",
   sistema: "Sistema",
   pdfs: "PDFs gerados",
 };
@@ -87,6 +87,15 @@ const ROTULO_TABELA: Record<string, string> = {
   frota_manutencoes: "manutenção de veículo",
   frota_sinistros: "sinistro",
   frota_abastecimentos: "abastecimento",
+  dim_unidades: "unidade do dimensionamento",
+  dim_funcoes: "função do dimensionamento",
+  dim_colaboradores: "colaborador do dimensionamento",
+  dim_colaborador_unidades: "alocação do dimensionamento",
+  dim_demanda_mensal: "lançamento mensal do dimensionamento",
+  dim_unidade_mes: "mês da unidade (dimensionamento)",
+  dim_portes: "porte do dimensionamento",
+  dim_clientes_porte: "porte de cliente (dimensionamento)",
+  dim_parametros: "parâmetros do dimensionamento",
   escala_dias: "dia da escala",
   escala_padrao_semanal: "padrão semanal da escala",
   escala_supervisores: "supervisor da escala",
@@ -172,13 +181,23 @@ export function formatarValor(v: unknown): string {
   return JSON.stringify(v);
 }
 
+/** Gravações sem pessoa por trás (v256): o nome da origem para a lista. */
+const ROTULO_ORIGEM_SEM_PESSOA: Record<string, string> = {
+  "formulario-publico": "Formulário público",
+  "google-agenda/aviso-do-google": "Google Agenda (mudança feita no Google)",
+  "gestao/calendario-ics": "Calendário ICS",
+};
+
 /** Quem gravou, para a lista: nome, ou o e-mail, ou a origem sem pessoa. */
 export function quemGravou(
-  ev: Pick<AuditoriaEvento, "usuario_email" | "usuario_role">,
+  ev: Pick<AuditoriaEvento, "usuario_email" | "usuario_role" | "usuario_origem">,
   nomes: ReadonlyMap<string, string>,
 ): string {
   if (ev.usuario_email) return nomes.get(ev.usuario_email) ?? ev.usuario_email;
-  if (ev.usuario_role === "service_role") return "Servidor (rota de serviço)";
+  if (ev.usuario_role === "service_role") {
+    if (!ev.usuario_origem) return "Servidor (rota de serviço)";
+    return ROTULO_ORIGEM_SEM_PESSOA[ev.usuario_origem] ?? `Servidor (${ev.usuario_origem})`;
+  }
   if (ev.usuario_role && ev.usuario_role !== "authenticated") return `Banco (${ev.usuario_role})`;
   return "Desconhecido";
 }

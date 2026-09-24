@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const channelToken = req.headers.get("x-goog-channel-token");
   if (!channelId || !channelToken) return vazio(401);
 
-  const sb = createSupabaseServiceClient();
+  const sb = createSupabaseServiceClient({ email: null, origem: "google-agenda/aviso-do-google" });
   const { data: contaRow } = await sb
     .from("gestao_google_contas")
     .select("usuario_email,calendar_id,sync_token,channel_token")

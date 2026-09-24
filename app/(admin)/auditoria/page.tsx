@@ -37,6 +37,9 @@ const ACAO_CORES: Record<AuditoriaAcao, string> = {
   excluiu: "bg-red-100 text-red-700",
 };
 
+/** Quando a decisão de guardar tudo deve ser revista (AAAA-MM-DD, compara como texto). */
+const REVISAO_RETENCAO = "2027-09-01";
+
 function dataLocal(diasAtras = 0): string {
   const d = new Date();
   d.setDate(d.getDate() - diasAtras);
@@ -98,6 +101,9 @@ function AuditoriaConteudo() {
     setCampoRascunho("");
     setFiltros({ de: dataLocal(7), ate: dataLocal(0) });
   };
+  // Retenção (decisão dele, 23/09/2026): nada é apagado. Medido: ~60 MB/mês em
+  // uso normal, 47 GB livres. A linha no topo vira aviso quando a data chega.
+  const revisaoRetencaoVencida = dataLocal(0) >= REVISAO_RETENCAO;
   const periodoAtivo = (dias: number | null) =>
     dias === null ? !filtros.de && !filtros.ate : filtros.de === dataLocal(dias) && filtros.ate === dataLocal(0);
 
@@ -110,6 +116,11 @@ function AuditoriaConteudo() {
           <p className="text-sm text-gray-500">
             Tudo que foi criado, editado ou excluído no painel, gravado pelo banco no momento
             da mudança — quem, quando, o quê e o valor anterior. Só administradores veem esta tela.
+          </p>
+          <p className={`mt-1 text-xs ${revisaoRetencaoVencida ? "font-medium text-amber-700" : "text-gray-400"}`}>
+            {revisaoRetencaoVencida
+              ? "Revisar a retenção: a decisão de 23/09/2026 foi guardar tudo e rever o tamanho em setembro de 2027."
+              : "Retenção: nada é apagado. Decisão de 23/09/2026 — guardar tudo e rever em setembro de 2027."}
           </p>
         </div>
       </div>
@@ -361,6 +372,7 @@ function LinhaEvento({
             <span className="rounded bg-gray-100 px-1.5 py-0.5 font-medium text-gray-600">{rotuloModulo(ev.modulo)}</span>
             {empresa && <span className="truncate">{empresa}</span>}
             <span className="font-mono text-gray-400">{ev.tabela} · {ev.registro_id ?? "—"}</span>
+            {ev.usuario_email && ev.usuario_origem && <span className="text-gray-400">via {ev.usuario_origem}</span>}
           </p>
         </div>
         {rota && (

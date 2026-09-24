@@ -37,7 +37,7 @@ export function useAuth() {
 
       const { data: perfil } = await supabase
         .from("usuarios")
-        .select("id_usuario, nome, email, cargo, perfil, ativo_sistema, empresas_vinculadas, unidades, modulos_permitidos, funcao, nivel, funcoes_painel(ve_presenca_auditoria), pode_criar, pode_editar, pode_excluir, pode_escrever_quimicos, concedido_por, concedido_em, created_at, assinatura_url, tipo_certificado, certificado_pfx_path, certificado_validade, certificado_titular, mostrar_assinatura_imagem, cpf, crp, crm, registro_mte")
+        .select("id_usuario, nome, email, cargo, perfil, ativo_sistema, empresas_vinculadas, unidades, modulos_permitidos, funcao, nivel, funcoes_painel(ve_presenca_auditoria), pode_criar, pode_editar, pode_excluir, pode_escrever_quimicos, pode_enviar_sgg, concedido_por, concedido_em, created_at, assinatura_url, tipo_certificado, certificado_pfx_path, certificado_validade, certificado_titular, mostrar_assinatura_imagem, cpf, crp, crm, registro_mte")
         .eq("email", authUser.email)
         .single();
 

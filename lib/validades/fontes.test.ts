@@ -65,7 +65,7 @@ describe("fontesPermitidas", () => {
   it("ignora módulo que não abre documento nenhum", () => {
     // O técnico que perdeu os 9 cards no Início tem exatamente estes.
     assert.deepEqual(
-      fontesPermitidas(["produtividade", "escala_supervisores", "epi"]),
+      fontesPermitidas(["dimensionamento", "escala_supervisores", "epi"]),
       [],
     );
   });

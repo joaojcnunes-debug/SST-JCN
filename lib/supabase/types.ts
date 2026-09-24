@@ -46,14 +46,14 @@ export type ModuloPermitido =
   | "aet"
   | "aep"
   | "questionarios_psicossociais"
-  | "produtividade"
   | "investigacao_acidente"
   | "gestao_gerencial"
   | "epi"
   | "transferencias"
   | "equipamentos"
   | "frota"
-  | "escala_supervisores";
+  | "escala_supervisores"
+  | "dimensionamento";
 
 export const TODOS_MODULOS: ModuloPermitido[] = [
   "painel",
@@ -65,7 +65,6 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "aet",
   "aep",
   "questionarios_psicossociais",
-  "produtividade",
   "investigacao_acidente",
   "gestao_gerencial",
   "epi",
@@ -73,6 +72,7 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "equipamentos",
   "frota",
   "escala_supervisores",
+  "dimensionamento",
 ];
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
@@ -87,12 +87,12 @@ export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   aet: "AET – Análise Ergonômica do Trabalho",
   aep: "AEP – Análise Ergonômica Preliminar",
   questionarios_psicossociais: "Questionários Psicossociais / DRPS",
-  produtividade: "Projeção de Produtividade CHABRA",
   epi: "Gestão de EPI",
   transferencias: "Transferência de Equipamentos entre Bases",
   equipamentos: "Equipamentos JCN Consultoria (patrimônio interno)",
   frota: "Frota JCN Consultoria – Checklist de Veículos",
   escala_supervisores: "Escala de Supervisores",
+  dimensionamento: "Dimensionamento de Quadro (SST)",
 };
 
 // ─── Investigação de Acidente de Trabalho ────────────────────────────────────
@@ -488,6 +488,16 @@ export interface Empresa {
   cei: string | null;
   caepf: string | null;
   cno: string | null;
+  /**
+   * Base/unidade do SGG onde esta empresa existe (slug = chave de API usada no
+   * envio). Resolvido uma vez, não deduzido a cada envio: o mesmo CNPJ existe em
+   * até 4 bases com ids diferentes (SGG-RISCOS-01, v241).
+   */
+  sgg_base_sgg?: string | null;
+  /** `id_empresa` no SGG, único apenas dentro de `sgg_base_sgg`. */
+  sgg_id?: string | null;
+  sgg_resolvido_em?: string | null;
+  sgg_resolvido_por?: string | null;
   grau_risco: number | null;
   status: StatusEmpresa | null;
   observacao: string | null;
@@ -1012,6 +1022,13 @@ export interface Usuario {
    * NÃO é auto-concedível — write de `usuarios` segue gated por admin.
    */
   pode_escrever_quimicos?: boolean;
+  /**
+   * Capability de enviar a árvore de riscos da inspeção ao SGG (SGG-RISCOS-01, v241).
+   * Checada server-side na rota `app/api/sgg/enviar-riscos`; a RLS de `riscos` NÃO
+   * a consulta. Não herda `pode_criar`/`pode_editar`: escreve no CRM do cliente e
+   * a API do SGG não tem DELETE.
+   */
+  pode_enviar_sgg?: boolean;
   /** E-mail de quem concedeu `pode_escrever_quimicos` (auditoria, v189). */
   concedido_por?: string | null;
   /** Quando `pode_escrever_quimicos` foi concedido (auditoria, v189). */
@@ -2187,6 +2204,34 @@ type TableShape<T> = {
   Relationships: [];
 };
 
+/**
+ * Outbox do envio de riscos ao SGG (v241). Uma linha por (inspeção, setor, data).
+ * Escrita só pelo service client da rota — `authenticated` e `anon` não têm IUD.
+ * `status`: pendente|enviado|erro|duplicado|indeterminado (v252).
+ * `indeterminado` = a falha ocorreu DEPOIS de os bytes saírem; conferir no SGG
+ * antes de reenviar, porque a API não tem DELETE.
+ */
+export interface SggEnvio {
+  id_envio: string;
+  id_inspecao: string;
+  id_empresa: string;
+  id_setor: string;
+  base_sgg: string;
+  sgg_id_empresa: string;
+  sgg_id_setor: string;
+  sgg_ids_cargos: string;
+  data: string;
+  data_validade: string;
+  payload: unknown;
+  status: "pendente" | "enviado" | "erro" | "duplicado" | "indeterminado";
+  sgg_id_avaliacao?: string | null;
+  sgg_codigo?: string | null;
+  sgg_msg?: string | null;
+  ator_email: string;
+  criado_em?: string;
+  respondido_em?: string | null;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -2213,6 +2258,7 @@ export interface Database {
       cargos: TableShape<Cargo>;
       riscos: TableShape<Risco>;
       epi_epc: TableShape<EpiEpc>;
+      sgg_envios: TableShape<SggEnvio>;
       fotos: TableShape<Foto>;
       responsaveis: TableShape<Responsavel>;
       complementos: TableShape<Complemento>;
@@ -2291,6 +2337,8 @@ export interface AuditoriaEvento {
   /** NULL quando a gravação veio pelo token de serviço ou por psql — ver usuario_role. */
   usuario_email: string | null;
   usuario_role: string | null;
+  /** v256: de onde veio a gravação feita pelo token de serviço ("usuarios/criar", "formulario-publico"…). NULL no resto. */
+  usuario_origem?: string | null;
   campos_alterados: string[];
   antes: Record<string, unknown> | null;
   depois: Record<string, unknown> | null;

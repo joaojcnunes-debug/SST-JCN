@@ -27,11 +27,12 @@ import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
  *    Além disso, dos 55 usuários ativos, NENHUM tem CPF preenchido e 40 têm
  *    zero ou mais de uma unidade — e a entrega exige base única.
  *
- *  · `prod_colaboradores` parece um roster pelo nome, mas é planejamento de
+ *  · o antigo `prod_colaboradores` parecia um roster pelo nome, mas era planejamento de
  *    capacidade do módulo Produtividade: as colunas são
  *    `capacidade_docs_mes`/`capacidade_visitas_mes`, o `tipo` só assume
  *    `documentos` ou `tecnico_campo`, não há CPF nem matrícula, e o
- *    `id_unidade` é uuid de `prod_unidades` — outra dimensão, não a `unidades`
+ *    `id_unidade` era uuid de `prod_unidades` — outra dimensão, não a `unidades`.
+ *    As `prod_*` saíram em 2026-09-23 (DIM-01); quem faz esse papel hoje é `dim_colaboradores`
  *    que a entrega usa.
  *
  * Daí o cadastro próprio. É de propósito enxuto: nome e base bastam para

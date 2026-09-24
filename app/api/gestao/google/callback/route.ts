@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Grava CIFRADO via RPC (ENC_KEY por parâmetro; nunca persiste em coluna/GUC/log).
-  const svc = createSupabaseServiceClient();
+  const svc = createSupabaseServiceClient({ email: user.email, origem: "google-agenda/conectar" });
   const { error } = await svc.rpc("gestao_google_salvar_conta", {
     p_email: user.email,
     p_refresh_token: refreshToken,

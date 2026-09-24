@@ -21,6 +21,29 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/pdf/aep/[id]": ["./node_modules/@sparticuz/chromium/**/*"],
   },
+  async redirects() {
+    return [
+      // O módulo "Projeção de Produtividade" saiu em 2026-09-23 (DIM-01), substituído
+      // pelo /dimensionamento. As TELAS saem agora; as 7 tabelas prod_* continuam no
+      // banco por enquanto — o drop (v254) só entra depois que uma release realmente
+      // sair, senão a área de trabalho instalada fica com tela viva sobre tabela morta.
+      //
+      // 307 e não 308: o endereço novo NÃO é o mesmo conteúdo com outro nome. Cravar
+      // permanente no cache do navegador de quem tinha o link antigo seria apostar que
+      // a equivalência é definitiva — e o módulo novo é admin-only, então parte de quem
+      // tinha o antigo vai bater em /modulos de propósito.
+      {
+        source: "/produtividade",
+        destination: "/dimensionamento",
+        permanent: false,
+      },
+      {
+        source: "/produtividade/:caminho*",
+        destination: "/dimensionamento",
+        permanent: false,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       // Permite servir fotos do Supabase Storage.

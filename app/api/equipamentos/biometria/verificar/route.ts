@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
     // O template e lido pelo cliente de SERVICO, nunca pela sessao do usuario: a
     // funcao devolve texto claro, e quem tem o template pode reenviá-lo como sonda e
     // forjar a assinatura.
-    const servicoDb = createSupabaseServiceClient();
+    const servicoDb = createSupabaseServiceClient({ email: user.email, origem: "equipamentos/biometria" });
     const servico = servicoDb as unknown as Rpc;
 
     // ACHADO DO PORTÃO — e é aqui que o escopo de quem pode ser comparado se decide.

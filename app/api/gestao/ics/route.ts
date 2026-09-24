@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   const token = new URL(req.url).searchParams.get("token");
   if (!token) return new Response("Token ausente.", { status: 400 });
 
-  const sb = createSupabaseServiceClient();
+  const sb = createSupabaseServiceClient({ email: null, origem: "gestao/calendario-ics" });
   const { data: quadro } = await sb.from("gestao_quadros").select("id_quadro,nome").eq("ics_token", token).maybeSingle();
   const q = quadro as { id_quadro: string; nome: string } | null;
   if (!q) return new Response("Calendário indisponível.", { status: 404 });
@@ -43,10 +43,10 @@ export async function GET(req: NextRequest) {
   const linhas: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//JCN Consultoria//Gestao SST//PT-BR",
+    "PRODID:-//Chabra//Gestao SST//PT-BR",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    `X-WR-CALNAME:${escICS(q.nome)} · JCN Consultoria`,
+    `X-WR-CALNAME:${escICS(q.nome)} · Chabra`,
   ];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const t of (tarefas ?? []) as any[]) {
