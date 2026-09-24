@@ -157,10 +157,10 @@ describe("agruparPorDia", () => {
 
 describe("rotuloModulo", () => {
   test("os 3 ids que só existem na trilha têm rótulo", () => {
-    assert.equal(rotuloModulo("gestao_chabra"), "Gestão Chabra (tarefas)");
+    assert.equal(rotuloModulo("gestao_chabra"), "Gestão JCN (tarefas)");
     assert.equal(rotuloModulo("sistema"), "Sistema");
     assert.equal(rotuloModulo("pdfs"), "PDFs gerados");
-    assert.equal(rotuloModulo("frota"), "Frota Chabra – Checklist de Veículos");
+    assert.equal(rotuloModulo("frota"), "Frota JCN Consultoria – Checklist de Veículos");
   });
 });
 

@@ -84,7 +84,7 @@ export default function DimensionamentoLayout({ children }: { children: ReactNod
     <div className="min-h-screen">
       <SidebarShell
         title="Dimensionamento"
-        subtitle="Chabra"
+        subtitle="JCN Consultoria"
         logoHref="/dimensionamento"
         sections={sections}
       />

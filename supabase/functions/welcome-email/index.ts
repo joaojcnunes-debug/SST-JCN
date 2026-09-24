@@ -21,7 +21,7 @@ const APP_URL =
   Deno.env.get("APP_URL") ?? "https://painel-sst-chabra.vercel.app";
 const FROM_EMAIL =
   Deno.env.get("FROM_EMAIL") ??
-  "Painel SST Chabra <onboarding@resend.dev>";
+  "SST JCN Consultoria <onboarding@resend.dev>";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -45,7 +45,7 @@ function template({ email, nome, perfil, senha }: Body): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Painel SST Chabra</title>
+<title>SST JCN Consultoria</title>
 </head>
 <body style="margin:0;padding:0;background:#f0f7f0;font-family:Arial,sans-serif;color:#111827;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -56,14 +56,14 @@ function template({ email, nome, perfil, senha }: Body): string {
             <td style="background:linear-gradient(135deg,#1e4d28 0%,#006B54 100%);padding:32px 24px;text-align:center;">
               <div style="display:inline-block;width:56px;height:56px;border-radius:14px;background:rgba(255,255,255,.15);line-height:56px;font-size:28px;color:#ffffff;">🛡️</div>
               <h1 style="margin:12px 0 4px;color:#ffffff;font-size:24px;font-weight:700;">Painel SST</h1>
-              <p style="margin:0;color:rgba(255,255,255,.8);font-size:13px;">Chabra · Segurança e Saúde do Trabalho</p>
+              <p style="margin:0;color:rgba(255,255,255,.8);font-size:13px;">JCN Consultoria · Segurança e Saúde do Trabalho</p>
             </td>
           </tr>
           <tr>
             <td style="padding:28px 24px;">
               <h2 style="margin:0 0 12px;font-size:20px;color:#111827;">Bem-vindo(a), ${nome}!</h2>
               <p style="margin:0 0 16px;color:#374151;line-height:1.55;">
-                Sua conta no <strong>Painel SST Chabra</strong> foi criada. Você já pode
+                Sua conta no <strong>SST JCN Consultoria</strong> foi criada. Você já pode
                 acessar o sistema com os dados abaixo:
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;background:#f0f7f0;border:1px solid #c8e6c9;border-radius:8px;padding:14px;margin:0 0 20px;">
@@ -94,7 +94,7 @@ function template({ email, nome, perfil, senha }: Body): string {
             <td style="padding:14px 24px;background:#f9fafb;border-top:1px solid #e5e7eb;text-align:center;">
               <p style="margin:0;color:#6b7280;font-size:12px;">
                 Se você não esperava este e-mail, ignore-o.<br>
-                © Chabra · Painel SST
+                © JCN Consultoria · SST
               </p>
             </td>
           </tr>
@@ -159,7 +159,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       from: FROM_EMAIL,
       to: body.email,
-      subject: "Bem-vindo ao Painel SST Chabra",
+      subject: "Bem-vindo ao SST JCN Consultoria",
       html,
     }),
   });

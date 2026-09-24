@@ -99,7 +99,7 @@ const CARDS: HubCardCfg[] = [
   {
     modulo: "analise_quimicos",
     href: "/analise-quimicos",
-    title: "Análise de Químicos Chabra",
+    title: "Análise de Químicos JCN",
     description: "Análise quantitativa de agentes químicos e FISPQ",
     icon: <FlaskConical className="size-12" />,
     accent: "#0EA5E9",
@@ -182,7 +182,7 @@ const CARDS: HubCardCfg[] = [
   {
     modulo: "equipamentos",
     href: "/equipamentos",
-    title: "Equipamentos Chabra",
+    title: "Equipamentos JCN",
     description: "Patrimônio interno por base: notebooks, monitores, ar-condicionado e o que mais for da casa",
     icon: <HardDrive className="size-12" />,
     accent: "#1D4ED8",
@@ -204,7 +204,7 @@ const CARDS: HubCardCfg[] = [
   {
     modulo: "frota",
     href: "/frota",
-    title: "Frota Chabra",
+    title: "Frota JCN",
     description: "Checklist de saída de veículo: fotos obrigatórias, avarias, sinistros e abastecimento por base",
     icon: <Truck className="size-12" />,
     accent: "#1B3A8C",
@@ -238,7 +238,7 @@ const CARDS: HubCardCfg[] = [
 const CATEGORIES: { id: Categoria; label: string; icon: React.ReactNode }[] = [
   { id: "seguranca",    label: "Segurança do Trabalho",      icon: <Shield className="size-4" /> },
   { id: "psicossocial", label: "NR — Fatores Psicossocial",  icon: <Brain className="size-4" /> },
-  { id: "interno",      label: "Chabra Sistema Interno",     icon: <Boxes className="size-4" /> },
+  { id: "interno",      label: "JCN Sistema Interno",     icon: <Boxes className="size-4" /> },
 ];
 
 const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; icon: React.ReactNode }> = {
@@ -253,7 +253,7 @@ const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; ic
     icon: <Brain className="size-12" />,
   },
   interno: {
-    descricao: "Patrimônio Chabra, inventário de equipamentos e sistemas de gestão interna",
+    descricao: "Patrimônio JCN, inventário de equipamentos e sistemas de gestão interna",
     accent: "#2563EB",
     icon: <Boxes className="size-12" />,
   },
@@ -427,7 +427,7 @@ function InicioContent() {
             </div>
           )}
           <div className="leading-tight">
-            <p className="text-sm font-bold text-white">Chabra</p>
+            <p className="text-sm font-bold text-white">JCN Consultoria</p>
             <p className="text-[11px] text-white/70">
               Segurança e Saúde do Trabalho
             </p>
@@ -601,7 +601,7 @@ function InicioContent() {
         )}
 
         <p className="mt-10 text-center text-xs text-white/50">
-          © {new Date().getFullYear()} Chabra · Sistemas Internos
+          © {new Date().getFullYear()} JCN Consultoria · Sistemas Internos
           {process.env.NEXT_PUBLIC_APP_VERSION && (
             <span className="ml-2 opacity-60">
               v{process.env.NEXT_PUBLIC_APP_VERSION}
@@ -791,7 +791,7 @@ function GestaoChabraDirectCard() {
           <KanbanSquare className="size-12" />
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold text-gray-900">Gestão Chabra</h2>
+          <h2 className="text-lg font-bold text-gray-900">Gestão JCN</h2>
           <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
             Quadros de tarefas da equipe: espaços, prazos, responsáveis e automações
           </p>
