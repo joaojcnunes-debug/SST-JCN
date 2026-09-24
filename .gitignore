@@ -48,4 +48,6 @@ electron/assets/*.ico
 .vercel
 electron-release.log
 release-*.log
-*.log
+
+# estado local do Supabase CLI (projeto Supabase desligado em 2026-09)
+supabase/.temp/

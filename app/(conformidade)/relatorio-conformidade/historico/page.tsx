@@ -9,10 +9,12 @@ import {
   Plus,
 } from "lucide-react";
 import { useRelatoriosConformidade } from "@/lib/hooks/useRelatoriosConformidade";
-import { listarNRs } from "@/lib/conformidade/checklists";
+import { listarNRs, rotuloNR, NR_LIVRE } from "@/lib/conformidade/checklists";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useCanCreate } from "@/lib/hooks/useUsuario";
 import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
+import { buscar } from "@/lib/busca/texto";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 export default function HistoricoConformidadePage() {
   const canCreate = useCanCreate();
@@ -32,21 +34,19 @@ export default function HistoricoConformidadePage() {
     return m;
   }, [empresas]);
 
-  const filtrados = useMemo(() => {
-    const termo = q.trim().toLowerCase();
-    return relatorios.filter((r) => {
+  const { itens: filtrados, aproximado } = useMemo(() => {
+    const dosFiltros = relatorios.filter((r) => {
       if (nrFilter !== "todas" && r.nr_codigo !== nrFilter) return false;
       if (statusFilter !== "todos" && r.status !== statusFilter) return false;
-      if (!termo) return true;
-      const empresaNome = empresaMap.get(r.id_empresa) ?? "";
-      return (
-        r.nr_codigo.toLowerCase().includes(termo) ||
-        r.nr_titulo.toLowerCase().includes(termo) ||
-        (r.setor ?? "").toLowerCase().includes(termo) ||
-        (r.responsavel ?? "").toLowerCase().includes(termo) ||
-        empresaNome.toLowerCase().includes(termo)
-      );
+      return true;
     });
+    // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem por data.
+    return buscar(
+      dosFiltros,
+      q,
+      (r) => [rotuloNR(r.nr_codigo), r.nr_titulo, r.setor, r.responsavel, empresaMap.get(r.id_empresa)],
+      { manterOrdem: true },
+    );
   }, [relatorios, q, nrFilter, statusFilter, empresaMap]);
 
   return (
@@ -96,6 +96,7 @@ export default function HistoricoConformidadePage() {
           className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary"
         >
           <option value="todas">Todas as NRs</option>
+          <option value={NR_LIVRE}>Sem NR</option>
           {nrs.map((nr) => (
             <option key={nr.codigo} value={nr.codigo}>
               {nr.codigo}
@@ -122,6 +123,7 @@ export default function HistoricoConformidadePage() {
         </div>
       ) : (
         <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm reveal-up card-hover">
+          <AvisoBuscaAproximada aproximado={aproximado} busca={q} total={filtrados.length} className="m-3" />
           {filtrados.map((r) => (
             <Link
               key={r.id_relatorio}
@@ -132,7 +134,7 @@ export default function HistoricoConformidadePage() {
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="truncate text-sm font-semibold text-gray-900">
-                    {r.nr_codigo} — {empresaMap.get(r.id_empresa) ?? "—"}
+                    {rotuloNR(r.nr_codigo)} — {empresaMap.get(r.id_empresa) ?? "—"}
                   </p>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${

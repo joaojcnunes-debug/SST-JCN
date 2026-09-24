@@ -5,6 +5,7 @@ import { BadgeCheck, Download, ShieldCheck } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import { usePdfAssinado } from "@/lib/hooks/usePdfsGerados";
 import BotaoAssinarPdf from "@/components/ui/BotaoAssinarPdf";
 import StorageImg from "@/components/ui/StorageImg";
@@ -68,6 +69,7 @@ export default function AssinaturaRelatorio({
     email?: string | null;
     registro_mte?: string | null;
     crp?: string | null;
+    crm?: string | null;
   } | null>(null);
 
   const { pdfAssinado, recarregar } = usePdfAssinado(tabelaNome, docId);
@@ -79,7 +81,7 @@ export default function AssinaturaRelatorio({
       if (!user?.email) return;
       supabase
         .from("usuarios")
-        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem, cargo, email, registro_mte, crp")
+        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem, cargo, email, registro_mte, crp, crm")
         .eq("email", user.email)
         .single()
         .then(({ data }) => setSigData(data ?? null));
@@ -87,12 +89,12 @@ export default function AssinaturaRelatorio({
       const firstWord = (nomeResponsavel ?? "").trim().split(/\s+/)[0];
       supabase
         .from("usuarios")
-        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem, cargo, nome, email, registro_mte, crp")
+        .select("assinatura_url, tipo_certificado, mostrar_assinatura_imagem, cargo, nome, email, registro_mte, crp, crm")
         .ilike("nome", `%${firstWord}%`)
         .limit(20)
         .then(({ data }) => {
           if (!data?.length) { setSigData(null); return; }
-          type Row = { nome: string; email: string; assinatura_url: string | null; tipo_certificado: "A1" | "A3" | null; mostrar_assinatura_imagem: boolean; cargo: string | null; registro_mte: string | null; crp: string | null };
+          type Row = { nome: string; email: string; assinatura_url: string | null; tipo_certificado: "A1" | "A3" | null; mostrar_assinatura_imagem: boolean; cargo: string | null; registro_mte: string | null; crp: string | null; crm: string | null };
           const match = (data as Row[]).find((u) => nameMatches(u.nome, nomeResponsavel!));
           if (match) {
             const { nome: _n, ...rest } = match;
@@ -107,20 +109,12 @@ export default function AssinaturaRelatorio({
 
   async function handleBaixarPdf() {
     if (!pdfAssinado) return;
-    const { data, error } = await createSupabaseBrowserClient()
-      .storage
-      .from("pdfs-assinados")
-      .download(pdfAssinado.pdf_path);
-    if (error || !data) {
+    // Bucket privado: download via rota server-side same-origin (baixar-assinado).
+    try {
+      await baixarPdfAssinado(pdfAssinado.pdf_path, "relatorio-assinado.pdf");
+    } catch {
       toast.error("Não foi possível baixar o PDF. Tente novamente.");
-      return;
     }
-    const url = URL.createObjectURL(data);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "relatorio-assinado.pdf";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
   const cargo = cargoResponsavel ?? sigData?.cargo ?? user?.cargo ?? "";
@@ -129,12 +123,14 @@ export default function AssinaturaRelatorio({
   const certificado = sigData?.tipo_certificado ?? null;
   const assinaturaEmpresaUrl = configs?.assinatura_empresa_url ?? null;
 
-  // Registro profissional (Reg. MTE para técnicos, CRP para psicólogos).
+  // Registro profissional (Reg. MTE para técnicos, CRP para psicólogos, CRM para médicos).
   const registro = sigData?.registro_mte
     ? `Reg. MTE ${sigData.registro_mte}`
     : sigData?.crp
       ? `CRP ${sigData.crp}`
-      : null;
+      : sigData?.crm
+        ? `CRM ${sigData.crm}`
+        : null;
   // Assinatura por IMAGEM (carimbo da imagem cadastrada) → mostra só a imagem,
   // sem o quadro "Assinado digitalmente".
   const assinaturaPorImagem =

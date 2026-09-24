@@ -8,7 +8,9 @@ export type ModuloTextoPadrao =
   | "apreciacao_maquinas"
   | "aep"
   | "aet"
-  | "psicossocial";
+  | "psicossocial"
+  | "plano_acao"
+  | "qps";
 
 export type OrientacaoPagina = "retrato" | "paisagem";
 
@@ -119,7 +121,7 @@ export interface ModuloConfig {
 export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
   sst: {
     modulo: "sst",
-    titulo: "Texto Padrão — SST JCN Consultoria",
+    titulo: "Texto Padrão — Painel SST",
     descricao:
       "Monte o laudo como lista única: arraste/reordene os capítulos editáveis em relação ao bloco do relatório (inventário, riscos, plano — gerado automaticamente). Textos com ordem menor saem antes do relatório; maiores, depois.",
     destino: "A ordem definida aqui vale para o relatório de inspeção, ficha NR-01 e PGR.",
@@ -197,7 +199,7 @@ export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
     fixos: [
       { titulo: "Indicadores de Necessidade de AET", slug_fixo: "aep_escalonamento", descricao: "Lista de setores que exigem AET completa — gerado automaticamente.", ordem_base: 3000 },
       { titulo: "Triagem Ergonômica por Setor", slug_fixo: "aep_triagem", descricao: "Tabela de riscos ergonômicos por setor — gerado automaticamente.", ordem_base: 3500 },
-      { titulo: "Considerações Finais e Encaminhamentos", slug_fixo: "aep_consideracoes", descricao: "Conclusão do relatório — gerado automaticamente.", ordem_base: 5000 },
+      { titulo: "Considerações Finais e Encaminhamentos", slug_fixo: "aep_consideracoes", descricao: "Conclusão do relatório: usa as \"Considerações finais\" dos Dados da Análise; em branco, é gerada automaticamente a partir dos setores avaliados.", ordem_base: 5000 },
       { titulo: "Assinatura do Responsável Técnico", slug_fixo: "aep_assinatura", descricao: "Rodapé de assinatura — gerado automaticamente.", ordem_base: 9000 },
     ],
   },
@@ -213,6 +215,7 @@ export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
       { titulo: "Agentes Ambientais por Setor", slug_fixo: "aet_agentes_ambientais", descricao: "Riscos ambientais por setor — gerado automaticamente.", ordem_base: 1090 },
       { titulo: "Análise Ergonômica do Trabalho", slug_fixo: "aet_analise_ergonomica", descricao: "Análise por setor (OWAS, biomecânica) — gerado automaticamente.", ordem_base: 1100 },
       { titulo: "Fatores Psicossociais (QPS)", slug_fixo: "aet_psicossocial", descricao: "Resultados do QPS Nordic — gerado automaticamente.", ordem_base: 2000 },
+      { titulo: "Plano de Ação (5W2H)", slug_fixo: "aet_plano_acao", descricao: "Ações 5W2H do laudo, agrupadas por setor — só imprime quando há pelo menos uma ação (v207).", ordem_base: 4500 },
       { titulo: "Considerações Finais", slug_fixo: "aet_consideracoes_finais", descricao: "Conclusão do laudo — gerado automaticamente.", ordem_base: 5000 },
       { titulo: "Assinatura do Responsável Técnico", slug_fixo: "aet_assinatura", descricao: "Folha de assinatura — gerado automaticamente.", ordem_base: 5500 },
     ],
@@ -232,6 +235,37 @@ export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
       { titulo: "Plano de Medidas de Controle", slug_fixo: "drps_plano_medidas", descricao: "Plano anual de ações com responsáveis e prazos — gerado automaticamente.", ordem_base: 4500 },
       { titulo: "Revisão e Monitoramento", slug_fixo: "drps_revisao", descricao: "Checklist de revisão e equipe responsável — gerado automaticamente.", ordem_base: 5000 },
       { titulo: "Assinatura Técnica", slug_fixo: "drps_assinatura", descricao: "Rodapé de assinatura do responsável técnico — gerado automaticamente.", ordem_base: 9000 },
+    ],
+  },
+  qps: {
+    modulo: "qps",
+    titulo: "Texto Padrão — QAP (Questionários Psicossociais)",
+    descricao:
+      "Monte o laudo da QAP como uma lista única, igual ao DRPS: arraste/reordene os capítulos editáveis (capa, introdução, metodologia…) e as seções do sistema. A ordem definida aqui é a ordem do laudo.",
+    destino: "A ordem definida aqui é exatamente a ordem do laudo da QAP gerado.",
+    posicoesDisponiveis: ["inicio", "fim"],
+    ordenacaoUnificada: true,
+    fixos: [
+      { titulo: "Caracterização dos Trabalhadores", slug_fixo: "qps_caracterizacao", descricao: "Respondentes por setor e cargo — gerado automaticamente.", ordem_base: 1500 },
+      { titulo: "Análise por Setor", slug_fixo: "qps_analise_setor", descricao: "Categorias × setores com gravidade (régua do DRPS), probabilidade e matriz; agravos, medidas e conclusão de cada setor — gerado automaticamente.", ordem_base: 2000 },
+      { titulo: "Conclusão Técnica Consolidada", slug_fixo: "qps_conclusao", descricao: "Conclusão do consolidado (Todos os setores) escrita na tela Análise — gerada automaticamente.", ordem_base: 4000 },
+      { titulo: "Plano de Medidas de Controle", slug_fixo: "qps_plano_medidas", descricao: "Plano anual dos programas com responsáveis — gerado automaticamente.", ordem_base: 4500 },
+      { titulo: "Plano de Ação 5W2H", slug_fixo: "qps_plano_acao_5w2h", descricao: "Ações 5W2H da aplicação — só imprime quando há pelo menos uma ação preenchida.", ordem_base: 4600 },
+      { titulo: "Revisão e Monitoramento", slug_fixo: "qps_revisao", descricao: "Monitoramento por setor × categoria, checklist de revisão e equipe — gerado automaticamente.", ordem_base: 5000 },
+      { titulo: "Assinatura Técnica", slug_fixo: "qps_assinatura", descricao: "Folha de assinatura do responsável técnico — gerada automaticamente.", ordem_base: 9000 },
+    ],
+  },
+  plano_acao: {
+    modulo: "plano_acao",
+    titulo: "Texto Padrão — Plano de Ação 5W2H",
+    descricao:
+      "Capítulos do PDF do Plano de Ação, gerado por empresa na tela do módulo. Arraste/reordene os textos editáveis em relação à tabela 5W2H (gerada automaticamente).",
+    destino: "A ordem definida aqui é a ordem do PDF do Plano de Ação.",
+    posicoesDisponiveis: ["inicio", "fim"],
+    ordenacaoUnificada: true,
+    fixos: [
+      { titulo: "Plano de Ação 5W2H",               slug_fixo: "plano_acao_tabela",     descricao: "Tabela das ações (o quê, por quê, onde, quando, quem, como, quanto) — gerada automaticamente a partir dos filtros da tela.", ordem_base: 2000 },
+      { titulo: "Assinatura do Responsável Técnico", slug_fixo: "plano_acao_assinatura", descricao: "Folha de assinatura — gerada automaticamente.", ordem_base: 9000 },
     ],
   },
 };

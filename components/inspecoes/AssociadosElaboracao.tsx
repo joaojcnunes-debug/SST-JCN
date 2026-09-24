@@ -10,6 +10,8 @@ import {
   useUsuariosParaAssociar,
 } from "@/lib/hooks/useInspecaoAssociados";
 import type { Usuario } from "@/lib/supabase/types";
+import { buscar } from "@/lib/busca/texto";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 /** Bloco de "Associados" da elaboração (Documento SGG). Vários usuários podem se
  *  associar; admin pode associar/remover qualquer um. Convive com o fluxo de status. */
@@ -18,12 +20,17 @@ export default function AssociadosElaboracao({
   user,
   isAdmin,
   responsavelNome,
+  elaboracaoStatus,
+  concluidaEm,
 }: {
   idInspecao: string;
   user: Usuario | null;
   isAdmin: boolean;
   /** Quem assumiu a elaboração pelo fluxo de status (elaboracao_responsavel). */
   responsavelNome?: string | null;
+  /** Situação e data do documento — para limpar o responsável sem mudar o resto. */
+  elaboracaoStatus?: "PENDENTE" | "EM_ELABORACAO" | "CONCLUIDO" | null;
+  concluidaEm?: string | null;
 }) {
   const { data: associados = [] } = useInspecaoAssociados(idInspecao);
   const { data: usuarios = [] } = useUsuariosParaAssociar();
@@ -35,6 +42,8 @@ export default function AssociadosElaboracao({
   const jaAssociados = new Set(associados.map((a) => a.id_usuario));
   const disponiveis = usuarios.filter((u) => !jaAssociados.has(u.id_usuario));
   const podeRemover = (idUsuario: string) => isAdmin || idUsuario === user?.id_usuario;
+  const ehResponsavel = (nome: string) =>
+    !!responsavelNome?.trim() && nome.trim().toLowerCase() === responsavelNome.trim().toLowerCase();
 
   // Quem assumiu pelo fluxo de status, se ainda não estiver na tabela de associados.
   const respTrim = responsavelNome?.trim() || "";
@@ -64,6 +73,24 @@ export default function AssociadosElaboracao({
               {iniciais(respImplicito)}
             </span>
             <span className="text-gray-700">{respImplicito}</span>
+            {/* Sem linha de associado (109 documentos na base de 21/09) só o supervisor tira — e tirar é limpar o responsável. */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() =>
+                  desassociar.mutate({
+                    id_inspecao: idInspecao,
+                    id: null,
+                    limparResponsavel: { status: elaboracaoStatus ?? null, concluidaEm: concluidaEm ?? null },
+                  })
+                }
+                disabled={desassociar.isPending}
+                className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                title="Tirar o responsável do documento"
+              >
+                <X className="size-3" />
+              </button>
+            )}
           </span>
         )}
 
@@ -82,10 +109,19 @@ export default function AssociadosElaboracao({
             {podeRemover(a.id_usuario) && (
               <button
                 type="button"
-                onClick={() => desassociar.mutate({ id_inspecao: idInspecao, id: a.id })}
+                onClick={() =>
+                  desassociar.mutate({
+                    id_inspecao: idInspecao,
+                    id: a.id,
+                    // Sai o responsável → sai o nome do documento (senão ele volta como chip e segue no gráfico).
+                    limparResponsavel: ehResponsavel(a.nome)
+                      ? { status: elaboracaoStatus ?? null, concluidaEm: concluidaEm ?? null }
+                      : null,
+                  })
+                }
                 disabled={desassociar.isPending}
                 className="text-gray-400 hover:text-red-600 disabled:opacity-50"
-                title="Remover associado"
+                title={ehResponsavel(a.nome) ? "Remover associado (tira também o responsável do documento)" : "Remover associado"}
               >
                 <X className="size-3" />
               </button>
@@ -117,13 +153,15 @@ export default function AssociadosElaboracao({
                   </div>
                   <div className="max-h-52 overflow-auto py-1">
                     {(() => {
-                      const filtrados = disponiveis.filter((u) =>
-                        u.nome.toLowerCase().includes(busca.trim().toLowerCase()),
-                      );
+                      // Busca tolerante (acento, ordem das palavras, erro de digitação), ranqueada.
+                      const { itens: filtrados, aproximado } = buscar(disponiveis, busca, (u) => [u.nome]);
                       if (filtrados.length === 0) {
                         return <p className="px-3 py-2 text-xs text-gray-400">Nenhum usuário encontrado.</p>;
                       }
-                      return filtrados.map((u) => (
+                      const aviso = (
+                        <AvisoBuscaAproximada key="__aviso" aproximado={aproximado} busca={busca} total={filtrados.length} compacto />
+                      );
+                      return [aviso, ...filtrados.map((u) => (
                         <button
                           key={u.id_usuario}
                           type="button"
@@ -147,7 +185,7 @@ export default function AssociadosElaboracao({
                           </span>
                           <span className="min-w-0 truncate">{u.nome}</span>
                         </button>
-                      ));
+                      ))];
                     })()}
                   </div>
                 </div>

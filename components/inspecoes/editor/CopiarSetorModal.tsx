@@ -24,15 +24,21 @@ interface Props {
   idEmpresaOrigem: string;
 }
 
-type Modo = "outra_inspecao" | "outra_empresa";
+type Modo = "mesma_inspecao" | "outra_inspecao" | "outra_empresa";
 
 /**
  * Copia um Setor pra:
+ * - A MESMA inspeção, com outro nome (modo: mesma_inspecao) — é o caso de
+ *   "Portaria" virar "Portaria noturna" ou "Pista" ganhar variação de altura,
+ *   sem recadastrar tudo à mão. Foi o que faltava: a base tem 12 grafias
+ *   diferentes de Portaria/Pista, incluindo "Pista - altuira" com typo.
  * - Outra inspeção da MESMA empresa (modo: outra_inspecao)
  * - Inspeção de OUTRA empresa (modo: outra_empresa, com cascata)
  *
  * Opções:
  * - Copiar cargos vinculados (default ON)
+ * - Copiar treinamentos vinculados (default ON) — do setor e, quando os cargos
+ *   também vão, os de cada cargo
  * - Copiar riscos vinculados (default OFF)
  * - Copiar EPIs/EPCs vinculados aos riscos (depende de copiar riscos)
  *
@@ -49,30 +55,35 @@ export default function CopiarSetorModal({
   const qc = useQueryClient();
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
-  const [modo, setModo] = useState<Modo>("outra_inspecao");
+  const [modo, setModo] = useState<Modo>("mesma_inspecao");
+  const [nomeNovo, setNomeNovo] = useState("");
   const [idEmpresaDestino, setIdEmpresaDestino] = useState<string | null>(null);
   const [idInspecaoDestino, setIdInspecaoDestino] = useState<string | null>(
     null
   );
   const [copiarCargos, setCopiarCargos] = useState(true);
+  const [copiarTreinamentos, setCopiarTreinamentos] = useState(true);
   const [copiarRiscos, setCopiarRiscos] = useState(false);
   const [copiarEpis, setCopiarEpis] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setModo("outra_inspecao");
+      setModo("mesma_inspecao");
+      // Nasce com o nome de origem: quem duplica edita para "Portaria noturna".
+      setNomeNovo(setor?.setor_ghe ?? "");
       setIdEmpresaDestino(null);
       setIdInspecaoDestino(null);
       setCopiarCargos(true);
+      setCopiarTreinamentos(true);
       setCopiarRiscos(false);
       setCopiarEpis(false);
     }
-  }, [open]);
+  }, [open, setor]);
 
-  // Inspeções para o select destino. No modo "outra_inspecao" é da mesma
-  // empresa de origem; no modo "outra_empresa" é da empresa escolhida.
+  // Inspeções para o select destino. Nos modos da mesma empresa é a empresa de
+  // origem; no modo "outra_empresa" é a empresa escolhida.
   const idEmpresaQuery =
-    modo === "outra_inspecao" ? idEmpresaOrigem : idEmpresaDestino;
+    modo === "outra_empresa" ? idEmpresaDestino : idEmpresaOrigem;
 
   const { data: inspecoesDestino = [] } = useQuery({
     queryKey: ["copiar-setor-inspecoes", idEmpresaQuery],
@@ -98,20 +109,27 @@ export default function CopiarSetorModal({
   const copiar = useMutation({
     mutationFn: async () => {
       if (!setor) throw new Error("Setor não selecionado");
-      if (!idInspecaoDestino) throw new Error("Selecione a inspeção destino");
+
+      // Duplicar em lugar: destino é a própria inspeção do setor de origem.
+      const inspecaoFinal =
+        modo === "mesma_inspecao" ? setor.id_inspecao : idInspecaoDestino;
+      if (!inspecaoFinal) throw new Error("Selecione a inspeção destino");
 
       const idEmpresaFinal =
-        modo === "outra_inspecao" ? idEmpresaOrigem : idEmpresaDestino;
+        modo === "outra_empresa" ? idEmpresaDestino : idEmpresaOrigem;
       if (!idEmpresaFinal)
         throw new Error("Empresa de destino inválida");
 
-      // 1) Cria novo setor com o mesmo nome+descrição
+      const nome = nomeNovo.trim();
+      if (!nome) throw new Error("Dê um nome ao setor novo");
+
+      // 1) Cria novo setor com o nome escolhido e o resto igual ao de origem
       const novoIdSetor = gerarId("SET");
       const novoSetor: Partial<Setor> = {
         id_setor: novoIdSetor,
-        id_inspecao: idInspecaoDestino,
+        id_inspecao: inspecaoFinal,
         id_empresa: idEmpresaFinal,
-        setor_ghe: setor.setor_ghe,
+        setor_ghe: nome,
         descricao: setor.descricao,
         conformidade: setor.conformidade,
         nao_conformidade: setor.nao_conformidade,
@@ -140,7 +158,7 @@ export default function CopiarSetorModal({
             mapaCargo.set(c.id_cargo, novoId);
             return {
               id_cargo: novoId,
-              id_inspecao: idInspecaoDestino,
+              id_inspecao: inspecaoFinal,
               id_empresa: idEmpresaFinal,
               id_setor: novoIdSetor,
               cargo: c.cargo,
@@ -151,6 +169,54 @@ export default function CopiarSetorModal({
             .from("cargos")
             .insert(novosCargos as never);
           if (errCgo) throw errCgo;
+        }
+      }
+
+      // 2b) Treinamentos — tabelas de ligação puras (id_treinamento + id_alvo).
+      // Sem isso o setor duplicado nasce sem nenhum treinamento vinculado, que
+      // é justamente parte da configuração que se quer preservar.
+      if (copiarTreinamentos) {
+        const { data: treinoSetor } = await supabase
+          .from("treinamentos_setor")
+          .select("id_treinamento")
+          .eq("id_setor", setor.id_setor);
+        const listaSetor = (treinoSetor ?? []) as { id_treinamento: string }[];
+        if (listaSetor.length > 0) {
+          const { error: errTS } = await supabase
+            .from("treinamentos_setor")
+            .insert(
+              listaSetor.map((t) => ({
+                id_treinamento: t.id_treinamento,
+                id_setor: novoIdSetor,
+              })) as never,
+            );
+          if (errTS) throw errTS;
+        }
+
+        // Os do cargo só fazem sentido se os cargos vieram junto.
+        if (mapaCargo.size > 0) {
+          const { data: treinoCargo } = await supabase
+            .from("treinamentos_cargo")
+            .select("id_treinamento, id_cargo")
+            .in("id_cargo", [...mapaCargo.keys()]);
+          const listaCargo = (treinoCargo ?? []) as {
+            id_treinamento: string;
+            id_cargo: string;
+          }[];
+          const novos = listaCargo
+            .map((t) => {
+              const novoIdCargo = mapaCargo.get(t.id_cargo);
+              return novoIdCargo
+                ? { id_treinamento: t.id_treinamento, id_cargo: novoIdCargo }
+                : null;
+            })
+            .filter((t): t is NonNullable<typeof t> => t !== null);
+          if (novos.length > 0) {
+            const { error: errTC } = await supabase
+              .from("treinamentos_cargo")
+              .insert(novos as never);
+            if (errTC) throw errTC;
+          }
         }
       }
 
@@ -169,7 +235,7 @@ export default function CopiarSetorModal({
             return {
               ...r,
               id_risco: novoId,
-              id_inspecao: idInspecaoDestino,
+              id_inspecao: inspecaoFinal,
               id_empresa: idEmpresaFinal,
               id_setor: novoIdSetor,
               // Mantém o cargo apenas se também copiamos cargos
@@ -204,7 +270,7 @@ export default function CopiarSetorModal({
                 return {
                   id_protecao: gerarId("EPI"),
                   id_risco: novoIdRisco,
-                  id_inspecao: idInspecaoDestino,
+                  id_inspecao: inspecaoFinal,
                   id_empresa: idEmpresaFinal,
                   id_setor: novoIdSetor,
                   tipo: e.tipo,
@@ -225,28 +291,38 @@ export default function CopiarSetorModal({
         }
       }
 
-      return idInspecaoDestino;
+      return inspecaoFinal;
     },
-    onSuccess: (idInspecaoDestinoFinal) => {
+    onSuccess: (inspecaoFinal) => {
       qc.invalidateQueries({ queryKey: ["inspecao", setor?.id_inspecao] });
-      if (idInspecaoDestinoFinal !== setor?.id_inspecao) {
-        qc.invalidateQueries({
-          queryKey: ["inspecao", idInspecaoDestinoFinal],
-        });
+      if (inspecaoFinal !== setor?.id_inspecao) {
+        qc.invalidateQueries({ queryKey: ["inspecao", inspecaoFinal] });
       }
-      toast.success("Setor copiado");
+      toast.success(
+        modo === "mesma_inspecao" ? "Setor duplicado" : "Setor copiado",
+      );
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const temNome = !!nomeNovo.trim();
   const podeConfirmar =
-    modo === "outra_inspecao"
-      ? !!idInspecaoDestino
-      : !!idEmpresaDestino && !!idInspecaoDestino;
+    modo === "mesma_inspecao"
+      ? temNome
+      : modo === "outra_inspecao"
+        ? temNome && !!idInspecaoDestino
+        : temNome && !!idEmpresaDestino && !!idInspecaoDestino;
+
+  // Duplicar no mesmo laudo mantendo o nome cria dois setores homônimos — que é
+  // exatamente a bagunça que esta tela existe para evitar. Avisa, não bloqueia.
+  const nomeRepetido =
+    modo === "mesma_inspecao"
+    && temNome
+    && nomeNovo.trim().toLowerCase() === (setor?.setor_ghe ?? "").trim().toLowerCase();
 
   return (
-    <Modal open={open} onClose={onClose} title="Copiar Setor" size="lg">
+    <Modal open={open} onClose={onClose} title="Duplicar / Copiar Setor" size="lg">
       {setor && (
         <div className="space-y-4">
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
@@ -264,7 +340,26 @@ export default function CopiarSetorModal({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setModo("mesma_inspecao");
+                setIdInspecaoDestino(null);
+              }}
+              className={cn(
+                "rounded-lg border-2 p-3 text-left transition-colors",
+                modo === "mesma_inspecao"
+                  ? "border-verde-primary bg-verde-light"
+                  : "border-gray-200 bg-white hover:border-gray-300"
+              )}
+            >
+              <Copy className="size-5 text-verde-primary" />
+              <p className="mt-1 text-sm font-semibold text-gray-900">
+                Duplicar aqui
+              </p>
+              <p className="text-xs text-gray-600">Neste mesmo laudo</p>
+            </button>
             <button
               type="button"
               onClick={() => {
@@ -305,6 +400,26 @@ export default function CopiarSetorModal({
               </p>
               <p className="text-xs text-gray-600">Empresa → Inspeção</p>
             </button>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">
+              Nome do setor novo *
+            </label>
+            <input
+              type="text"
+              value={nomeNovo}
+              onChange={(e) => setNomeNovo(e.target.value)}
+              placeholder="Ex.: Portaria noturna"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            />
+            {nomeRepetido && (
+              <p className="mt-1 text-xs text-amber-warning">
+                Vai ficar com o mesmo nome do original — dois setores
+                &ldquo;{setor.setor_ghe}&rdquo; neste laudo. Ajuste para algo
+                como &ldquo;{setor.setor_ghe} noturna&rdquo;.
+              </p>
+            )}
           </div>
 
           {modo === "outra_empresa" && (
@@ -378,6 +493,22 @@ export default function CopiarSetorModal({
             <label className="flex cursor-pointer items-start gap-2 px-2 py-1 hover:bg-gray-50">
               <input
                 type="checkbox"
+                checked={copiarTreinamentos}
+                onChange={(e) => setCopiarTreinamentos(e.target.checked)}
+                className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+              />
+              <span className="text-sm">
+                <span className="font-medium text-gray-900">
+                  Treinamentos vinculados
+                </span>
+                <span className="block text-xs text-gray-600">
+                  Os do setor e, se os cargos vierem junto, os de cada cargo
+                </span>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-2 px-2 py-1 hover:bg-gray-50">
+              <input
+                type="checkbox"
                 checked={copiarRiscos}
                 onChange={(e) => {
                   setCopiarRiscos(e.target.checked);
@@ -437,7 +568,13 @@ export default function CopiarSetorModal({
               className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
             >
               <Copy className="size-4" />
-              {copiar.isPending ? "Copiando..." : "Copiar Setor"}
+              {copiar.isPending
+                ? modo === "mesma_inspecao"
+                  ? "Duplicando..."
+                  : "Copiando..."
+                : modo === "mesma_inspecao"
+                  ? "Duplicar Setor"
+                  : "Copiar Setor"}
             </button>
           </div>
         </div>

@@ -10,12 +10,12 @@ import {
   AlertTriangle,
   ListChecks,
   MessageSquarePlus,
-  HardHat,
   User,
   LogOut,
   Menu,
   X,
   Shield,
+  HardHat,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
@@ -59,7 +59,7 @@ export default function PortalClienteLayout({ children }: { children: React.Reac
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="force-light flex min-h-screen bg-gray-50">
       {/* Overlay mobile */}
       {menuAberto && (
         <div
@@ -84,6 +84,10 @@ export default function PortalClienteLayout({ children }: { children: React.Reac
               alt="Logo"
               className="h-9 w-auto max-w-[38px] rounded-md bg-white object-contain p-0.5 shadow"
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                const img = e.currentTarget as HTMLImageElement;
+                if (!img.src.endsWith("/logo-jcn.svg")) img.src = "/logo-jcn.svg";
+              }}
             />
           ) : (
             <div className="flex size-9 items-center justify-center rounded-md bg-white/15">

@@ -7,7 +7,7 @@ import {
   useRestaurarRegistro,
   type RegistroExcluido,
 } from "@/lib/hooks/useLixeira";
-import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import { TabelaSkeleton } from "@/components/ui/PageSkeletons";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const TABELA_LABEL: Record<string, string> = {
@@ -57,7 +57,7 @@ export default function LixeiraPage() {
 
       {isLoading ? (
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <LoadingSkeleton rows={4} />
+          <TabelaSkeleton linhas={4} />
         </div>
       ) : registros.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-sm text-gray-500">

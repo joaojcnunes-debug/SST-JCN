@@ -106,6 +106,31 @@ export function filtrarPorSetor(
   return respondentes.filter((r) => (r.setor ?? "").trim() === alvo);
 }
 
+/** Filtra respondentes por unidade de trabalho (ou "Todas"). Mesma
+ *  normalizacao de listarUnidades. Relatorio sem a pergunta de unidade nunca
+ *  chega aqui com unidade especifica — o filtro so aparece quando ha unidades. */
+export function filtrarPorUnidade(
+  respondentes: DrpsRespondente[],
+  unidade: string
+): DrpsRespondente[] {
+  if (!unidade || unidade === "Todas") return respondentes;
+  const alvo = unidade.trim();
+  return respondentes.filter((r) => (r.unidade_trabalho ?? "").trim() === alvo);
+}
+
+/** Lista as unidades de trabalho distintas, ordenadas alfabeticamente. Vazio
+ *  quando o formulário do relatório não tem a pergunta de unidade. */
+export function listarUnidades(respondentes: DrpsRespondente[]): string[] {
+  const set = new Set<string>();
+  for (const r of respondentes) {
+    const u = (r.unidade_trabalho ?? "").trim();
+    if (u) set.add(u);
+  }
+  return Array.from(set).sort((a, b) =>
+    a.localeCompare(b, "pt-BR", { sensitivity: "base" })
+  );
+}
+
 /** Lista os setores distintos dos respondentes, ordenados alfabeticamente. */
 export function listarSetores(respondentes: DrpsRespondente[]): string[] {
   const set = new Set<string>();
@@ -216,6 +241,9 @@ export function aplicarMatriz(
 export interface LinhaParsed {
   setor: string;
   cargo: string | null;
+  /** Unidade/local de trabalho informado no Forms. null quando o formulário
+   *  não tem essa pergunta (layout padrão de 53 colunas). */
+  unidade: string | null;
   respostas: number[];
   data_carimbo: string | null;
 }
@@ -227,6 +255,7 @@ export interface ParseDiagnostico {
   colunasPorLinha: number[]; // colunas detectadas nas primeiras 5 linhas de dados
   amostraLinha: string; // primeiros 200 chars da 1ª linha de dados (debug)
   codigosNaoAscii: { char: string; code: string }[]; // chars suspeitos da amostra
+  unidadeColuna: number | null; // coluna (1-based) da unidade de trabalho, se houver
 }
 
 export interface ParseResult {
@@ -402,6 +431,7 @@ export function parsearTexto(texto: string): ParseResult {
     colunasPorLinha: [],
     amostraLinha: "",
     codigosNaoAscii: [],
+    unidadeColuna: null,
   };
 
   if (!limpo) {
@@ -452,11 +482,26 @@ export function parsearTexto(texto: string): ParseResult {
   const totalCols = META_COLS + TOTAL_PERGUNTAS;
   const resultado: LinhaParsed[] = [];
 
+  // As respostas são o BLOCO FINAL de TOTAL_PERGUNTAS colunas. Descobrimos onde
+  // ele começa pela largura de referência (cabeçalho, ou 1ª linha de dados):
+  // qualquer coluna demográfica extra ANTES das perguntas (ex.: "Qual sua
+  // unidade de trabalho?", turno, matrícula) é absorvida sem desalinhar as
+  // respostas. No layout padrão (53 colunas) respostaStart = META_COLS (3) —
+  // comportamento idêntico ao anterior.
+  const larguraRef =
+    (diagBase.pulouHeader ? linhas[0] : dataLinhas[0])?.length ?? totalCols;
+  const respostaStart = Math.max(META_COLS, larguraRef - TOTAL_PERGUNTAS);
+  const colsEsperadas = respostaStart + TOTAL_PERGUNTAS;
+
   // Detecta dinamicamente qual coluna é setor e qual é cargo a partir do
-  // cabeçalho (procura por "setor" e "função/funcao/cargo"). Se não houver
-  // cabeçalho ou texto reconhecível, cai no padrão: col1=setor, col2=cargo.
+  // cabeçalho (procura por "setor" e "função/funcao/cargo"), SÓ na faixa
+  // demográfica (antes do bloco de respostas). Sem cabeçalho reconhecível, cai
+  // no padrão: col1=setor, col2=cargo.
   let setorIdx = 1;
   let cargoIdx = 2;
+  // -1 = formulário sem pergunta de unidade (layout padrão). Só é detectada por
+  // cabeçalho: sem header não há como distinguir unidade de outra coluna extra.
+  let unidadeIdx = -1;
   if (diagBase.pulouHeader && linhas[0]) {
     const h = linhas[0].map((c) =>
       (c ?? "")
@@ -466,31 +511,41 @@ export function parsearTexto(texto: string): ParseResult {
         .trim()
     );
     const acharSetor = h.findIndex(
-      (s, i) => i > 0 && i <= 3 && s.includes("setor")
+      (s, i) => i > 0 && i < respostaStart && s.includes("setor")
     );
     const acharCargo = h.findIndex(
       (s, i) =>
         i > 0 &&
-        i <= 3 &&
+        i < respostaStart &&
         (s.includes("funcao") || s.includes("cargo"))
+    );
+    // "Qual sua unidade de trabalho?" — não colide com setor/função.
+    const acharUnidade = h.findIndex(
+      (s, i) => i > 0 && i < respostaStart && s.includes("unidade")
     );
     if (acharSetor >= 0) setorIdx = acharSetor;
     if (acharCargo >= 0) cargoIdx = acharCargo;
+    if (acharUnidade >= 0) {
+      unidadeIdx = acharUnidade;
+      diagBase.unidadeColuna = acharUnidade + 1;
+    }
   }
 
   for (let i = 0; i < dataLinhas.length; i++) {
     const numLinhaOriginal = diagBase.pulouHeader ? i + 2 : i + 1;
     const cols = dataLinhas[i];
 
-    if (cols.length < totalCols) {
+    if (cols.length < colsEsperadas) {
       erros.push(
-        `Linha ${numLinhaOriginal}: ${cols.length} coluna(s) — esperado ${totalCols} (data + setor + cargo + ${TOTAL_PERGUNTAS} respostas)`
+        `Linha ${numLinhaOriginal}: ${cols.length} coluna(s) — esperado ${colsEsperadas} (${respostaStart} coluna(s) demográfica(s) + ${TOTAL_PERGUNTAS} respostas)`
       );
       continue;
     }
 
     const setor = (cols[setorIdx] ?? "").trim();
     const cargo = (cols[cargoIdx] ?? "").trim() || null;
+    const unidade =
+      unidadeIdx >= 0 ? (cols[unidadeIdx] ?? "").trim() || null : null;
     if (!setor) {
       erros.push(
         `Linha ${numLinhaOriginal}: setor vazio (coluna ${setorIdx + 1})`
@@ -500,8 +555,8 @@ export function parsearTexto(texto: string): ParseResult {
 
     const respostas: number[] = [];
     let parseOk = true;
-    for (let c = META_COLS; c < META_COLS + TOTAL_PERGUNTAS; c++) {
-      const raw = (cols[c] ?? "").trim().replace(",", ".");
+    for (let qi = 0; qi < TOTAL_PERGUNTAS; qi++) {
+      const raw = (cols[respostaStart + qi] ?? "").trim().replace(",", ".");
       if (raw === "") {
         respostas.push(0);
         continue;
@@ -509,7 +564,7 @@ export function parsearTexto(texto: string): ParseResult {
       const v = parseFloat(raw);
       if (Number.isNaN(v)) {
         erros.push(
-          `Linha ${numLinhaOriginal}: resposta Q${c - 2} inválida ("${raw}")`
+          `Linha ${numLinhaOriginal}: resposta Q${qi + 1} inválida ("${raw}")`
         );
         parseOk = false;
         break;
@@ -520,7 +575,7 @@ export function parsearTexto(texto: string): ParseResult {
 
     const dataIso = parseDataBR((cols[0] ?? "").trim());
 
-    resultado.push({ setor, cargo, respostas, data_carimbo: dataIso });
+    resultado.push({ setor, cargo, unidade, respostas, data_carimbo: dataIso });
   }
 
   if (resultado.length === 0 && erros.length === 0) {

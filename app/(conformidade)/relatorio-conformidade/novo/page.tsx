@@ -3,12 +3,16 @@
 import { useMemo, useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Loader2, ShieldCheck, ListChecks } from "lucide-react";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
-import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
+import {
+  listarNRs,
+  getChecklistNR,
+  rotuloNR,
+} from "@/lib/conformidade/checklists";
 import { useCriarRelatorioConformidade } from "@/lib/hooks/useRelatoriosConformidade";
 import { useRequireCreate } from "@/lib/hooks/useUsuario";
 
@@ -22,6 +26,8 @@ function NovoConformidadeInner() {
   const [nrCodigo, setNrCodigo] = useState<string>(
     nrPreselecionada ?? ""
   );
+  /** Só aparece (e só é exigido) quando não há NR — vira o nome do relatório. */
+  const [titulo, setTitulo] = useState("");
   const [idEmpresa, setIdEmpresa] = useState<string | null>(null);
   const [setor, setSetor] = useState("");
   const [responsavel, setResponsavel] = useState("");
@@ -42,12 +48,13 @@ function NovoConformidadeInner() {
     () => (nrCodigo ? getChecklistNR(nrCodigo) : null),
     [nrCodigo]
   );
+  const semNR = !nrCodigo;
 
   const criar = useCriarRelatorioConformidade();
 
   function handleCriar() {
-    if (!nrCodigo) {
-      toast.error("Selecione uma NR");
+    if (semNR && !titulo.trim()) {
+      toast.error("Informe um título pro relatório");
       return;
     }
     if (!idEmpresa) {
@@ -57,7 +64,8 @@ function NovoConformidadeInner() {
     criar.mutate(
       {
         id_empresa: idEmpresa,
-        nr_codigo: nrCodigo,
+        nr_codigo: nrCodigo || null,
+        titulo: titulo.trim() || null,
         setor: setor.trim() || null,
         responsavel: responsavel.trim() || null,
         responsavel_empresa: responsavelEmpresa.trim() || null,
@@ -65,9 +73,15 @@ function NovoConformidadeInner() {
         data_inspecao: dataInspecao || null,
       },
       {
-        onSuccess: (r) => {
-          toast.success(`Relatório ${r.nr_codigo} criado`);
-          router.push(`/relatorio-conformidade/${r.id_relatorio}`);
+        onSuccess: ({ row, resultado }) => {
+          // Sem rede o relatório está no aparelho, não no painel — e dizer
+          // "criado" faria o auditor achar que já está lá.
+          toast.success(
+            resultado.destino === "SERVIDOR"
+              ? `Relatório ${rotuloNR(row.nr_codigo)} criado`
+              : `Relatório ${rotuloNR(row.nr_codigo)} guardado no aparelho`,
+          );
+          router.push(`/relatorio-conformidade/${row.id_relatorio}`);
         },
         onError: (e: Error) =>
           toast.error(mensagemErro(e, "Falha ao criar relatório")),
@@ -97,21 +111,29 @@ function NovoConformidadeInner() {
           Novo Relatório de Conformidade
         </h1>
         <p className="text-sm text-gray-600">
-          Escolha a NR e a empresa. O checklist será criado automaticamente com
-          base no catálogo JCN Consultoria.
+          Escolha a NR e a empresa — o checklist será criado automaticamente com
+          base no catálogo JCN Consultoria. Sem NR vinculada, o relatório nasce vazio e
+          você monta o checklist item a item.
         </p>
       </div>
 
       <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm reveal-up">
         <div>
-          <label className={lblCls}>Norma Regulamentadora *</label>
+          <label className={lblCls}>
+            Norma Regulamentadora{" "}
+            <span className="font-normal normal-case text-gray-400">
+              (opcional — sem NR o checklist fica 100% livre)
+            </span>
+          </label>
           <select
             value={nrCodigo}
             onChange={(e) => setNrCodigo(e.target.value)}
             className={inputCls}
             disabled={criar.isPending}
           >
-            <option value="">— Selecione a NR —</option>
+            <option value="">
+              — Sem NR vinculada (checklist 100% livre) —
+            </option>
             {nrs.map((nr) => (
               <option key={nr.codigo} value={nr.codigo}>
                 {nr.codigo} — {nr.titulo}
@@ -124,7 +146,30 @@ function NovoConformidadeInner() {
               Checklist com {checklist.itens.length} itens será criado.
             </p>
           )}
+          {semNR && (
+            <p className="mt-1 inline-flex items-center gap-1 text-xs text-teal-700">
+              <ListChecks className="size-3" />
+              Nenhum item será criado — use &ldquo;Adicionar item livre&rdquo; e
+              &ldquo;Inserir de outra NR&rdquo; no detalhe do relatório.
+            </p>
+          )}
         </div>
+
+        {/* Sem NR o relatório precisa de um nome próprio: é o que aparece nas
+            listas, no cabeçalho e no PDF no lugar do título da norma. */}
+        {semNR && (
+          <div>
+            <label className={lblCls}>Título do relatório *</label>
+            <input
+              type="text"
+              value={titulo}
+              onChange={(e) => setTitulo(e.target.value)}
+              placeholder="Ex: Auditoria geral — Refeitório"
+              className={inputCls}
+              disabled={criar.isPending}
+            />
+          </div>
+        )}
 
         <div>
           <label className={lblCls}>Empresa *</label>
@@ -218,7 +263,9 @@ function NovoConformidadeInner() {
           <button
             type="button"
             onClick={handleCriar}
-            disabled={criar.isPending || !nrCodigo || !idEmpresa}
+            disabled={
+              criar.isPending || !idEmpresa || (semNR && !titulo.trim())
+            }
             className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
           >
             {criar.isPending ? (

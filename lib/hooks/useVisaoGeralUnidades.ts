@@ -43,8 +43,15 @@ export function useVisaoGeralUnidades() {
       ? user.empresas_vinculadas
       : null;
 
+  // Escopo por UNIDADE: usuario nao-Admin ve SO as unidades vinculadas a ele
+  // (evita visualizar/atuar em bases nao alocadas). Admin ve todas. Quem nao tem
+  // unidade atribuida nao ve nenhuma (sinaliza ao admin que falta alocar). RLS
+  // reforca no servidor. Cliente nem chega aqui (redireciona p/ o portal).
+  const escopoUnidades =
+    user && user.perfil !== "Admin" ? (user.unidades ?? []) : null;
+
   return useQuery<VisaoGeralData>({
-    queryKey: ["visao-geral-unidades", vinculos],
+    queryKey: ["visao-geral-unidades", vinculos, escopoUnidades],
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
 
@@ -93,7 +100,9 @@ export function useVisaoGeralUnidades() {
       if (unidadesRes.error) throw unidadesRes.error;
       if (empresasRes.error) throw empresasRes.error;
 
-      const unidadesList = (unidadesRes.data ?? []) as { id_unidade: string; nome: string }[];
+      const escopoSet = escopoUnidades ? new Set(escopoUnidades) : null;
+      const unidadesList = ((unidadesRes.data ?? []) as { id_unidade: string; nome: string }[])
+        .filter((u) => !escopoSet || escopoSet.has(u.id_unidade));
       const empresas = (empresasRes.data ?? []) as { id_empresa: string; id_unidade: string | null }[];
 
       // empresa → unidade
@@ -133,11 +142,11 @@ export function useVisaoGeralUnidades() {
         laudos: laudoPorUni.get(u.id_unidade) ?? 0,
       }));
 
-      // bucket "Sem unidade" (id_unidade null) só aparece se tiver algo
+      // bucket "Sem unidade" (id_unidade null): só p/ quem vê tudo (Admin/sem escopo).
       const semEmp = empresasPorUni.get(null) ?? 0;
       const semInsp = inspPorUni.get(null) ?? 0;
       const semLaudo = laudoPorUni.get(null) ?? 0;
-      if (semEmp || semInsp || semLaudo) {
+      if (!escopoSet && (semEmp || semInsp || semLaudo)) {
         unidades.push({
           id_unidade: null,
           nome: SEM_UNIDADE,
@@ -147,13 +156,14 @@ export function useVisaoGeralUnidades() {
         });
       }
 
+      // Totais derivam das unidades VISÍVEIS (batem com os cards exibidos).
       return {
         unidades,
         totais: {
-          unidades: unidadesList.length,
-          empresas: empresas.length,
-          inspecoes: inspIds.length,
-          laudos: laudoIds.length,
+          unidades: unidades.filter((u) => u.id_unidade !== null).length,
+          empresas: unidades.reduce((s, u) => s + u.empresas, 0),
+          inspecoes: unidades.reduce((s, u) => s + u.inspecoes, 0),
+          laudos: unidades.reduce((s, u) => s + u.laudos, 0),
         },
       };
     },

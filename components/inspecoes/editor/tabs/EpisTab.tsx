@@ -2,13 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { Plus, Pencil, Trash2, Copy, ShieldCheck } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
 import EpiForm from "../EpiForm";
 import CopiarEpiModal from "../CopiarEpiModal";
 import StorageImg from "@/components/ui/StorageImg";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useExcluirDaInspecao } from "@/lib/hooks/useExcluirDaInspecao";
 import { useTipoIcone } from "@/lib/hooks/useV3";
 import type { EpiEpc, Risco, Setor } from "@/lib/supabase/types";
 
@@ -29,7 +27,6 @@ export default function EpisTab({
   epis,
   readOnly,
 }: Props) {
-  const qc = useQueryClient();
   const iconeDe = useTipoIcone();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<EpiEpc | null>(null);
@@ -48,21 +45,12 @@ export default function EpisTab({
     return acc;
   }, [epis]);
 
-  const del = useMutation({
-    mutationFn: async (e: EpiEpc) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("epi_epc")
-        .delete()
-        .eq("id_protecao", e.id_protecao);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success("Removido");
-      setConfirm(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
+  const del = useExcluirDaInspecao({
+    idInspecao,
+    tabela: "epi_epc",
+    chave: "id_protecao",
+    colecao: "epis",
+    rotulo: "Removido",
   });
 
   if (riscos.length === 0) {
@@ -225,7 +213,9 @@ export default function EpisTab({
         description={`"${confirm?.descricao}" será removido.`}
         variant="danger"
         loading={del.isPending}
-        onConfirm={() => confirm && del.mutate(confirm)}
+        onConfirm={() =>
+          confirm && del.mutate(confirm, { onSuccess: () => setConfirm(null) })
+        }
         onCancel={() => setConfirm(null)}
       />
     </div>

@@ -605,3 +605,21 @@ export function listarNRs(): Array<{ codigo: string; titulo: string; resumo: str
     totalItens: c.itens.length,
   }));
 }
+
+/**
+ * Código sentinela pro relatório de conformidade criado SEM NR vinculada
+ * (checklist 100% livre, montado item a item pelo auditor). `nr_codigo` e
+ * `nr_titulo` são `not null` no banco (v32), então gravamos esse marcador em
+ * vez de null — e `nr_titulo` guarda o título livre que o auditor digitou.
+ */
+export const NR_LIVRE = "LIVRE";
+
+/** True quando o relatório não está preso a nenhuma NR do catálogo. */
+export function ehSemNR(codigo: string | null | undefined): boolean {
+  return !codigo || codigo === NR_LIVRE;
+}
+
+/** Rótulo de tela do código da NR — troca o sentinela por algo legível. */
+export function rotuloNR(codigo: string | null | undefined): string {
+  return ehSemNR(codigo) ? "Sem NR" : codigo!;
+}

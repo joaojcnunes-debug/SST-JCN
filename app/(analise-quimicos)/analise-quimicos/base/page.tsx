@@ -34,6 +34,9 @@ import type {
   IarcGrupo,
 } from "@/lib/quimicos/base_referencia";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
+import { buscar } from "@/lib/busca/texto";
+import { ehSupervisor } from "@/lib/hooks/useUsuario";
 
 const ANEXOS: Array<{ value: "todos" | AnexoNR15; label: string }> = [
   { value: "todos", label: "Todos os anexos" },
@@ -78,14 +81,6 @@ const NOVO_AGENTE: AgenteReferencia = {
   is_alias: false,
 };
 
-function normalizar(s: string): string {
-  return s
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
 function GrauBadge({ grau }: { grau: AgenteReferencia["grau_nr15"] }) {
   if (!grau) return <span className="text-gray-400">—</span>;
   const cores: Record<string, string> = {
@@ -124,9 +119,8 @@ export default function BaseReferenciaPage() {
 
   const itens = linhas ?? [];
 
-  const filtrados = useMemo(() => {
-    const termo = normalizar(q);
-    return itens.filter((a) => {
+  const { itens: filtrados, aproximado } = useMemo(() => {
+    const dosFiltros = itens.filter((a) => {
       if (anexo !== "todos" && a.anexo !== anexo) return false;
       if (
         soCancerigeno &&
@@ -135,13 +129,10 @@ export default function BaseReferenciaPage() {
         return false;
       }
       if (soPele && !a.pele) return false;
-      if (!termo) return true;
-      return (
-        normalizar(a.agente).includes(termo) ||
-        (a.cas ?? "").toLowerCase().includes(termo) ||
-        (a.esocial_tab24 ?? "").toLowerCase().includes(termo)
-      );
+      return true;
     });
+    // Busca tolerante (acento, erro de digitação); CAS e eSocial entram como texto.
+    return buscar(dosFiltros, q, (a) => [a.agente, a.cas, a.esocial_tab24], { manterOrdem: true });
   }, [itens, q, anexo, soCancerigeno, soPele]);
 
   // Loading + admin guard (useRequireAdmin redireciona; aqui só blocka o render)
@@ -152,7 +143,7 @@ export default function BaseReferenciaPage() {
       </div>
     );
   }
-  if (user.perfil !== "Admin") return null;
+  if (!ehSupervisor(user)) return null; // v229
 
   function handleInicializar() {
     setPendingAction({
@@ -300,6 +291,7 @@ export default function BaseReferenciaPage() {
         </div>
       ) : itens.length > 0 ? (
         <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+          <AvisoBuscaAproximada aproximado={aproximado} busca={q} total={filtrados.length} className="m-3" />
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50 text-xs uppercase text-gray-600">
               <tr>

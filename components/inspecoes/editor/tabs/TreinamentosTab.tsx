@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Check,
   GraduationCap,
@@ -17,6 +17,7 @@ import {
 import toast from "react-hot-toast";
 import TreinamentoForm from "../TreinamentoForm";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { useExcluirDaInspecao } from "@/lib/hooks/useExcluirDaInspecao";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useTipoIcone } from "@/lib/hooks/useV3";
 import type {
@@ -147,21 +148,12 @@ export default function TreinamentosTab({
   );
 
   // ── Deletar ─────────────────────────────────────────────────────────────
-  const del = useMutation({
-    mutationFn: async (t: TreinamentoNR) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("treinamentos_nr")
-        .delete()
-        .eq("id_treinamento", t.id_treinamento);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success("Treinamento removido");
-      setConfirm(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
+  const del = useExcluirDaInspecao({
+    idInspecao,
+    tabela: "treinamentos_nr",
+    chave: "id_treinamento",
+    colecao: "treinamentos",
+    rotulo: "Treinamento removido",
   });
 
   // ── IA: gerar sugestões ─────────────────────────────────────────────────
@@ -816,7 +808,9 @@ export default function TreinamentosTab({
         }
         variant="danger"
         loading={del.isPending}
-        onConfirm={() => confirm && del.mutate(confirm)}
+        onConfirm={() =>
+          confirm && del.mutate(confirm, { onSuccess: () => setConfirm(null) })
+        }
         onCancel={() => setConfirm(null)}
       />
     </div>

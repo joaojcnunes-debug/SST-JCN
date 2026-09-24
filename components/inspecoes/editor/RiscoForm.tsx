@@ -5,11 +5,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { Plus, Trash2, Upload, Pencil, Check, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import AvisoRascunho from "@/components/ui/AvisoRascunho";
 import StorageImg from "@/components/ui/StorageImg";
 import NivelBadge from "@/components/riscos/NivelBadge";
+import { useRascunho } from "@/lib/hooks/useRascunho";
 import SetorMultiSelect from "./SetorMultiSelect";
 import MeiosPropagacaoMultiSelect from "./MeiosPropagacaoMultiSelect";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { gravar, type ImagemPendente } from "@/lib/offline/gravar";
+import type { InspecaoFull } from "@/lib/hooks/useInspecao";
 import { gerarId, parseMedidas, stringifyMedidas } from "@/lib/utils";
 import { calcularNivelComMatriz } from "@/lib/calc";
 import {
@@ -180,6 +184,21 @@ export default function RiscoForm({
   const isEdit = !!risco;
   const [form, setForm] = useState<FormState>(emptyForm);
 
+  /**
+   * O arquivo da foto da FDS, esperando para subir junto do risco.
+   *
+   * Fica aqui, e não dentro do `FotoQuimUpload`, porque quem grava é o
+   * formulário: a foto precisa ir ao MinIO antes da linha que aponta para ela, e
+   * só o `gravar()` do save conhece essa ordem.
+   */
+  const [fotoQuimPendente, setFotoQuimPendente] = useState<ImagemPendente | null>(null);
+
+  // Rascunho contra queda de luz — só ao ADICIONAR; num risco que já existe o
+  // valor do banco é a verdade. Nada é restaurado sem o usuário clicar.
+  const rascunho = useRascunho(`risco:${idInspecao}`, form, {
+    ativo: open && !isEdit,
+  });
+
   // V3: matriz, tipos e perguntas vêm do banco (admin edita pela UI).
   const { data: matrizAtiva } = useMatrizAtiva();
   const { data: matrizes = [] } = useMatrizes();
@@ -289,6 +308,10 @@ export default function RiscoForm({
 
   useEffect(() => {
     if (!open) return;
+    // A foto da FDS pendente é do risco anterior. Sem zerar aqui, abrir o
+    // formulário de novo carregaria o arquivo antigo junto do risco novo — e
+    // subiria ao MinIO um arquivo que ninguém referencia.
+    setFotoQuimPendente(null);
     if (risco) {
       setForm({
         tipo_risco: risco.tipo_risco ?? "Físico",
@@ -503,33 +526,66 @@ export default function RiscoForm({
         updated_at: new Date().toISOString(),
       };
 
+      // A foto da FDS sobe junto do risco, e não na hora em que foi escolhida —
+      // ver `FotoQuimUpload`. Vai só na primeira gravação: as demais apontam
+      // para a mesma URL, e subir o arquivo N vezes seria desperdício.
+      const imagens = fotoQuimPendente ? [fotoQuimPendente] : undefined;
+
       if (isEdit && risco) {
         // Atualiza o risco original com o primeiro setor.
         const primeiroSetor = form.ids_setores[0] || null;
-        const { error: errUpdate } = await supabase
-          .from("riscos")
-          .update({ ...baseRisco, id_setor: primeiroSetor } as never)
-          .eq("id_risco", risco.id_risco);
-        if (errUpdate) throw errUpdate;
+        const principal = await gravar({
+          tabela: "riscos",
+          tipo: "update",
+          linhas: { ...baseRisco, id_setor: primeiroSetor },
+          filtro: { id_risco: risco.id_risco },
+          modulo: "inspecoes",
+          id_documento: idInspecao,
+          imagens,
+        });
+        const dependeDe =
+          principal.destino === "APARELHO" ? [principal.idOperacao] : undefined;
 
         // Setores adicionais → cria riscos novos clonados.
         const extras = form.ids_setores.slice(1);
-        if (extras.length > 0) {
-          const novos = extras.map((idSetor) => ({
-            ...baseRisco,
-            id_risco: gerarId("RSC"),
-            id_inspecao: idInspecao,
-            id_empresa: idEmpresa,
-            id_setor: idSetor,
-            created_at: new Date().toISOString(),
-          }));
-          const { error: errExtra } = await supabase
-            .from("riscos")
-            .insert(novos as never);
-          if (errExtra) throw errExtra;
+        const clones = extras.map((idSetor) => ({
+          ...baseRisco,
+          id_risco: gerarId("RSC"),
+          id_inspecao: idInspecao,
+          id_empresa: idEmpresa,
+          id_setor: idSetor,
+          created_at: new Date().toISOString(),
+        }));
+        if (clones.length > 0) {
+          await gravar({
+            tabela: "riscos",
+            tipo: "insert",
+            linhas: clones,
+            filtro: null,
+            modulo: "inspecoes",
+            id_documento: idInspecao,
+            depende_de: dependeDe,
+          });
         }
-        await semearCatalogoFormSnapshot(supabase, idTipoSelecionado, catalogo, itensModelo, form);
-        return { criados: 1, extras: extras.length };
+
+        if (principal.destino === "SERVIDOR") {
+          await semearCatalogoFormSnapshot(
+            supabase,
+            idTipoSelecionado,
+            catalogo,
+            itensModelo,
+            form,
+          );
+        }
+
+        return {
+          destino: principal.destino,
+          criados: 1,
+          extras: extras.length,
+          atualizado: { ...risco, ...baseRisco, id_setor: primeiroSetor } as Risco,
+          novosRiscos: clones as unknown as Risco[],
+          novosEpis: [] as EpiEpc[],
+        };
       }
 
       // Criação nova: cross-product entre modelos da triagem × setores.
@@ -570,47 +626,115 @@ export default function RiscoForm({
         }))
       );
 
-      const { error } = await supabase.from("riscos").insert(novos as never);
-      if (error) throw error;
+      const principal = await gravar({
+        tabela: "riscos",
+        tipo: "insert",
+        linhas: novos,
+        filtro: null,
+        modulo: "inspecoes",
+        id_documento: idInspecao,
+        imagens,
+      });
 
-      // Insere EPIs/EPCs pendentes — replicados pra cada risco criado
-      if (form.epis_pendentes.length > 0) {
-        const linhasEpi = novos.flatMap((r) =>
-          form.epis_pendentes.map((ep) => ({
-            id_protecao: gerarId("EPI"),
-            id_risco: r.id_risco,
-            id_inspecao: idInspecao,
-            id_empresa: idEmpresa,
-            id_setor: r.id_setor,
-            tipo: ep.tipo,
-            descricao: ep.descricao,
-            ca: ep.ca,
-            recomendado: ep.recomendado,
-          }))
-        );
-        const { error: errEpi } = await supabase
-          .from("epi_epc")
-          .insert(linhasEpi as never);
-        if (errEpi) throw errEpi;
+      // Insere EPIs/EPCs pendentes — replicados pra cada risco criado.
+      // Dependem do insert dos riscos: a FK aponta para eles, e mandar os EPIs
+      // primeiro faria o banco recusar uma lista que está correta.
+      const linhasEpi =
+        form.epis_pendentes.length > 0
+          ? novos.flatMap((r) =>
+              form.epis_pendentes.map((ep) => ({
+                id_protecao: gerarId("EPI"),
+                id_risco: r.id_risco,
+                id_inspecao: idInspecao,
+                id_empresa: idEmpresa,
+                id_setor: r.id_setor,
+                tipo: ep.tipo,
+                descricao: ep.descricao,
+                ca: ep.ca,
+                recomendado: ep.recomendado,
+              })),
+            )
+          : [];
+
+      if (linhasEpi.length > 0) {
+        await gravar({
+          tabela: "epi_epc",
+          tipo: "insert",
+          linhas: linhasEpi,
+          filtro: null,
+          modulo: "inspecoes",
+          id_documento: idInspecao,
+          depende_de:
+            principal.destino === "APARELHO" ? [principal.idOperacao] : undefined,
+        });
       }
 
-      await semearCatalogoFormSnapshot(supabase, idTipoSelecionado, catalogo, itensModelo, form);
-      return { criados: novos.length, extras: 0 };
+      // A semeadura do catálogo é conveniência que aprende com o que foi
+      // digitado, e o próprio código dela já trata falha como não-fatal. Sem
+      // rede ela simplesmente não roda: enfileirar encheria a tela de pendências
+      // com "item de catálogo" — algo que não diz nada ao técnico e que ele não
+      // saberia resolver se fosse recusado.
+      if (principal.destino === "SERVIDOR") {
+        await semearCatalogoFormSnapshot(
+          supabase,
+          idTipoSelecionado,
+          catalogo,
+          itensModelo,
+          form,
+        );
+      }
+
+      return {
+        destino: principal.destino,
+        criados: novos.length,
+        extras: 0,
+        atualizado: null,
+        novosRiscos: novos as unknown as Risco[],
+        novosEpis: linhasEpi as unknown as EpiEpc[],
+      };
     },
     onSuccess: (res) => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      if (idTipoSelecionado) {
-        qc.invalidateQueries({ queryKey: ["catalogo-tipo", idTipoSelecionado] });
-      }
-      if (form.id_modelo) {
-        qc.invalidateQueries({ queryKey: ["itens-modelo", form.id_modelo] });
-      }
+      rascunho.limpar();
       const total = res.criados + res.extras;
-      if (total > 1) {
-        toast.success(`${total} risco(s) criado(s), um por setor ✓`);
+
+      if (res.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+        if (idTipoSelecionado) {
+          qc.invalidateQueries({ queryKey: ["catalogo-tipo", idTipoSelecionado] });
+        }
+        if (form.id_modelo) {
+          qc.invalidateQueries({ queryKey: ["itens-modelo", form.id_modelo] });
+        }
+        if (total > 1) {
+          toast.success(`${total} risco(s) criado(s), um por setor ✓`);
+        } else {
+          toast.success(isEdit ? "Risco atualizado" : "Risco adicionado");
+        }
       } else {
-        toast.success(isEdit ? "Risco atualizado" : "Risco adicionado");
+        // Sem rede não há o que revalidar: a lista da tela é atualizada à mão.
+        // Os EPIs entram junto — se só os riscos aparecessem, o técnico abriria
+        // o risco recém-criado e veria a lista de proteções vazia.
+        qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) => {
+          if (!antigo) return antigo;
+          const riscos = res.atualizado
+            ? antigo.riscos.map((r) =>
+                r.id_risco === res.atualizado!.id_risco ? res.atualizado! : r,
+              )
+            : antigo.riscos;
+          return {
+            ...antigo,
+            riscos: [...riscos, ...res.novosRiscos],
+            epis: [...antigo.epis, ...res.novosEpis],
+          };
+        });
+        toast.success(
+          total > 1
+            ? `${total} risco(s) guardado(s) no aparelho, um por setor`
+            : "Risco guardado no aparelho",
+          { icon: "📵" },
+        );
       }
+
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -636,6 +760,16 @@ export default function RiscoForm({
       size="xl"
     >
       <form onSubmit={onSubmit} className="space-y-5">
+        {rascunho.pendente && (
+          <AvisoRascunho
+            idadeMin={rascunho.pendente.idadeMin}
+            onRecuperar={() => {
+              const v = rascunho.recuperar();
+              if (v) setForm(v);
+            }}
+            onDescartar={rascunho.descartar}
+          />
+        )}
         {/* Linha 1: Tipo + Setores */}
         <div className="grid gap-3 md:grid-cols-2">
           {(() => {
@@ -1229,7 +1363,10 @@ export default function RiscoForm({
               value={form.foto_quim_url}
               idInspecao={idInspecao}
               idEmpresa={idEmpresa}
-              onChange={(url) => setForm({ ...form, foto_quim_url: url })}
+              onChange={(url, pendente) => {
+                setForm({ ...form, foto_quim_url: url });
+                setFotoQuimPendente(pendente);
+              }}
             />
           </>
         )}
@@ -1394,6 +1531,16 @@ export default function RiscoForm({
 // SUBCOMPONENTE: Upload de Foto Química (FDS)
 // =============================================================
 
+/**
+ * A foto da FDS não sobe mais no momento em que o arquivo é escolhido.
+ *
+ * Antes ela ia direto para o MinIO ali, antes de o risco existir — e sem rede
+ * isso falhava logo na escolha do arquivo, com o técnico ainda no meio do
+ * formulário. Agora o componente só DECIDE o caminho e monta a URL (montagem de
+ * string, sem rede) e entrega o arquivo ao formulário, que o passa ao `gravar()`
+ * junto do risco. Assim a foto segue o mesmo destino da linha: servidor se
+ * houver rede, aparelho se não houver.
+ */
 function FotoQuimUpload({
   value,
   idInspecao,
@@ -1403,7 +1550,7 @@ function FotoQuimUpload({
   value: string;
   idInspecao: string;
   idEmpresa: string;
-  onChange: (url: string) => void;
+  onChange: (url: string, pendente: ImagemPendente | null) => void;
 }) {
   const [uploading, setUploading] = useState(false);
 
@@ -1414,16 +1561,12 @@ function FotoQuimUpload({
     try {
       const supabase = createSupabaseBrowserClient();
       const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${idEmpresa}/${idInspecao}/quim_${gerarId("FDS")}.${ext}`;
-      const { error } = await supabase.storage
-        .from("fotos")
-        .upload(path, file, { upsert: false });
-      if (error) throw error;
-      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
-      onChange(pub.publicUrl);
-      toast.success("Foto FDS enviada");
+      const caminho = `${idEmpresa}/${idInspecao}/quim_${gerarId("FDS")}.${ext}`;
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(caminho);
+      onChange(pub.publicUrl, { blob: file, caminho });
+      toast.success("Foto FDS anexada — sobe ao salvar o risco");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro ao enviar foto";
+      const msg = err instanceof Error ? err.message : "Erro ao anexar foto";
       toast.error(msg);
     } finally {
       setUploading(false);
@@ -1443,7 +1586,7 @@ function FotoQuimUpload({
           }`}
         >
           <Upload className="size-4" />
-          {uploading ? "Enviando..." : value ? "Trocar foto" : "Enviar foto"}
+          {uploading ? "Anexando..." : value ? "Trocar foto" : "Anexar foto"}
           <input
             type="file"
             accept="image/*"
@@ -1455,7 +1598,7 @@ function FotoQuimUpload({
         {value && (
           <button
             type="button"
-            onClick={() => onChange("")}
+            onClick={() => onChange("", null)}
             className="text-xs text-red-alert hover:underline"
           >
             Remover
@@ -1689,8 +1832,18 @@ function EpiBloco({
         ca: novo.ca.trim() || null,
         recomendado: recomendadoFixo,
       };
-      const { error } = await supabase.from("epi_epc").insert(row as never);
-      if (error) throw error;
+      const resultado = await gravar({
+        tabela: "epi_epc",
+        tipo: "insert",
+        linhas: [row],
+        filtro: null,
+        modulo: "inspecoes",
+        id_documento: props.idInspecao,
+      });
+
+      // Sem rede a semeadura não roda — é conveniência de aprendizado, e o
+      // próprio código dela já trata falha como não-fatal.
+      if (resultado.destino === "APARELHO") return { resultado, row };
 
       // V4/V5: alimenta catálogo do tipo OU itens do modelo (se houver
       // modelo escolhido). Conflito (já existe) é silenciado pelo índice
@@ -1736,9 +1889,14 @@ function EpiBloco({
           console.warn("[catalogo] semeadura EPI falhou:", errCat.message);
         }
       }
+
+      return { resultado, row };
     },
-    onSuccess: () => {
-      if (props.mode === "server") {
+    onSuccess: ({ resultado, row }) => {
+      setNovo({ descricao: "", ca: "" });
+      if (props.mode !== "server") return;
+
+      if (resultado.destino === "SERVIDOR") {
         qc.invalidateQueries({ queryKey: ["epi-risco", props.idRisco] });
         qc.invalidateQueries({ queryKey: ["inspecao", props.idInspecao] });
         if (props.idModelo) {
@@ -1747,8 +1905,20 @@ function EpiBloco({
         if (props.idTipo) {
           qc.invalidateQueries({ queryKey: ["catalogo-tipo", props.idTipo] });
         }
+        return;
       }
-      setNovo({ descricao: "", ca: "" });
+
+      // Sem rede não há o que revalidar: as duas listas que mostram este EPI
+      // são atualizadas à mão. A `epi-risco` é a do bloco aberto agora; a da
+      // inspeção alimenta a aba de EPIs.
+      qc.setQueryData<EpiEpc[]>(["epi-risco", props.idRisco], (antigo) => [
+        ...(antigo ?? []),
+        row as unknown as EpiEpc,
+      ]);
+      qc.setQueryData<InspecaoFull>(["inspecao", props.idInspecao], (antigo) =>
+        antigo ? { ...antigo, epis: [...antigo.epis, row as unknown as EpiEpc] } : antigo,
+      );
+      toast.success("Guardado no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -1763,37 +1933,73 @@ function EpiBloco({
       descricao: string;
       ca: string | null;
     }) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("epi_epc")
-        .update({ descricao, ca } as never)
-        .eq("id_protecao", id);
-      if (error) throw error;
+      // Estreita o tipo: `idInspecao` e `idRisco` só existem no modo servidor,
+      // que é o único em que esta mutação é usada.
+      if (props.mode !== "server") throw new Error("Modo inválido");
+      const resultado = await gravar({
+        tabela: "epi_epc",
+        tipo: "update",
+        linhas: { descricao, ca },
+        filtro: { id_protecao: id },
+        modulo: "inspecoes",
+        id_documento: props.idInspecao,
+      });
+      return { resultado, id, descricao, ca };
     },
-    onSuccess: () => {
-      if (props.mode === "server") {
+    onSuccess: ({ resultado, id, descricao, ca }) => {
+      setEditingKey(null);
+      if (props.mode !== "server") return;
+
+      if (resultado.destino === "SERVIDOR") {
         qc.invalidateQueries({ queryKey: ["epi-risco", props.idRisco] });
         qc.invalidateQueries({ queryKey: ["inspecao", props.idInspecao] });
+        return;
       }
-      setEditingKey(null);
+
+      const aplicar = <T extends EpiEpc>(lista: T[]) =>
+        lista.map((e) => (e.id_protecao === id ? { ...e, descricao, ca } : e));
+      qc.setQueryData<EpiEpc[]>(["epi-risco", props.idRisco], (antigo) =>
+        antigo ? aplicar(antigo) : antigo,
+      );
+      qc.setQueryData<InspecaoFull>(["inspecao", props.idInspecao], (antigo) =>
+        antigo ? { ...antigo, epis: aplicar(antigo.epis) } : antigo,
+      );
+      toast.success("Alteração guardada no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const delServer = useMutation({
     mutationFn: async (id: string) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("epi_epc")
-        .delete()
-        .eq("id_protecao", id);
-      if (error) throw error;
+      if (props.mode !== "server") throw new Error("Modo inválido");
+      const resultado = await gravar({
+        tabela: "epi_epc",
+        tipo: "delete",
+        linhas: null,
+        filtro: { id_protecao: id },
+        modulo: "inspecoes",
+        id_documento: props.idInspecao,
+      });
+      return { resultado, id };
     },
-    onSuccess: () => {
-      if (props.mode === "server") {
+    onSuccess: ({ resultado, id }) => {
+      if (props.mode !== "server") return;
+
+      if (resultado.destino === "SERVIDOR") {
         qc.invalidateQueries({ queryKey: ["epi-risco", props.idRisco] });
         qc.invalidateQueries({ queryKey: ["inspecao", props.idInspecao] });
+        return;
       }
+
+      const remover = <T extends EpiEpc>(lista: T[]) =>
+        lista.filter((e) => e.id_protecao !== id);
+      qc.setQueryData<EpiEpc[]>(["epi-risco", props.idRisco], (antigo) =>
+        antigo ? remover(antigo) : antigo,
+      );
+      qc.setQueryData<InspecaoFull>(["inspecao", props.idInspecao], (antigo) =>
+        antigo ? { ...antigo, epis: remover(antigo.epis) } : antigo,
+      );
+      toast.success("Remoção guardada no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(e.message),
   });

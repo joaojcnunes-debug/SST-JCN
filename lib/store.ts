@@ -32,6 +32,62 @@ export const useUnidadeAtiva = create<UnidadeAtivaState>()(
   ),
 );
 
+/**
+ * Sidebar recolhida ("minimizada"). Persiste em localStorage sob "sidebar-mini"
+ * — o script de pré-hidratação em app/layout.tsx lê essa MESMA chave/forma
+ * (`{ state: { mini } }`) e põe `data-sidebar="mini"` no <html> antes da 1ª
+ * pintura (sem flash). Quem desenha o efeito é o CSS (globals.css), não o React:
+ * a marcação da sidebar é idêntica nos dois estados, então não há divergência
+ * de hidratação. Só vale em telas md+; no celular o menu continua sendo gaveta.
+ */
+interface SidebarMiniState {
+  mini: boolean;
+  setMini: (v: boolean) => void;
+  toggle: () => void;
+}
+
+export const useSidebarMini = create<SidebarMiniState>()(
+  persist(
+    (set, get) => ({
+      mini: false,
+      setMini: (v) => set({ mini: v }),
+      toggle: () => set({ mini: !get().mini }),
+    }),
+    {
+      name: "sidebar-mini",
+      storage: createJSONStorage(() => localStorage),
+    },
+  ),
+);
+
+/**
+ * Tema da interface (claro/escuro). Persiste em localStorage sob "tema"
+ * — o script de pré-hidratação em app/layout.tsx lê essa MESMA chave/forma
+ * (`{ state: { tema } }`) para aplicar a classe .dark antes da 1ª pintura
+ * (sem flash). O ThemeManager mantém a classe em sincronia com este estado.
+ */
+export type Tema = "light" | "dark";
+
+interface TemaState {
+  tema: Tema;
+  setTema: (t: Tema) => void;
+  toggle: () => void;
+}
+
+export const useTema = create<TemaState>()(
+  persist(
+    (set, get) => ({
+      tema: "light",
+      setTema: (t) => set({ tema: t }),
+      toggle: () => set({ tema: get().tema === "dark" ? "light" : "dark" }),
+    }),
+    {
+      name: "tema",
+      storage: createJSONStorage(() => localStorage),
+    },
+  ),
+);
+
 interface UserState {
   user: Usuario | null;
   setUser: (u: Usuario | null) => void;

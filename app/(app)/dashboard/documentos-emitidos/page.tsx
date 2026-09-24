@@ -15,7 +15,10 @@ import {
   LabelList,
 } from "recharts";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { mesAbsSP, mesAbsAgoraSP, rotuloMesAbs } from "@/lib/dashboard/mes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import { BalaoUmValor } from "@/components/ui/BalaoGrafico";
 
 interface DocRow {
   elaboracao_concluida_em: string | null;
@@ -24,22 +27,18 @@ interface DocRow {
 
 async function fetchDocumentos(): Promise<DocRow[]> {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
-    .from("inspecoes")
-    .select("elaboracao_concluida_em, elaboracao_responsavel")
-    .eq("elaboracao_status", "CONCLUIDO");
-  if (error) throw error;
-  return (data ?? []) as unknown as DocRow[];
+  return fetchAllRows<DocRow>(
+    (de, ate) =>
+      supabase.from("inspecoes").select("elaboracao_concluida_em, elaboracao_responsavel").eq("elaboracao_status", "CONCLUIDO").range(de, ate),
+  );
 }
 
+// Mês CANÔNICO no fuso de São Paulo (não depende do fuso do navegador).
 function chaveMes(d: Date) {
-  return `${d.getFullYear()}-${d.getMonth()}`;
+  return String(mesAbsSP(d));
 }
 function mesLabel(d: Date) {
-  return d
-    .toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
-    .replace(".", "")
-    .replace(/^\w/, (c) => c.toUpperCase());
+  return rotuloMesAbs(mesAbsSP(d), true);
 }
 
 export default function DocumentosEmitidosDashboard() {
@@ -48,7 +47,17 @@ export default function DocumentosEmitidosDashboard() {
     queryFn: fetchDocumentos,
   });
 
-  const [mesSel, setMesSel] = useState<string | null>(null);
+  /**
+   * Começa no MÊS CORRENTE, não no acumulado.
+   *
+   * Medido em 27/08: aberta em "todos os meses", a tela somava junho+julho+
+   * agosto e mostrava a primeira colocada com 57 documentos, onde o teto de uma
+   * pessoa num mês é ~23. Quem lia comparava com a produção do mês e concluía
+   * que o painel inflava — sendo que cada mês, isolado, está certo (jun 9,
+   * jul 23, ago 25). O rótulo "— todos os meses" existia e não bastou: ele fica
+   * na mesma linha do título, logo abaixo de um gráfico mensal.
+   */
+  const [mesSel, setMesSel] = useState<string | null>(String(mesAbsAgoraSP()));
   const now = new Date();
 
   // Só conta linhas com data de conclusão.
@@ -110,14 +119,10 @@ export default function DocumentosEmitidosDashboard() {
           <div className="h-56 animate-pulse rounded-xl bg-gray-100" />
         ) : (
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={porMes} barSize={26} margin={{ top: 16, right: 4, left: -16, bottom: 0 }}>
+            <BarChart data={porMes} barSize={26} margin={{ top: 16, right: 4, left: 0, bottom: 0 }}>
               <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-              <Tooltip
-                cursor={{ fill: "#f0fdf4" }}
-                contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", fontSize: 12, padding: "6px 12px" }}
-                formatter={(v) => [`${v} documento${Number(v) !== 1 ? "s" : ""}`, ""]}
-              />
+              <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
+              <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo="Documentos" />} />
               <Bar
                 dataKey="total"
                 radius={[6, 6, 0, 0]}
@@ -142,17 +147,32 @@ export default function DocumentosEmitidosDashboard() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Users className="size-4 text-verde-primary" />
-            <h2 className="text-sm font-semibold text-gray-800">
-              Por ADM {mesSelLabel ? `— ${mesSelLabel}` : "— todos os meses"}
-            </h2>
+            <div>
+              <h2 className="text-sm font-semibold text-gray-800">
+                Por ADM {mesSelLabel ? `— ${mesSelLabel}` : "— acumulado de todos os meses"}
+              </h2>
+              <p className="text-xs text-gray-400">
+                {mesSelLabel
+                  ? "Documentos concluídos neste mês"
+                  : "Soma de todos os meses — não é a produção de um mês"}
+              </p>
+            </div>
           </div>
-          {mesSel && (
+          {mesSel ? (
             <button
               type="button"
               onClick={() => setMesSel(null)}
               className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
             >
-              <X className="size-3" /> Limpar filtro do mês
+              Ver todos os meses
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMesSel(String(mesAbsAgoraSP()))}
+              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              <X className="size-3" /> Voltar ao mês atual
             </button>
           )}
         </div>
@@ -167,13 +187,9 @@ export default function DocumentosEmitidosDashboard() {
             <BarChart data={porAdm} layout="vertical" barSize={22} margin={{ top: 4, right: 40, left: 8, bottom: 0 }}>
               <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
               <YAxis type="category" dataKey="adm" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} width={150} />
-              <Tooltip
-                cursor={{ fill: "#f0fdf4" }}
-                contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", fontSize: 12, padding: "6px 12px" }}
-                formatter={(v) => [`${v} documento${Number(v) !== 1 ? "s" : ""}`, ""]}
-              />
+              <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo="Documentos" />} />
               <Bar dataKey="total" radius={[0, 6, 6, 0]} fill="#0ea5e9">
-                <LabelList dataKey="total" position="right" style={{ fontSize: 12, fontWeight: 700, fill: "#111827" }} />
+                <LabelList dataKey="total" position="right" style={{ fontSize: 12, fontWeight: 700, fill: "var(--text-strong)" }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>

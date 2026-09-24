@@ -1,5 +1,7 @@
 "use client";
 
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
 import { use, useMemo, useState } from "react";
 import {
   CheckCircle2,
@@ -21,31 +23,10 @@ import {
   useDrpsRespondentes,
   useDrpsSalvarRelatorio,
 } from "@/lib/hooks/useDrps";
-import {
-  aplicarMatriz,
-  calcularResumoCompleto,
-  filtrarPorSetor,
-  listarSetores,
-} from "@/lib/drps/calculos";
+import { listarSetores } from "@/lib/drps/calculos";
+import { montarBlocosPorSetor } from "@/lib/drps/blocos";
 import { TOPICOS } from "@/lib/drps/topicos";
-import type {
-  DrpsProbabilidade,
-  TopicoComMatriz,
-} from "@/lib/drps/types";
-
-function montarMapaProb(
-  probabilidades: DrpsProbabilidade[],
-  setor: string
-): Record<number, 1 | 2 | 3> {
-  const m: Record<number, 1 | 2 | 3> = {};
-  for (let i = 0; i < TOPICOS.length; i++) m[i] = 1;
-  for (const p of probabilidades) {
-    if (p.setor === setor) {
-      m[p.topico_idx] = p.probabilidade as 1 | 2 | 3;
-    }
-  }
-  return m;
-}
+import type { TopicoComMatriz } from "@/lib/drps/types";
 
 /** Pior caso da matriz por tópico — usado pra agregação consolidada do relatório. */
 function piorMatriz(a: string | null, b: string | null): string | null {
@@ -87,12 +68,11 @@ export default function ConclusaoGeralPage({
   const topicosConsolidados = useMemo<TopicoComMatriz[]>(() => {
     if (respondentes.length === 0) return [];
     // Calcula por setor, depois acha o pior matriz por tópico
-    const porSetor = setores.map((s) => {
-      const filtrados = filtrarPorSetor(respondentes, s);
-      const resumo = calcularResumoCompleto(filtrados);
-      const mapa = montarMapaProb(probabilidades, s);
-      return aplicarMatriz(resumo, mapa);
-    });
+    const porSetor = montarBlocosPorSetor(
+      respondentes,
+      probabilidades,
+      setores
+    ).map((b) => b.topicos);
     if (porSetor.length === 0) return [];
     // Agrega: pega o pior matriz por índice de tópico
     return TOPICOS.map((_, idx) => {
@@ -217,13 +197,7 @@ export default function ConclusaoGeralPage({
 
   const carregando = loadRelatorio || loadResp || loadProb;
 
-  if (carregando) {
-    return (
-      <div className="flex items-center justify-center py-16 text-gray-500">
-        <Loader2 className="size-5 animate-spin" />
-      </div>
-    );
-  }
+  if (carregando) return <EditorSkeleton />;
 
   if (!relatorio) {
     return (

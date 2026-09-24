@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Envie um arquivo .pfx ou .p12." }, { status: 400 });
   }
 
-  const service = createSupabaseServiceClient();
+  const service = createSupabaseServiceClient({ email: user.email, origem: "cert/upload" });
 
   // Remove o certificado anterior, se houver (também no servidor — o cliente daria 403).
   if (oldPath) {

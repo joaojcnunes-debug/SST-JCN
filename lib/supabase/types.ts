@@ -5,9 +5,36 @@ export type StatusInspecao =
   | "EM_ANDAMENTO"
   | "CONCLUIDA"
   | "DELETADA";
-export type TipoCriacao = "BRANCO" | "REVISAO" | "COPIA_EMPRESA";
+/** RENOVACAO (23/09): registro de documento, não conta como inspeção. */
+export type TipoCriacao = "BRANCO" | "REVISAO" | "COPIA_EMPRESA" | "RENOVACAO";
 export type StatusEmpresa = "Ativo" | "Inativa";
 export type PerfilUsuario = "Admin" | "Tecnico" | "Visualizador" | "Cliente";
+/**
+ * Nível dentro da função (v229). Consulta = lê; Operação = escreve no módulo;
+ * Aprovação = + supervisiona (reabre elaboração de outro, troca responsável,
+ * configura o módulo, assina); Admin = + administra o sistema. O perfil continua
+ * decidindo a escrita no banco (`caller_pode_editar`); o nível decide o que a
+ * TELA libera — ver `ehSupervisor` em lib/hooks/useUsuario.ts.
+ */
+export type NivelUsuario = "Consulta" | "Operacao" | "Aprovacao" | "Admin";
+
+/** Uma função do painel (v229, tabela `funcoes_painel`): o padrão que uma conta nova recebe. Editável em Sistema › Funções. */
+export interface FuncaoPainel {
+  funcao: string;
+  ordem: number;
+  descricao: string;
+  nivel: NivelUsuario;
+  perfil_padrao: PerfilUsuario;
+  /** null = a função não impõe a flag (Admin contorna). */
+  pode_criar_padrao: boolean | null;
+  pode_editar_padrao: boolean | null;
+  pode_excluir_padrao: boolean | null;
+  modulos_padrao: ModuloPermitido[];
+  unidades_padrao: "da_base" | "todas";
+  /** v231: abre Sistema › Presença e Sistema › Auditoria (só leitura). Admin sempre abre. */
+  ve_presenca_auditoria: boolean;
+  criado_em?: string;
+}
 
 export type ModuloPermitido =
   | "painel"
@@ -15,15 +42,18 @@ export type ModuloPermitido =
   | "conformidade"
   | "nao_conformidade"
   | "apreciacao_maquinas"
-  | "inventario_maquinas"
   | "analise_quimicos"
   | "aet"
   | "aep"
   | "questionarios_psicossociais"
-  | "produtividade"
   | "investigacao_acidente"
+  | "gestao_gerencial"
   | "epi"
-  | "gestao_gerencial";
+  | "transferencias"
+  | "equipamentos"
+  | "frota"
+  | "escala_supervisores"
+  | "dimensionamento";
 
 export const TODOS_MODULOS: ModuloPermitido[] = [
   "painel",
@@ -31,32 +61,38 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "conformidade",
   "nao_conformidade",
   "apreciacao_maquinas",
-  "inventario_maquinas",
   "analise_quimicos",
   "aet",
   "aep",
   "questionarios_psicossociais",
-  "produtividade",
   "investigacao_acidente",
-  "epi",
   "gestao_gerencial",
+  "epi",
+  "transferencias",
+  "equipamentos",
+  "frota",
+  "escala_supervisores",
+  "dimensionamento",
 ];
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   investigacao_acidente: "Investigação de Acidente de Trabalho",
+  gestao_gerencial: "Gestão Gerencial",
   painel: "Painel SST",
   psicossocial: "DRPS – Diagnóstico de Riscos Psicossociais",
   conformidade: "Relatório de Conformidade",
   nao_conformidade: "Relatório de Não Conformidade",
   apreciacao_maquinas: "Apreciação de Máquinas",
-  inventario_maquinas: "Inventário de Equipamentos",
-  analise_quimicos: "Análise de Químicos Chabra",
+  analise_quimicos: "Análise de Químicos JCN Consultoria",
   aet: "AET – Análise Ergonômica do Trabalho",
   aep: "AEP – Análise Ergonômica Preliminar",
   questionarios_psicossociais: "Questionários Psicossociais / DRPS",
-  produtividade: "Projeção de Produtividade CHABRA",
-  epi: "EPI – Equipamentos de Proteção Individual",
-  gestao_gerencial: "Gestão Gerencial",
+  epi: "Gestão de EPI",
+  transferencias: "Transferência de Equipamentos entre Bases",
+  equipamentos: "Equipamentos JCN Consultoria (patrimônio interno)",
+  frota: "Frota JCN Consultoria – Checklist de Veículos",
+  escala_supervisores: "Escala de Supervisores",
+  dimensionamento: "Dimensionamento de Quadro (SST)",
 };
 
 // ─── Investigação de Acidente de Trabalho ────────────────────────────────────
@@ -256,6 +292,8 @@ export interface QpsCategoria {
   nome: string;
   descricao: string | null;
   ordem: number;
+  /** v210 — "Fontes Geradoras do Risco" da categoria, como o DRPS tem por tópico. */
+  fonte_geradora?: string | null;
 }
 
 export interface QpsPergunta {
@@ -265,9 +303,26 @@ export interface QpsPergunta {
   logica: "direta" | "invertida";
   ordem: number;
   ativo: boolean;
+  /**
+   * Alternativas próprias desta pergunta (v180), na ORDEM do formulário. A
+   * POSIÇÃO é o valor gravado: 1 = primeira alternativa. Com `logica`
+   * "invertida" — o padrão do questionário ordinal — a primeira é a pior.
+   * `null` ou ausente: a pergunta usa a escala numérica do tipo, como sempre.
+   */
+  opcoes?: string[] | null;
 }
 
-export type StatusQpsAplicacao = "RASCUNHO" | "EM_ANDAMENTO" | "CONCLUIDO" | "DELETADO";
+/**
+ * `ENVIADO_CLIENTE` entrou na v206, junto com o quadro de status do Resumo.
+ * O banco só passou a aceitar esse valor nessa migration — antes dela, gravá-lo
+ * volta 23514 (check_violation), que foi o que a v106 consertou no DRPS.
+ */
+export type StatusQpsAplicacao =
+  | "RASCUNHO"
+  | "EM_ANDAMENTO"
+  | "CONCLUIDO"
+  | "ENVIADO_CLIENTE"
+  | "DELETADO";
 
 export interface QpsAplicacao {
   id_aplicacao: string;
@@ -278,9 +333,20 @@ export interface QpsAplicacao {
   responsavel: string | null;
   periodo_inicio: string | null;
   periodo_fim: string | null;
+  /** Quantos DEVERIAM responder — denominador da taxa de participação (v201). */
+  trabalhadores_previstos: number | null;
+  /** Filial/unidade DO CLIENTE. Não é a unidade da JCN Consultoria (empresas.id_unidade). */
+  unidade_cliente: string | null;
   usuario_email: string | null;
   usuario_nome: string | null;
   observacoes_dimensoes: Record<string, string> | null;
+  /** v210 — tela "Análise" (régua do DRPS): texto por setor; "*" = consolidado. */
+  agravos_por_setor?: Record<string, string> | null;
+  medidas_por_setor?: Record<string, string> | null;
+  conclusoes_por_setor?: Record<string, string> | null;
+  /** v226 — laudo: CRP do responsável e data de elaboração impressa. */
+  crp?: string | null;
+  data_elaboracao?: string | null;
   criado_em: string;
   atualizado_em: string | null;
 }
@@ -303,19 +369,59 @@ export interface QpsProbabilidade {
   atualizado_em: string;
 }
 
-export type StatusQpsPlano = "PENDENTE" | "EM_ANDAMENTO" | "CONCLUIDO" | "CANCELADO";
+// ─── v225 — gestão "igual ao DRPS" (Plano 5W2H, Medidas, Monitoramento, Revisão) ─
+// Espelhos de drps_plano_acao_5w2h / drps_plano_medidas / drps_monitoramento /
+// drps_revisao, com id_aplicacao no lugar de id_relatorio e id_categoria no
+// lugar de topico_idx. Sem id_empresa: o RLS passa pela aplicação-pai.
 
-export interface QpsPlanoAcao {
-  id_plano: string;
+export type StatusQpsPlanoAcao5w2h = "PENDENTE" | "EM_ANDAMENTO" | "CONCLUIDA";
+
+export interface QpsPlanoAcao5w2h {
+  id: string;
   id_aplicacao: string;
-  setor: string | null;
-  id_categoria: string | null;
-  descricao: string;
+  ordem: number;
+  acao: string | null; // O quê
+  justificativa: string | null; // Por quê
+  onde: string | null; // Onde (setores por vírgula)
+  prazo: string | null; // Quando (meses por vírgula)
+  responsavel: string | null; // Quem
+  como: string | null; // Como (catálogo + extras por vírgula)
+  quanto_custa: string | null; // Quanto custa
+  status: StatusQpsPlanoAcao5w2h;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface QpsPlanoMedidas {
+  id_aplicacao: string;
+  ano: number;
+  /** chave = nome do programa (MEDIDAS_CONTROLE do DRPS) */
+  plano: Record<string, { meses: boolean[]; responsavel: string }>;
+  updated_at: string;
+}
+
+export type StatusQpsMonitoramento = "Pendente" | "Em Andamento" | "Concluido" | "Cancelado";
+
+export interface QpsMonitoramento {
+  id_aplicacao: string;
+  setor: string;
+  id_categoria: string;
+  data_intervencao: string | null;
   responsavel: string | null;
-  prazo: string | null;
-  status: StatusQpsPlano;
-  criado_em: string;
-  atualizado_em: string | null;
+  status: StatusQpsMonitoramento;
+  proxima_avaliacao: string | null;
+  observacoes: string | null;
+  updated_at: string;
+}
+
+export interface QpsRevisao {
+  id_aplicacao: string;
+  /** chave = id da ação obrigatória (ACOES_OBRIGATORIAS) */
+  checklist: Record<string, boolean>;
+  /** chave = id do papel (EQUIPE_REVISAO) */
+  equipe: Record<string, boolean>;
+  anotacoes: string | null;
+  updated_at: string;
 }
 
 export type TipoRisco =
@@ -363,15 +469,35 @@ export const MODULOS_EMPRESA: Array<{ value: ModuloEmpresa; label: string }> = [
   { value: "aep", label: "AEP – Análise Ergonômica Preliminar" },
 ];
 
+/**
+ * Que tipo de cadastro é esta empresa (v140).
+ * CLIENTE   = empresa contratante dos serviços, o caso de sempre.
+ * TERCEIROS = canteiro, obra ou cliente externo onde se trabalha; aponta para
+ *             a contratante em `id_empresa_contratante`.
+ */
+export type TipoEstabelecimento = "CLIENTE" | "TERCEIROS";
+
 export interface Empresa {
   id_empresa: string;
   nome_empresa: string;
   razao_social: string | null;
+  /** Nome fantasia da Receita. Preenchido pela busca por CNPJ. */
+  nome_fantasia?: string | null;
   cnpj: string | null;
   cpf: string | null;
   cei: string | null;
   caepf: string | null;
   cno: string | null;
+  /**
+   * Base/unidade do SGG onde esta empresa existe (slug = chave de API usada no
+   * envio). Resolvido uma vez, não deduzido a cada envio: o mesmo CNPJ existe em
+   * até 4 bases com ids diferentes (SGG-RISCOS-01, v241).
+   */
+  sgg_base_sgg?: string | null;
+  /** `id_empresa` no SGG, único apenas dentro de `sgg_base_sgg`. */
+  sgg_id?: string | null;
+  sgg_resolvido_em?: string | null;
+  sgg_resolvido_por?: string | null;
   grau_risco: number | null;
   status: StatusEmpresa | null;
   observacao: string | null;
@@ -394,14 +520,24 @@ export interface Empresa {
   id_unidade: string | null;
   /** Lista de módulos em que a empresa está habilitada (aparece nos selects). */
   modulos_habilitados: ModuloEmpresa[];
-  // ─── Procedência do grau de risco (v144) ──────────────────────────────────
+  // ─── Estabelecimento de terceiros (v140) ──────────────────────────────────
+  // ─── Procedência do grau de risco (v141) ──────────────────────────────────
   /**
    * NORMA = derivado do CNAE pelo Anexo I da NR-4; MANUAL = pessoa escolheu
-   * outro valor. NULL nos cadastros anteriores à v144, onde não dá para saber.
+   * outro valor. NULL nos cadastros anteriores à v141, onde não dá para saber.
    */
   grau_risco_origem?: "NORMA" | "MANUAL" | null;
   /** O que a NR-4 indicava quando o cadastro foi gravado. */
   grau_risco_norma?: number | null;
+  /** Ausente nos registros anteriores à v140 — trate como "CLIENTE". */
+  tipo_estabelecimento?: TipoEstabelecimento | null;
+  /** Só preenchido quando tipo_estabelecimento === "TERCEIROS". */
+  id_empresa_contratante?: string | null;
+  /** Ponto de referência para chegar ao local (canteiro sem número). */
+  referencia?: string | null;
+  /** Hospital, UPA ou ambulatório mais próximo e telefones. */
+  locais_emergencia?: string | null;
+  dados_adicionais?: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -430,6 +566,8 @@ export interface Inspecao {
   elaboracao_responsavel: string | null;
   elaboracao_status: "PENDENTE" | "EM_ELABORACAO" | "CONCLUIDO" | null;
   elaboracao_concluida_em: string | null;
+  /** V154 — data real de conclusão da inspeção (carimbada ao concluir). */
+  concluida_em: string | null;
   created_at: string;
   updated_at: string | null;
   empresas?: { nome_empresa: string } | null;
@@ -708,6 +846,15 @@ export interface Responsavel {
   id_inspecao: string;
   id_empresa: string;
   tecnico_responsavel: string | null;
+  /**
+   * V204 — a conta do painel do técnico que foi a campo, quando dá para
+   * afirmar quem é.
+   *
+   * Nulo é resposta legítima, não falta de dado: campo em branco, nome ambíguo,
+   * ou técnico de unidade que não tem login. Quem lê deve cair no
+   * `tecnico_responsavel` nesses casos, nunca sumir com a linha.
+   */
+  id_usuario: string | null;
   recepcionado_por: string | null;
   cargo: string | null;
   data_hora: string | null;
@@ -756,7 +903,15 @@ export interface Extintor {
   numero_identificacao: string | null;
   localizacao: string | null;
   data_validade: string | null;
+  /**
+   * LEGADO — congelado na v158 (2026-08-05). O app não escreve mais aqui:
+   * use `situacao` + `nao_conformidades`. Mantido como trilha de auditoria.
+   */
   status: string | null;
+  /** v158 — CONFORME | NAO_CONFORME | null (não avaliado). */
+  situacao: string | null;
+  /** v158 — causas da não conformidade; vazio quando não é NAO_CONFORME. */
+  nao_conformidades: string[];
   observacoes: string | null;
   fotos_urls: string[];
   fotos_storage_paths: string[];
@@ -786,6 +941,14 @@ export interface Acao5W2H {
   /** V67: ação do plano de adequação (apreciacao_acoes) que originou esta —
    *  índice único parcial garante envio único por ação da apreciação. */
   id_apreciacao_acao: string | null;
+  /** V184: risco da inspeção que gerou esta ação pelo botão "Enviar para
+   *  Plano de Ação". Só o envio automático preenche — `id_risco` continua
+   *  livre para o vínculo manual feito na tela /acoes. */
+  id_risco_origem: string | null;
+  /** V208: ação do plano do AET (aet_acoes) que gerou esta pelo botão
+   *  "Enviar para o Plano de Ação do PGR". Só o envio preenche; índice único
+   *  parcial garante envio único por ação do AET. */
+  id_aet_acao: string | null;
   what_acao: string;
   why_justificativa: string | null;
   where_local: string | null;
@@ -840,12 +1003,36 @@ export interface Usuario {
   /** Unidades de acesso do usuário. Vê as empresas dessas unidades + as sem unidade. */
   unidades?: string[];
   modulos_permitidos?: ModuloPermitido[];
+  /** Função no painel (v229): chave de `funcoes_painel`. Define o padrão de módulos/nível para conta nova. */
+  funcao?: string | null;
+  /** Nível dentro da função (v229). Sem valor = deduzido do perfil (Admin → Admin, resto → Operacao). */
+  nivel?: NivelUsuario | null;
+  /** v231: embed da função (useAuth) — só o que a tela precisa da funcoes_painel. */
+  funcoes_painel?: Pick<FuncaoPainel, "ve_presenca_auditoria"> | null;
   /** Permissão granular pra criar relatórios/itens. Admin contorna. */
   pode_criar?: boolean;
   /** Permissão granular pra editar dados em geral. Admin contorna. */
   pode_editar?: boolean;
   /** Permissão granular pra excluir relatórios/análises top-level. Admin contorna. */
   pode_excluir?: boolean;
+  /**
+   * Capability de escrita de químicos desacoplada do perfil (F1.3-A / v189).
+   * Serve a RLS (`pode_escrever_quimicos()`) e o front: um Visualizador com esta
+   * flag escreve `analises_quimicos`/`base_referencia_quimicos` sem ser Técnico.
+   * NÃO é auto-concedível — write de `usuarios` segue gated por admin.
+   */
+  pode_escrever_quimicos?: boolean;
+  /**
+   * Capability de enviar a árvore de riscos da inspeção ao SGG (SGG-RISCOS-01, v241).
+   * Checada server-side na rota `app/api/sgg/enviar-riscos`; a RLS de `riscos` NÃO
+   * a consulta. Não herda `pode_criar`/`pode_editar`: escreve no CRM do cliente e
+   * a API do SGG não tem DELETE.
+   */
+  pode_enviar_sgg?: boolean;
+  /** E-mail de quem concedeu `pode_escrever_quimicos` (auditoria, v189). */
+  concedido_por?: string | null;
+  /** Quando `pode_escrever_quimicos` foi concedido (auditoria, v189). */
+  concedido_em?: string | null;
   senha_hash?: string | null;
   created_at?: string;
   /** URL pública da imagem de assinatura do técnico (Storage bucket fotos). */
@@ -862,10 +1049,6 @@ export interface Usuario {
   crm?: string | null;
   /** Registro no MTE — Ministério do Trabalho (técnicos de segurança). */
   registro_mte?: string | null;
-  /** CREA — engenheiros (ex.: 2025106994-RJ). */
-  crea?: string | null;
-  /** ART vinculada (ex.: CREA-RJ nº 2020260174144). */
-  art?: string | null;
   /** CPF do profissional — exibido sempre mascarado (LGPD). */
   cpf?: string | null;
   /** Validade (notAfter) do certificado A1, extraída do .pfx quando a senha é fornecida. */
@@ -924,7 +1107,7 @@ export interface ConclusaoRapidaQuimico {
   limite_exposicao?: string;
   resumo_tecnico?: string;
   /** Origem da análise: "template" = gerada client-side a partir da base
-   *  Chabra (sem IA); "ia" = chamada à edge function Groq. Análises antigas
+   *  JCN Consultoria (sem IA); "ia" = chamada à edge function Groq. Análises antigas
    *  sem essa marca são tratadas como "ia" pela UI (fallback). */
   _fonte?: "template" | "ia";
 }
@@ -982,9 +1165,249 @@ export const GRAU_RISCO_MAQUINA_LABELS: Record<GrauRiscoMaquina, string> = {
   CRITICO: "Crítico",
 };
 
+/**
+ * Classificação do item no inventário (abas/categorias do sidebar):
+ *  - equipamentos: material interno da JCN Consultoria
+ *  - maquinas:     material de clientes
+ *  - medicoes:     instrumentos de medição
+ */
+export type CategoriaInventario = "equipamentos" | "maquinas" | "medicoes";
+
+export const CATEGORIA_INVENTARIO_LABELS: Record<CategoriaInventario, string> = {
+  equipamentos: "Equipamentos",
+  maquinas: "Máquinas",
+  medicoes: "Medição",
+};
+
+// ─── Equipamentos JCN Consultoria (patrimônio interno, v163) ──────────────────────────
+// Tabela própria, escopada por BASE (id_unidade), não por empresa cliente: o
+// patrimônio da JCN Consultoria não pertence a cliente nenhum. Reaproveita StatusMaquina
+// porque a lista de situações é a mesma — o que muda é tudo o resto.
+
+export interface Equipamento {
+  id_equipamento: string;
+  /** Base onde o equipamento está. NOT NULL no banco: equipamento sempre está
+   *  em algum lugar. */
+  id_unidade: string;
+
+  // ── Identificação ──────────────────────────────────────────
+  nome: string;
+  tipo: string | null;
+  fabricante: string | null;
+  modelo: string | null;
+  numero_serie: string | null;
+  /** Único entre os preenchidos (índice parcial). Vazio vira NULL. */
+  numero_patrimonio: string | null;
+  codigo_interno: string | null;
+  tag: string | null;
+  status: StatusMaquina;
+
+  // ── Aquisição — o que patrimônio exige e o inventário NR-12 não tinha ─────
+  fornecedor: string | null;
+  nota_fiscal: string | null;
+  data_aquisicao: string | null;
+  valor_aquisicao: number | null;
+  garantia_ate: string | null;
+  termo_garantia_path: string | null;
+
+  // ── Localização ────────────────────────────────────────────
+  /** OPCIONAL aqui, ao contrário do MaquinaForm: exigir setor de um mouse em
+   *  estoque é atrito puro. */
+  setor: string | null;
+  localizacao: string | null;
+  responsavel: string | null;
+
+  // ── Foto: nasce com miniatura ──────────────────────────────
+  foto_url: string | null;
+  foto_path: string | null;
+  foto_thumb_path: string | null;
+
+  observacoes: string | null;
+
+  /** id_maquina de onde veio na migração da v163. Prova "nenhuma linha
+   *  perdida" e é o que permite desfazer. NULL em cadastro novo. */
+  id_inventario_origem: string | null;
+
+  // ── Posse (v166) ───────────────────────────────────────────
+  /** Colaborador que está com o equipamento. NULL = está na base, livre para
+   *  entrega. É esta coluna que a RPC de entrega usa para recusar entregar duas
+   *  vezes o mesmo aparelho, e a de devolução para soltá-lo de volta. */
+  id_colaborador: string | null;
+  entregue_em: string | null;
+
+  criado_por: string | null;
+  criado_em: string;
+  updated_at: string | null;
+}
+
+// ─── Entrega, devolução e roster de colaboradores (v166/v167) ────────────────
+// O banco destas seis tabelas foi aplicado em produção junto com o módulo, mas
+// nada no frontend as lia — por isso elas nunca chegaram aqui. Os tipos abaixo
+// são transcrição direta das migrations, não inferência.
+
+export interface ColaboradorChabra {
+  id_colaborador: string;
+  /** Base à qual a pessoa pertence. A RPC de entrega recusa colaborador de
+   *  outra base — não é decoração de tela. */
+  id_unidade: string;
+  nome: string;
+  cpf: string | null;
+  matricula: string | null;
+  cargo: string | null;
+  setor: string | null;
+  /** Opcional e só para aviso. Não é credencial: o roster existe justamente
+   *  para quem NÃO tem login no painel. */
+  email: string | null;
+  ativo: boolean;
+  criado_por: string | null;
+  criado_em: string;
+  updated_at: string | null;
+  /** Metadados NÃO-secretos da digital. O template cifrado vive em
+   *  `colaboradores_chabra_biometria`, tabela sem policy que só as RPCs
+   *  `security definer` alcançam — a policy de SELECT da v166 liberaria a
+   *  linha inteira para a base, e o template sairia junto (v188). */
+  biometria_em: string | null;
+  biometria_dedo: string | null;
+}
+
+/** Estado do bem no retorno. Diferente de `integro` exige descrição — o banco
+ *  cobra isso por constraint (`equip_dev_estado_exige_obs`). */
+export type EstadoRetorno = "integro" | "avariado" | "inservivel";
+
+export interface EquipamentoEntrega {
+  id_entrega: string;
+  id_unidade: string;
+  id_colaborador: string;
+  data_entrega: string;
+  responsavel_entrega: string | null;
+  observacao: string | null;
+  total_itens: number;
+  status: string;
+  criado_por: string | null;
+  criado_em: string;
+  /** v192 — a emissão virou um ato. Enquanto `null`, o termo é rascunho: sai com marca
+   *  d'água, sem campos de assinatura, e a assinatura biométrica é recusada. */
+  emitido_em: string | null;
+  emitido_por: string | null;
+  /** Documento assinado não se apaga, se cancela — apagar destruiria a prova que a
+   *  biometria existe para produzir. */
+  cancelado_em: string | null;
+  cancelado_por: string | null;
+  cancelado_motivo: string | null;
+}
+
+/** Item entregue. `id_equipamento` = ativo individualizado; `id_catalogo` =
+ *  produto de estoque por quantidade. Um dos dois, nunca os dois vazios.
+ *  Os campos `nome_equipamento`/`numero_serie`/`numero_patrimonio` são
+ *  SNAPSHOT: o termo emitido tem de continuar legível depois que o
+ *  equipamento for editado ou baixado. */
+export interface EquipamentoEntregaItem {
+  id_item: string;
+  id_entrega: string;
+  id_unidade: string;
+  id_catalogo: string | null;
+  id_equipamento: string | null;
+  nome_equipamento: string | null;
+  numero_serie: string | null;
+  numero_patrimonio: string | null;
+  quantidade: number;
+  devolvido_em: string | null;
+  criado_em: string;
+}
+
+/** Quem pode assinar `envia` e `valida` numa retirada — em QUALQUER base (v189).
+ *  Tabela própria e não uma flag em `colaboradores_chabra`: campo de controle de
+ *  segurança não mora em cadastro com CRUD aberto. Escrita só por
+ *  `equip_definir_equipe_entrega`, que exige Admin. */
+export interface EquipEquipeEntrega {
+  id_colaborador: string;
+  definido_por: string | null;
+  definido_em: string;
+}
+
+/** Alterações da retirada depois de criada (v192). Só as RPCs escrevem: a tabela não
+ *  tem policy de INSERT, porque histórico que o usuário pode escrever não é histórico. */
+export interface EquipamentoEntregaHistorico {
+  id_historico: string;
+  id_entrega: string;
+  id_unidade: string;
+  acao: "emitiu" | "editou" | "item_add" | "item_edit" | "item_rem" | "cancelou" | "excluiu";
+  campo: string | null;
+  valor_antes: string | null;
+  valor_depois: string | null;
+  motivo: string | null;
+  usuario_email: string | null;
+  criado_em: string;
+}
+
+export interface EquipamentoEntregaAssinatura {
+  id_assinatura: string;
+  id_entrega: string;
+  id_unidade: string;
+  id_colaborador: string | null;
+  assinante_nome: string | null;
+  metodo: "canvas" | "digital";
+  assinatura_png: string | null;
+  user_agent: string | null;
+  ip: string | null;
+  consentimento_em: string | null;
+  assinado_em: string;
+  criado_por: string | null;
+  criado_em: string;
+  /** Quem assinou: quem envia, quem recebe e quem valida. Uma assinatura por
+   *  papel — índice único `(id_entrega, papel)` na v188, que substituiu a
+   *  regra "uma assinatura por entrega" da v166. As três pessoas são distintas
+   *  duas a duas: separação de funções é a razão do terceiro papel. */
+  papel: "envia" | "recebe" | "valida";
+  /** Herdado da v166 (aceite eletrônico da transferência). Na assinatura digital de
+   *  retirada fica `null`: vinha do corpo da requisição, ou seja, o próprio signatário
+   *  escolhia o valor, e nunca era lido de volta. Foi substituído por
+   *  `conteudo_sha256`. */
+  pdf_sha256: string | null;
+  /** Hash canônico do CONTEÚDO da retirada no instante da assinatura, calculado pelo
+   *  banco (`equip_hash_conteudo_entrega`). Recalculado na impressão e comparado: se
+   *  divergir, o termo para de afirmar "digital verificada" e denuncia a alteração. */
+  conteudo_sha256: string | null;
+  /** Vêm do matcher, no servidor. `metodo='digital'` só é gravado por
+   *  `equipamento_assinar_entrega_digital`, que não é concedida a
+   *  `authenticated` — o cliente não consegue afirmar que verificou. */
+  match_score: number | null;
+  finger_verificado: boolean | null;
+}
+
+export interface EquipamentoDevolucao {
+  id_devolucao: string;
+  id_unidade: string;
+  id_colaborador: string;
+  /** Entrega de origem, quando conhecida. `on delete set null`: a devolução
+   *  sobrevive ao sumiço da entrega. */
+  id_entrega: string | null;
+  data_devolucao: string;
+  recebido_por: string | null;
+  observacao: string | null;
+  total_itens: number;
+  criado_por: string | null;
+  criado_em: string;
+}
+
+export interface EquipamentoDevolucaoItem {
+  id_item: string;
+  id_devolucao: string;
+  id_unidade: string;
+  id_catalogo: string | null;
+  id_equipamento: string | null;
+  nome_equipamento: string | null;
+  numero_serie: string | null;
+  numero_patrimonio: string | null;
+  quantidade: number;
+  estado_retorno: EstadoRetorno;
+  observacao_estado: string | null;
+  criado_em: string;
+}
+
 export interface Maquina {
   id_maquina: string;
-  /** NULL = patrimônio interno da Chabra; preenchido = máquina de cliente. */
+  /** NULL = patrimônio interno da JCN Consultoria; preenchido = máquina de cliente. */
   id_empresa: string | null;
   /** Origem da importação (v66): inspeção de onde a máquina veio, se importada. */
   id_inspecao: string | null;
@@ -995,6 +1418,8 @@ export interface Maquina {
   nome: string;
   tipo: string | null;
   categoria: string | null;
+  /** Aba/categoria do inventário: Equipamentos (interno) · Máquinas (cliente) · Medição. */
+  categoria_inventario: CategoriaInventario | null;
   codigo_interno: string | null;
   tag: string | null;
   marca: string | null; // fabricante
@@ -1005,12 +1430,15 @@ export interface Maquina {
   status: StatusMaquina;
 
   // ── Localização e Processo ─────────────────────────────────
-  unidade: string | null;
+  id_unidade: string | null;   // base/unidade (FK unidades) — isolamento e transferência (v136)
+  unidade: string | null;      // espelho em texto do nome da unidade (legado/exibição)
   setor: string | null;
   linha_processo: string | null;
   area: string | null;
   responsavel_setor: string | null;
   operacao_executada: string | null;
+  /** V145: operadores da máquina, texto livre (nomes separados por vírgula). */
+  operadores: string | null;
   localizacao: string | null; // campo legado mantido
 
   // ── Capacidade e Finalidade ────────────────────────────────
@@ -1046,6 +1474,10 @@ export interface Maquina {
   observacoes: string | null;
   foto_url: string | null;
   foto_storage_path: string | null;
+  /** Caminho da miniatura (~320px) no bucket `fotos`. A LISTAGEM lê isto; a
+   *  original só é baixada ao abrir o item. NULL enquanto o mutirão não passou
+   *  — o código cai na original. v173, 2026-08-10. */
+  foto_thumb_path: string | null;
   usuario_email: string | null;
   usuario_nome: string | null;
   created_at: string;
@@ -1091,8 +1523,6 @@ export interface ApreciacaoMaquina {
   responsavel_empresa: string | null;
   cidade: string | null;
   data_apreciacao: string | null;
-  /** Nº da Notificação SIT/MTE atendida por este laudo (v138). */
-  notificacao_sit?: string | null;
   /** Validade do documento (informada pelo usuário) — alerta de vencimento. */
   data_validade?: string | null;
   conclusao_tecnica: string | null;
@@ -1101,8 +1531,16 @@ export interface ApreciacaoMaquina {
   status: StatusApreciacao;
   finalizado_em: string | null;
   observacoes_gerais: string | null;
-  /** Imprimir o checklist NR-12 (37 itens) no PDF, além da ficha HRN (v142). */
+  /** V149: número da notificação SIT/MTE que originou o laudo. */
+  notificacao_sit: string | null;
+  /** V153: imprime também o checklist de 37 itens no PDF (além da ficha HRN). */
   incluir_checklist_pdf: boolean;
+  /**
+   * V146: narrativa do que foi verificado em campo naquela máquina. Sai acima da
+   * tabela de risco na ficha. Não confundir com `observacoes_gerais` nem com
+   * `conclusao_tecnica`, que é o parecer e sai depois da tabela.
+   */
+  constatacoes_inspecao: string | null;
 
   // ── Identificação dos Componentes (ABNT ISO/TR 14121-2:2018) ──────────────
   componentes_maquina: string[] | null;   // tipos de componentes presentes
@@ -1164,7 +1602,10 @@ const _POD_SCORE: Record<PodHrn, number> = { MUITO_PROVAVEL: 4, PROVAVEL: 3, IMP
 const _FEP_SCORE: Record<FepHrn, number> = { DIARIAMENTE: 4, SEMANALMENTE: 3, MENSALMENTE: 2, ANUALMENTE: 1 };
 const _GPD_SCORE: Record<GpdHrn, number> = { CATASTROFICA: 4, GRAVE: 3, MODERADA: 2, BAIXA: 1 };
 
-/** Índice de Risco = POD × FEP × GPD (número). null se faltar fator. */
+/**
+ * Índice HRN (POD × FEP × GPD). Impresso ao lado da classificação na ficha do
+ * laudo, no formato "24 · MÉDIO". Retorna null se faltar qualquer um dos três.
+ */
 export function calcularIndiceHrn(
   pod: string | null,
   fep: string | null,
@@ -1177,15 +1618,17 @@ export function calcularIndiceHrn(
   return p * f * g;
 }
 
-// Faixas de classificação (padrão do laudo CHABRA/TERE PÃO):
-//   ALTO > 36 · MÉDIO 19–36 · BAIXO 9–18 · DESPREZÍVEL ≤ 8
 export function calcularClassificacaoHrn(
   pod: string | null,
   fep: string | null,
   gpd: string | null
 ): ClassificacaoRiscoHrn | null {
   const score = calcularIndiceHrn(pod, fep, gpd);
-  if (score == null) return null;
+  if (!score) return null;
+  // Faixas do laudo de referência TERE PÃO, alinhadas em 2026-07-31 a pedido do
+  // usuário (antes: 4 / 12 / 32). Aplicado com a tabela HRN ainda em ZERO linhas
+  // — nenhum laudo existente foi reclassificado. A função apenas SUGERE: o valor
+  // que o técnico gravar é o que vale e o que sai impresso.
   if (score <= 8) return "DESPREZIVEL";
   if (score <= 18) return "BAIXO";
   if (score <= 36) return "MEDIO";
@@ -1195,77 +1638,41 @@ export function calcularClassificacaoHrn(
 export interface RiscoHrn {
   id_risco: string;
   id_apreciacao: string;
-  id_ficha: string | null;              // v132 — máquina (ficha) à qual o risco pertence
+  /** Máquina (ficha) a que o perigo pertence — v148. */
+  id_ficha: string | null;
   tipo_perigo: string;
   origem: string | null;
   potenciais_consequencias: string | null;
+  /**
+   * V147: item(ns) da NR-12 ligados ao perigo — texto livre ("12.38 a 12.55").
+   * NÃO confundir com `npe_item`, que é o Número de Pessoas Expostas.
+   */
+  item_nr12: string | null;
+  /**
+   * V149: itens da NR-12 como lista — substitui `item_nr12`. O campo texto fica
+   * como legado enquanto houver código antigo em produção escrevendo nele.
+   */
+  itens_nr12: string[] | null;
+  /** V149: categoria de segurança do comando (NBR 14153). */
+  categoria_seguranca: CategoriaSeguranca | null;
   pod: PodHrn | null;
   fep: FepHrn | null;
   gpd: GpdHrn | null;
   npe_item: NpeHrn | null;
   classificacao_risco: ClassificacaoRiscoHrn | null;
-  // Risco residual (v132 — reduz prioritariamente o POD)
+  nivel_acoes: string | null;
+  /** LEGADO (anterior à v146): campo único de medidas. A ficha usa os dois abaixo. */
+  medidas_preventivas: string | null;
+
+  // ── V146: medidas separadas e risco residual (colunas da ficha do laudo) ──
+  medidas_engenharia: string | null;
+  medidas_administrativas: string | null;
   pod_residual: PodHrn | null;
   fep_residual: FepHrn | null;
   gpd_residual: GpdHrn | null;
   classificacao_residual: ClassificacaoRiscoHrn | null;
-  nivel_acoes: string | null;
-  medidas_preventivas: string | null;
-  itens_nr12: string[] | null;          // v136 — itens da NR-12 (ex.: "12.38 a 12.55")
-  categoria_seguranca: string | null;   // v138 — categoria/PL NBR 14153 (B,1,2,3,4)
-  ordem: number;
-  created_at: string;
-}
 
-// ── Ficha de máquina (v132 — N máquinas por laudo de apreciação) ──────────
-export interface FichaMaquina {
-  id_ficha: string;
-  id_apreciacao: string;
-  numero_ordem: number;
-  id_maquina: string | null;
-  maquina_descricao: string | null;
-  equipamento: string | null;
-  tipo: string | null;
-  modelo: string | null;
-  fabricante: string | null;
-  serie: string | null;
-  ano: string | null;
-  capacidade: string | null;
-  setor: string | null;
-  componentes_maquina: string[] | null;
-  limite_uso: string | null;
-  limite_espaco: string | null;
-  limite_tempo: string | null;
-  limite_produtividade: string | null;
-  npe: string | null;
-  sistemas_atual: string[] | null;
-  sistemas_necessario: string[] | null;
-  constatacoes_inspecao: string | null;
-  parecer_tecnico: string | null;
-  operadores: { nome: string; cargo: string }[] | null; // v141 — nome+cargo (era text v136)
-  prioridade_manual: boolean;
-  foto_urls: string[];
-  foto_storage_paths: string[];
-  created_at: string;
-  updated_at: string | null;
-}
-
-// ── Catálogo de perigos reutilizável (v132 — pré-preenche a linha HRN) ─────
-export interface PerigoCatalogo {
-  id: string;
-  nome: string;
-  origem_consequencias: string | null;
-  itens_nr12: string[];
-  medidas_eng: string | null;
-  medidas_adm: string | null;
-  pod_default: PodHrn | null;
-  fep_default: FepHrn | null;
-  gpd_default: GpdHrn | null;
-  pod_residual_default: PodHrn | null;
-  fep_residual_default: FepHrn | null;
-  gpd_residual_default: GpdHrn | null;
   ordem: number;
-  ativo: boolean;
   created_at: string;
 }
 
@@ -1338,7 +1745,35 @@ export interface InvestigacaoAcao {
   what_acao: string;
   why_justificativa: string | null;
   where_local: string | null;
-  when_prazo: string | null; // ISO date
+  /** TEXTO LIVRE desde a v185 ("imediato", "30 dias após a entrega"). Linhas
+   *  antigas ainda podem estar em ISO — use formatarPrazoAcao() para exibir. */
+  when_prazo: string | null;
+  who_responsavel: string | null;
+  how_metodo: string | null;
+  how_much_custo: string | null;
+  status: StatusAcaoApreciacao;
+  prioridade: PrioridadeAcaoApreciacao;
+  data_conclusao: string | null;
+  observacoes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/** Plano de Ação 5W2H do laudo AET — tabela aet_acoes (v207). Standalone,
+ *  como InvestigacaoAcao: nasce e morre com o relatório. */
+export interface AetAcao {
+  id_acao: string;
+  id_relatorio: string;
+  /** Setor do AET (aet_relatorios.setores[].id, JSONB, sem FK). NULL = ação geral. */
+  id_setor: string | null;
+  ordem: number;
+  what_acao: string;
+  why_justificativa: string | null;
+  where_local: string | null;
+  /** TEXTO LIVRE de nascença ("imediato", "30 dias após a entrega"). Exibir
+   *  com formatarPrazoAcao(). */
+  when_prazo: string | null;
   who_responsavel: string | null;
   how_metodo: string | null;
   how_much_custo: string | null;
@@ -1361,10 +1796,117 @@ export interface InspecaoAssociado {
   created_at: string;
 }
 
+// ── Ficha de máquina (v148) — 1 laudo cobre N máquinas ────────────────────
+
+/** Operador/responsável de uma máquina. Sai no PDF como "Nome — Cargo". */
+export interface OperadorFicha {
+  nome: string;
+  cargo: string;
+}
+
+/**
+ * Uma máquina dentro do laudo. Os campos de identificação são SNAPSHOT: mudar
+ * o inventário depois não altera laudo já emitido.
+ */
+export interface FichaMaquina {
+  id_ficha: string;
+  id_apreciacao: string;
+  id_maquina: string | null;
+  numero_ordem: number;
+
+  maquina_descricao: string | null;
+  equipamento: string | null;
+  tipo: string | null;
+  modelo: string | null;
+  fabricante: string | null;
+  serie: string | null;
+  ano: string | null;
+  capacidade: string | null;
+  setor: string | null;
+
+  componentes_maquina: string[] | null;
+  limite_uso: string | null;
+  limite_espaco: string | null;
+  limite_tempo: string | null;
+  limite_produtividade: string | null;
+  npe: string | null;
+  sistemas_atual: string[] | null;
+  sistemas_necessario: string[] | null;
+
+  constatacoes_inspecao: string | null;
+  /** Parecer DAQUELA máquina — não confundir com a conclusão geral do laudo. */
+  parecer_tecnico: string | null;
+  operadores: OperadorFicha[] | null;
+  prioridade_manual: boolean;
+
+  foto_urls: string[];
+  foto_storage_paths: string[];
+
+  usuario_email: string | null;
+  usuario_nome: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/** Perigo reutilizável — pré-preenche a linha HRN (v150). */
+export interface PerigoCatalogo {
+  id_perigo: string;
+  nome: string;
+  origem_consequencias: string | null;
+  itens_nr12: string[] | null;
+  medidas_eng: string | null;
+  medidas_adm: string | null;
+  pod_default: PodHrn | null;
+  fep_default: FepHrn | null;
+  gpd_default: GpdHrn | null;
+  pod_residual_default: PodHrn | null;
+  fep_residual_default: FepHrn | null;
+  gpd_residual_default: GpdHrn | null;
+  categoria_seguranca_default: CategoriaSeguranca | null;
+  ordem: number;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string | null;
+}
+
+/** Categoria de segurança do comando (ABNT NBR 14153 / ISO 13849). */
+export type CategoriaSeguranca = "B" | "1" | "2" | "3" | "4";
+export const CATEGORIAS_SEGURANCA: CategoriaSeguranca[] = ["B", "1", "2", "3", "4"];
+
+/**
+ * Agrupa fichas por setor, na hierarquia Empresa → Setor → Máquina.
+ * Setores entram na ordem da 1ª aparição; máquinas por `numero_ordem`.
+ * `seqDe` devolve a numeração sequencial impressa (4.1, 4.2, ...).
+ */
+export function agruparFichasPorSetor(fichas: FichaMaquina[]): {
+  grupos: { setor: string; fichas: FichaMaquina[] }[];
+  flat: FichaMaquina[];
+  seqDe: (f: FichaMaquina) => number;
+} {
+  const SEM_SETOR = "Sem setor";
+  const ordem: string[] = [];
+  const porSetor = new Map<string, FichaMaquina[]>();
+
+  for (const f of [...fichas].sort((a, b) => (a.numero_ordem ?? 0) - (b.numero_ordem ?? 0))) {
+    const setor = (f.setor ?? "").trim() || SEM_SETOR;
+    if (!porSetor.has(setor)) {
+      porSetor.set(setor, []);
+      ordem.push(setor);
+    }
+    porSetor.get(setor)!.push(f);
+  }
+
+  const grupos = ordem.map((setor) => ({ setor, fichas: porSetor.get(setor)! }));
+  const flat = grupos.flatMap((g) => g.fichas);
+  const posicao = new Map(flat.map((f, i) => [f.id_ficha, i + 1]));
+  return { grupos, flat, seqDe: (f) => posicao.get(f.id_ficha) ?? 0 };
+}
+
 export interface ApreciacaoMaquinaItem {
   id_item: string;
   id_apreciacao: string;
-  id_ficha: string | null;            // v132 — máquina (ficha) do item de checklist
+  /** Máquina (ficha) a que o item pertence — v148. */
+  id_ficha: string | null;
   item_codigo: string;
   item_categoria: string;
   item_titulo: string;
@@ -1408,7 +1950,16 @@ export interface InspecaoMaquina {
   id_maquina_inspecao: string;
   id_inspecao: string;
   id_empresa: string | null;
+  /**
+   * LEGADO — congelado na v160 (2026-08-05). A máquina pode estar em vários
+   * setores: use `ids_setores`. Mantido como trilha e base do rollback.
+   */
   id_setor: string | null;
+  /**
+   * v160 — setores em que a máquina é utilizada, de
+   * `inspecao_maquinas_setores`. Derivado: não é coluna da tabela.
+   */
+  ids_setores: string[];
   nome: string;
   tipo: string | null;
   marca: string | null;
@@ -1429,8 +1980,6 @@ export interface InspecaoMaquina {
   necessita_adequacao_nr12: boolean | null;
   grau_risco: GrauRiscoInspecaoMaquina | null;
   observacoes: string | null;
-  /** Operadores/responsáveis que utilizam a máquina (v139). */
-  operadores?: { nome: string; cargo: string }[] | null;
   parecer_ia: string | null;
   foto_urls: string[];
   foto_storage_paths: string[];
@@ -1455,7 +2004,7 @@ export interface RelatorioConformidade {
   nr_codigo: string;
   nr_titulo: string;
   setor: string | null;
-  /** Responsável técnico Chabra (quem assina a auditoria pelo prestador). */
+  /** Responsável técnico JCN Consultoria (quem assina a auditoria pelo prestador). */
   responsavel: string | null;
   /** Pessoa do lado da empresa que acompanhou a auditoria e co-assina o relatório. */
   responsavel_empresa: string | null;
@@ -1517,7 +2066,7 @@ export interface RelatorioNaoConformidade {
    *  pode mudar; relatório fica congelado). */
   nr_titulo: string | null;
   setor: string | null;
-  /** Responsável técnico Chabra (quem assina pelo prestador). */
+  /** Responsável técnico JCN Consultoria (quem assina pelo prestador). */
   responsavel: string | null;
   /** Pessoa do lado da empresa que acompanhou a auditoria. */
   responsavel_empresa: string | null;
@@ -1655,15 +2204,61 @@ type TableShape<T> = {
   Relationships: [];
 };
 
+/**
+ * Outbox do envio de riscos ao SGG (v241). Uma linha por (inspeção, setor, data).
+ * Escrita só pelo service client da rota — `authenticated` e `anon` não têm IUD.
+ * `status`: pendente|enviado|erro|duplicado|indeterminado (v252).
+ * `indeterminado` = a falha ocorreu DEPOIS de os bytes saírem; conferir no SGG
+ * antes de reenviar, porque a API não tem DELETE.
+ */
+export interface SggEnvio {
+  id_envio: string;
+  id_inspecao: string;
+  id_empresa: string;
+  id_setor: string;
+  base_sgg: string;
+  sgg_id_empresa: string;
+  sgg_id_setor: string;
+  sgg_ids_cargos: string;
+  data: string;
+  data_validade: string;
+  payload: unknown;
+  status: "pendente" | "enviado" | "erro" | "duplicado" | "indeterminado";
+  sgg_id_avaliacao?: string | null;
+  sgg_codigo?: string | null;
+  sgg_msg?: string | null;
+  ator_email: string;
+  criado_em?: string;
+  respondido_em?: string | null;
+}
+
 export interface Database {
   public: {
     Tables: {
+      // ── Tabelas que o painel acessa sem declarar aqui ─────────────────────
+      // La o cliente tipa `from`/`rpc` de forma solta (ComposedSupabaseClient),
+      // entao elas nunca precisaram entrar no Database. Aqui o cliente e o
+      // supabase-js estritamente tipado, e sem estas linhas cada insert/update
+      // vira `never`. Shape permissivo de proposito: o dominio destas tabelas
+      // mora no modulo que as usa, nao neste arquivo.
+      equipamentos_catalogo: TableShape<Record<string, unknown>>;
+      equipamentos_movimentacoes: TableShape<Record<string, unknown>>;
+      equipamentos_importacoes_nfe: TableShape<Record<string, unknown>>;
+      equipamentos_importacoes_nfe_itens: TableShape<Record<string, unknown>>;
+      equipamentos_status_historico: TableShape<Record<string, unknown>>;
+      novidades_avisos: TableShape<Record<string, unknown>>;
+      novidades_vistas: TableShape<Record<string, unknown>>;
+      gestao_google_contas: TableShape<Record<string, unknown>>;
+      gestao_google_eventos: TableShape<Record<string, unknown>>;
+      gestao_google_fila: TableShape<Record<string, unknown>>;
+      gestao_tarefa_vinculados: TableShape<Record<string, unknown>>;
       empresas: TableShape<Empresa>;
       inspecoes: TableShape<Inspecao>;
       setores: TableShape<Setor>;
       cargos: TableShape<Cargo>;
       riscos: TableShape<Risco>;
       epi_epc: TableShape<EpiEpc>;
+      sgg_envios: TableShape<SggEnvio>;
       fotos: TableShape<Foto>;
       responsaveis: TableShape<Responsavel>;
       complementos: TableShape<Complemento>;
@@ -1691,6 +2286,8 @@ export interface Database {
       apreciacoes_maquinas_itens: TableShape<ApreciacaoMaquinaItem>;
       apreciacao_acoes: TableShape<ApreciacaoAcao>;
       apreciacao_riscos_hrn: TableShape<RiscoHrn>;
+      apreciacao_fichas_maquina: TableShape<FichaMaquina>;
+      apreciacao_perigos_catalogo: TableShape<PerigoCatalogo>;
       aet_relatorios: TableShape<AetRelatorio>;
       aet_textos_padrao: TableShape<AetTextoPadraoCapitulo>;
       aep_relatorios: TableShape<AepRelatorio>;
@@ -1702,8 +2299,58 @@ export interface Database {
       portal_solicitacoes_cliente: TableShape<PortalSolicitacaoCliente>;
       portal_comentarios: TableShape<PortalComentario>;
       portal_anexos: TableShape<PortalAnexo>;
+      colaboradores_chabra: TableShape<ColaboradorChabra>;
+      equipamentos_entregas: TableShape<EquipamentoEntrega>;
+      equipamentos_entregas_itens: TableShape<EquipamentoEntregaItem>;
+      equipamentos_entrega_assinaturas: TableShape<EquipamentoEntregaAssinatura>;
+      equip_equipe_entrega: TableShape<EquipEquipeEntrega>;
+      equipamentos_entregas_historico: TableShape<EquipamentoEntregaHistorico>;
+      equipamentos_devolucoes: TableShape<EquipamentoDevolucao>;
+      equipamentos_devolucoes_itens: TableShape<EquipamentoDevolucaoItem>;
+      auditoria_eventos: TableShape<AuditoriaEvento>;
+      auditoria_tabelas: TableShape<AuditoriaTabela>;
     };
   };
+}
+
+
+// ─── Auditoria de movimentação (v212) ────────────────────────────────────────
+
+export type AuditoriaAcao = "criou" | "editou" | "excluiu";
+
+/**
+ * Uma linha de `auditoria_eventos`, gravada por GATILHO em 167 tabelas (v212).
+ * Só Admin lê (RLS); ninguém edita nem apaga pela API.
+ * `antes`/`depois`: na edição, só os campos que mudaram; na criação, a linha
+ * inteira em `depois`; na exclusão, a linha inteira em `antes`.
+ */
+export interface AuditoriaEvento {
+  id: number;
+  ocorrido_em: string;
+  tabela: string;
+  registro_id: string | null;
+  acao: AuditoriaAcao;
+  /** Id do módulo do hub (ModuloPermitido) ou um dos extras: gestao_chabra · sistema · pdfs. */
+  modulo: string;
+  id_empresa: string | null;
+  titulo: string | null;
+  /** NULL quando a gravação veio pelo token de serviço ou por psql — ver usuario_role. */
+  usuario_email: string | null;
+  usuario_role: string | null;
+  /** v256: de onde veio a gravação feita pelo token de serviço ("usuarios/criar", "formulario-publico"…). NULL no resto. */
+  usuario_origem?: string | null;
+  campos_alterados: string[];
+  antes: Record<string, unknown> | null;
+  depois: Record<string, unknown> | null;
+}
+
+export interface AuditoriaTabela {
+  tabela: string;
+  modulo: string;
+  pk_colunas: string[];
+  coluna_titulo: string | null;
+  ativo: boolean;
+  criado_em: string;
 }
 
 // ─── AEP – Análise Ergonômica Preliminar ─────────────────────────────────────
@@ -1739,19 +2386,19 @@ export interface AepChecklistCognitiva {
 }
 
 export interface AepChecklistOrganizacional {
-  assedio: RespostaChecklist;
-  falta_suporte: RespostaChecklist;
-  gestao_mudancas: RespostaChecklist;
-  clareza_papel: RespostaChecklist;
-  recompensas: RespostaChecklist;
-  baixo_controle: RespostaChecklist;
-  justica_organizacional: RespostaChecklist;
-  eventos_traumaticos: RespostaChecklist;
-  subcarga: RespostaChecklist;
-  sobrecarga: RespostaChecklist;
-  maus_relacionamentos: RespostaChecklist;
-  comunicacao_dificil: RespostaChecklist;
-  trabalho_remoto: RespostaChecklist;
+  assedio: RespostaChecklistAep;
+  falta_suporte: RespostaChecklistAep;
+  gestao_mudancas: RespostaChecklistAep;
+  clareza_papel: RespostaChecklistAep;
+  recompensas: RespostaChecklistAep;
+  baixo_controle: RespostaChecklistAep;
+  justica_organizacional: RespostaChecklistAep;
+  eventos_traumaticos: RespostaChecklistAep;
+  subcarga: RespostaChecklistAep;
+  sobrecarga: RespostaChecklistAep;
+  maus_relacionamentos: RespostaChecklistAep;
+  comunicacao_dificil: RespostaChecklistAep;
+  trabalho_remoto: RespostaChecklistAep;
 }
 
 export interface AepCargoSetor {
@@ -1779,6 +2426,13 @@ export interface AepSetor {
   checklist_fisica: AepChecklistFisica;
   checklist_cognitiva: AepChecklistCognitiva;
   checklist_organizacional: AepChecklistOrganizacional;
+  /**
+   * Sinais observáveis marcados em cada fator organizacional respondido "sim"
+   * — `{ assedio: ["tom_agressivo", ...] }`. Opcional: os laudos anteriores a
+   * 2026-08-06 não têm o campo, e `aep_relatorios.setores` é jsonb, então nada
+   * precisou de migration. Catálogo em `lib/aep/sinais-organizacional.ts`.
+   */
+  sinais_organizacional?: Record<string, string[]>;
   parecer_tecnico: string;
   recomendacoes: string;
   necessita_aet: boolean;
@@ -1865,10 +2519,22 @@ export interface AetChecklistPergunta {
   slug: string;
   label: string;
   secao: string;
+  /** Só no código: a tabela NÃO tem esta coluna (ver lib/aet/checklist.ts). */
   tipo?: "tristate" | "texto";
+  /** v209: excluída na tela de configuração — some da análise, da prévia e do PDF. */
+  oculta?: boolean | null;
 }
 
 export type RespostaChecklist = "sim" | "nao" | "nao_aplica";
+
+/**
+ * A Ergonomia Organizacional do AEP tem um quarto estado: "N/I — não
+ * identificável", para o fator que não foi possível verificar em campo (não é
+ * "não existe", nem "não se aplica"). Fica só no AEP organizacional de
+ * propósito: a física, a cognitiva e todos os checklists do AET seguem
+ * tristate, e nada do que já está gravado muda de significado.
+ */
+export type RespostaChecklistAep = RespostaChecklist | "nao_identificado";
 
 export interface AetChecklist {
   levantamento_acima_limite: RespostaChecklist;
@@ -2045,7 +2711,7 @@ export interface AetLaudoQpsResposta {
 
 export interface AetLaudoFatorPsi {
   id_relatorio: string;
-  /** Setor do laudo (id dentro do JSONB aet_relatorios.setores). v145: os
+  /** Setor do laudo (id dentro do JSONB aet_relatorios.setores). v135: os
    *  fatores passaram a ser por setor — antes eram um só para o laudo todo. */
   id_setor: string;
   codigo_fator: string;

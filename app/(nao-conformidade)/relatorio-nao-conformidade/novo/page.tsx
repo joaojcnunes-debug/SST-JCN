@@ -56,9 +56,15 @@ export default function NovoNaoConformidadePage() {
         data_inspecao: dataInspecao || null,
       },
       {
-        onSuccess: (r) => {
-          toast.success("Relatório criado");
-          router.push(`/relatorio-nao-conformidade/${r.id_relatorio}`);
+        onSuccess: ({ row, resultado }) => {
+          // Sem rede o relatório está no aparelho, não no painel — e dizer
+          // "criado" faria o auditor achar que já está lá.
+          toast.success(
+            resultado.destino === "SERVIDOR"
+              ? "Relatório criado"
+              : "Relatório guardado no aparelho",
+          );
+          router.push(`/relatorio-nao-conformidade/${row.id_relatorio}`);
         },
         onError: (e: Error) =>
           toast.error(mensagemErro(e, "Falha ao criar relatório")),

@@ -5,6 +5,14 @@
 //   supabase functions deploy gerar-observacao-psi-ia
 //
 // Cliente: supabase.functions.invoke('gerar-observacao-psi-ia', { body })
+//
+// ⚠️ ESTA CÓPIA NÃO RODA. `functions.invoke('<name>')` é redirecionado para a
+// rota Next `/api/fn/<name>` (ver makeLocalFunctions em lib/supabase/client.ts).
+// Quem executa é app/api/fn/gerar-observacao-psi-ia/route.ts. O arquivo fica
+// aqui como origem do porte — e é mantido EM SINCRONIA de propósito: neste
+// projeto, duas cópias da mesma regra já divergiram em silêncio mais de uma vez
+// (a régua de zona psi, os textos padrão do checklist do AET). Mudou lá, muda
+// aqui. O porquê da proibição de escrever a média está no comentário da rota.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
@@ -39,7 +47,7 @@ Responda APENAS com JSON válido (sem markdown, sem cercas, sem texto fora do JS
 
 Diretrizes:
 - Mencionar explicitamente o nome do setor e do fator
-- Comentar o score (média) e a zona de risco obtida
+- Comentar a zona de risco obtida em PALAVRAS. NÃO escrever o número da média no texto
 - Se houver pergunta crítica, citá-la brevemente como achado mais relevante
 - Propor 1 ou 2 encaminhamentos genéricos alinhados à zona (sem inventar ações detalhadas)
 - NÃO usar listas com bullets — apenas parágrafos corridos

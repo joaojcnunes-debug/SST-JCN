@@ -8,7 +8,6 @@ import {
   Loader2,
   ListChecks,
   BarChart2,
-  ClipboardCheck,
   Pencil,
   Trash2,
   Check,
@@ -31,6 +30,7 @@ const STATUS_LABEL: Record<StatusQpsAplicacao, string> = {
   RASCUNHO: "Rascunho",
   EM_ANDAMENTO: "Em andamento",
   CONCLUIDO: "Concluído",
+  ENVIADO_CLIENTE: "Enviado p/ cliente",
   DELETADO: "Deletado",
 };
 
@@ -38,19 +38,27 @@ const STATUS_COR: Record<StatusQpsAplicacao, string> = {
   RASCUNHO: "bg-gray-100 text-gray-600",
   EM_ANDAMENTO: "bg-blue-100 text-blue-700",
   CONCLUIDO: "bg-green-100 text-green-700",
+  ENVIADO_CLIENTE: "bg-indigo-100 text-indigo-700",
   DELETADO: "bg-red-100 text-red-600",
 };
 
+/**
+ * A fila do botão "avançar". `ENVIADO_CLIENTE` (v206) fecha a fila: entregue ao
+ * cliente é o último passo. Quem precisar voltar atrás usa o quadro de status
+ * do Resumo, arrastando o cartão — a fila daqui é só de ida.
+ */
 const PROXIMOS_STATUS: Record<StatusQpsAplicacao, StatusQpsAplicacao | null> = {
   RASCUNHO: "EM_ANDAMENTO",
   EM_ANDAMENTO: "CONCLUIDO",
-  CONCLUIDO: null,
+  CONCLUIDO: "ENVIADO_CLIENTE",
+  ENVIADO_CLIENTE: null,
   DELETADO: null,
 };
 
-function fmtData(iso: string | null) {
+function fmtData(iso: string | null | undefined) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("pt-BR");
+  // Data sem hora ("2026-05-23") é lida como UTC e cairia no dia anterior em -03:00.
+  return new Date(iso.length === 10 ? `${iso}T00:00:00` : iso).toLocaleDateString("pt-BR");
 }
 
 export default function QpsDetalhe({ params }: { params: Promise<{ id: string }> }) {
@@ -66,6 +74,15 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
   const [editandoTitulo, setEditandoTitulo] = useState(false);
   const [novoTitulo, setNovoTitulo] = useState("");
   const [editandoResponsavel, setEditandoResponsavel] = useState(false);
+  const [editandoUnidade, setEditandoUnidade] = useState(false);
+  const [novaUnidade, setNovaUnidade] = useState("");
+  const [editandoPrevistos, setEditandoPrevistos] = useState(false);
+  const [novosPrevistos, setNovosPrevistos] = useState("");
+  // v226 — os dois campos que o laudo imprime no cabeçalho e na assinatura.
+  const [editandoCrp, setEditandoCrp] = useState(false);
+  const [novoCrp, setNovoCrp] = useState("");
+  const [editandoElab, setEditandoElab] = useState(false);
+  const [novaElab, setNovaElab] = useState("");
   const [novoResponsavel, setNovoResponsavel] = useState("");
 
   if (isLoading) {
@@ -133,6 +150,69 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
       setEditandoResponsavel(false);
     } catch {
       toast.error("Erro ao salvar responsável");
+    }
+  }
+
+  async function salvarUnidade() {
+    try {
+      await atualizar.mutateAsync({
+        id: apDef.id_aplicacao,
+        idEmpresa: apDef.id_empresa,
+        input: { unidade_cliente: novaUnidade.trim() || null },
+      });
+      toast.success("Unidade do cliente atualizada");
+      setEditandoUnidade(false);
+    } catch {
+      toast.error("Erro ao salvar unidade");
+    }
+  }
+
+  // Em branco vira NULL, não 0 — "não informado" e "ninguém deveria responder"
+  // são coisas diferentes, e o CHECK da v201 recusa 0 e negativo.
+  async function salvarPrevistos() {
+    const n = novosPrevistos.trim() === "" ? null : Number(novosPrevistos);
+    if (n !== null && (!Number.isFinite(n) || n <= 0)) {
+      toast.error("Informe um número maior que zero, ou deixe em branco");
+      return;
+    }
+    try {
+      await atualizar.mutateAsync({
+        id: apDef.id_aplicacao,
+        idEmpresa: apDef.id_empresa,
+        input: { trabalhadores_previstos: n },
+      });
+      toast.success("Trabalhadores previstos atualizado");
+      setEditandoPrevistos(false);
+    } catch {
+      toast.error("Erro ao salvar trabalhadores previstos");
+    }
+  }
+
+  async function salvarCrp() {
+    try {
+      await atualizar.mutateAsync({
+        id: apDef.id_aplicacao,
+        idEmpresa: apDef.id_empresa,
+        input: { crp: novoCrp.trim() || null },
+      });
+      toast.success("CRP atualizado");
+      setEditandoCrp(false);
+    } catch {
+      toast.error("Erro ao salvar CRP");
+    }
+  }
+
+  async function salvarElaboracao() {
+    try {
+      await atualizar.mutateAsync({
+        id: apDef.id_aplicacao,
+        idEmpresa: apDef.id_empresa,
+        input: { data_elaboracao: novaElab || null },
+      });
+      toast.success("Data de elaboração atualizada");
+      setEditandoElab(false);
+    } catch {
+      toast.error("Erro ao salvar a data de elaboração");
     }
   }
 
@@ -261,13 +341,120 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
             </div>
           )}
         </InfoCard>
+        <InfoCard label="Unidade / Filial do cliente">
+          {editandoUnidade ? (
+            <div className="flex items-center gap-1">
+              <input
+                value={novaUnidade}
+                onChange={(e) => setNovaUnidade(e.target.value)}
+                autoFocus
+                placeholder="Ex: Loja 28"
+                className="flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <button onClick={salvarUnidade} className="text-green-600"><Check className="size-3.5" /></button>
+              <button onClick={() => setEditandoUnidade(false)} className="text-gray-400"><X className="size-3.5" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span>{ap.unidade_cliente ?? "—"}</span>
+              <button
+                onClick={() => { setNovaUnidade(ap.unidade_cliente ?? ""); setEditandoUnidade(true); }}
+                className="ml-1 text-gray-300 hover:text-gray-500"
+              >
+                <Pencil className="size-3" />
+              </button>
+            </div>
+          )}
+        </InfoCard>
+        <InfoCard label="Trabalhadores previstos">
+          {editandoPrevistos ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={novosPrevistos}
+                onChange={(e) => setNovosPrevistos(e.target.value)}
+                autoFocus
+                className="flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <button onClick={salvarPrevistos} className="text-green-600"><Check className="size-3.5" /></button>
+              <button onClick={() => setEditandoPrevistos(false)} className="text-gray-400"><X className="size-3.5" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span>{ap.trabalhadores_previstos ?? "—"}</span>
+              <button
+                onClick={() => { setNovosPrevistos(String(ap.trabalhadores_previstos ?? "")); setEditandoPrevistos(true); }}
+                className="ml-1 text-gray-300 hover:text-gray-500"
+              >
+                <Pencil className="size-3" />
+              </button>
+            </div>
+          )}
+        </InfoCard>
         <InfoCard label="Período Início">{fmtData(ap.periodo_inicio)}</InfoCard>
         <InfoCard label="Período Fim">{fmtData(ap.periodo_fim)}</InfoCard>
         <InfoCard label="Criado em">{fmtData(ap.criado_em)}</InfoCard>
+        <InfoCard label="CRP do responsável (laudo)">
+          {editandoCrp ? (
+            <div className="flex items-center gap-1">
+              <input
+                value={novoCrp}
+                onChange={(e) => setNovoCrp(e.target.value)}
+                autoFocus
+                placeholder="Ex: 05/12345"
+                className="flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <button onClick={salvarCrp} className="text-green-600"><Check className="size-3.5" /></button>
+              <button onClick={() => setEditandoCrp(false)} className="text-gray-400"><X className="size-3.5" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span title="Em branco, o laudo usa o CRP do cadastro do profissional com este nome">
+                {ap.crp ?? "— (usa o do cadastro)"}
+              </span>
+              <button
+                onClick={() => { setNovoCrp(ap.crp ?? ""); setEditandoCrp(true); }}
+                className="ml-1 text-gray-300 hover:text-gray-500"
+              >
+                <Pencil className="size-3" />
+              </button>
+            </div>
+          )}
+        </InfoCard>
+        <InfoCard label="Data de elaboração (laudo)">
+          {editandoElab ? (
+            <div className="flex items-center gap-1">
+              <input
+                type="date"
+                value={novaElab}
+                onChange={(e) => setNovaElab(e.target.value)}
+                autoFocus
+                className="flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              <button onClick={salvarElaboracao} className="text-green-600"><Check className="size-3.5" /></button>
+              <button onClick={() => setEditandoElab(false)} className="text-gray-400"><X className="size-3.5" /></button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span>{fmtData(ap.data_elaboracao)}</span>
+              <button
+                onClick={() => { setNovaElab(ap.data_elaboracao ?? ""); setEditandoElab(true); }}
+                className="ml-1 text-gray-300 hover:text-gray-500"
+              >
+                <Pencil className="size-3" />
+              </button>
+            </div>
+          )}
+        </InfoCard>
       </div>
 
-      {/* Navegação das sub-páginas */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      {/* Navegação das sub-páginas.
+          v0.3.637 — o card "Plano de Ação 5W2H" saiu daqui junto com o item do
+          menu: a QAP não usa mais o plano de ação (pedido do João Marcos em
+          18/09). A tela continua existindo em /plano-acao. */}
+      <div className="grid gap-4 sm:grid-cols-2">
         <SubPageCard
           href={`/questionarios-psicossociais/${id}/respondentes`}
           icon={<ListChecks className="size-6 text-indigo-600" />}
@@ -279,12 +466,6 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
           icon={<BarChart2 className="size-6 text-indigo-600" />}
           title="Resultados / Matriz"
           description="Visualize scores, probabilidade e severidade por dimensão"
-        />
-        <SubPageCard
-          href={`/questionarios-psicossociais/${id}/planos`}
-          icon={<ClipboardCheck className="size-6 text-indigo-600" />}
-          title="Planos de Ação"
-          description="Gerencie ações corretivas e preventivas para os riscos identificados"
         />
       </div>
     </div>

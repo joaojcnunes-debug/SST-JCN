@@ -15,6 +15,7 @@ import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 const MODULOS: { value: string; label: string }[] = [
   { value: "",                   label: "Todos os módulos" },
   { value: "drps",               label: "DRPS — Psicossocial" },
+  { value: "qps",                label: "QAP — Questionários Psicossociais" },
   { value: "aet",                label: "AET — Análise Ergonômica" },
   { value: "aep",                label: "AEP — Análise Ergonômica Preliminar" },
   { value: "sst",                label: "SST — Inspeções" },
@@ -30,6 +31,7 @@ const MODULO_LABEL: Record<string, string> = Object.fromEntries(
 
 const MODULO_COLOR: Record<string, string> = {
   drps:                "bg-purple-100 text-purple-700",
+  qps:                 "bg-fuchsia-100 text-fuchsia-700",
   aet:                 "bg-orange-100 text-orange-700",
   aep:                 "bg-yellow-100 text-yellow-700",
   sst:                 "bg-verde-light text-verde-primary",

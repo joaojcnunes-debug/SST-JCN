@@ -13,7 +13,11 @@ import type {
   SituacaoConformidade,
   StatusRelatorioConformidade,
 } from "@/lib/supabase/types";
-import { getChecklistNR } from "@/lib/conformidade/checklists";
+import { getChecklistNR, ehSemNR, NR_LIVRE } from "@/lib/conformidade/checklists";
+
+import { gravar } from "@/lib/offline/gravar";
+import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoes";
+import { ehErroDeRede } from "@/lib/offline/rede";
 
 const KEY_LISTA = ["relatorios-conformidade"] as const;
 const KEY_DETALHE = (id: string) => ["relatorio-conformidade", id] as const;
@@ -49,38 +53,71 @@ export function useRelatoriosConformidade() {
   });
 }
 
+/** O pacote da tela de detalhe. Nomeado porque agora ele também é guardado. */
+export interface DetalheConformidade {
+  relatorio: RelatorioConformidade;
+  itens: RelatorioConformidadeItem[];
+}
+
+async function carregarDetalheDoServidor(
+  id: string
+): Promise<DetalheConformidade> {
+  const supabase = createSupabaseBrowserClient();
+  const [{ data: relatorio, error: e1 }, { data: itens, error: e2 }] =
+    await Promise.all([
+      supabase
+        .from("relatorios_conformidade")
+        .select("*")
+        .eq("id_relatorio", id)
+        .single(),
+      supabase
+        .from("relatorios_conformidade_itens")
+        .select("*")
+        .eq("id_relatorio", id)
+        .order("ordem", { ascending: true }),
+    ]);
+  if (e1) throw e1;
+  if (e2) throw e2;
+  return {
+    relatorio: relatorio as unknown as RelatorioConformidade,
+    itens: (itens ?? []) as unknown as RelatorioConformidadeItem[],
+  };
+}
+
 export function useRelatorioConformidade(id: string | null | undefined) {
   return useQuery({
     queryKey: KEY_DETALHE(id ?? ""),
     enabled: !!id,
-    queryFn: async () => {
-      const supabase = createSupabaseBrowserClient();
-      const [{ data: relatorio, error: e1 }, { data: itens, error: e2 }] =
-        await Promise.all([
-          supabase
-            .from("relatorios_conformidade")
-            .select("*")
-            .eq("id_relatorio", id!)
-            .single(),
-          supabase
-            .from("relatorios_conformidade_itens")
-            .select("*")
-            .eq("id_relatorio", id!)
-            .order("ordem", { ascending: true }),
-        ]);
-      if (e1) throw e1;
-      if (e2) throw e2;
-      return {
-        relatorio: relatorio as unknown as RelatorioConformidade,
-        itens: (itens ?? []) as unknown as RelatorioConformidadeItem[],
-      };
+
+    // Sem rede, insistir é perder tempo do técnico olhando um spinner: o plano B
+    // está dentro da `queryFn` e responde na primeira tentativa.
+    retry: (falhas, erro) => !ehErroDeRede(erro) && falhas < 2,
+
+    queryFn: async (): Promise<DetalheConformidade> => {
+      try {
+        const dados = await carregarDetalheDoServidor(id!);
+        // Mantém fresca só a cópia que o técnico já levou — ver `LevarParaCampo`.
+        void lerDocumentoCache(id!).then((ja) => {
+          if (ja) void guardarDocumentoCache(id!, dados);
+        });
+        return dados;
+      } catch (e) {
+        // Recusa do banco e relatório inexistente continuam sendo erro.
+        if (!ehErroDeRede(e)) throw e;
+        const guardado = await lerDocumentoCache<DetalheConformidade>(id!);
+        if (guardado) return guardado.dados;
+        throw e;
+      }
     },
   });
 }
 
 export interface CriarRelatorioConformidadeInput {
   id_empresa: string;
-  nr_codigo: string;
+  /** `null` (ou `NR_LIVRE`) = relatório sem NR: nasce sem checklist. */
+  nr_codigo: string | null;
+  /** Só usado quando não há NR — vira o nome do relatório (`nr_titulo`). */
+  titulo?: string | null;
   setor: string | null;
   responsavel: string | null;
   responsavel_empresa: string | null;
@@ -94,16 +131,26 @@ export function useCriarRelatorioConformidade() {
 
   return useMutation({
     mutationFn: async (input: CriarRelatorioConformidadeInput) => {
-      const supabase = createSupabaseBrowserClient();
-      const checklist = getChecklistNR(input.nr_codigo);
-      if (!checklist) throw new Error(`NR não encontrada: ${input.nr_codigo}`);
+      // Sem NR não há catálogo pra copiar: o relatório nasce vazio e o auditor
+      // monta o checklist no detalhe (item livre / cross-ref de outra NR).
+      const semNR = ehSemNR(input.nr_codigo);
+      const checklist = semNR ? null : getChecklistNR(input.nr_codigo!);
+      if (!semNR && !checklist) {
+        throw new Error(`NR não encontrada: ${input.nr_codigo}`);
+      }
+      // Sem NR o nome do relatório é o título livre — é o que identifica o
+      // documento nas listas, no cabeçalho e no PDF.
+      const tituloLivre = input.titulo?.trim();
+      if (semNR && !tituloLivre) {
+        throw new Error("Informe um título pro relatório sem NR vinculada");
+      }
 
       const id_relatorio = gerarId("RCN");
       const row: RelatorioConformidade = {
         id_relatorio,
         id_empresa: input.id_empresa,
-        nr_codigo: checklist.codigo,
-        nr_titulo: checklist.titulo,
+        nr_codigo: checklist?.codigo ?? NR_LIVRE,
+        nr_titulo: checklist?.titulo ?? tituloLivre!,
         setor: input.setor,
         responsavel: input.responsavel,
         responsavel_empresa: input.responsavel_empresa,
@@ -118,14 +165,18 @@ export function useCriarRelatorioConformidade() {
         updated_at: null,
       };
 
-      const { error: errRel } = await supabase
-        .from("relatorios_conformidade")
-        .insert(row as never);
-      if (errRel) throw errRel;
+      const relatorioGravado = await gravar({
+        tabela: "relatorios_conformidade",
+        tipo: "insert",
+        linhas: [row as unknown as Record<string, unknown>],
+        filtro: null,
+        modulo: "conformidade",
+        id_documento: id_relatorio,
+      });
 
       // Snapshot dos itens do checklist da NR no momento da criação.
       // `item_nr_origem = null` = veio do checklist principal (imutável).
-      const itens: RelatorioConformidadeItem[] = checklist.itens.map(
+      const itens: RelatorioConformidadeItem[] = (checklist?.itens ?? []).map(
         (it, idx) => ({
           id_item: gerarId("RCI"),
           id_relatorio,
@@ -143,15 +194,37 @@ export function useCriarRelatorioConformidade() {
         })
       );
 
-      const { error: errItens } = await supabase
-        .from("relatorios_conformidade_itens")
-        .insert(itens as never);
-      if (errItens) throw errItens;
+      // Os itens dependem do relatório: a FK aponta para ele, e mandar a lista
+      // primeiro faria o banco recusar um checklist que está correto.
+      // Relatório sem NR não tem itens ainda — nada a gravar aqui.
+      if (itens.length > 0) {
+        await gravar({
+          tabela: "relatorios_conformidade_itens",
+          tipo: "insert",
+          linhas: itens as unknown as Record<string, unknown>[],
+          filtro: null,
+          modulo: "conformidade",
+          id_documento: id_relatorio,
+          depende_de:
+            relatorioGravado.destino === "APARELHO"
+              ? [relatorioGravado.idOperacao]
+              : undefined,
+        });
+      }
 
-      return row;
+      return { row, itens, resultado: relatorioGravado };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: KEY_LISTA });
+    onSuccess: ({ row, itens, resultado }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_LISTA });
+        return;
+      }
+      // Sem rede o técnico é redirecionado para um relatório que o servidor
+      // ainda não conhece — semear o detalhe é o que evita a tela de erro.
+      const detalhe: DetalheConformidade = { relatorio: row, itens };
+      qc.setQueryData<DetalheConformidade>(KEY_DETALHE(row.id_relatorio), detalhe);
+      void guardarDocumentoCache(row.id_relatorio, detalhe);
+      toast.success("Relatório guardado no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(`Erro ao criar relatório: ${e.message}`),
   });
@@ -170,7 +243,6 @@ export function useAtualizarItemConformidade() {
       item_titulo?: string;
       item_descricao?: string | null;
     }) => {
-      const supabase = createSupabaseBrowserClient();
       const patch: Partial<RelatorioConformidadeItem> = {
         updated_at: new Date().toISOString(),
       };
@@ -180,14 +252,39 @@ export function useAtualizarItemConformidade() {
       if (params.item_descricao !== undefined)
         patch.item_descricao = params.item_descricao;
 
-      const { error } = await supabase
-        .from("relatorios_conformidade_itens")
-        .update(patch as never)
-        .eq("id_item", params.id_item);
-      if (error) throw error;
-      return params;
+      /**
+       * Marcar conforme/não conforme é a ação mais repetida do módulo — o
+       * auditor percorre o checklist inteiro tocando aqui, item por item, dentro
+       * da fábrica. É o fluxo que mais precisa funcionar sem sinal.
+       */
+      const resultado = await gravar({
+        tabela: "relatorios_conformidade_itens",
+        tipo: "update",
+        linhas: patch as Record<string, unknown>,
+        filtro: { id_item: params.id_item },
+        modulo: "conformidade",
+        id_documento: params.id_relatorio,
+      });
+
+      if (resultado.destino === "APARELHO") {
+        // Sem rede não há o que revalidar: mescla o patch sobre o item na tela.
+        qc.setQueryData<DetalheConformidade>(
+          KEY_DETALHE(params.id_relatorio),
+          (antigo) =>
+            antigo
+              ? {
+                  ...antigo,
+                  itens: antigo.itens.map((i) =>
+                    i.id_item === params.id_item ? { ...i, ...patch } : i,
+                  ),
+                }
+              : antigo,
+        );
+      }
+      return { params, resultado };
     },
-    onSuccess: (params) => {
+    onSuccess: ({ params, resultado }) => {
+      if (resultado.destino === "APARELHO") return;
       qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
       qc.invalidateQueries({ queryKey: KEY_LISTA });
     },
@@ -209,7 +306,6 @@ export function useAtualizarRelatorioConformidade() {
       observacoes_gerais?: string | null;
       status?: StatusRelatorioConformidade;
     }) => {
-      const supabase = createSupabaseBrowserClient();
       const patch: Partial<RelatorioConformidade> = {
         updated_at: new Date().toISOString(),
       };
@@ -231,16 +327,31 @@ export function useAtualizarRelatorioConformidade() {
         }
       }
 
-      const { error } = await supabase
-        .from("relatorios_conformidade")
-        .update(patch as never)
-        .eq("id_relatorio", params.id_relatorio);
-      if (error) throw error;
-      return params;
+      const resultado = await gravar({
+        tabela: "relatorios_conformidade",
+        tipo: "update",
+        linhas: patch as Record<string, unknown>,
+        filtro: { id_relatorio: params.id_relatorio },
+        modulo: "conformidade",
+        id_documento: params.id_relatorio,
+      });
+      return { params, patch, resultado };
     },
-    onSuccess: (params) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
-      qc.invalidateQueries({ queryKey: KEY_LISTA });
+    onSuccess: ({ params, patch, resultado }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
+        qc.invalidateQueries({ queryKey: KEY_LISTA });
+        return;
+      }
+      // Sem rede não há o que revalidar: mescla o patch sobre o que está na tela.
+      qc.setQueryData<DetalheConformidade>(
+        KEY_DETALHE(params.id_relatorio),
+        (antigo) =>
+          antigo
+            ? { ...antigo, relatorio: { ...antigo.relatorio, ...patch } }
+            : antigo,
+      );
+      toast.success("Alteração guardada no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
@@ -276,7 +387,6 @@ export function useAdicionarItemConformidadeExtra() {
             item_codigo: string; // ex "17.2.5"
           }
     ) => {
-      const supabase = createSupabaseBrowserClient();
       const id_item = gerarId("RCI");
 
       let row: RelatorioConformidadeItem;
@@ -326,14 +436,26 @@ export function useAdicionarItemConformidadeExtra() {
         };
       }
 
-      const { error } = await supabase
-        .from("relatorios_conformidade_itens")
-        .insert(row as never);
-      if (error) throw error;
-      return row;
+      const resultado = await gravar({
+        tabela: "relatorios_conformidade_itens",
+        tipo: "insert",
+        linhas: [row as unknown as Record<string, unknown>],
+        filtro: null,
+        modulo: "conformidade",
+        id_documento: params.id_relatorio,
+      });
+      return { row, resultado };
     },
-    onSuccess: (row) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_relatorio) });
+    onSuccess: ({ row, resultado }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(row.id_relatorio) });
+        return;
+      }
+      // Sem rede não há o que revalidar: o item entra na lista à mão.
+      qc.setQueryData<DetalheConformidade>(
+        KEY_DETALHE(row.id_relatorio),
+        (antigo) => (antigo ? { ...antigo, itens: [...antigo.itens, row] } : antigo),
+      );
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
@@ -350,27 +472,53 @@ export function useExcluirItemConformidadeExtra() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: { id_relatorio: string; id_item: string }) => {
-      const supabase = createSupabaseBrowserClient();
-      const { data: itemAtual } = await supabase
-        .from("relatorios_conformidade_itens")
-        .select("foto_storage_paths")
-        .eq("id_item", params.id_item)
-        .single();
-      const paths =
-        (itemAtual as { foto_storage_paths: string[] } | null)
-          ?.foto_storage_paths ?? [];
-      if (paths.length > 0) {
-        await supabase.storage.from("fotos").remove(paths);
+      // Limpar o storage só com rede: sem ela o arquivo fica órfão no MinIO,
+      // que é desperdício e não erro — travar a exclusão por isso seria pior.
+      if (navigator.onLine) {
+        try {
+          const supabase = createSupabaseBrowserClient();
+          const { data: itemAtual } = await supabase
+            .from("relatorios_conformidade_itens")
+            .select("foto_storage_paths")
+            .eq("id_item", params.id_item)
+            .single();
+          const paths =
+            (itemAtual as { foto_storage_paths: string[] } | null)
+              ?.foto_storage_paths ?? [];
+          if (paths.length > 0) {
+            await supabase.storage.from("fotos").remove(paths);
+          }
+        } catch {
+          /* silencioso de propósito */
+        }
       }
-      const { error } = await supabase
-        .from("relatorios_conformidade_itens")
-        .delete()
-        .eq("id_item", params.id_item);
-      if (error) throw error;
-      return params;
+
+      const resultado = await gravar({
+        tabela: "relatorios_conformidade_itens",
+        tipo: "delete",
+        linhas: null,
+        filtro: { id_item: params.id_item },
+        modulo: "conformidade",
+        id_documento: params.id_relatorio,
+      });
+      return { params, resultado };
     },
-    onSuccess: (params) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
+    onSuccess: ({ params, resultado }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
+        return;
+      }
+      qc.setQueryData<DetalheConformidade>(
+        KEY_DETALHE(params.id_relatorio),
+        (antigo) =>
+          antigo
+            ? {
+                ...antigo,
+                itens: antigo.itens.filter((i) => i.id_item !== params.id_item),
+              }
+            : antigo,
+      );
+      toast.success("Remoção guardada no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
@@ -395,19 +543,40 @@ export const MAX_FOTOS_POR_ITEM = 8;
  */
 async function lerFotosItemConformidade(
   supabase: ReturnType<typeof createSupabaseBrowserClient>,
+  qc: ReturnType<typeof useQueryClient>,
+  id_relatorio: string,
   id_item: string
 ) {
-  const { data, error } = await supabase
-    .from("relatorios_conformidade_itens")
-    .select("foto_urls, foto_storage_paths")
-    .eq("id_item", id_item)
-    .single();
-  if (error) throw error;
-  const row = data as unknown as {
-    foto_urls: string[] | null;
-    foto_storage_paths: string[] | null;
+  // Sem rede não existe "fresco do banco", e falhar não é a resposta certa: o
+  // que está na tela é a melhor verdade disponível. A queda para o cache só
+  // acontece em erro de REDE — recusa do banco continua estourando, senão um
+  // item apagado por outra pessoa voltaria a receber foto em silêncio.
+  const doCache = () => {
+    const detalhe = qc.getQueryData<DetalheConformidade>(KEY_DETALHE(id_relatorio));
+    const item = detalhe?.itens.find((i) => i.id_item === id_item);
+    return { urls: item?.foto_urls ?? [], paths: item?.foto_storage_paths ?? [] };
   };
-  return { urls: row.foto_urls ?? [], paths: row.foto_storage_paths ?? [] };
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return doCache();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("relatorios_conformidade_itens")
+      .select("foto_urls, foto_storage_paths")
+      .eq("id_item", id_item)
+      .single();
+    if (error) throw error;
+    const row = data as unknown as {
+      foto_urls: string[] | null;
+      foto_storage_paths: string[] | null;
+    };
+    return { urls: row.foto_urls ?? [], paths: row.foto_storage_paths ?? [] };
+  } catch (e) {
+    if (ehErroDeRede(e)) return doCache();
+    throw e;
+  }
 }
 
 /** Serializa as mutações de foto do mesmo item entre si (React Query scope). */
@@ -423,7 +592,12 @@ export function useUploadFotoItemConformidade() {
     }) => {
       const supabase = createSupabaseBrowserClient();
 
-      const atual = await lerFotosItemConformidade(supabase, params.id_item);
+      const atual = await lerFotosItemConformidade(
+        supabase,
+        qc,
+        params.id_relatorio,
+        params.id_item
+      );
       if (atual.paths.length >= MAX_FOTOS_POR_ITEM) {
         throw new Error(
           `Limite de ${MAX_FOTOS_POR_ITEM} fotos por item atingido.`
@@ -431,37 +605,50 @@ export function useUploadFotoItemConformidade() {
       }
 
       const ext = (params.file.name.split(".").pop() ?? "jpg").toLowerCase();
-      const sufixo = Math.random().toString(36).slice(2, 8);
+      const sufixo = gerarId("F").slice(2);
       const path = `conformidade/${params.id_relatorio}/${params.id_item}-${sufixo}.${ext}`;
 
-      const { error: upErr } = await supabase.storage
-        .from("fotos")
-        .upload(path, params.file, {
-          upsert: false,
-          contentType: params.file.type,
-        });
-      if (upErr) throw upErr;
-
+      // O arquivo não sobe aqui: `getPublicUrl` é montagem de string, então a
+      // URL já é conhecida e o `gravar()` leva o arquivo junto da linha.
       const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
 
-      const novasUrls = [...atual.urls, pub.publicUrl];
-      const novosPaths = [...atual.paths, path];
+      const patch = {
+        foto_urls: [...atual.urls, pub.publicUrl],
+        foto_storage_paths: [...atual.paths, path],
+        updated_at: new Date().toISOString(),
+      };
 
-      const { error: updateErr } = await supabase
-        .from("relatorios_conformidade_itens")
-        .update({
-          foto_urls: novasUrls,
-          foto_storage_paths: novosPaths,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id_item", params.id_item);
-      if (updateErr) throw updateErr;
+      const resultado = await gravar({
+        tabela: "relatorios_conformidade_itens",
+        tipo: "update",
+        linhas: patch,
+        filtro: { id_item: params.id_item },
+        modulo: "conformidade",
+        id_documento: params.id_relatorio,
+        imagens: [{ blob: params.file, caminho: path }],
+      });
 
-      return { foto_url: pub.publicUrl, path };
+      return { foto_url: pub.publicUrl, path, patch, resultado };
     },
     scope: SCOPE_FOTOS_CONF,
-    onSuccess: (_d, params) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
+    onSuccess: ({ patch, resultado }, params) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
+        return;
+      }
+      qc.setQueryData<DetalheConformidade>(
+        KEY_DETALHE(params.id_relatorio),
+        (antigo) =>
+          antigo
+            ? {
+                ...antigo,
+                itens: antigo.itens.map((i) =>
+                  i.id_item === params.id_item ? { ...i, ...patch } : i,
+                ),
+              }
+            : antigo,
+      );
+      toast.success("Foto guardada no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });
@@ -481,30 +668,62 @@ export function useRemoverFotoItemConformidade() {
     }) => {
       const supabase = createSupabaseBrowserClient();
 
-      // Apaga do storage (best-effort)
-      await supabase.storage.from("fotos").remove([params.foto_storage_path]);
+      // Apaga do storage (best-effort), e só com rede: sem ela o arquivo fica
+      // órfão no MinIO — desperdício de espaço, não erro.
+      if (navigator.onLine) {
+        try {
+          await supabase.storage.from("fotos").remove([params.foto_storage_path]);
+        } catch {
+          /* silencioso de propósito */
+        }
+      }
 
       // Relê fresco do banco e filtra mantendo o pareamento URL ↔ path
-      const atual = await lerFotosItemConformidade(supabase, params.id_item);
+      const atual = await lerFotosItemConformidade(
+        supabase,
+        qc,
+        params.id_relatorio,
+        params.id_item
+      );
       const idx = atual.paths.indexOf(params.foto_storage_path);
-      if (idx < 0) return params; // já removida por outra mutação
-      const novosPaths = atual.paths.filter((_, i) => i !== idx);
-      const novasUrls = atual.urls.filter((_, i) => i !== idx);
+      // Já removida por outra mutação.
+      if (idx < 0) return { params, patch: null, resultado: null };
 
-      const { error } = await supabase
-        .from("relatorios_conformidade_itens")
-        .update({
-          foto_urls: novasUrls,
-          foto_storage_paths: novosPaths,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id_item", params.id_item);
-      if (error) throw error;
-      return params;
+      const patch = {
+        foto_urls: atual.urls.filter((_, i) => i !== idx),
+        foto_storage_paths: atual.paths.filter((_, i) => i !== idx),
+        updated_at: new Date().toISOString(),
+      };
+
+      const resultado = await gravar({
+        tabela: "relatorios_conformidade_itens",
+        tipo: "update",
+        linhas: patch,
+        filtro: { id_item: params.id_item },
+        modulo: "conformidade",
+        id_documento: params.id_relatorio,
+      });
+      return { params, patch, resultado };
     },
     scope: SCOPE_FOTOS_CONF,
-    onSuccess: (_d, params) => {
-      qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
+    onSuccess: ({ patch, resultado }, params) => {
+      if (!resultado || resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: KEY_DETALHE(params.id_relatorio) });
+        return;
+      }
+      qc.setQueryData<DetalheConformidade>(
+        KEY_DETALHE(params.id_relatorio),
+        (antigo) =>
+          antigo
+            ? {
+                ...antigo,
+                itens: antigo.itens.map((i) =>
+                  i.id_item === params.id_item ? { ...i, ...patch } : i,
+                ),
+              }
+            : antigo,
+      );
+      toast.success("Remoção guardada no aparelho", { icon: "📵" });
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
   });

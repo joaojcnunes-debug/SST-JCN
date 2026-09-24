@@ -1,5 +1,7 @@
 "use client";
 
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
 import { use, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,12 +43,20 @@ import {
   useAdicionarItemConformidadeExtra,
   useExcluirItemConformidadeExtra,
 } from "@/lib/hooks/useRelatoriosConformidade";
-import { listarNRs, getChecklistNR } from "@/lib/conformidade/checklists";
+import {
+  listarNRs,
+  getChecklistNR,
+  rotuloNR,
+  ehSemNR,
+} from "@/lib/conformidade/checklists";
 import { useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { LevarParaCampo } from "@/components/ui/LevarParaCampo";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
+import { buscar } from "@/lib/busca/texto";
 import type {
   RelatorioConformidade,
   RelatorioConformidadeItem,
@@ -79,13 +89,7 @@ export default function DetalheConformidadePage({
   const [crossRefAberto, setCrossRefAberto] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ title: string; desc?: string; fn: () => void } | null>(null);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center text-gray-500">
-        <Loader2 className="size-5 animate-spin" /> Carregando...
-      </div>
-    );
-  }
+  if (isLoading) return <EditorSkeleton />;
 
   if (error || !data) {
     return (
@@ -109,13 +113,21 @@ export default function DetalheConformidadePage({
   const finalizado = relatorio.status === "FINALIZADO";
   const bloqueado = finalizado || !canEdit;
 
+  // Relatório sem NR: o sentinela do banco não vai pra tela — nem pro PDF,
+  // nem pra IA. Quem nomeia o documento é o título livre (`nr_titulo`).
+  const semNR = ehSemNR(relatorio.nr_codigo);
+  const nrLabel = rotuloNR(relatorio.nr_codigo);
+  const tituloDocumento = semNR
+    ? "Relatório de Conformidade"
+    : `Relatório de Conformidade — ${relatorio.nr_codigo}`;
+
   // Valores das variáveis dos textos padrão deste módulo
   const valoresTextosPadrao: Record<string, string> = {
     ...montarValoresEmpresa(empresa),
     responsavel: relatorio.responsavel ?? "",
     responsavel_empresa: relatorio.responsavel_empresa ?? "",
     cidade: relatorio.cidade ?? "",
-    nr_codigo: relatorio.nr_codigo,
+    nr_codigo: nrLabel,
     nr_titulo: relatorio.nr_titulo,
     setor: relatorio.setor ?? "",
     data_inspecao: formatarDataBR(relatorio.data_inspecao),
@@ -126,7 +138,7 @@ export default function DetalheConformidadePage({
   function handleExcluir() {
     setPendingAction({
       title: "Apagar relatório",
-      desc: `Apagar o relatório de ${relatorio.nr_codigo}? Esta ação não pode ser desfeita.`,
+      desc: `Apagar o relatório de ${semNR ? relatorio.nr_titulo : relatorio.nr_codigo}? Esta ação não pode ser desfeita.`,
       fn: () => excluir.mutate(id, {
         onSuccess: () => {
           toast.success("Relatório apagado");
@@ -268,7 +280,7 @@ export default function DetalheConformidadePage({
 
       {/* Logo JCN Consultoria (print + tela) */}
       <RelatorioPrintHeader
-        titulo={`Relatório de Conformidade — ${relatorio.nr_codigo}`}
+        titulo={tituloDocumento}
         subtitulo={empresa?.nome_empresa ?? null}
         terciario={
           relatorio.data_inspecao
@@ -279,12 +291,19 @@ export default function DetalheConformidadePage({
         }
       />
 
+      {/* Levar para o campo — antes do conteúdo, porque a decisão de copiar o
+          relatório para o aparelho é tomada ANTES de sair da base. Fora do
+          print: não faz sentido no papel. */}
+      <div className="print:hidden">
+        <LevarParaCampo idDocumento={id} dados={data} rotulo="Relatório" />
+      </div>
+
       {/* Cabeçalho */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border-0 print:shadow-none print:p-2">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
-              Relatório de Conformidade — {relatorio.nr_codigo}
+              {tituloDocumento}
             </p>
             <h1 className="mt-1 text-2xl font-bold text-gray-900">
               {relatorio.nr_titulo}
@@ -387,6 +406,13 @@ export default function DetalheConformidadePage({
           )}
         </div>
         <div className="space-y-2">
+          {itens.length === 0 && (
+            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-500 print:hidden">
+              Nenhum item ainda. Use <strong>Adicionar item livre</strong> pra
+              escrever o requisito na mão ou <strong>Inserir de outra NR</strong>{" "}
+              pra puxar itens do catálogo.
+            </div>
+          )}
           {itens.map((item) => (
             <ItemRow
               key={item.id_item}
@@ -394,7 +420,7 @@ export default function DetalheConformidadePage({
               bloqueado={bloqueado}
               empresaNome={empresa?.nome_empresa ?? undefined}
               setor={relatorio.setor ?? undefined}
-              nrCodigo={relatorio.nr_codigo}
+              nrCodigo={nrLabel}
               nrTitulo={relatorio.nr_titulo}
               onChangeSituacao={(situacao) =>
                 atualizarItem.mutate({
@@ -478,7 +504,7 @@ export default function DetalheConformidadePage({
           itens={itens}
           empresaNome={empresa?.nome_empresa ?? undefined}
           setor={relatorio.setor ?? undefined}
-          nrCodigo={relatorio.nr_codigo}
+          nrCodigo={nrLabel}
           nrTitulo={relatorio.nr_titulo}
         />
       </section>
@@ -1461,17 +1487,14 @@ function CrossRefPicker({
     ? codigosJaInseridosPorNR.get(nrEscolhida) ?? new Set<string>()
     : new Set<string>();
 
-  const itensFiltrados = useMemo(() => {
-    if (!checklist) return [];
-    const termo = busca.trim().toLowerCase();
-    if (!termo) return checklist.itens;
-    return checklist.itens.filter(
-      (it) =>
-        it.codigo.toLowerCase().includes(termo) ||
-        it.titulo.toLowerCase().includes(termo) ||
-        (it.descricao ?? "").toLowerCase().includes(termo)
-    );
-  }, [checklist, busca]);
+  // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem da norma.
+  const { itens: itensFiltrados, aproximado: buscaAproximada } = useMemo(
+    () =>
+      buscar(checklist?.itens ?? [], busca, (it) => [it.codigo, it.titulo, it.descricao], {
+        manterOrdem: true,
+      }),
+    [checklist, busca],
+  );
 
   return (
     <div
@@ -1494,8 +1517,9 @@ function CrossRefPicker({
               Cross-reference
             </h2>
             <p className="mt-0.5 text-xs text-gray-500">
-              Auditando {nrPrincipal} mas precisa marcar item de outra norma?
-              Selecione abaixo e insira.
+              {ehSemNR(nrPrincipal)
+                ? "Relatório sem NR vinculada: escolha itens de qualquer norma do catálogo."
+                : `Auditando ${nrPrincipal} mas precisa marcar item de outra norma? Selecione abaixo e insira.`}
             </p>
           </div>
           <button
@@ -1545,6 +1569,11 @@ function CrossRefPicker({
           {checklist && itensFiltrados.length === 0 && (
             <li className="p-6 text-center text-sm text-gray-500">
               Nenhum item encontrado.
+            </li>
+          )}
+          {checklist && buscaAproximada && itensFiltrados.length > 0 && (
+            <li>
+              <AvisoBuscaAproximada aproximado busca={busca} total={itensFiltrados.length} compacto />
             </li>
           )}
           {checklist &&

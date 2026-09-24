@@ -19,6 +19,7 @@ import {
   Wind,
 } from "lucide-react";
 import { useState, useCallback } from "react";
+import AjudaComAbas from "@/components/novidades/AjudaComAbas";
 
 interface ItemData {
   label: string;
@@ -322,7 +323,7 @@ function PassoCard({ n, titulo, icone: Icone, cor, descricao, dicas }: PassoCard
   );
 }
 
-export default function AjudaAnaliseQuimicosPage() {
+function ConteudoAjudaAnaliseQuimicosPage() {
   const [printMode, setPrintMode] = useState(false);
 
   const handlePrint = useCallback(() => {
@@ -356,7 +357,7 @@ export default function AjudaAnaliseQuimicosPage() {
                 </h1>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   Guia técnico completo para quantificação da exposição a substâncias químicas,
-                  interpretação de limites de tolerância e embasamento do LTCAT no SST JCN Consultoria.
+                  interpretação de limites de tolerância e embasamento do LTCAT no Painel SST.
                 </p>
               </div>
             </div>
@@ -638,5 +639,18 @@ export default function AjudaAnaliseQuimicosPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * A ajuda deste módulo ganhou a aba Atualizações (01/09). O conteúdo acima
+ * continua exatamente como estava — quem monta as abas é o AjudaComAbas, e a
+ * lista de novidades vive num componente só, compartilhado pelos 11 módulos.
+ */
+export default function AjudaAnaliseQuimicosPage() {
+  return (
+    <AjudaComAbas titulo="Guia dos Químicos">
+      <ConteudoAjudaAnaliseQuimicosPage />
+    </AjudaComAbas>
   );
 }

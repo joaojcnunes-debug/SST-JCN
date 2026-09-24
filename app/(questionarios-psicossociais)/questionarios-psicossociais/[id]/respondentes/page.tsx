@@ -383,6 +383,42 @@ function ImportacaoCsvCard({
             )}
           </div>
 
+          {/* Escala divergente — sai fora do <details> porque é a causa raiz
+              dos avisos e o usuário não deveria precisar abrir nada para ver. */}
+          {previa.diagnostico.valorMin !== null &&
+            previa.diagnostico.totalForaEscala > 0 && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+                <strong>Escala divergente.</strong> O arquivo traz valores de{" "}
+                <strong>
+                  {previa.diagnostico.valorMin} a {previa.diagnostico.valorMax}
+                </strong>
+                , mas este tipo de questionário está cadastrado como{" "}
+                <strong>
+                  {escalaMin} a {escalaMax}
+                </strong>
+                . As <strong>{previa.diagnostico.totalForaEscala}</strong> resposta(s)
+                fora da escala foram descartadas: o respondente entra com menos
+                respostas que perguntas e a média da categoria sai calculada só
+                sobre o que sobrou.
+              </div>
+            )}
+
+          {/* Alternativa que não casou — o equivalente da "escala divergente"
+              para o questionário de alternativas próprias, e pela mesma razão:
+              é a causa raiz, e resposta descartada em silêncio some da média
+              sem ninguém ver. A lista do que não bateu está nos avisos. */}
+          {previa.diagnostico.totalAlternativaNaoCasou > 0 && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900">
+              <strong>Resposta sem alternativa correspondente.</strong>{" "}
+              <strong>{previa.diagnostico.totalAlternativaNaoCasou}</strong>{" "}
+              resposta(s) do arquivo não bateram com nenhuma das alternativas
+              cadastradas e foram descartadas. Os avisos abaixo dizem qual
+              pergunta, qual texto veio no arquivo e o que está cadastrado —
+              costuma ser alternativa escrita diferente entre o formulário e o
+              cadastro do tipo.
+            </div>
+          )}
+
           {/* Diagnóstico */}
           <details
             open={previa.linhas.length === 0}
@@ -413,6 +449,25 @@ function ImportacaoCsvCard({
                     ⚠ divergência
                   </span>
                 )}
+              </li>
+              <li>
+                Escala usada no arquivo:{" "}
+                <strong>
+                  {previa.diagnostico.valorMin === null
+                    ? "—"
+                    : `${previa.diagnostico.valorMin} a ${previa.diagnostico.valorMax}`}
+                </strong>
+                {previa.diagnostico.perguntasComAlternativas > 0 && (
+                  <>
+                    {" · "}
+                    {previa.diagnostico.perguntasComAlternativas} pergunta(s) com
+                    alternativas próprias
+                  </>
+                )}
+                {previa.diagnostico.valoresEncontrados.length > 0 && (
+                  <> (valores: {previa.diagnostico.valoresEncontrados.join(", ")})</>
+                )}
+                {" "}(escala do tipo: {escalaMin}–{escalaMax})
               </li>
               {previa.diagnostico.amostraLinha && (
                 <li className="mt-2">

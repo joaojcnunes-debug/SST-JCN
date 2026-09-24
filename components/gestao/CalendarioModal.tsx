@@ -6,8 +6,6 @@ import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import { useDefinirIcsToken, type GestaoQuadro } from "@/lib/hooks/useGestao";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-
 export default function CalendarioModal({
   open, onClose, quadro, podeEditar,
 }: {
@@ -18,7 +16,9 @@ export default function CalendarioModal({
 }) {
   const definir = useDefinirIcsToken();
   const token = quadro.ics_token;
-  const link = token ? `${SUPABASE_URL}/functions/v1/gestao-ics?token=${token}` : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  // .ics same-origin (porta gestao-ics p/ a .107). Precisa de CF Access bypass em /api/gestao/*.
+  const link = token ? `${origin}/api/gestao/ics?token=${token}` : "";
 
   async function copiar() {
     try { await navigator.clipboard.writeText(link); toast.success("Link copiado"); }

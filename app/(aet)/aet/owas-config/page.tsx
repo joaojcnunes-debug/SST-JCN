@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Image as ImageIcon, Loader2, Plus, RefreshCw, Save, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Image as ImageIcon, Loader2, Plus, RefreshCw, RotateCcw, Save, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import {
@@ -17,7 +17,10 @@ import {
   useAetSalvarOwasSelect,
   useAetSalvarChecklistPergunta,
   useAetDeletarChecklistPergunta,
+  useAetOcultarChecklistPergunta,
 } from "@/lib/hooks/useAet";
+import { textoEhOPadrao } from "@/lib/aet/checklist";
+import { cn } from "@/lib/utils";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import StorageImg from "@/components/ui/StorageImg";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -180,7 +183,12 @@ export default function OwasConfigPage() {
                       <PerguntaCard
                         key={item.slug}
                         pergunta={pergunta}
-                        onDelete={() => deletar.mutate(pergunta.slug)}
+                        ehPadrao
+                        onDelete={() =>
+                          deletar.mutate(pergunta.slug, {
+                            onSuccess: () => toast.success("Texto padrão restaurado"),
+                          })
+                        }
                       />
                     );
                   })}
@@ -189,7 +197,11 @@ export default function OwasConfigPage() {
                     <PerguntaCard
                       key={p.slug}
                       pergunta={p}
-                      onDelete={() => deletar.mutate(p.slug)}
+                      onDelete={() =>
+                        deletar.mutate(p.slug, {
+                          onSuccess: () => toast.success("Pergunta excluída"),
+                        })
+                      }
                     />
                   ))}
 
@@ -509,14 +521,47 @@ function SelectCampoCard({ campo }: { campo: AetOwasSelectCampo }) {
 
 function PerguntaCard({
   pergunta,
+  ehPadrao = false,
   onDelete,
 }: {
   pergunta: AetChecklistPergunta;
+  /**
+   * Pergunta FIXA do checklist (uma das 11 do código)?
+   *
+   * As 11 são linhas escritas à mão na tela de análise, na prévia e no template
+   * do PDF, e a tabela só fornece o TEXTO delas. Por isso ganham dois botões
+   * distintos, que dizem o que realmente fazem:
+   *
+   * - **Restaurar texto padrão** — desfaz a edição do texto (apaga a linha);
+   * - **Excluir** — marca `oculta` (v209) e a pergunta some da tela de análise,
+   *   da prévia e do PDF, inclusive dos laudos já respondidos. Reversível:
+   *   a pergunta excluída continua listada aqui, apagada, com "Reativar".
+   *
+   * Nas perguntas adicionadas nesta tela, excluir apaga a linha de vez.
+   */
+  ehPadrao?: boolean;
   onDelete?: () => void;
 }) {
   const salvar = useAetSalvarChecklistPergunta();
+  const ocultar = useAetOcultarChecklistPergunta();
   const [label, setLabel] = useState(pergunta.label);
   const isTexto = pergunta.tipo === "texto";
+  // Depois de restaurar (ou de outra aba salvar), o texto que chega é outro e
+  // a caixa tem de acompanhar — senão ela continua exibindo a edição que acabou
+  // de ser desfeita. Só dispara quando o valor DE FORA muda, então não atropela
+  // quem está digitando.
+  useEffect(() => { setLabel(pergunta.label); }, [pergunta.label]);
+  // Sem edição não há o que restaurar — e botão que não faz nada é pior que
+  // botão ausente.
+  const semEdicao = ehPadrao && textoEhOPadrao(CHECKLIST_PERGUNTAS_PADRAO, pergunta.slug, label);
+  const estaOculta = pergunta.oculta === true;
+
+  function alternarOculta(valor: boolean) {
+    ocultar.mutate(
+      { pergunta: { ...pergunta, label: label.trim() || pergunta.label }, oculta: valor },
+      { onSuccess: () => toast.success(valor ? "Pergunta excluída do checklist" : "Pergunta reativada") }
+    );
+  }
 
   function handleSave() {
     salvar.mutate(
@@ -526,8 +571,16 @@ function PerguntaCard({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-      <div className="flex items-start gap-3">
+    <div className={cn(
+      "rounded-xl border px-4 py-3 shadow-sm",
+      estaOculta ? "border-dashed border-gray-300 bg-gray-50" : "border-gray-200 bg-white",
+    )}>
+      {estaOculta && (
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+          Excluída — não aparece no laudo nem no PDF
+        </p>
+      )}
+      <div className={cn("flex items-start gap-3", estaOculta && "opacity-50")}>
         {isTexto ? (
           <textarea
             value={label}
@@ -544,7 +597,8 @@ function PerguntaCard({
           />
         )}
         <div className="flex shrink-0 items-center gap-2 pt-1">
-          {!isTexto && <span className="text-[11px] text-gray-400">Sim / Não / N.A.</span>}
+          {!isTexto && !estaOculta && <span className="text-[11px] text-gray-400">Sim / Não / N.A.</span>}
+          {!estaOculta && (
           <button
             type="button"
             onClick={handleSave}
@@ -554,14 +608,48 @@ function PerguntaCard({
             {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
             Salvar
           </button>
-          {onDelete && (
+          )}
+          {ehPadrao && estaOculta && (
+            <button
+              type="button"
+              onClick={() => alternarOculta(false)}
+              disabled={ocultar.isPending}
+              className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary/40 px-3 py-2 text-xs font-semibold text-verde-primary hover:bg-verde-primary/5 disabled:opacity-50"
+            >
+              {ocultar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
+              Reativar
+            </button>
+          )}
+          {ehPadrao && !estaOculta && (
+            <button
+              type="button"
+              onClick={() => alternarOculta(true)}
+              disabled={ocultar.isPending}
+              className="rounded-md border border-gray-200 p-2 text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50"
+              title="Excluir do checklist (some do laudo e do PDF; pode reativar depois)"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          )}
+          {onDelete && !estaOculta && (
             <button
               type="button"
               onClick={onDelete}
-              className="rounded-md border border-gray-200 p-2 text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500"
-              title="Excluir pergunta"
+              disabled={semEdicao}
+              className={
+                ehPadrao
+                  ? "rounded-md border border-gray-200 p-2 text-gray-400 hover:border-verde-primary/30 hover:bg-verde-primary/5 hover:text-verde-primary disabled:cursor-not-allowed disabled:opacity-40"
+                  : "rounded-md border border-gray-200 p-2 text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+              }
+              title={
+                ehPadrao
+                  ? semEdicao
+                    ? "Já está com o texto padrão"
+                    : "Restaurar texto padrão"
+                  : "Excluir pergunta"
+              }
             >
-              <Trash2 className="size-3.5" />
+              {ehPadrao ? <RotateCcw className="size-3.5" /> : <Trash2 className="size-3.5" />}
             </button>
           )}
         </div>

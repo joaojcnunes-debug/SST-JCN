@@ -52,10 +52,11 @@ export default function NovaApreciacaoPage() {
         notificacao_sit: notificacaoSit.trim() || null,
       });
       // Auto-importa as máquinas da inspeção da empresa (por setor + operadores + fotos).
-      const n = await importar.mutateAsync({
-        idApreciacao: row.id_apreciacao,
-        idEmpresa: idEmpresa,
+      const r = await importar.mutateAsync({
+        id_apreciacao: row.id_apreciacao,
+        id_empresa: idEmpresa,
       });
+      const n = r.importadas;
       toast.success(
         n > 0
           ? `Laudo criado — ${n} máquina${n > 1 ? "s" : ""} importada${n > 1 ? "s" : ""} da inspeção.`

@@ -19,6 +19,7 @@ import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRequireModule } from "@/lib/hooks/useRequireModule";
 import { useUserStore } from "@/lib/store";
+import { ehSupervisor } from "@/lib/hooks/useUsuario";
 
 const RESERVADAS = new Set(["nova", "historico", "texto-padrao", "ajuda", "base", "laudo"]);
 
@@ -42,7 +43,7 @@ export default function AnaliseQuimicosLayout({ children }: { children: ReactNod
       { href: "/analise-quimicos/historico",label: "Histórico",     icon: History },
       { href: "/analise-quimicos/ajuda",    label: "Ajuda",         icon: HelpCircle },
     ];
-    if (user?.perfil === "Admin") {
+    if (ehSupervisor(user)) { // v229: base de referência é de quem supervisiona
       items.push({ href: "/analise-quimicos/base", label: "Base de referência", icon: Database });
     }
 
@@ -82,7 +83,7 @@ export default function AnaliseQuimicosLayout({ children }: { children: ReactNod
         sections={sections}
       />
       <div className="md:pl-[220px] print:pl-0">
-        <ModuleTopbar title="Análise de Químicos JCN Consultoria" />
+        <ModuleTopbar />
         <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>{children}</main>
       </div>
     </div>

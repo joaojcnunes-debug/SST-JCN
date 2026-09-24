@@ -8,6 +8,7 @@ import {
 } from "@/lib/supabase/client";
 import type { Usuario } from "@/lib/supabase/types";
 import { assinarPdfPades } from "@/lib/pdf/assinar-pdf-pades";
+import { perfilPodeAssinarPorOutro } from "@/lib/auth/assinatura-por-outro";
 
 export const runtime = "nodejs";
 
@@ -48,7 +49,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // SEC-02: apenas Admin pode assinar em nome de outro profissional
+  // SEC-02: só perfis autorizados assinam em nome de outro profissional.
+  // A lista mora em lib/auth/assinatura-por-outro.ts (Admin + Tecnico desde
+  // 10/08). Aqui a senha do .pfx do titular continua sendo exigida abaixo.
   if (signatoryEmail && signatoryEmail !== user.email) {
     const { data: rawPerfil } = await supabase
       .from("usuarios")
@@ -56,7 +59,7 @@ export async function POST(req: NextRequest) {
       .eq("email", user.email)
       .single();
     const perfilLogado = rawPerfil as { perfil: string } | null;
-    if (perfilLogado?.perfil !== "Admin") {
+    if (!perfilPodeAssinarPorOutro(perfilLogado?.perfil)) {
       return NextResponse.json(
         { error: "Sem permissão para assinar em nome de outro profissional." },
         { status: 403 }
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest) {
   // Baixa o certificado .pfx do bucket privado via SERVICE_ROLE (o bucket é
   // travado para acesso direto do cliente; só o servidor, após validar
   // auth + permissão acima, pode ler o .pfx).
-  const serviceClient = createSupabaseServiceClient();
+  const serviceClient = createSupabaseServiceClient({ email: user.email, origem: "assinar-pdf" });
   const { data: certBlob, error: certError } = await serviceClient.storage
     .from("certificados")
     .download(usuario.certificado_pfx_path);

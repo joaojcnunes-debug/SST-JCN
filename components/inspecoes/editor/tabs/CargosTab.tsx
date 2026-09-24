@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Copy, ChevronDown } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
 import CargoForm from "../CargoForm";
 import CopiarCargoModal from "../CopiarCargoModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useExcluirDaInspecao } from "@/lib/hooks/useExcluirDaInspecao";
 import { cn } from "@/lib/utils";
 import type { Cargo, Setor } from "@/lib/supabase/types";
 
@@ -26,7 +24,6 @@ export default function CargosTab({
   cargos,
   readOnly,
 }: Props) {
-  const qc = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [activeSetor, setActiveSetor] = useState<string | null>(null);
   const [editing, setEditing] = useState<Cargo | null>(null);
@@ -34,21 +31,12 @@ export default function CargosTab({
   const [openSetores, setOpenSetores] = useState<Record<string, boolean>>({});
   const [copiando, setCopiando] = useState<Cargo | null>(null);
 
-  const del = useMutation({
-    mutationFn: async (c: Cargo) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("cargos")
-        .delete()
-        .eq("id_cargo", c.id_cargo);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success("Cargo removido");
-      setConfirm(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
+  const del = useExcluirDaInspecao({
+    idInspecao,
+    tabela: "cargos",
+    chave: "id_cargo",
+    colecao: "cargos",
+    rotulo: "Cargo removido",
   });
 
   if (setores.length === 0) {
@@ -187,7 +175,9 @@ export default function CargosTab({
         description={`O cargo "${confirm?.cargo}" será removido.`}
         variant="danger"
         loading={del.isPending}
-        onConfirm={() => confirm && del.mutate(confirm)}
+        onConfirm={() =>
+          confirm && del.mutate(confirm, { onSuccess: () => setConfirm(null) })
+        }
         onCancel={() => setConfirm(null)}
       />
     </div>

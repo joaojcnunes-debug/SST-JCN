@@ -19,18 +19,33 @@ import {
   NPE_HRN_LABELS,
   CLASSIFICACAO_HRN_LABELS,
   calcularClassificacaoHrn,
+  calcularIndiceHrn,
   type PodHrn,
   type FepHrn,
   type GpdHrn,
   type NpeHrn,
   type ClassificacaoRiscoHrn,
   type RiscoHrn,
+  CATEGORIAS_SEGURANCA,
+  type CategoriaSeguranca,
   type PerigoCatalogo,
 } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
 const inputClass =
   "w-full rounded border border-gray-300 bg-white px-2 py-1 text-xs focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500";
+
+/**
+ * Itens da NR-12 viajam como lista, mas o técnico digita uma linha só.
+ * Separador é ";" porque o item em si costuma ter vírgula ("12.38 a 12.55, exceto...").
+ */
+const itensParaTexto = (itens: string[] | null | undefined, legado?: string | null) =>
+  (itens ?? (legado ? [legado] : [])).join("; ");
+
+const textoParaItens = (s: string): string[] | null => {
+  const arr = s.split(";").map((x) => x.trim()).filter(Boolean);
+  return arr.length ? arr : null;
+};
 
 const CLASSIFICACAO_CORES: Record<ClassificacaoRiscoHrn, string> = {
   ALTO: "bg-red-100 text-red-700 border-red-300",
@@ -43,6 +58,9 @@ const BLANK_INPUT: RiscoHrnInput = {
   tipo_perigo: "",
   origem: null,
   potenciais_consequencias: null,
+  item_nr12: null,
+  itens_nr12: null,
+  categoria_seguranca: null,
   pod: null,
   fep: null,
   gpd: null,
@@ -50,8 +68,120 @@ const BLANK_INPUT: RiscoHrnInput = {
   classificacao_risco: null,
   nivel_acoes: null,
   medidas_preventivas: null,
+  medidas_engenharia: null,
+  medidas_administrativas: null,
+  pod_residual: null,
+  fep_residual: null,
+  gpd_residual: null,
+  classificacao_residual: null,
   ordem: 0,
 };
+
+/**
+ * Campos da v146 — medidas separadas (Eng./Adm.) e risco residual. São as
+ * colunas "Medidas de Controle" e "Risco Residual" da ficha por máquina do
+ * laudo NR-12. Usado tanto na linha existente quanto no formulário de novo
+ * risco, por isso recebe o setter de fora.
+ */
+function CamposFichaV146({
+  valores,
+  set,
+  disabled = false,
+}: {
+  valores: Partial<RiscoHrnInput>;
+  set: <K extends keyof RiscoHrnInput>(key: K, val: RiscoHrnInput[K]) => void;
+  disabled?: boolean;
+}) {
+  const podR = valores.pod_residual ?? null;
+  const fepR = valores.fep_residual ?? null;
+  const gpdR = valores.gpd_residual ?? null;
+  const indiceResidual = calcularIndiceHrn(podR, fepR, gpdR);
+  const sugeridaResidual = calcularClassificacaoHrn(podR, fepR, gpdR);
+  const classeResidual = valores.classificacao_residual ?? null;
+
+  return (
+    <>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Medidas de Engenharia</span>
+          <textarea rows={2} value={valores.medidas_engenharia ?? ""} onChange={(e) => set("medidas_engenharia", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Proteção móvel, intertravamento, frenagem..." />
+        </label>
+        <label className="block">
+          <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Medidas Administrativas</span>
+          <textarea rows={2} value={valores.medidas_administrativas ?? ""} onChange={(e) => set("medidas_administrativas", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Capacitação, procedimento, EPI..." />
+        </label>
+      </div>
+
+      <label className="block max-w-[220px]">
+        <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">
+          Categoria de segurança (NBR 14153)
+        </span>
+        <select
+          value={valores.categoria_seguranca ?? ""}
+          onChange={(e) => set("categoria_seguranca", (e.target.value as CategoriaSeguranca) || null as never)}
+          disabled={disabled}
+          className={inputClass}
+        >
+          <option value="">—</option>
+          {CATEGORIAS_SEGURANCA.map((c) => (
+            <option key={c} value={c}>{`Categoria ${c}`}</option>
+          ))}
+        </select>
+      </label>
+
+      <div className="rounded-md border border-emerald-200 bg-emerald-50/40 p-2 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+            Risco residual — depois das medidas
+          </p>
+          {indiceResidual !== null && (
+            <span className="font-mono text-[10px] font-bold text-emerald-800">
+              índice {indiceResidual}
+              {classeResidual ? ` · ${CLASSIFICACAO_HRN_LABELS[classeResidual]}` : ""}
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <label className="block">
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">POD residual</span>
+            <select value={podR ?? ""} onChange={(e) => set("pod_residual", (e.target.value as PodHrn) || null as never)} disabled={disabled} className={inputClass}>
+              <option value="">—</option>
+              {(Object.entries(POD_HRN_LABELS) as [PodHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">FEP residual</span>
+            <select value={fepR ?? ""} onChange={(e) => set("fep_residual", (e.target.value as FepHrn) || null as never)} disabled={disabled} className={inputClass}>
+              <option value="">—</option>
+              {(Object.entries(FEP_HRN_LABELS) as [FepHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">GPD residual</span>
+            <select value={gpdR ?? ""} onChange={(e) => set("gpd_residual", (e.target.value as GpdHrn) || null as never)} disabled={disabled} className={inputClass}>
+              <option value="">—</option>
+              {(Object.entries(GPD_HRN_LABELS) as [GpdHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">
+              Classificação
+              {sugeridaResidual && sugeridaResidual !== classeResidual && !disabled && (
+                <button type="button" onClick={() => set("classificacao_residual", sugeridaResidual)} className="ml-1 text-orange-600 underline hover:text-orange-800">
+                  usar {CLASSIFICACAO_HRN_LABELS[sugeridaResidual]}
+                </button>
+              )}
+            </span>
+            <select value={classeResidual ?? ""} onChange={(e) => set("classificacao_residual", (e.target.value as ClassificacaoRiscoHrn) || null as never)} disabled={disabled} className={inputClass}>
+              <option value="">—</option>
+              {(Object.entries(CLASSIFICACAO_HRN_LABELS) as [ClassificacaoRiscoHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
+        </div>
+      </div>
+    </>
+  );
+}
 
 function RiscoRow({
   risco,
@@ -70,6 +200,9 @@ function RiscoRow({
   const actual = { ...risco, ...form };
   const sugerida = calcularClassificacaoHrn(actual.pod, actual.fep, actual.gpd);
   const classeAtual = actual.classificacao_risco;
+  const indiceAtual = calcularIndiceHrn(actual.pod, actual.fep, actual.gpd);
+  const classeResidual = actual.classificacao_residual;
+  const indiceResidual = calcularIndiceHrn(actual.pod_residual, actual.fep_residual, actual.gpd_residual);
 
   function setF<K extends keyof RiscoHrnInput>(key: K, val: RiscoHrnInput[K]) {
     const next: Partial<RiscoHrnInput> = { ...form, [key]: val };
@@ -80,6 +213,14 @@ function RiscoRow({
         key === "gpd" ? val as string : (next.gpd ?? null),
       );
       if (sug) next.classificacao_risco = sug;
+    }
+    // Residual: mesma régua do risco inicial, sem sobrescrever o que já foi gravado.
+    if (key === "pod_residual" || key === "fep_residual" || key === "gpd_residual") {
+      const base = { ...actual, ...next };
+      if (!base.classificacao_residual) {
+        const sug = calcularClassificacaoHrn(base.pod_residual, base.fep_residual, base.gpd_residual);
+        if (sug) next.classificacao_residual = sug;
+      }
     }
     setForm(next);
   }
@@ -123,7 +264,15 @@ function RiscoRow({
         <div className="flex shrink-0 items-center gap-2">
           {classeAtual && (
             <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-bold", CLASSIFICACAO_CORES[classeAtual])}>
-              {CLASSIFICACAO_HRN_LABELS[classeAtual]}
+              {indiceAtual !== null ? `${indiceAtual} · ` : ""}{CLASSIFICACAO_HRN_LABELS[classeAtual]}
+            </span>
+          )}
+          {classeResidual && (
+            <span className="flex items-center gap-1">
+              <span className="text-[10px] text-gray-400">→</span>
+              <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-bold", CLASSIFICACAO_CORES[classeResidual])}>
+                {indiceResidual !== null ? `${indiceResidual} · ` : ""}{CLASSIFICACAO_HRN_LABELS[classeResidual]}
+              </span>
             </span>
           )}
           {sugerida && sugerida !== classeAtual && (
@@ -146,10 +295,23 @@ function RiscoRow({
               <input type="text" value={actual.origem ?? ""} onChange={(e) => setF("origem", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Ex: Desgaste de peças" />
             </label>
           </div>
-          <label className="block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Potenciais Consequências</span>
-            <input type="text" value={actual.potenciais_consequencias ?? ""} onChange={(e) => setF("potenciais_consequencias", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Ex: Laceração, Amputação" />
-          </label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <label className="block sm:col-span-2">
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Potenciais Consequências</span>
+              <input type="text" value={actual.potenciais_consequencias ?? ""} onChange={(e) => setF("potenciais_consequencias", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Ex: Laceração, Amputação" />
+            </label>
+            <label className="block">
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Itens NR-12</span>
+              <input
+                type="text"
+                value={itensParaTexto(actual.itens_nr12, actual.item_nr12)}
+                onChange={(e) => setF("itens_nr12", textoParaItens(e.target.value))}
+                disabled={disabled}
+                className={inputClass}
+                placeholder="12.38 a 12.55; 12.46"
+              />
+            </label>
+          </div>
           {/* Matriz HRN */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <label className="block">
@@ -199,10 +361,19 @@ function RiscoRow({
             <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Nível das Ações Preventivas</span>
             <input type="text" value={actual.nivel_acoes ?? ""} onChange={(e) => setF("nivel_acoes", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Ex: Imediato, Curto prazo, Monitorar" />
           </label>
-          <label className="block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Medidas Preventivas Indicadas</span>
-            <textarea rows={2} value={actual.medidas_preventivas ?? ""} onChange={(e) => setF("medidas_preventivas", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Descreva as medidas preventivas ou corretivas indicadas..." />
-          </label>
+          <CamposFichaV146 valores={actual} set={setF} disabled={disabled} />
+
+          {/* Campo único anterior à v146: só aparece quando tem conteúdo, para
+              não perder o que já foi escrito antes da separação Eng./Adm. */}
+          {(actual.medidas_preventivas ?? "").trim() !== "" && (
+            <label className="block">
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Medidas preventivas (campo antigo)</span>
+              <textarea rows={2} value={actual.medidas_preventivas ?? ""} onChange={(e) => setF("medidas_preventivas", e.target.value || null)} disabled={disabled} className={inputClass} />
+              <span className="mt-0.5 block text-[9px] text-gray-400">
+                Não sai na ficha do laudo — reescreva o conteúdo em Engenharia / Administrativas.
+              </span>
+            </label>
+          )}
 
           {!disabled && (
             <div className="flex items-center justify-between pt-1">
@@ -226,23 +397,57 @@ function RiscoRow({
 
 export default function RiscoHrnTable({
   idApreciacao,
-  idFicha,
+  idFicha = null,
   disabled = false,
 }: {
   idApreciacao: string;
-  /** Quando presente, os riscos são da MÁQUINA (ficha), não do laudo inteiro. */
-  idFicha?: string;
+  /** Quando informado, a tabela é a daquela máquina (v148). */
+  idFicha?: string | null;
   disabled?: boolean;
 }) {
-  // Só uma das duas queries fica ativa (a outra recebe undefined → enabled:false).
-  const qApre = useRiscosHrn(idFicha ? undefined : idApreciacao);
-  const qFicha = useRiscosHrnPorFicha(idFicha);
-  const riscos = (idFicha ? qFicha.data : qApre.data) ?? [];
-  const isLoading = idFicha ? qFicha.isLoading : qApre.isLoading;
-  const criar = useCriarRiscoHrn(idApreciacao);
+  // Sem ficha, cai no modo antigo (todos os riscos do laudo) — é o que mantém
+  // os 12 laudos anteriores ao modelo multi-máquina abrindo normalmente.
+  const porFicha = useRiscosHrnPorFicha(idFicha);
+  const doLaudo = useRiscosHrn(idFicha ? null : idApreciacao);
+  const riscos = (idFicha ? porFicha.data : doLaudo.data) ?? [];
+  const isLoading = idFicha ? porFicha.isLoading : doLaudo.isLoading;
+
   const { data: perigos = [] } = usePerigosCatalogo();
+  const criar = useCriarRiscoHrn(idApreciacao);
   const [novoForm, setNovoForm] = useState<RiscoHrnInput>({ ...BLANK_INPUT });
   const [adicionando, setAdicionando] = useState(false);
+
+  /**
+   * Pré-preenche a linha a partir do catálogo. Só sobrescreve o que o usuário
+   * ainda não digitou — escolher um perigo depois de escrever não apaga texto.
+   */
+  function aplicarCatalogo(p: PerigoCatalogo) {
+    setNovoForm((f) => ({
+      ...f,
+      tipo_perigo: f.tipo_perigo.trim() || p.nome,
+      potenciais_consequencias: f.potenciais_consequencias ?? p.origem_consequencias,
+      itens_nr12: f.itens_nr12 ?? p.itens_nr12,
+      medidas_engenharia: f.medidas_engenharia ?? p.medidas_eng,
+      medidas_administrativas: f.medidas_administrativas ?? p.medidas_adm,
+      categoria_seguranca: f.categoria_seguranca ?? p.categoria_seguranca_default,
+      pod: f.pod ?? p.pod_default,
+      fep: f.fep ?? p.fep_default,
+      gpd: f.gpd ?? p.gpd_default,
+      pod_residual: f.pod_residual ?? p.pod_residual_default,
+      fep_residual: f.fep_residual ?? p.fep_residual_default,
+      gpd_residual: f.gpd_residual ?? p.gpd_residual_default,
+      classificacao_risco:
+        f.classificacao_risco
+        ?? calcularClassificacaoHrn(p.pod_default, p.fep_default, p.gpd_default),
+      classificacao_residual:
+        f.classificacao_residual
+        ?? calcularClassificacaoHrn(
+          p.pod_residual_default,
+          p.fep_residual_default,
+          p.gpd_residual_default,
+        ),
+    }));
+  }
 
   function setNF<K extends keyof RiscoHrnInput>(key: K, val: RiscoHrnInput[K]) {
     const next = { ...novoForm, [key]: val };
@@ -254,37 +459,14 @@ export default function RiscoHrnTable({
       );
       if (sug) next.classificacao_risco = sug;
     }
+    if (
+      (key === "pod_residual" || key === "fep_residual" || key === "gpd_residual")
+      && !next.classificacao_residual
+    ) {
+      const sug = calcularClassificacaoHrn(next.pod_residual, next.fep_residual, next.gpd_residual);
+      if (sug) next.classificacao_residual = sug;
+    }
     setNovoForm(next);
-  }
-
-  function aplicarCatalogo(p: PerigoCatalogo) {
-    const pod = (p.pod_default as PodHrn) || null;
-    const fep = (p.fep_default as FepHrn) || null;
-    const gpd = (p.gpd_default as GpdHrn) || null;
-    const podR = (p.pod_residual_default as PodHrn) || null;
-    const fepR = (p.fep_residual_default as FepHrn) || null;
-    const gpdR = (p.gpd_residual_default as GpdHrn) || null;
-    const medidas = [
-      p.medidas_eng ? `Eng.: ${p.medidas_eng}` : null,
-      p.medidas_adm ? `Adm.: ${p.medidas_adm}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    setNovoForm({
-      ...novoForm,
-      tipo_perigo: p.nome,
-      potenciais_consequencias: p.origem_consequencias ?? null,
-      pod,
-      fep,
-      gpd,
-      classificacao_risco: calcularClassificacaoHrn(pod, fep, gpd),
-      pod_residual: podR,
-      fep_residual: fepR,
-      gpd_residual: gpdR,
-      classificacao_residual: calcularClassificacaoHrn(podR, fepR, gpdR),
-      medidas_preventivas: medidas || null,
-      itens_nr12: p.itens_nr12?.length ? p.itens_nr12 : null,
-    });
   }
 
   async function handleAdicionar() {
@@ -293,7 +475,7 @@ export default function RiscoHrnTable({
       return;
     }
     try {
-      await criar.mutateAsync({ ...novoForm, ordem: riscos.length, id_ficha: idFicha ?? null });
+      await criar.mutateAsync({ ...novoForm, id_ficha: idFicha, ordem: riscos.length });
       setNovoForm({ ...BLANK_INPUT });
       setAdicionando(false);
       toast.success("Risco adicionado");
@@ -331,26 +513,28 @@ export default function RiscoHrnTable({
           <p className="text-[10px] font-bold uppercase tracking-wider text-orange-700">
             Novo risco HRN
           </p>
+
           {perigos.length > 0 && (
             <label className="block">
               <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">
-                Preencher a partir do catálogo de perigos
+                Partir de um perigo do catálogo
               </span>
               <select
                 value=""
                 onChange={(e) => {
-                  const p = perigos.find((x) => x.id === e.target.value);
+                  const p = perigos.find((x) => x.id_perigo === e.target.value);
                   if (p) aplicarCatalogo(p);
                 }}
                 className={inputClass}
               >
-                <option value="">— escolher perigo do catálogo —</option>
+                <option value="">— escolher para pré-preencher —</option>
                 {perigos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
+                  <option key={p.id_perigo} value={p.id_perigo}>{p.nome}</option>
                 ))}
               </select>
+              <span className="mt-0.5 block text-[9px] text-gray-400">
+                Preenche só os campos ainda vazios. Tudo continua editável.
+              </span>
             </label>
           )}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -363,40 +547,22 @@ export default function RiscoHrnTable({
               <input type="text" value={novoForm.origem ?? ""} onChange={(e) => setNF("origem", e.target.value || null)} className={inputClass} placeholder="Ex: Desgaste de peças" />
             </label>
           </div>
-          <label className="block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Potenciais Consequências</span>
-            <input type="text" value={novoForm.potenciais_consequencias ?? ""} onChange={(e) => setNF("potenciais_consequencias", e.target.value || null)} className={inputClass} placeholder="Ex: Laceração, Amputação" />
-          </label>
-          <label className="block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Itens NR-12 (separados por vírgula)</span>
-            <input
-              type="text"
-              value={novoForm.itens_nr12?.join(", ") ?? ""}
-              onChange={(e) => {
-                const arr = e.target.value.split(",").map((s) => s.trim()).filter(Boolean);
-                setNF("itens_nr12", arr.length ? arr : null);
-              }}
-              className={inputClass}
-              placeholder="Ex: 12.38 a 12.55, 12.46"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">
-              Categoria de Segurança (NBR 14153 / ISO 13849)
-            </span>
-            <select
-              value={novoForm.categoria_seguranca ?? ""}
-              onChange={(e) => setNF("categoria_seguranca", e.target.value || null)}
-              className={inputClass}
-            >
-              <option value="">— não avaliada —</option>
-              {["B", "1", "2", "3", "4"].map((c) => (
-                <option key={c} value={c}>
-                  Categoria {c}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <label className="block sm:col-span-2">
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Potenciais Consequências</span>
+              <input type="text" value={novoForm.potenciais_consequencias ?? ""} onChange={(e) => setNF("potenciais_consequencias", e.target.value || null)} className={inputClass} placeholder="Ex: Laceração, Amputação" />
+            </label>
+            <label className="block">
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Itens NR-12</span>
+              <input
+                type="text"
+                value={itensParaTexto(novoForm.itens_nr12, novoForm.item_nr12)}
+                onChange={(e) => setNF("itens_nr12", textoParaItens(e.target.value))}
+                className={inputClass}
+                placeholder="12.38 a 12.55; 12.46"
+              />
+            </label>
+          </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <label className="block">
               <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">POD</span>
@@ -441,10 +607,7 @@ export default function RiscoHrnTable({
               {(Object.entries(CLASSIFICACAO_HRN_LABELS) as [ClassificacaoRiscoHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </label>
-          <label className="block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Medidas Preventivas Indicadas</span>
-            <textarea rows={2} value={novoForm.medidas_preventivas ?? ""} onChange={(e) => setNF("medidas_preventivas", e.target.value || null)} className={inputClass} placeholder="Descreva as medidas preventivas..." />
-          </label>
+          <CamposFichaV146 valores={novoForm} set={setNF} />
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => { setAdicionando(false); setNovoForm({ ...BLANK_INPUT }); }} className="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50">
               Cancelar

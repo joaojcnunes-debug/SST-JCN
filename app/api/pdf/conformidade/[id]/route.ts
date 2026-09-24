@@ -6,6 +6,7 @@ import type { ConformidadeItemLocal } from "@/components/pdf/templates/Conformid
 import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import { montarValoresEmpresa, formatarDataBR } from "@/lib/textos-padrao/variaveis";
+import { rotuloNR } from "@/lib/conformidade/checklists";
 import { montarSignatarioTecnico } from "@/lib/pdf/folha-assinatura-tecnico";
 import { assinarMidiaPdf, assinarCapitulos } from "@/lib/pdf/assinar-midia";
 
@@ -77,7 +78,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       responsavel: (rel.responsavel as string) ?? "",
       responsavel_empresa: (rel.responsavel_empresa as string) ?? "",
       cidade: (rel.cidade as string) ?? "",
-      nr_codigo: (rel.nr_codigo as string) ?? "",
+      // Sem NR o banco guarda o sentinela `LIVRE` — no PDF sai "Sem NR".
+      nr_codigo: rotuloNR(rel.nr_codigo as string | null),
       nr_titulo: (rel.nr_titulo as string) ?? "",
       setor: (rel.setor as string) ?? "",
       data_inspecao: formatarDataBR(rel.data_inspecao as string | null),
@@ -116,7 +118,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const bodyHtml = renderToStaticMarkup(
       React.createElement(ConformidadeTemplate, {
         relatorio: {
-          nr_codigo: (rel.nr_codigo as string) ?? null,
+          nr_codigo: rotuloNR(rel.nr_codigo as string | null),
           nr_titulo: (rel.nr_titulo as string) ?? null,
           setor: (rel.setor as string) ?? null,
           responsavel: (rel.responsavel as string) ?? null,

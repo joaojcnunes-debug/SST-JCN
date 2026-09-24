@@ -7,6 +7,8 @@ import { useRelatoriosNaoConformidade } from "@/lib/hooks/useRelatoriosNaoConfor
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useCanCreate } from "@/lib/hooks/useUsuario";
 import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
+import { buscar } from "@/lib/busca/texto";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 export default function HistoricoNaoConformidadePage() {
   const canCreate = useCanCreate();
@@ -24,19 +26,15 @@ export default function HistoricoNaoConformidadePage() {
     return m;
   }, [empresas]);
 
-  const filtrados = useMemo(() => {
-    const termo = q.trim().toLowerCase();
-    return relatorios.filter((r) => {
-      if (statusFilter !== "todos" && r.status !== statusFilter) return false;
-      if (!termo) return true;
-      const empresaNome = empresaMap.get(r.id_empresa) ?? "";
-      return (
-        r.titulo.toLowerCase().includes(termo) ||
-        (r.setor ?? "").toLowerCase().includes(termo) ||
-        (r.responsavel ?? "").toLowerCase().includes(termo) ||
-        empresaNome.toLowerCase().includes(termo)
-      );
-    });
+  const { itens: filtrados, aproximado } = useMemo(() => {
+    const doStatus = relatorios.filter((r) => statusFilter === "todos" || r.status === statusFilter);
+    // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem por data.
+    return buscar(
+      doStatus,
+      q,
+      (r) => [r.titulo, r.setor, r.responsavel, empresaMap.get(r.id_empresa)],
+      { manterOrdem: true },
+    );
   }, [relatorios, q, statusFilter, empresaMap]);
 
   return (
@@ -100,6 +98,7 @@ export default function HistoricoNaoConformidadePage() {
         </div>
       ) : (
         <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm reveal-up card-hover">
+          <AvisoBuscaAproximada aproximado={aproximado} busca={q} total={filtrados.length} className="m-3" />
           {filtrados.map((r) => (
             <Link
               key={r.id_relatorio}

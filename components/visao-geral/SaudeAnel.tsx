@@ -18,7 +18,7 @@ const SEGS: { key: keyof SaudeDocumentos; cor: string }[] = [
   { key: "emDia", cor: "#16a34a" },
   { key: "vencendo", cor: "#f59e0b" },
   { key: "vencido", cor: "#dc2626" },
-  { key: "semValidade", cor: "#e2e2dd" },
+  { key: "semValidade", cor: "var(--ring-empty)" },
 ];
 
 /** Anel circular segmentado: % de documentos com validade informada, com a
@@ -33,7 +33,7 @@ export default function SaudeAnel({ saude }: { saude: SaudeDocumentos }) {
     <div className="flex items-center gap-5">
       <div className="relative size-[140px] shrink-0">
         <svg viewBox="0 0 140 140" className="size-full -rotate-90">
-          <circle cx="70" cy="70" r={R} fill="none" stroke="#f1f1ee" strokeWidth={SW} />
+          <circle cx="70" cy="70" r={R} fill="none" strokeWidth={SW} style={{ stroke: "var(--ring-track)" }} />
           {SEGS.map((s) => {
             const v = saude[s.key];
             const dash = (v / total) * C;
@@ -44,11 +44,10 @@ export default function SaudeAnel({ saude }: { saude: SaudeDocumentos }) {
                 cy="70"
                 r={R}
                 fill="none"
-                stroke={s.cor}
                 strokeWidth={SW}
                 strokeDasharray={`${dash} ${C - dash}`}
                 strokeDashoffset={-acc}
-                style={{ transition: "stroke-dasharray .9s ease, stroke-dashoffset .9s ease" }}
+                style={{ stroke: s.cor, transition: "stroke-dasharray .9s ease, stroke-dashoffset .9s ease" }}
               />
             );
             acc += dash;
@@ -69,7 +68,7 @@ export default function SaudeAnel({ saude }: { saude: SaudeDocumentos }) {
         <Legenda cor="#16a34a" label="Em dia" valor={saude.emDia} />
         <Legenda cor="#f59e0b" label="A vencer (60d)" valor={saude.vencendo} />
         <Legenda cor="#dc2626" label="Vencidos" valor={saude.vencido} />
-        <Legenda cor="#cbd5e1" label="Sem validade" valor={saude.semValidade} />
+        <Legenda cor="var(--ring-empty)" label="Sem validade" valor={saude.semValidade} />
       </div>
     </div>
   );

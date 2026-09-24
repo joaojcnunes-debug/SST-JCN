@@ -1,0 +1,9 @@
+# Scripts de shell precisam de LF: com CRLF o Ubuntu falha com
+# "\r: command not found", e o erro nao diz o motivo real.
+*.sh text eol=lf
+
+# .sql tambem: psql roda no Linux, e o script de ensaio troca `commit;` por `rollback;`
+# ancorado em fim de linha. Com CRLF a ancora nao casa -- em 22/09 isso fez um ENSAIO
+# COMMITAR a migration inteira (DIM-01). O grep deste ambiente MSYS nao enxerga CR,
+# entao a conferencia tem de ser com `file` ou `od`, nunca com grep.
+*.sql text eol=lf

@@ -46,6 +46,19 @@ export function classeQuebraFixo(c: TextoPadraoCapitulo): string | undefined {
   return undefined;
 }
 
+/**
+ * Como classeQuebraFixo, mas com default "nova": quando `quebra_pagina` está
+ * vazio, a seção começa em PÁGINA NOVA (em vez de não quebrar). Use nos laudos
+ * em que cada tópico deve começar em sua própria página — igual aos capítulos
+ * editáveis. Só "continua" mantém a seção colada à anterior. Sempre retorna uma
+ * classe (nunca undefined), evitando a seção fixa espremida no fim da página.
+ */
+export function classeQuebraFixoNova(c: TextoPadraoCapitulo): string {
+  return c.quebra_pagina === "continua"
+    ? "textos-padrao-capitulo--continua"
+    : "textos-padrao-capitulo--nova-pagina";
+}
+
 /** Filtra/ordena os capítulos editáveis de uma posição (mesma regra do print). */
 export function editaveisPorPosicao(
   capitulos: TextoPadraoCapitulo[],
@@ -153,50 +166,72 @@ export function numerarCapitulos(
  * do sistema intercalados). `renderSecao` mapeia cada slug_fixo ao seu nó.
  * Use só quando temSecoesSistema()===true; senão mantenha o layout legado.
  */
+/**
+ * Orientação por capítulo. A coluna `textos_padrao.orientacao` já existia e era
+ * ignorada aqui — o botão salvava "paisagem" e o PDF saía retrato do mesmo jeito.
+ *
+ * ⚠️ OPT-IN POR TEMPLATE, de propósito. Em 2026-07-31 havia 6 capítulos marcados
+ * "paisagem" no banco (3 no AET, 2 no psicossocial, 1 na apreciação) que sempre
+ * imprimiram retrato. Ligar isto para todo mundo de uma vez viraria a orientação
+ * de laudos de outros módulos sem ninguém ter pedido. Cada template habilita
+ * quando estiver pronto, passando `orientacaoPorCapitulo: true`.
+ *
+ * Requisitos para funcionar: o template precisa declarar
+ * `@page paisagem { size: A4 landscape }` + `.cap-paisagem { page: paisagem }`,
+ * e a rota tem que gerar com `capaFullBleed`/`preferCssPageSize` — sem isso o
+ * Chromium sobrescreve o @page com o `format: 'A4'`. Cuidado: capítulo em
+ * paisagem que NÃO renderiza seção nenhuma produz página em branco.
+ */
+function classeOrientacao(c: TextoPadraoCapitulo, habilitado: boolean): string {
+  return habilitado && c.orientacao === "paisagem" ? "cap-paisagem" : "";
+}
+
 export function renderUnificado(
   capitulos: TextoPadraoCapitulo[],
   valores: Record<string, string>,
   renderSecao: (slug: string) => React.ReactNode,
-  opts?: { numPorId?: Record<string, number> },
+  opts?: {
+    numPorId?: Record<string, number>;
+    /** Ver `classeOrientacao` — opt-in para não virar a página de outros módulos. */
+    orientacaoPorCapitulo?: boolean;
+  },
 ): React.ReactNode {
   const numPorId = opts?.numPorId;
-  const ativos = [...capitulos]
+  const orientacaoOn = opts?.orientacaoPorCapitulo === true;
+  return [...capitulos]
     .filter((c) => c.ativo !== false)
-    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
-  const orientDe = (c: TextoPadraoCapitulo) =>
-    c.orientacao === "paisagem" ? "paisagem" : "retrato";
-  return ativos.map((c, i) => {
-    const orient = orientDe(c);
-    const prev = i > 0 ? orientDe(ativos[i - 1]) : "retrato";
-    // Classe de orientação: paisagem sempre; ao voltar p/ retrato após paisagem,
-    // força a quebra p/ o tamanho de página não "vazar" da seção anterior.
-    // (Requer `@page paisagem`/`@page retrato` + `.cap-paisagem`/`.cap-retrato`
-    //  no template + gerarPdf com preferCssPageSize/capaFullBleed.)
-    const orientClass =
-      orient === "paisagem" ? "cap-paisagem" : orient !== prev ? "cap-retrato" : "";
-    if (c.tipo === "fixo") {
-      const cls =
-        [classeQuebraFixo(c), orientClass].filter(Boolean).join(" ") || undefined;
-      return (
-        <div key={c.id_capitulo} className={cls} data-slug={c.slug_fixo ?? undefined}>
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))
+    .map((c) =>
+      c.tipo === "fixo" ? (
+        <div
+          key={c.id_capitulo}
+          className={[classeQuebraFixo(c), classeOrientacao(c, orientacaoOn)].filter(Boolean).join(" ")}
+          data-slug={c.slug_fixo ?? undefined}
+        >
           {renderSecao(c.slug_fixo ?? "")}
         </div>
-      );
-    }
-    const inner = renderEditavelUm(
-      numPorId?.[c.id_capitulo]
-        ? { ...c, titulo: `${numPorId[c.id_capitulo]}. ${c.titulo}` }
-        : c,
-      valores,
+      ) : (
+        <React.Fragment key={c.id_capitulo}>
+          {orientacaoOn && c.orientacao === "paisagem" ? (
+            <div className="cap-paisagem">
+              {renderEditavelUm(
+                numPorId?.[c.id_capitulo]
+                  ? { ...c, titulo: `${numPorId[c.id_capitulo]}. ${c.titulo}` }
+                  : c,
+                valores,
+              )}
+            </div>
+          ) : (
+            renderEditavelUm(
+              numPorId?.[c.id_capitulo]
+                ? { ...c, titulo: `${numPorId[c.id_capitulo]}. ${c.titulo}` }
+                : c,
+              valores,
+            )
+          )}
+        </React.Fragment>
+      ),
     );
-    return orientClass ? (
-      <div key={c.id_capitulo} className={orientClass}>
-        {inner}
-      </div>
-    ) : (
-      <React.Fragment key={c.id_capitulo}>{inner}</React.Fragment>
-    );
-  });
 }
 
 /** Cabeçalho padrão dos laudos (faixa colorida + grid de dados). */

@@ -1,0 +1,47 @@
+{
+  "id": "/",
+  "name": "Painel SST — Chabra",
+  "short_name": "Painel SST",
+  "description": "Sistema de gestão de inspeções de Segurança e Saúde do Trabalho",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "/inicio",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#006B54",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Frota — veículos",
+      "short_name": "Frota",
+      "url": "/frota",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Saídas registradas",
+      "short_name": "Saídas",
+      "url": "/frota/saidas",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

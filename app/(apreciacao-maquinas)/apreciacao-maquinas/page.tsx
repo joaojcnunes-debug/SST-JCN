@@ -1,12 +1,13 @@
 "use client";
 
+import { LinhasSkeleton } from "@/components/ui/PageSkeletons";
+
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Cog,
   Plus,
   ArrowLeft,
-  Loader2,
   ShieldCheck,
   ShieldAlert,
   ClipboardList,
@@ -18,6 +19,8 @@ import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useCanCreate } from "@/lib/hooks/useUsuario";
 import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 import type { StatusApreciacao } from "@/lib/supabase/types";
+import { buscar } from "@/lib/busca/texto";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 export default function ApreciacaoMaquinasPage() {
   const canCreate = useCanCreate();
@@ -42,22 +45,15 @@ export default function ApreciacaoMaquinasPage() {
   ).length;
   const totalRascunho = apreciacoes.length - totalFinalizados;
 
-  const filtradas = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    return apreciacoes.filter((a) => {
-      if (filtroStatus !== "TODAS" && a.status !== filtroStatus) return false;
-      if (!q) return true;
-      const empresaNome = empresaMap.get(a.id_empresa) ?? "";
-      return [
-        a.titulo,
-        a.maquina_descricao,
-        a.setor,
-        a.responsavel,
-        empresaNome,
-      ]
-        .filter(Boolean)
-        .some((v) => v!.toLowerCase().includes(q));
-    });
+  const { itens: filtradas, aproximado } = useMemo(() => {
+    const doStatus = apreciacoes.filter((a) => filtroStatus === "TODAS" || a.status === filtroStatus);
+    // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem por data.
+    return buscar(
+      doStatus,
+      busca,
+      (a) => [a.titulo, a.maquina_descricao, a.setor, a.responsavel, empresaMap.get(a.id_empresa)],
+      { manterOrdem: true },
+    );
   }, [apreciacoes, busca, filtroStatus, empresaMap]);
 
   const idsFiltrados = useMemo(
@@ -200,9 +196,7 @@ export default function ApreciacaoMaquinasPage() {
       {/* Lista */}
       <section>
         {isLoading ? (
-          <div className="flex items-center justify-center py-8 text-gray-500">
-            <Loader2 className="size-4 animate-spin" />
-          </div>
+          <LinhasSkeleton linhas={5} />
         ) : filtradas.length === 0 ? (
           <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-6 text-center text-sm text-gray-500">
             {apreciacoes.length === 0 ? (
@@ -220,6 +214,7 @@ export default function ApreciacaoMaquinasPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm reveal-up card-hover">
+            <AvisoBuscaAproximada aproximado={aproximado} busca={busca} total={filtradas.length} className="m-3" />
             {filtradas.map((a) => (
               <Link
                 key={a.id_apreciacao}

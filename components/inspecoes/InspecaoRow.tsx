@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Pencil, ChartBar, Trash2 } from "lucide-react";
+import { Pencil, ChartBar, Trash2, RefreshCw } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { fmtData } from "@/lib/utils";
 import { iniciais, corAvatar } from "@/lib/hooks/useGestao";
+import { situacaoDocumento } from "@/lib/inspecoes/documento";
+import { ehRenovacao } from "@/lib/dashboard/inspecoes";
 import type { Inspecao, InspecaoAssociado } from "@/lib/supabase/types";
 
 export default function InspecaoRow({
@@ -53,6 +55,24 @@ export default function InspecaoRow({
           )}
         </span>
       </td>
+      {/* Status antes de Associados (pedido dele, 22/09): a pílula fica mais
+          perto do responsável e os avatares encostam nas Ações. O cabeçalho da
+          lista (app/(app)/inspecoes/page.tsx) segue esta mesma ordem. */}
+      <td className="px-4 py-3">
+        <span className="inline-flex flex-wrap items-center gap-1">
+          <StatusBadge status={insp.status} />
+          {/* Renovação de documento (23/09): está na lista, mas não conta nos
+              gráficos de inspeção — o selo avisa de onde vem a diferença. */}
+          {ehRenovacao(insp.tipo_criacao) && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800"
+              title="Registro de documento — não conta nos gráficos de inspeção"
+            >
+              <RefreshCw className="size-3" /> Renovação
+            </span>
+          )}
+        </span>
+      </td>
       <td className="px-4 py-3">
         {(() => {
           // Une os associados (tabela nova) com quem assumiu a elaboração pelo fluxo
@@ -63,8 +83,14 @@ export default function InspecaoRow({
           if (resp && !nomes.has(resp.toLowerCase())) {
             pessoas.push({ key: `resp-${insp.id_inspecao}`, nome: resp });
           }
-          if (pessoas.length === 0) return <span className="text-xs text-gray-300">—</span>;
+          // Situação do documento — a frase mora em lib/inspecoes/documento, a
+          // mesma que o card "Documento (SGG)" da tela do relatório usa.
+          // Inspeção ainda em campo não tem documento: o rótulo some.
+          const doc = situacaoDocumento(insp, pessoas.map((p) => p.nome), "curto");
+          const rotulo = doc && <span className={`block text-[10px] leading-tight ${doc.cor}`}>{doc.texto}</span>;
+          if (pessoas.length === 0) return <div><span className="text-xs text-gray-300">—</span>{rotulo}</div>;
           return (
+            <div>
             <div className="flex items-center -space-x-1.5">
               {pessoas.slice(0, 4).map((p) => (
                 <span
@@ -85,11 +111,10 @@ export default function InspecaoRow({
                 </span>
               )}
             </div>
+            {rotulo}
+            </div>
           );
         })()}
-      </td>
-      <td className="px-4 py-3">
-        <StatusBadge status={insp.status} />
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-1">

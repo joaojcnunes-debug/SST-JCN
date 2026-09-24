@@ -14,119 +14,18 @@ import {
   useUpdateQpsAplicacao,
 } from "@/lib/hooks/useQuestionarios";
 import { useQpsTipos } from "@/lib/hooks/useQuestionarios";
-import type { QpsCategoria, QpsPergunta, QpsProbabilidade } from "@/lib/supabase/types";
+import type { QpsCategoria } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
-
-// ─── Constantes de risco ──────────────────────────────────────────────────────
-
-const PROB_LABEL = ["", "Baixa", "Média", "Alta"] as const;
-const SEVERIDADE = 3; // fixo para risco psicossocial (NR-01)
-
-type NivelRisco = "BAIXO" | "MODERADO" | "ALTO";
-
-function nivelRisco(prob: 1 | 2 | 3): NivelRisco {
-  const score = prob * SEVERIDADE;
-  if (score <= 3) return "BAIXO";
-  if (score <= 6) return "MODERADO";
-  return "ALTO";
-}
-
-const RISCO_COR: Record<NivelRisco, string> = {
-  BAIXO: "bg-green-100 text-green-800 border-green-200",
-  MODERADO: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  ALTO: "bg-red-100 text-red-800 border-red-200",
-};
-
-const RISCO_PONTO: Record<NivelRisco, string> = {
-  BAIXO: "bg-green-500",
-  MODERADO: "bg-yellow-400",
-  ALTO: "bg-red-500",
-};
-
-// ─── Cálculo de score ─────────────────────────────────────────────────────────
-
-function normalizarResposta(
-  valor: number,
-  logica: "direta" | "invertida",
-  min: number,
-  max: number
-): number {
-  const v = logica === "invertida" ? max + min - valor : valor;
-  return ((v - min) / (max - min)) * 100;
-}
-
-function scoreToProbabilidade(score: number): 1 | 2 | 3 {
-  if (score < 34) return 1;
-  if (score < 67) return 2;
-  return 3;
-}
-
-interface CelulaMatriz {
-  setor: string;
-  categoria: QpsCategoria;
-  scorePerc: number;
-  probCalculada: 1 | 2 | 3;
-  probEfetiva: 1 | 2 | 3;
-  override: boolean;
-  risco: NivelRisco;
-  nRespondentes: number;
-}
-
-function calcularMatriz(
-  setores: string[],
-  categorias: QpsCategoria[],
-  perguntas: QpsPergunta[],
-  respondentes: { setor: string; respostas: Record<string, number> }[],
-  overrides: QpsProbabilidade[],
-  escalaMin: number,
-  escalaMax: number
-): CelulaMatriz[] {
-  const overrideMap = new Map(
-    overrides.map((o) => [`${o.setor}|${o.id_categoria}`, o.probabilidade as 1 | 2 | 3])
-  );
-
-  const cells: CelulaMatriz[] = [];
-
-  for (const setor of setores) {
-    const resp = respondentes.filter((r) => r.setor === setor);
-
-    for (const cat of categorias) {
-      const pergsCat = perguntas.filter((p) => p.id_categoria === cat.id_categoria);
-      const scores: number[] = [];
-
-      for (const r of resp) {
-        for (const p of pergsCat) {
-          const val = r.respostas[p.id_pergunta];
-          if (val === undefined || val === null) continue;
-          scores.push(normalizarResposta(val, p.logica, escalaMin, escalaMax));
-        }
-      }
-
-      const scorePerc =
-        scores.length > 0
-          ? scores.reduce((a, b) => a + b, 0) / scores.length
-          : 0;
-
-      const probCalculada = scores.length > 0 ? scoreToProbabilidade(scorePerc) : 1;
-      const chave = `${setor}|${cat.id_categoria}`;
-      const probOverride = overrideMap.get(chave);
-      const probEfetiva = probOverride ?? probCalculada;
-
-      cells.push({
-        setor,
-        categoria: cat,
-        scorePerc: Math.round(scorePerc),
-        probCalculada,
-        probEfetiva,
-        override: !!probOverride,
-        risco: nivelRisco(probEfetiva),
-        nRespondentes: resp.length,
-      });
-    }
-  }
-
-  return cells;
-}
+// A conta da matriz mora em lib/qps/matriz.ts desde 10/08, para a tela de
+// Resumo usar exatamente a mesma régua. Nada da fórmula mudou na mudança.
+import {
+  PROB_LABEL,
+  RISCO_COR,
+  RISCO_PONTO,
+  calcularMatriz,
+  type CelulaMatriz,
+  type NivelRisco,
+} from "@/lib/qps/matriz";
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 

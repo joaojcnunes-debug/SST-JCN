@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Users, TrendingUp, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileSignature, TrendingUp, X } from "lucide-react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -15,74 +15,91 @@ import {
   LabelList,
 } from "recharts";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { mesAbsSP, mesAbsAgoraSP, rotuloMesAbs } from "@/lib/dashboard/mes";
+import {
+  porAssociado as agruparPorAssociado,
+  resumoAssociacao,
+  serieMensalAssociacoes,
+  type AssociacaoDoc,
+  type DocumentoContavel,
+} from "@/lib/dashboard/documentos";
 import { corAvatar } from "@/lib/hooks/useGestao";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import { BalaoUmValor } from "@/components/ui/BalaoGrafico";
 
-interface AssocRow {
-  created_at: string | null;
-  nome: string | null;
-  id_inspecao: string;
-}
+/**
+ * Detalhe da elaboração do documento (SGG) por pessoa.
+ *
+ * ⚠️ Esta tela NÃO mede inspeção de campo — mede quem montou o documento
+ * depois da visita. Até 27/08/2026 ela se chamava "Inspeções Associadas" e o
+ * número saía com a palavra "inspeções", o que fez a primeira colocada (uma
+ * Auxiliar Administrativo, com zero visitas) ser lida como a técnica que mais
+ * trabalhou. A conta está em `lib/dashboard/documentos`, junto com o donut do
+ * dashboard que fazia a mesma pergunta e respondia outro número.
+ *
+ * ─── 15/09: UM número só ────────────────────────────────────────────────────
+ *
+ * De 27/08 a 15/09 a barra media ENTREGUES e o balão abria quatro números
+ * (entregues, está elaborando, voltou para a fila, passou pelas mãos dela).
+ * Ele pediu: "apenas quantos documentos o usuário foi associado" — e que o
+ * donut do dashboard bata com esta tela. Agora:
+ *
+ *  - barra e balão = `total` (documentos associados à pessoa, regras 1 e 2 da
+ *    régua: conta para quem está com o documento AGORA);
+ *  - o gráfico mensal conta documentos que ganharam associado no mês;
+ *  - abre no MÊS CORRENTE, o mesmo recorte do donut do dashboard (decisão
+ *    dele em 15/09, mantendo a lição de 27/08: acumulado lido como produção
+ *    do mês). O acumulado fica a um clique.
+ */
 
-async function fetchAssociados(): Promise<AssocRow[]> {
+async function fetchDados(): Promise<{ assoc: AssociacaoDoc[]; docs: DocumentoContavel[] }> {
   const supabase = createSupabaseBrowserClient();
-  const { data, error } = await supabase
-    .from("inspecao_associados")
-    .select("created_at, nome, id_inspecao");
-  if (error) throw error;
-  return (data ?? []) as unknown as AssocRow[];
-}
-
-function chaveMes(d: Date) {
-  return `${d.getFullYear()}-${d.getMonth()}`;
-}
-function mesLabel(d: Date) {
-  return d
-    .toLocaleDateString("pt-BR", { month: "short", year: "2-digit" })
-    .replace(".", "")
-    .replace(/^\w/, (c) => c.toUpperCase());
+  const [assoc, docs] = await Promise.all([
+    fetchAllRows<AssociacaoDoc>((de, ate) =>
+      supabase
+        .from("inspecao_associados")
+        .select("created_at, nome, id_inspecao")
+        .range(de, ate),
+    ),
+    fetchAllRows<DocumentoContavel>((de, ate) =>
+      supabase
+        .from("inspecoes")
+        .select("id_inspecao, status, elaboracao_responsavel, elaboracao_status")
+        .neq("status", "DELETADA")
+        .range(de, ate),
+    ),
+  ]);
+  return { assoc, docs };
 }
 
 export default function PorAssociadosDashboard() {
-  const { data: rows = [], isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["dashboard-por-associados"],
-    queryFn: fetchAssociados,
+    queryFn: fetchDados,
   });
+  const assoc = data?.assoc ?? [];
+  const docs = data?.docs ?? [];
 
-  const [mesSel, setMesSel] = useState<string | null>(null);
-  const now = new Date();
+  // Mês corrente por padrão — mesma razão da tela de documentos emitidos:
+  // aberta no acumulado, a barra soma meses e é lida como produção do mês.
+  const [mesSel, setMesSel] = useState<number | null>(mesAbsAgoraSP());
+  const mesAtual = mesAbsAgoraSP();
 
-  // Só linhas com data (associações do fluxo novo).
-  const validas = rows.filter((r) => r.created_at && r.id_inspecao);
+  const porMes = serieMensalAssociacoes(
+    assoc,
+    docs,
+    mesAtual,
+    12,
+    (abs) => rotuloMesAbs(abs, true),
+    mesAbsSP,
+  );
+  const mesSelLabel = mesSel != null ? porMes.find((m) => m.chave === mesSel)?.mes ?? null : null;
 
-  // Por mês — últimos 12 meses, contando INSPEÇÕES DISTINTAS associadas no mês.
-  const porMesSets = new Map<string, Set<string>>();
-  validas.forEach((r) => {
-    const k = chaveMes(new Date(r.created_at!));
-    (porMesSets.get(k) ?? porMesSets.set(k, new Set()).get(k)!).add(r.id_inspecao);
-  });
-  const porMes = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
-    const k = chaveMes(d);
-    return { chave: k, mes: mesLabel(d), total: porMesSets.get(k)?.size ?? 0 };
-  });
-
-  const mesSelLabel = mesSel ? porMes.find((m) => m.chave === mesSel)?.mes ?? null : null;
-
-  // Por associado — filtrado pelo mês (ou todos). Inspeções distintas por pessoa.
-  const rowsFiltradas = mesSel
-    ? validas.filter((r) => chaveMes(new Date(r.created_at!)) === mesSel)
-    : validas;
-  const mapa = new Map<string, Set<string>>();
-  rowsFiltradas.forEach((r) => {
-    const n = (r.nome ?? "").trim() || "Sem nome";
-    (mapa.get(n) ?? mapa.set(n, new Set()).get(n)!).add(r.id_inspecao);
-  });
-  const porAssociado = Array.from(mapa.entries())
-    .map(([nome, set]) => ({ nome, total: set.size }))
-    .sort((a, b) => b.total - a.total);
-
-  const totalInspecoes = new Set(validas.map((r) => r.id_inspecao)).size;
+  const porAssociado = agruparPorAssociado(assoc, docs, { mes: mesSel, mesDe: mesAbsSP });
+  const credito = resumoAssociacao(assoc, docs);
+  // Documentos distintos com alguém trabalhando neles (associado ou responsável).
+  const totalDocumentos = credito.comAssociacao + credito.semAssociacao;
 
   return (
     <div className="space-y-5">
@@ -91,13 +108,25 @@ export default function PorAssociadosDashboard() {
           <ArrowLeft className="size-4" /> Voltar ao dashboard
         </Link>
         <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-          <Users className="size-5 text-verde-primary" />
-          Inspeções Associadas (por associado)
+          <FileSignature className="size-5 text-verde-primary" />
+          Documentos por Associado (elaboração no SGG)
         </h1>
         <p className="text-sm text-gray-500">
           {isLoading
             ? "Carregando…"
-            : `${totalInspecoes} inspeção${totalInspecoes !== 1 ? "ões" : ""} com associação (fluxo novo, com data)`}
+            : `${totalDocumentos} documento${totalDocumentos !== 1 ? "s" : ""} com associado, no total`}
+        </p>
+        {/* O aviso é o remédio da confusão que originou esta tela: quem lia
+            "inspeções" achava que era ranking de técnico de campo. */}
+        {/* text-sky-800, não 900: a camada noturna de globals.css cobre até o
+            800 — no 900 o texto fica escuro sobre fundo escuro. */}
+        <p className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+          Isto é <strong>trabalho de escritório</strong>: quem montou o documento depois da visita.
+          Não é inspeção de campo — para saber quem foi à visita, veja{" "}
+          <Link href="/dashboard/inspecoes-concluidas" className="font-semibold underline">
+            Inspeções Concluídas
+          </Link>
+          .
         </p>
       </div>
 
@@ -106,7 +135,12 @@ export default function PorAssociadosDashboard() {
         <div className="mb-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <TrendingUp className="size-4 text-verde-primary" />
-            <h2 className="text-sm font-semibold text-gray-800">Por mês (últimos 12 meses)</h2>
+            <div>
+              <h2 className="text-sm font-semibold text-gray-800">Por mês (últimos 12 meses)</h2>
+              <p className="text-xs text-gray-400">
+                Documentos que ganharam associado em cada mês
+              </p>
+            </div>
           </div>
           <p className="text-xs text-gray-400">Clique num mês para filtrar abaixo</p>
         </div>
@@ -114,21 +148,19 @@ export default function PorAssociadosDashboard() {
           <div className="h-56 animate-pulse rounded-xl bg-gray-100" />
         ) : (
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={porMes} barSize={26} margin={{ top: 16, right: 4, left: -16, bottom: 0 }}>
+            <BarChart data={porMes} barSize={26} margin={{ top: 16, right: 4, left: 0, bottom: 0 }}>
               <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} width={28} />
-              <Tooltip
-                cursor={{ fill: "#f0fdf4" }}
-                contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", fontSize: 12, padding: "6px 12px" }}
-                formatter={(v) => [`${v} inspeç${Number(v) !== 1 ? "ões" : "ão"}`, ""]}
-              />
+              <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
+              <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo="Documentos" />} />
+              {/* Documentos que entraram na fila no mês — o mesmo `total` do card
+                  "Documentos Associados por Mês" do dashboard. */}
               <Bar
                 dataKey="total"
                 radius={[6, 6, 0, 0]}
                 cursor="pointer"
-                onClick={(d: { chave?: string; payload?: { chave?: string } }) => {
+                onClick={(d: { chave?: number; payload?: { chave?: number } }) => {
                   const k = d?.chave ?? d?.payload?.chave ?? null;
-                  if (!k) return;
+                  if (k == null) return;
                   setMesSel((atual) => (atual === k ? null : k));
                 }}
               >
@@ -145,46 +177,86 @@ export default function PorAssociadosDashboard() {
       <div className="reveal-up card-hover rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Users className="size-4 text-verde-primary" />
-            <h2 className="text-sm font-semibold text-gray-800">
-              Por associado {mesSelLabel ? `— ${mesSelLabel}` : "— todos os meses"}
-            </h2>
+            <FileSignature className="size-4 text-verde-primary" />
+            <div>
+              <h2 className="text-sm font-semibold text-gray-800">
+                Por pessoa {mesSelLabel ? `— ${mesSelLabel}` : "— acumulado de todos os meses"}
+              </h2>
+              <p className="text-xs text-gray-400">
+                {mesSelLabel
+                  ? "Quantos documentos cada pessoa foi associada neste mês"
+                  : "Soma de todos os meses — não é a produção de um mês"}
+              </p>
+            </div>
           </div>
-          {mesSel && (
+          {mesSel != null ? (
             <button
               type="button"
               onClick={() => setMesSel(null)}
               className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
             >
-              <X className="size-3" /> Limpar filtro do mês
+              Ver todos os meses
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMesSel(mesAbsAgoraSP())}
+              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+            >
+              <X className="size-3" /> Voltar ao mês atual
             </button>
           )}
         </div>
+
+        {/* Os documentos sem linha de associação não têm data de entrada: contam
+            no total e somem do recorte por mês. Dizer isso evita a pergunta
+            "por que a soma dos meses não fecha com o total?". */}
+        {!isLoading && credito.semAssociacao > 0 && (
+          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <strong>{credito.semAssociacao}</strong> documento
+            {credito.semAssociacao !== 1 ? "s têm" : " tem"} responsável de elaboração sem
+            registro de associação
+            {mesSel != null ? (
+              <> — {credito.semAssociacao !== 1 ? "eles não aparecem" : "ele não aparece"} neste mês, só no total.</>
+            ) : (
+              <> — {credito.semAssociacao !== 1 ? "contam" : "conta"} no total, mas sem data de entrada não {credito.semAssociacao !== 1 ? "entram" : "entra"} no recorte por mês.</>
+            )}
+          </div>
+        )}
+
         {isLoading ? (
           <LoadingSkeleton rows={4} />
         ) : porAssociado.length === 0 ? (
           <p className="py-6 text-center text-sm text-gray-500">
-            Nenhuma associação{mesSelLabel ? ` em ${mesSelLabel}` : ""}.
+            Nenhum documento{mesSelLabel ? ` em ${mesSelLabel}` : ""}.
           </p>
         ) : (
           <ResponsiveContainer width="100%" height={Math.max(160, porAssociado.length * 38)}>
             <BarChart data={porAssociado} layout="vertical" barSize={22} margin={{ top: 4, right: 40, left: 8, bottom: 0 }}>
               <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
               <YAxis type="category" dataKey="nome" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} width={150} />
-              <Tooltip
-                cursor={{ fill: "#f0fdf4" }}
-                contentStyle={{ borderRadius: 10, border: "1px solid #e5e7eb", fontSize: 12, padding: "6px 12px" }}
-                formatter={(v) => [`${v} inspeç${Number(v) !== 1 ? "ões" : "ão"}`, ""]}
-              />
+              <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo="Documentos" />} />
+              {/* A barra mede o TOTAL de documentos associados (15/09). Até
+                  então media entregues, com o resto no balão. */}
               <Bar dataKey="total" radius={[0, 6, 6, 0]}>
                 {porAssociado.map((p) => (
-                  <Cell key={p.nome} fill={p.nome === "Sem nome" ? "#9ca3af" : corAvatar(p.nome)} />
+                  <Cell key={p.nome} fill={corAvatar(p.nome)} />
                 ))}
-                <LabelList dataKey="total" position="right" style={{ fontSize: 12, fontWeight: 700, fill: "#111827" }} />
+                <LabelList dataKey="total" position="right" style={{ fontSize: 12, fontWeight: 700, fill: "var(--text-strong)" }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         )}
+      </div>
+
+      <div className="flex justify-end">
+        <Link
+          href="/dashboard/inspecoes-concluidas"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-verde-light px-3 py-2 text-xs font-semibold text-verde-primary transition-colors hover:bg-verde-primary hover:text-white"
+        >
+          Ver produção de campo (inspeções concluídas)
+          <ArrowRight className="size-3.5" />
+        </Link>
       </div>
     </div>
   );

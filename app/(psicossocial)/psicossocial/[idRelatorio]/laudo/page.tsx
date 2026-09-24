@@ -11,7 +11,7 @@ import PainelCongelamentoPdf from "@/components/ui/PainelCongelamentoPdf";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import DrpsSumarioPrint from "@/components/drps/DrpsSumarioPrint";
 import DrpsRelatorioExtrasPrint from "@/components/drps/DrpsRelatorioExtrasPrint";
@@ -22,20 +22,21 @@ import { useDrpsStore } from "@/lib/drps/store";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import {
   useDrpsProbabilidades,
+  useDrpsProbabilidadesUnidade,
   useDrpsRelatorio,
   useDrpsRespondentes,
 } from "@/lib/hooks/useDrps";
 import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
+import { listarSetores, listarUnidades } from "@/lib/drps/calculos";
 import {
-  aplicarMatriz,
-  calcularResumoCompleto,
-  filtrarPorSetor,
-  listarSetores,
-} from "@/lib/drps/calculos";
+  montarBlocosPorSetor,
+  montarBlocosPorUnidade,
+  textoDoBloco,
+} from "@/lib/drps/blocos";
+import type { SetorRelatorio } from "@/lib/drps/blocos";
 import { montarValoresVariaveis, substituirVariaveis, substituirVariaveisTexto } from "@/lib/drps/variaveis";
 import { detectRegistroTipo } from "@/lib/registro-profissional";
-import { TOPICOS } from "@/lib/drps/topicos";
 import {
   formatCNPJ,
   formatCPF,
@@ -44,30 +45,7 @@ import {
   formatCNO,
 } from "@/lib/utils";
 import type { Empresa } from "@/lib/supabase/types";
-import type {
-  DrpsProbabilidade,
-  DrpsRelatorio,
-  TopicoComMatriz,
-} from "@/lib/drps/types";
-
-interface SetorRelatorio {
-  setor: string;
-  totalRespondentes: number;
-  funcoes: string;
-  topicos: TopicoComMatriz[];
-}
-
-function montarMapaProb(
-  probabilidades: DrpsProbabilidade[],
-  setor: string
-): Record<number, 1 | 2 | 3> {
-  const m: Record<number, 1 | 2 | 3> = {};
-  for (let i = 0; i < TOPICOS.length; i++) m[i] = 1;
-  for (const p of probabilidades) {
-    if (p.setor === setor) m[p.topico_idx] = p.probabilidade as 1 | 2 | 3;
-  }
-  return m;
-}
+import type { DrpsRelatorio } from "@/lib/drps/types";
 
 export default function PsicossocialLaudoPage({
   params,
@@ -76,10 +54,12 @@ export default function PsicossocialLaudoPage({
 }) {
   const { idRelatorio } = use(params);
   const setor = useDrpsStore((s) => s.setor);
+  const unidade = useDrpsStore((s) => s.unidade);
   const { data: relatorio } = useDrpsRelatorio(idRelatorio);
   const { data: empresa } = useEmpresa(relatorio?.id_empresa);
   const { data: respondentes = [] } = useDrpsRespondentes(idRelatorio);
   const { data: probabilidades = [] } = useDrpsProbabilidades(idRelatorio);
+  const { data: overrides = [] } = useDrpsProbabilidadesUnidade(idRelatorio);
   const valoresVars = useMemo(() => {
     const base = montarValoresVariaveis(empresa, relatorio ?? null);
     const timestamps = respondentes
@@ -101,22 +81,34 @@ export default function PsicossocialLaudoPage({
     return [setor];
   }, [setor, respondentes]);
 
+  // Com unidades (v138), o laudo cascateia Unidade › Setor › Funções. A lista
+  // continua sendo de blocos de setor — cada um agora sabendo a que unidade
+  // pertence —, então tudo que consome relatoriosPorSetor segue funcionando.
+  const temUnidades = useMemo(
+    () => listarUnidades(respondentes).length > 0,
+    [respondentes]
+  );
+
   const relatoriosPorSetor = useMemo<SetorRelatorio[]>(() => {
-    return setoresParaRelatorio.map((s) => {
-      const filtrados = filtrarPorSetor(respondentes, s);
-      const topicos = calcularResumoCompleto(filtrados);
-      const mapaProb = montarMapaProb(probabilidades, s);
-      const topicosComMatriz = aplicarMatriz(topicos, mapaProb);
-      const cargosSet = new Set<string>();
-      for (const r of filtrados) {
-        if (r.cargo && r.cargo.trim()) cargosSet.add(r.cargo.trim());
-      }
-      const funcoes = Array.from(cargosSet)
-        .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
-        .join(", ");
-      return { setor: s, totalRespondentes: filtrados.length, funcoes, topicos: topicosComMatriz };
-    });
-  }, [setoresParaRelatorio, respondentes, probabilidades]);
+    if (!temUnidades) {
+      return montarBlocosPorSetor(respondentes, probabilidades, setoresParaRelatorio);
+    }
+    const blocos = montarBlocosPorUnidade(
+      respondentes,
+      probabilidades,
+      overrides,
+      unidade === "Todas" ? undefined : [unidade]
+    ).flatMap((u) => u.setores);
+    return setor === "Todos" ? blocos : blocos.filter((b) => b.setor === setor);
+  }, [
+    temUnidades,
+    setoresParaRelatorio,
+    respondentes,
+    probabilidades,
+    overrides,
+    unidade,
+    setor,
+  ]);
 
   const { pdfAssinado, recarregar } = usePdfAssinado("drps_relatorios_analise", idRelatorio);
   const { data: pdfCongelado } = usePdfCongelado("drps", idRelatorio);
@@ -128,22 +120,9 @@ export default function PsicossocialLaudoPage({
     if (!pdfAssinado) return;
     setBaixando(true);
     try {
-      const supabase = createSupabaseBrowserClient();
-      // URL assinada (token único a cada clique) + no-store: ignora o cache do
-      // CDN/navegador. O caminho é o mesmo a cada (re)assinatura, e o CDN servia
-      // a versão antiga do mesmo path — daí o PDF baixado vir defasado.
-      const { data: signed, error } = await supabase.storage
-        .from("pdfs-assinados")
-        .createSignedUrl(pdfAssinado.pdf_path, 120);
-      if (error || !signed?.signedUrl) { toast.error("Não foi possível baixar o PDF."); return; }
-      const res = await fetch(`${signed.signedUrl}&t=${Date.now()}`, { cache: "no-store" });
-      if (!res.ok) { toast.error("Não foi possível baixar o PDF."); return; }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = "relatorio-drps-assinado.pdf"; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-    } catch { toast.error("Erro ao baixar o PDF."); }
+      // Bucket privado: download via rota server-side same-origin (baixar-assinado).
+      await baixarPdfAssinado(pdfAssinado.pdf_path, "relatorio-drps-assinado.pdf");
+    } catch { toast.error("Não foi possível baixar o PDF."); }
     finally { setBaixando(false); }
   }
 
@@ -197,7 +176,9 @@ export default function PsicossocialLaudoPage({
 
   const sumarioScreenNode = (
     <DrpsSumarioPrint
-      setores={relatoriosPorSetor.map((r) => r.setor)}
+      setores={relatoriosPorSetor.map((r) =>
+        r.unidade ? `${r.unidade} — ${r.setor}` : r.setor
+      )}
       valores={valoresVars}
       temConclusaoGeral={!!relatorio?.conclusao_geral}
       temMedidas={true}
@@ -208,7 +189,7 @@ export default function PsicossocialLaudoPage({
 
   const setoresScreenNode = relatoriosPorSetor.map((r, idx) => (
     <BlocoSetorLaudo
-      key={r.setor}
+      key={r.unidade ? `${r.unidade}||${r.setor}` : r.setor}
       relatorio={r}
       drpsRel={relatorio ?? null}
       empresa={empresa ?? null}
@@ -244,20 +225,25 @@ export default function PsicossocialLaudoPage({
         {numLabel(numPorSlug["drps_caracterizacao"], "Caracterização dos Trabalhadores")}
       </h2>
       <p className="mb-2 text-xs text-gray-600">
-        Distribuição quantitativa dos trabalhadores avaliados por setor e função,
+        Distribuição quantitativa dos trabalhadores avaliados por
+        {temUnidades ? " unidade de trabalho, setor e função" : " setor e função"},
         conforme os respondentes do Diagnóstico de Riscos Psicossociais.
       </p>
       <table className="drps-tabela text-xs">
         <thead>
           <tr>
-            <th className="drps-label" style={{ width: "32%", textAlign: "left" }}>Setor</th>
+            {temUnidades && (
+              <th className="drps-label" style={{ width: "26%", textAlign: "left" }}>Unidade</th>
+            )}
+            <th className="drps-label" style={{ width: temUnidades ? "24%" : "32%", textAlign: "left" }}>Setor</th>
             <th className="drps-label" style={{ textAlign: "left" }}>Funções</th>
             <th className="drps-label" style={{ width: "16%", textAlign: "center" }}>Trabalhadores</th>
           </tr>
         </thead>
         <tbody>
           {relatoriosPorSetor.map((r) => (
-            <tr key={r.setor}>
+            <tr key={r.unidade ? `${r.unidade}||${r.setor}` : r.setor}>
+              {temUnidades && <td>{r.unidade ?? "—"}</td>}
               <td>{r.setor}</td>
               <td>{r.funcoes || "—"}</td>
               <td style={{ textAlign: "center" }}>{r.totalRespondentes}</td>
@@ -266,6 +252,7 @@ export default function PsicossocialLaudoPage({
           <tr>
             <td style={{ fontWeight: 700 }}>Total</td>
             <td />
+            {temUnidades && <td />}
             <td style={{ textAlign: "center", fontWeight: 700 }}>{totalTrabalhadoresScreen}</td>
           </tr>
         </tbody>
@@ -403,9 +390,15 @@ export default function PsicossocialLaudoPage({
           .drps-capitulos-apos-setores { break-before: page; }
         }
         .drps-tabela { border-collapse: collapse; width: 100%; font-size: 11px; }
-        .drps-tabela td, .drps-tabela th { border: 1px solid #cbd5e1; padding: 7px 10px; vertical-align: top; }
-        .drps-label { background: #f0f9f4; font-weight: 600; color: #1e4d28; font-size: 10.5px; letter-spacing: 0.02em; width: 30%; }
-        .drps-header-section { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: center; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; }
+        /* Cores por variável, não cravadas: esta folha deixou de viver dentro de
+           uma ilha force-light, então precisa acompanhar o tema. O valor em
+           :root e em .force-light é o hexadecimal exato de antes -- tema claro e
+           impressão ficam idênticos. O PDF nem passa por aqui: o Puppeteer usa a
+           folha própria do DrpsTemplate.
+           (Sem crases neste comentário: o bloco inteiro é um template literal.) */
+        .drps-tabela td, .drps-tabela th { border: 1px solid var(--psi-borda); padding: 7px 10px; vertical-align: top; }
+        .drps-label { background: var(--psi-label-bg); font-weight: 600; color: var(--psi-verde); font-size: 10.5px; letter-spacing: 0.02em; width: 30%; }
+        .drps-header-section { background: var(--psi-faixa-bg); color: var(--psi-verde); font-weight: 700; text-align: center; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; padding: 8px 10px; }
         .drps-title { background: linear-gradient(180deg, #0ea5e9 0%, #00563f 100%); color: white; font-weight: 700; font-size: 13px; text-align: center; letter-spacing: 0.08em; text-transform: uppercase; padding: 10px 12px; }
         .drps-capitulo { margin-bottom: 22px; }
         .drps-setor-bloco { margin-bottom: 24px; }
@@ -418,19 +411,19 @@ export default function PsicossocialLaudoPage({
           .drps-capitulo--capa { margin: 0; padding: 0; height: calc(297mm - 2.8cm - 1mm); min-height: calc(297mm - 2.8cm - 1mm); max-height: calc(297mm - 2.8cm - 1mm); }
           .drps-capitulo--capa .drps-capitulo-conteudo { padding: 1.2cm; }
         }
-        .drps-capitulo-titulo { font-size: 14px; font-weight: 700; color: #1e4d28; border-bottom: 2px solid #0ea5e9; padding-bottom: 4px; margin-bottom: 8px; }
-        .drps-capitulo-conteudo { font-size: 11px; color: #1f2937; line-height: 1.55; }
+        .drps-capitulo-titulo { font-size: 14px; font-weight: 700; color: var(--psi-verde); border-bottom: 2px solid #0ea5e9; padding-bottom: 4px; margin-bottom: 8px; }
+        .drps-capitulo-conteudo { font-size: 11px; color: var(--laudo-texto); line-height: 1.55; }
         .drps-capitulo-conteudo p { margin: 0 0 8px 0; }
-        .drps-capitulo-conteudo h1 { font-size: 16px; font-weight: 700; color: #1e4d28; margin: 12px 0 6px; }
-        .drps-capitulo-conteudo h2 { font-size: 14px; font-weight: 700; color: #1e4d28; margin: 10px 0 6px; }
-        .drps-capitulo-conteudo h3 { font-size: 12px; font-weight: 700; color: #1e4d28; margin: 8px 0 4px; }
+        .drps-capitulo-conteudo h1 { font-size: 16px; font-weight: 700; color: var(--psi-verde); margin: 12px 0 6px; }
+        .drps-capitulo-conteudo h2 { font-size: 14px; font-weight: 700; color: var(--psi-verde); margin: 10px 0 6px; }
+        .drps-capitulo-conteudo h3 { font-size: 12px; font-weight: 700; color: var(--psi-verde); margin: 8px 0 4px; }
         .drps-capitulo-conteudo ul, .drps-capitulo-conteudo ol { margin: 0 0 8px 20px; padding: 0; }
         .drps-capitulo-conteudo li { margin: 2px 0; }
-        .drps-capitulo-conteudo a { color: #0ea5e9; text-decoration: underline; }
+        .drps-capitulo-conteudo a { color: var(--tiptap-link); text-decoration: underline; }
         .drps-capitulo-conteudo img { max-width: 100%; height: auto; border-radius: 4px; margin: 8px 0; }
         .drps-capitulo-conteudo table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 10px; }
-        .drps-capitulo-conteudo th, .drps-capitulo-conteudo td { border: 1px solid #999; padding: 5px 7px; vertical-align: top; }
-        .drps-capitulo-conteudo th { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: left; }
+        .drps-capitulo-conteudo th, .drps-capitulo-conteudo td { border: 1px solid var(--psi-borda-tab); padding: 5px 7px; vertical-align: top; }
+        .drps-capitulo-conteudo th { background: var(--psi-faixa-bg); color: var(--psi-verde); font-weight: 700; text-align: left; }
       `}</style>
 
       {/* ── Cabeçalho da página ─────────────────────────────────── */}
@@ -524,6 +517,10 @@ export default function PsicossocialLaudoPage({
           Nenhum respondente importado — não é possível gerar o laudo.
         </div>
       ) : (
+        // Sem `force-light`: a prévia acompanha o tema do app — folha branca fixa
+        // cansava a vista de quem passa o dia no laudo. A impressão continua clara
+        // pelo `beforeprint` do ThemeManager e o PDF é montado no servidor
+        // (/api/pdf/drps/[id]), não capturado desta tela.
         <div className="drps-print-container rounded border border-gray-300 bg-white p-6 shadow-sm">
           {temFixos ? (
             <>
@@ -635,6 +632,12 @@ function BlocoSetorLaudo({
             <td className="drps-label">Empresa</td>
             <td colSpan={3}>{empresa?.nome_empresa ?? "—"}</td>
           </tr>
+          {relatorio.unidade && (
+            <tr>
+              <td className="drps-label">Unidade de Trabalho</td>
+              <td colSpan={3}>{relatorio.unidade}</td>
+            </tr>
+          )}
           <tr>
             <td className="drps-label">Setor</td>
             <td colSpan={3}>{relatorio.setor}</td>
@@ -649,7 +652,7 @@ function BlocoSetorLaudo({
           </tr>
           <tr><td className="drps-header-section" colSpan={4}>Classificação de Risco Psicossocial</td></tr>
           <tr>
-            <td colSpan={4} className="text-center text-[11px] font-semibold uppercase tracking-wider" style={{ background: "#f0f9f4", color: "#1e4d28" }}>
+            <td colSpan={4} className="text-center text-[11px] font-semibold uppercase tracking-wider" style={{ background: "var(--psi-label-bg)", color: "var(--psi-verde)" }}>
               Quantitativo e Qualitativo
             </td>
           </tr>
@@ -696,20 +699,35 @@ function BlocoSetorLaudo({
           <tr><td className="drps-header-section">Possíveis Agravos à Saúde Mental</td></tr>
           <tr>
             <td className="align-top whitespace-pre-wrap text-[11px]">
-              {drpsRel?.agravos_por_setor?.[relatorio.setor] ?? ""}
+              {textoDoBloco(
+                drpsRel?.agravos_por_unidade_setor,
+                drpsRel?.agravos_por_setor,
+                relatorio.unidade,
+                relatorio.setor
+              )}
             </td>
           </tr>
           <tr><td className="drps-header-section">Medidas de controle recomendadas (medidas que a empresa deve adotar)</td></tr>
           <tr>
             <td className="align-top whitespace-pre-wrap text-[11px]">
-              {drpsRel?.medidas_por_setor?.[relatorio.setor] ?? ""}
+              {textoDoBloco(
+                drpsRel?.medidas_por_unidade_setor,
+                drpsRel?.medidas_por_setor,
+                relatorio.unidade,
+                relatorio.setor
+              )}
             </td>
           </tr>
         </tbody>
       </table>
 
       {(() => {
-        const conclusao = drpsRel?.conclusoes_por_setor?.[relatorio.setor] ?? "";
+        const conclusao = textoDoBloco(
+          drpsRel?.conclusoes_por_unidade_setor,
+          drpsRel?.conclusoes_por_setor,
+          relatorio.unidade,
+          relatorio.setor
+        );
         return (
           <table className="drps-tabela mt-2">
             <tbody>

@@ -15,6 +15,7 @@ export const VARIAVEIS_AET: VariavelDef[] = [
   { chave: "registro_profissional", rotulo: "Registro profissional", exemplo: "CREA 12345-SP" },
   { chave: "carimbo", rotulo: "Carimbo (nome + título + registro — multilinha)", exemplo: "João Jefferson\nErgonomista\nCREA 12345-SP" },
   { chave: "data_elaboracao", rotulo: "Data de elaboração", exemplo: "15/05/2026" },
+  { chave: "data_validade", rotulo: "Validade do documento", exemplo: "15/05/2027" },
   { chave: "data_atual", rotulo: "Data atual (geração do PDF)", exemplo: "15/05/2026" },
 ];
 
@@ -29,6 +30,7 @@ export function montarValoresAet(
     | "titulo_profissional"
     | "registro_profissional"
     | "data_elaboracao"
+    | "data_validade"
     | "endereco_empresa"
   > & {
     empresas?: { nome_empresa: string; cnpj: string | null } | null;
@@ -58,6 +60,10 @@ export function montarValoresAet(
     registro_profissional: registro,
     carimbo,
     data_elaboracao: formatarDataBR(dataElab),
+    // Sem override: a validade não é editada na tela do laudo (só na de Dados),
+    // então vem sempre do que está salvo. A coluna existe desde a v82 e nada no
+    // laudo pedia por ela — {{data_validade}} saía LITERAL no PDF.
+    data_validade: formatarDataBR(rel.data_validade),
     data_atual: new Date().toLocaleDateString("pt-BR"),
     // Variáveis de documento (Fase 1): sempre resolvem (default ""), não vazam token.
     grau_risco: "",

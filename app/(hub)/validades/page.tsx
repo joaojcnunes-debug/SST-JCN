@@ -12,11 +12,14 @@ import {
   type LaudoValidadeItem,
   type TipoLaudo,
 } from "@/lib/hooks/useLaudosValidade";
+import { tiposPermitidos } from "@/lib/validades/fontes";
 import { cn } from "@/lib/utils";
+import { buscar } from "@/lib/busca/texto";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
-const TIPOS: TipoLaudo[] = [
-  "Inspeção", "Conformidade", "Não Conformidade", "AET", "AEP", "DRPS", "Análise de Químicos", "Apreciação", "Investigação",
-];
+// O filtro "Tipo" segue os módulos da conta (v0.3.636) — oferecer um tipo que
+// a lista nunca vai trazer só faria a pessoa achar que a empresa não tem o
+// documento. A régua mora em lib/validades/fontes.ts, com teste.
 
 type FiltroStatus = "todos" | "sem" | "a_vencer" | "vencido" | "em_dia";
 
@@ -39,40 +42,59 @@ function fmt(iso: string | null): string {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
 
+/** Quantas linhas a tabela desenha por vez. Ver o comentário do `visiveis`. */
+const LOTE = 100;
+
 export default function ValidadesPage() {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
   const canEdit = useCanEdit();
   const { data: laudos = [], isLoading } = useLaudosValidade();
   const salvar = useSalvarValidade();
+  const tipos = useMemo(() => tiposPermitidos(user?.modulos_permitidos), [user?.modulos_permitidos]);
 
   const [busca, setBusca] = useState("");
   const [tipo, setTipo] = useState<TipoLaudo | "">("");
   const [status, setStatus] = useState<FiltroStatus>("todos");
+  const [visiveis, setVisiveis] = useState(LOTE);
 
   useEffect(() => {
     if (user?.perfil === "Cliente") router.replace("/portal-cliente/inicio");
   }, [user?.perfil, router]);
 
-  const filtrados = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    return laudos.filter((l) => {
+  const { itens: filtrados, aproximado } = useMemo(() => {
+    const dosFiltros = laudos.filter((l) => {
       if (tipo && l.tipo !== tipo) return false;
-      if (q && !(l.empresaNome ?? "").toLowerCase().includes(q)) return false;
       if (status !== "todos") {
         const s = l.data_validade ? classifica(l.data_validade) : "sem";
         if (status !== s) return false;
       }
       return true;
     });
+    // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem por validade.
+    return buscar(dosFiltros, busca, (l) => [l.empresaNome], { manterOrdem: true });
   }, [laudos, busca, tipo, status]);
 
   const semValidade = laudos.filter((l) => !l.data_validade).length;
 
+  /**
+   * A tabela vai em lotes. Sem isto ela desenhava as 1.035 linhas de uma vez:
+   * 48.233px de página, 9.407 nós no DOM, e uma varredura de rolagem travou o
+   * navegador por mais de 45s (medido em 01/09).
+   *
+   * O corte é só de DESENHO, e vem DEPOIS do filtro — a busca e os dois
+   * seletores continuam varrendo a lista inteira, então nada fica inalcançável.
+   * O que muda é o Ctrl+F do navegador, que passa a achar só o que está na
+   * tela; quem procura empresa tem o campo de busca, que é mais preciso.
+   */
+  useEffect(() => setVisiveis(LOTE), [busca, tipo, status]);
+  const mostrados = filtrados.slice(0, visiveis);
+  const faltam = filtrados.length - mostrados.length;
+
   return (
-    <div className="min-h-screen bg-[#f6f5f2]">
+    <div className="min-h-screen bg-app-bg">
       <div className="mx-auto max-w-6xl px-5 py-7 sm:px-8">
-        <Link href="/visao-geral" className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
+        <Link href="/inicio" className="mb-4 inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
           <ArrowLeft className="size-4" /> Visão geral
         </Link>
 
@@ -106,7 +128,7 @@ export default function ValidadesPage() {
             className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-verde-primary focus:outline-none"
           >
             <option value="">Todos os tipos</option>
-            {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
+            {tipos.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
           <select
             value={status}
@@ -131,6 +153,7 @@ export default function ValidadesPage() {
             <p className="p-5 text-sm text-gray-400">Nenhum laudo com esses filtros.</p>
           ) : (
             <div className="overflow-x-auto">
+              <AvisoBuscaAproximada aproximado={aproximado} busca={busca} total={filtrados.length} className="m-3" />
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">
@@ -142,7 +165,7 @@ export default function ValidadesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {filtrados.map((l) => (
+                  {mostrados.map((l) => (
                     <LinhaValidade
                       key={`${l.tabela}-${l.id}`}
                       item={l}
@@ -155,6 +178,21 @@ export default function ValidadesPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {faltam > 0 && (
+            <div className="border-t border-gray-100 p-3 text-center">
+              <button
+                type="button"
+                onClick={() => setVisiveis((v) => v + LOTE)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-verde-primary hover:text-verde-primary"
+              >
+                Mostrar mais {Math.min(LOTE, faltam)}
+              </button>
+              <p className="mt-1.5 text-xs text-gray-400">
+                mostrando {mostrados.length} de {filtrados.length}
+              </p>
             </div>
           )}
         </div>

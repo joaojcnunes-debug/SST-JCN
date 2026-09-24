@@ -117,6 +117,64 @@ export default function FotoSlots({ slots, onChange, max = 4, disabled, bucket =
   );
 }
 
+/**
+ * Versão offline-capaz do `uploadFotoSlots`: DECIDE os caminhos e monta as URLs,
+ * mas não sobe nada e não apaga nada.
+ *
+ * Existe ao lado do original, e não no lugar dele, porque `uploadFotoSlots` é
+ * usado também por Inventário de Máquinas e Equipamentos — módulos que ainda não
+ * entraram no offline. Trocar a assinatura dele arrastaria os dois para dentro
+ * deste trabalho sem necessidade.
+ *
+ * É SÍNCRONA de propósito: `getPublicUrl` monta string a partir do host do
+ * storage, sem ir à rede. É isso que permite gravar a linha da foto offline já
+ * apontando para o lugar onde o arquivo vai estar quando a fila subir.
+ *
+ * `paraRemover` sai daqui em vez de ser apagado: sem rede não há como apagar, e
+ * quem chama decide. Arquivo órfão no MinIO é desperdício de espaço, não erro —
+ * a mesma postura que a galeria da Frota já adota.
+ */
+export function prepararFotoSlots(
+  supabase: ReturnType<typeof import("@/lib/supabase/client").createSupabaseBrowserClient>,
+  slots: (FotoSlot | null)[],
+  oldPaths: string[],
+  bucket: string,
+  basePath: string,
+  gerarId: (prefix: string) => string,
+): {
+  urls: string[];
+  paths: string[];
+  imagens: { blob: Blob; caminho: string }[];
+  paraRemover: string[];
+} {
+  const mantidos = new Set(
+    slots
+      .filter((s): s is Extract<FotoSlot, { type: "existing" }> => s?.type === "existing")
+      .map((s) => s.path),
+  );
+
+  const urls: string[] = [];
+  const paths: string[] = [];
+  const imagens: { blob: Blob; caminho: string }[] = [];
+
+  for (const s of slots) {
+    if (!s) continue;
+    if (s.type === "existing") {
+      urls.push(s.url);
+      paths.push(s.path);
+      continue;
+    }
+    const ext = s.file.name.split(".").pop() ?? "jpg";
+    const caminho = `${basePath}/${gerarId("IMG")}.${ext}`;
+    const { data: pub } = supabase.storage.from(bucket).getPublicUrl(caminho);
+    urls.push(pub.publicUrl);
+    paths.push(caminho);
+    imagens.push({ blob: s.file, caminho });
+  }
+
+  return { urls, paths, imagens, paraRemover: oldPaths.filter((p) => !mantidos.has(p)) };
+}
+
 /** Faz upload dos slots novos, deleta os removidos e retorna urls/paths finais. */
 export async function uploadFotoSlots(
   supabase: ReturnType<typeof import("@/lib/supabase/client").createSupabaseBrowserClient>,

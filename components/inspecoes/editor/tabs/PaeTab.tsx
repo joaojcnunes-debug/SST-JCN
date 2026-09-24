@@ -12,7 +12,9 @@ import {
   User,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { gravar } from "@/lib/offline/gravar";
+import { useExcluirDaInspecao } from "@/lib/hooks/useExcluirDaInspecao";
+import type { InspecaoFull } from "@/lib/hooks/useInspecao";
 import { gerarId, cn } from "@/lib/utils";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import type { PaeContato } from "@/lib/supabase/types";
@@ -53,7 +55,6 @@ export default function PaeTab({
 
   const save = useMutation({
     mutationFn: async (c: Partial<PaeContato> & { id_contato: string }) => {
-      const supabase = createSupabaseBrowserClient();
       const { id_contato, ...rest } = c;
       const payload = { ...rest, updated_at: new Date().toISOString() };
       // Discriminador: payload completo (inclui id_inspecao) → INSERT
@@ -62,40 +63,56 @@ export default function PaeTab({
       // mas se o usuário editasse o NOME de um contato existente, o save
       // ia pro UPSERT que tenta INSERT primeiro e falha em id_inspecao
       // NOT NULL.
-      if (rest.id_inspecao === undefined) {
-        const { error } = await supabase
-          .from("pae_contatos")
-          .update(payload as never)
-          .eq("id_contato", id_contato);
-        if (error) throw error;
+      const ehEdicao = rest.id_inspecao === undefined;
+      const resultado = ehEdicao
+        ? await gravar({
+            tabela: "pae_contatos",
+            tipo: "update",
+            linhas: payload,
+            filtro: { id_contato },
+            modulo: "inspecoes",
+            id_documento: idInspecao,
+          })
+        : await gravar({
+            tabela: "pae_contatos",
+            tipo: "insert",
+            linhas: [{ id_contato, ...payload }],
+            filtro: null,
+            modulo: "inspecoes",
+            id_documento: idInspecao,
+          });
+
+      return { resultado, linha: { id_contato, ...payload } as PaeContato, ehEdicao };
+    },
+    onSuccess: ({ resultado, linha, ehEdicao }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
         return;
       }
-      const { error } = await supabase
-        .from("pae_contatos")
-        .insert({ id_contato, ...payload } as never);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+      // Sem rede não há o que revalidar: a árvore de contatos é atualizada à
+      // mão. Na edição o patch é parcial, então precisa ser mesclado sobre o
+      // contato existente — sobrescrever apagaria o que não estava no formulário.
+      qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) => {
+        if (!antigo) return antigo;
+        return {
+          ...antigo,
+          paeContatos: ehEdicao
+            ? antigo.paeContatos.map((c) =>
+                c.id_contato === linha.id_contato ? { ...c, ...linha } : c,
+              )
+            : [...antigo.paeContatos, linha],
+        };
+      });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const del = useMutation({
-    mutationFn: async (idContato: string) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("pae_contatos")
-        .delete()
-        .eq("id_contato", idContato);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success("Contato removido");
-      setConfirm(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
+  const del = useExcluirDaInspecao({
+    idInspecao,
+    tabela: "pae_contatos",
+    chave: "id_contato",
+    colecao: "paeContatos",
+    rotulo: "Contato removido",
   });
 
   function adicionar(idParent: string | null) {
@@ -192,7 +209,9 @@ export default function PaeTab({
         }
         variant="danger"
         loading={del.isPending}
-        onConfirm={() => confirm && del.mutate(confirm.id_contato)}
+        onConfirm={() =>
+          confirm && del.mutate(confirm, { onSuccess: () => setConfirm(null) })
+        }
         onCancel={() => setConfirm(null)}
       />
     </div>

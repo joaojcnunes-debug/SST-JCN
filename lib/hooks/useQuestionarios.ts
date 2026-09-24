@@ -1,7 +1,10 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { mensagemErro } from "@/lib/errors";
+import { gravar } from "@/lib/offline/gravar";
 import type { TipoExcel } from "@/lib/qps/parsearExcel";
 import type {
   QpsTipo,
@@ -10,9 +13,7 @@ import type {
   QpsAplicacao,
   QpsRespondente,
   QpsProbabilidade,
-  QpsPlanoAcao,
   StatusQpsAplicacao,
-  StatusQpsPlano,
 } from "@/lib/supabase/types";
 
 // The qps_* tables are not in the generated Database types yet (migration pending).
@@ -131,6 +132,8 @@ export interface QpsCategoriaInput {
   nome: string;
   descricao: string | null;
   ordem: number;
+  /** v210 — fontes geradoras do risco (tela Análise). */
+  fonte_geradora?: string | null;
 }
 
 export function useCreateQpsCategoria() {
@@ -219,6 +222,8 @@ export interface QpsPerguntaInput {
   logica: "direta" | "invertida";
   ordem: number;
   ativo: boolean;
+  /** Alternativas próprias (v180). `null` = a pergunta segue a escala do tipo. */
+  opcoes?: string[] | null;
 }
 
 export function useCreateQpsPergunta() {
@@ -327,9 +332,20 @@ export interface QpsAplicacaoInput {
   responsavel: string | null;
   periodo_inicio: string | null;
   periodo_fim: string | null;
+  /** v201 — denominador da taxa de participação. NULL = não informado. */
+  trabalhadores_previstos?: number | null;
+  /** v201 — filial do CLIENTE, não a unidade da JCN Consultoria. */
+  unidade_cliente?: string | null;
   usuario_email: string | null;
   usuario_nome: string | null;
   observacoes_dimensoes?: Record<string, string> | null;
+  /** v210 — tela Análise, por setor ("*" = consolidado). */
+  agravos_por_setor?: Record<string, string> | null;
+  medidas_por_setor?: Record<string, string> | null;
+  conclusoes_por_setor?: Record<string, string> | null;
+  /** v226 — laudo: CRP do responsável e data de elaboração. */
+  crp?: string | null;
+  data_elaboracao?: string | null;
 }
 
 export function useCreateQpsAplicacao() {
@@ -373,6 +389,49 @@ export function useUpdateQpsAplicacao() {
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: ["qps-aplicacao", vars.id] });
       qc.invalidateQueries({ queryKey: ["qps-aplicacoes", vars.idEmpresa] });
+    },
+  });
+}
+
+/**
+ * Move a aplicação de coluna no quadro de status do Resumo (v206).
+ *
+ * Existe separado de `useUpdateQpsAplicacao` por dois motivos:
+ *  • invalida a chave `qps-resumo`, que é a do quadro — a de update não a
+ *    conhece, e o cartão voltaria para a coluna antiga no próximo refetch;
+ *  • traduz o 23514 do banco numa frase que diz o que fazer. Sem a v206
+ *    aplicada, o Postgres recusa `ENVIADO_CLIENTE` e a mensagem genérica
+ *    ("algum valor não é permitido") não ajudaria ninguém a resolver.
+ */
+export function useQpsMoverStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: string;
+      idEmpresa: string;
+      status: StatusQpsAplicacao;
+    }) => {
+      const sb = qpsDb();
+      const { error } = await sb
+        .from("qps_aplicacoes")
+        .update({ status: args.status, atualizado_em: new Date().toISOString() })
+        .eq("id_aplicacao", args.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["qps-resumo"] });
+      qc.invalidateQueries({ queryKey: ["qps-aplicacao", vars.id] });
+      qc.invalidateQueries({ queryKey: ["qps-aplicacoes", vars.idEmpresa] });
+    },
+    onError: (e: unknown) => {
+      const codigo = (e as { code?: string })?.code;
+      if (codigo === "23514") {
+        toast.error(
+          "O banco ainda não aceita esse status. Falta aplicar a migration v206.",
+        );
+        return;
+      }
+      toast.error(mensagemErro(e, "Não foi possível mudar o status."));
     },
   });
 }
@@ -422,21 +481,53 @@ export interface QpsRespondenteInput {
   lote: string | null;
 }
 
+/**
+ * Registra UM respondente. É a única gravação deste módulo que acontece em
+ * campo: o questionário psicossocial é aplicado presencialmente, pessoa por
+ * pessoa, dentro da empresa do cliente — confirmado pelo técnico em 19/08.
+ *
+ * O resto do módulo (tipos, categorias, perguntas, importação de planilha,
+ * limpeza de lote) é configuração e trabalho de escritório, e segue exigindo
+ * rede.
+ *
+ * O ID PASSOU A NASCER NO NAVEGADOR. Antes vinha do banco, por
+ * `insert().select().single()` — e sem o id não há como devolver o registro
+ * para a tela nem repetir o envio com segurança. A coluna é
+ * `uuid primary key default gen_random_uuid()` (`v17_drps_psicossocial.sql`), e
+ * informar o id no insert só sobrepõe o default: nenhuma migração é necessária.
+ */
 export function useCreateQpsRespondente() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: QpsRespondenteInput) => {
-      const sb = qpsDb();
-      const { data, error } = await sb
-        .from("qps_respondentes")
-        .insert(input)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as QpsRespondente;
+      const linha = {
+        id_respondente: crypto.randomUUID(),
+        ...input,
+        importado_em: new Date().toISOString(),
+      };
+      const resultado = await gravar({
+        tabela: "qps_respondentes",
+        tipo: "insert",
+        linhas: [linha],
+        filtro: null,
+        modulo: "questionarios",
+        id_documento: input.id_aplicacao,
+      });
+      return { linha: linha as unknown as QpsRespondente, resultado };
     },
-    onSuccess: (_d, vars) =>
-      qc.invalidateQueries({ queryKey: ["qps-respondentes", vars.id_aplicacao] }),
+    onSuccess: ({ linha, resultado }, vars) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["qps-respondentes", vars.id_aplicacao] });
+        return;
+      }
+      // Sem rede não há o que revalidar: o respondente entra na lista à mão,
+      // senão o técnico aplicaria o questionário e a contagem não subiria.
+      qc.setQueryData<QpsRespondente[]>(
+        ["qps-respondentes", vars.id_aplicacao],
+        (antigo) => [linha, ...(antigo ?? [])],
+      );
+      toast.success("Respondente guardado no aparelho", { icon: "📵" });
+    },
   });
 }
 
@@ -544,92 +635,25 @@ export function useUpsertQpsProbabilidade() {
   });
 }
 
-// ─── Planos de Ação ───────────────────────────────────────────────────────────
-
-export function useQpsPlanos(idAplicacao: string | null | undefined) {
-  return useQuery({
-    queryKey: ["qps-planos", idAplicacao],
-    enabled: !!idAplicacao,
-    staleTime: 30_000,
-    queryFn: async (): Promise<QpsPlanoAcao[]> => {
-      const sb = qpsDb();
-      const { data, error } = await sb
-        .from("qps_planos_acao")
-        .select("*")
-        .eq("id_aplicacao", idAplicacao!)
-        .order("criado_em", { ascending: false });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-}
-
-export interface QpsPlanoInput {
-  id_aplicacao: string;
-  setor: string | null;
-  id_categoria: string | null;
-  descricao: string;
-  responsavel: string | null;
-  prazo: string | null;
-}
-
-export function useCreateQpsPlano() {
+/**
+ * Remove o ajuste de probabilidade de UM setor × categoria — a célula volta a
+ * valer a geral da aplicação (setor "*") ou o padrão. Tela Análise (v210).
+ */
+export function useDeleteQpsProbabilidade() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: QpsPlanoInput) => {
-      const sb = qpsDb();
-      const { data, error } = await sb
-        .from("qps_planos_acao")
-        .insert({ ...input, status: "PENDENTE" })
-        .select()
-        .single();
-      if (error) throw error;
-      return data as QpsPlanoAcao;
-    },
-    onSuccess: (_d, vars) =>
-      qc.invalidateQueries({ queryKey: ["qps-planos", vars.id_aplicacao] }),
-  });
-}
-
-export function useUpdateQpsPlano() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      idAplicacao,
-      input,
-    }: {
-      id: string;
-      idAplicacao: string;
-      input: Partial<Omit<QpsPlanoInput, "id_aplicacao"> & { status: StatusQpsPlano }>;
-    }) => {
+    mutationFn: async (input: { id_aplicacao: string; setor: string; id_categoria: string }) => {
       const sb = qpsDb();
       const { error } = await sb
-        .from("qps_planos_acao")
-        .update({ ...input, atualizado_em: new Date().toISOString() })
-        .eq("id_plano", id);
-      if (error) throw error;
-      return idAplicacao;
-    },
-    onSuccess: (_d, vars) =>
-      qc.invalidateQueries({ queryKey: ["qps-planos", vars.idAplicacao] }),
-  });
-}
-
-export function useDeleteQpsPlano() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, idAplicacao }: { id: string; idAplicacao: string }) => {
-      const sb = qpsDb();
-      const { error } = await sb
-        .from("qps_planos_acao")
+        .from("qps_probabilidades")
         .delete()
-        .eq("id_plano", id);
+        .eq("id_aplicacao", input.id_aplicacao)
+        .eq("setor", input.setor)
+        .eq("id_categoria", input.id_categoria);
       if (error) throw error;
-      return idAplicacao;
     },
     onSuccess: (_d, vars) =>
-      qc.invalidateQueries({ queryKey: ["qps-planos", vars.idAplicacao] }),
+      qc.invalidateQueries({ queryKey: ["qps-probabilidades", vars.id_aplicacao] }),
   });
 }
 
@@ -727,6 +751,7 @@ export function useImportarExcelQps() {
             logica: perg.logica,
             ordem: base + local + 1,
             ativo: true,
+            opcoes: perg.opcoes,
           });
         }
 

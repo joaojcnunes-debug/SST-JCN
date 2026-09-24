@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
@@ -15,6 +15,7 @@ import {
   X,
   BadgeCheck,
   Users,
+  LayoutGrid,
 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import StorageImg from "@/components/ui/StorageImg";
@@ -25,11 +26,25 @@ import Pagination from "@/components/ui/Pagination";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
+import { buscarEmpresas } from "@/lib/busca/empresas";
+import { buscar } from "@/lib/busca/texto";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { useUnidades } from "@/lib/hooks/useUnidades";
+import { useCargosPainel, useFuncoesPainel } from "@/lib/hooks/useFuncoesPainel";
 import { useCurrentUser } from "@/lib/hooks/useUsuario";
+import {
+  useGestaoMembros,
+  useMeuPapelGestao,
+  useDefinirMembro,
+  useEquipes,
+  useEquipeMembros,
+  useDefinirMembroEquipe,
+} from "@/lib/hooks/useGestaoAcesso";
 import { usePagination } from "@/lib/hooks/usePagination";
 import { cn, gerarId } from "@/lib/utils";
 import type {
+  FuncaoPainel,
+  NivelUsuario,
   ModuloPermitido,
   PerfilUsuario,
   Usuario,
@@ -77,12 +92,15 @@ export default function UsuariosPage() {
 
   const excluir = useMutation({
     mutationFn: async (u: Usuario) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase.rpc(
-        "excluir_usuario_admin" as never,
-        { p_email: u.email } as never
-      );
-      if (error) throw error;
+      const resp = await fetch("/api/usuarios/excluir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_usuario: u.id_usuario, email: u.email }),
+      });
+      const data = (await resp.json().catch(() => null)) as
+        | { ok?: boolean; error?: string }
+        | null;
+      if (!resp.ok || !data?.ok) throw new Error(data?.error ?? "Falha ao excluir");
     },
     onSuccess: () => {
       qcGlobal.invalidateQueries({ queryKey: ["usuarios"] });
@@ -92,15 +110,12 @@ export default function UsuariosPage() {
     onError: (e: Error) => toast.error(e.message || "Falha ao excluir"),
   });
 
-  const filtrados = usuarios.filter((u) => {
-    if (!busca.trim()) return true;
-    const q = busca.toLowerCase();
-    return (
-      u.nome.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      (u.cargo ?? "").toLowerCase().includes(q)
-    );
-  });
+  // Busca tolerante (acento, ordem das palavras, erro de digitação).
+  const { itens: filtrados, aproximado: buscaAproximada } = buscar(
+    usuarios,
+    busca,
+    (u) => [u.nome, u.email, u.cargo],
+  );
 
   const pag = usePagination({
     data: filtrados,
@@ -156,6 +171,7 @@ export default function UsuariosPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
+            <AvisoBuscaAproximada aproximado={buscaAproximada} busca={busca} total={filtrados.length} className="m-3" />
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/70">
@@ -297,12 +313,35 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
   const isEdit = !!usuario;
   const { data: empresas = [] } = useEmpresas();
   const { data: unidades = [] } = useUnidades();
+  // v229/v233: a função dá o padrão (módulos, nível, perfil, flags, unidades);
+  // o cargo vem da lista fixa — o banco recusa texto fora dela.
+  const { data: funcoes = [] } = useFuncoesPainel();
+  const { data: cargos = [] } = useCargosPainel();
+
+  // Acesso ao módulo Gestão (kanban) — roster gestao_membros, à parte dos
+  // `modulos_permitidos`. Só aparece p/ gestor; aplicado no Salvar via RPC.
+  const { data: membrosGestao = [], isSuccess: membrosOk } = useGestaoMembros();
+  const { data: meuPapelGestao } = useMeuPapelGestao();
+  const definirMembroGestao = useDefinirMembro();
+  const souGestorGestao = meuPapelGestao === "owner" || meuPapelGestao === "admin";
+  const [acessoGestao, setAcessoGestao] = useState(false);
+  const [acessoGestaoIni, setAcessoGestaoIni] = useState(false);
+  const initGestaoRef = useRef(false);
+  // Equipes da Gestão (v235): cadastrar o colaborador direto numa equipe — ele herda os quadros
+  // da equipe e já entra no módulo. Aplicado no Salvar via RPC gestao_equipe_definir_membro.
+  const { data: equipesGestao = [] } = useEquipes();
+  const { data: equipeMembros = [], isSuccess: equipeMembrosOk } = useEquipeMembros();
+  const definirMembroEquipe = useDefinirMembroEquipe();
+  const [equipesSel, setEquipesSel] = useState<Set<string>>(new Set());
+  const [equipesIni, setEquipesIni] = useState<Set<string>>(new Set());
 
   const [form, setForm] = useState({
     nome: "",
     email: "",
     senha: "",
     cargo: "",
+    funcao: "" as string,
+    nivel: null as NivelUsuario | null,
     perfil: "Tecnico" as PerfilUsuario,
     ativo_sistema: true,
     empresas_vinculadas: [] as string[],
@@ -323,8 +362,6 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     crp: null as string | null,
     crm: null as string | null,
     registro_mte: null as string | null,
-    crea: null as string | null,
-    art: null as string | null,
   });
   const [uploadingAssinatura, setUploadingAssinatura] = useState(false);
   const [uploadingPfx, setUploadingPfx] = useState(false);
@@ -375,6 +412,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         email: usuario?.email ?? "",
         senha: "",
         cargo: usuario?.cargo ?? "",
+        funcao: usuario?.funcao ?? "",
+        nivel: usuario?.nivel ?? null,
         perfil: perfilDoUser,
         ativo_sistema: usuario?.ativo_sistema ?? true,
         empresas_vinculadas: usuario?.empresas_vinculadas ?? [],
@@ -398,11 +437,33 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         crp: usuario?.crp ?? null,
         crm: usuario?.crm ?? null,
         registro_mte: usuario?.registro_mte ?? null,
-        crea: usuario?.crea ?? null,
-        art: usuario?.art ?? null,
       });
     }
   }, [open, usuario]);
+
+  // Inicializa o acesso à Gestão uma vez por abertura, quando o roster chegou.
+  // Admin = acesso automático (atalho de perfil); demais = tem linha ativa?
+  useEffect(() => {
+    if (!open) { initGestaoRef.current = false; return; }
+    if (initGestaoRef.current) return;
+    if (usuario && !membrosOk) return; // espera o roster p/ edição
+    const ehAdmin = usuario?.perfil === "Admin";
+    const ativo =
+      ehAdmin ||
+      (!!usuario &&
+        membrosGestao.some(
+          (m) => m.usuario_email.toLowerCase() === (usuario.email ?? "").toLowerCase() && m.ativo
+        ));
+    setAcessoGestao(ativo);
+    setAcessoGestaoIni(ativo);
+    if (usuario && !equipeMembrosOk) return; // espera as equipes p/ edição
+    const minhas = new Set(
+      usuario ? equipeMembros.filter((m) => m.usuario_email.toLowerCase() === (usuario.email ?? "").toLowerCase()).map((m) => m.id_equipe) : []
+    );
+    setEquipesSel(minhas);
+    setEquipesIni(new Set(minhas));
+    initGestaoRef.current = true;
+  }, [open, usuario, membrosOk, membrosGestao, equipeMembrosOk, equipeMembros]);
 
   const [buscaEmpresa, setBuscaEmpresa] = useState("");
   // Limpa busca ao abrir/fechar modal
@@ -412,6 +473,35 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
   // Quando o admin troca o perfil, reaplica os defaults granulares (só se
   // for criação — em edição, mantém o que o admin já configurou pra não
   // perder ajustes manuais)
+  /**
+   * Trocar a função aplica o PADRÃO dela no formulário (o mesmo que "Aplicar
+   * padrão" em Sistema › Funções): perfil, nível, flags, módulos e unidades
+   * (todas, quando o padrão manda e não é Admin). Os campos continuam
+   * editáveis — o admin ajusta antes de salvar se precisar. Vale na criação e
+   * na edição: se não mexer no select, nada muda.
+   */
+  function aplicarFuncao(nome: string) {
+    const f = funcoes.find((x) => x.funcao === nome);
+    if (!f) {
+      setForm((prev) => ({ ...prev, funcao: "", nivel: null }));
+      return;
+    }
+    setForm((prev) => ({
+      ...prev,
+      funcao: f.funcao,
+      nivel: f.nivel,
+      perfil: f.perfil_padrao,
+      pode_criar: f.pode_criar_padrao ?? prev.pode_criar,
+      pode_editar: f.pode_editar_padrao ?? prev.pode_editar,
+      pode_excluir: f.pode_excluir_padrao ?? prev.pode_excluir,
+      modulos_permitidos: [...f.modulos_padrao],
+      unidades:
+        f.unidades_padrao === "todas" && f.perfil_padrao !== "Admin"
+          ? unidades.map((u) => u.id_unidade)
+          : prev.unidades,
+    }));
+  }
+
   function aplicarDefaultsPerfil(novoPerfil: PerfilUsuario) {
     setForm((f) => ({
       ...f,
@@ -433,34 +523,26 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         const emailAntigo = usuario.email.toLowerCase();
         const emailNovo = form.email.trim().toLowerCase();
 
-        // 1) Se email mudou → chama RPC que sincroniza auth.users + identities
-        if (emailNovo !== emailAntigo) {
-          const { error: errEmail } = await supabase.rpc(
-            "atualizar_email_admin" as never,
-            {
-              p_email_antigo: emailAntigo,
-              p_email_novo: emailNovo,
-            } as never
-          );
-          if (errEmail) {
-            throw new Error(errEmail.message || "Falha ao atualizar e-mail");
-          }
-        }
-
-        // 2) Se senha foi preenchida → chama RPC pra redefinir
-        if (form.senha && form.senha.length > 0) {
-          if (form.senha.length < 6) {
+        // 1+2) Email e/ou senha -> rota que usa a Admin API do GoTrue (.107)
+        if (emailNovo !== emailAntigo || (form.senha && form.senha.length > 0)) {
+          if (form.senha && form.senha.length > 0 && form.senha.length < 6) {
             throw new Error("A nova senha deve ter ao menos 6 caracteres");
           }
-          const { error: errSenha } = await supabase.rpc(
-            "redefinir_senha_admin" as never,
-            {
-              p_email: emailNovo,
-              p_nova_senha: form.senha,
-            } as never
-          );
-          if (errSenha) {
-            throw new Error(errSenha.message || "Falha ao redefinir senha");
+          const resp = await fetch("/api/usuarios/credenciais", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id_usuario: usuario.id_usuario,
+              email_atual: emailAntigo,
+              email_novo: emailNovo !== emailAntigo ? emailNovo : undefined,
+              nova_senha: form.senha && form.senha.length > 0 ? form.senha : undefined,
+            }),
+          });
+          const data = (await resp.json().catch(() => null)) as
+            | { ok?: boolean; error?: string }
+            | null;
+          if (!resp.ok || !data?.ok) {
+            throw new Error(data?.error ?? "Falha ao atualizar credenciais");
           }
         }
 
@@ -470,6 +552,8 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           .update({
             nome: form.nome.trim(),
             cargo: form.cargo.trim() || null,
+            funcao: form.funcao || null,
+            nivel: form.nivel,
             perfil: form.perfil,
             ativo_sistema: form.ativo_sistema,
             empresas_vinculadas:
@@ -488,8 +572,6 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             crp: form.crp || null,
             crm: form.crm || null,
             registro_mte: form.registro_mte || null,
-            crea: form.crea || null,
-            art: form.art || null,
           } as never)
           .eq("id_usuario", usuario.id_usuario);
         if (error) throw error;
@@ -499,18 +581,23 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
       if (!form.senha || form.senha.length < 6) {
         throw new Error("A senha deve ter pelo menos 6 caracteres");
       }
+      if (!form.funcao) {
+        throw new Error("Escolha a função da conta — ela define módulos, nível e perfil");
+      }
 
       // AUTH-01: criação via Edge Function service_role — a sessão do admin
       // nunca é substituída (sem signUp() client-side).
-      const { data: fnData, error: fnErr } = await supabase.functions.invoke(
-        "criar-usuario-admin",
-        {
-          body: {
+      const resp = await fetch("/api/usuarios/criar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
             email: form.email.trim().toLowerCase(),
             senha: form.senha,
             id_usuario: gerarId("USR"),
             nome: form.nome.trim(),
             cargo: form.cargo.trim() || null,
+            funcao: form.funcao || null,
+            nivel: form.nivel,
             perfil: form.perfil,
             ativo_sistema: form.ativo_sistema,
             empresas_vinculadas:
@@ -529,17 +616,13 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             crp: form.crp || null,
             crm: form.crm || null,
             registro_mte: form.registro_mte || null,
-            crea: form.crea || null,
-            art: form.art || null,
-          },
-        }
-      );
-      if (fnErr || !(fnData as { ok?: boolean } | null)?.ok) {
-        throw new Error(
-          (fnData as { error?: string } | null)?.error ??
-            fnErr?.message ??
-            "Falha ao criar usuário"
-        );
+          }),
+        });
+      const fnData = (await resp.json().catch(() => null)) as
+        | { ok?: boolean; error?: string }
+        | null;
+      if (!resp.ok || !fnData?.ok) {
+        throw new Error(fnData?.error ?? "Falha ao criar usuário");
       }
 
       // E-mail de boas-vindas — não bloqueia se a Edge Function não estiver
@@ -556,7 +639,28 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         console.warn("welcome-email não enviado:", e);
       }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Sincroniza o acesso à Gestão (roster) quando o gestor mudou o toggle.
+      // Admin tem acesso automático (não passa pelo roster). Falha aqui NÃO
+      // derruba o save já concluído — useDefinirMembro avisa o erro.
+      // Equipes (v235): entra nas marcadas, sai das desmarcadas. Falha aqui não derruba o save.
+      if (souGestorGestao) {
+        const email = form.email.trim().toLowerCase();
+        for (const id of equipesSel) if (!equipesIni.has(id)) await definirMembroEquipe.mutateAsync({ id_equipe: id, email, papel: "membro", ativo: true }).catch(() => {});
+        for (const id of equipesIni) if (!equipesSel.has(id)) await definirMembroEquipe.mutateAsync({ id_equipe: id, email, papel: "membro", ativo: false }).catch(() => {});
+      }
+      if (souGestorGestao && form.perfil !== "Admin" && acessoGestao !== acessoGestaoIni && !(acessoGestao && [...equipesSel].some((id) => !equipesIni.has(id)))) {
+        await definirMembroGestao
+          .mutateAsync({
+            alvo: form.email.trim().toLowerCase(),
+            papel: "membro",
+            ativo: acessoGestao,
+            motivo: acessoGestao
+              ? "Acesso à Gestão liberado na tela de usuários"
+              : "Acesso à Gestão removido na tela de usuários",
+          })
+          .catch(() => {});
+      }
       qc.invalidateQueries({ queryKey: ["usuarios"] });
       toast.success(isEdit ? "Usuário atualizado" : "Usuário criado");
       onClose();
@@ -718,54 +822,73 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           </div>
         </Field>
 
+        <Field label={isEdit ? "Função no painel" : "Função no painel *"}>
+          <select
+            value={form.funcao}
+            onChange={(e) => aplicarFuncao(e.target.value)}
+            className={inputCls}
+            required={!isEdit}
+          >
+            <option value="">— sem função —</option>
+            {funcoes.map((f: FuncaoPainel) => (
+              <option key={f.funcao} value={f.funcao}>
+                {f.funcao} · {f.modulos_padrao.length} módulos · nível {f.nivel}
+              </option>
+            ))}
+          </select>
+          <p className="mt-0.5 text-[11px] text-gray-500">
+            {(() => {
+              const f = funcoes.find((x) => x.funcao === form.funcao);
+              return f
+                ? f.descricao + " Trocar a função reaplica o padrão abaixo; ajuste depois se precisar."
+                : "A função preenche perfil, permissões, módulos e unidades com o padrão definido em Sistema › Funções.";
+            })()}
+          </p>
+        </Field>
+
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Cargo">
-            <input
-              type="text"
+            <select
               value={form.cargo}
               onChange={(e) => setForm({ ...form, cargo: e.target.value })}
               className={inputCls}
-            />
+            >
+              <option value="">— sem cargo —</option>
+              {form.cargo && !cargos.some((c) => c.cargo === form.cargo) && (
+                <option value={form.cargo}>{form.cargo} (fora da lista)</option>
+              )}
+              {cargos.map((c) => (
+                <option key={c.cargo} value={c.cargo}>
+                  {c.cargo}
+                </option>
+              ))}
+            </select>
           </Field>
           {/* Registro profissional — campo único, label/placeholder dinâmicos pelo cargo */}
           {(() => {
             const reg = detectRegistroTipo(form.cargo);
             const valor = form[reg.campo] ?? "";
             return (
-              <>
-                <Field label={reg.label}>
-                  <input
-                    type="text"
-                    value={valor}
-                    onChange={(e) => {
-                      const v = e.target.value || null;
-                      setForm({
-                        ...form,
-                        crp: reg.campo === "crp" ? v : null,
-                        crm: reg.campo === "crm" ? v : null,
-                        registro_mte: reg.campo === "registro_mte" ? v : null,
-                        crea: reg.campo === "crea" ? v : null,
-                      });
-                    }}
-                    placeholder={reg.placeholder}
-                    className={inputCls}
-                  />
-                </Field>
-                {reg.campo === "crea" && (
-                  <Field label="ART Vinculada">
-                    <input
-                      type="text"
-                      value={form.art ?? ""}
-                      onChange={(e) => setForm({ ...form, art: e.target.value || null })}
-                      placeholder="Ex: CREA-RJ nº 2020260174144"
-                      className={inputCls}
-                    />
-                  </Field>
-                )}
-              </>
+              <Field label={reg.label}>
+                <input
+                  type="text"
+                  value={valor}
+                  onChange={(e) => {
+                    const v = e.target.value || null;
+                    setForm({
+                      ...form,
+                      crp: reg.campo === "crp" ? v : null,
+                      crm: reg.campo === "crm" ? v : null,
+                      registro_mte: reg.campo === "registro_mte" ? v : null,
+                    });
+                  }}
+                  placeholder={reg.placeholder}
+                  className={inputCls}
+                />
+              </Field>
             );
           })()}
-          <Field label="Perfil">
+          <Field label="Perfil (o que o banco aceita)">
             <select
               value={form.perfil}
               onChange={(e) =>
@@ -779,6 +902,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                 </option>
               ))}
             </select>
+            <p className="mt-0.5 text-[11px] text-gray-500">
+              Vem da função{form.nivel ? ` · nível ${form.nivel}` : ""}. Mude só em caso excepcional.
+            </p>
           </Field>
         </div>
 
@@ -855,12 +981,11 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                   Nenhuma empresa cadastrada.
                 </p>
               ) : (() => {
-                const filtradas = empresas.filter((e) =>
-                  e.nome_empresa.toLowerCase().includes(buscaEmpresa.toLowerCase())
-                );
+                // Busca tolerante: acento, ordem das palavras, erro de digitação, CNPJ.
+                const { itens: filtradas, aproximado } = buscarEmpresas(empresas, buscaEmpresa);
                 if (filtradas.length === 0)
                   return <p className="p-2 text-xs text-gray-500">Nenhuma empresa encontrada.</p>;
-                return filtradas.map((e) =>
+                const linhas = filtradas.map((e) =>
                   form.perfil === "Cliente" ? (
                     <label
                       key={e.id_empresa}
@@ -889,6 +1014,12 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                       <span className="text-sm text-gray-700">{e.nome_empresa}</span>
                     </label>
                   )
+                );
+                return (
+                  <>
+                    <AvisoBuscaAproximada aproximado={aproximado} busca={buscaEmpresa} total={filtradas.length} compacto className="mb-1 rounded" />
+                    {linhas}
+                  </>
                 );
               })()}
             </div>
@@ -929,7 +1060,10 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         )}
 
         {form.perfil !== "Cliente" && <Field
-          label={`Acesso aos módulos — ${form.modulos_permitidos.length} de ${TODOS_MODULOS.length}`}
+          // Conta só os módulos que ainda existem: 46 contas carregam
+          // "inventario_maquinas" no array (módulo retirado em 2026-09-14) e
+          // sem este filtro leriam "18 de 17".
+          label={`Acesso aos módulos — ${form.modulos_permitidos.filter((m) => TODOS_MODULOS.includes(m)).length} de ${TODOS_MODULOS.length}`}
         >
           <div className="grid gap-2 rounded-md border border-gray-200 bg-white p-3 sm:grid-cols-2">
             {TODOS_MODULOS.map((m) => (
@@ -955,6 +1089,51 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             módulos.
           </p>
         </Field>}
+
+        {souGestorGestao && form.perfil !== "Cliente" && (
+          <Field label="Gestão JCN Consultoria (kanban)">
+            <label
+              className={cn(
+                "flex items-center gap-2 rounded-md border border-gray-200 bg-white p-3",
+                form.perfil === "Admin" ? "opacity-70" : "cursor-pointer hover:bg-gray-50"
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={form.perfil === "Admin" ? true : acessoGestao}
+                disabled={form.perfil === "Admin"}
+                onChange={(e) => setAcessoGestao(e.target.checked)}
+                className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+              />
+              <LayoutGrid className="size-4 text-verde-primary" />
+              <span className="text-sm text-gray-700">
+                Acesso ao módulo Gestão (quadros/kanban)
+              </span>
+            </label>
+            <p className="mt-1 text-[11px] text-gray-500">
+              {form.perfil === "Admin"
+                ? "Admin tem acesso automático à Gestão."
+                : "Libera a entrada no módulo. NÃO dá visibilidade de quadro — isso é por equipe (abaixo) ou por convite em cada quadro (Membros e acessos)."}
+            </p>
+            {equipesGestao.filter((e) => e.ativo).length > 0 && (
+              <div className="mt-2">
+                <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500">Equipes da Gestão</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {equipesGestao.filter((e) => e.ativo).map((e) => {
+                    const on = equipesSel.has(e.id);
+                    return (
+                      <button key={e.id} type="button" onClick={() => { setEquipesSel((s) => { const n = new Set(s); if (n.has(e.id)) n.delete(e.id); else n.add(e.id); return n; }); if (!on) setAcessoGestao(true); }}
+                        className={cn("rounded-full border px-2.5 py-1 text-xs transition", on ? "border-verde-primary bg-verde-light font-medium text-verde-primary" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
+                        {e.nome}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-[11px] text-gray-500">Entrar numa equipe herda os quadros dela e já libera o módulo.</p>
+              </div>
+            )}
+          </Field>
+        )}
 
         {/* ── Assinatura digital ─────────────────────────────────── */}
         <Field label="Assinatura do Técnico">

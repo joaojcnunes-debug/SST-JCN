@@ -1,4 +1,4 @@
-// Edge Function — Formulários de entrada da Gestão JCN Consultoria.
+// Edge Function — Formulários de entrada da Gestão Chabra.
 //
 // Endpoint PÚBLICO (deploy com --no-verify-jwt). Usa service role para validar o
 // token e criar a tarefa, sem expor dados internos.
@@ -95,14 +95,27 @@ Deno.serve(async (req) => {
       const prazo = form.mostra_prazo && body.prazo ? body.prazo : null;
       const now = new Date().toISOString();
 
+      // Responsável por E-MAIL (F1.3-D — paridade com app/api/gestao/form/route.ts).
+      // Só usuário INTERNO ATIVO conta; match case-insensitive e literal. Resolveu →
+      // created_by=<e-mail> + vínculo responsavel (trigger v187 espelha o nome).
+      const emailForm = (form.responsavel_email ?? "").trim();
+      let responsavelEmailResolvido: string | null = null;
+      if (emailForm) {
+        const { data: cands } = await sb.from("usuarios").select("email,nome,ativo_sistema").ilike("email", emailForm);
+        const match = ((cands ?? []) as { email: string; nome: string; ativo_sistema: boolean }[])
+          .find((c) => c.email.toLowerCase() === emailForm.toLowerCase() && c.ativo_sistema);
+        if (match) responsavelEmailResolvido = match.email;
+      }
+
+      const idTarefa = gerarIdTarefa();
       const { error } = await sb.from("gestao_tarefas").insert({
-        id_tarefa: gerarIdTarefa(),
+        id_tarefa: idTarefa,
         id_quadro: form.id_quadro,
         titulo,
         descricao,
         status,
         prioridade,
-        responsavel: form.responsavel_padrao,
+        responsavel: responsavelEmailResolvido ? null : form.responsavel_padrao,
         prazo,
         data_inicio: null,
         ordem: 0,
@@ -111,11 +124,30 @@ Deno.serve(async (req) => {
         campos: {},
         recorrencia: null,
         pontos: null,
-        created_by: "Formulário",
+        created_by: responsavelEmailResolvido ?? "Formulário",
         created_at: now,
         updated_at: now,
       });
       if (error) return json({ error: "Não foi possível registrar a solicitação." }, 500);
+
+      if (responsavelEmailResolvido) {
+        const emailLc = responsavelEmailResolvido.toLowerCase();
+        const { error: vErr } = await sb.from("gestao_tarefa_vinculados").insert({
+          id_tarefa: idTarefa,
+          usuario_email: emailLc,
+          tipo: "responsavel",
+          origem: "form",
+        });
+        if (!vErr) {
+          await sb.from("gestao_vinculo_log").insert({
+            ator_email: "Formulário",
+            alvo_email: emailLc,
+            acao: "vinculou",
+            tipo: "responsavel",
+            id_tarefa: idTarefa,
+          });
+        }
+      }
 
       return json({ ok: true });
     }

@@ -172,6 +172,11 @@ export default function CopiarParaEmpresaModal({
           id_inspecao: novaInspId,
           id_empresa: destinoId,
           tecnico_responsavel: r.tecnico_responsavel,
+          // Carrega o vínculo junto (v204, Fase B1). Sem isto a cópia nasceria
+          // com `id_usuario` vazio e o painel voltaria a deduzir quem é a
+          // pessoa pelo texto -- perdendo, na cópia, um fato que já estava
+          // gravado na inspeção de origem.
+          id_usuario: r.id_usuario ?? null,
           recepcionado_por: r.recepcionado_por,
           cargo: r.cargo,
           data_hora: r.data_hora,

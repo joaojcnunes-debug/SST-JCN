@@ -5,7 +5,10 @@ import {
   BookOpen,
   Brain,
   ClipboardCheck,
+  ClipboardList,
+  ClipboardPen,
   HelpCircle,
+  Info,
   LayoutDashboard,
   List,
   Plus,
@@ -20,18 +23,19 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useRequireModule } from "@/lib/hooks/useRequireModule";
 import { useUserStore } from "@/lib/store";
 import { usePathname } from "next/navigation";
+import { ehSupervisor } from "@/lib/hooks/useUsuario";
 
 export default function AetLayout({ children }: { children: ReactNode }) {
   useAuth();
   useRequireModule("aet");
 
   const user = useUserStore((s) => s.user);
-  const isAdmin = user?.perfil === "Admin";
+  const isAdmin = ehSupervisor(user); // v229: configuração do módulo é de quem supervisiona
   const pathname = usePathname();
 
   const match = pathname.match(/\/aet\/([^/]+)\//);
   const idRelatorio = match?.[1];
-  const isConfigPage = ["dashboard", "novo", "texto-padrao", "owas-config", "perfis-owas", "13fatores-config", "ajuda"].includes(idRelatorio ?? "");
+  const isConfigPage = ["dashboard", "novo", "formulario-branco", "texto-padrao", "owas-config", "perfis-owas", "13fatores-config", "ajuda"].includes(idRelatorio ?? "");
 
   const sections = useMemo<NavSection[]>(() => {
     const base: NavSection[] = [
@@ -41,6 +45,7 @@ export default function AetLayout({ children }: { children: ReactNode }) {
           { href: "/aet/dashboard", label: "Dashboard", icon: LayoutDashboard, variant: "dashboard" },
           { href: "/aet", label: "Laudos", icon: List },
           { href: "/aet/novo", label: "Novo Laudo", icon: Plus, variant: "action" },
+          { href: "/aet/formulario-branco", label: "Formulário em Branco", icon: ClipboardPen },
           { href: "/aet/ajuda", label: "Ajuda", icon: HelpCircle },
         ],
       },
@@ -63,7 +68,12 @@ export default function AetLayout({ children }: { children: ReactNode }) {
       base.push({
         label: "Laudo Atual",
         items: [
+          // `/aet/[id]` redireciona para `/dados`, mas o item nunca esteve no
+          // menu — quem saísse dali não tinha como voltar, e a Validade do
+          // Documento (que só existe nessa tela) ficava inalcançável.
+          { href: `/aet/${idRelatorio}/dados`,        label: "Dados do Laudo",    icon: Info },
           { href: `/aet/${idRelatorio}/setores`,      label: "Setores / Riscos",  icon: ClipboardCheck },
+          { href: `/aet/${idRelatorio}/plano-acao`,   label: "Plano de Ação",     icon: ClipboardList },
           { href: `/aet/${idRelatorio}/laudo`,        label: "Laudo / Imprimir",  icon: Printer, variant: "report" as const },
         ],
       });
@@ -81,7 +91,7 @@ export default function AetLayout({ children }: { children: ReactNode }) {
         sections={sections}
       />
       <div className="md:pl-[220px] print:pl-0">
-        <ModuleTopbar title="AET – Análise Ergonômica do Trabalho" />
+        <ModuleTopbar />
         <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>{children}</main>
       </div>
     </div>

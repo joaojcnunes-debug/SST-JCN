@@ -1,8 +1,9 @@
 "use client";
 
-import { CalendarClock, CheckSquare, Repeat, Clock, Flag, Check, Paperclip, Target } from "lucide-react";
+import { CalendarClock, CheckSquare, Repeat, Clock, Flag, Check, Paperclip, Target, ShieldQuestion } from "lucide-react";
 import {
   iniciais, corAvatar, formatarDuracao,
+  useVinculadosQuadro, useUsuarios, useAprovacaoTarefa,
   PRIORIDADES,
   type GestaoTarefa, type GestaoStatus, type GestaoCampo,
 } from "@/lib/hooks/useGestao";
@@ -52,6 +53,19 @@ export default function TarefaCard({
   selecionado?: boolean;
   onToggleSel?: () => void;
 }) {
+  const { data: vincMap } = useVinculadosQuadro(t.id_quadro);
+  const { data: usuariosFull = [] } = useUsuarios();
+  const aguardandoAprovacao = useAprovacaoTarefa(t.id_tarefa);
+  const nomeDe = (email: string) => usuariosFull.find((u) => u.email.toLowerCase() === email.toLowerCase())?.nome ?? email;
+  // Pilha de vinculados: responsável primeiro (anel verde), seguidores depois.
+  // Fallback ao responsavel-texto legado enquanto o vínculo não existe (transição F1.2).
+  const vinc = (vincMap?.get(t.id_tarefa) ?? [])
+    .map((v) => ({ key: v.id, nome: nomeDe(v.usuario_email), tipo: v.tipo }))
+    .sort((a, b) => (a.tipo === b.tipo ? 0 : a.tipo === "responsavel" ? -1 : 1));
+  const pilha = vinc.length > 0
+    ? vinc
+    : (t.responsavel ? [{ key: "resp-legado", nome: t.responsavel, tipo: "responsavel" as const }] : []);
+
   const st = statusMap.get(t.status);
   const concluido = st?.tipo === "concluido";
   const dias = t.prazo ? diasAte(t.prazo) : null;
@@ -90,7 +104,10 @@ export default function TarefaCard({
         <div className="mt-1.5 flex flex-wrap gap-1">
           {(t.etiquetas ?? []).map((e) => {
             const cor = etiquetaCor.get(e);
-            return <span key={e} className="rounded px-1.5 py-0.5 text-[10px] font-medium" style={cor ? { background: cor, color: "#fff" } : { background: "#f3f4f6", color: "#6b7280" }}>{e}</span>;
+            // Sem cor definida, o chip caía em #f3f4f6/#6b7280 fixos e ficava
+            // claro no escuro. As variáveis JÁ valem exatamente esses dois
+            // valores no tema claro, então o claro não muda em nada.
+            return <span key={e} className="rounded px-1.5 py-0.5 text-[10px] font-medium" style={cor ? { background: cor, color: "#fff" } : { background: "var(--surface-3)", color: "var(--text-muted)" }}>{e}</span>;
           })}
         </div>
       )}
@@ -112,6 +129,11 @@ export default function TarefaCard({
       )}
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
+        {aguardandoAprovacao && (
+          <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700" title="Aguardando aprovação">
+            <ShieldQuestion className="size-3" /> Aguardando aprovação
+          </span>
+        )}
         {prioridadeAlta && (
           <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold" style={{ background: corPrioridade(t.prioridade) + "1a", color: corPrioridade(t.prioridade) }}>
             <Flag className="size-3" /> {labelPrioridade(t.prioridade)}
@@ -147,10 +169,20 @@ export default function TarefaCard({
             <Clock className="size-3" /> {formatarDuracao(tempoSeg)}
           </span>
         )}
-        {t.responsavel && (
-          <span className="ml-auto flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: corAvatar(t.responsavel) }} title={t.responsavel} aria-label={`Responsável: ${t.responsavel}`}>
-            {iniciais(t.responsavel)}
-          </span>
+        {pilha.length > 0 && (
+          <div className="ml-auto flex items-center -space-x-1.5">
+            {pilha.map((p) => (
+              <span
+                key={p.key}
+                className={`flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ${p.tipo === "responsavel" ? "ring-verde-primary" : "ring-white"}`}
+                style={{ background: corAvatar(p.nome) }}
+                title={`${p.tipo === "responsavel" ? "Responsável" : "Seguidor"}: ${p.nome}`}
+                aria-label={`${p.tipo === "responsavel" ? "Responsável" : "Seguidor"}: ${p.nome}`}
+              >
+                {iniciais(p.nome)}
+              </span>
+            ))}
+          </div>
         )}
       </div>
     </div>

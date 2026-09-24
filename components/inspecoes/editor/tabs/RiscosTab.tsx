@@ -1,16 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Plus, ChevronDown, LayoutList, LayoutGrid, Pencil, Copy, Trash2 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { Plus, ChevronDown, LayoutList, LayoutGrid, Pencil, Copy, Trash2, Loader2, Send } from "lucide-react";
 import RiscoForm from "../RiscoForm";
 import RiscoRow from "@/components/riscos/RiscoRow";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import CopiarRiscoModal from "../CopiarRiscoModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useExcluirDaInspecao } from "@/lib/hooks/useExcluirDaInspecao";
+import { useEnviarRiscosParaPlanoAcao } from "@/lib/hooks/useAcoes";
 import { useTipoIcone, useTiposRisco } from "@/lib/hooks/useV3";
+import { NIVEIS_QUE_VIRAM_ACAO, riscosElegiveis } from "@/lib/acoes/de-risco";
 import { cn } from "@/lib/utils";
 import type { Cargo, NivelRisco, Risco, Setor, TipoRisco } from "@/lib/supabase/types";
 
@@ -21,6 +22,8 @@ interface Props {
   cargos: Cargo[];
   riscos: Risco[];
   readOnly?: boolean;
+  /** Nome legível da inspeção, usado na linha "Origem:" da ação gerada. */
+  referenciaInspecao?: string;
 }
 
 export default function RiscosTab({
@@ -30,8 +33,8 @@ export default function RiscosTab({
   cargos,
   riscos,
   readOnly,
+  referenciaInspecao,
 }: Props) {
-  const qc = useQueryClient();
   const iconeDe = useTipoIcone();
   const { data: tiposCustom = [] } = useTiposRisco({ incluirInativos: true });
   const [formOpen, setFormOpen] = useState(false);
@@ -69,22 +72,55 @@ export default function RiscosTab({
     return [...cadastrados, ...orfaos];
   }, [tiposCustom, grupos]);
 
-  const del = useMutation({
-    mutationFn: async (r: Risco) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("riscos")
-        .delete()
-        .eq("id_risco", r.id_risco);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success("Risco removido");
-      setConfirm(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
+  const del = useExcluirDaInspecao({
+    idInspecao,
+    tabela: "riscos",
+    chave: "id_risco",
+    colecao: "riscos",
+    rotulo: "Risco removido",
   });
+
+  // ── Enviar para o Plano de Ação (v184) ────────────────────────────────────
+  // Só os níveis do corte viram ação; o resto continua no laudo. O botão nem
+  // aparece quando não há nenhum, para não prometer o que não vai acontecer.
+  const enviarPlano = useEnviarRiscosParaPlanoAcao();
+  const [confirmEnvio, setConfirmEnvio] = useState(false);
+  const elegiveis = useMemo(() => riscosElegiveis(riscos), [riscos]);
+
+  /** "2 Muito Alto · 3 Alto" — o diálogo diz o que vai, não só quantos. */
+  const resumoElegiveis = useMemo(() => {
+    return NIVEIS_QUE_VIRAM_ACAO.map((n) => ({
+      n,
+      qtd: elegiveis.filter((r) => r.nivel_risco === n).length,
+    }))
+      .filter((x) => x.qtd > 0)
+      .map((x) => `${x.qtd} ${x.n}`)
+      .join(" · ");
+  }, [elegiveis]);
+
+  async function handleEnviarPlanoAcao() {
+    setConfirmEnvio(false);
+    try {
+      const { enviadas, ignoradas } = await enviarPlano.mutateAsync({
+        idInspecao,
+        referenciaInspecao: referenciaInspecao ?? idInspecao,
+        riscos,
+        setores,
+      });
+      if (enviadas === 0) {
+        toast(`Nada novo: ${ignoradas} já estava(m) no Plano de Ação.`, {
+          icon: "ℹ️",
+        });
+      } else {
+        toast.success(
+          `${enviadas} ação(ões) criada(s) no Plano de Ação` +
+            (ignoradas > 0 ? ` · ${ignoradas} já estava(m) lá` : "")
+        );
+      }
+    } catch {
+      // toast de erro já emitido pelo hook
+    }
+  }
 
 
   if (setores.length === 0) {
@@ -126,13 +162,31 @@ export default function RiscosTab({
           </button>
         </div>
         {!readOnly && (
-          <button
-            type="button"
-            onClick={() => { setEditing(null); setFormOpen(true); }}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
-          >
-            <Plus className="size-4" /> Adicionar Risco
-          </button>
+          <div className="flex items-center gap-2">
+            {elegiveis.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setConfirmEnvio(true)}
+                disabled={enviarPlano.isPending}
+                title={`Cria uma ação 5W2H para cada risco ${NIVEIS_QUE_VIRAM_ACAO.join(" ou ")} desta inspeção, no Plano de Ação central. Não duplica.`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-blue-300 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+              >
+                {enviarPlano.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Send className="size-4" />
+                )}
+                Enviar {elegiveis.length} para o Plano de Ação
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => { setEditing(null); setFormOpen(true); }}
+              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+            >
+              <Plus className="size-4" /> Adicionar Risco
+            </button>
+          </div>
         )}
       </div>
 
@@ -243,8 +297,25 @@ export default function RiscosTab({
         description={`O risco "${confirm?.agente ?? confirm?.tipo_risco}" será removido.`}
         variant="danger"
         loading={del.isPending}
-        onConfirm={() => confirm && del.mutate(confirm)}
+        onConfirm={() =>
+          confirm && del.mutate(confirm, { onSuccess: () => setConfirm(null) })
+        }
         onCancel={() => setConfirm(null)}
+      />
+
+      <ConfirmDialog
+        open={confirmEnvio}
+        title={`Enviar ${elegiveis.length} risco(s) para o Plano de Ação?`}
+        description={
+          `Vira uma ação para cada risco ${NIVEIS_QUE_VIRAM_ACAO.join(" ou ")} desta inspeção ` +
+          `(${resumoElegiveis}). As ações nascem como Pendente, sem prazo e sem responsável — ` +
+          `a equipe completa na tela do Plano de Ação, onde o assistente de IA ajuda a preencher. ` +
+          `Risco já enviado antes não duplica.`
+        }
+        confirmLabel="Enviar"
+        loading={enviarPlano.isPending}
+        onConfirm={handleEnviarPlanoAcao}
+        onCancel={() => setConfirmEnvio(false)}
       />
     </div>
   );

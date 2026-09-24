@@ -3,6 +3,7 @@ import FolhaAssinaturas, { type Signatario } from "@/components/pdf/FolhaAssinat
 import { SecaoIdentificacaoEmpresa } from "@/components/pdf/SecoesComuns";
 import BodyMapStatic from "@/components/investigacao/BodyMapStatic";
 import { ISHIKAWA_CATS } from "@/lib/investigacao/ishikawa";
+import { formatarPrazoAcao } from "@/lib/acoes/prazo";
 import type { Empresa, InvestigacaoAcidente, InvestigacaoAcao } from "@/lib/supabase/types";
 
 export interface InvestigacaoTemplateProps {
@@ -20,6 +21,20 @@ export interface InvestigacaoTemplateProps {
 }
 
 const VERDE = "#0ea5e9";
+
+/** Rótulo de tipo (ex.: "Causas imediatas", "5 Porquês") como SUBTÍTULO destacado:
+ *  verde, maiúsculo, com barra de destaque à esquerda — entre o título de seção e o texto. */
+const rotStyle: React.CSSProperties = {
+  fontSize: "10pt",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: ".04em",
+  color: VERDE,
+  margin: "2px 0 4px",
+  paddingLeft: 7,
+  borderLeft: `3px solid ${VERDE}`,
+  lineHeight: 1.25,
+};
 
 const STYLE_BLOCK = `
 * { box-sizing: border-box; }
@@ -98,7 +113,7 @@ function PlanoAcaoSection({ acoes }: { acoes: InvestigacaoAcao[] }) {
     borderBottom: "1px solid #eef0f2", borderRight: "1px solid #f3f4f6", padding: "4px 5px",
     color: "#111827", fontSize: 8, verticalAlign: "top", wordBreak: "break-word",
   };
-  const cols = ["6%", "17%", "15%", "14%", "9%", "10%", "9%", "10%", "10%"];
+  const cols = ["6%", "16%", "14%", "13%", "9%", "10%", "13%", "9%", "10%"];
   const heads = ["Prior.", "O quê", "Por quê", "Como", "Onde", "Quem", "Quando", "Quanto", "Status"];
   return (
     <section>
@@ -112,7 +127,7 @@ function PlanoAcaoSection({ acoes }: { acoes: InvestigacaoAcao[] }) {
           {acoes.map((a) => {
             const cp = PRIO_COR[a.prioridade] ?? PRIO_COR.Media;
             const cs = STATUS_COR[a.status] ?? STATUS_COR.Pendente;
-            const prazo = a.when_prazo ? new Date(a.when_prazo + "T00:00").toLocaleDateString("pt-BR") : "—";
+            const prazo = formatarPrazoAcao(a.when_prazo) || "—";
             return (
               <tr key={a.id_acao} style={{ pageBreakInside: "avoid" }}>
                 <td style={{ ...TD, color: cp.fg, fontWeight: 700 }}>{a.prioridade}</td>
@@ -188,7 +203,7 @@ function Bloco({ rot, val }: { rot: string; val: string | null | undefined }) {
   if (!texto) return null;
   return (
     <div className="ia-bloco">
-      <p className="rot" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", color: "#6b7280", margin: "0 0 2px" }}>
+      <p className="rot" style={rotStyle}>
         {rot}
       </p>
       <p className="val" style={{ fontSize: "11pt", color: "#111827", whiteSpace: "pre-wrap", margin: 0 }}>{texto}</p>
@@ -417,7 +432,7 @@ export default function InvestigacaoAcidenteTemplate({
         <Bloco rot="Causas básicas (fatores pessoais e do trabalho)" val={inv.causas_basicas} />
         {porques.length > 0 && (
           <div className="ia-bloco">
-            <p className="rot" style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".04em", color: "#6b7280", margin: "0 0 2px" }}>
+            <p className="rot" style={rotStyle}>
               5 Porquês
             </p>
             <ul className="ia-pq">

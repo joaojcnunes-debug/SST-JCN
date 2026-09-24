@@ -11,6 +11,7 @@ export const VARIAVEIS_AEP: VariavelDef[] = [
   { chave: "registro_profissional",rotulo: "Registro profissional",                 exemplo: "CREA 12345-SP" },
   { chave: "carimbo",              rotulo: "Carimbo (nome + título + registro)",    exemplo: "João Jefferson\nErgonomista\nCREA 12345-SP" },
   { chave: "data_elaboracao",      rotulo: "Data de elaboração",                    exemplo: "15/05/2026" },
+  { chave: "data_validade",        rotulo: "Validade do documento",                 exemplo: "15/05/2027" },
   { chave: "data_atual",           rotulo: "Data atual (geração do PDF)",           exemplo: "15/05/2026" },
 ];
 
@@ -21,6 +22,7 @@ export function montarValoresAep(
     | "titulo_profissional"
     | "registro_profissional"
     | "data_elaboracao"
+    | "data_validade"
     | "endereco_empresa"
   > & { empresas?: { nome_empresa: string; cnpj: string | null } | null }
 ): Record<string, string> {
@@ -38,6 +40,10 @@ export function montarValoresAep(
     registro_profissional: registro,
     carimbo,
     data_elaboracao: formatarDataBR(rel.data_elaboracao),
+    // A coluna existe desde a v82 e a tela de Dados já grava, mas nada no laudo
+    // pedia por ela: sem esta linha, {{data_validade}} saía LITERAL no PDF
+    // (substituirVariaveis deixa chave desconhecida intacta).
+    data_validade:   formatarDataBR(rel.data_validade),
     data_atual:      new Date().toLocaleDateString("pt-BR"),
     // Variáveis de documento (Fase 1): sempre resolvem (default ""), não vazam token.
     grau_risco:      "",

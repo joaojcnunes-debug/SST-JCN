@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Sticker } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
 import ComplementoForm from "../ComplementoForm";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useExcluirDaInspecao } from "@/lib/hooks/useExcluirDaInspecao";
 import type { Complemento, Setor } from "@/lib/supabase/types";
 
 interface Props {
@@ -24,28 +22,18 @@ export default function ComplementosTab({
   complementos,
   readOnly,
 }: Props) {
-  const qc = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Complemento | null>(null);
   const [confirm, setConfirm] = useState<Complemento | null>(null);
 
   const setorMap = new Map(setores.map((s) => [s.id_setor, s.setor_ghe]));
 
-  const del = useMutation({
-    mutationFn: async (c: Complemento) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("complementos")
-        .delete()
-        .eq("id_complemento", c.id_complemento);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success("Removido");
-      setConfirm(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
+  const del = useExcluirDaInspecao({
+    idInspecao,
+    tabela: "complementos",
+    chave: "id_complemento",
+    colecao: "complementos",
+    rotulo: "Removido",
   });
 
   return (
@@ -153,7 +141,9 @@ export default function ComplementosTab({
         description={confirm?.titulo ?? undefined}
         variant="danger"
         loading={del.isPending}
-        onConfirm={() => confirm && del.mutate(confirm)}
+        onConfirm={() =>
+          confirm && del.mutate(confirm, { onSuccess: () => setConfirm(null) })
+        }
         onCancel={() => setConfirm(null)}
       />
     </div>

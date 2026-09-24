@@ -25,6 +25,21 @@ export function extrairPathStorage(
     }
   }
 
+  // URL absoluta do storage self-host (MinIO), na forma <endpoint>/<bucket>/<path>.
+  // É o formato que `getPublicUrl` grava hoje. Sem este caso, todo valor legado
+  // cai no `return null` abaixo, a leitura degrada para a URL crua, e num bucket
+  // privado isso vira 403 em silêncio (foi o que quebrou o `anexos` no SEC-01).
+  for (const base of [
+    process.env.NEXT_PUBLIC_STORAGE_PUBLIC_ENDPOINT,
+    process.env.NEXT_PUBLIC_STORAGE_ENDPOINT,
+  ]) {
+    if (!base) continue;
+    const prefixo = `${base.replace(/\/+$/, "")}/${bucket}/`;
+    if (s.startsWith(prefixo)) {
+      return decodeURIComponent(s.slice(prefixo.length).split("?")[0]);
+    }
+  }
+
   // Origens que NÃO são objeto do bucket — não tentar assinar (senão o Supabase
   // responde "Object not found" e o toast global de erro dispara):
   //  - preview local em memória (data:/blob:);

@@ -1,13 +1,22 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
-import FotoSlots, { uploadFotoSlots, type FotoSlot } from "@/components/ui/FotoSlots";
+import AvisoRascunho from "@/components/ui/AvisoRascunho";
+import FotoSlots, { prepararFotoSlots, type FotoSlot } from "@/components/ui/FotoSlots";
+import { useRascunho } from "@/lib/hooks/useRascunho";
+import { gravar } from "@/lib/offline/gravar";
+import { operacaoPendenteQueCria } from "@/lib/offline/operacoes";
+import type { InspecaoFull } from "@/lib/hooks/useInspecao";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { gerarId } from "@/lib/utils";
+import { gerarId, cn } from "@/lib/utils";
 import type { Extintor, Setor } from "@/lib/supabase/types";
+import {
+  NAO_CONFORMIDADES_EXTINTOR,
+  type SituacaoExtintor,
+} from "@/lib/inspecoes/extintores";
 
 interface Props {
   open: boolean;
@@ -30,15 +39,6 @@ const TIPOS_AGENTE = [
 const CAPACIDADES = [
   "1 kg", "2 kg", "4 kg", "6 kg", "9 kg", "12 kg",
   "2 L", "5 L", "9 L", "10 L", "12 L",
-];
-
-const STATUS_OPCOES = [
-  "Adequado",
-  "Vencido",
-  "A vencer (próx. 3 meses)",
-  "Danificado",
-  "Sinalização inadequada",
-  "Lacre violado",
 ];
 
 function buildSlots(urls: string[], paths: string[]): (FotoSlot | null)[] {
@@ -65,7 +65,10 @@ export default function ExtintorForm({
   const [numeroIdentificacao, setNumeroIdentificacao] = useState("");
   const [localizacao, setLocalizacao] = useState("");
   const [dataValidade, setDataValidade] = useState("");
-  const [status, setStatus] = useState("");
+  // v158: `status` (texto livre) virou situação + lista de não conformidades.
+  const [situacao, setSituacao] = useState<"" | SituacaoExtintor>("");
+  const [naoConformidades, setNaoConformidades] = useState<string[]>([]);
+  const [outraCausa, setOutraCausa] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [ordem, setOrdem] = useState(99);
   const [slots, setSlots] = useState<(FotoSlot | null)[]>([null, null, null, null]);
@@ -78,7 +81,13 @@ export default function ExtintorForm({
     setNumeroIdentificacao(editing?.numero_identificacao ?? "");
     setLocalizacao(editing?.localizacao ?? "");
     setDataValidade(editing?.data_validade ?? "");
-    setStatus(editing?.status ?? "");
+    setSituacao(
+      editing?.situacao === "CONFORME" || editing?.situacao === "NAO_CONFORME"
+        ? editing.situacao
+        : "",
+    );
+    setNaoConformidades(editing?.nao_conformidades ?? []);
+    setOutraCausa("");
     setObservacoes(editing?.observacoes ?? "");
     setOrdem(editing?.ordem ?? 99);
     setSlots(
@@ -86,14 +95,66 @@ export default function ExtintorForm({
     );
   }, [open, editing]);
 
+  // ── Rascunho contra queda de luz ──────────────────────────────────────────
+  // Só ao ADICIONAR: num registro que já existe, o valor do banco é a verdade.
+  // Fotos ficam de fora — `File` não é serializável.
+  const rascunhoValor = useMemo(
+    () => ({
+      idSetor, tipoAgente, capacidade, numeroIdentificacao, localizacao,
+      dataValidade, situacao, naoConformidades, outraCausa, observacoes, ordem,
+    }),
+    [idSetor, tipoAgente, capacidade, numeroIdentificacao, localizacao,
+     dataValidade, situacao, naoConformidades, outraCausa, observacoes, ordem],
+  );
+  const rascunho = useRascunho(`extintor:${idInspecao}`, rascunhoValor, {
+    ativo: open && !editing,
+  });
+
+  function recuperarRascunho() {
+    const v = rascunho.recuperar();
+    if (!v) return;
+    setIdSetor(v.idSetor);
+    setTipoAgente(v.tipoAgente);
+    setCapacidade(v.capacidade);
+    setNumeroIdentificacao(v.numeroIdentificacao);
+    setLocalizacao(v.localizacao);
+    setDataValidade(v.dataValidade);
+    setSituacao(v.situacao);
+    setNaoConformidades(v.naoConformidades);
+    setOutraCausa(v.outraCausa);
+    setObservacoes(v.observacoes);
+    setOrdem(v.ordem);
+  }
+
+  // A causa digitada só vale se não repetir uma já marcada.
+  const causasFinais = [
+    ...naoConformidades,
+    ...(outraCausa.trim() && !naoConformidades.includes(outraCausa.trim())
+      ? [outraCausa.trim()]
+      : []),
+  ];
+
+  function alternarCausa(valor: string) {
+    setNaoConformidades((atual) =>
+      atual.includes(valor)
+        ? atual.filter((c) => c !== valor)
+        : [...atual, valor],
+    );
+  }
+
   const save = useMutation({
     mutationFn: async () => {
       if (!tipoAgente.trim()) throw new Error("Tipo de agente é obrigatório");
+      if (situacao === "NAO_CONFORME" && causasFinais.length === 0) {
+        throw new Error("Marque ao menos uma não conformidade");
+      }
 
       const supabase = createSupabaseBrowserClient();
       const idExtintor = editing?.id_extintor ?? gerarId("EXT");
 
-      const { urls, paths } = await uploadFotoSlots(
+      // Decide caminhos e URLs sem subir nada — quem sobe é o `gravar()`, com
+      // rede ou guardando no aparelho.
+      const { urls, paths, imagens, paraRemover } = prepararFotoSlots(
         supabase,
         slots,
         editing?.fotos_storage_paths ?? [],
@@ -112,7 +173,12 @@ export default function ExtintorForm({
         numero_identificacao: numeroIdentificacao.trim() || null,
         localizacao: localizacao.trim() || null,
         data_validade: dataValidade || null,
-        status: status.trim() || null,
+        // `status` NÃO entra no payload: congelado na v158 como trilha do que
+        // havia antes. Escrever aqui recriaria as duas fontes de verdade.
+        situacao: situacao || null,
+        // Causas só fazem sentido em NAO_CONFORME — senão fica "conforme, mas
+        // vencido" no banco.
+        nao_conformidades: situacao === "NAO_CONFORME" ? causasFinais : [],
         observacoes: observacoes.trim() || null,
         fotos_urls: urls,
         fotos_storage_paths: paths,
@@ -121,14 +187,58 @@ export default function ExtintorForm({
         updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from("extintores")
-        .upsert(payload as never, { onConflict: "id_extintor" });
-      if (error) throw error;
+      // O extintor pode estar num setor cadastrado agora, ainda na fila.
+      const criadorDoSetor = idSetor
+        ? await operacaoPendenteQueCria("setores", "id_setor", idSetor)
+        : null;
+
+      const resultado = await gravar({
+        tabela: "extintores",
+        tipo: "upsert",
+        linhas: payload,
+        filtro: null,
+        conflito: "id_extintor",
+        modulo: "inspecoes",
+        id_documento: idInspecao,
+        imagens,
+        depende_de: criadorDoSetor ? [criadorDoSetor] : undefined,
+      });
+
+      // Faxina das fotos trocadas: só com rede, e sem derrubar a gravação.
+      if (resultado.destino === "SERVIDOR" && paraRemover.length > 0) {
+        try {
+          await supabase.storage.from("fotos").remove(paraRemover);
+        } catch {
+          /* silencioso de propósito */
+        }
+      }
+
+      return { resultado, linha: payload as unknown as Extintor };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success(editing ? "Extintor atualizado" : "Extintor cadastrado");
+    onSuccess: ({ resultado, linha }) => {
+      // Salvou: o rascunho perdeu a razão de existir.
+      rascunho.limpar();
+
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+        toast.success(editing ? "Extintor atualizado" : "Extintor cadastrado");
+      } else {
+        // Sem rede não há o que revalidar: a lista da tela é atualizada à mão.
+        qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) => {
+          if (!antigo) return antigo;
+          const jaExiste = antigo.extintores.some((x) => x.id_extintor === linha.id_extintor);
+          return {
+            ...antigo,
+            extintores: jaExiste
+              ? antigo.extintores.map((x) =>
+                  x.id_extintor === linha.id_extintor ? linha : x,
+                )
+              : [...antigo.extintores, linha],
+          };
+        });
+        toast.success("Extintor guardado no aparelho", { icon: "📵" });
+      }
+
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -147,6 +257,13 @@ export default function ExtintorForm({
       size="lg"
     >
       <form onSubmit={onSubmit} className="space-y-4">
+        {rascunho.pendente && (
+          <AvisoRascunho
+            idadeMin={rascunho.pendente.idadeMin}
+            onRecuperar={recuperarRascunho}
+            onDescartar={rascunho.descartar}
+          />
+        )}
         {/* Setor */}
         <div>
           <label className={lblCls}>Setor</label>
@@ -233,18 +350,40 @@ export default function ExtintorForm({
             />
           </div>
           <div>
-            <label className={lblCls}>Status</label>
-            <input
-              type="text"
-              list="status-opcoes"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              placeholder="Ex: Adequado"
-              className={inputCls}
-            />
-            <datalist id="status-opcoes">
-              {STATUS_OPCOES.map((s) => <option key={s} value={s} />)}
-            </datalist>
+            <label className={lblCls}>Situação</label>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {(
+                [
+                  ["CONFORME", "Conforme"],
+                  ["NAO_CONFORME", "Não conforme"],
+                  ["", "Não avaliado"],
+                ] as const
+              ).map(([valor, rotulo]) => (
+                <button
+                  key={rotulo}
+                  type="button"
+                  onClick={() => {
+                    setSituacao(valor);
+                    if (valor !== "NAO_CONFORME") {
+                      setNaoConformidades([]);
+                      setOutraCausa("");
+                    }
+                  }}
+                  className={cn(
+                    "rounded-md border px-3 py-1.5 text-sm font-medium transition-colors",
+                    situacao === valor
+                      ? valor === "CONFORME"
+                        ? "border-green-300 bg-green-50 text-green-800"
+                        : valor === "NAO_CONFORME"
+                          ? "border-red-300 bg-red-50 text-red-700"
+                          : "border-gray-300 bg-gray-100 text-gray-700"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-gray-300",
+                  )}
+                >
+                  {rotulo}
+                </button>
+              ))}
+            </div>
           </div>
           <div>
             <label className={lblCls}>Ordem</label>
@@ -256,6 +395,76 @@ export default function ExtintorForm({
             />
           </div>
         </div>
+
+        {/* Não conformidades — só quando o extintor foi marcado como tal */}
+        {situacao === "NAO_CONFORME" && (
+          <div className="rounded-md border border-red-200 bg-red-50/40 p-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-red-800">
+              Não conformidades — marque quantas houver
+            </p>
+            <div className="mt-2 grid gap-1 sm:grid-cols-2">
+              {NAO_CONFORMIDADES_EXTINTOR.map((nc) => (
+                <label
+                  key={nc.valor}
+                  className="flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 hover:bg-white/70"
+                >
+                  <input
+                    type="checkbox"
+                    checked={naoConformidades.includes(nc.valor)}
+                    onChange={() => alternarCausa(nc.valor)}
+                    className="rounded border-gray-300 text-red-600 focus:ring-red-500/30"
+                  />
+                  <span className="text-sm text-gray-900">
+                    {nc.valor}
+                    {nc.critico && (
+                      <span className="ml-1 text-[10px] font-bold uppercase text-red-600">
+                        crítico
+                      </span>
+                    )}
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            {/* Causas antigas digitadas à mão continuam marcáveis */}
+            {naoConformidades
+              .filter(
+                (c) => !NAO_CONFORMIDADES_EXTINTOR.some((n) => n.valor === c),
+              )
+              .map((c) => (
+                <label
+                  key={c}
+                  className="mt-1 flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 hover:bg-white/70"
+                >
+                  <input
+                    type="checkbox"
+                    checked
+                    onChange={() => alternarCausa(c)}
+                    className="rounded border-gray-300 text-red-600 focus:ring-red-500/30"
+                  />
+                  <span className="text-sm text-gray-900">{c}</span>
+                </label>
+              ))}
+
+            <div className="mt-2">
+              <label className={lblCls}>Outra não conformidade</label>
+              <input
+                type="text"
+                value={outraCausa}
+                onChange={(e) => setOutraCausa(e.target.value)}
+                placeholder="Descreva, se não estiver na lista acima"
+                className={inputCls}
+              />
+            </div>
+
+            {causasFinais.length === 0 && (
+              <p className="mt-2 text-xs text-red-700">
+                Marque ao menos uma não conformidade, ou volte a situação para
+                Conforme / Não avaliado.
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Observações */}
         <div>

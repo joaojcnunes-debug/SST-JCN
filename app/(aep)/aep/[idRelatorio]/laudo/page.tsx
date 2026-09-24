@@ -15,6 +15,8 @@ import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { usePdfAssinado, usePdfCongelado } from "@/lib/hooks/usePdfsGerados";
 import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
+import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
+import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
 import { montarValoresAep } from "@/lib/textos-padrao/variaveis-aep";
 import { formatarDataBR, substituirVariaveis, substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
 import type { AepSetor, AepChecklistFisica, AepChecklistCognitiva, AepChecklistOrganizacional } from "@/lib/supabase/types";
@@ -73,8 +75,22 @@ const CHECKLIST_ORG_LABELS: [keyof AepChecklistOrganizacional, string][] = [
 function labelResposta(v: string) {
   if (v === "sim") return { label: "Sim", cls: "text-red-600 font-bold" };
   if (v === "nao") return { label: "Não", cls: "text-green-700" };
+  // Âmbar, não vermelho: N/I é lacuna de avaliação, não risco confirmado. Só a
+  // Ergonomia Organizacional oferece esta resposta.
+  if (v === "nao_identificado") return { label: "N/I", cls: "text-amber-600 font-semibold" };
   return { label: "N/A", cls: "text-gray-400" };
 }
+
+/** Legenda das siglas — mesma redação do PDF. */
+const LEGENDA_ORG: { sigla: string; cls: string; titulo: string; texto: string }[] = [
+  { sigla: "N/A", cls: "text-gray-400", titulo: "Não aplicável", texto: "quando o fator de risco não se aplica" },
+  {
+    sigla: "N/I",
+    cls: "text-amber-600",
+    titulo: "Não identificável",
+    texto: "quando não for possível verificar se há ou não aquele fator de risco",
+  },
+];
 
 // ─── Bloco por setor ─────────────────────────────────────────────────────────
 
@@ -197,16 +213,34 @@ function SetorBlock({ setor, idx }: { setor: AepSetor; idx: number }) {
           {CHECKLIST_ORG_LABELS.map(([k, l]) => {
             const r = labelResposta(setor.checklist_organizacional[k]);
             const obs = setor.observacoes_checklist?.[k];
+            // Sinais só existem em fator marcado "sim" — é o que dá sustentação
+            // técnica ao apontamento, em vez de um "sim" sem justificativa.
+            const sinais = rotulosDosSinais(k, setor.sinais_organizacional);
             return (
               <div key={k} className="border-t border-gray-100 px-2 py-0.5">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">{l}</span>
                   <span className={r.cls}>{r.label}</span>
                 </div>
+                {sinais.length > 0 && (
+                  <ul className="mt-0.5 list-disc pl-4 text-[10px] text-gray-600">
+                    {sinais.map((s) => (
+                      <li key={s}>{s}</li>
+                    ))}
+                  </ul>
+                )}
                 {obs && <p className="mt-0.5 text-[10px] italic text-gray-500">Obs.: {obs}</p>}
               </div>
             );
           })}
+          <div className="border-t border-gray-100 bg-gray-50 px-2 py-1 text-[10px] leading-snug text-gray-500">
+            {LEGENDA_ORG.map((x) => (
+              <p key={x.sigla}>
+                <span className={`font-bold ${x.cls}`}>{x.sigla}</span>
+                {` — ${x.titulo} (${x.texto})`}
+              </p>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -286,7 +320,7 @@ export default function AepLaudoPage({
   const empresa = rel?.empresas as { nome_empresa?: string; cnpj?: string | null } | null;
   const setoresComAet = rel?.setores.filter((s) => s.necessita_aet) ?? [];
 
-  const valoresVars = useMemo(
+  const valoresVars = useMemo<Record<string, string>>(
     () => (rel ? montarValoresAep(rel) : {}),
     [rel]
   );
@@ -294,7 +328,18 @@ export default function AepLaudoPage({
   // Blocos ordenados (mesma regra do corpo) + numeração espelhada do PDF.
   // Só entra no Sumário/numeração quem vira seção numerada. NÃO há capítulo de
   // assinatura no AEP — a assinatura é hardcoded no fim, sem número.
-  const temConclusao = !!rel?.conclusao?.trim();
+  // Espelha o template do PDF (components/pdf/templates/AepTemplate.tsx): o
+  // texto do técnico manda; em branco, entra a conclusão gerada. A seção não
+  // some mais — era o que fazia o laudo terminar sem conclusão nenhuma.
+  const paragrafosConsideracoes = useMemo<string[]>(() => {
+    if (!rel) return [];
+    if (rel.conclusao?.trim()) return [rel.conclusao.trim()];
+    return gerarConsideracoesAep({
+      setores: rel.setores,
+      empresaNome: (rel.empresas as { nome_empresa?: string } | null)?.nome_empresa ?? null,
+      dataValidadeBR: valoresVars["data_validade"] ?? null,
+    });
+  }, [rel, valoresVars]);
   const tituloPorSlug = useMemo(() => {
     const m: Record<string, string> = {};
     for (const c of capsAep) if (c.slug_fixo) m[c.slug_fixo] = c.titulo;
@@ -312,12 +357,13 @@ export default function AepLaudoPage({
           case "identificacao_empresa": return true;
           case "aep_escalonamento":     return true;
           case "aep_triagem":           return true;
-          case "aep_consideracoes":     return temConclusao;
+          // Sempre numerada: sem conclusão digitada sai o texto gerado.
+          case "aep_consideracoes":     return true;
           case "aep_assinatura":        return true;
           default:                      return false; // sumario
         }
       },
-    [temConclusao],
+    [],
   );
 
   const { numPorSlug, numPorId, sumarioTitulos } = useMemo(() => {
@@ -455,6 +501,10 @@ export default function AepLaudoPage({
       </div>
 
       {/* Laudo */}
+      {/* Sem `force-light`: a prévia acompanha o tema do app — folha branca fixa
+          cansava a vista de quem passa o dia no laudo. A impressão continua clara
+          pelo `beforeprint` do ThemeManager e o PDF é montado no servidor
+          (/api/pdf/aep/[id]), não capturado desta tela. */}
       <div data-pdf-content className="mx-auto max-w-4xl bg-white px-8 py-10 shadow-sm print:shadow-none print:p-0 print:max-w-none">
 
         {/* Corpo do laudo — blocos na ordem definida em Texto Padrão (textos
@@ -472,6 +522,31 @@ export default function AepLaudoPage({
                       {numLabel(numPorSlug["identificacao_empresa"], "Identificação da Empresa")}
                     </h2>
                     <EmpresaInfoPanel empresa={empresaFull ?? null} />
+                    {/* Espelho do BlocoDatasDocumento do PDF (SecoesComuns).
+                        A prévia usa EmpresaInfoPanel e o PDF usa
+                        SecaoIdentificacaoEmpresa — são dois componentes, então o
+                        bloco de datas precisa existir dos dois lados. Mesmos
+                        rótulos e mesma fonte de dado (`valoresVars`). */}
+                    {(valoresVars.data_elaboracao || valoresVars.data_validade) && (
+                      <div className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2 border-t border-gray-200 pt-3 sm:grid-cols-2">
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                            Data de elaboração
+                          </p>
+                          <p className="text-sm text-gray-900">
+                            {valoresVars.data_elaboracao || "—"}
+                          </p>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                            Validade do documento
+                          </p>
+                          <p className="text-sm text-gray-900">
+                            {valoresVars.data_validade || "—"}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               }
@@ -534,11 +609,13 @@ export default function AepLaudoPage({
                 );
               }
               if (c.slug_fixo === "aep_consideracoes") {
-                return rel.conclusao?.trim() ? (
+                return (
                   <Section key={c.id_capitulo} titulo={numLabel(numPorSlug["aep_consideracoes"], tituloPorSlug["aep_consideracoes"] ?? "Considerações Finais e Encaminhamentos")}>
-                    <p className="text-xs leading-relaxed text-gray-700 whitespace-pre-line">{rel.conclusao}</p>
+                    {paragrafosConsideracoes.map((texto, i) => (
+                      <p key={i} className="mb-2 text-xs leading-relaxed text-gray-700 whitespace-pre-line last:mb-0">{texto}</p>
+                    ))}
                   </Section>
-                ) : null;
+                );
               }
               if (c.slug_fixo === "aep_assinatura") {
                 return <div key={c.id_capitulo}>{assinaturaScreenNode}</div>;

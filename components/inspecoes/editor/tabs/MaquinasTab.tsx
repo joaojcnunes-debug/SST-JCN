@@ -22,12 +22,17 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { gravar } from "@/lib/offline/gravar";
+import type { InspecaoFull } from "@/lib/hooks/useInspecao";
+import { gerarId } from "@/lib/utils";
 import { useImportarMaquinasInspecao } from "@/lib/hooks/useInventarioMaquinas";
 import RevisaoIAModal, { type CampoRevisaoIA } from "@/components/ui/RevisaoIAModal";
 import StorageImg from "@/components/ui/StorageImg";
 import { abrirMidiaAssinada } from "@/lib/storage/abrir-midia-assinada";
 import { extrairPathStorage } from "@/lib/storage/signed-url";
+import { redimensionarParaBase64 } from "@/lib/imagem/redimensionar";
 import { cn } from "@/lib/utils";
+import SetorMultiSelect from "../SetorMultiSelect";
 import type { InspecaoMaquina, Setor } from "@/lib/supabase/types";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -46,6 +51,11 @@ const GRAU_COLORS: Record<GrauRisco, string> = {
   ALTO: "bg-orange-100 text-orange-800 border-orange-200",
   CRITICO: "bg-red-100 text-red-800 border-red-200",
 };
+
+// Fotos por chamada da IA de visao: a rota corta em 3 (teto de tokens do Groq,
+// ver app/api/maquina/analisar-foto). Cortar aqui tambem evita mandar a 4a
+// foto para ser descartada em silencio.
+const MAX_FOTOS_IA = 3;
 
 const BOOL_OPTS = [
   { label: "—", value: null },
@@ -76,7 +86,7 @@ interface FormState {
   ano_fabricacao: string;
   potencia: string;
   tensao: string;
-  id_setor: string;
+  ids_setores: string[];
   protecao_fixa: boolean | null;
   protecao_movel: boolean | null;
   intertravamento: boolean | null;
@@ -88,7 +98,6 @@ interface FormState {
   necessita_adequacao_nr12: boolean | null;
   grau_risco: string;
   observacoes: string;
-  operadores: { nome: string; cargo: string }[];
 }
 
 const EMPTY: FormState = {
@@ -101,7 +110,7 @@ const EMPTY: FormState = {
   ano_fabricacao: "",
   potencia: "",
   tensao: "",
-  id_setor: "",
+  ids_setores: [],
   protecao_fixa: null,
   protecao_movel: null,
   intertravamento: null,
@@ -113,7 +122,6 @@ const EMPTY: FormState = {
   necessita_adequacao_nr12: null,
   grau_risco: "",
   observacoes: "",
-  operadores: [],
 };
 
 interface Props {
@@ -165,16 +173,59 @@ export default function MaquinasTab({
     [setores]
   );
 
+  // v160: a máquina pode estar em vários setores, então aparece sob CADA um
+  // deles. Sem setor nenhum, cai no grupo null ("sem setor").
   const maquinasPorSetor = useMemo(() => {
     const map = new Map<string | null, InspecaoMaquina[]>();
     for (const m of maquinas) {
-      const k = m.id_setor ?? null;
-      const arr = map.get(k) ?? [];
-      arr.push(m);
-      map.set(k, arr);
+      const chaves: (string | null)[] =
+        m.ids_setores && m.ids_setores.length > 0 ? m.ids_setores : [null];
+      for (const k of chaves) {
+        const arr = map.get(k) ?? [];
+        arr.push(m);
+        map.set(k, arr);
+      }
     }
     return map;
   }, [maquinas]);
+
+  /**
+   * Reescreve os vínculos de setor da máquina (v160).
+   *
+   * Apaga e reinsere em vez de calcular o diff: são poucas linhas por máquina e
+   * a PK composta faria um insert repetido falhar. Se o delete passar e o
+   * insert falhar, a máquina fica sem setor — por isso o erro é propagado, para
+   * o usuário ver e refazer, em vez de sumir em silêncio.
+   */
+  async function gravarSetores(idMaquina: string, dependeDe: string[]) {
+    const encadeado = [...dependeDe];
+
+    const limpeza = await gravar({
+      tabela: "inspecao_maquinas_setores",
+      tipo: "delete",
+      linhas: null,
+      filtro: { id_maquina_inspecao: idMaquina },
+      modulo: "inspecoes",
+      id_documento: idInspecao,
+      depende_de: encadeado.length > 0 ? encadeado : undefined,
+    });
+    if (limpeza.destino === "APARELHO") encadeado.push(limpeza.idOperacao);
+
+    if (form.ids_setores.length === 0) return;
+
+    await gravar({
+      tabela: "inspecao_maquinas_setores",
+      tipo: "insert",
+      linhas: form.ids_setores.map((idSetor) => ({
+        id_maquina_inspecao: idMaquina,
+        id_setor: idSetor,
+      })),
+      filtro: null,
+      modulo: "inspecoes",
+      id_documento: idInspecao,
+      depende_de: encadeado.length > 0 ? encadeado : undefined,
+    });
+  }
 
   function refresh() {
     qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
@@ -206,7 +257,7 @@ export default function MaquinasTab({
       ano_fabricacao: m.ano_fabricacao?.toString() ?? "",
       potencia: m.potencia ?? "",
       tensao: m.tensao ?? "",
-      id_setor: m.id_setor ?? "",
+      ids_setores: m.ids_setores ?? [],
       protecao_fixa: m.protecao_fixa,
       protecao_movel: m.protecao_movel,
       intertravamento: m.intertravamento,
@@ -218,8 +269,6 @@ export default function MaquinasTab({
       necessita_adequacao_nr12: m.necessita_adequacao_nr12,
       grau_risco: m.grau_risco ?? "",
       observacoes: m.observacoes ?? "",
-      operadores:
-        (m.operadores as { nome: string; cargo: string }[] | null) ?? [],
     });
     setFotosUpload([]);
     setFotosPreview(m.foto_urls ?? []);
@@ -253,29 +302,39 @@ export default function MaquinasTab({
     }
   }
 
-  async function uploadFotos(): Promise<{ urls: string[]; paths: string[] }> {
+  /**
+   * Decide caminho e URL de cada foto nova, SEM subir nada.
+   *
+   * Quem sobe é o `gravar()`, junto da linha e na ordem certa. Assim a máquina
+   * pode ser cadastrada em campo, com foto, e o arquivo chega ao MinIO quando a
+   * fila subir — no mesmo caminho que a linha já está apontando.
+   *
+   * Antes o erro de upload virava um `toast` e a foto era simplesmente pulada;
+   * agora uma falha de rede leva o conjunto inteiro para a fila, o que é a
+   * resposta certa: a foto não se perde por causa do sinal.
+   */
+  function prepararFotos(): {
+    urls: string[];
+    paths: string[];
+    imagens: { blob: Blob; caminho: string }[];
+  } {
     const urls: string[] = [];
     const paths: string[] = [];
+    const imagens: { blob: Blob; caminho: string }[] = [];
     for (const file of fotosUpload) {
       const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `inspecao-maquinas/${idInspecao}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage
-        .from("fotos")
-        .upload(path, file, { upsert: true });
-      if (error) {
-        toast.error(`Upload falhou: ${error.message}`);
-        continue;
-      }
-      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(path);
+      const caminho = `inspecao-maquinas/${idInspecao}/${gerarId("IMG")}.${ext}`;
+      const { data: pub } = supabase.storage.from("fotos").getPublicUrl(caminho);
       urls.push(pub.publicUrl);
-      paths.push(path);
+      paths.push(caminho);
+      imagens.push({ blob: file, caminho });
     }
-    return { urls, paths };
+    return { urls, paths, imagens };
   }
 
   async function handleSave() {
     if (!form.nome.trim()) { toast.error("Nome da máquina é obrigatório"); return; }
-    if (!form.id_setor) { toast.error("Setor é obrigatório — toda máquina pertence a um setor"); return; }
+    if (form.ids_setores.length === 0) { toast.error("Escolha ao menos um setor — toda máquina pertence a algum setor"); return; }
     setSaving(true);
     try {
       // monta lista de fotos existentes (as que ficaram no preview com URL https)
@@ -286,12 +345,13 @@ export default function MaquinasTab({
           )
         : [];
 
-      const { urls: newUrls, paths: newPaths } = await uploadFotos();
+      const { urls: newUrls, paths: newPaths, imagens } = prepararFotos();
 
       const payload = {
         id_inspecao: idInspecao,
         id_empresa: idEmpresa,
-        id_setor: form.id_setor || null,
+        // v160: `id_setor` nao entra no payload — congelado como legado. Os
+        // setores vao para inspecao_maquinas_setores, depois do upsert.
         nome: form.nome.trim(),
         tipo: form.tipo || null,
         marca: form.marca || null,
@@ -312,27 +372,65 @@ export default function MaquinasTab({
         necessita_adequacao_nr12: form.necessita_adequacao_nr12,
         grau_risco: form.grau_risco || null,
         observacoes: form.observacoes || null,
-        operadores: form.operadores.filter((o) => o.nome.trim() || o.cargo.trim()),
         foto_urls: [...existingUrls, ...newUrls],
         foto_storage_paths: [...existingPaths, ...newPaths],
         updated_at: new Date().toISOString(),
       };
 
-      if (editando) {
-        const { error } = await supabase
-          .from("inspecao_maquinas")
-          .update(payload as never)
-          .eq("id_maquina_inspecao", editando.id_maquina_inspecao);
-        if (error) throw error;
-        toast.success("Máquina atualizada");
+      /**
+       * O id da máquina passa a nascer no NAVEGADOR.
+       *
+       * Antes vinha do banco, por `insert().select().single()` — e era isso que
+       * impedia o cadastro offline: sem o id, a ligação com os setores não tinha
+       * para onde apontar.
+       *
+       * A coluna é `uuid` (ver `v160_inspecao_maquinas_setores.sql`), e
+       * `crypto.randomUUID()` gera um uuid v4 válido. Informar o id no insert só
+       * sobrepõe o default do banco — nenhuma migração é necessária. É o mesmo
+       * princípio que o resto do painel já usa com `gerarId`, e o que torna o
+       * reenvio idempotente.
+       */
+      const idMaquina = editando?.id_maquina_inspecao ?? crypto.randomUUID();
+      const dependeDe: string[] = [];
+
+      const principal = await gravar({
+        tabela: "inspecao_maquinas",
+        tipo: editando ? "update" : "insert",
+        linhas: editando ? payload : [{ id_maquina_inspecao: idMaquina, ...payload }],
+        filtro: editando ? { id_maquina_inspecao: idMaquina } : null,
+        modulo: "inspecoes",
+        id_documento: idInspecao,
+        imagens,
+      });
+      if (principal.destino === "APARELHO") dependeDe.push(principal.idOperacao);
+
+      await gravarSetores(idMaquina, dependeDe);
+
+      if (principal.destino === "SERVIDOR") {
+        toast.success(editando ? "Máquina atualizada" : "Máquina adicionada");
+        refresh();
       } else {
-        const { error } = await supabase
-          .from("inspecao_maquinas")
-          .insert(payload as never);
-        if (error) throw error;
-        toast.success("Máquina adicionada");
+        // Sem rede não há o que revalidar: a lista da tela é atualizada à mão.
+        // `ids_setores` é achatado pelo `useInspecao` a partir da tabela de
+        // ligação — offline, quem monta é aqui.
+        const linha = {
+          ...payload,
+          id_maquina_inspecao: idMaquina,
+          ids_setores: [...form.ids_setores],
+        } as unknown as InspecaoMaquina;
+        qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) => {
+          if (!antigo) return antigo;
+          return {
+            ...antigo,
+            maquinas: editando
+              ? antigo.maquinas.map((m) =>
+                  m.id_maquina_inspecao === idMaquina ? linha : m,
+                )
+              : [...antigo.maquinas, linha],
+          };
+        });
+        toast.success("Máquina guardada no aparelho", { icon: "📵" });
       }
-      refresh();
       closeForm();
     } catch (e) {
       toast.error((e as Error).message);
@@ -344,14 +442,37 @@ export default function MaquinasTab({
   async function handleDelete(m: InspecaoMaquina) {
     if (!confirm(`Remover "${m.nome}"?`)) return;
     setDeletingId(m.id_maquina_inspecao);
-    const { error } = await supabase
-      .from("inspecao_maquinas")
-      .delete()
-      .eq("id_maquina_inspecao", m.id_maquina_inspecao);
-    setDeletingId(null);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Máquina removida");
-    refresh();
+    try {
+      const resultado = await gravar({
+        tabela: "inspecao_maquinas",
+        tipo: "delete",
+        linhas: null,
+        filtro: { id_maquina_inspecao: m.id_maquina_inspecao },
+        modulo: "inspecoes",
+        id_documento: idInspecao,
+      });
+
+      if (resultado.destino === "SERVIDOR") {
+        toast.success("Máquina removida");
+        refresh();
+      } else {
+        qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) =>
+          antigo
+            ? {
+                ...antigo,
+                maquinas: antigo.maquinas.filter(
+                  (x) => x.id_maquina_inspecao !== m.id_maquina_inspecao,
+                ),
+              }
+            : antigo,
+        );
+        toast.success("Remoção guardada no aparelho", { icon: "📵" });
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function analisarComIA(m: InspecaoMaquina) {
@@ -396,25 +517,11 @@ export default function MaquinasTab({
           multiline: true,
         });
       }
-      if (result.grau_risco) {
-        campos.push({
-          key: "grau_risco",
-          label: "Grau de risco",
-          valorSugerido: String(result.grau_risco),
-          valorAtual: m.grau_risco,
-          options: (Object.keys(GRAU_LABELS) as GrauRisco[]).map((g) => ({
-            value: g,
-            label: GRAU_LABELS[g],
-          })),
-        });
-      }
+      // Grau de risco e os 7 booleanos de dispositivo de seguranca saíram da
+      // sugestao da IA em 2026-08-11 -- ver o comentario em
+      // app/api/fn/analisar-maquina-ia/route.ts. O que a IA observar sobre
+      // protecoes chega como texto no parecer, onde da pra ler a incerteza.
       const BOOLS: { key: keyof InspecaoMaquina & string; label: string }[] = [
-        { key: "protecao_fixa", label: "Proteção fixa" },
-        { key: "protecao_movel", label: "Proteção móvel" },
-        { key: "intertravamento", label: "Intertravamento" },
-        { key: "botao_emergencia", label: "Botão de emergência" },
-        { key: "aterramento", label: "Aterramento elétrico" },
-        { key: "sinalizacao", label: "Sinalização de segurança" },
         { key: "necessita_adequacao_nr12", label: "Necessita adequação NR-12" },
       ];
       for (const b of BOOLS) {
@@ -480,15 +587,20 @@ export default function MaquinasTab({
     setAnalisandoForm(true);
     try {
       const images: { b64: string; mime: string }[] = [];
-      for (const file of fotosUpload.slice(0, 4)) {
-        images.push({ b64: await resizeAndBase64(file), mime: "image/jpeg" });
+      for (const file of fotosUpload.slice(0, MAX_FOTOS_IA)) {
+        images.push({ b64: await redimensionarParaBase64(file), mime: "image/jpeg" });
       }
-      // fotos já salvas (edição): baixa do storage e redimensiona
+      // fotos já salvas (edição): baixa do storage com a credencial do painel e
+      // redimensiona. Era `fetch(url)` na URL pública -- desde que o bucket ficou
+      // privado (10/09) isso devolve 403 e o XML do erro ia como "foto".
       for (const url of fotosPreview.filter((u) => u.startsWith("http"))) {
-        if (images.length >= 4) break;
-        const blob = await fetch(url).then((r) => r.blob());
+        if (images.length >= MAX_FOTOS_IA) break;
+        const path = extrairPathStorage(url, "fotos");
+        if (!path) continue;
+        const { data: blob } = await supabase.storage.from("fotos").download(path);
+        if (!blob) continue;
         const file = new File([blob], "foto.jpg", { type: blob.type || "image/jpeg" });
-        images.push({ b64: await resizeAndBase64(file), mime: "image/jpeg" });
+        images.push({ b64: await redimensionarParaBase64(file), mime: "image/jpeg" });
       }
 
       const res = await fetch("/api/maquina/analisar-foto", {
@@ -520,14 +632,10 @@ export default function MaquinasTab({
         { key: "tensao", label: "Tensão" },
         { key: "observacoes", label: "Observações técnicas", ia: "descricao_tecnica", multiline: true },
       ];
+      // Mesma remocao do outro caminho: dispositivo de seguranca e grau de risco
+      // nao vem mais da foto. Medido em 9 fotos reais -- os dois provedores
+      // afirmam LOTO e aterramento que a imagem nao mostra.
       const BOOLS: { key: keyof FormState & string; label: string }[] = [
-        { key: "protecao_fixa", label: "Proteção fixa" },
-        { key: "protecao_movel", label: "Proteção móvel" },
-        { key: "intertravamento", label: "Intertravamento" },
-        { key: "botao_emergencia", label: "Botão emergência" },
-        { key: "sistema_bloqueio", label: "Sistema de bloqueio/LOTO" },
-        { key: "aterramento", label: "Aterramento elétrico" },
-        { key: "sinalizacao", label: "Sinalização de segurança" },
         { key: "necessita_adequacao_nr12", label: "Necessita adequação NR-12?" },
       ];
 
@@ -552,20 +660,6 @@ export default function MaquinasTab({
           valorSugerido: boolParaTexto(v),
           valorAtual: boolParaTexto(form[b.key]) || null,
           options: SIM_NAO,
-        });
-      }
-      // grau de risco (select com os 4 níveis)
-      const grau = data.grau_risco;
-      if (typeof grau === "string" && grau in GRAU_LABELS) {
-        campos.push({
-          key: "grau_risco",
-          label: "Grau de risco",
-          valorSugerido: grau,
-          valorAtual: form.grau_risco || null,
-          options: (Object.keys(GRAU_LABELS) as GrauRisco[]).map((g) => ({
-            value: g,
-            label: GRAU_LABELS[g],
-          })),
         });
       }
       if (campos.length === 0) {
@@ -919,37 +1013,29 @@ export default function MaquinasTab({
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-700">
-                    Setor da máquina <span className="text-red-500">*</span>
+                    Setor(es) da máquina <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={form.id_setor}
-                    onChange={(e) => f("id_setor", e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
-                  >
-                    <option value="" disabled>
-                      Selecione o setor…
-                    </option>
-                    {setores.map((s) => (
-                      <option key={s.id_setor} value={s.id_setor}>
-                        {s.setor_ghe}
-                      </option>
-                    ))}
-                  </select>
+                  {/* v160: a mesma máquina pode ser usada em mais de um setor */}
+                  <SetorMultiSelect
+                    setores={setores}
+                    value={form.ids_setores}
+                    onChange={(ids) => f("ids_setores", ids)}
+                  />
                   {setores.length === 0 && (
                     <p className="mt-1 text-xs text-amber-600">
                       Cadastre os setores na aba Setores antes de adicionar máquinas.
                     </p>
                   )}
-                  {!form.id_setor && setores.length > 0 && (
+                  {form.ids_setores.length === 0 && setores.length > 0 && (
                     <p className="mt-1 text-xs text-gray-500">
-                      Escolha o setor pra liberar os dados da máquina.
+                      Escolha ao menos um setor pra liberar os dados da máquina.
                     </p>
                   )}
                 </div>
               </div>
             </div>
 
-            {form.id_setor && (
+            {form.ids_setores.length > 0 && (
             <>
             {/* identificação */}
             <div>
@@ -1066,72 +1152,6 @@ export default function MaquinasTab({
               />
             </div>
 
-            {/* operadores / responsáveis pela máquina */}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">
-                Operadores / Responsáveis pela máquina
-              </label>
-              <div className="space-y-2">
-                {form.operadores.map((op, i) => (
-                  <div key={i} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={op.nome}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          operadores: p.operadores.map((o, j) =>
-                            j === i ? { ...o, nome: e.target.value } : o
-                          ),
-                        }))
-                      }
-                      placeholder="Nome"
-                      className="min-w-0 flex-[2] rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
-                    />
-                    <input
-                      type="text"
-                      value={op.cargo}
-                      onChange={(e) =>
-                        setForm((p) => ({
-                          ...p,
-                          operadores: p.operadores.map((o, j) =>
-                            j === i ? { ...o, cargo: e.target.value } : o
-                          ),
-                        }))
-                      }
-                      placeholder="Cargo"
-                      className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setForm((p) => ({
-                          ...p,
-                          operadores: p.operadores.filter((_, j) => j !== i),
-                        }))
-                      }
-                      className="shrink-0 rounded-md border border-red-200 bg-red-50 px-2 text-red-600 hover:bg-red-100"
-                      aria-label="Remover pessoa"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForm((p) => ({
-                      ...p,
-                      operadores: [...p.operadores, { nome: "", cargo: "" }],
-                    }))
-                  }
-                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
-                >
-                  + Adicionar pessoa
-                </button>
-              </div>
-            </div>
-
             {/* fotos */}
             <div>
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -1205,7 +1225,7 @@ export default function MaquinasTab({
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving || !form.id_setor}
+              disabled={saving || form.ids_setores.length === 0}
               className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
             >
               {saving && <Loader2 className="size-4 animate-spin" />}
@@ -1310,29 +1330,6 @@ export default function MaquinasTab({
 
 // ─── relatório HTML ────────────────────────────────────────────────────────
 
-/** Redimensiona e converte pra base64 (sem prefixo data:) — reduz custo de tokens. */
-async function resizeAndBase64(file: File, maxPx = 1024): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-      const canvas = document.createElement("canvas");
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-      resolve(dataUrl.split(",")[1]);
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
-}
-
 function buildRelatorioHTML(
   maquinas: InspecaoMaquina[],
   setoresMap: Map<string, string>,
@@ -1357,11 +1354,17 @@ function buildRelatorioHTML(
   // Agrupar por setor
   const grupos = new Map<string, { nome: string; items: InspecaoMaquina[] }>();
   for (const m of maquinas) {
-    const key = m.id_setor ?? "__sem_setor__";
-    const nome = m.id_setor ? (setoresMap.get(m.id_setor) ?? "Setor desconhecido") : "Sem setor vinculado";
-    const g = grupos.get(key) ?? { nome, items: [] };
-    g.items.push(m);
-    grupos.set(key, g);
+    // v160: sem setor vira um grupo so; com varios, a maquina entra em cada um
+    const chaves = m.ids_setores && m.ids_setores.length > 0 ? m.ids_setores : [null];
+    for (const idSetor of chaves) {
+      const key = idSetor ?? "__sem_setor__";
+      const nome = idSetor
+        ? (setoresMap.get(idSetor) ?? "Setor desconhecido")
+        : "Sem setor vinculado";
+      const g = grupos.get(key) ?? { nome, items: [] };
+      g.items.push(m);
+      grupos.set(key, g);
+    }
   }
 
   const rows = Array.from(grupos.values())

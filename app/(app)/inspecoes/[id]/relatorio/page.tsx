@@ -7,8 +7,8 @@ import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import Link from "next/link";
 import {
   ArrowLeft,
-  Printer,
   CheckCircle2,
+  XCircle,
   AlertCircle,
   AlertTriangle,
   Camera,
@@ -17,7 +17,6 @@ import {
   Flame,
   GraduationCap,
   Wrench,
-  XCircle,
   BadgeCheck,
   Download,
   Loader2,
@@ -30,9 +29,11 @@ import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
 import StorageImg from "@/components/ui/StorageImg";
 import { abrirMidiaAssinada } from "@/lib/storage/abrir-midia-assinada";
 import { useInspecao, useSalvarElaboracao } from "@/lib/hooks/useInspecao";
-import { useCurrentUser } from "@/lib/hooks/useUsuario";
+import { ehSupervisor, useCurrentUser } from "@/lib/hooks/useUsuario";
 import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
-import { useAssociarUsuario } from "@/lib/hooks/useInspecaoAssociados";
+import EnviarRiscosSgg from "@/components/inspecoes/EnviarRiscosSgg";
+import { useAssociarUsuario, useInspecaoAssociados } from "@/lib/hooks/useInspecaoAssociados";
+import { situacaoDocumento } from "@/lib/inspecoes/documento";
 import { FileSignature } from "lucide-react";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
@@ -57,6 +58,12 @@ import {
   parseMedidas,
 } from "@/lib/utils";
 import { NIVEL_CONFIG } from "@/lib/constants";
+import {
+  corSituacaoExtintor,
+  extintorCritico,
+  causaCritica,
+  rotuloSituacao,
+} from "@/lib/inspecoes/extintores";
 import { useTipoIcone } from "@/lib/hooks/useV3";
 import type {
   EpiEpc,
@@ -76,7 +83,7 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-export default function RelatorioJCNPage({ params }: Props) {
+export default function RelatorioChabraPage({ params }: Props) {
   const { id } = use(params);
   const { data, isLoading } = useInspecao(id);
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
@@ -199,10 +206,14 @@ export default function RelatorioJCNPage({ params }: Props) {
     const maquinasPorSetor = new Map<string, InspecaoMaquina[]>();
     const maquinasGerais: InspecaoMaquina[] = [];
     for (const m of data.maquinas ?? []) {
-      if (m.id_setor) {
-        const arr = maquinasPorSetor.get(m.id_setor) ?? [];
-        arr.push(m);
-        maquinasPorSetor.set(m.id_setor, arr);
+      // v160: a máquina pode servir a vários setores — sai sob CADA um deles.
+      const ids = m.ids_setores ?? [];
+      if (ids.length > 0) {
+        for (const idSetor of ids) {
+          const arr = maquinasPorSetor.get(idSetor) ?? [];
+          arr.push(m);
+          maquinasPorSetor.set(idSetor, arr);
+        }
       } else {
         maquinasGerais.push(m);
       }
@@ -231,6 +242,9 @@ export default function RelatorioJCNPage({ params }: Props) {
   const [baixando, setBaixando] = useState(false);
   const user = useCurrentUser();
   const associarSelf = useAssociarUsuario();
+  // Mesma consulta que o bloco de Associados faz logo abaixo (React Query
+  // devolve do cache): o card precisa dela para dizer quem está no documento.
+  const { data: associados = [] } = useInspecaoAssociados(id);
   // A elaboração do documento (SGG) é feita por usuários internos — inclusive
   // Visualizadores (que leem a inspeção e montam o documento). Só Cliente não.
   const podeElaborar = !!user && user.perfil !== "Cliente";
@@ -382,11 +396,8 @@ export default function RelatorioJCNPage({ params }: Props) {
             <div>
               <p className="text-sm font-semibold text-gray-800">Documento (SGG)</p>
               <p className="text-xs text-gray-500">
-                {inspecao.elaboracao_status === "CONCLUIDO"
-                  ? `Concluído por ${inspecao.elaboracao_responsavel ?? "—"}${inspecao.elaboracao_concluida_em ? " · " + new Date(inspecao.elaboracao_concluida_em).toLocaleString("pt-BR") : ""}`
-                  : inspecao.elaboracao_status === "EM_ELABORACAO"
-                    ? `Em elaboração por ${inspecao.elaboracao_responsavel ?? "—"}`
-                    : "Pendente — ninguém assumiu a elaboração"}
+                {/* Mesma frase da coluna "Associados" da lista (lib/inspecoes/documento). */}
+                {situacaoDocumento(inspecao, associados.map((a) => a.nome), "longo")?.texto}
               </p>
             </div>
           </div>
@@ -410,7 +421,7 @@ export default function RelatorioJCNPage({ params }: Props) {
                   Assumir elaboração (eu)
                 </button>
               )}
-              {inspecao.elaboracao_status === "EM_ELABORACAO" && (inspecao.elaboracao_responsavel === user?.nome || user?.perfil === "Admin") && (
+              {inspecao.elaboracao_status === "EM_ELABORACAO" && (inspecao.elaboracao_responsavel === user?.nome || ehSupervisor(user)) && (
                 <>
                   <button
                     type="button"
@@ -433,11 +444,24 @@ export default function RelatorioJCNPage({ params }: Props) {
                   </button>
                 </>
               )}
-              {inspecao.elaboracao_status === "CONCLUIDO" && user?.perfil === "Admin" && (
+              {inspecao.elaboracao_status === "CONCLUIDO" && ehSupervisor(user) && (
                 <button
                   type="button"
                   disabled={salvarElab.isPending}
-                  onClick={() => salvarElab.mutate({ elaboracao_status: "EM_ELABORACAO", elaboracao_concluida_em: null })}
+                  // Reenvia o responsável atual: a RPC grava o que recebe no ramo
+                  // EM_ELABORACAO, então reabrir sem ele apagava o nome e travava o
+                  // documento — sem responsável ninguém (fora Admin) consegue assumir
+                  // nem se associar, e o card fica "Em elaboração por —".
+                  // Documento entregue SEM responsável (o nome foi tirado pelo chip)
+                  // reabre como Pendente, para qualquer um poder assumir.
+                  onClick={() => {
+                    const resp = inspecao.elaboracao_responsavel?.trim();
+                    salvarElab.mutate(
+                      resp
+                        ? { elaboracao_status: "EM_ELABORACAO", elaboracao_responsavel: resp, elaboracao_concluida_em: null }
+                        : { elaboracao_status: "PENDENTE", elaboracao_responsavel: null },
+                    );
+                  }}
                   className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50"
                 >
                   Reabrir
@@ -447,8 +471,16 @@ export default function RelatorioJCNPage({ params }: Props) {
           )}
         </div>
         {podeElaborar && (
-          <AssociadosElaboracao idInspecao={id} user={user} isAdmin={user?.perfil === "Admin"} responsavelNome={inspecao.elaboracao_responsavel} />
+          <AssociadosElaboracao
+            idInspecao={id}
+            user={user}
+            isAdmin={ehSupervisor(user)}
+            responsavelNome={inspecao.elaboracao_responsavel}
+            elaboracaoStatus={inspecao.elaboracao_status}
+            concluidaEm={inspecao.elaboracao_concluida_em}
+          />
         )}
+        <EnviarRiscosSgg idInspecao={id} setores={ctx.setores} />
       </div>
 
       {/* Dados da empresa (não imprime) */}
@@ -523,7 +555,7 @@ export default function RelatorioJCNPage({ params }: Props) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={configs.logo_url}
-                  alt="Logo JCN Consultoria"
+                  alt="Logo Chabra"
                   className="max-h-44 w-auto object-contain"
                   referrerPolicy="no-referrer"
                 />
@@ -533,7 +565,7 @@ export default function RelatorioJCNPage({ params }: Props) {
                     <ShieldCheck className="size-16" strokeWidth={1.5} />
                   </div>
                   <p className="mt-3 text-2xl font-extrabold tracking-tight text-red-alert">
-                    JCN Consultoria
+                    Chabra
                   </p>
                   <p className="text-[10px] uppercase tracking-wider text-gray-600">
                     Segurança e Medicina do Trabalho
@@ -545,7 +577,7 @@ export default function RelatorioJCNPage({ params }: Props) {
 
           {/* Rodapé da capa */}
           <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-center text-[10px] text-gray-500">
-            Documento gerado em {fmtDataHora(new Date())} · JCN Consultoria Saúde e
+            Documento gerado em {fmtDataHora(new Date())} · Chabra Saúde e
             Segurança do Trabalho
           </p>
         </section>
@@ -639,26 +671,26 @@ export default function RelatorioJCNPage({ params }: Props) {
               <CardNumero
                 label="Setores"
                 valor={data.setores.length}
-                cor="#475569"
-                bg="#f1f5f9"
+                cor="var(--card-slate-cor)"
+                bg="var(--card-slate-bg)"
               />
               <CardNumero
                 label="Cargos"
                 valor={data.cargos.length}
-                cor="#475569"
-                bg="#f1f5f9"
+                cor="var(--card-slate-cor)"
+                bg="var(--card-slate-bg)"
               />
               <CardNumero
                 label="Riscos"
                 valor={data.riscos.length}
-                cor="#475569"
-                bg="#f1f5f9"
+                cor="var(--card-slate-cor)"
+                bg="var(--card-slate-bg)"
               />
               <CardNumero
                 label="Não Conformes"
                 valor={ctx.naoConformes}
                 cor={ctx.naoConformes > 0 ? "#ffffff" : "#ffffff"}
-                bg={ctx.naoConformes > 0 ? "#D32F2F" : "#0ea5e9"}
+                bg={ctx.naoConformes > 0 ? "#D32F2F" : "#006B54"}
                 destacado
               />
             </div>
@@ -891,14 +923,37 @@ export default function RelatorioJCNPage({ params }: Props) {
             </div>
           )}
 
+          {/* Aviso de preenchimento — TELA APENAS (`print:hidden`).
+              Pedido do Sanmyo em 25/08: quando o técnico responsável não está
+              registrado, o relatório sai sem assinatura de técnico e a inspeção
+              conta para quem apenas a lançou no sistema. Em vez de tapar o
+              buraco com um nome qualquer, ele fica à mostra para quem está
+              fazendo a inspeção. Nunca é impresso: o cliente não vê recado
+              interno. */}
+          {(responsaveis.length === 0 ||
+            !responsaveis[0]?.tecnico_responsavel?.trim()) && (
+            <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 print:hidden">
+              <strong>Falta o técnico responsável.</strong>{" "}
+              {responsaveis.length === 0
+                ? "Esta inspeção não tem nenhum responsável cadastrado, então o relatório sai sem a folha de assinaturas."
+                : "O campo “Técnico SST” está em branco, então a linha de assinatura sai vazia."}{" "}
+              Preencha na aba <strong>Responsáveis</strong> da inspeção — é o que
+              faz o seu trabalho ser contado no dashboard.
+            </div>
+          )}
+
           {/* Assinaturas */}
           {responsaveis.length > 0 && (
             <div className="grid grid-cols-2 gap-8 pt-12 print:pt-16">
               {responsaveis.slice(0, 1).map((r) => (
                 <div key={r.id_responsavel} className="text-center">
                   <div className="border-t-2 border-gray-700 pt-2">
-                    <p className="text-sm font-bold text-gray-900">
-                      {r.tecnico_responsavel ?? "Nathan Ferreira"}
+                    {/* Campo vazio fica VAZIO. Até 25/08 havia aqui o nome de
+                        uma pessoa cravado no código como reserva, e o relatório
+                        imprimia esse nome como se ela tivesse feito a inspeção.
+                        Assinatura em branco é erro visível; nome errado, não. */}
+                    <p className="min-h-[1.25rem] text-sm font-bold text-gray-900">
+                      {r.tecnico_responsavel?.trim() || ""}
                     </p>
                     <p className="text-[10px] uppercase tracking-wider text-gray-500">
                       Técnico Responsável
@@ -933,7 +988,7 @@ export default function RelatorioJCNPage({ params }: Props) {
           />
 
           <p className="mt-8 text-center text-[10px] text-gray-400">
-            Documento gerado em {fmtDataHora(new Date())} · SST JCN Consultoria
+            Documento gerado em {fmtDataHora(new Date())} · Painel SST Chabra
           </p>
         </section>
       </article>
@@ -1175,118 +1230,6 @@ function SetorBlock({
   );
 }
 
-// =========================================================================
-// MÁQUINAS / NR-12 — grid de cards (read-only, print-friendly)
-// =========================================================================
-
-const MAQ_SAFETY: { key: keyof InspecaoMaquina; label: string }[] = [
-  { key: "protecao_fixa", label: "Proteção fixa" },
-  { key: "protecao_movel", label: "Proteção móvel" },
-  { key: "intertravamento", label: "Intertravamento" },
-  { key: "botao_emergencia", label: "Botão emergência" },
-  { key: "sistema_bloqueio", label: "Sistema de bloqueio/LOTO" },
-  { key: "possui_manual", label: "Manual do fabricante" },
-  { key: "aterramento", label: "Aterramento elétrico" },
-  { key: "sinalizacao", label: "Sinalização de segurança" },
-];
-
-const GRAU_MAQ: Record<string, { label: string; cls: string }> = {
-  BAIXO: { label: "Baixo", cls: "border-green-200 bg-green-100 text-green-800" },
-  MEDIO: { label: "Médio", cls: "border-amber-200 bg-amber-100 text-amber-800" },
-  ALTO: { label: "Alto", cls: "border-orange-200 bg-orange-100 text-orange-800" },
-  CRITICO: { label: "Crítico", cls: "border-red-200 bg-red-100 text-red-800" },
-};
-
-function MaqSafetyIcon({ val }: { val: boolean | null }) {
-  if (val === true) return <CheckCircle2 className="size-3.5 text-green-600" />;
-  if (val === false) return <XCircle className="size-3.5 text-red-500" />;
-  return <span className="inline-block size-3.5 text-center text-gray-300">—</span>;
-}
-
-function MaquinasGrid({ maquinas }: { maquinas: InspecaoMaquina[] }) {
-  return (
-    <div className="space-y-2">
-      {maquinas.map((m) => {
-        const grau = m.grau_risco ? GRAU_MAQ[m.grau_risco] : null;
-        const temIdent =
-          m.marca ||
-          m.modelo ||
-          m.numero_serie ||
-          m.tag ||
-          m.potencia ||
-          m.tensao ||
-          m.ano_fabricacao;
-        return (
-          <div
-            key={m.id_maquina_inspecao}
-            className="maquina-card rounded-lg border border-gray-200 bg-white p-3 text-[11px]"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <Wrench className="size-4 shrink-0 text-gray-500" />
-              <span className="text-sm font-semibold text-gray-900">{m.nome}</span>
-              {m.tipo && <span className="text-xs text-gray-500">{m.tipo}</span>}
-              {grau && (
-                <span
-                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${grau.cls}`}
-                >
-                  Grau {grau.label}
-                </span>
-              )}
-              {m.necessita_adequacao_nr12 && (
-                <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-700">
-                  Necessita adequação NR-12
-                </span>
-              )}
-            </div>
-
-            {temIdent && (
-              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-gray-500">
-                {m.marca && <span>Marca: {m.marca}</span>}
-                {m.modelo && <span>Modelo: {m.modelo}</span>}
-                {m.numero_serie && <span>N/S: {m.numero_serie}</span>}
-                {m.tag && <span>TAG: {m.tag}</span>}
-                {m.ano_fabricacao && <span>Ano: {m.ano_fabricacao}</span>}
-                {m.potencia && <span>Potência: {m.potencia}</span>}
-                {m.tensao && <span>Tensão: {m.tensao}</span>}
-              </div>
-            )}
-
-            {/* Itens de segurança NR-12 */}
-            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
-              {MAQ_SAFETY.map(({ key, label }) => (
-                <span
-                  key={key}
-                  className="flex items-center gap-1 text-[10px] text-gray-500"
-                >
-                  <MaqSafetyIcon val={m[key] as boolean | null} />
-                  {label}
-                </span>
-              ))}
-            </div>
-
-            {m.foto_urls.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {m.foto_urls.map((url, i) => (
-                  <StorageImg
-                    key={i}
-                    stored={m.foto_storage_paths?.[i] || url}
-                    alt={`${m.nome} foto ${i + 1}`}
-                    className="h-16 w-16 rounded border border-gray-200 object-cover"
-                  />
-                ))}
-              </div>
-            )}
-
-            {m.observacoes && (
-              <p className="mt-1.5 italic text-gray-600">Obs.: {m.observacoes}</p>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 // Textos padrão NHO-08 — usados quando a chave não está em perguntas_tipo_risco
 const QUIM_LABELS_DEFAULT: Record<string, string> = {
   quim_q1: "Durante o uso normal, gera vapores, gases, névoas ou aerodispersóides perceptíveis?",
@@ -1299,7 +1242,7 @@ const QUIM_LABELS_DEFAULT: Record<string, string> = {
 };
 
 // =========================================================================
-// RISCO CARD (estilo PDF JCN Consultoria)
+// RISCO CARD (estilo PDF Chabra)
 // =========================================================================
 
 function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]; perguntasMap: Map<string, string> }) {
@@ -1326,6 +1269,47 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
 
   // Respostas customizadas (V3): usa texto real do banco via perguntasMap
   const respostasCustom = risco.respostas_custom ?? {};
+
+  /**
+   * Detalhes específicos de Físico e Químico — o bloco "Detalhes — Físico" /
+   * "Detalhes — Químico" do modal de risco. Só existiam na versão PGR: aqui o
+   * relatório imprimia "Precisa medição" e engolia todo o resto, então quem
+   * mediu a temperatura de uma câmara fria não via a medição no documento
+   * entregue. Mesmos rótulos e mesma ordem do PGR, para os dois documentos não
+   * divergirem. `uso_processo` fica de fora de propósito: já sai na
+   * pré-classificação NHO-08 acima.
+   */
+  const detalhesTipo: Array<[string, string]> = [];
+  if (risco.tipo_risco === "Físico" || risco.tipo_risco === "Químico") {
+    if (risco.fisico_necessita_medicao)
+      detalhesTipo.push([
+        "Precisa medição",
+        risco.fisico_necessita_medicao === "Sim"
+          ? "Adicionar ao plano de ação"
+          : risco.fisico_necessita_medicao,
+      ]);
+  }
+  if (risco.tipo_risco === "Físico") {
+    if (risco.fisico_qual_medicao)
+      detalhesTipo.push(["Qual medição", risco.fisico_qual_medicao]);
+    if (risco.fisico_motivo_medicao)
+      detalhesTipo.push(["Motivo", risco.fisico_motivo_medicao]);
+    if (risco.concentracao_exposicao)
+      detalhesTipo.push(["Concentração / Nível medido", risco.concentracao_exposicao]);
+    if (risco.limite_tolerancia)
+      detalhesTipo.push(["Limite de Tolerância (LT)", risco.limite_tolerancia]);
+    if (risco.insalubridade)
+      detalhesTipo.push(["Insalubridade (NR-15)", risco.insalubridade]);
+  }
+  if (risco.tipo_risco === "Químico") {
+    if (risco.numero_cas) detalhesTipo.push(["Número CAS", risco.numero_cas]);
+    if (risco.via_absorcao)
+      detalhesTipo.push(["Via de absorção", risco.via_absorcao]);
+    if (risco.concentracao_exposicao)
+      detalhesTipo.push(["Concentração / Exposição", risco.concentracao_exposicao]);
+    if (risco.periculosidade)
+      detalhesTipo.push(["Periculosidade (NR-16)", risco.periculosidade]);
+  }
 
   return (
     <div
@@ -1379,18 +1363,6 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
             {risco.tipo_risco === "Químico" && (
               <Campo label="Forma do agente" valor="Poeira" />
             )}
-            {(risco.tipo_risco === "Físico" ||
-              risco.tipo_risco === "Químico") &&
-              risco.fisico_necessita_medicao && (
-                <Campo
-                  label="Precisa medição"
-                  valor={
-                    risco.fisico_necessita_medicao === "Sim"
-                      ? "Adicionar ao plano de ação"
-                      : risco.fisico_necessita_medicao
-                  }
-                />
-              )}
           </div>
         )}
 
@@ -1415,6 +1387,24 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
         )}
         {risco.tipo_risco === "Psicossocial" && risco.fator_psicossocial && (
           <Campo label="Fator psicossocial" valor={risco.fator_psicossocial} />
+        )}
+
+        {/* Detalhes — Físico / Químico */}
+        {detalhesTipo.length > 0 && (
+          <div className="rounded border border-gray-200 bg-gray-50 p-2">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-700">
+              Detalhes — {risco.tipo_risco}
+            </p>
+            <ul className="space-y-0.5 text-[11px]">
+              {detalhesTipo.map(([rotulo, valor]) => (
+                <li key={rotulo} className="flex gap-2">
+                  <span className="text-gray-400">▸</span>
+                  <span className="shrink-0 text-gray-700">{rotulo}</span>
+                  <strong className="ml-auto text-right text-gray-900">{valor}</strong>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {/* Pré-classificação NHO-08 (químico) */}
@@ -1546,6 +1536,109 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
 }
 
 // =========================================================================
+// MÁQUINAS / NR-12 — grid de cards (read-only, print-friendly)
+// =========================================================================
+
+const MAQ_SAFETY: { key: keyof InspecaoMaquina; label: string }[] = [
+  { key: "protecao_fixa", label: "Proteção fixa" },
+  { key: "protecao_movel", label: "Proteção móvel" },
+  { key: "intertravamento", label: "Intertravamento" },
+  { key: "botao_emergencia", label: "Botão emergência" },
+  { key: "sistema_bloqueio", label: "Sistema de bloqueio/LOTO" },
+  { key: "possui_manual", label: "Manual do fabricante" },
+  { key: "aterramento", label: "Aterramento elétrico" },
+  { key: "sinalizacao", label: "Sinalização de segurança" },
+];
+
+const GRAU_MAQ: Record<string, { label: string; cls: string }> = {
+  BAIXO: { label: "Baixo", cls: "border-green-200 bg-green-100 text-green-800" },
+  MEDIO: { label: "Médio", cls: "border-amber-200 bg-amber-100 text-amber-800" },
+  ALTO: { label: "Alto", cls: "border-orange-200 bg-orange-100 text-orange-800" },
+  CRITICO: { label: "Crítico", cls: "border-red-200 bg-red-100 text-red-800" },
+};
+
+function MaqSafetyIcon({ val }: { val: boolean | null }) {
+  if (val === true) return <CheckCircle2 className="size-3.5 text-green-600" />;
+  if (val === false) return <XCircle className="size-3.5 text-red-500" />;
+  return <span className="inline-block size-3.5 text-center text-gray-300">—</span>;
+}
+
+function MaquinasGrid({ maquinas }: { maquinas: InspecaoMaquina[] }) {
+  return (
+    <div className="space-y-2">
+      {maquinas.map((m) => {
+        const grau = m.grau_risco ? GRAU_MAQ[m.grau_risco] : null;
+        const temIdent =
+          m.marca || m.modelo || m.numero_serie || m.tag || m.potencia || m.tensao || m.ano_fabricacao;
+        return (
+          <div
+            key={m.id_maquina_inspecao}
+            className="maquina-card rounded-lg border border-gray-200 bg-white p-3 text-[11px]"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <Wrench className="size-4 shrink-0 text-gray-500" />
+              <span className="text-sm font-semibold text-gray-900">{m.nome}</span>
+              {m.tipo && <span className="text-xs text-gray-500">{m.tipo}</span>}
+              {grau && (
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${grau.cls}`}
+                >
+                  Grau {grau.label}
+                </span>
+              )}
+              {m.necessita_adequacao_nr12 && (
+                <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-[10px] font-semibold text-orange-700">
+                  Necessita adequação NR-12
+                </span>
+              )}
+            </div>
+
+            {temIdent && (
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-gray-500">
+                {m.marca && <span>Marca: {m.marca}</span>}
+                {m.modelo && <span>Modelo: {m.modelo}</span>}
+                {m.numero_serie && <span>N/S: {m.numero_serie}</span>}
+                {m.tag && <span>TAG: {m.tag}</span>}
+                {m.ano_fabricacao && <span>Ano: {m.ano_fabricacao}</span>}
+                {m.potencia && <span>Potência: {m.potencia}</span>}
+                {m.tensao && <span>Tensão: {m.tensao}</span>}
+              </div>
+            )}
+
+            {/* Itens de segurança NR-12 */}
+            <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+              {MAQ_SAFETY.map(({ key, label }) => (
+                <span key={key} className="flex items-center gap-1 text-[10px] text-gray-500">
+                  <MaqSafetyIcon val={m[key] as boolean | null} />
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {m.foto_urls.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {m.foto_urls.map((url, i) => (
+                  <StorageImg
+                    key={i}
+                    stored={m.foto_storage_paths?.[i] || url}
+                    alt={`${m.nome} foto ${i + 1}`}
+                    className="h-16 w-16 rounded border border-gray-200 object-cover"
+                  />
+                ))}
+              </div>
+            )}
+
+            {m.observacoes && (
+              <p className="mt-1.5 italic text-gray-600">Obs.: {m.observacoes}</p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// =========================================================================
 // AUXILIARES
 // =========================================================================
 
@@ -1578,7 +1671,7 @@ function CardNumero({
       }`}
       style={{
         backgroundColor: bg,
-        borderColor: destacado ? bg : "#e5e7eb",
+        borderColor: destacado ? bg : "var(--border-app)",
       }}
     >
       <p
@@ -1661,21 +1754,13 @@ function ListaMedidasRelatorio({
 // EXTINTORES — grid de cards com foto 2×2 centralizada
 // =============================================================
 
-const STATUS_COR_REL: Record<string, string> = {
-  "Adequado": "border-green-300 bg-green-50 text-green-800",
-  "Vencido": "border-red-300 bg-red-50 text-red-700",
-  "A vencer (próx. 3 meses)": "border-amber-300 bg-amber-50 text-amber-800",
-  "Danificado": "border-red-300 bg-red-50 text-red-700",
-  "Sinalização inadequada": "border-orange-300 bg-orange-50 text-orange-800",
-  "Lacre violado": "border-orange-300 bg-orange-50 text-orange-800",
-};
-
 function ExtintoresGrid({ extintores }: { extintores: Extintor[] }) {
   return (
     <div className="space-y-2">
       {extintores.map((e) => {
-        const statusCor = e.status ? (STATUS_COR_REL[e.status] ?? "border-gray-200 bg-gray-50 text-gray-700") : null;
-        const critico = e.status === "Vencido" || e.status === "Danificado" || e.status === "Lacre violado";
+        // v158: situacao + causas no lugar do antigo `status` de texto livre.
+        const situacaoCor = corSituacaoExtintor(e.situacao, e.nao_conformidades);
+        const critico = extintorCritico(e.situacao, e.nao_conformidades);
         const temFotos = e.fotos_urls && e.fotos_urls.length > 0;
 
         return (
@@ -1711,11 +1796,23 @@ function ExtintoresGrid({ extintores }: { extintores: Extintor[] }) {
                     </span>
                   )}
                 </div>
-                {e.status && statusCor && (
-                  <span className={`mt-1 inline-flex rounded border px-1.5 py-0.5 text-[10px] font-medium ${statusCor}`}>
-                    {e.status}
+                <div className="mt-1 flex flex-wrap items-center gap-1">
+                  <span className={`inline-flex rounded border px-1.5 py-0.5 text-[10px] font-medium ${situacaoCor}`}>
+                    {rotuloSituacao(e.situacao)}
                   </span>
-                )}
+                  {(e.nao_conformidades ?? []).map((c) => (
+                    <span
+                      key={c}
+                      className={`inline-flex rounded border px-1.5 py-0.5 text-[10px] ${
+                        causaCritica(c)
+                          ? "border-red-300 bg-red-50 text-red-700"
+                          : "border-amber-300 bg-amber-50 text-amber-800"
+                      }`}
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
                 {e.observacoes && (
                   <p className="mt-1 text-gray-600 italic">{e.observacoes}</p>
                 )}

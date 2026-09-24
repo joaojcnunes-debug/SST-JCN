@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Copy } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
 import SetorForm from "../SetorForm";
 import CopiarSetorModal from "../CopiarSetorModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useExcluirDaInspecao } from "@/lib/hooks/useExcluirDaInspecao";
 import type { Setor } from "@/lib/supabase/types";
 
 interface Props {
@@ -23,27 +21,17 @@ export default function SetoresTab({
   setores,
   readOnly,
 }: Props) {
-  const qc = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Setor | null>(null);
   const [confirm, setConfirm] = useState<Setor | null>(null);
   const [copiando, setCopiando] = useState<Setor | null>(null);
 
-  const del = useMutation({
-    mutationFn: async (s: Setor) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("setores")
-        .delete()
-        .eq("id_setor", s.id_setor);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success("Setor removido");
-      setConfirm(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
+  const del = useExcluirDaInspecao({
+    idInspecao,
+    tabela: "setores",
+    chave: "id_setor",
+    colecao: "setores",
+    rotulo: "Setor removido",
   });
 
   return (
@@ -114,7 +102,7 @@ export default function SetoresTab({
                               type="button"
                               onClick={() => setCopiando(s)}
                               className="rounded p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-700"
-                              title="Copiar para outra inspeção ou empresa"
+                              title="Duplicar neste laudo, ou copiar para outra inspeção/empresa"
                             >
                               <Copy className="size-4" />
                             </button>
@@ -158,7 +146,9 @@ export default function SetoresTab({
         description={`O setor "${confirm?.setor_ghe}" será removido. Esta ação não pode ser desfeita.`}
         variant="danger"
         loading={del.isPending}
-        onConfirm={() => confirm && del.mutate(confirm)}
+        onConfirm={() =>
+          confirm && del.mutate(confirm, { onSuccess: () => setConfirm(null) })
+        }
         onCancel={() => setConfirm(null)}
       />
     </div>

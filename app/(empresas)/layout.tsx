@@ -36,7 +36,8 @@ export default function EmpresasLayout({ children }: { children: ReactNode }) {
         sections={sections}
       />
       <div className="md:pl-[220px] print:pl-0">
-        <ModuleTopbar title="Cadastro de Empresas" />
+        <ModuleTopbar />
+        {/* view-transition-name: content → só esta área faz o fade entre páginas. */}
         <main className="mx-auto max-w-[1400px] px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>{children}</main>
       </div>
     </div>

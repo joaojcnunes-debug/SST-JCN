@@ -137,18 +137,23 @@ export default function TextosPadraoPrint({
           position: absolute;
           z-index: 1;
         }
-        /* Tipografia ABNT */
+        /* Tipografia ABNT.
+           As cores saem de variaveis porque esta previa acompanha o tema do app
+           desde que o force-light foi removido dos laudos. O valor em :root e em
+           .force-light e o mesmo hexadecimal de antes, entao o tema claro nao
+           muda. O verde #0ea5e9 da borda fica cravado de proposito: e o verde
+           saturado da marca e continua legivel nos dois temas. */
         .textos-padrao-capitulo-titulo {
           font-size: 14pt;
           font-weight: 700;
-          color: #1e4d28;
+          color: var(--psi-verde);
           border-bottom: 2px solid #0ea5e9;
           padding-bottom: 4px;
           margin-bottom: 12pt;
         }
         .textos-padrao-capitulo-conteudo {
           font-size: 12pt;
-          color: #1f2937;
+          color: var(--laudo-texto);
           line-height: 1.5;
           text-align: justify;
         }
@@ -157,13 +162,13 @@ export default function TextosPadraoPrint({
           text-indent: 1.25cm;
           text-align: justify;
         }
-        .textos-padrao-capitulo-conteudo h1 { font-size: 14pt; font-weight: 700; color: #1e4d28; margin: 18pt 0 6pt; }
-        .textos-padrao-capitulo-conteudo h2 { font-size: 13pt; font-weight: 700; color: #1e4d28; margin: 14pt 0 6pt; }
-        .textos-padrao-capitulo-conteudo h3 { font-size: 12pt; font-weight: 700; color: #1e4d28; margin: 12pt 0 4pt; }
+        .textos-padrao-capitulo-conteudo h1 { font-size: 14pt; font-weight: 700; color: var(--psi-verde); margin: 18pt 0 6pt; }
+        .textos-padrao-capitulo-conteudo h2 { font-size: 13pt; font-weight: 700; color: var(--psi-verde); margin: 14pt 0 6pt; }
+        .textos-padrao-capitulo-conteudo h3 { font-size: 12pt; font-weight: 700; color: var(--psi-verde); margin: 12pt 0 4pt; }
         .textos-padrao-capitulo-conteudo ul,
         .textos-padrao-capitulo-conteudo ol { margin: 0 0 12pt 1.25cm; padding: 0; }
         .textos-padrao-capitulo-conteudo li { margin: 2pt 0; }
-        .textos-padrao-capitulo-conteudo a { color: #0ea5e9; text-decoration: underline; }
+        .textos-padrao-capitulo-conteudo a { color: var(--tiptap-link); text-decoration: underline; }
         .textos-padrao-capitulo-conteudo img {
           max-width: 100%;
           height: auto;
@@ -178,13 +183,13 @@ export default function TextosPadraoPrint({
         }
         .textos-padrao-capitulo-conteudo th,
         .textos-padrao-capitulo-conteudo td {
-          border: 1px solid #999;
+          border: 1px solid var(--psi-borda-tab);
           padding: 5px 7px;
           vertical-align: top;
         }
         .textos-padrao-capitulo-conteudo th {
-          background: #d4edda;
-          color: #1e4d28;
+          background: var(--psi-faixa-bg);
+          color: var(--psi-verde);
           font-weight: 700;
           text-align: left;
         }

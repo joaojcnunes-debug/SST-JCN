@@ -11,26 +11,27 @@ import {
   Plus,
 } from "lucide-react";
 import { useAnalisesQuimicos } from "@/lib/hooks/useAnalisesQuimicos";
-import { useCanCreate } from "@/lib/hooks/useUsuario";
+import { usePodeQuimicos } from "@/lib/hooks/useUsuario";
+import { buscar } from "@/lib/busca/texto";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 export default function HistoricoAnalisesPage() {
-  const canCreate = useCanCreate();
+  // Perfil (Admin/Técnico) OU capability pode_escrever_quimicos — espelha a RLS v189.
+  const canCreate = usePodeQuimicos();
   const { data: analises = [], isLoading } = useAnalisesQuimicos();
   const [q, setQ] = useState("");
 
-  const filtradas = useMemo(() => {
-    const termo = q.trim().toLowerCase();
-    if (!termo) return analises;
-    return analises.filter((a) => {
-      return (
-        a.titulo.toLowerCase().includes(termo) ||
-        (a.nome_quimico ?? "").toLowerCase().includes(termo) ||
-        (a.numero_cas ?? "").toLowerCase().includes(termo) ||
-        (a.usuario_nome ?? "").toLowerCase().includes(termo) ||
-        (a.fonte_arquivo ?? "").toLowerCase().includes(termo)
-      );
-    });
-  }, [analises, q]);
+  // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem por data.
+  const { itens: filtradas, aproximado } = useMemo(
+    () =>
+      buscar(
+        analises,
+        q,
+        (a) => [a.titulo, a.nome_quimico, a.numero_cas, a.usuario_nome, a.fonte_arquivo],
+        { manterOrdem: true },
+      ),
+    [analises, q],
+  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
@@ -84,6 +85,7 @@ export default function HistoricoAnalisesPage() {
         </div>
       ) : (
         <div className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white shadow-sm reveal-up card-hover">
+          <AvisoBuscaAproximada aproximado={aproximado} busca={q} total={filtradas.length} className="m-3" />
           {filtradas.map((a) => {
             const insalubre = (a.conclusao_rapida?.insalubridade_nr15 ?? "")
               .toUpperCase()

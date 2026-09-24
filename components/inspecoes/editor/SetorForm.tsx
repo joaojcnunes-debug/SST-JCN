@@ -4,7 +4,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import AvisoRascunho from "@/components/ui/AvisoRascunho";
+import { useRascunho } from "@/lib/hooks/useRascunho";
+import { gravar } from "@/lib/offline/gravar";
+import type { InspecaoFull } from "@/lib/hooks/useInspecao";
 import { gerarId } from "@/lib/utils";
 import type { Setor } from "@/lib/supabase/types";
 
@@ -43,37 +46,84 @@ export default function SetorForm({
     }
   }, [open, setor]);
 
+  // Rascunho contra queda de luz — só ao adicionar; nada volta sem clique.
+  const rascunho = useRascunho(`setor:${idInspecao}`, form, {
+    ativo: open && !isEdit,
+  });
+
+  /**
+   * Grava pelo `gravar()`, que decide entre servidor e aparelho.
+   *
+   * Com rede o comportamento é idêntico ao de antes: vai direto ao banco. Sem
+   * rede a linha fica guardada no celular e sobe sozinha depois — é o técnico
+   * descobrindo no cliente um setor que não estava cadastrado, que é o caso de
+   * campo mais comum deste formulário.
+   *
+   * Devolve a linha junto com o resultado porque, offline, é ela que entra na
+   * lista da tela: sem rede não há o que revalidar, e sem isso o setor sumiria
+   * da tela assim que o modal fechasse — o técnico digitaria de novo, e no dia
+   * seguinte o painel receberia dois.
+   */
   const mutation = useMutation({
     mutationFn: async () => {
-      const supabase = createSupabaseBrowserClient();
       const payload = {
         setor_ghe: form.setor_ghe.trim(),
         descricao: form.descricao.trim() || null,
         conformidade: form.conformidade.trim() || null,
         nao_conformidade: form.nao_conformidade.trim() || null,
       };
+
       if (isEdit && setor) {
-        const { error } = await supabase
-          .from("setores")
-          .update(payload as never)
-          .eq("id_setor", setor.id_setor);
-        if (error) throw error;
-      } else {
-        const insertRow = {
-          id_setor: gerarId("SET"),
-          id_inspecao: idInspecao,
-          id_empresa: idEmpresa,
-          ...payload,
-        };
-        const { error } = await supabase
-          .from("setores")
-          .insert(insertRow as never);
-        if (error) throw error;
+        const resultado = await gravar({
+          tabela: "setores",
+          tipo: "update",
+          linhas: payload,
+          filtro: { id_setor: setor.id_setor },
+          modulo: "inspecoes",
+          id_documento: idInspecao,
+        });
+        return { resultado, linha: { ...setor, ...payload } as Setor };
       }
+
+      const insertRow = {
+        id_setor: gerarId("SET"),
+        id_inspecao: idInspecao,
+        id_empresa: idEmpresa,
+        ...payload,
+      };
+      const resultado = await gravar({
+        tabela: "setores",
+        tipo: "insert",
+        linhas: [insertRow],
+        filtro: null,
+        modulo: "inspecoes",
+        id_documento: idInspecao,
+      });
+      return { resultado, linha: insertRow as unknown as Setor };
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success(isEdit ? "Setor atualizado" : "Setor adicionado");
+    onSuccess: ({ resultado, linha }) => {
+      rascunho.limpar();
+
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
+        toast.success(isEdit ? "Setor atualizado" : "Setor adicionado");
+      } else {
+        // Sem rede não há o que revalidar: a lista da tela é atualizada à mão.
+        qc.setQueryData<InspecaoFull>(["inspecao", idInspecao], (antigo) => {
+          if (!antigo) return antigo;
+          return {
+            ...antigo,
+            setores: isEdit
+              ? antigo.setores.map((s) => (s.id_setor === linha.id_setor ? linha : s))
+              : [...antigo.setores, linha],
+          };
+        });
+        toast.success(
+          isEdit ? "Alteração guardada no aparelho" : "Setor guardado no aparelho",
+          { icon: "📵" }
+        );
+      }
+
       onClose();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -96,6 +146,16 @@ export default function SetorForm({
       size="lg"
     >
       <form onSubmit={onSubmit} className="space-y-4">
+        {rascunho.pendente && (
+          <AvisoRascunho
+            idadeMin={rascunho.pendente.idadeMin}
+            onRecuperar={() => {
+              const v = rascunho.recuperar();
+              if (v) setForm(v);
+            }}
+            onDescartar={rascunho.descartar}
+          />
+        )}
         <Field label="Nome do Setor / GHE *">
           <input
             type="text"

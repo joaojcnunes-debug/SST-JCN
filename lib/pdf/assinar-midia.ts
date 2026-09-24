@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ComposedSupabaseClient } from "@/lib/supabase/client";
 import { extrairPathStorage } from "@/lib/storage/signed-url";
 
 /**
@@ -11,7 +11,7 @@ import { extrairPathStorage } from "@/lib/storage/signed-url";
  * comportamento atual — não quebra o PDF. Quando privatizar, as assinadas mandam.
  */
 export async function assinarMidiaPdf(
-  supabase: SupabaseClient,
+  supabase: ComposedSupabaseClient,
   valores: (string | null | undefined)[],
   bucket = "fotos",
   expiresIn = 1800, // 30 min — cobre a renderização do PDF
@@ -39,7 +39,7 @@ export async function assinarMidiaPdf(
 export async function assinarCapitulos<
   T extends { bg_imagem_url?: string | null; conteudo?: string | null },
 >(
-  supabase: SupabaseClient,
+  supabase: ComposedSupabaseClient,
   capitulos: T[],
   bucket = "fotos",
 ): Promise<T[]> {
@@ -58,7 +58,7 @@ export async function assinarCapitulos<
 
 /** Versão p/ um único valor (ex.: assinatura, bg de capítulo). */
 export async function assinarUmaMidiaPdf(
-  supabase: SupabaseClient,
+  supabase: ComposedSupabaseClient,
   valor: string | null | undefined,
   bucket = "fotos",
   expiresIn = 1800,
@@ -80,7 +80,7 @@ export async function assinarUmaMidiaPdf(
  * mandam. Idempotente: re-assina URLs que já são assinadas (token novo).
  */
 export async function assinarImagensHtml(
-  supabase: SupabaseClient,
+  supabase: ComposedSupabaseClient,
   html: string | null | undefined,
   bucket = "fotos",
   expiresIn = 1800,

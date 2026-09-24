@@ -10,6 +10,7 @@ import type {
   DrpsMonitoramento,
   DrpsPlanoMedidas,
   DrpsProbabilidade,
+  DrpsProbabilidadeUnidade,
   DrpsRelatorio,
   DrpsRespondente,
   DrpsRevisao,
@@ -140,6 +141,25 @@ export function useDrpsSalvarRelatorio() {
   });
 }
 
+/** Move um relatório entre as colunas do Dashboard Geral (altera o status). */
+export function useDrpsMoverStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id_relatorio: string; status: StatusRelatorio }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("drps_relatorios")
+        .update({ status: args.status, updated_at: new Date().toISOString() } as never)
+        .eq("id_relatorio", args.id_relatorio);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["drps-relatorios-geral"] });
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
 export function useDrpsExcluirRelatorio() {
   const qc = useQueryClient();
   return useMutation({
@@ -221,6 +241,7 @@ export function useDrpsImportar() {
         id_empresa,
         setor: l.setor,
         cargo: l.cargo,
+        unidade_trabalho: l.unidade,
         respostas: l.respostas,
         data_carimbo: l.data_carimbo,
         lote_importacao: lote,
@@ -312,6 +333,99 @@ export function useDrpsSalvarProbabilidade() {
     onSuccess: (_v, args) => {
       qc.invalidateQueries({
         queryKey: ["drps-probabilidades", args.id_relatorio],
+      });
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
+// ============================================================
+// PROBABILIDADES POR UNIDADE — overrides da v138
+// ============================================================
+// Guarda só a exceção: o bloco (unidade, setor) que diverge do valor do setor.
+// Ausência de linha = herda. Ver montarMapaProbUnidade em lib/drps/blocos.ts.
+
+export function useDrpsProbabilidadesUnidade(
+  idRelatorio: string | null | undefined
+) {
+  return useQuery({
+    queryKey: ["drps-probabilidades-unidade", idRelatorio],
+    enabled: !!idRelatorio && DRPS_ID_RE.test(idRelatorio),
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("drps_probabilidades_unidade")
+        .select("*")
+        .eq("id_relatorio", idRelatorio!);
+      if (error) throw error;
+      return (data ?? []) as unknown as DrpsProbabilidadeUnidade[];
+    },
+  });
+}
+
+export interface SalvarProbabilidadeUnidadeArgs {
+  id_relatorio: string;
+  id_empresa: string;
+  unidade: string;
+  setor: string;
+  topico_idx: number;
+  probabilidade: 1 | 2 | 3;
+}
+
+export function useDrpsSalvarProbabilidadeUnidade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: SalvarProbabilidadeUnidadeArgs) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("drps_probabilidades_unidade")
+        .upsert(
+          {
+            id_relatorio: args.id_relatorio,
+            id_empresa: args.id_empresa,
+            unidade: args.unidade,
+            setor: args.setor,
+            topico_idx: args.topico_idx,
+            probabilidade: args.probabilidade,
+            updated_at: new Date().toISOString(),
+          } as never,
+          { onConflict: "id_relatorio,unidade,setor,topico_idx" }
+        );
+      if (error) throw error;
+    },
+    onSuccess: (_v, args) => {
+      qc.invalidateQueries({
+        queryKey: ["drps-probabilidades-unidade", args.id_relatorio],
+      });
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
+/** Remove o override e devolve o bloco à herança do setor. */
+export function useDrpsRemoverProbabilidadeUnidade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id_relatorio: string;
+      unidade: string;
+      setor: string;
+      topico_idx: number;
+    }) => {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("drps_probabilidades_unidade")
+        .delete()
+        .eq("id_relatorio", args.id_relatorio)
+        .eq("unidade", args.unidade)
+        .eq("setor", args.setor)
+        .eq("topico_idx", args.topico_idx);
+      if (error) throw error;
+    },
+    onSuccess: (_v, args) => {
+      qc.invalidateQueries({
+        queryKey: ["drps-probabilidades-unidade", args.id_relatorio],
       });
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
@@ -626,6 +740,8 @@ export function useDrpsExcluirCapitulo() {
 export interface DrpsRelatorioComEmpresa extends DrpsRelatorio {
   empresa_nome: string | null;
   empresa_cnpj: string | null;
+  empresa_municipio: string | null;
+  empresa_uf: string | null;
 }
 
 export function useDrpsRelatoriosGeral() {
@@ -636,14 +752,14 @@ export function useDrpsRelatoriosGeral() {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("drps_relatorios")
-        .select("*, empresas(id_empresa, nome_empresa, cnpj)")
+        .select("*, empresas(id_empresa, nome_empresa, cnpj, municipio, uf)")
         .neq("status", "DELETADO")
         .order("updated_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false });
       if (error) throw error;
       type Row = DrpsRelatorio & {
         empresas:
-          | { id_empresa: string; nome_empresa: string; cnpj: string | null }
+          | { id_empresa: string; nome_empresa: string; cnpj: string | null; municipio: string | null; uf: string | null }
           | null;
       };
       const rows = (data ?? []) as unknown as Row[];
@@ -651,6 +767,8 @@ export function useDrpsRelatoriosGeral() {
         ...r,
         empresa_nome: r.empresas?.nome_empresa ?? null,
         empresa_cnpj: r.empresas?.cnpj ?? null,
+        empresa_municipio: r.empresas?.municipio ?? null,
+        empresa_uf: r.empresas?.uf ?? null,
       }));
     },
   });

@@ -18,6 +18,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useState, useCallback } from "react";
+import AjudaComAbas from "@/components/novidades/AjudaComAbas";
 
 interface ItemData {
   label: string;
@@ -293,7 +294,7 @@ function PassoCard({
   );
 }
 
-export default function AjudaRNCPage() {
+function ConteudoAjudaRNCPage() {
   const [printMode, setPrintMode] = useState(false);
 
   const handlePrint = useCallback(() => {
@@ -336,7 +337,7 @@ export default function AjudaRNCPage() {
           </div>
           <p className="text-sm text-gray-600 leading-relaxed">
             Este manual orienta o preenchimento correto e completo do Relatório de Não Conformidades
-            no SST JCN Consultoria. Leia cada seção antes de registrar, classificar ou fechar uma NC.
+            no Painel SST. Leia cada seção antes de registrar, classificar ou fechar uma NC.
           </p>
         </div>
 
@@ -511,7 +512,7 @@ export default function AjudaRNCPage() {
           <p className="text-xs text-blue-900 leading-relaxed">
             A cláusula 10.2 da ISO 45001 exige que a organização reaja às não conformidades,
             investigue a causa raiz, implemente ações corretivas, revise a eficácia das ações e
-            mantenha informação documentada de todo o processo. O RNC do SST JCN Consultoria é o registro
+            mantenha informação documentada de todo o processo. O RNC do Painel SST é o registro
             que evidencia o cumprimento desse requisito. NCs sem causa raiz documentada ou sem
             evidência de fechamento constituem lacuna auditável.
           </p>
@@ -520,10 +521,23 @@ export default function AjudaRNCPage() {
         {/* Rodapé */}
         <div className="text-center py-4">
           <p className="text-[11px] text-gray-400">
-            SST JCN Consultoria — Módulo RNC · Para dúvidas, contate o suporte técnico JCN Consultoria TI.
+            Painel SST — Módulo RNC · Para dúvidas, contate o suporte técnico JCN Consultoria TI.
           </p>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * A ajuda deste módulo ganhou a aba Atualizações (01/09). O conteúdo acima
+ * continua exatamente como estava — quem monta as abas é o AjudaComAbas, e a
+ * lista de novidades vive num componente só, compartilhado pelos 11 módulos.
+ */
+export default function AjudaRNCPage() {
+  return (
+    <AjudaComAbas titulo="Guia da RNC">
+      <ConteudoAjudaRNCPage />
+    </AjudaComAbas>
   );
 }

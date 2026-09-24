@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* ════════════════════════════════════════════════════════════════════
+   Modo noturno (dark). Ligado pela classe .dark no <html> (ThemeManager +
+   script de pré-hidratação em app/layout.tsx). É REVERSÍVEL: remover a classe
+   .dark devolve o app inteiro ao claro. As cores da marca (azul JCN) ficam
+   estáticas; só superfícies/texto/borda trocam de valor.
+   ════════════════════════════════════════════════════════════════════ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-verde-primary: #0ea5e9;
   --color-verde-accent: #0284c7;
@@ -15,8 +23,331 @@
     "Helvetica Neue", Arial, sans-serif;
 }
 
+/* Tokens semânticos "inline" (utilitários bg-surface / text-body / border-app…),
+   apontando para variáveis que trocam no .dark. Usados pela migração futura. */
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-strong: var(--text-strong);
+  --color-body: var(--text-body);
+  --color-muted: var(--text-muted);
+  --color-border-app: var(--border-app);
+}
+
 :root {
   color-scheme: light;
+  /* Tema claro = valores de hoje (o app nasce assim). */
+  --surface: #ffffff;       /* cartões / bg-white */
+  --surface-2: #f9fafb;     /* bg-gray-50 */
+  --surface-3: #f3f4f6;     /* bg-gray-100 */
+  --surface-4: #e5e7eb;     /* bg-gray-200 */
+  --surface-5: #d1d5db;     /* bg-gray-300 */
+  --text-strong: #111827;   /* text-gray-900 */
+  --text-body: #374151;     /* text-gray-700 */
+  --text-muted: #6b7280;    /* text-gray-500 */
+  --border-app: #e5e7eb;    /* border-gray-200 */
+  --tiptap-heading: #1e4d28;
+  --tiptap-link: #0ea5e9;
+}
+
+/* Tema escuro — paleta da referência (fundo #0d1215, cartão #14181d…). */
+.dark {
+  color-scheme: dark;       /* conserta <select>/inputs/scrollbars nativos na hora */
+  --surface: #14181d;
+  --surface-2: #1a1e24;
+  --surface-3: #21262d;
+  --surface-4: #2b3133;     /* trilhos de progresso, skeletons, chips */
+  --surface-5: #32393b;
+  --text-strong: #eef0f3;
+  --text-body: #c7ccd2;
+  --text-muted: #939ba2;
+  --border-app: #262930;
+  --tiptap-heading: #6ee7a8;
+  --tiptap-link: #38bdf8;
+  /* Vira os 2 tokens neutros do @theme → fundo do app + bordas mudam de graça. */
+  --color-app-bg: #0d1215;
+  --color-card-border: #262930;
+}
+
+/* Ilhas que permanecem CLARAS mesmo no escuro (laudos em papel, canvas de
+   assinatura, placa do logo, login, portal). Redefine as variáveis para claro:
+   como o shim e os utilitários semânticos leem estas variáveis, tudo dentro
+   volta ao claro — sem !important e sem brigar por especificidade. */
+.force-light {
+  color-scheme: light;
+  --surface: #ffffff;
+  --surface-2: #f9fafb;
+  --surface-3: #f3f4f6;
+  --surface-4: #e5e7eb;
+  --surface-5: #d1d5db;
+  --text-strong: #111827;
+  --text-body: #374151;
+  --text-muted: #6b7280;
+  --border-app: #e5e7eb;
+  --tiptap-heading: #1e4d28;
+  --tiptap-link: #0ea5e9;
+  --color-app-bg: #f4f6f5;
+  --color-card-border: #e5e7eb;
+}
+
+/* ── Shim de compatibilidade ──────────────────────────────────────────
+   Escurece os neutros dos componentes AINDA NÃO migrados sem tocá-los.
+   Aponta para as MESMAS variáveis acima → .force-light neutraliza tudo isto
+   automaticamente. Fica FORA de @layer para vencer os utilitários do Tailwind.
+   ──────────────────────────────────────────────────────────────────── */
+.dark .bg-white { background-color: var(--surface); }
+.dark .bg-gray-50 { background-color: var(--surface-2); }
+.dark .bg-gray-100 { background-color: var(--surface-3); }
+.dark .text-gray-900, .dark .text-gray-800 { color: var(--text-strong); }
+.dark .text-gray-700, .dark .text-gray-600 { color: var(--text-body); }
+.dark .text-gray-500, .dark .text-gray-400 { color: var(--text-muted); }
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300 { border-color: var(--border-app); }
+.dark .hover\:bg-gray-50:hover { background-color: var(--surface-2); }
+.dark .hover\:bg-gray-100:hover { background-color: var(--surface-3); }
+
+/* Decorativos re-afinados no escuro. */
+.dark .card { background: var(--surface); border-color: var(--border-app); }
+.dark .glass { background: var(--surface); border-color: var(--border-app); }
+.dark .app-aurora {
+  background-color: #0d1215;
+  background-image:
+    radial-gradient(55rem 55rem at 6% -12%, rgba(2,132,199,0.10), transparent 60%),
+    radial-gradient(48rem 48rem at 112% 8%, rgba(14,165,233,0.10), transparent 55%),
+    radial-gradient(42rem 42rem at 50% 118%, rgba(3,105,161,0.16), transparent 60%);
+}
+.dark .skeleton-shimmer {
+  background: linear-gradient(90deg, #181d20 25%, #21262d 50%, #181d20 75%);
+  background-size: 400% 100%;
+}
+.dark ::-webkit-scrollbar-thumb { background: #374151; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+
+/* ── Polimento do escuro: pastéis, opacidade, gradientes, bordas e textos ──
+   Tudo via color-mix ancorado em var(--surface)/var(--border-app)/var(--text-strong):
+   escurece no .dark e VOLTA ao claro dentro de .force-light automaticamente
+   (laudos/impressão preservados). Nenhum componente é tocado.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Fundos pastel (bg-*-50 / bg-*-100) → tinta escura da mesma cor. */
+.dark .bg-slate-50, .dark .bg-slate-100 { background-color: color-mix(in srgb, #64748b 10%, var(--surface)); }
+.dark .bg-zinc-50, .dark .bg-zinc-100,
+.dark .bg-neutral-50, .dark .bg-neutral-100,
+.dark .bg-stone-50, .dark .bg-stone-100 { background-color: color-mix(in srgb, #737373 9%, var(--surface)); }
+.dark .bg-red-50, .dark .bg-red-100 { background-color: color-mix(in srgb, #ef4444 14%, var(--surface)); }
+.dark .bg-orange-50, .dark .bg-orange-100 { background-color: color-mix(in srgb, #f97316 14%, var(--surface)); }
+.dark .bg-amber-50, .dark .bg-amber-100 { background-color: color-mix(in srgb, #f59e0b 14%, var(--surface)); }
+.dark .bg-yellow-50, .dark .bg-yellow-100 { background-color: color-mix(in srgb, #eab308 14%, var(--surface)); }
+.dark .bg-lime-50, .dark .bg-lime-100 { background-color: color-mix(in srgb, #84cc16 14%, var(--surface)); }
+.dark .bg-green-50, .dark .bg-green-100 { background-color: color-mix(in srgb, #22c55e 14%, var(--surface)); }
+.dark .bg-emerald-50, .dark .bg-emerald-100 { background-color: color-mix(in srgb, #10b981 14%, var(--surface)); }
+.dark .bg-teal-50, .dark .bg-teal-100 { background-color: color-mix(in srgb, #14b8a6 14%, var(--surface)); }
+.dark .bg-cyan-50, .dark .bg-cyan-100 { background-color: color-mix(in srgb, #06b6d4 14%, var(--surface)); }
+.dark .bg-sky-50, .dark .bg-sky-100 { background-color: color-mix(in srgb, #0ea5e9 14%, var(--surface)); }
+.dark .bg-blue-50, .dark .bg-blue-100 { background-color: color-mix(in srgb, #3b82f6 14%, var(--surface)); }
+.dark .bg-indigo-50, .dark .bg-indigo-100 { background-color: color-mix(in srgb, #6366f1 14%, var(--surface)); }
+.dark .bg-violet-50, .dark .bg-violet-100 { background-color: color-mix(in srgb, #8b5cf6 14%, var(--surface)); }
+.dark .bg-purple-50, .dark .bg-purple-100 { background-color: color-mix(in srgb, #a855f7 14%, var(--surface)); }
+.dark .bg-fuchsia-50, .dark .bg-fuchsia-100 { background-color: color-mix(in srgb, #d946ef 14%, var(--surface)); }
+.dark .bg-pink-50, .dark .bg-pink-100 { background-color: color-mix(in srgb, #ec4899 14%, var(--surface)); }
+.dark .bg-rose-50, .dark .bg-rose-100 { background-color: color-mix(in srgb, #f43f5e 14%, var(--surface)); }
+.dark .bg-verde-light { background-color: color-mix(in srgb, #0284c7 16%, var(--surface)); }
+
+/* Fundos brancos com OPACIDADE alta (cartões/toolbars translúcidas). Os de
+   opacidade baixa (≤/60, brilhos sobre o verde) são deixados de propósito. */
+.dark .bg-white\/95, .dark .bg-white\/90, .dark .bg-white\/85,
+.dark .bg-white\/80, .dark .bg-white\/75, .dark .bg-white\/70 {
+  background-color: color-mix(in srgb, var(--surface) 82%, transparent);
+}
+
+/* Gradientes que partem/terminam em branco/cinza claro. */
+.dark .from-white { --tw-gradient-from: var(--surface); }
+.dark .via-white { --tw-gradient-via: var(--surface); }
+.dark .to-white { --tw-gradient-to: var(--surface); }
+.dark .from-gray-50, .dark .from-gray-100 { --tw-gradient-from: var(--surface-2); }
+.dark .to-gray-50, .dark .to-gray-100 { --tw-gradient-to: var(--surface-2); }
+
+/* Bordas pastel → adaptam à mesma cor (mistura com a borda do tema). */
+.dark .border-red-100, .dark .border-red-200, .dark .border-red-300 { border-color: color-mix(in srgb, #ef4444 34%, var(--border-app)); }
+.dark .border-orange-100, .dark .border-orange-200, .dark .border-orange-300 { border-color: color-mix(in srgb, #f97316 34%, var(--border-app)); }
+.dark .border-amber-100, .dark .border-amber-200, .dark .border-amber-300 { border-color: color-mix(in srgb, #f59e0b 34%, var(--border-app)); }
+.dark .border-yellow-100, .dark .border-yellow-200 { border-color: color-mix(in srgb, #eab308 34%, var(--border-app)); }
+.dark .border-lime-100, .dark .border-lime-200 { border-color: color-mix(in srgb, #84cc16 34%, var(--border-app)); }
+.dark .border-green-100, .dark .border-green-200, .dark .border-green-300 { border-color: color-mix(in srgb, #22c55e 34%, var(--border-app)); }
+.dark .border-emerald-100, .dark .border-emerald-200, .dark .border-emerald-300 { border-color: color-mix(in srgb, #10b981 34%, var(--border-app)); }
+.dark .border-teal-100, .dark .border-teal-200 { border-color: color-mix(in srgb, #14b8a6 34%, var(--border-app)); }
+.dark .border-cyan-100, .dark .border-cyan-200 { border-color: color-mix(in srgb, #06b6d4 34%, var(--border-app)); }
+.dark .border-sky-100, .dark .border-sky-200, .dark .border-sky-300 { border-color: color-mix(in srgb, #0ea5e9 34%, var(--border-app)); }
+.dark .border-blue-100, .dark .border-blue-200, .dark .border-blue-300 { border-color: color-mix(in srgb, #3b82f6 34%, var(--border-app)); }
+.dark .border-indigo-100, .dark .border-indigo-200 { border-color: color-mix(in srgb, #6366f1 34%, var(--border-app)); }
+.dark .border-violet-100, .dark .border-violet-200 { border-color: color-mix(in srgb, #8b5cf6 34%, var(--border-app)); }
+.dark .border-purple-100, .dark .border-purple-200 { border-color: color-mix(in srgb, #a855f7 34%, var(--border-app)); }
+.dark .border-pink-100, .dark .border-pink-200 { border-color: color-mix(in srgb, #ec4899 34%, var(--border-app)); }
+.dark .border-rose-100, .dark .border-rose-200 { border-color: color-mix(in srgb, #f43f5e 34%, var(--border-app)); }
+.dark .border-verde-border { border-color: color-mix(in srgb, #0284c7 34%, var(--border-app)); }
+
+/* Textos coloridos MUITO escuros (700/800/900) → clareiam no escuro e voltam
+   ao tom escuro dentro de .force-light (âncora = var(--text-strong)). */
+.dark .text-red-700, .dark .text-red-800, .dark .text-red-900 { color: color-mix(in srgb, #ef4444 62%, var(--text-strong)); }
+.dark .text-orange-700, .dark .text-orange-800 { color: color-mix(in srgb, #f97316 62%, var(--text-strong)); }
+.dark .text-amber-700, .dark .text-amber-800, .dark .text-amber-900 { color: color-mix(in srgb, #f59e0b 66%, var(--text-strong)); }
+.dark .text-yellow-700, .dark .text-yellow-800 { color: color-mix(in srgb, #eab308 66%, var(--text-strong)); }
+.dark .text-lime-700, .dark .text-lime-800 { color: color-mix(in srgb, #84cc16 66%, var(--text-strong)); }
+.dark .text-green-700, .dark .text-green-800, .dark .text-green-900 { color: color-mix(in srgb, #22c55e 62%, var(--text-strong)); }
+.dark .text-emerald-700, .dark .text-emerald-800, .dark .text-emerald-900 { color: color-mix(in srgb, #10b981 62%, var(--text-strong)); }
+.dark .text-teal-700, .dark .text-teal-800 { color: color-mix(in srgb, #14b8a6 62%, var(--text-strong)); }
+.dark .text-cyan-700, .dark .text-cyan-800 { color: color-mix(in srgb, #06b6d4 62%, var(--text-strong)); }
+.dark .text-sky-700, .dark .text-sky-800 { color: color-mix(in srgb, #0ea5e9 62%, var(--text-strong)); }
+.dark .text-blue-700, .dark .text-blue-800, .dark .text-blue-900 { color: color-mix(in srgb, #3b82f6 62%, var(--text-strong)); }
+.dark .text-indigo-700, .dark .text-indigo-800, .dark .text-indigo-900 { color: color-mix(in srgb, #6366f1 62%, var(--text-strong)); }
+.dark .text-violet-700, .dark .text-violet-800 { color: color-mix(in srgb, #8b5cf6 62%, var(--text-strong)); }
+.dark .text-purple-700, .dark .text-purple-800, .dark .text-purple-900 { color: color-mix(in srgb, #a855f7 62%, var(--text-strong)); }
+.dark .text-pink-700, .dark .text-pink-800 { color: color-mix(in srgb, #ec4899 62%, var(--text-strong)); }
+.dark .text-rose-700, .dark .text-rose-800 { color: color-mix(in srgb, #f43f5e 62%, var(--text-strong)); }
+/* Verde da marca no texto → clareia no escuro (fica legível), volta ao escuro no force-light. */
+.dark .text-verde-primary, .dark .text-verde-accent, .dark .text-verde-dark { color: color-mix(in srgb, #38bdf8 58%, var(--text-strong)); }
+
+/* ── Varredura 2026-07-27: os 4 buracos que sobraram no shim ──────────────
+   Mesma regra de sempre: color-mix ancorado nas variáveis do tema, então o
+   .force-light (laudos/impressão) desfaz tudo isto sozinho.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* (a) MODIFICADOR DE OPACIDADE. O Tailwind emite `bg-gray-50/60` como uma
+   classe PRÓPRIA, então `.dark .bg-gray-50` não a alcançava: a barra ficava
+   clara enquanto o texto escurecia (era a causa dos cabeçalhos lavados).
+   Casar por atributo cobre qualquer valor de opacidade, inclusive os que
+   ainda nem existem. O espaço em [class*=" x/"] ancora no INÍCIO do token:
+   sem ele, "hover:bg-gray-50/50" casaria e o hover vazaria para o estado
+   normal. Por isso o :hover tem regra própria, logo abaixo. */
+.dark [class^="bg-white/"], .dark [class*=" bg-white/"],
+.dark [class^="bg-gray-50/"], .dark [class*=" bg-gray-50/"],
+.dark [class^="bg-slate-50/"], .dark [class*=" bg-slate-50/"] {
+  background-color: color-mix(in srgb, var(--surface-2) 70%, transparent);
+}
+.dark [class^="bg-gray-100/"], .dark [class*=" bg-gray-100/"],
+.dark [class^="bg-gray-200/"], .dark [class*=" bg-gray-200/"] {
+  background-color: color-mix(in srgb, var(--surface-3) 70%, transparent);
+}
+.dark [class*="hover:bg-white/"]:hover,
+.dark [class*="hover:bg-gray-50/"]:hover {
+  background-color: color-mix(in srgb, var(--surface-2) 70%, transparent);
+}
+
+/* Pastéis coloridos com opacidade (bg-red-50/30, bg-amber-50/40…) → mesma
+   tinta do pastel sólido, um pouco mais fraca (imita a translucidez). */
+.dark [class^="bg-red-50/"], .dark [class*=" bg-red-50/"], .dark [class*="hover:bg-red-50/"]:hover { background-color: color-mix(in srgb, #ef4444 9%, var(--surface)); }
+.dark [class^="bg-orange-50/"], .dark [class*=" bg-orange-50/"], .dark [class*="hover:bg-orange-50/"]:hover { background-color: color-mix(in srgb, #f97316 9%, var(--surface)); }
+.dark [class^="bg-amber-50/"], .dark [class*=" bg-amber-50/"], .dark [class*="hover:bg-amber-50/"]:hover { background-color: color-mix(in srgb, #f59e0b 9%, var(--surface)); }
+.dark [class^="bg-yellow-50/"], .dark [class*=" bg-yellow-50/"] { background-color: color-mix(in srgb, #eab308 9%, var(--surface)); }
+.dark [class^="bg-green-50/"], .dark [class*=" bg-green-50/"] { background-color: color-mix(in srgb, #22c55e 9%, var(--surface)); }
+.dark [class^="bg-emerald-50/"], .dark [class*=" bg-emerald-50/"], .dark [class*="hover:bg-emerald-50/"]:hover { background-color: color-mix(in srgb, #10b981 9%, var(--surface)); }
+.dark [class^="bg-teal-50/"], .dark [class*=" bg-teal-50/"], .dark [class*="hover:bg-teal-50/"]:hover { background-color: color-mix(in srgb, #14b8a6 9%, var(--surface)); }
+.dark [class^="bg-sky-50/"], .dark [class*=" bg-sky-50/"] { background-color: color-mix(in srgb, #0ea5e9 9%, var(--surface)); }
+.dark [class^="bg-blue-50/"], .dark [class*=" bg-blue-50/"] { background-color: color-mix(in srgb, #3b82f6 9%, var(--surface)); }
+.dark [class^="bg-indigo-50/"], .dark [class*=" bg-indigo-50/"] { background-color: color-mix(in srgb, #6366f1 9%, var(--surface)); }
+.dark [class^="bg-purple-50/"], .dark [class*=" bg-purple-50/"] { background-color: color-mix(in srgb, #a855f7 9%, var(--surface)); }
+.dark [class^="bg-pink-50/"], .dark [class*=" bg-pink-50/"] { background-color: color-mix(in srgb, #ec4899 9%, var(--surface)); }
+.dark [class^="bg-verde-light/"], .dark [class*=" bg-verde-light/"] { background-color: color-mix(in srgb, #0284c7 11%, var(--surface)); }
+
+/* (b) CINZAS 200/300 — só 50/100 estavam cobertos. São trilhos de barra de
+   progresso, skeletons, chips e estados desabilitados: no escuro ficavam
+   como manchas claras. */
+.dark .bg-gray-200 { background-color: var(--surface-4); }
+.dark .bg-gray-300 { background-color: var(--surface-5); }
+.dark .hover\:bg-gray-200:hover { background-color: var(--surface-5); }
+.dark .border-gray-50 { border-color: var(--border-app); }
+
+/* (c) TEXTOS COLORIDOS 500/600 — o shim só clareava 700/800/900. Estes são o
+   grosso dos textos de erro/alerta/link do painel e no fundo escuro ficavam
+   abaixo do mínimo de contraste (ex.: text-red-600 dava ~3,6:1, o piso é
+   4,5:1). Mistura menor que a dos 700+ porque já partem de um tom claro. */
+.dark .text-red-500, .dark .text-red-600 { color: color-mix(in srgb, #ef4444 70%, var(--text-strong)); }
+.dark .text-orange-500, .dark .text-orange-600 { color: color-mix(in srgb, #f97316 70%, var(--text-strong)); }
+.dark .text-amber-500, .dark .text-amber-600 { color: color-mix(in srgb, #f59e0b 74%, var(--text-strong)); }
+.dark .text-yellow-500, .dark .text-yellow-600 { color: color-mix(in srgb, #eab308 74%, var(--text-strong)); }
+.dark .text-lime-500, .dark .text-lime-600 { color: color-mix(in srgb, #84cc16 74%, var(--text-strong)); }
+.dark .text-green-500, .dark .text-green-600 { color: color-mix(in srgb, #22c55e 70%, var(--text-strong)); }
+.dark .text-emerald-500, .dark .text-emerald-600 { color: color-mix(in srgb, #10b981 70%, var(--text-strong)); }
+.dark .text-teal-500, .dark .text-teal-600 { color: color-mix(in srgb, #14b8a6 70%, var(--text-strong)); }
+.dark .text-cyan-500, .dark .text-cyan-600 { color: color-mix(in srgb, #06b6d4 70%, var(--text-strong)); }
+.dark .text-sky-500, .dark .text-sky-600 { color: color-mix(in srgb, #0ea5e9 70%, var(--text-strong)); }
+.dark .text-blue-500, .dark .text-blue-600 { color: color-mix(in srgb, #3b82f6 70%, var(--text-strong)); }
+.dark .text-indigo-500, .dark .text-indigo-600 { color: color-mix(in srgb, #6366f1 70%, var(--text-strong)); }
+.dark .text-violet-500, .dark .text-violet-600 { color: color-mix(in srgb, #8b5cf6 70%, var(--text-strong)); }
+.dark .text-purple-500, .dark .text-purple-600 { color: color-mix(in srgb, #a855f7 70%, var(--text-strong)); }
+.dark .text-pink-500, .dark .text-pink-600 { color: color-mix(in srgb, #ec4899 70%, var(--text-strong)); }
+.dark .text-rose-500, .dark .text-rose-600 { color: color-mix(in srgb, #f43f5e 70%, var(--text-strong)); }
+.dark .text-slate-500, .dark .text-slate-600 { color: var(--text-muted); }
+
+/* (d) GRADIENTES PASTEL — só os que partiam de branco/cinza estavam cobertos. */
+.dark .from-purple-50, .dark .from-purple-100, .dark .hover\:from-purple-100:hover { --tw-gradient-from: color-mix(in srgb, #a855f7 12%, var(--surface)); }
+.dark .to-pink-50, .dark .to-pink-100, .dark .hover\:to-pink-100:hover { --tw-gradient-to: color-mix(in srgb, #ec4899 12%, var(--surface)); }
+.dark .from-slate-50, .dark .from-slate-100 { --tw-gradient-from: var(--surface-2); }
+.dark .from-emerald-50, .dark .from-green-50 { --tw-gradient-from: color-mix(in srgb, #10b981 12%, var(--surface)); }
+.dark .to-emerald-50, .dark .to-green-50 { --tw-gradient-to: color-mix(in srgb, #10b981 12%, var(--surface)); }
+.dark .from-amber-50, .dark .from-orange-50 { --tw-gradient-from: color-mix(in srgb, #f59e0b 12%, var(--surface)); }
+.dark .to-amber-50, .dark .to-orange-50 { --tw-gradient-to: color-mix(in srgb, #f59e0b 12%, var(--surface)); }
+.dark .from-blue-50, .dark .from-sky-50 { --tw-gradient-from: color-mix(in srgb, #3b82f6 12%, var(--surface)); }
+.dark .to-blue-50, .dark .to-sky-50 { --tw-gradient-to: color-mix(in srgb, #3b82f6 12%, var(--surface)); }
+
+/* Variáveis de gráfico (anel de saúde etc.) que flipam com o tema. */
+:root { --ring-track: #eceae4; --ring-empty: #cbd5e1; }
+.dark { --ring-track: #262a30; --ring-empty: #3b434a; }
+.force-light { --ring-track: #eceae4; --ring-empty: #cbd5e1; }
+
+/* ── Pares claro/escuro para cores que estavam CRAVADAS em style inline ──────
+   Aqui NÃO uso color-mix de propósito: o valor do tema claro é o hexadecimal
+   exato que já está em produção, então quem nunca ligar o escuro não vê
+   diferença nenhuma. O .force-light repete o claro, então laudo e impressão
+   também ficam iguais.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --grafico-cursor: #f0fdf4;   /* realce da barra sob o cursor */
+  --grafico-grade:  #f5f5f5;   /* linhas de grade do CartesianGrid */
+  --card-slate-bg:  #f1f5f9;   /* cards numéricos do relatório */
+  --card-slate-cor: #475569;
+  --psi-faixa-bg:  #d4edda;   /* faixas de seção do psicossocial */
+  --psi-label-bg:  #f0f9f4;   /* célula de rótulo das tabelas */
+  --psi-verde: #1e4d28;
+  --esteira-fade:   #f6f5f2;   /* degradê nas pontas do kanban */
+  /* avisos e badges — o valor claro e o hexadecimal exato de hoje */
+  --toast-ok-bg: #e8f5e9;  --toast-ok-tx: #1e4d28;  --toast-ok-bd: #c8e6c9;
+  --toast-erro-bg: #fee2e2;  --toast-erro-tx: #7f1d1d;  --toast-erro-bd: #fca5a5;
+  --qui-sim-bg: #dcfce7;  --qui-sim-tx: #15803d;  --qui-sim-bd: #86efac;
+  --qui-nao-bg: #fee2e2;  --qui-nao-tx: #b91c1c;  --qui-nao-bd: #fca5a5;
+  --qui-parc-bg: #fef9c3;  --qui-parc-tx: #854d0e;  --qui-parc-bd: #fde68a;
+}
+.dark {
+  --grafico-cursor: #1b2229;
+  --grafico-grade:  #252930;
+  --card-slate-bg:  #232c30;
+  --card-slate-cor: #aebfc7;
+  --psi-faixa-bg:  #1a3327;
+  --psi-label-bg:  #16281f;
+  --psi-verde: #8fd0ae;
+  --esteira-fade:   #0d1215;
+  --toast-ok-bg: #112b21;  --toast-ok-tx: #7cbda8;  --toast-ok-bd: #194c3a;
+  --toast-erro-bg: #33221e;  --toast-erro-tx: #ef9897;  --toast-erro-bd: #6a3732;
+  --qui-sim-bg: #163522;  --qui-sim-tx: #78d89b;  --qui-sim-bd: #25633b;
+  --qui-nao-bg: #33221e;  --qui-nao-tx: #ef7a79;  --qui-nao-bd: #6a3732;
+  --qui-parc-bg: #3b3815;  --qui-parc-tx: #ecda96;  --qui-parc-bd: #695d1e;
+}
+.force-light {
+  --grafico-cursor: #f0fdf4;
+  --grafico-grade:  #f5f5f5;
+  --card-slate-bg:  #f1f5f9;
+  --card-slate-cor: #475569;
+  --psi-faixa-bg:  #d4edda;
+  --psi-label-bg:  #f0f9f4;
+  --psi-verde: #1e4d28;
+  --esteira-fade:   #f6f5f2;
+  --toast-ok-bg: #e8f5e9;  --toast-ok-tx: #1e4d28;  --toast-ok-bd: #c8e6c9;
+  --toast-erro-bg: #fee2e2;  --toast-erro-tx: #7f1d1d;  --toast-erro-bd: #fca5a5;
+  --qui-sim-bg: #dcfce7;  --qui-sim-tx: #15803d;  --qui-sim-bd: #86efac;
+  --qui-nao-bg: #fee2e2;  --qui-nao-tx: #b91c1c;  --qui-nao-bd: #fca5a5;
+  --qui-parc-bg: #fef9c3;  --qui-parc-tx: #854d0e;  --qui-parc-bd: #fde68a;
 }
 
 html,
@@ -26,7 +357,7 @@ body {
 
 body {
   background-color: var(--color-app-bg);
-  color: #111827;
+  color: var(--text-strong);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -265,9 +596,9 @@ select:focus {
 /* TipTap rich text editor — estilos visuais do conteudo */
 .tiptap-conteudo:focus { outline: none; }
 .tiptap-conteudo p { margin: 0 0 0.5em 0; }
-.tiptap-conteudo h1 { font-size: 1.5rem; font-weight: 700; color: #1e4d28; margin: 0.6em 0 0.3em; }
-.tiptap-conteudo h2 { font-size: 1.25rem; font-weight: 700; color: #1e4d28; margin: 0.5em 0 0.3em; }
-.tiptap-conteudo h3 { font-size: 1.1rem; font-weight: 700; color: #1e4d28; margin: 0.4em 0 0.2em; }
+.tiptap-conteudo h1 { font-size: 1.5rem; font-weight: 700; color: var(--tiptap-heading); margin: 0.6em 0 0.3em; }
+.tiptap-conteudo h2 { font-size: 1.25rem; font-weight: 700; color: var(--tiptap-heading); margin: 0.5em 0 0.3em; }
+.tiptap-conteudo h3 { font-size: 1.1rem; font-weight: 700; color: var(--tiptap-heading); margin: 0.4em 0 0.2em; }
 .tiptap-conteudo ul { list-style: disc; margin: 0 0 0.5em 1.5em; }
 .tiptap-conteudo ol { list-style: decimal; margin: 0 0 0.5em 1.5em; }
 .tiptap-conteudo li { margin: 0.1em 0; }
@@ -275,7 +606,7 @@ select:focus {
 .tiptap-conteudo em { font-style: italic; }
 .tiptap-conteudo u { text-decoration: underline; }
 .tiptap-conteudo s { text-decoration: line-through; }
-.tiptap-conteudo a { color: #0ea5e9; text-decoration: underline; }
+.tiptap-conteudo a { color: var(--tiptap-link); text-decoration: underline; }
 .tiptap-conteudo img { max-width: 100%; height: auto; border-radius: 4px; margin: 0.5em 0; }
 .tiptap-conteudo table {
   border-collapse: collapse;
@@ -293,7 +624,7 @@ select:focus {
 }
 .tiptap-conteudo th {
   background: #d4edda;
-  color: #1e4d28;
+  color: var(--tiptap-heading);
   font-weight: 700;
 }
 .tiptap-conteudo .selectedCell {
@@ -393,6 +724,71 @@ select:focus {
   }
 }
 
+
+/* ════════════════════════════════════════════════════════════════════════
+   SIDEBAR RECOLHIDA ("minimizador") — camada REVERSÍVEL.
+
+   Ligada por data-sidebar="mini" no <html> (useSidebarMini + script de
+   pré-hidratação em app/layout.tsx). Apagar este bloco devolve a sidebar
+   fixa de 220px de sempre; a marcação em SidebarShell.tsx é IDÊNTICA nos
+   dois estados (por isso não há divergência de hidratação nem flash).
+
+   Só vale em @media screen md+ — na impressão e no celular nada muda: o
+   print:pl-0 dos layouts continua valendo e o menu do celular segue gaveta.
+   ════════════════════════════════════════════════════════════════════════ */
+:root { --sidebar-w: 220px; --sidebar-w-mini: 60px; }
+
+@media screen and (min-width: 768px) {
+  .sidebar-shell,
+  .md\:pl-\[220px\] {
+    transition: width 180ms cubic-bezier(.2, .7, .3, 1),
+                padding-left 180ms cubic-bezier(.2, .7, .3, 1);
+  }
+
+  html[data-sidebar="mini"] .sidebar-shell { width: var(--sidebar-w-mini); }
+  /* Compensação do conteúdo: os layouts dos módulos usam md:pl-[220px]. */
+  html[data-sidebar="mini"] .md\:pl-\[220px\] { padding-left: var(--sidebar-w-mini); }
+
+  /* Some com tudo que é texto; sobram os ícones, centralizados. */
+  html[data-sidebar="mini"] .sidebar-label,
+  html[data-sidebar="mini"] .sidebar-secao-titulo { display: none; }
+  html[data-sidebar="mini"] .sidebar-item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  html[data-sidebar="mini"] .sidebar-item:hover { transform: none; }
+  html[data-sidebar="mini"] .sidebar-logo { justify-content: center; padding-inline: 0; }
+  html[data-sidebar="mini"] .sidebar-nav { overflow-x: hidden; }
+
+  /* Seta do botão: mostra a que corresponde ao estado atual. */
+  .sidebar-seta-abrir { display: none; }
+  html[data-sidebar="mini"] .sidebar-seta-abrir { display: block; }
+  html[data-sidebar="mini"] .sidebar-seta-fechar { display: none; }
+
+  /* Dica flutuante com o nome do item (só faz sentido recolhida). */
+  html[data-sidebar="mini"] .sidebar-item[data-label]:hover::after {
+    content: attr(data-label);
+    position: absolute;
+    left: calc(100% + 8px);
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 50;
+    white-space: nowrap;
+    border-radius: 6px;
+    background: #0d2016;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #fff;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-shell, .md\:pl-\[220px\] { transition: none; }
+}
 /* Scrollbar discreta */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

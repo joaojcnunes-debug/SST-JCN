@@ -17,12 +17,27 @@ export default function StorageImg({
   alt = "",
   className,
   fallback = null,
+  loading,
+  width,
+  height,
 }: {
   stored: string | null | undefined;
   bucket?: string;
   alt?: string;
   className?: string;
   fallback?: React.ReactNode;
+  /**
+   * `"lazy"` só baixa a imagem quando ela chega perto da viewport. OPCIONAL de
+   * propósito: sem este parâmetro o componente se comporta exatamente como
+   * sempre se comportou, e as ~30 telas que já o usam não mudam em nada.
+   * Ligado hoje só na listagem do inventário, onde há dezenas de imagens fora
+   * da tela sendo baixadas à toa.
+   */
+  loading?: "lazy" | "eager";
+  /** Dimensão intrínseca, em px. Serve para o navegador reservar o espaço antes
+   *  de a imagem chegar e não empurrar o layout (reflow) quando ela chega. */
+  width?: number;
+  height?: number;
 }) {
   const path = extrairPathStorage(stored, bucket);
   const { data: assinada } = useSignedUrl(stored, bucket); // desabilitado se não houver path
@@ -32,5 +47,15 @@ export default function StorageImg({
   // path do bucket → assinada (fallback p/ o stored enquanto carrega); senão, direto.
   const src = path ? (assinada ?? stored) : stored;
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src={src} alt={alt} className={className} referrerPolicy="no-referrer" />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      referrerPolicy="no-referrer"
+      loading={loading}
+      width={width}
+      height={height}
+    />
+  );
 }

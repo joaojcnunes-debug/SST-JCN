@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { ehRenovacao } from "@/lib/dashboard/inspecoes";
 import type { FatiaStatus } from "@/components/visao-geral/GraficosVisaoGeral";
 
 /** Distribuição das inspeções por status (exclui deletadas), para o donut. */
@@ -13,11 +14,13 @@ export function useInspecoesStatus() {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb
         .from("inspecoes")
-        .select("status")
+        .select("status, tipo_criacao")
         .neq("status", "DELETADA");
       if (error) throw error;
       const c: Record<string, number> = {};
-      for (const r of (data ?? []) as { status: string | null }[]) {
+      for (const r of (data ?? []) as { status: string | null; tipo_criacao: string | null }[]) {
+        // Renovação de documento não é inspeção (23/09).
+        if (ehRenovacao(r.tipo_criacao)) continue;
         const s = r.status ?? "RASCUNHO";
         c[s] = (c[s] ?? 0) + 1;
       }

@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
 import ResponsavelForm from "../ResponsavelForm";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useExcluirDaInspecao } from "@/lib/hooks/useExcluirDaInspecao";
 import { fmtDataHora } from "@/lib/utils";
 import type { Responsavel } from "@/lib/supabase/types";
 
@@ -23,26 +21,16 @@ export default function ResponsaveisTab({
   responsaveis,
   readOnly,
 }: Props) {
-  const qc = useQueryClient();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Responsavel | null>(null);
   const [confirm, setConfirm] = useState<Responsavel | null>(null);
 
-  const del = useMutation({
-    mutationFn: async (r: Responsavel) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("responsaveis")
-        .delete()
-        .eq("id_responsavel", r.id_responsavel);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-      toast.success("Responsável removido");
-      setConfirm(null);
-    },
-    onError: (e: Error) => toast.error(e.message),
+  const del = useExcluirDaInspecao({
+    idInspecao,
+    tabela: "responsaveis",
+    chave: "id_responsavel",
+    colecao: "responsaveis",
+    rotulo: "Responsavel removido",
   });
 
   return (
@@ -137,7 +125,9 @@ export default function ResponsaveisTab({
         title="Excluir responsável?"
         variant="danger"
         loading={del.isPending}
-        onConfirm={() => confirm && del.mutate(confirm)}
+        onConfirm={() =>
+          confirm && del.mutate(confirm, { onSuccess: () => setConfirm(null) })
+        }
         onCancel={() => setConfirm(null)}
       />
     </div>

@@ -26,7 +26,10 @@ import {
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useCanCreate, useCanEdit, useCanDelete } from "@/lib/hooks/useUsuario";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
-import ImportarMaquinasInspecaoModal from "@/components/inventario-maquinas/ImportarMaquinasInspecaoModal";
+import ImportarMaquinasInspecaoModal from "@/components/apreciacao-maquinas/ImportarMaquinasInspecaoModal";
+import { ABAS_INVENTARIO, categoriaInventario, type AbaInventario } from "@/lib/inventario/categorias";
+import { buscar } from "@/lib/busca/texto";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { cn } from "@/lib/utils";
 import {
   STATUS_MAQUINA_LABELS,
@@ -76,6 +79,7 @@ function initialForm(m?: Maquina): MaquinaInput {
     nome: m?.nome ?? "",
     tipo: m?.tipo ?? null,
     categoria: m?.categoria ?? null,
+    categoria_inventario: m?.categoria_inventario ?? "maquinas",
     codigo_interno: m?.codigo_interno ?? null,
     tag: m?.tag ?? null,
     marca: m?.marca ?? null,
@@ -83,6 +87,7 @@ function initialForm(m?: Maquina): MaquinaInput {
     numero_serie: m?.numero_serie ?? null,
     ano_fabricacao: m?.ano_fabricacao ?? null,
     numero_patrimonio: m?.numero_patrimonio ?? null,
+    id_unidade: m?.id_unidade ?? null,
     status: m?.status ?? "OPERANTE",
     unidade: m?.unidade ?? null,
     setor: m?.setor ?? null,
@@ -90,6 +95,7 @@ function initialForm(m?: Maquina): MaquinaInput {
     area: m?.area ?? null,
     responsavel_setor: m?.responsavel_setor ?? null,
     operacao_executada: m?.operacao_executada ?? null,
+    operadores: m?.operadores ?? null,
     localizacao: m?.localizacao ?? null,
     capacidade_operacional: m?.capacidade_operacional ?? null,
     producao_estimada: m?.producao_estimada ?? null,
@@ -119,6 +125,7 @@ function initialForm(m?: Maquina): MaquinaInput {
     observacoes: m?.observacoes ?? null,
     foto_url: m?.foto_url ?? null,
     foto_storage_path: m?.foto_storage_path ?? null,
+    foto_thumb_path: m?.foto_thumb_path ?? null,
   };
 }
 
@@ -141,6 +148,15 @@ export default function RelacaoMaquinasPage() {
   const [filtroStatus, setFiltroStatus] = useState<StatusMaquina | "">("");
   const [filtroGrau, setFiltroGrau] = useState<GrauRiscoMaquina | "">("");
   const [filtroSetor, setFiltroSetor] = useState("");
+  // Esta é a relação NR-12: abre em "Máquinas". Os equipamentos de escritório e
+  // os instrumentos de medição têm tela própria no módulo Inventário — aqui eles
+  // só entravam para poluir a lista e a impressão. O filtro fica visível: dá
+  // para escolher "Todas as categorias" quando for preciso.
+  const [filtroCategoria, setFiltroCategoria] = useState<AbaInventario | "">("maquinas");
+
+  // Seleção manual para a impressão. Vazia = imprime tudo que está filtrado
+  // (comportamento de sempre); com linhas marcadas, só as marcadas saem no papel.
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
 
   // Modal form
   const [modalOpen, setModalOpen] = useState(false);
@@ -168,32 +184,86 @@ export default function RelacaoMaquinasPage() {
     return Array.from(s).sort();
   }, [maquinas]);
 
-  const filtradas = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    return maquinas.filter((m) => {
+  const { itens: filtradas, aproximado } = useMemo(() => {
+    const dosFiltros = maquinas.filter((m) => {
+      if (filtroCategoria && categoriaInventario(m) !== filtroCategoria) return false;
       if (filtroEmpresa && m.id_empresa !== filtroEmpresa) return false;
       if (filtroStatus && m.status !== filtroStatus) return false;
       if (filtroGrau && m.grau_risco !== filtroGrau) return false;
       if (filtroSetor && m.setor !== filtroSetor) return false;
-      if (!q) return true;
-      return [
+      return true;
+    });
+    // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem da relação.
+    return buscar(
+      dosFiltros,
+      busca,
+      (m) => [
         m.nome, m.tipo, m.categoria, m.codigo_interno, m.tag,
         m.marca, m.modelo, m.numero_serie, m.numero_patrimonio,
-        m.setor, m.unidade, m.area, m.finalidade,
-        empresaMap.get(m.id_empresa ?? "") ?? "",
-      ]
-        .filter(Boolean)
-        .some((v) => v!.toLowerCase().includes(q));
-    });
-  }, [maquinas, busca, filtroEmpresa, filtroStatus, filtroGrau, filtroSetor, empresaMap]);
+        m.setor, m.unidade, m.area, m.finalidade, m.operadores,
+        empresaMap.get(m.id_empresa ?? ""),
+      ],
+      { manterOrdem: true },
+    );
+  }, [maquinas, busca, filtroCategoria, filtroEmpresa, filtroStatus, filtroGrau, filtroSetor, empresaMap]);
 
-  // Stats
+  // Stats do que está listado (não do inventário inteiro: com o filtro de
+  // categoria, contar tudo mostraria 98 em cima de uma tabela de 20 linhas).
   const stats = useMemo(() => ({
-    total: maquinas.length,
-    operantes: maquinas.filter((m) => m.status === "OPERANTE").length,
-    manutencao: maquinas.filter((m) => m.status === "MANUTENCAO").length,
-    necessitaAdequacao: maquinas.filter((m) => m.necessita_adequacao_nr12 === true).length,
-  }), [maquinas]);
+    total: filtradas.length,
+    operantes: filtradas.filter((m) => m.status === "OPERANTE").length,
+    manutencao: filtradas.filter((m) => m.status === "MANUTENCAO").length,
+    necessitaAdequacao: filtradas.filter((m) => m.necessita_adequacao_nr12 === true).length,
+  }), [filtradas]);
+
+  // A seleção só vale para o que está visível: mudar o filtro não pode fazer
+  // sair no papel uma máquina que o usuário nem enxerga mais na tela.
+  const idsFiltrados = useMemo(() => filtradas.map((m) => m.id_maquina), [filtradas]);
+  const selecionadasVisiveis = useMemo(
+    () => idsFiltrados.filter((id) => selecionadas.has(id)),
+    [idsFiltrados, selecionadas]
+  );
+  const temSelecao = selecionadasVisiveis.length > 0;
+  const todasMarcadas = idsFiltrados.length > 0 && selecionadasVisiveis.length === idsFiltrados.length;
+
+  function toggleSelecao(id: string) {
+    setSelecionadas((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleTodasVisiveis() {
+    setSelecionadas((prev) => {
+      const next = new Set(prev);
+      if (todasMarcadas) idsFiltrados.forEach((id) => next.delete(id));
+      else idsFiltrados.forEach((id) => next.add(id));
+      return next;
+    });
+  }
+
+  const empresaImpressao = filtroEmpresa ? empresaMap.get(filtroEmpresa) ?? null : null;
+
+  // A relação é um entregável de UMA empresa. Sem empresa escolhida a impressão
+  // misturaria clientes — e, antes do filtro de categoria, levava junto os 76
+  // itens do patrimônio interno da JCN Consultoria (que aparecem com id_empresa nulo).
+  function handleImprimir() {
+    if (!filtroEmpresa) {
+      toast.error("Escolha a empresa antes de imprimir — a relação é um documento de um cliente só.");
+      return;
+    }
+    if (filtradas.length === 0) {
+      toast.error("Nenhuma máquina nos filtros atuais — não há o que imprimir.");
+      return;
+    }
+    window.print();
+  }
+
+  function limparSelecao() {
+    setSelecionadas(new Set());
+  }
 
   function abrirNova() {
     setEditando(null);
@@ -271,6 +341,12 @@ export default function RelacaoMaquinasPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6 print:max-w-none">
       <style>{`
+        /* Nº por contador de CSS, não pelo índice do array: linha escondida na
+           impressão (não selecionada) não incrementa, então o papel sai 1,2,3...
+           sem buracos mesmo com seleção parcial. */
+        .relacao-tabela tbody { counter-reset: linha-relacao; }
+        .relacao-tabela tbody tr { counter-increment: linha-relacao; }
+        .relacao-tabela .col-num::after { content: counter(linha-relacao); }
         @media print {
           @page { size: A4 landscape; margin: 1.5cm; }
           body { font-size: 10pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -281,8 +357,8 @@ export default function RelacaoMaquinasPage() {
       {/* Cabeçalho de impressão */}
       <RelatorioPrintHeader
         titulo="Relação de Máquinas e Equipamentos"
-        subtitulo="Atendimento NR-12 — item 1.7 alínea 'a'"
-        terciario={`Emitido em ${new Date().toLocaleDateString("pt-BR")}`}
+        subtitulo={empresaImpressao ?? "Atendimento NR-12 — item 1.7 alínea 'a'"}
+        terciario={`Atendimento NR-12 — item 1.7 alínea 'a' · Emitido em ${new Date().toLocaleDateString("pt-BR")}`}
       />
 
       {/* Topo — tela */}
@@ -299,7 +375,14 @@ export default function RelacaoMaquinasPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={handleImprimir}
+            title={
+              !filtroEmpresa
+                ? "Escolha a empresa para imprimir"
+                : temSelecao
+                  ? `Imprimir só as ${selecionadasVisiveis.length} máquinas marcadas`
+                  : "Imprimir a relação inteira desta empresa"
+            }
             className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             <Printer className="size-4" /> Imprimir / PDF
@@ -327,7 +410,7 @@ export default function RelacaoMaquinasPage() {
 
       {/* Stats */}
       <div className="no-print grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Total cadastrado" valor={stats.total} />
+        <StatCard label="Itens listados" valor={stats.total} />
         <StatCard label="Em operação" valor={stats.operantes} />
         <StatCard label="Em manutenção" valor={stats.manutencao} />
         <StatCard label="Necessita adequação NR-12" valor={stats.necessitaAdequacao} />
@@ -345,6 +428,16 @@ export default function RelacaoMaquinasPage() {
             className="w-full rounded-md border border-gray-300 bg-white px-9 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
           />
         </div>
+        <select
+          value={filtroCategoria}
+          onChange={(e) => setFiltroCategoria(e.target.value as AbaInventario | "")}
+          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
+        >
+          {ABAS_INVENTARIO.map((a) => (
+            <option key={a.id} value={a.id}>{a.label}</option>
+          ))}
+          <option value="">Todas as categorias</option>
+        </select>
         <select
           value={filtroEmpresa}
           onChange={(e) => setFiltroEmpresa(e.target.value)}
@@ -404,13 +497,28 @@ export default function RelacaoMaquinasPage() {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-          <table className="min-w-full text-sm">
+          <AvisoBuscaAproximada aproximado={aproximado} busca={busca} total={filtradas.length} className="m-3 print:hidden" />
+          <table className="relacao-tabela min-w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+                <th className="px-2 py-2 no-print">
+                  <input
+                    type="checkbox"
+                    checked={todasMarcadas}
+                    onChange={toggleTodasVisiveis}
+                    title="Marcar / desmarcar todas as linhas listadas"
+                    className="size-3.5 accent-orange-600"
+                  />
+                </th>
+                <th className="px-2 py-2 text-right">Nº</th>
                 <th className="px-3 py-2">Código / TAG</th>
                 <th className="px-3 py-2">Máquina / Tipo</th>
                 <th className="px-3 py-2">Fabricante / Modelo</th>
+                <th className="px-3 py-2">Série</th>
+                <th className="px-3 py-2">Ano</th>
+                <th className="px-3 py-2">Cap.</th>
                 <th className="px-3 py-2">Empresa / Setor</th>
+                <th className="px-3 py-2">Operadores</th>
                 <th className="px-3 py-2">Finalidade</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Grau de Risco</th>
@@ -419,7 +527,25 @@ export default function RelacaoMaquinasPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtradas.map((m, idx) => (
-                <tr key={m.id_maquina} className={cn("hover:bg-gray-50", idx % 2 === 1 && "bg-gray-50/40")}>
+                <tr
+                  key={m.id_maquina}
+                  className={cn(
+                    "hover:bg-gray-50",
+                    idx % 2 === 1 && "bg-gray-50/40",
+                    // Com seleção ativa, as não marcadas somem só no papel.
+                    temSelecao && !selecionadas.has(m.id_maquina) && "print:hidden"
+                  )}
+                >
+                  <td className="px-2 py-2 no-print">
+                    <input
+                      type="checkbox"
+                      checked={selecionadas.has(m.id_maquina)}
+                      onChange={() => toggleSelecao(m.id_maquina)}
+                      title="Incluir esta máquina na impressão"
+                      className="size-3.5 accent-orange-600"
+                    />
+                  </td>
+                  <td className="col-num px-2 py-2 text-right text-xs font-semibold text-gray-500" />
                   <td className="px-3 py-2">
                     <p className="font-mono text-xs text-gray-700">{m.codigo_interno || "—"}</p>
                     {m.tag && <p className="text-[11px] text-orange-600 font-medium">TAG: {m.tag}</p>}
@@ -433,12 +559,21 @@ export default function RelacaoMaquinasPage() {
                   <td className="px-3 py-2">
                     <p className="text-gray-700">{m.marca || "—"}</p>
                     {m.modelo && <p className="text-[11px] text-gray-500">{m.modelo}</p>}
-                    {m.ano_fabricacao && <p className="text-[11px] text-gray-400">Ano: {m.ano_fabricacao}</p>}
+                  </td>
+                  <td className="px-3 py-2">
+                    <p className="font-mono text-xs text-gray-700">{m.numero_serie || "—"}</p>
+                  </td>
+                  <td className="px-3 py-2 text-gray-700">{m.ano_fabricacao || "—"}</td>
+                  <td className="max-w-[140px] px-3 py-2">
+                    <p className="text-[11px] text-gray-700">{m.capacidade_operacional || "—"}</p>
                   </td>
                   <td className="px-3 py-2">
                     <p className="text-gray-700">{m.id_empresa ? (empresaMap.get(m.id_empresa) ?? "—") : "JCN Consultoria"}</p>
                     {m.setor && <p className="text-[11px] text-gray-500">{m.setor}</p>}
                     {m.unidade && <p className="text-[11px] text-gray-400">{m.unidade}</p>}
+                  </td>
+                  <td className="max-w-[180px] px-3 py-2">
+                    <p className="text-[11px] text-gray-600">{m.operadores || "—"}</p>
                   </td>
                   <td className="max-w-[180px] px-3 py-2">
                     <p className="line-clamp-2 text-[11px] text-gray-600">{m.finalidade || "—"}</p>
@@ -516,9 +651,26 @@ export default function RelacaoMaquinasPage() {
               ))}
             </tbody>
           </table>
-          <div className="border-t border-gray-100 px-4 py-2 text-xs text-gray-500">
-            {filtradas.length} {filtradas.length === 1 ? "máquina" : "máquinas"} exibidas
-            {filtradas.length !== maquinas.length && ` de ${maquinas.length} total`}
+          <div className="no-print flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 px-4 py-2 text-xs text-gray-500">
+            <span>
+              {filtradas.length} {filtradas.length === 1 ? "máquina" : "máquinas"} exibidas
+              {filtradas.length !== maquinas.length && ` de ${maquinas.length} total`}
+            </span>
+            {temSelecao ? (
+              <span className="flex items-center gap-2 font-semibold text-orange-700">
+                A impressão sairá com {selecionadasVisiveis.length}{" "}
+                {selecionadasVisiveis.length === 1 ? "máquina marcada" : "máquinas marcadas"}
+                <button
+                  type="button"
+                  onClick={limparSelecao}
+                  className="rounded border border-orange-300 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700 hover:bg-orange-50"
+                >
+                  Limpar seleção
+                </button>
+              </span>
+            ) : (
+              <span>Sem nada marcado, a impressão sai com a lista inteira acima.</span>
+            )}
           </div>
         </div>
       )}
@@ -654,6 +806,9 @@ export default function RelacaoMaquinasPage() {
                   </Campo>
                   <Campo label="Responsável pelo setor">
                     <input type="text" value={form.responsavel_setor ?? ""} onChange={(e) => setF("responsavel_setor", e.target.value || null)} className={INPUT_CLASS} />
+                  </Campo>
+                  <Campo label="Operadores">
+                    <input type="text" value={form.operadores ?? ""} onChange={(e) => setF("operadores", e.target.value || null)} className={INPUT_CLASS} placeholder="Nomes separados por vírgula" />
                   </Campo>
                   <Campo label="Localização física">
                     <input type="text" value={form.localizacao ?? ""} onChange={(e) => setF("localizacao", e.target.value || null)} className={INPUT_CLASS} placeholder="Ex: Galpão B, posição 12" />

@@ -1,26 +1,9 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import ModuleTopbar from "./ModuleTopbar";
 
-const TITLES: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/empresas": "Empresas",
-  "/inspecoes": "Inspeções",
-  "/inspecoes/nova": "Nova Inspeção",
-  "/relatorios": "Relatórios",
-};
-
-function deriveTitle(pathname: string): string {
-  if (TITLES[pathname]) return TITLES[pathname];
-  if (pathname.startsWith("/inspecoes/") && pathname.endsWith("/relatorio"))
-    return "Relatório de Inspeção";
-  if (pathname.startsWith("/inspecoes/")) return "Editor de Inspeção";
-  if (pathname.startsWith("/empresas/")) return "Detalhes da Empresa";
-  return "SST JCN Consultoria";
-}
-
+// Casca fina das rotas que nao tem layout de modulo proprio. A barra monta a
+// trilha sozinha a partir do pathname, entao aqui nao ha nada a calcular.
 export default function Topbar() {
-  const pathname = usePathname();
-  return <ModuleTopbar title={deriveTitle(pathname)} />;
+  return <ModuleTopbar />;
 }

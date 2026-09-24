@@ -7,7 +7,11 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import { PERGUNTAS_DEFAULT } from "@/lib/aet/perguntas-default";
+import { mesclarChecklist, paraOBanco, type ChecklistLinhaBanco } from "@/lib/aet/checklist";
 import type { Aet13FatorConfig, Aet13FatorPergunta, Aet13FatorSemaforo, AetCargo, AetChecklist, AetChecklistPergunta, AetLaudoFatorPsi, AetLaudoQpsMeta, AetLaudoQpsResposta, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, RespostaChecklist, StatusAET, ZonaPsi } from "@/lib/supabase/types";
+import { gravar, type ImagemPendente } from "@/lib/offline/gravar";
+import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoes";
+import { ehErroDeRede } from "@/lib/offline/rede";
 
 function normalizarCargos(raw: unknown): AetCargo[] {
   if (Array.isArray(raw))
@@ -92,15 +96,34 @@ export function useAetRelatorio(id: string | null | undefined) {
   return useQuery({
     queryKey: ["aet-relatorio", id],
     enabled: !!id,
+
+    // Sem rede, insistir é perder tempo: o plano B está dentro da `queryFn`.
+    retry: (falhas, erro) => !ehErroDeRede(erro) && falhas < 2,
+
     queryFn: async () => {
-      const supabase = createSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("aet_relatorios")
-        .select("*, empresas(nome_empresa, cnpj)")
-        .eq("id_relatorio", id!)
-        .single();
-      if (error) throw error;
-      return normalizarRelatorio(data);
+      const idRel = id!;
+      try {
+        const supabase = createSupabaseBrowserClient();
+        const { data, error } = await supabase
+          .from("aet_relatorios")
+          .select("*, empresas(nome_empresa, cnpj)")
+          .eq("id_relatorio", idRel)
+          .single();
+        if (error) throw error;
+        const relatorio = normalizarRelatorio(data);
+        // Mantém fresca só a cópia que o técnico levou — ver `LevarParaCampo`.
+        void lerDocumentoCache(idRel).then((ja) => {
+          if (ja) void guardarDocumentoCache(idRel, relatorio);
+        });
+        return relatorio;
+      } catch (e) {
+        // Recusa do banco e laudo inexistente continuam sendo erro.
+        if (!ehErroDeRede(e)) throw e;
+        const guardado =
+          await lerDocumentoCache<ReturnType<typeof normalizarRelatorio>>(idRel);
+        if (guardado) return guardado.dados;
+        throw e;
+      }
     },
   });
 }
@@ -145,26 +168,57 @@ export function useSalvarAet() {
   const qc = useQueryClient();
 
   return useMutation({
+    // `silencioso` serve para o auto-save da ordem dos setores não cuspir um
+    // toast "Salvo com sucesso!" a cada arrasto.
     mutationFn: async ({
       id,
       patch,
+      imagens,
     }: {
       id: string;
       patch: Partial<Omit<AetRelatorio, "id_relatorio" | "created_at" | "empresas">>;
+      silencioso?: boolean;
+      /**
+       * Fotos dos setores que ainda não subiram. Vão junto do patch porque a
+       * URL delas já está dentro do jsonb `setores` — gravar o jsonb antes do
+       * arquivo publicaria no laudo uma foto apontando para o nada.
+       */
+      imagens?: ImagemPendente[];
     }) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("aet_relatorios")
-        .update({ ...patch, updated_at: new Date().toISOString() } as never)
-        .eq("id_relatorio", id);
-      if (error) throw error;
+      const resultado = await gravar({
+        tabela: "aet_relatorios",
+        tipo: "update",
+        linhas: { ...patch, updated_at: new Date().toISOString() },
+        filtro: { id_relatorio: id },
+        modulo: "aet",
+        id_documento: id,
+        imagens,
+      });
+      return resultado;
     },
-    onSuccess: (_data, { id }) => {
+    onSuccess: (resultado, { id, patch, silencioso }) => {
+      // Sem rede, o patch é aplicado no cache do mesmo jeito que o auto-save
+      // já fazia: não há o que revalidar, e a tela precisa continuar mostrando
+      // o que o técnico acabou de digitar.
+      if (silencioso || resultado.destino === "APARELHO") {
+        // Auto-save da ordem: atualiza o cache no lugar de invalidar. Um
+        // refetch aqui devolveria um objeto novo, a tela remontaria o estado
+        // local a cada arrasto e o setor aberto se fecharia sozinho.
+        qc.setQueryData(["aet-relatorio", id], (antigo: AetRelatorio | undefined) =>
+          antigo ? { ...antigo, ...patch } : antigo,
+        );
+        if (!silencioso) {
+          toast.success("Guardado no aparelho", { icon: "📵" });
+        }
+        return;
+      }
       qc.invalidateQueries({ queryKey: ["aet-relatorio", id] });
       qc.invalidateQueries({ queryKey: ["aet-relatorios"] });
       toast.success("Salvo com sucesso!");
     },
-    onError: (e: Error) => toast.error(`Erro ao salvar: ${e.message}`),
+    onError: (e: Error, { silencioso }) => {
+      if (!silencioso) toast.error(`Erro ao salvar: ${e.message}`);
+    },
   });
 }
 
@@ -505,9 +559,15 @@ export function useAetChecklistPerguntas() {
     queryFn: async () => {
       try {
         const supabase = createSupabaseBrowserClient();
-        const { data, error } = await supabase.from("aet_checklist_perguntas").select("*");
+        // A tabela real tem SÓ slug, label e secao. Ela guarda o que foi
+        // ALTERADO, e o resto vem do padrão do código — por isso mescla, e não
+        // substitui: antes, a primeira pergunta salva escondia as outras dez.
+        // O porquê inteiro está em lib/aet/checklist.ts.
+        const { data, error } = await supabase
+          .from("aet_checklist_perguntas")
+          .select("slug, label, secao, oculta");
         if (error) return CHECKLIST_PERGUNTAS_PADRAO;
-        return data.length > 0 ? (data as AetChecklistPergunta[]) : CHECKLIST_PERGUNTAS_PADRAO;
+        return mesclarChecklist(CHECKLIST_PERGUNTAS_PADRAO, data as ChecklistLinhaBanco[]);
       } catch {
         return CHECKLIST_PERGUNTAS_PADRAO;
       }
@@ -522,10 +582,51 @@ export function useAetSalvarChecklistPergunta() {
   return useMutation({
     mutationFn: async (pergunta: AetChecklistPergunta) => {
       const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
+      // ⚠️ `paraOBanco` existe para NÃO mandar `tipo`: a coluna não existe na
+      // tabela, e era ela que devolvia `PGRST204 Could not find the 'tipo'
+      // column` em todo Salvar desta tela (medido em 11/09).
+      // ⚠️ `.select()` não é enfeite: com 2 contas Visualizador tendo o módulo
+      // AET e a flag de editar LIGADA (medido em 11/09), a RLS recusa a escrita
+      // sem erro quando a linha JÁ existe — o update casa 0 linhas e o painel
+      // diria "Pergunta salva" sem salvar nada. Um upsert que gravou devolve a
+      // linha; zero linha é recusa. Família de permissoes-visualizador-flag-mente.
+      const { data, error } = await supabase
         .from("aet_checklist_perguntas")
-        .upsert(pergunta as never, { onConflict: "slug" });
+        .upsert(paraOBanco(pergunta) as never, { onConflict: "slug" })
+        .select("slug");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("O banco não aceitou a gravação. Seu perfil tem permissão só de leitura nesta tela.");
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-checklist-perguntas"] }),
+    onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
+/**
+ * Excluir / reativar uma pergunta do checklist (v209).
+ *
+ * Para as 11 perguntas PADRÃO, "excluir" não pode ser apagar a linha: ausência
+ * significa "usa o padrão" (a leitura mescla). Então grava a marca `oculta`, e
+ * é ela que faz a pergunta sumir da tela de análise, da prévia e do PDF.
+ * Reversível de propósito: config global que muda documento assinado não pode
+ * ser de mão única.
+ */
+export function useAetOcultarChecklistPergunta() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ pergunta, oculta }: { pergunta: AetChecklistPergunta; oculta: boolean }) => {
+      const supabase = createSupabaseBrowserClient();
+      // Mesma prova do Salvar: zero linha devolvida = a RLS recusou em silêncio.
+      const { data, error } = await supabase
+        .from("aet_checklist_perguntas")
+        .upsert(paraOBanco({ ...pergunta, oculta }) as never, { onConflict: "slug" })
+        .select("slug");
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("O banco não aceitou a gravação. Seu perfil tem permissão só de leitura nesta tela.");
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-checklist-perguntas"] }),
     onError: (e: Error) => toast.error(mensagemErro(e)),
@@ -537,10 +638,16 @@ export function useAetInicializarChecklistPerguntas() {
   return useMutation({
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
-      await supabase.from("aet_checklist_perguntas").delete().neq("slug", "");
+      // Restaurar = APAGAR as edições. O padrão mora no código e a leitura
+      // mescla, então a tabela vazia JÁ é o estado padrão.
+      //
+      // Antes isto apagava tudo e reinseria as 10 perguntas padrão — e o
+      // insert falhava no `tipo`, deixando a tabela vazia e um erro na tela.
+      // Era por isso que a tabela nunca tinha sido populada.
       const { error } = await supabase
         .from("aet_checklist_perguntas")
-        .insert(CHECKLIST_PERGUNTAS_PADRAO as never);
+        .delete()
+        .neq("slug", "");
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-checklist-perguntas"] }),
@@ -693,13 +800,11 @@ export const SEMAFORO_DEFAULT: Aet13FatorSemaforo[] = [
   { id: "vermelha",label: "Vermelha — Crítico",    min_score: null, max_score: 1.99, nivel_pgr: "Crítico",  prazo_texto: "30 dias",       cor_fundo: "#FFEBEE", cor_texto: "#C62828" },
 ];
 
-export function zonaFromMedia(media: number | null): ZonaPsi | null {
-  if (media === null) return null;
-  if (media >= 4.0) return "verde";
-  if (media >= 3.0) return "amarela";
-  if (media >= 2.0) return "laranja";
-  return "vermelha";
-}
+// A régua mora em lib/aet/consolidar-psi.ts (server-safe): o gerador de PDF não
+// pode importar deste arquivo ("use client") e por isso mantinha uma cópia
+// igualzinha — igual por sorte, não por construção. Reexportado daqui para as
+// telas não mudarem de import.
+export { zonaFromMedia } from "@/lib/aet/consolidar-psi";
 
 export function nivelPgrFromZona(zona: ZonaPsi | null): string {
   if (zona === "vermelha") return "Crítico";

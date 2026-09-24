@@ -1,8 +1,8 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useCallback, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -23,17 +23,18 @@ import {
   ClipboardEdit,
   Flame,
   Wrench,
+  RefreshCw,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { useInspecao } from "@/lib/hooks/useInspecao";
+import { useInspecao, type InspecaoFull } from "@/lib/hooks/useInspecao";
+import { gravar } from "@/lib/offline/gravar";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
-import { useCanEdit, useCurrentUser, useIsAdmin } from "@/lib/hooks/useUsuario";
+import { useCanEdit, useCurrentUser, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
-import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
+import { DetalheSkeleton } from "@/components/ui/PageSkeletons";
+import { cn, fmtData } from "@/lib/utils";
 import SetoresTab from "@/components/inspecoes/editor/tabs/SetoresTab";
 import CargosTab from "@/components/inspecoes/editor/tabs/CargosTab";
 import RiscosTab from "@/components/inspecoes/editor/tabs/RiscosTab";
@@ -47,20 +48,34 @@ import TreinamentosTab from "@/components/inspecoes/editor/tabs/TreinamentosTab"
 import ExtintoresTab from "@/components/inspecoes/editor/tabs/ExtintoresTab";
 import MaquinasTab from "@/components/inspecoes/editor/tabs/MaquinasTab";
 import CopiarParaEmpresaModal from "@/components/inspecoes/editor/CopiarParaEmpresaModal";
+import { LevarParaCampo } from "@/components/ui/LevarParaCampo";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { ehRenovacao, RENOVACAO } from "@/lib/dashboard/inspecoes";
+import type { TipoCriacao } from "@/lib/supabase/types";
 
-type TabKey =
-  | "setores"
-  | "cargos"
-  | "riscos"
-  | "epis"
-  | "fotos"
-  | "responsaveis"
-  | "pae"
-  | "treinamentos"
-  | "extintores"
-  | "maquinas"
-  | "complementos"
-  | "observacoes";
+/**
+ * Chaves das abas. Lista em runtime (e não só união de tipos) porque o valor
+ * vem da URL e precisa ser validado antes de virar TabKey — `?aba=qualquercoisa`
+ * não pode quebrar a tela.
+ */
+const TAB_KEYS = [
+  "setores",
+  "cargos",
+  "riscos",
+  "epis",
+  "fotos",
+  "responsaveis",
+  "pae",
+  "treinamentos",
+  "extintores",
+  "maquinas",
+  "complementos",
+  "observacoes",
+] as const;
+
+type TabKey = (typeof TAB_KEYS)[number];
+
+const TAB_PADRAO: TabKey = "setores";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -71,36 +86,170 @@ export default function InspecaoEditorPage({ params }: Props) {
   const router = useRouter();
   const qc = useQueryClient();
   const canEdit = useCanEdit();
-  const isAdmin = useIsAdmin();
+  // v229: quem supervisiona (nível Aprovação) reabre inspeção de outro, não só Admin.
+  const isAdmin = useIsSupervisor();
   const currentUser = useCurrentUser();
 
   const { data, isLoading, error } = useInspecao(id);
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
-  const [tab, setTab] = useState<TabKey>("setores");
+
+  // A aba ativa mora na URL (`?aba=riscos`), não em useState. Com useState,
+  // recarregar a página, duplicar a aba do navegador ou voltar depois jogava o
+  // usuário de volta em "setores" — perdia o contexto no meio do preenchimento.
+  // Na URL, o contexto sobrevive aos três casos e o link fica compartilhável.
+  const searchParams = useSearchParams();
+  const abaUrl = searchParams.get("aba");
+  const tab: TabKey = (TAB_KEYS as readonly string[]).includes(abaUrl ?? "")
+    ? (abaUrl as TabKey)
+    : TAB_PADRAO;
+
+  // `replace` e não `push`: trocar de aba não empilha histórico, então o botão
+  // Voltar sai do editor em vez de percorrer as 12 abas uma a uma.
+  const setTab = useCallback(
+    (nova: TabKey) => {
+      const sp = new URLSearchParams(searchParams.toString());
+      sp.set("aba", nova);
+      router.replace(`?${sp.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
+
   const [copiarOpen, setCopiarOpen] = useState(false);
 
+  /**
+   * Concluir e reabrir também funcionam sem sinal: o técnico termina a visita no
+   * cliente, e obrigá-lo a lembrar de concluir depois, de volta na base, é
+   * pedir para a inspeção ficar aberta por dias.
+   *
+   * A data de conclusão vem do APARELHO, e não do banco. É a mesma razão da
+   * Frota (`db.ts`, `finalizado_em`): a visita terminou às 15h no cliente;
+   * deixar o servidor carimbar a hora em que a rede voltou registraria a
+   * conclusão às 19h, e o relatório de produtividade sairia mentindo.
+   */
   const mudarStatus = useMutation({
     mutationFn: async (novoStatus: "CONCLUIDA" | "EM_ANDAMENTO") => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("inspecoes")
-        .update({
-          status: novoStatus,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq("id_inspecao", id);
-      if (error) throw error;
-      return novoStatus;
+      const payload = {
+        status: novoStatus,
+        // Data de conclusão real: carimba ao CONCLUIR, limpa ao REABRIR.
+        concluida_em: novoStatus === "CONCLUIDA" ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      };
+      const resultado = await gravar({
+        tabela: "inspecoes",
+        tipo: "update",
+        linhas: payload,
+        filtro: { id_inspecao: id },
+        modulo: "inspecoes",
+        id_documento: id,
+      });
+      return { resultado, payload, novoStatus };
     },
-    onSuccess: (s) => {
-      qc.invalidateQueries({ queryKey: ["inspecao", id] });
-      qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      toast.success(s === "CONCLUIDA" ? "Inspeção concluída" : "Inspeção reaberta");
+    onSuccess: ({ resultado, payload, novoStatus }) => {
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["inspecao", id] });
+        qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+        toast.success(novoStatus === "CONCLUIDA" ? "Inspeção concluída" : "Inspeção reaberta");
+        return;
+      }
+      // Sem rede não há o que revalidar: o status muda na tela à mão, senão o
+      // botão "Concluir" continuaria ali, como se nada tivesse acontecido.
+      qc.setQueryData<InspecaoFull>(["inspecao", id], (antigo) =>
+        antigo ? { ...antigo, inspecao: { ...antigo.inspecao, ...payload } } : antigo,
+      );
+      toast.success(
+        novoStatus === "CONCLUIDA"
+          ? "Conclusão guardada no aparelho"
+          : "Reabertura guardada no aparelho",
+        { icon: "📵" },
+      );
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <LoadingSkeleton rows={8} />;
+  /**
+   * RENOVAÇÃO DE DOCUMENTO (23/09) — mutation PRÓPRIA, de propósito.
+   *
+   * Regra dele: "o outro de concluir não podemos tocar, se não quebra tudo".
+   * `mudarStatus` acima é a mesma do Reabrir e fica intocada; esta vive ao
+   * lado e grava, além do status, o `tipo_criacao = RENOVACAO` — que é o que
+   * tira o registro de todos os gráficos de inspeção (`ehRenovacao`, em
+   * lib/dashboard/inspecoes). O registro continua existindo: lista, ficha da
+   * empresa e documentos seguem vendo.
+   *
+   * "concluir" → conclui já como renovação.
+   * "marcar"   → inspeção JÁ concluída vira renovação, sem reabrir: só o tipo
+   *   muda; status e data de conclusão ficam como estavam. Existe porque as
+   *   49 de setembro já estavam concluídas (visto no ar em 23/09).
+   * "desfazer" → volta a contar como inspeção. O tipo original não é guardado
+   *   em lugar nenhum, então é refeito: sem inspeção base foi "Em Branco";
+   *   com base, a empresa da base decide entre revisão e cópia. Sem sinal essa
+   *   consulta falha e fica REVISAO — que conta EXATAMENTE como cópia em todo
+   *   gráfico (`ehCopiaOuRevisao`), então o número não erra.
+   */
+  const marcarRenovacao = useMutation({
+    mutationFn: async (acao: "concluir" | "marcar" | "desfazer") => {
+      const insp = data?.inspecao;
+      if (!insp) throw new Error("Inspeção não carregada");
+      let payload: Record<string, unknown>;
+      if (acao === "concluir") {
+        payload = {
+          status: "CONCLUIDA",
+          concluida_em: new Date().toISOString(),
+          tipo_criacao: RENOVACAO,
+          updated_at: new Date().toISOString(),
+        };
+      } else if (acao === "marcar") {
+        payload = { tipo_criacao: RENOVACAO, updated_at: new Date().toISOString() };
+      } else {
+        let tipoOriginal: TipoCriacao = "BRANCO";
+        if (insp.id_inspecao_base) {
+          tipoOriginal = "REVISAO";
+          try {
+            const { data: base } = await createSupabaseBrowserClient()
+              .from("inspecoes")
+              .select("id_empresa")
+              .eq("id_inspecao", insp.id_inspecao_base)
+              .maybeSingle();
+            const empBase = (base as { id_empresa?: string } | null)?.id_empresa;
+            if (empBase && empBase !== insp.id_empresa) tipoOriginal = "COPIA_EMPRESA";
+          } catch {
+            /* sem sinal: fica REVISAO (ver acima) */
+          }
+        }
+        payload = { tipo_criacao: tipoOriginal, updated_at: new Date().toISOString() };
+      }
+      const resultado = await gravar({
+        tabela: "inspecoes",
+        tipo: "update",
+        linhas: payload,
+        filtro: { id_inspecao: id },
+        modulo: "inspecoes",
+        id_documento: id,
+      });
+      return { resultado, payload, acao };
+    },
+    onSuccess: ({ resultado, payload, acao }) => {
+      const msg =
+        acao === "desfazer"
+          ? "Voltou a contar como inspeção"
+          : "Marcada como renovação — não conta nos gráficos de inspeção";
+      if (resultado.destino === "SERVIDOR") {
+        qc.invalidateQueries({ queryKey: ["inspecao", id] });
+        qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
+        qc.invalidateQueries({ queryKey: ["inspecoes-por-mes"] });
+        qc.invalidateQueries({ queryKey: ["inspecoes-status"] });
+        toast.success(msg);
+        return;
+      }
+      qc.setQueryData<InspecaoFull>(["inspecao", id], (antigo) =>
+        antigo ? { ...antigo, inspecao: { ...antigo.inspecao, ...payload } } : antigo,
+      );
+      toast.success(`${msg} (guardado no aparelho)`, { icon: "📵" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  if (isLoading) return <DetalheSkeleton />;
   if (error)
     return (
       <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -132,8 +281,9 @@ export default function InspecaoEditorPage({ params }: Props) {
     maquinas,
   } = data;
   const isConcluida = inspecao.status === "CONCLUIDA";
+  const isRenovacao = ehRenovacao(inspecao.tipo_criacao);
   // Quem pode reabrir uma inspeção concluída:
-  //   - Admin (sempre)
+  //   - Supervisor (nível Aprovação ou Admin) — sempre
   //   - Técnico que criou a inspeção (inspecao.usuario === email do logado)
   // Visualizador e técnicos de outras inspeções não podem.
   const podeReabrir =
@@ -183,6 +333,14 @@ export default function InspecaoEditorPage({ params }: Props) {
               <span>Revisão {inspecao.revisao}</span>
               <span>·</span>
               <StatusBadge status={inspecao.status} />
+              {isRenovacao && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800"
+                  title="Registro de documento — não conta nos gráficos de inspeção"
+                >
+                  <RefreshCw className="size-3" /> Renovação
+                </span>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -231,6 +389,38 @@ export default function InspecaoEditorPage({ params }: Props) {
                 Concluir
               </button>
             )}
+            {canEdit && !isConcluida && (
+              <button
+                type="button"
+                onClick={() => marcarRenovacao.mutate("concluir")}
+                disabled={marcarRenovacao.isPending || mudarStatus.isPending}
+                className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-1.5 text-sm font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-60"
+                title="Conclui sem contar como inspeção: serve para registrar a empresa ou a renovação dos documentos dela"
+              >
+                {marcarRenovacao.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-4" />
+                )}
+                Concluir como renovação
+              </button>
+            )}
+            {canEdit && isConcluida && !isRenovacao && (
+              <button
+                type="button"
+                onClick={() => marcarRenovacao.mutate("marcar")}
+                disabled={marcarRenovacao.isPending}
+                className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-1.5 text-sm font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-60"
+                title="Continua concluída, mas deixa de contar como inspeção: serve para registro de empresa ou renovação de documentos"
+              >
+                {marcarRenovacao.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-4" />
+                )}
+                Marcar como renovação
+              </button>
+            )}
             {isConcluida && podeReabrir && (
               <button
                 type="button"
@@ -239,7 +429,7 @@ export default function InspecaoEditorPage({ params }: Props) {
                 className="inline-flex items-center gap-1.5 rounded-md border border-amber-warning bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-warning hover:bg-amber-100 disabled:opacity-60"
                 title={
                   isAdmin
-                    ? "Reabrir inspeção (Admin)"
+                    ? "Reabrir inspeção (supervisão)"
                     : "Reabrir sua inspeção"
                 }
               >
@@ -255,11 +445,42 @@ export default function InspecaoEditorPage({ params }: Props) {
         </div>
       </div>
 
+      {isRenovacao && (
+        <div className="flex flex-col gap-2 rounded-xl border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900 md:flex-row md:items-center md:justify-between">
+          <p>
+            <strong>Renovação de documento.</strong> Este registro não conta nos
+            gráficos de inspeção, na produtividade nem por técnico — continua na
+            lista, na ficha da empresa e nos documentos.
+          </p>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => marcarRenovacao.mutate("desfazer")}
+              disabled={marcarRenovacao.isPending}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-sky-300 bg-white px-3 py-1.5 text-sm font-medium text-sky-900 hover:bg-sky-100 disabled:opacity-60"
+            >
+              {marcarRenovacao.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <RotateCcw className="size-4" />
+              )}
+              Voltar a contar como inspeção
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Dados da empresa */}
       <EmpresaInfoPanel
         empresa={empresa ?? null}
         className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
       />
+
+      {/* Levar para o campo: acima das abas de propósito. A decisão de copiar a
+          inspeção para o aparelho é tomada ANTES de sair da base, e não no meio
+          do preenchimento de uma aba — se estivesse lá dentro, o técnico só
+          esbarraria nela quando já não tivesse sinal para baixar nada. */}
+      <LevarParaCampo idDocumento={id} dados={data} rotulo="Inspeção" />
 
       {/* Abas */}
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -324,6 +545,13 @@ export default function InspecaoEditorPage({ params }: Props) {
               cargos={cargos}
               riscos={riscos}
               readOnly={readOnly}
+              referenciaInspecao={[
+                empresa?.nome_empresa,
+                inspecao.data_inspecao ? fmtData(inspecao.data_inspecao) : null,
+                id,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             />
           )}
           {tab === "epis" && (

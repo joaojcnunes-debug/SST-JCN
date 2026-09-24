@@ -5,20 +5,21 @@ import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/Secoes
 import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import { substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
-import { renderEditaveis, renderEditavelUm, classeQuebraFixo } from "./shared";
+import { renderEditaveis, renderEditavelUm, classeQuebraFixoNova } from "./shared";
 import {
-  aplicarMatriz,
-  calcularResumoCompleto,
-  filtrarPorSetor,
-  listarSetores,
-} from "@/lib/drps/calculos";
-import { MEDIDAS_CONTROLE, MESES, TOPICOS } from "@/lib/drps/topicos";
+  montarBlocosPorSetor,
+  montarBlocosPorUnidade,
+  textoDoBloco,
+} from "@/lib/drps/blocos";
+import { listarUnidades } from "@/lib/drps/calculos";
+import { MEDIDAS_CONTROLE, MESES } from "@/lib/drps/topicos";
 import { ACOES_OBRIGATORIAS, EQUIPE_REVISAO } from "@/lib/drps/gestao";
 import { formatCNPJ, formatCPF, formatCEI, formatCAEPF, formatCNO } from "@/lib/utils";
 import type {
   DrpsMonitoramento,
   DrpsPlanoMedidas,
   DrpsProbabilidade,
+  DrpsProbabilidadeUnidade,
   DrpsRespondente,
   DrpsRevisao,
   NivelMatriz,
@@ -47,10 +48,17 @@ export interface DrpsTemplateProps {
     medidas_por_setor: Record<string, string> | null;
     conclusoes_por_setor: Record<string, string> | null;
     conclusao_geral: string | null;
+    // v138 — overrides por unidade: {unidade: {setor: texto}}. Ausente = herda
+    // do texto de setor acima. Opcionais: o gerador antigo não os envia.
+    agravos_por_unidade_setor?: Record<string, Record<string, string>> | null;
+    medidas_por_unidade_setor?: Record<string, Record<string, string>> | null;
+    conclusoes_por_unidade_setor?: Record<string, Record<string, string>> | null;
   };
   empresa: Partial<Empresa> | null;
   respondentes: DrpsRespondente[];
   probabilidades: DrpsProbabilidade[];
+  /** v138 — overrides de probabilidade por (unidade, setor). */
+  probabilidadesUnidade?: DrpsProbabilidadeUnidade[];
   planoMedidas: DrpsPlanoMedidas | null;
   monitoramentos: DrpsMonitoramento[];
   revisao: DrpsRevisao | null;
@@ -85,6 +93,7 @@ const STYLE_BLOCK = `
 .drps-conc th { background: #d4edda; color: #1e4d28; font-weight: 700; }
 .drps-conc ul { margin: 0; padding-left: 1.1em; }
 .drps-conc li { margin: 1px 0; }
+.drps-unidade-cabecalho { font-size: 12px; font-weight: 700; color: #1e4d28; background: #e8f5e9; border-left: 4px solid #0ea5e9; padding: 6px 8px; margin-bottom: 8px; page-break-after: avoid; }
 .textos-padrao-capitulo--nova-pagina { page-break-before: always; }
 .textos-padrao-capitulo--continua { page-break-before: auto; }
 .tp-cap { margin-bottom: 16pt; }
@@ -144,17 +153,10 @@ function fmtData(iso: string | null): string {
   }
 }
 
-function montarMapaProb(probabilidades: DrpsProbabilidade[], setor: string): Record<number, 1 | 2 | 3> {
-  const m: Record<number, 1 | 2 | 3> = {};
-  for (let i = 0; i < TOPICOS.length; i++) m[i] = 1;
-  for (const p of probabilidades) {
-    if (p.setor === setor) m[p.topico_idx] = p.probabilidade as 1 | 2 | 3;
-  }
-  return m;
-}
-
 function BlocoSetor({
   setor,
+  unidade,
+  cabecalhoUnidade,
   totalRespondentes,
   funcoes,
   topicos,
@@ -162,6 +164,9 @@ function BlocoSetor({
   empresa,
 }: {
   setor: string;
+  unidade?: string;
+  /** Só no primeiro bloco de cada unidade — abre a cascata no documento. */
+  cabecalhoUnidade?: string;
   totalRespondentes: number;
   funcoes: string;
   topicos: TopicoComMatriz[];
@@ -176,10 +181,20 @@ function BlocoSetor({
   if (empresa?.cno) identificadores.push({ label: "CNO", valor: formatCNO(empresa.cno) });
   if (identificadores.length === 0) identificadores.push({ label: "CNPJ", valor: "—" });
 
-  const conclusao = rel.conclusoes_por_setor?.[setor] ?? "";
+  const conclusao = textoDoBloco(
+    rel.conclusoes_por_unidade_setor,
+    rel.conclusoes_por_setor,
+    unidade,
+    setor
+  );
 
   return (
     <section className="drps-setor-bloco">
+      {cabecalhoUnidade && (
+        <div className="drps-unidade-cabecalho">
+          Unidade de Trabalho: {cabecalhoUnidade}
+        </div>
+      )}
       <table className="drps-tabela">
         <tbody>
           <tr>
@@ -207,6 +222,9 @@ function BlocoSetor({
             </tr>
           ))}
           <tr><td className="drps-label">Empresa</td><td colSpan={3}>{empresa?.nome_empresa ?? "—"}</td></tr>
+          {unidade && (
+            <tr><td className="drps-label">Unidade de Trabalho</td><td colSpan={3}>{unidade}</td></tr>
+          )}
           <tr><td className="drps-label">Setor</td><td colSpan={3}>{setor}</td></tr>
           <tr><td className="drps-label">Funções</td><td colSpan={3}>{funcoes || "—"}</td></tr>
           <tr><td className="drps-label">Quantidade de Trabalhadores na Função</td><td colSpan={3}>{totalRespondentes}</td></tr>
@@ -249,13 +267,13 @@ function BlocoSetor({
           <tr><td className="drps-header-section" colSpan={2}>Possíveis Agravos à Saúde Mental</td></tr>
           <tr>
             <td colSpan={2} style={{ whiteSpace: "pre-wrap" }}>
-              {rel.agravos_por_setor?.[setor] ?? ""}
+              {textoDoBloco(rel.agravos_por_unidade_setor, rel.agravos_por_setor, unidade, setor)}
             </td>
           </tr>
           <tr><td className="drps-header-section" colSpan={2}>Medidas de controle recomendadas (medidas que a empresa deve adotar)</td></tr>
           <tr>
             <td colSpan={2} style={{ whiteSpace: "pre-wrap" }}>
-              {rel.medidas_por_setor?.[setor] ?? ""}
+              {textoDoBloco(rel.medidas_por_unidade_setor, rel.medidas_por_setor, unidade, setor)}
             </td>
           </tr>
         </tbody>
@@ -280,6 +298,7 @@ export default function DrpsTemplate({
   empresa,
   respondentes,
   probabilidades,
+  probabilidadesUnidade,
   planoMedidas,
   monitoramentos,
   revisao,
@@ -292,22 +311,18 @@ export default function DrpsTemplate({
   identificadorDocumento,
   planoAcao,
 }: DrpsTemplateProps) {
-  const setores = listarSetores(respondentes);
-  const blocos = setores.map((s) => {
-    const filtrados = filtrarPorSetor(respondentes, s);
-    const topicos = aplicarMatriz(calcularResumoCompleto(filtrados), montarMapaProb(probabilidades, s));
-    const cargos = Array.from(new Set(filtrados.map((r) => r.cargo?.trim()).filter(Boolean) as string[]))
-      .sort((a, b) => a.localeCompare(b, "pt-BR", { sensitivity: "base" }))
-      .join(", ");
-    return { setor: s, totalRespondentes: filtrados.length, funcoes: cargos, topicos };
-  });
+  const blocos = montarBlocosPorSetor(respondentes, probabilidades);
+
+  // Cascata Unidade › Setor › Função (v138). Só entra quando o formulário do
+  // cliente pergunta a unidade; sem isso a lista é vazia e o laudo sai
+  // agrupado só por setor, exatamente como sempre saiu.
+  const temUnidades = listarUnidades(respondentes).length > 0;
+  const blocosUnidade = temUnidades
+    ? montarBlocosPorUnidade(respondentes, probabilidades, probabilidadesUnidade ?? [])
+    : [];
 
   // Monitoramento: matriz (pior caso) por tópico por setor
-  const topicosPorSetorMon = setores.map((s) => {
-    const filtrados = filtrarPorSetor(respondentes, s);
-    const topicos = aplicarMatriz(calcularResumoCompleto(filtrados), montarMapaProb(probabilidades, s));
-    return { setor: s, topicos };
-  });
+  const topicosPorSetorMon = blocos.map((b) => ({ setor: b.setor, topicos: b.topicos }));
 
   const planoEntries = planoMedidas?.plano ? Object.entries(planoMedidas.plano) : [];
   const planoComConteudo = planoEntries.filter(
@@ -315,7 +330,7 @@ export default function DrpsTemplate({
   );
   // Uma linha do 5W2H só conta se algum campo foi preenchido. Salvar o plano de
   // ação sem digitar nada grava uma linha em branco, e ela fazia a seção inteira
-  // aparecer no laudo como um quadro de traços ("—") com status "Pendente".
+  // aparecer no laudo como um quadro de trações ("—") com status "Pendente".
   // Filtra na renderização em vez de apagar o registro: o dado do usuário fica.
   const planoAcaoComConteudo = planoAcao.filter((l) =>
     [l.acao, l.justificativa, l.onde, l.prazo, l.responsavel, l.como, l.quanto_custa]
@@ -326,9 +341,32 @@ export default function DrpsTemplate({
   const anotacoes = revisao?.anotacoes ?? "";
 
   // Seções do sistema como nós nomeados (reutilizados nos dois modos).
-  const setoresNode = blocos.map((b) => (
-    <BlocoSetor key={b.setor} {...b} rel={relatorio} empresa={empresa} />
-  ));
+  // Com unidades, a seção 7 vira Unidade › Setor › Funções: um cabeçalho por
+  // unidade e, dentro dele, os blocos dos setores que existem ali. Sem
+  // unidades, segue a lista de setores de sempre.
+  // O cabeçalho da unidade vai DENTRO do primeiro bloco dela: .drps-setor-bloco
+  // já quebra página sozinho, então um cabeçalho como seção própria ficaria
+  // sozinho numa página em branco.
+  const setoresNode = temUnidades
+    ? blocosUnidade.flatMap((u) =>
+        u.setores.map((b, i) => (
+          <BlocoSetor
+            key={`${u.unidade}||${b.setor}`}
+            {...b}
+            unidade={u.unidade}
+            cabecalhoUnidade={
+              i === 0
+                ? `${u.unidade} — ${u.totalRespondentes} respondente(s) em ${u.setores.length} setor(es)`
+                : undefined
+            }
+            rel={relatorio}
+            empresa={empresa}
+          />
+        ))
+      )
+    : blocos.map((b) => (
+        <BlocoSetor key={b.setor} {...b} rel={relatorio} empresa={empresa} />
+      ));
 
   // Um capítulo só entra no Sumário e na numeração se renderiza uma SEÇÃO
   // NUMERADA de fato no corpo. Evita itens fantasmas (ex.: Plano de Medidas
@@ -388,28 +426,42 @@ export default function DrpsTemplate({
     <section className="drps-sec">
       <h2>{numLabel(numPorSlug["drps_caracterizacao"], "Caracterização dos Trabalhadores")}</h2>
       <p style={{ textIndent: "1.25cm" }}>
-        Distribuição quantitativa dos trabalhadores avaliados por setor e função,
+        Distribuição quantitativa dos trabalhadores avaliados por
+        {temUnidades ? " unidade de trabalho, setor e função" : " setor e função"},
         conforme os respondentes do Diagnóstico de Riscos Psicossociais.
       </p>
       <table className="drps-ex-table">
         <thead>
           <tr>
-            <th style={{ width: "32%" }}>Setor</th>
+            {temUnidades && <th style={{ width: "26%" }}>Unidade</th>}
+            <th style={{ width: temUnidades ? "24%" : "32%" }}>Setor</th>
             <th>Funções</th>
             <th style={{ width: "16%", textAlign: "center" }}>Trabalhadores</th>
           </tr>
         </thead>
         <tbody>
-          {blocos.map((b) => (
-            <tr key={b.setor}>
-              <td>{b.setor}</td>
-              <td>{b.funcoes || "—"}</td>
-              <td style={{ textAlign: "center" }}>{b.totalRespondentes}</td>
-            </tr>
-          ))}
+          {temUnidades
+            ? blocosUnidade.flatMap((u) =>
+                u.setores.map((b) => (
+                  <tr key={`${u.unidade}||${b.setor}`}>
+                    <td>{u.unidade}</td>
+                    <td>{b.setor}</td>
+                    <td>{b.funcoes || "—"}</td>
+                    <td style={{ textAlign: "center" }}>{b.totalRespondentes}</td>
+                  </tr>
+                ))
+              )
+            : blocos.map((b) => (
+                <tr key={b.setor}>
+                  <td>{b.setor}</td>
+                  <td>{b.funcoes || "—"}</td>
+                  <td style={{ textAlign: "center" }}>{b.totalRespondentes}</td>
+                </tr>
+              ))}
           <tr>
             <td style={{ fontWeight: 700 }}>Total</td>
             <td />
+            {temUnidades && <td />}
             <td style={{ textAlign: "center", fontWeight: 700 }}>{totalTrabalhadores}</td>
           </tr>
         </tbody>
@@ -569,7 +621,7 @@ export default function DrpsTemplate({
     .filter((t) => t && t.trim());
 
   // quebraAntes=false: a quebra da folha é controlada pelo wrapper do capítulo
-  // "Assinatura Técnica" (classeQuebraFixo), respeitando Nova página/Continuação.
+  // "Assinatura Técnica" (classeQuebraFixoNova: default nova página, "continua" cola).
   const folhaNode = (
     <FolhaAssinaturas
       signatarios={signatarios}
@@ -632,7 +684,7 @@ export default function DrpsTemplate({
           c.tipo === "fixo" ? (
             <div
               key={c.id_capitulo}
-              className={`${classeQuebraFixo(c)}${c.orientacao === "paisagem" ? " drps-cap-paisagem" : ""}`}
+              className={`${classeQuebraFixoNova(c)}${c.orientacao === "paisagem" ? " drps-cap-paisagem" : ""}`}
               data-slug={c.slug_fixo ?? undefined}
             >{renderSecao(c.slug_fixo ?? "")}</div>
           ) : (

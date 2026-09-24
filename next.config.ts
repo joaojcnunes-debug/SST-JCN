@@ -5,10 +5,13 @@ import { version } from "./package.json";
 const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
+    // Identidade do service worker. A versao do package.json sozinha nao serve
+    // na web: um deploy sem bump manteria `/sw.js?v=<mesma>` e o navegador nao
+    // veria worker novo — todo mundo preso na casca em cache. Na Vercel entra o
+    // SHA do commit, que muda a cada deploy; fora dela, cai na versao.
+    NEXT_PUBLIC_BUILD_ID:
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? version,
   },
-  // Necessário para empacotar o Next.js dentro do Electron (produção desktop).
-  // Compatível com Vercel — ignorado pela plataforma no deploy web.
-  output: "standalone",
   // Silencia o aviso "multiple lockfiles detected" — força este projeto
   // como raiz mesmo quando há um lockfile no diretório pai.
   outputFileTracingRoot: path.join(__dirname),
@@ -20,6 +23,29 @@ const nextConfig: NextConfig = {
   // Sem isto, o file-tracing do Next.js não inclui os .br do sparticuz.
   outputFileTracingIncludes: {
     "/api/pdf/aep/[id]": ["./node_modules/@sparticuz/chromium/**/*"],
+  },
+  async redirects() {
+    return [
+      // O módulo "Projeção de Produtividade" saiu em 2026-09-23 (DIM-01), substituído
+      // pelo /dimensionamento. As TELAS saem agora; as 7 tabelas prod_* continuam no
+      // banco por enquanto — o drop (v254) só entra depois que uma release realmente
+      // sair, senão a área de trabalho instalada fica com tela viva sobre tabela morta.
+      //
+      // 307 e não 308: o endereço novo NÃO é o mesmo conteúdo com outro nome. Cravar
+      // permanente no cache do navegador de quem tinha o link antigo seria apostar que
+      // a equivalência é definitiva — e o módulo novo é admin-only, então parte de quem
+      // tinha o antigo vai bater em /modulos de propósito.
+      {
+        source: "/produtividade",
+        destination: "/dimensionamento",
+        permanent: false,
+      },
+      {
+        source: "/produtividade/:caminho*",
+        destination: "/dimensionamento",
+        permanent: false,
+      },
+    ];
   },
   images: {
     remotePatterns: [

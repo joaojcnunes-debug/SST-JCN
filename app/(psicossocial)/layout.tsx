@@ -36,6 +36,7 @@ const SECTIONS_LISTA: NavSection[] = [
     items: [
       { href: "/psicossocial/dashboard-geral", label: "Dashboard Geral",  icon: Globe },
       { href: "/psicossocial",                label: "Relatórios DRPS", icon: Files },
+      { href: "/psicossocial/empresas",       label: "Empresas",        icon: Building2 },
     ],
   },
   {
@@ -147,7 +148,17 @@ function extrairIdRelatorio(pathname: string): string | null {
   const m = pathname.match(/^\/psicossocial\/([^/]+)(?:\/|$)/);
   if (!m) return null;
   const candidato = m[1];
-  // Rotas reservadas que NÃO são ids
+  /**
+   * Rotas reservadas que NÃO são ids.
+   *
+   * ⚠️ Esquecer uma aqui não dá erro: a rota abre e o MENU LATERAL vira o de
+   * "relatório atual", apontando para um id que não existe. Já estava
+   * acontecendo com `acoes-plano`, que está no menu desde sempre e faltava
+   * nesta lista (corrigido em 10/09, junto da entrada de `empresas`).
+   *
+   * Toda rota fixa nova em /psicossocial entra aqui. Mesmo defeito e mesma
+   * cura já documentados na área de Questionários.
+   */
   const reservadas = new Set([
     "novo",
     "ajuda",
@@ -155,8 +166,10 @@ function extrairIdRelatorio(pathname: string): string | null {
     "metodologia",
     "texto-padrao",
     "medidas-recomendadas",
+    "acoes-plano",
     "agravos",
     "dashboard-geral",
+    "empresas",
   ]);
   if (reservadas.has(candidato)) return null;
   return candidato;
@@ -178,10 +191,6 @@ export default function PsicossocialLayout({
     [idRelatorio]
   );
 
-  const topbarTitle = idRelatorio
-    ? "DRPS — Editor de Relatório"
-    : "DRPS — Diagnóstico de Riscos Psicossociais";
-
   return (
     <div className="min-h-screen">
       <SidebarShell
@@ -191,7 +200,7 @@ export default function PsicossocialLayout({
         sections={sections}
       />
       <div className="md:pl-[220px] print:pl-0">
-        <ModuleTopbar title={topbarTitle} />
+        <ModuleTopbar />
         <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>{children}</main>
       </div>
     </div>

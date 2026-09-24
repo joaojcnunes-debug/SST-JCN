@@ -12,6 +12,8 @@
  * Solução: pré-inlinear as imagens via fetch antes de chamar toPng().
  */
 
+import { stripDarkForCapture } from "@/lib/pdf/force-light-capture";
+
 // ── Helpers internos ─────────────────────────────────────────────────────────
 
 /** Converte um Blob para data URL via FileReader. */
@@ -132,14 +134,23 @@ function safeCutPoint(
 export async function gerarHtmlParaPdf(opts?: { forSigning?: boolean }): Promise<ArrayBuffer> {
   // ── 1. Electron ──────────────────────────────────────────────────────────────
   if (typeof window !== 'undefined' && window.electronAPI?.isElectron) {
-    const result = await window.electronAPI.printMainWindowPdf()
-    if (!result.success || !result.data) {
-      throw new Error(result.error ?? 'Erro ao gerar PDF no Electron')
+    // printToPDF fotografa a janela ao vivo — força o claro antes (o PDF deve
+    // sair sempre claro) e restaura o tema depois. Espera um frame para o
+    // layout claro assentar antes da captura.
+    const restaurarDark = stripDarkForCapture()
+    try {
+      await new Promise<void>((r) => requestAnimationFrame(() => r()))
+      const result = await window.electronAPI.printMainWindowPdf()
+      if (!result.success || !result.data) {
+        throw new Error(result.error ?? 'Erro ao gerar PDF no Electron')
+      }
+      const bytes = result.data as unknown as Uint8Array
+      const ab = new ArrayBuffer(bytes.byteLength)
+      new Uint8Array(ab).set(bytes)
+      return ab
+    } finally {
+      restaurarDark()
     }
-    const bytes = result.data as unknown as Uint8Array
-    const ab = new ArrayBuffer(bytes.byteLength)
-    new Uint8Array(ab).set(bytes)
-    return ab
   }
 
   // ── 2. Web — visualizar: impressão nativa ────────────────────────────────────
@@ -178,6 +189,8 @@ export async function gerarHtmlParaPdf(opts?: { forSigning?: boolean }): Promise
   // Mede posições dos elementos indivisíveis ANTES de alterar o DOM
   const zones = buildNoCutZones(contentEl, scale)
 
+  // Documento capturado do DOM ao vivo → força o claro (o PDF sai sempre claro).
+  const restaurarDark = stripDarkForCapture()
   // Pré-inlineia imagens cross-origin para evitar que o canvas fique em branco
   const restaurar = await inlinearImagensExternas(contentEl)
 
@@ -192,6 +205,7 @@ export async function gerarHtmlParaPdf(opts?: { forSigning?: boolean }): Promise
     })
   } finally {
     restaurar()
+    restaurarDark()
   }
 
   // Se a captura retornou uma imagem minúscula, provavelmente ficou em branco

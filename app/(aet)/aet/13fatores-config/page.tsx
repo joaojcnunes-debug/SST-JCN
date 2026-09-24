@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { useUserStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { ehSupervisor } from "@/lib/hooks/useUsuario";
 
 type Aba = "fatores" | "perguntas" | "plano" | "semaforo";
 
@@ -36,7 +37,7 @@ export default function Config13FatoresPage() {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
   useEffect(() => {
-    if (user && user.perfil !== "Admin") router.replace("/aet");
+    if (user && !ehSupervisor(user)) router.replace("/aet");
   }, [user, router]);
 
   const [aba, setAba] = useState<Aba>("fatores");

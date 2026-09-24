@@ -1,11 +1,11 @@
-# Painel SST — Chabra
+# Painel SST — JCN Consultoria
 
 Sistema interno de gestão de inspeções de Segurança e Saúde do Trabalho.
 
 ## Stack
 
 - Next.js 15 (App Router) + TypeScript
-- Tailwind CSS v4 (cores Chabra em `app/globals.css` via `@theme`)
+- Tailwind CSS v4 (cores JCN Consultoria em `app/globals.css` via `@theme`)
 - Supabase (Postgres, Auth, Storage)
 - TanStack Query (cache de servidor)
 - Zustand (estado do usuário logado, persistido em `localStorage`)
@@ -15,11 +15,13 @@ Sistema interno de gestão de inspeções de Segurança e Saúde do Trabalho.
 
 ### 1. Variáveis de ambiente
 
-Edite `.env.local` e preencha com as chaves do seu projeto Supabase:
+Edite `.env.local` com o self-host da `.107` (o projeto Supabase foi desligado em 2026-09;
+o env completo de produção é entregue pelo TI, ver `deploy/README.md`):
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIs...
+NEXT_PUBLIC_SUPABASE_URL=https://painel-sst.chabra.com.br
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<apikey opaca fornecida pelo TI>
+NEXT_PUBLIC_POSTGREST_URL=https://painel-sst.chabra.com.br/api/rest/v1
 ```
 
 ### 2. Banco de dados

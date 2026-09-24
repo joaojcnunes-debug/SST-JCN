@@ -1,12 +1,17 @@
 "use client";
 
+import { EditorSkeleton } from "@/components/ui/PageSkeletons";
+
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { useAepRelatorio, useSalvarAep } from "@/lib/hooks/useAep";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
-import { detectRegistroTipo } from "@/lib/registro-profissional";
+import { LevarParaCampo } from "@/components/ui/LevarParaCampo";
+import { detectRegistroTipo, mesmoNome } from "@/lib/registro-profissional";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
+import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import { montarEnderecoEmpresa } from "@/lib/textos-padrao/variaveis";
 import type { StatusAEP } from "@/lib/supabase/types";
 
 export default function AepDadosPage({
@@ -19,6 +24,9 @@ export default function AepDadosPage({
   const { data: rel, isLoading } = useAepRelatorio(idRelatorio);
   const salvar  = useSalvarAep();
   const canEdit = useCanEdit();
+  const { data: empresaFull } = useEmpresa(
+    (rel as { id_empresa?: string } | undefined)?.id_empresa ?? null,
+  );
 
   const [responsavel, setResponsavel] = useState("");
   const [titulo,      setTitulo]      = useState("");
@@ -62,13 +70,15 @@ export default function AepDadosPage({
 
   const empresa = rel?.empresas as { nome_empresa?: string; cnpj?: string | null } | null;
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="size-6 animate-spin text-emerald-600" />
-      </div>
-    );
-  }
+  /* O endereço do laudo é uma linha só; o cadastro guarda em campos separados.
+     `montarEnderecoEmpresa` é o MESMO formatador do PDF e da AET — um segundo
+     formatador faria a tela e o papel divergirem. As análises criadas antes do
+     preenchimento automático (198 das 274 em 22/09/2026) ficaram com a coluna
+     vazia: o botão traz o endereço sem obrigar a redigitar, e some quando já
+     está igual. */
+  const enderecoCadastro = montarEnderecoEmpresa(empresaFull);
+
+  if (isLoading) return <EditorSkeleton />;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -84,6 +94,10 @@ export default function AepDadosPage({
           <p className="text-sm text-gray-500">{empresa?.nome_empresa ?? "—"}</p>
         </div>
       </div>
+
+      {/* Levar para o campo — tela de entrada da análise. A coleta acontece na
+          aba Setores, já sem sinal. */}
+      <LevarParaCampo idDocumento={idRelatorio} dados={rel} rotulo="AEP" />
 
       <form onSubmit={handleSalvar} className="space-y-5 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
 
@@ -133,7 +147,16 @@ export default function AepDadosPage({
               setTitulo(cargo ?? "");
               if (regValue) setRegistro(regValue);
             }}
-            onMatchFound={({ cargo, registro }) => {
+            // Análise ANTIGA: nasceu antes do preenchimento automático e ficou
+            // sem registro. Aqui a gente só SUGERE — em campo vazio, nunca
+            // sobrescrevendo — e nada vai para o banco sem clicar em Salvar.
+            onMatchFound={({ nome, cargo, registro }) => {
+              // Visualizador não salva: mostrar valor que não está na análise
+              // seria mentir sobre o documento.
+              if (!canEdit) return;
+              // Ver mesmoNome(): o match do select é difuso e não serve para
+              // decidir de quem é o registro.
+              if (!mesmoNome(nome, responsavel)) return;
               setTitulo((prev) => prev || cargo || "");
               setRegistro((prev) => prev || registro || "");
             }}
@@ -193,7 +216,18 @@ export default function AepDadosPage({
 
         {/* Endereço */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Endereço da empresa</label>
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <label className="block text-sm font-medium text-gray-700">Endereço da empresa</label>
+            {canEdit && enderecoCadastro && endereco !== enderecoCadastro && (
+              <button
+                type="button"
+                onClick={() => setEndereco(enderecoCadastro)}
+                className="text-[11px] font-medium text-emerald-700 hover:underline"
+              >
+                Puxar do cadastro
+              </button>
+            )}
+          </div>
           <input
             type="text"
             value={endereco}
@@ -202,13 +236,22 @@ export default function AepDadosPage({
             placeholder="Rua, nº, bairro — cidade/UF"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
           />
+          {empresaFull && !enderecoCadastro ? (
+            <p className="mt-1 text-[11px] text-amber-700">
+              O cadastro desta empresa está sem endereço. Digite aqui ou preencha
+              em Empresas para que ele venha sozinho da próxima vez.
+            </p>
+          ) : null}
         </div>
 
         {/* Considerações finais */}
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Considerações finais</label>
           <p className="mb-1.5 text-xs text-gray-500">
-            Texto livre que aparece no laudo após a análise dos setores.
+            Texto livre que aparece no laudo após a análise dos setores. Se ficar
+            em branco, o laudo imprime uma conclusão gerada automaticamente a
+            partir dos setores avaliados, dos riscos classificados e dos setores
+            que exigem AET.
           </p>
           <textarea
             value={conclusao}

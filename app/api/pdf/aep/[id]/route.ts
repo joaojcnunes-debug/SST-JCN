@@ -7,6 +7,7 @@ import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
 import { montarValoresAep } from "@/lib/textos-padrao/variaveis-aep";
 import { montarSignatarioTecnico } from "@/lib/pdf/folha-assinatura-tecnico";
+import { formatarRegistro } from "@/lib/registro-profissional";
 import { assinarCapitulos } from "@/lib/pdf/assinar-midia";
 import { aplicarAnexosNoPdf } from "@/lib/anexos/server";
 
@@ -16,11 +17,18 @@ export const maxDuration = 60;
 // ── Normalização inline (useAep.ts é "use client") ───────────────────────────
 
 type RespostaChecklist = "sim" | "nao" | "nao_aplica";
+type RespostaChecklistAep = RespostaChecklist | "nao_identificado";
 
 function toResposta(v: unknown): RespostaChecklist {
   if (v === true || v === "sim") return "sim";
   if (v === "nao_aplica") return "nao_aplica";
   return "nao";
+}
+
+/** Só a Ergonomia Organizacional tem o quarto estado (N/I). */
+function toRespostaOrg(v: unknown): RespostaChecklistAep {
+  if (v === "nao_identificado") return "nao_identificado";
+  return toResposta(v);
 }
 
 function normalizarChecklistFisica(raw: unknown) {
@@ -52,19 +60,19 @@ function normalizarChecklistCognitiva(raw: unknown) {
 function normalizarChecklistOrganizacional(raw: unknown) {
   const c = (raw ?? {}) as Record<string, unknown>;
   return {
-    assedio: toResposta(c.assedio),
-    falta_suporte: toResposta(c.falta_suporte),
-    gestao_mudancas: toResposta(c.gestao_mudancas),
-    clareza_papel: toResposta(c.clareza_papel),
-    recompensas: toResposta(c.recompensas),
-    baixo_controle: toResposta(c.baixo_controle),
-    justica_organizacional: toResposta(c.justica_organizacional),
-    eventos_traumaticos: toResposta(c.eventos_traumaticos),
-    subcarga: toResposta(c.subcarga),
-    sobrecarga: toResposta(c.sobrecarga),
-    maus_relacionamentos: toResposta(c.maus_relacionamentos),
-    comunicacao_dificil: toResposta(c.comunicacao_dificil),
-    trabalho_remoto: toResposta(c.trabalho_remoto),
+    assedio: toRespostaOrg(c.assedio),
+    falta_suporte: toRespostaOrg(c.falta_suporte),
+    gestao_mudancas: toRespostaOrg(c.gestao_mudancas),
+    clareza_papel: toRespostaOrg(c.clareza_papel),
+    recompensas: toRespostaOrg(c.recompensas),
+    baixo_controle: toRespostaOrg(c.baixo_controle),
+    justica_organizacional: toRespostaOrg(c.justica_organizacional),
+    eventos_traumaticos: toRespostaOrg(c.eventos_traumaticos),
+    subcarga: toRespostaOrg(c.subcarga),
+    sobrecarga: toRespostaOrg(c.sobrecarga),
+    maus_relacionamentos: toRespostaOrg(c.maus_relacionamentos),
+    comunicacao_dificil: toRespostaOrg(c.comunicacao_dificil),
+    trabalho_remoto: toRespostaOrg(c.trabalho_remoto),
   };
 }
 
@@ -84,6 +92,18 @@ function normalizarSetor(s: unknown): AepSetorLocal {
     trabalhadores_consultados: (setor.trabalhadores_consultados as string) ?? "",
     observacoes_checklist:
       (setor.observacoes_checklist as Record<string, string>) ?? {},
+    // ⚠️ Segundo normalizador do AEP (o outro é `lib/hooks/useAep.ts`), também
+    // campo a campo: sem esta linha os sinais existiriam na tela e sumiriam no
+    // PDF, que é o documento que vai assinado ao cliente.
+    sinais_organizacional: (() => {
+      const bruto = setor.sinais_organizacional;
+      if (typeof bruto !== "object" || bruto === null) return {};
+      const out: Record<string, string[]> = {};
+      for (const [k, v] of Object.entries(bruto as Record<string, unknown>)) {
+        if (Array.isArray(v)) out[k] = v.filter((x): x is string => typeof x === "string");
+      }
+      return out;
+    })(),
     cargos: Array.isArray(setor.cargos)
       ? (setor.cargos as AepSetorLocal["cargos"])
       : [],
@@ -185,9 +205,8 @@ export async function GET(
     docId: id,
     responsavelNome: rel.responsavel_elaboracao as string | null,
     cargo: rel.titulo_profissional ?? null,
-    registroProfissional: rel.registro_profissional
-      ? `Reg. ${rel.registro_profissional}`
-      : null,
+    // Prefixo pelo cargo: médico sai "CRM", não "Reg." (ver formatarRegistro).
+    registroProfissional: formatarRegistro(rel.titulo_profissional, rel.registro_profissional),
   });
   const signatarios: Signatario[] = [signatario];
 

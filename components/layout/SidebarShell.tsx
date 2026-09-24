@@ -2,13 +2,41 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, LogOut, Shield, Menu, X, Home, Building2, Download, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  LogOut,
+  Shield,
+  Menu,
+  X,
+  Home,
+  Building2,
+  Download,
+  Loader2,
+  Boxes,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { cn } from "@/lib/utils";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
-import { useUserStore } from "@/lib/store";
+import { useSidebarMini, useUserStore } from "@/lib/store";
+import { decidirVoltar } from "@/lib/navegacao/voltar";
+
+/**
+ * Esta ABA já navegou entre rotas depois de carregar?
+ *
+ * Vive no escopo do MÓDULO, e não num `useRef`, de propósito: o shell é do
+ * layout de cada grupo de rotas e REMONTA a cada troca de módulo — um ref
+ * zeraria a conta exatamente quando ela decide o destino do Voltar. Recarregar
+ * a página zera (contexto de JS novo), que é o comportamento certo: depois de
+ * um F5 o Voltar leva à home do módulo em vez de tentar adivinhar.
+ */
+let rotaJaVista: string | null = null;
+let houveNavegacaoInterna = false;
+
+/** Classe comum dos itens clicáveis do rodapé (mesmo visual discreto de antes). */
+const ITEM_RODAPE =
+  "sidebar-item group relative flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/50 transition-all duration-150 hover:bg-white/[0.09] hover:text-white/85";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type ElectronAPI = {
@@ -32,7 +60,7 @@ function SidebarUpdateButton() {
     setState("checking");
     try {
       const resp = await fetch(
-        "https://api.github.com/repos/joaojcnunes-debug/SST-JCN/releases/latest",
+        "https://api.github.com/repos/joaojefferson-hash/Painel-SST--JCN Consultoria/releases/latest",
         { headers: { Accept: "application/vnd.github.v3+json" } }
       );
       if (!resp.ok) throw new Error("Falha ao consultar GitHub");
@@ -72,14 +100,15 @@ function SidebarUpdateButton() {
       type="button"
       onClick={handleClick}
       disabled={state === "checking" || state === "downloading"}
-      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/50 transition-all duration-150 hover:bg-white/[0.09] hover:text-white/85 disabled:opacity-50"
+      data-label="Verificar atualização"
+      className={cn(ITEM_RODAPE, "disabled:opacity-50")}
     >
       {state === "checking" || state === "downloading" ? (
-        <Loader2 className="size-[15px] text-white/30 animate-spin" />
+        <Loader2 className="size-[15px] shrink-0 text-white/30 animate-spin" />
       ) : (
-        <Download className="size-[15px] text-white/30" />
+        <Download className="size-[15px] shrink-0 text-white/30" />
       )}
-      <span className="truncate">
+      <span className="sidebar-label truncate">
         {state === "checking"
           ? "Verificando…"
           : state === "downloading"
@@ -160,8 +189,9 @@ function NavItemView({
     <Link
       href={href}
       onClick={() => setMobileOpen(false)}
+      data-label={label}
       className={cn(
-        "group relative flex items-center gap-2.5 rounded-lg px-3 py-[7px]",
+        "sidebar-item group relative flex items-center gap-2.5 rounded-lg px-3 py-[7px]",
         "text-sm font-medium transition-all duration-150",
         active
           ? "bg-white/[0.16] text-white shadow-sm"
@@ -177,7 +207,7 @@ function NavItemView({
           active ? "text-white" : ICON_COLOR[variant]
         )}
       />
-      <span className="truncate leading-snug">{label}</span>
+      <span className="sidebar-label truncate leading-snug">{label}</span>
     </Link>
   );
 }
@@ -195,6 +225,47 @@ export default function SidebarShell({
   const user = useUserStore((s) => s.user);
   const { data: configs } = useConfiguracoes();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mini = useSidebarMini((s) => s.mini);
+
+  // Quem desenha o recolhimento é o CSS (globals.css) a partir deste atributo.
+  // O botão que alterna mora na ModuleTopbar; aqui só mantemos o <html> em dia.
+  // Nenhuma marcação depende de `mini`, então servidor e cliente renderizam
+  // igual — o script de pré-hidratação já deixou o atributo certo antes da
+  // primeira pintura, e aqui só reagimos às MUDANÇAS.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (mini) root.setAttribute("data-sidebar", "mini");
+    else root.removeAttribute("data-sidebar");
+  }, [mini]);
+
+  // Conta a navegação DESTA aba. Comparar com a última rota vista mantém o
+  // StrictMode (que roda o efeito duas vezes em dev) fora do caminho.
+  useEffect(() => {
+    if (rotaJaVista === null) {
+      rotaJaVista = pathname;
+      return;
+    }
+    if (rotaJaVista === pathname) return;
+    rotaJaVista = pathname;
+    houveNavegacaoInterna = true;
+  }, [pathname]);
+
+  /**
+   * O botão fazia `router.back()` cego e não fazia NADA para quem chegou por
+   * link, favorito ou aba nova (medido em 01/09). A regra está em
+   * `lib/navegacao/voltar.ts`, com teste.
+   */
+  function voltar() {
+    setMobileOpen(false);
+    const d = decidirVoltar({
+      backHref,
+      pathname,
+      logoHref,
+      temHistoricoInterno: houveNavegacaoInterna,
+    });
+    if (d.acao === "back") router.back();
+    else router.push(d.destino);
+  }
 
   // Atalho global p/ Empresas — disponível em todos os módulos (menos no próprio
   // cadastro de empresas e para Cliente, que usa o portal).
@@ -222,35 +293,38 @@ export default function SidebarShell({
       <Link
         href={logoHref}
         onClick={() => setMobileOpen(false)}
-        className="flex items-center gap-2.5 border-b border-white/[0.09] px-4 py-3.5 transition-colors hover:bg-white/[0.05]"
+        className="sidebar-logo flex items-center gap-2.5 border-b border-white/[0.09] px-4 py-3.5 transition-colors hover:bg-white/[0.05]"
       >
         {configs?.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={configs.logo_url}
             alt="Logo"
-            className="h-8 w-auto max-w-[36px] rounded-md bg-white object-contain p-0.5 shadow"
+            className="force-light h-8 w-auto max-w-[36px] rounded-md bg-white object-contain p-0.5 shadow"
             referrerPolicy="no-referrer"
-            onError={(e) => { const el = e.currentTarget as HTMLImageElement; if (!el.src.endsWith("/logo-jcn.svg")) el.src = "/logo-jcn.svg"; }}
+            onError={(e) => {
+              const img = e.currentTarget as HTMLImageElement;
+              if (!img.src.endsWith("/logo-jcn.svg")) img.src = "/logo-jcn.svg";
+            }}
           />
         ) : (
-          <div className="flex size-8 items-center justify-center rounded-md bg-verde-primary text-white shadow">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-verde-primary text-white shadow">
             <Shield className="size-4" />
           </div>
         )}
-        <div className="min-w-0 leading-tight">
+        <div className="sidebar-label min-w-0 leading-tight">
           <p className="truncate text-[13px] font-bold tracking-tight text-white">{title}</p>
           <p className="text-[10px] tracking-wide text-white/48">{subtitle}</p>
         </div>
       </Link>
 
       {/* Seções de navegação */}
-      <nav className="flex-1 overflow-y-auto px-2 py-2">
+      <nav className="sidebar-nav flex-1 overflow-y-auto px-2 py-2">
         {sections.map((section, idx) => (
           <div key={section.label} className={idx > 0 ? "mt-2.5" : ""}>
             {/* Separador visual entre seções */}
             {idx > 0 && <div className="mb-2 border-t border-white/[0.07]" />}
-            <p className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/28">
+            <p className="sidebar-secao-titulo mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/28">
               {section.label}
             </p>
             <div className="space-y-0.5">
@@ -266,38 +340,53 @@ export default function SidebarShell({
       <div className="border-t border-white/[0.07] px-2 py-2 space-y-0.5">
         <button
           type="button"
-          onClick={() => { setMobileOpen(false); backHref ? router.push(backHref) : router.back(); }}
-          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/50 transition-all duration-150 hover:bg-white/[0.09] hover:text-white/85"
+          onClick={voltar}
+          data-label="Voltar"
+          className={ITEM_RODAPE}
         >
-          <ArrowLeft className="size-[15px] text-white/30" />
-          <span>Voltar</span>
+          <ArrowLeft className="size-[15px] shrink-0 text-white/30" />
+          <span className="sidebar-label">Voltar</span>
         </button>
         <Link
-          href="/visao-geral"
+          href="/inicio"
           onClick={() => setMobileOpen(false)}
-          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/50 transition-all duration-150 hover:bg-white/[0.09] hover:text-white/85"
+          data-label="Início"
+          className={ITEM_RODAPE}
         >
-          <Home className="size-[15px] text-white/30" />
-          <span>Início</span>
+          <Home className="size-[15px] shrink-0 text-white/30" />
+          <span className="sidebar-label">Início</span>
+        </Link>
+        {/* Atalho fixo para o hub de módulos. Sem ele, trocar de módulo obriga a
+            passar pela Visão geral primeiro — a queixa que originou este item. */}
+        <Link
+          href="/modulos"
+          onClick={() => setMobileOpen(false)}
+          data-label="Módulos"
+          className={ITEM_RODAPE}
+        >
+          <Boxes className="size-[15px] shrink-0 text-white/30" />
+          <span className="sidebar-label">Módulos</span>
         </Link>
         {mostrarEmpresas && (
           <Link
             href="/empresas"
             onClick={() => setMobileOpen(false)}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/50 transition-all duration-150 hover:bg-white/[0.09] hover:text-white/85"
+            data-label="Empresas"
+            className={ITEM_RODAPE}
           >
-            <Building2 className="size-[15px] text-white/30" />
-            <span>Empresas</span>
+            <Building2 className="size-[15px] shrink-0 text-white/30" />
+            <span className="sidebar-label">Empresas</span>
           </Link>
         )}
         <SidebarUpdateButton />
         <button
           type="button"
           onClick={handleLogout}
-          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/50 transition-all duration-150 hover:bg-white/[0.09] hover:text-white/85"
+          data-label="Sair"
+          className={ITEM_RODAPE}
         >
-          <LogOut className="size-[15px] text-white/30" />
-          <span>Sair</span>
+          <LogOut className="size-[15px] shrink-0 text-white/30" />
+          <span className="sidebar-label">Sair</span>
         </button>
       </div>
     </>
@@ -315,9 +404,9 @@ export default function SidebarShell({
         <Menu className="size-5" />
       </button>
 
-      {/* Sidebar desktop — view-transition-name fixo: o shell não cruza entre
-          páginas, só a área de conteúdo transiciona (ver globals.css). */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)", viewTransitionName: "sidebar" }}>
+      {/* Sidebar desktop — view-transition-name fixo: o shell não cruza entre páginas,
+          só a área de conteúdo transiciona (ver globals.css). */}
+      <aside className="sidebar-shell fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)", viewTransitionName: "sidebar" }}>
         {Content}
       </aside>
 

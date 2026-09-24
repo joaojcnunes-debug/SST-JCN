@@ -22,8 +22,18 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="pt-BR" className={inter.variable}>
+    <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
+        {/* Aplica o tema e a sidebar recolhida ANTES da 1ª pintura (sem flash).
+            Lê as mesmas chaves/formas do zustand persist (useTema → "tema",
+            useSidebarMini → "sidebar-mini"). Como isto muda a classe e os
+            atributos do <html> antes da hidratação, o <html> leva
+            suppressHydrationWarning. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var r=localStorage.getItem('tema');var t=r?JSON.parse(r).state.tema:'light';if(t==='dark'){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}}catch(e){}try{var s=localStorage.getItem('sidebar-mini');if(s&&JSON.parse(s).state.mini){document.documentElement.setAttribute('data-sidebar','mini');}}catch(e){}})();`,
+          }}
+        />
         <Providers>
           <PageTransitions />
           <TopProgressBar />

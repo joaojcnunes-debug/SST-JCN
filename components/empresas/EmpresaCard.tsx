@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Pencil, ClipboardList, Trash2, ArrowRight } from "lucide-react";
+import { Building2, Pencil, ClipboardList, Trash2, ArrowRight, MapPin } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Empresa } from "@/lib/supabase/types";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { formatCNPJ, cn } from "@/lib/utils";
 
 function useInspCount(idEmpresa: string) {
@@ -44,6 +45,13 @@ export default function EmpresaCard({
   const { data: count } = useInspCount(empresa.id_empresa);
   const inativa = empresa.status === "Inativa";
   const initials = getInitials(empresa.nome_empresa);
+  const ehTerceiros = empresa.tipo_estabelecimento === "TERCEIROS";
+  // Mesma queryKey do resto da tela — o react-query serve do cache, não é uma
+  // busca por card.
+  const { data: empresas = [] } = useEmpresas();
+  const contratante = empresa.id_empresa_contratante
+    ? empresas.find((e) => e.id_empresa === empresa.id_empresa_contratante)
+    : null;
 
   return (
     <div
@@ -71,6 +79,20 @@ export default function EmpresaCard({
             <h3 className="line-clamp-2 text-sm font-bold leading-tight text-gray-900">
               {empresa.nome_empresa}
             </h3>
+            {/* Bate o olho e vê que este cadastro não é um cliente, e sim um
+                local de terceiros — senão ele se confunde com os outros 474. */}
+            {ehTerceiros && (
+              <span
+                title={
+                  contratante
+                    ? `Estabelecimento de terceiros de ${contratante.nome_empresa}`
+                    : "Estabelecimento de terceiros"
+                }
+                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800"
+              >
+                <MapPin className="size-2.5" /> Terceiros
+              </span>
+            )}
             {inativa && (
               <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">
                 Inativa

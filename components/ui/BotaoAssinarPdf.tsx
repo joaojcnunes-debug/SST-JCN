@@ -57,34 +57,53 @@ export default function BotaoAssinarPdf({
    * capturamos o DOM para salvar.
    */
   async function handleAssinarImagem(signatoryEmail: string) {
+    // 1. Registra a assinatura por imagem. NAO passa apiPdfUrl de proposito: o
+    //    servidor NAO regenera server-side (fetch server-to-server falha atras do
+    //    CF Access). O PDF e gerado NO CLIENTE (same-origin, com a sessao) e
+    //    enviado via FormData -- robusto e identico ao "Gerar PDF".
     const res = await fetch("/api/sign-image", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ signatoryEmail, tabelaNome, docId, apiPdfUrl }),
+      body: JSON.stringify({ signatoryEmail, tabelaNome, docId }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error((data as { error?: string }).error ?? "Erro ao assinar");
 
-    if ((data as { needsClientSave?: boolean }).needsClientSave) {
-      // Fecha o modal antes de capturar (evita o overlay interferir no canvas).
-      setOpenImg(false);
-      window.dispatchEvent(
-        new CustomEvent("pdf:assinado", { detail: { tabelaNome, docId } }),
-      );
-      onAssinado?.();
+    // 2. Gera o PDF assinado no cliente e envia p/ salvar no Storage.
+    setOpenImg(false);
+    window.dispatchEvent(new CustomEvent("pdf:assinado", { detail: { tabelaNome, docId } }));
+    onAssinado?.();
+
+    let bytes: ArrayBuffer;
+    if (baseCongeladaUrl) {
+      const r = await fetch(baseCongeladaUrl);
+      if (!r.ok) throw new Error("Falha ao baixar a base congelada");
+      bytes = await r.arrayBuffer();
+    } else if (apiPdfUrl) {
+      const sep = apiPdfUrl.includes("?") ? "&" : "?";
+      const r = await fetch(`${apiPdfUrl}${sep}assinado=1`);
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({ error: "Erro ao gerar PDF" }));
+        throw new Error((e as { error?: string }).error ?? "Erro ao gerar PDF");
+      }
+      bytes = await r.arrayBuffer();
+    } else {
+      // Laudo legado por captura de tela: aguarda re-render com a imagem.
       await new Promise((r) => setTimeout(r, 1400));
       const { gerarHtmlParaPdf } = await import("@/lib/gerarHtmlParaPdf");
-      const bytes = await gerarHtmlParaPdf({ forSigning: true });
-      const form = new FormData();
-      form.append("pdf", new Blob([bytes], { type: "application/pdf" }), "assinado.pdf");
-      if (tabelaNome) form.append("tabelaNome", tabelaNome);
-      if (docId) form.append("docId", docId);
-      const res2 = await fetch("/api/sign-image", { method: "POST", body: form });
-      if (!res2.ok) {
-        const d2 = await res2.json().catch(() => ({}));
-        throw new Error((d2 as { error?: string }).error ?? "Erro ao salvar o PDF assinado");
-      }
+      bytes = await gerarHtmlParaPdf({ forSigning: true });
     }
+
+    const form = new FormData();
+    form.append("pdf", new Blob([bytes], { type: "application/pdf" }), "assinado.pdf");
+    if (tabelaNome) form.append("tabelaNome", tabelaNome);
+    if (docId) form.append("docId", docId);
+    const res2 = await fetch("/api/sign-image", { method: "POST", body: form });
+    if (!res2.ok) {
+      const d2 = await res2.json().catch(() => ({}));
+      throw new Error((d2 as { error?: string }).error ?? "Erro ao salvar o PDF assinado");
+    }
+
     onAssinado?.();
     toast.success("Documento assinado com a imagem de assinatura!");
   }

@@ -33,6 +33,7 @@ const STATUS_OPCOES: { v: StatusRelatorio; t: string }[] = [
   { v: "RASCUNHO", t: "Rascunho" },
   { v: "EM_ANDAMENTO", t: "Em andamento" },
   { v: "CONCLUIDO", t: "Concluído" },
+  { v: "ENVIADO_CLIENTE", t: "Enviado p/ cliente" },
 ];
 
 export default function MetadadosPage({

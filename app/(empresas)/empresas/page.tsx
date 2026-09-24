@@ -1,18 +1,19 @@
 "use client";
 
-import { useMemo, useState, Suspense } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Plus, Search, Building2, UploadCloud } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
+import { buscarEmpresas } from "@/lib/busca/empresas";
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import { excluirComLixeira } from "@/lib/hooks/useLixeira";
 import EmpresaCard from "@/components/empresas/EmpresaCard";
 import EmpresaForm from "@/components/empresas/EmpresaForm";
 import ImportarEmpresasModal from "@/components/empresas/ImportarEmpresasModal";
-import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { useCanCreate, useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
 import { useUnidadeAtiva } from "@/lib/store";
 import type { Empresa } from "@/lib/supabase/types";
@@ -29,6 +30,15 @@ function EmpresasInner() {
   const [busca, setBusca] = useState("");
   // Pré-filtra por unidade: pelo deep-link (?unidade=ID|__sem__) ou pela Unidade ativa.
   const [filtroUnidade, setFiltroUnidade] = useState(searchParams.get("unidade") ?? unidadeAtivaId ?? "");
+  // Se a Unidade ativa MUDAR com a tela aberta (ex.: empresa criada em outra
+  // unidade move o escopo), o filtro acompanha — senão a empresa recém-criada
+  // continuaria invisível aqui. Na montagem não mexe: o deep-link manda.
+  const unidadeAtivaAnterior = useRef(unidadeAtivaId);
+  useEffect(() => {
+    if (unidadeAtivaAnterior.current === unidadeAtivaId) return;
+    unidadeAtivaAnterior.current = unidadeAtivaId;
+    setFiltroUnidade(unidadeAtivaId ?? "");
+  }, [unidadeAtivaId]);
   const [formOpen, setFormOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Empresa | null>(null);
@@ -57,18 +67,21 @@ function EmpresasInner() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtradas = useMemo(() => {
-    const q = busca.trim().toLowerCase();
-    return empresas.filter((e) => {
+  const { itens: filtradas, aproximado, foraDaUnidade } = useMemo(() => {
+    const naUnidade = (e: Empresa) => {
       if (filtroUnidade === "__sem__" && e.id_unidade) return false;
       if (filtroUnidade && filtroUnidade !== "__sem__" && e.id_unidade !== filtroUnidade) return false;
-      if (!q) return true;
-      return (
-        e.nome_empresa.toLowerCase().includes(q) ||
-        (e.cnpj ?? "").toLowerCase().includes(q) ||
-        (e.razao_social ?? "").toLowerCase().includes(q)
-      );
-    });
+      return true;
+    };
+    // Busca tolerante: acento, ordem das palavras, erro de digitação, CNPJ sem máscara.
+    const r = buscarEmpresas(empresas.filter(naUnidade), busca);
+    // "Não achou" pode ser o filtro de unidade, não a busca: conta quantas
+    // batem FORA da unidade escolhida para oferecer o "mostrar todas".
+    const foraDaUnidade =
+      filtroUnidade && busca.trim()
+        ? buscarEmpresas(empresas, busca).itens.filter((e) => !naUnidade(e)).length
+        : 0;
+    return { ...r, foraDaUnidade };
   }, [empresas, busca, filtroUnidade]);
 
   return (
@@ -123,11 +136,24 @@ function EmpresasInner() {
         )}
       </div>
 
+      {/* A pessoa precisa SABER que está vendo um recorte: "sumiu" quase sempre é isto. */}
+      {!isLoading && !error && filtroUnidade && !busca.trim() && empresas.length > filtradas.length && (
+        <p className="text-xs text-gray-500">
+          Mostrando <strong>{filtradas.length}</strong> empresa{filtradas.length === 1 ? "" : "s"} de{" "}
+          <strong>{filtroUnidade === "__sem__" ? "sem unidade" : unidades.find((u) => u.id_unidade === filtroUnidade)?.nome ?? "esta unidade"}</strong>
+          {" · "}
+          {empresas.length - filtradas.length} em outras unidades —{" "}
+          <button type="button" onClick={() => setFiltroUnidade("")} className="font-semibold text-verde-primary hover:underline">
+            ver todas
+          </button>
+        </p>
+      )}
+
       {isLoading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <LoadingSkeleton rows={1} className="h-44" />
-          <LoadingSkeleton rows={1} className="h-44" />
-          <LoadingSkeleton rows={1} className="h-44" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="skeleton-shimmer h-44 rounded-2xl" style={{ opacity: 1 - i * 0.08 }} />
+          ))}
         </div>
       )}
 
@@ -148,6 +174,16 @@ function EmpresasInner() {
           <p className="mt-1 text-xs text-gray-400">
             {busca ? `Nenhum resultado para "${busca}"` : "Comece cadastrando a primeira empresa"}
           </p>
+          {foraDaUnidade > 0 && (
+            <button
+              type="button"
+              onClick={() => setFiltroUnidade("")}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-800 transition hover:bg-sky-100"
+            >
+              {foraDaUnidade === 1 ? "Há 1 empresa parecida" : `Há ${foraDaUnidade} empresas parecidas`} em outras
+              unidades — mostrar todas
+            </button>
+          )}
           {!busca && canEdit && (
             <button
               type="button"
@@ -161,8 +197,28 @@ function EmpresasInner() {
         </div>
       )}
 
+      {!isLoading && !error && (
+        <AvisoBuscaAproximada aproximado={aproximado} busca={busca} total={filtradas.length} />
+      )}
+
+      {!isLoading && !error && filtradas.length > 0 && foraDaUnidade > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-800">
+          <span>
+            {foraDaUnidade === 1 ? "Há mais 1 empresa parecida" : `Há mais ${foraDaUnidade} empresas parecidas`} em
+            outras unidades.
+          </span>
+          <button
+            type="button"
+            onClick={() => setFiltroUnidade("")}
+            className="font-semibold underline-offset-2 hover:underline"
+          >
+            Mostrar todas as unidades
+          </button>
+        </div>
+      )}
+
       {!isLoading && !error && filtradas.length > 0 && (
-        <div className="reveal-up grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtradas.map((empresa) => (
             <EmpresaCard
               key={empresa.id_empresa}

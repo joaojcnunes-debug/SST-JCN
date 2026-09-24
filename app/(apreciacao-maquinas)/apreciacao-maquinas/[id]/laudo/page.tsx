@@ -14,10 +14,25 @@ import { mensagemErro } from "@/lib/errors";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useMaquina } from "@/lib/hooks/useInventarioMaquinas";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
+import StorageImg from "@/components/ui/StorageImg";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
 import { montarValoresEmpresa, formatarDataBR, substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
 import { useApreciacaoMaquina, useAcoesApreciacao } from "@/lib/hooks/useApreciacoesMaquinas";
+import { useRiscosHrn } from "@/lib/hooks/useRiscosHrn";
+import { useFichasMaquina } from "@/lib/hooks/useFichasMaquina";
+import { agruparFichasPorSetor } from "@/lib/supabase/types";
+import {
+  POD_HRN_LABELS,
+  FEP_HRN_LABELS,
+  GPD_HRN_LABELS,
+  CLASSIFICACAO_HRN_LABELS,
+  calcularIndiceHrn,
+  type PodHrn,
+  type FepHrn,
+  type GpdHrn,
+  type ClassificacaoRiscoHrn,
+} from "@/lib/supabase/types";
 import ItemApreciacaoCard from "@/components/apreciacao-maquinas/ItemApreciacaoCard";
 import PlanoAcaoTable from "@/components/apreciacao-maquinas/PlanoAcaoTable";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
@@ -39,16 +54,17 @@ export default function LaudoApreciacaoMaquinasPage({
   const { data: empresas = [] } = useEmpresas();
   const { data: maquinaVinculada } = useMaquina(data?.apreciacao.id_maquina ?? null);
 
-  // Plano de Ação só entra quando há ao menos uma ação COM conteúdo (padrão DRPS).
+  const apreciacao = data?.apreciacao;
+  const itens = data?.itens ?? [];
+
+  const { data: riscosHrn = [] } = useRiscosHrn(id);
+  const { data: fichas = [] } = useFichasMaquina(id);
   const { data: acoesLaudo = [] } = useAcoesApreciacao(id);
+  // Plano de Ação só entra no laudo quando há ação COM conteúdo (igual ao PDF/DRPS).
   const acoesComConteudo = acoesLaudo.filter((a) =>
     [a.what_acao, a.why_justificativa, a.where_local, a.when_prazo, a.who_responsavel, a.how_metodo, a.how_much_custo]
       .some((v) => (v ?? "").trim().length > 0),
   );
-
-  const apreciacao = data?.apreciacao;
-  const itens = data?.itens ?? [];
-
   const { pdfAssinado, recarregar } = usePdfAssinado("apreciacoes_maquinas", id);
   const { data: pdfCongelado } = usePdfCongelado("apreciacao_maquinas", id);
   const baseCongeladaUrl = pdfCongelado?.pdf_url ?? undefined;
@@ -138,8 +154,14 @@ export default function LaudoApreciacaoMaquinasPage({
   const tituloPorSlugAp: Record<string, string> = {};
   for (const c of capitulosAp) if (c.slug_fixo) tituloPorSlugAp[c.slug_fixo] = c.titulo;
 
-  // Conclusão Técnica só renderiza quando há parecer/recomendações.
-  const temConclusaoAp = !!(apreciacao.conclusao_tecnica || apreciacao.recomendacoes);
+  // A ficha da máquina (seção 4 do laudo) só renderiza quando tem o que mostrar.
+  // Mesmo predicado do PDF — se divergir, tela e PDF numeram seções diferentes.
+  const temConclusaoAp = !!(
+    apreciacao.conclusao_tecnica
+    || apreciacao.recomendacoes
+    || riscosHrn.length > 0
+    || fichas.length > 0
+  );
 
   // Só entra no Sumário/numeração quem vira seção numerada (mesmo predicado do PDF).
   const renderizaNumeradoAp = (c: (typeof capitulosAp)[number]): boolean => {
@@ -204,7 +226,7 @@ export default function LaudoApreciacaoMaquinasPage({
           </h3>
           <div className="space-y-2">
             {grupo.itens.map((it) => (
-              <ItemApreciacaoCard key={it.id_item} item={it} disabled={true} />
+              <ItemApreciacaoCard key={it.id_item} item={it} disabled={true} compacto />
             ))}
           </div>
         </div>
@@ -212,28 +234,214 @@ export default function LaudoApreciacaoMaquinasPage({
     </section>
   );
 
+  /** Célula de risco: fatores por extenso + "índice · CLASSIFICAÇÃO". */
+  const celulaRisco = (
+    pod: string | null,
+    fep: string | null,
+    gpd: string | null,
+    classificacao: string | null,
+  ) => {
+    const fatores = [
+      pod ? POD_HRN_LABELS[pod as PodHrn] : null,
+      fep ? FEP_HRN_LABELS[fep as FepHrn] : null,
+      gpd ? GPD_HRN_LABELS[gpd as GpdHrn] : null,
+    ].filter(Boolean).join(" · ");
+    const indice = calcularIndiceHrn(pod, fep, gpd);
+    const nome = classificacao
+      ? CLASSIFICACAO_HRN_LABELS[classificacao as ClassificacaoRiscoHrn]
+      : null;
+    const resumo = [indice !== null ? String(indice) : null, nome ? nome.toUpperCase() : null]
+      .filter(Boolean).join(" · ");
+    if (!fatores && !resumo) return <span className="text-gray-400">—</span>;
+    return (
+      <>
+        {fatores}
+        {fatores && resumo ? <br /> : null}
+        {resumo ? <span className="font-mono font-bold">{resumo}</span> : null}
+      </>
+    );
+  };
+
+  // Riscos agrupados por máquina — uma consulta só, agrupada aqui.
+  const riscosPorFicha = new Map<string, typeof riscosHrn>();
+  for (const r of riscosHrn) {
+    const k = r.id_ficha ?? "";
+    if (!riscosPorFicha.has(k)) riscosPorFicha.set(k, []);
+    riscosPorFicha.get(k)!.push(r);
+  }
+  const { grupos: gruposFichas, seqDe } = agruparFichasPorSetor(fichas);
+
+  // Ficha da máquina — mesmo conteúdo e mesma ordem do PDF (seção 4 do laudo).
   const conclusaoScreenNode = temConclusaoAp ? (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
-      <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-gray-700">
-        {numLabelAp(numPorSlugAp["apreciacao_risco"], tituloPorSlugAp["apreciacao_risco"] ?? "Conclusão Técnica")}
+    <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm print:rounded-none print:border-gray-300 print:p-0 print:shadow-none">
+      <h2 className="mb-2 border-b-2 border-orange-600 pb-1 text-sm font-bold uppercase tracking-wider text-orange-800">
+        {numLabelAp(numPorSlugAp["apreciacao_risco"], tituloPorSlugAp["apreciacao_risco"] ?? "Apreciação de Risco")}
       </h2>
+
+      {gruposFichas.length === 0 && (
+        <p className="mb-3 text-xs italic text-gray-500">
+          Nenhuma máquina cadastrada neste laudo.
+        </p>
+      )}
+
+      {gruposFichas.map((grupo) => (
+        <div key={grupo.setor} className="mb-4">
+          <p className="mb-2 border-b border-orange-200 pb-0.5 text-[11px] font-bold uppercase tracking-wider text-orange-700">
+            Setor: {grupo.setor} ({grupo.fichas.length})
+          </p>
+
+          {grupo.fichas.map((f) => {
+            const riscos = riscosPorFicha.get(f.id_ficha) ?? [];
+            const operadores = (f.operadores ?? [])
+              .map((o) => [o.nome, o.cargo].filter(Boolean).join(" — "))
+              .filter(Boolean)
+              .join("; ");
+            const campos: [string, string | null][] = [
+              ["Tipo", f.tipo],
+              ["Fabricante", f.fabricante],
+              ["Modelo", f.modelo],
+              ["Nº de Série", f.serie],
+              ["Ano", f.ano],
+              ["Capacidade", f.capacidade],
+              ["Setor", f.setor],
+            ];
+
+            return (
+              <div key={f.id_ficha} className="mb-4 break-inside-avoid">
+                <p className="mb-1 text-sm font-bold text-gray-900">
+                  {seqDe(f)}. {f.maquina_descricao || f.equipamento || "Máquina"}
+                </p>
+
+                <div className="mb-2 grid grid-cols-2 border-l border-t border-gray-200 sm:grid-cols-4 lg:grid-cols-7 print:grid-cols-7">
+                  {campos.map(([k, v]) => (
+                    <div key={k} className="min-w-0 border-b border-r border-gray-200 px-2 py-1">
+                      <span className="block text-[9px] font-bold uppercase tracking-wide text-gray-500">{k}</span>
+                      <span className="block break-words text-xs text-gray-900 print:text-[9pt]">
+                        {v && v.trim() ? v : "—"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {f.foto_urls.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5">
+                    {f.foto_urls.slice(0, 3).map((url, i) => (
+                      <StorageImg
+                        key={`${url}-${i}`}
+                        stored={url}
+                        alt={`Foto de ${f.maquina_descricao ?? "máquina"}`}
+                        className="h-28 w-40 rounded border border-gray-300 object-cover"
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {operadores && (
+                  <p className="mb-1 text-xs text-gray-900 print:text-[9.5pt]">
+                    <span className="font-bold">Operadores / Responsáveis: </span>{operadores}
+                  </p>
+                )}
+
+                {f.constatacoes_inspecao && (
+                  <p className="mb-2 whitespace-pre-wrap text-xs text-gray-900 print:text-[9.5pt]">
+                    <span className="font-bold">Constatações da inspeção: </span>
+                    {f.constatacoes_inspecao}
+                  </p>
+                )}
+
+                {riscos.length > 0 && (
+                  <div className="mb-2 overflow-x-auto">
+                    <table className="w-full table-fixed border-collapse text-[11px] print:text-[8.5pt]">
+                      <thead>
+                        <tr className="bg-orange-50 text-left text-[9px] uppercase tracking-wide text-orange-900 print:text-[7.5pt]">
+                          <th className="w-[13%] border border-gray-300 px-1.5 py-1 font-bold">Perigo</th>
+                          <th className="w-[21%] border border-gray-300 px-1.5 py-1 font-bold">Origem / Consequências</th>
+                          <th className="w-[9%] border border-gray-300 px-1.5 py-1 font-bold">Item NR-12</th>
+                          <th className="w-[14%] border border-gray-300 px-1.5 py-1 font-bold">Risco Inicial</th>
+                          <th className="w-[29%] border border-gray-300 px-1.5 py-1 font-bold">Medidas de Controle</th>
+                          <th className="w-[14%] border border-gray-300 px-1.5 py-1 font-bold">Risco Residual</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {riscos.map((r) => {
+                          const origem = [r.origem, r.potenciais_consequencias].filter(Boolean).join(" → ");
+                          const itens = (r.itens_nr12 ?? (r.item_nr12 ? [r.item_nr12] : [])).join("; ");
+                          const temSeparadas = !!(r.medidas_engenharia || r.medidas_administrativas);
+                          return (
+                            <tr key={r.id_risco} className="align-top break-inside-avoid">
+                              <td className="border border-gray-200 px-1.5 py-1 break-words">{r.tipo_perigo || "—"}</td>
+                              <td className="border border-gray-200 px-1.5 py-1 break-words">{origem || "—"}</td>
+                              <td className="border border-gray-200 px-1.5 py-1 break-words">{itens || "—"}</td>
+                              <td className="border border-gray-200 px-1.5 py-1 break-words">
+                                {celulaRisco(r.pod, r.fep, r.gpd, r.classificacao_risco)}
+                              </td>
+                              <td className="border border-gray-200 px-1.5 py-1 break-words">
+                                {temSeparadas ? (
+                                  <>
+                                    {r.medidas_engenharia && (
+                                      <>
+                                        <span className="text-[9px] font-bold uppercase text-gray-600">Eng.:</span>{" "}
+                                        {r.medidas_engenharia}
+                                        {r.medidas_administrativas ? <br /> : null}
+                                      </>
+                                    )}
+                                    {r.medidas_administrativas && (
+                                      <>
+                                        <span className="text-[9px] font-bold uppercase text-gray-600">Adm.:</span>{" "}
+                                        {r.medidas_administrativas}
+                                      </>
+                                    )}
+                                  </>
+                                ) : (
+                                  r.medidas_preventivas || "—"
+                                )}
+                                {r.categoria_seguranca && (
+                                  <>
+                                    <br />
+                                    <span className="text-[9px] font-bold uppercase text-gray-600">Cat. segurança:</span>{" "}
+                                    {r.categoria_seguranca}
+                                  </>
+                                )}
+                              </td>
+                              <td className="border border-gray-200 px-1.5 py-1 break-words">
+                                {celulaRisco(r.pod_residual, r.fep_residual, r.gpd_residual, r.classificacao_residual)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {f.parecer_tecnico && (
+                  <p className="whitespace-pre-wrap text-xs text-gray-900 print:text-[9.5pt]">
+                    <span className="font-bold">Parecer técnico: </span>{f.parecer_tecnico}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+
       {apreciacao.conclusao_tecnica && (
-        <div className="mb-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Parecer técnico</p>
-          <p className="mt-0.5 text-sm text-gray-900 whitespace-pre-wrap">{apreciacao.conclusao_tecnica}</p>
+        <div className="mb-2">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Parecer técnico</p>
+          <p className="mt-0.5 whitespace-pre-wrap text-xs text-gray-900 print:text-[9.5pt]">{apreciacao.conclusao_tecnica}</p>
         </div>
       )}
       {apreciacao.recomendacoes && (
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Recomendações finais</p>
-          <p className="mt-0.5 text-sm text-gray-900 whitespace-pre-wrap">{apreciacao.recomendacoes}</p>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-500">Recomendações finais</p>
+          <p className="mt-0.5 whitespace-pre-wrap text-xs text-gray-900 print:text-[9.5pt]">{apreciacao.recomendacoes}</p>
         </div>
       )}
     </section>
   ) : null;
 
   const planoScreenNode = acoesComConteudo.length > 0 ? (
-    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
+    <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm print:rounded-none print:border-gray-300 print:p-0 print:shadow-none print:break-inside-avoid">
       <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-gray-700">
         {numLabelAp(numPorSlugAp["apreciacao_plano"], tituloPorSlugAp["apreciacao_plano"] ?? "Plano de Ação")}
       </h2>
@@ -308,12 +516,20 @@ export default function LaudoApreciacaoMaquinasPage({
   );
 
   return (
+    // Sem `force-light`: esta tela acompanha o tema do app. O branco fixo aqui
+    // cansava a vista de quem passa o dia no laudo — e a ilha clara nao e
+    // necessaria para a impressao, que ja sai clara porque o ThemeManager tira
+    // o `.dark` no `beforeprint`. O PDF tambem nao depende dela: e montado no
+    // servidor (/api/pdf/apreciacao/[id]), nao capturado desta tela.
     <div className="mx-auto max-w-4xl space-y-6 print:max-w-none print:space-y-3">
       {/* CSS de impressão */}
       <style>{`
         @media print {
-          @page { size: A4; margin: 3cm 2cm 2cm 3cm; }
-          body { font-size: 12pt; line-height: 1.5; }
+          /* Antes: 3cm de margem esquerda + 12pt. Sobrava 16cm de área útil em
+             A4 e a tabela de risco (6 colunas) não cabia. Alinhado às margens
+             que o PDF do Puppeteer já usa. */
+          @page { size: A4; margin: 18mm 15mm 18mm 18mm; }
+          body { font-size: 10pt; line-height: 1.35; }
         }
       `}</style>
 
@@ -398,7 +614,7 @@ export default function LaudoApreciacaoMaquinasPage({
 
       {/* Observações gerais (mesma posição do PDF: antes do corpo). */}
       {apreciacao.observacoes_gerais && (
-        <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border print:border-gray-300 print:shadow-none print:p-3 print:break-inside-avoid">
+        <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm print:rounded-none print:border-gray-300 print:p-0 print:shadow-none print:break-inside-avoid">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Observações Gerais</p>
           <p className="mt-0.5 text-sm text-gray-900 whitespace-pre-wrap">{apreciacao.observacoes_gerais}</p>
         </section>

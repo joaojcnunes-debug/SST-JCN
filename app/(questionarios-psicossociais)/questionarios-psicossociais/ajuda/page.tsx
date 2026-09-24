@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import { useState, useCallback } from "react";
+import AjudaComAbas from "@/components/novidades/AjudaComAbas";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -217,7 +218,7 @@ function ItemExpandivel({ label, conceito, como, atencao, marque_sim, forceOpen 
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
-export default function QpsAjudaPage() {
+function ConteudoQpsAjudaPage() {
   const [printMode, setPrintMode] = useState(false);
 
   const handlePrint = useCallback(() => {
@@ -576,5 +577,18 @@ export default function QpsAjudaPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * A ajuda deste módulo ganhou a aba Atualizações (01/09). O conteúdo acima
+ * continua exatamente como estava — quem monta as abas é o AjudaComAbas, e a
+ * lista de novidades vive num componente só, compartilhado pelos 11 módulos.
+ */
+export default function QpsAjudaPage() {
+  return (
+    <AjudaComAbas titulo="Guia do QPS">
+      <ConteudoQpsAjudaPage />
+    </AjudaComAbas>
   );
 }
