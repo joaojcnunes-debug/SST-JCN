@@ -493,13 +493,11 @@ export default function InspecaoEditorPage({ params }: Props) {
         className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
       />
 
-      {/* Situação do DRPS, QPS, AEP e AET da empresa — só para quem administra. */}
-      {isAdmin && (
-        <DocumentosEmpresaPainel
-          idEmpresa={inspecao.id_empresa}
-          className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
-        />
-      )}
+      {/* Situação do DRPS, QPS, AEP e AET da empresa — visível para todos. */}
+      <DocumentosEmpresaPainel
+        idEmpresa={inspecao.id_empresa}
+        className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+      />
 
       {/* Levar para o campo: acima das abas de propósito. A decisão de copiar a
           inspeção para o aparelho é tomada ANTES de sair da base, e não no meio
