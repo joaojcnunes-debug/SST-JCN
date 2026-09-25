@@ -18,7 +18,7 @@ import type {
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const cookieStore = await cookies();
   const supabase = createSupabaseServerClient(cookieStore);
@@ -58,7 +58,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     // default (/owas/x.svg, relativo) → absoluta (Puppeteer não tem origem).
     // Origem INTERNA (nao a publica): o Chromium roda no container e o CF Access
     // bloquearia server-to-server no hostname publico (SVG viraria HTML de login).
-    const origin = process.env.AUTH_INTERNAL_URL ?? "http://127.0.0.1:3000";
+    // Na Vercel não há AUTH_INTERNAL_URL: o próprio site serve /owas/*.svg
+    // (o middleware não intercepta .svg), então a origem da requisição basta.
+    const origin = process.env.AUTH_INTERNAL_URL ?? new URL(req.url).origin;
     const { data: rawOwas } = await supabase
       .from("aet_owas_categorias").select("*").order("ordem", { ascending: true });
     const owasConfig: AetOwasCfg[] = await Promise.all(
