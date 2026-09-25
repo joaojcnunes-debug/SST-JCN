@@ -45,6 +45,10 @@ export interface SetorRisco {
   setor: string;
   respondentes: number;
   fatores: FatorRisco[];
+  /** "Possíveis agravos à saúde mental" da tela de Análise, um item por linha. */
+  agravos: string[];
+  /** "Medidas de controle recomendadas", um item por linha. */
+  medidas: string[];
   contagem: Record<NivelMatriz, number>;
   pior: NivelMatriz | null;
 }
@@ -96,21 +100,47 @@ function todasAsLinhas<T>(tabela: string, coluna: string, ids: string[], select 
   );
 }
 
-function resumirSetor(setor: string, respondentes: number, fatores: FatorRisco[]): SetorRisco {
+/**
+ * Os textos por setor da Análise são gravados como texto livre, um item por
+ * linha (às vezes com "•" ou "-" na frente). Vira lista limpa, sem repetidos.
+ */
+export function itensDoTexto(texto: string | null | undefined): string[] {
+  if (!texto) return [];
+  const itens = texto
+    .split(/\r?\n|;/)
+    .map((l) => l.replace(/^\s*[•\-*·]\s*/, "").trim())
+    .filter(Boolean);
+  return [...new Set(itens)];
+}
+
+function resumirSetor(
+  setor: string,
+  respondentes: number,
+  fatores: FatorRisco[],
+  textos: { agravos?: string | null; medidas?: string | null } = {}
+): SetorRisco {
   const contagem: Record<NivelMatriz, number> = { Baixo: 0, Médio: 0, Alto: 0, Crítico: 0 };
   let pior: NivelMatriz | null = null;
   for (const f of fatores) {
     contagem[f.nivel]++;
     if (!pior || NIVEIS.indexOf(f.nivel) > NIVEIS.indexOf(pior)) pior = f.nivel;
   }
-  return { setor, respondentes, fatores, contagem, pior };
+  return {
+    setor,
+    respondentes,
+    fatores,
+    agravos: itensDoTexto(textos.agravos),
+    medidas: itensDoTexto(textos.medidas),
+    contagem,
+    pior,
+  };
 }
 
 async function carregarDrps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpresa: string })[]; empresas: EmpresaMin[] }> {
   const { data, error } = await db()
     .from("drps_relatorios")
     .select(
-      "id_relatorio, id_empresa, revisao, status, data_elaboracao, data_conclusao, responsavel_tecnico, updated_at, empresas(id_empresa, nome_empresa, cnpj, municipio, uf)"
+      "id_relatorio, id_empresa, revisao, status, data_elaboracao, data_conclusao, responsavel_tecnico, updated_at, agravos_por_setor, medidas_por_setor, empresas(id_empresa, nome_empresa, cnpj, municipio, uf)"
     )
     .in("status", STATUS_CONCLUIDOS);
   if (error) throw error;
@@ -123,6 +153,8 @@ async function carregarDrps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpre
     data_conclusao: string | null;
     responsavel_tecnico: string | null;
     updated_at: string | null;
+    agravos_por_setor: Record<string, string> | null;
+    medidas_por_setor: Record<string, string> | null;
     empresas: EmpresaMin | null;
   }>;
   const ids = relatorios.map((r) => r.id_relatorio);
@@ -140,7 +172,8 @@ async function carregarDrps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpre
       resumirSetor(
         b.setor,
         b.totalRespondentes,
-        b.topicos.map((t) => ({ nome: t.nome, nivel: t.matriz }))
+        b.topicos.map((t) => ({ nome: t.nome, nivel: t.matriz })),
+        { agravos: r.agravos_por_setor?.[b.setor], medidas: r.medidas_por_setor?.[b.setor] }
       )
     );
     return {
@@ -198,7 +231,12 @@ async function carregarQps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpres
             s,
             n,
             // Categoria sem resposta no setor não tem nível — não vira "Baixo".
-            analise.filter((c) => c.matriz).map((c) => ({ nome: c.nome, nivel: c.matriz! }))
+            analise.filter((c) => c.matriz).map((c) => ({ nome: c.nome, nivel: c.matriz! })),
+            // No QPS, "*" guarda o texto da aplicação inteira: vale quando o setor não tem o seu.
+            {
+              agravos: ap.agravos_por_setor?.[s] || ap.agravos_por_setor?.["*"],
+              medidas: ap.medidas_por_setor?.[s] || ap.medidas_por_setor?.["*"],
+            }
           );
         })
       : [];
