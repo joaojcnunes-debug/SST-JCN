@@ -33,6 +33,7 @@ import { useInspecao, type InspecaoFull } from "@/lib/hooks/useInspecao";
 import { gravar } from "@/lib/offline/gravar";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
+import DocumentosEmpresaPainel from "@/components/empresas/DocumentosEmpresaPainel";
 import { useCanEdit, useCurrentUser, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { DetalheSkeleton } from "@/components/ui/PageSkeletons";
@@ -491,6 +492,14 @@ export default function InspecaoEditorPage({ params }: Props) {
         empresa={empresa ?? null}
         className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
       />
+
+      {/* Situação do DRPS, QPS, AEP e AET da empresa — só para quem administra. */}
+      {isAdmin && (
+        <DocumentosEmpresaPainel
+          idEmpresa={inspecao.id_empresa}
+          className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+        />
+      )}
 
       {/* Levar para o campo: acima das abas de propósito. A decisão de copiar a
           inspeção para o aparelho é tomada ANTES de sair da base, e não no meio
