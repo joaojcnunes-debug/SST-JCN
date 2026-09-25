@@ -4,6 +4,7 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
 } from "@/lib/supabase/client";
+import { temServiceRole } from "../service-role";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,10 @@ async function handler(req: NextRequest) {
   }
   const emailNorm = (email as string).trim().toLowerCase();
 
+  if (!temServiceRole()) {
+    return criarViaRpc(supabase, emailNorm, senha as string, (nome as string).trim(), resto);
+  }
+
   const service = createSupabaseServiceClient({
     email: caller.email,
     origem: "usuarios/criar",
@@ -117,6 +122,50 @@ async function handler(req: NextRequest) {
     );
   }
 
+  return NextResponse.json({ ok: true });
+}
+
+/**
+ * Sem SUPABASE_SERVICE_ROLE_KEY no servidor (o caso da Vercel hoje), cria pela
+ * função do banco `criar_usuario_admin` — SECURITY DEFINER, só roda para Admin
+ * ativo, e grava auth.users + auth.identities + public.usuarios numa transação.
+ * Ela só aceita Admin/Tecnico/Visualizador e poucos campos; o resto do perfil
+ * (função, módulos, permissões…) vai num UPDATE logo em seguida, com a sessão
+ * do próprio admin. Se esse UPDATE falhar, a conta recém-criada é apagada.
+ */
+async function criarViaRpc(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  email: string,
+  senha: string,
+  nome: string,
+  resto: Record<string, unknown>
+) {
+  const perfil = String(resto.perfil ?? "Visualizador");
+  const { data, error } = await supabase.rpc("criar_usuario_admin" as never, {
+    p_email: email,
+    p_senha: senha,
+    p_nome: nome,
+    p_cargo: (resto.cargo as string | null) ?? null,
+    p_perfil: ["Admin", "Tecnico", "Visualizador"].includes(perfil) ? perfil : "Visualizador",
+    p_ativo_sistema: resto.ativo_sistema !== false,
+    p_empresas_vinculadas: (resto.empresas_vinculadas as string[] | undefined) ?? [],
+  } as never);
+  if (error) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+  }
+  const idCriado = (data as { id_usuario?: string } | null)?.id_usuario;
+  const { error: upErr } = await supabase
+    .from("usuarios")
+    .update(resto as never)
+    .eq("id_usuario", idCriado ?? "")
+    .eq("email", email);
+  if (upErr) {
+    await supabase.rpc("excluir_usuario_admin" as never, { p_email: email } as never);
+    return NextResponse.json(
+      { ok: false, error: `Falhou ao salvar o perfil do usuário: ${upErr.message}` },
+      { status: 500 }
+    );
+  }
   return NextResponse.json({ ok: true });
 }
 
