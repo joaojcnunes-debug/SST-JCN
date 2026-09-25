@@ -46,6 +46,8 @@ export interface DrpsTemplateProps {
     data_elaboracao: string | null;
     agravos_por_setor: Record<string, string> | null;
     medidas_por_setor: Record<string, string> | null;
+    /** v262 — fontes geradoras escolhidas por setor/tópico. Ausente = padrão. */
+    fontes_por_setor?: Record<string, Record<string, string[]>> | null;
     conclusoes_por_setor: Record<string, string> | null;
     conclusao_geral: string | null;
     // v138 — overrides por unidade: {unidade: {setor: texto}}. Ausente = herda
@@ -311,14 +313,14 @@ export default function DrpsTemplate({
   identificadorDocumento,
   planoAcao,
 }: DrpsTemplateProps) {
-  const blocos = montarBlocosPorSetor(respondentes, probabilidades);
+  const blocos = montarBlocosPorSetor(respondentes, probabilidades, undefined, relatorio.fontes_por_setor);
 
   // Cascata Unidade › Setor › Função (v138). Só entra quando o formulário do
   // cliente pergunta a unidade; sem isso a lista é vazia e o laudo sai
   // agrupado só por setor, exatamente como sempre saiu.
   const temUnidades = listarUnidades(respondentes).length > 0;
   const blocosUnidade = temUnidades
-    ? montarBlocosPorUnidade(respondentes, probabilidades, probabilidadesUnidade ?? [])
+    ? montarBlocosPorUnidade(respondentes, probabilidades, probabilidadesUnidade ?? [], undefined, relatorio.fontes_por_setor)
     : [];
 
   // Monitoramento: matriz (pior caso) por tópico por setor

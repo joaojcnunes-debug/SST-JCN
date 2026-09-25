@@ -1,5 +1,8 @@
 "use client";
 
+import FonteGeradoraCampo from "@/components/psicossocial/FonteGeradoraCampo";
+import { useAdicionarFontesCatalogo, useCatalogoFontes } from "@/lib/hooks/useFontesGeradoras";
+import { fontesEscolhidas, textoFontes } from "@/lib/psicossocial/fontes";
 import { Fragment, use, useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Loader2, Save, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
@@ -20,7 +23,6 @@ import {
   useQpsRespondentes,
   useQpsTipos,
   useUpdateQpsAplicacao,
-  useUpdateQpsCategoria,
   useUpsertQpsProbabilidade,
 } from "@/lib/hooks/useQuestionarios";
 import {
@@ -82,6 +84,8 @@ interface EditorSetor {
   medidasSel: string[];
   medidasExtras: string[];
   novaMedida: string;
+  /** v262 — fontes geradoras escolhidas por categoria (só as que alguém mexeu). */
+  fontes: Record<string, string[]>;
 }
 
 const editorVazio = (): EditorSetor => ({
@@ -91,6 +95,7 @@ const editorVazio = (): EditorSetor => ({
   medidasSel: [],
   medidasExtras: [],
   novaMedida: "",
+  fontes: {},
 });
 
 /** Chave de gravação: o consolidado usa "*", igual à probabilidade geral. */
@@ -124,7 +129,6 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
   const upsertProb = useUpsertQpsProbabilidade();
   const deleteProb = useDeleteQpsProbabilidade();
   const updateAp = useUpdateQpsAplicacao();
-  const updateCat = useUpdateQpsCategoria();
   const agravosOpcoes = useAgravosOpcoes();
   const medidasOpcoes = useMedidasRecomendadasOpcoes();
 
@@ -179,6 +183,7 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
         agravosExtras: a.extras,
         medidasSel: m.selecionados,
         medidasExtras: m.extras,
+        fontes: { ...(ap.fontes_por_setor?.[k] ?? {}) },
       };
     }
     setEditores(inicial);
@@ -192,6 +197,11 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
     if (!ap) return;
     const agravos: Record<string, string> = { ...(ap.agravos_por_setor ?? {}) };
     const medidas: Record<string, string> = { ...(ap.medidas_por_setor ?? {}) };
+    // v262: fontes geradoras por setor ("*" = consolidado), mescladas.
+    const fontes: Record<string, Record<string, string[]>> = { ...(ap.fontes_por_setor ?? {}) };
+    for (const [s, ed] of Object.entries(editores)) {
+      if (Object.keys(ed.fontes).length > 0) fontes[chaveSetor(s)] = ed.fontes;
+    }
     for (const [s, ed] of Object.entries(editores)) {
       const k = chaveSetor(s);
       const a = serializeMultiSelect(ed.agravosSel, ed.agravosExtras);
@@ -205,7 +215,7 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
       await updateAp.mutateAsync({
         id: ap.id_aplicacao,
         idEmpresa: ap.id_empresa,
-        input: { agravos_por_setor: agravos, medidas_por_setor: medidas },
+        input: { agravos_por_setor: agravos, medidas_por_setor: medidas, fontes_por_setor: fontes },
       });
       toast.success("Agravos e medidas salvos");
     } catch (e) {
@@ -256,23 +266,6 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
       );
     } catch (e) {
       toast.error(mensagemErro(e, "Erro ao gravar a probabilidade"));
-    }
-  }
-
-  // ── fonte geradora (da categoria, vale para o tipo inteiro) ───────────────
-  async function salvarFonte(idCategoria: string, texto: string) {
-    if (!ap) return;
-    const atual = categorias.find((c) => c.id_categoria === idCategoria)?.fonte_geradora ?? "";
-    if ((texto ?? "").trim() === (atual ?? "").trim()) return;
-    try {
-      await updateCat.mutateAsync({
-        id: idCategoria,
-        idTipo: ap.id_tipo,
-        input: { fonte_geradora: texto.trim() || null },
-      });
-      toast.success("Fonte geradora salva (vale para todas as aplicações deste questionário)");
-    } catch (e) {
-      toast.error(mensagemErro(e, "Erro ao salvar a fonte geradora"));
     }
   }
 
@@ -352,7 +345,6 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
             editor={editores[s] ?? editorVazio()}
             patch={(p) => patchEditor(s, p)}
             onProbabilidade={(idCategoria, valor) => mudarProbabilidade(s, idCategoria, valor)}
-            onFonte={salvarFonte}
             conclusao={ap?.conclusoes_por_setor?.[chaveSetor(s)] ?? ""}
             onSalvarConclusao={(texto) => salvarConclusao(s, texto)}
           />
@@ -381,7 +373,6 @@ function BlocoSetor({
   editor,
   patch,
   onProbabilidade,
-  onFonte,
   conclusao,
   onSalvarConclusao,
 }: {
@@ -402,14 +393,17 @@ function BlocoSetor({
   editor: EditorSetor;
   patch: (p: Partial<EditorSetor>) => void;
   onProbabilidade: (idCategoria: string, valor: string) => void;
-  onFonte: (idCategoria: string, texto: string) => void;
   conclusao: string;
   onSalvarConclusao: (texto: string) => void;
 }) {
   const [textoLocal, setTextoLocal] = useState(conclusao);
   const [gerandoIA, setGerandoIA] = useState(false);
   const [aberta, setAberta] = useState<Record<string, boolean>>({});
-  const [fonteEditando, setFonteEditando] = useState<Record<string, string>>({});
+  // v262 — catálogo de fontes digitadas (vale para todas as aplicações).
+  const { data: catalogoFontes = {} } = useCatalogoFontes("qps");
+  const guardarFontesCatalogo = useAdicionarFontesCatalogo("qps");
+  const fontesDaCategoria = (c: CategoriaGravidade) =>
+    fontesEscolhidas(editor.fontes[c.id_categoria], c.fonteGeradora);
 
   useEffect(() => {
     setTextoLocal(conclusao);
@@ -435,7 +429,7 @@ function BlocoSetor({
           crp: null,
           topicos: comBase.map((c) => ({
             nome: c.nome,
-            fonteGeradora: c.fonteGeradora,
+            fonteGeradora: textoFontes(fontesDaCategoria(c)),
             gravidade: c.gravidade?.texto ?? null,
             probabilidade: c.classificacaoProbabilidade,
             matriz: c.matriz,
@@ -539,7 +533,6 @@ function BlocoSetor({
         <tbody>
           {analise.map((c) => {
             const abertaCat = !!aberta[c.id_categoria];
-            const fonteEd = fonteEditando[c.id_categoria];
             return (
               <Fragment key={c.id_categoria}>
                 <tr>
@@ -556,20 +549,21 @@ function BlocoSetor({
                   </td>
                   <td className="text-[10px] text-gray-700">
                     {canEdit ? (
-                      <textarea
-                        className="fonte"
-                        value={fonteEd ?? c.fonteGeradora ?? ""}
-                        placeholder="Fontes geradoras do risco (vale para todas as aplicações deste questionário)"
-                        onChange={(e) => setFonteEditando((f) => ({ ...f, [c.id_categoria]: e.target.value }))}
-                        onBlur={(e) => {
-                          onFonte(c.id_categoria, e.target.value);
-                          setFonteEditando((f) => { const n = { ...f }; delete n[c.id_categoria]; return n; });
-                        }}
-                        rows={2}
-                      />
-                    ) : (
-                      c.fonteGeradora || "—"
-                    )}
+                      <div className="print:hidden">
+                        <FonteGeradoraCampo
+                          padrao={c.fonteGeradora}
+                          catalogo={catalogoFontes[c.id_categoria] ?? []}
+                          valor={fontesDaCategoria(c)}
+                          onChange={(lista) =>
+                            patch({ fontes: { ...editor.fontes, [c.id_categoria]: lista } })
+                          }
+                          onNovas={(novas) => guardarFontesCatalogo.mutate({ chave: c.id_categoria, textos: novas })}
+                        />
+                      </div>
+                    ) : null}
+                    <div className={canEdit ? "hidden print:block" : undefined}>
+                      {textoFontes(fontesDaCategoria(c)) || "—"}
+                    </div>
                   </td>
                   <td className="text-center">
                     {c.gravidade ? (

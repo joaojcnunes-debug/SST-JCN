@@ -17,6 +17,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { montarBlocosPorSetor } from "@/lib/drps/blocos";
 import { calcularAnaliseSetor, listarSetoresQps } from "@/lib/qps/gravidade";
+import { aplicarFontesQps } from "@/lib/qps/laudo";
 import type { DrpsProbabilidade, DrpsRespondente, NivelMatriz } from "@/lib/drps/types";
 import type {
   QpsAplicacao,
@@ -142,7 +143,7 @@ async function carregarDrps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpre
   const { data, error } = await db()
     .from("drps_relatorios")
     .select(
-      "id_relatorio, id_empresa, revisao, status, data_elaboracao, data_conclusao, responsavel_tecnico, updated_at, agravos_por_setor, medidas_por_setor, empresas(id_empresa, nome_empresa, cnpj, municipio, uf)"
+      "id_relatorio, id_empresa, revisao, status, data_elaboracao, data_conclusao, responsavel_tecnico, updated_at, agravos_por_setor, medidas_por_setor, fontes_por_setor, empresas(id_empresa, nome_empresa, cnpj, municipio, uf)"
     )
     .in("status", STATUS_CONCLUIDOS);
   if (error) throw error;
@@ -157,6 +158,7 @@ async function carregarDrps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpre
     updated_at: string | null;
     agravos_por_setor: Record<string, string> | null;
     medidas_por_setor: Record<string, string> | null;
+    fontes_por_setor: Record<string, Record<string, string[]>> | null;
     empresas: EmpresaMin | null;
   }>;
   const ids = relatorios.map((r) => r.id_relatorio);
@@ -170,7 +172,7 @@ async function carregarDrps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpre
   const avaliacoes = relatorios.map((r) => {
     const resp = respondentes.filter((x) => x.id_relatorio === r.id_relatorio);
     const probs = probabilidades.filter((x) => x.id_relatorio === r.id_relatorio);
-    const setores = montarBlocosPorSetor(resp, probs).map((b) =>
+    const setores = montarBlocosPorSetor(resp, probs, undefined, r.fontes_por_setor).map((b) =>
       resumirSetor(
         b.setor,
         b.totalRespondentes,
@@ -235,7 +237,11 @@ async function carregarQps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpres
             // Categoria sem resposta no setor não tem nível — não vira "Baixo".
             analise
               .filter((c) => c.matriz)
-              .map((c) => ({ nome: c.nome, fonteGeradora: c.fonteGeradora, nivel: c.matriz! })),
+              .map((c) => ({
+                nome: c.nome,
+                fonteGeradora: aplicarFontesQps([c], ap.fontes_por_setor, s)[0].fonteGeradora,
+                nivel: c.matriz!,
+              })),
             // No QPS, "*" guarda o texto da aplicação inteira: vale quando o setor não tem o seu.
             {
               agravos: ap.agravos_por_setor?.[s] || ap.agravos_por_setor?.["*"],

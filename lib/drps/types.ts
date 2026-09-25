@@ -27,6 +27,8 @@ export interface DrpsRelatorio {
   agravos_por_setor: Record<string, string> | null;
   /** Mapa setor -> texto de medidas de controle recomendadas no setor. */
   medidas_por_setor: Record<string, string> | null;
+  /** v262 — fontes geradoras escolhidas: {setor: {topico_idx: [fontes]}}. Ausente = padrão. */
+  fontes_por_setor?: Record<string, Record<string, string[]>> | null;
   /** Mapa setor -> texto de conclusao manuscrita pelo psicologo. */
   conclusoes_por_setor: Record<string, string> | null;
   /** Conclusão técnica consolidada do relatório (todos os setores juntos). */
