@@ -202,8 +202,15 @@ export default function RiscosEmpresaPage() {
                         <tbody>
                           {s.fatores.map((f) => (
                             <tr key={f.nome} className="border-b border-gray-50 last:border-0">
-                              <td className="py-2 pr-3 text-gray-700">{f.nome}</td>
-                              <td className="py-2 text-right"><SeloNivel nivel={f.nivel} /></td>
+                              <td className="py-2 pr-3 align-top">
+                                <div className="text-gray-700">{f.nome}</div>
+                                {f.fonteGeradora && (
+                                  <div className="mt-0.5 text-xs text-gray-500">
+                                    <span className="font-medium text-gray-600">Fonte geradora:</span> {f.fonteGeradora}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-2 text-right align-top"><SeloNivel nivel={f.nivel} /></td>
                             </tr>
                           ))}
                         </tbody>

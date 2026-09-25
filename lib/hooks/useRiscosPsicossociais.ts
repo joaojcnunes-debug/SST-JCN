@@ -38,6 +38,8 @@ export const NIVEIS: NivelMatriz[] = ["Baixo", "Médio", "Alto", "Crítico"];
 
 export interface FatorRisco {
   nome: string;
+  /** Fonte geradora do risco (texto do tópico no DRPS / da categoria no QPS). */
+  fonteGeradora: string | null;
   nivel: NivelMatriz;
 }
 
@@ -172,7 +174,7 @@ async function carregarDrps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpre
       resumirSetor(
         b.setor,
         b.totalRespondentes,
-        b.topicos.map((t) => ({ nome: t.nome, nivel: t.matriz })),
+        b.topicos.map((t) => ({ nome: t.nome, fonteGeradora: t.fonteGeradora || null, nivel: t.matriz })),
         { agravos: r.agravos_por_setor?.[b.setor], medidas: r.medidas_por_setor?.[b.setor] }
       )
     );
@@ -231,7 +233,9 @@ async function carregarQps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpres
             s,
             n,
             // Categoria sem resposta no setor não tem nível — não vira "Baixo".
-            analise.filter((c) => c.matriz).map((c) => ({ nome: c.nome, nivel: c.matriz! })),
+            analise
+              .filter((c) => c.matriz)
+              .map((c) => ({ nome: c.nome, fonteGeradora: c.fonteGeradora, nivel: c.matriz! })),
             // No QPS, "*" guarda o texto da aplicação inteira: vale quando o setor não tem o seu.
             {
               agravos: ap.agravos_por_setor?.[s] || ap.agravos_por_setor?.["*"],
