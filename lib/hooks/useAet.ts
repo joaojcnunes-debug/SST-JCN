@@ -12,6 +12,7 @@ import type { Aet13FatorConfig, Aet13FatorPergunta, Aet13FatorSemaforo, AetCargo
 import { gravar, type ImagemPendente } from "@/lib/offline/gravar";
 import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoes";
 import { ehErroDeRede } from "@/lib/offline/rede";
+import { FILTRO_VISIVEL_NO_MODULO } from "@/lib/hooks/useAep";
 
 function normalizarCargos(raw: unknown): AetCargo[] {
   if (Array.isArray(raw))
@@ -77,6 +78,7 @@ export function useAetRelatorios(empresaId?: string | null) {
       let q = supabase
         .from("aet_relatorios")
         .select("*, empresas(nome_empresa, cnpj)")
+        .or(FILTRO_VISIVEL_NO_MODULO)
         .order("created_at", { ascending: false });
 
       if (empresaId) {
