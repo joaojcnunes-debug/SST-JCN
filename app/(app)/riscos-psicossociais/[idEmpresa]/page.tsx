@@ -192,32 +192,32 @@ export default function RiscosEmpresaPage() {
                         <table className="w-full min-w-[960px] border-collapse text-sm">
                           <thead>
                             <tr className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
-                              <th className="w-32 border border-gray-200 px-3 py-2 font-medium">Resultado final</th>
                               <th className="w-64 border border-gray-200 px-3 py-2 font-medium">Risco</th>
+                              <th className="w-32 border border-gray-200 px-3 py-2 font-medium">Resultado final</th>
                               <th className="border border-gray-200 px-3 py-2 font-medium">Fonte geradora</th>
-                              <th className="w-56 border border-gray-200 px-3 py-2 font-medium">Possíveis agravos à saúde mental</th>
                               <th className="w-64 border border-gray-200 px-3 py-2 font-medium">
                                 Medidas de controle recomendadas (medidas que a empresa deve adotar)
                               </th>
+                              <th className="w-56 border border-gray-200 px-3 py-2 font-medium">Possíveis agravos à saúde mental</th>
                             </tr>
                           </thead>
                           <tbody>
                             {s.fatores.map((f, i) => (
                               <tr key={f.nome}>
+                                <td className="border border-gray-200 px-3 py-2 align-top text-gray-800">{f.nome}</td>
                                 <td className="border border-gray-200 px-3 py-2 align-top">
                                   <SeloNivel nivel={f.nivel} />
                                 </td>
-                                <td className="border border-gray-200 px-3 py-2 align-top text-gray-800">{f.nome}</td>
                                 <td className="border border-gray-200 px-3 py-2 align-top text-xs text-gray-600">
                                   {f.fonteGeradora ?? "—"}
                                 </td>
                                 {i === 0 && (
                                   <>
                                     <td rowSpan={s.fatores.length} className="border border-gray-200 px-3 py-2 align-top">
-                                      <ListaTexto itens={s.agravos} />
+                                      <ListaTexto itens={s.medidas} />
                                     </td>
                                     <td rowSpan={s.fatores.length} className="border border-gray-200 px-3 py-2 align-top">
-                                      <ListaTexto itens={s.medidas} />
+                                      <ListaTexto itens={s.agravos} />
                                     </td>
                                   </>
                                 )}
