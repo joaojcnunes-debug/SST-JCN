@@ -51,3 +51,6 @@ release-*.log
 
 # estado local do Supabase CLI (projeto Supabase desligado em 2026-09)
 supabase/.temp/
+
+# MD completo gerado pelo workflow de documentação
+dist-docs/

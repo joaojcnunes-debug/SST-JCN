@@ -1,0 +1,50 @@
+# Envia o MD completo do sistema por e-mail a cada atualização na main.
+# Script: scripts/docs/enviar_md_completo.py
+#
+# Segredos (Settings › Secrets and variables › Actions):
+#   GMAIL_USER          conta Gmail que envia (ex.: sst.jcnconsultoria@gmail.com)
+#   GMAIL_APP_PASSWORD  "senha de app" do Google dessa conta (não a senha normal)
+#   EMAIL_DESTINOS      destinatários separados por vírgula
+# Sem eles o MD é gerado e guardado como artefato do workflow, sem e-mail.
+
+name: Documentação por e-mail
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentacao-email
+  cancel-in-progress: false
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Montar e enviar o MD completo
+        env:
+          ANTES: ${{ github.event.before }}
+          DEPOIS: ${{ github.sha }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_DESTINOS: ${{ secrets.EMAIL_DESTINOS }}
+        run: python scripts/docs/enviar_md_completo.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sistema-jcn-completo
+          path: dist-docs/*.md
+          retention-days: 90
