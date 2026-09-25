@@ -14,12 +14,31 @@ import {
   listarUnidades,
 } from "./calculos";
 import { TOPICOS } from "./topicos";
+import { fontesEscolhidas, guardadasDe, textoFontes, type FontesPorSetor } from "@/lib/psicossocial/fontes";
 import type {
   DrpsProbabilidade,
   DrpsProbabilidadeUnidade,
   DrpsRespondente,
   TopicoComMatriz,
 } from "./types";
+
+/**
+ * v262: troca a fonte geradora padrão de cada tópico pelas fontes escolhidas
+ * na Análise para o setor. Tópico sem escolha guardada fica com o texto
+ * padrão INTACTO — laudo antigo sai byte a byte igual.
+ */
+export function aplicarFontes(
+  topicos: TopicoComMatriz[],
+  fontes: FontesPorSetor | null | undefined,
+  setor: string
+): TopicoComMatriz[] {
+  if (!fontes) return topicos;
+  return topicos.map((t) => {
+    const guardadas = guardadasDe(fontes, setor, t.idx);
+    if (!guardadas) return t;
+    return { ...t, fonteGeradora: textoFontes(fontesEscolhidas(guardadas, t.fonteGeradora)) };
+  });
+}
 
 export interface SetorRelatorio {
   setor: string;
@@ -127,7 +146,8 @@ export function listarFuncoes(respondentes: DrpsRespondente[]): string {
 export function montarBlocosPorSetor(
   respondentes: DrpsRespondente[],
   probabilidades: DrpsProbabilidade[],
-  setores?: string[]
+  setores?: string[],
+  fontes?: FontesPorSetor | null
 ): SetorRelatorio[] {
   const lista = setores ?? listarSetores(respondentes);
   return lista.map((s) => {
@@ -136,9 +156,10 @@ export function montarBlocosPorSetor(
       setor: s,
       totalRespondentes: filtrados.length,
       funcoes: listarFuncoes(filtrados),
-      topicos: aplicarMatriz(
-        calcularResumoCompleto(filtrados),
-        montarMapaProb(probabilidades, s)
+      topicos: aplicarFontes(
+        aplicarMatriz(calcularResumoCompleto(filtrados), montarMapaProb(probabilidades, s)),
+        fontes,
+        s
       ),
     };
   });
@@ -159,7 +180,8 @@ export function montarBlocosPorUnidade(
   respondentes: DrpsRespondente[],
   probabilidades: DrpsProbabilidade[],
   overrides: DrpsProbabilidadeUnidade[],
-  unidades?: string[]
+  unidades?: string[],
+  fontes?: FontesPorSetor | null
 ): UnidadeRelatorio[] {
   const lista = unidades ?? listarUnidades(respondentes);
   return lista
@@ -178,7 +200,8 @@ export function montarBlocosPorUnidade(
           setor: s,
           totalRespondentes: filtrados.length,
           funcoes: listarFuncoes(filtrados),
-          topicos: aplicarMatriz(calcularResumoCompleto(filtrados), mapa),
+          // Fontes são por SETOR (valem em todas as unidades dele).
+          topicos: aplicarFontes(aplicarMatriz(calcularResumoCompleto(filtrados), mapa), fontes, s),
           topicosHerdados: herdados,
         };
       });

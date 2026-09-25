@@ -60,6 +60,9 @@ import {
   formatCNO,
 } from "@/lib/utils";
 import type { Empresa } from "@/lib/supabase/types";
+import FonteGeradoraCampo from "@/components/psicossocial/FonteGeradoraCampo";
+import { useAdicionarFontesCatalogo, useCatalogoFontes } from "@/lib/hooks/useFontesGeradoras";
+import { fontesEscolhidas, textoFontes } from "@/lib/psicossocial/fontes";
 import type { DrpsRelatorio, StatusRelatorio } from "@/lib/drps/types";
 
 /**
@@ -204,6 +207,8 @@ export default function AnalisePage({
     medidasExtras: string[];
     novoAgravo: string;
     novaMedida: string;
+    /** v262 — fontes escolhidas por tópico (só os tópicos em que alguém mexeu). */
+    fontes: Record<string, string[]>;
   }
   const editorVazio: SetorEditor = {
     agravosSel: [],
@@ -212,6 +217,7 @@ export default function AnalisePage({
     medidasExtras: [],
     novoAgravo: "",
     novaMedida: "",
+    fontes: {},
   };
 
   const [editores, setEditores] = useState<Record<string, SetorEditor>>({});
@@ -234,6 +240,8 @@ export default function AnalisePage({
         medidasExtras: m.extras,
         novoAgravo: "",
         novaMedida: "",
+        // Fontes são por SETOR, também quando uma unidade está em foco.
+        fontes: { ...(relatorio.fontes_por_setor?.[s] ?? {}) },
       };
     };
 
@@ -324,6 +332,14 @@ export default function AnalisePage({
     // traz TODOS os setores dela, então isso preserva o "limpar um setor"), e o
     // spread externo preserva as DEMAIS unidades. Em "Todas", grava no por-setor
     // exatamente como antes (o editor cobre todos os setores da base).
+    //
+    // v262: fontes geradoras por setor — mescla com o que já estava guardado
+    // (setores fora do editor, ex. de outra unidade, ficam como estavam).
+    const fontesMap: Record<string, Record<string, string[]>> = { ...(relatorio.fontes_por_setor ?? {}) };
+    for (const [s, ed] of Object.entries(editores)) {
+      if (Object.keys(ed.fontes).length > 0) fontesMap[s] = ed.fontes;
+    }
+
     const destino: Partial<DrpsRelatorio> = unidadeAtiva
       ? {
           agravos_por_unidade_setor: {
@@ -345,6 +361,7 @@ export default function AnalisePage({
         id_relatorio: idRelatorio,
         id_empresa: relatorio.id_empresa,
         ...destino,
+        fontes_por_setor: fontesMap,
         ...(extrasArg?.status ? { status: extrasArg.status } : {}),
         ...(concluindoAgora
           ? { data_conclusao: new Date().toISOString() }
@@ -835,6 +852,9 @@ export default function AnalisePage({
                       patchEditor(r.setor, { novoAgravo: v }),
                     setNovaMedida: (v) =>
                       patchEditor(r.setor, { novaMedida: v }),
+                    fontes: ed.fontes,
+                    setFontes: (idx, lista) =>
+                      patchEditor(r.setor, { fontes: { ...getEditor(r.setor).fontes, [String(idx)]: lista } }),
                   };
                 })()}
               />
@@ -1016,6 +1036,9 @@ interface BlocoEditorProps {
   removerMedidaExtra: (i: number) => void;
   setNovoAgravo: (v: string) => void;
   setNovaMedida: (v: string) => void;
+  /** v262 — fontes geradoras escolhidas por tópico (chave = índice). */
+  fontes: Record<string, string[]>;
+  setFontes: (idx: number, fontes: string[]) => void;
 }
 
 function BlocoSetor({
@@ -1048,6 +1071,11 @@ function BlocoSetor({
   // Catálogos (Configuração) — base dos multi-selects de agravos e medidas.
   const medidasOpcoes = useMedidasRecomendadasOpcoes();
   const agravosOpcoes = useAgravosOpcoes();
+  // v262 — catálogo de fontes geradoras digitadas (vale para todos os relatórios).
+  const { data: catalogoFontes = {} } = useCatalogoFontes("drps");
+  const guardarFontesCatalogo = useAdicionarFontesCatalogo("drps");
+  const fontesDoTopico = (t: { idx: number; fonteGeradora: string }) =>
+    fontesEscolhidas(editor.fontes[String(t.idx)], t.fonteGeradora);
 
   useEffect(() => {
     setTextoLocal(conclusao);
@@ -1078,7 +1106,7 @@ function BlocoSetor({
             crp: drpsRel?.crp ?? null,
             topicos: relatorio.topicos.map((t) => ({
               nome: t.nome.replace(/^Tópico \d+ - /, ""),
-              fonteGeradora: t.fonteGeradora,
+              fonteGeradora: textoFontes(fontesDoTopico(t)),
               gravidade: t.classificacaoGravidade.texto,
               probabilidade: t.classificacaoProbabilidade,
               matriz: t.matriz,
@@ -1259,7 +1287,22 @@ function BlocoSetor({
               <td className="text-[11px] text-gray-900">
                 {t.nome.replace(/^Tópico \d+ - /, "")}
               </td>
-              <td className="text-[10px] text-gray-700">{t.fonteGeradora}</td>
+              <td className="text-[10px] text-gray-700">
+                {canEdit ? (
+                  <div className="print:hidden">
+                    <FonteGeradoraCampo
+                      padrao={t.fonteGeradora}
+                      catalogo={catalogoFontes[String(t.idx)] ?? []}
+                      valor={fontesDoTopico(t)}
+                      onChange={(lista) => editor.setFontes(t.idx, lista)}
+                      onNovas={(novas) => guardarFontesCatalogo.mutate({ chave: t.idx, textos: novas })}
+                    />
+                  </div>
+                ) : null}
+                <div className={canEdit ? "hidden print:block" : undefined}>
+                  {textoFontes(fontesDoTopico(t))}
+                </div>
+              </td>
               <td className="text-center">
                 <span
                   className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold text-white"

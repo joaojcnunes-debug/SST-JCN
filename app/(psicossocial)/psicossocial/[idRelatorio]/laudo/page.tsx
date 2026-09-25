@@ -91,13 +91,14 @@ export default function PsicossocialLaudoPage({
 
   const relatoriosPorSetor = useMemo<SetorRelatorio[]>(() => {
     if (!temUnidades) {
-      return montarBlocosPorSetor(respondentes, probabilidades, setoresParaRelatorio);
+      return montarBlocosPorSetor(respondentes, probabilidades, setoresParaRelatorio, relatorio?.fontes_por_setor);
     }
     const blocos = montarBlocosPorUnidade(
       respondentes,
       probabilidades,
       overrides,
-      unidade === "Todas" ? undefined : [unidade]
+      unidade === "Todas" ? undefined : [unidade],
+      relatorio?.fontes_por_setor
     ).flatMap((u) => u.setores);
     return setor === "Todos" ? blocos : blocos.filter((b) => b.setor === setor);
   }, [
@@ -108,6 +109,7 @@ export default function PsicossocialLaudoPage({
     overrides,
     unidade,
     setor,
+    relatorio?.fontes_por_setor,
   ]);
 
   const { pdfAssinado, recarregar } = usePdfAssinado("drps_relatorios_analise", idRelatorio);

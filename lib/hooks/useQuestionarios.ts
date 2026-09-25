@@ -342,6 +342,8 @@ export interface QpsAplicacaoInput {
   /** v210 — tela Análise, por setor ("*" = consolidado). */
   agravos_por_setor?: Record<string, string> | null;
   medidas_por_setor?: Record<string, string> | null;
+  /** v262 — fontes geradoras escolhidas: {setor|"*": {id_categoria: [fontes]}}. */
+  fontes_por_setor?: Record<string, Record<string, string[]>> | null;
   conclusoes_por_setor?: Record<string, string> | null;
   /** v226 — laudo: CRP do responsável e data de elaboração. */
   crp?: string | null;

@@ -19,6 +19,7 @@ import {
   listarSetoresQps,
   type CategoriaGravidade,
 } from "./gravidade";
+import { fontesEscolhidas, guardadasDe, textoFontes, type FontesPorSetor } from "@/lib/psicossocial/fontes";
 
 /** Chave em `pdfs_assinados` / `pdfs_gerados` do laudo da aplicação (rota e tela Laudo usam a mesma). */
 export const QPS_LAUDO_TABELA = "qps_aplicacoes_laudo";
@@ -58,6 +59,24 @@ function cargosDe(respondentes: { cargo?: string | null }[]): string {
   return [...set].sort((a, b) => a.localeCompare(b, "pt-BR")).join(", ");
 }
 
+/**
+ * v262: troca a fonte geradora padrão da categoria pelas fontes escolhidas na
+ * Análise para o setor ("*" = consolidado). Sem escolha guardada, fica o texto
+ * da categoria intacto.
+ */
+export function aplicarFontesQps(
+  analise: CategoriaGravidade[],
+  fontes: FontesPorSetor | null | undefined,
+  chaveSetor: string,
+): CategoriaGravidade[] {
+  if (!fontes) return analise;
+  return analise.map((c) => {
+    const guardadas = guardadasDe(fontes, chaveSetor, c.id_categoria);
+    if (!guardadas) return c;
+    return { ...c, fonteGeradora: textoFontes(fontesEscolhidas(guardadas, c.fonteGeradora)) || null };
+  });
+}
+
 export function montarLaudoQps(args: {
   aplicacao: QpsAplicacao;
   tipo: QpsTipo | null | undefined;
@@ -85,14 +104,18 @@ export function montarLaudoQps(args: {
       totalRespondentes: recorte.length,
       cargos: cargosDe(recorte),
       categorias: podeCalcular
-        ? calcularAnaliseSetor(
-            setor,
-            categorias,
-            perguntas,
-            respondentes,
-            probabilidades,
-            tipo!.escala_min,
-            tipo!.escala_max,
+        ? aplicarFontesQps(
+            calcularAnaliseSetor(
+              setor,
+              categorias,
+              perguntas,
+              respondentes,
+              probabilidades,
+              tipo!.escala_min,
+              tipo!.escala_max,
+            ),
+            aplicacao.fontes_por_setor,
+            chave,
           )
         : [],
       agravos: textos(aplicacao.agravos_por_setor, chave),

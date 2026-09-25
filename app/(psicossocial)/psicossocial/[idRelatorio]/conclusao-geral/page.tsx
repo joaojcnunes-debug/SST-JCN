@@ -68,10 +68,12 @@ export default function ConclusaoGeralPage({
   const topicosConsolidados = useMemo<TopicoComMatriz[]>(() => {
     if (respondentes.length === 0) return [];
     // Calcula por setor, depois acha o pior matriz por tópico
+    // v262: cada tópico consolidado leva as fontes escolhidas no setor de pior matriz.
     const porSetor = montarBlocosPorSetor(
       respondentes,
       probabilidades,
-      setores
+      setores,
+      relatorio?.fontes_por_setor
     ).map((b) => b.topicos);
     if (porSetor.length === 0) return [];
     // Agrega: pega o pior matriz por índice de tópico
@@ -89,7 +91,7 @@ export default function ConclusaoGeralPage({
       }
       return pior ?? porSetor[0]?.[idx] ?? null;
     }).filter((t): t is TopicoComMatriz => t !== null);
-  }, [respondentes, setores, probabilidades]);
+  }, [respondentes, setores, probabilidades, relatorio?.fontes_por_setor]);
 
   const stats = useMemo(() => {
     const totalRespondentes = respondentes.length;

@@ -191,6 +191,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
           data_elaboracao: rel.data_elaboracao,
           agravos_por_setor: rel.agravos_por_setor,
           medidas_por_setor: rel.medidas_por_setor,
+          fontes_por_setor: rel.fontes_por_setor ?? null,
           conclusoes_por_setor: conclusoesPorSetorAssinadas,
           conclusao_geral: conclusaoGeralAssinada,
           agravos_por_unidade_setor: rel.agravos_por_unidade_setor ?? null,
