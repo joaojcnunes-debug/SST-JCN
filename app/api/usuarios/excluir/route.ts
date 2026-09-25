@@ -4,6 +4,7 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
 } from "@/lib/supabase/client";
+import { temServiceRole } from "../service-role";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,18 @@ async function handler(req: NextRequest) {
       { ok: false, error: "Não é possível excluir o próprio usuário" },
       { status: 400 }
     );
+  }
+
+  // Sem a chave de service role: a função do banco apaga o perfil e a
+  // identidade juntos, e só roda para Admin ativo (e nunca a si mesmo).
+  if (!temServiceRole()) {
+    const { error } = await supabase.rpc("excluir_usuario_admin" as never, {
+      p_email: email.toLowerCase(),
+    } as never);
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true });
   }
 
   const service = createSupabaseServiceClient({

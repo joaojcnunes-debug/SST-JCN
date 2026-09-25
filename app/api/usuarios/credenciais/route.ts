@@ -4,6 +4,7 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
 } from "@/lib/supabase/client";
+import { temServiceRole } from "../service-role";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,27 @@ async function handler(req: NextRequest) {
       { ok: false, error: "A nova senha deve ter ao menos 6 caracteres" },
       { status: 400 }
     );
+  }
+
+  // Sem a chave de service role: funções do banco (só Admin ativo). A senha
+  // vai antes, ainda pelo e-mail antigo; `atualizar_email_admin` já espelha o
+  // e-mail novo em public.usuarios.
+  if (!temServiceRole()) {
+    if (nova_senha) {
+      const { error } = await supabase.rpc("redefinir_senha_admin" as never, {
+        p_email: email_atual.toLowerCase(),
+        p_nova_senha: nova_senha,
+      } as never);
+      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
+    if (email_novo && email_novo.toLowerCase() !== email_atual.toLowerCase()) {
+      const { error } = await supabase.rpc("atualizar_email_admin" as never, {
+        p_email_antigo: email_atual.toLowerCase(),
+        p_email_novo: email_novo.toLowerCase(),
+      } as never);
+      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true });
   }
 
   const service = createSupabaseServiceClient({
