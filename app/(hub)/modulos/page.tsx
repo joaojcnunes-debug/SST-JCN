@@ -21,7 +21,7 @@ import {
   ClipboardList,
   ClipboardCheck,
   BookOpen,
-  FileClock,
+  FileClock,
   Siren,
   CalendarClock,
   CalendarDays,
@@ -494,7 +494,7 @@ function InicioContent() {
               Psicossocial e outros).
             </p>
             <p className="mt-3 text-xs text-white/60">
-              Admin: <span className="font-mono">suporte.ti@chabra.com.br</span>
+              Admin: <span className="font-mono">joaojcnunes@gmail.com</span>
             </p>
           </div>
         ) : categoriaAtiva === null ? (
