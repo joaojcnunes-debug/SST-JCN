@@ -10,6 +10,8 @@ import {
   FileEdit,
   Settings,
   Trash2,
+  Award,
+  Brain,
 } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import SidebarShell, { type NavItem, type NavSection } from "./SidebarShell";
@@ -18,6 +20,12 @@ const PRINCIPAL: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, variant: "dashboard" },
   { href: "/inspecoes", label: "Inspeções", icon: ClipboardList },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3, variant: "report" },
+];
+
+// Cliente não vê: as duas telas cruzam TODAS as empresas atendidas.
+const CONTROLE: NavItem[] = [
+  { href: "/certificados", label: "Certificados", icon: Award },
+  { href: "/riscos-psicossociais", label: "Riscos Psicossociais", icon: Brain, variant: "report" },
 ];
 
 const ACOES: NavItem[] = [
@@ -44,7 +52,10 @@ export default function Sidebar() {
   const isAdmin = user?.perfil === "Admin";
 
   const sections: NavSection[] = [
-    { label: "Principal", items: PRINCIPAL },
+    {
+      label: "Principal",
+      items: user && user.perfil !== "Cliente" ? [...PRINCIPAL, ...CONTROLE] : PRINCIPAL,
+    },
   ];
   if (canEdit) sections.push({ label: "Ações", items: ACOES });
 
