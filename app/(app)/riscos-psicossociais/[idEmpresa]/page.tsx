@@ -51,6 +51,23 @@ function SeloNivel({ nivel }: { nivel: NivelMatriz }) {
   );
 }
 
+function ListaTexto({ titulo, itens }: { titulo: string; itens: string[] }) {
+  return (
+    <div className="mt-4">
+      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">{titulo}</div>
+      {itens.length === 0 ? (
+        <p className="text-sm text-gray-400">Não informado</p>
+      ) : (
+        <ul className="list-disc space-y-0.5 pl-5 text-sm text-gray-700">
+          {itens.map((i) => (
+            <li key={i}>{i}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function Info({ rotulo, valor, className }: { rotulo: string; valor: string | null | undefined; className?: string }) {
   return (
     <div className={className}>
@@ -192,6 +209,11 @@ export default function RiscosEmpresaPage() {
                         </tbody>
                       </table>
                     )}
+                    <ListaTexto titulo="Possíveis agravos à saúde mental" itens={s.agravos} />
+                    <ListaTexto
+                      titulo="Medidas de controle recomendadas (medidas que a empresa deve adotar)"
+                      itens={s.medidas}
+                    />
                   </div>
                 ))}
               </div>
