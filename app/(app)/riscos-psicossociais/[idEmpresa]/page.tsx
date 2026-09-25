@@ -51,20 +51,14 @@ function SeloNivel({ nivel }: { nivel: NivelMatriz }) {
   );
 }
 
-function ListaTexto({ titulo, itens }: { titulo: string; itens: string[] }) {
+function ListaTexto({ itens }: { itens: string[] }) {
+  if (itens.length === 0) return <p className="text-sm text-gray-400">Não informado</p>;
   return (
-    <div className="mt-4">
-      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-gray-400">{titulo}</div>
-      {itens.length === 0 ? (
-        <p className="text-sm text-gray-400">Não informado</p>
-      ) : (
-        <ul className="list-disc space-y-0.5 pl-5 text-sm text-gray-700">
-          {itens.map((i) => (
-            <li key={i}>{i}</li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <ul className="list-disc space-y-0.5 pl-4 text-sm text-gray-700">
+      {itens.map((i) => (
+        <li key={i}>{i}</li>
+      ))}
+    </ul>
   );
 }
 
@@ -178,7 +172,7 @@ export default function RiscosEmpresaPage() {
                 Sem respondentes importados nesta avaliação.
               </p>
             ) : (
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className="space-y-4">
                 {a.setores.map((s) => (
                   <div key={s.setor} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
                     <div className="mb-3 flex items-center justify-between gap-2">
@@ -192,35 +186,47 @@ export default function RiscosEmpresaPage() {
                     {s.fatores.length === 0 ? (
                       <p className="text-sm text-gray-500">Nenhum risco com resposta neste setor.</p>
                     ) : (
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-400">
-                            <th className="py-1.5 font-medium">Risco</th>
-                            <th className="py-1.5 text-right font-medium">Resultado final</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {s.fatores.map((f) => (
-                            <tr key={f.nome} className="border-b border-gray-50 last:border-0">
-                              <td className="py-2 pr-3 align-top">
-                                <div className="text-gray-700">{f.nome}</div>
-                                {f.fonteGeradora && (
-                                  <div className="mt-0.5 text-xs text-gray-500">
-                                    <span className="font-medium text-gray-600">Fonte geradora:</span> {f.fonteGeradora}
-                                  </div>
-                                )}
-                              </td>
-                              <td className="py-2 text-right align-top"><SeloNivel nivel={f.nivel} /></td>
+                      <div className="overflow-x-auto">
+                        {/* Agravos e medidas são do SETOR, não de cada risco: uma célula
+                            só, ocupando todas as linhas do setor — como no laudo. */}
+                        <table className="w-full min-w-[960px] border-collapse text-sm">
+                          <thead>
+                            <tr className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                              <th className="w-32 border border-gray-200 px-3 py-2 font-medium">Resultado final</th>
+                              <th className="w-64 border border-gray-200 px-3 py-2 font-medium">Risco</th>
+                              <th className="border border-gray-200 px-3 py-2 font-medium">Fonte geradora</th>
+                              <th className="w-56 border border-gray-200 px-3 py-2 font-medium">Possíveis agravos à saúde mental</th>
+                              <th className="w-64 border border-gray-200 px-3 py-2 font-medium">
+                                Medidas de controle recomendadas (medidas que a empresa deve adotar)
+                              </th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {s.fatores.map((f, i) => (
+                              <tr key={f.nome}>
+                                <td className="border border-gray-200 px-3 py-2 align-top">
+                                  <SeloNivel nivel={f.nivel} />
+                                </td>
+                                <td className="border border-gray-200 px-3 py-2 align-top text-gray-800">{f.nome}</td>
+                                <td className="border border-gray-200 px-3 py-2 align-top text-xs text-gray-600">
+                                  {f.fonteGeradora ?? "—"}
+                                </td>
+                                {i === 0 && (
+                                  <>
+                                    <td rowSpan={s.fatores.length} className="border border-gray-200 px-3 py-2 align-top">
+                                      <ListaTexto itens={s.agravos} />
+                                    </td>
+                                    <td rowSpan={s.fatores.length} className="border border-gray-200 px-3 py-2 align-top">
+                                      <ListaTexto itens={s.medidas} />
+                                    </td>
+                                  </>
+                                )}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
-                    <ListaTexto titulo="Possíveis agravos à saúde mental" itens={s.agravos} />
-                    <ListaTexto
-                      titulo="Medidas de controle recomendadas (medidas que a empresa deve adotar)"
-                      itens={s.medidas}
-                    />
                   </div>
                 ))}
               </div>
