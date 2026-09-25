@@ -57,7 +57,6 @@ export interface AvaliacaoRisco {
   /** Data de referência para ordenar (conclusão, elaboração ou última edição). */
   data: string | null;
   responsavel: string | null;
-  href: string;
   setores: SetorRisco[];
 }
 
@@ -152,7 +151,6 @@ async function carregarDrps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpre
       status: r.status,
       data: r.data_conclusao ?? r.data_elaboracao ?? r.updated_at,
       responsavel: r.responsavel_tecnico,
-      href: `/psicossocial/${r.id_relatorio}/analise`,
       setores,
     };
   });
@@ -212,7 +210,6 @@ async function carregarQps(): Promise<{ avaliacoes: (AvaliacaoRisco & { idEmpres
       status: ap.status,
       data: ap.data_elaboracao ?? ap.atualizado_em ?? ap.criado_em,
       responsavel: ap.responsavel ?? ap.usuario_nome,
-      href: `/questionarios-psicossociais/${ap.id_aplicacao}/analise`,
       setores,
     };
   });
