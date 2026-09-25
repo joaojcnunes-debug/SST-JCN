@@ -23,6 +23,8 @@ import {
   ClipboardEdit,
   Flame,
   Wrench,
+  PersonStanding,
+  Accessibility,
   RefreshCw,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -47,6 +49,8 @@ import PaeTab from "@/components/inspecoes/editor/tabs/PaeTab";
 import TreinamentosTab from "@/components/inspecoes/editor/tabs/TreinamentosTab";
 import ExtintoresTab from "@/components/inspecoes/editor/tabs/ExtintoresTab";
 import MaquinasTab from "@/components/inspecoes/editor/tabs/MaquinasTab";
+import ErgonomiaTab from "@/components/inspecoes/editor/tabs/ErgonomiaTab";
+import { useLaudoErgoDaInspecao } from "@/lib/hooks/useErgonomiaInspecao";
 import CopiarParaEmpresaModal from "@/components/inspecoes/editor/CopiarParaEmpresaModal";
 import { LevarParaCampo } from "@/components/ui/LevarParaCampo";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -69,6 +73,8 @@ const TAB_KEYS = [
   "treinamentos",
   "extintores",
   "maquinas",
+  "aep",
+  "aet",
   "complementos",
   "observacoes",
 ] as const;
@@ -91,6 +97,9 @@ export default function InspecaoEditorPage({ params }: Props) {
   const currentUser = useCurrentUser();
 
   const { data, isLoading, error } = useInspecao(id);
+  // v259: só para o número da aba (1 = já tem AEP/AET nesta inspeção).
+  const { data: aepDaInspecao } = useLaudoErgoDaInspecao("aep", id);
+  const { data: aetDaInspecao } = useLaudoErgoDaInspecao("aet", id);
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
 
   // A aba ativa mora na URL (`?aba=riscos`), não em useState. Com useState,
@@ -295,7 +304,11 @@ export default function InspecaoEditorPage({ params }: Props) {
   // V2: usuários podem editar inspeções concluídas (spec exige).
   const readOnly = !canEdit;
 
-  const TABS: { key: TabKey; label: string; icon: typeof Layers; count: number }[] = [
+  // v259: as abas AEP/AET usam as tabelas dos módulos — só para quem tem o módulo.
+  const temModulo = (m: "aep" | "aet") =>
+    currentUser?.perfil === "Admin" || (currentUser?.modulos_permitidos ?? []).includes(m);
+
+  const TABS_TODAS: { key: TabKey; label: string; icon: typeof Layers; count: number }[] = [
     { key: "setores", label: "Setores", icon: Layers, count: setores.length },
     { key: "cargos", label: "Cargos", icon: Briefcase, count: cargos.length },
     { key: "riscos", label: "Riscos", icon: AlertTriangle, count: riscos.length },
@@ -306,9 +319,12 @@ export default function InspecaoEditorPage({ params }: Props) {
     { key: "treinamentos", label: "Treinamentos", icon: GraduationCap, count: treinamentos.length },
     { key: "extintores", label: "Extintores", icon: Flame, count: extintores.length },
     { key: "maquinas", label: "Máquinas", icon: Wrench, count: maquinas.length },
+    { key: "aep", label: "AEP", icon: PersonStanding, count: aepDaInspecao ? 1 : 0 },
+    { key: "aet", label: "AET", icon: Accessibility, count: aetDaInspecao ? 1 : 0 },
     { key: "complementos", label: "Complementos", icon: Sticker, count: complementos.length },
     { key: "observacoes", label: "Observações", icon: FileText, count: inspecao.observacoes ? 1 : 0 },
   ];
+  const TABS = TABS_TODAS.filter((t) => (t.key !== "aep" && t.key !== "aet") || temModulo(t.key));
 
   return (
     <div className="space-y-4">
@@ -617,6 +633,19 @@ export default function InspecaoEditorPage({ params }: Props) {
               idInspecao={id}
               idEmpresa={inspecao.id_empresa}
               setores={setores}
+              maquinas={maquinas}
+              readOnly={readOnly}
+            />
+          )}
+          {(tab === "aep" || tab === "aet") && temModulo(tab) && (
+            <ErgonomiaTab
+              key={tab}
+              tipo={tab}
+              idInspecao={id}
+              idEmpresa={inspecao.id_empresa}
+              empresa={empresa}
+              setores={setores}
+              cargos={cargos}
               maquinas={maquinas}
               readOnly={readOnly}
             />

@@ -242,6 +242,10 @@ export function riscoMaximoRelatorio(rel: AepRelatorio): ClassificacaoRiscoAET |
 
 // ─── Relatórios ───────────────────────────────────────────────────────────────
 
+// v259: AEP/AET preenchida na aba da inspeção só aparece no módulo depois
+// do "Enviar para o módulo".
+export const FILTRO_VISIVEL_NO_MODULO = "id_inspecao.is.null,enviado_modulo_em.not.is.null";
+
 export function useAepRelatorios(empresaId?: string | null) {
   const user = useUserStore((s) => s.user);
 
@@ -252,6 +256,7 @@ export function useAepRelatorios(empresaId?: string | null) {
       let q = supabase
         .from("aep_relatorios")
         .select("*, empresas(nome_empresa, cnpj)")
+        .or(FILTRO_VISIVEL_NO_MODULO)
         .order("created_at", { ascending: false });
 
       if (empresaId) {

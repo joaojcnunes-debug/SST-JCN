@@ -13,6 +13,7 @@ import type {
 } from "@/lib/supabase/types";
 import type { DrpsRelatorio } from "@/lib/drps/types";
 import { ehSemNR } from "@/lib/conformidade/checklists";
+import { FILTRO_VISIVEL_NO_MODULO } from "@/lib/hooks/useAep";
 
 // ===================================================
 // Tipos
@@ -245,6 +246,7 @@ export function useHomeStats(): HomeStatsData {
       let q = supabase
         .from("aet_relatorios")
         .select("id_relatorio, id_empresa, status, created_at, updated_at")
+        .or(FILTRO_VISIVEL_NO_MODULO)
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(200);
       if (empresasVinculadas) {
@@ -265,6 +267,7 @@ export function useHomeStats(): HomeStatsData {
       let q = supabase
         .from("aep_relatorios")
         .select("id_relatorio, id_empresa, status, created_at, updated_at")
+        .or(FILTRO_VISIVEL_NO_MODULO)
         .order("updated_at", { ascending: false, nullsFirst: false })
         .limit(200);
       if (empresasVinculadas) {
