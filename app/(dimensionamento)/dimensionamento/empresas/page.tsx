@@ -1,5 +1,6 @@
 "use client";
 
+import { useDimPermissoes } from "@/lib/hooks/useDimPermissoes";
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { RefreshCw, Upload } from "lucide-react";
@@ -32,6 +33,8 @@ const MESES = Calculo.MESES;
 export default function EmpresasPage() {
   const { data: cadastro, isLoading } = useCadastroDimensionamento();
   const { definirDemanda, definirUnidadeMes, substituirDemandaAno } = useMutacoesDimensionamento();
+  // v263: Gerente só vê; supervisores editam; sincronizar com a API é só do Admin.
+  const { editar, sincronizar: podeSincronizar } = useDimPermissoes();
 
   const hoje = new Date();
   const [ano, setAno] = useState(hoje.getFullYear());
@@ -102,14 +105,14 @@ export default function EmpresasPage() {
         descricao="A carteira que vence em cada mês, por condição e porte. É daqui que sai toda a demanda do Headcount."
         acao={
           <div className="flex flex-wrap gap-2">
-            <button
+            {editar && <button
               type="button"
               onClick={() => setImportando(true)}
               className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
             >
               <Upload className="size-4" /> Importar planilha
-            </button>
-            <button
+            </button>}
+            {podeSincronizar && <button
               type="button"
               onClick={sincronizar}
               disabled={sincronizando}
@@ -117,7 +120,7 @@ export default function EmpresasPage() {
             >
               <RefreshCw className={`size-4 ${sincronizando ? "animate-spin" : ""}`} />
               {sincronizando ? "Consultando…" : "Sincronizar com a API"}
-            </button>
+            </button>}
           </div>
         }
       />
@@ -176,7 +179,7 @@ export default function EmpresasPage() {
                         <td key={i} className="px-1 py-1 text-right">
                           <input
                             type="number" min={0} step={1}
-                            disabled={somandoTudo}
+                            disabled={somandoTudo || !editar}
                             defaultValue={valor(u.id, i + 1, c.condicao)}
                             key={`${u.id}-${ano}-${porte}-${c.condicao}-${i}-${valor(u.id, i + 1, c.condicao)}`}
                             onBlur={(e) => {
@@ -198,6 +201,7 @@ export default function EmpresasPage() {
                     <td key={i} className="px-1 py-1 text-right">
                       <input
                         type="number" min={0} step={1}
+                        disabled={!editar}
                         defaultValue={informativo(u.id, i + 1, "clientesAtivos")}
                         key={`ca-${u.id}-${ano}-${i}-${informativo(u.id, i + 1, "clientesAtivos")}`}
                         onBlur={(e) => {
@@ -222,6 +226,7 @@ export default function EmpresasPage() {
                     <td key={i} className="px-1 py-1 text-right">
                       <input
                         type="number" min={0} step={1}
+                        disabled={!editar}
                         defaultValue={informativo(u.id, i + 1, "atendidas")}
                         key={`at-${u.id}-${ano}-${i}-${informativo(u.id, i + 1, "atendidas")}`}
                         onBlur={(e) => {

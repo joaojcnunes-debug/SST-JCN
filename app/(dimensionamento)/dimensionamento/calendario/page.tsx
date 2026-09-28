@@ -1,5 +1,6 @@
 "use client";
 
+import { useDimPermissoes } from "@/lib/hooks/useDimPermissoes";
 import { useEffect, useState } from "react";
 import { RotateCcw, Save } from "lucide-react";
 import { useCadastroDimensionamento } from "@/lib/hooks/useDimensionamento";
@@ -21,6 +22,8 @@ import { Cabecalho, Campo, Carregando } from "@/components/dimensionamento/ui";
 export default function CalendarioPage() {
   const { data: cadastro, isLoading } = useCadastroDimensionamento();
   const { salvarParametros, salvarPorte } = useMutacoesDimensionamento();
+  // v263: Gerente só vê; Admin e supervisores editam.
+  const { editar } = useDimPermissoes();
 
   const [dias, setDias] = useState<number[]>(PARAMETROS_PADRAO.diasUteis);
   const [folga, setFolga] = useState(15);
@@ -51,7 +54,7 @@ export default function CalendarioPage() {
       <Cabecalho
         titulo="Calendário e parâmetros"
         descricao="Estes números são compartilhados: mudar aqui muda o cálculo de toda a equipe, em todas as unidades."
-        acao={
+        acao={!editar ? undefined : (
           <button
             type="button"
             onClick={salvar}
@@ -60,8 +63,10 @@ export default function CalendarioPage() {
           >
             <Save className="size-4" /> {salvarParametros.isPending ? "Salvando…" : "Salvar"}
           </button>
-        }
+        )}
       />
+
+      <fieldset disabled={!editar} className="contents">
 
       <section className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-black/5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -211,6 +216,7 @@ export default function CalendarioPage() {
           </tbody>
         </table>
       </section>
+      </fieldset>
     </div>
   );
 }

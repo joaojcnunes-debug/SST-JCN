@@ -1,5 +1,6 @@
 "use client";
 
+import { useDimPermissoes } from "@/lib/hooks/useDimPermissoes";
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useCadastroDimensionamento } from "@/lib/hooks/useDimensionamento";
@@ -24,6 +25,8 @@ import { BotoesModal, Cabecalho, Campo, Carregando, Modal, Vazio } from "@/compo
 export default function FuncoesPage() {
   const { data: cadastro, isLoading } = useCadastroDimensionamento();
   const { salvarFuncao, excluirFuncao } = useMutacoesDimensionamento();
+  // v263: Gerente só vê; Admin e supervisores editam.
+  const { editar } = useDimPermissoes();
   const [editando, setEditando] = useState<Partial<Funcao> | null>(null);
 
   if (isLoading) return <Carregando />;
@@ -52,7 +55,7 @@ export default function FuncoesPage() {
       <Cabecalho
         titulo="Funções"
         descricao="O tipo de produção decide quem entra no cálculo: sem produção, a pessoa não é contada. Chefia não produz — coordena, e monta o organograma."
-        acao={
+        acao={!editar ? undefined : (
           <button
             type="button"
             onClick={() => setEditando({ nome: "", tipoProducao: "tecnico", chefia: false, coordena: "todos", ordem: funcoes.length, custoMensal: 0 })}
@@ -60,7 +63,7 @@ export default function FuncoesPage() {
           >
             <Plus className="size-4" /> Nova função
           </button>
-        }
+        )}
       />
 
       <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5">
@@ -95,20 +98,22 @@ export default function FuncoesPage() {
                   </td>
                   <td className="px-4 py-2 text-right tabular-nums">{n}</td>
                   <td className="px-4 py-2 text-right">
-                    <div className="flex justify-end gap-1">
-                      <button type="button" onClick={() => setEditando(f)} className="rounded p-1.5 text-slate-500 hover:bg-slate-100" title="Editar">
-                        <Pencil className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        disabled={n > 0}
-                        title={n > 0 ? `${n} colaborador(es) usam esta função` : "Excluir"}
-                        onClick={() => confirm(`Excluir a função "${f.nome}"?`) && excluirFuncao.mutate(f.id)}
-                        className="rounded p-1.5 text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </div>
+                    {editar && (
+                      <div className="flex justify-end gap-1">
+                        <button type="button" onClick={() => setEditando(f)} className="rounded p-1.5 text-slate-500 hover:bg-slate-100" title="Editar">
+                          <Pencil className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={n > 0}
+                          title={n > 0 ? `${n} colaborador(es) usam esta função` : "Excluir"}
+                          onClick={() => confirm(`Excluir a função "${f.nome}"?`) && excluirFuncao.mutate(f.id)}
+                          className="rounded p-1.5 text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );

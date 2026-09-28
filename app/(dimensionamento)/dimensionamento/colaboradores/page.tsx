@@ -1,5 +1,6 @@
 "use client";
 
+import { useDimPermissoes } from "@/lib/hooks/useDimPermissoes";
 import { useMemo, useState } from "react";
 import { Pencil, Plus, Search, Trash2, TriangleAlert } from "lucide-react";
 import { useCadastroDimensionamento } from "@/lib/hooks/useDimensionamento";
@@ -26,6 +27,8 @@ import { BotoesModal, Cabecalho, Campo, Carregando, Modal, Vazio } from "@/compo
 export default function ColaboradoresPage() {
   const { data: cadastro, isLoading } = useCadastroDimensionamento();
   const { salvarColaborador, excluirColaborador } = useMutacoesDimensionamento();
+  // v263: Gerente só vê; Admin e supervisores editam.
+  const { editar } = useDimPermissoes();
   const [editando, setEditando] = useState<Partial<ColaboradorCadastro> | null>(null);
   const [busca, setBusca] = useState("");
   const [filtroUnidade, setFiltroUnidade] = useState("");
@@ -65,7 +68,7 @@ export default function ColaboradoresPage() {
       <Cabecalho
         titulo="Colaboradores"
         descricao="O ritmo declarado por dia, a vigência e o percentual em cada unidade — os três números que o cálculo usa."
-        acao={
+        acao={!editar ? undefined : (
           <button
             type="button"
             onClick={() => setEditando({
@@ -78,7 +81,7 @@ export default function ColaboradoresPage() {
           >
             <Plus className="size-4" /> Novo colaborador
           </button>
-        }
+        )}
       />
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5">
@@ -145,19 +148,21 @@ export default function ColaboradoresPage() {
                         : <span className="text-amber-700">sem alocação — fora do cálculo</span>}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <div className="flex justify-end gap-1">
-                        <button type="button" onClick={() => setEditando({ ...c, alocacoes: c.alocacoes.map((a) => ({ ...a })) })} className="rounded p-1.5 text-slate-500 hover:bg-slate-100" title="Editar">
-                          <Pencil className="size-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => confirm(`Excluir "${c.nome}"? As alocações dele saem junto.`) && excluirColaborador.mutate(c.id)}
-                          className="rounded p-1.5 text-rose-600 hover:bg-rose-50"
-                          title="Excluir"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
+                      {editar && (
+                        <div className="flex justify-end gap-1">
+                          <button type="button" onClick={() => setEditando({ ...c, alocacoes: c.alocacoes.map((a) => ({ ...a })) })} className="rounded p-1.5 text-slate-500 hover:bg-slate-100" title="Editar">
+                            <Pencil className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => confirm(`Excluir "${c.nome}"? As alocações dele saem junto.`) && excluirColaborador.mutate(c.id)}
+                            className="rounded p-1.5 text-rose-600 hover:bg-rose-50"
+                            title="Excluir"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
