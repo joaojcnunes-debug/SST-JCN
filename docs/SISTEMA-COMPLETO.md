@@ -531,6 +531,8 @@ Grade mensal, padrão semanal, conferência, calendário anual, relatórios e co
 
 ### 9.5 Dimensionamento (`/dimensionamento`, motor `lib/dimensionamento/calculo.js`, 84 testes)
 
+**Quem acessa (v263, `lib/dimensionamento/permissoes.ts` + funções do banco `dim_papel`/`dim_pode_ver`/`dim_pode_editar`):** Admin faz tudo; **Gerente** (função "Gerente") vê Headcount, Cadastros e Histórico, sem criar/editar/excluir; **Supervisores** (funções "Supervisor dos técnicos" e "Supervisora do administrativo") veem só os **Cadastros** (Unidades, Empresas por Unidade, Colaboradores, Funções, Calendário) com criar/editar/excluir — sem Headcount e sem Histórico (trava de tela; os dados vêm das mesmas tabelas); sincronizar com a API externa é só do Admin. A conta também precisa do módulo `dimensionamento` liberado (padrão das três funções desde a v264). RLS: `dim_ler` (SELECT, `dim_pode_ver()`) e `dim_gravar` (ALL, `dim_pode_editar()`) em cada tabela `dim_*`.
+
 Headcount por unidade e função. `precisa = Σ clientes que vencem no mês × peso do porte` (P 1,0 · M 1,5 · G 2,0); `produção = produção/dia × dias úteis × fração alocada × presença × ramp-up`; `consegue = Σ produção × ocupação-alvo`; `sobra = consegue − precisa`; status déficit/atenção (<10%)/ok; faltam/sobram/ideal em pessoas; custo. Tabelas `dim_*` (unidades, funções, colaboradores com alocação ≤100%, demanda mensal, parâmetros, histórico por trigger). Sincronização com a API externa (`/api/dimensionamento/sincronizar`).
 
 ### 9.6 Frota (`/frota`, `lib/frota/*`)
@@ -572,6 +574,7 @@ Catálogo EPI/EPC (CA e validade), estoque (movimentações, saldo `v_epi_saldo`
 - **Sem `SUPABASE_SERVICE_ROLE_KEY` na Vercel:** usuários funcionam pelas funções do banco; assinatura digital, registro de PDF, sign-image e rotas públicas da Gestão dependem da chave.
 - **Certificado A3** só aparece como selo (não assina). `pode_enviar_sgg` não tem tela (UPDATE manual).
 - **Trava por módulo** no banco em modo `log` (não bloqueia).
+- **Dimensionamento:** o papel (Gerente/Supervisor) vem do **nome da função** (`usuarios.funcao`); renomear essas funções em Sistema › Funções tira o acesso — ajustar `lib/dimensionamento/permissoes.ts` e `dim_papel()` juntos.
 - **Resíduos do Electron** inativos na web: auto-login/salvar credenciais, botão de atualização, aba "Atualização" em Configurações.
 - **QPS tem duas réguas:** Resultados/Resumo usam a matriz legada; Análise/Laudo/Riscos Psicossociais usam a régua do DRPS.
 - **DRPS:** o PDF usa o plano de medidas do ano corrente; `drps_texto_padrao` é legado (o PDF lê `textos_padrao`); `drps_monitoramento_unidade` e `exibir_sem_analise` não são usados.
