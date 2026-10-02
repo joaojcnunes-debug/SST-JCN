@@ -4,14 +4,16 @@
 // inspeção (`matrizes_risco` ativa — hoje a AIHA 5×5), e o nível sai da mesma
 // conta: `calcularNivelComMatriz` = peso_prob × peso_sev → faixa da matriz.
 //
-//   • Probabilidade SUGERIDA pelos sinais observados marcados (proporção):
-//       nenhum sinal → 2º nível da escala (AIHA: "Exposição a níveis baixos")
-//       até 1/3      → 3º ("Exposição moderada")
-//       até 2/3      → 4º ("Exposição elevada")
-//       acima        → 5º ("Exposição elevadíssima")
-//   • Severidade PADRÃO por fator (SEVERIDADE_PADRAO_IDX, índice da escala).
-//   • O técnico pode trocar qualquer uma das duas; a troca fica marcada como
-//     manual e deixa de acompanhar a sugestão.
+//   • SÓ CALCULA COM SINAL MARCADO (pedido de 2026-10-02): sem nenhum sinal
+//     observado, o fator fica nos níveis mais baixos da matriz (AIHA: "Não há
+//     exposição" × "Pouca importância") e SEM nível — não conta para nada.
+//   • A partir do 1º sinal, Probabilidade SUGERIDA pela proporção de sinais:
+//       até 1/3 → 3º nível da escala ("Exposição moderada")
+//       até 2/3 → 4º ("Exposição elevada")
+//       acima   → 5º ("Exposição elevadíssima")
+//     e Severidade PADRÃO do fator (SEVERIDADE_PADRAO_IDX, índice da escala).
+//   • Com sinal marcado, o técnico pode trocar qualquer uma das duas; a troca
+//     fica marcada como manual e deixa de acompanhar a sugestão.
 //
 // O resultado é GRAVADO no setor (`aiha_organizacional`) — laudo, PDF e a
 // Sinalização Psicossocial leem o gravado, sem precisar da matriz. O editor
@@ -25,7 +27,8 @@ export type FatorOrganizacional = keyof AepChecklistOrganizacional;
 export interface AihaFator {
   probabilidade: string;
   severidade: string;
-  nivel: NivelRisco;
+  /** null = ainda sem sinal observado marcado → não calculado. */
+  nivel: NivelRisco | null;
   /** true = escolhida pelo técnico; false = sugestão (acompanha os sinais). */
   prob_manual?: boolean;
   sev_manual?: boolean;
@@ -58,7 +61,7 @@ export const SEVERIDADE_PADRAO_IDX: Record<FatorOrganizacional, number> = {
 export function indiceProbabilidadeSugerida(marcados: number, total: number, nNiveis: number): number {
   const max = Math.max(0, nNiveis - 1);
   let idx: number;
-  if (marcados <= 0 || total <= 0) idx = 1;
+  if (marcados <= 0 || total <= 0) idx = 0;
   else {
     const p = marcados / total;
     idx = p <= 1 / 3 ? 2 : p <= 2 / 3 ? 3 : 4;
@@ -75,6 +78,18 @@ export function avaliarFator(args: {
   matriz: Pick<MatrizRisco, "probabilidades" | "severidades" | "pesos_prob" | "pesos_sev" | "faixas" | "lookup">;
 }): AihaFator {
   const { matriz, anterior } = args;
+
+  // Sem sinal marcado: níveis mais baixos da matriz e nada calculado.
+  if (args.sinaisMarcados <= 0) {
+    return {
+      probabilidade: matriz.probabilidades[0],
+      severidade: matriz.severidades[0],
+      nivel: null,
+      prob_manual: false,
+      sev_manual: false,
+    };
+  }
+
   const probSug = matriz.probabilidades[
     indiceProbabilidadeSugerida(args.sinaisMarcados, args.sinaisTotal, matriz.probabilidades.length)
   ];

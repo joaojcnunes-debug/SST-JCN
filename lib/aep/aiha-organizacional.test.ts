@@ -20,39 +20,57 @@ const AIHA = {
   lookup: [],
 } as unknown as MatrizRisco;
 
-describe("probabilidade sugerida pelos sinais", () => {
-  test("faixas da proporção de sinais marcados", () => {
-    assert.equal(indiceProbabilidadeSugerida(0, 6, 5), 1);
+describe("sem sinal observado marcado → não calcula", () => {
+  test("fica nos níveis mais baixos da matriz e sem nível", () => {
+    const r = avaliarFator({ fator: "assedio", sinaisMarcados: 0, sinaisTotal: 6, matriz: AIHA });
+    assert.equal(r.probabilidade, "Não há exposição");
+    assert.equal(r.severidade, "Pouca importância");
+    assert.equal(r.nivel, null);
+  });
+  test("escolha manual anterior não vale sem sinal (volta ao mais baixo)", () => {
+    const r = avaliarFator({
+      fator: "assedio", sinaisMarcados: 0, sinaisTotal: 6, matriz: AIHA,
+      anterior: { probabilidade: "Exposição elevada", severidade: "Ameaça", nivel: "Muito Alto", prob_manual: true, sev_manual: true },
+    });
+    assert.equal(r.nivel, null);
+    assert.equal(r.prob_manual, false);
+  });
+  test("não conta para o Necessita AET", () => {
+    const r = avaliarFator({ fator: "assedio", sinaisMarcados: 0, sinaisTotal: 6, matriz: AIHA });
+    assert.deepEqual(contagemParaAet({ assedio: r }), { altos: 0, moderados: 0 });
+  });
+});
+
+describe("probabilidade sugerida pela proporção de sinais", () => {
+  test("faixas", () => {
+    assert.equal(indiceProbabilidadeSugerida(0, 6, 5), 0);
+    assert.equal(indiceProbabilidadeSugerida(1, 6, 5), 2);
     assert.equal(indiceProbabilidadeSugerida(2, 6, 5), 2);
     assert.equal(indiceProbabilidadeSugerida(4, 6, 5), 3);
-    assert.equal(indiceProbabilidadeSugerida(5, 6, 5), 4);
     assert.equal(indiceProbabilidadeSugerida(6, 6, 5), 4);
-  });
-  test("fator sem catálogo de sinais fica no nível baixo", () => {
-    assert.equal(indiceProbabilidadeSugerida(0, 0, 5), 1);
   });
   test("nunca passa do tamanho da escala", () => {
     assert.equal(indiceProbabilidadeSugerida(6, 6, 3), 2);
   });
 });
 
-describe("nível pela ponderação da matriz (peso_prob × peso_sev)", () => {
-  test("assédio sem sinais = 1 × 3 = Moderado", () => {
-    const r = avaliarFator({ fator: "assedio", sinaisMarcados: 0, sinaisTotal: 6, matriz: AIHA });
-    assert.equal(r.probabilidade, "Exposição a níveis baixos");
+describe("com sinais: nível pela ponderação da matriz (peso_prob × peso_sev)", () => {
+  test("assédio com 1 de 6 sinais = 2 × 3 = Moderado", () => {
+    const r = avaliarFator({ fator: "assedio", sinaisMarcados: 1, sinaisTotal: 6, matriz: AIHA });
+    assert.equal(r.probabilidade, "Exposição moderada");
     assert.equal(r.severidade, "Irreversíveis");
     assert.equal(r.nivel, "Moderado");
   });
-  test("assédio com 4 de 6 sinais = 3 × 3 = Alto; com 6 de 6 = 4 × 3 = Muito Alto", () => {
+  test("assédio com 4 de 6 = 3 × 3 = Alto; com 6 de 6 = 4 × 3 = Muito Alto", () => {
     assert.equal(avaliarFator({ fator: "assedio", sinaisMarcados: 4, sinaisTotal: 6, matriz: AIHA }).nivel, "Alto");
     assert.equal(avaliarFator({ fator: "assedio", sinaisMarcados: 6, sinaisTotal: 6, matriz: AIHA }).nivel, "Muito Alto");
   });
-  test("subcarga sem sinais = 1 × 1 = Baixo", () => {
-    assert.equal(avaliarFator({ fator: "subcarga", sinaisMarcados: 0, sinaisTotal: 5, matriz: AIHA }).nivel, "Baixo");
+  test("subcarga com 1 de 5 = 2 × 1 = Baixo", () => {
+    assert.equal(avaliarFator({ fator: "subcarga", sinaisMarcados: 1, sinaisTotal: 5, matriz: AIHA }).nivel, "Baixo");
   });
-  test("escolha manual do técnico vence a sugestão e é preservada", () => {
+  test("escolha manual do técnico vence a sugestão", () => {
     const r = avaliarFator({
-      fator: "subcarga", sinaisMarcados: 0, sinaisTotal: 5, matriz: AIHA,
+      fator: "subcarga", sinaisMarcados: 1, sinaisTotal: 5, matriz: AIHA,
       anterior: { probabilidade: "Exposição elevadíssima", severidade: "Ameaça", nivel: "Baixo", prob_manual: true, sev_manual: true },
     });
     assert.equal(r.nivel, "Muito Alto");
@@ -60,10 +78,10 @@ describe("nível pela ponderação da matriz (peso_prob × peso_sev)", () => {
   });
   test("escolha manual que não existe mais na matriz volta para a sugestão", () => {
     const r = avaliarFator({
-      fator: "subcarga", sinaisMarcados: 0, sinaisTotal: 5, matriz: AIHA,
+      fator: "subcarga", sinaisMarcados: 1, sinaisTotal: 5, matriz: AIHA,
       anterior: { probabilidade: "Frequente", severidade: "Preocupantes", nivel: "Baixo", prob_manual: true },
     });
-    assert.equal(r.probabilidade, "Exposição a níveis baixos");
+    assert.equal(r.probabilidade, "Exposição moderada");
     assert.equal(r.prob_manual, false);
   });
 });
@@ -85,6 +103,7 @@ test("contagem para o Necessita AET", () => {
     b: { probabilidade: "", severidade: "", nivel: "Alto" },
     c: { probabilidade: "", severidade: "", nivel: "Moderado" },
     d: { probabilidade: "", severidade: "", nivel: "Baixo" },
+    e: { probabilidade: "", severidade: "", nivel: null },
   });
   assert.deepEqual(c, { altos: 2, moderados: 1 });
 });
