@@ -212,17 +212,16 @@ export function riscoVazioAep(): AepRisco {
 
 // ─── Lógica de escalonamento ──────────────────────────────────────────────────
 
+/**
+ * Sugestão de AET completa (2026-10-02): SÓ os fatores da Ergonomia
+ * Organizacional na matriz AIHA contam — 1 fator Alto/Muito Alto, ou 2+
+ * Moderados. A lista "Matriz de Riscos" do setor (`setor.riscos`) NÃO entra
+ * mais no critério, a pedido do usuário; ela continua no laudo como registro.
+ */
 export function calcNecessitaAet(setor: AepSetor): boolean {
-  const altos = setor.riscos.filter(
-    (r) => r.classificacao_risco === "Alto" || r.classificacao_risco === "Crítico"
-  );
-  const moderados = setor.riscos.filter((r) => r.classificacao_risco === "Moderado");
-  // Fatores organizacionais na matriz AIHA (2026-10-02): Alto/Muito Alto contam
-  // como risco Alto; Moderado como Moderado — mesma régua dos riscos do setor.
   const org = contagemParaAet(setor.aiha_organizacional);
-  // "Múltiplos riscos Moderados" — o texto da tarja e do laudo diz múltiplos, que
-  // é 2 ou mais. O limiar era 3 e contradizia a própria redação (pedido 10/08).
-  return altos.length + org.altos > 0 || moderados.length + org.moderados >= 2;
+  // "Múltiplos Moderados" = 2 ou mais (pedido de 10/08).
+  return org.altos > 0 || org.moderados >= 2;
 }
 
 export function riscoMaximoAep(setor: AepSetor): ClassificacaoRiscoAET | null {

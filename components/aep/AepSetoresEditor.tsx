@@ -1067,7 +1067,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                         Este setor requer elaboração de AET completa
                       </p>
                       <p className="text-xs text-orange-700 mt-0.5">
-                        Foram identificados riscos Alto ou Crítico, ou múltiplos riscos Moderados. Recomenda-se aprofundamento pela Análise Ergonômica do Trabalho (NR-17).
+                        Foram identificados fatores psicossociais organizacionais Alto ou Muito Alto na matriz AIHA, ou múltiplos fatores Moderados. Recomenda-se aprofundamento pela Análise Ergonômica do Trabalho (NR-17).
                       </p>
                     </div>
                   </div>

@@ -17,6 +17,7 @@ import { usePdfAssinado, usePdfCongelado } from "@/lib/hooks/usePdfsGerados";
 import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
 import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
+import { piorNivel } from "@/lib/aep/sinalizacao";
 import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
 import { montarValoresAep } from "@/lib/textos-padrao/variaveis-aep";
 import { formatarDataBR, substituirVariaveis, substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
@@ -598,13 +599,14 @@ export default function AepLaudoPage({
                               <li key={s.id}>
                                 <strong>{s.nome_setor}</strong>
                                 {s.cargo && ` — ${s.cargo}`}
-                                {" — "}Risco máximo: <span className="font-semibold">{riscoMaximoSetor(s)}</span>
+                                {" — "}Maior nível AIHA (organizacional):{" "}
+                                <span className="font-semibold">{piorNivel(Object.values(s.aiha_organizacional ?? {}).map((a) => a?.nivel)) ?? "—"}</span>
                               </li>
                             ))}
                           </ul>
                         </div>
                         <p className="text-xs text-gray-600 leading-relaxed">
-                          Conforme NR-17 e NR-01 (GRO/PGR), a presença de riscos classificados como Alto ou Crítico, ou a convergência de múltiplos riscos Moderados, indica a necessidade de aprofundamento por meio da Análise Ergonômica do Trabalho completa, com avaliação postural (OWAS), análise biomecânica, medições ambientais e elaboração de laudo técnico detalhado.
+                          Conforme NR-17 e NR-01 (GRO/PGR), a identificação de fator psicossocial organizacional classificado como Alto ou Muito Alto na matriz AIHA, ou de dois ou mais fatores Moderados, indica a necessidade de aprofundamento por meio da Análise Ergonômica do Trabalho completa, com avaliação postural (OWAS), análise biomecânica, medições ambientais e elaboração de laudo técnico detalhado.
                         </p>
                       </>
                     ) : (

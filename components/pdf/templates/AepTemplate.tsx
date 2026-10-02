@@ -15,6 +15,7 @@ import { classeQuebraFixoNova, numerarCapitulos, numLabel } from "@/components/p
 // Módulo puro (sem "use client", sem hook) — pode entrar no template do Puppeteer.
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
 import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
+import { piorNivel } from "@/lib/aep/sinalizacao";
 import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
 import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
@@ -892,21 +893,23 @@ export default function AepTemplate({
             }}
           >
             <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#9a3412" }}>
-              ⚠ Os setores abaixo apresentaram riscos que justificam elaboração de AET completa (NR-17):
+              ⚠ Os setores abaixo apresentaram fatores psicossociais que justificam elaboração de AET completa (NR-17):
             </p>
             <ul style={{ margin: 0, paddingLeft: 20, fontSize: 11, color: "#c2410c", lineHeight: 1.8 }}>
               {setoresComAet.map((s) => (
                 <li key={s.id}>
                   <strong>{s.nome_setor}</strong>
                   {s.cargo && ` — ${s.cargo}`}
-                  {" — "}Risco máximo:{" "}
-                  <span style={{ fontWeight: 600 }}>{riscoMaximoSetor(s)}</span>
+                  {" — "}Maior nível AIHA (organizacional):{" "}
+                  <span style={{ fontWeight: 600 }}>
+                    {piorNivel(Object.values(s.aiha_organizacional ?? {}).map((a) => a?.nivel)) ?? "—"}
+                  </span>
                 </li>
               ))}
             </ul>
           </div>
           <p style={{ margin: 0, fontSize: 11, color: "#4b5563", lineHeight: 1.7 }}>
-            Conforme NR-17 e NR-01 (GRO/PGR), a presença de riscos classificados como Alto ou Crítico, ou a convergência de múltiplos riscos Moderados, indica a necessidade de aprofundamento por meio da Análise Ergonômica do Trabalho completa, com avaliação postural (OWAS), análise biomecânica, medições ambientais e elaboração de laudo técnico detalhado.
+            Conforme NR-17 e NR-01 (GRO/PGR), a identificação de fator psicossocial organizacional classificado como Alto ou Muito Alto na matriz AIHA, ou de dois ou mais fatores Moderados, indica a necessidade de aprofundamento por meio da Análise Ergonômica do Trabalho completa, com avaliação postural (OWAS), análise biomecânica, medições ambientais e elaboração de laudo técnico detalhado.
           </p>
         </>
       ) : (
