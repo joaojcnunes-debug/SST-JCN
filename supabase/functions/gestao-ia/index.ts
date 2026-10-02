@@ -1,4 +1,4 @@
-// Edge Function — IA da Gestão Chabra (Groq / Llama 3.1 8B).
+// Edge Function — IA da Gestão Chabra (Groq, modelos com fallback).
 // Ações:
 //   "subtarefas" → { data: { subtarefas: string[] } }
 //   "descricao"  → { data: { descricao: string } }
@@ -9,7 +9,17 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "llama-3.1-8b-instant";
+// Em ordem de preferência. O Groq retira modelos do ar sem aviso (o
+// llama-3.1-8b-instant sumiu em 2026-10 e a função passou a dar 502): se um
+// modelo não existir mais, tenta o próximo.
+const MODELOS = [
+  "llama-3.3-70b-versatile",
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b",
+  "meta-llama/llama-4-scout-17b-16e-instruct",
+  "qwen/qwen3-32b",
+  "moonshotai/kimi-k2-instruct",
+];
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -45,18 +55,26 @@ Deno.serve(async (req: Request) => {
     const system = acao === "subtarefas" ? PROMPT_SUBTAREFAS : PROMPT_DESCRICAO;
     const userMsg = `Título: ${titulo}${body?.descricao ? `\nDescrição atual: ${body.descricao}` : ""}`;
 
-    const groqRes = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [{ role: "system", content: system }, { role: "user", content: userMsg }],
-        response_format: { type: "json_object" },
-        temperature: 0.5,
-        max_tokens: 800,
-      }),
-    });
-    if (!groqRes.ok) return json({ error: `Groq retornou ${groqRes.status}.` }, 502);
+    let groqRes: Response | null = null;
+    const falhas: string[] = [];
+    for (const model of MODELOS) {
+      groqRes = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "system", content: system }, { role: "user", content: userMsg }],
+          response_format: { type: "json_object" },
+          temperature: 0.5,
+          max_tokens: 1500,
+        }),
+      });
+      if (groqRes.ok) break;
+      // Modelo retirado, sem acesso ou JSON malformado: tenta o próximo.
+      falhas.push(`${model}: ${groqRes.status} ${(await groqRes.text()).slice(0, 200)}`);
+      if (groqRes.status === 401) break;
+    }
+    if (!groqRes || !groqRes.ok) return json({ error: `Groq falhou em todos os modelos — ${falhas.join(" | ")}` }, 502);
 
     const groqData = await groqRes.json();
     const content: string | undefined = groqData?.choices?.[0]?.message?.content;

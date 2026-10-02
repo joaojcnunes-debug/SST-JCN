@@ -1,4 +1,4 @@
-// Edge Function — Análise de Agentes Químicos via Groq (Llama 3.1 8B-instant).
+// Edge Function — Análise de Agentes Químicos via Groq (modelos com fallback).
 //
 // ARQUITETURA (Opção A — parser local + IA só pro raciocínio):
 //   1. Front extrai texto do PDF via pdfjs-dist
@@ -16,7 +16,7 @@
 //   - O parser local extrai só o que importa pra NR-15 → ~600 tokens
 //   - Usuário tem chance de corrigir antes de mandar → reduz alucinação
 //
-// MODELO: 8B-instant. JSON mode (response_format) força resposta válida.
+// MODELO: lista MODELOS (fallback). JSON mode (response_format) força resposta válida.
 // Anti-alucinação no prompt: códigos eSocial/Decreto/GFIP incertos viram
 // "Consultar tabela oficial" em vez de inventar.
 //
@@ -26,7 +26,17 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "llama-3.1-8b-instant";
+// Em ordem de preferência. O Groq retira modelos do ar sem aviso (o
+// llama-3.1-8b-instant sumiu em 2026-10 e a função passou a dar 502): se um
+// modelo não existir mais, tenta o próximo.
+const MODELOS = [
+  "llama-3.3-70b-versatile",
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b",
+  "meta-llama/llama-4-scout-17b-16e-instruct",
+  "qwen/qwen3-32b",
+  "moonshotai/kimi-k2-instruct",
+];
 
 // Arquitetura otimizada: IA responde APENAS o bloco CONCLUSAO_RAPIDA
 // (campos estruturados). O frontend monta o relatório/PDF a partir desses
@@ -48,7 +58,10 @@ const PDF_MAX_CHARS = 8000;
 // como antes) e fundamentações concisas. Economiza ~30% de output sem
 // cortar campos. Total típico por call: ~2.5-3.5k tokens (vs 3.5-4.5k
 // na versão anterior).
-const MAX_OUTPUT_TOKENS = 700;
+// 2500: os openai/gpt-oss-* da lista MODELOS raciocinam antes de responder;
+// com 1500 o raciocínio comia o orçamento e o JSON de 21 campos saía vazio
+// (Groq devolvia 400 json_validate_failed).
+const MAX_OUTPUT_TOKENS = 2500;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -405,32 +418,41 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const groqRes = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: buildUserPrompt(body) },
-        ],
-        // JSON mode: força o modelo a devolver JSON válido. Indispensável
-        // pro 8B-instant — sem isso, ele invariavelmente quebra o formato
-        // estruturado. Mesmo padrão usado nas outras 2 funções de IA.
-        response_format: { type: "json_object" },
-        // Baixa temperatura pra reduzir invenção de códigos
-        temperature: 0.2,
-        max_tokens: MAX_OUTPUT_TOKENS,
-      }),
-    });
+    let groqRes: Response | null = null;
+    const falhas: string[] = [];
+    for (const model of MODELOS) {
+      groqRes = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: buildUserPrompt(body) },
+          ],
+          // JSON mode: força o modelo a devolver JSON válido. Indispensável
+          // pro 8B-instant — sem isso, ele invariavelmente quebra o formato
+          // estruturado. Mesmo padrão usado nas outras 2 funções de IA.
+          response_format: { type: "json_object" },
+          // Baixa temperatura pra reduzir invenção de códigos
+          temperature: 0.2,
+          max_tokens: MAX_OUTPUT_TOKENS,
+          // gpt-oss: raciocínio curto, sobra orçamento pro JSON
+          ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
+        }),
+      });
+      if (groqRes.ok) break;
+      // Modelo retirado, sem acesso ou JSON malformado: tenta o próximo.
+      falhas.push(`${model}: ${groqRes.status} ${(await groqRes.text()).slice(0, 200)}`);
+      if (groqRes.status === 401) break;
+    }
 
-    if (!groqRes.ok) {
-      const errText = await groqRes.text();
+    if (!groqRes || !groqRes.ok) {
       return new Response(
-        JSON.stringify({ error: `Groq retornou ${groqRes.status}: ${errText}` }),
+        JSON.stringify({ error: `Groq falhou em todos os modelos — ${falhas.join(" | ")}` }),
         { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
