@@ -37,6 +37,7 @@ import { situacaoDocumento } from "@/lib/inspecoes/documento";
 import { FileSignature } from "lucide-react";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
+import DocumentosEmpresaPainel from "@/components/empresas/DocumentosEmpresaPainel";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import NivelBadge from "@/components/riscos/NivelBadge";
@@ -744,6 +745,13 @@ export default function RelatorioChabraPage({ params }: Props) {
                 </div>
               </>
             )}
+
+            {/* Situação do DRPS, QPS, AEP e AET da empresa — o mesmo quadro da
+                página da inspeção. */}
+            <DocumentosEmpresaPainel
+              idEmpresa={inspecao.id_empresa}
+              className="mt-4 border-t border-gray-100 pt-4"
+            />
           </div>
         </section>
 
