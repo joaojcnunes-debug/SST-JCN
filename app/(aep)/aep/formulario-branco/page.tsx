@@ -207,8 +207,8 @@ function BlocoSetor({ indice, total }: { indice: number; total: number }) {
             <FbCaixa label="Não" />
           </div>
           <p className="fb-nota">
-            Marque <strong>Sim</strong> quando houver risco classificado como Alto ou Crítico, ou dois ou mais riscos Moderados
-            — é o critério que o sistema aplica sozinho ao digitar a matriz.
+            Marque <strong>Sim</strong> quando algum fator da Ergonomia Organizacional ficar Alto ou Muito Alto na matriz
+            AIHA, ou dois ou mais fatores ficarem Moderados — é o critério que o sistema aplica sozinho ao digitar.
           </p>
         </div>
       </FbSecao>
