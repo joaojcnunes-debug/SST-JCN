@@ -16,6 +16,7 @@ import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { usePdfAssinado, usePdfCongelado } from "@/lib/hooks/usePdfsGerados";
 import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
+import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
 import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
 import { montarValoresAep } from "@/lib/textos-padrao/variaveis-aep";
 import { formatarDataBR, substituirVariaveis, substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
@@ -229,6 +230,21 @@ function SetorBlock({ setor, idx }: { setor: AepSetor; idx: number }) {
                     ))}
                   </ul>
                 )}
+                {setor.aiha_organizacional?.[k] && (() => {
+                  const a = setor.aiha_organizacional[k]!;
+                  const c = COR_NIVEL_AIHA[a.nivel];
+                  return (
+                    <p className="mt-0.5 text-[10px] text-gray-600">
+                      Probabilidade: <strong>{a.probabilidade}</strong> · Severidade: <strong>{a.severidade}</strong> · Nível:{" "}
+                      <span
+                        className="rounded px-1 font-bold"
+                        style={{ backgroundColor: c?.bg, color: c?.cor }}
+                      >
+                        {a.nivel}
+                      </span>
+                    </p>
+                  );
+                })()}
                 {obs && <p className="mt-0.5 text-[10px] italic text-gray-500">Obs.: {obs}</p>}
               </div>
             );

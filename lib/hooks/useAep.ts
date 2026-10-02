@@ -1,5 +1,6 @@
 "use client";
 
+import { contagemParaAet } from "@/lib/aep/aiha-organizacional";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -122,6 +123,11 @@ function normalizarSetor(s: unknown): AepSetor {
       }
       return out;
     })(),
+    // ⚠️ Mesmo cuidado dos sinais: campo fora daqui some em toda leitura.
+    aiha_organizacional:
+      typeof setor.aiha_organizacional === "object" && setor.aiha_organizacional !== null
+        ? (setor.aiha_organizacional as AepSetor["aiha_organizacional"])
+        : {},
     parecer_tecnico: (setor.parecer_tecnico as string) ?? "",
     recomendacoes: (setor.recomendacoes as string) ?? "",
     necessita_aet: Boolean(setor.necessita_aet),
@@ -211,9 +217,12 @@ export function calcNecessitaAet(setor: AepSetor): boolean {
     (r) => r.classificacao_risco === "Alto" || r.classificacao_risco === "Crítico"
   );
   const moderados = setor.riscos.filter((r) => r.classificacao_risco === "Moderado");
+  // Fatores organizacionais na matriz AIHA (2026-10-02): Alto/Muito Alto contam
+  // como risco Alto; Moderado como Moderado — mesma régua dos riscos do setor.
+  const org = contagemParaAet(setor.aiha_organizacional);
   // "Múltiplos riscos Moderados" — o texto da tarja e do laudo diz múltiplos, que
   // é 2 ou mais. O limiar era 3 e contradizia a própria redação (pedido 10/08).
-  return altos.length > 0 || moderados.length >= 2;
+  return altos.length + org.altos > 0 || moderados.length + org.moderados >= 2;
 }
 
 export function riscoMaximoAep(setor: AepSetor): ClassificacaoRiscoAET | null {

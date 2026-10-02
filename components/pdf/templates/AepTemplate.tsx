@@ -14,6 +14,7 @@ import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/Secoes
 import { classeQuebraFixoNova, numerarCapitulos, numLabel } from "@/components/pdf/templates/shared";
 // Módulo puro (sem "use client", sem hook) — pode entrar no template do Puppeteer.
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
+import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
 import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
 import type { Empresa } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
@@ -87,6 +88,8 @@ export interface AepSetorLocal {
   observacoes_checklist?: Record<string, string>;
   /** Sinais marcados nos fatores organizacionais respondidos "sim" (v0.3.503). */
   sinais_organizacional?: Record<string, string[]>;
+  /** Matriz AIHA dos fatores organizacionais "Sim" (2026-10-02). */
+  aiha_organizacional?: Record<string, { probabilidade: string; severidade: string; nivel: string }>;
   cargos?: { id: string; cargo: string; descricao: string; quantidade: number }[];
   riscos: AepRisco[];
   checklist_fisica: AepChecklistFisica;
@@ -639,6 +642,19 @@ function SetorBlock({
                     ))}
                   </ul>
                 )}
+                {setor.aiha_organizacional?.[k] && (() => {
+                  // Cores cravadas (Puppeteer não enxerga as variáveis de tema).
+                  const a = setor.aiha_organizacional[k]!;
+                  const c = COR_NIVEL_AIHA[a.nivel as keyof typeof COR_NIVEL_AIHA];
+                  return (
+                    <p style={{ margin: "2px 0 0", fontSize: 9, color: "#4b5563" }}>
+                      Probabilidade: <strong>{a.probabilidade}</strong> · Severidade: <strong>{a.severidade}</strong> · Nível:{" "}
+                      <span style={{ backgroundColor: c?.bg, color: c?.cor, fontWeight: 700, padding: "0 4px", borderRadius: 3 }}>
+                        {a.nivel}
+                      </span>
+                    </p>
+                  );
+                })()}
                 {obs && <p style={{ margin: "2px 0 0", fontSize: 9, fontStyle: "italic", color: "#6b7280" }}>Obs.: {obs}</p>}
               </div>
             );

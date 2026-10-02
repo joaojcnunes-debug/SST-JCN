@@ -6,6 +6,18 @@ import { useAepRelatorios } from "@/lib/hooks/useAep";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import type { AepChecklistOrganizacional } from "@/lib/supabase/types";
+import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
+
+// Ordem de gravidade dos níveis da matriz (AIHA) — o mais grave primeiro.
+const PESO_NIVEL: Record<string, number> = { "Muito Alto": 5, Alto: 4, Moderado: 3, Baixo: 2, Trivial: 1 };
+
+interface AlertaFator {
+  label: string;
+  /** Nível na matriz AIHA (AEP de 2026-10-02 em diante; antes disso, ausente). */
+  nivel?: string;
+  probabilidade?: string;
+  severidade?: string;
+}
 
 const ITENS_ORG: { key: keyof AepChecklistOrganizacional; label: string }[] = [
   { key: "assedio",               label: "Assédio de qualquer natureza no trabalho" },
@@ -41,10 +53,15 @@ export default function SinalizacaoPsicossocialPage() {
       const setoresComAlerta = rel.setores
         .map((setor) => {
           const cl = setor.checklist_organizacional as unknown as Record<string, string>;
-          const alertas = ITENS_ORG
+          const alertas: AlertaFator[] = ITENS_ORG
             .filter(({ key }) => cl?.[key] === "sim")
-            .map(({ key }) => LABEL_MAP[key]);
-          return { id: setor.id, nome: setor.nome_setor || "Setor sem nome", alertas };
+            .map(({ key }) => {
+              const a = setor.aiha_organizacional?.[key];
+              return { label: LABEL_MAP[key], nivel: a?.nivel, probabilidade: a?.probabilidade, severidade: a?.severidade };
+            })
+            .sort((x, y) => (PESO_NIVEL[y.nivel ?? ""] ?? 0) - (PESO_NIVEL[x.nivel ?? ""] ?? 0));
+          const pior = alertas[0]?.nivel;
+          return { id: setor.id, nome: setor.nome_setor || "Setor sem nome", alertas, pior };
         })
         .filter((s) => s.alertas.length > 0);
 
@@ -61,6 +78,10 @@ export default function SinalizacaoPsicossocialPage() {
   const totalEmpresas = dados.length;
   const totalSetores  = dados.reduce((a, d) => a + d.setores.length, 0);
   const totalAlertas  = dados.reduce((a, d) => a + d.totalAlertas, 0);
+  const totalAltos    = dados.reduce(
+    (a, d) => a + d.setores.reduce((b, s) => b + s.alertas.filter((x) => x.nivel === "Alto" || x.nivel === "Muito Alto").length, 0),
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -69,7 +90,7 @@ export default function SinalizacaoPsicossocialPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Sinalização de Fatores Psicossociais</h1>
           <p className="text-sm text-gray-500">
-            Empresas e setores com riscos organizacionais identificados nas triagens AEP — priorize para aplicação do questionário
+            Empresas e setores com riscos organizacionais identificados nas triagens AEP, com o nível na matriz AIHA — priorize os mais graves para aplicação do questionário
           </p>
         </div>
         <div className="w-60">
@@ -79,11 +100,12 @@ export default function SinalizacaoPsicossocialPage() {
 
       {/* Stats */}
       {!isLoading && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {[
             { label: "Empresas c/ alertas",  value: totalEmpresas, color: "bg-indigo-50 border-indigo-200 text-indigo-700" },
             { label: "Setores afetados",      value: totalSetores,  color: "bg-violet-50 border-violet-200 text-violet-700" },
             { label: "Alertas psicossociais", value: totalAlertas,  color: "bg-red-50 border-red-200 text-red-700" },
+            { label: "Fatores Alto / Muito Alto (AIHA)", value: totalAltos, color: "bg-pink-50 border-pink-200 text-pink-700" },
           ].map(({ label, value, color }) => (
             <div key={label} className={`rounded-xl border p-4 text-center ${color}`}>
               <p className="text-3xl font-bold">{value}</p>
@@ -131,16 +153,43 @@ export default function SinalizacaoPsicossocialPage() {
                       {setor.alertas.length}
                     </span>
                     <span className="text-sm font-medium text-gray-800">{setor.nome}</span>
+                    {setor.pior && (
+                      <span
+                        className="rounded-full border px-2 py-0.5 text-[10px] font-bold"
+                        style={{
+                          backgroundColor: COR_NIVEL_AIHA[setor.pior as keyof typeof COR_NIVEL_AIHA]?.bg,
+                          color: COR_NIVEL_AIHA[setor.pior as keyof typeof COR_NIVEL_AIHA]?.cor,
+                          borderColor: COR_NIVEL_AIHA[setor.pior as keyof typeof COR_NIVEL_AIHA]?.borda,
+                        }}
+                        title="Maior nível AIHA entre os fatores do setor"
+                      >
+                        {setor.pior}
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
-                    {setor.alertas.map((label) => (
-                      <span
-                        key={label}
-                        className="rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-0.5 text-[11px] font-medium text-indigo-700"
-                      >
-                        {label}
-                      </span>
-                    ))}
+                    {setor.alertas.map((a) => {
+                      const c = a.nivel ? COR_NIVEL_AIHA[a.nivel as keyof typeof COR_NIVEL_AIHA] : undefined;
+                      return (
+                        <span
+                          key={a.label}
+                          className="rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
+                          style={
+                            c
+                              ? { backgroundColor: c.bg, color: c.cor, borderColor: c.borda }
+                              : { backgroundColor: "#eef2ff", color: "#4338ca", borderColor: "#c7d2fe" }
+                          }
+                          title={
+                            a.nivel
+                              ? "Probabilidade: " + a.probabilidade + " · Severidade: " + a.severidade
+                              : "AEP ainda sem classificação AIHA — abra e salve a análise"
+                          }
+                        >
+                          {a.label}
+                          {a.nivel && <strong className="ml-1">· {a.nivel}</strong>}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
