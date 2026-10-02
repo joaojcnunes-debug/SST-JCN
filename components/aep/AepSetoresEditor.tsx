@@ -35,6 +35,16 @@ import {
 } from "@/components/ui/ListaReordenavel";
 import { cn } from "@/lib/utils";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useMatrizAtiva } from "@/lib/hooks/useV3";
+import {
+  COR_NIVEL_AIHA,
+  indiceProbabilidadeSugerida,
+  recalcularAihaOrganizacional,
+  SEVERIDADE_PADRAO_IDX,
+  type AihaFator,
+  type AihaOrganizacional,
+  type FatorOrganizacional,
+} from "@/lib/aep/aiha-organizacional";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import {
@@ -60,6 +70,7 @@ import type {
   AepChecklistCognitiva,
   AepChecklistOrganizacional,
   ClassificacaoRiscoAET,
+  MatrizRisco,
   RespostaChecklist,
   RespostaChecklistAep,
   TipoRiscoAET,
@@ -209,6 +220,104 @@ function SinaisDoFator({
   );
 }
 
+// ─── Matriz AIHA do fator (Ergonomia Organizacional) ─────────────────────────
+// Probabilidade sugerida pelos sinais, severidade padrão do fator; o técnico
+// pode trocar as duas. Nível = mesma conta da inspeção (pesos × faixas da
+// matriz ativa). Regra em lib/aep/aiha-organizacional.ts.
+
+function AihaDoFator({
+  fator,
+  valor,
+  matriz,
+  sinaisMarcados,
+  sinaisTotal,
+  onChange,
+  disabled,
+}: {
+  fator: string;
+  valor: AihaFator | undefined;
+  matriz: MatrizRisco;
+  sinaisMarcados: number;
+  sinaisTotal: number;
+  onChange: (patch: Partial<AihaFator>) => void;
+  disabled?: boolean;
+}) {
+  if (!valor) return null;
+  const probSug = matriz.probabilidades[indiceProbabilidadeSugerida(sinaisMarcados, sinaisTotal, matriz.probabilidades.length)];
+  const sevSug = matriz.severidades[
+    Math.min(SEVERIDADE_PADRAO_IDX[fator as FatorOrganizacional] ?? 1, matriz.severidades.length - 1)
+  ];
+  const cor = COR_NIVEL_AIHA[valor.nivel];
+  const selectCls =
+    "w-full rounded border border-gray-200 bg-white px-1.5 py-1 text-[11px] text-gray-700 focus:border-gray-400 focus:outline-none disabled:bg-gray-50";
+  return (
+    <div className="rounded-md border border-gray-200 bg-white p-2">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-600">
+          Matriz de risco {matriz.nome}
+        </span>
+        <span
+          className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+          style={{ backgroundColor: cor?.bg, color: cor?.cor, border: "1px solid " + (cor?.borda ?? "transparent") }}
+          title="Peso da probabilidade × peso da severidade, nas faixas da matriz"
+        >
+          {valor.nivel}
+        </span>
+      </div>
+      <div className="grid gap-2 md:grid-cols-2">
+        <label className="block space-y-0.5">
+          <span className="flex items-center justify-between text-[10px] text-gray-500">
+            Probabilidade
+            {valor.prob_manual ? (
+              !disabled && (
+                <button type="button" className="text-sky-600 hover:underline" onClick={() => onChange({ prob_manual: false })}>
+                  usar sugerida
+                </button>
+              )
+            ) : (
+              <span className="text-gray-400">sugerida pelos sinais ({sinaisMarcados} de {sinaisTotal})</span>
+            )}
+          </span>
+          <select
+            className={selectCls}
+            disabled={disabled}
+            value={valor.probabilidade}
+            onChange={(e) => onChange({ probabilidade: e.target.value, prob_manual: e.target.value !== probSug })}
+          >
+            {matriz.probabilidades.map((p) => (
+              <option key={p} value={p}>{p}{p === probSug ? " (sugerida)" : ""}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block space-y-0.5">
+          <span className="flex items-center justify-between text-[10px] text-gray-500">
+            Severidade
+            {valor.sev_manual ? (
+              !disabled && (
+                <button type="button" className="text-sky-600 hover:underline" onClick={() => onChange({ sev_manual: false })}>
+                  usar padrão
+                </button>
+              )
+            ) : (
+              <span className="text-gray-400">padrão do fator</span>
+            )}
+          </span>
+          <select
+            className={selectCls}
+            disabled={disabled}
+            value={valor.severidade}
+            onChange={(e) => onChange({ severidade: e.target.value, sev_manual: e.target.value !== sevSug })}
+          >
+            {matriz.severidades.map((sv) => (
+              <option key={sv} value={sv}>{sv}{sv === sevSug ? " (padrão)" : ""}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+    </div>
+  );
+}
+
 // ─── Bloco de checklist ───────────────────────────────────────────────────────
 
 function ChecklistBloco({
@@ -225,6 +334,9 @@ function ChecklistBloco({
   sinais,
   sinaisMarcados,
   onSinaisChange,
+  matriz,
+  aiha,
+  onAihaChange,
 }: {
   titulo: string;
   cor: string;
@@ -242,6 +354,10 @@ function ChecklistBloco({
   sinais?: Record<string, SinalOrganizacional[]>;
   sinaisMarcados?: Record<string, string[]>;
   onSinaisChange?: (fator: string, keys: string[]) => void;
+  /** Matriz AIHA — só a Ergonomia Organizacional passa estes três. */
+  matriz?: MatrizRisco | null;
+  aiha?: AihaOrganizacional;
+  onAihaChange?: (fator: string, patch: Partial<AihaFator>) => void;
 }) {
   const positivos = itens.filter((i) => valores[i.key] === "sim").length;
   return (
@@ -273,6 +389,17 @@ function ChecklistBloco({
                   sinais={doFator}
                   marcados={sinaisMarcados?.[key] ?? []}
                   onChange={(keys) => onSinaisChange?.(key, keys)}
+                  disabled={disabled}
+                />
+              )}
+              {valores[key] === "sim" && matriz && aiha && (
+                <AihaDoFator
+                  fator={key}
+                  valor={aiha[key]}
+                  matriz={matriz}
+                  sinaisMarcados={sinaisMarcados?.[key]?.length ?? 0}
+                  sinaisTotal={doFator?.length ?? 0}
+                  onChange={(patch) => onAihaChange?.(key, patch)}
                   disabled={disabled}
                 />
               )}
@@ -321,6 +448,22 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
   const [salvando, setSalvando] = useState(false);
   const [gerandoIA, setGerandoIA] = useState<string | null>(null);
   const [statusOrdem, setStatusOrdem] = useState<StatusOrdemSalva>("parado");
+  // Matriz de risco ativa (a mesma da inspeção) — classifica a Ergonomia Organizacional.
+  const { data: matriz } = useMatrizAtiva();
+
+  /** Recalcula a matriz AIHA dos fatores organizacionais e o "Necessita AET". */
+  function comAiha(s: AepSetor): AepSetor {
+    if (!matriz) return s;
+    const aiha = recalcularAihaOrganizacional({
+      checklist: s.checklist_organizacional as unknown as Record<string, string>,
+      sinaisMarcados: s.sinais_organizacional,
+      totalSinais: (f) => SINAIS_ORGANIZACIONAL[f as FatorOrganizacional]?.length ?? 0,
+      anterior: s.aiha_organizacional,
+      matriz,
+    }) as AepSetor["aiha_organizacional"];
+    const novo = { ...s, aiha_organizacional: aiha };
+    return { ...novo, necessita_aet: calcNecessitaAet(novo) };
+  }
 
   // Só carrega o estado local UMA vez por relatório. Antes isso rodava a cada
   // objeto novo vindo do cache — com o auto-save da ordem, cada arrasto
@@ -332,6 +475,14 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
     setSetores(rel.setores ?? []);
     if (rel.setores?.length) setAbertos(new Set([rel.setores[0].id]));
   }, [rel, idRelatorio]);
+
+  // Laudos anteriores (ou matriz alterada em Configurações): ao abrir, a matriz
+  // AIHA dos fatores é recalculada na tela; vai para o banco no próximo Salvar.
+  useEffect(() => {
+    if (!matriz) return;
+    setSetores((prev) => prev.map(comAiha));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matriz, rel]);
 
   function toggle(id: string) {
     setAbertos((prev) => {
@@ -383,7 +534,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
     setSetores((s) =>
       s.map((x) => {
         if (x.id !== id) return x;
-        const updated = { ...x, ...patch };
+        const updated = comAiha({ ...x, ...patch });
         updated.necessita_aet = calcNecessitaAet(updated);
         return updated;
       })
@@ -813,6 +964,15 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                           sinais_organizacional: { ...(setor.sinais_organizacional ?? {}), [fator]: keys },
                         })
                       }
+                      matriz={matriz}
+                      aiha={setor.aiha_organizacional}
+                      onAihaChange={(fator, patch) => {
+                        const atual = setor.aiha_organizacional?.[fator];
+                        if (!atual) return;
+                        updateSetor(setor.id, {
+                          aiha_organizacional: { ...(setor.aiha_organizacional ?? {}), [fator]: { ...atual, ...patch } },
+                        });
+                      }}
                     />
                   </div>
                 </section>

@@ -2435,6 +2435,19 @@ export interface AepSetor {
    * precisou de migration. Catálogo em `lib/aep/sinais-organizacional.ts`.
    */
   sinais_organizacional?: Record<string, string[]>;
+  /**
+   * v0.3.x (2026-10-02) — cada fator organizacional "Sim" na matriz de risco
+   * ativa (AIHA): probabilidade (sugerida pelos sinais), severidade (padrão
+   * por fator) e o nível calculado. Só fatores "Sim". Ver
+   * `lib/aep/aiha-organizacional.ts`.
+   */
+  aiha_organizacional?: Record<string, {
+    probabilidade: string;
+    severidade: string;
+    nivel: NivelRisco;
+    prob_manual?: boolean;
+    sev_manual?: boolean;
+  }>;
   parecer_tecnico: string;
   recomendacoes: string;
   necessita_aet: boolean;

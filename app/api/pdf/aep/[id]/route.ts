@@ -104,6 +104,11 @@ function normalizarSetor(s: unknown): AepSetorLocal {
       }
       return out;
     })(),
+    // Matriz AIHA dos fatores organizacionais (2026-10-02) — mesmo cuidado dos sinais.
+    aiha_organizacional:
+      typeof setor.aiha_organizacional === "object" && setor.aiha_organizacional !== null
+        ? (setor.aiha_organizacional as AepSetorLocal["aiha_organizacional"])
+        : {},
     cargos: Array.isArray(setor.cargos)
       ? (setor.cargos as AepSetorLocal["cargos"])
       : [],
