@@ -2444,7 +2444,8 @@ export interface AepSetor {
   aiha_organizacional?: Record<string, {
     probabilidade: string;
     severidade: string;
-    nivel: NivelRisco;
+    /** null = sem sinal observado marcado → não calculado. */
+    nivel: NivelRisco | null;
     prob_manual?: boolean;
     sev_manual?: boolean;
   }>;

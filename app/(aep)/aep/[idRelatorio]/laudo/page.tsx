@@ -230,9 +230,9 @@ function SetorBlock({ setor, idx }: { setor: AepSetor; idx: number }) {
                     ))}
                   </ul>
                 )}
-                {setor.aiha_organizacional?.[k] && (() => {
+                {setor.aiha_organizacional?.[k]?.nivel && (() => {
                   const a = setor.aiha_organizacional[k]!;
-                  const c = COR_NIVEL_AIHA[a.nivel];
+                  const c = COR_NIVEL_AIHA[a.nivel!];
                   return (
                     <p className="mt-0.5 text-[10px] text-gray-600">
                       Probabilidade: <strong>{a.probabilidade}</strong> · Severidade: <strong>{a.severidade}</strong> · Nível:{" "}

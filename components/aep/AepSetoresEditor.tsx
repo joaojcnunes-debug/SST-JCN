@@ -247,7 +247,8 @@ function AihaDoFator({
   const sevSug = matriz.severidades[
     Math.min(SEVERIDADE_PADRAO_IDX[fator as FatorOrganizacional] ?? 1, matriz.severidades.length - 1)
   ];
-  const cor = COR_NIVEL_AIHA[valor.nivel];
+  const semSinal = sinaisMarcados <= 0;
+  const cor = valor.nivel ? COR_NIVEL_AIHA[valor.nivel] : undefined;
   const selectCls =
     "w-full rounded border border-gray-200 bg-white px-1.5 py-1 text-[11px] text-gray-700 focus:border-gray-400 focus:outline-none disabled:bg-gray-50";
   return (
@@ -256,13 +257,19 @@ function AihaDoFator({
         <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-600">
           Matriz de risco {matriz.nome}
         </span>
-        <span
-          className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-          style={{ backgroundColor: cor?.bg, color: cor?.cor, border: "1px solid " + (cor?.borda ?? "transparent") }}
-          title="Peso da probabilidade × peso da severidade, nas faixas da matriz"
-        >
-          {valor.nivel}
-        </span>
+        {valor.nivel ? (
+          <span
+            className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+            style={{ backgroundColor: cor?.bg, color: cor?.cor, border: "1px solid " + (cor?.borda ?? "transparent") }}
+            title="Peso da probabilidade × peso da severidade, nas faixas da matriz"
+          >
+            {valor.nivel}
+          </span>
+        ) : (
+          <span className="rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+            Não calculado — marque os sinais observados
+          </span>
+        )}
       </div>
       <div className="grid gap-2 md:grid-cols-2">
         <label className="block space-y-0.5">
@@ -280,7 +287,7 @@ function AihaDoFator({
           </span>
           <select
             className={selectCls}
-            disabled={disabled}
+            disabled={disabled || semSinal}
             value={valor.probabilidade}
             onChange={(e) => onChange({ probabilidade: e.target.value, prob_manual: e.target.value !== probSug })}
           >
@@ -299,12 +306,12 @@ function AihaDoFator({
                 </button>
               )
             ) : (
-              <span className="text-gray-400">padrão do fator</span>
+              <span className="text-gray-400">{semSinal ? "aguardando sinais" : "padrão do fator"}</span>
             )}
           </span>
           <select
             className={selectCls}
-            disabled={disabled}
+            disabled={disabled || semSinal}
             value={valor.severidade}
             onChange={(e) => onChange({ severidade: e.target.value, sev_manual: e.target.value !== sevSug })}
           >

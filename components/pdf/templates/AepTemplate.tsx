@@ -89,7 +89,7 @@ export interface AepSetorLocal {
   /** Sinais marcados nos fatores organizacionais respondidos "sim" (v0.3.503). */
   sinais_organizacional?: Record<string, string[]>;
   /** Matriz AIHA dos fatores organizacionais "Sim" (2026-10-02). */
-  aiha_organizacional?: Record<string, { probabilidade: string; severidade: string; nivel: string }>;
+  aiha_organizacional?: Record<string, { probabilidade: string; severidade: string; nivel: string | null }>;
   cargos?: { id: string; cargo: string; descricao: string; quantidade: number }[];
   riscos: AepRisco[];
   checklist_fisica: AepChecklistFisica;
@@ -642,7 +642,7 @@ function SetorBlock({
                     ))}
                   </ul>
                 )}
-                {setor.aiha_organizacional?.[k] && (() => {
+                {setor.aiha_organizacional?.[k]?.nivel && (() => {
                   // Cores cravadas (Puppeteer não enxerga as variáveis de tema).
                   const a = setor.aiha_organizacional[k]!;
                   const c = COR_NIVEL_AIHA[a.nivel as keyof typeof COR_NIVEL_AIHA];

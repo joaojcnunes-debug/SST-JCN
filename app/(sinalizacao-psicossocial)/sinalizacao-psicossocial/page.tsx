@@ -57,7 +57,7 @@ export default function SinalizacaoPsicossocialPage() {
             .filter(({ key }) => cl?.[key] === "sim")
             .map(({ key }) => {
               const a = setor.aiha_organizacional?.[key];
-              return { label: LABEL_MAP[key], nivel: a?.nivel, probabilidade: a?.probabilidade, severidade: a?.severidade };
+              return { label: LABEL_MAP[key], nivel: a?.nivel ?? undefined, probabilidade: a?.probabilidade, severidade: a?.severidade };
             })
             .sort((x, y) => (PESO_NIVEL[y.nivel ?? ""] ?? 0) - (PESO_NIVEL[x.nivel ?? ""] ?? 0));
           const pior = alertas[0]?.nivel;
@@ -182,7 +182,7 @@ export default function SinalizacaoPsicossocialPage() {
                           title={
                             a.nivel
                               ? "Probabilidade: " + a.probabilidade + " · Severidade: " + a.severidade
-                              : "AEP ainda sem classificação AIHA — abra e salve a análise"
+                              : "Sem classificação AIHA: nenhum sinal observado marcado (ou AEP ainda não salva)"
                           }
                         >
                           {a.label}
