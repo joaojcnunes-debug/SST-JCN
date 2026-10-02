@@ -50,9 +50,13 @@ Configurações, a AEP acompanha.
    - O técnico pode **trocar** as duas. A troca fica marcada como manual
      (`prob_manual`/`sev_manual`), e os links "usar sugerida" e "usar padrão"
      voltam para a regra automática.
-3. **"Necessita AET"** (`calcNecessitaAet`): fator **Alto/Muito Alto** conta
-   como risco Alto (1 basta); **Moderado** conta como Moderado (2 indicam AET).
-   Soma-se aos riscos do setor.
+3. **"Necessita AET"** (`calcNecessitaAet`): passa a ser decidido **só** pelos
+   fatores organizacionais na matriz AIHA — 1 fator **Alto/Muito Alto**, ou 2+
+   **Moderados**. A lista **"Matriz de Riscos"** do setor (`setor.riscos`)
+   **deixa de contar** para a sugestão de AET (continua no laudo como
+   registro). O aviso da tela, o texto do laudo/PDF e o formulário em branco
+   foram reescritos com esse critério, e o escalonamento do laudo mostra o
+   **maior nível AIHA organizacional** do setor no lugar do "Risco máximo".
 4. **Laudo e PDF da AEP:** cada fator com nível mostra "Probabilidade ·
    Severidade · Nível".
 5. **Sinalização Psicossocial** (refeita no mesmo formato da página Riscos Psicossociais):
@@ -114,7 +118,8 @@ Exemplo com Assédio (6 sinais):
 | `components/aep/AepSetoresEditor.tsx` | quadro AIHA, recálculo e matriz ativa | E |
 | `app/api/pdf/aep/[id]/route.ts` | normalizador do PDF | F |
 | `components/pdf/templates/AepTemplate.tsx` | linha "Probabilidade · Severidade · Nível" no PDF | G |
-| `app/(aep)/aep/[idRelatorio]/laudo/page.tsx` | a mesma linha na prévia do laudo | H |
+| `app/(aep)/aep/[idRelatorio]/laudo/page.tsx` | a mesma linha na prévia do laudo + critério de AET | H |
+| `app/(aep)/aep/formulario-branco/page.tsx` | texto do critério de AET | H.2 |
 | `lib/aep/sinalizacao.ts` + `.test.ts` | **novo**: agrupa as AEPs por empresa › setor › fator | I |
 | `components/aep/SeloNivelAiha.tsx` | **novo**: selo colorido do nível | J |
 | `app/(sinalizacao-psicossocial)/sinalizacao-psicossocial/page.tsx` | **substituir**: lista de empresas | K |
@@ -128,7 +133,7 @@ Exemplo com Assédio (6 sinais):
    - marque 1 sinal: dá Moderado; 4 sinais: Alto; 6 sinais: Muito Alto.
 3. Troque a severidade à mão e confira que o nível muda e que "usar padrão" volta para o padrão do fator.
 4. Salve; confira o laudo/PDF (linha do fator) e a Sinalização Psicossocial (empresa na lista com o nível; na página da empresa, o setor com a tabela do fator).
-5. Um fator **Alto** sozinho deve ligar o "Necessita AET" do setor.
+5. Um fator organizacional **Alto** sozinho deve ligar o "Necessita AET" do setor; um risco Alto/Crítico na lista "Matriz de Riscos" **não** deve ligar.
 6. Publique pelo fluxo de release do painel (versão, changelog, "Novidades").
 
 ---
@@ -455,17 +460,27 @@ test("contagem para o Necessita AET", () => {
      parecer_tecnico: (setor.parecer_tecnico as string) ?? "",
      recomendacoes: (setor.recomendacoes as string) ?? "",
      necessita_aet: Boolean(setor.necessita_aet),
-@@ -211,9 +217,12 @@ export function calcNecessitaAet(setor: AepSetor): boolean {
-     (r) => r.classificacao_risco === "Alto" || r.classificacao_risco === "Crítico"
-   );
-   const moderados = setor.riscos.filter((r) => r.classificacao_risco === "Moderado");
-+  // Fatores organizacionais na matriz AIHA (2026-10-02): Alto/Muito Alto contam
-+  // como risco Alto; Moderado como Moderado — mesma régua dos riscos do setor.
-+  const org = contagemParaAet(setor.aiha_organizacional);
-   // "Múltiplos riscos Moderados" — o texto da tarja e do laudo diz múltiplos, que
-   // é 2 ou mais. O limiar era 3 e contradizia a própria redação (pedido 10/08).
+@@ -206,14 +212,16 @@ export function riscoVazioAep(): AepRisco {
+ 
+ // ─── Lógica de escalonamento ──────────────────────────────────────────────────
+ 
++/**
++ * Sugestão de AET completa (2026-10-02): SÓ os fatores da Ergonomia
++ * Organizacional na matriz AIHA contam — 1 fator Alto/Muito Alto, ou 2+
++ * Moderados. A lista "Matriz de Riscos" do setor (`setor.riscos`) NÃO entra
++ * mais no critério, a pedido do usuário; ela continua no laudo como registro.
++ */
+ export function calcNecessitaAet(setor: AepSetor): boolean {
+-  const altos = setor.riscos.filter(
+-    (r) => r.classificacao_risco === "Alto" || r.classificacao_risco === "Crítico"
+-  );
+-  const moderados = setor.riscos.filter((r) => r.classificacao_risco === "Moderado");
+-  // "Múltiplos riscos Moderados" — o texto da tarja e do laudo diz múltiplos, que
+-  // é 2 ou mais. O limiar era 3 e contradizia a própria redação (pedido 10/08).
 -  return altos.length > 0 || moderados.length >= 2;
-+  return altos.length + org.altos > 0 || moderados.length + org.moderados >= 2;
++  const org = contagemParaAet(setor.aiha_organizacional);
++  // "Múltiplos Moderados" = 2 ou mais (pedido de 10/08).
++  return org.altos > 0 || org.moderados >= 2;
  }
  
  export function riscoMaximoAep(setor: AepSetor): ClassificacaoRiscoAET | null {
@@ -713,6 +728,15 @@ test("contagem para o Necessita AET", () => {
                      />
                    </div>
                  </section>
+@@ -900,7 +1067,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
+                         Este setor requer elaboração de AET completa
+                       </p>
+                       <p className="text-xs text-orange-700 mt-0.5">
+-                        Foram identificados riscos Alto ou Crítico, ou múltiplos riscos Moderados. Recomenda-se aprofundamento pela Análise Ergonômica do Trabalho (NR-17).
++                        Foram identificados fatores psicossociais organizacionais Alto ou Muito Alto na matriz AIHA, ou múltiplos fatores Moderados. Recomenda-se aprofundamento pela Análise Ergonômica do Trabalho (NR-17).
+                       </p>
+                     </div>
+                   </div>
 ```
 
 ## F: diff de `app/api/pdf/aep/[id]/route.ts`
@@ -735,15 +759,16 @@ test("contagem para o Necessita AET", () => {
 ## G: diff de `components/pdf/templates/AepTemplate.tsx`
 
 ```diff
-@@ -14,6 +14,7 @@ import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/Secoes
+@@ -14,6 +14,8 @@ import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/Secoes
  import { classeQuebraFixoNova, numerarCapitulos, numLabel } from "@/components/pdf/templates/shared";
  // Módulo puro (sem "use client", sem hook) — pode entrar no template do Puppeteer.
  import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
 +import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
++import { piorNivel } from "@/lib/aep/sinalizacao";
  import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
  import type { Empresa } from "@/lib/supabase/types";
  import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
-@@ -87,6 +88,8 @@ export interface AepSetorLocal {
+@@ -87,6 +89,8 @@ export interface AepSetorLocal {
    observacoes_checklist?: Record<string, string>;
    /** Sinais marcados nos fatores organizacionais respondidos "sim" (v0.3.503). */
    sinais_organizacional?: Record<string, string[]>;
@@ -752,7 +777,7 @@ test("contagem para o Necessita AET", () => {
    cargos?: { id: string; cargo: string; descricao: string; quantidade: number }[];
    riscos: AepRisco[];
    checklist_fisica: AepChecklistFisica;
-@@ -639,6 +642,19 @@ function SetorBlock({
+@@ -639,6 +643,19 @@ function SetorBlock({
                      ))}
                    </ul>
                  )}
@@ -772,20 +797,49 @@ test("contagem para o Necessita AET", () => {
                  {obs && <p style={{ margin: "2px 0 0", fontSize: 9, fontStyle: "italic", color: "#6b7280" }}>Obs.: {obs}</p>}
                </div>
              );
+@@ -876,21 +893,23 @@ export default function AepTemplate({
+             }}
+           >
+             <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#9a3412" }}>
+-              ⚠ Os setores abaixo apresentaram riscos que justificam elaboração de AET completa (NR-17):
++              ⚠ Os setores abaixo apresentaram fatores psicossociais que justificam elaboração de AET completa (NR-17):
+             </p>
+             <ul style={{ margin: 0, paddingLeft: 20, fontSize: 11, color: "#c2410c", lineHeight: 1.8 }}>
+               {setoresComAet.map((s) => (
+                 <li key={s.id}>
+                   <strong>{s.nome_setor}</strong>
+                   {s.cargo && ` — ${s.cargo}`}
+-                  {" — "}Risco máximo:{" "}
+-                  <span style={{ fontWeight: 600 }}>{riscoMaximoSetor(s)}</span>
++                  {" — "}Maior nível AIHA (organizacional):{" "}
++                  <span style={{ fontWeight: 600 }}>
++                    {piorNivel(Object.values(s.aiha_organizacional ?? {}).map((a) => a?.nivel)) ?? "—"}
++                  </span>
+                 </li>
+               ))}
+             </ul>
+           </div>
+           <p style={{ margin: 0, fontSize: 11, color: "#4b5563", lineHeight: 1.7 }}>
+-            Conforme NR-17 e NR-01 (GRO/PGR), a presença de riscos classificados como Alto ou Crítico, ou a convergência de múltiplos riscos Moderados, indica a necessidade de aprofundamento por meio da Análise Ergonômica do Trabalho completa, com avaliação postural (OWAS), análise biomecânica, medições ambientais e elaboração de laudo técnico detalhado.
++            Conforme NR-17 e NR-01 (GRO/PGR), a identificação de fator psicossocial organizacional classificado como Alto ou Muito Alto na matriz AIHA, ou de dois ou mais fatores Moderados, indica a necessidade de aprofundamento por meio da Análise Ergonômica do Trabalho completa, com avaliação postural (OWAS), análise biomecânica, medições ambientais e elaboração de laudo técnico detalhado.
+           </p>
+         </>
+       ) : (
 ```
 
 ## H: diff de `app/(aep)/aep/[idRelatorio]/laudo/page.tsx`
 
 ```diff
-@@ -16,6 +16,7 @@ import { useEmpresa } from "@/lib/hooks/useEmpresas";
+@@ -16,6 +16,8 @@ import { useEmpresa } from "@/lib/hooks/useEmpresas";
  import { usePdfAssinado, usePdfCongelado } from "@/lib/hooks/usePdfsGerados";
  import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
  import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
 +import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
++import { piorNivel } from "@/lib/aep/sinalizacao";
  import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
  import { montarValoresAep } from "@/lib/textos-padrao/variaveis-aep";
  import { formatarDataBR, substituirVariaveis, substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
-@@ -229,6 +230,21 @@ function SetorBlock({ setor, idx }: { setor: AepSetor; idx: number }) {
+@@ -229,6 +231,21 @@ function SetorBlock({ setor, idx }: { setor: AepSetor; idx: number }) {
                      ))}
                    </ul>
                  )}
@@ -807,6 +861,39 @@ test("contagem para o Necessita AET", () => {
                  {obs && <p className="mt-0.5 text-[10px] italic text-gray-500">Obs.: {obs}</p>}
                </div>
              );
+@@ -582,13 +599,14 @@ export default function AepLaudoPage({
+                               <li key={s.id}>
+                                 <strong>{s.nome_setor}</strong>
+                                 {s.cargo && ` — ${s.cargo}`}
+-                                {" — "}Risco máximo: <span className="font-semibold">{riscoMaximoSetor(s)}</span>
++                                {" — "}Maior nível AIHA (organizacional):{" "}
++                                <span className="font-semibold">{piorNivel(Object.values(s.aiha_organizacional ?? {}).map((a) => a?.nivel)) ?? "—"}</span>
+                               </li>
+                             ))}
+                           </ul>
+                         </div>
+                         <p className="text-xs text-gray-600 leading-relaxed">
+-                          Conforme NR-17 e NR-01 (GRO/PGR), a presença de riscos classificados como Alto ou Crítico, ou a convergência de múltiplos riscos Moderados, indica a necessidade de aprofundamento por meio da Análise Ergonômica do Trabalho completa, com avaliação postural (OWAS), análise biomecânica, medições ambientais e elaboração de laudo técnico detalhado.
++                          Conforme NR-17 e NR-01 (GRO/PGR), a identificação de fator psicossocial organizacional classificado como Alto ou Muito Alto na matriz AIHA, ou de dois ou mais fatores Moderados, indica a necessidade de aprofundamento por meio da Análise Ergonômica do Trabalho completa, com avaliação postural (OWAS), análise biomecânica, medições ambientais e elaboração de laudo técnico detalhado.
+                         </p>
+                       </>
+                     ) : (
+```
+
+## H.2: diff de `app/(aep)/aep/formulario-branco/page.tsx`
+
+```diff
+@@ -207,8 +207,8 @@ function BlocoSetor({ indice, total }: { indice: number; total: number }) {
+             <FbCaixa label="Não" />
+           </div>
+           <p className="fb-nota">
+-            Marque <strong>Sim</strong> quando houver risco classificado como Alto ou Crítico, ou dois ou mais riscos Moderados
+-            — é o critério que o sistema aplica sozinho ao digitar a matriz.
++            Marque <strong>Sim</strong> quando algum fator da Ergonomia Organizacional ficar Alto ou Muito Alto na matriz
++            AIHA, ou dois ou mais fatores ficarem Moderados — é o critério que o sistema aplica sozinho ao digitar.
+           </p>
+         </div>
+       </FbSecao>
 ```
 
 ## I: `lib/aep/sinalizacao.ts` (novo, completo)
