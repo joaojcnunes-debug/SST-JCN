@@ -1,5 +1,5 @@
 // Edge Function — gera Parecer Técnico, Recomendações ou Demais Condições
-// para um setor da AET, via Groq (Llama 3.1 8B Instant).
+// para um setor da AET, via Groq (modelos com fallback).
 //
 // DEPLOY:
 //   supabase functions deploy gerar-analise-setor-aet-ia
@@ -10,7 +10,17 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "llama-3.1-8b-instant";
+// Em ordem de preferência. O Groq retira modelos do ar sem aviso (o
+// llama-3.1-8b-instant sumiu em 2026-10 e a função passou a dar 502): se um
+// modelo não existir mais, tenta o próximo.
+const MODELOS = [
+  "llama-3.3-70b-versatile",
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b",
+  "meta-llama/llama-4-scout-17b-16e-instruct",
+  "qwen/qwen3-32b",
+  "moonshotai/kimi-k2-instruct",
+];
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -117,25 +127,32 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const groqRes = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: buildUserPrompt(body) },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.55,
-        max_tokens: 700,
-      }),
-    });
+    let groqRes: Response | null = null;
+    const falhas: string[] = [];
+    for (const model of MODELOS) {
+      groqRes = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: buildUserPrompt(body) },
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.55,
+          max_tokens: 1500,
+        }),
+      });
+      if (groqRes.ok) break;
+      // Modelo retirado, sem acesso ou JSON malformado: tenta o próximo.
+      falhas.push(`${model}: ${groqRes.status} ${(await groqRes.text()).slice(0, 200)}`);
+      if (groqRes.status === 401) break;
+    }
 
-    if (!groqRes.ok) {
-      const txt = await groqRes.text();
+    if (!groqRes || !groqRes.ok) {
       return new Response(
-        JSON.stringify({ error: `Groq ${groqRes.status}: ${txt}` }),
+        JSON.stringify({ error: `Groq falhou em todos os modelos — ${falhas.join(" | ")}` }),
         { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }

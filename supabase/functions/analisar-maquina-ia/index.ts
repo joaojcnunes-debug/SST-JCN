@@ -10,9 +10,24 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-// llama-3.2-11b-vision-preview foi descontinuado pelo Groq → Llama 4 Scout
-const MODEL_VISION = "meta-llama/llama-4-scout-17b-16e-instruct";
-const MODEL_TEXT = "llama-3.1-8b-instant";
+// Visão: também em lista — llama-4-scout e qwen3.6-27b deram 404 nesta conta.
+const MODELOS_VISION = [
+  "meta-llama/llama-4-maverick-17b-128e-instruct",
+  "qwen/qwen3.6-27b",
+  "qwen/qwen2.5-vl-32b-instruct",
+  "meta-llama/llama-4-scout-17b-16e-instruct",
+];
+// Texto: em ordem de preferência. O Groq retira modelos do ar sem aviso (o
+// llama-3.1-8b-instant sumiu em 2026-10 e a função passou a dar 502): se um
+// modelo não existir mais, tenta o próximo.
+const MODELOS_TEXT = [
+  "llama-3.3-70b-versatile",
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b",
+  "meta-llama/llama-4-scout-17b-16e-instruct",
+  "qwen/qwen3-32b",
+  "moonshotai/kimi-k2-instruct",
+];
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -117,7 +132,7 @@ Deno.serve(async (req: Request) => {
 
     const fotos = (body.foto_urls ?? []).filter(Boolean);
     const useVision = fotos.length > 0;
-    const model = useVision ? MODEL_VISION : MODEL_TEXT;
+    const modelos = useVision ? MODELOS_VISION : MODELOS_TEXT;
     const textPrompt = buildTextPrompt(body);
 
     // monta mensagem do usuário (vision ou texto puro)
@@ -131,28 +146,38 @@ Deno.serve(async (req: Request) => {
         ]
       : textPrompt;
 
-    const groqRes = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userContent },
-        ],
-        // response_format não suportado em todos os modelos vision — usamos parsing manual
-        temperature: 0.2,
-        max_tokens: 1200,
-      }),
-    });
+    let groqRes: Response | null = null;
+    const falhas: string[] = [];
+    for (const model of modelos) {
+      groqRes = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: userContent },
+          ],
+          // response_format não suportado em todos os modelos vision — usamos parsing manual
+          temperature: 0.2,
+          // texto: os openai/gpt-oss-* raciocinam antes de responder
+          max_tokens: useVision ? 1200 : 1500,
+          // qwen3.6 (visão) com raciocínio ligado gasta os max_tokens e volta vazio
+          ...(model.startsWith("qwen/qwen3") ? { reasoning_effort: "none" } : {}),
+        }),
+      });
+      if (groqRes.ok) break;
+      // Modelo retirado, sem acesso ou JSON malformado: tenta o próximo.
+      falhas.push(`${model}: ${groqRes.status} ${(await groqRes.text()).slice(0, 200)}`);
+      if (groqRes.status === 401) break;
+    }
 
-    if (!groqRes.ok) {
-      const txt = await groqRes.text();
+    if (!groqRes || !groqRes.ok) {
       return new Response(
-        JSON.stringify({ error: `Groq ${groqRes.status}: ${txt}` }),
+        JSON.stringify({ error: `Groq falhou em todos os modelos — ${falhas.join(" | ")}` }),
         { status: 502, headers: { ...CORS, "Content-Type": "application/json" } }
       );
     }
