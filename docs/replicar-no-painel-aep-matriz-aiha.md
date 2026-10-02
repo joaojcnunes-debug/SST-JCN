@@ -22,12 +22,12 @@ Configurações, a AEP acompanha.
 
 ### Regras
 
-1. **Sem nenhum sinal observado marcado → não calcula.**
+1. **Sem nenhum sinal observado marcado → níveis mais baixos.**
    - Probabilidade = nível mais baixo da matriz ("Não há exposição").
    - Severidade = nível mais baixo ("Pouca importância").
-   - Os dois campos ficam travados e o quadro mostra "Não calculado — marque os
-     sinais observados".
-   - O fator não conta no "Necessita AET" e não sai no laudo.
+   - Os dois campos ficam travados e o resultado é o da matriz para eles:
+     **Trivial** (0 × 0), com a nota "sem sinais marcados".
+   - Trivial não conta no "Necessita AET".
    - Uma escolha manual anterior é descartada.
 2. **A partir do 1º sinal marcado, calcula.**
    - **Probabilidade sugerida pela proporção** de sinais marcados sobre o total
@@ -73,7 +73,7 @@ Exemplo com Assédio (6 sinais):
 
 | Sinais | Resultado |
 |---|---|
-| 0 | não calculado |
+| 0 | Trivial (0×0) |
 | 1–2 | Moderado (2×3) |
 | 3–4 | Alto (3×3) |
 | 5–6 | Muito Alto (4×3) |
@@ -129,7 +129,7 @@ Exemplo com Assédio (6 sinais):
 
 1. `npm test` (os 14 testes da regra passam) e `npx tsc --noEmit -p .` e `npx next build` sem erros.
 2. Numa AEP, marque **Assédio = Sim**:
-   - sem sinais: o quadro mostra "Não calculado" e os campos ficam travados;
+   - sem sinais: o resultado é Trivial e os campos ficam travados;
    - marque 1 sinal: dá Moderado; 4 sinais: Alto; 6 sinais: Muito Alto.
 3. Troque a severidade à mão e confira que o nível muda e que "usar padrão" volta para o padrão do fator.
 4. Salve; confira o laudo/PDF (linha do fator) e a Sinalização Psicossocial (empresa na lista com o nível; na página da empresa, o setor com a tabela do fator).
@@ -147,9 +147,10 @@ Exemplo com Assédio (6 sinais):
 // inspeção (`matrizes_risco` ativa — hoje a AIHA 5×5), e o nível sai da mesma
 // conta: `calcularNivelComMatriz` = peso_prob × peso_sev → faixa da matriz.
 //
-//   • SÓ CALCULA COM SINAL MARCADO (pedido de 2026-10-02): sem nenhum sinal
-//     observado, o fator fica nos níveis mais baixos da matriz (AIHA: "Não há
-//     exposição" × "Pouca importância") e SEM nível — não conta para nada.
+//   • Sem nenhum sinal observado marcado, o fator fica nos níveis mais baixos
+//     da matriz (AIHA: "Não há exposição" × "Pouca importância"), travado, e o
+//     resultado é o da matriz para eles (AIHA: 0 × 0 = Trivial) — que não conta
+//     para a AET. A sugestão só começa no 1º sinal.
 //   • A partir do 1º sinal, Probabilidade SUGERIDA pela proporção de sinais:
 //       até 1/3 → 3º nível da escala ("Exposição moderada")
 //       até 2/3 → 4º ("Exposição elevada")
@@ -222,12 +223,15 @@ export function avaliarFator(args: {
 }): AihaFator {
   const { matriz, anterior } = args;
 
-  // Sem sinal marcado: níveis mais baixos da matriz e nada calculado.
+  // Sem sinal marcado: níveis mais baixos da matriz, e o resultado da matriz
+  // para eles (AIHA: Trivial). Escolha manual anterior é descartada.
   if (args.sinaisMarcados <= 0) {
+    const probabilidade = matriz.probabilidades[0];
+    const severidade = matriz.severidades[0];
     return {
-      probabilidade: matriz.probabilidades[0],
-      severidade: matriz.severidades[0],
-      nivel: null,
+      probabilidade,
+      severidade,
+      nivel: calcularNivelComMatriz(probabilidade, severidade, matriz as MatrizRisco),
       prob_manual: false,
       sev_manual: false,
     };
@@ -323,19 +327,19 @@ const AIHA = {
   lookup: [],
 } as unknown as MatrizRisco;
 
-describe("sem sinal observado marcado → não calcula", () => {
-  test("fica nos níveis mais baixos da matriz e sem nível", () => {
+describe("sem sinal observado marcado → níveis mais baixos", () => {
+  test("fica em Não há exposição × Pouca importância = Trivial", () => {
     const r = avaliarFator({ fator: "assedio", sinaisMarcados: 0, sinaisTotal: 6, matriz: AIHA });
     assert.equal(r.probabilidade, "Não há exposição");
     assert.equal(r.severidade, "Pouca importância");
-    assert.equal(r.nivel, null);
+    assert.equal(r.nivel, "Trivial");
   });
   test("escolha manual anterior não vale sem sinal (volta ao mais baixo)", () => {
     const r = avaliarFator({
       fator: "assedio", sinaisMarcados: 0, sinaisTotal: 6, matriz: AIHA,
       anterior: { probabilidade: "Exposição elevada", severidade: "Ameaça", nivel: "Muito Alto", prob_manual: true, sev_manual: true },
     });
-    assert.equal(r.nivel, null);
+    assert.equal(r.nivel, "Trivial");
     assert.equal(r.prob_manual, false);
   });
   test("não conta para o Necessita AET", () => {

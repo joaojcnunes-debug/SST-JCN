@@ -20,19 +20,19 @@ const AIHA = {
   lookup: [],
 } as unknown as MatrizRisco;
 
-describe("sem sinal observado marcado → não calcula", () => {
-  test("fica nos níveis mais baixos da matriz e sem nível", () => {
+describe("sem sinal observado marcado → níveis mais baixos", () => {
+  test("fica em Não há exposição × Pouca importância = Trivial", () => {
     const r = avaliarFator({ fator: "assedio", sinaisMarcados: 0, sinaisTotal: 6, matriz: AIHA });
     assert.equal(r.probabilidade, "Não há exposição");
     assert.equal(r.severidade, "Pouca importância");
-    assert.equal(r.nivel, null);
+    assert.equal(r.nivel, "Trivial");
   });
   test("escolha manual anterior não vale sem sinal (volta ao mais baixo)", () => {
     const r = avaliarFator({
       fator: "assedio", sinaisMarcados: 0, sinaisTotal: 6, matriz: AIHA,
       anterior: { probabilidade: "Exposição elevada", severidade: "Ameaça", nivel: "Muito Alto", prob_manual: true, sev_manual: true },
     });
-    assert.equal(r.nivel, null);
+    assert.equal(r.nivel, "Trivial");
     assert.equal(r.prob_manual, false);
   });
   test("não conta para o Necessita AET", () => {

@@ -264,6 +264,7 @@ function AihaDoFator({
             title="Peso da probabilidade × peso da severidade, nas faixas da matriz"
           >
             {valor.nivel}
+            {semSinal && <span className="ml-1 font-normal">· sem sinais marcados</span>}
           </span>
         ) : (
           <span className="rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[10px] font-medium text-gray-500">
