@@ -12,6 +12,7 @@ import {
   Trash2,
   Award,
   Brain,
+  PersonStanding,
 } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import SidebarShell, { type NavItem, type NavSection } from "./SidebarShell";
@@ -22,10 +23,13 @@ const PRINCIPAL: NavItem[] = [
   { href: "/relatorios", label: "Relatórios", icon: BarChart3, variant: "report" },
 ];
 
-// Cliente não vê: as duas telas cruzam TODAS as empresas atendidas.
+// Cliente não vê: estas telas cruzam TODAS as empresas atendidas.
 const CONTROLE: NavItem[] = [
   { href: "/certificados", label: "Certificados", icon: Award },
   { href: "/riscos-psicossociais", label: "Riscos Psicossociais", icon: Brain, variant: "report" },
+  // Fatores psicossociais das triagens AEP (matriz AIHA) — mesma tela da
+  // Sinalização de Fatores Psicossociais do módulo AEP.
+  { href: "/aep-psicossocial", label: "AEP", icon: PersonStanding, variant: "report" },
 ];
 
 const ACOES: NavItem[] = [
