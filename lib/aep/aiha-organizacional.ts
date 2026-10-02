@@ -4,9 +4,10 @@
 // inspeção (`matrizes_risco` ativa — hoje a AIHA 5×5), e o nível sai da mesma
 // conta: `calcularNivelComMatriz` = peso_prob × peso_sev → faixa da matriz.
 //
-//   • SÓ CALCULA COM SINAL MARCADO (pedido de 2026-10-02): sem nenhum sinal
-//     observado, o fator fica nos níveis mais baixos da matriz (AIHA: "Não há
-//     exposição" × "Pouca importância") e SEM nível — não conta para nada.
+//   • Sem nenhum sinal observado marcado, o fator fica nos níveis mais baixos
+//     da matriz (AIHA: "Não há exposição" × "Pouca importância"), travado, e o
+//     resultado é o da matriz para eles (AIHA: 0 × 0 = Trivial) — que não conta
+//     para a AET. A sugestão só começa no 1º sinal.
 //   • A partir do 1º sinal, Probabilidade SUGERIDA pela proporção de sinais:
 //       até 1/3 → 3º nível da escala ("Exposição moderada")
 //       até 2/3 → 4º ("Exposição elevada")
@@ -79,12 +80,15 @@ export function avaliarFator(args: {
 }): AihaFator {
   const { matriz, anterior } = args;
 
-  // Sem sinal marcado: níveis mais baixos da matriz e nada calculado.
+  // Sem sinal marcado: níveis mais baixos da matriz, e o resultado da matriz
+  // para eles (AIHA: Trivial). Escolha manual anterior é descartada.
   if (args.sinaisMarcados <= 0) {
+    const probabilidade = matriz.probabilidades[0];
+    const severidade = matriz.severidades[0];
     return {
-      probabilidade: matriz.probabilidades[0],
-      severidade: matriz.severidades[0],
-      nivel: null,
+      probabilidade,
+      severidade,
+      nivel: calcularNivelComMatriz(probabilidade, severidade, matriz as MatrizRisco),
       prob_manual: false,
       sev_manual: false,
     };
