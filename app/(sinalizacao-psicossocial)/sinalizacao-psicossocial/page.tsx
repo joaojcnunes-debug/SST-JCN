@@ -1,202 +1,101 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, Brain } from "lucide-react";
+// Sinalização de Fatores Psicossociais — lista das empresas com fatores
+// organizacionais marcados "Sim" nas triagens AEP. Mesma organização da página
+// Riscos Psicossociais (2026-10-02): clicar abre a página da empresa, com os
+// setores e o nível de cada fator na matriz AIHA. Sem link para o editor da AEP.
+
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { Brain, Building2, ChevronRight, Search } from "lucide-react";
 import { useAepRelatorios } from "@/lib/hooks/useAep";
-import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import { montarSinalizacao } from "@/lib/aep/sinalizacao";
+import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
-import type { AepChecklistOrganizacional } from "@/lib/supabase/types";
-import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
+import { buscar } from "@/lib/busca/texto";
+import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
-// Ordem de gravidade dos níveis da matriz (AIHA) — o mais grave primeiro.
-const PESO_NIVEL: Record<string, number> = { "Muito Alto": 5, Alto: 4, Moderado: 3, Baixo: 2, Trivial: 1 };
-
-interface AlertaFator {
-  label: string;
-  /** Nível na matriz AIHA (AEP de 2026-10-02 em diante; antes disso, ausente). */
-  nivel?: string;
-  probabilidade?: string;
-  severidade?: string;
-}
-
-const ITENS_ORG: { key: keyof AepChecklistOrganizacional; label: string }[] = [
-  { key: "assedio",               label: "Assédio de qualquer natureza no trabalho" },
-  { key: "falta_suporte",         label: "Falta de suporte / apoio no trabalho" },
-  { key: "gestao_mudancas",       label: "Má gestão de mudanças organizacionais" },
-  { key: "clareza_papel",         label: "Baixa clareza de papel / função" },
-  { key: "recompensas",           label: "Baixas recompensas e reconhecimento" },
-  { key: "baixo_controle",        label: "Baixo controle no trabalho / Falta de autonomia" },
-  { key: "justica_organizacional",label: "Baixa justiça organizacional" },
-  { key: "eventos_traumaticos",   label: "Eventos violentos ou traumáticos" },
-  { key: "subcarga",              label: "Baixa demanda no trabalho (Subcarga)" },
-  { key: "sobrecarga",            label: "Excesso de demandas no trabalho (Sobrecarga)" },
-  { key: "maus_relacionamentos",  label: "Maus relacionamentos no local de trabalho" },
-  { key: "comunicacao_dificil",   label: "Trabalho em condições de difícil comunicação" },
-  { key: "trabalho_remoto",       label: "Trabalho remoto e isolado" },
-];
-
-const LABEL_MAP = Object.fromEntries(ITENS_ORG.map(({ key, label }) => [key, label]));
-
-function severidadeChip(count: number) {
-  if (count >= 5) return "bg-red-100 text-red-700 border-red-200";
-  if (count >= 3) return "bg-orange-100 text-orange-700 border-orange-200";
-  return "bg-yellow-100 text-yellow-700 border-yellow-200";
-}
+const inputCls =
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
 
 export default function SinalizacaoPsicossocialPage() {
-  const [empresaId, setEmpresaId] = useState<string | null>(null);
-  const { data: relatorios = [], isLoading } = useAepRelatorios(empresaId);
+  const { data: relatorios = [], isLoading, error } = useAepRelatorios(null);
+  const [busca, setBusca] = useState("");
 
-  const dados = relatorios
-    .map((rel) => {
-      const empresa = rel.empresas as { nome_empresa?: string } | null;
-      const setoresComAlerta = rel.setores
-        .map((setor) => {
-          const cl = setor.checklist_organizacional as unknown as Record<string, string>;
-          const alertas: AlertaFator[] = ITENS_ORG
-            .filter(({ key }) => cl?.[key] === "sim")
-            .map(({ key }) => {
-              const a = setor.aiha_organizacional?.[key];
-              return { label: LABEL_MAP[key], nivel: a?.nivel ?? undefined, probabilidade: a?.probabilidade, severidade: a?.severidade };
-            })
-            .sort((x, y) => (PESO_NIVEL[y.nivel ?? ""] ?? 0) - (PESO_NIVEL[x.nivel ?? ""] ?? 0));
-          const pior = alertas[0]?.nivel;
-          return { id: setor.id, nome: setor.nome_setor || "Setor sem nome", alertas, pior };
-        })
-        .filter((s) => s.alertas.length > 0);
-
-      return {
-        id: rel.id_relatorio,
-        empresa: empresa?.nome_empresa ?? "Empresa não informada",
-        data: rel.data_elaboracao,
-        setores: setoresComAlerta,
-        totalAlertas: setoresComAlerta.reduce((a, s) => a + s.alertas.length, 0),
-      };
-    })
-    .filter((d) => d.setores.length > 0);
-
-  const totalEmpresas = dados.length;
-  const totalSetores  = dados.reduce((a, d) => a + d.setores.length, 0);
-  const totalAlertas  = dados.reduce((a, d) => a + d.totalAlertas, 0);
-  const totalAltos    = dados.reduce(
-    (a, d) => a + d.setores.reduce((b, s) => b + s.alertas.filter((x) => x.nivel === "Alto" || x.nivel === "Muito Alto").length, 0),
-    0,
+  const empresas = useMemo(() => montarSinalizacao(relatorios), [relatorios]);
+  const filtradas = useMemo(
+    () => (busca.trim() ? buscar(empresas, busca, (e) => [e.nome, e.cnpj ?? ""]).itens : empresas),
+    [empresas, busca],
   );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Sinalização de Fatores Psicossociais</h1>
-          <p className="text-sm text-gray-500">
-            Empresas e setores com riscos organizacionais identificados nas triagens AEP, com o nível na matriz AIHA — priorize os mais graves para aplicação do questionário
-          </p>
-        </div>
-        <div className="w-60">
-          <EmpresaSelect value={empresaId} onChange={setEmpresaId} placeholder="Todas as empresas" modulo="aep" allowAll />
+    <div className="space-y-5">
+      <div>
+        <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+          <Brain className="size-5 text-verde-primary" />
+          Sinalização de Fatores Psicossociais
+        </h1>
+        <p className="text-sm text-gray-500">
+          Empresas com fatores organizacionais identificados nas triagens AEP, com o nível na matriz AIHA. Clique na
+          empresa para ver os fatores por setor.
+        </p>
+      </div>
+
+      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar empresa ou CNPJ..."
+            className={cn(inputCls, "pl-8")}
+          />
         </div>
       </div>
 
-      {/* Stats */}
-      {!isLoading && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {[
-            { label: "Empresas c/ alertas",  value: totalEmpresas, color: "bg-indigo-50 border-indigo-200 text-indigo-700" },
-            { label: "Setores afetados",      value: totalSetores,  color: "bg-violet-50 border-violet-200 text-violet-700" },
-            { label: "Alertas psicossociais", value: totalAlertas,  color: "bg-red-50 border-red-200 text-red-700" },
-            { label: "Fatores Alto / Muito Alto (AIHA)", value: totalAltos, color: "bg-pink-50 border-pink-200 text-pink-700" },
-          ].map(({ label, value, color }) => (
-            <div key={label} className={`rounded-xl border p-4 text-center ${color}`}>
-              <p className="text-3xl font-bold">{value}</p>
-              <p className="text-xs font-medium mt-1">{label}</p>
-            </div>
-          ))}
+      {isLoading ? (
+        <LoadingSkeleton rows={6} />
+      ) : error ? (
+        <p className="rounded-2xl border border-red-100 bg-red-50 p-5 text-sm text-red-700">
+          Não foi possível carregar as análises: {(error as Error).message}
+        </p>
+      ) : filtradas.length === 0 ? (
+        <p className="rounded-2xl border border-gray-100 bg-white p-10 text-center text-sm text-gray-500 shadow-sm">
+          {empresas.length === 0 ? "Nenhum fator psicossocial sinalizado nas análises AEP." : "Nenhuma empresa encontrada."}
+        </p>
+      ) : (
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <ul className="divide-y divide-gray-100">
+            {filtradas.map((e) => (
+              <li key={e.idEmpresa}>
+                <Link
+                  href={`/sinalizacao-psicossocial/${encodeURIComponent(e.idEmpresa)}`}
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50"
+                >
+                  <Building2 className="size-5 shrink-0 text-verde-primary" />
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-semibold text-gray-900">{e.nome}</div>
+                    <div className="text-xs text-gray-500">{e.cnpj ? formatCNPJ(e.cnpj) : "—"}</div>
+                  </div>
+                  <div className="hidden sm:block" title="Maior nível AIHA entre os fatores da empresa">
+                    <SeloNivelAiha nivel={e.pior} />
+                  </div>
+                  <div className="hidden w-24 text-right text-sm text-gray-600 md:block">
+                    {e.totalAlertas} alerta{e.totalAlertas !== 1 ? "s" : ""}
+                  </div>
+                  <div className="hidden w-24 text-right text-sm text-gray-600 md:block">
+                    {e.totalSetores} setor{e.totalSetores !== 1 ? "es" : ""}
+                  </div>
+                  <div className="hidden w-28 text-right text-xs text-gray-500 md:block">
+                    {e.ultimaData ? `AEP ${fmtData(e.ultimaData)}` : ""}
+                  </div>
+                  <ChevronRight className="size-4 shrink-0 text-gray-400" />
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
-
-      {isLoading && <LoadingSkeleton rows={3} />}
-
-      {!isLoading && dados.length === 0 && (
-        <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
-          <Brain className="mx-auto size-8 text-gray-300 mb-3" />
-          <p className="text-sm text-gray-500">Nenhum fator psicossocial sinalizado nas análises.</p>
-        </div>
-      )}
-
-      {/* Cards por empresa */}
-      <div className="space-y-4">
-        {dados.map((d) => (
-          <div key={d.id} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            {/* Cabeçalho empresa */}
-            <div className="flex items-center justify-between gap-3 border-b border-gray-100 bg-gray-50/60 px-5 py-3">
-              <div className="flex items-center gap-2 min-w-0">
-                <AlertTriangle className="size-4 shrink-0 text-indigo-500" />
-                <span className="font-semibold text-gray-900 truncate">{d.empresa}</span>
-                {d.data && (
-                  <span className="text-xs text-gray-400 shrink-0">
-                    {new Date(d.data).toLocaleDateString("pt-BR")}
-                  </span>
-                )}
-              </div>
-              <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${severidadeChip(d.totalAlertas)}`}>
-                {d.totalAlertas} alerta{d.totalAlertas > 1 ? "s" : ""}
-              </span>
-            </div>
-
-            {/* Setores */}
-            <div className="divide-y divide-gray-100">
-              {d.setores.map((setor) => (
-                <div key={setor.id} className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-start">
-                  <div className="flex items-center gap-2 shrink-0 min-w-[180px]">
-                    <span className={`inline-flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold border ${severidadeChip(setor.alertas.length)}`}>
-                      {setor.alertas.length}
-                    </span>
-                    <span className="text-sm font-medium text-gray-800">{setor.nome}</span>
-                    {setor.pior && (
-                      <span
-                        className="rounded-full border px-2 py-0.5 text-[10px] font-bold"
-                        style={{
-                          backgroundColor: COR_NIVEL_AIHA[setor.pior as keyof typeof COR_NIVEL_AIHA]?.bg,
-                          color: COR_NIVEL_AIHA[setor.pior as keyof typeof COR_NIVEL_AIHA]?.cor,
-                          borderColor: COR_NIVEL_AIHA[setor.pior as keyof typeof COR_NIVEL_AIHA]?.borda,
-                        }}
-                        title="Maior nível AIHA entre os fatores do setor"
-                      >
-                        {setor.pior}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {setor.alertas.map((a) => {
-                      const c = a.nivel ? COR_NIVEL_AIHA[a.nivel as keyof typeof COR_NIVEL_AIHA] : undefined;
-                      return (
-                        <span
-                          key={a.label}
-                          className="rounded-full border px-2.5 py-0.5 text-[11px] font-medium"
-                          style={
-                            c
-                              ? { backgroundColor: c.bg, color: c.cor, borderColor: c.borda }
-                              : { backgroundColor: "#eef2ff", color: "#4338ca", borderColor: "#c7d2fe" }
-                          }
-                          title={
-                            a.nivel
-                              ? "Probabilidade: " + a.probabilidade + " · Severidade: " + a.severidade
-                              : "Sem classificação AIHA: nenhum sinal observado marcado (ou AEP ainda não salva)"
-                          }
-                        >
-                          {a.label}
-                          {a.nivel && <strong className="ml-1">· {a.nivel}</strong>}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

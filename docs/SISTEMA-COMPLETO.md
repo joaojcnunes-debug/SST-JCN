@@ -478,7 +478,7 @@ Cores: Baixo #27ae60, Médio #f39c12, Alto #e74c3c, Crítico #1a1a2e.
 
 **Laudo PDF** (`GET /api/pdf/drps/[id]`, `DrpsTemplate`): capítulos de `textos_padrao` (módulo `psicossocial`) + capítulos fixos por slug: `identificacao_empresa`, `sumario`, `drps_caracterizacao`, `drps_analise_setor`, `drps_conclusao`, `drps_plano_medidas`, `drps_plano_acao_5w2h`, `drps_revisao`, `drps_assinatura` (folha de assinaturas do psicólogo, CRP). Capa por imagem de fundo com caixas de texto posicionadas. Numeração a partir do sumário. Identificador `DRPS-{ano}-{8 caracteres}`. Variáveis em `lib/drps/variaveis.ts`.
 
-**Sinalização psicossocial** (`/sinalizacao-psicossocial`): lê o checklist organizacional das **AEPs** (13 chaves equivalentes aos tópicos) e lista setores com alertas (≥5 vermelho, ≥3 laranja, senão amarelo).
+**Sinalização psicossocial** (`/sinalizacao-psicossocial`, `lib/aep/sinalizacao.ts`): mesmo formato da página Riscos Psicossociais — lista das **empresas** com fatores organizacionais "Sim" nas AEPs (busca; maior nível AIHA; nº de alertas e setores; data da última AEP; ordenada do mais grave) → `/sinalizacao-psicossocial/[idEmpresa]`: dados cadastrais e, por AEP, um setor embaixo do outro com a tabela **Fator de risco · Resultado final (AIHA) · Probabilidade · Severidade · Sinais observados**. Sem link para o editor da AEP.
 
 ### 8.2 QPS — Questionários Psicossociais (`app/(questionarios-psicossociais)`)
 
