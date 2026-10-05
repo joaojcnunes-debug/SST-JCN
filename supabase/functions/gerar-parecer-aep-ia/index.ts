@@ -42,6 +42,16 @@ interface ContextoAepIA {
   checklist_organizacional?: Record<string, string>;
   observacoes?: Record<string, string>;
   textoAtual?: string | null;
+  /** Fatores organizacionais na matriz AIHA (2026-10-05). */
+  fatores_organizacionais?: {
+    fator: string;
+    nivel: string | null;
+    probabilidade?: string | null;
+    severidade?: string | null;
+    sinais?: string[];
+  }[];
+  /** O setor tem indicação de AET completa (critério do sistema). */
+  necessita_aet?: boolean;
 }
 
 const TITULO: Record<CampoAep, string> = {
@@ -51,18 +61,30 @@ const TITULO: Record<CampoAep, string> = {
 
 const SYSTEM_PROMPT = `Você é um(a) ergonomista / técnico(a) de segurança do trabalho brasileiro(a), especialista em Análise Ergonômica Preliminar (AEP), NR-01 GRO/PGR e NR-17.
 
-Sua tarefa: redigir texto técnico para o laudo AEP de um setor específico, com base no checklist ergonômico fornecido.
+Sua tarefa: redigir texto técnico para o laudo AEP de um setor específico, com base no checklist ergonômico, nos fatores organizacionais classificados na matriz de risco AIHA e nas observações fornecidas.
 
 Responda APENAS com JSON válido (sem markdown, sem cercas, sem texto fora do JSON):
 { "texto": "Texto em português brasileiro, tom técnico, 3ª pessoa, sem bullets — apenas parágrafos corridos." }
 
+PREMISSAS DA AEP — o texto deve refletir estas premissas (definidas pelo Responsável Técnico):
+1. A AEP constitui uma triagem preliminar, voltada à identificação e priorização de fatores e setores que demandam maior atenção. Seu resultado não substitui a AET e deve ser compreendido a partir das condições observadas no ambiente de trabalho.
+2. O DRPS/Questionário Psicossocial possui caráter complementar, contribuindo para ampliar a compreensão dos riscos psicossociais a partir de uma perspectiva mais personalizada, considerando como os próprios trabalhadores percebem e vivenciam suas condições de trabalho.
+3. Os resultados da AEP dependem da qualidade das observações registradas e devem ser revistos sempre que houver mudanças nas condições de trabalho, conforme previsto na NR-01 e na revisão do inventário de riscos.
+
+Como aplicar as premissas:
+- Trate os achados como resultado de TRIAGEM: use "identificou-se", "foram observados indícios", "indica a necessidade de aprofundamento"; nunca apresente a AEP como diagnóstico conclusivo nem como substituta da AET.
+- Fatores organizacionais: cite o nível na matriz AIHA (Trivial, Baixo, Moderado, Alto, Muito Alto) e os sinais observados que o sustentam; priorize os de nível mais alto.
+- Quando o setor tiver indicação de AET ("Necessita AET: sim"), registre que a análise ergonômica do trabalho (AET, NR-17 item 17.3.2) é o aprofundamento indicado; sem indicação, não recomende AET.
+- Quando houver fatores organizacionais relevantes (3 ou mais alertas organizacionais, ou algum fator Alto/Muito Alto), apresente o DRPS/Questionário Psicossocial como instrumento COMPLEMENTAR, que agrega a percepção dos próprios trabalhadores — não como substituto da AEP nem da AET.
+- Lembre que a conclusão depende das observações registradas e deve ser revista se as condições de trabalho mudarem (NR-01, inventário de riscos) — uma frase curta, sem repetir as premissas por extenso.
+
 Comprimento esperado:
-- parecer_tecnico: 2 a 3 parágrafos (120–220 palavras). Descreva os fatores de risco identificados (itens Sim), categorias ergonômicas afetadas, nível de urgência e condições observadas. Se houver ≥ 3 alertas organizacionais, mencione a recomendação de questionário psicossocial (DRPS/Copsoq) conforme NR-01.
-- recomendacoes: 1 a 2 parágrafos com ações práticas priorizadas (80–160 palavras). Classifique como imediatas (<30 dias), preventivas (30–90 dias) ou estruturais (>90 dias) quando pertinente.
+- parecer_tecnico: 2 a 3 parágrafos (140–240 palavras). Descreva os fatores identificados (itens Sim), as categorias ergonômicas afetadas, os níveis AIHA dos fatores organizacionais, a prioridade do setor e as condições observadas; encerre com o encaminhamento (AET e/ou DRPS/Questionário quando cabíveis) e a ressalva de triagem/revisão. NÃO liste ações corretivas nem prazos (imediatas/preventivas/estruturais) no parecer — isso fica só nas Recomendações.
+- recomendacoes: 1 a 2 parágrafos com ações práticas priorizadas (90–180 palavras). Classifique como imediatas (<30 dias), preventivas (30–90 dias) ou estruturais (>90 dias) quando pertinente. Não repita o diagnóstico do parecer; vá direto às ações. Inclua, quando cabíveis, a realização da AET para o setor, a aplicação do DRPS/Questionário Psicossocial como complemento e a revisão da AEP quando houver mudança nas condições de trabalho.
 
 Diretrizes:
 - Citar setor, cargos e jornada quando relevante
-- Basear-se apenas nos itens marcados como Sim e nas observações fornecidas — não inventar dados
+- Basear-se apenas nos itens marcados como Sim, nos níveis AIHA e nas observações fornecidas — não inventar dados, medições ou números
 - Referenciar NR-17, NR-01 e normas pertinentes
 - Sem bullets, apenas parágrafos corridos`;
 
@@ -89,6 +111,23 @@ function buildPrompt(ctx: ContextoAepIA): string {
   addChecklist("Ergonomia Física", ctx.checklist_fisica);
   addChecklist("Ergonomia Cognitiva", ctx.checklist_cognitiva);
   addChecklist("Ergonomia Organizacional", ctx.checklist_organizacional);
+
+  // Fatores organizacionais na matriz AIHA, do mais grave para o menos.
+  const PESO: Record<string, number> = { "Muito Alto": 5, Alto: 4, Moderado: 3, Baixo: 2, Trivial: 1 };
+  const fatores = [...(ctx.fatores_organizacionais ?? [])].sort((a, b) => (PESO[b.nivel ?? ""] ?? 0) - (PESO[a.nivel ?? ""] ?? 0));
+  if (fatores.length) {
+    l.push("Fatores organizacionais na matriz AIHA:");
+    for (const f of fatores) {
+      const pxs = [f.probabilidade, f.severidade].filter(Boolean).join(" × ");
+      const sinais = (f.sinais ?? []).filter(Boolean);
+      l.push(
+        `  - ${f.fator}: ${f.nivel ?? "sem nível"}${pxs ? ` (${pxs})` : ""}${sinais.length ? ` — sinais: ${sinais.join("; ")}` : " — nenhum sinal observado marcado"}`,
+      );
+    }
+  }
+  if (typeof ctx.necessita_aet === "boolean") {
+    l.push(`Necessita AET (critério do sistema): ${ctx.necessita_aet ? "sim" : "não"}`);
+  }
 
   if (ctx.observacoes) {
     const obs = Object.entries(ctx.observacoes)
@@ -136,7 +175,7 @@ Deno.serve(async (req: Request) => {
           ],
           response_format: { type: "json_object" },
           temperature: 0.55,
-          max_tokens: 1500,
+          max_tokens: 2000,
         }),
       });
       if (groqRes.ok) break;

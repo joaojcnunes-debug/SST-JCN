@@ -53,6 +53,7 @@ import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import {
   SINAIS_ORGANIZACIONAL,
+  rotulosDosSinais,
   type SinalOrganizacional,
 } from "@/lib/aep/sinais-organizacional";
 import {
@@ -683,6 +684,20 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
           checklist_organizacional: setor.checklist_organizacional as unknown as Record<string, string>,
           observacoes: setor.observacoes_checklist ?? {},
           textoAtual: (setor[campo] as string) || null,
+          // Fatores organizacionais "Sim" com o nível AIHA e os sinais (2026-10-05).
+          fatores_organizacionais: ITENS_ORGANIZACIONAL.filter(
+            ({ key }) => (setor.checklist_organizacional as unknown as Record<string, string>)?.[key] === "sim"
+          ).map(({ key, label }) => {
+            const a = setor.aiha_organizacional?.[key];
+            return {
+              fator: label,
+              nivel: a?.nivel ?? null,
+              probabilidade: a?.probabilidade ?? null,
+              severidade: a?.severidade ?? null,
+              sinais: rotulosDosSinais(key as keyof AepChecklistOrganizacional, setor.sinais_organizacional),
+            };
+          }),
+          necessita_aet: !!setor.necessita_aet,
         },
       });
       if (error) { toast.error(mensagemErro(error, "Erro ao gerar texto")); return; }
