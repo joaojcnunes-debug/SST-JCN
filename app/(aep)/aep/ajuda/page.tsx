@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useState, useCallback } from "react";
 import AjudaComAbas from "@/components/novidades/AjudaComAbas";
+import ExplicacaoMatrizAiha from "@/components/aep/ExplicacaoMatrizAiha";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────────────
 
@@ -698,6 +699,9 @@ function ConteudoAepAjudaPage() {
         bg="bg-orange-50" border="border-orange-200"
         forceOpen={printMode}
       />
+
+      {/* Matriz AIHA dos fatores organizacionais — fundamentação técnica e normativa */}
+      <ExplicacaoMatrizAiha key={printMode ? "print" : "tela"} abertoInicial={printMode} />
 
       {/* Parecer */}
       <div>
