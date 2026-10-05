@@ -16,8 +16,9 @@
 //
 // Situação, pelo que a empresa já tem no sistema:
 //   aberta    → indicada e nenhum documento do serviço existe (vender);
-//   revisao   → DRPS/Questionário concluído ANTES da AEP/inspeção que o indicou
-//               (v269): vender a revisão;
+//   revisao   → o documento existente foi concluído ANTES da AEP/inspeção que
+//               indicou o serviço (v269): vender a revisão. Vale para AET,
+//               DRPS/Questionário, AEP, Apreciação NR-12 e Análise de Químicos;
 //   andamento → já existe um em rascunho/andamento (provavelmente vendido);
 //   realizada → já existe um concluído/enviado depois da indicação.
 // Medição quantitativa não tem módulo no sistema: fica sempre "aberta".
@@ -158,6 +159,21 @@ export function situacaoComRevisao(lista: DocEmpresa[], dataIndicacao: string | 
   return sit;
 }
 
+/** Nome do documento na frase da revisão. */
+const NOME_DOC: Record<DocEmpresa["tipo"], string> = {
+  AET: "AET",
+  DRPS: "DRPS",
+  QPS: "Questionário",
+  AEP: "AEP",
+  APRECIACAO: "Apreciação de Máquinas",
+  QUIMICOS: "Análise de Químicos",
+};
+
+/** "2026-06-30..." → "30/06/2026". */
+function dataBr(x: string | null | undefined): string {
+  return x ? x.slice(0, 10).split("-").reverse().join("/") : "";
+}
+
 /** "NR-06", "NR 6" e "6" viram "6" — para casar treinamento com certificado. */
 export function numeroNr(nr: string | null | undefined): string {
   const m = (nr ?? "").match(/\d+/);
@@ -233,8 +249,26 @@ export function montarComercial(
     }
 
     const docsDa = docs.filter((d) => d.id_empresa === id);
-    const sit = (...tipos: DocEmpresa["tipo"][]) =>
-      situacaoPorDocs(docsDa.filter((d) => tipos.includes(d.tipo)).map((d) => d.status));
+    /**
+     * Situação de um serviço diante da indicação mais nova (2026-10-05): com
+     * documento concluído ANTES dela, "revisao" + a frase com as duas datas.
+     */
+    const avaliar = (
+      tipos: DocEmpresa["tipo"][],
+      datasIndicacao: (string | null | undefined)[],
+    ): { situacao: SituacaoOportunidade; nota: string[] } => {
+      const lista = docsDa.filter((d) => tipos.includes(d.tipo));
+      const dataInd = datasIndicacao.filter((x): x is string => !!x).sort().pop();
+      const situacao = situacaoComRevisao(lista, dataInd);
+      if (situacao !== "revisao") return { situacao, nota: [] };
+      const ult = lista
+        .filter((d) => FASE[d.status ?? ""] === "realizada")
+        .sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""))
+        .pop();
+      return ult
+        ? { situacao, nota: [`${NOME_DOC[ult.tipo]} concluído em ${dataBr(ult.data)}, antes da indicação de ${dataBr(dataInd)}`] }
+        : { situacao, nota: [] };
+    };
     const ops = new Map<Produto, Oportunidade>();
     const add = (produto: Produto, situacao: SituacaoOportunidade, origem: Origem, detalhes: string[], setores: SetorAet[] = []) => {
       const ja = ops.get(produto);
@@ -254,48 +288,35 @@ export function montarComercial(
         expostos: Number(s.qtd_expostos) || 0,
         cargos: (s.cargos ?? []).filter((c) => c.cargo).length,
       }));
+    const dataAep = aep ? (aep.entregue_em ?? aep.data_elaboracao) : null;
+    const dataInsp = insp?.concluida_em ?? null;
     if (aep && empresa.precisaAet) {
-      add("AET", sit("AET"), "AEP", setoresAet.map((s) => s.nome), setoresAet);
+      const r = avaliar(["AET"], [dataAep]);
+      add("AET", r.situacao, "AEP", [...setoresAet.map((s) => s.nome), ...r.nota], setoresAet);
     }
-    // DRPS/Questionário: a indicação mais nova (AEP ou inspeção) define se o
-    // documento existente ainda vale ou precisa de revisão.
-    const docsQuest = docsDa.filter((d) => d.tipo === "DRPS" || d.tipo === "QPS");
-    const dataIndicQuest = [
-      aep && empresa.precisaQuestionario ? (aep.entregue_em ?? aep.data_elaboracao) : null,
-      insp && insp.psicossociais > 0 ? insp.concluida_em : null,
-    ]
-      .filter((x): x is string => !!x)
-      .sort()
-      .pop();
-    const sitQuest = situacaoComRevisao(docsQuest, dataIndicQuest);
-    const revisaoQuest = (() => {
-      if (sitQuest !== "revisao") return [];
-      const ult = docsQuest
-        .filter((d) => d.status === "CONCLUIDO" || d.status === "ENVIADO_CLIENTE")
-        .sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""))
-        .pop();
-      const br = (x: string | null | undefined) => (x ? x.slice(0, 10).split("-").reverse().join("/") : "");
-      return ult ? [`${ult.tipo === "QPS" ? "Questionário" : "DRPS"} concluído em ${br(ult.data)}, antes da indicação de ${br(dataIndicQuest)}`] : [];
-    })();
+    // DRPS/Questionário: a indicação mais nova (AEP ou inspeção) decide.
+    const quest = avaliar(
+      ["DRPS", "QPS"],
+      [aep && empresa.precisaQuestionario ? dataAep : null, insp && insp.psicossociais > 0 ? dataInsp : null],
+    );
     if (aep && empresa.precisaQuestionario) {
-      add("DRPS/Questionário", sitQuest, "AEP", [
+      add("DRPS/Questionário", quest.situacao, "AEP", [
         `${empresa.totalAlertas} fator(es) organizacional(is) na AEP`,
-        ...revisaoQuest,
+        ...quest.nota,
       ]);
     }
 
     // ── Da inspeção concluída
     if (insp) {
       if (insp.maquinas.length > 0) {
-        add(
-          "Apreciação NR-12",
-          sit("APRECIACAO"),
-          "Inspeção",
-          insp.maquinas.map(
+        const r = avaliar(["APRECIACAO"], [dataInsp]);
+        add("Apreciação NR-12", r.situacao, "Inspeção", [
+          ...insp.maquinas.map(
             (m) =>
               `${m.nome || "Máquina"}${m.grau_risco ? ` (grau ${m.grau_risco.toLowerCase()})` : ""}${m.adequacao ? " · necessita adequação" : ""}`,
           ),
-        );
+          ...r.nota,
+        ]);
       }
       if (insp.medicoes.length > 0) {
         add(
@@ -306,15 +327,17 @@ export function montarComercial(
         );
       }
       if (insp.quimicos.length > 0) {
-        add("Análise de Químicos", sit("QUIMICOS"), "Inspeção", insp.quimicos);
+        const r = avaliar(["QUIMICOS"], [dataInsp]);
+        add("Análise de Químicos", r.situacao, "Inspeção", [...insp.quimicos, ...r.nota]);
       }
       if (insp.ergonomicos > 0) {
-        add("AEP", sit("AEP"), "Inspeção", [`${insp.ergonomicos} risco(s) ergonômico(s) na inspeção`]);
+        const r = avaliar(["AEP"], [dataInsp]);
+        add("AEP", r.situacao, "Inspeção", [`${insp.ergonomicos} risco(s) ergonômico(s) na inspeção`, ...r.nota]);
       }
       if (insp.psicossociais > 0) {
-        add("DRPS/Questionário", sitQuest, "Inspeção", [
+        add("DRPS/Questionário", quest.situacao, "Inspeção", [
           `${insp.psicossociais} risco(s) psicossocial(is) na inspeção`,
-          ...revisaoQuest,
+          ...quest.nota,
         ]);
       }
       if (insp.treinamentos.length > 0) {

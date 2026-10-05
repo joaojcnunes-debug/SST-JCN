@@ -155,3 +155,23 @@ test("DRPS concluído antes da AEP vira revisão recomendada; depois, realizada"
   assert.equal(drps?.situacao, "revisao");
   assert.match(drps?.detalhes.join(" ") ?? "", /DRPS concluído em 30\/06\/2026, antes da indicação de 05\/10\/2026/);
 });
+
+test("revisão também para AET, AEP, Apreciação NR-12 e Químicos concluídos antes da indicação", () => {
+  const [c] = montarComercial(
+    [aep("A1", "E1", [setorSoFisico])],
+    [
+      { id_empresa: "E1", tipo: "AET", status: "CONCLUIDO", data: "2026-01-10" },
+      { id_empresa: "E1", tipo: "APRECIACAO", status: "FINALIZADO", data: "2026-02-01" },
+      { id_empresa: "E1", tipo: "QUIMICOS", status: "CONCLUIDO", data: "2026-12-01" },
+      { id_empresa: "E1", tipo: "AEP", status: "CONCLUIDO", data: "2026-03-01" },
+    ],
+    [insp("E1", { concluida_em: "2026-10-03", maquinas: [{ nome: "Serra", grau_risco: "ALTO", adequacao: true }], quimicos: ["Tolueno"], ergonomicos: 1 })],
+  );
+  const s = Object.fromEntries(c.oportunidades.map((o) => [o.produto, o.situacao]));
+  assert.equal(s["AET"], "revisao");
+  assert.equal(s["Apreciação NR-12"], "revisao");
+  assert.equal(s["AEP"], "revisao");
+  assert.equal(s["Análise de Químicos"], "realizada");
+  const nr12 = c.oportunidades.find((o) => o.produto === "Apreciação NR-12");
+  assert.match(nr12?.detalhes.join(" ") ?? "", /Apreciação de Máquinas concluído em 01\/02\/2026, antes da indicação de 03\/10\/2026/);
+});
