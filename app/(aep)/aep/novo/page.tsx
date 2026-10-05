@@ -27,10 +27,10 @@ export default function AepNovoPage() {
   const [registro, setRegistro] = useState("");
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
 
-  // Onde a AEP fica registrada (2026-10-05): numa inspeção já realizada ou
-  // numa inspeção nova criada agora. Obrigatório — a AEP só chega à
-  // Sinalização Psicossocial quando o documento da inspeção é concluído
-  // (entregue ao cliente) pelo associado.
+  // Onde a AEP fica registrada (2026-10-05): numa inspeção já realizada, numa
+  // inspeção nova criada agora, ou sem inspeção. Com inspeção, a AEP chega à
+  // Sinalização Psicossocial quando o documento da inspeção é concluído pelo
+  // associado; sem inspeção, quando a própria AEP é marcada Concluída.
   const [vinculo, setVinculo] = useState<VinculoInspecao>("existente");
   const [idInspecao, setIdInspecao] = useState("");
   const { data: inspecoes = [] } = useInspecoesByEmpresa(empresaId);
@@ -181,12 +181,13 @@ export default function AepNovoPage() {
 
         {empresaId && (
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Registrar em inspeção *</label>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <label className="mb-1 block text-sm font-medium text-gray-700">Registrar em inspeção</label>
+            <div className="grid gap-2 sm:grid-cols-3">
               {(
                 [
                   ["existente", "Inspeção realizada", "Usa os setores e cargos dela"],
                   ["nova", "Criar nova inspeção", `Inspeção em branco, Rev. ${proximaRevisao}`],
+                  ["nenhum", "Sem inspeção", "AEP só no módulo"],
                 ] as [VinculoInspecao, string, string][]
               ).map(([v, rotulo, dica]) => (
                 <button
@@ -237,8 +238,9 @@ export default function AepNovoPage() {
               </div>
             )}
             <p className="mt-2 text-[11px] text-gray-500">
-              A AEP aparece na Sinalização Psicossocial quando o documento da inspeção for concluído pelo associado
-              (entregue ao cliente).
+              {vinculo === "nenhum"
+                ? "Sem inspeção, a AEP aparece na Sinalização Psicossocial quando for marcada como Concluída (enviada ao cliente)."
+                : "A AEP aparece na Sinalização Psicossocial quando o documento da inspeção for concluído pelo associado (entregue ao cliente)."}
             </p>
             {vinculo === "nova" && (
               <p className="mt-2 text-[11px] text-gray-500">
