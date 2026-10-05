@@ -2,7 +2,7 @@
 // sem tela: recebe as empresas montadas por `montarSinalizacao` e a situação do
 // DRPS/Questionário de cada uma (`useSituacaoQuestionarioEmpresas`).
 
-import type { EmpresaSinalizada, SituacaoQuestionario } from "@/lib/aep/sinalizacao";
+import { leituraQuestionario, type EmpresaSinalizada, type SituacaoQuestionario } from "@/lib/aep/sinalizacao";
 
 export type FiltroQuestionario = "" | "necessario" | "pendente" | "nao";
 export type FiltroSimNao = "" | "sim" | "nao";
@@ -33,11 +33,11 @@ export function filtrosAtivos(f: FiltrosSinalizacao): number {
 }
 
 /**
- * Pendência de DRPS/Questionário: a AEP recomenda e a empresa ainda não tem
- * nenhum CONCLUÍDO (nenhum feito ou só em andamento).
+ * Pendência de DRPS/Questionário: a AEP recomenda e ainda não está atendido —
+ * nenhum feito, só em andamento, ou concluído ANTES da AEP (revisão).
  */
 export function questionarioPendente(e: EmpresaSinalizada, s: SituacaoQuestionario | undefined): boolean {
-  return e.precisaQuestionario && s?.fase !== "concluido";
+  return leituraQuestionario(e.precisaQuestionario, s, e.ultimaData).pendente;
 }
 
 export function filtrarSinalizacao(

@@ -16,15 +16,20 @@
 //
 // Situação, pelo que a empresa já tem no sistema:
 //   aberta    → indicada e nenhum documento do serviço existe (vender);
+//   revisao   → DRPS/Questionário concluído ANTES da AEP/inspeção que o indicou
+//               (v269): vender a revisão;
 //   andamento → já existe um em rascunho/andamento (provavelmente vendido);
-//   realizada → já existe um concluído/enviado.
+//   realizada → já existe um concluído/enviado depois da indicação.
 // Medição quantitativa não tem módulo no sistema: fica sempre "aberta".
 // Treinamentos: realizada quando TODA NR indicada já tem certificado emitido
 // para a empresa; andamento quando só parte tem.
 
 import { montarSinalizacao, type AepEntregue, type EmpresaSinalizada } from "@/lib/aep/sinalizacao";
 
-export type SituacaoOportunidade = "aberta" | "andamento" | "realizada";
+export type SituacaoOportunidade = "aberta" | "revisao" | "andamento" | "realizada";
+
+/** Situações que o comercial ainda pode vender. */
+export const A_VENDER: SituacaoOportunidade[] = ["aberta", "revisao"];
 export type Produto =
   | "AET"
   | "DRPS/Questionário"
@@ -60,6 +65,8 @@ export interface DocEmpresa {
   id_empresa: string;
   tipo: "AET" | "DRPS" | "QPS" | "AEP" | "APRECIACAO" | "QUIMICOS";
   status: string | null;
+  /** Data do documento (v269): envio/conclusão/elaboração. */
+  data?: string | null;
 }
 
 export interface CertificadoEmpresa {
@@ -131,6 +138,24 @@ export function situacaoPorDocs(status: (string | null)[]): SituacaoOportunidade
   if (fases.includes("realizada")) return "realizada";
   if (fases.includes("andamento")) return "andamento";
   return "aberta";
+}
+
+/**
+ * Como `situacaoPorDocs`, mas um documento concluído ANTES da indicação
+ * (data da AEP entregue / inspeção concluída) vira "revisao": a indicação é
+ * mais nova que o documento. Sem data em algum dos lados, fica "realizada".
+ */
+export function situacaoComRevisao(lista: DocEmpresa[], dataIndicacao: string | null | undefined): SituacaoOportunidade {
+  const sit = situacaoPorDocs(lista.map((d) => d.status));
+  if (sit !== "realizada" || !dataIndicacao) return sit;
+  const ultimaConcluida = lista
+    .filter((d) => FASE[d.status ?? ""] === "realizada")
+    .map((d) => d.data)
+    .filter((x): x is string => !!x)
+    .sort()
+    .pop();
+  if (ultimaConcluida && ultimaConcluida.slice(0, 10) < dataIndicacao.slice(0, 10)) return "revisao";
+  return sit;
 }
 
 /** "NR-06", "NR 6" e "6" viram "6" — para casar treinamento com certificado. */
@@ -232,9 +257,30 @@ export function montarComercial(
     if (aep && empresa.precisaAet) {
       add("AET", sit("AET"), "AEP", setoresAet.map((s) => s.nome), setoresAet);
     }
+    // DRPS/Questionário: a indicação mais nova (AEP ou inspeção) define se o
+    // documento existente ainda vale ou precisa de revisão.
+    const docsQuest = docsDa.filter((d) => d.tipo === "DRPS" || d.tipo === "QPS");
+    const dataIndicQuest = [
+      aep && empresa.precisaQuestionario ? (aep.entregue_em ?? aep.data_elaboracao) : null,
+      insp && insp.psicossociais > 0 ? insp.concluida_em : null,
+    ]
+      .filter((x): x is string => !!x)
+      .sort()
+      .pop();
+    const sitQuest = situacaoComRevisao(docsQuest, dataIndicQuest);
+    const revisaoQuest = (() => {
+      if (sitQuest !== "revisao") return [];
+      const ult = docsQuest
+        .filter((d) => d.status === "CONCLUIDO" || d.status === "ENVIADO_CLIENTE")
+        .sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""))
+        .pop();
+      const br = (x: string | null | undefined) => (x ? x.slice(0, 10).split("-").reverse().join("/") : "");
+      return ult ? [`${ult.tipo === "QPS" ? "Questionário" : "DRPS"} concluído em ${br(ult.data)}, antes da indicação de ${br(dataIndicQuest)}`] : [];
+    })();
     if (aep && empresa.precisaQuestionario) {
-      add("DRPS/Questionário", sit("DRPS", "QPS"), "AEP", [
+      add("DRPS/Questionário", sitQuest, "AEP", [
         `${empresa.totalAlertas} fator(es) organizacional(is) na AEP`,
+        ...revisaoQuest,
       ]);
     }
 
@@ -266,8 +312,9 @@ export function montarComercial(
         add("AEP", sit("AEP"), "Inspeção", [`${insp.ergonomicos} risco(s) ergonômico(s) na inspeção`]);
       }
       if (insp.psicossociais > 0) {
-        add("DRPS/Questionário", sit("DRPS", "QPS"), "Inspeção", [
+        add("DRPS/Questionário", sitQuest, "Inspeção", [
           `${insp.psicossociais} risco(s) psicossocial(is) na inspeção`,
+          ...revisaoQuest,
         ]);
       }
       if (insp.treinamentos.length > 0) {
@@ -299,7 +346,7 @@ export function montarComercial(
     });
   }
 
-  const abertas = (c: EmpresaComercial) => c.oportunidades.filter((o) => o.situacao === "aberta").length;
+  const abertas = (c: EmpresaComercial) => c.oportunidades.filter((o) => A_VENDER.includes(o.situacao)).length;
   return resultado.sort((a, b) => abertas(b) - abertas(a) || a.empresa.nome.localeCompare(b.empresa.nome, "pt-BR"));
 }
 
@@ -310,7 +357,12 @@ export function linhasCsv(lista: EmpresaComercial[], nomeUnidade: (id: string | 
     "Detalhes", "Trabalhadores expostos (AET)", "Nível AIHA", "AEP realizada por", "AEP enviada por", "AEP entregue em",
     "Inspeção", "Inspeção concluída em",
   ];
-  const rot: Record<SituacaoOportunidade, string> = { aberta: "Aberta", andamento: "Em andamento", realizada: "Realizada" };
+  const rot: Record<SituacaoOportunidade, string> = {
+    aberta: "Aberta",
+    revisao: "Revisão recomendada",
+    andamento: "Em andamento",
+    realizada: "Realizada",
+  };
   const linhas = lista.flatMap((c) =>
     c.oportunidades.map((o) => [
       c.empresa.nome,

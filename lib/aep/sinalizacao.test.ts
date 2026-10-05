@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { montarSinalizacao, piorNivel, recomendaQuestionario, situacaoQuestionario } from "./sinalizacao";
+import { dataBR, leituraQuestionario, montarSinalizacao, piorNivel, recomendaQuestionario, situacaoQuestionario } from "./sinalizacao";
 import type { AepRelatorio } from "@/lib/supabase/types";
 
 function rel(id: string, empresa: string, data: string, setores: unknown[]): AepRelatorio {
@@ -80,9 +80,33 @@ test("DRPS/Questionário a partir de 3 alertas organizacionais; AET e quem envio
 });
 
 test("situação do DRPS/Questionário: concluído vence andamento; DRPS antes do Questionário", () => {
-  assert.deepEqual(situacaoQuestionario([], []), { fase: null, doc: null });
-  assert.deepEqual(situacaoQuestionario(["DELETADO"], [null]), { fase: null, doc: null });
-  assert.deepEqual(situacaoQuestionario(["RASCUNHO"], ["ENVIADO_CLIENTE"]), { fase: "concluido", doc: "Questionário" });
-  assert.deepEqual(situacaoQuestionario(["EM_ANDAMENTO"], ["RASCUNHO"]), { fase: "andamento", doc: "DRPS" });
-  assert.deepEqual(situacaoQuestionario(["CONCLUIDO"], ["CONCLUIDO"]), { fase: "concluido", doc: "DRPS" });
+  assert.deepEqual(situacaoQuestionario([], []), { fase: null, doc: null, data: null });
+  assert.deepEqual(situacaoQuestionario(["DELETADO"], [null]), { fase: null, doc: null, data: null });
+  assert.deepEqual(situacaoQuestionario(["RASCUNHO"], ["ENVIADO_CLIENTE"]), { fase: "concluido", doc: "Questionário", data: null });
+  assert.deepEqual(situacaoQuestionario(["EM_ANDAMENTO"], ["RASCUNHO"]), { fase: "andamento", doc: "DRPS", data: null });
+  assert.deepEqual(situacaoQuestionario(["CONCLUIDO"], ["CONCLUIDO"]), { fase: "concluido", doc: "DRPS", data: null });
+});
+
+test("situação com data: pega a data mais recente da fase", () => {
+  assert.deepEqual(
+    situacaoQuestionario([{ status: "CONCLUIDO", data: "2026-03-01" }, { status: "CONCLUIDO", data: "2026-05-02" }], []),
+    { fase: "concluido", doc: "DRPS", data: "2026-05-02" },
+  );
+  assert.equal(dataBR("2026-05-02T10:00:00Z"), "02/05/2026");
+});
+
+test("leitura do DRPS/Questionário diante da AEP: necessário, em andamento, revisão e atendido", () => {
+  const aep = "2026-10-05";
+  assert.deepEqual(leituraQuestionario(true, { fase: null, doc: null }, aep), {
+    rotulo: "Necessário", detalhe: "Nenhum DRPS/Questionário feito", tom: "perigo", pendente: true,
+  });
+  assert.equal(leituraQuestionario(true, { fase: "andamento", doc: "Questionário", data: "2026-09-01" }, aep).detalhe, "Questionário em andamento desde 01/09/2026");
+  const rev = leituraQuestionario(true, { fase: "concluido", doc: "DRPS", data: "2026-09-25" }, aep);
+  assert.equal(rev.rotulo, "Revisão recomendada");
+  assert.equal(rev.detalhe, "DRPS concluído em 25/09/2026, antes da AEP de 05/10/2026");
+  assert.equal(rev.pendente, true);
+  const ok = leituraQuestionario(true, { fase: "concluido", doc: "DRPS", data: "2026-10-05T15:00:00Z" }, aep);
+  assert.equal(ok.rotulo, "Atendido");
+  assert.equal(ok.pendente, false);
+  assert.equal(leituraQuestionario(false, { fase: "concluido", doc: "DRPS", data: "2026-01-02" }, aep).rotulo, "Não");
 });
