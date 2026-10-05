@@ -402,7 +402,9 @@ export function useSituacaoSinalizacaoAep(idRelatorio: string) {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("aep_relatorios")
-        .select("id_empresa, id_inspecao, status, concluido_em, inspecoes(id_inspecao, status, elaboracao_status, elaboracao_concluida_em)")
+        .select(
+          "id_empresa, id_inspecao, status, concluido_em, liberado_comercial_em, liberado_comercial_por, inspecoes(id_inspecao, status, elaboracao_status, elaboracao_concluida_em)"
+        )
         .eq("id_relatorio", idRelatorio)
         .maybeSingle();
       if (error) throw error;
@@ -411,6 +413,8 @@ export function useSituacaoSinalizacaoAep(idRelatorio: string) {
         id_inspecao: string | null;
         status: string;
         concluido_em: string | null;
+        liberado_comercial_em: string | null;
+        liberado_comercial_por: string | null;
         inspecoes: {
           id_inspecao: string;
           status: string;
@@ -425,6 +429,8 @@ export function useSituacaoSinalizacaoAep(idRelatorio: string) {
           ? r?.inspecoes?.elaboracao_status === "CONCLUIDO" && r?.inspecoes?.status !== "DELETADA"
           : r?.status === "CONCLUIDO",
         entregueEm: r?.id_inspecao ? (r?.inspecoes?.elaboracao_concluida_em ?? null) : (r?.concluido_em ?? null),
+        liberadoComercialEm: r?.liberado_comercial_em ?? null,
+        liberadoComercialPor: r?.liberado_comercial_por ?? null,
       };
     },
   });

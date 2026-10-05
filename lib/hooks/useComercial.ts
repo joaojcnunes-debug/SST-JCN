@@ -28,6 +28,7 @@ export function useComercial() {
       };
       const aeps = (r.aeps ?? []).map((a) => {
         const x = a as { entregue_em?: string | null; enviado_por?: string | null };
+        // normalizarRelatorio mantém os demais campos (inclusive liberado_comercial_*).
         return { ...normalizarRelatorio(a), entregue_em: x.entregue_em ?? null, enviado_por: x.enviado_por ?? null };
       });
       return montarComercial(aeps, r.docs ?? [], r.inspecoes ?? [], r.certificados ?? []);
