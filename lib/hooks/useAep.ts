@@ -136,7 +136,7 @@ function normalizarSetor(s: unknown): AepSetor {
   };
 }
 
-function normalizarRelatorio(data: unknown): AepRelatorio {
+export function normalizarRelatorio(data: unknown): AepRelatorio {
   const rel = data as Record<string, unknown>;
   return {
     ...rel,

@@ -205,6 +205,7 @@ Início, Documentos, Pendências, Não Conformidades, Plano de Ação, EPI, Soli
 | `frota` | Frota – Checklist de Veículos |
 | `escala_supervisores` | Escala de Supervisores |
 | `dimensionamento` | Dimensionamento de Quadro |
+| `comercial` | Comercial – Oportunidades de venda (v267; ligado para os Admins) |
 
 A **Gestão (kanban)** não é um módulo de `modulos_permitidos`: o acesso vem do cadastro de membros (`gestao_membros`).
 
@@ -545,6 +546,14 @@ Grade mensal, padrão semanal, conferência, calendário anual, relatórios e co
 **Quem acessa (v263, `lib/dimensionamento/permissoes.ts` + funções do banco `dim_papel`/`dim_pode_ver`/`dim_pode_editar`):** Admin faz tudo; **Gerente** (função "Gerente") vê Headcount, Cadastros e Histórico, sem criar/editar/excluir; **Supervisores** (funções "Supervisor dos técnicos" e "Supervisora do administrativo") veem só os **Cadastros** (Unidades, Empresas por Unidade, Colaboradores, Funções, Calendário) com criar/editar/excluir — sem Headcount e sem Histórico (trava de tela; os dados vêm das mesmas tabelas); sincronizar com a API externa é só do Admin. A conta também precisa do módulo `dimensionamento` liberado (padrão das três funções desde a v264). RLS: `dim_ler` (SELECT, `dim_pode_ver()`) e `dim_gravar` (ALL, `dim_pode_editar()`) em cada tabela `dim_*`.
 
 Headcount por unidade e função. `precisa = Σ clientes que vencem no mês × peso do porte` (P 1,0 · M 1,5 · G 2,0); `produção = produção/dia × dias úteis × fração alocada × presença × ramp-up`; `consegue = Σ produção × ocupação-alvo`; `sobra = consegue − precisa`; status déficit/atenção (<10%)/ok; faltam/sobram/ideal em pessoas; custo. Tabelas `dim_*` (unidades, funções, colaboradores com alocação ≤100%, demanda mensal, parâmetros, histórico por trigger). Sincronização com a API externa (`/api/dimensionamento/sincronizar`).
+
+### 9.9 Comercial (`/comercial`, regra `lib/comercial/oportunidades.ts`, testada)
+
+Módulo `comercial` (card "Comercial" em JCN Sistema Interno, 2026-10-05) para o time de vendas: transforma as **AEPs entregues ao cliente** (mesma regra da Sinalização) em **oportunidades** de serviço vendido à parte — **AET** (algum setor com Necessita AET, inclusive só por ergonomia física/cognitiva) e **DRPS/Questionário Psicossocial** (3+ alertas organizacionais). Situação de cada uma pelo que a empresa já tem: **aberta** (nenhum documento do serviço), **em andamento** (AET/DRPS/QPS em rascunho ou andamento), **realizada** (concluído/enviado). Base: a AEP entregue mais recente da empresa.
+
+Tela **Oportunidades**: contadores (AET em aberto, trabalhadores expostos nos setores AET em aberto — base do orçamento, DRPS/Questionário em aberto, em andamento), filtros (produto, situação — padrão "aberta" —, unidade, nível AIHA, busca por empresa/CNPJ/unidade/município), cartão por empresa com CNPJ, unidade · região, telefone e e-mail clicáveis, nível AIHA, data da entrega, um bloco por oportunidade (setores indicados com expostos) e quem realizou/enviou a AEP; **Exportar (Excel)** gera CSV com uma linha por oportunidade. Menu também com **Matriz AIHA** (`/comercial-matriz-aiha`).
+
+**Dados:** RPC `comercial_dados()` (v267, SECURITY DEFINER, só leitura) — confere se quem chama é Admin ou tem `comercial` em `modulos_permitidos` (senão erro 42501) e devolve as AEPs entregues (com empresa e contato) e o status de AET/DRPS/QPS por empresa. Assim o comercial não precisa dos módulos AEP/AET/DRPS (que têm `rls_modulo`). Os demais usuários recebem o módulo por Sistema › Usuários.
 
 ### 9.6 Frota (`/frota`, `lib/frota/*`)
 
