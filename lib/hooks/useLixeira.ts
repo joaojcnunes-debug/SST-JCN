@@ -102,7 +102,21 @@ export async function excluirComLixeira(args: ExcluirComLixeiraArgs): Promise<vo
     .single();
   if (snapErr) throw snapErr;
 
-  const { error: delErr } = await supabase.from(args.tabela).delete().eq(args.chave, args.id);
+  // `.select()` devolve as linhas apagadas: RLS que barra o DELETE não dá
+  // erro, só apaga 0 linhas — e a tela dizia "excluída" sem apagar nada,
+  // deixando um snapshot fantasma na Lixeira (AEP, 2026-10-05, v271).
+  const { data: apagadas, error: delErr0 } = await supabase
+    .from(args.tabela)
+    .delete()
+    .eq(args.chave, args.id)
+    .select(args.chave);
+  let delErr: Error | null = delErr0;
+  if (!delErr && (apagadas ?? []).length === 0) {
+    // Só acusa se o registro continua lá (tabela sem SELECT devolveria 0 mesmo
+    // apagando — aí desfazer o snapshot perderia a cópia de recuperação).
+    const { data: ainda } = await supabase.from(args.tabela).select(args.chave).eq(args.chave, args.id).maybeSingle();
+    if (ainda) delErr = new Error("Sem permissão para excluir este registro (nada foi apagado). Fale com um administrador.");
+  }
   if (delErr) {
     const idSnapshot = (snap as { id?: string } | null)?.id;
     if (idSnapshot) {
