@@ -39,14 +39,13 @@ export type Produto =
   | "Apreciação NR-12"
   | "Medição quantitativa"
   | "Análise de Químicos"
-  | "AEP"
   | "Treinamentos NR";
 export type Origem = "AEP" | "Inspeção";
 
-/** Ordem de exibição dos produtos. */
+/** Ordem de exibição dos produtos. A AEP não é produto do Comercial (2026-10-05):
+ * ela só INDICA serviços (AET, DRPS/Questionário). */
 export const PRODUTOS: Produto[] = [
   "AET",
-  "AEP",
   "DRPS/Questionário",
   "Apreciação NR-12",
   "Medição quantitativa",
@@ -56,7 +55,6 @@ export const PRODUTOS: Produto[] = [
 
 export const NOME_PRODUTO: Record<Produto, string> = {
   AET: "AET – Análise Ergonômica do Trabalho",
-  AEP: "AEP – Análise Ergonômica Preliminar",
   "DRPS/Questionário": "DRPS / Questionário Psicossocial",
   "Apreciação NR-12": "Apreciação de Máquinas (NR-12)",
   "Medição quantitativa": "Avaliação quantitativa (medição)",
@@ -359,10 +357,6 @@ export function montarComercial(
       if (insp.quimicos.length > 0) {
         const r = avaliar(["QUIMICOS"], [dataInsp]);
         add("Análise de Químicos", r.situacao, "Inspeção", [...insp.quimicos, ...r.nota]);
-      }
-      if (insp.ergonomicos > 0) {
-        const r = avaliar(["AEP"], [dataInsp]);
-        add("AEP", r.situacao, "Inspeção", [`${insp.ergonomicos} risco(s) ergonômico(s) na inspeção`, ...r.nota]);
       }
       if (insp.psicossociais > 0) {
         add("DRPS/Questionário", quest.situacao, "Inspeção", [
