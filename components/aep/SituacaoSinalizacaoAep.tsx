@@ -18,6 +18,8 @@ import {
   type VinculoInspecao,
 } from "@/lib/hooks/useErgonomiaInspecao";
 import { cn, fmtData } from "@/lib/utils";
+import LiberacaoComercial from "@/components/comercial/LiberacaoComercial";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 
 function AlterarInspecao({
   idRelatorio,
@@ -130,6 +132,7 @@ function AlterarInspecao({
 export default function SituacaoSinalizacaoAep({ idRelatorio }: { idRelatorio: string }) {
   const { data } = useSituacaoSinalizacaoAep(idRelatorio);
   const [editando, setEditando] = useState(false);
+  const canEdit = useCanEdit();
   if (!data) return null;
 
   const link = data.idInspecao ? (
@@ -192,6 +195,24 @@ export default function SituacaoSinalizacaoAep({ idRelatorio }: { idRelatorio: s
           </button>
         )}
       </div>
+      {/* Comercial (v270): só depois de entregue; a equipe libera ou retira. */}
+      {(data.entregue || data.liberadoComercialEm) && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-current/10 pt-2">
+          <span className="text-[11px] font-semibold uppercase tracking-wide opacity-70">Comercial</span>
+          <LiberacaoComercial
+            alvo={{ tabela: "aep_relatorios", id: idRelatorio }}
+            liberadoEm={data.liberadoComercialEm}
+            liberadoPor={data.liberadoComercialPor}
+            pronto={data.entregue}
+            podeEditar={canEdit}
+            invalidar={[["aep-situacao-sinalizacao", idRelatorio]]}
+            compacto
+          />
+          {!data.liberadoComercialEm && !canEdit && (
+            <span className="text-[11px] opacity-70">Ainda não liberada para o Comercial.</span>
+          )}
+        </div>
+      )}
       {editando && data.idEmpresa && (
         <AlterarInspecao
           idRelatorio={idRelatorio}

@@ -555,6 +555,9 @@ export interface Unidade {
 }
 
 export interface Inspecao {
+  /** v270: liberação para o Comercial. */
+  liberado_comercial_em?: string | null;
+  liberado_comercial_por?: string | null;
   id_inspecao: string;
   id_empresa: string;
   data_inspecao: string | null;
@@ -2458,6 +2461,9 @@ export interface AepSetor {
 }
 
 export interface AepRelatorio {
+  /** v270: liberação para o Comercial. */
+  liberado_comercial_em?: string | null;
+  liberado_comercial_por?: string | null;
   id_relatorio: string;
   id_empresa: string;
   status: StatusAEP;

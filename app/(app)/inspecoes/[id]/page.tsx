@@ -1,5 +1,6 @@
 "use client";
 
+import LiberacaoComercial from "@/components/comercial/LiberacaoComercial";
 import { use, useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -458,6 +459,15 @@ export default function InspecaoEditorPage({ params }: Props) {
                 Reabrir
               </button>
             )}
+            {/* Liberação para o Comercial (v270): só concluída; reabrir retira. */}
+            <LiberacaoComercial
+              alvo={{ tabela: "inspecoes", id }}
+              liberadoEm={inspecao.liberado_comercial_em}
+              liberadoPor={inspecao.liberado_comercial_por}
+              pronto={isConcluida}
+              podeEditar={canEdit}
+              invalidar={[["inspecao", id]]}
+            />
           </div>
         </div>
       </div>

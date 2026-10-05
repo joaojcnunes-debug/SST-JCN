@@ -9,7 +9,7 @@
 
 ### `aep_relatorios`
 
-id_relatorio uuid NN, id_empresa text NN, status text NN (CHECK RASCUNHO/EM_ANDAMENTO/CONCLUIDO, v266), setores jsonb NN, responsavel_elaboracao text NN, titulo_profissional text NN, registro_profissional text NN, data_elaboracao date, endereco_empresa text, conclusao text NN, usuario uuid, created_at timestamp with time zone, updated_at timestamp with time zone, data_validade date, id_inspecao text, enviado_modulo_em timestamp with time zone, concluido_em timestamp with time zone (v265: trigger `trg_aep_relatorios_concluido_em` grava ao passar para CONCLUIDO e limpa ao voltar)
+id_relatorio uuid NN, id_empresa text NN, status text NN (CHECK RASCUNHO/EM_ANDAMENTO/CONCLUIDO, v266), setores jsonb NN, responsavel_elaboracao text NN, titulo_profissional text NN, registro_profissional text NN, data_elaboracao date, endereco_empresa text, conclusao text NN, usuario uuid, created_at timestamp with time zone, updated_at timestamp with time zone, data_validade date, id_inspecao text, enviado_modulo_em timestamp with time zone, concluido_em timestamp with time zone (v265: trigger `trg_aep_relatorios_concluido_em` grava ao passar para CONCLUIDO e limpa ao voltar), liberado_comercial_em timestamp with time zone, liberado_comercial_por text (v270)
 
 ### `aep_textos_padrao`
 
@@ -970,7 +970,7 @@ id_versao uuid NN, id_capitulo text NN, versao integer NN, modulo text NN, titul
 - **Presença:** `presenca_ping`, `presenca_resumo`, `presenca_trilha`, `presenca_uso_mensal`, `presenca_encerrar_sessao`, `presenca_limpar`.
 - **Gestão (kanban):** `gestao_*` — acessos/níveis (`gestao_resolver_nivel`, `gestao_alterar_acesso`, `gestao_meu_nivel`), membros/equipes, automações (`gestao_automacao_run/tick/aplicar/prazos`, `gestao_cron_diario`), aprovações, vínculos, histórico, sincronização com Google Agenda (`gestao_google_*`).
 - **SGG/Escala:** `gg_projecao_mensal`, `gg_sugerir_substitutos`, `escala_pascoa`, `escala_semear_feriados`, `set_elaboracao_documento`.
-- **Comercial:** `comercial_dados()` (v267, SECURITY DEFINER, só leitura; exige Admin ou módulo `comercial`) — AEPs entregues ao cliente, a última inspeção concluída de cada empresa com máquinas NR-12, medições, químicos, ergonômicos, psicossociais e treinamentos (v268), o status e a data (v269) de AET/DRPS/QPS/AEP/Apreciação/Químicos e os certificados emitidos.
+- **Comercial:** liberação v270 — `inspecoes.liberado_comercial_em/_por` e `aep_relatorios.liberado_comercial_em/_por`; trigger `fn_retira_do_comercial` limpa ao reabrir; `comercial_dados()` (v267, SECURITY DEFINER, só leitura; exige Admin ou módulo `comercial`) — AEPs entregues ao cliente, a última inspeção concluída de cada empresa com máquinas NR-12, medições, químicos, ergonômicos, psicossociais e treinamentos (v268), o status e a data (v269) de AET/DRPS/QPS/AEP/Apreciação/Químicos e os certificados emitidos.
 - **Dimensionamento:** `dim_definir_alocacoes`, `dim_substituir_demanda_ano`, `dim_aplicar_sincronizacao_sst`, `dim_checar_soma_alocacoes`, `dim_registrar_historico`.
 - **EPI:** `epi_registrar_entrega`, `epi_assinar_entrega` (assinatura + biometria), `epi_importar_nfe`, `epi_transferir`, `epi_expurgar_biometria_inativo`.
 - **Equipamentos:** `equipamento_lancar_entrada`, `equipamento_importar_nfe`, `equipamento_registrar_entrega/devolucao`, `equipamento_assinar_entrega`, `equipamento_transferir_estoque`, `equipamento_estornar_transferencia`, `equipamento_ajustar_saldo`, `equipamento_mudar_status`, `equip_entrega_*` (emitir, editar, cancelar, excluir, itens, histórico, hash do conteúdo).

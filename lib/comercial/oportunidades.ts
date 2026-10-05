@@ -80,6 +80,9 @@ export interface InspecaoComercial {
   id_empresa: string;
   concluida_em: string | null;
   responsavel: string | null;
+  /** v270: quem liberou para o Comercial e quando. */
+  liberado_comercial_em?: string | null;
+  liberado_comercial_por?: string | null;
   empresas?: unknown;
   maquinas: { nome: string | null; grau_risco: string | null; adequacao: boolean | null }[];
   medicoes: { agente: string | null; qual: string | null; setor: string | null }[];
@@ -110,6 +113,8 @@ export interface InfoInspecao {
   idInspecao: string;
   concluidaEm: string | null;
   responsavel: string | null;
+  liberadoEm: string | null;
+  liberadoPor: string | null;
 }
 
 export interface EmpresaComercial {
@@ -123,6 +128,9 @@ export interface EmpresaComercial {
   temAep: boolean;
   /** Última inspeção concluída usada. */
   inspecao: InfoInspecao | null;
+  /** v270: liberação da AEP para o Comercial. */
+  aepLiberadaEm: string | null;
+  aepLiberadaPor: string | null;
 }
 
 const FASE: Record<string, "realizada" | "andamento"> = {
@@ -365,7 +373,17 @@ export function montarComercial(
       oportunidades,
       expostosAet: setoresAet.reduce((n, s) => n + s.expostos, 0),
       temAep: !!aep,
-      inspecao: insp ? { idInspecao: insp.id_inspecao, concluidaEm: insp.concluida_em, responsavel: insp.responsavel } : null,
+      inspecao: insp
+        ? {
+            idInspecao: insp.id_inspecao,
+            concluidaEm: insp.concluida_em,
+            responsavel: insp.responsavel,
+            liberadoEm: insp.liberado_comercial_em ?? null,
+            liberadoPor: insp.liberado_comercial_por ?? null,
+          }
+        : null,
+      aepLiberadaEm: (aep as { liberado_comercial_em?: string | null } | undefined)?.liberado_comercial_em ?? null,
+      aepLiberadaPor: (aep as { liberado_comercial_por?: string | null } | undefined)?.liberado_comercial_por ?? null,
     });
   }
 
