@@ -1,5 +1,6 @@
 "use client";
 
+import { montarCatalogoSetores } from "@/lib/aep/catalogo-setores";
 import { contagemParaAet } from "@/lib/aep/aiha-organizacional";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -283,10 +284,13 @@ export function useAepRelatorios(empresaId?: string | null) {
 
 /**
  * AEPs ENTREGUES ao cliente (2026-10-05) — as que vão para a Sinalização
- * Psicossocial e para a página AEP do Painel SST: registradas numa inspeção
- * cujo documento o associado concluiu (`inspecoes.elaboracao_status =
- * 'CONCLUIDO'`, o mesmo "Entregue" da lista de inspeções). AEP sem inspeção ou
- * com o documento ainda em elaboração não aparece. Documento reaberto sai.
+ * Psicossocial e para a página AEP do Painel SST:
+ *   • COM inspeção: o documento da inspeção foi concluído pelo associado
+ *     (`inspecoes.elaboracao_status = 'CONCLUIDO'`, o "Entregue" da lista de
+ *     inspeções); data = `elaboracao_concluida_em`. O status da AEP não conta.
+ *   • SEM inspeção: a própria AEP está Concluída (= enviada ao cliente);
+ *     data = `concluido_em` (v265).
+ * Documento reaberto / AEP de volta a rascunho sai da Sinalização.
  */
 export function useAepsEntregues(empresaId?: string | null) {
   const user = useUserStore((s) => s.user);
@@ -308,12 +312,30 @@ export function useAepsEntregues(empresaId?: string | null) {
       } else if (user?.perfil === "Tecnico" && user.empresas_vinculadas?.length) {
         q = q.in("id_empresa", user.empresas_vinculadas);
       }
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data ?? []).map((r) => {
-        const insp = (r as { inspecoes?: { elaboracao_concluida_em?: string | null } | null }).inspecoes;
-        return { ...normalizarRelatorio(r), entregue_em: insp?.elaboracao_concluida_em ?? null };
-      });
+      let q2 = supabase
+        .from("aep_relatorios")
+        .select("*, empresas(nome_empresa, cnpj)")
+        .is("id_inspecao", null)
+        .eq("status", "CONCLUIDO")
+        .order("created_at", { ascending: false });
+      if (empresaId) {
+        q2 = q2.eq("id_empresa", empresaId);
+      } else if (user?.perfil === "Tecnico" && user.empresas_vinculadas?.length) {
+        q2 = q2.in("id_empresa", user.empresas_vinculadas);
+      }
+      const [comInsp, semInsp] = await Promise.all([q, q2]);
+      if (comInsp.error) throw comInsp.error;
+      if (semInsp.error) throw semInsp.error;
+      return [
+        ...(comInsp.data ?? []).map((r) => {
+          const insp = (r as { inspecoes?: { elaboracao_concluida_em?: string | null } | null }).inspecoes;
+          return { ...normalizarRelatorio(r), entregue_em: insp?.elaboracao_concluida_em ?? null };
+        }),
+        ...(semInsp.data ?? []).map((r) => ({
+          ...normalizarRelatorio(r),
+          entregue_em: (r as { concluido_em?: string | null }).concluido_em ?? null,
+        })),
+      ];
     },
     enabled: !!user,
   });
@@ -331,13 +353,15 @@ export function useSituacaoSinalizacaoAep(idRelatorio: string) {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("aep_relatorios")
-        .select("id_empresa, id_inspecao, inspecoes(id_inspecao, status, elaboracao_status, elaboracao_concluida_em)")
+        .select("id_empresa, id_inspecao, status, concluido_em, inspecoes(id_inspecao, status, elaboracao_status, elaboracao_concluida_em)")
         .eq("id_relatorio", idRelatorio)
         .maybeSingle();
       if (error) throw error;
       const r = data as {
         id_empresa: string;
         id_inspecao: string | null;
+        status: string;
+        concluido_em: string | null;
         inspecoes: {
           id_inspecao: string;
           status: string;
@@ -348,9 +372,44 @@ export function useSituacaoSinalizacaoAep(idRelatorio: string) {
       return {
         idEmpresa: r?.id_empresa ?? null,
         idInspecao: r?.id_inspecao ?? null,
-        entregue: r?.inspecoes?.elaboracao_status === "CONCLUIDO" && r?.inspecoes?.status !== "DELETADA",
-        entregueEm: r?.inspecoes?.elaboracao_concluida_em ?? null,
+        entregue: r?.id_inspecao
+          ? r?.inspecoes?.elaboracao_status === "CONCLUIDO" && r?.inspecoes?.status !== "DELETADA"
+          : r?.status === "CONCLUIDO",
+        entregueEm: r?.id_inspecao ? (r?.inspecoes?.elaboracao_concluida_em ?? null) : (r?.concluido_em ?? null),
       };
+    },
+  });
+}
+
+/**
+ * Setores e cargos que a empresa já tem no sistema (das inspeções não
+ * deletadas), para o editor da AEP sugerir — ver `montarCatalogoSetores`.
+ */
+export function useCatalogoSetoresEmpresa(idEmpresa: string | null | undefined) {
+  return useQuery({
+    queryKey: ["catalogo-setores-empresa", idEmpresa],
+    enabled: !!idEmpresa,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const [s, c] = await Promise.all([
+        supabase
+          .from("setores")
+          .select("id_setor, setor_ghe, descricao, inspecoes!inner(status)")
+          .eq("id_empresa", idEmpresa!)
+          .neq("inspecoes.status", "DELETADA"),
+        supabase
+          .from("cargos")
+          .select("id_setor, cargo, descricao, inspecoes!inner(status)")
+          .eq("id_empresa", idEmpresa!)
+          .neq("inspecoes.status", "DELETADA"),
+      ]);
+      if (s.error) throw s.error;
+      if (c.error) throw c.error;
+      return montarCatalogoSetores(
+        (s.data ?? []) as unknown as { id_setor: string; setor_ghe: string | null; descricao: string | null }[],
+        (c.data ?? []) as unknown as { id_setor: string | null; cargo: string | null; descricao: string | null }[],
+      );
     },
   });
 }

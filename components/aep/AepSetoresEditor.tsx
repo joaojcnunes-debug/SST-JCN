@@ -1,5 +1,6 @@
 "use client";
 
+import { chaveNome, type CargoCatalogo, type SetorCatalogo } from "@/lib/aep/catalogo-setores";
 import SituacaoSinalizacaoAep from "@/components/aep/SituacaoSinalizacaoAep";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
@@ -25,6 +26,7 @@ import {
   CLASS_COLOR_AEP,
   TIPOS_RISCO_AEP,
   CLASSIFICACOES_AEP,
+  useCatalogoSetoresEmpresa,
 } from "@/lib/hooks/useAep";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
@@ -459,6 +461,11 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
   const [statusOrdem, setStatusOrdem] = useState<StatusOrdemSalva>("parado");
   // Matriz de risco ativa (a mesma da inspeção) — classifica a Ergonomia Organizacional.
   const { data: matriz } = useMatrizAtiva();
+  // Setores e cargos que a empresa já tem no sistema (das inspeções) — o
+  // editor sugere, e o técnico continua podendo digitar à mão (2026-10-05).
+  const { data: catalogo = [] } = useCatalogoSetoresEmpresa(
+    (rel as { id_empresa?: string } | undefined)?.id_empresa ?? null
+  );
 
   /** Recalcula a matriz AIHA dos fatores organizacionais e o "Necessita AET". */
   function comAiha(s: AepSetor): AepSetor {
@@ -528,6 +535,46 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
     aoSalvar: salvarOrdem,
     habilitado: canEdit,
   });
+
+  /** Setores do catálogo que ainda não estão nesta AEP. */
+  const setoresFaltando = catalogo.filter(
+    (c) => !setores.some((s) => chaveNome(s.nome_setor) === chaveNome(c.nome))
+  );
+
+  function cargosDoCatalogo(lista: CargoCatalogo[]): AepCargoSetor[] {
+    return lista.map((c) => ({ id: crypto.randomUUID(), cargo: c.cargo, descricao: c.descricao, quantidade: 0 }));
+  }
+
+  function importarSetores(lista: SetorCatalogo[]) {
+    if (lista.length === 0) return;
+    const novos = lista.map((c) => {
+      const cargos = cargosDoCatalogo(c.cargos);
+      return {
+        ...setorVazioAep(),
+        nome_setor: c.nome,
+        descricao_atividade: c.descricao,
+        cargos,
+        cargo: cargos.map((x) => x.cargo).join(", "),
+        funcao: cargos.map((x) => x.cargo).join(", "),
+      } as AepSetor;
+    });
+    setSetores((s) => [...s, ...novos]);
+    setAbertos((prev) => new Set([...prev, ...novos.map((n) => n.id)]));
+    toast.success(
+      `${novos.length} setor${novos.length !== 1 ? "es" : ""} da empresa adicionado${novos.length !== 1 ? "s" : ""} — salve para gravar.`
+    );
+  }
+
+  function addCargosCatalogo(setorId: string, lista: CargoCatalogo[]) {
+    const setor = setores.find((s) => s.id === setorId);
+    if (!setor || lista.length === 0) return;
+    const novos = [...(setor.cargos ?? []), ...cargosDoCatalogo(lista)];
+    updateSetor(setorId, {
+      cargos: novos,
+      funcao: novos.map((c) => c.cargo).filter(Boolean).join(", "),
+      trabalhadores_consultados: buildTrabalhadores(novos),
+    });
+  }
 
   function addSetor() {
     const novo = setorVazioAep();
@@ -665,6 +712,12 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
   return (
     <div className="space-y-5" {...reordenar.propsContainer()}>
       <SituacaoSinalizacaoAep idRelatorio={idRelatorio} />
+      {/* Sugestões do campo Setor: setores que a empresa já tem no sistema. */}
+      <datalist id="aep-setores-empresa">
+        {catalogo.map((c) => (
+          <option key={c.nome} value={c.nome} />
+        ))}
+      </datalist>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-bold text-gray-900">Setores / Triagem Ergonômica</h1>
@@ -674,7 +727,17 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
           </div>
         </div>
         {canEdit && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {setoresFaltando.length > 0 && (
+              <button
+                type="button"
+                onClick={() => importarSetores(setoresFaltando)}
+                title={setoresFaltando.map((c) => c.nome).join(", ")}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100"
+              >
+                <Plus className="size-4" /> Setores da empresa ({setoresFaltando.length})
+              </button>
+            )}
             <button
               type="button"
               onClick={addSetor}
@@ -797,6 +860,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                         <input
                           type="text"
                           disabled={!canEdit}
+                          list={key === "nome_setor" && catalogo.length > 0 ? "aep-setores-empresa" : undefined}
                           value={(setor as unknown as Record<string, unknown>)[key] as string ?? ""}
                           onChange={(e) => updateSetor(setor.id, { [key]: e.target.value })}
                           placeholder={placeholder}
@@ -832,6 +896,45 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                         </button>
                       )}
                     </div>
+                    {(() => {
+                      if (!canEdit) return null;
+                      const doCatalogo = catalogo.find((c) => chaveNome(c.nome) === chaveNome(setor.nome_setor));
+                      const sugestoes = (doCatalogo?.cargos ?? []).filter(
+                        (c) => !(setor.cargos ?? []).some((x) => chaveNome(x.cargo) === chaveNome(c.cargo))
+                      );
+                      if (sugestoes.length === 0) return null;
+                      return (
+                        <div className="mb-2 rounded-md border border-sky-100 bg-sky-50/60 px-2 py-1.5">
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <span className="text-[11px] text-sky-800">
+                              Cargos cadastrados para &quot;{doCatalogo?.nome}&quot; na empresa:
+                            </span>
+                            {sugestoes.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => addCargosCatalogo(setor.id, sugestoes)}
+                                className="text-[11px] font-semibold text-sky-700 underline"
+                              >
+                                Adicionar todos
+                              </button>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {sugestoes.map((c) => (
+                              <button
+                                key={c.cargo}
+                                type="button"
+                                onClick={() => addCargosCatalogo(setor.id, [c])}
+                                title={c.descricao || undefined}
+                                className="inline-flex items-center gap-0.5 rounded-full border border-sky-200 bg-white px-2 py-0.5 text-[11px] text-sky-800 hover:bg-sky-100"
+                              >
+                                <Plus className="size-3" /> {c.cargo}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
                     {(setor.cargos ?? []).length === 0 ? (
                       <p className="text-xs text-gray-400 italic">Nenhum cargo adicionado.</p>
                     ) : (

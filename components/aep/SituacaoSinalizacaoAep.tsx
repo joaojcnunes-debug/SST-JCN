@@ -1,8 +1,9 @@
 "use client";
 
 // Faixa do editor da AEP (2026-10-05): diz se a AEP já está na Sinalização
-// Psicossocial e, se não, o que falta. A AEP só aparece lá quando está numa
-// inspeção cujo documento o associado concluiu (entregue ao cliente).
+// Psicossocial e, se não, o que falta. Com inspeção, aparece quando o
+// documento da inspeção é concluído pelo associado; sem inspeção, quando a
+// própria AEP é marcada Concluída (= enviada ao cliente) em Dados / Conclusão.
 // O botão "Alterar inspeção" registra a AEP numa inspeção realizada, numa
 // inspeção nova em branco, ou a deixa sem inspeção.
 
@@ -40,7 +41,7 @@ function AlterarInspecao({
   const opcoes: [VinculoInspecao, string, string][] = [
     ["existente", "Inspeção realizada", "Escolher uma inspeção da empresa"],
     ["nova", "Criar nova inspeção", `Inspeção em branco, Rev. ${proximaRevisao}`],
-    ["nenhum", "Sem inspeção", "Não aparece na Sinalização"],
+    ["nenhum", "Sem inspeção", "Sinalização ao concluir a AEP"],
   ];
 
   const podeSalvar =
@@ -93,7 +94,8 @@ function AlterarInspecao({
         ))}
       {vinculo === "nenhum" && (
         <p className="text-[11px] text-amber-700">
-          Sem inspeção, a AEP fica só no módulo e não aparece na Sinalização Psicossocial.
+          Sem inspeção, a AEP aparece na Sinalização Psicossocial quando for marcada como Concluída (enviada ao
+          cliente) em Dados / Conclusão.
         </p>
       )}
 
@@ -137,14 +139,24 @@ export default function SituacaoSinalizacaoAep({ idRelatorio }: { idRelatorio: s
   ) : null;
 
   const [cls, Icone, texto] = !data.idInspecao
-    ? ([
-        "border-amber-200 bg-amber-50 text-amber-800",
-        Info,
-        <>
-          Esta AEP não está registrada em nenhuma inspeção, por isso{" "}
-          <strong>não aparece na Sinalização Psicossocial</strong>.
-        </>,
-      ] as const)
+    ? data.entregue
+      ? ([
+          "border-emerald-200 bg-emerald-50 text-emerald-800",
+          CheckCircle2,
+          <>
+            <strong>Na Sinalização Psicossocial</strong>
+            {data.entregueEm ? ` desde ${fmtData(data.entregueEm)}` : ""}: AEP sem inspeção, concluída (enviada ao
+            cliente).
+          </>,
+        ] as const)
+      : ([
+          "border-amber-200 bg-amber-50 text-amber-800",
+          Info,
+          <>
+            AEP sem inspeção. Aparece na <strong>Sinalização Psicossocial</strong> quando for marcada como{" "}
+            <strong>Concluída</strong> (enviada ao cliente) em Dados / Conclusão.
+          </>,
+        ] as const)
     : data.entregue
       ? ([
           "border-emerald-200 bg-emerald-50 text-emerald-800",

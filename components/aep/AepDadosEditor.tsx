@@ -133,6 +133,10 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
               </button>
             ))}
           </div>
+          <p className="mt-1 text-[11px] text-gray-500">
+            Concluído = enviado ao cliente. AEP sem inspeção entra na Sinalização Psicossocial ao ser concluída; com
+            inspeção, quando o documento da inspeção for concluído pelo associado.
+          </p>
         </div>
 
         {/* Responsável */}
