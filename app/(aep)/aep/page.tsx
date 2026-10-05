@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Printer, Trash2, AlertTriangle } from "lucide-react";
-import { useAepRelatorios, useExcluirAep, riscoMaximoRelatorio, CLASS_COLOR_AEP, STATUS_LABEL_AEP } from "@/lib/hooks/useAep";
+import { useAepRelatorios, useExcluirAep, riscoMaximoRelatorio, CLASS_COLOR_AEP, STATUS_LABEL_AEP, STATUS_COR_AEP } from "@/lib/hooks/useAep";
 import { useCanCreate, useCanDelete } from "@/lib/hooks/useUsuario";
 import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
@@ -105,7 +105,7 @@ export default function AepListaPage() {
                       {rMax}
                     </span>
                   )}
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${rel.status === "CONCLUIDO" ? "bg-emerald-100 text-emerald-700" : "bg-yellow-100 text-yellow-700"}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_COR_AEP[rel.status] ?? STATUS_COR_AEP.RASCUNHO}`}>
                     {STATUS_LABEL_AEP[rel.status]}
                   </span>
                 </div>
