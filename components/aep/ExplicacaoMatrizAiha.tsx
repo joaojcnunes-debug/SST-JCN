@@ -276,11 +276,20 @@ export default function ExplicacaoMatrizAiha({
           )}
 
           <Titulo>5. Limites da avaliação</Titulo>
+          {/* Texto definido pelo RT em 2026-10-05. */}
           <p>
-            A AEP é uma <strong>triagem preliminar</strong>: o nível AIHA prioriza fatores e setores, mas não substitui a
-            AET nem a avaliação com instrumento validado aplicado aos trabalhadores (DRPS / Questionário
-            Psicossocial). O resultado depende da qualidade das observações registradas e deve ser revisto sempre que
-            as condições de trabalho mudarem (NR-01, revisão do inventário de riscos).
+            A AEP constitui uma <strong>triagem preliminar</strong>, voltada à identificação e priorização de fatores e
+            setores que demandam maior atenção. Seu resultado não substitui a AET e deve ser compreendido a partir das
+            condições observadas no ambiente de trabalho.
+          </p>
+          <p className="mt-2">
+            O <strong>DRPS/Questionário Psicossocial</strong> possui caráter complementar, contribuindo para ampliar a
+            compreensão dos riscos psicossociais a partir de uma perspectiva mais personalizada, considerando como os
+            próprios trabalhadores percebem e vivenciam suas condições de trabalho.
+          </p>
+          <p className="mt-2">
+            Os resultados da AEP dependem da qualidade das observações registradas e devem ser revistos sempre que houver
+            mudanças nas condições de trabalho, conforme previsto na NR-01 e na revisão do inventário de riscos.
           </p>
         </div>
       )}
