@@ -19,7 +19,9 @@
 //   revisao   → o documento existente foi concluído ANTES da AEP/inspeção que
 //               indicou o serviço (v269): vender a revisão. Vale para AET,
 //               DRPS/Questionário, AEP, Apreciação NR-12 e Análise de Químicos;
-//   andamento → já existe um em rascunho/andamento (provavelmente vendido);
+//   andamento → já existe um em rascunho/andamento (provavelmente vendido).
+//               Rascunho cuja ÚLTIMA EDIÇÃO é anterior à indicação não conta
+//               (rascunho esquecido): a oportunidade fica aberta, com aviso;
 //   realizada → já existe um concluído/enviado depois da indicação.
 // Medição quantitativa não tem módulo no sistema: fica sempre "aberta".
 // Treinamentos: realizada quando TODA NR indicada já tem certificado emitido
@@ -155,7 +157,10 @@ export function situacaoPorDocs(status: (string | null)[]): SituacaoOportunidade
  * mais nova que o documento. Sem data em algum dos lados, fica "realizada".
  */
 export function situacaoComRevisao(lista: DocEmpresa[], dataIndicacao: string | null | undefined): SituacaoOportunidade {
-  const sit = situacaoPorDocs(lista.map((d) => d.status));
+  // Rascunho/andamento parado desde antes da indicação não vale como "em
+  // andamento" (2026-10-05): sai da conta. Sem data, continua valendo.
+  const valida = dataIndicacao ? lista.filter((d) => !rascunhoAntigo(d, dataIndicacao)) : lista;
+  const sit = situacaoPorDocs(valida.map((d) => d.status));
   if (sit !== "realizada" || !dataIndicacao) return sit;
   const ultimaConcluida = lista
     .filter((d) => FASE[d.status ?? ""] === "realizada")
@@ -165,6 +170,13 @@ export function situacaoComRevisao(lista: DocEmpresa[], dataIndicacao: string | 
     .pop();
   if (ultimaConcluida && ultimaConcluida.slice(0, 10) < dataIndicacao.slice(0, 10)) return "revisao";
   return sit;
+}
+
+/** Rascunho/andamento cuja última edição é anterior à indicação. */
+export function rascunhoAntigo(d: DocEmpresa, dataIndicacao: string | null | undefined): boolean {
+  return (
+    FASE[d.status ?? ""] === "andamento" && !!d.data && !!dataIndicacao && d.data.slice(0, 10) < dataIndicacao.slice(0, 10)
+  );
 }
 
 /** Nome do documento na frase da revisão. */
@@ -268,7 +280,17 @@ export function montarComercial(
       const lista = docsDa.filter((d) => tipos.includes(d.tipo));
       const dataInd = datasIndicacao.filter((x): x is string => !!x).sort().pop();
       const situacao = situacaoComRevisao(lista, dataInd);
-      if (situacao !== "revisao") return { situacao, nota: [] };
+      // Rascunhos esquecidos: não contam, mas o vendedor fica sabendo.
+      const antigos = lista.filter((d) => rascunhoAntigo(d, dataInd));
+      const notaAntigos =
+        antigos.length > 0 && situacao === "aberta"
+          ? [
+              `${antigos.length === 1 ? "Há 1 rascunho" : `Há ${antigos.length} rascunhos`} de ${NOME_DOC[antigos[0].tipo]} parado${antigos.length === 1 ? "" : "s"} desde ${dataBr(
+                antigos.map((d) => d.data ?? "").sort().pop(),
+              )}, antes da indicação de ${dataBr(dataInd)} — não conta como em andamento`,
+            ]
+          : [];
+      if (situacao !== "revisao") return { situacao, nota: notaAntigos };
       const ult = lista
         .filter((d) => FASE[d.status ?? ""] === "realizada")
         .sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""))

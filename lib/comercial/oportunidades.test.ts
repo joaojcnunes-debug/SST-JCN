@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { linhasCsv, montarComercial, numeroNr, situacaoComRevisao, situacaoPorDocs, type InspecaoComercial } from "./oportunidades";
+import { linhasCsv, montarComercial, numeroNr, rascunhoAntigo, situacaoComRevisao, situacaoPorDocs, type InspecaoComercial } from "./oportunidades";
 
 const empresa = (nome: string) => ({ nome_empresa: nome, cnpj: null, municipio: "Teresópolis", uf: "RJ", id_unidade: "U1", telefone: "21 9999", email: "a@b.c" });
 
@@ -174,4 +174,21 @@ test("revisão também para AET, AEP, Apreciação NR-12 e Químicos concluídos
   assert.equal(s["Análise de Químicos"], "realizada");
   const nr12 = c.oportunidades.find((o) => o.produto === "Apreciação NR-12");
   assert.match(nr12?.detalhes.join(" ") ?? "", /Apreciação de Máquinas concluído em 01\/02\/2026, antes da indicação de 03\/10\/2026/);
+});
+
+test("rascunho parado desde antes da indicação não conta como em andamento", () => {
+  const velho = { id_empresa: "E1", tipo: "APRECIACAO" as const, status: "RASCUNHO", data: "2026-07-31" };
+  const novoRasc = { id_empresa: "E1", tipo: "APRECIACAO" as const, status: "RASCUNHO", data: "2026-10-04" };
+  assert.equal(rascunhoAntigo(velho, "2026-10-03"), true);
+  assert.equal(situacaoComRevisao([velho], "2026-10-03"), "aberta");
+  assert.equal(situacaoComRevisao([velho, novoRasc], "2026-10-03"), "andamento");
+  assert.equal(situacaoComRevisao([{ ...velho, data: null }], "2026-10-03"), "andamento");
+  const [c] = montarComercial(
+    [],
+    [velho, { ...velho, data: "2026-08-04" }],
+    [insp("E1", { concluida_em: "2026-10-03", maquinas: [{ nome: "Serra", grau_risco: "ALTO", adequacao: true }] })],
+  );
+  const nr12 = c.oportunidades.find((o) => o.produto === "Apreciação NR-12");
+  assert.equal(nr12?.situacao, "aberta");
+  assert.match(nr12?.detalhes.join(" ") ?? "", /Há 2 rascunhos de Apreciação de Máquinas parados desde 04\/08\/2026/);
 });
