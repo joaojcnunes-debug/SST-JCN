@@ -4,6 +4,10 @@
 // da empresa com cada AEP e, dentro dela, os SETORES com os fatores
 // organizacionais marcados "Sim" (nível na matriz AIHA, probabilidade,
 // severidade e sinais observados). Sem link para o editor da AEP, de propósito.
+//
+// 2026-10-05: só entram AEPs ENTREGUES ao cliente — registradas numa inspeção
+// cujo documento o associado concluiu (`useAepsEntregues`). A data mostrada é
+// a da entrega (`entregue_em`); sem ela, cai na data de elaboração.
 
 import { ITENS_ORGANIZACIONAL } from "@/lib/aep/checklist-itens";
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
@@ -32,7 +36,9 @@ export interface SetorSinalizado {
 
 export interface AvaliacaoSinalizada {
   idRelatorio: string;
+  /** Data da entrega ao cliente; sem ela, a data de elaboração. */
   data: string | null;
+  idInspecao: string | null;
   responsavel: string | null;
   status: string;
   setores: SetorSinalizado[];
@@ -58,7 +64,10 @@ export function piorNivel(niveis: (string | null | undefined)[]): string | null 
   return pior;
 }
 
-export function montarSinalizacao(relatorios: AepRelatorio[]): EmpresaSinalizada[] {
+/** AEP com a data em que o documento da inspeção foi entregue ao cliente. */
+export type AepEntregue = AepRelatorio & { entregue_em?: string | null };
+
+export function montarSinalizacao(relatorios: AepEntregue[]): EmpresaSinalizada[] {
   const porEmpresa = new Map<string, EmpresaSinalizada>();
 
   for (const rel of relatorios) {
@@ -108,7 +117,8 @@ export function montarSinalizacao(relatorios: AepRelatorio[]): EmpresaSinalizada
     }
     alvo.avaliacoes.push({
       idRelatorio: rel.id_relatorio,
-      data: rel.data_elaboracao,
+      data: rel.entregue_em ?? rel.data_elaboracao,
+      idInspecao: (rel as { id_inspecao?: string | null }).id_inspecao ?? null,
       responsavel: rel.responsavel_elaboracao || null,
       status: rel.status,
       setores,

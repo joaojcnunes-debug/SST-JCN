@@ -27,9 +27,11 @@ export default function AepNovoPage() {
   const [registro, setRegistro] = useState("");
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
 
-  // Onde a AEP fica registrada (2026-10-05): solta no módulo, numa inspeção
-  // já realizada ou numa inspeção nova criada agora.
-  const [vinculo, setVinculo] = useState<VinculoInspecao>("nenhum");
+  // Onde a AEP fica registrada (2026-10-05): numa inspeção já realizada ou
+  // numa inspeção nova criada agora. Obrigatório — a AEP só chega à
+  // Sinalização Psicossocial quando o documento da inspeção é concluído
+  // (entregue ao cliente) pelo associado.
+  const [vinculo, setVinculo] = useState<VinculoInspecao>("existente");
   const [idInspecao, setIdInspecao] = useState("");
   const { data: inspecoes = [] } = useInspecoesByEmpresa(empresaId);
   const { data: comAep } = useInspecoesComAep(empresaId);
@@ -179,11 +181,10 @@ export default function AepNovoPage() {
 
         {empresaId && (
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Registrar em inspeção</label>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <label className="mb-1 block text-sm font-medium text-gray-700">Registrar em inspeção *</label>
+            <div className="grid gap-2 sm:grid-cols-2">
               {(
                 [
-                  ["nenhum", "Não vincular", "AEP só no módulo"],
                   ["existente", "Inspeção realizada", "Usa os setores e cargos dela"],
                   ["nova", "Criar nova inspeção", `Inspeção em branco, Rev. ${proximaRevisao}`],
                 ] as [VinculoInspecao, string, string][]
@@ -235,6 +236,10 @@ export default function AepNovoPage() {
                 </p>
               </div>
             )}
+            <p className="mt-2 text-[11px] text-gray-500">
+              A AEP aparece na Sinalização Psicossocial quando o documento da inspeção for concluído pelo associado
+              (entregue ao cliente).
+            </p>
             {vinculo === "nova" && (
               <p className="mt-2 text-[11px] text-gray-500">
                 Será criada a inspeção em branco Rev. {proximaRevisao} desta empresa, com a data de elaboração acima, e

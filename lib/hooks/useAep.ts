@@ -281,6 +281,78 @@ export function useAepRelatorios(empresaId?: string | null) {
   });
 }
 
+/**
+ * AEPs ENTREGUES ao cliente (2026-10-05) — as que vão para a Sinalização
+ * Psicossocial e para a página AEP do Painel SST: registradas numa inspeção
+ * cujo documento o associado concluiu (`inspecoes.elaboracao_status =
+ * 'CONCLUIDO'`, o mesmo "Entregue" da lista de inspeções). AEP sem inspeção ou
+ * com o documento ainda em elaboração não aparece. Documento reaberto sai.
+ */
+export function useAepsEntregues(empresaId?: string | null) {
+  const user = useUserStore((s) => s.user);
+  return useQuery({
+    queryKey: ["aep-entregues", empresaId ?? "todos"],
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      let q = supabase
+        .from("aep_relatorios")
+        .select(
+          "*, empresas(nome_empresa, cnpj), inspecoes!inner(id_inspecao, status, elaboracao_status, elaboracao_concluida_em)"
+        )
+        .eq("inspecoes.elaboracao_status", "CONCLUIDO")
+        .neq("inspecoes.status", "DELETADA")
+        .neq("status", "DELETADO")
+        .order("created_at", { ascending: false });
+      if (empresaId) {
+        q = q.eq("id_empresa", empresaId);
+      } else if (user?.perfil === "Tecnico" && user.empresas_vinculadas?.length) {
+        q = q.in("id_empresa", user.empresas_vinculadas);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []).map((r) => {
+        const insp = (r as { inspecoes?: { elaboracao_concluida_em?: string | null } | null }).inspecoes;
+        return { ...normalizarRelatorio(r), entregue_em: insp?.elaboracao_concluida_em ?? null };
+      });
+    },
+    enabled: !!user,
+  });
+}
+
+/**
+ * Em que pé a AEP está em relação à Sinalização Psicossocial — para a faixa
+ * do editor explicar por que ela aparece ou não.
+ */
+export function useSituacaoSinalizacaoAep(idRelatorio: string) {
+  return useQuery({
+    queryKey: ["aep-situacao-sinalizacao", idRelatorio],
+    enabled: !!idRelatorio,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("aep_relatorios")
+        .select("id_inspecao, inspecoes(id_inspecao, status, elaboracao_status, elaboracao_concluida_em)")
+        .eq("id_relatorio", idRelatorio)
+        .maybeSingle();
+      if (error) throw error;
+      const r = data as {
+        id_inspecao: string | null;
+        inspecoes: {
+          id_inspecao: string;
+          status: string;
+          elaboracao_status: string | null;
+          elaboracao_concluida_em: string | null;
+        } | null;
+      } | null;
+      return {
+        idInspecao: r?.id_inspecao ?? null,
+        entregue: r?.inspecoes?.elaboracao_status === "CONCLUIDO" && r?.inspecoes?.status !== "DELETADA",
+        entregueEm: r?.inspecoes?.elaboracao_concluida_em ?? null,
+      };
+    },
+  });
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function useAepRelatorio(id: string) {

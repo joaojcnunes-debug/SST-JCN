@@ -11,7 +11,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Building2, Layers } from "lucide-react";
-import { useAepRelatorios } from "@/lib/hooks/useAep";
+import { useAepsEntregues } from "@/lib/hooks/useAep";
 import { montarSinalizacao } from "@/lib/aep/sinalizacao";
 import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -55,7 +55,7 @@ export default function SinalizacaoEmpresaDetalhe({
   idEmpresa: string;
   basePath: string;
 }) {
-  const { data: relatorios = [], isLoading } = useAepRelatorios(idEmpresa);
+  const { data: relatorios = [], isLoading } = useAepsEntregues(idEmpresa);
   const sinal = useMemo(() => montarSinalizacao(relatorios)[0] ?? null, [relatorios]);
 
   const { data: cadastro } = useQuery({
@@ -123,7 +123,7 @@ export default function SinalizacaoEmpresaDetalhe({
         <LoadingSkeleton rows={6} />
       ) : !sinal ? (
         <p className="rounded-2xl border border-gray-100 bg-white p-10 text-center text-sm text-gray-500 shadow-sm">
-          Esta empresa não tem fator psicossocial sinalizado nas análises AEP.
+          Esta empresa não tem fator psicossocial sinalizado em AEP entregue ao cliente.
         </p>
       ) : (
         sinal.avaliacoes.map((a) => (
@@ -132,8 +132,8 @@ export default function SinalizacaoEmpresaDetalhe({
               <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">AEP</span>
               <h2 className="text-base font-semibold text-gray-900">Análise Ergonômica Preliminar</h2>
               <span className="text-xs text-gray-500">
-                {STATUS_ROTULO[a.status] ?? a.status}
-                {a.data ? ` · ${fmtData(a.data)}` : ""}
+                {a.data ? `Entregue ao cliente em ${fmtData(a.data)}` : STATUS_ROTULO[a.status] ?? a.status}
+                {a.idInspecao ? ` · ${a.idInspecao}` : ""}
                 {a.responsavel ? ` · ${a.responsavel}` : ""}
               </span>
             </div>
