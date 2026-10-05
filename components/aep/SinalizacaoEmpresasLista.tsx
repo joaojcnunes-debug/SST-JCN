@@ -7,7 +7,7 @@
 // (módulo AEP) e em /aep-psicossocial (menu do Painel SST); `basePath` diz
 // para onde vai o clique na empresa.
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Brain, Building2, ChevronRight, Search } from "lucide-react";
 import { useAepRelatorios } from "@/lib/hooks/useAep";
@@ -23,9 +23,12 @@ const inputCls =
 export default function SinalizacaoEmpresasLista({
   basePath,
   titulo = "Sinalização de Fatores Psicossociais",
+  extra,
 }: {
   basePath: string;
   titulo?: string;
+  /** Bloco opcional entre o cabeçalho e a busca (ex.: explicação da matriz). */
+  extra?: ReactNode;
 }) {
   const { data: relatorios = [], isLoading, error } = useAepRelatorios(null);
   const [busca, setBusca] = useState("");
@@ -48,6 +51,8 @@ export default function SinalizacaoEmpresasLista({
           empresa para ver os fatores por setor.
         </p>
       </div>
+
+      {extra}
 
       <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
         <div className="relative">
