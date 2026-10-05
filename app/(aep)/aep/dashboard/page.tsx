@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Printer } from "lucide-react";
 import { useAepRelatorios, riscoMaximoRelatorio, CLASS_COLOR_AEP, STATUS_LABEL_AEP, STATUS_COR_AEP } from "@/lib/hooks/useAep";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import FiltrosListaAep from "@/components/aep/FiltrosListaAep";
+import { FILTROS_LISTA_VAZIOS, filtrarAeps, type FiltrosListaAep as Filtros } from "@/lib/aep/filtros-lista";
+import { opcoesDistintas } from "@/lib/aep/sinalizacao-filtros";
 import type { ClassificacaoRiscoAET, StatusAEP } from "@/lib/supabase/types";
 
 const RISCO_DOT: Record<ClassificacaoRiscoAET, string> = {
@@ -19,10 +22,15 @@ const RISCO_DOT: Record<ClassificacaoRiscoAET, string> = {
 export default function AepDashboardPage() {
   const router = useRouter();
   const [empresaId, setEmpresaId] = useState<string | null>(null);
-  const { data: todos = [], isLoading } = useAepRelatorios(empresaId);
-  // Clique num cartão de status filtra a lista abaixo (clicar de novo limpa).
-  const [filtroStatus, setFiltroStatus] = useState<StatusAEP | null>(null);
-  const relatorios = filtroStatus ? todos.filter((r) => r.status === filtroStatus) : todos;
+  const { data: base = [], isLoading } = useAepRelatorios(empresaId);
+  // Filtros (2026-10-05). Os cartões contam com todos os filtros MENOS o de
+  // status — clicar num cartão de status liga/desliga esse filtro.
+  const [filtros, setFiltros] = useState<Filtros>(FILTROS_LISTA_VAZIOS);
+  const todos = useMemo(() => filtrarAeps(base, filtros, ["status"]), [base, filtros]);
+  const relatorios = useMemo(() => filtrarAeps(base, filtros), [base, filtros]);
+  const responsaveis = useMemo(() => opcoesDistintas(base.map((r) => r.responsavel_elaboracao)), [base]);
+  const filtroStatus: StatusAEP | null = filtros.status || null;
+  const setFiltroStatus = (s: StatusAEP | null) => setFiltros((f) => ({ ...f, status: s ?? "" }));
 
   const totalAnalises = todos.length;
   const porStatus = (s: StatusAEP) => todos.filter((r) => r.status === s).length;
@@ -78,6 +86,14 @@ export default function AepDashboardPage() {
           </button>
         </p>
       )}
+
+      <FiltrosListaAep
+        valor={filtros}
+        onChange={setFiltros}
+        responsaveis={responsaveis}
+        total={base.length}
+        mostrando={relatorios.length}
+      />
 
       {isLoading && <LoadingSkeleton rows={4} />}
 
