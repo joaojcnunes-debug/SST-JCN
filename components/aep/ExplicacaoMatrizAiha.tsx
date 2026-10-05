@@ -2,7 +2,7 @@
 
 // Explicação técnica e normativa da matriz de risco AIHA aplicada aos fatores
 // da Ergonomia Organizacional da AEP (página AEP do Painel SST, 2026-10-05).
-// A matriz, as faixas e as severidades padrão são lidas do sistema (matriz
+// Aparece também na Ajuda e na Sinalização do módulo AEP. A matriz, as faixas e as severidades padrão são lidas do sistema (matriz
 // ativa + SEVERIDADE_PADRAO_IDX), para o texto nunca divergir do cálculo.
 
 import { useState } from "react";
@@ -35,8 +35,8 @@ function Titulo({ children }: { children: React.ReactNode }) {
 const th = "border border-gray-200 bg-gray-50 px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500";
 const td = "border border-gray-200 px-3 py-2 align-top text-sm text-gray-700";
 
-export default function ExplicacaoMatrizAiha() {
-  const [aberto, setAberto] = useState(false);
+export default function ExplicacaoMatrizAiha({ abertoInicial = false }: { abertoInicial?: boolean }) {
+  const [aberto, setAberto] = useState(abertoInicial);
   const { data: matriz } = useMatrizAtiva();
 
   const probs = matriz?.probabilidades ?? [];
