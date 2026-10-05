@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Building2, Layers } from "lucide-react";
 import { useAepsEntregues } from "@/lib/hooks/useAep";
+import { useUnidades } from "@/lib/hooks/useUnidades";
 import { montarSinalizacao } from "@/lib/aep/sinalizacao";
 import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -37,6 +38,7 @@ interface EmpresaCadastro {
   cep: string | null;
   telefone: string | null;
   email: string | null;
+  id_unidade: string | null;
 }
 
 function Info({ rotulo, valor, className }: { rotulo: string; valor: string | null | undefined; className?: string }) {
@@ -64,7 +66,7 @@ export default function SinalizacaoEmpresaDetalhe({
       const { data, error } = await createSupabaseBrowserClient()
         .from("empresas")
         .select(
-          "nome_empresa, razao_social, nome_fantasia, cnpj, cnae_principal, cnae_descricao, grau_risco, logradouro, numero, complemento, bairro, municipio, uf, cep, telefone, email"
+          "nome_empresa, razao_social, nome_fantasia, cnpj, cnae_principal, cnae_descricao, grau_risco, logradouro, numero, complemento, bairro, municipio, uf, cep, telefone, email, id_unidade"
         )
         .eq("id_empresa", idEmpresa)
         .maybeSingle();
@@ -72,6 +74,10 @@ export default function SinalizacaoEmpresaDetalhe({
       return data as EmpresaCadastro | null;
     },
   });
+
+  const { data: unidades = [] } = useUnidades();
+  const unidade = cadastro?.id_unidade ? (unidades.find((u) => u.id_unidade === cadastro.id_unidade)?.nome ?? null) : null;
+  const regiao = [cadastro?.municipio, cadastro?.uf].filter(Boolean).join("/") || null;
 
   const endereco = cadastro
     ? [
@@ -115,6 +121,8 @@ export default function SinalizacaoEmpresaDetalhe({
         />
         <Info rotulo="Grau de risco" valor={cadastro?.grau_risco != null ? String(cadastro.grau_risco) : null} />
         <Info rotulo="Telefone" valor={cadastro?.telefone} />
+        <Info rotulo="Unidade" valor={unidade} />
+        <Info rotulo="Região (município/UF)" valor={regiao} />
         <Info rotulo="Endereço" valor={endereco} className="sm:col-span-2 lg:col-span-3" />
         <Info rotulo="E-mail" valor={cadastro?.email} />
       </div>
