@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   ClipboardPen,
   HelpCircle,
+  Grid3x3,
   Info,
   LayoutDashboard,
   List,
@@ -31,7 +32,7 @@ export default function AepLayout({ children }: { children: ReactNode }) {
 
   const match = pathname.match(/\/aep\/([^/]+)\//);
   const idRelatorio = match?.[1];
-  const isConfigPage = ["dashboard", "novo", "formulario-branco", "texto-padrao", "ajuda"].includes(idRelatorio ?? "");
+  const isConfigPage = ["dashboard", "novo", "formulario-branco", "texto-padrao", "ajuda", "matriz-aiha"].includes(idRelatorio ?? "");
 
   const sections = useMemo<NavSection[]>(() => {
     const base: NavSection[] = [
@@ -43,6 +44,7 @@ export default function AepLayout({ children }: { children: ReactNode }) {
           { href: "/aep/novo",                  label: "Nova Análise",         icon: Plus, variant: "action" },
           { href: "/aep/formulario-branco",     label: "Formulário em Branco", icon: ClipboardPen },
           { href: "/sinalizacao-psicossocial",  label: "Sinalização Psicoss.", icon: Brain },
+          { href: "/aep/matriz-aiha",           label: "Matriz AIHA",          icon: Grid3x3 },
           { href: "/aep/ajuda",                 label: "Ajuda",                icon: HelpCircle },
         ],
       },
