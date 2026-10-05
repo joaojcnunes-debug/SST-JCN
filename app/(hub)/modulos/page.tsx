@@ -31,6 +31,7 @@ import {
   KanbanSquare,
   Radio,
   Gauge,
+  Handshake,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
@@ -187,6 +188,19 @@ const CARDS: HubCardCfg[] = [
     icon: <HardDrive className="size-12" />,
     accent: "#1D4ED8",
     categoria: "interno",
+  },
+  {
+    // Comercial (2026-10-05): o que as AEPs entregues indicaram e a empresa
+    // ainda não contratou (AET, DRPS/Questionário) — para o time de vendas.
+    modulo: "comercial",
+    href: "/comercial",
+    title: "Comercial",
+    description: "Oportunidades de venda indicadas nas AEPs entregues: AET e DRPS/Questionário que a empresa ainda não contratou",
+    icon: <Handshake className="size-12" />,
+    accent: "#B45309",
+    categoria: "interno",
+    skipStats: true,
+    staticLabel: "Oportunidades · AET e DRPS",
   },
   {
     modulo: "dimensionamento",

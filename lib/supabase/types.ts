@@ -53,7 +53,8 @@ export type ModuloPermitido =
   | "equipamentos"
   | "frota"
   | "escala_supervisores"
-  | "dimensionamento";
+  | "dimensionamento"
+  | "comercial";
 
 export const TODOS_MODULOS: ModuloPermitido[] = [
   "painel",
@@ -73,6 +74,7 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "frota",
   "escala_supervisores",
   "dimensionamento",
+  "comercial",
 ];
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
@@ -93,6 +95,7 @@ export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   frota: "Frota JCN Consultoria – Checklist de Veículos",
   escala_supervisores: "Escala de Supervisores",
   dimensionamento: "Dimensionamento de Quadro (SST)",
+  comercial: "Comercial – Oportunidades de venda",
 };
 
 // ─── Investigação de Acidente de Trabalho ────────────────────────────────────
