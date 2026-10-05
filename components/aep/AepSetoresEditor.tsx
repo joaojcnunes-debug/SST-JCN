@@ -1,5 +1,6 @@
 "use client";
 
+import { MIN_ALERTAS_QUESTIONARIO, totalAlertasOrganizacionais } from "@/lib/aep/sinalizacao";
 import { chaveNome, type CargoCatalogo, type SetorCatalogo } from "@/lib/aep/catalogo-setores";
 import SituacaoSinalizacaoAep from "@/components/aep/SituacaoSinalizacaoAep";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
@@ -1226,12 +1227,8 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
 
       {/* Banner AEP → QPS */}
       {(() => {
-        const totalAlertasOrg = setores.reduce(
-          (acc, s) =>
-            acc + Object.values(s.checklist_organizacional).filter((v) => v === "sim").length,
-          0
-        );
-        if (totalAlertasOrg < 3) return null;
+        const totalAlertasOrg = totalAlertasOrganizacionais(setores);
+        if (totalAlertasOrg < MIN_ALERTAS_QUESTIONARIO) return null;
         return (
           <div className="flex items-start gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
             <AlertTriangle className="size-5 shrink-0 text-indigo-600 mt-0.5" />

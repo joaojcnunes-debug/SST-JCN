@@ -301,7 +301,7 @@ export function useAepsEntregues(empresaId?: string | null) {
       let q = supabase
         .from("aep_relatorios")
         .select(
-          "*, empresas(nome_empresa, cnpj), inspecoes!inner(id_inspecao, status, elaboracao_status, elaboracao_concluida_em)"
+          "*, empresas(nome_empresa, cnpj), inspecoes!inner(id_inspecao, status, elaboracao_status, elaboracao_concluida_em, elaboracao_responsavel)"
         )
         .eq("inspecoes.elaboracao_status", "CONCLUIDO")
         .neq("inspecoes.status", "DELETADA")
@@ -328,12 +328,21 @@ export function useAepsEntregues(empresaId?: string | null) {
       if (semInsp.error) throw semInsp.error;
       return [
         ...(comInsp.data ?? []).map((r) => {
-          const insp = (r as { inspecoes?: { elaboracao_concluida_em?: string | null } | null }).inspecoes;
-          return { ...normalizarRelatorio(r), entregue_em: insp?.elaboracao_concluida_em ?? null };
+          const insp = (
+            r as {
+              inspecoes?: { elaboracao_concluida_em?: string | null; elaboracao_responsavel?: string | null } | null;
+            }
+          ).inspecoes;
+          return {
+            ...normalizarRelatorio(r),
+            entregue_em: insp?.elaboracao_concluida_em ?? null,
+            enviado_por: insp?.elaboracao_responsavel ?? null,
+          };
         }),
         ...(semInsp.data ?? []).map((r) => ({
           ...normalizarRelatorio(r),
           entregue_em: (r as { concluido_em?: string | null }).concluido_em ?? null,
+          enviado_por: null,
         })),
       ];
     },

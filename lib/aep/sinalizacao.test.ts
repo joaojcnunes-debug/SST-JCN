@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { montarSinalizacao, piorNivel } from "./sinalizacao";
+import { montarSinalizacao, piorNivel, recomendaQuestionario } from "./sinalizacao";
 import type { AepRelatorio } from "@/lib/supabase/types";
 
 function rel(id: string, empresa: string, data: string, setores: unknown[]): AepRelatorio {
@@ -62,4 +62,19 @@ test("fator sem nível calculado não mostra probabilidade/severidade", () => {
 test("pior nível", () => {
   assert.equal(piorNivel(["Baixo", null, "Alto", "Moderado"]), "Alto");
   assert.equal(piorNivel([null, undefined]), null);
+});
+
+test("DRPS/Questionário a partir de 3 alertas organizacionais; AET e quem enviou vêm da AEP mais recente", () => {
+  const tres = { ...setorComAssedio, checklist_organizacional: { assedio: "sim", sobrecarga: "sim", baixo_controle: "sim" }, necessita_aet: true };
+  assert.equal(recomendaQuestionario([setorComAssedio] as never), false);
+  assert.equal(recomendaQuestionario([tres] as never), true);
+  const [e] = montarSinalizacao([
+    { ...rel("A1", "E1", "2026-01-01", [setorComAssedio]), entregue_em: "2026-01-05", enviado_por: "Ana" },
+    { ...rel("A2", "E1", "2026-02-01", [tres]), entregue_em: "2026-02-05", enviado_por: null, id_inspecao: "INS-1" } as never,
+  ]);
+  assert.equal(e.precisaQuestionario, true);
+  assert.equal(e.precisaAet, true);
+  assert.equal(e.realizadaPor, "Fulano");
+  assert.equal(e.enviadoPor, null);
+  assert.equal(e.temInspecao, true);
 });

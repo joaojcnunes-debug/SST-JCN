@@ -20,6 +20,17 @@ import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 const inputCls =
   "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
 
+/** "Necessário" (âmbar) ou "Não" (cinza). */
+function Indicacao({ sim }: { sim: boolean }) {
+  return sim ? (
+    <span className="inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+      Necessário
+    </span>
+  ) : (
+    <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-500">Não</span>
+  );
+}
+
 export default function SinalizacaoEmpresasLista({
   basePath,
   titulo = "Sinalização de Fatores Psicossociais",
@@ -89,6 +100,26 @@ export default function SinalizacaoEmpresasLista({
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-semibold text-gray-900">{e.nome}</div>
                     <div className="text-xs text-gray-500">{e.cnpj ? formatCNPJ(e.cnpj) : "—"}</div>
+                  </div>
+                  <div className="hidden w-28 lg:block" title="3+ alertas organizacionais na AEP recomendam DRPS/Questionário Psicossocial (NR-01)">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-400">DRPS/Questionário</div>
+                    <Indicacao sim={e.precisaQuestionario} />
+                  </div>
+                  <div className="hidden w-20 lg:block" title="Algum setor com indicação de Análise Ergonômica do Trabalho">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-400">AET</div>
+                    <Indicacao sim={e.precisaAet} />
+                  </div>
+                  <div className="hidden w-36 lg:block">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-400">Realizada por</div>
+                    <div className="truncate text-xs text-gray-700" title={e.realizadaPor ?? undefined}>
+                      {e.realizadaPor ?? "—"}
+                    </div>
+                  </div>
+                  <div className="hidden w-36 lg:block">
+                    <div className="text-[10px] uppercase tracking-wide text-gray-400">Enviada por</div>
+                    <div className="truncate text-xs text-gray-700" title={e.enviadoPor ?? undefined}>
+                      {e.temInspecao ? (e.enviadoPor ?? "—") : <span className="text-gray-400">Sem inspeção</span>}
+                    </div>
                   </div>
                   <div className="hidden sm:block" title="Maior nível AIHA entre os fatores da empresa">
                     <SeloNivelAiha nivel={e.pior} />
