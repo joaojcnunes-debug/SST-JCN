@@ -1,5 +1,6 @@
 "use client";
 
+import { situacaoQuestionario, type SituacaoQuestionario } from "@/lib/aep/sinalizacao";
 import { montarCatalogoSetores } from "@/lib/aep/catalogo-setores";
 import { contagemParaAet } from "@/lib/aep/aiha-organizacional";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -301,7 +302,7 @@ export function useAepsEntregues(empresaId?: string | null) {
       let q = supabase
         .from("aep_relatorios")
         .select(
-          "*, empresas(nome_empresa, cnpj), inspecoes!inner(id_inspecao, status, elaboracao_status, elaboracao_concluida_em, elaboracao_responsavel)"
+          "*, empresas(nome_empresa, cnpj, municipio, uf, id_unidade), inspecoes!inner(id_inspecao, status, elaboracao_status, elaboracao_concluida_em, elaboracao_responsavel)"
         )
         .eq("inspecoes.elaboracao_status", "CONCLUIDO")
         .neq("inspecoes.status", "DELETADA")
@@ -314,7 +315,7 @@ export function useAepsEntregues(empresaId?: string | null) {
       }
       let q2 = supabase
         .from("aep_relatorios")
-        .select("*, empresas(nome_empresa, cnpj)")
+        .select("*, empresas(nome_empresa, cnpj, municipio, uf, id_unidade)")
         .is("id_inspecao", null)
         .eq("status", "CONCLUIDO")
         .order("created_at", { ascending: false });
@@ -347,6 +348,39 @@ export function useAepsEntregues(empresaId?: string | null) {
       ];
     },
     enabled: !!user,
+  });
+}
+
+/**
+ * Situação do DRPS e do Questionário Psicossocial (QPS) de cada empresa — para
+ * a Sinalização dizer se o que a AEP recomenda já foi feito.
+ */
+export function useSituacaoQuestionarioEmpresas(idsEmpresas: string[]) {
+  const ids = [...new Set(idsEmpresas)].sort();
+  return useQuery({
+    queryKey: ["situacao-questionario-empresas", ids],
+    enabled: ids.length > 0,
+    staleTime: 60_000,
+    queryFn: async (): Promise<Record<string, SituacaoQuestionario>> => {
+      // drps_* e qps_* não estão (todas) no tipo `Database`.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const sb = createSupabaseBrowserClient() as any;
+      const [d, q] = await Promise.all([
+        sb.from("drps_relatorios").select("id_empresa, status").in("id_empresa", ids),
+        sb.from("qps_aplicacoes").select("id_empresa, status").in("id_empresa", ids),
+      ]);
+      if (d.error) throw d.error;
+      if (q.error) throw q.error;
+      type Linha = { id_empresa: string; status: string | null };
+      const out: Record<string, SituacaoQuestionario> = {};
+      for (const id of ids) {
+        out[id] = situacaoQuestionario(
+          ((d.data ?? []) as Linha[]).filter((r) => r.id_empresa === id).map((r) => r.status),
+          ((q.data ?? []) as Linha[]).filter((r) => r.id_empresa === id).map((r) => r.status),
+        );
+      }
+      return out;
+    },
   });
 }
 

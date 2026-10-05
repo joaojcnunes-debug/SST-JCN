@@ -66,6 +66,10 @@ export interface EmpresaSinalizada {
   realizadaPor: string | null;
   enviadoPor: string | null;
   temInspecao: boolean;
+  /** Cadastro da empresa: unidade (= região no SGG) e município/UF. */
+  idUnidade: string | null;
+  municipio: string | null;
+  uf: string | null;
 }
 
 /** Mínimo de alertas organizacionais ("Sim") na AEP para recomendar DRPS/Questionário. */
@@ -86,6 +90,35 @@ export function totalAlertasOrganizacionais(setores: AepRelatorio["setores"]): n
  */
 export function recomendaQuestionario(setores: AepRelatorio["setores"]): boolean {
   return totalAlertasOrganizacionais(setores) >= MIN_ALERTAS_QUESTIONARIO;
+}
+
+/** Situação do DRPS/Questionário Psicossocial que a empresa JÁ TEM. */
+export interface SituacaoQuestionario {
+  /** "concluido" = concluído ou enviado ao cliente; "andamento" = rascunho/em andamento. */
+  fase: "concluido" | "andamento" | null;
+  /** Qual documento define a frase: DRPS ou Questionário. */
+  doc: "DRPS" | "Questionário" | null;
+}
+
+const FASE_DOC: Record<string, "concluido" | "andamento"> = {
+  CONCLUIDO: "concluido",
+  ENVIADO_CLIENTE: "concluido",
+  RASCUNHO: "andamento",
+  EM_ANDAMENTO: "andamento",
+};
+
+/**
+ * O melhor estado entre os DRPS e Questionários (QPS) da empresa: concluído
+ * vence andamento; DRPS vem antes do Questionário no empate. Deletados e
+ * outros status não contam (mesma régua do quadro Documentos da empresa).
+ */
+export function situacaoQuestionario(statusDrps: (string | null)[], statusQps: (string | null)[]): SituacaoQuestionario {
+  const fase = (lista: (string | null)[], f: "concluido" | "andamento") => lista.some((s) => FASE_DOC[s ?? ""] === f);
+  for (const f of ["concluido", "andamento"] as const) {
+    if (fase(statusDrps, f)) return { fase: f, doc: "DRPS" };
+    if (fase(statusQps, f)) return { fase: f, doc: "Questionário" };
+  }
+  return { fase: null, doc: null };
 }
 
 export function piorNivel(niveis: (string | null | undefined)[]): string | null {
@@ -136,12 +169,16 @@ export function montarSinalizacao(relatorios: AepEntregue[]): EmpresaSinalizada[
     if (setores.length === 0) continue;
 
     const id = rel.id_empresa;
+    const cad = rel.empresas as { id_unidade?: string | null; municipio?: string | null; uf?: string | null } | null;
     let alvo = porEmpresa.get(id);
     if (!alvo) {
       alvo = {
         idEmpresa: id,
         nome: rel.empresas?.nome_empresa ?? "Empresa sem cadastro",
         cnpj: rel.empresas?.cnpj ?? null,
+        idUnidade: cad?.id_unidade ?? null,
+        municipio: cad?.municipio ?? null,
+        uf: cad?.uf ?? null,
         avaliacoes: [],
         totalSetores: 0,
         totalAlertas: 0,

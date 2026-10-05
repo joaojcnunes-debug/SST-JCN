@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { montarSinalizacao, piorNivel, recomendaQuestionario } from "./sinalizacao";
+import { montarSinalizacao, piorNivel, recomendaQuestionario, situacaoQuestionario } from "./sinalizacao";
 import type { AepRelatorio } from "@/lib/supabase/types";
 
 function rel(id: string, empresa: string, data: string, setores: unknown[]): AepRelatorio {
@@ -77,4 +77,12 @@ test("DRPS/Questionário a partir de 3 alertas organizacionais; AET e quem envio
   assert.equal(e.realizadaPor, "Fulano");
   assert.equal(e.enviadoPor, null);
   assert.equal(e.temInspecao, true);
+});
+
+test("situação do DRPS/Questionário: concluído vence andamento; DRPS antes do Questionário", () => {
+  assert.deepEqual(situacaoQuestionario([], []), { fase: null, doc: null });
+  assert.deepEqual(situacaoQuestionario(["DELETADO"], [null]), { fase: null, doc: null });
+  assert.deepEqual(situacaoQuestionario(["RASCUNHO"], ["ENVIADO_CLIENTE"]), { fase: "concluido", doc: "Questionário" });
+  assert.deepEqual(situacaoQuestionario(["EM_ANDAMENTO"], ["RASCUNHO"]), { fase: "andamento", doc: "DRPS" });
+  assert.deepEqual(situacaoQuestionario(["CONCLUIDO"], ["CONCLUIDO"]), { fase: "concluido", doc: "DRPS" });
 });
