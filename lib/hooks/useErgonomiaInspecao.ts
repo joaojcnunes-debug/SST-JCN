@@ -241,6 +241,71 @@ export function useCriarAepNoModulo() {
   });
 }
 
+/**
+ * Troca a inspeção de uma AEP JÁ EXISTENTE (editor da AEP, 2026-10-05):
+ * registrar numa inspeção realizada, numa inspeção nova em branco, ou deixar
+ * sem inspeção. Os setores da AEP não mudam — ela já tem o próprio conteúdo.
+ */
+export function useAlterarInspecaoAep() {
+  const qc = useQueryClient();
+  const user = useUserStore((s) => s.user);
+  return useMutation({
+    mutationFn: async (args: {
+      idRelatorio: string;
+      idEmpresa: string;
+      vinculo: VinculoInspecao;
+      id_inspecao?: string | null;
+      revisao_nova?: number;
+    }) => {
+      const sb = db();
+      const agora = new Date().toISOString();
+      let idInspecao: string | null = null;
+      if (args.vinculo === "existente") {
+        if (!args.id_inspecao) throw new Error("Selecione a inspeção.");
+        idInspecao = args.id_inspecao;
+      } else if (args.vinculo === "nova") {
+        idInspecao = gerarId("INS");
+        const { error } = await sb.from("inspecoes").insert({
+          id_inspecao: idInspecao,
+          id_empresa: args.idEmpresa,
+          data_inspecao: agora.slice(0, 10),
+          status: "EM_ANDAMENTO",
+          revisao: args.revisao_nova ?? 1,
+          responsavel: user?.nome ?? null,
+          observacoes: "Criada a partir do módulo AEP.",
+          tipo_criacao: "BRANCO",
+          id_inspecao_base: null,
+          usuario: user?.email ?? null,
+          created_at: agora,
+          updated_at: agora,
+        });
+        if (error) throw error;
+      }
+      // Com inspeção: marca como enviada ao módulo (a AEP já está no módulo).
+      const patch: Record<string, unknown> = { id_inspecao: idInspecao, updated_at: agora };
+      if (idInspecao) patch.enviado_modulo_em = agora;
+      const { error } = await sb.from("aep_relatorios").update(patch).eq("id_relatorio", args.idRelatorio);
+      if (error) {
+        if (String(error.code) === "23505") throw new Error("Esta inspeção já tem uma AEP. Escolha outra inspeção.");
+        throw error;
+      }
+      return idInspecao;
+    },
+    onSuccess: (idInspecao, args) => {
+      qc.invalidateQueries({ queryKey: ["aep-situacao-sinalizacao", args.idRelatorio] });
+      qc.invalidateQueries({ queryKey: ["aep-relatorios"] });
+      qc.invalidateQueries({ queryKey: ["aep-entregues"] });
+      qc.invalidateQueries({ queryKey: ["inspecoes", args.idEmpresa] });
+      qc.invalidateQueries({ queryKey: ["aeps-com-inspecao", args.idEmpresa] });
+      qc.invalidateQueries({ queryKey: ["ergo-inspecao", "aep"] });
+      toast.success(
+        idInspecao ? `AEP registrada na inspeção ${idInspecao}` : "AEP desvinculada da inspeção"
+      );
+    },
+    onError: (e: Error) => toast.error(e.message || "Falha ao alterar a inspeção da AEP"),
+  });
+}
+
 /** Inspeções da empresa que já têm AEP (uma inspeção só pode ter uma). */
 export function useInspecoesComAep(idEmpresa: string | null) {
   return useQuery({

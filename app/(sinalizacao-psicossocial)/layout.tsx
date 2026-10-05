@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { Brain, Home } from "lucide-react";
+import { Brain, Grid3x3, Home } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -12,6 +12,7 @@ const SECTIONS: NavSection[] = [
     label: "Sinalização Psicossocial",
     items: [
       { href: "/sinalizacao-psicossocial", label: "Painel de Alertas", icon: Brain },
+      { href: "/sinalizacao-matriz-aiha", label: "Matriz AIHA", icon: Grid3x3 },
     ],
   },
   {

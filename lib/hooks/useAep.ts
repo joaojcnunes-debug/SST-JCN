@@ -331,11 +331,12 @@ export function useSituacaoSinalizacaoAep(idRelatorio: string) {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("aep_relatorios")
-        .select("id_inspecao, inspecoes(id_inspecao, status, elaboracao_status, elaboracao_concluida_em)")
+        .select("id_empresa, id_inspecao, inspecoes(id_inspecao, status, elaboracao_status, elaboracao_concluida_em)")
         .eq("id_relatorio", idRelatorio)
         .maybeSingle();
       if (error) throw error;
       const r = data as {
+        id_empresa: string;
         id_inspecao: string | null;
         inspecoes: {
           id_inspecao: string;
@@ -345,6 +346,7 @@ export function useSituacaoSinalizacaoAep(idRelatorio: string) {
         } | null;
       } | null;
       return {
+        idEmpresa: r?.id_empresa ?? null,
         idInspecao: r?.id_inspecao ?? null,
         entregue: r?.inspecoes?.elaboracao_status === "CONCLUIDO" && r?.inspecoes?.status !== "DELETADA",
         entregueEm: r?.inspecoes?.elaboracao_concluida_em ?? null,
