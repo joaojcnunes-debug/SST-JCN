@@ -1,8 +1,9 @@
 "use client";
 
 // Abas AEP e AET da inspeção (v259). O conteúdo é o editor do próprio módulo
-// — mesmo laudo, mesmas telas — e o botão "Enviar para o módulo" o libera nas
-// listas do AEP/AET; "Excluir" manda o laudo para a Lixeira. Ver `lib/hooks/useErgonomiaInspecao.ts`.
+// — mesmo laudo, mesmas telas. Ao iniciar, o laudo já fica cadastrado no
+// módulo AEP/AET (2026-10-05); "Enviar para o módulo" só aparece para laudo
+// antigo que ficou só na inspeção. "Excluir" manda o laudo para a Lixeira. Ver `lib/hooks/useErgonomiaInspecao.ts`.
 
 import { useState } from "react";
 import Link from "next/link";
@@ -76,8 +77,8 @@ export default function ErgonomiaTab({ tipo, idInspecao, idEmpresa, empresa, set
         <p className="mt-1 text-sm text-gray-500">
           Preencha a {rotulo} completa aqui, durante a inspeção. Ela já começa com{" "}
           <strong>{setores.length} setor{setores.length !== 1 ? "es" : ""}</strong> e{" "}
-          <strong>{cargos.length} cargo{cargos.length !== 1 ? "s" : ""}</strong> desta inspeção. Quando terminar,
-          use &quot;Enviar para o módulo {rotulo}&quot; para ela aparecer no módulo.
+          <strong>{cargos.length} cargo{cargos.length !== 1 ? "s" : ""}</strong> desta inspeção e já fica cadastrada
+          no módulo {rotulo} — é o mesmo laudo nos dois lugares.
         </p>
         {readOnly ? (
           <p className="mt-4 text-xs text-gray-400">Seu perfil não pode iniciar a {rotulo}.</p>
@@ -159,7 +160,7 @@ export default function ErgonomiaTab({ tipo, idInspecao, idEmpresa, empresa, set
                 const ok = await confirmar({
                   title: `Excluir a ${rotulo} desta inspeção?`,
                   description: enviado
-                    ? `A ${rotulo} sai desta inspeção e também do módulo ${rotulo} (é o mesmo laudo). Ela vai para a Lixeira e pode ser restaurada.`
+                    ? `A ${rotulo} sai desta inspeção e também do módulo ${rotulo} (é o mesmo laudo). Ela vai para a Lixeira e pode ser restaurada; depois, a aba volta a oferecer "Iniciar ${rotulo}".`
                     : `A ${rotulo} vai para a Lixeira e pode ser restaurada. Depois, a aba volta a oferecer "Iniciar ${rotulo}".`,
                   confirmLabel: "Excluir",
                   variant: "danger",
