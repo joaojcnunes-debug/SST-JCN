@@ -9,6 +9,9 @@ import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import FiltrosListaAep from "@/components/aep/FiltrosListaAep";
+import { FILTROS_LISTA_VAZIOS, filtrarAeps, type FiltrosListaAep as Filtros } from "@/lib/aep/filtros-lista";
+import { opcoesDistintas } from "@/lib/aep/sinalizacao-filtros";
 import type { AepRelatorio, ClassificacaoRiscoAET } from "@/lib/supabase/types";
 
 const RISCO_DOT: Record<ClassificacaoRiscoAET, string> = {
@@ -25,7 +28,11 @@ export default function AepListaPage() {
   const [confirmarExcluir, setConfirmarExcluir] = useState<AepRelatorio | null>(null);
   const { data: relatoriosAll = [], isLoading } = useAepRelatorios(empresaId);
   const { unidadeId, inUnidade } = useUnidadeFiltro();
-  const relatorios = useMemo(() => relatoriosAll.filter((r) => inUnidade(r.id_empresa)), [relatoriosAll, inUnidade]);
+  const daUnidade = useMemo(() => relatoriosAll.filter((r) => inUnidade(r.id_empresa)), [relatoriosAll, inUnidade]);
+  // Filtros da lista (2026-10-05): status, AET, nível AIHA, inspeção, responsável e período.
+  const [filtros, setFiltros] = useState<Filtros>(FILTROS_LISTA_VAZIOS);
+  const relatorios = useMemo(() => filtrarAeps(daUnidade, filtros), [daUnidade, filtros]);
+  const responsaveis = useMemo(() => opcoesDistintas(daUnidade.map((r) => r.responsavel_elaboracao)), [daUnidade]);
   const excluir = useExcluirAep();
   const canCreate = useCanCreate();
   const canDelete = useCanDelete();
@@ -57,6 +64,14 @@ export default function AepListaPage() {
           unidadeId={unidadeId}
         />
       </div>
+
+      <FiltrosListaAep
+        valor={filtros}
+        onChange={setFiltros}
+        responsaveis={responsaveis}
+        total={daUnidade.length}
+        mostrando={relatorios.length}
+      />
 
       {isLoading && <LoadingSkeleton rows={4} />}
 
