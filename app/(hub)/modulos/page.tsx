@@ -37,6 +37,7 @@ import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import { useHomeStats, type ModuloStats } from "@/lib/hooks/useHomeStats";
+import { useComercial } from "@/lib/hooks/useComercial";
 import { useMeuPapelGestao } from "@/lib/hooks/useGestaoAcesso";
 import { vePresencaAuditoria } from "@/lib/hooks/useUsuario";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -188,19 +189,6 @@ const CARDS: HubCardCfg[] = [
     icon: <HardDrive className="size-12" />,
     accent: "#1D4ED8",
     categoria: "interno",
-  },
-  {
-    // Comercial (2026-10-05): o que as AEPs entregues indicaram e a empresa
-    // ainda não contratou (AET, DRPS/Questionário) — para o time de vendas.
-    modulo: "comercial",
-    href: "/comercial",
-    title: "Comercial",
-    description: "Oportunidades de venda indicadas nas AEPs entregues: AET e DRPS/Questionário que a empresa ainda não contratou",
-    icon: <Handshake className="size-12" />,
-    accent: "#B45309",
-    categoria: "interno",
-    skipStats: true,
-    staticLabel: "Oportunidades · AET e DRPS",
   },
   {
     modulo: "dimensionamento",
@@ -518,7 +506,7 @@ function InicioContent() {
             // +1 Empresa (todos internos) + Gestão Gerencial (quem tem o módulo)
             // + PDFs (admin) + Gestão Chabra (quem está no roster) + Presença (admin ou gerência, v231).
             const totalCards =
-              visibleCats.length + 1 + (modulosPermitidos.has("gestao_gerencial") ? 1 : 0) + (isAdmin ? 1 : 0) + (vePresenca ? 1 : 0) + (temGestaoChabra ? 1 : 0);
+              visibleCats.length + 1 + (modulosPermitidos.has("gestao_gerencial") ? 1 : 0) + (modulosPermitidos.has("comercial") ? 1 : 0) + (isAdmin ? 1 : 0) + (vePresenca ? 1 : 0) + (temGestaoChabra ? 1 : 0);
             return (
               <div
                 className={cn(
@@ -554,6 +542,7 @@ function InicioContent() {
                   );
                 })}
                 <EmpresaDirectCard />
+                {modulosPermitidos.has("comercial") && <ComercialDirectCard />}
                 {modulosPermitidos.has("gestao_gerencial") && <GestaoGerencialDirectCard />}
                 {isAdmin && <PdfDirectCard />}
                 {temGestaoChabra && <GestaoChabraDirectCard />}
@@ -703,6 +692,57 @@ function EmpresaDirectCard() {
           Cadastro
         </span>
         <span className="text-gray-500">Todos os módulos</span>
+        <ArrowRight
+          className="ml-auto size-4 transition-transform group-hover:translate-x-1"
+          style={{ color: accent }}
+        />
+      </div>
+    </Link>
+  );
+}
+
+/**
+ * Comercial (2026-10-05) direto na tela principal, como Empresas: o que as
+ * AEPs entregues indicaram e a empresa ainda não contratou (AET, DRPS/
+ * Questionário). Mostra quantas oportunidades estão em aberto.
+ */
+function ComercialDirectCard() {
+  const accent = "#B45309";
+  const { data: lista, isLoading } = useComercial();
+  const abertas = (lista ?? []).reduce(
+    (n, c) => n + c.oportunidades.filter((o) => o.situacao === "aberta").length,
+    0,
+  );
+  return (
+    <Link
+      href="/comercial"
+      className="group flex w-full flex-col gap-4 glass tilt-3d sheen reveal-up rounded-2xl p-6 text-left"
+    >
+      <div className="flex items-start gap-4">
+        <div
+          className="flex size-16 shrink-0 items-center justify-center rounded-2xl text-white shadow-md transition-transform group-hover:scale-105"
+          style={{ backgroundColor: accent }}
+        >
+          <Handshake className="size-12" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg font-bold text-gray-900">Comercial</h2>
+          <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">
+            Oportunidades de venda das AEPs entregues: AET e DRPS/Questionário
+          </p>
+        </div>
+      </div>
+      <div className="flex min-h-[40px] items-center gap-2 border-t border-gray-100 pt-3 text-xs">
+        <span className="rounded-full px-2 py-0.5 font-semibold text-white" style={{ backgroundColor: accent }}>
+          Vendas
+        </span>
+        <span className={abertas > 0 ? "font-medium text-amber-700" : "text-gray-500"}>
+          {isLoading
+            ? "Carregando..."
+            : abertas > 0
+              ? `${abertas} oportunidade${abertas !== 1 ? "s" : ""} em aberto`
+              : "Nenhuma em aberto"}
+        </span>
         <ArrowRight
           className="ml-auto size-4 transition-transform group-hover:translate-x-1"
           style={{ color: accent }}

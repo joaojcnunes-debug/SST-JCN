@@ -212,7 +212,7 @@ A **Gestão (kanban)** não é um módulo de `modulos_permitidos`: o acesso vem 
 ### 3.2 Hub
 
 - `/inicio` e `/visao-geral` (`VisaoGeralView`): unidades clicáveis (definem a unidade ativa), pendências por módulo, atividade recente, vencimentos e validade de laudos (vencido / vence em 60 dias / em dia), gráficos. Link para `/validades`.
-- `/modulos`: cartões dos módulos permitidos, agrupados em Segurança do Trabalho, NR — Fatores Psicossociais e JCN Sistema Interno, ordenados por pendências. Cartões extras: Gestão Gerencial, PDFs (Admin), Presença, Gestão JCN (membros), Sistema (Admin).
+- `/modulos`: cartões dos módulos permitidos, agrupados em Segurança do Trabalho, NR — Fatores Psicossociais e JCN Sistema Interno, ordenados por pendências. Cartões extras: Comercial (quem tem o módulo), Gestão Gerencial, PDFs (Admin), Presença, Gestão JCN (membros), Sistema (Admin).
 
 ### 3.3 Layout dos módulos
 
@@ -549,7 +549,7 @@ Headcount por unidade e função. `precisa = Σ clientes que vencem no mês × p
 
 ### 9.9 Comercial (`/comercial`, regra `lib/comercial/oportunidades.ts`, testada)
 
-Módulo `comercial` (card "Comercial" em JCN Sistema Interno, 2026-10-05) para o time de vendas: transforma as **AEPs entregues ao cliente** (mesma regra da Sinalização) em **oportunidades** de serviço vendido à parte — **AET** (algum setor com Necessita AET, inclusive só por ergonomia física/cognitiva) e **DRPS/Questionário Psicossocial** (3+ alertas organizacionais). Situação de cada uma pelo que a empresa já tem: **aberta** (nenhum documento do serviço), **em andamento** (AET/DRPS/QPS em rascunho ou andamento), **realizada** (concluído/enviado). Base: a AEP entregue mais recente da empresa.
+Módulo `comercial` (card próprio **"Comercial" na tela principal de Módulos**, ao lado de Empresas, com o número de oportunidades em aberto; 2026-10-05) para o time de vendas: transforma as **AEPs entregues ao cliente** (mesma regra da Sinalização) em **oportunidades** de serviço vendido à parte — **AET** (algum setor com Necessita AET, inclusive só por ergonomia física/cognitiva) e **DRPS/Questionário Psicossocial** (3+ alertas organizacionais). Situação de cada uma pelo que a empresa já tem: **aberta** (nenhum documento do serviço), **em andamento** (AET/DRPS/QPS em rascunho ou andamento), **realizada** (concluído/enviado). Base: a AEP entregue mais recente da empresa.
 
 Tela **Oportunidades**: contadores (AET em aberto, trabalhadores expostos nos setores AET em aberto — base do orçamento, DRPS/Questionário em aberto, em andamento), filtros (produto, situação — padrão "aberta" —, unidade, nível AIHA, busca por empresa/CNPJ/unidade/município), cartão por empresa com CNPJ, unidade · região, telefone e e-mail clicáveis, nível AIHA, data da entrega, um bloco por oportunidade (setores indicados com expostos) e quem realizou/enviou a AEP; **Exportar (Excel)** gera CSV com uma linha por oportunidade. Menu também com **Matriz AIHA** (`/comercial-matriz-aiha`).
 
