@@ -79,7 +79,7 @@ test("AEP: AET só pela ergonomia física entra; sem indicação não entra", ()
   assert.equal(r[0].expostosAet, 5);
 });
 
-test("Inspeção: NR-12, medição, químicos, AEP, psicossocial e treinamentos", () => {
+test("Inspeção: NR-12, medição, químicos, psicossocial e treinamentos (AEP não é produto)", () => {
   const [c] = montarComercial(
     [],
     [
@@ -99,16 +99,15 @@ test("Inspeção: NR-12, medição, químicos, AEP, psicossocial e treinamentos"
     [{ id_empresa: "E1", nr: "NR 6" }],
   );
   assert.deepEqual(produtos(c), [
-    ["AEP", "aberta"],
     ["DRPS/Questionário", "aberta"],
     ["Apreciação NR-12", "andamento"],
     ["Medição quantitativa", "aberta"],
     ["Análise de Químicos", "realizada"],
     ["Treinamentos NR", "andamento"],
   ]);
-  assert.deepEqual(c.oportunidades[2].detalhes, ["Serra (grau alto) · necessita adequação"]);
-  assert.deepEqual(c.oportunidades[3].detalhes, ["Dosimetria · Produção"]);
-  assert.match(c.oportunidades[5].detalhes[0], /certificado emitido/);
+  assert.deepEqual(c.oportunidades[1].detalhes, ["Serra (grau alto) · necessita adequação"]);
+  assert.deepEqual(c.oportunidades[2].detalhes, ["Dosimetria · Produção"]);
+  assert.match(c.oportunidades[4].detalhes[0], /certificado emitido/);
   assert.equal(c.inspecao?.idInspecao, "INS-E1");
   assert.equal(c.temAep, false);
 });
@@ -156,7 +155,7 @@ test("DRPS concluído antes da AEP vira revisão recomendada; depois, realizada"
   assert.match(drps?.detalhes.join(" ") ?? "", /DRPS concluído em 30\/06\/2026, antes da indicação de 05\/10\/2026/);
 });
 
-test("revisão também para AET, AEP, Apreciação NR-12 e Químicos concluídos antes da indicação", () => {
+test("revisão também para AET, Apreciação NR-12 e Químicos concluídos antes da indicação", () => {
   const [c] = montarComercial(
     [aep("A1", "E1", [setorSoFisico])],
     [
@@ -170,7 +169,7 @@ test("revisão também para AET, AEP, Apreciação NR-12 e Químicos concluídos
   const s = Object.fromEntries(c.oportunidades.map((o) => [o.produto, o.situacao]));
   assert.equal(s["AET"], "revisao");
   assert.equal(s["Apreciação NR-12"], "revisao");
-  assert.equal(s["AEP"], "revisao");
+  assert.equal(s["AEP"], undefined);
   assert.equal(s["Análise de Químicos"], "realizada");
   const nr12 = c.oportunidades.find((o) => o.produto === "Apreciação NR-12");
   assert.match(nr12?.detalhes.join(" ") ?? "", /Apreciação de Máquinas concluído em 01\/02\/2026, antes da indicação de 03\/10\/2026/);

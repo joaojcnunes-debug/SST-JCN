@@ -2,7 +2,7 @@
 
 // Comercial › Oportunidades (2026-10-05). Para quem vende: cada empresa com
 // serviços indicados pela AEP entregue (AET, DRPS/Questionário) ou pela última
-// inspeção concluída (Apreciação NR-12, medição, químicos, AEP, DRPS,
+// inspeção concluída (Apreciação NR-12, medição, químicos, DRPS,
 // treinamentos), com a situação (aberta / em andamento / realizada), o que
 // justifica cada uma e o contato da empresa. Regra em lib/comercial/oportunidades.ts.
 
@@ -143,7 +143,7 @@ export default function ComercialPage() {
             Só entram inspeções e AEPs <strong>liberadas para o Comercial</strong> pela equipe. Serviços que a JCN já
             identificou no cliente e que a empresa ainda não contratou: pela{" "}
             <strong>AEP entregue</strong> (AET e DRPS/Questionário) e pela <strong>última inspeção concluída</strong>{" "}
-            (Apreciação NR-12, medição quantitativa, Análise de Químicos, AEP, DRPS/Questionário e treinamentos NR).
+            (Apreciação NR-12, medição quantitativa, Análise de Químicos, DRPS/Questionário e treinamentos NR).
           </p>
         </div>
         <button
