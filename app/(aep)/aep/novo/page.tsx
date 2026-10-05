@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
-import { useCriarAep } from "@/lib/hooks/useAep";
+import {
+  useCriarAepNoModulo,
+  useInspecoesComAep,
+  type VinculoInspecao,
+} from "@/lib/hooks/useErgonomiaInspecao";
+import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
+import { cn, fmtData } from "@/lib/utils";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
@@ -11,7 +17,7 @@ import { montarEnderecoEmpresa } from "@/lib/textos-padrao/variaveis";
 
 export default function AepNovoPage() {
   const router = useRouter();
-  const criar = useCriarAep();
+  const criar = useCriarAepNoModulo();
 
   const [empresaId, setEmpresaId] = useState<string | null>(null);
   const { data: empresa } = useEmpresa(empresaId);
@@ -20,6 +26,18 @@ export default function AepNovoPage() {
   const [titulo, setTitulo] = useState("");
   const [registro, setRegistro] = useState("");
   const [data, setData] = useState(() => new Date().toISOString().slice(0, 10));
+
+  // Onde a AEP fica registrada (2026-10-05): solta no módulo, numa inspeção
+  // já realizada ou numa inspeção nova criada agora.
+  const [vinculo, setVinculo] = useState<VinculoInspecao>("nenhum");
+  const [idInspecao, setIdInspecao] = useState("");
+  const { data: inspecoes = [] } = useInspecoesByEmpresa(empresaId);
+  const { data: comAep } = useInspecoesComAep(empresaId);
+  const inspecoesAtivas = useMemo(() => inspecoes.filter((i) => i.status !== "DELETADA"), [inspecoes]);
+  const proximaRevisao = useMemo(
+    () => Math.max(0, ...inspecoes.map((i) => i.revisao ?? 0)) + 1,
+    [inspecoes],
+  );
 
   // O endereço mora no cadastro da empresa em campos separados (logradouro,
   // número, bairro, município, UF, CEP). A caixa aqui é uma linha só, então
@@ -40,12 +58,17 @@ export default function AepNovoPage() {
   function handleEmpresaChange(id: string | null) {
     enderecoEditado.current = false;
     setEmpresaId(id);
+    setIdInspecao("");
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!empresaId || !responsavel.trim()) return;
+    if (vinculo === "existente" && !idInspecao) return;
     const result = await criar.mutateAsync({
+      vinculo,
+      id_inspecao: vinculo === "existente" ? idInspecao : null,
+      revisao_nova: proximaRevisao,
       id_empresa: empresaId,
       responsavel_elaboracao: responsavel.trim(),
       titulo_profissional: titulo.trim(),
@@ -154,9 +177,78 @@ export default function AepNovoPage() {
           />
         </div>
 
+        {empresaId && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Registrar em inspeção</label>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {(
+                [
+                  ["nenhum", "Não vincular", "AEP só no módulo"],
+                  ["existente", "Inspeção realizada", "Usa os setores e cargos dela"],
+                  ["nova", "Criar nova inspeção", `Inspeção em branco, Rev. ${proximaRevisao}`],
+                ] as [VinculoInspecao, string, string][]
+              ).map(([v, rotulo, dica]) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setVinculo(v)}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-left text-sm",
+                    vinculo === v
+                      ? "border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500"
+                      : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                  )}
+                >
+                  <div className="font-medium">{rotulo}</div>
+                  <div className="text-[11px] text-gray-500">{dica}</div>
+                </button>
+              ))}
+            </div>
+
+            {vinculo === "existente" && (
+              <div className="mt-2">
+                {inspecoesAtivas.length === 0 ? (
+                  <p className="text-[11px] text-amber-700">
+                    Esta empresa não tem inspeção. Escolha &quot;Criar nova inspeção&quot;.
+                  </p>
+                ) : (
+                  <select
+                    value={idInspecao}
+                    onChange={(e) => setIdInspecao(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  >
+                    <option value="">Selecione a inspeção...</option>
+                    {inspecoesAtivas.map((i) => {
+                      const temAep = comAep?.has(i.id_inspecao) ?? false;
+                      return (
+                        <option key={i.id_inspecao} value={i.id_inspecao} disabled={temAep}>
+                          {i.id_inspecao} · Rev. {i.revisao ?? 0} · {fmtData(i.data_inspecao)}
+                          {i.status === "CONCLUIDA" ? " · Concluída" : i.status === "RASCUNHO" ? " · Rascunho" : " · Em andamento"}
+                          {temAep ? " · já tem AEP" : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+                <p className="mt-1 text-[11px] text-gray-500">
+                  A AEP fica na aba AEP da inspeção e já começa com os setores e cargos dela. Uma inspeção só tem uma AEP.
+                </p>
+              </div>
+            )}
+            {vinculo === "nova" && (
+              <p className="mt-2 text-[11px] text-gray-500">
+                Será criada a inspeção em branco Rev. {proximaRevisao} desta empresa, com a data de elaboração acima, e
+                a AEP fica registrada nela (aba AEP).
+              </p>
+            )}
+          </div>
+        )}
+
         <button
           type="submit"
-          disabled={!empresaId || !responsavel.trim() || criar.isPending}
+          disabled={
+            !empresaId || !responsavel.trim() || (vinculo === "existente" && !idInspecao) || criar.isPending
+          }
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Save className="size-4" />
