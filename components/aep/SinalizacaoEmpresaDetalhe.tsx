@@ -11,9 +11,9 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Building2, Layers } from "lucide-react";
-import { useAepsEntregues } from "@/lib/hooks/useAep";
+import { useAepsEntregues, useSituacaoQuestionarioEmpresas } from "@/lib/hooks/useAep";
 import { useUnidades } from "@/lib/hooks/useUnidades";
-import { montarSinalizacao, piorNivel } from "@/lib/aep/sinalizacao";
+import { leituraQuestionario, montarSinalizacao, piorNivel } from "@/lib/aep/sinalizacao";
 import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
 import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -75,6 +75,7 @@ export default function SinalizacaoEmpresaDetalhe({
   basePath: string;
 }) {
   const { data: relatorios = [], isLoading } = useAepsEntregues(idEmpresa);
+  const { data: questionarios } = useSituacaoQuestionarioEmpresas([idEmpresa]);
   const sinal = useMemo(() => montarSinalizacao(relatorios)[0] ?? null, [relatorios]);
 
   const { data: cadastro } = useQuery({
@@ -169,9 +170,20 @@ export default function SinalizacaoEmpresaDetalhe({
                 <BlocoAep rotulo="Enviada por">
                   {a.idInspecao ? (a.enviadoPor ?? "—") : <span className="font-normal text-gray-500">Sem inspeção</span>}
                 </BlocoAep>
-                <BlocoAep rotulo="DRPS/Questionário" alerta={a.precisaQuestionario}>
-                  {a.precisaQuestionario ? "Necessário" : <span className="font-normal text-gray-500">Não</span>}
-                </BlocoAep>
+                {(() => {
+                  // Concluído antes desta AEP = revisão recomendada (2026-10-05).
+                  const l = leituraQuestionario(a.precisaQuestionario, questionarios?.[idEmpresa], a.data);
+                  return (
+                    <BlocoAep rotulo="DRPS/Questionário" alerta={l.pendente}>
+                      {l.tom === "neutro" ? <span className="font-normal text-gray-500">{l.rotulo}</span> : l.rotulo}
+                      {l.detalhe && (
+                        <div className="truncate text-[11px] font-medium opacity-80" title={l.detalhe}>
+                          {l.detalhe}
+                        </div>
+                      )}
+                    </BlocoAep>
+                  );
+                })()}
                 <BlocoAep rotulo="AET" alerta={a.precisaAet}>
                   {a.precisaAet ? "Necessária" : <span className="font-normal text-gray-500">Não</span>}
                 </BlocoAep>

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { linhasCsv, montarComercial, numeroNr, situacaoPorDocs, type InspecaoComercial } from "./oportunidades";
+import { linhasCsv, montarComercial, numeroNr, situacaoComRevisao, situacaoPorDocs, type InspecaoComercial } from "./oportunidades";
 
 const empresa = (nome: string) => ({ nome_empresa: nome, cnpj: null, municipio: "Teresópolis", uf: "RJ", id_unidade: "U1", telefone: "21 9999", email: "a@b.c" });
 
@@ -141,4 +141,17 @@ test("abertas primeiro; CSV com uma linha por oportunidade", () => {
   assert.equal(csv[1][6], "AET – Análise Ergonômica do Trabalho");
   assert.equal(csv[1][8], "AEP");
   assert.equal(csv[1][10], "5");
+});
+
+test("DRPS concluído antes da AEP vira revisão recomendada; depois, realizada", () => {
+  assert.equal(situacaoComRevisao([{ id_empresa: "E", tipo: "DRPS", status: "CONCLUIDO", data: "2026-06-30" }], "2026-10-05"), "revisao");
+  assert.equal(situacaoComRevisao([{ id_empresa: "E", tipo: "DRPS", status: "CONCLUIDO", data: "2026-10-05T10:00:00Z" }], "2026-10-05"), "realizada");
+  assert.equal(situacaoComRevisao([{ id_empresa: "E", tipo: "DRPS", status: "CONCLUIDO" }], "2026-10-05"), "realizada");
+  const [c] = montarComercial(
+    [aep("A1", "E1", [setorAet])],
+    [{ id_empresa: "E1", tipo: "DRPS", status: "CONCLUIDO", data: "2026-06-30" }],
+  );
+  const drps = c.oportunidades.find((o) => o.produto === "DRPS/Questionário");
+  assert.equal(drps?.situacao, "revisao");
+  assert.match(drps?.detalhes.join(" ") ?? "", /DRPS concluído em 30\/06\/2026, antes da indicação de 05\/10\/2026/);
 });

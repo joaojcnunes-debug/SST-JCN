@@ -366,17 +366,23 @@ export function useSituacaoQuestionarioEmpresas(idsEmpresas: string[]) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sb = createSupabaseBrowserClient() as any;
       const [d, q] = await Promise.all([
-        sb.from("drps_relatorios").select("id_empresa, status").in("id_empresa", ids),
-        sb.from("qps_aplicacoes").select("id_empresa, status").in("id_empresa", ids),
+        sb
+          .from("drps_relatorios")
+          .select("id_empresa, status, data_envio_cliente, data_conclusao, data_elaboracao, updated_at")
+          .in("id_empresa", ids),
+        sb.from("qps_aplicacoes").select("id_empresa, status, data_elaboracao, atualizado_em").in("id_empresa", ids),
       ]);
       if (d.error) throw d.error;
       if (q.error) throw q.error;
-      type Linha = { id_empresa: string; status: string | null };
+      type Linha = { id_empresa: string; status: string | null; [k: string]: string | null };
+      // Data do documento: envio ao cliente > conclusão > elaboração > última edição.
+      const dataDrps = (r: Linha) => r.data_envio_cliente ?? r.data_conclusao ?? r.data_elaboracao ?? r.updated_at ?? null;
+      const dataQps = (r: Linha) => r.data_elaboracao ?? r.atualizado_em ?? null;
       const out: Record<string, SituacaoQuestionario> = {};
       for (const id of ids) {
         out[id] = situacaoQuestionario(
-          ((d.data ?? []) as Linha[]).filter((r) => r.id_empresa === id).map((r) => r.status),
-          ((q.data ?? []) as Linha[]).filter((r) => r.id_empresa === id).map((r) => r.status),
+          ((d.data ?? []) as Linha[]).filter((r) => r.id_empresa === id).map((r) => ({ status: r.status, data: dataDrps(r) })),
+          ((q.data ?? []) as Linha[]).filter((r) => r.id_empresa === id).map((r) => ({ status: r.status, data: dataQps(r) })),
         );
       }
       return out;

@@ -710,7 +710,7 @@ function ComercialDirectCard() {
   const accent = "#B45309";
   const { data: lista, isLoading } = useComercial();
   const abertas = (lista ?? []).reduce(
-    (n, c) => n + c.oportunidades.filter((o) => o.situacao === "aberta").length,
+    (n, c) => n + c.oportunidades.filter((o) => o.situacao === "aberta" || o.situacao === "revisao").length,
     0,
   );
   return (
@@ -740,8 +740,8 @@ function ComercialDirectCard() {
           {isLoading
             ? "Carregando..."
             : abertas > 0
-              ? `${abertas} oportunidade${abertas !== 1 ? "s" : ""} em aberto`
-              : "Nenhuma em aberto"}
+              ? `${abertas} oportunidade${abertas !== 1 ? "s" : ""} a vender`
+              : "Nenhuma a vender"}
         </span>
         <ArrowRight
           className="ml-auto size-4 transition-transform group-hover:translate-x-1"

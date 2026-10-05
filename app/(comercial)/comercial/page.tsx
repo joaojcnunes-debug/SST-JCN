@@ -11,6 +11,7 @@ import { Building2, ClipboardCheck, Download, FilterX, Handshake, Mail, MapPin, 
 import { useComercial } from "@/lib/hooks/useComercial";
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import {
+  A_VENDER,
   linhasCsv,
   NOME_PRODUTO,
   PRODUTOS,
@@ -28,7 +29,12 @@ const selectCls =
   "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
 
 const SITUACAO: Record<SituacaoOportunidade, { rotulo: string; cls: string; dica: string }> = {
-  aberta: { rotulo: "Oportunidade aberta", cls: "border-amber-300 bg-amber-50 text-amber-900", dica: "Indicada na AEP e a empresa ainda não tem" },
+  aberta: { rotulo: "Oportunidade aberta", cls: "border-amber-300 bg-amber-50 text-amber-900", dica: "Indicada e a empresa ainda não tem" },
+  revisao: {
+    rotulo: "Revisão recomendada",
+    cls: "border-orange-300 bg-orange-50 text-orange-900",
+    dica: "A empresa já tem, mas foi concluído antes da AEP/inspeção que indicou — vender a revisão",
+  },
   andamento: { rotulo: "Em andamento", cls: "border-sky-200 bg-sky-50 text-sky-900", dica: "Já existe um documento em elaboração" },
   realizada: { rotulo: "Realizada", cls: "border-emerald-200 bg-emerald-50 text-emerald-900", dica: "Já existe um documento concluído" },
 };
@@ -67,7 +73,10 @@ export default function ComercialPage() {
 
   const [busca, setBusca] = useState("");
   const [produto, setProduto] = useState<"" | Produto>("");
-  const [situacao, setSituacao] = useState<"" | SituacaoOportunidade>("aberta");
+  // "vender" = aberta + revisão recomendada (o padrão da tela).
+  const [situacao, setSituacao] = useState<"" | "vender" | SituacaoOportunidade>("vender");
+  const casaSituacao = (s: SituacaoOportunidade) =>
+    !situacao || (situacao === "vender" ? A_VENDER.includes(s) : s === situacao);
   const [unidade, setUnidade] = useState("");
   const [nivel, setNivel] = useState("");
 
@@ -98,27 +107,27 @@ export default function ComercialPage() {
       })
       .map((c) => ({
         ...c,
-        oportunidades: c.oportunidades.filter((o) => (!produto || o.produto === produto) && (!situacao || o.situacao === situacao)),
+        oportunidades: c.oportunidades.filter((o) => (!produto || o.produto === produto) && casaSituacao(o.situacao)),
       }))
       .filter((c) => c.oportunidades.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lista, busca, produto, situacao, unidade, nivel, nomeUnidade]);
 
   const todas = lista.flatMap((c) => c.oportunidades.map((o) => ({ c, o })));
-  const abertas = (p: Produto) => todas.filter(({ o }) => o.produto === p && o.situacao === "aberta");
+  const abertas = (p: Produto) => todas.filter(({ o }) => o.produto === p && A_VENDER.includes(o.situacao));
   const kpi = {
-    abertas: todas.filter(({ o }) => o.situacao === "aberta").length,
+    abertas: todas.filter(({ o }) => A_VENDER.includes(o.situacao)).length,
     aet: abertas("AET").length,
     expostos: abertas("AET").reduce((n, { c }) => n + c.expostosAet, 0),
     andamento: todas.filter(({ o }) => o.situacao === "andamento").length,
   };
   // Abertas por produto — os chips embaixo dos contadores.
   const porProduto = PRODUTOS.map((p) => ({ p, n: abertas(p).length })).filter((x) => x.n > 0);
-  const nAtivos = [busca.trim(), produto, situacao !== "aberta" ? situacao || "todas" : "", unidade, nivel].filter(Boolean).length;
+  const nAtivos = [busca.trim(), produto, situacao !== "vender" ? situacao || "todas" : "", unidade, nivel].filter(Boolean).length;
   const limpar = () => {
     setBusca("");
     setProduto("");
-    setSituacao("aberta");
+    setSituacao("vender");
     setUnidade("");
     setNivel("");
   };
@@ -149,23 +158,23 @@ export default function ComercialPage() {
       {/* Contadores */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Contador
-          rotulo="Oportunidades em aberto"
+          rotulo="A vender (abertas + revisões)"
           valor={kpi.abertas}
           cor="border-amber-300 bg-amber-50 text-amber-900"
-          ativo={!produto && situacao === "aberta"}
+          ativo={!produto && situacao === "vender"}
           onClick={() => {
             setProduto("");
-            setSituacao("aberta");
+            setSituacao("vender");
           }}
         />
         <Contador
           rotulo="AET em aberto"
           valor={kpi.aet}
           cor="border-amber-300 bg-amber-50 text-amber-900"
-          ativo={produto === "AET" && situacao === "aberta"}
+          ativo={produto === "AET" && situacao === "vender"}
           onClick={() => {
             setProduto("AET");
-            setSituacao("aberta");
+            setSituacao("vender");
           }}
         />
         <Contador
@@ -193,7 +202,7 @@ export default function ComercialPage() {
               type="button"
               onClick={() => {
                 setProduto(produto === p ? "" : p);
-                setSituacao("aberta");
+                setSituacao("vender");
               }}
               className={cn(
                 "rounded-full border px-3 py-1 text-xs font-semibold transition",
@@ -231,9 +240,15 @@ export default function ComercialPage() {
           </label>
           <label className="text-[11px] font-medium text-gray-500">
             Situação
-            <select value={situacao} onChange={(e) => setSituacao(e.target.value as "" | SituacaoOportunidade)} className={selectCls}>
+            <select
+              value={situacao}
+              onChange={(e) => setSituacao(e.target.value as "" | "vender" | SituacaoOportunidade)}
+              className={selectCls}
+            >
               <option value="">Todas</option>
+              <option value="vender">A vender (aberta + revisão)</option>
               <option value="aberta">Oportunidade aberta</option>
+              <option value="revisao">Revisão recomendada</option>
               <option value="andamento">Em andamento</option>
               <option value="realizada">Realizada</option>
             </select>
@@ -269,7 +284,7 @@ export default function ComercialPage() {
           </span>
           {nAtivos > 0 && (
             <button type="button" onClick={limpar} className="inline-flex items-center gap-1 font-semibold text-verde-primary hover:underline">
-              <FilterX className="size-3.5" /> Voltar ao padrão (abertas)
+              <FilterX className="size-3.5" /> Voltar ao padrão (a vender)
             </button>
           )}
         </div>

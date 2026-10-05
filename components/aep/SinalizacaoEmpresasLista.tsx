@@ -16,7 +16,7 @@ import Link from "next/link";
 import { Brain, Building2, ChevronRight, FilterX, MapPin, Search } from "lucide-react";
 import { useAepsEntregues, useSituacaoQuestionarioEmpresas } from "@/lib/hooks/useAep";
 import { useUnidades } from "@/lib/hooks/useUnidades";
-import { montarSinalizacao, type SituacaoQuestionario } from "@/lib/aep/sinalizacao";
+import { leituraQuestionario, montarSinalizacao, type TomLeitura } from "@/lib/aep/sinalizacao";
 import {
   FILTROS_VAZIOS,
   filtrarSinalizacao,
@@ -65,13 +65,14 @@ function Necessario({ sim }: { sim: boolean }) {
   return sim ? <span className="text-amber-800">Necessário</span> : <span className="font-normal text-gray-500">Não</span>;
 }
 
-/** O que a empresa já tem de DRPS/Questionário. */
-function JaTem({ s }: { s: SituacaoQuestionario | undefined }) {
-  if (!s) return null;
-  if (s.fase === "concluido") return <div className="text-[11px] font-medium text-emerald-700">{s.doc} concluído</div>;
-  if (s.fase === "andamento") return <div className="text-[11px] font-medium text-sky-700">{s.doc} em andamento</div>;
-  return <div className="text-[11px] font-medium text-red-600">Nenhum feito</div>;
-}
+/** Cores da leitura do DRPS/Questionário (rótulo, detalhe). */
+const COR_TOM: Record<TomLeitura, [string, string]> = {
+  ok: ["text-emerald-800", "text-emerald-700"],
+  alerta: ["text-orange-800", "text-orange-700"],
+  info: ["text-amber-800", "text-sky-700"],
+  perigo: ["text-amber-800", "text-red-600"],
+  neutro: ["font-normal text-gray-500", "text-gray-500"],
+};
 
 /** Contador do topo; clicar aplica o filtro correspondente. */
 function Contador({
@@ -252,7 +253,7 @@ export default function SinalizacaoEmpresasLista({
             >
               <option value="">Todos</option>
               <option value="necessario">Necessário</option>
-              <option value="pendente">Necessário e ainda não concluído</option>
+              <option value="pendente">Necessário e não atendido (inclui revisão)</option>
               <option value="nao">Não necessário</option>
             </select>
           </label>
@@ -366,14 +367,19 @@ export default function SinalizacaoEmpresasLista({
 
                   {/* Linha 2: blocos em destaque */}
                   <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
-                    <Bloco
-                      rotulo="DRPS/Questionário"
-                      destaque={questionarioPendente(e, quest)}
-                      title="3+ alertas organizacionais na AEP recomendam DRPS/Questionário Psicossocial (NR-01)"
-                    >
-                      <Necessario sim={e.precisaQuestionario} />
-                      <JaTem s={quest} />
-                    </Bloco>
+                    {(() => {
+                      const l = leituraQuestionario(e.precisaQuestionario, quest, e.ultimaData);
+                      return (
+                        <Bloco
+                          rotulo="DRPS/Questionário"
+                          destaque={l.pendente}
+                          title="3+ alertas organizacionais na AEP recomendam DRPS/Questionário Psicossocial (NR-01). Concluído antes da AEP = revisão recomendada."
+                        >
+                          <span className={COR_TOM[l.tom][0]}>{l.rotulo}</span>
+                          {l.detalhe && <div className={cn("text-[11px] font-medium", COR_TOM[l.tom][1])}>{l.detalhe}</div>}
+                        </Bloco>
+                      );
+                    })()}
                     <Bloco rotulo="AET" destaque={e.precisaAet} title="Algum setor com indicação de Análise Ergonômica do Trabalho">
                       <Necessario sim={e.precisaAet} />
                     </Bloco>

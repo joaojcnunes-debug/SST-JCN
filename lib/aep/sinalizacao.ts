@@ -98,7 +98,12 @@ export interface SituacaoQuestionario {
   fase: "concluido" | "andamento" | null;
   /** Qual documento define a frase: DRPS ou Questionário. */
   doc: "DRPS" | "Questionário" | null;
+  /** Data do documento mais recente dessa fase (envio/conclusão/elaboração). */
+  data?: string | null;
 }
+
+/** Um DRPS/QPS: só o status (legado) ou status + data. */
+export type DocQuestionario = string | null | { status: string | null; data?: string | null };
 
 const FASE_DOC: Record<string, "concluido" | "andamento"> = {
   CONCLUIDO: "concluido",
@@ -112,13 +117,80 @@ const FASE_DOC: Record<string, "concluido" | "andamento"> = {
  * vence andamento; DRPS vem antes do Questionário no empate. Deletados e
  * outros status não contam (mesma régua do quadro Documentos da empresa).
  */
-export function situacaoQuestionario(statusDrps: (string | null)[], statusQps: (string | null)[]): SituacaoQuestionario {
-  const fase = (lista: (string | null)[], f: "concluido" | "andamento") => lista.some((s) => FASE_DOC[s ?? ""] === f);
+export function situacaoQuestionario(drps: DocQuestionario[], qps: DocQuestionario[]): SituacaoQuestionario {
+  const norm = (l: DocQuestionario[]) =>
+    l.map((d) => (d && typeof d === "object" ? { status: d.status, data: d.data ?? null } : { status: d, data: null }));
+  const D = norm(drps);
+  const Q = norm(qps);
+  // Data mais recente entre os documentos daquela fase.
+  const achar = (lista: { status: string | null; data: string | null }[], f: "concluido" | "andamento") => {
+    const da = lista.filter((x) => FASE_DOC[x.status ?? ""] === f);
+    if (da.length === 0) return undefined;
+    return da.map((x) => x.data).filter((x): x is string => !!x).sort().pop() ?? null;
+  };
   for (const f of ["concluido", "andamento"] as const) {
-    if (fase(statusDrps, f)) return { fase: f, doc: "DRPS" };
-    if (fase(statusQps, f)) return { fase: f, doc: "Questionário" };
+    const dD = achar(D, f);
+    if (dD !== undefined) return { fase: f, doc: "DRPS", data: dD };
+    const dQ = achar(Q, f);
+    if (dQ !== undefined) return { fase: f, doc: "Questionário", data: dQ };
   }
-  return { fase: null, doc: null };
+  return { fase: null, doc: null, data: null };
+}
+
+/** "2026-10-05..." → "05/10/2026" (puro, sem fuso). */
+export function dataBR(iso: string | null | undefined): string {
+  const m = (iso ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : "";
+}
+
+export type TomLeitura = "ok" | "alerta" | "info" | "perigo" | "neutro";
+
+export interface LeituraQuestionario {
+  /** Frase curta: Não / Necessário / Revisão recomendada / Atendido. */
+  rotulo: string;
+  /** Explicação embaixo, com o documento e a data. */
+  detalhe: string | null;
+  tom: TomLeitura;
+  /** Ainda falta algo para atender a recomendação da AEP. */
+  pendente: boolean;
+}
+
+/**
+ * O que dizer sobre DRPS/Questionário diante da AEP (2026-10-05): "Necessário"
+ * + "concluído" confundia. Agora:
+ *   • não recomendado           → "Não" (e o que a empresa tiver, só informativo);
+ *   • recomendado, nenhum feito → "Necessário" · "Nenhum DRPS/Questionário feito";
+ *   • recomendado, em andamento → "Necessário" · "DRPS em andamento desde …";
+ *   • recomendado, concluído ANTES da AEP → "Revisão recomendada" · "DRPS
+ *     concluído em …, antes da AEP de …" — a AEP trouxe fatores novos;
+ *   • recomendado, concluído na data da AEP ou depois → "Atendido".
+ */
+export function leituraQuestionario(
+  precisa: boolean,
+  s: SituacaoQuestionario | undefined,
+  dataAep: string | null | undefined,
+): LeituraQuestionario {
+  const doc = s?.doc ?? "DRPS/Questionário";
+  const quando = s?.data ? dataBR(s.data) : "";
+  if (!precisa) {
+    const detalhe =
+      s?.fase === "concluido" ? `${doc} concluído${quando ? ` em ${quando}` : ""}` : s?.fase === "andamento" ? `${doc} em andamento` : null;
+    return { rotulo: "Não", detalhe, tom: "neutro", pendente: false };
+  }
+  if (!s?.fase) return { rotulo: "Necessário", detalhe: "Nenhum DRPS/Questionário feito", tom: "perigo", pendente: true };
+  if (s.fase === "andamento") {
+    return { rotulo: "Necessário", detalhe: `${doc} em andamento${quando ? ` desde ${quando}` : ""}`, tom: "info", pendente: true };
+  }
+  const dia = (x: string | null | undefined) => (x ?? "").slice(0, 10);
+  if (s.data && dataAep && dia(s.data) < dia(dataAep)) {
+    return {
+      rotulo: "Revisão recomendada",
+      detalhe: `${doc} concluído em ${quando}, antes da AEP de ${dataBR(dataAep)}`,
+      tom: "alerta",
+      pendente: true,
+    };
+  }
+  return { rotulo: "Atendido", detalhe: `${doc} concluído${quando ? ` em ${quando}` : ""}`, tom: "ok", pendente: false };
 }
 
 export function piorNivel(niveis: (string | null | undefined)[]): string | null {
