@@ -1,5 +1,6 @@
 "use client";
 
+import SituacaoSinalizacaoAep from "@/components/aep/SituacaoSinalizacaoAep";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { useEffect, useRef, useState } from "react";
@@ -663,6 +664,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
 
   return (
     <div className="space-y-5" {...reordenar.propsContainer()}>
+      <SituacaoSinalizacaoAep idRelatorio={idRelatorio} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-lg font-bold text-gray-900">Setores / Triagem Ergonômica</h1>

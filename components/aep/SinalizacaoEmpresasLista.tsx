@@ -10,7 +10,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { Brain, Building2, ChevronRight, Search } from "lucide-react";
-import { useAepRelatorios } from "@/lib/hooks/useAep";
+import { useAepsEntregues } from "@/lib/hooks/useAep";
 import { montarSinalizacao } from "@/lib/aep/sinalizacao";
 import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
@@ -30,7 +30,7 @@ export default function SinalizacaoEmpresasLista({
   /** Bloco opcional entre o cabeçalho e a busca (ex.: explicação da matriz). */
   extra?: ReactNode;
 }) {
-  const { data: relatorios = [], isLoading, error } = useAepRelatorios(null);
+  const { data: relatorios = [], isLoading, error } = useAepsEntregues(null);
   const [busca, setBusca] = useState("");
 
   const empresas = useMemo(() => montarSinalizacao(relatorios), [relatorios]);
@@ -47,8 +47,8 @@ export default function SinalizacaoEmpresasLista({
           {titulo}
         </h1>
         <p className="text-sm text-gray-500">
-          Empresas com fatores organizacionais identificados nas triagens AEP, com o nível na matriz AIHA. Clique na
-          empresa para ver os fatores por setor.
+          Empresas com fatores organizacionais identificados nas AEPs já entregues ao cliente (documento da inspeção
+          concluído pelo associado), com o nível na matriz AIHA. Clique na empresa para ver os fatores por setor.
         </p>
       </div>
 
@@ -74,7 +74,7 @@ export default function SinalizacaoEmpresasLista({
         </p>
       ) : filtradas.length === 0 ? (
         <p className="rounded-2xl border border-gray-100 bg-white p-10 text-center text-sm text-gray-500 shadow-sm">
-          {empresas.length === 0 ? "Nenhum fator psicossocial sinalizado nas análises AEP." : "Nenhuma empresa encontrada."}
+          {empresas.length === 0 ? "Nenhum fator psicossocial sinalizado em AEP entregue ao cliente." : "Nenhuma empresa encontrada."}
         </p>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -100,7 +100,7 @@ export default function SinalizacaoEmpresasLista({
                     {e.totalSetores} setor{e.totalSetores !== 1 ? "es" : ""}
                   </div>
                   <div className="hidden w-28 text-right text-xs text-gray-500 md:block">
-                    {e.ultimaData ? `AEP ${fmtData(e.ultimaData)}` : ""}
+                    {e.ultimaData ? `Entregue ${fmtData(e.ultimaData)}` : ""}
                   </div>
                   <ChevronRight className="size-4 shrink-0 text-gray-400" />
                 </Link>
