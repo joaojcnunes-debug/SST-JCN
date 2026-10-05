@@ -1,16 +1,23 @@
 "use client";
 
-// Comercial › Oportunidades (2026-10-05). Para quem vende: cada empresa cuja
-// AEP entregue indicou um serviço vendido à parte (AET) ou o DRPS/Questionário
-// Psicossocial, com a situação (aberta / em andamento / realizada), os setores
-// indicados, trabalhadores expostos (base do orçamento) e o contato da empresa.
-// Regra em lib/comercial/oportunidades.ts.
+// Comercial › Oportunidades (2026-10-05). Para quem vende: cada empresa com
+// serviços indicados pela AEP entregue (AET, DRPS/Questionário) ou pela última
+// inspeção concluída (Apreciação NR-12, medição, químicos, AEP, DRPS,
+// treinamentos), com a situação (aberta / em andamento / realizada), o que
+// justifica cada uma e o contato da empresa. Regra em lib/comercial/oportunidades.ts.
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Building2, Download, FilterX, Handshake, Mail, MapPin, Phone, Search } from "lucide-react";
+import { Building2, ClipboardCheck, Download, FilterX, Handshake, Mail, MapPin, Phone, Search } from "lucide-react";
 import { useComercial } from "@/lib/hooks/useComercial";
 import { useUnidades } from "@/lib/hooks/useUnidades";
-import { linhasCsv, type EmpresaComercial, type Produto, type SituacaoOportunidade } from "@/lib/comercial/oportunidades";
+import {
+  linhasCsv,
+  NOME_PRODUTO,
+  PRODUTOS,
+  type EmpresaComercial,
+  type Produto,
+  type SituacaoOportunidade,
+} from "@/lib/comercial/oportunidades";
 import { opcoesDistintas } from "@/lib/aep/sinalizacao-filtros";
 import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
@@ -100,11 +107,13 @@ export default function ComercialPage() {
   const todas = lista.flatMap((c) => c.oportunidades.map((o) => ({ c, o })));
   const abertas = (p: Produto) => todas.filter(({ o }) => o.produto === p && o.situacao === "aberta");
   const kpi = {
+    abertas: todas.filter(({ o }) => o.situacao === "aberta").length,
     aet: abertas("AET").length,
-    drps: abertas("DRPS/Questionário").length,
     expostos: abertas("AET").reduce((n, { c }) => n + c.expostosAet, 0),
     andamento: todas.filter(({ o }) => o.situacao === "andamento").length,
   };
+  // Abertas por produto — os chips embaixo dos contadores.
+  const porProduto = PRODUTOS.map((p) => ({ p, n: abertas(p).length })).filter((x) => x.n > 0);
   const nAtivos = [busca.trim(), produto, situacao !== "aberta" ? situacao || "todas" : "", unidade, nivel].filter(Boolean).length;
   const limpar = () => {
     setBusca("");
@@ -122,10 +131,9 @@ export default function ComercialPage() {
             <Handshake className="size-5 text-amber-700" /> Oportunidades comerciais
           </h1>
           <p className="max-w-3xl text-sm text-gray-500">
-            Serviços que as AEPs <strong>já entregues ao cliente</strong> indicaram e que a empresa ainda não contratou:
-            a <strong>AET</strong> (vendida à parte), quando algum setor tem indicação de análise completa (NR-17), e o{" "}
-            <strong>DRPS / Questionário Psicossocial</strong>, quando a AEP aponta 3 ou mais fatores organizacionais
-            (NR-01).
+            Serviços que a JCN já identificou no cliente e que a empresa ainda não contratou: pela{" "}
+            <strong>AEP entregue</strong> (AET e DRPS/Questionário) e pela <strong>última inspeção concluída</strong>{" "}
+            (Apreciação NR-12, medição quantitativa, Análise de Químicos, AEP, DRPS/Questionário e treinamentos NR).
           </p>
         </div>
         <button
@@ -140,6 +148,16 @@ export default function ComercialPage() {
 
       {/* Contadores */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Contador
+          rotulo="Oportunidades em aberto"
+          valor={kpi.abertas}
+          cor="border-amber-300 bg-amber-50 text-amber-900"
+          ativo={!produto && situacao === "aberta"}
+          onClick={() => {
+            setProduto("");
+            setSituacao("aberta");
+          }}
+        />
         <Contador
           rotulo="AET em aberto"
           valor={kpi.aet}
@@ -156,16 +174,6 @@ export default function ComercialPage() {
           cor="border-orange-200 bg-orange-50 text-orange-900"
         />
         <Contador
-          rotulo="DRPS/Questionário em aberto"
-          valor={kpi.drps}
-          cor="border-violet-200 bg-violet-50 text-violet-900"
-          ativo={produto === "DRPS/Questionário" && situacao === "aberta"}
-          onClick={() => {
-            setProduto("DRPS/Questionário");
-            setSituacao("aberta");
-          }}
-        />
-        <Contador
           rotulo="Em andamento"
           valor={kpi.andamento}
           cor="border-sky-200 bg-sky-50 text-sky-900"
@@ -176,6 +184,27 @@ export default function ComercialPage() {
           }}
         />
       </div>
+
+      {porProduto.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {porProduto.map(({ p, n }) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => {
+                setProduto(produto === p ? "" : p);
+                setSituacao("aberta");
+              }}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-semibold transition",
+                produto === p ? "border-amber-500 bg-amber-500 text-white" : "border-amber-200 bg-white text-amber-800 hover:bg-amber-50"
+              )}
+            >
+              {p} · {n}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Busca + filtros */}
       <div className="space-y-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -193,8 +222,11 @@ export default function ComercialPage() {
             Produto
             <select value={produto} onChange={(e) => setProduto(e.target.value as "" | Produto)} className={selectCls}>
               <option value="">Todos</option>
-              <option value="AET">AET</option>
-              <option value="DRPS/Questionário">DRPS/Questionário</option>
+              {PRODUTOS.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
             </select>
           </label>
           <label className="text-[11px] font-medium text-gray-500">
@@ -252,7 +284,7 @@ export default function ComercialPage() {
       ) : filtradas.length === 0 ? (
         <p className="rounded-2xl border border-gray-100 bg-white p-10 text-center text-sm text-gray-500 shadow-sm">
           {lista.length === 0
-            ? "Nenhuma AEP entregue indicou AET ou DRPS/Questionário até agora."
+            ? "Nenhuma AEP entregue ou inspeção concluída indicou serviços até agora."
             : "Nenhuma oportunidade com esses filtros."}
         </p>
       ) : (
@@ -294,20 +326,29 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-500">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
           {e.pior && <SeloNivelAiha nivel={e.pior} />}
-          <span>AEP entregue {e.ultimaData ? fmtData(e.ultimaData) : "—"}</span>
+          {c.temAep && <span>AEP entregue {e.ultimaData ? fmtData(e.ultimaData) : "—"}</span>}
+          {c.inspecao && (
+            <span className="inline-flex items-center gap-1">
+              <ClipboardCheck className="size-3.5" />
+              Inspeção {c.inspecao.idInspecao} concluída {c.inspecao.concluidaEm ? fmtData(c.inspecao.concluidaEm) : ""}
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 md:grid-cols-2">
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         {c.oportunidades.map((o) => {
           const s = SITUACAO[o.situacao];
           return (
             <div key={o.produto} className={cn("rounded-xl border p-3", s.cls)} title={s.dica}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-bold">{o.produto === "AET" ? "AET – Análise Ergonômica do Trabalho" : "DRPS / Questionário Psicossocial"}</span>
-                <span className="rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold">{s.rotulo}</span>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-sm font-bold">{NOME_PRODUTO[o.produto]}</span>
+                <span className="shrink-0 rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold">{s.rotulo}</span>
+              </div>
+              <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-70">
+                Indicada por: {o.origens.join(" + ")}
               </div>
               {o.produto === "AET" ? (
                 <div className="mt-1 text-xs">
@@ -320,24 +361,35 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
                   </div>
                 </div>
               ) : (
-                <div className="mt-1 text-xs">
-                  A AEP apontou <strong>{e.totalAlertas}</strong> fator{e.totalAlertas !== 1 ? "es" : ""} organizacional
-                  {e.totalAlertas !== 1 ? "is" : ""} em {e.totalSetores} setor{e.totalSetores !== 1 ? "es" : ""}.
-                </div>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs">
+                  {o.detalhes.slice(0, 6).map((d) => (
+                    <li key={d}>{d}</li>
+                  ))}
+                  {o.detalhes.length > 6 && <li className="list-none opacity-70">+ {o.detalhes.length - 6} item(ns)</li>}
+                </ul>
               )}
             </div>
           );
         })}
       </div>
 
-      <div className="mt-2 text-[11px] text-gray-500">
-        AEP realizada por <strong className="text-gray-700">{e.realizadaPor ?? "—"}</strong>
-        {e.temInspecao ? (
-          <>
-            {" "}· enviada por <strong className="text-gray-700">{e.enviadoPor ?? "—"}</strong>
-          </>
-        ) : (
-          " · sem inspeção"
+      <div className="mt-2 flex flex-wrap gap-x-4 text-[11px] text-gray-500">
+        {c.temAep && (
+          <span>
+            AEP realizada por <strong className="text-gray-700">{e.realizadaPor ?? "—"}</strong>
+            {e.temInspecao ? (
+              <>
+                {" "}· enviada por <strong className="text-gray-700">{e.enviadoPor ?? "—"}</strong>
+              </>
+            ) : (
+              " · sem inspeção"
+            )}
+          </span>
+        )}
+        {c.inspecao && (
+          <span>
+            Inspeção feita por <strong className="text-gray-700">{c.inspecao.responsavel ?? "—"}</strong>
+          </span>
         )}
       </div>
     </li>
