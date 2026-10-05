@@ -1,10 +1,10 @@
-# Replicar no Painel SST: excluir AEP/AET pela aba da inspeção
+# Replicar no Painel SST: AEP/AET da inspeção — excluir e já nascer no módulo
 
 > **Como usar:** abra o Claude Code na pasta do **painel-sst** e diga:
 > *"Siga o arquivo `replicar-no-painel-excluir-ergo-inspecao.md`"*.
 >
-> Origem: JCN (`sst-jcn`), commit `9ea9657` de 2026-10-05, já em produção lá.
-> **Sem migration.**
+> Origem: JCN (`sst-jcn`), commits `9ea9657` (Excluir) e `4c9c4e2` (já nasce no módulo) de 2026-10-05, já em produção lá.
+> **Sem migration** (só um `update` opcional de dados, no Passo 2).
 
 ## O problema
 
@@ -16,6 +16,8 @@ contava como "em andamento" no Comercial).
 
 ## O que faz
 
+### 1. Botão "Excluir"
+
 - Na faixa do topo da aba **AEP**/**AET** da inspeção, ao lado de "Laudo /
   Imprimir" e "Enviar para o módulo", entra o botão vermelho **"Excluir"**.
 - Só aparece para quem edita (`!readOnly`) e pede confirmação; o texto avisa
@@ -26,6 +28,18 @@ contava como "em andamento" no Comercial).
   `[home-stats-tipo]` e `["comercial-dados"]`; a aba volta a oferecer
   "Iniciar AEP/AET desta inspeção".
 
+### 2. Já nasce cadastrada no módulo
+
+- Ao clicar em **"Iniciar AEP/AET desta inspeção"**, o laudo é criado com
+  `enviado_modulo_em` preenchido: aparece **na hora** na lista do módulo
+  AEP/AET (e nas contagens), sem precisar de "Enviar para o módulo".
+- O botão "Enviar para o módulo" continua no código só para laudo **antigo**
+  que ficou com `enviado_modulo_em` nulo.
+- O texto da tela vazia passa a dizer que a AEP/AET "já fica cadastrada no
+  módulo — é o mesmo laudo nos dois lugares".
+- **Sinalização e Comercial não mudam:** a AEP continua só entrando na
+  Sinalização quando entregue ao cliente, e no Comercial quando liberada.
+
 ## Passo 1: conferir o painel
 
 | Usado | Conferir no painel |
@@ -35,7 +49,24 @@ contava como "em andamento" no Comercial).
 | `components/inspecoes/editor/tabs/ErgonomiaTab.tsx` com `confirmar`/`ConfirmHost` | o botão entra depois de "Enviar para o módulo" |
 | `["comercial-dados"]` | só se o painel já tiver o módulo Comercial; senão, tire essa linha |
 
-## Passo 2: código
+## Passo 2: laudos antigos (opcional, banco do painel)
+
+Para cadastrar no módulo os laudos que hoje estão "Só nesta inspeção", confira
+primeiro e depois rode **no banco do painel** (nunca no do JCN):
+
+```sql
+select 'aep' t, id_relatorio, id_empresa, id_inspecao, status from aep_relatorios where id_inspecao is not null and enviado_modulo_em is null
+union all select 'aet', id_relatorio, id_empresa, id_inspecao, status from aet_relatorios where id_inspecao is not null and enviado_modulo_em is null;
+
+update aep_relatorios set enviado_modulo_em = now() where id_inspecao is not null and enviado_modulo_em is null;
+update aet_relatorios set enviado_modulo_em = now() where id_inspecao is not null and enviado_modulo_em is null;
+```
+
+Anote os `id_relatorio` antes; para desfazer, volte `enviado_modulo_em` a `null` só neles.
+
+## Passo 3: código
+
+Aplique primeiro A e B (Excluir) e depois C e D (já nasce no módulo).
 
 ### A: diff de `lib/hooks/useErgonomiaInspecao.ts`
 
@@ -135,11 +166,89 @@ contava como "em andamento" no Comercial).
  
 ```
 
-## Passo 3: verificar
+### C: diff de `lib/hooks/useErgonomiaInspecao.ts` (já nasce no módulo)
+
+```diff
+@@ -4,9 +4,10 @@
+ //
+ // O laudo nasce na tabela do próprio módulo (aep_relatorios / aet_relatorios)
+ // com `id_inspecao`, e as abas da inspeção usam os MESMOS editores do módulo.
+-// Enquanto `enviado_modulo_em` for NULL, o laudo só aparece na inspeção; o
+-// botão "Enviar para o módulo" o libera nas listas do AEP/AET. É o mesmo
+-// registro dos dois lados — editar em um reflete no outro na hora.
++// Desde 2026-10-05 o laudo já nasce com `enviado_modulo_em` preenchido, ou
++// seja, cadastrado na lista do módulo AEP/AET. Laudo antigo com NULL só
++// aparece na inspeção até "Enviar para o módulo". É o mesmo registro dos dois
++// lados — editar em um reflete no outro na hora.
+ 
+ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+ import toast from "react-hot-toast";
+@@ -120,6 +121,8 @@ export function useIniciarLaudoErgo(tipo: TipoErgo) {
+         status: "RASCUNHO",
+         setores: setoresIniciais(tipo, args.setores, args.cargos, args.maquinas),
+         usuario: auth?.user?.id ?? null,
++        // Já cadastrada no módulo (2026-10-05): aparece na lista do AEP/AET.
++        enviado_modulo_em: new Date().toISOString(),
+       };
+       if (tipo === "aet") linha.consideracoes_finais = "";
+       const { data, error } = await sb.from(tabela(tipo)).insert(linha).select("id_relatorio").single();
+@@ -133,7 +136,10 @@ export function useIniciarLaudoErgo(tipo: TipoErgo) {
+     },
+     onSuccess: (_d, args) => {
+       qc.invalidateQueries({ queryKey: ["ergo-inspecao", tipo, args.idInspecao] });
+-      toast.success(`${ROTULO_ERGO[tipo]} iniciada com os setores e cargos da inspeção`);
++      qc.invalidateQueries({ queryKey: [`${tipo}-relatorios`] });
++      qc.invalidateQueries({ queryKey: [`home-stats-${tipo}`] });
++      qc.invalidateQueries({ queryKey: ["comercial-dados"] });
++      toast.success(`${ROTULO_ERGO[tipo]} iniciada com os setores e cargos da inspeção e já cadastrada no módulo ${ROTULO_ERGO[tipo]}`);
+     },
+     onError: (e: Error) => toast.error(e.message || `Falha ao iniciar a ${ROTULO_ERGO[tipo]}`),
+   });
+```
+
+### D: diff de `components/inspecoes/editor/tabs/ErgonomiaTab.tsx` (já nasce no módulo)
+
+```diff
+@@ -1,8 +1,9 @@
+ "use client";
+ 
+ // Abas AEP e AET da inspeção (v259). O conteúdo é o editor do próprio módulo
+-// — mesmo laudo, mesmas telas — e o botão "Enviar para o módulo" o libera nas
+-// listas do AEP/AET; "Excluir" manda o laudo para a Lixeira. Ver `lib/hooks/useErgonomiaInspecao.ts`.
++// — mesmo laudo, mesmas telas. Ao iniciar, o laudo já fica cadastrado no
++// módulo AEP/AET (2026-10-05); "Enviar para o módulo" só aparece para laudo
++// antigo que ficou só na inspeção. "Excluir" manda o laudo para a Lixeira. Ver `lib/hooks/useErgonomiaInspecao.ts`.
+ 
+ import { useState } from "react";
+ import Link from "next/link";
+@@ -76,8 +77,8 @@ export default function ErgonomiaTab({ tipo, idInspecao, idEmpresa, empresa, set
+         <p className="mt-1 text-sm text-gray-500">
+           Preencha a {rotulo} completa aqui, durante a inspeção. Ela já começa com{" "}
+           <strong>{setores.length} setor{setores.length !== 1 ? "es" : ""}</strong> e{" "}
+-          <strong>{cargos.length} cargo{cargos.length !== 1 ? "s" : ""}</strong> desta inspeção. Quando terminar,
+-          use &quot;Enviar para o módulo {rotulo}&quot; para ela aparecer no módulo.
++          <strong>{cargos.length} cargo{cargos.length !== 1 ? "s" : ""}</strong> desta inspeção e já fica cadastrada
++          no módulo {rotulo} — é o mesmo laudo nos dois lugares.
+         </p>
+         {readOnly ? (
+           <p className="mt-4 text-xs text-gray-400">Seu perfil não pode iniciar a {rotulo}.</p>
+@@ -159,7 +160,7 @@ export default function ErgonomiaTab({ tipo, idInspecao, idEmpresa, empresa, set
+                 const ok = await confirmar({
+                   title: `Excluir a ${rotulo} desta inspeção?`,
+                   description: enviado
+-                    ? `A ${rotulo} sai desta inspeção e também do módulo ${rotulo} (é o mesmo laudo). Ela vai para a Lixeira e pode ser restaurada.`
++                    ? `A ${rotulo} sai desta inspeção e também do módulo ${rotulo} (é o mesmo laudo). Ela vai para a Lixeira e pode ser restaurada; depois, a aba volta a oferecer "Iniciar ${rotulo}".`
+                     : `A ${rotulo} vai para a Lixeira e pode ser restaurada. Depois, a aba volta a oferecer "Iniciar ${rotulo}".`,
+                   confirmLabel: "Excluir",
+                   variant: "danger",
+```
+
+## Passo 4: verificar
 
 1. `npx tsc --noEmit -p .` e `npx next build` sem erros.
 2. Numa inspeção com AET em rascunho (aba AET, selo "Só nesta inspeção"), clique em **Excluir** → confirme → toast "AET excluída — está na Lixeira"; a aba volta a "Iniciar AET desta inspeção".
 3. Na **Lixeira**, o laudo aparece (módulo `aet`) e pode ser restaurado.
 4. Com perfil só de leitura, o botão não aparece.
 5. Repita na aba **AEP**.
-6. Publique pelo fluxo de release do painel (versão, changelog, "Novidades").
+6. Numa inspeção sem AET, clique em **"Iniciar AET desta inspeção"** → toast "…já cadastrada no módulo AET"; a faixa mostra "No módulo AET desde …" e a AET aparece na lista do módulo AET. Repita com a AEP.
+7. Publique pelo fluxo de release do painel (versão, changelog, "Novidades").
