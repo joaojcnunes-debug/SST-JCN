@@ -16,6 +16,7 @@ import { setorVazioAep } from "@/lib/hooks/useAep";
 import { setorVazio as setorVazioAet } from "@/lib/hooks/useAet";
 import { montarEnderecoEmpresa } from "@/lib/textos-padrao/variaveis";
 import { gerarId } from "@/lib/utils";
+import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import type { Cargo, Empresa, InspecaoMaquina, Setor } from "@/lib/supabase/types";
 
 export type TipoErgo = "aep" | "aet";
@@ -340,5 +341,27 @@ export function useEnviarLaudoErgoModulo(tipo: TipoErgo) {
       toast.success(`${ROTULO_ERGO[tipo]} enviada — já está disponível no módulo ${ROTULO_ERGO[tipo]}`);
     },
     onError: (e: Error) => toast.error(e.message || "Falha ao enviar para o módulo"),
+  });
+}
+
+/**
+ * Exclui a AEP/AET da inspeção (vai para a Lixeira, como no módulo). Antes
+ * de enviada ela não aparece na lista do módulo, então o único lugar para
+ * apagá-la é a própria aba da inspeção (2026-10-05).
+ */
+export function useExcluirLaudoErgo(tipo: TipoErgo) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { idRelatorio: string; idInspecao: string }) => {
+      await excluirComLixeiraPorId({ tabela: tabela(tipo), chave: "id_relatorio", id: args.idRelatorio, modulo: tipo });
+    },
+    onSuccess: (_d, args) => {
+      qc.invalidateQueries({ queryKey: ["ergo-inspecao", tipo, args.idInspecao] });
+      qc.invalidateQueries({ queryKey: [`${tipo}-relatorios`] });
+      qc.invalidateQueries({ queryKey: [`home-stats-${tipo}`] });
+      qc.invalidateQueries({ queryKey: ["comercial-dados"] });
+      toast.success(`${ROTULO_ERGO[tipo]} excluída — está na Lixeira`);
+    },
+    onError: (e: Error) => toast.error(e.message || "Falha ao excluir"),
   });
 }

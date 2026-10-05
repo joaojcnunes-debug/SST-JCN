@@ -2,15 +2,16 @@
 
 // Abas AEP e AET da inspeção (v259). O conteúdo é o editor do próprio módulo
 // — mesmo laudo, mesmas telas — e o botão "Enviar para o módulo" o libera nas
-// listas do AEP/AET. Ver `lib/hooks/useErgonomiaInspecao.ts`.
+// listas do AEP/AET; "Excluir" manda o laudo para a Lixeira. Ver `lib/hooks/useErgonomiaInspecao.ts`.
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ExternalLink, Printer, Send, Sparkles } from "lucide-react";
+import { CheckCircle2, ExternalLink, Printer, Send, Sparkles, Trash2 } from "lucide-react";
 import {
   NOME_ERGO,
   ROTULO_ERGO,
   useEnviarLaudoErgoModulo,
+  useExcluirLaudoErgo,
   useIniciarLaudoErgo,
   useLaudoErgoDaInspecao,
   type TipoErgo,
@@ -57,6 +58,7 @@ export default function ErgonomiaTab({ tipo, idInspecao, idEmpresa, empresa, set
   const { data: laudo, isLoading } = useLaudoErgoDaInspecao(tipo, idInspecao);
   const iniciar = useIniciarLaudoErgo(tipo);
   const enviar = useEnviarLaudoErgoModulo(tipo);
+  const excluir = useExcluirLaudoErgo(tipo);
   const [sub, setSub] = useState(SUBABAS[tipo][0].key);
   const rotulo = ROTULO_ERGO[tipo];
 
@@ -148,6 +150,26 @@ export default function ErgonomiaTab({ tipo, idInspecao, idEmpresa, empresa, set
                 <Send className="size-3.5" /> {enviar.isPending ? "Enviando..." : `Enviar para o módulo ${rotulo}`}
               </button>
             )
+          )}
+          {!readOnly && (
+            <button
+              type="button"
+              disabled={excluir.isPending}
+              onClick={async () => {
+                const ok = await confirmar({
+                  title: `Excluir a ${rotulo} desta inspeção?`,
+                  description: enviado
+                    ? `A ${rotulo} sai desta inspeção e também do módulo ${rotulo} (é o mesmo laudo). Ela vai para a Lixeira e pode ser restaurada.`
+                    : `A ${rotulo} vai para a Lixeira e pode ser restaurada. Depois, a aba volta a oferecer "Iniciar ${rotulo}".`,
+                  confirmLabel: "Excluir",
+                  variant: "danger",
+                });
+                if (ok) excluir.mutate({ idRelatorio: laudo.id_relatorio, idInspecao });
+              }}
+              className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-60"
+            >
+              <Trash2 className="size-3.5" /> {excluir.isPending ? "Excluindo..." : "Excluir"}
+            </button>
           )}
         </div>
       </div>
