@@ -4,9 +4,10 @@
 //
 // O laudo nasce na tabela do próprio módulo (aep_relatorios / aet_relatorios)
 // com `id_inspecao`, e as abas da inspeção usam os MESMOS editores do módulo.
-// Enquanto `enviado_modulo_em` for NULL, o laudo só aparece na inspeção; o
-// botão "Enviar para o módulo" o libera nas listas do AEP/AET. É o mesmo
-// registro dos dois lados — editar em um reflete no outro na hora.
+// Desde 2026-10-05 o laudo já nasce com `enviado_modulo_em` preenchido, ou
+// seja, cadastrado na lista do módulo AEP/AET. Laudo antigo com NULL só
+// aparece na inspeção até "Enviar para o módulo". É o mesmo registro dos dois
+// lados — editar em um reflete no outro na hora.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -120,6 +121,8 @@ export function useIniciarLaudoErgo(tipo: TipoErgo) {
         status: "RASCUNHO",
         setores: setoresIniciais(tipo, args.setores, args.cargos, args.maquinas),
         usuario: auth?.user?.id ?? null,
+        // Já cadastrada no módulo (2026-10-05): aparece na lista do AEP/AET.
+        enviado_modulo_em: new Date().toISOString(),
       };
       if (tipo === "aet") linha.consideracoes_finais = "";
       const { data, error } = await sb.from(tabela(tipo)).insert(linha).select("id_relatorio").single();
@@ -133,7 +136,10 @@ export function useIniciarLaudoErgo(tipo: TipoErgo) {
     },
     onSuccess: (_d, args) => {
       qc.invalidateQueries({ queryKey: ["ergo-inspecao", tipo, args.idInspecao] });
-      toast.success(`${ROTULO_ERGO[tipo]} iniciada com os setores e cargos da inspeção`);
+      qc.invalidateQueries({ queryKey: [`${tipo}-relatorios`] });
+      qc.invalidateQueries({ queryKey: [`home-stats-${tipo}`] });
+      qc.invalidateQueries({ queryKey: ["comercial-dados"] });
+      toast.success(`${ROTULO_ERGO[tipo]} iniciada com os setores e cargos da inspeção e já cadastrada no módulo ${ROTULO_ERGO[tipo]}`);
     },
     onError: (e: Error) => toast.error(e.message || `Falha ao iniciar a ${ROTULO_ERGO[tipo]}`),
   });
