@@ -9,7 +9,7 @@
 
 ### `aep_relatorios`
 
-id_relatorio uuid NN, id_empresa text NN, status text NN, setores jsonb NN, responsavel_elaboracao text NN, titulo_profissional text NN, registro_profissional text NN, data_elaboracao date, endereco_empresa text, conclusao text NN, usuario uuid, created_at timestamp with time zone, updated_at timestamp with time zone, data_validade date, id_inspecao text, enviado_modulo_em timestamp with time zone, concluido_em timestamp with time zone (v265: trigger `trg_aep_relatorios_concluido_em` grava ao passar para CONCLUIDO e limpa ao voltar)
+id_relatorio uuid NN, id_empresa text NN, status text NN (CHECK RASCUNHO/EM_ANDAMENTO/CONCLUIDO, v266), setores jsonb NN, responsavel_elaboracao text NN, titulo_profissional text NN, registro_profissional text NN, data_elaboracao date, endereco_empresa text, conclusao text NN, usuario uuid, created_at timestamp with time zone, updated_at timestamp with time zone, data_validade date, id_inspecao text, enviado_modulo_em timestamp with time zone, concluido_em timestamp with time zone (v265: trigger `trg_aep_relatorios_concluido_em` grava ao passar para CONCLUIDO e limpa ao voltar)
 
 ### `aep_textos_padrao`
 

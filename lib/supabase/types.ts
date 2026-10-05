@@ -2357,7 +2357,7 @@ export interface AuditoriaTabela {
 
 // ─── AEP – Análise Ergonômica Preliminar ─────────────────────────────────────
 
-export type StatusAEP = "RASCUNHO" | "CONCLUIDO";
+export type StatusAEP = "RASCUNHO" | "EM_ANDAMENTO" | "CONCLUIDO";
 
 export interface AepRisco {
   id: string;

@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Printer } from "lucide-react";
-import { useAepRelatorios, riscoMaximoRelatorio, CLASS_COLOR_AEP, STATUS_LABEL_AEP } from "@/lib/hooks/useAep";
+import { useAepRelatorios, riscoMaximoRelatorio, CLASS_COLOR_AEP, STATUS_LABEL_AEP, STATUS_COR_AEP } from "@/lib/hooks/useAep";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
-import type { ClassificacaoRiscoAET } from "@/lib/supabase/types";
+import type { ClassificacaoRiscoAET, StatusAEP } from "@/lib/supabase/types";
 
 const RISCO_DOT: Record<ClassificacaoRiscoAET, string> = {
   Trivial: "bg-green-400",
@@ -19,12 +19,15 @@ const RISCO_DOT: Record<ClassificacaoRiscoAET, string> = {
 export default function AepDashboardPage() {
   const router = useRouter();
   const [empresaId, setEmpresaId] = useState<string | null>(null);
-  const { data: relatorios = [], isLoading } = useAepRelatorios(empresaId);
+  const { data: todos = [], isLoading } = useAepRelatorios(empresaId);
+  // Clique num cartão de status filtra a lista abaixo (clicar de novo limpa).
+  const [filtroStatus, setFiltroStatus] = useState<StatusAEP | null>(null);
+  const relatorios = filtroStatus ? todos.filter((r) => r.status === filtroStatus) : todos;
 
-  const totalAnalises = relatorios.length;
-  const comAet = relatorios.filter((r) => r.setores.some((s) => s.necessita_aet)).length;
-  const concluidos = relatorios.filter((r) => r.status === "CONCLUIDO").length;
-  const totalRiscos = relatorios.reduce((a, r) => a + r.setores.reduce((b, s) => b + s.riscos.length, 0), 0);
+  const totalAnalises = todos.length;
+  const porStatus = (s: StatusAEP) => todos.filter((r) => r.status === s).length;
+  const comAet = todos.filter((r) => r.setores.some((s) => s.necessita_aet)).length;
+  const totalRiscos = todos.reduce((a, r) => a + r.setores.reduce((b, s) => b + s.riscos.length, 0), 0);
 
   return (
     <div className="space-y-6">
@@ -39,19 +42,42 @@ export default function AepDashboardPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
-          { label: "Análises",     value: totalAnalises, color: "bg-emerald-50 border-emerald-200 text-emerald-700" },
-          { label: "Concluídas",   value: concluidos,    color: "bg-blue-50 border-blue-200 text-blue-700" },
-          { label: "Requer AET",   value: comAet,        color: "bg-orange-50 border-orange-200 text-orange-700" },
-          { label: "Riscos Ident.", value: totalRiscos,  color: "bg-gray-50 border-gray-200 text-gray-700" },
-        ].map(({ label, value, color }) => (
-          <div key={label} className={`rounded-xl border p-4 text-center ${color}`}>
-            <p className="text-3xl font-bold">{value}</p>
-            <p className="text-xs font-medium mt-1">{label}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {(
+          [
+            { label: "Análises",      value: totalAnalises,               color: "bg-emerald-50 border-emerald-200 text-emerald-700", status: null },
+            { label: "Rascunho",      value: porStatus("RASCUNHO"),       color: "bg-gray-50 border-gray-200 text-gray-700",          status: "RASCUNHO" },
+            { label: "Em andamento",  value: porStatus("EM_ANDAMENTO"),   color: "bg-yellow-50 border-yellow-200 text-yellow-700",    status: "EM_ANDAMENTO" },
+            { label: "Concluídas",    value: porStatus("CONCLUIDO"),      color: "bg-blue-50 border-blue-200 text-blue-700",          status: "CONCLUIDO" },
+            { label: "Requer AET",    value: comAet,                      color: "bg-orange-50 border-orange-200 text-orange-700",    status: undefined },
+            { label: "Riscos Ident.", value: totalRiscos,                 color: "bg-gray-50 border-gray-200 text-gray-700",          status: undefined },
+          ] as { label: string; value: number; color: string; status: StatusAEP | null | undefined }[]
+        ).map(({ label, value, color, status }) => {
+          const clicavel = status !== undefined;
+          const ativo = clicavel && filtroStatus === status && status !== null;
+          return (
+            <button
+              key={label}
+              type="button"
+              disabled={!clicavel}
+              onClick={() => setFiltroStatus(status === null || filtroStatus === status ? null : (status as StatusAEP))}
+              title={clicavel ? (status ? `Mostrar só "${label}"` : "Mostrar todas") : undefined}
+              className={`rounded-xl border p-4 text-center ${color} ${clicavel ? "cursor-pointer hover:shadow-sm" : "cursor-default"} ${ativo ? "ring-2 ring-offset-1 ring-emerald-500" : ""}`}
+            >
+              <p className="text-3xl font-bold">{value}</p>
+              <p className="text-xs font-medium mt-1">{label}</p>
+            </button>
+          );
+        })}
       </div>
+      {filtroStatus && (
+        <p className="text-xs text-gray-500">
+          Mostrando só as análises com status <strong>{STATUS_LABEL_AEP[filtroStatus]}</strong>.{" "}
+          <button type="button" onClick={() => setFiltroStatus(null)} className="font-semibold text-emerald-700 underline">
+            Mostrar todas
+          </button>
+        </p>
+      )}
 
       {isLoading && <LoadingSkeleton rows={4} />}
 
@@ -84,7 +110,7 @@ export default function AepDashboardPage() {
                       {rMax}
                     </span>
                   )}
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${rel.status === "CONCLUIDO" ? "bg-emerald-100 text-emerald-700" : "bg-yellow-100 text-yellow-700"}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_COR_AEP[rel.status] ?? STATUS_COR_AEP.RASCUNHO}`}>
                     {STATUS_LABEL_AEP[rel.status]}
                   </span>
                 </div>

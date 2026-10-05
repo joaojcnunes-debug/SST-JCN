@@ -670,5 +670,14 @@ export const CLASSIFICACOES_AEP: ClassificacaoRiscoAET[] = ["Trivial", "De Aten√
 
 export const STATUS_LABEL_AEP: Record<StatusAEP, string> = {
   RASCUNHO: "Rascunho",
+  EM_ANDAMENTO: "Em andamento",
   CONCLUIDO: "Conclu√≠do",
+};
+
+/** Ordem do fluxo e cor do selo de cada status (v266). */
+export const STATUS_ORDEM_AEP: StatusAEP[] = ["RASCUNHO", "EM_ANDAMENTO", "CONCLUIDO"];
+export const STATUS_COR_AEP: Record<StatusAEP, string> = {
+  RASCUNHO: "bg-gray-100 text-gray-700",
+  EM_ANDAMENTO: "bg-yellow-100 text-yellow-700",
+  CONCLUIDO: "bg-emerald-100 text-emerald-700",
 };

@@ -114,7 +114,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
         <div>
           <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
           <div className="flex gap-2">
-            {(["RASCUNHO", "CONCLUIDO"] as StatusAEP[]).map((s) => (
+            {(["RASCUNHO", "EM_ANDAMENTO", "CONCLUIDO"] as StatusAEP[]).map((s) => (
               <button
                 key={s}
                 type="button"
@@ -125,16 +125,18 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
                   status === s
                     ? s === "CONCLUIDO"
                       ? "border-emerald-500 bg-emerald-600 text-white"
-                      : "border-yellow-400 bg-yellow-50 text-yellow-800"
+                      : s === "EM_ANDAMENTO"
+                        ? "border-yellow-400 bg-yellow-50 text-yellow-800"
+                        : "border-gray-400 bg-gray-100 text-gray-800"
                     : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50",
                 ].join(" ")}
               >
-                {s === "RASCUNHO" ? "Rascunho" : "Concluído"}
+                {s === "RASCUNHO" ? "Rascunho" : s === "EM_ANDAMENTO" ? "Em andamento" : "Concluído"}
               </button>
             ))}
           </div>
           <p className="mt-1 text-[11px] text-gray-500">
-            Concluído = enviado ao cliente. AEP sem inspeção entra na Sinalização Psicossocial ao ser concluída; com
+            Rascunho = aberta; Em andamento = em elaboração; Concluído = enviado ao cliente. AEP sem inspeção entra na Sinalização Psicossocial ao ser concluída; com
             inspeção, quando o documento da inspeção for concluído pelo associado.
           </p>
         </div>

@@ -18,7 +18,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { fmtData, formatCNPJ } from "@/lib/utils";
 
-const STATUS_ROTULO: Record<string, string> = { RASCUNHO: "Rascunho", CONCLUIDO: "Concluída" };
+const STATUS_ROTULO: Record<string, string> = { RASCUNHO: "Rascunho", EM_ANDAMENTO: "Em andamento", CONCLUIDO: "Concluída" };
 
 interface EmpresaCadastro {
   nome_empresa: string | null;
