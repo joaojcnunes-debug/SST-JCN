@@ -35,8 +35,16 @@ function Titulo({ children }: { children: React.ReactNode }) {
 const th = "border border-gray-200 bg-gray-50 px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-gray-500";
 const td = "border border-gray-200 px-3 py-2 align-top text-sm text-gray-700";
 
-export default function ExplicacaoMatrizAiha({ abertoInicial = false }: { abertoInicial?: boolean }) {
-  const [aberto, setAberto] = useState(abertoInicial);
+export default function ExplicacaoMatrizAiha({
+  abertoInicial = false,
+  fixo = false,
+}: {
+  abertoInicial?: boolean;
+  /** Página própria: sempre aberto, sem o botão de recolher. */
+  fixo?: boolean;
+}) {
+  const [estado, setAberto] = useState(abertoInicial);
+  const aberto = fixo || estado;
   const { data: matriz } = useMatrizAtiva();
 
   const probs = matriz?.probabilidades ?? [];
@@ -47,8 +55,8 @@ export default function ExplicacaoMatrizAiha({ abertoInicial = false }: { aberto
     <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
       <button
         type="button"
-        onClick={() => setAberto((v) => !v)}
-        className="flex w-full items-center gap-3 px-5 py-4 text-left"
+        onClick={() => !fixo && setAberto((v) => !v)}
+        className={cn("flex w-full items-center gap-3 px-5 py-4 text-left", fixo && "cursor-default")}
         aria-expanded={aberto}
       >
         <BookOpen className="size-5 shrink-0 text-verde-primary" />
@@ -58,7 +66,7 @@ export default function ExplicacaoMatrizAiha({ abertoInicial = false }: { aberto
             Fundamentação técnica e normativa de como o nível de cada fator psicossocial é calculado.
           </div>
         </div>
-        <ChevronDown className={cn("size-4 shrink-0 text-gray-400 transition-transform", aberto && "rotate-180")} />
+        {!fixo && <ChevronDown className={cn("size-4 shrink-0 text-gray-400 transition-transform", aberto && "rotate-180")} />}
       </button>
 
       {aberto && (
