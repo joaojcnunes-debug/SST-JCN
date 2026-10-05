@@ -246,7 +246,7 @@ Abas: Matrizes de Risco, Tipos de Risco, Perguntas Customizadas, Matriz Padrão,
 Lista `pdfs_gerados` (status `gerado`/`congelado`, versão, sha256, arquivo no bucket privado `pdfs-gerados`) e `pdfs_assinados`.
 
 ### 4.5 Lixeira (`/lixeira`)
-`registros_excluidos` guarda o snapshot (`dados` jsonb) antes de excluir. `excluirComLixeira()`: grava snapshot → DELETE → se falhar, apaga o snapshot → auditoria. Soft delete (`DELETADO/DELETADA`) registra o status anterior. Restaurar: re-INSERT (hard) ou volta o status (soft).
+`registros_excluidos` guarda o snapshot (`dados` jsonb) antes de excluir. `excluirComLixeira()`: grava snapshot → DELETE (com `.select()`) → se falhar **ou não apagar nenhuma linha com o registro ainda existindo** (RLS barrando sem erro), apaga o snapshot e mostra erro → auditoria. Antes (até 2026-10-05) o DELETE barrado por RLS mostrava "excluída" e deixava fantasma na Lixeira. Soft delete (`DELETADO/DELETADA`) registra o status anterior. Restaurar: re-INSERT (hard) ou volta o status (soft).
 
 ### 4.6 Auditoria (`/auditoria`)
 - `auditoria_eventos`: gatilhos em todas as tabelas de `auditoria_tabelas` (tabela nova liga sozinha). Grava quem, quando, tabela, registro, módulo, empresa, ação (criou/editou/excluiu) e, na edição, só os campos alterados (com diff de jsonb de 1 nível); segredos e imagens mascarados; busca textual sem acento.
