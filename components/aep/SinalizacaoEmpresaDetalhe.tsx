@@ -133,9 +133,20 @@ export default function SinalizacaoEmpresaDetalhe({
               <h2 className="text-base font-semibold text-gray-900">Análise Ergonômica Preliminar</h2>
               <span className="text-xs text-gray-500">
                 {a.data ? `Entregue ao cliente em ${fmtData(a.data)}` : STATUS_ROTULO[a.status] ?? a.status}
-                {a.idInspecao ? ` · ${a.idInspecao}` : ""}
-                {a.responsavel ? ` · ${a.responsavel}` : ""}
+                {a.idInspecao ? ` · ${a.idInspecao}` : " · sem inspeção"}
+                {a.responsavel ? ` · Realizada por ${a.responsavel}` : ""}
+                {a.enviadoPor ? ` · Enviada por ${a.enviadoPor}` : ""}
               </span>
+              {a.precisaQuestionario && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                  DRPS/Questionário necessário
+                </span>
+              )}
+              {a.precisaAet && (
+                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-semibold text-orange-800">
+                  AET necessária
+                </span>
+              )}
             </div>
 
             <div className="space-y-4">

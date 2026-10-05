@@ -40,6 +40,12 @@ export interface AvaliacaoSinalizada {
   data: string | null;
   idInspecao: string | null;
   responsavel: string | null;
+  /** Associado que enviou (concluiu o documento da inspeção); null sem inspeção. */
+  enviadoPor: string | null;
+  /** Algum setor com "Necessita AET". */
+  precisaAet: boolean;
+  /** 3+ alertas organizacionais: recomenda DRPS/Questionário. */
+  precisaQuestionario: boolean;
   status: string;
   setores: SetorSinalizado[];
 }
@@ -54,6 +60,32 @@ export interface EmpresaSinalizada {
   totalAltos: number;
   pior: string | null;
   ultimaData: string | null;
+  /** Da AEP entregue mais recente da empresa. */
+  precisaAet: boolean;
+  precisaQuestionario: boolean;
+  realizadaPor: string | null;
+  enviadoPor: string | null;
+  temInspecao: boolean;
+}
+
+/** Mínimo de alertas organizacionais ("Sim") na AEP para recomendar DRPS/Questionário. */
+export const MIN_ALERTAS_QUESTIONARIO = 3;
+
+/** Total de fatores organizacionais marcados "Sim" em todos os setores da AEP. */
+export function totalAlertasOrganizacionais(setores: AepRelatorio["setores"]): number {
+  return (setores ?? []).reduce(
+    (n, s) =>
+      n + Object.values((s.checklist_organizacional ?? {}) as unknown as Record<string, string>).filter((v) => v === "sim").length,
+    0,
+  );
+}
+
+/**
+ * A AEP recomenda aprofundar com DRPS/Questionário Psicossocial (NR-01) quando
+ * há 3+ alertas organizacionais — a mesma regra do aviso do editor da AEP.
+ */
+export function recomendaQuestionario(setores: AepRelatorio["setores"]): boolean {
+  return totalAlertasOrganizacionais(setores) >= MIN_ALERTAS_QUESTIONARIO;
 }
 
 export function piorNivel(niveis: (string | null | undefined)[]): string | null {
@@ -65,7 +97,11 @@ export function piorNivel(niveis: (string | null | undefined)[]): string | null 
 }
 
 /** AEP com a data em que o documento da inspeção foi entregue ao cliente. */
-export type AepEntregue = AepRelatorio & { entregue_em?: string | null };
+export type AepEntregue = AepRelatorio & {
+  entregue_em?: string | null;
+  /** Associado que concluiu (enviou) o documento da inspeção; null sem inspeção. */
+  enviado_por?: string | null;
+};
 
 export function montarSinalizacao(relatorios: AepEntregue[]): EmpresaSinalizada[] {
   const porEmpresa = new Map<string, EmpresaSinalizada>();
@@ -112,6 +148,11 @@ export function montarSinalizacao(relatorios: AepEntregue[]): EmpresaSinalizada[
         totalAltos: 0,
         pior: null,
         ultimaData: null,
+        precisaAet: false,
+        precisaQuestionario: false,
+        realizadaPor: null,
+        enviadoPor: null,
+        temInspecao: false,
       };
       porEmpresa.set(id, alvo);
     }
@@ -120,6 +161,9 @@ export function montarSinalizacao(relatorios: AepEntregue[]): EmpresaSinalizada[
       data: rel.entregue_em ?? rel.data_elaboracao,
       idInspecao: (rel as { id_inspecao?: string | null }).id_inspecao ?? null,
       responsavel: rel.responsavel_elaboracao || null,
+      enviadoPor: rel.enviado_por?.trim() || null,
+      precisaAet: (rel.setores ?? []).some((s) => s.necessita_aet),
+      precisaQuestionario: recomendaQuestionario(rel.setores),
       status: rel.status,
       setores,
     });
@@ -137,6 +181,12 @@ export function montarSinalizacao(relatorios: AepEntregue[]): EmpresaSinalizada[
     );
     e.pior = piorNivel(todos.map((s) => s.pior));
     e.ultimaData = e.avaliacoes[0]?.data ?? null;
+    const ultima = e.avaliacoes[0];
+    e.precisaAet = ultima?.precisaAet ?? false;
+    e.precisaQuestionario = ultima?.precisaQuestionario ?? false;
+    e.realizadaPor = ultima?.responsavel ?? null;
+    e.enviadoPor = ultima?.enviadoPor ?? null;
+    e.temInspecao = !!ultima?.idInspecao;
   }
   // Mais grave primeiro; empate pelo nome.
   return lista.sort(
