@@ -18,10 +18,18 @@ import {
 import { ROTEIRO_CAMPO, type RoteiroFator } from "@/lib/aep/roteiro-campo";
 import { ORIGENS_EVIDENCIA, COR_CONFIANCA, confiancaDoFator } from "@/lib/aep/evidencia";
 import { lacunasDoFator, rotuloLacuna, type ChecklistGestao } from "@/lib/aep/checklist-gestao";
-import { detalhesDoSetor, type DetalheFator, type InventarioFator } from "@/lib/aep/inventario";
-import { SEM_MEDIDAS, medidasExistentesDoFator } from "@/lib/aep/checklist-gestao";
-import type { FatorBiblioteca } from "@/lib/aep/biblioteca";
-import { useBibliotecaPsi } from "@/lib/hooks/useBibliotecaPsi";
+import { detalhesDoSetor, idsSelecionados, type DetalheFator } from "@/lib/aep/inventario";
+import { medidasExistentesDoFator } from "@/lib/aep/checklist-gestao";
+import {
+  ROTULO_TOPICO,
+  existeNaBiblioteca,
+  itensDe,
+  type Biblioteca,
+  type ItemBiblioteca,
+  type TopicoBib,
+} from "@/lib/aep/biblioteca";
+import { useBibliotecaPsi, useIncluirItemBiblioteca } from "@/lib/hooks/useBibliotecaPsi";
+import { useIsAdmin } from "@/lib/hooks/useUsuario";
 import { registrarAuditoria } from "@/lib/auditoria/registrar";
 import { chaveNome, type CargoCatalogo, type SetorCatalogo } from "@/lib/aep/catalogo-setores";
 import SituacaoSinalizacaoAep from "@/components/aep/SituacaoSinalizacaoAep";
@@ -31,6 +39,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
+  BookPlus,
   ChevronDown,
   Compass,
   ChevronUp,
@@ -639,11 +648,14 @@ function ListaManual({
   onChange,
   disabled,
   placeholder,
+  acaoItem,
 }: {
   itens: string[];
   onChange: (v: string[]) => void;
   disabled?: boolean;
   placeholder: string;
+  /** Ação extra por item (salvar/sugerir na biblioteca). */
+  acaoItem?: (texto: string) => React.ReactNode;
 }) {
   const [novo, setNovo] = useState("");
   const adicionar = () => {
@@ -658,6 +670,7 @@ function ListaManual({
         <p key={x} className="flex items-start gap-1.5">
           <span className="mt-0.5 rounded bg-violet-100 px-1 text-[9px] font-semibold text-violet-800">manual</span>
           <span className="flex-1">{x}</span>
+          {acaoItem?.(x)}
           {!disabled && (
             <button type="button" onClick={() => onChange(itens.filter((i) => i !== x))} className="text-gray-400 hover:text-red-500" title="Remover">
               <Trash2 className="size-3" />
@@ -688,173 +701,196 @@ function ListaManual({
   );
 }
 
+/** Opções da biblioteca de um tópico: caixas (ou chips, nas listas comuns). */
+function OpcoesBiblioteca({
+  opcoes,
+  marcados,
+  onChange,
+  chips,
+  disabled,
+}: {
+  opcoes: ItemBiblioteca[];
+  marcados: string[];
+  onChange: (ids: string[]) => void;
+  chips?: boolean;
+  disabled?: boolean;
+}) {
+  const alternar = (id: string) => onChange(marcados.includes(id) ? marcados.filter((x) => x !== id) : [...marcados, id]);
+  if (opcoes.length === 0) return <p className="text-gray-400">Sem opções na biblioteca.</p>;
+  if (chips) {
+    return (
+      <div className="flex flex-wrap gap-1">
+        {opcoes.map((o) => (
+          <button
+            key={o.id_item}
+            type="button"
+            disabled={disabled}
+            onClick={() => alternar(o.id_item)}
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition",
+              marcados.includes(o.id_item) ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-gray-600 ring-gray-200 hover:bg-gray-50",
+            )}
+          >
+            {o.texto}
+          </button>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <>
+      {opcoes.map((o) => (
+        <label key={o.id_item} className={cn("flex items-start gap-1.5", disabled ? "opacity-70" : "cursor-pointer")}>
+          <input
+            type="checkbox"
+            disabled={disabled}
+            checked={marcados.includes(o.id_item)}
+            onChange={() => alternar(o.id_item)}
+            className="mt-0.5 size-3 shrink-0 accent-emerald-600"
+          />
+          <span>
+            {o.codigo && <span className="font-mono text-[10px] text-gray-500">{o.codigo} </span>}
+            {o.texto}
+          </span>
+        </label>
+      ))}
+    </>
+  );
+}
+
 /**
- * Inventário de risco EDITÁVEL do fator "Sim" (2026-10-06): cada tópico é
- * selecionável (itens da biblioteca / checklist de gestão / sinais) e aceita
- * texto ou itens manuais. Os ajustes ficam em `setor.inventario[fator]` e
- * seguem para laudo, PDF, inventário exportado e IA (lib/aep/inventario.ts).
+ * Inventário de risco do fator "Sim" (2026-10-06): cada tópico é uma lista de
+ * opções da BIBLIOTECA para marcar, mais itens manuais. Item manual pode ir
+ * para a biblioteca: o Admin salva direto (vira opção marcada); o técnico
+ * SUGERE (fica pendente até o Admin aprovar). A seleção fica em
+ * `setor.inventario[fator]` e segue para laudo, PDF, planilha e IA.
  */
 function InventarioDoFator({
   d,
-  padrao,
-  rotuloPadrao,
-  aj,
-  onAjuste,
+  fator,
+  biblioteca,
+  marcados,
+  extra,
+  onSel,
+  onExtra,
   sinaisCatalogo,
   sinaisMarcados,
   onSinais,
-  fontesMarcadas,
-  onFontes,
   gestao,
-  sugestoesTexto,
+  isAdmin,
+  onIncluirBiblioteca,
   disabled,
 }: {
   d: DetalheFator;
-  padrao: FatorBiblioteca | undefined;
-  rotuloPadrao: string;
-  aj: InventarioFator;
-  onAjuste: (patch: Partial<InventarioFator>) => void;
+  fator: string;
+  biblioteca: Biblioteca | undefined;
+  /** Ids marcados por tópico (seleção do técnico ou padrão). */
+  marcados: (t: TopicoBib) => string[];
+  extra: Partial<Record<TopicoBib, string[]>>;
+  onSel: (t: TopicoBib, ids: string[]) => void;
+  onExtra: (t: TopicoBib, itens: string[]) => void;
   sinaisCatalogo: SinalOrganizacional[];
   sinaisMarcados: string[];
   onSinais: (keys: string[]) => void;
-  fontesMarcadas: string[];
-  onFontes: (codigos: string[]) => void;
   gestao: ChecklistGestao | undefined;
-  /** Valores já usados na biblioteca, para sugerir em meio/situação/tempo. */
-  sugestoesTexto: { meio: string[]; situacao: string[]; tempo: string[] };
+  isAdmin: boolean;
+  onIncluirBiblioteca: (t: TopicoBib, texto: string) => void;
   disabled?: boolean;
 }) {
-  const alternar = (lista: string[], k: string) => (lista.includes(k) ? lista.filter((x) => x !== k) : [...lista, k]);
-  const inputCls =
-    "w-full rounded border border-gray-200 bg-white px-2 py-1 text-[11px] focus:border-emerald-500 focus:outline-none disabled:bg-gray-50";
-  const lacunas = lacunasDoFator(gestao, d.key);
-  const medidasGestao = medidasExistentesDoFator(gestao, d.key);
-  const idLista = (c: string) => `inv-${d.key}-${c}`;
+  const lacunas = lacunasDoFator(gestao, fator);
+  const medidasGestao = medidasExistentesDoFator(gestao, fator);
 
-  const texto = (campo: "perigo" | "meio" | "situacao" | "tempo", valorPadrao: string, lista?: string[]) => (
-    <>
-      <input
-        disabled={disabled}
-        list={lista ? idLista(campo) : undefined}
-        value={aj[campo] ?? valorPadrao}
-        onChange={(e) => onAjuste({ [campo]: e.target.value })}
-        className={inputCls}
-      />
-      {lista && (
-        <datalist id={idLista(campo)}>
-          {lista.map((x) => (
-            <option key={x} value={x} />
-          ))}
-        </datalist>
-      )}
-      {aj[campo] !== undefined && aj[campo] !== valorPadrao && !disabled && (
-        <button type="button" onClick={() => onAjuste({ [campo]: undefined })} className="mt-0.5 text-[10px] text-sky-700 underline">
-          voltar ao padrão
-        </button>
-      )}
-    </>
-  );
-  const textoLongo = (campo: "descricao" | "danos", valorPadrao: string) => (
-    <>
-      <textarea
-        disabled={disabled}
-        rows={2}
-        value={aj[campo] ?? valorPadrao}
-        onChange={(e) => onAjuste({ [campo]: e.target.value })}
-        className={inputCls}
-      />
-      {aj[campo] !== undefined && aj[campo] !== valorPadrao && !disabled && (
-        <button type="button" onClick={() => onAjuste({ [campo]: undefined })} className="mt-0.5 text-[10px] text-sky-700 underline">
-          voltar ao texto da biblioteca
-        </button>
-      )}
-    </>
-  );
-  const selecao = (campo: "sugestoes" | "acoes", campoExtra: "sugestoes_extra" | "acoes_extra", daBiblioteca: string[], rotuloNovo: string) => {
-    const sel = aj[campo] ?? daBiblioteca;
+  const acaoBiblioteca = (t: TopicoBib) =>
+    function AcaoBiblioteca(texto: string) {
+    if (disabled) return null;
+    const ja = existeNaBiblioteca(biblioteca, fator, t, texto);
+    if (ja?.status === "pendente") return <span className="text-[9px] font-semibold text-amber-700">sugerido</span>;
+    if (ja?.status === "ativo") return <span className="text-[9px] text-gray-400">já na biblioteca</span>;
     return (
-      <>
-        {daBiblioteca.map((x) => (
-          <label key={x} className={cn("flex items-start gap-1.5", disabled ? "opacity-70" : "cursor-pointer")}>
-            <input
-              type="checkbox"
-              disabled={disabled}
-              checked={sel.includes(x)}
-              onChange={() => onAjuste({ [campo]: alternar(sel, x) })}
-              className="mt-0.5 size-3 shrink-0 accent-emerald-600"
-            />
-            <span>{x}</span>
-          </label>
-        ))}
-        <ListaManual itens={aj[campoExtra] ?? []} onChange={(v) => onAjuste({ [campoExtra]: v })} disabled={disabled} placeholder={rotuloNovo} />
-      </>
+      <button
+        type="button"
+        onClick={() => onIncluirBiblioteca(t, texto)}
+        className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-sky-700 hover:underline"
+        title={isAdmin ? "Incluir esta opção na biblioteca (fica disponível para todas as AEPs)" : "Sugerir ao Admin incluir esta opção na biblioteca"}
+      >
+        <BookPlus className="size-3" /> {isAdmin ? "salvar na biblioteca" : "sugerir"}
+      </button>
     );
-  };
+    };
+
+  const topico = (t: TopicoBib, placeholder: string, opts: { chips?: boolean; antes?: React.ReactNode } = {}) => (
+    <>
+      {opts.antes}
+      <OpcoesBiblioteca
+        opcoes={itensDe(biblioteca, fator, t)}
+        marcados={marcados(t)}
+        onChange={(ids) => onSel(t, ids)}
+        chips={opts.chips}
+        disabled={disabled}
+      />
+      <ListaManual
+        itens={extra[t] ?? []}
+        onChange={(v) => onExtra(t, v)}
+        disabled={disabled}
+        placeholder={placeholder}
+        acaoItem={acaoBiblioteca(t)}
+      />
+    </>
+  );
 
   const linhas: [string, React.ReactNode][] = [
-    ["Perigo", texto("perigo", rotuloPadrao)],
+    [ROTULO_TOPICO.perigo, topico("perigo", "Outra descrição do perigo…")],
     [
-      "Fontes geradoras",
-      <>
-        {lacunas.map((l) => (
+      ROTULO_TOPICO.fonte,
+      topico("fonte", "Outra fonte geradora…", {
+        antes: lacunas.map((l) => (
           <p key={l.codigo} className="flex items-start gap-1.5">
             <span className="mt-0.5 rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-800">gestão</span>
             {rotuloLacuna(l)}
           </p>
-        ))}
-        {(padrao?.fontes_geradoras ?? []).map((f) => (
-          <label key={f.codigo} className={cn("flex items-start gap-1.5", disabled ? "opacity-70" : "cursor-pointer")}>
-            <input
-              type="checkbox"
-              disabled={disabled}
-              checked={fontesMarcadas.includes(f.codigo)}
-              onChange={() => onFontes(alternar(fontesMarcadas, f.codigo))}
-              className="mt-0.5 size-3 shrink-0 accent-emerald-600"
-            />
-            <span>
-              <span className="font-mono text-[10px] text-gray-500">{f.codigo}</span> {f.texto}
-            </span>
-          </label>
-        ))}
-        <ListaManual itens={aj.fontes_extra ?? []} onChange={(v) => onAjuste({ fontes_extra: v })} disabled={disabled} placeholder="Outra fonte geradora…" />
-      </>,
+        )),
+      }),
     ],
     [
       "Evidências (sinais)",
-      <>
-        {sinaisCatalogo.map((s) => (
+      topico("evidencia", "Outra evidência (não conta na matriz)…", {
+        antes: sinaisCatalogo.map((s) => (
           <label key={s.key} className={cn("flex items-start gap-1.5", disabled ? "opacity-70" : "cursor-pointer")}>
             <input
               type="checkbox"
               disabled={disabled}
               checked={sinaisMarcados.includes(s.key)}
-              onChange={() => onSinais(alternar(sinaisMarcados, s.key))}
+              onChange={() => onSinais(sinaisMarcados.includes(s.key) ? sinaisMarcados.filter((k) => k !== s.key) : [...sinaisMarcados, s.key])}
               className="mt-0.5 size-3 shrink-0 accent-red-600"
             />
-            <span>{s.label}</span>
+            <span>
+              {s.label} <span className="text-[9px] text-red-700">(sinal — conta na matriz)</span>
+            </span>
           </label>
-        ))}
-        <ListaManual itens={aj.sinais_extra ?? []} onChange={(v) => onAjuste({ sinais_extra: v })} disabled={disabled} placeholder="Outra evidência (não conta na matriz)…" />
-      </>,
+        )),
+      }),
     ],
-    ["Meio de propagação", texto("meio", padrao?.meio_propagacao ?? "", sugestoesTexto.meio)],
-    ["Situação", texto("situacao", padrao?.situacao_padrao ?? "", sugestoesTexto.situacao)],
-    ["Tempo de exposição", texto("tempo", padrao?.tempo_exposicao_padrao ?? "", sugestoesTexto.tempo)],
+    [ROTULO_TOPICO.meio, topico("meio", "Outro meio de propagação…", { chips: true })],
+    [ROTULO_TOPICO.situacao, topico("situacao", "Outra situação…", { chips: true })],
+    [ROTULO_TOPICO.tempo, topico("tempo", "Outro tempo de exposição…", { chips: true })],
     [
       "Medidas de controle existentes",
-      <>
-        {medidasGestao.map((m) => (
-          <p key={m.codigo} className="flex items-start gap-1.5">
-            <span className="mt-0.5 rounded bg-emerald-100 px-1 text-[9px] font-semibold text-emerald-800">gestão</span>
-            {m.codigo} — {m.label}
-          </p>
-        ))}
-        {medidasGestao.length === 0 && (aj.medidas_extra ?? []).length === 0 && <p className="text-gray-400">{SEM_MEDIDAS}</p>}
-        <ListaManual itens={aj.medidas_extra ?? []} onChange={(v) => onAjuste({ medidas_extra: v })} disabled={disabled} placeholder="Medida existente observada…" />
-      </>,
+      topico("medida", "Medida existente observada…", {
+        antes: (
+          <>
+            {medidasGestao.map((m) => (
+              <p key={m.codigo} className="flex items-start gap-1.5">
+                <span className="mt-0.5 rounded bg-emerald-100 px-1 text-[9px] font-semibold text-emerald-800">gestão</span>
+                {m.codigo} — {m.label}
+              </p>
+            ))}
+            <p className="text-[10px] text-gray-400">Marque só as medidas constatadas em campo.</p>
+          </>
+        ),
+      }),
     ],
-    ["Descrição do risco", textoLongo("descricao", padrao?.descricao_risco ?? "")],
-    ["Danos à saúde", textoLongo("danos", padrao?.danos_saude ?? "")],
+    [ROTULO_TOPICO.descricao, topico("descricao", "Outra descrição do risco…")],
+    [ROTULO_TOPICO.danos, topico("danos", "Outro dano à saúde…")],
     [
       "Probabilidade × Severidade",
       <span key="pxs">
@@ -868,14 +904,16 @@ function InventarioDoFator({
         {d.confianca ?? "—"} <span className="text-gray-400">· pela origem da evidência</span>
       </span>,
     ],
-    ["Sugestões iniciais", selecao("sugestoes", "sugestoes_extra", padrao?.sugestoes_iniciais ?? [], "Outra sugestão…")],
-    ["Ações", selecao("acoes", "acoes_extra", padrao?.acoes ?? [], "Outra ação…")],
+    [ROTULO_TOPICO.sugestao, topico("sugestao", "Outra sugestão…")],
+    [ROTULO_TOPICO.acao, topico("acao", "Outra ação…")],
   ];
   return (
     <details open className="group rounded-md border border-gray-200 bg-white">
       <summary className="flex cursor-pointer list-none items-center gap-1 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700">
         Inventário de risco
-        <span className="ml-1 font-normal normal-case text-gray-400">— selecione ou inclua itens; vale para laudo, PDF, planilha e IA</span>
+        <span className="ml-1 font-normal normal-case text-gray-400">
+          — marque as opções da biblioteca ou inclua; vale para laudo, PDF, planilha e IA
+        </span>
         <ChevronDown className="size-3 transition group-open:rotate-180" />
       </summary>
       <table className="w-full border-t border-gray-100 text-[11px] leading-snug text-gray-700">
@@ -1059,12 +1097,9 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
   // Biblioteca psicossocial e checklist de gestão (Fase 2, 2026-10-06).
   const { data: biblioteca } = useBibliotecaPsi();
   const gestao = rel?.checklist_gestao;
-  // Valores da biblioteca para sugerir nos campos de texto do inventário.
-  const sugestoesTextoInventario = {
-    meio: [...new Set(Object.values(biblioteca ?? {}).map((b) => b.meio_propagacao).filter(Boolean))],
-    situacao: [...new Set(Object.values(biblioteca ?? {}).map((b) => b.situacao_padrao).filter(Boolean))],
-    tempo: [...new Set(Object.values(biblioteca ?? {}).map((b) => b.tempo_exposicao_padrao).filter(Boolean))],
-  };
+  // Inclusão na biblioteca a partir do inventário: Admin salva, técnico sugere.
+  const incluirBiblioteca = useIncluirItemBiblioteca();
+  const isAdmin = useIsAdmin();
   // Setores e cargos que a empresa já tem no sistema (das inspeções) — o
   // editor sugere, e o técnico continua podendo digitar à mão (2026-10-05).
   const { data: catalogo = [] } = useCatalogoSetoresEmpresa(
@@ -1797,18 +1832,26 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                       inventarioSim={(fator) => {
                         const d = detalhesDoSetor(setor, gestao, biblioteca).find((x) => x.key === fator);
                         if (!d) return null;
-                        const aj = setor.inventario?.[fator] ?? {};
+                        const inv = setor.inventario?.[fator] ?? {};
+                        const salvarInv = (patch: { sel?: Partial<Record<TopicoBib, string[]>>; extra?: Partial<Record<TopicoBib, string[]>> }) =>
+                          updateSetor(setor.id, {
+                            inventario: {
+                              ...(setor.inventario ?? {}),
+                              [fator]: {
+                                sel: { ...(inv.sel ?? {}), ...(patch.sel ?? {}) },
+                                extra: { ...(inv.extra ?? {}), ...(patch.extra ?? {}) },
+                              },
+                            },
+                          });
                         return (
                           <InventarioDoFator
                             d={d}
-                            padrao={biblioteca?.[fator]}
-                            rotuloPadrao={ITENS_ORGANIZACIONAL.find((i) => i.key === fator)?.label ?? fator}
-                            aj={aj}
-                            onAjuste={(patch) =>
-                              updateSetor(setor.id, {
-                                inventario: { ...(setor.inventario ?? {}), [fator]: { ...aj, ...patch } },
-                              })
-                            }
+                            fator={fator}
+                            biblioteca={biblioteca}
+                            marcados={(t) => idsSelecionados(setor, fator, t, biblioteca)}
+                            extra={inv.extra ?? {}}
+                            onSel={(t, ids) => salvarInv({ sel: { [t]: ids } })}
+                            onExtra={(t, itens) => salvarInv({ extra: { [t]: itens } })}
                             sinaisCatalogo={SINAIS_ORGANIZACIONAL[fator as FatorOrganizacional] ?? []}
                             sinaisMarcados={setor.sinais_organizacional?.[fator] ?? []}
                             onSinais={(keys) =>
@@ -1816,12 +1859,23 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                                 sinais_organizacional: { ...(setor.sinais_organizacional ?? {}), [fator]: keys },
                               })
                             }
-                            fontesMarcadas={setor.fontes_geradoras?.[fator] ?? []}
-                            onFontes={(v) =>
-                              updateSetor(setor.id, { fontes_geradoras: { ...(setor.fontes_geradoras ?? {}), [fator]: v } })
-                            }
                             gestao={gestao}
-                            sugestoesTexto={sugestoesTextoInventario}
+                            isAdmin={isAdmin}
+                            onIncluirBiblioteca={(t, texto) =>
+                              incluirBiblioteca.mutate(
+                                { fator: ["meio", "situacao", "tempo"].includes(t) ? null : fator, topico: t, texto },
+                                {
+                                  // Admin: vira opção marcada e sai dos manuais.
+                                  onSuccess: (item) => {
+                                    if (item.status !== "ativo") return;
+                                    salvarInv({
+                                      sel: { [t]: [...idsSelecionados(setor, fator, t, biblioteca), item.id_item] },
+                                      extra: { [t]: (inv.extra?.[t] ?? []).filter((x) => x !== texto) },
+                                    });
+                                  },
+                                },
+                              )
+                            }
                             disabled={!canEdit}
                           />
                         );
