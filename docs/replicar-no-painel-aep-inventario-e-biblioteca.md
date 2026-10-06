@@ -3,7 +3,7 @@
 > **Como usar:** abra o Claude Code na pasta do **painel-sst** e diga:
 > *"Siga o arquivo `replicar-no-painel-aep-inventario-e-biblioteca.md`"*.
 >
-> Origem: JCN (`sst-jcn`), commits de 2026-10-06 (`e6949dc`, `62e3356`, `99b1b00`, PRs #86 e #87), já em produção lá.
+> Origem: JCN (`sst-jcn`), commits de 2026-10-06 (`e6949dc`, `62e3356`, `99b1b00`, PRs #86, #87, #89, #90 e #91), já em produção lá.
 > **2 migrations** (v276 e v277, Passo 2). **Sem edge function nova.**
 >
 > ⚠️ Este arquivo **substitui** o `replicar-no-painel-aep-layout-e-inventario.md`,
@@ -55,7 +55,7 @@ partem do estado do fim da Fase 2.
 - O banco garante isso: o não Admin só cria `pendente` sem padrão e não altera
   nem exclui.
 
-**Página `/aep/biblioteca`:**
+**Página `/aep/biblioteca`** (largura toda, um tópico embaixo do outro):
 - fila **Sugestões pendentes**;
 - por fator, cada tópico: o Admin edita texto/código, marca padrão e exclui;
   todos podem sugerir;
@@ -63,15 +63,21 @@ partem do estado do fim da Fase 2.
 
 ### 3. Inventário de risco do fator "Sim"
 
-- Cada tópico mostra as **opções da biblioteca para marcar** (chips nas listas
-  comuns) e o campo **manual**.
+- Cada tópico é um **campo de seleção múltipla com criação** (`MultiSelectCriavel`):
+  - as escolhidas ficam como etiquetas dentro do campo (× remove);
+  - ao clicar abre a lista da biblioteca para marcar **várias**;
+  - digitar filtra; texto que não existe vira **item manual** no mesmo campo
+    (Enter ou "Incluir «texto»").
+- O campo **Evidências é só leitura**: mostra os sinais observados marcados no
+  bloco de sinais (em vermelho, contam na matriz) e o que já estava salvo.
 - Cada item manual tem **"salvar na biblioteca"** (Admin: vira opção marcada)
   ou **"sugerir"** (técnico: fica pendente).
 - **Automáticos do checklist de gestão:**
   - lacunas viram fontes geradoras;
   - itens evidenciados viram medidas existentes.
-- Os **sinais do catálogo** aparecem nas evidências e contam na matriz.
-  Evidências da biblioteca e manuais **não contam** na matriz.
+- Os **sinais do catálogo** contam na matriz; evidências da biblioteca e
+  manuais **não contam**.
+- Automáticos do checklist de gestão aparecem como **etiquetas fixas** no campo.
 - **Probabilidade × Severidade** e **Confiança** são só leitura.
 - Botão **Recolher/Expandir**; títulos das linhas em negrito.
 - **Onde fica gravado:**
@@ -282,7 +288,7 @@ alter table public.psi_biblioteca_itens add constraint psi_biblioteca_itens_topi
 | H | `app/api/pdf/aep/[id]/route.ts` | normalizador + biblioteca das 2 tabelas |
 | I | `components/pdf/templates/AepTemplate.tsx` | tipo + medidas recomendadas |
 | J | `app/(aep)/aep/[idRelatorio]/laudo/page.tsx` | medidas recomendadas |
-| K | `components/aep/AepSetoresEditor.tsx` | layout, ordem, negrito, inventário com opções |
+| K | `components/aep/AepSetoresEditor.tsx` | layout, ordem, negrito, inventário com dropdown múltiplo |
 
 ### A: `lib/aep/biblioteca.ts` (substituir, completo)
 
@@ -1280,7 +1286,7 @@ export default function BibliotecaPsiPage() {
   }, [b]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
+    <div className="w-full space-y-4 p-4 sm:p-6">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
           <BookMarked className="size-5 text-emerald-600" /> Biblioteca psicossocial
@@ -1313,7 +1319,7 @@ export default function BibliotecaPsiPage() {
               sub: "Meio de propagação, situação e tempo de exposição — e o padrão de cada fator",
               corpo: (
                 <div className="space-y-3">
-                  <div className="grid gap-3 lg:grid-cols-3">
+                  <div className="space-y-3">
                     {TOPICOS_COMUNS.map((t) => (
                       <ListaTopico key={t} b={b} fator={null} topico={t} isAdmin={isAdmin} podeSugerir={podeSugerir} />
                     ))}
@@ -1327,7 +1333,7 @@ export default function BibliotecaPsiPage() {
               titulo: `${idx + 1}. ${label}`,
               sub: TOPICOS_DO_FATOR.map((t) => `${itensDe(b, key, t).length} ${ROTULO_TOPICO[t].toLowerCase()}`).join(" · "),
               corpo: (
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className="space-y-3">
                   {TOPICOS_DO_FATOR.map((t) => (
                     <ListaTopico key={t} b={b} fator={key} topico={t} isAdmin={isAdmin} podeSugerir={podeSugerir} />
                   ))}
@@ -1499,7 +1505,7 @@ export default function BibliotecaPsiPage() {
 +  existeNaBiblioteca,
 +  itensDe,
 +  type Biblioteca,
-+  type ItemBiblioteca,
++  rotuloItem,
 +  type TopicoBib,
 +} from "@/lib/aep/biblioteca";
 +import { useBibliotecaPsi, useIncluirItemBiblioteca } from "@/lib/hooks/useBibliotecaPsi";
@@ -1507,7 +1513,7 @@ export default function BibliotecaPsiPage() {
  import { registrarAuditoria } from "@/lib/auditoria/registrar";
  import { chaveNome, type CargoCatalogo, type SetorCatalogo } from "@/lib/aep/catalogo-setores";
  import SituacaoSinalizacaoAep from "@/components/aep/SituacaoSinalizacaoAep";
-@@ -30,6 +39,7 @@ import { useEffect, useRef, useState } from "react";
+@@ -30,15 +39,18 @@ import { useEffect, useRef, useState } from "react";
  import Link from "next/link";
  import {
    AlertTriangle,
@@ -1515,7 +1521,18 @@ export default function BibliotecaPsiPage() {
    ChevronDown,
    Compass,
    ChevronUp,
-@@ -127,6 +137,7 @@ function Tristate({
++  Check,
+   ExternalLink,
+   Loader2,
+   Plus,
+   Save,
+   Sparkles,
+   Trash2,
++  X,
+ } from "lucide-react";
+ import {
+   useAepRelatorio,
+@@ -127,6 +139,7 @@ function Tristate({
    onObservacaoChange,
    disabled,
    children,
@@ -1523,7 +1540,7 @@ export default function BibliotecaPsiPage() {
  }: {
    label: string;
    value: RespostaChecklistAep;
-@@ -138,11 +149,13 @@ function Tristate({
+@@ -138,11 +151,13 @@ function Tristate({
    disabled?: boolean;
    /** Conteúdo extra do item — usado pelos sinais da Ergonomia Organizacional. */
    children?: React.ReactNode;
@@ -1538,7 +1555,7 @@ export default function BibliotecaPsiPage() {
          <div className="flex gap-1 shrink-0">
            {opcoes.map((opt) => (
              <button
-@@ -165,6 +178,7 @@ function Tristate({
+@@ -165,6 +180,7 @@ function Tristate({
            ))}
          </div>
        </div>
@@ -1546,7 +1563,7 @@ export default function BibliotecaPsiPage() {
        <textarea
          disabled={disabled}
          value={observacao ?? ""}
-@@ -412,7 +426,7 @@ function MotivoNiCampo({
+@@ -412,7 +428,7 @@ function MotivoNiCampo({
  
  function RoteiroDoFator({ roteiro }: { roteiro: RoteiroFator }) {
    return (
@@ -1555,7 +1572,7 @@ export default function BibliotecaPsiPage() {
        <summary className="flex cursor-pointer list-none items-center gap-1 text-[10px] font-semibold text-teal-800">
          <Compass className="size-3" /> Roteiro de campo
          <ChevronDown className="size-3 transition group-open:rotate-180" />
-@@ -569,24 +583,17 @@ function EvidenciaDoFator({
+@@ -569,24 +585,17 @@ function EvidenciaDoFator({
    fator,
    origens,
    onOrigens,
@@ -1580,7 +1597,7 @@ export default function BibliotecaPsiPage() {
    const alternar = (lista: string[], k: string) => (lista.includes(k) ? lista.filter((x) => x !== k) : [...lista, k]);
    return (
      <div className="rounded-md border border-sky-200 bg-sky-50/50 p-2 space-y-2">
-@@ -626,35 +633,315 @@ function EvidenciaDoFator({
+@@ -626,35 +635,409 @@ function EvidenciaDoFator({
            );
          })}
        </div>
@@ -1595,6 +1612,24 @@ export default function BibliotecaPsiPage() {
 -              <p key={l.codigo} className="flex items-start gap-1.5">
 -                <span className="mt-0.5 rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-800">gestão</span>
 -                {rotuloLacuna(l)}
+-              </p>
+-            ))}
+-            {doFator.map((f) => (
+-              <label key={f.codigo} className={cn("flex items-start gap-1.5", disabled ? "opacity-60" : "cursor-pointer")}>
+-                <input
+-                  type="checkbox"
+-                  disabled={disabled}
+-                  checked={fontes.includes(f.codigo)}
+-                  onChange={() => onFontes(alternar(fontes, f.codigo))}
+-                  className="mt-0.5 size-3 shrink-0 accent-sky-600"
+-                />
+-                <span>
+-                  <span className="font-mono text-[10px] text-gray-500">{f.codigo}</span> {f.texto}
+-                </span>
+-              </label>
+-            ))}
+-          </div>
+-        </details>
 +    </div>
 +  );
 +}
@@ -1604,119 +1639,215 @@ export default function BibliotecaPsiPage() {
 +// só leitura: vêm da biblioteca, do checklist de gestão, dos sinais, da matriz
 +// e da origem da evidência. Muda conforme o técnico preenche o resto.
 +
-+/** Lista de itens manuais: chips removíveis + campo para adicionar. */
-+function ListaManual({
-+  itens,
-+  onChange,
-+  disabled,
-+  placeholder,
++/** Opção do campo de seleção múltipla (biblioteca ou sinal do catálogo). */
++interface OpcaoMulti {
++  id: string;
++  rotulo: string;
++  marcado: boolean;
++  alternar: () => void;
++  /** "sinal" = sinal do catálogo (conta na matriz), em vermelho. */
++  tom?: "sinal";
++}
++
++/**
++ * Campo de seleção múltipla com criação (2026-10-06): as escolhidas ficam
++ * como etiquetas dentro do campo; ao clicar abre a lista para marcar várias;
++ * digitar filtra; texto que não existe vira item MANUAL no mesmo campo
++ * (Enter ou "Incluir"). Itens fixos (checklist de gestão) aparecem como
++ * etiquetas sem remover.
++ */
++function MultiSelectCriavel({
++  opcoes,
++  fixos = [],
++  manuais,
++  onManuais,
 +  acaoItem,
++  placeholder,
++  disabled,
 +}: {
-+  itens: string[];
-+  onChange: (v: string[]) => void;
-+  disabled?: boolean;
-+  placeholder: string;
-+  /** Ação extra por item (salvar/sugerir na biblioteca). */
++  opcoes: OpcaoMulti[];
++  fixos?: { key: string; rotulo: string; cor: "amber" | "emerald" }[];
++  manuais: string[];
++  onManuais: (v: string[]) => void;
++  /** Ação extra por item manual (salvar/sugerir na biblioteca). */
 +  acaoItem?: (texto: string) => React.ReactNode;
++  placeholder: string;
++  disabled?: boolean;
 +}) {
-+  const [novo, setNovo] = useState("");
-+  const adicionar = () => {
-+    const t = novo.trim();
-+    if (!t || itens.includes(t)) return setNovo("");
-+    onChange([...itens, t]);
-+    setNovo("");
++  const [aberto, setAberto] = useState(false);
++  const [busca, setBusca] = useState("");
++  const ref = useRef<HTMLDivElement>(null);
++  const inputRef = useRef<HTMLInputElement>(null);
++
++  useEffect(() => {
++    if (!aberto) return;
++    const fora = (e: MouseEvent) => {
++      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
++    };
++    document.addEventListener("mousedown", fora);
++    return () => document.removeEventListener("mousedown", fora);
++  }, [aberto]);
++
++  const q = busca.trim().toLowerCase();
++  const filtradas = q ? opcoes.filter((o) => o.rotulo.toLowerCase().includes(q)) : opcoes;
++  const exata = q ? opcoes.find((o) => o.rotulo.toLowerCase() === q) : undefined;
++  const jaManual = q ? manuais.some((m) => m.trim().toLowerCase() === q) : false;
++  const podeCriar = !!q && !exata && !jaManual;
++
++  const incluir = () => {
++    const t = busca.trim();
++    if (!t) return;
++    if (exata) {
++      if (!exata.marcado) exata.alternar();
++    } else if (!jaManual) {
++      onManuais([...manuais, t]);
++    }
++    setBusca("");
 +  };
++
++  const marcadas = opcoes.filter((o) => o.marcado);
++  const vazio = fixos.length === 0 && marcadas.length === 0 && manuais.length === 0;
++
 +  return (
-+    <div className="mt-1 space-y-1">
-+      {itens.map((x) => (
-+        <p key={x} className="flex items-start gap-1.5">
-+          <span className="mt-0.5 rounded bg-violet-100 px-1 text-[9px] font-semibold text-violet-800">manual</span>
-+          <span className="flex-1">{x}</span>
-+          {acaoItem?.(x)}
-+          {!disabled && (
-+            <button type="button" onClick={() => onChange(itens.filter((i) => i !== x))} className="text-gray-400 hover:text-red-500" title="Remover">
-+              <Trash2 className="size-3" />
-+            </button>
-+          )}
-+        </p>
-+      ))}
-+      {!disabled && (
-+        <div className="flex gap-1">
++    <div ref={ref} className="relative">
++      <div
++        onClick={() => {
++          if (disabled) return;
++          setAberto(true);
++          inputRef.current?.focus();
++        }}
++        className={cn(
++          "flex min-h-[30px] flex-wrap items-center gap-1 rounded border bg-white px-1.5 py-1",
++          aberto ? "border-emerald-500 ring-1 ring-emerald-200" : "border-gray-200",
++          disabled ? "bg-gray-50" : "cursor-text",
++        )}
++      >
++        {fixos.map((f) => (
++          <span
++            key={f.key}
++            title="Automático do checklist de gestão"
++            className={cn(
++              "inline-flex items-start gap-1 rounded px-1.5 py-0.5 text-[10px]",
++              f.cor === "amber" ? "bg-amber-50 text-amber-900" : "bg-emerald-50 text-emerald-900",
++            )}
++          >
++            <span className={cn("rounded px-1 text-[9px] font-semibold", f.cor === "amber" ? "bg-amber-200" : "bg-emerald-200")}>gestão</span>
++            {f.rotulo}
++          </span>
++        ))}
++        {marcadas.map((o) => (
++          <span
++            key={o.id}
++            className={cn(
++              "inline-flex items-start gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
++              o.tom === "sinal" ? "bg-red-50 text-red-800 ring-1 ring-red-200" : "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200",
++            )}
++            title={o.tom === "sinal" ? "Sinal do catálogo — conta na matriz" : undefined}
++          >
++            {o.rotulo}
++            {!disabled && (
++              <button
++                type="button"
++                onClick={(e) => {
++                  e.stopPropagation();
++                  o.alternar();
++                }}
++                className="text-gray-400 hover:text-red-500"
++                title="Remover"
++              >
++                <X className="size-3" />
++              </button>
++            )}
++          </span>
++        ))}
++        {manuais.map((m) => (
++          <span key={m} className="inline-flex items-start gap-1 rounded bg-violet-50 px-1.5 py-0.5 text-[10px] text-violet-900 ring-1 ring-violet-200">
++            <span className="rounded bg-violet-200 px-1 text-[9px] font-semibold">manual</span>
++            {m}
++            <span onClick={(e) => e.stopPropagation()}>{acaoItem?.(m)}</span>
++            {!disabled && (
++              <button
++                type="button"
++                onClick={(e) => {
++                  e.stopPropagation();
++                  onManuais(manuais.filter((x) => x !== m));
++                }}
++                className="text-gray-400 hover:text-red-500"
++                title="Remover"
++              >
++                <X className="size-3" />
++              </button>
++            )}
++          </span>
++        ))}
++        {disabled ? (
++          vazio && <span className="text-[10px] text-gray-400">—</span>
++        ) : (
 +          <input
-+            value={novo}
-+            onChange={(e) => setNovo(e.target.value)}
++            ref={inputRef}
++            value={busca}
++            onChange={(e) => {
++              setBusca(e.target.value);
++              setAberto(true);
++            }}
++            onFocus={() => setAberto(true)}
 +            onKeyDown={(e) => {
 +              if (e.key === "Enter") {
 +                e.preventDefault();
-+                adicionar();
++                incluir();
++              } else if (e.key === "Escape") {
++                setAberto(false);
++              } else if (e.key === "Backspace" && !busca && manuais.length) {
++                onManuais(manuais.slice(0, -1));
 +              }
 +            }}
-+            placeholder={placeholder}
-+            className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-0.5 text-[11px] focus:border-emerald-500 focus:outline-none"
++            placeholder={vazio ? placeholder : "Selecionar ou digitar…"}
++            className="min-w-[8rem] flex-1 border-0 bg-transparent p-0 text-[11px] focus:outline-none focus:ring-0"
 +          />
-+          <button type="button" onClick={adicionar} className="rounded border border-emerald-300 px-2 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50">
-+            <Plus className="size-3" />
-+          </button>
++        )}
++        {!disabled && <ChevronDown className={cn("ml-auto size-3 shrink-0 text-gray-400 transition", aberto && "rotate-180")} />}
++      </div>
++      {aberto && !disabled && (
++        <div className="absolute left-0 right-0 z-30 mt-1 max-h-64 overflow-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg">
++          {podeCriar && (
++            <button
++              type="button"
++              onClick={incluir}
++              className="flex w-full items-center gap-1.5 px-2 py-1 text-left text-[11px] font-semibold text-violet-700 hover:bg-violet-50"
++            >
++              <Plus className="size-3" /> Incluir «{busca.trim()}»
++            </button>
++          )}
++          {filtradas.map((o) => (
++            <button
++              key={o.id}
++              type="button"
++              onClick={() => o.alternar()}
++              className={cn(
++                "flex w-full items-start gap-1.5 px-2 py-1 text-left text-[11px] hover:bg-gray-50",
++                o.marcado && "bg-emerald-50/60",
++              )}
++            >
++              <span
++                className={cn(
++                  "mt-0.5 flex size-3 shrink-0 items-center justify-center rounded-sm border",
++                  o.marcado ? (o.tom === "sinal" ? "border-red-600 bg-red-600 text-white" : "border-emerald-600 bg-emerald-600 text-white") : "border-gray-300",
++                )}
++              >
++                {o.marcado && <Check className="size-2.5" />}
++              </span>
++              <span className="flex-1">
++                {o.rotulo}
++                {o.tom === "sinal" && <span className="ml-1 text-[9px] text-red-700">(sinal — conta na matriz)</span>}
++              </span>
++            </button>
++          ))}
++          {filtradas.length === 0 && !podeCriar && (
++            <p className="px-2 py-1 text-[11px] text-gray-400">{q ? "Já incluído." : "Sem opções na biblioteca — digite para incluir."}</p>
++          )}
 +        </div>
 +      )}
 +    </div>
-+  );
-+}
-+
-+/** Opções da biblioteca de um tópico: caixas (ou chips, nas listas comuns). */
-+function OpcoesBiblioteca({
-+  opcoes,
-+  marcados,
-+  onChange,
-+  chips,
-+  disabled,
-+}: {
-+  opcoes: ItemBiblioteca[];
-+  marcados: string[];
-+  onChange: (ids: string[]) => void;
-+  chips?: boolean;
-+  disabled?: boolean;
-+}) {
-+  const alternar = (id: string) => onChange(marcados.includes(id) ? marcados.filter((x) => x !== id) : [...marcados, id]);
-+  if (opcoes.length === 0) return <p className="text-gray-400">Sem opções na biblioteca.</p>;
-+  if (chips) {
-+    return (
-+      <div className="flex flex-wrap gap-1">
-+        {opcoes.map((o) => (
-+          <button
-+            key={o.id_item}
-+            type="button"
-+            disabled={disabled}
-+            onClick={() => alternar(o.id_item)}
-+            className={cn(
-+              "rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition",
-+              marcados.includes(o.id_item) ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-gray-600 ring-gray-200 hover:bg-gray-50",
-+            )}
-+          >
-+            {o.texto}
-+          </button>
-+        ))}
-+      </div>
-+    );
-+  }
-+  return (
-+    <>
-+      {opcoes.map((o) => (
-+        <label key={o.id_item} className={cn("flex items-start gap-1.5", disabled ? "opacity-70" : "cursor-pointer")}>
-+          <input
-+            type="checkbox"
-+            disabled={disabled}
-+            checked={marcados.includes(o.id_item)}
-+            onChange={() => alternar(o.id_item)}
-+            className="mt-0.5 size-3 shrink-0 accent-emerald-600"
-+          />
-+          <span>
-+            {o.codigo && <span className="font-mono text-[10px] text-gray-500">{o.codigo} </span>}
-+            {o.texto}
-+          </span>
-+        </label>
-+      ))}
-+    </>
 +  );
 +}
 +
@@ -1781,101 +1912,83 @@ export default function BibliotecaPsiPage() {
 +    );
 +    };
 +
-+  const topico = (t: TopicoBib, placeholder: string, opts: { chips?: boolean; antes?: React.ReactNode } = {}) => (
-+    <>
-+      {opts.antes}
-+      <OpcoesBiblioteca
-+        opcoes={itensDe(biblioteca, fator, t)}
-+        marcados={marcados(t)}
-+        onChange={(ids) => onSel(t, ids)}
-+        chips={opts.chips}
-+        disabled={disabled}
-+      />
-+      <ListaManual
-+        itens={extra[t] ?? []}
-+        onChange={(v) => onExtra(t, v)}
-+        disabled={disabled}
-+        placeholder={placeholder}
-+        acaoItem={acaoBiblioteca(t)}
-+      />
-+    </>
-+  );
++  const topico = (
++    t: TopicoBib,
++    placeholder: string,
++    opts: {
++      fixos?: { key: string; rotulo: string; cor: "amber" | "emerald" }[];
++      antes?: OpcaoMulti[];
++      dica?: string;
++      /** Só leitura (evidências: vêm dos sinais marcados acima). */
++      leitura?: boolean;
++    } = {},
++  ) => {
++    const ids = marcados(t);
++    const opcoes: OpcaoMulti[] = [
++      ...(opts.antes ?? []),
++      ...itensDe(biblioteca, fator, t).map((i) => ({
++        id: i.id_item,
++        rotulo: rotuloItem(i),
++        marcado: ids.includes(i.id_item),
++        alternar: () => onSel(t, ids.includes(i.id_item) ? ids.filter((x) => x !== i.id_item) : [...ids, i.id_item]),
++      })),
++    ];
++    return (
++      <>
++        <MultiSelectCriavel
++          opcoes={opcoes}
++          fixos={opts.fixos}
++          manuais={extra[t] ?? []}
++          onManuais={(v) => onExtra(t, v)}
++          acaoItem={acaoBiblioteca(t)}
++          placeholder={placeholder}
++          disabled={disabled || opts.leitura}
++        />
++        {opts.dica && <p className="mt-0.5 text-[10px] text-gray-400">{opts.dica}</p>}
++      </>
++    );
++  };
 +
 +  const linhas: [string, React.ReactNode][] = [
-+    [ROTULO_TOPICO.perigo, topico("perigo", "Outra descrição do perigo…")],
++    [ROTULO_TOPICO.perigo, topico("perigo", "Selecione ou digite o perigo…")],
 +    [
 +      ROTULO_TOPICO.fonte,
-+      topico("fonte", "Outra fonte geradora…", {
-+        antes: lacunas.map((l) => (
-+          <p key={l.codigo} className="flex items-start gap-1.5">
-+            <span className="mt-0.5 rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-800">gestão</span>
-+            {rotuloLacuna(l)}
-+          </p>
-+        )),
++      topico("fonte", "Selecione ou digite uma fonte geradora…", {
++        fixos: lacunas.map((l) => ({ key: l.codigo, rotulo: rotuloLacuna(l), cor: "amber" as const })),
 +      }),
 +    ],
 +    [
 +      "Evidências (sinais)",
-+      topico("evidencia", "Outra evidência (não conta na matriz)…", {
-+        antes: sinaisCatalogo.map((s) => (
-+          <label key={s.key} className={cn("flex items-start gap-1.5", disabled ? "opacity-70" : "cursor-pointer")}>
-+            <input
-+              type="checkbox"
-+              disabled={disabled}
-+              checked={sinaisMarcados.includes(s.key)}
-+              onChange={() => onSinais(sinaisMarcados.includes(s.key) ? sinaisMarcados.filter((k) => k !== s.key) : [...sinaisMarcados, s.key])}
-+              className="mt-0.5 size-3 shrink-0 accent-red-600"
-+            />
-+            <span>
-+              {s.label} <span className="text-[9px] text-red-700">(sinal — conta na matriz)</span>
-+            </span>
-+          </label>
-+        )),
++      topico("evidencia", "Selecione ou digite uma evidência…", {
++        antes: sinaisCatalogo.map((s) => ({
++          id: `sinal:${s.key}`,
++          rotulo: s.label,
++          tom: "sinal" as const,
++          marcado: sinaisMarcados.includes(s.key),
++          alternar: () => onSinais(sinaisMarcados.includes(s.key) ? sinaisMarcados.filter((k) => k !== s.key) : [...sinaisMarcados, s.key]),
++        })),
++        dica: "Preenchido pelos sinais observados marcados acima (em vermelho, contam na matriz). Não se edita aqui.",
++        leitura: true,
 +      }),
 +    ],
-+    [ROTULO_TOPICO.meio, topico("meio", "Outro meio de propagação…", { chips: true })],
-+    [ROTULO_TOPICO.situacao, topico("situacao", "Outra situação…", { chips: true })],
-+    [ROTULO_TOPICO.tempo, topico("tempo", "Outro tempo de exposição…", { chips: true })],
++    [ROTULO_TOPICO.meio, topico("meio", "Selecione ou digite o meio de propagação…")],
++    [ROTULO_TOPICO.situacao, topico("situacao", "Selecione ou digite a situação…")],
++    [ROTULO_TOPICO.tempo, topico("tempo", "Selecione ou digite o tempo de exposição…")],
 +    [
 +      "Medidas de controle existentes",
-+      topico("medida", "Medida existente observada…", {
-+        antes: (
-+          <>
-+            {medidasGestao.map((m) => (
-+              <p key={m.codigo} className="flex items-start gap-1.5">
-+                <span className="mt-0.5 rounded bg-emerald-100 px-1 text-[9px] font-semibold text-emerald-800">gestão</span>
-+                {m.codigo} — {m.label}
-               </p>
-             ))}
--            {doFator.map((f) => (
--              <label key={f.codigo} className={cn("flex items-start gap-1.5", disabled ? "opacity-60" : "cursor-pointer")}>
--                <input
--                  type="checkbox"
--                  disabled={disabled}
--                  checked={fontes.includes(f.codigo)}
--                  onChange={() => onFontes(alternar(fontes, f.codigo))}
--                  className="mt-0.5 size-3 shrink-0 accent-sky-600"
--                />
--                <span>
--                  <span className="font-mono text-[10px] text-gray-500">{f.codigo}</span> {f.texto}
--                </span>
--              </label>
--            ))}
--          </div>
--        </details>
-+            <p className="text-[10px] text-gray-400">Marque só as medidas constatadas em campo.</p>
-+          </>
-+        ),
++      topico("medida", "Selecione ou digite uma medida existente…", {
++        fixos: medidasGestao.map((m) => ({ key: m.codigo, rotulo: `${m.codigo} — ${m.label}`, cor: "emerald" as const })),
++        dica: "Só as medidas constatadas em campo.",
 +      }),
 +    ],
 +    [
 +      ROTULO_TOPICO.medida_recomendada,
-+      topico("medida_recomendada", "Outra medida recomendada…", {
-+        antes: <p className="text-[10px] text-gray-400">Marque o que a empresa ainda precisa implantar.</p>,
++      topico("medida_recomendada", "Selecione ou digite uma medida recomendada…", {
++        dica: "O que a empresa ainda precisa implantar.",
 +      }),
 +    ],
-+    [ROTULO_TOPICO.descricao, topico("descricao", "Outra descrição do risco…")],
-+    [ROTULO_TOPICO.danos, topico("danos", "Outro dano à saúde…")],
++    [ROTULO_TOPICO.descricao, topico("descricao", "Selecione ou digite a descrição do risco…")],
++    [ROTULO_TOPICO.danos, topico("danos", "Selecione ou digite um dano à saúde…")],
 +    [
 +      "Probabilidade × Severidade",
 +      <span key="pxs">
@@ -1889,8 +2002,8 @@ export default function BibliotecaPsiPage() {
 +        {d.confianca ?? "—"} <span className="text-gray-400">· pela origem da evidência</span>
 +      </span>,
 +    ],
-+    [ROTULO_TOPICO.sugestao, topico("sugestao", "Outra sugestão…")],
-+    [ROTULO_TOPICO.acao, topico("acao", "Outra ação…")],
++    [ROTULO_TOPICO.sugestao, topico("sugestao", "Selecione ou digite uma sugestão…")],
++    [ROTULO_TOPICO.acao, topico("acao", "Selecione ou digite uma ação…")],
 +  ];
 +  return (
 +    <div className="rounded-md border border-gray-300 bg-white">
@@ -1923,7 +2036,7 @@ export default function BibliotecaPsiPage() {
        )}
      </div>
    );
-@@ -673,6 +960,7 @@ function ChecklistBloco({
+@@ -673,6 +1056,7 @@ function ChecklistBloco({
    disabled,
    opcoes,
    legenda,
@@ -1931,7 +2044,7 @@ export default function BibliotecaPsiPage() {
    sinais,
    sinaisMarcados,
    onSinaisChange,
-@@ -683,6 +971,7 @@ function ChecklistBloco({
+@@ -683,6 +1067,7 @@ function ChecklistBloco({
    onMotivoNiChange,
    roteiro,
    extraSim,
@@ -1939,7 +2052,7 @@ export default function BibliotecaPsiPage() {
  }: {
    titulo: string;
    cor: string;
-@@ -696,6 +985,8 @@ function ChecklistBloco({
+@@ -696,6 +1081,8 @@ function ChecklistBloco({
    opcoes?: RespostaChecklistAep[];
    /** Siglas explicadas no pé do bloco, na ordem dada. */
    legenda?: RespostaChecklistAep[];
@@ -1948,7 +2061,7 @@ export default function BibliotecaPsiPage() {
    /** Só a Ergonomia Organizacional passa isto; física e cognitiva ignoram. */
    sinais?: Record<string, SinalOrganizacional[]>;
    sinaisMarcados?: Record<string, string[]>;
-@@ -710,6 +1001,8 @@ function ChecklistBloco({
+@@ -710,6 +1097,8 @@ function ChecklistBloco({
    roteiro?: Record<string, RoteiroFator>;
    /** Conteúdo extra do fator marcado "Sim" (origem da evidência, fontes). */
    extraSim?: (fator: string) => React.ReactNode;
@@ -1957,7 +2070,7 @@ export default function BibliotecaPsiPage() {
  }) {
    const positivos = itens.filter((i) => valores[i.key] === "sim").length;
    return (
-@@ -722,7 +1015,7 @@ function ChecklistBloco({
+@@ -722,7 +1111,7 @@ function ChecklistBloco({
            </span>
          )}
        </div>
@@ -1966,7 +2079,7 @@ export default function BibliotecaPsiPage() {
          {itens.map(({ key, label }) => {
            const doFator = sinais?.[key];
            return (
-@@ -735,6 +1028,14 @@ function ChecklistBloco({
+@@ -735,6 +1124,14 @@ function ChecklistBloco({
                onChange={(v) => onChange({ [key]: v })}
                onObservacaoChange={(text) => onObservacaoChange(key, text)}
                disabled={disabled}
@@ -1981,7 +2094,7 @@ export default function BibliotecaPsiPage() {
              >
                {valores[key] === "sim" && doFator && doFator.length > 0 && (
                  <SinaisDoFator
-@@ -755,7 +1056,6 @@ function ChecklistBloco({
+@@ -755,7 +1152,6 @@ function ChecklistBloco({
                    disabled={disabled}
                  />
                )}
@@ -1989,7 +2102,7 @@ export default function BibliotecaPsiPage() {
                {valores[key] === "nao_identificado" && onMotivoNiChange && (
                  <MotivoNiCampo
                    valor={motivosNi?.[key]}
-@@ -763,7 +1063,7 @@ function ChecklistBloco({
+@@ -763,7 +1159,7 @@ function ChecklistBloco({
                    disabled={disabled}
                  />
                )}
@@ -1998,7 +2111,7 @@ export default function BibliotecaPsiPage() {
              </Tristate>
            );
          })}
-@@ -814,6 +1114,9 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
+@@ -814,6 +1210,9 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
    // Biblioteca psicossocial e checklist de gestão (Fase 2, 2026-10-06).
    const { data: biblioteca } = useBibliotecaPsi();
    const gestao = rel?.checklist_gestao;
@@ -2008,7 +2121,7 @@ export default function BibliotecaPsiPage() {
    // Setores e cargos que a empresa já tem no sistema (das inspeções) — o
    // editor sugere, e o técnico continua podendo digitar à mão (2026-10-05).
    const { data: catalogo = [] } = useCatalogoSetoresEmpresa(
-@@ -1064,7 +1367,8 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
+@@ -1064,7 +1463,8 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
              origens: d.origens,
              confianca: d.confianca,
              sugestoes: d.sugestoes,
@@ -2018,7 +2131,7 @@ export default function BibliotecaPsiPage() {
            })),
          },
        });
-@@ -1451,7 +1755,10 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
+@@ -1451,7 +1851,10 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                    <p className="mb-2 text-[11px] text-gray-500">
                      Ao marcar <strong>Sim</strong>, um campo de observação aparece para registrar o que foi observado.
                    </p>
@@ -2030,7 +2143,7 @@ export default function BibliotecaPsiPage() {
                      <ChecklistBloco
                        titulo="Ergonomia Física"
                        cor="bg-blue-50 text-blue-800"
-@@ -1491,11 +1798,13 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
+@@ -1491,11 +1894,13 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                          // E a origem da evidência / fontes de quem deixou de ser Sim.
                          const origens = { ...(setor.origem_evidencia ?? {}) };
                          const fontes = { ...(setor.fontes_geradoras ?? {}) };
@@ -2044,7 +2157,7 @@ export default function BibliotecaPsiPage() {
                            }
                            if (v !== "nao_identificado") delete motivos[k];
                          }
-@@ -1505,6 +1814,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
+@@ -1505,6 +1910,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                            motivo_ni: motivos,
                            origem_evidencia: origens,
                            fontes_geradoras: fontes,
@@ -2052,7 +2165,7 @@ export default function BibliotecaPsiPage() {
                          });
                        }}
                        onObservacaoChange={(key, text) =>
-@@ -1512,6 +1822,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
+@@ -1512,6 +1918,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                        }
                        disabled={!canEdit}
                        opcoes={OPCOES_COM_NI}
@@ -2060,7 +2173,7 @@ export default function BibliotecaPsiPage() {
                        legenda={["nao_aplica", "nao_identificado"]}
                        sinais={SINAIS_ORGANIZACIONAL}
                        sinaisMarcados={setor.sinais_organizacional ?? {}}
-@@ -1532,15 +1843,61 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
+@@ -1532,15 +1939,61 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                            onOrigens={(v) =>
                              updateSetor(setor.id, { origem_evidencia: { ...(setor.origem_evidencia ?? {}), [fator]: v } })
                            }
@@ -2139,11 +2252,14 @@ export default function BibliotecaPsiPage() {
 3. **Biblioteca (técnico):**
    - sugira uma opção: ela aparece em "Suas sugestões" como "aguardando";
    - como Admin, aprove: ela passa a aparecer para seleção.
-4. **Triagem:** blocos empilhados, fatores organizacionais um por linha, nome do fator em negrito, roteiro aberto acima da observação.
-5. **Inventário:**
-   - marque opções e inclua um item manual; "salvar na biblioteca" (Admin) o transforma em opção marcada; "sugerir" (técnico) deixa pendente;
+4. **Biblioteca:** página na largura toda, tópicos empilhados.
+5. **Triagem:** blocos empilhados, fatores organizacionais um por linha, nome do fator em negrito, roteiro aberto acima da observação.
+6. **Inventário:**
+   - clique num tópico: abre a lista; marque várias; digite um texto novo e tecle Enter (vira etiqueta "manual");
+   - o campo Evidências não abre nem aceita digitação; marque um sinal no bloco de sinais e ele aparece ali em vermelho;
+   - inclua um item manual; "salvar na biblioteca" (Admin) o transforma em opção marcada; "sugerir" (técnico) deixa pendente;
    - marque uma medida recomendada;
    - "Recolher/Expandir" funciona;
    - salve e recarregue: tudo continua.
-6. **Saídas:** o laudo/PDF mostra "Medidas de controle recomendadas"; a planilha tem a coluna nova; "Gerar IA" nas Recomendações usa as ações e medidas marcadas.
-7. Publique pelo fluxo de release do painel (versão, changelog, "Novidades").
+7. **Saídas:** o laudo/PDF mostra "Medidas de controle recomendadas"; a planilha tem a coluna nova; "Gerar IA" nas Recomendações usa as ações e medidas marcadas.
+8. Publique pelo fluxo de release do painel (versão, changelog, "Novidades").
