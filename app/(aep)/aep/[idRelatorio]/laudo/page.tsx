@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useMemo, useState } from "react";
-import { AlertTriangle, BadgeCheck, Download, Loader2 } from "lucide-react";
+import { AlertTriangle, BadgeCheck, Download, FileSpreadsheet, Loader2 } from "lucide-react";
 import { useAepRelatorio, CLASS_COLOR_AEP, riscoMaximoSetor } from "@/lib/hooks/useAep";
 import TextosPadraoPrint from "@/components/textos-padrao/TextosPadraoPrint";
 import HtmlConteudoAssinado from "@/components/ui/HtmlConteudoAssinado";
@@ -17,6 +17,11 @@ import { usePdfAssinado, usePdfCongelado } from "@/lib/hooks/usePdfsGerados";
 import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
 import { fraseCondicoesColeta, limitacoesDaAvaliacao } from "@/lib/aep/coleta";
+import { COLUNAS_INVENTARIO, csvInventario, detalhesDoSetor, linhasInventario } from "@/lib/aep/inventario";
+import { COR_CONFIANCA } from "@/lib/aep/evidencia";
+import { useBibliotecaPsi } from "@/lib/hooks/useBibliotecaPsi";
+import type { ChecklistGestao } from "@/lib/aep/checklist-gestao";
+import type { Biblioteca } from "@/lib/aep/biblioteca";
 import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
 import { piorNivel } from "@/lib/aep/sinalizacao";
 import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
@@ -97,7 +102,17 @@ const LEGENDA_ORG: { sigla: string; cls: string; titulo: string; texto: string }
 
 // ─── Bloco por setor ─────────────────────────────────────────────────────────
 
-function SetorBlock({ setor, idx }: { setor: AepSetor; idx: number }) {
+function SetorBlock({
+  setor,
+  idx,
+  gestao,
+  biblioteca,
+}: {
+  setor: AepSetor;
+  idx: number;
+  gestao?: ChecklistGestao;
+  biblioteca?: Biblioteca;
+}) {
   const rMax = riscoMaximoSetor(setor);
 
   return (
@@ -284,6 +299,41 @@ function SetorBlock({ setor, idx }: { setor: AepSetor; idx: number }) {
         );
       })()}
 
+      {/* Detalhamento dos fatores psicossociais "Sim" (2026-10-06). */}
+      {(() => {
+        const det = detalhesDoSetor(setor, gestao, biblioteca);
+        if (det.length === 0) return null;
+        return (
+          <div className="mb-3 space-y-1.5 text-[11px] text-gray-700">
+            <p className="text-[10px] font-bold uppercase text-amber-800">Fatores psicossociais identificados — detalhamento</p>
+            {det.map((d) => (
+              <div key={d.key} className="rounded border border-amber-200 px-2 py-1">
+                <p className="font-bold">
+                  {d.label}
+                  {d.nivel ? ` · Nível ${d.nivel}` : ""}
+                  {d.confianca && (
+                    <span
+                      className="ml-1.5 rounded px-1 text-[10px]"
+                      style={{ backgroundColor: COR_CONFIANCA[d.confianca].bg, color: COR_CONFIANCA[d.confianca].cor }}
+                    >
+                      Confiança {d.confianca}
+                    </span>
+                  )}
+                </p>
+                {d.descricao && <p><strong>Descrição do risco:</strong> {d.descricao}</p>}
+                {d.danos && <p><strong>Danos à saúde:</strong> {d.danos}</p>}
+                {d.fontes.length > 0 && <p><strong>Fontes geradoras:</strong> {d.fontes.join("; ")}</p>}
+                <p>
+                  <strong>Medidas de controle existentes:</strong>{" "}
+                  {d.medidasExistentes.length ? d.medidasExistentes.join("; ") : "Não evidenciadas medidas de controle específicas"}
+                </p>
+                {d.origens.length > 0 && <p><strong>Origem das evidências:</strong> {d.origens.join(", ")}</p>}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Matriz de riscos */}
       {setor.riscos.length > 0 && (
         <table className="mb-3 w-full border border-gray-200 text-xs">
@@ -340,6 +390,34 @@ export default function AepLaudoPage({
   const { data: rel } = useAepRelatorio(idRelatorio);
   const { data: empresaFull } = useEmpresa((rel as { id_empresa?: string })?.id_empresa ?? null);
   const { data: capsAep = [] } = useTextosPadrao("aep");
+  const { data: biblioteca } = useBibliotecaPsi();
+
+  /** Inventário psicossocial (setor × fator "Sim") para lançamento no SGG. */
+  async function exportarInventario(formato: "xlsx" | "csv") {
+    if (!rel) return;
+    const linhas = linhasInventario(rel.setores, rel.checklist_gestao, biblioteca);
+    if (linhas.length === 0) {
+      toast.error("Nenhum fator organizacional marcado Sim nesta AEP.");
+      return;
+    }
+    const nomeEmp = ((rel.empresas as { nome_empresa?: string } | null)?.nome_empresa ?? "aep")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w]+/g, "-").toLowerCase();
+    const nome = `inventario-psicossocial-${nomeEmp}`;
+    if (formato === "csv") {
+      const blob = new Blob([csvInventario(linhas)], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${nome}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      return;
+    }
+    const XLSX = await import("xlsx");
+    const ws = XLSX.utils.aoa_to_sheet([[...COLUNAS_INVENTARIO], ...linhas]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Inventário psicossocial");
+    XLSX.writeFile(wb, `${nome}.xlsx`);
+  }
   const { pdfAssinado, recarregar } = usePdfAssinado("aep_relatorios", idRelatorio);
   const { data: pdfCongelado } = usePdfCongelado("aep", idRelatorio);
   const baseCongeladaUrl = pdfCongelado?.pdf_url ?? undefined;
@@ -501,6 +579,21 @@ export default function AepLaudoPage({
               baseCongeladaUrl={baseCongeladaUrl}
             />
           )}
+          <button
+            type="button"
+            onClick={() => exportarInventario("xlsx")}
+            title="Inventário psicossocial (setor × fator Sim) para lançamento no SGG"
+            className="inline-flex items-center gap-2 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+          >
+            <FileSpreadsheet className="size-4" /> Inventário (Excel)
+          </button>
+          <button
+            type="button"
+            onClick={() => exportarInventario("csv")}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            CSV
+          </button>
           <BotaoGerarPdf
             tabelaNome="aep_relatorios"
             docId={idRelatorio}
@@ -644,7 +737,7 @@ export default function AepLaudoPage({
                 return (
                   <Section key={c.id_capitulo} titulo={numLabel(numPorSlug["aep_triagem"], tituloPorSlug["aep_triagem"] ?? "Triagem Ergonômica por Setor")}>
                     {rel.setores.map((setor, idx) => (
-                      <SetorBlock key={setor.id} setor={setor} idx={idx} />
+                      <SetorBlock key={setor.id} setor={setor} idx={idx} gestao={rel.checklist_gestao} biblioteca={biblioteca} />
                     ))}
                   </Section>
                 );

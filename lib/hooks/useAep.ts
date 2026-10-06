@@ -2,6 +2,8 @@
 
 import { sinaisValidos } from "@/lib/aep/sinais-organizacional";
 import { normalizarCondicoesColeta, normalizarMotivoNi } from "@/lib/aep/coleta";
+import { normalizarMapaLista } from "@/lib/aep/evidencia";
+import { normalizarChecklistGestao } from "@/lib/aep/checklist-gestao";
 import { situacaoQuestionario, type SituacaoQuestionario } from "@/lib/aep/sinalizacao";
 import { montarCatalogoSetores } from "@/lib/aep/catalogo-setores";
 import { contagemParaAet } from "@/lib/aep/aiha-organizacional";
@@ -132,6 +134,9 @@ function normalizarSetor(s: unknown): AepSetor {
     // Motivo do N/I e condições da coleta (2026-10-06) — mesmo cuidado.
     motivo_ni: normalizarMotivoNi(setor.motivo_ni),
     condicoes_coleta: normalizarCondicoesColeta(setor.condicoes_coleta),
+    // Origem da evidência e fontes geradoras marcadas (2026-10-06).
+    origem_evidencia: normalizarMapaLista(setor.origem_evidencia),
+    fontes_geradoras: normalizarMapaLista(setor.fontes_geradoras),
     // ⚠️ Mesmo cuidado dos sinais: campo fora daqui some em toda leitura.
     aiha_organizacional:
       typeof setor.aiha_organizacional === "object" && setor.aiha_organizacional !== null
@@ -148,6 +153,7 @@ export function normalizarRelatorio(data: unknown): AepRelatorio {
   return {
     ...rel,
     setores: Array.isArray(rel.setores) ? rel.setores.map(normalizarSetor) : [],
+    checklist_gestao: normalizarChecklistGestao(rel.checklist_gestao),
   } as AepRelatorio;
 }
 

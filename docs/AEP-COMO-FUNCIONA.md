@@ -127,6 +127,25 @@ texto). O Salvar recusa N/I sem motivo. N/I continua fora da matriz e do
 **Roteiro de campo:** cada fator organizacional tem perguntas indiretas e o
 que observar (recolhido no editor e impresso no Formulário em Branco).
 
+**Evidência por fator "Sim" (desde 2026-10-06):**
+- **Origem da evidência**, marcada por fator: observação direta, relato
+  individual, relato em grupo, documental, questionário anônimo.
+- **Confiança:** 1 tipo de origem = Baixa; 2 = Média; 3 ou mais = Alta. Lacuna
+  do checklist de gestão ligada ao fator conta como "documental". Não muda o
+  nível AIHA.
+- **Fontes geradoras:** as lacunas do checklist de gestão aparecem sozinhas; o
+  técnico marca outras da biblioteca psicossocial.
+
+**Checklist de gestão (uma vez por AEP):** 26 itens (G01–G26: política de
+assédio, canal de denúncia, descrição de cargos, controle de jornada…),
+respondidos com gestor/RH, por observação ou documento. "Não existe" e
+"Existe, sem evidência" viram fonte geradora dos fatores ligados ao item;
+"Existe e evidenciado" vira medida de controle existente.
+
+**Biblioteca psicossocial:** descrição do risco, danos à saúde, fontes
+geradoras codificadas, meio de propagação, situação e tempo de exposição,
+sugestões e ações de cada fator. Só o Admin edita.
+
 ### 6.1 Ergonomia Física (9 itens)
 1. Posturas inadequadas / forçadas
 2. Movimentos repetitivos
@@ -357,6 +376,13 @@ Esse critério aparece:
      - (iv) revisar quando mudar processo, layout, mobiliário, ritmo ou
        jornada, ou surgirem queixas, e no máximo até a validade.
 
+**Detalhamento por fator (desde 2026-10-06):** dentro da Triagem por Setor, cada
+fator "Sim" traz descrição do risco, danos à saúde, fontes geradoras, medidas
+de controle existentes, origem das evidências e confiança.
+
+**Inventário psicossocial:** botões "Inventário (Excel)" e "CSV" no laudo; uma
+linha por setor × fator "Sim", para lançamento no SGG.
+
 **Variáveis do Texto Padrão:** nome da empresa, validade e outras são preenchidas
 automaticamente.
 
@@ -390,6 +416,10 @@ Botão "Gerar com IA" por setor (modelo via Groq).
   como imediatas (<30 dias), preventivas (30–90 dias) ou estruturais
   (>90 dias). Incluem AET, DRPS e revisão quando cabíveis.
 - Não inventar dados, medições nem números. Sem bullets.
+- **Desde 2026-10-06:** recebe também fontes geradoras, medidas existentes,
+  origem e confiança de cada fator e a lista de sugestões/ações da biblioteca;
+  nas Recomendações só escolhe ações dessa lista (além de AET, DRPS e revisão).
+  Com confiança Baixa, registra a limitação.
 
 ## 11. AEP e inspeção
 

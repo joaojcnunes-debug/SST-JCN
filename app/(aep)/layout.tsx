@@ -2,7 +2,9 @@
 
 import { type ReactNode, useMemo } from "react";
 import {
+  BookMarked,
   BookOpen,
+  Building2,
   Brain,
   ClipboardCheck,
   ClipboardPen,
@@ -32,7 +34,7 @@ export default function AepLayout({ children }: { children: ReactNode }) {
 
   const match = pathname.match(/\/aep\/([^/]+)\//);
   const idRelatorio = match?.[1];
-  const isConfigPage = ["dashboard", "novo", "formulario-branco", "texto-padrao", "ajuda", "matriz-aiha"].includes(idRelatorio ?? "");
+  const isConfigPage = ["dashboard", "novo", "formulario-branco", "texto-padrao", "ajuda", "matriz-aiha", "biblioteca"].includes(idRelatorio ?? "");
 
   const sections = useMemo<NavSection[]>(() => {
     const base: NavSection[] = [
@@ -45,6 +47,7 @@ export default function AepLayout({ children }: { children: ReactNode }) {
           { href: "/aep/formulario-branco",     label: "Formulário em Branco", icon: ClipboardPen },
           { href: "/sinalizacao-psicossocial",  label: "Sinalização Psicoss.", icon: Brain },
           { href: "/aep/matriz-aiha",           label: "Matriz AIHA",          icon: Grid3x3 },
+          { href: "/aep/biblioteca",            label: "Biblioteca psicossocial", icon: BookMarked },
           { href: "/aep/ajuda",                 label: "Ajuda",                icon: HelpCircle },
         ],
       },
@@ -65,6 +68,7 @@ export default function AepLayout({ children }: { children: ReactNode }) {
         label: "Análise Atual",
         items: [
           { href: `/aep/${idRelatorio}/setores`, label: "Setores / Triagem", icon: ClipboardCheck },
+          { href: `/aep/${idRelatorio}/gestao`,  label: "Checklist de gestão", icon: Building2 },
           { href: `/aep/${idRelatorio}/dados`,   label: "Dados / Conclusão", icon: Info },
           { href: `/aep/${idRelatorio}/laudo`,   label: "Laudo / Imprimir",  icon: Printer, variant: "report" as const },
         ],

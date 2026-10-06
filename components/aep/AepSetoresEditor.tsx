@@ -16,6 +16,12 @@ import {
   type MotivoNiFator,
 } from "@/lib/aep/coleta";
 import { ROTEIRO_CAMPO, type RoteiroFator } from "@/lib/aep/roteiro-campo";
+import { ORIGENS_EVIDENCIA, COR_CONFIANCA, confiancaDoFator } from "@/lib/aep/evidencia";
+import { lacunasDoFator, rotuloLacuna, type ChecklistGestao } from "@/lib/aep/checklist-gestao";
+import type { Biblioteca } from "@/lib/aep/biblioteca";
+import { detalhesDoSetor } from "@/lib/aep/inventario";
+import { useBibliotecaPsi } from "@/lib/hooks/useBibliotecaPsi";
+import { registrarAuditoria } from "@/lib/auditoria/registrar";
 import { chaveNome, type CargoCatalogo, type SetorCatalogo } from "@/lib/aep/catalogo-setores";
 import SituacaoSinalizacaoAep from "@/components/aep/SituacaoSinalizacaoAep";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
@@ -553,6 +559,107 @@ function CondicoesColetaCampos({
   );
 }
 
+// ─── Evidência do fator "Sim" (Fase 2, 2026-10-06) ───────────────────────────
+// Origem por FATOR (decisão do usuário) → confiança Baixa/Média/Alta; lacuna
+// do checklist de gestão conta como "documental". Fontes geradoras: as
+// lacunas de gestão aparecem sozinhas; o técnico marca outras da biblioteca.
+// Nada aqui mexe na matriz AIHA.
+
+function EvidenciaDoFator({
+  fator,
+  origens,
+  onOrigens,
+  fontes,
+  onFontes,
+  gestao,
+  biblioteca,
+  disabled,
+}: {
+  fator: string;
+  origens: string[];
+  onOrigens: (v: string[]) => void;
+  fontes: string[];
+  onFontes: (v: string[]) => void;
+  gestao: ChecklistGestao | undefined;
+  biblioteca: Biblioteca | undefined;
+  disabled?: boolean;
+}) {
+  const lacunas = lacunasDoFator(gestao, fator);
+  const conf = confiancaDoFator(origens, lacunas.length > 0);
+  const doFator = biblioteca?.[fator]?.fontes_geradoras ?? [];
+  const alternar = (lista: string[], k: string) => (lista.includes(k) ? lista.filter((x) => x !== k) : [...lista, k]);
+  return (
+    <div className="rounded-md border border-sky-200 bg-sky-50/50 p-2 space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-sky-800">Origem da evidência</span>
+        {conf ? (
+          <span
+            className="rounded px-1.5 py-px text-[10px] font-bold"
+            style={{ backgroundColor: COR_CONFIANCA[conf].bg, color: COR_CONFIANCA[conf].cor }}
+            title="1 tipo de origem = Baixa · 2 = Média · 3 ou mais = Alta (lacuna de gestão conta como documental)"
+          >
+            Confiança {conf}
+          </span>
+        ) : (
+          <span className="text-[10px] text-gray-500">marque de onde veio a evidência</span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {ORIGENS_EVIDENCIA.map((o) => {
+          const auto = o.key === "documental" && lacunas.length > 0 && !origens.includes(o.key);
+          const on = origens.includes(o.key) || auto;
+          return (
+            <button
+              key={o.key}
+              type="button"
+              disabled={disabled || auto}
+              title={auto ? "Conta sozinha: há lacuna no checklist de gestão ligada a este fator" : undefined}
+              onClick={() => onOrigens(alternar(origens, o.key))}
+              className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition",
+                on ? "bg-sky-600 text-white ring-sky-600" : "bg-white text-gray-600 ring-gray-200 hover:bg-gray-50",
+                auto && "opacity-80",
+              )}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+      {(lacunas.length > 0 || doFator.length > 0) && (
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-sky-800">
+            Fontes geradoras ({lacunas.length + fontes.filter((c) => doFator.some((f) => f.codigo === c)).length})
+            <ChevronDown className="size-3 transition group-open:rotate-180" />
+          </summary>
+          <div className="mt-1 space-y-1 text-[11px] leading-snug text-gray-700">
+            {lacunas.map((l) => (
+              <p key={l.codigo} className="flex items-start gap-1.5">
+                <span className="mt-0.5 rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-800">gestão</span>
+                {rotuloLacuna(l)}
+              </p>
+            ))}
+            {doFator.map((f) => (
+              <label key={f.codigo} className={cn("flex items-start gap-1.5", disabled ? "opacity-60" : "cursor-pointer")}>
+                <input
+                  type="checkbox"
+                  disabled={disabled}
+                  checked={fontes.includes(f.codigo)}
+                  onChange={() => onFontes(alternar(fontes, f.codigo))}
+                  className="mt-0.5 size-3 shrink-0 accent-sky-600"
+                />
+                <span>
+                  <span className="font-mono text-[10px] text-gray-500">{f.codigo}</span> {f.texto}
+                </span>
+              </label>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
 // ─── Bloco de checklist ───────────────────────────────────────────────────────
 
 function ChecklistBloco({
@@ -575,6 +682,7 @@ function ChecklistBloco({
   motivosNi,
   onMotivoNiChange,
   roteiro,
+  extraSim,
 }: {
   titulo: string;
   cor: string;
@@ -600,6 +708,8 @@ function ChecklistBloco({
   motivosNi?: Record<string, MotivoNiFator>;
   onMotivoNiChange?: (fator: string, v: MotivoNiFator) => void;
   roteiro?: Record<string, RoteiroFator>;
+  /** Conteúdo extra do fator marcado "Sim" (origem da evidência, fontes). */
+  extraSim?: (fator: string) => React.ReactNode;
 }) {
   const positivos = itens.filter((i) => valores[i.key] === "sim").length;
   return (
@@ -645,6 +755,7 @@ function ChecklistBloco({
                   disabled={disabled}
                 />
               )}
+              {valores[key] === "sim" && extraSim?.(key)}
               {valores[key] === "nao_identificado" && onMotivoNiChange && (
                 <MotivoNiCampo
                   valor={motivosNi?.[key]}
@@ -700,6 +811,9 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
   const [statusOrdem, setStatusOrdem] = useState<StatusOrdemSalva>("parado");
   // Matriz de risco ativa (a mesma da inspeção) — classifica a Ergonomia Organizacional.
   const { data: matriz } = useMatrizAtiva();
+  // Biblioteca psicossocial e checklist de gestão (Fase 2, 2026-10-06).
+  const { data: biblioteca } = useBibliotecaPsi();
+  const gestao = rel?.checklist_gestao;
   // Setores e cargos que a empresa já tem no sistema (das inspeções) — o
   // editor sugere, e o técnico continua podendo digitar à mão (2026-10-05).
   const { data: catalogo = [] } = useCatalogoSetoresEmpresa(
@@ -942,6 +1056,16 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
           ),
           condicoes_coleta: fraseCondicoesColeta(setor.condicoes_coleta),
           receio_manifestacao: temReceioManifestacao(setor),
+          // Fontes, origem e confiança + sugestões/ações da biblioteca (Fase 2).
+          evidencias_fatores: detalhesDoSetor(setor, gestao, biblioteca).map((d) => ({
+            fator: d.label,
+            fontes: d.fontes,
+            medidas_existentes: d.medidasExistentes,
+            origens: d.origens,
+            confianca: d.confianca,
+            sugestoes: d.sugestoes,
+            acoes: d.acoes,
+          })),
         },
       });
       if (error) { toast.error(mensagemErro(error, "Erro ao gerar texto")); return; }
@@ -971,6 +1095,23 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
     setSalvando(true);
     try {
       await salvar.mutateAsync({ id: idRelatorio, setores: setores as unknown as AepSetor[] });
+      // Rastro da origem da evidência (quem marcou, quando, o quê) na
+      // auditoria append-only — só quando mudou.
+      const antes = JSON.stringify((rel?.setores ?? []).map((s) => [s.id, s.origem_evidencia ?? {}]));
+      const depois = JSON.stringify(setores.map((s) => [s.id, s.origem_evidencia ?? {}]));
+      if (antes !== depois) {
+        void registrarAuditoria({
+          modulo: "aep",
+          id_referencia: idRelatorio,
+          acao: "origem_evidencia",
+          descricao: "Origem da evidência dos fatores organizacionais atualizada",
+          metadata: {
+            setores: setores
+              .filter((s) => Object.keys(s.origem_evidencia ?? {}).length > 0)
+              .map((s) => ({ setor: s.nome_setor, origem_evidencia: s.origem_evidencia })),
+          },
+        });
+      }
     } catch {
       // erro já tratado pelo hook
     } finally {
@@ -1347,14 +1488,23 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                         const sinais = { ...(setor.sinais_organizacional ?? {}) };
                         // Idem para o motivo do N/I de um fator que deixou de ser N/I.
                         const motivos = { ...(setor.motivo_ni ?? {}) };
+                        // E a origem da evidência / fontes de quem deixou de ser Sim.
+                        const origens = { ...(setor.origem_evidencia ?? {}) };
+                        const fontes = { ...(setor.fontes_geradoras ?? {}) };
                         for (const [k, v] of Object.entries(p)) {
-                          if (v !== "sim") delete sinais[k];
+                          if (v !== "sim") {
+                            delete sinais[k];
+                            delete origens[k];
+                            delete fontes[k];
+                          }
                           if (v !== "nao_identificado") delete motivos[k];
                         }
                         updateSetor(setor.id, {
                           checklist_organizacional: { ...setor.checklist_organizacional, ...p } as AepChecklistOrganizacional,
                           sinais_organizacional: sinais,
                           motivo_ni: motivos,
+                          origem_evidencia: origens,
+                          fontes_geradoras: fontes,
                         });
                       }}
                       onObservacaoChange={(key, text) =>
@@ -1375,6 +1525,22 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                         updateSetor(setor.id, { motivo_ni: { ...(setor.motivo_ni ?? {}), [fator]: v } })
                       }
                       roteiro={ROTEIRO_CAMPO}
+                      extraSim={(fator) => (
+                        <EvidenciaDoFator
+                          fator={fator}
+                          origens={setor.origem_evidencia?.[fator] ?? []}
+                          onOrigens={(v) =>
+                            updateSetor(setor.id, { origem_evidencia: { ...(setor.origem_evidencia ?? {}), [fator]: v } })
+                          }
+                          fontes={setor.fontes_geradoras?.[fator] ?? []}
+                          onFontes={(v) =>
+                            updateSetor(setor.id, { fontes_geradoras: { ...(setor.fontes_geradoras ?? {}), [fator]: v } })
+                          }
+                          gestao={gestao}
+                          biblioteca={biblioteca}
+                          disabled={!canEdit}
+                        />
+                      )}
                       matriz={matriz}
                       aiha={setor.aiha_organizacional}
                       onAihaChange={(fator, patch) => {
