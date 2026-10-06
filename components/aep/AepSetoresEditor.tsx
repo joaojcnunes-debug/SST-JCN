@@ -19,7 +19,8 @@ import { ROTEIRO_CAMPO, type RoteiroFator } from "@/lib/aep/roteiro-campo";
 import { ORIGENS_EVIDENCIA, COR_CONFIANCA, confiancaDoFator } from "@/lib/aep/evidencia";
 import { lacunasDoFator, rotuloLacuna, type ChecklistGestao } from "@/lib/aep/checklist-gestao";
 import type { Biblioteca } from "@/lib/aep/biblioteca";
-import { detalhesDoSetor } from "@/lib/aep/inventario";
+import { detalhesDoSetor, type DetalheFator } from "@/lib/aep/inventario";
+import { SEM_MEDIDAS } from "@/lib/aep/checklist-gestao";
 import { useBibliotecaPsi } from "@/lib/hooks/useBibliotecaPsi";
 import { registrarAuditoria } from "@/lib/auditoria/registrar";
 import { chaveNome, type CargoCatalogo, type SetorCatalogo } from "@/lib/aep/catalogo-setores";
@@ -660,6 +661,60 @@ function EvidenciaDoFator({
   );
 }
 
+// ─── Inventário de risco do fator "Sim" (2026-10-06) ─────────────────────────
+// As mesmas colunas do inventário psicossocial exportado (lib/aep/inventario.ts),
+// só leitura: vêm da biblioteca, do checklist de gestão, dos sinais, da matriz
+// e da origem da evidência. Muda conforme o técnico preenche o resto.
+
+function InventarioDoFator({ d }: { d: DetalheFator }) {
+  const lista = (xs: string[], vazio = "—") =>
+    xs.length ? (
+      <ul className="list-disc space-y-0.5 pl-4">
+        {xs.map((x) => (
+          <li key={x}>{x}</li>
+        ))}
+      </ul>
+    ) : (
+      <span className="text-gray-400">{vazio}</span>
+    );
+  const linhas: [string, React.ReactNode][] = [
+    ["Perigo", d.label],
+    ["Fontes geradoras", lista(d.fontes, "Nenhuma confirmada — marque na origem da evidência ou no checklist de gestão")],
+    ["Evidências (sinais)", lista(d.sinais, "Nenhum sinal marcado")],
+    ["Meio de propagação", d.meio || "—"],
+    ["Situação", d.situacao || "—"],
+    ["Tempo de exposição", d.tempo || "—"],
+    ["Medidas de controle existentes", d.medidasExistentes.length ? lista(d.medidasExistentes) : SEM_MEDIDAS],
+    ["Descrição do risco", d.descricao || "—"],
+    ["Danos à saúde", d.danos || "—"],
+    [
+      "Probabilidade × Severidade",
+      d.nivel ? `${d.probabilidade} × ${d.severidade} → ${d.nivel}` : "sem nível (marque os sinais observados)",
+    ],
+    ["Confiança", d.confianca ?? "—"],
+    ["Sugestões iniciais", lista(d.sugestoes)],
+    ["Ações", lista(d.acoes)],
+  ];
+  return (
+    <details open className="group rounded-md border border-gray-200 bg-white">
+      <summary className="flex cursor-pointer list-none items-center gap-1 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700">
+        Inventário de risco
+        <ChevronDown className="size-3 transition group-open:rotate-180" />
+      </summary>
+      <table className="w-full border-t border-gray-100 text-[11px] leading-snug text-gray-700">
+        <tbody>
+          {linhas.map(([rotulo, valor]) => (
+            <tr key={rotulo} className="border-b border-gray-100 last:border-0 align-top">
+              <th className="w-48 bg-gray-50 px-2 py-1 text-left font-semibold text-gray-600">{rotulo}</th>
+              <td className="px-2 py-1">{valor}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
+  );
+}
+
 // ─── Bloco de checklist ───────────────────────────────────────────────────────
 
 function ChecklistBloco({
@@ -684,6 +739,7 @@ function ChecklistBloco({
   onMotivoNiChange,
   roteiro,
   extraSim,
+  inventarioSim,
 }: {
   titulo: string;
   cor: string;
@@ -713,6 +769,8 @@ function ChecklistBloco({
   roteiro?: Record<string, RoteiroFator>;
   /** Conteúdo extra do fator marcado "Sim" (origem da evidência, fontes). */
   extraSim?: (fator: string) => React.ReactNode;
+  /** Inventário de risco do fator "Sim" (por último, depois do roteiro). */
+  inventarioSim?: (fator: string) => React.ReactNode;
 }) {
   const positivos = itens.filter((i) => valores[i.key] === "sim").length;
   return (
@@ -767,6 +825,7 @@ function ChecklistBloco({
                 />
               )}
               {roteiro?.[key] && <RoteiroDoFator roteiro={roteiro[key]} />}
+              {valores[key] === "sim" && inventarioSim?.(key)}
             </Tristate>
           );
         })}
@@ -1518,7 +1577,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                       }
                       disabled={!canEdit}
                       opcoes={OPCOES_COM_NI}
-                      colunasItens="lg:grid-cols-2"
+                      colunasItens=""
                       legenda={["nao_aplica", "nao_identificado"]}
                       sinais={SINAIS_ORGANIZACIONAL}
                       sinaisMarcados={setor.sinais_organizacional ?? {}}
@@ -1548,6 +1607,10 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                           disabled={!canEdit}
                         />
                       )}
+                      inventarioSim={(fator) => {
+                        const d = detalhesDoSetor(setor, gestao, biblioteca).find((x) => x.key === fator);
+                        return d ? <InventarioDoFator d={d} /> : null;
+                      }}
                       matriz={matriz}
                       aiha={setor.aiha_organizacional}
                       onAihaChange={(fator, patch) => {
