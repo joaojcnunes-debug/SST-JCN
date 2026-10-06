@@ -33,6 +33,16 @@ function erro(msg: string, status: number) {
   return NextResponse.json({ error: msg }, { status, headers: sem });
 }
 
+/** Falha inesperada: loga no servidor e responde sem detalhe interno. */
+function falha(e: unknown) {
+  const msg = e instanceof Error ? e.message : String(e);
+  console.error("[api/publico/questionario]", msg);
+  if (msg.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+    return erro("Questionário indisponível: configuração do servidor pendente.", 503);
+  }
+  return erro("Não foi possível abrir o questionário agora. Tente de novo.", 500);
+}
+
 // Limite de envios por IP e token: 5 a cada 10 minutos (só em memória).
 const JANELA_MS = 10 * 60 * 1000;
 const MAX_ENVIOS = 5;
@@ -81,6 +91,22 @@ async function carregar(sb: Sb, token: string) {
 }
 
 export async function GET(req: NextRequest) {
+  try {
+    return await get(req);
+  } catch (e) {
+    return falha(e);
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    return await post(req);
+  } catch (e) {
+    return falha(e);
+  }
+}
+
+async function get(req: NextRequest) {
   const token = new URL(req.url).searchParams.get("token");
   if (!tokenValido(token)) return erro("Link inválido.", 404);
   const sb = createSupabaseServiceClient({ email: null, origem: "questionario-anonimo" }) as Sb;
@@ -92,7 +118,7 @@ export async function GET(req: NextRequest) {
   );
 }
 
-export async function POST(req: NextRequest) {
+async function post(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as { token?: unknown } | null;
   const token = body?.token;
   if (!tokenValido(token)) return erro("Link inválido.", 404);
