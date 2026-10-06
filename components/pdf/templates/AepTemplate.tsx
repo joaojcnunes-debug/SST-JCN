@@ -15,7 +15,7 @@ import { classeQuebraFixoNova, numerarCapitulos, numLabel } from "@/components/p
 // Módulo puro (sem "use client", sem hook) — pode entrar no template do Puppeteer.
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
 import { fraseCondicoesColeta, limitacoesDaAvaliacao, type CondicoesColeta, type MotivoNiFator } from "@/lib/aep/coleta";
-import { detalhesDoSetor } from "@/lib/aep/inventario";
+import { detalhesDoSetor, type InventarioFator } from "@/lib/aep/inventario";
 import { COR_CONFIANCA } from "@/lib/aep/evidencia";
 import type { ChecklistGestao } from "@/lib/aep/checklist-gestao";
 import type { Biblioteca } from "@/lib/aep/biblioteca";
@@ -101,6 +101,7 @@ export interface AepSetorLocal {
   condicoes_coleta?: CondicoesColeta;
   origem_evidencia?: Record<string, string[]>;
   fontes_geradoras?: Record<string, string[]>;
+  inventario?: Record<string, InventarioFator>;
   cargos?: { id: string; cargo: string; descricao: string; quantidade: number }[];
   riscos: AepRisco[];
   checklist_fisica: AepChecklistFisica;

@@ -4,6 +4,7 @@ import { sinaisValidos } from "@/lib/aep/sinais-organizacional";
 import { normalizarCondicoesColeta, normalizarMotivoNi } from "@/lib/aep/coleta";
 import { normalizarMapaLista } from "@/lib/aep/evidencia";
 import { normalizarChecklistGestao } from "@/lib/aep/checklist-gestao";
+import { normalizarInventario } from "@/lib/aep/inventario";
 import { situacaoQuestionario, type SituacaoQuestionario } from "@/lib/aep/sinalizacao";
 import { montarCatalogoSetores } from "@/lib/aep/catalogo-setores";
 import { contagemParaAet } from "@/lib/aep/aiha-organizacional";
@@ -137,6 +138,7 @@ function normalizarSetor(s: unknown): AepSetor {
     // Origem da evidência e fontes geradoras marcadas (2026-10-06).
     origem_evidencia: normalizarMapaLista(setor.origem_evidencia),
     fontes_geradoras: normalizarMapaLista(setor.fontes_geradoras),
+    inventario: normalizarInventario(setor.inventario),
     // ⚠️ Mesmo cuidado dos sinais: campo fora daqui some em toda leitura.
     aiha_organizacional:
       typeof setor.aiha_organizacional === "object" && setor.aiha_organizacional !== null

@@ -18,9 +18,9 @@ import {
 import { ROTEIRO_CAMPO, type RoteiroFator } from "@/lib/aep/roteiro-campo";
 import { ORIGENS_EVIDENCIA, COR_CONFIANCA, confiancaDoFator } from "@/lib/aep/evidencia";
 import { lacunasDoFator, rotuloLacuna, type ChecklistGestao } from "@/lib/aep/checklist-gestao";
-import type { Biblioteca } from "@/lib/aep/biblioteca";
-import { detalhesDoSetor, type DetalheFator } from "@/lib/aep/inventario";
-import { SEM_MEDIDAS } from "@/lib/aep/checklist-gestao";
+import { detalhesDoSetor, type DetalheFator, type InventarioFator } from "@/lib/aep/inventario";
+import { SEM_MEDIDAS, medidasExistentesDoFator } from "@/lib/aep/checklist-gestao";
+import type { FatorBiblioteca } from "@/lib/aep/biblioteca";
 import { useBibliotecaPsi } from "@/lib/hooks/useBibliotecaPsi";
 import { registrarAuditoria } from "@/lib/auditoria/registrar";
 import { chaveNome, type CargoCatalogo, type SetorCatalogo } from "@/lib/aep/catalogo-setores";
@@ -128,6 +128,7 @@ function Tristate({
   onObservacaoChange,
   disabled,
   children,
+  topo,
 }: {
   label: string;
   value: RespostaChecklistAep;
@@ -139,6 +140,8 @@ function Tristate({
   disabled?: boolean;
   /** Conteúdo extra do item — usado pelos sinais da Ergonomia Organizacional. */
   children?: React.ReactNode;
+  /** Entre o título e a observação (roteiro de campo e origem da evidência). */
+  topo?: React.ReactNode;
 }) {
   return (
     <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 space-y-1.5">
@@ -166,6 +169,7 @@ function Tristate({
           ))}
         </div>
       </div>
+      {topo}
       <textarea
         disabled={disabled}
         value={observacao ?? ""}
@@ -413,7 +417,7 @@ function MotivoNiCampo({
 
 function RoteiroDoFator({ roteiro }: { roteiro: RoteiroFator }) {
   return (
-    <details className="group rounded-md border border-teal-100 bg-teal-50/40 px-2 py-1">
+    <details open className="group rounded-md border border-teal-100 bg-teal-50/40 px-2 py-1">
       <summary className="flex cursor-pointer list-none items-center gap-1 text-[10px] font-semibold text-teal-800">
         <Compass className="size-3" /> Roteiro de campo
         <ChevronDown className="size-3 transition group-open:rotate-180" />
@@ -570,24 +574,17 @@ function EvidenciaDoFator({
   fator,
   origens,
   onOrigens,
-  fontes,
-  onFontes,
   gestao,
-  biblioteca,
   disabled,
 }: {
   fator: string;
   origens: string[];
   onOrigens: (v: string[]) => void;
-  fontes: string[];
-  onFontes: (v: string[]) => void;
   gestao: ChecklistGestao | undefined;
-  biblioteca: Biblioteca | undefined;
   disabled?: boolean;
 }) {
   const lacunas = lacunasDoFator(gestao, fator);
   const conf = confiancaDoFator(origens, lacunas.length > 0);
-  const doFator = biblioteca?.[fator]?.fontes_geradoras ?? [];
   const alternar = (lista: string[], k: string) => (lista.includes(k) ? lista.filter((x) => x !== k) : [...lista, k]);
   return (
     <div className="rounded-md border border-sky-200 bg-sky-50/50 p-2 space-y-2">
@@ -627,36 +624,6 @@ function EvidenciaDoFator({
           );
         })}
       </div>
-      {(lacunas.length > 0 || doFator.length > 0) && (
-        <details className="group">
-          <summary className="flex cursor-pointer list-none items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-sky-800">
-            Fontes geradoras ({lacunas.length + fontes.filter((c) => doFator.some((f) => f.codigo === c)).length})
-            <ChevronDown className="size-3 transition group-open:rotate-180" />
-          </summary>
-          <div className="mt-1 space-y-1 text-[11px] leading-snug text-gray-700">
-            {lacunas.map((l) => (
-              <p key={l.codigo} className="flex items-start gap-1.5">
-                <span className="mt-0.5 rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-800">gestão</span>
-                {rotuloLacuna(l)}
-              </p>
-            ))}
-            {doFator.map((f) => (
-              <label key={f.codigo} className={cn("flex items-start gap-1.5", disabled ? "opacity-60" : "cursor-pointer")}>
-                <input
-                  type="checkbox"
-                  disabled={disabled}
-                  checked={fontes.includes(f.codigo)}
-                  onChange={() => onFontes(alternar(fontes, f.codigo))}
-                  className="mt-0.5 size-3 shrink-0 accent-sky-600"
-                />
-                <span>
-                  <span className="font-mono text-[10px] text-gray-500">{f.codigo}</span> {f.texto}
-                </span>
-              </label>
-            ))}
-          </div>
-        </details>
-      )}
     </div>
   );
 }
@@ -666,39 +633,249 @@ function EvidenciaDoFator({
 // só leitura: vêm da biblioteca, do checklist de gestão, dos sinais, da matriz
 // e da origem da evidência. Muda conforme o técnico preenche o resto.
 
-function InventarioDoFator({ d }: { d: DetalheFator }) {
-  const lista = (xs: string[], vazio = "—") =>
-    xs.length ? (
-      <ul className="list-disc space-y-0.5 pl-4">
-        {xs.map((x) => (
-          <li key={x}>{x}</li>
+/** Lista de itens manuais: chips removíveis + campo para adicionar. */
+function ListaManual({
+  itens,
+  onChange,
+  disabled,
+  placeholder,
+}: {
+  itens: string[];
+  onChange: (v: string[]) => void;
+  disabled?: boolean;
+  placeholder: string;
+}) {
+  const [novo, setNovo] = useState("");
+  const adicionar = () => {
+    const t = novo.trim();
+    if (!t || itens.includes(t)) return setNovo("");
+    onChange([...itens, t]);
+    setNovo("");
+  };
+  return (
+    <div className="mt-1 space-y-1">
+      {itens.map((x) => (
+        <p key={x} className="flex items-start gap-1.5">
+          <span className="mt-0.5 rounded bg-violet-100 px-1 text-[9px] font-semibold text-violet-800">manual</span>
+          <span className="flex-1">{x}</span>
+          {!disabled && (
+            <button type="button" onClick={() => onChange(itens.filter((i) => i !== x))} className="text-gray-400 hover:text-red-500" title="Remover">
+              <Trash2 className="size-3" />
+            </button>
+          )}
+        </p>
+      ))}
+      {!disabled && (
+        <div className="flex gap-1">
+          <input
+            value={novo}
+            onChange={(e) => setNovo(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                adicionar();
+              }
+            }}
+            placeholder={placeholder}
+            className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-0.5 text-[11px] focus:border-emerald-500 focus:outline-none"
+          />
+          <button type="button" onClick={adicionar} className="rounded border border-emerald-300 px-2 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50">
+            <Plus className="size-3" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Inventário de risco EDITÁVEL do fator "Sim" (2026-10-06): cada tópico é
+ * selecionável (itens da biblioteca / checklist de gestão / sinais) e aceita
+ * texto ou itens manuais. Os ajustes ficam em `setor.inventario[fator]` e
+ * seguem para laudo, PDF, inventário exportado e IA (lib/aep/inventario.ts).
+ */
+function InventarioDoFator({
+  d,
+  padrao,
+  rotuloPadrao,
+  aj,
+  onAjuste,
+  sinaisCatalogo,
+  sinaisMarcados,
+  onSinais,
+  fontesMarcadas,
+  onFontes,
+  gestao,
+  sugestoesTexto,
+  disabled,
+}: {
+  d: DetalheFator;
+  padrao: FatorBiblioteca | undefined;
+  rotuloPadrao: string;
+  aj: InventarioFator;
+  onAjuste: (patch: Partial<InventarioFator>) => void;
+  sinaisCatalogo: SinalOrganizacional[];
+  sinaisMarcados: string[];
+  onSinais: (keys: string[]) => void;
+  fontesMarcadas: string[];
+  onFontes: (codigos: string[]) => void;
+  gestao: ChecklistGestao | undefined;
+  /** Valores já usados na biblioteca, para sugerir em meio/situação/tempo. */
+  sugestoesTexto: { meio: string[]; situacao: string[]; tempo: string[] };
+  disabled?: boolean;
+}) {
+  const alternar = (lista: string[], k: string) => (lista.includes(k) ? lista.filter((x) => x !== k) : [...lista, k]);
+  const inputCls =
+    "w-full rounded border border-gray-200 bg-white px-2 py-1 text-[11px] focus:border-emerald-500 focus:outline-none disabled:bg-gray-50";
+  const lacunas = lacunasDoFator(gestao, d.key);
+  const medidasGestao = medidasExistentesDoFator(gestao, d.key);
+  const idLista = (c: string) => `inv-${d.key}-${c}`;
+
+  const texto = (campo: "perigo" | "meio" | "situacao" | "tempo", valorPadrao: string, lista?: string[]) => (
+    <>
+      <input
+        disabled={disabled}
+        list={lista ? idLista(campo) : undefined}
+        value={aj[campo] ?? valorPadrao}
+        onChange={(e) => onAjuste({ [campo]: e.target.value })}
+        className={inputCls}
+      />
+      {lista && (
+        <datalist id={idLista(campo)}>
+          {lista.map((x) => (
+            <option key={x} value={x} />
+          ))}
+        </datalist>
+      )}
+      {aj[campo] !== undefined && aj[campo] !== valorPadrao && !disabled && (
+        <button type="button" onClick={() => onAjuste({ [campo]: undefined })} className="mt-0.5 text-[10px] text-sky-700 underline">
+          voltar ao padrão
+        </button>
+      )}
+    </>
+  );
+  const textoLongo = (campo: "descricao" | "danos", valorPadrao: string) => (
+    <>
+      <textarea
+        disabled={disabled}
+        rows={2}
+        value={aj[campo] ?? valorPadrao}
+        onChange={(e) => onAjuste({ [campo]: e.target.value })}
+        className={inputCls}
+      />
+      {aj[campo] !== undefined && aj[campo] !== valorPadrao && !disabled && (
+        <button type="button" onClick={() => onAjuste({ [campo]: undefined })} className="mt-0.5 text-[10px] text-sky-700 underline">
+          voltar ao texto da biblioteca
+        </button>
+      )}
+    </>
+  );
+  const selecao = (campo: "sugestoes" | "acoes", campoExtra: "sugestoes_extra" | "acoes_extra", daBiblioteca: string[], rotuloNovo: string) => {
+    const sel = aj[campo] ?? daBiblioteca;
+    return (
+      <>
+        {daBiblioteca.map((x) => (
+          <label key={x} className={cn("flex items-start gap-1.5", disabled ? "opacity-70" : "cursor-pointer")}>
+            <input
+              type="checkbox"
+              disabled={disabled}
+              checked={sel.includes(x)}
+              onChange={() => onAjuste({ [campo]: alternar(sel, x) })}
+              className="mt-0.5 size-3 shrink-0 accent-emerald-600"
+            />
+            <span>{x}</span>
+          </label>
         ))}
-      </ul>
-    ) : (
-      <span className="text-gray-400">{vazio}</span>
+        <ListaManual itens={aj[campoExtra] ?? []} onChange={(v) => onAjuste({ [campoExtra]: v })} disabled={disabled} placeholder={rotuloNovo} />
+      </>
     );
+  };
+
   const linhas: [string, React.ReactNode][] = [
-    ["Perigo", d.label],
-    ["Fontes geradoras", lista(d.fontes, "Nenhuma confirmada — marque na origem da evidência ou no checklist de gestão")],
-    ["Evidências (sinais)", lista(d.sinais, "Nenhum sinal marcado")],
-    ["Meio de propagação", d.meio || "—"],
-    ["Situação", d.situacao || "—"],
-    ["Tempo de exposição", d.tempo || "—"],
-    ["Medidas de controle existentes", d.medidasExistentes.length ? lista(d.medidasExistentes) : SEM_MEDIDAS],
-    ["Descrição do risco", d.descricao || "—"],
-    ["Danos à saúde", d.danos || "—"],
+    ["Perigo", texto("perigo", rotuloPadrao)],
+    [
+      "Fontes geradoras",
+      <>
+        {lacunas.map((l) => (
+          <p key={l.codigo} className="flex items-start gap-1.5">
+            <span className="mt-0.5 rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-800">gestão</span>
+            {rotuloLacuna(l)}
+          </p>
+        ))}
+        {(padrao?.fontes_geradoras ?? []).map((f) => (
+          <label key={f.codigo} className={cn("flex items-start gap-1.5", disabled ? "opacity-70" : "cursor-pointer")}>
+            <input
+              type="checkbox"
+              disabled={disabled}
+              checked={fontesMarcadas.includes(f.codigo)}
+              onChange={() => onFontes(alternar(fontesMarcadas, f.codigo))}
+              className="mt-0.5 size-3 shrink-0 accent-emerald-600"
+            />
+            <span>
+              <span className="font-mono text-[10px] text-gray-500">{f.codigo}</span> {f.texto}
+            </span>
+          </label>
+        ))}
+        <ListaManual itens={aj.fontes_extra ?? []} onChange={(v) => onAjuste({ fontes_extra: v })} disabled={disabled} placeholder="Outra fonte geradora…" />
+      </>,
+    ],
+    [
+      "Evidências (sinais)",
+      <>
+        {sinaisCatalogo.map((s) => (
+          <label key={s.key} className={cn("flex items-start gap-1.5", disabled ? "opacity-70" : "cursor-pointer")}>
+            <input
+              type="checkbox"
+              disabled={disabled}
+              checked={sinaisMarcados.includes(s.key)}
+              onChange={() => onSinais(alternar(sinaisMarcados, s.key))}
+              className="mt-0.5 size-3 shrink-0 accent-red-600"
+            />
+            <span>{s.label}</span>
+          </label>
+        ))}
+        <ListaManual itens={aj.sinais_extra ?? []} onChange={(v) => onAjuste({ sinais_extra: v })} disabled={disabled} placeholder="Outra evidência (não conta na matriz)…" />
+      </>,
+    ],
+    ["Meio de propagação", texto("meio", padrao?.meio_propagacao ?? "", sugestoesTexto.meio)],
+    ["Situação", texto("situacao", padrao?.situacao_padrao ?? "", sugestoesTexto.situacao)],
+    ["Tempo de exposição", texto("tempo", padrao?.tempo_exposicao_padrao ?? "", sugestoesTexto.tempo)],
+    [
+      "Medidas de controle existentes",
+      <>
+        {medidasGestao.map((m) => (
+          <p key={m.codigo} className="flex items-start gap-1.5">
+            <span className="mt-0.5 rounded bg-emerald-100 px-1 text-[9px] font-semibold text-emerald-800">gestão</span>
+            {m.codigo} — {m.label}
+          </p>
+        ))}
+        {medidasGestao.length === 0 && (aj.medidas_extra ?? []).length === 0 && <p className="text-gray-400">{SEM_MEDIDAS}</p>}
+        <ListaManual itens={aj.medidas_extra ?? []} onChange={(v) => onAjuste({ medidas_extra: v })} disabled={disabled} placeholder="Medida existente observada…" />
+      </>,
+    ],
+    ["Descrição do risco", textoLongo("descricao", padrao?.descricao_risco ?? "")],
+    ["Danos à saúde", textoLongo("danos", padrao?.danos_saude ?? "")],
     [
       "Probabilidade × Severidade",
-      d.nivel ? `${d.probabilidade} × ${d.severidade} → ${d.nivel}` : "sem nível (marque os sinais observados)",
+      <span key="pxs">
+        {d.nivel ? `${d.probabilidade} × ${d.severidade} → ${d.nivel}` : "sem nível (marque os sinais observados)"}
+        <span className="ml-1 text-gray-400">· ajuste na Matriz de risco AIHA acima</span>
+      </span>,
     ],
-    ["Confiança", d.confianca ?? "—"],
-    ["Sugestões iniciais", lista(d.sugestoes)],
-    ["Ações", lista(d.acoes)],
+    [
+      "Confiança",
+      <span key="conf">
+        {d.confianca ?? "—"} <span className="text-gray-400">· pela origem da evidência</span>
+      </span>,
+    ],
+    ["Sugestões iniciais", selecao("sugestoes", "sugestoes_extra", padrao?.sugestoes_iniciais ?? [], "Outra sugestão…")],
+    ["Ações", selecao("acoes", "acoes_extra", padrao?.acoes ?? [], "Outra ação…")],
   ];
   return (
     <details open className="group rounded-md border border-gray-200 bg-white">
       <summary className="flex cursor-pointer list-none items-center gap-1 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700">
         Inventário de risco
+        <span className="ml-1 font-normal normal-case text-gray-400">— selecione ou inclua itens; vale para laudo, PDF, planilha e IA</span>
         <ChevronDown className="size-3 transition group-open:rotate-180" />
       </summary>
       <table className="w-full border-t border-gray-100 text-[11px] leading-snug text-gray-700">
@@ -706,7 +883,7 @@ function InventarioDoFator({ d }: { d: DetalheFator }) {
           {linhas.map(([rotulo, valor]) => (
             <tr key={rotulo} className="border-b border-gray-100 last:border-0 align-top">
               <th className="w-48 bg-gray-50 px-2 py-1 text-left font-semibold text-gray-600">{rotulo}</th>
-              <td className="px-2 py-1">{valor}</td>
+              <td className="space-y-0.5 px-2 py-1">{valor}</td>
             </tr>
           ))}
         </tbody>
@@ -796,6 +973,14 @@ function ChecklistBloco({
               onChange={(v) => onChange({ [key]: v })}
               onObservacaoChange={(text) => onObservacaoChange(key, text)}
               disabled={disabled}
+              topo={
+                roteiro?.[key] || valores[key] === "sim" ? (
+                  <>
+                    {roteiro?.[key] && <RoteiroDoFator roteiro={roteiro[key]} />}
+                    {valores[key] === "sim" && extraSim?.(key)}
+                  </>
+                ) : undefined
+              }
             >
               {valores[key] === "sim" && doFator && doFator.length > 0 && (
                 <SinaisDoFator
@@ -816,7 +1001,6 @@ function ChecklistBloco({
                   disabled={disabled}
                 />
               )}
-              {valores[key] === "sim" && extraSim?.(key)}
               {valores[key] === "nao_identificado" && onMotivoNiChange && (
                 <MotivoNiCampo
                   valor={motivosNi?.[key]}
@@ -824,7 +1008,6 @@ function ChecklistBloco({
                   disabled={disabled}
                 />
               )}
-              {roteiro?.[key] && <RoteiroDoFator roteiro={roteiro[key]} />}
               {valores[key] === "sim" && inventarioSim?.(key)}
             </Tristate>
           );
@@ -876,6 +1059,12 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
   // Biblioteca psicossocial e checklist de gestão (Fase 2, 2026-10-06).
   const { data: biblioteca } = useBibliotecaPsi();
   const gestao = rel?.checklist_gestao;
+  // Valores da biblioteca para sugerir nos campos de texto do inventário.
+  const sugestoesTextoInventario = {
+    meio: [...new Set(Object.values(biblioteca ?? {}).map((b) => b.meio_propagacao).filter(Boolean))],
+    situacao: [...new Set(Object.values(biblioteca ?? {}).map((b) => b.situacao_padrao).filter(Boolean))],
+    tempo: [...new Set(Object.values(biblioteca ?? {}).map((b) => b.tempo_exposicao_padrao).filter(Boolean))],
+  };
   // Setores e cargos que a empresa já tem no sistema (das inspeções) — o
   // editor sugere, e o técnico continua podendo digitar à mão (2026-10-05).
   const { data: catalogo = [] } = useCatalogoSetoresEmpresa(
@@ -1556,11 +1745,13 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                         // E a origem da evidência / fontes de quem deixou de ser Sim.
                         const origens = { ...(setor.origem_evidencia ?? {}) };
                         const fontes = { ...(setor.fontes_geradoras ?? {}) };
+                        const inventario = { ...(setor.inventario ?? {}) };
                         for (const [k, v] of Object.entries(p)) {
                           if (v !== "sim") {
                             delete sinais[k];
                             delete origens[k];
                             delete fontes[k];
+                            delete inventario[k];
                           }
                           if (v !== "nao_identificado") delete motivos[k];
                         }
@@ -1570,6 +1761,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                           motivo_ni: motivos,
                           origem_evidencia: origens,
                           fontes_geradoras: fontes,
+                          inventario,
                         });
                       }}
                       onObservacaoChange={(key, text) =>
@@ -1598,18 +1790,41 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                           onOrigens={(v) =>
                             updateSetor(setor.id, { origem_evidencia: { ...(setor.origem_evidencia ?? {}), [fator]: v } })
                           }
-                          fontes={setor.fontes_geradoras?.[fator] ?? []}
-                          onFontes={(v) =>
-                            updateSetor(setor.id, { fontes_geradoras: { ...(setor.fontes_geradoras ?? {}), [fator]: v } })
-                          }
                           gestao={gestao}
-                          biblioteca={biblioteca}
                           disabled={!canEdit}
                         />
                       )}
                       inventarioSim={(fator) => {
                         const d = detalhesDoSetor(setor, gestao, biblioteca).find((x) => x.key === fator);
-                        return d ? <InventarioDoFator d={d} /> : null;
+                        if (!d) return null;
+                        const aj = setor.inventario?.[fator] ?? {};
+                        return (
+                          <InventarioDoFator
+                            d={d}
+                            padrao={biblioteca?.[fator]}
+                            rotuloPadrao={ITENS_ORGANIZACIONAL.find((i) => i.key === fator)?.label ?? fator}
+                            aj={aj}
+                            onAjuste={(patch) =>
+                              updateSetor(setor.id, {
+                                inventario: { ...(setor.inventario ?? {}), [fator]: { ...aj, ...patch } },
+                              })
+                            }
+                            sinaisCatalogo={SINAIS_ORGANIZACIONAL[fator as FatorOrganizacional] ?? []}
+                            sinaisMarcados={setor.sinais_organizacional?.[fator] ?? []}
+                            onSinais={(keys) =>
+                              updateSetor(setor.id, {
+                                sinais_organizacional: { ...(setor.sinais_organizacional ?? {}), [fator]: keys },
+                              })
+                            }
+                            fontesMarcadas={setor.fontes_geradoras?.[fator] ?? []}
+                            onFontes={(v) =>
+                              updateSetor(setor.id, { fontes_geradoras: { ...(setor.fontes_geradoras ?? {}), [fator]: v } })
+                            }
+                            gestao={gestao}
+                            sugestoesTexto={sugestoesTextoInventario}
+                            disabled={!canEdit}
+                          />
+                        );
                       }}
                       matriz={matriz}
                       aiha={setor.aiha_organizacional}
