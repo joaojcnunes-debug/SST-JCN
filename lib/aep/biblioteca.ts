@@ -5,7 +5,8 @@
  * Cada tópico do inventário é uma lista de opções selecionáveis
  * (`psi_biblioteca_itens`):
  *   • por fator: perigo, fonte geradora, evidência, descrição do risco, danos
- *     à saúde, medida de controle, sugestão inicial e ação;
+ *     à saúde, medida de controle (existente e recomendada — v277), sugestão
+ *     inicial e ação;
  *   • comuns a todos os fatores (fator null): meio de propagação, situação e
  *     tempo de exposição — o padrão de cada fator fica em
  *     `psi_biblioteca_fatores` (meio_propagacao, situacao_padrao,
@@ -26,6 +27,7 @@ export type TopicoBib =
   | "descricao"
   | "danos"
   | "medida"
+  | "medida_recomendada"
   | "sugestao"
   | "acao"
   | "meio"
@@ -40,7 +42,8 @@ export const ROTULO_TOPICO: Record<TopicoBib, string> = {
   evidencia: "Evidências",
   descricao: "Descrição do risco",
   danos: "Danos à saúde",
-  medida: "Medidas de controle",
+  medida: "Medidas de controle existentes",
+  medida_recomendada: "Medidas de controle recomendadas",
   sugestao: "Sugestões iniciais",
   acao: "Ações",
   meio: "Meio de propagação",
@@ -49,7 +52,17 @@ export const ROTULO_TOPICO: Record<TopicoBib, string> = {
 };
 
 /** Ordem dos tópicos por fator na tela da biblioteca. */
-export const TOPICOS_DO_FATOR: TopicoBib[] = ["perigo", "fonte", "evidencia", "descricao", "danos", "medida", "sugestao", "acao"];
+export const TOPICOS_DO_FATOR: TopicoBib[] = [
+  "perigo",
+  "fonte",
+  "evidencia",
+  "descricao",
+  "danos",
+  "medida",
+  "medida_recomendada",
+  "sugestao",
+  "acao",
+];
 
 export type StatusItem = "ativo" | "pendente" | "recusado";
 

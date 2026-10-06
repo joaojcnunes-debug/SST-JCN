@@ -155,7 +155,7 @@ function Tristate({
   return (
     <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-gray-700">{label}</span>
+        <span className="text-sm font-bold text-gray-900">{label}</span>
         <div className="flex gap-1 shrink-0">
           {opcoes.map((opt) => (
             <button
@@ -797,6 +797,7 @@ function InventarioDoFator({
   onIncluirBiblioteca: (t: TopicoBib, texto: string) => void;
   disabled?: boolean;
 }) {
+  const [aberto, setAberto] = useState(true);
   const lacunas = lacunasDoFator(gestao, fator);
   const medidasGestao = medidasExistentesDoFator(gestao, fator);
 
@@ -889,6 +890,12 @@ function InventarioDoFator({
         ),
       }),
     ],
+    [
+      ROTULO_TOPICO.medida_recomendada,
+      topico("medida_recomendada", "Outra medida recomendada…", {
+        antes: <p className="text-[10px] text-gray-400">Marque o que a empresa ainda precisa implantar.</p>,
+      }),
+    ],
     [ROTULO_TOPICO.descricao, topico("descricao", "Outra descrição do risco…")],
     [ROTULO_TOPICO.danos, topico("danos", "Outro dano à saúde…")],
     [
@@ -908,25 +915,35 @@ function InventarioDoFator({
     [ROTULO_TOPICO.acao, topico("acao", "Outra ação…")],
   ];
   return (
-    <details open className="group rounded-md border border-gray-200 bg-white">
-      <summary className="flex cursor-pointer list-none items-center gap-1 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-700">
-        Inventário de risco
-        <span className="ml-1 font-normal normal-case text-gray-400">
-          — marque as opções da biblioteca ou inclua; vale para laudo, PDF, planilha e IA
+    <div className="rounded-md border border-gray-300 bg-white">
+      <button
+        type="button"
+        onClick={() => setAberto((v) => !v)}
+        className="flex w-full items-center gap-2 bg-gray-50 px-2 py-1.5 text-left hover:bg-gray-100"
+        aria-expanded={aberto}
+      >
+        <span className="text-xs font-bold uppercase tracking-wide text-gray-900">Inventário de risco</span>
+        <span className="hidden text-[10px] text-gray-400 sm:inline">
+          marque as opções da biblioteca ou inclua; vale para laudo, PDF, planilha e IA
         </span>
-        <ChevronDown className="size-3 transition group-open:rotate-180" />
-      </summary>
+        <span className="ml-auto inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-700">
+          {aberto ? "Recolher" : "Expandir"}
+          <ChevronDown className={cn("size-3 transition", aberto && "rotate-180")} />
+        </span>
+      </button>
+      {aberto && (
       <table className="w-full border-t border-gray-100 text-[11px] leading-snug text-gray-700">
         <tbody>
           {linhas.map(([rotulo, valor]) => (
             <tr key={rotulo} className="border-b border-gray-100 last:border-0 align-top">
-              <th className="w-48 bg-gray-50 px-2 py-1 text-left font-semibold text-gray-600">{rotulo}</th>
+              <th className="w-52 bg-gray-50 px-2 py-1 text-left font-bold text-gray-900">{rotulo}</th>
               <td className="space-y-0.5 px-2 py-1">{valor}</td>
             </tr>
           ))}
         </tbody>
       </table>
-    </details>
+      )}
+    </div>
   );
 }
 
@@ -1350,7 +1367,8 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
             origens: d.origens,
             confianca: d.confianca,
             sugestoes: d.sugestoes,
-            acoes: d.acoes,
+            // Medidas recomendadas (v277) também valem como ações escolhidas.
+            acoes: [...d.acoes, ...d.medidasRecomendadas],
           })),
         },
       });

@@ -28,6 +28,7 @@ const BIB = montarBiblioteca(
     item("D1", "assedio", "descricao", "Condutas abusivas", { padrao: true }),
     item("DN1", "assedio", "danos", "Estresse", { padrao: true }),
     item("M1", "assedio", "medida", "Canal de denúncia sigiloso"),
+    item("MR1", "assedio", "medida_recomendada", "Canal de denúncia sigiloso"),
     item("S1", "assedio", "sugestao", "Política de prevenção", { padrao: true }),
     item("S2", "assedio", "sugestao", "Pendente", { padrao: true, status: "pendente" }),
     item("A1", "assedio", "acao", "Código de conduta", { padrao: true }),
@@ -118,7 +119,7 @@ test("com seleção do técnico: opções marcadas + manuais; item que saiu da b
     sinais_organizacional: { assedio: ["tom_agressivo"] },
     inventario: normalizarInventario({
       assedio: {
-        sel: { meio: ["ME2"], acao: ["A2", "APAGADO"], sugestao: [], evidencia: ["E1"], medida: ["M1"], fonte: ["F1"] },
+        sel: { meio: ["ME2"], acao: ["A2", "APAGADO"], sugestao: [], evidencia: ["E1"], medida: ["M1"], fonte: ["F1"], medida_recomendada: ["MR1"] },
         extra: { acao: ["Ação manual"], perigo: ["Assédio moral pela supervisão"], fonte: ["Fonte manual"], lixo: 3 },
       },
     }),
@@ -132,10 +133,11 @@ test("com seleção do técnico: opções marcadas + manuais; item que saiu da b
   assert.deepEqual(d.sinais, ["Tom agressivo, irônico, humilhante e/ou brincadeiras constrangedoras", "Relato do cipeiro"]);
   assert.ok(d.fontes.includes("1.4 — Gestão autoritária") && d.fontes.includes("Fonte manual"));
   assert.deepEqual(d.medidasExistentes, ["G02 — Canal de denúncia com sigilo e garantia de não retaliação", "Canal de denúncia sigiloso"]);
+  assert.deepEqual(d.medidasRecomendadas, ["Canal de denúncia sigiloso"]);
 });
 
 test("CSV com ponto e vírgula, BOM e aspas quando preciso", () => {
-  const csv = csvInventario([["A;B", 'diz "oi"', "ok", ...Array(14).fill("")]]);
+  const csv = csvInventario([["A;B", 'diz "oi"', "ok", ...Array(COLUNAS_INVENTARIO.length - 3).fill("")]]);
   assert.ok(csv.startsWith("﻿Setor;GHE;Perigo"));
   assert.ok(csv.includes('"A;B";"diz ""oi""";ok'));
 });

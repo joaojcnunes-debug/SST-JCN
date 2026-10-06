@@ -10,6 +10,7 @@
  *                         evidência marcadas (NÃO contam na matriz);
  *   • medidas de controle existentes = itens evidenciados do checklist de
  *                         gestão + opções marcadas;
+ *   • medidas de controle recomendadas (v277) = opções marcadas;
  *   • os demais tópicos = opções marcadas.
  * Mais os itens MANUAIS do técnico em cada tópico.
  *
@@ -92,6 +93,8 @@ export interface DetalheFator {
   /** Lacunas do checklist de gestão + fontes marcadas + manuais. */
   fontes: string[];
   medidasExistentes: string[];
+  /** Medidas de controle recomendadas (v277): opções marcadas + manuais. */
+  medidasRecomendadas: string[];
   origens: string[];
   confianca: Confianca | null;
   probabilidade: string;
@@ -153,6 +156,7 @@ export function detalhesDoSetor(
       tempo: textos("tempo").join("; "),
       fontes: [...lacunas.map(rotuloLacuna), ...textos("fonte")],
       medidasExistentes: [...medidasExistentesDoFator(gestao, key).map((i) => `${i.codigo} — ${i.label}`), ...textos("medida")],
+      medidasRecomendadas: textos("medida_recomendada"),
       origens: origensEfetivas(setor.origem_evidencia?.[key], lacunas.length > 0).map(rotuloOrigem),
       confianca: confiancaDoFator(setor.origem_evidencia?.[key], lacunas.length > 0),
       probabilidade: a?.nivel ? (a.probabilidade ?? "") : "",
@@ -174,6 +178,7 @@ export const COLUNAS_INVENTARIO = [
   "Situação",
   "Tempo de exposição",
   "Medidas de controle existentes",
+  "Medidas de controle recomendadas",
   "Descrição do risco",
   "Danos à saúde",
   "Probabilidade",
@@ -202,6 +207,7 @@ export function linhasInventario(
         d.situacao,
         d.tempo,
         d.medidasExistentes.length ? d.medidasExistentes.join("; ") : SEM_MEDIDAS,
+        d.medidasRecomendadas.join("; "),
         d.descricao,
         d.danos,
         d.probabilidade,
