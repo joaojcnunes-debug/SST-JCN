@@ -1,23 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { ESCALA, tokenValido, validarEnvio } from "@/lib/qps/triagem-anonima";
+import { createSupabaseServiceClient } from "@/lib/supabase/client";
+import {
+  ESCALA,
+  FATOR_POR_CATEGORIA,
+  ID_TIPO_TRIAGEM,
+  situacaoColeta,
+  tokenValido,
+  validarEnvio,
+} from "@/lib/qps/triagem-anonima";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Questionário ANÔNIMO da AEP por QR Code (v273/v274, 2026-10-06). PÚBLICO,
+ * Questionário ANÔNIMO da AEP por QR Code (v273, 2026-10-06). PÚBLICO,
  * guardado pelo token da coleta (256 bits). Liberado no middleware
  * (`/api/publico/`).
  *   GET  ?token=…                         → perguntas do setor
  *   POST { token, respostas, comentario } → grava UMA resposta anônima
  *
- * Sem service role (a produção não tem a chave, e não precisa): usa a chave
- * pública e as duas únicas portas do banco, `qps_questionario_publico` e
- * `qps_responder_anonimo` (SECURITY DEFINER), que validam token, validade,
- * teto e respostas lá dentro. A tabela de respostas segue fechada e
- * append-only; o banco grava só a data (sem IP, user-agent nem horário).
- * O limite por IP abaixo vive só na memória da instância e nunca é gravado.
+ * Anonimato: não grava IP, user-agent nem horário (o banco põe só a data);
+ * a resposta vai para `qps_respostas_anonimas`, que o cliente não lê nem
+ * altera (append-only, sem policy). O limite por IP abaixo vive só na
+ * memória da instância e nunca é gravado.
  */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Sb = any;
 
 const sem = { "Cache-Control": "no-store" };
 
@@ -25,10 +33,14 @@ function erro(msg: string, status: number) {
   return NextResponse.json({ error: msg }, { status, headers: sem });
 }
 
-function cliente() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
-  return createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+/** Falha inesperada: loga no servidor e responde sem detalhe interno. */
+function falha(e: unknown) {
+  const msg = e instanceof Error ? e.message : String(e);
+  console.error("[api/publico/questionario]", msg);
+  if (msg.includes("SUPABASE_SERVICE_ROLE_KEY")) {
+    return erro("Questionário indisponível: configuração do servidor pendente.", 503);
+  }
+  return erro("Não foi possível abrir o questionário agora. Tente de novo.", 500);
 }
 
 // Limite de envios por IP e token: 5 a cada 10 minutos (só em memória).
@@ -48,64 +60,84 @@ function excedeuLimite(chave: string): boolean {
   return false;
 }
 
-interface Publico {
-  setor: string;
-  situacao: "aberta" | "encerrada" | "expirada" | "cheia";
-  instrucoes: string | null;
-  perguntas: { id: string; texto: string }[];
-}
-
-async function carregar(token: string): Promise<Publico | null> {
-  const { data, error } = await cliente().rpc("qps_questionario_publico", { p_token: token });
-  if (error) throw new Error(error.message);
-  return (data as Publico | null) ?? null;
+async function carregar(sb: Sb, token: string) {
+  const { data: coleta } = await sb
+    .from("qps_coletas_anonimas")
+    .select("id_coleta, setor, expira_em, ativo, max_respostas")
+    .eq("token", token)
+    .maybeSingle();
+  if (!coleta) return null;
+  const { count } = await sb
+    .from("qps_respostas_anonimas")
+    .select("id", { count: "exact", head: true })
+    .eq("id_coleta", coleta.id_coleta);
+  const { data: tipo } = await sb.from("qps_tipos").select("instrucoes").eq("id_tipo", ID_TIPO_TRIAGEM).maybeSingle();
+  const { data: perguntas } = await sb
+    .from("qps_perguntas")
+    .select("id_pergunta, texto, ordem, ativo, id_categoria, qps_categorias!inner(ordem, id_tipo)")
+    .eq("qps_categorias.id_tipo", ID_TIPO_TRIAGEM)
+    .eq("ativo", true);
+  const lista = ((perguntas ?? []) as { id_pergunta: string; texto: string; ordem: number; id_categoria: string; qps_categorias: { ordem: number } }[])
+    .filter((p) => FATOR_POR_CATEGORIA[p.id_categoria])
+    .sort((a, b) => a.qps_categorias.ordem - b.qps_categorias.ordem || a.ordem - b.ordem)
+    .map((p) => ({ id: p.id_pergunta, texto: p.texto }));
+  const hoje = new Date().toISOString().slice(0, 10);
+  return {
+    coleta,
+    situacao: situacaoColeta(coleta, hoje, count ?? 0),
+    instrucoes: (tipo?.instrucoes as string) ?? "",
+    perguntas: lista,
+  };
 }
 
 export async function GET(req: NextRequest) {
   try {
-    const token = new URL(req.url).searchParams.get("token");
-    if (!tokenValido(token)) return erro("Link inválido.", 404);
-    const c = await carregar(token);
-    if (!c) return erro("Link inválido.", 404);
-    return NextResponse.json(
-      { setor: c.setor, situacao: c.situacao, instrucoes: c.instrucoes ?? "", perguntas: c.perguntas, escala: ESCALA },
-      { headers: sem },
-    );
+    return await get(req);
   } catch (e) {
-    console.error("[api/publico/questionario GET]", e instanceof Error ? e.message : e);
-    return erro("Não foi possível abrir o questionário agora. Tente de novo.", 500);
+    return falha(e);
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = (await req.json().catch(() => null)) as { token?: unknown } | null;
-    const token = body?.token;
-    if (!tokenValido(token)) return erro("Link inválido.", 404);
-
-    const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "sem-ip";
-    if (excedeuLimite(`${token}:${ip}`)) return erro("Muitos envios seguidos. Tente de novo mais tarde.", 429);
-
-    const c = await carregar(token);
-    if (!c) return erro("Link inválido.", 404);
-    if (c.situacao !== "aberta") return erro("Este questionário não está mais recebendo respostas.", 410);
-
-    // Validação também aqui (mensagem amigável); o banco valida de novo.
-    const v = validarEnvio(body, c.perguntas.map((p) => p.id));
-    if (!v.ok) return erro(v.erro, 400);
-
-    const { data, error } = await cliente().rpc("qps_responder_anonimo", {
-      p_token: token,
-      p_respostas: v.respostas,
-      p_comentario: v.comentario,
-    });
-    if (error) throw new Error(error.message);
-    if (data === "ok") return NextResponse.json({ ok: true }, { headers: sem });
-    if (data === "fechado") return erro("Este questionário não está mais recebendo respostas.", 410);
-    if (data === "incompleto") return erro("Responda todas as afirmações.", 400);
-    return erro("Link inválido.", 404);
+    return await post(req);
   } catch (e) {
-    console.error("[api/publico/questionario POST]", e instanceof Error ? e.message : e);
-    return erro("Não foi possível registrar a resposta. Tente de novo.", 500);
+    return falha(e);
   }
+}
+
+async function get(req: NextRequest) {
+  const token = new URL(req.url).searchParams.get("token");
+  if (!tokenValido(token)) return erro("Link inválido.", 404);
+  const sb = createSupabaseServiceClient({ email: null, origem: "questionario-anonimo" }) as Sb;
+  const c = await carregar(sb, token);
+  if (!c) return erro("Link inválido.", 404);
+  return NextResponse.json(
+    { setor: c.coleta.setor, situacao: c.situacao, instrucoes: c.instrucoes, perguntas: c.perguntas, escala: ESCALA },
+    { headers: sem },
+  );
+}
+
+async function post(req: NextRequest) {
+  const body = (await req.json().catch(() => null)) as { token?: unknown } | null;
+  const token = body?.token;
+  if (!tokenValido(token)) return erro("Link inválido.", 404);
+
+  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "sem-ip";
+  if (excedeuLimite(`${token}:${ip}`)) return erro("Muitos envios seguidos. Tente de novo mais tarde.", 429);
+
+  const sb = createSupabaseServiceClient({ email: null, origem: "questionario-anonimo" }) as Sb;
+  const c = await carregar(sb, token);
+  if (!c) return erro("Link inválido.", 404);
+  if (c.situacao !== "aberta") return erro("Este questionário não está mais recebendo respostas.", 410);
+
+  const v = validarEnvio(body, c.perguntas.map((p) => p.id));
+  if (!v.ok) return erro(v.erro, 400);
+
+  // Só respostas e comentário: a data vem do default do banco (sem horário).
+  const { error } = await sb
+    .from("qps_respostas_anonimas")
+    .insert({ id_coleta: c.coleta.id_coleta, respostas: v.respostas, comentario: v.comentario });
+  if (error) return erro("Não foi possível registrar a resposta. Tente de novo.", 500);
+  return NextResponse.json({ ok: true }, { headers: sem });
 }
