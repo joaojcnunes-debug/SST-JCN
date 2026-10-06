@@ -136,16 +136,6 @@ que observar (recolhido no editor e impresso no Formulário em Branco).
 - **Fontes geradoras:** as lacunas do checklist de gestão aparecem sozinhas; o
   técnico marca outras da biblioteca psicossocial.
 
-**Questionário anônimo por QR Code (desde 2026-10-06):** no bloco Participação
-dos trabalhadores, "Gerar link anônimo" cria um link e um QR Code por setor
-(válido 15 dias, prorrogável), para imprimir e colar no setor. O trabalhador
-responde no celular, sem login, 13 afirmações (uma por fator) de Nunca a
-Sempre e um comentário opcional. Nada identifica quem responde (sem IP, sem
-horário). O resultado só aparece com **5 ou mais respostas**; fator com 30% ou
-mais de "Frequentemente/Sempre" é sugerido, e o técnico decide se registra a
-origem "questionário anônimo". É triagem complementar e não substitui o DRPS;
-o questionário fica no QPS (tipo "Triagem anônima AEP").
-
 **Checklist de gestão (uma vez por AEP):** 26 itens (G01–G26: política de
 assédio, canal de denúncia, descrição de cargos, controle de jornada…),
 respondidos com gestor/RH, por observação ou documento. "Não existe" e
