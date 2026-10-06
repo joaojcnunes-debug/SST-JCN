@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizarCondicoesColeta, normalizarMotivoNi } from "@/lib/aep/coleta";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
 import type { AepRelatorioLocal, AepSetorLocal } from "@/components/pdf/templates/AepTemplate";
@@ -104,6 +105,9 @@ function normalizarSetor(s: unknown): AepSetorLocal {
       }
       return out;
     })(),
+    // Motivo do N/I e condições da coleta (2026-10-06) — mesmo cuidado.
+    motivo_ni: normalizarMotivoNi(setor.motivo_ni),
+    condicoes_coleta: normalizarCondicoesColeta(setor.condicoes_coleta),
     // Matriz AIHA dos fatores organizacionais (2026-10-02) — mesmo cuidado dos sinais.
     aiha_organizacional:
       typeof setor.aiha_organizacional === "object" && setor.aiha_organizacional !== null

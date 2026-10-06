@@ -11,6 +11,7 @@
 
 import { ITENS_ORGANIZACIONAL } from "@/lib/aep/checklist-itens";
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
+import { DRPS_POR_RECEIO, temReceioManifestacao, type SetorColeta } from "@/lib/aep/coleta";
 import type { AepChecklistOrganizacional, AepRelatorio } from "@/lib/supabase/types";
 
 /** Ordem de gravidade dos níveis da matriz — o mais grave primeiro. */
@@ -87,9 +88,13 @@ export function totalAlertasOrganizacionais(setores: AepRelatorio["setores"]): n
 /**
  * A AEP recomenda aprofundar com DRPS/Questionário Psicossocial (NR-01) quando
  * há 3+ alertas organizacionais — a mesma regra do aviso do editor da AEP.
+ * Desde 2026-10-06 (`DRPS_POR_RECEIO`), também quando algum setor tem N/I por
+ * receio de manifestação ou sinais de inibição na coleta: o trabalhador que
+ * não fala na entrevista precisa de um instrumento em que possa responder.
  */
 export function recomendaQuestionario(setores: AepRelatorio["setores"]): boolean {
-  return totalAlertasOrganizacionais(setores) >= MIN_ALERTAS_QUESTIONARIO;
+  if (totalAlertasOrganizacionais(setores) >= MIN_ALERTAS_QUESTIONARIO) return true;
+  return DRPS_POR_RECEIO && (setores ?? []).some((s) => temReceioManifestacao(s as unknown as SetorColeta));
 }
 
 /** Situação do DRPS/Questionário Psicossocial que a empresa JÁ TEM. */

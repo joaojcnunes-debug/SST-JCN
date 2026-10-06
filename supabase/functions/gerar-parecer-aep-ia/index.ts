@@ -52,6 +52,12 @@ interface ContextoAepIA {
   }[];
   /** O setor tem indicação de AET completa (critério do sistema). */
   necessita_aet?: boolean;
+  /** Fatores N/I com o motivo — "Limitações da avaliação" (2026-10-06). */
+  limitacoes?: string[];
+  /** Frase das condições da coleta (abordados, recusas, liderança, inibição). */
+  condicoes_coleta?: string | null;
+  /** N/I por receio de manifestação ou sinais de inibição na coleta. */
+  receio_manifestacao?: boolean;
 }
 
 const TITULO: Record<CampoAep, string> = {
@@ -76,6 +82,8 @@ Como aplicar as premissas:
 - Fatores organizacionais: cite o nível na matriz AIHA (Trivial, Baixo, Moderado, Alto, Muito Alto) e os sinais observados que o sustentam; priorize os de nível mais alto.
 - Quando o setor tiver indicação de AET ("Necessita AET: sim"), registre que a análise ergonômica do trabalho (AET, NR-17 item 17.3.2) é o aprofundamento indicado; sem indicação, não recomende AET.
 - Quando houver fatores organizacionais relevantes (3 ou mais alertas organizacionais, ou algum fator Alto/Muito Alto), apresente o DRPS/Questionário Psicossocial como instrumento COMPLEMENTAR, que agrega a percepção dos próprios trabalhadores — não como substituto da AEP nem da AET.
+- Limitações da avaliação: fatores marcados N/I (não identificáveis) NÃO são achados — não os trate como presentes nem como ausentes. Quando houver, registre a limitação em uma frase, citando o motivo informado.
+- Quando houver receio dos trabalhadores em se manifestar (N/I por esse motivo ou sinais de inibição na coleta), registre que a participação foi limitada e indique o DRPS/Questionário Psicossocial, que permite resposta sem exposição, como complemento — mesmo com menos de 3 alertas organizacionais.
 - Lembre que a conclusão depende das observações registradas e deve ser revista se as condições de trabalho mudarem (NR-01, inventário de riscos) — uma frase curta, sem repetir as premissas por extenso.
 
 Comprimento esperado:
@@ -125,6 +133,11 @@ function buildPrompt(ctx: ContextoAepIA): string {
       );
     }
   }
+  if (ctx.condicoes_coleta) l.push(`Condições da coleta: ${ctx.condicoes_coleta}`);
+  if (ctx.limitacoes?.length) {
+    l.push(`Limitações da avaliação (fatores N/I):\n${ctx.limitacoes.map((x) => `  - ${x}`).join("\n")}`);
+  }
+  if (ctx.receio_manifestacao) l.push("Receio dos trabalhadores em se manifestar: sim");
   if (typeof ctx.necessita_aet === "boolean") {
     l.push(`Necessita AET (critério do sistema): ${ctx.necessita_aet ? "sim" : "não"}`);
   }

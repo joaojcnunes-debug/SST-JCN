@@ -1,6 +1,21 @@
 "use client";
 
-import { MIN_ALERTAS_QUESTIONARIO, totalAlertasOrganizacionais } from "@/lib/aep/sinalizacao";
+import { recomendaQuestionario, totalAlertasOrganizacionais } from "@/lib/aep/sinalizacao";
+import {
+  DRPS_POR_RECEIO,
+  MOTIVOS_NI,
+  SINAIS_INIBICAO,
+  SINAIS_SUGERIDOS_INIBICAO,
+  fraseCondicoesColeta,
+  limitacoesDaAvaliacao,
+  niSemMotivo,
+  participantesExcedem,
+  temReceioManifestacao,
+  type CondicoesColeta,
+  type MotivoNi,
+  type MotivoNiFator,
+} from "@/lib/aep/coleta";
+import { ROTEIRO_CAMPO, type RoteiroFator } from "@/lib/aep/roteiro-campo";
 import { chaveNome, type CargoCatalogo, type SetorCatalogo } from "@/lib/aep/catalogo-setores";
 import SituacaoSinalizacaoAep from "@/components/aep/SituacaoSinalizacaoAep";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
@@ -10,6 +25,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ChevronDown,
+  Compass,
   ChevronUp,
   ExternalLink,
   Loader2,
@@ -332,6 +348,211 @@ function AihaDoFator({
   );
 }
 
+// ─── Motivo do N/I (Ergonomia Organizacional, 2026-10-06) ─────────────────────
+// Obrigatório: o Salvar recusa N/I sem motivo. N/I continua fora da matriz e
+// do "Necessita AET"; o motivo vai para o laudo ("Limitações da avaliação").
+
+function MotivoNiCampo({
+  valor,
+  onChange,
+  disabled,
+}: {
+  valor: MotivoNiFator | undefined;
+  onChange: (v: MotivoNiFator) => void;
+  disabled?: boolean;
+}) {
+  const motivo = valor?.motivo ?? "";
+  const faltaTexto = motivo === "outro" && !(valor?.texto ?? "").trim();
+  return (
+    <div className="rounded-md border border-amber-200 bg-amber-50/70 p-2 space-y-1">
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+        Motivo do N/I <span className="text-red-600">*</span>
+      </span>
+      <select
+        disabled={disabled}
+        value={motivo}
+        onChange={(e) => onChange({ ...valor, motivo: e.target.value as MotivoNi | "" })}
+        className={cn(
+          "w-full rounded border bg-white px-1.5 py-1 text-[11px] text-gray-700 focus:outline-none disabled:bg-gray-50",
+          motivo ? "border-gray-200" : "border-red-300",
+        )}
+      >
+        <option value="">Selecione o motivo…</option>
+        {MOTIVOS_NI.map((m) => (
+          <option key={m.key} value={m.key}>
+            {m.label}
+          </option>
+        ))}
+      </select>
+      {motivo && (
+        <input
+          type="text"
+          disabled={disabled}
+          value={valor?.texto ?? ""}
+          onChange={(e) => onChange({ motivo, texto: e.target.value })}
+          placeholder={motivo === "outro" ? "Descreva o motivo (obrigatório)" : "Detalhe (opcional)"}
+          className={cn(
+            "w-full rounded border bg-white px-1.5 py-1 text-[11px] text-gray-700 focus:outline-none disabled:bg-gray-50",
+            faltaTexto ? "border-red-300" : "border-gray-200",
+          )}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Roteiro de campo do fator (2026-10-06) ──────────────────────────────────
+// Perguntas indiretas e o que observar — só orientação, não grava nada.
+
+function RoteiroDoFator({ roteiro }: { roteiro: RoteiroFator }) {
+  return (
+    <details className="group rounded-md border border-teal-100 bg-teal-50/40 px-2 py-1">
+      <summary className="flex cursor-pointer list-none items-center gap-1 text-[10px] font-semibold text-teal-800">
+        <Compass className="size-3" /> Roteiro de campo
+        <ChevronDown className="size-3 transition group-open:rotate-180" />
+      </summary>
+      <div className="mt-1 grid gap-2 text-[11px] leading-snug text-gray-700 md:grid-cols-2">
+        <div>
+          <p className="font-semibold text-teal-800">Pergunte (de forma indireta)</p>
+          <ul className="list-disc pl-4">
+            {roteiro.perguntas.map((q) => (
+              <li key={q}>{q}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="font-semibold text-teal-800">Observe</p>
+          <ul className="list-disc pl-4">
+            {roteiro.observar.map((q) => (
+              <li key={q}>{q}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+// ─── Condições da coleta (2026-10-06) ────────────────────────────────────────
+
+function CondicoesColetaCampos({
+  valor,
+  onChange,
+  disabled,
+  assedioSim,
+  sinaisAssedio,
+  onMarcarSugeridos,
+}: {
+  valor: CondicoesColeta | undefined;
+  onChange: (v: CondicoesColeta) => void;
+  disabled?: boolean;
+  /** O fator Assédio está marcado "Sim"? (os sinais só abrem com Sim) */
+  assedioSim: boolean;
+  sinaisAssedio: string[];
+  onMarcarSugeridos: () => void;
+}) {
+  const c = valor ?? {};
+  const set = (patch: Partial<CondicoesColeta>) => onChange({ ...c, ...patch });
+  const numero = (v: string) => (v === "" ? null : Math.max(0, Math.floor(Number(v))));
+  const inibicao = c.sinais_inibicao ?? [];
+  const faltamSugeridos = SINAIS_SUGERIDOS_INIBICAO.filter((k) => !sinaisAssedio.includes(k));
+  const inputCls =
+    "w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50";
+  return (
+    <div className="space-y-2 border-t border-emerald-100 pt-3">
+      <p className="text-xs font-semibold text-emerald-800">Condições da coleta</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">Trabalhadores abordados</label>
+          <input type="number" min={0} disabled={disabled} value={c.trab_abordados ?? ""}
+            onChange={(e) => set({ trab_abordados: numero(e.target.value) })} className={inputCls} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">Participaram</label>
+          <input type="number" min={0} disabled={disabled} value={c.trab_participantes ?? ""}
+            onChange={(e) => set({ trab_participantes: numero(e.target.value) })}
+            className={cn(inputCls, participantesExcedem(c) && "border-red-300")} />
+          {participantesExcedem(c) && (
+            <p className="mt-0.5 text-[11px] text-red-600">Mais participantes que abordados.</p>
+          )}
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">
+            Recusas / respostas evasivas <span className="font-normal text-gray-400">(só o número)</span>
+          </label>
+          <input type="number" min={0} disabled={disabled} value={c.recusas_evasivas ?? ""}
+            onChange={(e) => set({ recusas_evasivas: numero(e.target.value) })} className={inputCls} />
+        </div>
+      </div>
+      <label className="flex items-center gap-2 text-xs text-gray-700">
+        <input type="checkbox" disabled={disabled} checked={c.lideranca_presente === true}
+          onChange={(e) => set({ lideranca_presente: e.target.checked })}
+          className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+        Liderança presente durante a coleta
+      </label>
+      <div>
+        <p className="mb-1 text-xs font-medium text-gray-600">Sinais de inibição observados</p>
+        <div className="grid gap-1 sm:grid-cols-2">
+          {SINAIS_INIBICAO.map((s) => (
+            <label key={s.key} className="flex items-start gap-1.5 text-[11px] leading-snug text-gray-700">
+              <input
+                type="checkbox"
+                disabled={disabled}
+                checked={inibicao.includes(s.key)}
+                onChange={() =>
+                  set({ sinais_inibicao: inibicao.includes(s.key) ? inibicao.filter((k) => k !== s.key) : [...inibicao, s.key] })
+                }
+                className="mt-0.5 size-3 shrink-0 accent-amber-600"
+              />
+              {s.label}
+            </label>
+          ))}
+        </div>
+      </div>
+      <textarea
+        disabled={disabled}
+        rows={2}
+        value={c.obs_coleta ?? ""}
+        onChange={(e) => set({ obs_coleta: e.target.value })}
+        placeholder="Observações sobre a coleta (sem identificar trabalhadores)"
+        className={inputCls}
+      />
+      {/* Sugestão, nunca marcação automática: o técnico decide. */}
+      {inibicao.length > 0 && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-[11px] leading-snug text-amber-900">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
+          <div className="space-y-1">
+            {assedioSim ? (
+              faltamSugeridos.length > 0 ? (
+                <p>
+                  Sinais de inibição costumam acompanhar, no fator <strong>Assédio</strong>, os sinais “Falta de abertura
+                  para escuta” e “Ambiente de tensão ou silêncio excessivo”. Avalie se eles se aplicam.
+                  {!disabled && (
+                    <button type="button" onClick={onMarcarSugeridos} className="ml-1 font-semibold text-amber-800 underline">
+                      Marcar esses sinais
+                    </button>
+                  )}
+                </p>
+              ) : (
+                <p>Os sinais de escuta e de tensão já estão marcados no fator Assédio.</p>
+              )
+            ) : (
+              <p>
+                Sinais de inibição observados: avalie o fator <strong>Assédio</strong> na Ergonomia Organizacional (sinais
+                “Falta de abertura para escuta” e “Ambiente de tensão ou silêncio excessivo”).
+              </p>
+            )}
+            <p>
+              Recomenda-se complementar com instrumento anônimo (DRPS/Questionário Psicossocial), em que os trabalhadores
+              possam responder sem exposição.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Bloco de checklist ───────────────────────────────────────────────────────
 
 function ChecklistBloco({
@@ -351,6 +572,9 @@ function ChecklistBloco({
   matriz,
   aiha,
   onAihaChange,
+  motivosNi,
+  onMotivoNiChange,
+  roteiro,
 }: {
   titulo: string;
   cor: string;
@@ -372,6 +596,10 @@ function ChecklistBloco({
   matriz?: MatrizRisco | null;
   aiha?: AihaOrganizacional;
   onAihaChange?: (fator: string, patch: Partial<AihaFator>) => void;
+  /** Motivo do N/I e roteiro de campo — só a Ergonomia Organizacional (2026-10-06). */
+  motivosNi?: Record<string, MotivoNiFator>;
+  onMotivoNiChange?: (fator: string, v: MotivoNiFator) => void;
+  roteiro?: Record<string, RoteiroFator>;
 }) {
   const positivos = itens.filter((i) => valores[i.key] === "sim").length;
   return (
@@ -417,6 +645,14 @@ function ChecklistBloco({
                   disabled={disabled}
                 />
               )}
+              {valores[key] === "nao_identificado" && onMotivoNiChange && (
+                <MotivoNiCampo
+                  valor={motivosNi?.[key]}
+                  onChange={(v) => onMotivoNiChange(key, v)}
+                  disabled={disabled}
+                />
+              )}
+              {roteiro?.[key] && <RoteiroDoFator roteiro={roteiro[key]} />}
             </Tristate>
           );
         })}
@@ -699,6 +935,13 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
             };
           }),
           necessita_aet: !!setor.necessita_aet,
+          // Limitações (N/I com motivo) e condições da coleta (2026-10-06).
+          limitacoes: limitacoesDaAvaliacao(
+            setor,
+            (k) => ITENS_ORGANIZACIONAL.find((i) => i.key === k)?.label ?? k,
+          ),
+          condicoes_coleta: fraseCondicoesColeta(setor.condicoes_coleta),
+          receio_manifestacao: temReceioManifestacao(setor),
         },
       });
       if (error) { toast.error(mensagemErro(error, "Erro ao gerar texto")); return; }
@@ -712,6 +955,19 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
   }
 
   async function handleSalvar() {
+    // N/I exige motivo (2026-10-06): sem ele o laudo não explica a lacuna.
+    const pendentes = setores.flatMap((s) =>
+      niSemMotivo(s).map(
+        (k) => `${s.nome_setor || "Setor sem nome"} · ${ITENS_ORGANIZACIONAL.find((i) => i.key === k)?.label ?? k}`,
+      ),
+    );
+    if (pendentes.length > 0) {
+      toast.error(
+        `Informe o motivo do N/I antes de salvar:\n${pendentes.slice(0, 5).join("\n")}${pendentes.length > 5 ? `\n… e mais ${pendentes.length - 5}` : ""}`,
+        { duration: 7000 },
+      );
+      return;
+    }
     setSalvando(true);
     try {
       await salvar.mutateAsync({ id: idRelatorio, setores: setores as unknown as AepSetor[] });
@@ -1027,6 +1283,22 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                         />
                       </div>
                     </div>
+                    <CondicoesColetaCampos
+                      valor={setor.condicoes_coleta}
+                      disabled={!canEdit}
+                      onChange={(v) => updateSetor(setor.id, { condicoes_coleta: v })}
+                      assedioSim={setor.checklist_organizacional?.assedio === "sim"}
+                      sinaisAssedio={setor.sinais_organizacional?.assedio ?? []}
+                      onMarcarSugeridos={() => {
+                        const atuais = setor.sinais_organizacional?.assedio ?? [];
+                        updateSetor(setor.id, {
+                          sinais_organizacional: {
+                            ...(setor.sinais_organizacional ?? {}),
+                            assedio: [...atuais, ...SINAIS_SUGERIDOS_INIBICAO.filter((k) => !atuais.includes(k))],
+                          },
+                        });
+                      }}
+                    />
                   </div>
                 </section>
 
@@ -1073,12 +1345,16 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                         // Voltar um fator para Não/N-A limpa os sinais dele: deixar
                         // sinal marcado sob fator negado sairia contraditório no laudo.
                         const sinais = { ...(setor.sinais_organizacional ?? {}) };
+                        // Idem para o motivo do N/I de um fator que deixou de ser N/I.
+                        const motivos = { ...(setor.motivo_ni ?? {}) };
                         for (const [k, v] of Object.entries(p)) {
                           if (v !== "sim") delete sinais[k];
+                          if (v !== "nao_identificado") delete motivos[k];
                         }
                         updateSetor(setor.id, {
                           checklist_organizacional: { ...setor.checklist_organizacional, ...p } as AepChecklistOrganizacional,
                           sinais_organizacional: sinais,
+                          motivo_ni: motivos,
                         });
                       }}
                       onObservacaoChange={(key, text) =>
@@ -1094,6 +1370,11 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                           sinais_organizacional: { ...(setor.sinais_organizacional ?? {}), [fator]: keys },
                         })
                       }
+                      motivosNi={setor.motivo_ni}
+                      onMotivoNiChange={(fator, v) =>
+                        updateSetor(setor.id, { motivo_ni: { ...(setor.motivo_ni ?? {}), [fator]: v } })
+                      }
+                      roteiro={ROTEIRO_CAMPO}
                       matriz={matriz}
                       aiha={setor.aiha_organizacional}
                       onAihaChange={(fator, patch) => {
@@ -1241,16 +1522,20 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
         );
       })}
 
-      {/* Banner AEP → QPS */}
+      {/* Banner AEP → QPS — mesma regra da Sinalização e do Comercial. */}
       {(() => {
+        if (!recomendaQuestionario(setores)) return null;
         const totalAlertasOrg = totalAlertasOrganizacionais(setores);
-        if (totalAlertasOrg < MIN_ALERTAS_QUESTIONARIO) return null;
+        const porReceio = DRPS_POR_RECEIO && setores.some((s) => temReceioManifestacao(s));
         return (
           <div className="flex items-start gap-3 rounded-xl border border-indigo-200 bg-indigo-50 p-4">
             <AlertTriangle className="size-5 shrink-0 text-indigo-600 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-indigo-900">
-                {totalAlertasOrg} alerta{totalAlertasOrg > 1 ? "s" : ""} de risco organizacional identificado{totalAlertasOrg > 1 ? "s" : ""}
+                {totalAlertasOrg > 0 &&
+                  `${totalAlertasOrg} alerta${totalAlertasOrg > 1 ? "s" : ""} de risco organizacional identificado${totalAlertasOrg > 1 ? "s" : ""}`}
+                {totalAlertasOrg > 0 && porReceio && " · "}
+                {porReceio && "receio dos trabalhadores em se manifestar"}
               </p>
               <p className="mt-0.5 text-xs text-indigo-700 leading-relaxed">
                 A NR-1 e a Fundacentro recomendam aprofundar a avaliação de riscos psicossociais com um

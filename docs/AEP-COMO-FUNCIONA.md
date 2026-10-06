@@ -82,6 +82,18 @@ formas de criá-la:
   - análise documental;
   - questionário aplicado.
 - Trabalhadores consultados.
+- **Condições da coleta** (desde 2026-10-06): trabalhadores abordados,
+  participantes (não pode passar dos abordados), recusas/respostas evasivas
+  (só o número), liderança presente e **sinais de inibição**:
+  - respostas padronizadas/ensaiadas, sem exemplos concretos;
+  - silêncio ou mudança de comportamento com a aproximação da liderança;
+  - trabalhadores olham para a liderança antes de responder;
+  - recusa em participar ou pedido para "não se envolver".
+
+  Com sinal de inibição, o editor **sugere** (não marca) os sinais "Falta de
+  abertura para escuta" e "Ambiente de tensão ou silêncio excessivo" no
+  Assédio e recomenda instrumento anônimo. No laudo vira a linha "Condições da
+  coleta".
 
 **Três checklists** (seção 6), cada item com observação de campo opcional.
 
@@ -106,6 +118,14 @@ Respostas aceitas:
 | **Não** | fator avaliado e ausente |
 | **N/A** | não se aplica |
 | **N/I** | não identificável: não foi possível verificar. Só existe na Ergonomia Organizacional |
+
+**Motivo do N/I (obrigatório desde 2026-10-06):** receio dos trabalhadores em
+se manifestar; trabalhadores ausentes; atividade não observada; outro (com
+texto). O Salvar recusa N/I sem motivo. N/I continua fora da matriz e do
+"Necessita AET"; no laudo aparece no quadro **"Limitações da avaliação"**.
+
+**Roteiro de campo:** cada fator organizacional tem perguntas indiretas e o
+que observar (recolhido no editor e impresso no Formulário em Branco).
 
 ### 6.1 Ergonomia Física (9 itens)
 1. Posturas inadequadas / forçadas
@@ -296,7 +316,9 @@ Esse critério aparece:
 
 ### DRPS/Questionário Psicossocial (recomendação por documento)
 - **Regra:** recomendado quando a AEP soma **3 ou mais fatores organizacionais
-  "Sim"** (alertas), somando todos os setores.
+  "Sim"** (alertas), somando todos os setores, **ou** (desde 2026-10-06)
+  quando algum setor tem N/I por **receio de manifestação** ou **sinal de
+  inibição** na coleta.
 - **No editor:** aparece um aviso citando a NR-01 e a Fundacentro.
 - **Situação na Sinalização:** é lida a partir do que a empresa já tem:
   - **Necessário:** não tem DRPS nem Questionário;
@@ -348,6 +370,8 @@ Botão "Gerar com IA" por setor (modelo via Groq).
 - Fatores organizacionais com o nível AIHA, probabilidade × severidade e
   sinais marcados.
 - O "Necessita AET" calculado e as observações de campo.
+- Limitações da avaliação (N/I com motivo), condições da coleta e se houve
+  receio de manifestação (desde 2026-10-06).
 
 **Regras do prompt**
 - Tratar como **triagem**: "identificou-se", "foram observados indícios". Nunca
@@ -356,6 +380,9 @@ Botão "Gerar com IA" por setor (modelo via Groq).
 - Recomendar AET **só** se "Necessita AET = sim".
 - Citar o DRPS/Questionário como **complementar** quando houver 3+ alertas
   organizacionais ou algum fator Alto/Muito Alto.
+- N/I não é achado: registrar a limitação com o motivo.
+- Com receio de manifestação: registrar a participação limitada e indicar o
+  DRPS/Questionário (resposta sem exposição) como complemento.
 - Uma frase curta sobre revisão quando as condições mudarem (NR-01).
 - **Parecer:** 2–3 parágrafos (140–240 palavras), **sem lista de ações nem
   prazos**.
@@ -471,7 +498,8 @@ Comercial"**.
    igual). A IA, por sua vez, também cita DRPS quando há algum fator
    Alto/Muito Alto.
 7. **"N/I" (não identificável)** existe só na organizacional e não entra na
-   matriz nem nas contagens.
+   matriz nem no Necessita AET. Desde 2026-10-06 exige motivo, e o N/I por
+   receio de manifestação recomenda DRPS/Questionário.
 8. **Dois capítulos de conclusão:** "3. Considerações Finais" (editável, do
    Texto Padrão) e "Considerações Finais e Encaminhamentos" (gerado).
    Conferir se os dois devem aparecer no laudo.
