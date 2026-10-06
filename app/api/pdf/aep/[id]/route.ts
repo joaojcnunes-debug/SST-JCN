@@ -3,6 +3,7 @@ import { normalizarCondicoesColeta, normalizarMotivoNi } from "@/lib/aep/coleta"
 import { normalizarMapaLista } from "@/lib/aep/evidencia";
 import { normalizarChecklistGestao } from "@/lib/aep/checklist-gestao";
 import { montarBiblioteca } from "@/lib/aep/biblioteca";
+import { normalizarInventario } from "@/lib/aep/inventario";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
 import type { AepRelatorioLocal, AepSetorLocal } from "@/components/pdf/templates/AepTemplate";
@@ -113,6 +114,7 @@ function normalizarSetor(s: unknown): AepSetorLocal {
     condicoes_coleta: normalizarCondicoesColeta(setor.condicoes_coleta),
     origem_evidencia: normalizarMapaLista(setor.origem_evidencia),
     fontes_geradoras: normalizarMapaLista(setor.fontes_geradoras),
+    inventario: normalizarInventario(setor.inventario),
     // Matriz AIHA dos fatores organizacionais (2026-10-02) — mesmo cuidado dos sinais.
     aiha_organizacional:
       typeof setor.aiha_organizacional === "object" && setor.aiha_organizacional !== null

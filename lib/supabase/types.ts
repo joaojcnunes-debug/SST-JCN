@@ -2466,6 +2466,8 @@ export interface AepSetor {
   origem_evidencia?: Record<string, string[]>;
   /** Fontes geradoras da biblioteca marcadas por fator (códigos, ex. "1.3"). */
   fontes_geradoras?: Record<string, string[]>;
+  /** Ajustes do inventário de risco por fator (2026-10-06). Ver lib/aep/inventario.ts. */
+  inventario?: Record<string, import("@/lib/aep/inventario").InventarioFator>;
   parecer_tecnico: string;
   recomendacoes: string;
   necessita_aet: boolean;

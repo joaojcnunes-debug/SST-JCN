@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { COLUNAS_INVENTARIO, csvInventario, detalhesDoSetor, linhasInventario } from "./inventario";
+import { COLUNAS_INVENTARIO, csvInventario, detalhesDoSetor, linhasInventario, normalizarInventario } from "./inventario";
 import { confiancaDoFator, normalizarMapaLista, origensEfetivas } from "./evidencia";
 import { ITENS_GESTAO, lacunasDoFator, medidasExistentesDoFator, normalizarChecklistGestao } from "./checklist-gestao";
 import { ITENS_ORGANIZACIONAL } from "./checklist-itens";
@@ -90,4 +90,38 @@ test("CSV com ponto e vírgula, BOM e aspas quando preciso", () => {
 
 test("normalizarMapaLista tira duplicados e lixo", () => {
   assert.deepEqual(normalizarMapaLista({ a: ["x", "x", 3], b: "y" }), { a: ["x"] });
+});
+
+test("ajustes do técnico no inventário: textos, seleção e itens manuais", () => {
+  const setor = {
+    checklist_organizacional: { assedio: "sim" },
+    sinais_organizacional: { assedio: ["tom_agressivo"] },
+    inventario: normalizarInventario({
+      assedio: {
+        perigo: "  Assédio moral pela supervisão  ",
+        meio: "",
+        descricao: "Texto próprio",
+        fontes_extra: ["Fonte manual"],
+        sinais_extra: ["Relato do cipeiro"],
+        medidas_extra: ["Medida manual"],
+        sugestoes: [],
+        acoes: ["Código de conduta", "inexistente"],
+        acoes_extra: ["Ação manual"],
+        lixo: 3,
+      },
+    }),
+  };
+  const [d] = detalhesDoSetor(setor, GESTAO, BIB);
+  assert.equal(d.label, "Assédio moral pela supervisão");
+  assert.equal(d.meio, "Relações interpessoais"); // vazio = padrão
+  assert.equal(d.descricao, "Texto próprio");
+  assert.equal(d.danos, "Estresse");
+  assert.deepEqual(d.sinais, ["Tom agressivo, irônico, humilhante e/ou brincadeiras constrangedoras", "Relato do cipeiro"]);
+  assert.ok(d.fontes.includes("Fonte manual"));
+  assert.deepEqual(d.medidasExistentes, ["G02 — Canal de denúncia com sigilo e garantia de não retaliação", "Medida manual"]);
+  assert.deepEqual(d.sugestoes, []); // seleção vazia = nenhuma da biblioteca
+  assert.deepEqual(d.acoes, ["Código de conduta", "Ação manual"]);
+  // Sem ajuste: tudo da biblioteca.
+  const [p] = detalhesDoSetor({ checklist_organizacional: { assedio: "sim" } }, GESTAO, BIB);
+  assert.deepEqual(p.sugestoes, ["Política de prevenção"]);
 });
