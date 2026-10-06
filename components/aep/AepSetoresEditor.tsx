@@ -673,6 +673,7 @@ function ChecklistBloco({
   disabled,
   opcoes,
   legenda,
+  colunasItens = "md:grid-cols-2 xl:grid-cols-3",
   sinais,
   sinaisMarcados,
   onSinaisChange,
@@ -696,6 +697,8 @@ function ChecklistBloco({
   opcoes?: RespostaChecklistAep[];
   /** Siglas explicadas no pé do bloco, na ordem dada. */
   legenda?: RespostaChecklistAep[];
+  /** Colunas dos itens dentro do bloco (blocos empilhados na largura toda, 2026-10-06). */
+  colunasItens?: string;
   /** Só a Ergonomia Organizacional passa isto; física e cognitiva ignoram. */
   sinais?: Record<string, SinalOrganizacional[]>;
   sinaisMarcados?: Record<string, string[]>;
@@ -722,7 +725,7 @@ function ChecklistBloco({
           </span>
         )}
       </div>
-      <div className="divide-y divide-gray-100 p-2 space-y-1">
+      <div className={cn("grid items-start gap-2 p-2", colunasItens)}>
         {itens.map(({ key, label }) => {
           const doFator = sinais?.[key];
           return (
@@ -1451,7 +1454,10 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                   <p className="mb-2 text-[11px] text-gray-500">
                     Ao marcar <strong>Sim</strong>, um campo de observação aparece para registrar o que foi observado.
                   </p>
-                  <div className="grid gap-3 lg:grid-cols-3">
+                  {/* Um bloco embaixo do outro, cada um na largura toda, com os
+                      itens em colunas (2026-10-06): lado a lado, a Organizacional
+                      (sinais + matriz) ficava espremida. */}
+                  <div className="space-y-3">
                     <ChecklistBloco
                       titulo="Ergonomia Física"
                       cor="bg-blue-50 text-blue-800"
@@ -1512,6 +1518,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                       }
                       disabled={!canEdit}
                       opcoes={OPCOES_COM_NI}
+                      colunasItens="lg:grid-cols-2"
                       legenda={["nao_aplica", "nao_identificado"]}
                       sinais={SINAIS_ORGANIZACIONAL}
                       sinaisMarcados={setor.sinais_organizacional ?? {}}
