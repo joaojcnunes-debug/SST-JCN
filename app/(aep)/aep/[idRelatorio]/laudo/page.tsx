@@ -16,6 +16,7 @@ import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { usePdfAssinado, usePdfCongelado } from "@/lib/hooks/usePdfsGerados";
 import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
+import { fraseCondicoesColeta, limitacoesDaAvaliacao } from "@/lib/aep/coleta";
 import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
 import { piorNivel } from "@/lib/aep/sinalizacao";
 import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
@@ -148,6 +149,12 @@ function SetorBlock({ setor, idx }: { setor: AepSetor; idx: number }) {
               </td>
             </tr>
           )}
+          {fraseCondicoesColeta(setor.condicoes_coleta) && (
+            <tr className="border-b border-gray-100">
+              <td className="bg-gray-50 px-2 py-1 font-semibold align-top">Condições da coleta</td>
+              <td className="px-2 py-1" colSpan={3}>{fraseCondicoesColeta(setor.condicoes_coleta)}</td>
+            </tr>
+          )}
           {setor.descricao_atividade && (
             <tr>
               <td className="bg-gray-50 px-2 py-1 font-semibold align-top">Atividades</td>
@@ -260,6 +267,22 @@ function SetorBlock({ setor, idx }: { setor: AepSetor; idx: number }) {
           </div>
         </div>
       </div>
+
+      {/* Limitações da avaliação: cada N/I com o motivo (2026-10-06). */}
+      {(() => {
+        const lim = limitacoesDaAvaliacao(setor, (k) => CHECKLIST_ORG_LABELS.find(([x]) => x === k)?.[1] ?? k);
+        if (lim.length === 0) return null;
+        return (
+          <div className="mb-3 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[10px] text-amber-900">
+            <p className="font-bold">Limitações da avaliação</p>
+            <ul className="mt-0.5 list-disc pl-4">
+              {lim.map((l) => (
+                <li key={l}>{l}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
 
       {/* Matriz de riscos */}
       {setor.riscos.length > 0 && (

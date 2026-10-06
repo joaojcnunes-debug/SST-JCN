@@ -14,6 +14,7 @@ import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/Secoes
 import { classeQuebraFixoNova, numerarCapitulos, numLabel } from "@/components/pdf/templates/shared";
 // Módulo puro (sem "use client", sem hook) — pode entrar no template do Puppeteer.
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
+import { fraseCondicoesColeta, limitacoesDaAvaliacao, type CondicoesColeta, type MotivoNiFator } from "@/lib/aep/coleta";
 import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
 import { piorNivel } from "@/lib/aep/sinalizacao";
 import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
@@ -91,6 +92,9 @@ export interface AepSetorLocal {
   sinais_organizacional?: Record<string, string[]>;
   /** Matriz AIHA dos fatores organizacionais "Sim" (2026-10-02). */
   aiha_organizacional?: Record<string, { probabilidade: string; severidade: string; nivel: string | null }>;
+  /** Motivo do N/I e condições da coleta (2026-10-06). */
+  motivo_ni?: Record<string, MotivoNiFator>;
+  condicoes_coleta?: CondicoesColeta;
   cargos?: { id: string; cargo: string; descricao: string; quantidade: number }[];
   riscos: AepRisco[];
   checklist_fisica: AepChecklistFisica;
@@ -499,6 +503,16 @@ function SetorBlock({
               </td>
             </tr>
           )}
+          {fraseCondicoesColeta(setor.condicoes_coleta) && (
+            <tr>
+              <td style={{ backgroundColor: "#f9fafb", padding: "4px 8px", fontWeight: 600, verticalAlign: "top" }}>
+                Condições da coleta
+              </td>
+              <td style={{ padding: "4px 8px" }} colSpan={3}>
+                {fraseCondicoesColeta(setor.condicoes_coleta)}
+              </td>
+            </tr>
+          )}
           {setor.descricao_atividade && (
             <tr>
               <td
@@ -682,6 +696,28 @@ function SetorBlock({
           </div>
         </div>
       </div>
+
+      {/* Limitações da avaliação: cada N/I com o motivo (2026-10-06). */}
+      {(() => {
+        const lim = limitacoesDaAvaliacao(
+          setor,
+          (k) => CHECKLIST_ORG_LABELS.find(([x]) => x === k)?.[1] ?? k,
+        );
+        if (lim.length === 0) return null;
+        return (
+          <div
+            className="setor-check-linha"
+            style={{ marginBottom: 12, border: "1px solid #fde68a", backgroundColor: "#fffbeb", padding: "4px 8px", fontSize: 10, color: "#92400e" }}
+          >
+            <p style={{ margin: 0, fontWeight: 700 }}>Limitações da avaliação</p>
+            <ul style={{ margin: "2px 0 0", paddingLeft: 14 }}>
+              {lim.map((l) => (
+                <li key={l} style={{ wordBreak: "break-word" }}>{l}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
 
       {/* Matriz de riscos */}
       {setor.riscos.length > 0 && (

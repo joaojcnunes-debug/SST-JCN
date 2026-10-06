@@ -1,6 +1,7 @@
 "use client";
 
 import { sinaisValidos } from "@/lib/aep/sinais-organizacional";
+import { normalizarCondicoesColeta, normalizarMotivoNi } from "@/lib/aep/coleta";
 import { situacaoQuestionario, type SituacaoQuestionario } from "@/lib/aep/sinalizacao";
 import { montarCatalogoSetores } from "@/lib/aep/catalogo-setores";
 import { contagemParaAet } from "@/lib/aep/aiha-organizacional";
@@ -128,6 +129,9 @@ function normalizarSetor(s: unknown): AepSetor {
       }
       return out;
     })(),
+    // Motivo do N/I e condições da coleta (2026-10-06) — mesmo cuidado.
+    motivo_ni: normalizarMotivoNi(setor.motivo_ni),
+    condicoes_coleta: normalizarCondicoesColeta(setor.condicoes_coleta),
     // ⚠️ Mesmo cuidado dos sinais: campo fora daqui some em toda leitura.
     aiha_organizacional:
       typeof setor.aiha_organizacional === "object" && setor.aiha_organizacional !== null

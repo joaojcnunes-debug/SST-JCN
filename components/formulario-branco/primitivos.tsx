@@ -341,6 +341,10 @@ const CSS = `
 .fb-sinais-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px 14px; }
 .fb-sinais-grid .fb-opcao { white-space: normal; align-items: flex-start; margin-right: 0; }
 .fb-sinais-grid .fb-caixa { margin-top: 2px; }
+.fb-roteiro, .fb-tabela td.fb-roteiro { padding: 3px 8px 4px 22px; background: #f8fafc; font-size: 8.6px; color: #334155; line-height: 1.4; }
+.fb-roteiro-col { margin-bottom: 1px; }
+.fb-roteiro-col .fb-opcao { margin-right: 8px; }
+.fb-roteiro-titulo { font-weight: 700; color: #0f766e; }
 
 .fb-assinatura { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-top: 22px; }
 .fb-assinatura-linha { flex: 1; max-width: 300px; }

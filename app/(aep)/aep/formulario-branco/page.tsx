@@ -31,6 +31,8 @@ import {
   type SinalOrganizacional,
 } from "@/lib/aep/sinais-organizacional";
 import { CLASSIFICACOES_AEP, TIPOS_RISCO_AEP } from "@/lib/hooks/useAep";
+import { MOTIVOS_NI, SINAIS_INIBICAO } from "@/lib/aep/coleta";
+import { ROTEIRO_CAMPO, type RoteiroFator } from "@/lib/aep/roteiro-campo";
 import type { RespostaChecklistAep } from "@/lib/supabase/types";
 
 /**
@@ -60,12 +62,15 @@ function ChecklistTabela({
   itens,
   opcoes,
   sinais,
+  roteiro,
 }: {
   titulo: string;
   itens: ItemChecklistAep[];
   opcoes: RespostaChecklistAep[];
   /** Só a Organizacional passa: sinais por fator, impressos sob cada linha. */
   sinais?: Record<string, SinalOrganizacional[]>;
+  /** Só a Organizacional passa: roteiro de campo e motivo do N/I (2026-10-06). */
+  roteiro?: Record<string, RoteiroFator>;
 }) {
   const colunas = opcoes.length + 2;
   return (
@@ -83,6 +88,7 @@ function ChecklistTabela({
           dele viram uma unidade que não quebra de página no meio. */}
       {itens.map((item) => {
         const doFator = sinais?.[item.key];
+        const rot = roteiro?.[item.key];
         return (
           <tbody key={item.key} className="fb-avoid">
             <tr>
@@ -107,6 +113,24 @@ function ChecklistTabela({
                           s.fonte === "colaborador" ? "colaborador" : s.fonte === "tecnico" ? "técnico" : undefined
                         }
                       />
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            )}
+            {rot && (
+              <tr>
+                <td colSpan={colunas} className="fb-roteiro">
+                  <div className="fb-roteiro-col">
+                    <span className="fb-roteiro-titulo">Pergunte (indireto):</span> {rot.perguntas.join(" · ")}
+                  </div>
+                  <div className="fb-roteiro-col">
+                    <span className="fb-roteiro-titulo">Observe:</span> {rot.observar.join(" · ")}
+                  </div>
+                  <div className="fb-roteiro-col">
+                    <span className="fb-roteiro-titulo">Se N/I, motivo:</span>{" "}
+                    {MOTIVOS_NI.map((m) => (
+                      <FbCaixa key={m.key} label={m.key === "outro" ? "Outro: ________________" : m.label} />
                     ))}
                   </div>
                 </td>
@@ -152,6 +176,22 @@ function BlocoSetor({ indice, total }: { indice: number; total: number }) {
           <FbOpcoes titulo="Método de coleta" opcoes={METODOS_COLETA} />
           <FbCampo label="Trabalhadores consultados" />
         </div>
+
+        <div className="fb-sub">Condições da coleta</div>
+        <div className="fb-bloco fb-avoid">
+          <FbCampos colunas={3}>
+            <FbCampo label="Trabalhadores abordados" />
+            <FbCampo label="Participaram" />
+            <FbCampo label="Recusas / respostas evasivas (só o número)" />
+          </FbCampos>
+          <div className="fb-opcoes">
+            <span className="fb-campo-label" style={{ marginRight: 6 }}>Liderança presente durante a coleta?</span>
+            <FbCaixa label="Sim" />
+            <FbCaixa label="Não" />
+          </div>
+          <FbOpcoes titulo="Sinais de inibição" opcoes={SINAIS_INIBICAO.map((s) => s.label)} />
+          <FbCampo label="Observações sobre a coleta" />
+        </div>
       </FbSecao>
 
       <FbSecao
@@ -173,6 +213,7 @@ function BlocoSetor({ indice, total }: { indice: number; total: number }) {
           itens={ITENS_ORGANIZACIONAL}
           opcoes={OPCOES_COM_NI}
           sinais={SINAIS_ORGANIZACIONAL}
+          roteiro={ROTEIRO_CAMPO}
         />
         <FbLegenda itens={LEGENDA_ORGANIZACIONAL} />
       </FbSecao>
@@ -267,7 +308,12 @@ export default function AepFormularioBrancoPage() {
             <li>
               Nos checklists, marque <strong>uma</strong> resposta por fator: <strong>Sim</strong> = fator de risco identificado;{" "}
               <strong>Não</strong> = fator avaliado e ausente; <strong>N/A</strong> = não se aplica;{" "}
-              <strong>N/I</strong> (só na Organizacional) = não foi possível verificar em campo.
+              <strong>N/I</strong> (só na Organizacional) = não foi possível verificar em campo — marque também o{" "}
+              <strong>motivo</strong> (obrigatório no sistema).
+            </li>
+            <li>
+              Cada fator organizacional traz um <strong>roteiro de campo</strong>: perguntas indiretas e o que observar, para
+              sustentar a triagem mesmo quando os trabalhadores não se manifestam.
             </li>
             <li>
               Na <strong>Ergonomia Organizacional</strong>, todo fator marcado <strong>Sim</strong> pede os sinais observados —

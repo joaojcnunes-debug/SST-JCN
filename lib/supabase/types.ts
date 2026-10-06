@@ -2455,6 +2455,13 @@ export interface AepSetor {
     prob_manual?: boolean;
     sev_manual?: boolean;
   }>;
+  /**
+   * Motivo de cada fator organizacional marcado N/I (2026-10-06), obrigatório.
+   * `{ assedio: { motivo: "receio_manifestacao" } }`. Ver lib/aep/coleta.ts.
+   */
+  motivo_ni?: Record<string, import("@/lib/aep/coleta").MotivoNiFator>;
+  /** Condições da coleta do setor (2026-10-06). Ver lib/aep/coleta.ts. */
+  condicoes_coleta?: import("@/lib/aep/coleta").CondicoesColeta;
   parecer_tecnico: string;
   recomendacoes: string;
   necessita_aet: boolean;
