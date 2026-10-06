@@ -25,7 +25,7 @@ import {
   existeNaBiblioteca,
   itensDe,
   type Biblioteca,
-  type ItemBiblioteca,
+  rotuloItem,
   type TopicoBib,
 } from "@/lib/aep/biblioteca";
 import { useBibliotecaPsi, useIncluirItemBiblioteca } from "@/lib/hooks/useBibliotecaPsi";
@@ -43,12 +43,14 @@ import {
   ChevronDown,
   Compass,
   ChevronUp,
+  Check,
   ExternalLink,
   Loader2,
   Plus,
   Save,
   Sparkles,
   Trash2,
+  X,
 } from "lucide-react";
 import {
   useAepRelatorio,
@@ -642,119 +644,215 @@ function EvidenciaDoFator({
 // só leitura: vêm da biblioteca, do checklist de gestão, dos sinais, da matriz
 // e da origem da evidência. Muda conforme o técnico preenche o resto.
 
-/** Lista de itens manuais: chips removíveis + campo para adicionar. */
-function ListaManual({
-  itens,
-  onChange,
-  disabled,
-  placeholder,
+/** Opção do campo de seleção múltipla (biblioteca ou sinal do catálogo). */
+interface OpcaoMulti {
+  id: string;
+  rotulo: string;
+  marcado: boolean;
+  alternar: () => void;
+  /** "sinal" = sinal do catálogo (conta na matriz), em vermelho. */
+  tom?: "sinal";
+}
+
+/**
+ * Campo de seleção múltipla com criação (2026-10-06): as escolhidas ficam
+ * como etiquetas dentro do campo; ao clicar abre a lista para marcar várias;
+ * digitar filtra; texto que não existe vira item MANUAL no mesmo campo
+ * (Enter ou "Incluir"). Itens fixos (checklist de gestão) aparecem como
+ * etiquetas sem remover.
+ */
+function MultiSelectCriavel({
+  opcoes,
+  fixos = [],
+  manuais,
+  onManuais,
   acaoItem,
+  placeholder,
+  disabled,
 }: {
-  itens: string[];
-  onChange: (v: string[]) => void;
-  disabled?: boolean;
-  placeholder: string;
-  /** Ação extra por item (salvar/sugerir na biblioteca). */
+  opcoes: OpcaoMulti[];
+  fixos?: { key: string; rotulo: string; cor: "amber" | "emerald" }[];
+  manuais: string[];
+  onManuais: (v: string[]) => void;
+  /** Ação extra por item manual (salvar/sugerir na biblioteca). */
   acaoItem?: (texto: string) => React.ReactNode;
+  placeholder: string;
+  disabled?: boolean;
 }) {
-  const [novo, setNovo] = useState("");
-  const adicionar = () => {
-    const t = novo.trim();
-    if (!t || itens.includes(t)) return setNovo("");
-    onChange([...itens, t]);
-    setNovo("");
+  const [aberto, setAberto] = useState(false);
+  const [busca, setBusca] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener("mousedown", fora);
+    return () => document.removeEventListener("mousedown", fora);
+  }, [aberto]);
+
+  const q = busca.trim().toLowerCase();
+  const filtradas = q ? opcoes.filter((o) => o.rotulo.toLowerCase().includes(q)) : opcoes;
+  const exata = q ? opcoes.find((o) => o.rotulo.toLowerCase() === q) : undefined;
+  const jaManual = q ? manuais.some((m) => m.trim().toLowerCase() === q) : false;
+  const podeCriar = !!q && !exata && !jaManual;
+
+  const incluir = () => {
+    const t = busca.trim();
+    if (!t) return;
+    if (exata) {
+      if (!exata.marcado) exata.alternar();
+    } else if (!jaManual) {
+      onManuais([...manuais, t]);
+    }
+    setBusca("");
   };
+
+  const marcadas = opcoes.filter((o) => o.marcado);
+  const vazio = fixos.length === 0 && marcadas.length === 0 && manuais.length === 0;
+
   return (
-    <div className="mt-1 space-y-1">
-      {itens.map((x) => (
-        <p key={x} className="flex items-start gap-1.5">
-          <span className="mt-0.5 rounded bg-violet-100 px-1 text-[9px] font-semibold text-violet-800">manual</span>
-          <span className="flex-1">{x}</span>
-          {acaoItem?.(x)}
-          {!disabled && (
-            <button type="button" onClick={() => onChange(itens.filter((i) => i !== x))} className="text-gray-400 hover:text-red-500" title="Remover">
-              <Trash2 className="size-3" />
-            </button>
-          )}
-        </p>
-      ))}
-      {!disabled && (
-        <div className="flex gap-1">
+    <div ref={ref} className="relative">
+      <div
+        onClick={() => {
+          if (disabled) return;
+          setAberto(true);
+          inputRef.current?.focus();
+        }}
+        className={cn(
+          "flex min-h-[30px] flex-wrap items-center gap-1 rounded border bg-white px-1.5 py-1",
+          aberto ? "border-emerald-500 ring-1 ring-emerald-200" : "border-gray-200",
+          disabled ? "bg-gray-50" : "cursor-text",
+        )}
+      >
+        {fixos.map((f) => (
+          <span
+            key={f.key}
+            title="Automático do checklist de gestão"
+            className={cn(
+              "inline-flex items-start gap-1 rounded px-1.5 py-0.5 text-[10px]",
+              f.cor === "amber" ? "bg-amber-50 text-amber-900" : "bg-emerald-50 text-emerald-900",
+            )}
+          >
+            <span className={cn("rounded px-1 text-[9px] font-semibold", f.cor === "amber" ? "bg-amber-200" : "bg-emerald-200")}>gestão</span>
+            {f.rotulo}
+          </span>
+        ))}
+        {marcadas.map((o) => (
+          <span
+            key={o.id}
+            className={cn(
+              "inline-flex items-start gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
+              o.tom === "sinal" ? "bg-red-50 text-red-800 ring-1 ring-red-200" : "bg-emerald-50 text-emerald-900 ring-1 ring-emerald-200",
+            )}
+            title={o.tom === "sinal" ? "Sinal do catálogo — conta na matriz" : undefined}
+          >
+            {o.rotulo}
+            {!disabled && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  o.alternar();
+                }}
+                className="text-gray-400 hover:text-red-500"
+                title="Remover"
+              >
+                <X className="size-3" />
+              </button>
+            )}
+          </span>
+        ))}
+        {manuais.map((m) => (
+          <span key={m} className="inline-flex items-start gap-1 rounded bg-violet-50 px-1.5 py-0.5 text-[10px] text-violet-900 ring-1 ring-violet-200">
+            <span className="rounded bg-violet-200 px-1 text-[9px] font-semibold">manual</span>
+            {m}
+            <span onClick={(e) => e.stopPropagation()}>{acaoItem?.(m)}</span>
+            {!disabled && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onManuais(manuais.filter((x) => x !== m));
+                }}
+                className="text-gray-400 hover:text-red-500"
+                title="Remover"
+              >
+                <X className="size-3" />
+              </button>
+            )}
+          </span>
+        ))}
+        {disabled ? (
+          vazio && <span className="text-[10px] text-gray-400">—</span>
+        ) : (
           <input
-            value={novo}
-            onChange={(e) => setNovo(e.target.value)}
+            ref={inputRef}
+            value={busca}
+            onChange={(e) => {
+              setBusca(e.target.value);
+              setAberto(true);
+            }}
+            onFocus={() => setAberto(true)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
-                adicionar();
+                incluir();
+              } else if (e.key === "Escape") {
+                setAberto(false);
+              } else if (e.key === "Backspace" && !busca && manuais.length) {
+                onManuais(manuais.slice(0, -1));
               }
             }}
-            placeholder={placeholder}
-            className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-0.5 text-[11px] focus:border-emerald-500 focus:outline-none"
+            placeholder={vazio ? placeholder : "Selecionar ou digitar…"}
+            className="min-w-[8rem] flex-1 border-0 bg-transparent p-0 text-[11px] focus:outline-none focus:ring-0"
           />
-          <button type="button" onClick={adicionar} className="rounded border border-emerald-300 px-2 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50">
-            <Plus className="size-3" />
-          </button>
+        )}
+        {!disabled && <ChevronDown className={cn("ml-auto size-3 shrink-0 text-gray-400 transition", aberto && "rotate-180")} />}
+      </div>
+      {aberto && !disabled && (
+        <div className="absolute left-0 right-0 z-30 mt-1 max-h-64 overflow-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+          {podeCriar && (
+            <button
+              type="button"
+              onClick={incluir}
+              className="flex w-full items-center gap-1.5 px-2 py-1 text-left text-[11px] font-semibold text-violet-700 hover:bg-violet-50"
+            >
+              <Plus className="size-3" /> Incluir «{busca.trim()}»
+            </button>
+          )}
+          {filtradas.map((o) => (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => o.alternar()}
+              className={cn(
+                "flex w-full items-start gap-1.5 px-2 py-1 text-left text-[11px] hover:bg-gray-50",
+                o.marcado && "bg-emerald-50/60",
+              )}
+            >
+              <span
+                className={cn(
+                  "mt-0.5 flex size-3 shrink-0 items-center justify-center rounded-sm border",
+                  o.marcado ? (o.tom === "sinal" ? "border-red-600 bg-red-600 text-white" : "border-emerald-600 bg-emerald-600 text-white") : "border-gray-300",
+                )}
+              >
+                {o.marcado && <Check className="size-2.5" />}
+              </span>
+              <span className="flex-1">
+                {o.rotulo}
+                {o.tom === "sinal" && <span className="ml-1 text-[9px] text-red-700">(sinal — conta na matriz)</span>}
+              </span>
+            </button>
+          ))}
+          {filtradas.length === 0 && !podeCriar && (
+            <p className="px-2 py-1 text-[11px] text-gray-400">{q ? "Já incluído." : "Sem opções na biblioteca — digite para incluir."}</p>
+          )}
         </div>
       )}
     </div>
-  );
-}
-
-/** Opções da biblioteca de um tópico: caixas (ou chips, nas listas comuns). */
-function OpcoesBiblioteca({
-  opcoes,
-  marcados,
-  onChange,
-  chips,
-  disabled,
-}: {
-  opcoes: ItemBiblioteca[];
-  marcados: string[];
-  onChange: (ids: string[]) => void;
-  chips?: boolean;
-  disabled?: boolean;
-}) {
-  const alternar = (id: string) => onChange(marcados.includes(id) ? marcados.filter((x) => x !== id) : [...marcados, id]);
-  if (opcoes.length === 0) return <p className="text-gray-400">Sem opções na biblioteca.</p>;
-  if (chips) {
-    return (
-      <div className="flex flex-wrap gap-1">
-        {opcoes.map((o) => (
-          <button
-            key={o.id_item}
-            type="button"
-            disabled={disabled}
-            onClick={() => alternar(o.id_item)}
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 transition",
-              marcados.includes(o.id_item) ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-gray-600 ring-gray-200 hover:bg-gray-50",
-            )}
-          >
-            {o.texto}
-          </button>
-        ))}
-      </div>
-    );
-  }
-  return (
-    <>
-      {opcoes.map((o) => (
-        <label key={o.id_item} className={cn("flex items-start gap-1.5", disabled ? "opacity-70" : "cursor-pointer")}>
-          <input
-            type="checkbox"
-            disabled={disabled}
-            checked={marcados.includes(o.id_item)}
-            onChange={() => alternar(o.id_item)}
-            className="mt-0.5 size-3 shrink-0 accent-emerald-600"
-          />
-          <span>
-            {o.codigo && <span className="font-mono text-[10px] text-gray-500">{o.codigo} </span>}
-            {o.texto}
-          </span>
-        </label>
-      ))}
-    </>
   );
 }
 
@@ -819,85 +917,76 @@ function InventarioDoFator({
     );
     };
 
-  const topico = (t: TopicoBib, placeholder: string, opts: { chips?: boolean; antes?: React.ReactNode } = {}) => (
-    <>
-      {opts.antes}
-      <OpcoesBiblioteca
-        opcoes={itensDe(biblioteca, fator, t)}
-        marcados={marcados(t)}
-        onChange={(ids) => onSel(t, ids)}
-        chips={opts.chips}
-        disabled={disabled}
-      />
-      <ListaManual
-        itens={extra[t] ?? []}
-        onChange={(v) => onExtra(t, v)}
-        disabled={disabled}
-        placeholder={placeholder}
-        acaoItem={acaoBiblioteca(t)}
-      />
-    </>
-  );
+  const topico = (
+    t: TopicoBib,
+    placeholder: string,
+    opts: { fixos?: { key: string; rotulo: string; cor: "amber" | "emerald" }[]; antes?: OpcaoMulti[]; dica?: string } = {},
+  ) => {
+    const ids = marcados(t);
+    const opcoes: OpcaoMulti[] = [
+      ...(opts.antes ?? []),
+      ...itensDe(biblioteca, fator, t).map((i) => ({
+        id: i.id_item,
+        rotulo: rotuloItem(i),
+        marcado: ids.includes(i.id_item),
+        alternar: () => onSel(t, ids.includes(i.id_item) ? ids.filter((x) => x !== i.id_item) : [...ids, i.id_item]),
+      })),
+    ];
+    return (
+      <>
+        <MultiSelectCriavel
+          opcoes={opcoes}
+          fixos={opts.fixos}
+          manuais={extra[t] ?? []}
+          onManuais={(v) => onExtra(t, v)}
+          acaoItem={acaoBiblioteca(t)}
+          placeholder={placeholder}
+          disabled={disabled}
+        />
+        {opts.dica && <p className="mt-0.5 text-[10px] text-gray-400">{opts.dica}</p>}
+      </>
+    );
+  };
 
   const linhas: [string, React.ReactNode][] = [
-    [ROTULO_TOPICO.perigo, topico("perigo", "Outra descrição do perigo…")],
+    [ROTULO_TOPICO.perigo, topico("perigo", "Selecione ou digite o perigo…")],
     [
       ROTULO_TOPICO.fonte,
-      topico("fonte", "Outra fonte geradora…", {
-        antes: lacunas.map((l) => (
-          <p key={l.codigo} className="flex items-start gap-1.5">
-            <span className="mt-0.5 rounded bg-amber-100 px-1 text-[9px] font-semibold text-amber-800">gestão</span>
-            {rotuloLacuna(l)}
-          </p>
-        )),
+      topico("fonte", "Selecione ou digite uma fonte geradora…", {
+        fixos: lacunas.map((l) => ({ key: l.codigo, rotulo: rotuloLacuna(l), cor: "amber" as const })),
       }),
     ],
     [
       "Evidências (sinais)",
-      topico("evidencia", "Outra evidência (não conta na matriz)…", {
-        antes: sinaisCatalogo.map((s) => (
-          <label key={s.key} className={cn("flex items-start gap-1.5", disabled ? "opacity-70" : "cursor-pointer")}>
-            <input
-              type="checkbox"
-              disabled={disabled}
-              checked={sinaisMarcados.includes(s.key)}
-              onChange={() => onSinais(sinaisMarcados.includes(s.key) ? sinaisMarcados.filter((k) => k !== s.key) : [...sinaisMarcados, s.key])}
-              className="mt-0.5 size-3 shrink-0 accent-red-600"
-            />
-            <span>
-              {s.label} <span className="text-[9px] text-red-700">(sinal — conta na matriz)</span>
-            </span>
-          </label>
-        )),
+      topico("evidencia", "Selecione ou digite uma evidência…", {
+        antes: sinaisCatalogo.map((s) => ({
+          id: `sinal:${s.key}`,
+          rotulo: s.label,
+          tom: "sinal" as const,
+          marcado: sinaisMarcados.includes(s.key),
+          alternar: () => onSinais(sinaisMarcados.includes(s.key) ? sinaisMarcados.filter((k) => k !== s.key) : [...sinaisMarcados, s.key]),
+        })),
+        dica: "Em vermelho, os sinais do catálogo (contam na matriz). Os demais não contam.",
       }),
     ],
-    [ROTULO_TOPICO.meio, topico("meio", "Outro meio de propagação…", { chips: true })],
-    [ROTULO_TOPICO.situacao, topico("situacao", "Outra situação…", { chips: true })],
-    [ROTULO_TOPICO.tempo, topico("tempo", "Outro tempo de exposição…", { chips: true })],
+    [ROTULO_TOPICO.meio, topico("meio", "Selecione ou digite o meio de propagação…")],
+    [ROTULO_TOPICO.situacao, topico("situacao", "Selecione ou digite a situação…")],
+    [ROTULO_TOPICO.tempo, topico("tempo", "Selecione ou digite o tempo de exposição…")],
     [
       "Medidas de controle existentes",
-      topico("medida", "Medida existente observada…", {
-        antes: (
-          <>
-            {medidasGestao.map((m) => (
-              <p key={m.codigo} className="flex items-start gap-1.5">
-                <span className="mt-0.5 rounded bg-emerald-100 px-1 text-[9px] font-semibold text-emerald-800">gestão</span>
-                {m.codigo} — {m.label}
-              </p>
-            ))}
-            <p className="text-[10px] text-gray-400">Marque só as medidas constatadas em campo.</p>
-          </>
-        ),
+      topico("medida", "Selecione ou digite uma medida existente…", {
+        fixos: medidasGestao.map((m) => ({ key: m.codigo, rotulo: `${m.codigo} — ${m.label}`, cor: "emerald" as const })),
+        dica: "Só as medidas constatadas em campo.",
       }),
     ],
     [
       ROTULO_TOPICO.medida_recomendada,
-      topico("medida_recomendada", "Outra medida recomendada…", {
-        antes: <p className="text-[10px] text-gray-400">Marque o que a empresa ainda precisa implantar.</p>,
+      topico("medida_recomendada", "Selecione ou digite uma medida recomendada…", {
+        dica: "O que a empresa ainda precisa implantar.",
       }),
     ],
-    [ROTULO_TOPICO.descricao, topico("descricao", "Outra descrição do risco…")],
-    [ROTULO_TOPICO.danos, topico("danos", "Outro dano à saúde…")],
+    [ROTULO_TOPICO.descricao, topico("descricao", "Selecione ou digite a descrição do risco…")],
+    [ROTULO_TOPICO.danos, topico("danos", "Selecione ou digite um dano à saúde…")],
     [
       "Probabilidade × Severidade",
       <span key="pxs">
@@ -911,8 +1000,8 @@ function InventarioDoFator({
         {d.confianca ?? "—"} <span className="text-gray-400">· pela origem da evidência</span>
       </span>,
     ],
-    [ROTULO_TOPICO.sugestao, topico("sugestao", "Outra sugestão…")],
-    [ROTULO_TOPICO.acao, topico("acao", "Outra ação…")],
+    [ROTULO_TOPICO.sugestao, topico("sugestao", "Selecione ou digite uma sugestão…")],
+    [ROTULO_TOPICO.acao, topico("acao", "Selecione ou digite uma ação…")],
   ];
   return (
     <div className="rounded-md border border-gray-300 bg-white">
