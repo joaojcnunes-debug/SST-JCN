@@ -58,6 +58,17 @@ interface ContextoAepIA {
   condicoes_coleta?: string | null;
   /** N/I por receio de manifestação ou sinais de inibição na coleta. */
   receio_manifestacao?: boolean;
+  /** Por fator "Sim": fontes, medidas existentes, origem/confiança e a lista
+   *  de sugestões/ações da biblioteca psicossocial (2026-10-06). */
+  evidencias_fatores?: {
+    fator: string;
+    fontes?: string[];
+    medidas_existentes?: string[];
+    origens?: string[];
+    confianca?: string | null;
+    sugestoes?: string[];
+    acoes?: string[];
+  }[];
 }
 
 const TITULO: Record<CampoAep, string> = {
@@ -84,6 +95,9 @@ Como aplicar as premissas:
 - Quando houver fatores organizacionais relevantes (3 ou mais alertas organizacionais, ou algum fator Alto/Muito Alto), apresente o DRPS/Questionário Psicossocial como instrumento COMPLEMENTAR, que agrega a percepção dos próprios trabalhadores — não como substituto da AEP nem da AET.
 - Limitações da avaliação: fatores marcados N/I (não identificáveis) NÃO são achados — não os trate como presentes nem como ausentes. Quando houver, registre a limitação em uma frase, citando o motivo informado.
 - Quando houver receio dos trabalhadores em se manifestar (N/I por esse motivo ou sinais de inibição na coleta), registre que a participação foi limitada e indique o DRPS/Questionário Psicossocial, que permite resposta sem exposição, como complemento — mesmo com menos de 3 alertas organizacionais.
+- Fontes geradoras e medidas de controle existentes: quando informadas, cite-as no parecer como base do apontamento (sem listar todas por extenso).
+- Confiança da evidência (Baixa/Média/Alta, pela diversidade de origens): quando for Baixa, registre a limitação e indique instrumento anônimo/DRPS/Questionário como complemento.
+- AÇÕES (só nas Recomendações): selecione e adapte ações da "Lista de ações da biblioteca" fornecida para os fatores do setor; NÃO crie ações fora dessa lista, exceto a realização da AET, a aplicação do DRPS/Questionário Psicossocial e a revisão da AEP. Sem lista fornecida, siga as regras gerais.
 - Lembre que a conclusão depende das observações registradas e deve ser revista se as condições de trabalho mudarem (NR-01, inventário de riscos) — uma frase curta, sem repetir as premissas por extenso.
 
 Comprimento esperado:
@@ -138,6 +152,21 @@ function buildPrompt(ctx: ContextoAepIA): string {
     l.push(`Limitações da avaliação (fatores N/I):\n${ctx.limitacoes.map((x) => `  - ${x}`).join("\n")}`);
   }
   if (ctx.receio_manifestacao) l.push("Receio dos trabalhadores em se manifestar: sim");
+  for (const e of ctx.evidencias_fatores ?? []) {
+    const partes: string[] = [];
+    if (e.fontes?.length) partes.push(`fontes geradoras: ${e.fontes.join("; ")}`);
+    if (e.medidas_existentes?.length) partes.push(`medidas existentes: ${e.medidas_existentes.join("; ")}`);
+    if (e.origens?.length) partes.push(`origem das evidências: ${e.origens.join(", ")}`);
+    if (e.confianca) partes.push(`confiança: ${e.confianca}`);
+    if (partes.length) l.push(`Evidências — ${e.fator}: ${partes.join(" | ")}`);
+  }
+  const listaAcoes = (ctx.evidencias_fatores ?? []).filter((e) => (e.sugestoes?.length ?? 0) + (e.acoes?.length ?? 0) > 0);
+  if (listaAcoes.length) {
+    l.push("Lista de ações da biblioteca (use somente estas, além de AET/DRPS/revisão):");
+    for (const e of listaAcoes) {
+      l.push(`  - ${e.fator}: sugestões iniciais: ${(e.sugestoes ?? []).join("; ") || "—"} | ações: ${(e.acoes ?? []).join("; ") || "—"}`);
+    }
+  }
   if (typeof ctx.necessita_aet === "boolean") {
     l.push(`Necessita AET (critério do sistema): ${ctx.necessita_aet ? "sim" : "não"}`);
   }

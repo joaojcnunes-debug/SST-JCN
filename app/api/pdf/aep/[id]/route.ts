@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizarCondicoesColeta, normalizarMotivoNi } from "@/lib/aep/coleta";
+import { normalizarMapaLista } from "@/lib/aep/evidencia";
+import { normalizarChecklistGestao } from "@/lib/aep/checklist-gestao";
+import { montarBiblioteca } from "@/lib/aep/biblioteca";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
 import type { AepRelatorioLocal, AepSetorLocal } from "@/components/pdf/templates/AepTemplate";
@@ -108,6 +111,8 @@ function normalizarSetor(s: unknown): AepSetorLocal {
     // Motivo do N/I e condições da coleta (2026-10-06) — mesmo cuidado.
     motivo_ni: normalizarMotivoNi(setor.motivo_ni),
     condicoes_coleta: normalizarCondicoesColeta(setor.condicoes_coleta),
+    origem_evidencia: normalizarMapaLista(setor.origem_evidencia),
+    fontes_geradoras: normalizarMapaLista(setor.fontes_geradoras),
     // Matriz AIHA dos fatores organizacionais (2026-10-02) — mesmo cuidado dos sinais.
     aiha_organizacional:
       typeof setor.aiha_organizacional === "object" && setor.aiha_organizacional !== null
@@ -132,6 +137,7 @@ function normalizarRelatorio(data: unknown): AepRelatorioLocal {
     ...rel,
     endereco_empresa: (rel.endereco_empresa as string | null) ?? null,
     setores: Array.isArray(rel.setores) ? rel.setores.map(normalizarSetor) : [],
+    checklist_gestao: normalizarChecklistGestao(rel.checklist_gestao),
   } as AepRelatorioLocal;
 }
 
@@ -180,6 +186,10 @@ export async function GET(
       .single();
     empresaCompleta = (rawEmp as unknown as Empresa) ?? null;
   }
+
+  // Biblioteca psicossocial (v272): descrição, danos e fontes dos fatores "Sim".
+  const { data: rawBib } = await supabase.from("psi_biblioteca_fatores").select("*");
+  const biblioteca = montarBiblioteca((rawBib ?? []) as unknown[]);
 
   // Busca capítulos editáveis (textos_padrao modulo=aep, ativos, ordenados)
   const { data: caps, error: capsError } = await supabase
@@ -243,6 +253,7 @@ export async function GET(
   const bodyHtml = renderToStaticMarkup(
     React.createElement(AepTemplate, {
       relatorio: rel,
+      biblioteca,
       empresa: empresaCompleta,
       capitulos,
       valoresVars,

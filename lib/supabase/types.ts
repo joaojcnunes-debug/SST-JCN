@@ -2462,12 +2462,18 @@ export interface AepSetor {
   motivo_ni?: Record<string, import("@/lib/aep/coleta").MotivoNiFator>;
   /** Condições da coleta do setor (2026-10-06). Ver lib/aep/coleta.ts. */
   condicoes_coleta?: import("@/lib/aep/coleta").CondicoesColeta;
+  /** Origem da evidência por fator "Sim" (2026-10-06). Ver lib/aep/evidencia.ts. */
+  origem_evidencia?: Record<string, string[]>;
+  /** Fontes geradoras da biblioteca marcadas por fator (códigos, ex. "1.3"). */
+  fontes_geradoras?: Record<string, string[]>;
   parecer_tecnico: string;
   recomendacoes: string;
   necessita_aet: boolean;
 }
 
 export interface AepRelatorio {
+  /** v272: checklist de gestão (uma vez por AEP). Ver lib/aep/checklist-gestao.ts. */
+  checklist_gestao?: import("@/lib/aep/checklist-gestao").ChecklistGestao;
   /** v270: liberação para o Comercial. */
   liberado_comercial_em?: string | null;
   liberado_comercial_por?: string | null;

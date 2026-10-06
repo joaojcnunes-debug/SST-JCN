@@ -19,6 +19,7 @@ import {
 } from "@/lib/hooks/useErgonomiaInspecao";
 import AepSetoresEditor from "@/components/aep/AepSetoresEditor";
 import AepDadosEditor from "@/components/aep/AepDadosEditor";
+import AepChecklistGestao from "@/components/aep/AepChecklistGestao";
 import AetSetoresEditor from "@/components/aet/AetSetoresEditor";
 import AetAnaliseEditor from "@/components/aet/AetAnaliseEditor";
 import AetPsicossocialEditor from "@/components/aet/AetPsicossocialEditor";
@@ -33,6 +34,7 @@ type Sub = { key: string; label: string; render: (id: string) => React.ReactNode
 const SUBABAS: Record<TipoErgo, Sub[]> = {
   aep: [
     { key: "setores", label: "Setores / Triagem", render: (id) => <AepSetoresEditor idRelatorio={id} /> },
+    { key: "gestao", label: "Checklist de gestão", render: (id) => <AepChecklistGestao idRelatorio={id} /> },
     { key: "dados", label: "Dados / Conclusão", render: (id) => <AepDadosEditor idRelatorio={id} embutido /> },
   ],
   aet: [

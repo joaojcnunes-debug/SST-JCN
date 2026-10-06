@@ -12,6 +12,8 @@
 import { ITENS_ORGANIZACIONAL } from "@/lib/aep/checklist-itens";
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
 import { DRPS_POR_RECEIO, temReceioManifestacao, type SetorColeta } from "@/lib/aep/coleta";
+import { confiancaDoFator, type Confianca } from "@/lib/aep/evidencia";
+import { lacunasDoFator } from "@/lib/aep/checklist-gestao";
 import type { AepChecklistOrganizacional, AepRelatorio } from "@/lib/supabase/types";
 
 /** Ordem de gravidade dos níveis da matriz — o mais grave primeiro. */
@@ -26,6 +28,8 @@ export interface FatorSinalizado {
   severidade: string | null;
   sinais: string[];
   observacao: string | null;
+  /** Confiança da evidência (2026-10-06): uso interno, não muda o nível. */
+  confianca?: Confianca | null;
 }
 
 export interface SetorSinalizado {
@@ -231,6 +235,10 @@ export function montarSinalizacao(relatorios: AepEntregue[]): EmpresaSinalizada[
               severidade: a?.nivel ? a.severidade : null,
               sinais: rotulosDosSinais(key as keyof AepChecklistOrganizacional, setor.sinais_organizacional),
               observacao: setor.observacoes_checklist?.[key]?.trim() || null,
+              confianca: confiancaDoFator(
+                setor.origem_evidencia?.[key],
+                lacunasDoFator(rel.checklist_gestao, key).length > 0,
+              ),
             };
           })
           .sort((x, y) => (PESO_NIVEL[y.nivel ?? ""] ?? 0) - (PESO_NIVEL[x.nivel ?? ""] ?? 0));

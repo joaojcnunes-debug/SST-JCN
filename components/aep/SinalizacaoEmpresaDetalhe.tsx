@@ -237,6 +237,14 @@ export default function SinalizacaoEmpresaDetalhe({
                             </td>
                             <td className="border border-gray-200 px-3 py-2 align-top">
                               <SeloNivelAiha nivel={f.nivel} />
+                              {f.confianca && (
+                                <div
+                                  className="mt-1 text-[11px] text-gray-500"
+                                  title="Confiança da evidência pela diversidade de origens (uso interno; não muda o nível)"
+                                >
+                                  Confiança {f.confianca}
+                                </div>
+                              )}
                             </td>
                             <td className="border border-gray-200 px-3 py-2 align-top text-gray-700">{f.probabilidade ?? "—"}</td>
                             <td className="border border-gray-200 px-3 py-2 align-top text-gray-700">{f.severidade ?? "—"}</td>

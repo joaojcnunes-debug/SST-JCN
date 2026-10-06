@@ -15,6 +15,10 @@ import { classeQuebraFixoNova, numerarCapitulos, numLabel } from "@/components/p
 // Módulo puro (sem "use client", sem hook) — pode entrar no template do Puppeteer.
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
 import { fraseCondicoesColeta, limitacoesDaAvaliacao, type CondicoesColeta, type MotivoNiFator } from "@/lib/aep/coleta";
+import { detalhesDoSetor } from "@/lib/aep/inventario";
+import { COR_CONFIANCA } from "@/lib/aep/evidencia";
+import type { ChecklistGestao } from "@/lib/aep/checklist-gestao";
+import type { Biblioteca } from "@/lib/aep/biblioteca";
 import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
 import { piorNivel } from "@/lib/aep/sinalizacao";
 import { gerarConsideracoesAep } from "@/lib/aep/consideracoes";
@@ -95,6 +99,8 @@ export interface AepSetorLocal {
   /** Motivo do N/I e condições da coleta (2026-10-06). */
   motivo_ni?: Record<string, MotivoNiFator>;
   condicoes_coleta?: CondicoesColeta;
+  origem_evidencia?: Record<string, string[]>;
+  fontes_geradoras?: Record<string, string[]>;
   cargos?: { id: string; cargo: string; descricao: string; quantidade: number }[];
   riscos: AepRisco[];
   checklist_fisica: AepChecklistFisica;
@@ -113,12 +119,16 @@ export interface AepRelatorioLocal {
   data_elaboracao: string | null;
   endereco_empresa: string | null;
   setores: AepSetorLocal[];
+  /** v272: checklist de gestão. */
+  checklist_gestao?: ChecklistGestao;
   conclusao: string | null;
   empresas?: { nome_empresa: string; cnpj: string | null } | null;
 }
 
 export interface AepTemplateProps {
   relatorio: AepRelatorioLocal;
+  /** Biblioteca psicossocial (v272) — detalhamento dos fatores "Sim". */
+  biblioteca?: Biblioteca;
   /** Empresa completa para a seção de sistema "Identificação da Empresa". */
   empresa?: Partial<Empresa> | null;
   /** Capítulos do módulo "aep" da tabela textos_padrao. */
@@ -363,9 +373,13 @@ function SectionTitulo({
 function SetorBlock({
   setor,
   idx,
+  gestao,
+  biblioteca,
 }: {
   setor: AepSetorLocal;
   idx: number;
+  gestao?: ChecklistGestao;
+  biblioteca?: Biblioteca;
 }) {
   const rMax = riscoMaximoSetor(setor);
   const rMaxCores = rMax ? RISCO_CORES[rMax] : null;
@@ -719,6 +733,42 @@ function SetorBlock({
         );
       })()}
 
+      {/* Detalhamento dos fatores psicossociais "Sim" (2026-10-06): biblioteca,
+          fontes geradoras, medidas existentes, origem e confiança. Cores
+          cravadas (Puppeteer não enxerga as variáveis de tema). */}
+      {(() => {
+        const det = detalhesDoSetor(setor, gestao, biblioteca);
+        if (det.length === 0) return null;
+        return (
+          <div style={{ marginBottom: 12, fontSize: 9.5, color: "#374151" }}>
+            <p style={{ margin: "0 0 3px", fontWeight: 700, fontSize: 10, color: "#92400e", textTransform: "uppercase" }}>
+              Fatores psicossociais identificados — detalhamento
+            </p>
+            {det.map((d) => (
+              <div key={d.key} className="setor-check-linha" style={{ border: "1px solid #fde68a", padding: "4px 8px", marginBottom: 4 }}>
+                <p style={{ margin: 0, fontWeight: 700 }}>
+                  {d.label}
+                  {d.nivel ? ` · Nível ${d.nivel}` : ""}
+                  {d.confianca && (
+                    <span style={{ marginLeft: 6, backgroundColor: COR_CONFIANCA[d.confianca].bg, color: COR_CONFIANCA[d.confianca].cor, padding: "0 4px", borderRadius: 3 }}>
+                      Confiança {d.confianca}
+                    </span>
+                  )}
+                </p>
+                {d.descricao && <p style={{ margin: "2px 0 0" }}><strong>Descrição do risco:</strong> {d.descricao}</p>}
+                {d.danos && <p style={{ margin: "2px 0 0" }}><strong>Danos à saúde:</strong> {d.danos}</p>}
+                {d.fontes.length > 0 && <p style={{ margin: "2px 0 0", wordBreak: "break-word" }}><strong>Fontes geradoras:</strong> {d.fontes.join("; ")}</p>}
+                <p style={{ margin: "2px 0 0" }}>
+                  <strong>Medidas de controle existentes:</strong>{" "}
+                  {d.medidasExistentes.length ? d.medidasExistentes.join("; ") : "Não evidenciadas medidas de controle específicas"}
+                </p>
+                {d.origens.length > 0 && <p style={{ margin: "2px 0 0" }}><strong>Origem das evidências:</strong> {d.origens.join(", ")}</p>}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* Matriz de riscos */}
       {setor.riscos.length > 0 && (
         <table
@@ -806,6 +856,7 @@ function SetorBlock({
 
 export default function AepTemplate({
   relatorio: rel,
+  biblioteca,
   empresa,
   capitulos,
   valoresVars,
@@ -960,7 +1011,7 @@ export default function AepTemplate({
     <div style={{ marginBottom: 24 }}>
       <SectionTitulo titulo={numLabelAep(numPorSlug["aep_triagem"], tituloPorSlug["aep_triagem"] ?? "Triagem Ergonômica por Setor")} />
       {rel.setores.map((setor, idx) => (
-        <SetorBlock key={setor.id} setor={setor} idx={idx} />
+        <SetorBlock key={setor.id} setor={setor} idx={idx} gestao={rel.checklist_gestao} biblioteca={biblioteca} />
       ))}
     </div>
   );
