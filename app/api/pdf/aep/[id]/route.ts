@@ -190,8 +190,12 @@ export async function GET(
   }
 
   // Biblioteca psicossocial (v272): descrição, danos e fontes dos fatores "Sim".
-  const { data: rawBib } = await supabase.from("psi_biblioteca_fatores").select("*");
-  const biblioteca = montarBiblioteca((rawBib ?? []) as unknown[]);
+  // Biblioteca = base de opções (v276): fatores (padrões) + itens.
+  const [{ data: rawBibF }, { data: rawBibI }] = await Promise.all([
+    supabase.from("psi_biblioteca_fatores").select("fator, ordem, meio_propagacao, situacao_padrao, tempo_exposicao_padrao"),
+    supabase.from("psi_biblioteca_itens").select("*"),
+  ]);
+  const biblioteca = montarBiblioteca((rawBibF ?? []) as unknown[], (rawBibI ?? []) as unknown[]);
 
   // Busca capítulos editáveis (textos_padrao modulo=aep, ativos, ordenados)
   const { data: caps, error: capsError } = await supabase

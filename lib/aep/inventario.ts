@@ -1,68 +1,28 @@
 /**
  * Detalhe de cada fator organizacional "Sim" e o INVENTÁRIO PSICOSSOCIAL da
- * AEP (Fase 2, 2026-10-06). Uma linha por setor × fator "Sim", nas colunas do
- * plano — para lançamento no SGG (XLSX e CSV).
+ * AEP (2026-10-06). Uma linha por setor × fator "Sim", nas colunas do plano —
+ * para lançamento no SGG (XLSX e CSV).
  *
- * Junta: matriz AIHA gravada, sinais, biblioteca (descrição, danos, meio,
- * situação, tempo, sugestões, ações), fontes geradoras (lacunas do checklist
- * de gestão + fontes da biblioteca marcadas pelo técnico), medidas de
- * controle existentes (itens evidenciados do checklist de gestão) e origem
- * da evidência / confiança. Módulo PURO: tela, laudo, PDF e IA usam o mesmo.
+ * Cada tópico sai da BIBLIOTECA (lib/aep/biblioteca.ts — base de opções) mais
+ * o que é próprio da AEP:
+ *   • fontes geradoras  = lacunas do checklist de gestão + opções marcadas;
+ *   • evidências        = sinais do catálogo (contam na matriz) + opções de
+ *                         evidência marcadas (NÃO contam na matriz);
+ *   • medidas de controle existentes = itens evidenciados do checklist de
+ *                         gestão + opções marcadas;
+ *   • os demais tópicos = opções marcadas.
+ * Mais os itens MANUAIS do técnico em cada tópico.
  *
- * AJUSTES DO TÉCNICO (2026-10-06): cada tópico do inventário pode ser editado
- * por fator, no setor (`setor.inventario[fator]`): textos próprios (perigo,
- * meio, situação, tempo, descrição, danos), itens manuais a mais (fontes,
- * evidências, medidas, sugestões, ações) e a seleção das sugestões/ações da
- * biblioteca. Sem ajuste, vale o padrão (biblioteca + gestão + sinais).
- * Itens manuais de evidência NÃO contam para a matriz AIHA (só os sinais do
- * catálogo contam).
+ * Seleção por fator, no setor (`setor.inventario[fator]`):
+ *   sel[tópico]   = ids das opções marcadas (ausente = as marcadas por padrão)
+ *   extra[tópico] = textos manuais
+ * Matriz AIHA, origem da evidência e confiança vêm de fora (não se editam
+ * aqui). Módulo PURO: tela, laudo, PDF e IA usam o mesmo.
  */
-
-/** Ajustes do inventário de UM fator num setor. Tudo opcional. */
-export interface InventarioFator {
-  perigo?: string;
-  meio?: string;
-  situacao?: string;
-  tempo?: string;
-  descricao?: string;
-  danos?: string;
-  fontes_extra?: string[];
-  sinais_extra?: string[];
-  medidas_extra?: string[];
-  /** Sugestões da biblioteca escolhidas; ausente = todas. */
-  sugestoes?: string[];
-  sugestoes_extra?: string[];
-  /** Ações da biblioteca escolhidas; ausente = todas. */
-  acoes?: string[];
-  acoes_extra?: string[];
-}
-
-const TEXTOS_INV = ["perigo", "meio", "situacao", "tempo", "descricao", "danos"] as const;
-const LISTAS_INV = ["fontes_extra", "sinais_extra", "medidas_extra", "sugestoes", "sugestoes_extra", "acoes", "acoes_extra"] as const;
-
-/** `{fator: InventarioFator}` limpo (jsonb pode trazer lixo). */
-export function normalizarInventario(raw: unknown): Record<string, InventarioFator> {
-  if (typeof raw !== "object" || raw === null) return {};
-  const out: Record<string, InventarioFator> = {};
-  for (const [fator, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof v !== "object" || v === null) continue;
-    const o = v as Record<string, unknown>;
-    const f: InventarioFator = {};
-    for (const k of TEXTOS_INV) if (typeof o[k] === "string") f[k] = o[k] as string;
-    for (const k of LISTAS_INV) {
-      if (Array.isArray(o[k])) f[k] = [...new Set((o[k] as unknown[]).filter((x): x is string => typeof x === "string" && !!x.trim()))];
-    }
-    out[fator] = f;
-  }
-  return out;
-}
-
-/** Texto ajustado (não vazio) ou o padrão. */
-const ou = (ajuste: string | undefined, padrao: string) => (ajuste?.trim() ? ajuste.trim() : padrao);
 
 import { ITENS_ORGANIZACIONAL } from "@/lib/aep/checklist-itens";
 import { rotulosDosSinais } from "@/lib/aep/sinais-organizacional";
-import { fontesMarcadas, type Biblioteca } from "@/lib/aep/biblioteca";
+import { idsPadrao, itensDe, rotuloItem, type Biblioteca, type TopicoBib } from "@/lib/aep/biblioteca";
 import {
   SEM_MEDIDAS,
   lacunasDoFator,
@@ -73,6 +33,40 @@ import {
 import { confiancaDoFator, origensEfetivas, rotuloOrigem, type Confianca } from "@/lib/aep/evidencia";
 import type { AepChecklistOrganizacional } from "@/lib/supabase/types";
 
+/** Seleção do inventário de UM fator num setor. */
+export interface InventarioFator {
+  /** Ids das opções da biblioteca marcadas; tópico ausente = padrão. */
+  sel?: Partial<Record<TopicoBib, string[]>>;
+  /** Itens manuais por tópico. */
+  extra?: Partial<Record<TopicoBib, string[]>>;
+}
+
+const listaLimpa = (v: unknown) =>
+  Array.isArray(v) ? [...new Set(v.filter((x): x is string => typeof x === "string" && !!x.trim()))] : null;
+
+/** `{fator: InventarioFator}` limpo (jsonb pode trazer lixo). */
+export function normalizarInventario(raw: unknown): Record<string, InventarioFator> {
+  if (typeof raw !== "object" || raw === null) return {};
+  const out: Record<string, InventarioFator> = {};
+  for (const [fator, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v !== "object" || v === null) continue;
+    const o = v as Record<string, unknown>;
+    const f: InventarioFator = {};
+    for (const campo of ["sel", "extra"] as const) {
+      const m = o[campo];
+      if (typeof m !== "object" || m === null) continue;
+      const limpo: Partial<Record<TopicoBib, string[]>> = {};
+      for (const [t, lista] of Object.entries(m as Record<string, unknown>)) {
+        const l = listaLimpa(lista);
+        if (l) limpo[t as TopicoBib] = l;
+      }
+      f[campo] = limpo;
+    }
+    out[fator] = f;
+  }
+  return out;
+}
+
 /** Recorte do setor lido aqui (casa com AepSetor e AepSetorLocal). */
 export interface SetorInventario {
   nome_setor?: string | null;
@@ -81,8 +75,8 @@ export interface SetorInventario {
   sinais_organizacional?: Record<string, string[]> | null;
   aiha_organizacional?: Record<string, { probabilidade?: string; severidade?: string; nivel?: string | null } | undefined> | null;
   origem_evidencia?: Record<string, string[]> | null;
+  /** Legado (Fase 2): códigos de fonte marcados. Vale quando não há seleção de fontes. */
   fontes_geradoras?: Record<string, string[]> | null;
-  /** Ajustes do inventário por fator (2026-10-06). */
   inventario?: Record<string, InventarioFator> | null;
 }
 
@@ -95,7 +89,7 @@ export interface DetalheFator {
   meio: string;
   situacao: string;
   tempo: string;
-  /** Lacunas do checklist de gestão + fontes da biblioteca marcadas. */
+  /** Lacunas do checklist de gestão + fontes marcadas + manuais. */
   fontes: string[];
   medidasExistentes: string[];
   origens: string[];
@@ -107,6 +101,26 @@ export interface DetalheFator {
   acoes: string[];
 }
 
+/**
+ * Ids marcados no tópico: a seleção do técnico ou o padrão. Só opções que
+ * ainda existem e estão ativas (item excluído/recusado some sozinho).
+ */
+export function idsSelecionados(
+  setor: SetorInventario,
+  fator: string,
+  topico: TopicoBib,
+  biblioteca: Biblioteca | null | undefined,
+): string[] {
+  const opcoes = itensDe(biblioteca, fator, topico);
+  const sel = setor.inventario?.[fator]?.sel?.[topico];
+  if (sel) return opcoes.filter((i) => sel.includes(i.id_item)).map((i) => i.id_item);
+  if (topico === "fonte" && setor.fontes_geradoras?.[fator]?.length) {
+    const codigos = setor.fontes_geradoras[fator];
+    return opcoes.filter((i) => i.codigo && codigos.includes(i.codigo)).map((i) => i.id_item);
+  }
+  return idsPadrao(biblioteca, fator, topico);
+}
+
 export function detalhesDoSetor(
   setor: SetorInventario,
   gestao: ChecklistGestao | null | undefined,
@@ -114,39 +128,38 @@ export function detalhesDoSetor(
 ): DetalheFator[] {
   const cl = (setor.checklist_organizacional ?? {}) as Record<string, string>;
   return ITENS_ORGANIZACIONAL.filter(({ key }) => cl[key] === "sim").map(({ key, label }) => {
-    const b = biblioteca?.[key];
     const lacunas = lacunasDoFator(gestao, key);
     const a = setor.aiha_organizacional?.[key];
-    const aj = setor.inventario?.[key] ?? {};
-    const escolhidas = (todas: string[], sel: string[] | undefined) => (sel ? todas.filter((x) => sel.includes(x)) : todas);
+    const extra = setor.inventario?.[key]?.extra ?? {};
+    const textos = (t: TopicoBib) => {
+      const ids = idsSelecionados(setor, key, t, biblioteca);
+      const marcadas = itensDe(biblioteca, key, t)
+        .filter((i) => ids.includes(i.id_item))
+        .map(rotuloItem);
+      return [...marcadas, ...(extra[t] ?? [])];
+    };
+    const perigo = textos("perigo");
     return {
       key,
-      label: ou(aj.perigo, label),
+      label: perigo.length ? perigo.join(" / ") : label,
       sinais: [
         ...rotulosDosSinais(key as keyof AepChecklistOrganizacional, setor.sinais_organizacional ?? undefined),
-        ...(aj.sinais_extra ?? []),
+        ...textos("evidencia"),
       ],
-      descricao: ou(aj.descricao, b?.descricao_risco ?? ""),
-      danos: ou(aj.danos, b?.danos_saude ?? ""),
-      meio: ou(aj.meio, b?.meio_propagacao ?? ""),
-      situacao: ou(aj.situacao, b?.situacao_padrao ?? ""),
-      tempo: ou(aj.tempo, b?.tempo_exposicao_padrao ?? ""),
-      fontes: [
-        ...lacunas.map(rotuloLacuna),
-        ...fontesMarcadas(biblioteca, key, setor.fontes_geradoras?.[key]),
-        ...(aj.fontes_extra ?? []),
-      ],
-      medidasExistentes: [
-        ...medidasExistentesDoFator(gestao, key).map((i) => `${i.codigo} — ${i.label}`),
-        ...(aj.medidas_extra ?? []),
-      ],
+      descricao: textos("descricao").join(" "),
+      danos: textos("danos").join("; "),
+      meio: textos("meio").join("; "),
+      situacao: textos("situacao").join("; "),
+      tempo: textos("tempo").join("; "),
+      fontes: [...lacunas.map(rotuloLacuna), ...textos("fonte")],
+      medidasExistentes: [...medidasExistentesDoFator(gestao, key).map((i) => `${i.codigo} — ${i.label}`), ...textos("medida")],
       origens: origensEfetivas(setor.origem_evidencia?.[key], lacunas.length > 0).map(rotuloOrigem),
       confianca: confiancaDoFator(setor.origem_evidencia?.[key], lacunas.length > 0),
       probabilidade: a?.nivel ? (a.probabilidade ?? "") : "",
       severidade: a?.nivel ? (a.severidade ?? "") : "",
       nivel: a?.nivel ?? "",
-      sugestoes: [...escolhidas(b?.sugestoes_iniciais ?? [], aj.sugestoes), ...(aj.sugestoes_extra ?? [])],
-      acoes: [...escolhidas(b?.acoes ?? [], aj.acoes), ...(aj.acoes_extra ?? [])],
+      sugestoes: textos("sugestao"),
+      acoes: textos("acao"),
     };
   });
 }
