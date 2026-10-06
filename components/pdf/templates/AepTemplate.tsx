@@ -762,7 +762,12 @@ function SetorBlock({
                   <strong>Medidas de controle existentes:</strong>{" "}
                   {d.medidasExistentes.length ? d.medidasExistentes.join("; ") : "Não evidenciadas medidas de controle específicas"}
                 </p>
-                {d.origens.length > 0 && <p style={{ margin: "2px 0 0" }}><strong>Origem das evidências:</strong> {d.origens.join(", ")}</p>}
+                {d.origens.length > 0 && (
+                  <p style={{ margin: "2px 0 0" }}>
+                    <strong>Origem das evidências:</strong> {d.origens.join(", ")}
+                    {d.origens.includes("Questionário anônimo") && " (questionário anônimo: triagem complementar, não substitui o DRPS)"}
+                  </p>
+                )}
               </div>
             ))}
           </div>

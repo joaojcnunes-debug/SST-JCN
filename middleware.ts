@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_PATHS = ["/login", "/f/"];
+// "/q/" e "/api/publico/": questionário anônimo da AEP por QR Code (v273).
+const PUBLIC_PATHS = ["/login", "/f/", "/q/", "/api/publico/"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

@@ -22,6 +22,8 @@ import type { Biblioteca } from "@/lib/aep/biblioteca";
 import { detalhesDoSetor } from "@/lib/aep/inventario";
 import { useBibliotecaPsi } from "@/lib/hooks/useBibliotecaPsi";
 import { registrarAuditoria } from "@/lib/auditoria/registrar";
+import ColetaAnonimaSetor from "@/components/aep/ColetaAnonimaSetor";
+import { useColetasDaAep } from "@/lib/hooks/useColetaAnonima";
 import { chaveNome, type CargoCatalogo, type SetorCatalogo } from "@/lib/aep/catalogo-setores";
 import SituacaoSinalizacaoAep from "@/components/aep/SituacaoSinalizacaoAep";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
@@ -814,6 +816,8 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
   // Biblioteca psicossocial e checklist de gestão (Fase 2, 2026-10-06).
   const { data: biblioteca } = useBibliotecaPsi();
   const gestao = rel?.checklist_gestao;
+  // Questionário anônimo por QR Code (Fase 3, v273): links por setor.
+  const { data: coletas = [] } = useColetasDaAep(idRelatorio);
   // Setores e cargos que a empresa já tem no sistema (das inspeções) — o
   // editor sugere, e o técnico continua podendo digitar à mão (2026-10-05).
   const { data: catalogo = [] } = useCatalogoSetoresEmpresa(
@@ -1439,6 +1443,24 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                           },
                         });
                       }}
+                    />
+                    <ColetaAnonimaSetor
+                      idRelatorio={idRelatorio}
+                      idEmpresa={(rel as { id_empresa?: string } | undefined)?.id_empresa}
+                      empresaNome={empresa?.nome_empresa ?? null}
+                      idSetor={setor.id}
+                      setorNome={setor.nome_setor}
+                      coletas={coletas}
+                      checklistOrg={setor.checklist_organizacional as unknown as Record<string, string>}
+                      origens={setor.origem_evidencia ?? {}}
+                      onRegistrarOrigem={(fator) => {
+                        const atuais = setor.origem_evidencia?.[fator] ?? [];
+                        if (atuais.includes("questionario_anonimo")) return;
+                        updateSetor(setor.id, {
+                          origem_evidencia: { ...(setor.origem_evidencia ?? {}), [fator]: [...atuais, "questionario_anonimo"] },
+                        });
+                      }}
+                      disabled={!canEdit}
                     />
                   </div>
                 </section>
