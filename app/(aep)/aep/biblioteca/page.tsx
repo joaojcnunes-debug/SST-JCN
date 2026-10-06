@@ -274,7 +274,7 @@ export default function BibliotecaPsiPage() {
   }, [b]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
+    <div className="w-full space-y-4 p-4 sm:p-6">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
           <BookMarked className="size-5 text-emerald-600" /> Biblioteca psicossocial
@@ -307,7 +307,7 @@ export default function BibliotecaPsiPage() {
               sub: "Meio de propagação, situação e tempo de exposição — e o padrão de cada fator",
               corpo: (
                 <div className="space-y-3">
-                  <div className="grid gap-3 lg:grid-cols-3">
+                  <div className="space-y-3">
                     {TOPICOS_COMUNS.map((t) => (
                       <ListaTopico key={t} b={b} fator={null} topico={t} isAdmin={isAdmin} podeSugerir={podeSugerir} />
                     ))}
@@ -321,7 +321,7 @@ export default function BibliotecaPsiPage() {
               titulo: `${idx + 1}. ${label}`,
               sub: TOPICOS_DO_FATOR.map((t) => `${itensDe(b, key, t).length} ${ROTULO_TOPICO[t].toLowerCase()}`).join(" · "),
               corpo: (
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className="space-y-3">
                   {TOPICOS_DO_FATOR.map((t) => (
                     <ListaTopico key={t} b={b} fator={key} topico={t} isAdmin={isAdmin} podeSugerir={podeSugerir} />
                   ))}
