@@ -8,11 +8,11 @@
 //     da matriz (AIHA: "Não há exposição" × "Pouca importância"), travado, e o
 //     resultado é o da matriz para eles (AIHA: 0 × 0 = Trivial) — que não conta
 //     para a AET. A sugestão só começa no 1º sinal.
-//   • A partir do 1º sinal, Probabilidade SUGERIDA pela proporção de sinais:
-//       até 1/3 → 3º nível da escala ("Exposição moderada")
-//       até 2/3 → 4º ("Exposição elevada")
-//       acima   → 5º ("Exposição elevadíssima")
-//     e Severidade PADRÃO do fator (SEVERIDADE_PADRAO_IDX, índice da escala).
+//   • A partir do 1º sinal, Probabilidade SUGERIDA = 1 sinal por nível
+//     (2026-10-06, todo fator tem 5 sinais): 1 → "Exposição a níveis baixos",
+//     2 → moderada, 3 → elevada, 4 ou 5 → elevadíssima (topo da escala).
+//     Até 2026-10-05 era pela proporção (até 1/3, 2/3, acima).
+//     Severidade PADRÃO do fator (SEVERIDADE_PADRAO_IDX, índice da escala).
 //   • Com sinal marcado, o técnico pode trocar qualquer uma das duas; a troca
 //     fica marcada como manual e deixa de acompanhar a sugestão.
 //
@@ -58,23 +58,16 @@ export const SEVERIDADE_PADRAO_IDX: Record<FatorOrganizacional, number> = {
   trabalho_remoto: 1,
 };
 
-/** Índice da probabilidade sugerida pela proporção de sinais marcados. */
-export function indiceProbabilidadeSugerida(marcados: number, total: number, nNiveis: number): number {
+/** Índice da probabilidade sugerida: 1 sinal marcado = 1 nível da escala. */
+export function indiceProbabilidadeSugerida(marcados: number, nNiveis: number): number {
   const max = Math.max(0, nNiveis - 1);
-  let idx: number;
-  if (marcados <= 0 || total <= 0) idx = 0;
-  else {
-    const p = marcados / total;
-    idx = p <= 1 / 3 ? 2 : p <= 2 / 3 ? 3 : 4;
-  }
-  return Math.min(idx, max);
+  return Math.min(Math.max(0, Math.floor(marcados)), max);
 }
 
 /** Avaliação de UM fator marcado "Sim". */
 export function avaliarFator(args: {
   fator: string;
   sinaisMarcados: number;
-  sinaisTotal: number;
   anterior?: AihaFator;
   matriz: Pick<MatrizRisco, "probabilidades" | "severidades" | "pesos_prob" | "pesos_sev" | "faixas" | "lookup">;
 }): AihaFator {
@@ -95,7 +88,7 @@ export function avaliarFator(args: {
   }
 
   const probSug = matriz.probabilidades[
-    indiceProbabilidadeSugerida(args.sinaisMarcados, args.sinaisTotal, matriz.probabilidades.length)
+    indiceProbabilidadeSugerida(args.sinaisMarcados, matriz.probabilidades.length)
   ];
   const idxSev = Math.min(
     SEVERIDADE_PADRAO_IDX[args.fator as FatorOrganizacional] ?? 1,
@@ -125,7 +118,8 @@ export function avaliarFator(args: {
 export function recalcularAihaOrganizacional(args: {
   checklist: Record<string, string | null | undefined>;
   sinaisMarcados: Record<string, string[] | undefined> | undefined;
-  totalSinais: (fator: string) => number;
+  /** Conta só os sinais que ainda existem no catálogo (padrão: todos). */
+  contarSinais?: (fator: string, marcados: string[] | undefined) => number;
   anterior: AihaOrganizacional | undefined;
   matriz: Parameters<typeof avaliarFator>[0]["matriz"];
 }): AihaOrganizacional {
@@ -134,8 +128,9 @@ export function recalcularAihaOrganizacional(args: {
     if (resposta !== "sim") continue;
     out[fator] = avaliarFator({
       fator,
-      sinaisMarcados: args.sinaisMarcados?.[fator]?.length ?? 0,
-      sinaisTotal: args.totalSinais(fator),
+      sinaisMarcados: args.contarSinais
+        ? args.contarSinais(fator, args.sinaisMarcados?.[fator])
+        : (args.sinaisMarcados?.[fator]?.length ?? 0),
       anterior: args.anterior?.[fator],
       matriz: args.matriz,
     });

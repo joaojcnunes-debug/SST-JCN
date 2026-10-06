@@ -42,7 +42,7 @@ test("fator traz rótulo, sinais, observação e nível", () => {
   const [e] = montarSinalizacao([rel("A1", "E1", "2026-01-01", [setorComAssedio])]);
   const f = e.avaliacoes[0].setores[0].fatores[0];
   assert.equal(f.label, "Assédio de qualquer natureza no trabalho");
-  assert.deepEqual(f.sinais, ["Tom agressivo, irônico ou humilhante"]);
+  assert.deepEqual(f.sinais, ["Tom agressivo, irônico, humilhante e/ou brincadeiras constrangedoras"]);
   assert.equal(f.observacao, "gritos");
   assert.equal(f.nivel, "Moderado");
 });

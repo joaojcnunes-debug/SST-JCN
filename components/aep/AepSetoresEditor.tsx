@@ -54,6 +54,7 @@ import { mensagemErro } from "@/lib/errors";
 import {
   SINAIS_ORGANIZACIONAL,
   rotulosDosSinais,
+  sinaisValidos,
   type SinalOrganizacional,
 } from "@/lib/aep/sinais-organizacional";
 import {
@@ -248,7 +249,7 @@ function AihaDoFator({
   disabled?: boolean;
 }) {
   if (!valor) return null;
-  const probSug = matriz.probabilidades[indiceProbabilidadeSugerida(sinaisMarcados, sinaisTotal, matriz.probabilidades.length)];
+  const probSug = matriz.probabilidades[indiceProbabilidadeSugerida(sinaisMarcados, matriz.probabilidades.length)];
   const sevSug = matriz.severidades[
     Math.min(SEVERIDADE_PADRAO_IDX[fator as FatorOrganizacional] ?? 1, matriz.severidades.length - 1)
   ];
@@ -410,7 +411,7 @@ function ChecklistBloco({
                   fator={key}
                   valor={aiha[key]}
                   matriz={matriz}
-                  sinaisMarcados={sinaisMarcados?.[key]?.length ?? 0}
+                  sinaisMarcados={sinaisValidos(key, sinaisMarcados?.[key]).length}
                   sinaisTotal={doFator?.length ?? 0}
                   onChange={(patch) => onAihaChange?.(key, patch)}
                   disabled={disabled}
@@ -475,7 +476,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
     const aiha = recalcularAihaOrganizacional({
       checklist: s.checklist_organizacional as unknown as Record<string, string>,
       sinaisMarcados: s.sinais_organizacional,
-      totalSinais: (f) => SINAIS_ORGANIZACIONAL[f as FatorOrganizacional]?.length ?? 0,
+      contarSinais: (f, marcados) => sinaisValidos(f, marcados).length,
       anterior: s.aiha_organizacional,
       matriz,
     }) as AepSetor["aiha_organizacional"];

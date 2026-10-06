@@ -138,8 +138,9 @@ export default function ExplicacaoMatrizAiha({
             <Selo nivel="Trivial" />. Sem evidência registrada não há como graduar a exposição.
           </p>
           <p className="mt-2">
-            <strong>3.3 Probabilidade sugerida</strong> pela proporção de sinais marcados sobre o total de sinais do
-            fator (quanto mais evidências, maior a exposição):
+            <strong>3.3 Probabilidade sugerida</strong> pela quantidade de sinais marcados: cada fator tem{" "}
+            <strong>5 sinais observáveis</strong>, e cada sinal registrado sobe um nível na escala de exposição
+            (quanto mais evidências, maior a exposição):
           </p>
           <div className="mt-2 overflow-x-auto">
             <table className="w-full min-w-[420px] border-collapse">
@@ -153,9 +154,10 @@ export default function ExplicacaoMatrizAiha({
               <tbody>
                 {[
                   ["Nenhum", 0],
-                  ["Até 1/3 dos sinais", 2],
-                  ["Acima de 1/3 até 2/3", 3],
-                  ["Acima de 2/3", 4],
+                  ["1 sinal", 1],
+                  ["2 sinais", 2],
+                  ["3 sinais", 3],
+                  ["4 ou 5 sinais", 4],
                 ].map(([faixa, idx]) => (
                   <tr key={faixa as string}>
                     <td className={td}>{faixa}</td>
@@ -167,8 +169,10 @@ export default function ExplicacaoMatrizAiha({
             </table>
           </div>
           <p className="mt-2 text-xs text-gray-500">
-            Com o 1º sinal a probabilidade já parte do nível intermediário: um sinal psicossocial observado em campo
-            indica exposição real, não apenas eventual.
+            A escala tem 5 níveis e o primeiro (“{probs[0] ?? "Não há exposição"}”) é reservado ao fator sem
+            evidência; por isso 4 e 5 sinais chegam ambos ao topo. Exemplo: assédio (severidade padrão “
+            {sevs[3] ?? "Irreversíveis"}”) com 1 sinal = <Selo nivel="Moderado" />; com 3 sinais ={" "}
+            <Selo nivel="Alto" />.
           </p>
 
           <p className="mt-3">

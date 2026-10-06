@@ -1,5 +1,6 @@
 "use client";
 
+import { sinaisValidos } from "@/lib/aep/sinais-organizacional";
 import { situacaoQuestionario, type SituacaoQuestionario } from "@/lib/aep/sinalizacao";
 import { montarCatalogoSetores } from "@/lib/aep/catalogo-setores";
 import { contagemParaAet } from "@/lib/aep/aiha-organizacional";
@@ -121,7 +122,9 @@ function normalizarSetor(s: unknown): AepSetor {
       if (typeof bruto !== "object" || bruto === null) return {};
       const out: Record<string, string[]> = {};
       for (const [k, v] of Object.entries(bruto as Record<string, unknown>)) {
-        if (Array.isArray(v)) out[k] = v.filter((x): x is string => typeof x === "string");
+        // Só chaves do catálogo atual: sinal que saiu da lista (troca de
+        // 2026-10-06) some aqui e no próximo salvamento.
+        if (Array.isArray(v)) out[k] = sinaisValidos(k, v.filter((x): x is string => typeof x === "string"));
       }
       return out;
     })(),
