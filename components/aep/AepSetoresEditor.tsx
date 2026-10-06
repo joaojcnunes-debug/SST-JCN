@@ -920,7 +920,13 @@ function InventarioDoFator({
   const topico = (
     t: TopicoBib,
     placeholder: string,
-    opts: { fixos?: { key: string; rotulo: string; cor: "amber" | "emerald" }[]; antes?: OpcaoMulti[]; dica?: string } = {},
+    opts: {
+      fixos?: { key: string; rotulo: string; cor: "amber" | "emerald" }[];
+      antes?: OpcaoMulti[];
+      dica?: string;
+      /** Só leitura (evidências: vêm dos sinais marcados acima). */
+      leitura?: boolean;
+    } = {},
   ) => {
     const ids = marcados(t);
     const opcoes: OpcaoMulti[] = [
@@ -941,7 +947,7 @@ function InventarioDoFator({
           onManuais={(v) => onExtra(t, v)}
           acaoItem={acaoBiblioteca(t)}
           placeholder={placeholder}
-          disabled={disabled}
+          disabled={disabled || opts.leitura}
         />
         {opts.dica && <p className="mt-0.5 text-[10px] text-gray-400">{opts.dica}</p>}
       </>
@@ -966,7 +972,8 @@ function InventarioDoFator({
           marcado: sinaisMarcados.includes(s.key),
           alternar: () => onSinais(sinaisMarcados.includes(s.key) ? sinaisMarcados.filter((k) => k !== s.key) : [...sinaisMarcados, s.key]),
         })),
-        dica: "Em vermelho, os sinais do catálogo (contam na matriz). Os demais não contam.",
+        dica: "Preenchido pelos sinais observados marcados acima (em vermelho, contam na matriz). Não se edita aqui.",
+        leitura: true,
       }),
     ],
     [ROTULO_TOPICO.meio, topico("meio", "Selecione ou digite o meio de propagação…")],
