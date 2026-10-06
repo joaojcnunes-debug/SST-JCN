@@ -763,6 +763,11 @@ function SetorBlock({
                   <strong>Medidas de controle existentes:</strong>{" "}
                   {d.medidasExistentes.length ? d.medidasExistentes.join("; ") : "Não evidenciadas medidas de controle específicas"}
                 </p>
+                {d.medidasRecomendadas.length > 0 && (
+                  <p style={{ margin: "2px 0 0" }}>
+                    <strong>Medidas de controle recomendadas:</strong> {d.medidasRecomendadas.join("; ")}
+                  </p>
+                )}
                 {d.origens.length > 0 && <p style={{ margin: "2px 0 0" }}><strong>Origem das evidências:</strong> {d.origens.join(", ")}</p>}
               </div>
             ))}
