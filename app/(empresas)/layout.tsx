@@ -2,7 +2,7 @@
 
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Building2 } from "lucide-react";
+import { Building2, Network } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -23,6 +23,7 @@ export default function EmpresasLayout({ children }: { children: ReactNode }) {
       label: "Cadastro",
       items: [
         { href: "/empresas", label: "Empresas", icon: Building2, variant: "dashboard" },
+        { href: "/empresas/grupos", label: "Grupos", icon: Network },
       ],
     },
   ], []);

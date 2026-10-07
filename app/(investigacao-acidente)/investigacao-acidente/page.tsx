@@ -13,6 +13,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { buscar } from "@/lib/busca/texto";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import type { InvestigacaoListItem } from "@/lib/hooks/useInvestigacaoAcidente";
 
 const GRAV: Record<string, { cls: string; label: string }> = {
@@ -34,14 +35,15 @@ export default function InvestigacoesPage() {
   const excluir = useExcluirInvestigacao();
   const { inUnidade } = useUnidadeFiltro();
   const [busca, setBusca] = useState("");
+  const { nomeGrupoDe } = useGruposEmpresas();
   const [confirmDel, setConfirmDel] = useState<InvestigacaoListItem | null>(null);
 
   const lista = useMemo(() => listaAll.filter((i) => inUnidade(i.id_empresa)), [listaAll, inUnidade]);
 
   // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem por data.
   const { itens: filtradas, aproximado } = useMemo(
-    () => buscar(lista, busca, (i) => [i.empresaNome, i.acidentado_nome], { manterOrdem: true }),
-    [lista, busca],
+    () => buscar(lista, busca, (i) => [i.empresaNome, i.acidentado_nome, nomeGrupoDe(i.id_empresa)], { manterOrdem: true }),
+    [lista, busca, nomeGrupoDe],
   );
 
   return (

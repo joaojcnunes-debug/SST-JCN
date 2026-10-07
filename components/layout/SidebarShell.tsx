@@ -180,7 +180,9 @@ function NavItemView({
 }: NavItem & { pathname: string; setMobileOpen: (v: boolean) => void }) {
   const active =
     pathname === href ||
-    (href !== "/dashboard" && pathname.startsWith(href + "/")) ||
+    (href !== "/dashboard" && pathname.startsWith(href + "/") &&
+      // /empresas/grupos tem item próprio no menu de Empresas.
+      !(href === "/empresas" && pathname.startsWith("/empresas/grupos"))) ||
     (href === "/inspecoes" &&
       pathname.startsWith("/inspecoes") &&
       !pathname.startsWith("/inspecoes/nova"));

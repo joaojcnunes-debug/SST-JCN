@@ -543,8 +543,45 @@ export interface Empresa {
   /** Hospital, UPA ou ambulatório mais próximo e telefones. */
   locais_emergencia?: string | null;
   dados_adicionais?: string | null;
+  // ─── Grupo de empresas (v278) ─────────────────────────────────────────────
+  /** Grupo (matriz + filiais). Nulo = empresa sem grupo. */
+  id_grupo?: string | null;
+  /** MATRIZ ou FILIAL dentro do grupo; o banco exige junto com `id_grupo`. */
+  papel_grupo?: PapelGrupo | null;
   created_at: string;
   updated_at: string | null;
+}
+
+/** Papel da empresa no grupo (v278). No máximo uma MATRIZ por grupo. */
+export type PapelGrupo = "MATRIZ" | "FILIAL";
+
+/** Grupo de empresas (v278, `empresa_grupos`). */
+export interface EmpresaGrupo {
+  id_grupo: string;
+  nome: string;
+  descricao: string | null;
+  created_at: string;
+  created_by: string | null;
+  updated_at: string;
+}
+
+/**
+ * Uma linha de `empresa_grupos_membros()` (v278): empresas com grupo de TODAS
+ * as unidades. `visivel = false` é empresa de outra unidade — a tela mostra o
+ * nome, mas não dá acesso aos documentos dela.
+ */
+export interface MembroGrupo {
+  id_empresa: string;
+  id_grupo: string;
+  papel_grupo: PapelGrupo;
+  nome_empresa: string;
+  razao_social: string | null;
+  nome_fantasia: string | null;
+  cnpj: string | null;
+  id_unidade: string | null;
+  unidade_nome: string | null;
+  status: string | null;
+  visivel: boolean;
 }
 
 export interface Unidade {

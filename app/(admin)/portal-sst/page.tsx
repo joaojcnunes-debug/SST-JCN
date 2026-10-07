@@ -12,6 +12,8 @@ import { useAtualizarStatusSolicitacao } from "@/lib/hooks/useSolicitacoesClient
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useCurrentUser } from "@/lib/hooks/useUsuario";
 import type { PortalPendenciaCliente, PortalSolicitacaoCliente, PortalDocumentoCliente, PrioridadePortal, StatusPendenciaPortal, StatusSolicitacaoPortal } from "@/lib/supabase/types";
+import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import toast from "react-hot-toast";
 
 type Aba = "pendencias" | "solicitacoes" | "documentos";
 
@@ -85,6 +87,10 @@ function AbaPendencias() {
 
   async function submitNova(e: React.FormEvent) {
     e.preventDefault();
+    if (!form.empresa_id) {
+      toast.error("Selecione a empresa");
+      return;
+    }
     await criarPendencia.mutateAsync({ ...form, descricao: form.descricao || undefined, prazo: form.prazo || undefined });
     setForm({ empresa_id: "", titulo: "", descricao: "", prioridade: "media", prazo: "" });
     setCriando(false);
@@ -107,17 +113,7 @@ function AbaPendencias() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Empresa *</label>
-              <select
-                required
-                value={form.empresa_id}
-                onChange={(e) => setForm((f) => ({ ...f, empresa_id: e.target.value }))}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="">Selecione…</option>
-                {empresas?.map((e) => (
-                  <option key={e.id_empresa} value={e.id_empresa}>{e.nome_empresa}</option>
-                ))}
-              </select>
+              <EmpresaSelect allowAll value={form.empresa_id || null} onChange={(id) => setForm((f) => ({ ...f, empresa_id: id ?? "" }))} placeholder="Selecione…" />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Prioridade</label>
@@ -277,16 +273,7 @@ function AbaDocumentos() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <select
-          value={empresaId}
-          onChange={(e) => setEmpresaId(e.target.value)}
-          className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none"
-        >
-          <option value="">Selecione empresa para liberar…</option>
-          {empresas?.map((e) => (
-            <option key={e.id_empresa} value={e.id_empresa}>{e.nome_empresa}</option>
-          ))}
-        </select>
+        <EmpresaSelect allowAll value={empresaId || null} onChange={(id) => setEmpresaId(id ?? "")} placeholder="Selecione empresa para liberar…" className="min-w-72" />
         {empresaId && (
           <LiberarParaPortalBtn empresaId={empresaId} size="md" />
         )}

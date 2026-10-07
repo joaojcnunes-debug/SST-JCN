@@ -10,6 +10,7 @@ import { useCanCreate } from "@/lib/hooks/useUsuario";
 import EmpresaForm from "@/components/empresas/EmpresaForm";
 import { useQpsTipos, useCreateQpsAplicacao } from "@/lib/hooks/useQuestionarios";
 import { useUserStore } from "@/lib/store";
+import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 
 interface Form {
   id_empresa: string;
@@ -40,7 +41,7 @@ export default function NovaAplicacaoPage() {
   const [form, setForm] = useState<Form>(empty);
   const [novaEmpresaOpen, setNovaEmpresaOpen] = useState(false);
 
-  const { data: empresas = [], isLoading: loadingEmpresas } = useEmpresas();
+  const { isLoading: loadingEmpresas } = useEmpresas();
   const { data: tipos = [], isLoading: loadingTipos } = useQpsTipos();
   const criar = useCreateQpsAplicacao();
 
@@ -113,19 +114,7 @@ export default function NovaAplicacaoPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-2 sm:flex-row">
-                <select
-                  value={form.id_empresa}
-                  onChange={(e) => setF("id_empresa", e.target.value)}
-                  required
-                  className="w-full flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Selecione a empresa</option>
-                  {empresas.map((e) => (
-                    <option key={e.id_empresa} value={e.id_empresa}>
-                      {e.nome_empresa}
-                    </option>
-                  ))}
-                </select>
+                <EmpresaSelect allowAll value={form.id_empresa || null} onChange={(id) => setF("id_empresa", id ?? "")} placeholder="Selecione a empresa" className="w-full flex-1" />
                 {/* Cliente novo não obriga a sair da aplicação e ir ao módulo
                     Empresas: é o mesmo cadastro completo (com busca por CNPJ e
                     grau de risco pela NR-4), aberto aqui, e a empresa criada já

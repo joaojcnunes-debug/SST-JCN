@@ -18,6 +18,7 @@ import type {
   Risco,
   Setor,
 } from "@/lib/supabase/types";
+import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 
 interface Props {
   open: boolean;
@@ -267,26 +268,12 @@ export default function AcaoForm({ open, onClose, editing }: Props) {
           </p>
           <div className="grid gap-3 md:grid-cols-3">
             <Field label="Empresa *">
-              <select
-                value={form.id_empresa}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    id_empresa: e.target.value,
-                    id_setor: "",
-                    id_risco: "",
-                  })
-                }
-                required
-                className={inputCls}
-              >
-                <option value="">— Selecione —</option>
-                {empresas.map((e) => (
-                  <option key={e.id_empresa} value={e.id_empresa}>
-                    {e.nome_empresa}
-                  </option>
-                ))}
-              </select>
+              <EmpresaSelect
+                allowAll
+                value={form.id_empresa || null}
+                onChange={(id) => setForm({ ...form, id_empresa: id ?? "", id_setor: "", id_risco: "" })}
+                placeholder="— Selecione —"
+              />
             </Field>
             <Field label="Setor (opcional)">
               <select

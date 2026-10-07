@@ -8,6 +8,7 @@ import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import FiltrosListaAep from "@/components/aep/FiltrosListaAep";
 import { FILTROS_LISTA_VAZIOS, filtrarAeps, type FiltrosListaAep as Filtros } from "@/lib/aep/filtros-lista";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import { opcoesDistintas } from "@/lib/aep/sinalizacao-filtros";
 import type { ClassificacaoRiscoAET, StatusAEP } from "@/lib/supabase/types";
 
@@ -26,8 +27,9 @@ export default function AepDashboardPage() {
   // Filtros (2026-10-05). Os cartões contam com todos os filtros MENOS o de
   // status — clicar num cartão de status liga/desliga esse filtro.
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_LISTA_VAZIOS);
-  const todos = useMemo(() => filtrarAeps(base, filtros, ["status"]), [base, filtros]);
-  const relatorios = useMemo(() => filtrarAeps(base, filtros), [base, filtros]);
+  const { nomeGrupoDe } = useGruposEmpresas();
+  const todos = useMemo(() => filtrarAeps(base, filtros, ["status"], nomeGrupoDe), [base, filtros, nomeGrupoDe]);
+  const relatorios = useMemo(() => filtrarAeps(base, filtros, [], nomeGrupoDe), [base, filtros, nomeGrupoDe]);
   const responsaveis = useMemo(() => opcoesDistintas(base.map((r) => r.responsavel_elaboracao)), [base]);
   const filtroStatus: StatusAEP | null = filtros.status || null;
   const setFiltroStatus = (s: StatusAEP | null) => setFiltros((f) => ({ ...f, status: s ?? "" }));

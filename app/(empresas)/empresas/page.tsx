@@ -7,6 +7,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { buscarEmpresas } from "@/lib/busca/empresas";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import { excluirComLixeira } from "@/lib/hooks/useLixeira";
 import EmpresaCard from "@/components/empresas/EmpresaCard";
@@ -22,6 +23,9 @@ function EmpresasInner() {
   const searchParams = useSearchParams();
   const { data: empresas = [], isLoading, error } = useEmpresas();
   const { data: unidades = [] } = useUnidades();
+  // Grupo de empresas (v278): filtro + busca pelo nome do grupo. Deep-link ?grupo=ID.
+  const { grupos, porEmpresa: grupoDaEmpresa, nomeGrupoDe } = useGruposEmpresas();
+  const [filtroGrupo, setFiltroGrupo] = useState(searchParams.get("grupo") ?? "");
   const canEdit = useCanEdit();
   const canCreate = useCanCreate();
   const canDelete = useCanDelete();
@@ -68,32 +72,37 @@ function EmpresasInner() {
   });
 
   const { itens: filtradas, aproximado, foraDaUnidade } = useMemo(() => {
+    const noGrupo = (e: Empresa) =>
+      !filtroGrupo ||
+      (filtroGrupo === "__sem__" ? !grupoDaEmpresa.has(e.id_empresa) : grupoDaEmpresa.get(e.id_empresa)?.id_grupo === filtroGrupo);
+    const doGrupo = empresas.filter(noGrupo);
+    const porGrupo = { grupoDe: (e: Empresa) => nomeGrupoDe(e.id_empresa) };
     const naUnidade = (e: Empresa) => {
       if (filtroUnidade === "__sem__" && e.id_unidade) return false;
       if (filtroUnidade && filtroUnidade !== "__sem__" && e.id_unidade !== filtroUnidade) return false;
       return true;
     };
     // Busca tolerante: acento, ordem das palavras, erro de digitação, CNPJ sem máscara.
-    const r = buscarEmpresas(empresas.filter(naUnidade), busca);
+    const r = buscarEmpresas(doGrupo.filter(naUnidade), busca, porGrupo);
     // "Não achou" pode ser o filtro de unidade, não a busca: conta quantas
     // batem FORA da unidade escolhida para oferecer o "mostrar todas".
     const foraDaUnidade =
       filtroUnidade && busca.trim()
-        ? buscarEmpresas(empresas, busca).itens.filter((e) => !naUnidade(e)).length
+        ? buscarEmpresas(doGrupo, busca, porGrupo).itens.filter((e) => !naUnidade(e)).length
         : 0;
     return { ...r, foraDaUnidade };
-  }, [empresas, busca, filtroUnidade]);
+  }, [empresas, busca, filtroUnidade, filtroGrupo, grupoDaEmpresa, nomeGrupoDe]);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative max-w-md flex-1">
+        <div className="relative min-w-0 max-w-md flex-1 sm:min-w-56">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar por nome ou CNPJ..."
+            placeholder="Buscar por nome, CNPJ ou grupo..."
             className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
           />
         </div>
@@ -109,6 +118,20 @@ function EmpresasInner() {
               <option key={u.id_unidade} value={u.id_unidade}>{u.nome}</option>
             ))}
             <option value="__sem__">Sem unidade</option>
+          </select>
+        )}
+        {grupos.length > 0 && (
+          <select
+            value={filtroGrupo}
+            onChange={(e) => setFiltroGrupo(e.target.value)}
+            className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20 sm:w-48"
+            title="Filtrar por grupo de empresas"
+          >
+            <option value="">Todos os grupos</option>
+            {grupos.map((g) => (
+              <option key={g.id_grupo} value={g.id_grupo}>{g.nome}</option>
+            ))}
+            <option value="__sem__">Sem grupo</option>
           </select>
         )}
         {canCreate && (
@@ -224,6 +247,7 @@ function EmpresasInner() {
               key={empresa.id_empresa}
               empresa={empresa}
               canEdit={canEdit}
+              grupo={grupoDaEmpresa.get(empresa.id_empresa)}
               onEdit={() => {
                 setEditing(empresa);
                 setFormOpen(true);

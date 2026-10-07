@@ -11,6 +11,7 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import FiltrosListaAep from "@/components/aep/FiltrosListaAep";
 import { FILTROS_LISTA_VAZIOS, filtrarAeps, type FiltrosListaAep as Filtros } from "@/lib/aep/filtros-lista";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import { opcoesDistintas } from "@/lib/aep/sinalizacao-filtros";
 import type { AepRelatorio, ClassificacaoRiscoAET } from "@/lib/supabase/types";
 
@@ -31,7 +32,8 @@ export default function AepListaPage() {
   const daUnidade = useMemo(() => relatoriosAll.filter((r) => inUnidade(r.id_empresa)), [relatoriosAll, inUnidade]);
   // Filtros da lista (2026-10-05): status, AET, nível AIHA, inspeção, responsável e período.
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_LISTA_VAZIOS);
-  const relatorios = useMemo(() => filtrarAeps(daUnidade, filtros), [daUnidade, filtros]);
+  const { nomeGrupoDe } = useGruposEmpresas();
+  const relatorios = useMemo(() => filtrarAeps(daUnidade, filtros, [], nomeGrupoDe), [daUnidade, filtros, nomeGrupoDe]);
   const responsaveis = useMemo(() => opcoesDistintas(daUnidade.map((r) => r.responsavel_elaboracao)), [daUnidade]);
   const excluir = useExcluirAep();
   const canCreate = useCanCreate();

@@ -12,6 +12,7 @@ import { useRequireCreate } from "@/lib/hooks/useUsuario";
 import { useUserStore } from "@/lib/store";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { formatCNPJ } from "@/lib/utils";
+import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 
 export default function NovaApreciacaoPage() {
   useRequireCreate("/apreciacao-maquinas");
@@ -97,21 +98,7 @@ export default function NovaApreciacaoPage() {
         className="space-y-4 rounded-xl border border-gray-200 bg-white p-5 shadow-sm reveal-up"
       >
         <Campo label="Empresa *" htmlFor="empresa">
-          <select
-            id="empresa"
-            value={idEmpresa}
-            onChange={(e) => setIdEmpresa(e.target.value)}
-            required
-            className={inputClass}
-          >
-            <option value="">Selecione...</option>
-            {empresas.map((e) => (
-              <option key={e.id_empresa} value={e.id_empresa}>
-                {e.nome_empresa}
-                {e.cnpj ? ` — ${formatCNPJ(e.cnpj)}` : ""}
-              </option>
-            ))}
-          </select>
+          <EmpresaSelect allowAll value={idEmpresa || null} onChange={(id) => setIdEmpresa(id ?? "")} placeholder="Selecione..." />
           {empresaSelecionada?.cnpj && (
             <p className="mt-1 text-xs text-gray-500">
               CNPJ {formatCNPJ(empresaSelecionada.cnpj)}

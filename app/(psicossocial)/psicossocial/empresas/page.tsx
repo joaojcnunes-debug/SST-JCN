@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useEmpresasPsicossocial, type EmpresaPsicossocial } from "@/lib/hooks/useEmpresasPsicossocial";
 import { buscar } from "@/lib/busca/texto";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { usePdfsPorEmpresa } from "@/lib/hooks/usePdfsGerados";
 import { ehDocumentoPsicossocial } from "@/lib/psicossocial/documentos";
@@ -68,6 +69,7 @@ function Chip({ status }: { status: string | null }) {
 export default function EmpresasPsicossocialPage() {
   const { data: empresas = [], isLoading, isError } = useEmpresasPsicossocial();
   const [busca, setBusca] = useState("");
+  const { nomeGrupoDe } = useGruposEmpresas();
   const [aberta, setAberta] = useState<string | null>(null);
 
   // Busca tolerante (acento, ordem das palavras, erro de digitação, CNPJ sem
@@ -78,10 +80,10 @@ export default function EmpresasPsicossocialPage() {
       buscar(
         empresas,
         busca,
-        (e) => [e.nome, e.municipio, ...e.questionarios.map((a) => a.titulo)],
+        (e) => [e.nome, e.municipio, nomeGrupoDe(e.idEmpresa), ...e.questionarios.map((a) => a.titulo)],
         { codigos: (e) => [e.cnpj] },
       ),
-    [empresas, busca],
+    [empresas, busca, nomeGrupoDe],
   );
 
   const totais = useMemo(

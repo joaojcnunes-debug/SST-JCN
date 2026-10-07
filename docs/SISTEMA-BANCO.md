@@ -151,6 +151,10 @@ id uuid NN, modulo text NN, id_referencia text, acao text NN, descricao text, em
 
 id_empresa text NN, nome_empresa text NN, razao_social text, cnpj text, grau_risco integer, status text, observacao text, created_at timestamp with time zone, updated_at timestamp with time zone, cpf text, cei text, caepf text, cno text, modulos_habilitados ARRAY NN, bairro text, cep text, cnae_descricao text, cnae_principal text, complemento text, email text, id_unidade text, logradouro text, municipio text, numero text, porte text, situacao_cadastral text, telefone text, uf text, grau_risco_origem text, grau_risco_norma integer, tipo_estabelecimento text NN, id_empresa_contratante text, nome_fantasia text, referencia text, locais_emergencia text, dados_adicionais text, sgg_base_sgg text, sgg_id text, sgg_resolvido_em timestamp with time zone, sgg_resolvido_por text
 
+### `empresa_grupos` (v278)
+
+id_grupo text NN (GRP-…), nome text NN (único sem diferenciar caixa), descricao text, created_at timestamptz NN, created_by text, updated_at timestamptz NN. RLS: SELECT autenticado; INSERT/UPDATE `caller_pode_editar()`; sem DELETE (só pela função `empresa_grupo_excluir`). Membros em `empresas.id_grupo` (FK RESTRICT) + `empresas.papel_grupo` ('MATRIZ'|'FILIAL', junto com id_grupo; índice único parcial = 1 matriz por grupo). Funções: `empresa_grupos_membros()`, `empresa_grupo_definir_matriz(p_id_grupo, p_id_empresa)`, `empresa_grupo_excluir(p_id_grupo)`. Rollback: `scripts/sql/v278_empresa_grupos_rollback.sql`.
+
 ### `funcoes_painel`
 
 funcao text NN, ordem integer NN, descricao text NN, nivel text NN, perfil_padrao text NN, pode_criar_padrao boolean, pode_editar_padrao boolean, pode_excluir_padrao boolean, modulos_padrao ARRAY NN, unidades_padrao text NN, criado_em timestamp with time zone NN, ve_presenca_auditoria boolean NN

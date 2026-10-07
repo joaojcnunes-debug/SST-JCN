@@ -54,13 +54,15 @@ export function filtrarAeps(
   lista: AepRelatorio[],
   f: FiltrosListaAep,
   ignorar: (keyof FiltrosListaAep)[] = [],
+  /** v278: nome do grupo da empresa, para a busca achar pelo grupo. */
+  grupoDe?: (idEmpresa: string) => string | null | undefined,
 ): AepRelatorio[] {
   const usa = (k: keyof FiltrosListaAep) => !ignorar.includes(k) && String(f[k]).trim() !== "";
   let r = lista;
   if (usa("busca")) {
     r = buscar(r, f.busca, (x) => {
       const emp = x.empresas as { nome_empresa?: string; cnpj?: string | null } | null;
-      return [emp?.nome_empresa, emp?.cnpj, x.responsavel_elaboracao];
+      return [emp?.nome_empresa, emp?.cnpj, x.responsavel_elaboracao, grupoDe?.(x.id_empresa)];
     }).itens;
   }
   return r.filter((x) => {

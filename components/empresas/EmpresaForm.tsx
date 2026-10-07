@@ -19,6 +19,8 @@ import { useGrauRiscoNorma } from "@/lib/nr4/grau-risco";
 import { useUnidadeAtiva, useUserStore } from "@/lib/store";
 import { detectarDuplicatas } from "@/lib/empresas/duplicatas";
 import AlertaEmpresaDuplicada from "@/components/empresas/AlertaEmpresaDuplicada";
+import CampoGrupoEmpresa, { type ValorGrupo } from "@/components/empresas/CampoGrupoEmpresa";
+import { CHAVE_GRUPOS, useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 
 // Toda empresa é habilitada em todos os quadros (filtro por módulo removido).
 const TODOS_MODULOS: ModuloEmpresa[] = MODULOS_EMPRESA.map((m) => m.value);
@@ -74,6 +76,19 @@ export default function EmpresaForm({
   const nomeUnidade = (id: string | null | undefined) =>
     todasUnidades.find((u) => u.id_unidade === id)?.nome ?? (id ? id : "sem unidade");
   const [cadastrarMesmoAssim, setCadastrarMesmoAssim] = useState(false);
+  // Grupo de empresas (v278): matriz/filial.
+  const { membros: membrosGrupos } = useGruposEmpresas();
+  const [grupo, setGrupo] = useState<ValorGrupo>({ id_grupo: null, papel: null });
+  useEffect(() => {
+    if (open) setGrupo({ id_grupo: empresa?.id_grupo ?? null, papel: empresa?.papel_grupo ?? null });
+  }, [open, empresa]);
+  // A matriz que o grupo escolhido já tem (outra empresa) — vira filial se esta for marcada matriz.
+  const matrizAtualDoGrupo = grupo.id_grupo
+    ? membrosGrupos.find(
+        (m) => m.id_grupo === grupo.id_grupo && m.papel_grupo === "MATRIZ" && m.id_empresa !== empresa?.id_empresa,
+      ) ?? null
+    : null;
+  const trocaMatriz = grupo.papel === "MATRIZ" && !!matrizAtualDoGrupo;
 
   const [form, setForm] = useState({
     tipo_estabelecimento: "CLIENTE" as TipoEstabelecimento,
@@ -289,7 +304,20 @@ export default function EmpresaForm({
         status: form.status,
         observacao: form.observacao.trim() || null,
         modulos_habilitados: form.modulos_habilitados,
+        // Grupo (v278). Para virar a matriz de um grupo que já tem outra, entra
+        // como filial e a função promove (o banco aceita só uma matriz por grupo).
+        id_grupo: grupo.id_grupo,
+        papel_grupo: grupo.id_grupo ? (trocaMatriz ? "FILIAL" : grupo.papel) : null,
         updated_at: new Date().toISOString(),
+      };
+
+      const promoverMatriz = async (idEmpresa: string) => {
+        if (!trocaMatriz || !grupo.id_grupo) return;
+        const { error } = await supabase.rpc(
+          "empresa_grupo_definir_matriz" as never,
+          { p_id_grupo: grupo.id_grupo, p_id_empresa: idEmpresa } as never,
+        );
+        if (error) throw error;
       };
 
       if (isEdit && empresa) {
@@ -298,6 +326,7 @@ export default function EmpresaForm({
           .update(payload as never)
           .eq("id_empresa", empresa.id_empresa);
         if (error) throw error;
+        await promoverMatriz(empresa.id_empresa);
         return null;
       } else {
         const id = gerarId("EMP");
@@ -310,11 +339,13 @@ export default function EmpresaForm({
           .from("empresas")
           .insert(insertRow as never);
         if (error) throw error;
+        await promoverMatriz(id);
         return id;
       }
     },
     onSuccess: (novoId) => {
       qc.invalidateQueries({ queryKey: ["empresas"] });
+      qc.invalidateQueries({ queryKey: CHAVE_GRUPOS });
       // Empresa criada FORA da Unidade ativa sumiria da lista, do seletor e da
       // lista de inspeções — a pessoa achava que não salvou e cadastrava de
       // novo (29 cópias da mesma empresa em 16/09/2026). O escopo segue a
@@ -335,7 +366,11 @@ export default function EmpresaForm({
       onClose();
     },
     onError: (err: Error) => {
-      toast.error(err.message || "Erro ao salvar empresa");
+      toast.error(
+        err.message?.includes("ux_empresas_matriz_por_grupo")
+          ? "Este grupo já tem uma matriz — marque esta empresa como filial."
+          : err.message || "Erro ao salvar empresa",
+      );
     },
   });
 
@@ -398,6 +433,10 @@ export default function EmpresaForm({
     }
     if (!isEdit && duplicatas.mesmoCodigo.length > 0 && !cadastrarMesmoAssim) {
       toast.error("Esta empresa já está cadastrada — use a existente ou marque \"cadastrar mesmo assim\".");
+      return;
+    }
+    if (grupo.id_grupo && !grupo.papel) {
+      toast.error("Diga se a empresa é a matriz ou uma filial do grupo");
       return;
     }
     if (ehTerceiros && !form.id_empresa_contratante) {
@@ -649,6 +688,15 @@ export default function EmpresaForm({
             </p>
           )}
         </div>
+
+        {/* Grupo de empresas (v278) — matriz + filiais */}
+        <CampoGrupoEmpresa
+          valor={grupo}
+          onChange={setGrupo}
+          cnpj={form.cnpj}
+          idEmpresa={empresa?.id_empresa ?? null}
+          matrizAtual={matrizAtualDoGrupo}
+        />
 
         {/* Endereço e contato — preenchidos pela busca por CNPJ, editáveis */}
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">

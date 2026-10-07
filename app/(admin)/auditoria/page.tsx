@@ -30,6 +30,7 @@ import {
 } from "@/lib/auditoria/eventos";
 import type { AuditoriaAcao, AuditoriaEvento } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 
 const ACAO_CORES: Record<AuditoriaAcao, string> = {
   criou: "bg-emerald-100 text-emerald-700",
@@ -196,12 +197,7 @@ function AuditoriaConteudo() {
             </select>
           </Campo>
           <Campo rotulo="Empresa">
-            <select value={filtros.idEmpresa ?? ""} onChange={(e) => set({ idEmpresa: e.target.value || undefined })} className={SELECT}>
-              <option value="">Todas</option>
-              {empresas.map((e) => (
-                <option key={e.id_empresa} value={e.id_empresa}>{e.nome_empresa}</option>
-              ))}
-            </select>
+            <EmpresaSelect allowAll value={filtros.idEmpresa ?? null} onChange={(id) => set({ idEmpresa: id || undefined })} placeholder="Todas" />
           </Campo>
           <Campo rotulo="Tabela">
             <select value={filtros.tabela ?? ""} onChange={(e) => set({ tabela: e.target.value || undefined })} className={SELECT}>

@@ -31,6 +31,7 @@ import type {
   AcaoPrioridade,
   AcaoStatus,
 } from "@/lib/supabase/types";
+import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 
 const STATUS_CFG: Record<
   AcaoStatus,
@@ -208,18 +209,7 @@ export default function AcoesPage() {
               className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
             />
           </div>
-          <select
-            value={filtroEmpresa}
-            onChange={(e) => setFiltroEmpresa(e.target.value)}
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-          >
-            <option value="">Todas as empresas</option>
-            {empresas.map((e) => (
-              <option key={e.id_empresa} value={e.id_empresa}>
-                {e.nome_empresa}
-              </option>
-            ))}
-          </select>
+          <EmpresaSelect allowAll value={filtroEmpresa || null} onChange={(id) => setFiltroEmpresa(id ?? "")} placeholder="Todas as empresas" className="min-w-64" />
           <select
             value={filtroStatus}
             onChange={(e) => setFiltroStatus(e.target.value as AcaoStatus | "")}
@@ -546,19 +536,18 @@ function ModalPdfPlano({
           <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-600">
             Empresa *
           </label>
-          <select
-            value={idEmpresa}
-            onChange={(e) => setIdEmpresa(e.target.value)}
+          <EmpresaSelect
+            allowAll
+            value={idEmpresa || null}
+            onChange={(id) => setIdEmpresa(id ?? "")}
             disabled={empresasComPlano.length === 0}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:bg-gray-50"
-          >
-            <option value="">Selecione a empresa...</option>
-            {empresasComPlano.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.nome} — {e.total} ação(ões)
-              </option>
-            ))}
-          </select>
+            somenteIds={empresasComPlano.map((e) => e.id)}
+            detalhe={(id) => {
+              const t = empresasComPlano.find((e) => e.id === id)?.total;
+              return t != null ? `${t} ação(ões)` : null;
+            }}
+            placeholder="Selecione a empresa..."
+          />
           <p className="mt-1 text-xs text-gray-500">
             {empresasComPlano.length === 0
               ? "Nenhuma empresa tem ação cadastrada ainda — cadastre em “Nova Ação” para poder gerar o PDF."

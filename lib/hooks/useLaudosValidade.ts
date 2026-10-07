@@ -27,6 +27,8 @@ export interface LaudoValidadeItem {
   tabela: string;
   idCol: string;
   id: string;
+  /** v278: para a busca pelo nome do grupo. */
+  idEmpresa?: string | null;
   empresaNome: string | null;
   /** Data de referência do documento (elaboração/inspeção/apreciação/criação). */
   dataDoc: string | null;
@@ -84,6 +86,7 @@ export function opcoesLaudosValidade(modulos: readonly string[] | null) {
               tabela: f.tabela,
               idCol: f.idCol,
               id,
+              idEmpresa: idEmpresa ?? null,
               empresaNome: idEmpresa ? nomePorEmpresa.get(idEmpresa) ?? null : null,
               dataDoc: dataDocRaw ? dataDocRaw.slice(0, 10) : null,
               data_validade: r.data_validade,

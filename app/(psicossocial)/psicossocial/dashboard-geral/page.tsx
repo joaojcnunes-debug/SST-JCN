@@ -25,6 +25,7 @@ import { useTema } from "@/lib/store";
 import { fmtData, formatCNPJ } from "@/lib/utils";
 import type { StatusRelatorio } from "@/lib/drps/types";
 import { buscar } from "@/lib/busca/texto";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 type StatusColuna = Extract<
@@ -216,14 +217,15 @@ function Coluna({
 
   // Filtro de busca por coluna (empresa, cidade, CNPJ ou responsável).
   const [busca, setBusca] = useState("");
+  const { nomeGrupoDe } = useGruposEmpresas();
   // Busca tolerante (acento, ordem das palavras, erro de digitação); CNPJ pelos dígitos. Mantém a ordem.
   const { itens: visiveis, aproximado } = useMemo(
     () =>
-      buscar(items, busca, (r) => [r.empresa_nome, r.responsavel_tecnico, r.empresa_municipio], {
+      buscar(items, busca, (r) => [r.empresa_nome, r.responsavel_tecnico, r.empresa_municipio, nomeGrupoDe(r.id_empresa)], {
         codigos: (r) => [r.empresa_cnpj],
         manterOrdem: true,
       }),
-    [items, busca],
+    [items, busca, nomeGrupoDe],
   );
 
   return (
