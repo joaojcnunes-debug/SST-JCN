@@ -413,6 +413,8 @@ export function useSituacaoSinalizacaoAep(idRelatorio: string) {
   return useQuery({
     queryKey: ["aep-situacao-sinalizacao", idRelatorio],
     enabled: !!idRelatorio,
+    // Sem o cache de 5 min global: depende do status, que muda em outra tela.
+    staleTime: 0,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
@@ -600,6 +602,9 @@ export function useSalvarAep() {
       }
       qc.invalidateQueries({ queryKey: ["aep-relatorio", id] });
       qc.invalidateQueries({ queryKey: ["aep-relatorios"] });
+      // Status mudou (ex.: Concluído) → a faixa da Sinalização/Comercial
+      // precisa mostrar "Liberar para o Comercial" na hora.
+      qc.invalidateQueries({ queryKey: ["aep-situacao-sinalizacao", id] });
       toast.success("Salvo com sucesso!");
     },
     onError: (e: Error, vars) => {

@@ -157,7 +157,8 @@ export default function SituacaoSinalizacaoAep({ idRelatorio }: { idRelatorio: s
           Info,
           <>
             AEP sem inspeção. Aparece na <strong>Sinalização Psicossocial</strong> quando for marcada como{" "}
-            <strong>Concluída</strong> (enviada ao cliente) em Dados / Conclusão.
+            <strong>Concluída</strong> (enviada ao cliente) em Dados / Conclusão. Depois de concluída, use{" "}
+            <strong>Liberar para o Comercial</strong> aqui para ela entrar nas Oportunidades.
           </>,
         ] as const)
     : data.entregue
