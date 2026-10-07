@@ -7,6 +7,8 @@ import type { Empresa } from "@/lib/supabase/types";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { formatCNPJ, cn } from "@/lib/utils";
+import SeloGrupo from "@/components/empresas/SeloGrupo";
+import type { InfoGrupoDaEmpresa } from "@/lib/hooks/useGruposEmpresas";
 
 function useInspCount(idEmpresa: string) {
   return useQuery({
@@ -36,8 +38,11 @@ export default function EmpresaCard({
   onEdit,
   onDelete,
   canEdit = true,
+  grupo,
 }: {
   empresa: Empresa;
+  /** Grupo da empresa (v278), se tiver. */
+  grupo?: InfoGrupoDaEmpresa;
   onEdit: () => void;
   onDelete?: (e: Empresa) => void;
   canEdit?: boolean;
@@ -102,6 +107,11 @@ export default function EmpresaCard({
           <p className="mt-0.5 text-xs text-gray-400 font-mono">
             {formatCNPJ(empresa.cnpj) || "CNPJ não informado"}
           </p>
+          {grupo && (
+            <Link href={`/empresas/grupos?grupo=${grupo.id_grupo}`} className="mt-1.5 block w-fit max-w-full">
+              <SeloGrupo info={grupo} />
+            </Link>
+          )}
         </div>
       </div>
 

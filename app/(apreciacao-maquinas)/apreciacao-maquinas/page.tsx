@@ -20,6 +20,7 @@ import { useCanCreate } from "@/lib/hooks/useUsuario";
 import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 import type { StatusApreciacao } from "@/lib/supabase/types";
 import { buscar } from "@/lib/busca/texto";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 export default function ApreciacaoMaquinasPage() {
@@ -30,6 +31,7 @@ export default function ApreciacaoMaquinasPage() {
   const { inUnidade } = useUnidadeFiltro();
   const apreciacoes = useMemo(() => apreciacoesAll.filter((a) => inUnidade(a.id_empresa)), [apreciacoesAll, inUnidade]);
   const [busca, setBusca] = useState("");
+  const { nomeGrupoDe } = useGruposEmpresas();
   const [filtroStatus, setFiltroStatus] = useState<StatusApreciacao | "TODAS">(
     "TODAS"
   );
@@ -51,10 +53,10 @@ export default function ApreciacaoMaquinasPage() {
     return buscar(
       doStatus,
       busca,
-      (a) => [a.titulo, a.maquina_descricao, a.setor, a.responsavel, empresaMap.get(a.id_empresa)],
+      (a) => [a.titulo, a.maquina_descricao, a.setor, a.responsavel, empresaMap.get(a.id_empresa), nomeGrupoDe(a.id_empresa)],
       { manterOrdem: true },
     );
-  }, [apreciacoes, busca, filtroStatus, empresaMap]);
+  }, [apreciacoes, busca, filtroStatus, empresaMap, nomeGrupoDe]);
 
   const idsFiltrados = useMemo(
     () => new Set(filtradas.map((a) => a.id_apreciacao)),

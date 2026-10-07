@@ -13,6 +13,7 @@ import { Brain, Building2, ChevronRight, Search } from "lucide-react";
 import { useRiscosPsicossociais } from "@/lib/hooks/useRiscosPsicossociais";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { buscar } from "@/lib/busca/texto";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import { useUserStore } from "@/lib/store";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
@@ -23,13 +24,14 @@ export default function RiscosPsicossociaisPage() {
   const user = useUserStore((s) => s.user);
   const { data: empresas = [], isLoading, error } = useRiscosPsicossociais();
   const [busca, setBusca] = useState("");
+  const { nomeGrupoDe } = useGruposEmpresas();
 
   const filtradas = useMemo(
     () =>
       busca.trim()
-        ? buscar(empresas, busca, (e) => [e.nome, e.cnpj ?? "", e.municipio ?? ""]).itens
+        ? buscar(empresas, busca, (e) => [e.nome, e.cnpj ?? "", e.municipio ?? "", nomeGrupoDe(e.idEmpresa)]).itens
         : empresas,
-    [empresas, busca]
+    [empresas, busca, nomeGrupoDe]
   );
 
   // O menu já esconde de Cliente; isto cobre quem digitar a URL.

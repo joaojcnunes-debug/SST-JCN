@@ -15,6 +15,7 @@ import {
 import { tiposPermitidos } from "@/lib/validades/fontes";
 import { cn } from "@/lib/utils";
 import { buscar } from "@/lib/busca/texto";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 // O filtro "Tipo" segue os módulos da conta (v0.3.636) — oferecer um tipo que
@@ -54,6 +55,7 @@ export default function ValidadesPage() {
   const tipos = useMemo(() => tiposPermitidos(user?.modulos_permitidos), [user?.modulos_permitidos]);
 
   const [busca, setBusca] = useState("");
+  const { nomeGrupoDe } = useGruposEmpresas();
   const [tipo, setTipo] = useState<TipoLaudo | "">("");
   const [status, setStatus] = useState<FiltroStatus>("todos");
   const [visiveis, setVisiveis] = useState(LOTE);
@@ -72,8 +74,8 @@ export default function ValidadesPage() {
       return true;
     });
     // Busca tolerante (acento, ordem das palavras, erro de digitação); mantém a ordem por validade.
-    return buscar(dosFiltros, busca, (l) => [l.empresaNome], { manterOrdem: true });
-  }, [laudos, busca, tipo, status]);
+    return buscar(dosFiltros, busca, (l) => [l.empresaNome, nomeGrupoDe(l.idEmpresa)], { manterOrdem: true });
+  }, [laudos, busca, tipo, status, nomeGrupoDe]);
 
   const semValidade = laudos.filter((l) => !l.data_validade).length;
 

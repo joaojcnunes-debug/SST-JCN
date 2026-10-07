@@ -14,6 +14,7 @@ import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useCanCreate } from "@/lib/hooks/useUsuario";
 import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 import { buscar } from "@/lib/busca/texto";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 export default function HistoricoConformidadePage() {
@@ -25,6 +26,7 @@ export default function HistoricoConformidadePage() {
   const nrs = useMemo(() => listarNRs(), []);
 
   const [q, setQ] = useState("");
+  const { nomeGrupoDe } = useGruposEmpresas();
   const [nrFilter, setNrFilter] = useState<string>("todas");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
@@ -44,10 +46,10 @@ export default function HistoricoConformidadePage() {
     return buscar(
       dosFiltros,
       q,
-      (r) => [rotuloNR(r.nr_codigo), r.nr_titulo, r.setor, r.responsavel, empresaMap.get(r.id_empresa)],
+      (r) => [rotuloNR(r.nr_codigo), r.nr_titulo, r.setor, r.responsavel, empresaMap.get(r.id_empresa), nomeGrupoDe(r.id_empresa)],
       { manterOrdem: true },
     );
-  }, [relatorios, q, nrFilter, statusFilter, empresaMap]);
+  }, [relatorios, q, nrFilter, statusFilter, empresaMap, nomeGrupoDe]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">

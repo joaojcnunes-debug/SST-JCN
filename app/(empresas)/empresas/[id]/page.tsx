@@ -13,6 +13,7 @@ import { useRegistrosEmpresa } from "@/lib/hooks/useRegistrosEmpresa";
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import EmpresaForm from "@/components/empresas/EmpresaForm";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
+import GrupoDaEmpresaResumo from "@/components/empresas/GrupoDaEmpresaResumo";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { EmpresaDetalheSkeleton } from "@/components/empresas/EmpresaSkeletons";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
@@ -141,6 +142,7 @@ export default function EmpresaDetalhePage({ params }: Props) {
                   </span>
                 )}
               </div>
+              <GrupoDaEmpresaResumo idEmpresa={empresa.id_empresa} />
             </div>
           </div>
           <div className="flex gap-1.5">

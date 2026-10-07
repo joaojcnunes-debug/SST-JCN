@@ -13,6 +13,7 @@ import ThemeToggle from "@/components/layout/ThemeToggle";
 const ROUTE_LABELS: Record<string, string> = {
   dashboard:             "Dashboard",
   empresas:              "Empresas",
+  grupos:                "Grupos",
   inspecoes:             "Inspeções",
   relatorios:            "Relatórios",
   nova:                  "Nova",

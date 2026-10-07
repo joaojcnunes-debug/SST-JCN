@@ -4,6 +4,8 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { ChevronDown, Search, X, Building2 } from "lucide-react";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { buscarEmpresas } from "@/lib/busca/empresas";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
+import SeloGrupo from "@/components/empresas/SeloGrupo";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { cn, formatCNPJ } from "@/lib/utils";
 import type { ModuloEmpresa } from "@/lib/supabase/types";
@@ -20,6 +22,10 @@ interface EmpresaSelectProps {
   allowAll?: boolean;
   /** Quando informado (Unidade ativa), limita o dropdown às empresas da unidade. */
   unidadeId?: string | null;
+  /** Limita a lista a estas empresas (ex.: só as que têm ação cadastrada). */
+  somenteIds?: string[];
+  /** Texto extra ao lado do nome na lista (ex.: "3 ações"). */
+  detalhe?: (idEmpresa: string) => string | null | undefined;
 }
 
 export default function EmpresaSelect({
@@ -31,8 +37,19 @@ export default function EmpresaSelect({
   modulo,
   allowAll,
   unidadeId,
+  somenteIds,
+  detalhe,
 }: EmpresaSelectProps) {
-  const { data: empresas = [], isLoading } = useEmpresas(allowAll ? undefined : modulo);
+  const { data: todas = [], isLoading } = useEmpresas(allowAll ? undefined : modulo);
+  const chaveSomente = somenteIds?.join("|");
+  const empresas = useMemo(() => {
+    if (!somenteIds) return todas;
+    const ids = new Set(somenteIds);
+    return todas.filter((e) => ids.has(e.id_empresa));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todas, chaveSomente]);
+  // Grupo (v278): digitar o nome do grupo traz todas as empresas dele.
+  const { porEmpresa: grupoDaEmpresa, nomeGrupoDe } = useGruposEmpresas();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const ref = useRef<HTMLDivElement>(null);
@@ -46,15 +63,16 @@ export default function EmpresaSelect({
     // Escopo por Unidade ativa: só empresas da unidade.
     const base = unidadeId ? empresas.filter((e) => e.id_unidade === unidadeId) : empresas;
     // Busca tolerante: acento, ordem das palavras, erro de digitação, CNPJ sem máscara.
-    const r = buscarEmpresas(base, query);
+    const porGrupo = { grupoDe: (e: { id_empresa: string }) => nomeGrupoDe(e.id_empresa) };
+    const r = buscarEmpresas(base, query, porGrupo);
     // "Não achou" pode ser a UNIDADE, não a busca: conta quantas batem fora
     // dela para a pessoa saber que a empresa existe e onde procurar.
     const foraDaUnidade =
       unidadeId && query.trim()
-        ? buscarEmpresas(empresas, query).itens.filter((e) => e.id_unidade !== unidadeId).length
+        ? buscarEmpresas(empresas, query, porGrupo).itens.filter((e) => e.id_unidade !== unidadeId).length
         : 0;
     return { ...r, foraDaUnidade };
-  }, [empresas, query, unidadeId]);
+  }, [empresas, query, unidadeId, nomeGrupoDe]);
 
   useEffect(() => {
     if (!open) return;
@@ -128,7 +146,7 @@ export default function EmpresaSelect({
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar por nome ou CNPJ..."
+                placeholder="Buscar por nome, CNPJ ou grupo..."
                 className="w-full rounded-md border border-gray-200 py-1.5 pl-8 pr-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
               />
             </div>
@@ -173,10 +191,14 @@ export default function EmpresaSelect({
                 >
                   <span className="font-medium text-gray-900">
                     {e.nome_empresa}
+                    {detalhe?.(e.id_empresa) && (
+                      <span className="ml-1.5 text-xs font-normal text-gray-500">— {detalhe(e.id_empresa)}</span>
+                    )}
                   </span>
-                  {e.cnpj && (
-                    <span className="text-xs text-gray-500">
-                      {formatCNPJ(e.cnpj)}
+                  {(e.cnpj || grupoDaEmpresa.has(e.id_empresa)) && (
+                    <span className="flex max-w-full flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                      {e.cnpj && formatCNPJ(e.cnpj)}
+                      <SeloGrupo info={grupoDaEmpresa.get(e.id_empresa)} compacto />
                     </span>
                   )}
                 </button>

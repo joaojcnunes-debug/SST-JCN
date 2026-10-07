@@ -40,6 +40,7 @@ import { useTema } from "@/lib/store";
 import { fmtData, formatCNPJ } from "@/lib/utils";
 import type { StatusQpsAplicacao } from "@/lib/supabase/types";
 import { buscar } from "@/lib/busca/texto";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 type StatusColuna = Extract<
@@ -251,16 +252,17 @@ function Coluna({
   // a unidade do cliente (medido em 04/09: 5 aplicações e 580 respondentes numa
   // única empresa do painel, distinguidas só pelo texto do título).
   const [busca, setBusca] = useState("");
+  const { nomeGrupoDe } = useGruposEmpresas();
   // Busca tolerante (acento, ordem das palavras, erro de digitação); CNPJ pelos dígitos. Mantém a ordem.
   const { itens: visiveis, aproximado } = useMemo(
     () =>
       buscar(
         items,
         busca,
-        (a) => [a.aplicacao.titulo, a.empresaNome, a.empresaMunicipio, a.tipoNome],
+        (a) => [a.aplicacao.titulo, a.empresaNome, a.empresaMunicipio, a.tipoNome, nomeGrupoDe(a.aplicacao.id_empresa)],
         { codigos: (a) => [a.empresaCnpj], manterOrdem: true },
       ),
-    [items, busca],
+    [items, busca, nomeGrupoDe],
   );
 
   return (

@@ -28,6 +28,7 @@ import {
 import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { buscar } from "@/lib/busca/texto";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
 const inputCls =
@@ -116,6 +117,7 @@ export default function SinalizacaoEmpresasLista({
 }) {
   const { data: relatorios = [], isLoading, error } = useAepsEntregues(null);
   const [busca, setBusca] = useState("");
+  const { nomeGrupoDe } = useGruposEmpresas();
   const [f, setF] = useState<FiltrosSinalizacao>(FILTROS_VAZIOS);
   const set = (patch: Partial<FiltrosSinalizacao>) => setF((atual) => ({ ...atual, ...patch }));
 
@@ -145,10 +147,11 @@ export default function SinalizacaoEmpresasLista({
           (e.idUnidade && nomeUnidade.get(e.idUnidade)) || "",
           e.municipio ?? "",
           e.uf ?? "",
+          nomeGrupoDe(e.idEmpresa),
         ]).itens
       : empresas;
     return filtrarSinalizacao(porBusca, f, questionarios);
-  }, [empresas, busca, nomeUnidade, f, questionarios]);
+  }, [empresas, busca, nomeUnidade, f, questionarios, nomeGrupoDe]);
 
   const kpi = {
     altos: empresas.filter((e) => e.pior === "Alto" || e.pior === "Muito Alto").length,

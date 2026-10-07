@@ -8,6 +8,7 @@ import { useQpsAplicacoes } from "@/lib/hooks/useQuestionarios";
 import { useQpsTipos } from "@/lib/hooks/useQuestionarios";
 import type { QpsAplicacao, StatusQpsAplicacao } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
+import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 
 const STATUS_LABEL: Record<StatusQpsAplicacao, string> = {
   RASCUNHO: "Rascunho",
@@ -33,7 +34,7 @@ function fmtData(iso: string | null) {
 export default function QpsListaPage() {
   const [idEmpresa, setIdEmpresa] = useState<string>("");
 
-  const { data: empresas = [], isLoading: loadingEmpresas } = useEmpresas();
+  const { isLoading: loadingEmpresas } = useEmpresas();
   const { data: tipos = [] } = useQpsTipos();
   const {
     data: aplicacoes = [],
@@ -81,18 +82,7 @@ export default function QpsListaPage() {
             <Loader2 className="size-4 animate-spin" /> Carregando empresas...
           </div>
         ) : (
-          <select
-            value={idEmpresa}
-            onChange={(e) => setIdEmpresa(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:max-w-xs"
-          >
-            <option value="">Selecione uma empresa</option>
-            {empresas.map((e) => (
-              <option key={e.id_empresa} value={e.id_empresa}>
-                {e.nome_empresa}
-              </option>
-            ))}
-          </select>
+          <EmpresaSelect allowAll value={idEmpresa || null} onChange={(id) => setIdEmpresa(id ?? "")} placeholder="Selecione uma empresa" className="w-full sm:max-w-xs" />
         )}
       </div>
 

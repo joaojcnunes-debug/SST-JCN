@@ -23,6 +23,7 @@ import { opcoesDistintas } from "@/lib/aep/sinalizacao-filtros";
 import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { buscar } from "@/lib/busca/texto";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
 const selectCls =
@@ -72,6 +73,7 @@ export default function ComercialPage() {
   const unidadeDe = (id: string | null) => (id && nomeUnidade.get(id)) || "";
 
   const [busca, setBusca] = useState("");
+  const { nomeGrupoDe } = useGruposEmpresas();
   const [produto, setProduto] = useState<"" | Produto>("");
   // "vender" = aberta + revisão recomendada (o padrão da tela).
   const [situacao, setSituacao] = useState<"" | "vender" | SituacaoOportunidade>("vender");
@@ -96,6 +98,7 @@ export default function ComercialPage() {
           c.empresa.cnpj ?? "",
           unidadeDe(c.empresa.idUnidade),
           c.empresa.municipio ?? "",
+          nomeGrupoDe(c.empresa.idEmpresa),
         ]).itens
       : lista;
     return porBusca
@@ -111,7 +114,7 @@ export default function ComercialPage() {
       }))
       .filter((c) => c.oportunidades.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lista, busca, produto, situacao, unidade, nivel, nomeUnidade]);
+  }, [lista, busca, produto, situacao, unidade, nivel, nomeUnidade, nomeGrupoDe]);
 
   const todas = lista.flatMap((c) => c.oportunidades.map((o) => ({ c, o })));
   const abertas = (p: Produto) => todas.filter(({ o }) => o.produto === p && A_VENDER.includes(o.situacao));

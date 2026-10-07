@@ -8,6 +8,7 @@ import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { useCanCreate } from "@/lib/hooks/useUsuario";
 import { useUnidadeFiltro } from "@/lib/hooks/useUnidadeFiltro";
 import { buscar } from "@/lib/busca/texto";
+import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 export default function HistoricoNaoConformidadePage() {
@@ -18,6 +19,7 @@ export default function HistoricoNaoConformidadePage() {
   const relatorios = useMemo(() => relatoriosAll.filter((r) => inUnidade(r.id_empresa)), [relatoriosAll, inUnidade]);
 
   const [q, setQ] = useState("");
+  const { nomeGrupoDe } = useGruposEmpresas();
   const [statusFilter, setStatusFilter] = useState<string>("todos");
 
   const empresaMap = useMemo(() => {
@@ -32,10 +34,10 @@ export default function HistoricoNaoConformidadePage() {
     return buscar(
       doStatus,
       q,
-      (r) => [r.titulo, r.setor, r.responsavel, empresaMap.get(r.id_empresa)],
+      (r) => [r.titulo, r.setor, r.responsavel, empresaMap.get(r.id_empresa), nomeGrupoDe(r.id_empresa)],
       { manterOrdem: true },
     );
-  }, [relatorios, q, statusFilter, empresaMap]);
+  }, [relatorios, q, statusFilter, empresaMap, nomeGrupoDe]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">

@@ -41,6 +41,22 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "empresas-grupos-matriz-filial",
+    data: "2026-10-07",
+    tipo: "novidade",
+    titulo: "Grupos de empresas: matriz e filiais juntas",
+    texto:
+      "Empresas com mais de um CNPJ agora podem ficar juntas num grupo, com a matriz como principal e as " +
+      "demais como filiais. O grupo se escolhe (ou se cria) no cadastro da empresa, novo ou existente, e há " +
+      "uma tela própria de Grupos para adicionar empresas, trocar a matriz e ver quem está em cada grupo. O " +
+      "painel sugere grupos pelas empresas que dividem a mesma raiz de CNPJ. Em todo o painel, digitar o " +
+      "nome do grupo na busca de empresa traz todas as empresas dele.",
+    onde: "Empresas › Grupos · cadastro da empresa (campo Grupo de empresas) · buscas de empresa",
+    impacto:
+      "Nenhuma empresa entra em grupo sozinha. Empresa de outra unidade aparece no grupo com nome, CNPJ e " +
+      "unidade, mas sem acesso aos documentos dela.",
+  },
+  {
     id: "inspecoes-concluir-como-renovacao",
     data: "2026-09-23",
     tipo: "novidade",

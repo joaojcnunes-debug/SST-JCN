@@ -38,6 +38,7 @@ import {
   type StatusMaquina,
   type GrauRiscoMaquina,
 } from "@/lib/supabase/types";
+import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -438,16 +439,13 @@ export default function RelacaoMaquinasPage() {
           ))}
           <option value="">Todas as categorias</option>
         </select>
-        <select
-          value={filtroEmpresa}
-          onChange={(e) => setFiltroEmpresa(e.target.value)}
-          className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500"
-        >
-          <option value="">Todas as empresas</option>
-          {empresas.map((e) => (
-            <option key={e.id_empresa} value={e.id_empresa}>{e.nome_empresa}</option>
-          ))}
-        </select>
+        <EmpresaSelect
+          allowAll
+          value={filtroEmpresa || null}
+          onChange={(id) => setFiltroEmpresa(id ?? "")}
+          placeholder="Todas as empresas"
+          className="min-w-64"
+        />
         <select
           value={filtroStatus}
           onChange={(e) => setFiltroStatus(e.target.value as StatusMaquina | "")}
