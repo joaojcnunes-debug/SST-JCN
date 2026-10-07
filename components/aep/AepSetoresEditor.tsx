@@ -56,11 +56,7 @@ import {
   useAepRelatorio,
   useSalvarAep,
   setorVazioAep,
-  riscoVazioAep,
   calcNecessitaAet,
-  CLASS_COLOR_AEP,
-  TIPOS_RISCO_AEP,
-  CLASSIFICACOES_AEP,
   useCatalogoSetoresEmpresa,
 } from "@/lib/hooks/useAep";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
@@ -105,15 +101,12 @@ import {
 import type {
   AepCargoSetor,
   AepSetor,
-  AepRisco,
   AepChecklistFisica,
   AepChecklistCognitiva,
   AepChecklistOrganizacional,
-  ClassificacaoRiscoAET,
   MatrizRisco,
   RespostaChecklist,
   RespostaChecklistAep,
-  TipoRiscoAET,
 } from "@/lib/supabase/types";
 
 // ─── Catálogo das respostas ───────────────────────────────────────────────────
@@ -1349,27 +1342,6 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
     );
   }
 
-  function addRisco(setorId: string) {
-    const novo = riscoVazioAep();
-    updateSetor(setorId, {
-      riscos: [...(setores.find((s) => s.id === setorId)?.riscos ?? []), novo],
-    });
-  }
-
-  function updateRisco(setorId: string, riscoId: string, patch: Partial<AepRisco>) {
-    const setor = setores.find((s) => s.id === setorId);
-    if (!setor) return;
-    updateSetor(setorId, {
-      riscos: setor.riscos.map((r) => (r.id === riscoId ? { ...r, ...patch } : r)),
-    });
-  }
-
-  function removeRisco(setorId: string, riscoId: string) {
-    const setor = setores.find((s) => s.id === setorId);
-    if (!setor) return;
-    updateSetor(setorId, { riscos: setor.riscos.filter((r) => r.id !== riscoId) });
-  }
-
   function buildTrabalhadores(cargos: AepCargoSetor[]): string {
     return cargos
       .filter((c) => c.cargo)
@@ -2005,80 +1977,6 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                       }}
                     />
                   </div>
-                </section>
-
-                {/* ── Matriz de Riscos ──────────────────────────────── */}
-                <section>
-                  <div className="mb-3 flex items-center justify-between">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                      Matriz de Riscos
-                    </h3>
-                    {canEdit && (
-                      <button
-                        type="button"
-                        onClick={() => addRisco(setor.id)}
-                        className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
-                      >
-                        <Plus className="size-3" /> Risco
-                      </button>
-                    )}
-                  </div>
-
-                  {setor.riscos.length === 0 ? (
-                    <p className="text-xs text-gray-400 italic">Nenhum risco identificado.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {setor.riscos.map((risco) => (
-                        <div key={risco.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 rounded-lg border border-gray-100 bg-gray-50 p-2 sm:grid-cols-[140px_1fr_160px_180px_auto]">
-                          <select
-                            disabled={!canEdit}
-                            value={risco.tipo}
-                            onChange={(e) => updateRisco(setor.id, risco.id, { tipo: e.target.value as TipoRiscoAET })}
-                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
-                          >
-                            {TIPOS_RISCO_AEP.map((t) => (
-                              <option key={t}>{t}</option>
-                            ))}
-                          </select>
-                          <input
-                            disabled={!canEdit}
-                            type="text"
-                            value={risco.risco}
-                            onChange={(e) => updateRisco(setor.id, risco.id, { risco: e.target.value })}
-                            placeholder="Agente / risco"
-                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
-                          />
-                          <select
-                            disabled={!canEdit}
-                            value={risco.classificacao_risco}
-                            onChange={(e) => updateRisco(setor.id, risco.id, { classificacao_risco: e.target.value as ClassificacaoRiscoAET })}
-                            className={`rounded border px-2 py-1 text-xs font-semibold focus:outline-none disabled:bg-gray-50 ${CLASS_COLOR_AEP[risco.classificacao_risco]}`}
-                          >
-                            {CLASSIFICACOES_AEP.map((c) => (
-                              <option key={c}>{c}</option>
-                            ))}
-                          </select>
-                          <input
-                            disabled={!canEdit}
-                            type="text"
-                            value={risco.medida_preventiva}
-                            onChange={(e) => updateRisco(setor.id, risco.id, { medida_preventiva: e.target.value })}
-                            placeholder="Medida preventiva"
-                            className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
-                          />
-                          {canEdit && (
-                            <button
-                              type="button"
-                              onClick={() => removeRisco(setor.id, risco.id)}
-                              className="rounded p-1 text-gray-400 hover:text-red-500"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </section>
 
                 {/* ── Indicador AET ─────────────────────────────────── */}
