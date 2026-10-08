@@ -1,5 +1,8 @@
 # Treinamento para o Google Vids — narração humanizada e sincronizada
 
+> **Substituído em 2026-10-08 por [`docs/treinamento-pipeline.md`](treinamento-pipeline.md)** (voz gerada aqui com
+> edge-tts, encaixada palavra a palavra, com legenda). Este fluxo fica só para quando pedirem a versão Vids.
+
 Use este MD para gerar a versão **Google Vids** de um treinamento do Painel SST: vídeos sem áudio,
 cortados em **cenas sincronizadas com a tela**, mais o **roteiro em primeira pessoa** para colar no
 campo de narração (Script) de cada cena. Vale no `sst-jcn` e no `painel-sst`.

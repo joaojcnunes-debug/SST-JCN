@@ -1,5 +1,8 @@
 # Replicar no Painel SST: criação de treinamento (vídeo-aula narrada + slides)
 
+> **Vídeo (gravar, voz, montagem): use [`docs/treinamento-pipeline.md`](treinamento-pipeline.md)** desde 2026-10-08.
+> Este documento continua valendo para as armadilhas de automação (`rec3.js`), a trilha e os slides (Passo 9).
+
 > **Como usar:** abra o Claude Code na pasta do **painel-sst** e diga:
 > *"Siga o arquivo `replicar-no-painel-treinamento-video-slides.md` para criar o treinamento da AEP"*
 > (ou de outro módulo: troque o roteiro, Passo 4).
