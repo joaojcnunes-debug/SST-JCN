@@ -32,10 +32,10 @@ antes da Fase 3 e use os scripts dele como **modelo**: a estrutura fica igual, m
 5. **Pasta no computador do usuário:** `Downloads/Treinamento-<Módulo>/` com `modulos/`, `prints/` e a trilha.
 6. **Registro do roteiro:** `docs/treinamentos/<modulo>.md`, com as etapas, as falas e os links do deck.
    Ele permite refazer o treinamento quando o sistema mudar.
-7. **Versão Google Vids:** vídeos sem narração e sem música, cortados em uma cena por fala, mais o
-   roteiro em texto por clipe, em `Downloads/Treinamento-<Módulo>/sem-audio/`. Siga
-   **`docs/treinamento-google-vids.md`**. Se o pedido for só "versão Google Vids" de um treinamento
-   que já existe, faça só este item.
+7. **Versão Google Vids:** cenas sem áudio sincronizadas com a tela (explicação + ação) e roteiro em
+   primeira pessoa, no estilo do João, em `Downloads/Treinamento-<Módulo>/vids/`. Siga
+   **`docs/treinamento-google-vids.md`** e os scripts de `scripts/vids/`. Se o pedido for só
+   "versão Google Vids" de um treinamento que já existe, faça só este item.
 
 ## Catálogo de módulos (onde procurar no código)
 
