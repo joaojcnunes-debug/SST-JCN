@@ -37,7 +37,7 @@ antes da Fase 3 e use os scripts dele como **modelo**: a estrutura fica igual, m
 
 | Pedido do usuário | Grupo de rotas | Processo principal |
 |---|---|---|
-| inspeção, segurança, PGR | `app/(app)` | criar inspeção → setores/cargos → riscos → EPIs, máquinas, extintores, treinamentos → concluir → relatório/PGR |
+| inspeção, segurança, PGR | `app/(app)` | já feito: `docs/treinamentos/inspecao.md` (falas de `narr-insp.json`) |
 | AEP | `app/(aep)` | já feito: `docs/treinamentos/aep.md` (ou as falas de `narr3.json` no doc técnico) |
 | AET | `app/(aet)` | análise ergonômica completa |
 | DRPS, psicossocial | `app/(psicossocial)` | diagnóstico de riscos psicossociais |
