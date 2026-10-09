@@ -179,7 +179,7 @@ Mantido do MD do Vids, porque funcionou:
 | O sistema numera a revisão automaticamente. | Repara: a revisão já vem numerada sozinha. |
 | Pronto, a inspeção foi criada. | E… prontinho! |
 
-**Pronúncia.** A Thalita é uma voz multilíngue e pode ler sigla "em inglês": em 2026-10-09, "CNPJ" saiu estranho. O esqueleto já vem com `"CNPJ": "cê-ene-pê-jota"`. Ela também erra palavra solta sem contexto: "Achou?" saiu "epcher". Pergunta ou interjeição de uma palavra só ganha complemento ("Achou a empresa?"). Escreva a sigla normal e ouça. Só se soar mal, ponha no `pronuncia` (`"NR-01": "ênê-érre
+**Pronúncia.** A Thalita é uma voz multilíngue e pode ler sigla "em inglês": em 2026-10-09, "CNPJ" saiu estranho. O esqueleto já vem com `"CNPJ": "cê-ene-pê-jota"`. E o edge-tts manda todo pedido marcado como inglês (`xml:lang='en-US'`, fixo na biblioteca); a voz multilíngue obedecia e lia o começo de algumas falas em inglês ("Achou?" saiu "epcher"). O `narrar.py` troca o idioma do pedido pelo da voz (`pt-BR`). A tag `<lang>` o serviço do Edge recusa. Se ainda escapar alguma palavra, dê contexto ("Achou a empresa?") ou use o `pronuncia`. Escreva a sigla normal e ouça. Só se soar mal, ponha no `pronuncia` (`"NR-01": "ênê-érre
 zero um"`, `"EPI": "é-pê-i"`, `"AIHA": "aiá"`). Números por extenso na fala quando forem lidos errado.
 Registre o dicionário em `docs/treinamentos/<modulo>.md`.
 

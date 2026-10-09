@@ -43,8 +43,25 @@ def falado(texto, pron):
     return out
 
 
+def idioma_certo(voz):
+    """O edge-tts manda todo pedido como xml:lang='en-US'. Voz multilíngue (Thalita) obedece e lê o começo
+    da fala em inglês ("Achou a empresa?" saiu em outro idioma). Troca pelo idioma da voz ('pt-BR-…').
+    (A tag <lang> o serviço do Edge recusa: "No audio was received".)"""
+    import edge_tts.communicate as C
+    lang = '-'.join(voz.split('-')[:2])
+    if getattr(C.mkssml, '_lang', None) == lang:
+        return
+    def mkssml(tc, t):
+        if isinstance(t, bytes): t = t.decode('utf-8')
+        return (f"<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='{lang}'>"
+                f"<voice name='{tc.voice}'><prosody pitch='{tc.pitch}' rate='{tc.rate}' volume='{tc.volume}'>{t}</prosody></voice></speak>")
+    mkssml._lang = lang
+    C.mkssml = mkssml
+
+
 async def tts(texto, voz, ritmo, mp3):
     import edge_tts
+    idioma_certo(voz)
     palavras = []
     for tentativa in range(4):
         try:
@@ -63,7 +80,7 @@ async def tts(texto, voz, ritmo, mp3):
 
 def voz_de(texto_falado, voz, ritmo, pasta):
     os.makedirs(pasta, exist_ok=True)
-    h = hashlib.sha1(f'{voz}|{ritmo}|{texto_falado}'.encode()).hexdigest()[:12]
+    h = hashlib.sha1(f'{voz}|{ritmo}|lang2|{texto_falado}'.encode()).hexdigest()[:12]  # lang2 = SSML no idioma da voz
     mp3, js = os.path.join(pasta, h + '.mp3'), os.path.join(pasta, h + '.json')
     if not (os.path.exists(mp3) and os.path.exists(js)):
         pal = asyncio.run(tts(texto_falado, voz, ritmo, mp3))
