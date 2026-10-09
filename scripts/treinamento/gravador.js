@@ -12,7 +12,9 @@
 // playwright-core vem de C:/Users/Usuario/ferramentas/pw (NODE_PATH aponta para lá).
 const path = require('path');
 const fs = require('fs');
-const { chromium } = require('playwright-core');
+const { chromium } = (() => {
+  try { return require('playwright-core'); } catch { return require('C:/Users/Usuario/ferramentas/pw/node_modules/playwright-core'); }
+})();
 
 const CURSOR_E_LEGENDA = () => {
   const mk = () => {
@@ -30,6 +32,13 @@ const CURSOR_E_LEGENDA = () => {
     const saved = sessionStorage.getItem('__capText');
     if (saved) { c.textContent = saved; c.style.display = 'block'; }
     window.__cap = (t) => { sessionStorage.setItem('__capText', t || ''); c.textContent = t || ''; c.style.display = t ? 'block' : 'none'; };
+    // Capa de privacidade: cobre a página inteira enquanto uma lista pode mostrar clientes reais.
+    const cob = document.createElement('div');
+    cob.id = '__cob';
+    cob.style.cssText = 'position:fixed;inset:0;background:#12372A;color:#F5F7F2;font:700 40px Arial,sans-serif;display:none;align-items:center;justify-content:center;z-index:2147483645;pointer-events:none';
+    document.body.appendChild(cob);
+    if (sessionStorage.getItem('__cob')) { cob.textContent = sessionStorage.getItem('__cob'); cob.style.display = 'flex'; }
+    window.__cobre = (t) => { if (t) { sessionStorage.setItem('__cob', t); cob.textContent = t; cob.style.display = 'flex'; } else { sessionStorage.removeItem('__cob'); cob.style.display = 'none'; } };
     window.__flash = () => {
       const f = document.createElement('div');
       f.style.cssText = 'position:fixed;inset:0;background:#ff00ff;z-index:2147483647;pointer-events:none';
@@ -67,7 +76,12 @@ async function iniciar(o) {
   const g = {
     p, ctx, w,
     // Quadro magenta de 0,4 s: o planejar.py acha no vídeo e acerta o relógio (sem OFF empírico).
-    async sync() { await p.evaluate(() => window.__flash && window.__flash()); sync = agora(); await w(900); },
+    async sync() {
+      // Treinamento é SEMPRE gravado no Painel SST (file:// só para testar o próprio gravador).
+      const u = new URL(p.url());
+      if (u.protocol !== 'file:' && u.hostname !== 'painel-sst.chabra.com.br') throw new Error('gravação fora do Painel SST: ' + u.hostname);
+      await p.evaluate(() => window.__flash && window.__flash()); sync = agora(); await w(900);
+    },
     // Começo de um passo (troca de assunto). A tela fica parada `ms` (ou o tempo estimado da fala).
     async passo(rotulo, opt = {}) {
       await legenda(rotulo);
@@ -107,6 +121,20 @@ async function iniciar(o) {
         await w(900);
       }, 'rolar', 300);
     },
+    // Privacidade (Painel = produção): cubra ANTES de abrir qualquer lista que mostre empresas/pessoas,
+    // filtre até sobrar só o registro de teste, confira e só então descubra. Aborta se a capa não estiver no topo.
+    async cobrir(texto = 'Buscando a empresa de teste…') {
+      await p.evaluate((t) => window.__cobre(t), texto);
+      // elementFromPoint ignora pointer-events:none: liga só durante a conferência
+      const ok = await p.evaluate(() => {
+        const c = document.getElementById('__cob'); if (!c) return false;
+        c.style.pointerEvents = 'auto';
+        const r = [[800, 450], [200, 200], [1400, 700], [40, 40], [1560, 860]].every(([x, y]) => document.elementFromPoint(x, y) === c);
+        c.style.pointerEvents = 'none'; return r;
+      });
+      if (!ok) throw new Error('capa de privacidade não cobriu a tela: gravação abortada');
+    },
+    async descobrir(depois = 500) { await p.evaluate(() => window.__cobre('')); await w(depois); },
     // Print sem legenda e sem cursor.
     async print(nome) {
       await p.evaluate(() => { for (const id of ['__cap', '__cur']) { const e = document.getElementById(id); if (e) { e.dataset.v = e.style.visibility; e.style.visibility = 'hidden'; } } });

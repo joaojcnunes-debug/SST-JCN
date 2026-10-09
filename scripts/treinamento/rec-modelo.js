@@ -8,37 +8,35 @@ const { iniciar } = require('C:/Users/Usuario/sst-jcn/scripts/treinamento/gravad
 
 const BASE = process.env.BASE_URL || 'https://painel-sst.chabra.com.br';
 const FINAL = process.env.MODE === 'final';
-const TAG = process.env.TAG || 'modulo-m1';
+const TAG = process.env.TAG || 'aep-m1';
+const EMPRESA = /^TESTE JOÃO E PHELIPE/;   // empresa de teste do Painel (nunca cliente real)
 const CHROME = process.env.CHROME_PATH || 'C:/Users/Usuario/AppData/Local/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-win64/chrome-headless-shell.exe';
-
-// Privacidade (Painel = produção): esconde a lista de empresas até o filtro da empresa de teste valer.
-const PRIVACIDADE = () => {
-  const st = document.createElement('style');
-  st.textContent = 'html.__oculta ul.max-h-64{visibility:hidden!important}';
-  (document.head || document.documentElement).appendChild(st);
-};
 
 (async () => {
   const g = await iniciar({
     tag: TAG, pasta: path.join(__dirname, '..', 'gravacao'), chrome: CHROME,
     estado: path.join(__dirname, 'state.json'),   // sessão exportada do login (segredo: apagar ao fim)
-    extraInit: PRIVACIDADE,
   });
   const { p } = g;
   try {
-    await p.goto(BASE + '/inspecoes');
-    await p.getByRole('heading', { name: /Inspe/ }).first().waitFor();
+    await p.goto(BASE + '/aep/novo');                // nunca abrir listas gerais (/aep, Sinalização) na gravação
+    await p.getByRole('heading', { name: 'Nova Análise AEP' }).waitFor();
     await g.sync();                                   // sempre logo depois da primeira página carregar
 
     // Um passo = uma tela/assunto. A fala de rascunho só estima quanto tempo a tela fica parada;
     // a fala de verdade é escrita depois, no roteiro.
-    await g.passo('Lista de inspeções', { fala: 'Essa é a tela de Inspeções. Tudo que já foi feito aparece aqui.' });
-    await g.clicar(p.getByRole('button', { name: 'Nova Inspeção' }), 'Nova Inspeção');
+    await g.passo('Nova Análise', { fala: 'Essa é a tela de Nova Análise. Aqui começa toda AEP.' });
 
     await g.passo('Passo 1: empresa', { ms: 3000 });
-    await g.clicar(p.getByRole('button', { name: /Selecione uma empresa/ }), 'abrir lista de empresas');
-    await g.digitar(p.getByPlaceholder(/Buscar/), 'TESTE', 'buscar empresa');
-    await g.clicar(p.getByRole('option', { name: /TESTE/ }).first(), 'escolher empresa');
+    // Privacidade: a lista de empresas mostra clientes reais. Cobre, filtra, confere, descobre.
+    await g.cobrir();
+    await g.clicar(p.getByRole('button', { name: /Selecione a empresa/ }), 'abrir lista de empresas');
+    await g.digitar(p.getByPlaceholder(/Buscar/), 'TESTE JOÃO', 'buscar empresa');
+    const itens = p.getByRole('option');                    // ajuste ao seletor real da lista
+    await itens.filter({ hasText: EMPRESA }).first().waitFor({ state: 'attached' });
+    if (await itens.filter({ hasNotText: EMPRESA }).count()) throw new Error('a lista ainda mostra outra empresa');
+    await g.descobrir();
+    await g.clicar(itens.filter({ hasText: EMPRESA }).first(), 'escolher empresa');
     await g.print('01-empresa');
     if (FINAL) await g.clicar(p.getByRole('button', { name: 'Próximo' }), 'Próximo');
   } finally {

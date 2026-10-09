@@ -189,7 +189,7 @@ def mapa(pecas):
 
 def main():
     rp = sys.argv[1]; base = os.path.dirname(os.path.abspath(rp)); R = ler(rp)
-    pron, voz, ritmo = R.get('pronuncia', {}), R.get('voz', 'pt-BR-AntonioNeural'), R.get('ritmo', '+0%')
+    pron, voz, ritmo = R.get('pronuncia', {}), R.get('voz', 'pt-BR-ThalitaMultilingualNeural'), R.get('ritmo', '+0%')
     pasta_voz = os.path.join(base, 'voz')
     video = caminho(base, R['video']); total = dur(video)
     ev = {e['id']: e for e in R['eventos']}

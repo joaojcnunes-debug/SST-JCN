@@ -13,10 +13,13 @@ com os scripts em `scripts/treinamento/` e o agente **`narrador-tts`** para a vo
 antes da Fase 3. O `docs/replicar-no-painel-treinamento-video-slides.md` continua valendo para as
 armadilhas de automação do sistema e para os slides (Passo 9).
 
+> **Todo treinamento é gravado no Painel SST** (`https://painel-sst.chabra.com.br`), nunca no SST-JCN,
+> mesmo que o módulo exista aqui. O código deste repositório serve só para entender o processo (Fase 1).
+
 ## O que entregar (sempre)
 
 1. **Vídeo-aulas por etapa do processo** (5 a 9 módulos), em MP4 1600×900, com:
-   - narração em 1ª pessoa no estilo do João (voz `pt-BR-AntonioNeural`, ritmo `+0%`), com cada fala
+   - narração em 1ª pessoa no estilo do João (voz `pt-BR-ThalitaMultilingualNeural`, ritmo `+0%`), com cada fala
      encaixada no que acontece na tela (o verbo cai no clique);
    - legenda da narração (queimada e em `.srt`) e cursor visível;
    - vinheta de abertura com título;

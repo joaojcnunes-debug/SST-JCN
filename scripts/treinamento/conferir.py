@@ -60,7 +60,7 @@ def main():
         folha.paste(im, ((i % 4) * W, (i // 4) * H))
     os.remove(png)
     out = os.path.join(base, f"conferir-{R['tag']}.png"); folha.save(out)
-    print(f"\n{ruins} fala(s) para conferir · folha: {out}")
+    print(f"\n{ruins} fala(s) fora da tolerância (0 = tudo certo) · folha: {out}")
 
 
 if __name__ == '__main__':

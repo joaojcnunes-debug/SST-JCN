@@ -56,6 +56,8 @@ Se o venv não existir, rode `bash scripts/treinamento/instalar.sh` e siga.
 - Não invente fato do sistema. Se precisar cortar uma informação importante, avise no retorno.
 - Siglas: escreva normal na `fala` (CNPJ, PGR). Se soar mal, ponha no `pronuncia` do roteiro
   (`"CNPJ": "cê-ene-pê-jota"`). A legenda mostra o texto escrito.
+- Se a gravação não for do Painel SST, ou tiver caixa de legenda desenhada na tela, pare e avise:
+  precisa regravar com o `gravador.js`.
 - Não mexa em `eventos`, `movimento`, `video`, `voz` nem `ritmo` (ritmo fica `+0%`: acelerar deixou a voz travada).
 
 ## O que devolver

@@ -1,6 +1,6 @@
 # Treinamento em vídeo: gravar → roteiro → voz → vídeo final
 
-Padrão para criar os próximos treinamentos do Painel SST (e do `sst-jcn`). O resultado é um vídeo por
+Padrão para criar os próximos treinamentos do **Painel SST**. O resultado é um vídeo por
 módulo, mais o vídeo completo, com a tela do sistema, a narração em primeira pessoa (o João
 apresentando), a **voz encaixada no que acontece na tela** e a legenda.
 
@@ -62,6 +62,10 @@ scratchpad, não. Por isso as ferramentas ficam lá, e não no scratchpad.
 
 ## Etapa 1: gravar a tela (mantida, agora com eventos)
 
+> **Sempre no Painel SST** (`https://painel-sst.chabra.com.br`), nunca no SST-JCN, mesmo que o módulo
+> exista nos dois e mesmo que seja preciso regravar. É produção: só a empresa de teste
+> **TESTE JOÃO E PHELIPE** e as proteções de privacidade abaixo.
+
 A gravação continua como antes: Playwright headless em 1600×900, cursor vermelho injetado, empresa de
 teste, login feito pelo usuário e `state.json` só na pasta temporária. O que mudou é que o
 `rec-<tag>.js` usa o **`gravador.js`**, que registra o tempo de cada passo e de cada ação.
@@ -78,18 +82,25 @@ MSYS_NO_PATHCONV=1 NODE_PATH=C:/Users/Usuario/ferramentas/pw/node_modules MODE=d
 | `g.clicar(loc, rotulo)` | leva o cursor até o alvo, espera 0,45 s e clica; o instante registrado é o **clique** |
 | `g.digitar(loc, texto, rotulo)` · `g.escolher(loc, opção)` · `g.foco(loc)` | digitação, select e rolagem, com o mesmo registro |
 | `g.acao(rotulo, fn)` | qualquer outra ação |
+| `g.cobrir(texto)` · `g.descobrir()` | **privacidade:** capa verde sobre a página inteira (o gravador confere que está no topo, senão aborta). Cubra **antes** de abrir qualquer lista com empresas ou pessoas, filtre até sobrar só o registro de teste, confira por código e só então descubra |
 | `g.print(nome)` | print sem cursor e sem legenda (vai para `prints/`) |
 | `g.fim()` | fecha e grava `<tag>.webm` e `eventos-<tag>.json` |
 
 Regras de gravação:
 1. **Um `passo` por tela ou assunto, e uma chamada por ação.** Cada ação vira um ponto onde a fala pode se prender.
-2. **Sem legenda na tela** (`legendaNaTela: false`, o padrão). A legenda agora vem da narração. Se
-   ligar, a caixa fica no topo.
+2. **Nunca desenhe legenda na tela** (`legendaNaTela: false`, o padrão). A única legenda do vídeo é a
+   da narração, gerada na montagem. Gravação com caixa de legenda (os `rec-*.js` antigos com `cap()`)
+   sai com duas legendas sobrepostas: regrave.
 3. **Tela parada é barata.** O tempo exato não importa: na Etapa 3, a tela parada é esticada ou
    encurtada para caber a fala. Mesmo assim, deixe ~2 s parado depois de cada ação importante.
-4. Sempre `MODE=debug` antes do `final`. Privacidade do Painel (produção): `extraInit` esconde as listas
-   de clientes. Ver a memória "Painel SST: acesso e gravação".
-5. Uma gravação por módulo (`TAG=insp-m1`, `insp-m2`…). Fica mais fácil regravar um módulo só.
+4. Sempre `MODE=debug` antes do `final`.
+5. **Privacidade (Painel = produção):** toda lista que possa mostrar cliente real (seletor de empresa,
+   listas gerais) fica sob `g.cobrir()` até o filtro deixar só a empresa de teste. **Não** confie em CSS
+   para esconder a lista: em 2026-10-09 o `visibility:hidden` por classe no `<html>` não pegou e a
+   gravação mostrou clientes (foi apagada na hora). Depois de gravar, gere a folha do trecho da lista
+   (`python scripts/vids/detectar.py folha <tag>.mp4 --de A --ate B --passo 0.25`) e olhe quadro a quadro.
+   Nunca abra /aep (lista) nem a Sinalização.
+6. Uma gravação por módulo (`TAG=insp-m1`, `insp-m2`…). Fica mais fácil regravar um módulo só.
 
 ## Etapa 2: roteiro preso aos eventos
 
@@ -111,7 +122,7 @@ O script:
 {
  "tag": "insp-m1", "modulo": "1", "titulo": "Criar a inspeção",
  "subtitulo": "Empresa, tipo e dados da visita", "treinamento": "Treinamento Inspeção · Painel SST",
- "video": "insp-m1.mp4", "voz": "pt-BR-AntonioNeural", "ritmo": "+0%",
+ "video": "insp-m1.mp4", "voz": "pt-BR-ThalitaMultilingualNeural", "ritmo": "+0%",
  "pronuncia": {"CNPJ": "cê-ene-pê-jota"},
  "vinheta":    {"fala": "E aí, vamos criar uma inspeção juntos?"},
  "fechamento": {"fala": "No próximo, a gente cadastra os setores."},
@@ -133,7 +144,7 @@ O script:
 | `fala` | texto **escrito normal** (é o que vai para a legenda). A pronúncia vai em `pronuncia` |
 | `_tela`, `_tempo_natural`, `_palavras_ate` | dicas do esqueleto (ignoradas pelos scripts): o que a tela mostra, quanto tempo há até o próximo evento e quantas palavras cabem sem esticar |
 | trecho com `fala` vazia | ignorado (o evento passa sem narração) |
-| `voz` | `pt-BR-AntonioNeural` (masculina, para o João em 1ª pessoa). Outras: `pt-BR-FranciscaNeural`, `pt-BR-ThalitaMultilingualNeural` |
+| `voz` | `pt-BR-ThalitaMultilingualNeural` (padrão, escolhida pelo usuário em 2026-10-08). Outras: `pt-BR-FranciscaNeural`, `pt-BR-AntonioNeural`. Use sempre a mesma voz em todos os módulos |
 
 **Explicação + ação.** Para um passo com tela nova e clique no fim, faça dois trechos: um preso ao
 `passo`, que explica a tela, e outro preso ao clique, com âncora no verbo. Ação curta junto de outra
@@ -276,13 +287,10 @@ dicionário de pronúncia e os pontos de atenção da gravação. Os slides segu
 
 ## Gravações antigas (sem `eventos-*.json`)
 
-```bash
-$PY $T/planejar.py <video-sem-audio.mp4> --tag insp-m1 --de 3.6     # --de pula a vinheta antiga
-```
-Sem eventos, o script cria um evento `mNN` por trecho de movimento, e o instante da ação é o quadro
-que mais muda (a tela reagindo ao clique). Funciona, mas a âncora fica aproximada: os gravadores
-antigos clicavam sem levar o cursor antes. Se a gravação tem a caixa de legenda embaixo, monte com
-`--legenda-topo`.
+Não use para entregar. As gravações antigas têm a caixa de legenda desenhada na tela (fica uma
+legenda de fundo sob a nova) e algumas foram feitas no SST-JCN. Regrave no Painel SST com o
+`gravador.js`. O `planejar.py <video.mp4> --tag X --de 3.6` ainda aceita um vídeo sem eventos (cria um
+evento `mNN` por trecho de movimento), mas só serve para teste.
 
 ## Google Vids (opcional)
 
@@ -292,7 +300,8 @@ com `scripts/vids/`. O caminho padrão agora é este.
 ## Checklist
 
 - [ ] `instalar.sh` rodado; `ferramentas/treinamento-venv` existe.
-- [ ] Gravação com `gravador.js`, `g.sync()` logo no começo, `MODE=debug` antes do `final`, só a empresa de teste.
+- [ ] Gravação **no Painel SST** com `gravador.js`, `g.sync()` logo no começo, `MODE=debug` antes do `final`, só a empresa de teste.
+- [ ] Listas de empresas sob `g.cobrir()`; folha do trecho olhada quadro a quadro (nenhum cliente real).
 - [ ] `planejar.py` achou o quadro de sincronia ("sincronia: quadro magenta em …").
 - [ ] Folhas olhadas; cada fala presa ao evento certo; âncora no verbo das ações.
 - [ ] `narrar.py` com `STATUS: OK` em todos os módulos.
