@@ -124,7 +124,7 @@ O script:
 {
  "tag": "insp-m1", "modulo": "1", "titulo": "Criar a inspeção",
  "subtitulo": "Empresa, tipo e dados da visita", "treinamento": "Treinamento Inspeção · Painel SST",
- "video": "insp-m1.mp4", "voz": "pt-BR-ThalitaMultilingualNeural", "ritmo": "+0%",
+ "video": "insp-m1.mp4", "voz": "pt-BR-FranciscaNeural", "ritmo": "+0%",
  "pronuncia": {"CNPJ": "cê-ene-pê-jota"},
  "vinheta":    {"fala": "E aí, vamos criar uma inspeção juntos?"},
  "fechamento": {"fala": "No próximo, a gente cadastra os setores."},
@@ -146,7 +146,7 @@ O script:
 | `fala` | texto **escrito normal** (é o que vai para a legenda). A pronúncia vai em `pronuncia` |
 | `_tela`, `_tempo_natural`, `_palavras_ate` | dicas do esqueleto (ignoradas pelos scripts): o que a tela mostra, quanto tempo há até o próximo evento e quantas palavras cabem sem esticar |
 | trecho com `fala` vazia | ignorado (o evento passa sem narração) |
-| `voz` | `pt-BR-ThalitaMultilingualNeural` (padrão, escolhida pelo usuário em 2026-10-08). Outras: `pt-BR-FranciscaNeural`, `pt-BR-AntonioNeural`. Use sempre a mesma voz em todos os módulos |
+| `voz` | `pt-BR-FranciscaNeural` (padrão desde 2026-10-09). **Não use voz multilíngue** (`pt-BR-ThalitaMultilingualNeural`): foi testada e lia trechos em outro idioma. Outra opção: `pt-BR-AntonioNeural`. Use sempre a mesma voz em todos os módulos |
 
 **Explicação + ação.** Para um passo com tela nova e clique no fim, faça dois trechos: um preso ao
 `passo`, que explica a tela, e outro preso ao clique, com âncora no verbo. Ação curta junto de outra
@@ -179,7 +179,7 @@ Mantido do MD do Vids, porque funcionou:
 | O sistema numera a revisão automaticamente. | Repara: a revisão já vem numerada sozinha. |
 | Pronto, a inspeção foi criada. | E… prontinho! |
 
-**Pronúncia.** A Thalita é uma voz multilíngue e pode ler sigla "em inglês": em 2026-10-09, "CNPJ" saiu estranho. O esqueleto já vem com `"CNPJ": "cê-ene-pê-jota"`. E o edge-tts manda todo pedido marcado como inglês (`xml:lang='en-US'`, fixo na biblioteca); a voz multilíngue obedecia e lia o começo de algumas falas em inglês ("Achou?" saiu "epcher"). O `narrar.py` troca o idioma do pedido pelo da voz (`pt-BR`). A tag `<lang>` o serviço do Edge recusa. Se ainda escapar alguma palavra, dê contexto ("Achou a empresa?") ou use o `pronuncia`. Escreva a sigla normal e ouça. Só se soar mal, ponha no `pronuncia` (`"NR-01": "ênê-érre
+**Pronúncia.** O esqueleto já vem com `"CNPJ": "cê-ene-pê-jota"`. O `narrar.py` marca o pedido no idioma da voz (o edge-tts manda `en-US` fixo; voz multilíngue obedecia e lia trechos em inglês). Escreva a sigla normal e ouça. Só se soar mal, ponha no `pronuncia` (`"NR-01": "ênê-érre
 zero um"`, `"EPI": "é-pê-i"`, `"AIHA": "aiá"`). Números por extenso na fala quando forem lidos errado.
 Registre o dicionário em `docs/treinamentos/<modulo>.md`.
 

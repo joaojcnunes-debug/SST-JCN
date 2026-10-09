@@ -132,7 +132,7 @@ def main():
                         '_tempo_natural': round(livre, 1), '_palavras_ate': max(2, int((livre - 0.6) * 2.6))})
     rot = {
         'tag': tag, 'modulo': a.modulo, 'titulo': a.titulo, 'subtitulo': '', 'treinamento': a.treinamento,
-        'video': os.path.basename(video), 'voz': 'pt-BR-ThalitaMultilingualNeural', 'ritmo': '+0%',
+        'video': os.path.basename(video), 'voz': 'pt-BR-FranciscaNeural', 'ritmo': '+0%',
         'pronuncia': {'CNPJ': 'cê-ene-pê-jota'}, 'vinheta': {'fala': ''}, 'fechamento': {'fala': ''},
         'eventos': evs, 'movimento': mov, 'trechos': trechos,
     }
