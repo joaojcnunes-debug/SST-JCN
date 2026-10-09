@@ -54,6 +54,8 @@ Se o venv não existir, rode `bash scripts/treinamento/instalar.sh` e siga.
   adjetivos, explicações secundárias e repetições.
 - Mantenha a palavra-âncora na fala. Se trocar o verbo, troque a `ancora` junto.
 - Não invente fato do sistema. Se precisar cortar uma informação importante, avise no retorno.
+- A voz Thalita é multilíngue: palavra solta sem contexto pode sair "em inglês" ("Achou?" virou "epcher").
+  Pergunta ou interjeição de uma palavra só ganha complemento ("Achou a empresa?").
 - Siglas: escreva normal na `fala` (CNPJ, PGR). Se soar mal, ponha no `pronuncia` do roteiro
   (`"CNPJ": "cê-ene-pê-jota"`). A legenda mostra o texto escrito.
 - Se a gravação não for do Painel SST, ou tiver caixa de legenda desenhada na tela, pare e avise:
