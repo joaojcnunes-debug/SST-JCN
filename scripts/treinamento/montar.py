@@ -106,7 +106,7 @@ def montar_modulo(rp, saida, a):
         queimar = f",subtitles=filename='.{nome}.ass'"  # caminho relativo (cwd = saída): sem o "C:" que quebra o filtro
     # setpts=N/…: renumera os quadros; sem isso o concat sobrepõe os carimbos dos quadros congelados (tpad)
     # e o vídeo fica mais curto que o áudio (o clique adianta em relação à fala)
-    fc.append(''.join(partes) + f'concat=n={len(partes)}:v=1:a=0,setpts=N/({FPS}*TB){queimar}[v]')
+    fc.append(''.join(partes) + f'concat=n={len(partes)}:v=1:a=0,setpts=N/({FPS}*TB){queimar},fade=t=out:st={total - 0.6:.3f}:d=0.6[v]')
 
     # áudio: cada voz no seu lugar
     ins, sons = ['-i', video], []
@@ -117,7 +117,7 @@ def montar_modulo(rp, saida, a):
         fc.append(f'[{k}:a]aresample=48000,aformat=channel_layouts=stereo,adelay={ms}|{ms}[a{k}]')
         sons.append(f'[a{k}]')
     fc.append(''.join(sons) + f'amix=inputs={len(sons)}:normalize=0:dropout_transition=0,apad,atrim=0:{total:.3f},'
-              f'loudnorm=I={NARRACAO}:TP=-1.5:LRA=11,aresample=48000[a]')
+              f'loudnorm=I={NARRACAO}:TP=-1.5:LRA=11,aresample=48000,afade=t=out:st={total - 0.6:.3f}:d=0.6[a]')
     tmp = os.path.join(saida, f'.{nome}-voz.mp4')
     run(ins + ['-filter_complex', ';'.join(fc), '-map', '[v]', '-map', '[a]', '-t', f'{total:.3f}',
                '-r', str(FPS), '-c:v', 'libx264', '-crf', '20', '-preset', 'medium', '-pix_fmt', 'yuv420p',

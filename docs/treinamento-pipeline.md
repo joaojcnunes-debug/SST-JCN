@@ -66,7 +66,7 @@ scratchpad, não. Por isso as ferramentas ficam lá, e não no scratchpad.
 > exista nos dois e mesmo que seja preciso regravar. É produção: só a empresa de teste
 > **TESTE JOÃO E PHELIPE** e as proteções de privacidade abaixo.
 
-A gravação continua como antes: Playwright headless em 1600×900, cursor vermelho injetado, empresa de
+A gravação continua como antes: Playwright headless (página em 1280×720, ampliada para 1600×900 no `planejar.py`, o que deixa tudo ~25% maior e legível no celular), cursor vermelho injetado, empresa de
 teste, login feito pelo usuário e `state.json` só na pasta temporária. O que mudou é que o
 `rec-<tag>.js` usa o **`gravador.js`**, que registra o tempo de cada passo e de cada ação.
 
@@ -79,10 +79,12 @@ MSYS_NO_PATHCONV=1 NODE_PATH=C:/Users/Usuario/ferramentas/pw/node_modules MODE=d
 |---|---|
 | `g.sync()` | pisca um quadro magenta logo depois da primeira página; o `planejar.py` acha esse quadro e acerta o relógio (acabou o `OFF = 0,55 s` chutado) |
 | `g.passo(rotulo, {fala \| ms})` | começo de um assunto/tela; segura a tela parada pelo tempo estimado da fala de rascunho (mínimo 2,5 s) |
-| `g.clicar(loc, rotulo)` | leva o cursor até o alvo, espera 0,45 s e clica; o instante registrado é o **clique** |
+| `g.clicar(loc, rotulo)` | leva o cursor até o alvo, espera 0,45 s e clica; o instante registrado é o **clique**. Antes, rola o alvo para **acima da faixa da legenda** (`g.seguro`; se for o último botão da página, põe um espaçador no fim). Vale também para `digitar`, `escolher` e `apontar` |
 | `g.digitar(loc, texto, rotulo)` · `g.escolher(loc, opção)` · `g.foco(loc)` | digitação, select e rolagem, com o mesmo registro |
 | `g.acao(rotulo, fn)` | qualquer outra ação |
-| `g.cobrir(texto)` · `g.descobrir()` | **privacidade:** capa verde sobre a página inteira (o gravador confere que está no topo, senão aborta). Cubra **antes** de abrir qualquer lista com empresas ou pessoas, filtre até sobrar só o registro de teste, confira por código e só então descubra |
+| `g.mascarar(sel)` · `g.conferirMascara(sel)` · `g.desmascarar()` | **privacidade (padrão):** esconde só a lista `sel` (ex.: `ul.max-h-64`) e desenha "Filtrando a empresa de teste…" no lugar; o campo de busca e a digitação continuam visíveis. Chame `mascarar` **antes** de abrir a lista e `conferirMascara` logo depois (confere a lista e cada item; se algo estiver visível, a gravação para e o vídeo é apagado). Filtre até sobrar só o registro de teste, confira por código e então `desmascarar` |
+| `g.cobrir(texto)` · `g.descobrir()` | capa sobre a página inteira, só quando não houver seletor confiável para a lista (esconde a ação, evite) |
+| `g.apontar(loc, rotulo)` | leva o cursor até uma opção sem clicar; o instante registrado é a **chegada** do cursor. Use um por opção quando a fala cita várias (uma fala curta presa a cada `apontar`) |
 | `g.print(nome)` | print sem cursor e sem legenda (vai para `prints/`) |
 | `g.fim()` | fecha e grava `<tag>.webm` e `eventos-<tag>.json` |
 
@@ -95,7 +97,7 @@ Regras de gravação:
    encurtada para caber a fala. Mesmo assim, deixe ~2 s parado depois de cada ação importante.
 4. Sempre `MODE=debug` antes do `final`.
 5. **Privacidade (Painel = produção):** toda lista que possa mostrar cliente real (seletor de empresa,
-   listas gerais) fica sob `g.cobrir()` até o filtro deixar só a empresa de teste. **Não** confie em CSS
+   listas gerais) fica sob `g.mascarar()` até o filtro deixar só a empresa de teste. **Não** confie em CSS
    para esconder a lista: em 2026-10-09 o `visibility:hidden` por classe no `<html>` não pegou e a
    gravação mostrou clientes (foi apagada na hora). Depois de gravar, gere a folha do trecho da lista
    (`python scripts/vids/detectar.py folha <tag>.mp4 --de A --ate B --passo 0.25`) e olhe quadro a quadro.
@@ -239,6 +241,7 @@ $PY $T/montar.py <pasta>/roteiro-insp-m1.json <pasta>/roteiro-insp-m2.json … \
   nome do treinamento (identidade verde `#12372A` e âmbar `#F0B866`).
 - **Nome do arquivo:** `Modulo-<modulo>-<titulo>`. Dois roteiros com o mesmo módulo e título na mesma
   chamada são recusados.
+- **Final:** imagem e voz esmaecem nos últimos 0,6 s.
 - **Vídeo:** as peças do `sincronia` em quadros inteiros, renumeradas depois do concat
   (`setpts=N/(25*TB)`). Sem isso, os quadros congelados encurtavam o vídeo e o clique adiantava em
   relação à fala.
@@ -301,7 +304,7 @@ com `scripts/vids/`. O caminho padrão agora é este.
 
 - [ ] `instalar.sh` rodado; `ferramentas/treinamento-venv` existe.
 - [ ] Gravação **no Painel SST** com `gravador.js`, `g.sync()` logo no começo, `MODE=debug` antes do `final`, só a empresa de teste.
-- [ ] Listas de empresas sob `g.cobrir()`; folha do trecho olhada quadro a quadro (nenhum cliente real).
+- [ ] Listas de empresas sob `g.mascarar()` + `g.conferirMascara()`; folha do trecho olhada quadro a quadro (nenhum cliente real).
 - [ ] `planejar.py` achou o quadro de sincronia ("sincronia: quadro magenta em …").
 - [ ] Folhas olhadas; cada fala presa ao evento certo; âncora no verbo das ações.
 - [ ] `narrar.py` com `STATUS: OK` em todos os módulos.

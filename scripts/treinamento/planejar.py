@@ -84,6 +84,8 @@ def main():
     evs, sync_log = [], None
     if a.entrada.endswith('.json'):
         info = ler(a.entrada); tag = a.tag or info['tag']
+        if info.get('privacidadeFalhou'):
+            raise SystemExit('gravação com falha de privacidade: não use, grave de novo')
         bruto = os.path.join(pasta, info['video']); evs = info['eventos']; sync_log = info.get('sync')
     else:
         tag = a.tag or os.path.splitext(os.path.basename(a.entrada))[0]; bruto = a.entrada
@@ -104,7 +106,7 @@ def main():
     fim = ['-to', f'{a.ate:.2f}'] if a.ate else []
     if os.path.abspath(bruto) != os.path.abspath(video) or corte or fim:
         tmp = video + '.tmp.mp4'
-        run(['-ss', f'{corte:.2f}', *fim, '-i', bruto, '-an', '-vf', f'fps={FPS},format=yuv420p',
+        run(['-ss', f'{corte:.2f}', *fim, '-i', bruto, '-an', '-vf', f'fps={FPS},scale=1600:900:flags=lanczos,setsar=1,format=yuv420p',
              '-c:v', 'libx264', '-crf', '16', '-preset', 'medium', tmp])
         os.replace(tmp, video)
     total = dur(video)
