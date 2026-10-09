@@ -133,7 +133,7 @@ def main():
     rot = {
         'tag': tag, 'modulo': a.modulo, 'titulo': a.titulo, 'subtitulo': '', 'treinamento': a.treinamento,
         'video': os.path.basename(video), 'voz': 'pt-BR-ThalitaMultilingualNeural', 'ritmo': '+0%',
-        'pronuncia': {}, 'vinheta': {'fala': ''}, 'fechamento': {'fala': ''},
+        'pronuncia': {'CNPJ': 'cê-ene-pê-jota'}, 'vinheta': {'fala': ''}, 'fechamento': {'fala': ''},
         'eventos': evs, 'movimento': mov, 'trechos': trechos,
     }
     destino = os.path.join(pasta, f'roteiro-{tag}.json')
