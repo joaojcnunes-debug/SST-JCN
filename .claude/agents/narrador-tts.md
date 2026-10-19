@@ -54,7 +54,9 @@ Se o venv não existir, rode `bash scripts/treinamento/instalar.sh` e siga.
   adjetivos, explicações secundárias e repetições.
 - Mantenha a palavra-âncora na fala. Se trocar o verbo, troque a `ancora` junto.
 - Não invente fato do sistema. Se precisar cortar uma informação importante, avise no retorno.
-- Voz padrão `pt-BR-FranciscaNeural`. Não troque para voz multilíngue (Thalita leu trechos em outro idioma).
+- Voz **sempre** `pt-BR-FranciscaNeural`, em todos os módulos (pedido do usuário). Nunca troque a voz;
+  o `narrar.py` recusa roteiro com outra.
+- Erro `403` do edge-tts: rode `bash scripts/treinamento/instalar.sh` (atualiza o edge-tts) e tente de novo.
 - Siglas: escreva normal na `fala` (CNPJ, PGR). Se soar mal, ponha no `pronuncia` do roteiro
   (`"CNPJ": "cê-ene-pê-jota"`). A legenda mostra o texto escrito.
 - Se a gravação não for do Painel SST, ou tiver caixa de legenda desenhada na tela, pare e avise:

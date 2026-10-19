@@ -58,6 +58,13 @@ T=C:/Users/Usuario/sst-jcn/scripts/treinamento
 Nada disso entra no `package.json` do projeto. A pasta `ferramentas` sobrevive entre sessões; o
 scratchpad, não. Por isso as ferramentas ficam lá, e não no scratchpad.
 
+**Erro 403 do edge-tts.** Se o `narrar.py` parar com `edge-tts falhou: 403, message='Invalid response
+status'` (inclusive num teste simples como `$PY -m edge_tts --voice pt-BR-FranciscaNeural --text teste
+--write-media t.mp3`), o serviço da Microsoft mudou e a versão instalada ficou velha. Rode de novo
+`bash scripts/treinamento/instalar.sh`: ele atualiza o clone do edge-tts e reinstala no venv (em
+2026-10-19 a 7.2.8 parou e a 7.3.1 resolveu). Depois rode o `narrar.py` outra vez; uma falha não deixa
+arquivo de voz no cache.
+
 ---
 
 ## Etapa 1: gravar a tela (mantida, agora com eventos)
@@ -104,6 +111,30 @@ Regras de gravação:
    Nunca abra /aep (lista) nem a Sinalização.
 6. Uma gravação por módulo (`TAG=insp-m1`, `insp-m2`…). Fica mais fácil regravar um módulo só.
 
+### Módulo de metodologia (tour com destaque em âmbar)
+
+Quando o treinamento precisa explicar **como o sistema avalia** (critérios, matriz, faixas, regra de
+indicação), faça um módulo próprio, antes do módulo em que a regra é aplicada. Ele é um **tour**: não
+preenche nem salva nada, só percorre a página de explicação do sistema (na AEP, o menu **Matriz AIHA**,
+`/aep/matriz-aiha`) e destaca cada bloco enquanto a fala explica.
+
+- Para cada bloco: `g.foco(bloco)` → destaque âmbar no bloco → `g.passo(rotulo, {fala})`. Um bloco por
+  fala: o que é a metodologia, fundamentação, cada tabela (probabilidade, severidade), julgamento do
+  técnico, a matriz e as faixas, a regra de indicação (AET), os limites.
+- Destaque = contorno âmbar `#F0B866` + fundo âmbar claro, um bloco por vez (retire o anterior antes):
+  ```js
+  const destaque = (p) => async (loc) => {
+    await p.evaluate(() => document.querySelectorAll('[data-destaque]').forEach((e) => { e.style.outline = ''; e.style.background = ''; e.removeAttribute('data-destaque'); }));
+    if (loc) await loc.evaluate((e) => { e.setAttribute('data-destaque', '1'); e.style.outline = '4px solid #F0B866'; e.style.outlineOffset = '2px'; e.style.background = 'rgba(240,184,102,.10)'; });
+  };
+  ```
+- Tabela logo abaixo de um título: `p.getByText('<título>').locator('xpath=following::table[1]')`.
+- Os números ditos na fala (pesos, faixas, exemplos de conta) saem da página e do código, nunca de memória.
+- No módulo seguinte (aplicação na prática), mostre a regra acontecendo: marque um item por vez,
+  destaque o resultado que muda na tela e diga a conta ("um vezes três, três: Moderado"). A fala do
+  resultado nunca vem antes de o resultado aparecer na tela; confira no `conferir.py` e em quadros ampliados.
+- Modelo: módulos 5 e 6 de `Treinamentos Painel SST/Treinamento-AEP/v2/_producao/rec-aep.js`.
+
 ## Etapa 2: roteiro preso aos eventos
 
 ```bash
@@ -146,7 +177,7 @@ O script:
 | `fala` | texto **escrito normal** (é o que vai para a legenda). A pronúncia vai em `pronuncia` |
 | `_tela`, `_tempo_natural`, `_palavras_ate` | dicas do esqueleto (ignoradas pelos scripts): o que a tela mostra, quanto tempo há até o próximo evento e quantas palavras cabem sem esticar |
 | trecho com `fala` vazia | ignorado (o evento passa sem narração) |
-| `voz` | `pt-BR-FranciscaNeural` (padrão desde 2026-10-09). **Não use voz multilíngue** (`pt-BR-ThalitaMultilingualNeural`): foi testada e lia trechos em outro idioma. Outra opção: `pt-BR-AntonioNeural`. Use sempre a mesma voz em todos os módulos |
+| `voz` | **Sempre `pt-BR-FranciscaNeural`**, em todas as etapas e em todos os módulos, vinheta e fechamento incluídos (decisão do usuário, 2026-10-19). Não troque de voz, nem para testar; a multilíngue (`pt-BR-ThalitaMultilingualNeural`) foi testada e lia trechos em outro idioma |
 
 **Explicação + ação.** Para um passo com tela nova e clique no fim, faça dois trechos: um preso ao
 `passo`, que explica a tela, e outro preso ao clique, com âncora no verbo. Ação curta junto de outra
@@ -307,8 +338,9 @@ com `scripts/vids/`. O caminho padrão agora é este.
 - [ ] Listas de empresas sob `g.mascarar()` + `g.conferirMascara()`; folha do trecho olhada quadro a quadro (nenhum cliente real).
 - [ ] `planejar.py` achou o quadro de sincronia ("sincronia: quadro magenta em …").
 - [ ] Folhas olhadas; cada fala presa ao evento certo; âncora no verbo das ações.
+- [ ] Voz `pt-BR-FranciscaNeural` em todos os roteiros (o `narrar.py` recusa outra).
 - [ ] `narrar.py` com `STATUS: OK` em todos os módulos.
-- [ ] `conferir.py` com 0 falas para conferir e a folha das âncoras olhada.
+- [ ] `conferir.py` com "0 fala(s) fora da tolerância" e a folha das âncoras olhada.
 - [ ] Um módulo assistido inteiro; volume da trilha só de fundo.
 - [ ] `state.json` apagado; registros de demonstração listados para o usuário decidir (nunca apagar sem um sim).
 - [ ] `docs/treinamentos/<modulo>.md` atualizado com as falas finais e a pronúncia.

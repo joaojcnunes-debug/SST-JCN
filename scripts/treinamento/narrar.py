@@ -17,6 +17,7 @@ import asyncio, hashlib, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from comum import dur, ler, gravar, br, caminho
 
+VOZ_PADRAO = 'pt-BR-FranciscaNeural'  # sempre esta (pedido do usuário)
 GAP = 0.35          # respiro mínimo entre duas falas
 GAP_INTERNO = 0.35  # entre trechos encadeados (sem `em`)
 LEAD = 0.3          # fala sem âncora começa 0,3 s depois do evento
@@ -208,6 +209,8 @@ def mapa(pecas):
 def main():
     rp = sys.argv[1]; base = os.path.dirname(os.path.abspath(rp)); R = ler(rp)
     pron, voz, ritmo = R.get('pronuncia', {}), R.get('voz', 'pt-BR-FranciscaNeural'), R.get('ritmo', '+0%')
+    if voz != VOZ_PADRAO:  # decisão do usuário (2026-10-19): sempre a Francisca, em todas as etapas
+        raise SystemExit(f"roteiro com voz {voz}: o padrão é sempre {VOZ_PADRAO}. Corrija o campo 'voz' do roteiro.")
     pasta_voz = os.path.join(base, 'voz')
     video = caminho(base, R['video']); total = dur(video)
     ev = {e['id']: e for e in R['eventos']}

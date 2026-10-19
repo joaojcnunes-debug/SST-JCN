@@ -19,7 +19,7 @@ armadilhas de automação do sistema e para os slides (Passo 9).
 ## O que entregar (sempre)
 
 1. **Vídeo-aulas por etapa do processo** (5 a 9 módulos), em MP4 1600×900, com:
-   - narração em 1ª pessoa no estilo do João (voz `pt-BR-FranciscaNeural`, ritmo `+0%`), com cada fala
+   - narração em 1ª pessoa no estilo do João (sempre a voz `pt-BR-FranciscaNeural`, ritmo `+0%`), com cada fala
      encaixada no que acontece na tela (o verbo cai no clique);
    - legenda da narração (queimada e em `.srt`) e cursor visível;
    - vinheta de abertura com título;
