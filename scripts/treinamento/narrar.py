@@ -74,7 +74,8 @@ async def tts(texto, voz, ritmo, mp3):
                         palavras.append({'p': ch['text'], 'a': round(ch['offset'] / 1e7, 3), 'd': round(ch['duration'] / 1e7, 3)})
             return palavras
         except Exception as e:  # serviço on-line: tenta de novo
-            if tentativa == 3: raise SystemExit(f'edge-tts falhou: {e}')
+            if os.path.exists(mp3): os.remove(mp3)  # não deixa MP3 vazio no cache
+            if tentativa == 3: raise SystemExit(f'edge-tts falhou: {e} (erro 403 persistente = edge-tts velho: rode instalar.sh)')
             await asyncio.sleep(2 + tentativa * 3)
 
 
