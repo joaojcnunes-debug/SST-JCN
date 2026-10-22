@@ -5,7 +5,10 @@ import { Network, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { grupoDaMesmaRaiz, ordenarMembros, papelPeloCnpj, ROTULO_PAPEL } from "@/lib/empresas/grupos";
 import { useCriarGrupo, useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
-import type { MembroGrupo, PapelGrupo } from "@/lib/supabase/types";
+import GrupoSelect from "@/components/empresas/GrupoSelect";
+import type { PapelGrupo } from "@/lib/supabase/types";
+
+const SEM_GRUPO = [{ value: "", label: "Não pertence a um grupo" }];
 
 export interface ValorGrupo {
   id_grupo: string | null;
@@ -23,13 +26,11 @@ export default function CampoGrupoEmpresa({
   onChange,
   cnpj,
   idEmpresa,
-  matrizAtual,
 }: {
   valor: ValorGrupo;
   onChange: (v: ValorGrupo) => void;
   cnpj: string;
   idEmpresa: string | null;
-  matrizAtual: MembroGrupo | null;
 }) {
   const { grupos, membros, membrosPorGrupo } = useGruposEmpresas();
   const criar = useCriarGrupo();
@@ -40,23 +41,28 @@ export default function CampoGrupoEmpresa({
   const sugestao = !valor.id_grupo ? grupoDaMesmaRaiz(cnpj, membros, idEmpresa) : null;
   const grupoSugerido = sugestao ? grupos.find((g) => g.id_grupo === sugestao.id_grupo) : null;
 
-  /** Ao escolher o grupo: matriz se ele ainda não tem uma, senão filial. */
+  /**
+   * Ao escolher o grupo, o papel vem do CNPJ (ordem 0001 = matriz). O grupo
+   * aceita várias matrizes (v285: condomínios da mesma administradora). Sem
+   * CNPJ: matriz se o grupo ainda não tem uma, senão filial.
+   */
   function escolher(id_grupo: string | null) {
     if (!id_grupo) return onChange({ id_grupo: null, papel: null });
+    if (papelCnpj) return onChange({ id_grupo, papel: papelCnpj });
     const temMatriz = (membrosPorGrupo.get(id_grupo) ?? []).some(
       (m) => m.papel_grupo === "MATRIZ" && m.id_empresa !== idEmpresa,
     );
     onChange({ id_grupo, papel: temMatriz ? "FILIAL" : "MATRIZ" });
   }
 
-  async function criarGrupo() {
-    const nome = nomeNovo.trim();
+  async function criarGrupo(nomeDigitado = nomeNovo) {
+    const nome = nomeDigitado.trim();
     if (!nome) return;
     const id = await criar.mutateAsync({ nome }).catch(() => null);
     if (!id) return;
     setCriando(false);
     setNomeNovo("");
-    onChange({ id_grupo: id, papel: "MATRIZ" });
+    onChange({ id_grupo: id, papel: papelCnpj ?? "MATRIZ" });
   }
 
   const outros = valor.id_grupo
@@ -87,18 +93,14 @@ export default function CampoGrupoEmpresa({
 
       {!criando ? (
         <div className="flex flex-col gap-2 sm:flex-row">
-          <select
+          <GrupoSelect
             value={valor.id_grupo ?? ""}
-            onChange={(e) => escolher(e.target.value || null)}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-          >
-            <option value="">Não pertence a um grupo</option>
-            {grupos.map((g) => (
-              <option key={g.id_grupo} value={g.id_grupo}>
-                {g.nome}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => escolher(v || null)}
+            inicio={SEM_GRUPO}
+            onCriar={(nome) => criarGrupo(nome)}
+            criando={criar.isPending}
+            className="w-full"
+          />
           <button
             type="button"
             onClick={() => setCriando(true)}
@@ -126,7 +128,7 @@ export default function CampoGrupoEmpresa({
           <div className="flex shrink-0 gap-2">
             <button
               type="button"
-              onClick={criarGrupo}
+              onClick={() => criarGrupo()}
               disabled={!nomeNovo.trim() || criar.isPending}
               className="rounded-md bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
             >
@@ -175,12 +177,6 @@ export default function CampoGrupoEmpresa({
             <p className="text-xs text-gray-500">
               Pelo CNPJ (ordem {papelCnpj === "MATRIZ" ? "0001" : "diferente de 0001"}), esta empresa parece ser{" "}
               {papelCnpj === "MATRIZ" ? "uma matriz" : "uma filial"}.
-            </p>
-          )}
-
-          {valor.papel === "MATRIZ" && matrizAtual && (
-            <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Hoje a matriz é <strong>{matrizAtual.nome_empresa}</strong>. Ao salvar, ela passa a ser filial.
             </p>
           )}
 

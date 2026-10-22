@@ -22,6 +22,8 @@ import StorageImg from "@/components/ui/StorageImg";
 import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import type { RelatorioConformidadeItem } from "@/lib/supabase/types";
 import { rotuloNR, ehSemNR } from "@/lib/conformidade/checklists";
+import TrocarResponsavelTecnico from "@/components/conformidade/TrocarResponsavelTecnico";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 
 export default function LaudoConformidadePage({
   params,
@@ -36,6 +38,7 @@ export default function LaudoConformidadePage({
   const { data: pdfCongelado } = usePdfCongelado("conformidade", id);
   const baseCongeladaUrl = pdfCongelado?.pdf_url ?? undefined;
   const [baixando, setBaixando] = useState(false);
+  const canEdit = useCanEdit();
 
   const { data: capitulosConf = [] } = useTextosPadrao("conformidade");
 
@@ -68,7 +71,10 @@ export default function LaudoConformidadePage({
     );
   }
 
-  const { relatorio, itens } = data;
+  const { relatorio } = data;
+  // Tópico oculto (v289) fica no relatório, mas não vai para o cliente:
+  // some da prévia e da contagem, igual ao PDF.
+  const itens = data.itens.filter((i) => !i.oculto);
 
   const valoresTextosPadrao: Record<string, string> = {
     ...montarValoresEmpresa(empresa),
@@ -308,6 +314,16 @@ export default function LaudoConformidadePage({
         />
       </div>
 
+      <div className="px-4 pt-3 print:hidden">
+        <TrocarResponsavelTecnico
+          idRelatorio={id}
+          responsavel={relatorio.responsavel}
+          podeEditar={canEdit}
+          pdfFechado={!!pdfAssinado || !!pdfCongelado}
+          className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+        />
+      </div>
+
       <div className="px-4 pt-3">
         <PainelCongelamentoPdf
           modulo="conformidade"
@@ -468,14 +484,15 @@ function ItemRowReadOnly({ item }: { item: RelatorioConformidadeItem }) {
 
       {/* Fotos */}
       {fotoUrls.length > 0 && (
-        <div className="mt-3 flex justify-center">
-          <div className={fotoUrls.length === 1 ? "flex justify-center" : "grid grid-cols-2 gap-3 print:gap-2"}>
+        <div className="mt-3">
+          {/* Mesmo desenho do PDF: altura fixa, foto inteira, linha centralizada. */}
+          <div className="flex flex-wrap justify-center gap-3 print:gap-2">
             {fotoUrls.map((url, idx) => (
               <StorageImg
                 key={`${url}-${idx}`}
                 stored={url}
                 alt={`Foto do item ${item.item_codigo}`}
-                className="h-36 w-44 object-cover rounded-md border border-gray-300 sm:h-40 sm:w-52 print:h-40 print:w-48"
+                className="block h-48 w-auto max-w-full object-contain rounded-md border border-gray-300 sm:h-52 print:h-52"
               />
             ))}
           </div>

@@ -14,6 +14,16 @@ export interface EmpresaBuscavel {
 }
 
 /**
+ * Nome fantasia para mostrar abaixo do Nome (razão social), ou null quando vazio
+ * ou igual ao Nome. Distingue filiais da mesma razão.
+ */
+export function fantasiaDistinto(e: Pick<EmpresaBuscavel, "nome_empresa" | "nome_fantasia">): string | null {
+  const f = e.nome_fantasia?.trim();
+  if (!f) return null;
+  return f.toUpperCase() === e.nome_empresa.trim().toUpperCase() ? null : f;
+}
+
+/**
  * Busca de empresa usada pela tela Empresas, pelo `EmpresaSelect` (24 telas) e
  * pelo vínculo em Usuários. Nome, razão social, nome fantasia e — quando a tela
  * passa `grupoDe` — o nome do GRUPO (v278) por texto; CNPJ/CPF/CEI/CAEPF/CNO só

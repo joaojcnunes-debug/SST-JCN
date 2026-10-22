@@ -22,6 +22,8 @@ import {
   Pencil,
   Check,
   Sparkles,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
@@ -54,7 +56,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { LevarParaCampo } from "@/components/ui/LevarParaCampo";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
-import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
+import TrocarResponsavelTecnico from "@/components/conformidade/TrocarResponsavelTecnico";
+import { usePdfAssinado, usePdfCongelado } from "@/lib/hooks/usePdfsGerados";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { buscar } from "@/lib/busca/texto";
 import type {
@@ -76,6 +79,8 @@ export default function DetalheConformidadePage({
   const canEdit = useCanEdit();
   const { data, isLoading, error } = useRelatorioConformidade(id);
   const { data: empresa } = useEmpresa(data?.relatorio.id_empresa ?? null);
+  const { pdfAssinado } = usePdfAssinado("relatorios_conformidade", id);
+  const { data: pdfCongelado } = usePdfCongelado("conformidade", id);
 
   const atualizarItem = useAtualizarItemConformidade();
   const atualizarRelatorio = useAtualizarRelatorioConformidade();
@@ -324,9 +329,11 @@ export default function DetalheConformidadePage({
           <DataItem label="Empresa" value={empresa?.nome_empresa ?? "—"} />
           <DataItem label="CNPJ" value={empresa?.cnpj ?? "—"} />
           <DataItem label="Setor / Local" value={relatorio.setor ?? "—"} />
-          <DataItem
-            label="Responsável técnico (JCN Consultoria)"
-            value={relatorio.responsavel ?? "—"}
+          <TrocarResponsavelTecnico
+            idRelatorio={id}
+            responsavel={relatorio.responsavel}
+            podeEditar={canEdit}
+            pdfFechado={!!pdfAssinado || !!pdfCongelado}
           />
           <DataItem
             label="Responsável da empresa"
@@ -361,7 +368,7 @@ export default function DetalheConformidadePage({
       </section>
 
       {/* Resumo */}
-      <ResumoConformidade itens={itens} />
+      <ResumoConformidade itens={itens.filter((i) => !i.oculto)} />
 
       {/* Textos Padrão posicao_pdf = 'inicio' — antes dos itens */}
       <TextosPadraoPrint
@@ -375,6 +382,11 @@ export default function DetalheConformidadePage({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-700 print:text-base">
             Itens do Checklist ({itens.length})
+            {itens.some((i) => i.oculto) && (
+              <span className="ml-1 normal-case tracking-normal text-gray-500 print:hidden">
+                · {itens.filter((i) => i.oculto).length} oculto(s) no PDF
+              </span>
+            )}
           </h2>
           {!bloqueado && (
             <div className="flex flex-wrap items-center gap-2 print:hidden">
@@ -445,6 +457,24 @@ export default function DetalheConformidadePage({
                 })
               }
               onExcluir={() => handleExcluirItemExtra(item.id_item)}
+              podeOcultar={canEdit}
+              onAlternarOculto={() =>
+                atualizarItem.mutate(
+                  {
+                    id_relatorio: id,
+                    id_item: item.id_item,
+                    oculto: !item.oculto,
+                  },
+                  {
+                    onSuccess: () =>
+                      toast.success(
+                        item.oculto
+                          ? `${item.item_codigo} volta a aparecer no PDF`
+                          : `${item.item_codigo} oculto no PDF`
+                      ),
+                  }
+                )
+              }
               onUploadFoto={(file) => {
                 if (file.size > MAX_FOTO_MB * 1024 * 1024) {
                   toast.error(`Arquivo maior que ${MAX_FOTO_MB} MB`);
@@ -678,6 +708,8 @@ function ItemRow({
   onChangeObservacao,
   onChangeTituloDescricao,
   onExcluir,
+  podeOcultar,
+  onAlternarOculto,
   onUploadFoto,
   onRemoverFoto,
   onAmpliarFoto,
@@ -695,6 +727,10 @@ function ItemRow({
   onChangeTituloDescricao: (titulo: string, descricao: string | null) => void;
   /** Apaga item extra (livre/cross-ref). Snapshot principal não chama. */
   onExcluir: () => void;
+  /** Ocultar no PDF vale também com o relatório finalizado: não muda a
+   *  avaliação, só o que vai para o cliente. Por isso não usa `bloqueado`. */
+  podeOcultar: boolean;
+  onAlternarOculto: () => void;
   onUploadFoto: (file: File) => void;
   onRemoverFoto: (storagePath: string) => void;
   onAmpliarFoto: (url: string) => void;
@@ -770,7 +806,11 @@ function ItemRow({
   const limiteAtingido = fotoPaths.length >= 8;
 
   return (
-    <div className={`rounded-lg border p-3 print:break-inside-avoid ${corBorda}`}>
+    <div
+      className={`rounded-lg border p-3 print:break-inside-avoid ${corBorda} ${
+        item.oculto ? "opacity-60 print:hidden" : ""
+      }`}
+    >
       <div className="flex items-start gap-3">
         <span
           className={`mt-0.5 inline-block min-w-[3rem] rounded px-1.5 py-0.5 text-center font-mono text-[11px] font-bold ${
@@ -859,6 +899,14 @@ function ItemRow({
                     {item.item_nr_origem}
                   </span>
                 )}
+                {item.oculto && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-gray-200 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-gray-700"
+                    title="Este tópico não sai no PDF enviado ao cliente"
+                  >
+                    <EyeOff className="size-3" /> Oculto no PDF
+                  </span>
+                )}
                 {ehLivre && !bloqueado && (
                   <button
                     type="button"
@@ -878,6 +926,21 @@ function ItemRow({
             </>
           )}
         </div>
+        {podeOcultar && !editandoTitulo && (
+          <button
+            type="button"
+            onClick={onAlternarOculto}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 print:hidden"
+            title={
+              item.oculto
+                ? "Voltar a mostrar este tópico no PDF"
+                : "Tirar este tópico do PDF enviado ao cliente (fica guardado aqui)"
+            }
+          >
+            {item.oculto ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+            {item.oculto ? "Mostrar no PDF" : "Ocultar do PDF"}
+          </button>
+        )}
         {ehExtra && !bloqueado && !editandoTitulo && (
           <button
             type="button"
@@ -1223,9 +1286,10 @@ function Assinatura({
 }
 
 /**
- * Edição rápida dos campos do cabeçalho (setor, responsável técnico,
- * responsável empresa, cidade, data). Aparece só em RASCUNHO. Salva
- * no blur do input.
+ * Edição rápida dos campos do cabeçalho (setor, responsável empresa,
+ * cidade, data). Aparece só em RASCUNHO. Salva no blur do input.
+ * O responsável técnico tem botão próprio (TrocarResponsavelTecnico),
+ * que vale também com o relatório finalizado.
  */
 function EditarCabecalho({
   relatorio,
@@ -1243,7 +1307,6 @@ function EditarCabecalho({
 }) {
   const [aberto, setAberto] = useState(false);
   const [setor, setSetor] = useState(relatorio.setor ?? "");
-  const [responsavel, setResponsavel] = useState(relatorio.responsavel ?? "");
   const [respEmpresa, setRespEmpresa] = useState(
     relatorio.responsavel_empresa ?? ""
   );
@@ -1279,13 +1342,6 @@ function EditarCabecalho({
           onBlur={() => onSalvar({ setor: setor.trim() || null })}
           className={inputCls}
           placeholder="Ex: Produção"
-        />
-      </div>
-      <div>
-        <label className={lblCls}>Responsável técnico (JCN Consultoria)</label>
-        <ProfissionalSelect
-          value={responsavel}
-          onChange={(nome) => { setResponsavel(nome); onSalvar({ responsavel: nome || null }); }}
         />
       </div>
       <div>

@@ -261,7 +261,8 @@ function CartaoGrupo({
   onExcluir: () => void;
 }) {
   const ordenados = ordenarMembros(membros);
-  const matriz = ordenados.find((m) => m.papel_grupo === "MATRIZ");
+  // v285: o grupo pode ter várias matrizes (ex.: condomínios da mesma administradora).
+  const matrizes = ordenados.filter((m) => m.papel_grupo === "MATRIZ");
   const deOutraUnidade = membros.filter((m) => !m.visivel).length;
 
   return (
@@ -276,10 +277,12 @@ function CartaoGrupo({
             <p className="mt-0.5 text-xs text-gray-500">
               {membros.length} {membros.length === 1 ? "empresa" : "empresas"}
               {" · "}
-              {matriz ? (
+              {matrizes.length === 1 ? (
                 <>
-                  Matriz: <span className="font-medium text-gray-700">{matriz.nome_empresa}</span>
+                  Matriz: <span className="font-medium text-gray-700">{matrizes[0].nome_empresa}</span>
                 </>
+              ) : matrizes.length > 1 ? (
+                <span className="font-medium text-gray-700">{matrizes.length} matrizes</span>
               ) : (
                 <span className="text-amber-700">sem matriz definida</span>
               )}
@@ -370,19 +373,33 @@ function LinhaMembro({ membro: m, podeEditar }: { membro: MembroGrupo; podeEdita
       </div>
       {editavel && (
         <div className="flex shrink-0 gap-2 pl-14 sm:pl-0">
-          {!matriz && (
+          {!matriz ? (
             <button
               type="button"
               disabled={definirMatriz.isPending}
               onClick={() =>
                 definirMatriz.mutate(
                   { id_grupo: m.id_grupo, id_empresa: m.id_empresa },
-                  { onSuccess: () => toast.success(`${m.nome_empresa} agora é a matriz`) },
+                  { onSuccess: () => toast.success(`${m.nome_empresa} agora é matriz`) },
                 )
               }
               className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
             >
               <Crown className="size-3.5" /> Tornar matriz
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={gravar.isPending}
+              onClick={() =>
+                gravar.mutate(
+                  { id_empresa: m.id_empresa, id_grupo: m.id_grupo, papel: "FILIAL" },
+                  { onSuccess: () => toast.success(`${m.nome_empresa} agora é filial`) },
+                )
+              }
+              className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+            >
+              Tornar filial
             </button>
           )}
           <button
@@ -409,21 +426,22 @@ function AdicionarEmpresa({ grupo, membros }: { grupo: EmpresaGrupo; membros: Me
   const { data: empresas = [] } = useEmpresas();
   const gravar = useGravarGrupoDaEmpresa();
   const [idEmpresa, setIdEmpresa] = useState<string | null>(null);
-  const matrizAtual = membros.find((m) => m.papel_grupo === "MATRIZ") ?? null;
+  const temMatriz = membros.some((m) => m.papel_grupo === "MATRIZ");
   const escolhida = empresas.find((e) => e.id_empresa === idEmpresa) ?? null;
   const [papel, setPapel] = useState<PapelGrupo>("FILIAL");
   const jaEmOutro = idEmpresa ? porEmpresa.get(idEmpresa) : undefined;
 
-  // Sugestão do papel: sem matriz no grupo → matriz; senão pelo CNPJ não troca a matriz sozinho.
+  // Sugestão do papel pelo CNPJ (0001 = matriz; o grupo aceita várias desde a
+  // v285). Sem CNPJ: matriz se o grupo ainda não tem uma, senão filial.
   useEffect(() => {
     if (!escolhida) return;
-    setPapel(!matrizAtual && papelPeloCnpj(escolhida.cnpj) !== "FILIAL" ? "MATRIZ" : "FILIAL");
-  }, [escolhida, matrizAtual]);
+    setPapel(papelPeloCnpj(escolhida.cnpj) ?? (temMatriz ? "FILIAL" : "MATRIZ"));
+  }, [escolhida, temMatriz]);
 
   function adicionar() {
     if (!idEmpresa) return;
     gravar.mutate(
-      { id_empresa: idEmpresa, id_grupo: grupo.id_grupo, papel, matrizAtual: matrizAtual?.id_empresa ?? null },
+      { id_empresa: idEmpresa, id_grupo: grupo.id_grupo, papel },
       {
         onSuccess: () => {
           toast.success("Empresa adicionada ao grupo");
@@ -468,11 +486,6 @@ function AdicionarEmpresa({ grupo, membros }: { grupo: EmpresaGrupo; membros: Me
       )}
       {jaEmOutro?.id_grupo === grupo.id_grupo && (
         <p className="mt-2 text-xs text-gray-500">Esta empresa já está neste grupo.</p>
-      )}
-      {papel === "MATRIZ" && matrizAtual && idEmpresa && (
-        <p className="mt-2 text-xs text-amber-800">
-          Hoje a matriz é <strong>{matrizAtual.nome_empresa}</strong>; ela passa a ser filial.
-        </p>
       )}
       <p className="mt-2 text-[11px] text-gray-400">
         Só aparecem as empresas das suas unidades. Empresa de outra unidade entra no grupo pelo cadastro, feito por quem

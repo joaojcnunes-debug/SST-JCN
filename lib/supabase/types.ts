@@ -552,7 +552,7 @@ export interface Empresa {
   updated_at: string | null;
 }
 
-/** Papel da empresa no grupo (v278). No máximo uma MATRIZ por grupo. */
+/** Papel da empresa no grupo (v278). Desde a v283 (JCN; painel v285), um grupo pode ter várias MATRIZES. */
 export type PapelGrupo = "MATRIZ" | "FILIAL";
 
 /** Grupo de empresas (v278, `empresa_grupos`). */
@@ -2094,6 +2094,8 @@ export interface RelatorioConformidadeItem {
   foto_urls: string[];
   /** Paths dos arquivos no bucket — pareados 1:1 com `foto_urls`, na mesma ordem. */
   foto_storage_paths: string[];
+  /** v284 (JCN; painel v289): true = fica no relatório, mas sai do PDF/laudo e da contagem do resumo. */
+  oculto?: boolean;
   created_at: string;
   updated_at: string | null;
 }

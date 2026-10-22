@@ -41,7 +41,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       .select("*")
       .eq("id_relatorio", id)
       .order("ordem", { ascending: true });
-    const itens: ConformidadeItemLocal[] = ((rawItens ?? []) as Record<string, unknown>[]).map((i) => ({
+    // Tópico oculto (v289) não vai para o cliente: fora do PDF e da contagem.
+    const itens: ConformidadeItemLocal[] = ((rawItens ?? []) as Record<string, unknown>[])
+      .filter((i) => i.oculto !== true)
+      .map((i) => ({
       id_item: String(i.id_item),
       item_codigo: (i.item_codigo as string) ?? "",
       item_titulo: (i.item_titulo as string) ?? "",

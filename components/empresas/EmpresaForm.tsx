@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -19,8 +19,9 @@ import { useGrauRiscoNorma } from "@/lib/nr4/grau-risco";
 import { useUnidadeAtiva, useUserStore } from "@/lib/store";
 import { detectarDuplicatas } from "@/lib/empresas/duplicatas";
 import AlertaEmpresaDuplicada from "@/components/empresas/AlertaEmpresaDuplicada";
+import { quemPerdeAcesso, type UsuarioAcesso } from "@/lib/empresas/perda-de-acesso";
 import CampoGrupoEmpresa, { type ValorGrupo } from "@/components/empresas/CampoGrupoEmpresa";
-import { CHAVE_GRUPOS, useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
+import { CHAVE_GRUPOS } from "@/lib/hooks/useGruposEmpresas";
 
 // Toda empresa é habilitada em todos os quadros (filtro por módulo removido).
 const TODOS_MODULOS: ModuloEmpresa[] = MODULOS_EMPRESA.map((m) => m.value);
@@ -77,18 +78,10 @@ export default function EmpresaForm({
     todasUnidades.find((u) => u.id_unidade === id)?.nome ?? (id ? id : "sem unidade");
   const [cadastrarMesmoAssim, setCadastrarMesmoAssim] = useState(false);
   // Grupo de empresas (v278): matriz/filial.
-  const { membros: membrosGrupos } = useGruposEmpresas();
   const [grupo, setGrupo] = useState<ValorGrupo>({ id_grupo: null, papel: null });
   useEffect(() => {
     if (open) setGrupo({ id_grupo: empresa?.id_grupo ?? null, papel: empresa?.papel_grupo ?? null });
   }, [open, empresa]);
-  // A matriz que o grupo escolhido já tem (outra empresa) — vira filial se esta for marcada matriz.
-  const matrizAtualDoGrupo = grupo.id_grupo
-    ? membrosGrupos.find(
-        (m) => m.id_grupo === grupo.id_grupo && m.papel_grupo === "MATRIZ" && m.id_empresa !== empresa?.id_empresa,
-      ) ?? null
-    : null;
-  const trocaMatriz = grupo.papel === "MATRIZ" && !!matrizAtualDoGrupo;
 
   const [form, setForm] = useState({
     tipo_estabelecimento: "CLIENTE" as TipoEstabelecimento,
@@ -176,6 +169,37 @@ export default function EmpresaForm({
   );
   const cnpjDigitado = form.cnpj.replace(/\D/g, "");
   useEffect(() => setCadastrarMesmoAssim(false), [cnpjDigitado, form.cpf, open]);
+
+  // Troca de unidade em edição: quem fez inspeção nesta empresa e não tem a
+  // unidade nova deixa de ver a empresa E as inspeções (caso DUNA, 02/10/2026).
+  // A tela lista essas pessoas e pede confirmação antes de salvar.
+  const unidadeTrocada =
+    isEdit && !!empresa?.id_unidade && !!form.id_unidade && form.id_unidade !== empresa.id_unidade;
+  const { data: perdemAcesso = [], isFetching: conferindoAcesso } = useQuery({
+    queryKey: ["empresa-perda-acesso", empresa?.id_empresa, form.id_unidade],
+    enabled: open && unidadeTrocada,
+    queryFn: async () => {
+      const supabase = createSupabaseBrowserClient();
+      const [insp, usu] = await Promise.all([
+        supabase
+          .from("inspecoes")
+          .select("usuario")
+          .eq("id_empresa", empresa!.id_empresa)
+          .neq("status", "DELETADA"),
+        supabase.from("usuarios").select("nome, email, perfil, ativo_sistema, unidades"),
+      ]);
+      if (insp.error) throw insp.error;
+      if (usu.error) throw usu.error;
+      return quemPerdeAcesso(
+        ((insp.data ?? []) as { usuario: string | null }[]).map((i) => i.usuario),
+        (usu.data ?? []) as unknown as UsuarioAcesso[],
+        form.id_unidade,
+      );
+    },
+  });
+  const [trocarMesmoAssim, setTrocarMesmoAssim] = useState(false);
+  useEffect(() => setTrocarMesmoAssim(false), [form.id_unidade, open]);
+  const trocaBloqueada = unidadeTrocada && (conferindoAcesso || (perdemAcesso.length > 0 && !trocarMesmoAssim));
 
   /** "Usar esta empresa": em vez de cadastrar, aponta para a que já existe. */
   function usarExistente(e: Empresa) {
@@ -304,20 +328,10 @@ export default function EmpresaForm({
         status: form.status,
         observacao: form.observacao.trim() || null,
         modulos_habilitados: form.modulos_habilitados,
-        // Grupo (v278). Para virar a matriz de um grupo que já tem outra, entra
-        // como filial e a função promove (o banco aceita só uma matriz por grupo).
+        // Grupo (v278). Desde a v283 (JCN; painel v285) o grupo aceita várias matrizes.
         id_grupo: grupo.id_grupo,
-        papel_grupo: grupo.id_grupo ? (trocaMatriz ? "FILIAL" : grupo.papel) : null,
+        papel_grupo: grupo.id_grupo ? grupo.papel : null,
         updated_at: new Date().toISOString(),
-      };
-
-      const promoverMatriz = async (idEmpresa: string) => {
-        if (!trocaMatriz || !grupo.id_grupo) return;
-        const { error } = await supabase.rpc(
-          "empresa_grupo_definir_matriz" as never,
-          { p_id_grupo: grupo.id_grupo, p_id_empresa: idEmpresa } as never,
-        );
-        if (error) throw error;
       };
 
       if (isEdit && empresa) {
@@ -326,7 +340,6 @@ export default function EmpresaForm({
           .update(payload as never)
           .eq("id_empresa", empresa.id_empresa);
         if (error) throw error;
-        await promoverMatriz(empresa.id_empresa);
         return null;
       } else {
         const id = gerarId("EMP");
@@ -339,7 +352,6 @@ export default function EmpresaForm({
           .from("empresas")
           .insert(insertRow as never);
         if (error) throw error;
-        await promoverMatriz(id);
         return id;
       }
     },
@@ -366,11 +378,7 @@ export default function EmpresaForm({
       onClose();
     },
     onError: (err: Error) => {
-      toast.error(
-        err.message?.includes("ux_empresas_matriz_por_grupo")
-          ? "Este grupo já tem uma matriz — marque esta empresa como filial."
-          : err.message || "Erro ao salvar empresa",
-      );
+      toast.error(err.message || "Erro ao salvar empresa");
     },
   });
 
@@ -433,6 +441,14 @@ export default function EmpresaForm({
     }
     if (!isEdit && duplicatas.mesmoCodigo.length > 0 && !cadastrarMesmoAssim) {
       toast.error("Esta empresa já está cadastrada — use a existente ou marque \"cadastrar mesmo assim\".");
+      return;
+    }
+    if (trocaBloqueada) {
+      toast.error(
+        conferindoAcesso
+          ? "Aguarde: conferindo quem perde acesso com a troca de unidade."
+          : "Confirme a troca de unidade: há técnicos que deixarão de ver esta empresa.",
+      );
       return;
     }
     if (grupo.id_grupo && !grupo.papel) {
@@ -682,6 +698,32 @@ export default function EmpresaForm({
               </span>
             )}
           </p>
+          {unidadeTrocada && perdemAcesso.length > 0 && (
+            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+              <p className="font-semibold">
+                Mudando de {nomeUnidade(empresa?.id_unidade)} para {nomeUnidade(form.id_unidade)}, estas pessoas
+                deixam de ver a empresa e as inspeções que fizeram nela:
+              </p>
+              <ul className="mt-1 list-disc pl-5">
+                {perdemAcesso.map((p) => (
+                  <li key={p.email}>
+                    <strong>{p.nome}</strong> — {p.inspecoes} {p.inspecoes === 1 ? "inspeção" : "inspeções"}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1">
+                Se elas precisam continuar, libere a unidade {nomeUnidade(form.id_unidade)} para elas em Usuários.
+              </p>
+              <label className="mt-2 flex items-center gap-2 font-medium">
+                <input
+                  type="checkbox"
+                  checked={trocarMesmoAssim}
+                  onChange={(e) => setTrocarMesmoAssim(e.target.checked)}
+                />
+                Entendi, trocar a unidade mesmo assim
+              </label>
+            </div>
+          )}
           {unidades.length === 0 && (
             <p className="mt-1 text-xs text-amber-600">
               Nenhuma unidade cadastrada. Cadastre em Configurações → Unidades antes.
@@ -695,7 +737,6 @@ export default function EmpresaForm({
           onChange={setGrupo}
           cnpj={form.cnpj}
           idEmpresa={empresa?.id_empresa ?? null}
-          matrizAtual={matrizAtualDoGrupo}
         />
 
         {/* Endereço e contato — preenchidos pela busca por CNPJ, editáveis */}
@@ -993,7 +1034,11 @@ export default function EmpresaForm({
           </button>
           <button
             type="submit"
-            disabled={mutation.isPending || (!isEdit && duplicatas.mesmoCodigo.length > 0 && !cadastrarMesmoAssim)}
+            disabled={
+              mutation.isPending ||
+              trocaBloqueada ||
+              (!isEdit && duplicatas.mesmoCodigo.length > 0 && !cadastrarMesmoAssim)
+            }
             className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
           >
             {mutation.isPending
