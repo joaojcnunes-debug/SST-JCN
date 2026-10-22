@@ -4,8 +4,8 @@ import { mapearBoardSST, slugEtapaSST, unidadeDe, camposDe, type RRTaskSST, type
 import { CAMPO_PRODUTOS_ID, CAMPO_TIPO_CLIENTE_ID, QUADRO_SST_ENTRADA } from "./runrun-forms-mapa";
 
 const users = new Map<string, RRUser>([
-  ["isabela-esteves", { id: "isabela-esteves", email: "Isabela.Esteves@chabra.com.br" }],
-  ["elaine-maia", { id: "elaine-maia", email: "elaine@chabra.com.br" }],
+  ["isabela-esteves", { id: "isabela-esteves", email: "Isabela.Esteves@jcn.com.br" }],
+  ["elaine-maia", { id: "elaine-maia", email: "elaine@jcn.com.br" }],
   ["sem-email", { id: "sem-email", email: null }],
 ]);
 const base = (p: Partial<RRTaskSST> & { id: number; title: string }): RRTaskSST => ({
@@ -68,13 +68,13 @@ describe("mapearBoardSST", () => {
     const s = r.subtarefas.filter((x) => x.id_tarefa === "RRN-10").sort((a, b) => a.ordem - b.ordem);
     assert.deepEqual(s.map((x) => [x.id, x.texto, x.feito, x.etapa, x.ordem, x.responsavel_email]), [
       ["SRR-12", "Agendar Visita", false, "AGENDADO", 0, null],
-      ["SRR-11", "PGR", true, "CONCLUIDA", 1, "elaine@chabra.com.br"],
+      ["SRR-11", "PGR", true, "CONCLUIDA", 1, "elaine@jcn.com.br"],
     ]);
     assert.equal(r.log.filter((l) => l.resultado === "sem_pai").length, 1);
   });
   test("vínculos: 1º alocado responsável, demais seguidores, user_id seguidor; sem e-mail → log; e-mail em minúsculas", () => {
     const v = r.vinculos.filter((x) => x.id_tarefa === "RRN-10");
-    assert.deepEqual(v, [{ id_tarefa: "RRN-10", email: "isabela.esteves@chabra.com.br", tipo: "responsavel" }, { id_tarefa: "RRN-10", email: "elaine@chabra.com.br", tipo: "seguidor" }]);
+    assert.deepEqual(v, [{ id_tarefa: "RRN-10", email: "isabela.esteves@jcn.com.br", tipo: "responsavel" }, { id_tarefa: "RRN-10", email: "elaine@jcn.com.br", tipo: "seguidor" }]);
     assert.ok(r.log.some((l) => l.resultado === "nao_casado" && l.detalhe.includes("sem-email")));
   });
   test("sem unidade → SST — Entrada com status necessário; Emergência → Urgente; etapa desconhecida → log e não vira tarefa", () => {

@@ -58,7 +58,7 @@ equipe. Tem um portal para o cliente final.
 | Planilhas/docs | xlsx 0.18.5, docx 9 |
 | Datas | date-fns 4 |
 | Biometria | @digitalpersona/websdk + devices (agente nativo C# em `native/EpiBiometricAgent`, HTTP 127.0.0.1:52182) |
-| Testes | `node --test` + tsx (`npm test`; ~700 testes em `lib/**/*.test.ts`) |
+| Testes | `node --test` + tsx (`npm test`; ~900 testes em `lib/**/*.test.ts`). `test-setup.ts` carrega o `fake-indexeddb` e um `window` mínimo para a fila offline (`lib/offline/*`) rodar no Node |
 
 Alias de import: `@/*` → raiz.
 

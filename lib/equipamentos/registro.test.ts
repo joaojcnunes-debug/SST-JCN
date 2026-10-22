@@ -48,7 +48,7 @@ const ENTREGA = {
   responsavel_entrega: "Leandro Salles",
   observacao: "Troca de teclados da técnica",
   total_itens: 2,
-  criado_por: "leandro.salles@chabra.com.br",
+  criado_por: "leandro.salles@jcn.com.br",
   criado_em: "2026-09-22T12:00:46.119891+00:00",
   emitido_em: "2026-09-22T12:00:46.119891+00:00",
   cancelado_em: null,
@@ -67,7 +67,7 @@ const LANCAMENTOS_DA_ENTREGA = [
     ref_id: "ent-1",
     motivo: "Entrega ao colaborador",
     responsavel: "Leandro Salles",
-    criado_por: "leandro.salles@chabra.com.br",
+    criado_por: "leandro.salles@jcn.com.br",
     criado_em: "2026-09-22T12:00:46.119891+00:00",
   },
   {
@@ -80,7 +80,7 @@ const LANCAMENTOS_DA_ENTREGA = [
     ref_id: "ent-1",
     motivo: "Entrega ao colaborador",
     responsavel: "Leandro Salles",
-    criado_por: "leandro.salles@chabra.com.br",
+    criado_por: "leandro.salles@jcn.com.br",
     criado_em: "2026-09-22T12:00:46.119891+00:00",
   },
 ];
@@ -95,7 +95,7 @@ const ENTRADA_MANUAL = {
   ref_id: null,
   motivo: "Entrada manual de estoque",
   responsavel: "Minimen",
-  criado_por: "leandro.salles@chabra.com.br",
+  criado_por: "leandro.salles@jcn.com.br",
   criado_em: "2026-09-22T12:00:02.678178+00:00",
 };
 
@@ -111,7 +111,7 @@ const TRANSFERENCIA = {
   maquina_numero_patrimonio: "0136",
   motivo: "Colaborador sem mouse e teclado apagando.",
   responsavel_nome: "Keven Vital",
-  responsavel_email: "keven.vital@chabra.com.br",
+  responsavel_email: "keven.vital@jcn.com.br",
   transportado_por: "Keven Vital",
 };
 
