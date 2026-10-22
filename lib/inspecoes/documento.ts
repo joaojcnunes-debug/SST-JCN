@@ -16,9 +16,8 @@
  * Então "Ninguém assumiu" passa a ser o que a frase diz: ninguém mesmo, nem
  * associado nem responsável.
  *
- * ⚠️ Isto é rótulo de TELA. O Dashboard › Documentos por Associado segue
- * contando por `elaboracao_status`: as 72 aparecem como "em elaboração" aqui
- * e continuam fora do gráfico de lá.
+ * Desde 28/09 o Dashboard › Documentos por Associado também conta por esta
+ * função (`lib/dashboard/documentos.ts`), e as duas telas dizem o mesmo.
  */
 
 import { fmtData, fmtDataHora } from "@/lib/utils";

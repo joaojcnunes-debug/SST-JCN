@@ -18,6 +18,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { mesAbsSP, mesAbsAgoraSP, rotuloMesAbs } from "@/lib/dashboard/mes";
 import {
+  foraDoGraficoMensal,
   porAssociado as agruparPorAssociado,
   resumoAssociacao,
   serieMensalAssociacoes,
@@ -60,6 +61,7 @@ async function fetchDados(): Promise<{ assoc: AssociacaoDoc[]; docs: DocumentoCo
       supabase
         .from("inspecao_associados")
         .select("created_at, nome, id_inspecao")
+        .order("id")
         .range(de, ate),
     ),
     fetchAllRows<DocumentoContavel>((de, ate) =>
@@ -67,6 +69,7 @@ async function fetchDados(): Promise<{ assoc: AssociacaoDoc[]; docs: DocumentoCo
         .from("inspecoes")
         .select("id_inspecao, status, elaboracao_responsavel, elaboracao_status")
         .neq("status", "DELETADA")
+        .order("id_inspecao")
         .range(de, ate),
     ),
   ]);
@@ -100,6 +103,9 @@ export default function PorAssociadosDashboard() {
   const credito = resumoAssociacao(assoc, docs);
   // Documentos distintos com alguém trabalhando neles (associado ou responsável).
   const totalDocumentos = credito.comAssociacao + credito.semAssociacao;
+  // O cabeçalho conta todo documento com dono; as barras, só os que têm data
+  // de entrada dentro dos 12 meses. Em 22/09 eram 550 × 441 sem explicação.
+  const fora = foraDoGraficoMensal(assoc, docs, porMes);
 
   return (
     <div className="space-y-5">
@@ -170,6 +176,28 @@ export default function PorAssociadosDashboard() {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+        )}
+        {!isLoading && fora.total > 0 && (
+          <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+            As barras somam <strong>{totalDocumentos - fora.total}</strong> dos {totalDocumentos} documentos
+            do total acima. Os outros <strong>{fora.total}</strong> não têm mês neste gráfico:
+            {fora.semRegistro > 0 && (
+              <>
+                {" "}
+                <strong>{fora.semRegistro}</strong> {fora.semRegistro !== 1 ? "foram assumidos" : "foi assumido"}{" "}
+                pelo botão &quot;Assumir elaboração&quot;, sem registro de associação (é esse registro que dá a data)
+              </>
+            )}
+            {fora.semRegistro > 0 && fora.antesDoPeriodo > 0 && " e"}
+            {fora.antesDoPeriodo > 0 && (
+              <>
+                {" "}
+                <strong>{fora.antesDoPeriodo}</strong> {fora.antesDoPeriodo !== 1 ? "ganharam" : "ganhou"} associado
+                antes dos últimos 12 meses
+              </>
+            )}
+            .
+          </p>
         )}
       </div>
 

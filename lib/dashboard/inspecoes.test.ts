@@ -5,6 +5,8 @@ import {
   conclusaoEhAproximada,
   ehCopiaOuRevisao,
   ehRenovacao,
+  concluidasPorDono,
+  SEM_AUTOR,
   mesDeConclusao,
   mesDeRealizacao,
   porTecnico,
@@ -363,8 +365,9 @@ describe("porTecnico — soma as duas fontes", () => {
 
   it("o PLANO B sobrevive à Fase B — é o caso da Daniele", () => {
     // 158 das 680 inspeções (medido em 10/09) não têm linha de responsáveis
-    // nenhuma. Se a Fase B tivesse trocado a fonte, todas elas sairiam do
-    // gráfico. Este teste é a trava contra isso.
+    // nenhuma — 178 de 818 em 24/09, e crescendo. Se a Fase B tivesse trocado
+    // a fonte, todas elas sairiam do gráfico. Este teste é a trava contra isso:
+    // não o apague junto com o "fallback" (ver o comentário em inspecoes.ts).
     const r = porTecnico([insp("I1", "Daniele Alves")], {
       tecnicosDeCampo: new Map(),
       cadastro: CADASTRO,
@@ -588,5 +591,66 @@ describe("renovação de documento não é inspeção (23/09)", () => {
   it("ninguém é creditado pela renovação", () => {
     const r = porTecnico([{ ...renov, responsavel: "Emilia" }, visita]);
     assert.deepEqual(r.map((t) => [t.tecnico, t.total]), [["Ana", 1]]);
+  });
+});
+
+describe("concluídas por dono = quem lançou (08/10)", () => {
+  const contas = [
+    { email: "sirlei@jcn.example", nome: "Sirlei Lopes" },
+    { email: "ana@jcn.example", nome: "Ana Renata" },
+  ];
+  const com = (email: string, over: Partial<InspecaoContavel> = {}) =>
+    ({ ...insp(over), concluida_por_email: email });
+
+  it("traduz o e-mail para o nome e separa cópia", () => {
+    const r = concluidasPorDono(
+      [
+        com("SIRLEI@jcn.example"),
+        com("sirlei@jcn.example", { tipo_criacao: "COPIA_EMPRESA" }),
+        com("ana@jcn.example"),
+      ],
+      contas,
+    );
+    assert.deepEqual(r[0], { pessoa: "Sirlei Lopes", novas: 1, copias: 1, total: 2 });
+    assert.equal(r[1].pessoa, "Ana Renata");
+  });
+
+  it("sem registro vai para Não registrado, sempre por último", () => {
+    const r = concluidasPorDono([insp({}), insp({}), insp({}), com("ana@jcn.example")], contas);
+    assert.equal(r[r.length - 1].pessoa, SEM_AUTOR);
+    assert.equal(r[r.length - 1].total, 3);
+  });
+
+  it("conta sempre para quem lançou, mesmo que outra pessoa tenha clicado em Concluir", () => {
+    const r = concluidasPorDono(
+      [
+        { ...insp({}), usuario: "Sirlei@jcn.example" },
+        { ...insp({}), usuario: "sirlei@jcn.example" },
+        // reabriu e concluiu de novo (caso DUNA): não transfere
+        { ...insp({}), usuario: "sirlei@jcn.example", concluida_por_email: "ana@jcn.example" },
+      ],
+      contas,
+    );
+    assert.deepEqual(r.map((x) => [x.pessoa, x.total]), [["Sirlei Lopes", 3]]);
+  });
+
+  it("o Responsável manda sobre a conta que criou (JEQUITIBÁ, 08/10)", () => {
+    const r = concluidasPorDono(
+      [{ ...insp({ responsavel: "Sirlei Lopes" }), usuario: "ana@jcn.example", concluida_por_email: "ana@jcn.example" }],
+      contas,
+    );
+    assert.deepEqual(r.map((x) => x.pessoa), ["Sirlei Lopes"]);
+  });
+
+  it("e-mail fora do cadastro aparece como veio; renovação e não concluída ficam fora", () => {
+    const r = concluidasPorDono(
+      [
+        com("fora@x.com"),
+        com("ana@jcn.example", { tipo_criacao: "RENOVACAO" }),
+        com("ana@jcn.example", { status: "EM_ANDAMENTO" }),
+      ],
+      contas,
+    );
+    assert.deepEqual(r.map((x) => x.pessoa), ["fora@x.com"]);
   });
 });

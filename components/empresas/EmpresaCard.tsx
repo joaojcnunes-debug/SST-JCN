@@ -18,7 +18,8 @@ function useInspCount(idEmpresa: string) {
       const { count, error } = await supabase
         .from("inspecoes")
         .select("id_inspecao", { count: "exact", head: true })
-        .eq("id_empresa", idEmpresa);
+        .eq("id_empresa", idEmpresa)
+        .neq("status", "DELETADA");
       if (error) throw error;
       return count ?? 0;
     },

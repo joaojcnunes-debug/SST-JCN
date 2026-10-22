@@ -39,6 +39,7 @@
 - Limite do Groq (429) vira "tente de novo em N segundos" (adaptar aos caminhos do JCN).
 
 **Lote 2 — Inspeções e Dashboard (G, alto valor):**
+> ✅ Feito em 2026-10-22 (v0.3.138): v281 (= painel v283) e v282 (= painel v284) aplicadas; lista e Dashboard com a mesma régua, quem concluiu, técnico por seleção, pílulas múltiplas, Não associados, Status Assoc., documentos por Situação/Mês/Associado, Ficha em Branco com leques.
 - v283 `concluida_por` + v284 técnicos de campo; lista e Dashboard com a mesma régua, "Quem concluiu".
 - Pílulas com seleção múltipla, "Não associados", linha "Mostrando", coluna "Status Assoc.".
 - Dashboard: Documentos por Situação, por Mês (ADM), por Associado.

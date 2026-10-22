@@ -20,6 +20,9 @@ interface Props {
    *  /api/pdf/...) em vez de capturar a página — PDF vetorial e idêntico ao
    *  que é assinado. */
   apiPdfUrl?: string;
+  /** false: gera o PDF mas não oferece "Assinar PDF A1" (ex.: um recorte da
+   *  página, que não pode ocupar o lugar do documento assinado). */
+  assinavel?: boolean;
 }
 
 export default function BotaoGerarPdf({
@@ -32,6 +35,7 @@ export default function BotaoGerarPdf({
   defaultSignatoryEmail,
   registrarPdf,
   apiPdfUrl,
+  assinavel = true,
 }: Props) {
   const [gerando, setGerando] = useState(false);
   const [buffer, setBuffer] = useState<ArrayBuffer | null>(null);
@@ -121,7 +125,7 @@ export default function BotaoGerarPdf({
         {" "}{gerando ? "Gerando..." : label}
       </button>
 
-      {buffer && !gerando && (
+      {buffer && !gerando && assinavel && (
         <button
           type="button"
           onClick={() => setAssinarOpen(true)}

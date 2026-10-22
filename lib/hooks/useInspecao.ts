@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { contarPilulas, type FiltroInspecao, type LinhaContagem } from "@/lib/inspecoes/pilulas";
+import { contarPilulas, separarSelecao, type FiltroInspecao, type LinhaContagem } from "@/lib/inspecoes/pilulas";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { filtroPeriodo } from "@/lib/inspecoes/periodo";
 import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoes";
 import { ehErroDeRede } from "@/lib/offline/rede";
 import type {
@@ -223,6 +225,9 @@ export function useInspecoesByEmpresa(idEmpresa: string | null | undefined) {
         .from("inspecoes")
         .select("*, empresas(nome_empresa)")
         .eq("id_empresa", idEmpresa!)
+        // Excluída (lixeira) não é inspeção da empresa: a ficha contava e a
+        // lista não (07/10). A Lixeira tem consulta própria.
+        .neq("status", "DELETADA")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Inspecao[];
@@ -262,7 +267,8 @@ interface InspecoesPaginadasParams {
   idUnidade?: string | null;
   dataIni?: string;
   dataFim?: string;
-  filtro: FiltroInspecao;
+  /** Pílulas marcadas (vazio = Todos). Ver lib/inspecoes/pilulas. */
+  filtros: FiltroInspecao[];
   ordem: OrdemInspecao;
   page: number;
   pageSize: number;
@@ -295,6 +301,11 @@ function aplicarFiltroAssociado(q: any, associado: string, ids: string[] | null)
   return q.ilike("elaboracao_responsavel", `%${t}%`);
 }
 
+/** Minúsculo e sem acento — o mesmo formato da `tecnicos_busca` (v284). */
+function termoSemAcento(s: string): string {
+  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+
 interface FiltrosBase {
   idEmpresa: string | null;
   tecnico: string;
@@ -309,10 +320,19 @@ interface FiltrosBase {
 function aplicarFiltros(q: any, { idEmpresa, tecnico, idUnidade, dataIni, dataFim }: FiltrosBase) {
   let query = q.neq("status", "DELETADA");
   if (idEmpresa) query = query.eq("id_empresa", idEmpresa);
-  else if (tecnico.trim().length >= 2) query = query.ilike("responsavel", `%${tecnico.trim()}%`);
+  // Era `else if`: com empresa escolhida, o Técnico digitado sumia sem aviso (07/10).
+  //
+  // Procura QUEM FOI A CAMPO (aba Responsáveis) e, só quando ninguém está lá,
+  // quem lançou — a regra do dashboard, pela coluna calculada `tecnicos_busca`
+  // (v284), que já vem minúscula e sem acento. Antes era `responsavel`
+  // (quem lançou) e "Ledimo" não achava "Lédimo".
+  const termo = termoSemAcento(tecnico);
+  if (termo.length >= 2) query = query.ilike("tecnicos_busca", `%${termo}%`);
   if (idUnidade) query = query.eq("empresas.id_unidade", idUnidade);
-  if (dataIni) query = query.gte("data_inspecao", dataIni);
-  if (dataFim) query = query.lte("data_inspecao", dataFim);
+  // Concluída cai no período pela data de CONCLUSÃO; as demais pela data da
+  // visita (07/10) — a mesma régua do dashboard. Ver lib/inspecoes/periodo.
+  const periodo = filtroPeriodo(dataIni, dataFim);
+  if (periodo) query = query.or(periodo);
   return query;
 }
 
@@ -323,7 +343,7 @@ export function useInspecoesPaginadas({
   idUnidade,
   dataIni,
   dataFim,
-  filtro,
+  filtros,
   ordem,
   page,
   pageSize,
@@ -331,20 +351,25 @@ export function useInspecoesPaginadas({
   // Lista todas as inspeções por padrão (paginadas); filtros são opcionais.
   const base: FiltrosBase = { idEmpresa, tecnico, idUnidade, dataIni, dataFim };
   // Quando filtra por unidade, precisa de inner join em empresas para o eq funcionar.
-  const selLista = idUnidade ? "*, empresas!inner(nome_empresa, id_unidade)" : "*, empresas(nome_empresa)";
+  // `tecnicos_campo` é coluna calculada (v284): o `*` não a traz sozinho.
+  const selLista = idUnidade
+    ? "*, tecnicos_campo, empresas!inner(nome_empresa, id_unidade)"
+    : "*, tecnicos_campo, empresas(nome_empresa)";
 
   const lista = useQuery({
-    queryKey: ["inspecoes-lista", idEmpresa, tecnico, associado, idUnidade, dataIni, dataFim, filtro, ordem, page, pageSize],
+    queryKey: ["inspecoes-lista", idEmpresa, tecnico, associado, idUnidade, dataIni, dataFim, filtros, ordem, page, pageSize],
     placeholderData: (prev) => prev,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       const idsAssoc = await idsPorAssociado(supabase, associado);
       let q = aplicarFiltros(supabase.from("inspecoes").select(selLista, { count: "exact" }), base);
       q = aplicarFiltroAssociado(q, associado, idsAssoc);
-      // "Associados" filtra pela coluna calculada do banco (v239): há alguém no
-      // documento — linha em inspecao_associados ou elaboracao_responsavel.
-      if (filtro === "ASSOCIADOS") q = q.is("tem_associado", true);
-      else if (filtro !== "Todos") q = q.eq("status", filtro);
+      // Pílulas marcadas: status somam entre si (in), associação pela coluna
+      // calculada do banco (v239) — há alguém no documento, linha em
+      // inspecao_associados ou elaboracao_responsavel. Os dois grupos se cruzam.
+      const sel = separarSelecao(filtros);
+      if (sel.status.length > 0) q = q.in("status", sel.status);
+      if (sel.associacao.length === 1) q = q.is("tem_associado", sel.associacao[0] === "ASSOCIADOS");
       if (ordem === "recentes") q = q.order("created_at", { ascending: false });
       else if (ordem === "antigas") q = q.order("created_at", { ascending: true });
       else q = q.order("revisao", { ascending: false }).order("created_at", { ascending: false });
@@ -368,15 +393,19 @@ export function useInspecoesPaginadas({
     staleTime: 30_000,
     queryFn: async (): Promise<LinhaContagem[]> => {
       const supabase = createSupabaseBrowserClient();
-      const { data, error } = await aplicarFiltros(supabase.from("inspecoes").select(selCounts), base);
-      if (error) throw error;
-      return (data ?? []) as LinhaContagem[];
+      // Paginado: sem isso o PostgREST para em 1000 linhas e "Todos (N)" fica
+      // menor que o total da própria lista (07/10).
+      return fetchAllRows<LinhaContagem>((de, ate) =>
+        aplicarFiltros(supabase.from("inspecoes").select(selCounts), base)
+          .order("id_inspecao")
+          .range(de, ate),
+      );
     },
   });
 
   const contagens = useMemo(
-    () => (linhas.data ? contarPilulas(linhas.data, associado) : undefined),
-    [linhas.data, associado],
+    () => (linhas.data ? contarPilulas(linhas.data, associado, separarSelecao(filtros)) : undefined),
+    [linhas.data, associado, filtros],
   );
 
   return { lista, counts: { data: contagens } };

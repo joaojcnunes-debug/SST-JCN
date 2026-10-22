@@ -2,7 +2,13 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  concluidosPorAdm,
+  concluidosPorMes,
+  concluidosValidos,
+  foraDoGraficoMensal,
+  SEM_RESPONSAVEL,
   porAssociado,
+  porSituacao,
   resumoAssociacao,
   serieMensalAssociacoes,
   type AssociacaoDoc,
@@ -215,11 +221,12 @@ describe("entregue × em aberto", () => {
 });
 
 describe("o que não foi entregue, separado", () => {
-  it("distingue o que está na mão dela do que voltou para a fila", () => {
+  it("associada sem clicar em Assumir conta como em elaboração, igual à lista (28/09)", () => {
     const docs = [
       doc({ id_inspecao: "A", elaboracao_responsavel: "Ana", elaboracao_status: "CONCLUIDO" }),
       doc({ id_inspecao: "B", elaboracao_responsavel: "Ana", elaboracao_status: "EM_ELABORACAO" }),
-      // Sem dono: conta para quem passou, mas não é trabalho em curso dela.
+      // Ana está no chip, mas ninguém clicou em "Assumir": até 28/09 isto era
+      // "sem dono" aqui e "Em elaboração · Ana" na lista de inspeções.
       doc({ id_inspecao: "C", elaboracao_responsavel: null, elaboracao_status: "PENDENTE" }),
     ];
     const r = porAssociado(
@@ -229,7 +236,7 @@ describe("o que não foi entregue, separado", () => {
     );
     assert.deepEqual(
       [r[0].total, r[0].entregues, r[0].emElaboracao, r[0].semDono, r[0].emAberto],
-      [3, 1, 1, 1, 2],
+      [3, 1, 2, 0, 2],
     );
   });
 
@@ -242,6 +249,37 @@ describe("o que não foi entregue, separado", () => {
       assert.equal(p.entregues + p.emElaboracao + p.semDono, p.total);
       assert.equal(p.emAberto, p.emElaboracao + p.semDono);
     }
+  });
+});
+
+describe("porSituacao — donut do dashboard pela régua da lista (13/10)", () => {
+  it("associado sem clicar em Assumir sai de Pendentes e vai para Assumidos", () => {
+    const docs = [
+      doc({ id_inspecao: "A", elaboracao_status: "CONCLUIDO" }),
+      doc({ id_inspecao: "B", elaboracao_status: "EM_ELABORACAO" }),
+      // Bia no chip, ninguém clicou em "Assumir": a lista diz "Em elaboração · Bia".
+      doc({ id_inspecao: "C", elaboracao_status: "PENDENTE" }),
+      doc({ id_inspecao: "D", elaboracao_status: null, elaboracao_responsavel: "Caio" }),
+      doc({ id_inspecao: "E", elaboracao_status: "PENDENTE" }),
+    ];
+    assert.deepEqual(porSituacao([assoc({ id_inspecao: "C", nome: "Bia" })], docs), {
+      pendentes: 1,
+      assumidos: 3,
+      concluidos: 1,
+    });
+  });
+
+  it("inspeção em campo sem ninguém não é pendência; com associado já conta como assumida", () => {
+    const docs = [
+      doc({ id_inspecao: "A", status: "EM_ANDAMENTO", elaboracao_status: null }),
+      doc({ id_inspecao: "B", status: "EM_ANDAMENTO", elaboracao_status: null }),
+      doc({ id_inspecao: "C", status: "DELETADA", elaboracao_status: "PENDENTE" }),
+    ];
+    assert.deepEqual(porSituacao([assoc({ id_inspecao: "B" }), assoc({ id_inspecao: "C" })], docs), {
+      pendentes: 0,
+      assumidos: 1,
+      concluidos: 0,
+    });
   });
 });
 
@@ -299,7 +337,10 @@ describe("serieMensalAssociacoes — safra do mês", () => {
     for (const m of serie) {
       assert.equal(m.entregues + m.emElaboracao + m.semDono, m.total);
     }
-    assert.equal(serie[serie.length - 1].semDono, 2);
+    // B e C têm gente no documento (a linha de associação): em elaboração,
+    // como a lista diz — não "sem dono" (28/09).
+    const ago = serie[serie.length - 1];
+    assert.deepEqual([ago.entregues, ago.emElaboracao, ago.semDono], [1, 2, 0]);
   });
 
   it("inspeção deletada e mês fora da janela não entram", () => {
@@ -316,5 +357,80 @@ describe("serieMensalAssociacoes — safra do mês", () => {
       mesAbsSP,
     );
     assert.equal(serie.reduce((s, m) => s + m.total, 0), 0);
+  });
+});
+
+describe("foraDoGraficoMensal — o cabeçalho × a soma das barras (22/09)", () => {
+  it("explica a diferença pelos dois motivos, e eles fecham com ela", () => {
+    const docs = [
+      doc({ id_inspecao: "A" }), // associado no período: está nas barras
+      doc({ id_inspecao: "B", elaboracao_responsavel: "Paulina Cunha" }), // assumido sem registro
+      doc({ id_inspecao: "C" }), // associado antes da janela
+      doc({ id_inspecao: "D" }), // sem dono: não conta em lugar nenhum
+      doc({ id_inspecao: "E", status: "DELETADA" }),
+    ];
+    const assocs = [
+      assoc({ id_inspecao: "A" }),
+      assoc({ id_inspecao: "C", created_at: "2020-01-02T12:00:00Z" }),
+      assoc({ id_inspecao: "E" }),
+    ];
+    const serie = serieMensalAssociacoes(assocs, docs, AGO26, 6, (abs) => rotuloMesAbs(abs), mesAbsSP);
+    const r = foraDoGraficoMensal(assocs, docs, serie);
+    const { comAssociacao, semAssociacao } = resumoAssociacao(assocs, docs);
+    const nasBarras = serie.reduce((n, m) => n + m.total, 0);
+    assert.equal(comAssociacao + semAssociacao - nasBarras, r.total);
+    assert.deepEqual(r, { total: 2, semRegistro: 1, antesDoPeriodo: 1 });
+  });
+});
+
+describe("documentos concluídos pelo ADM (card × detalhe)", () => {
+  const c = (over: Partial<{ status: string | null; elaboracao_concluida_em: string | null; elaboracao_responsavel: string | null }> = {}) => ({
+    status: "CONCLUIDA",
+    elaboracao_concluida_em: "2026-08-10T12:00:00Z",
+    elaboracao_responsavel: "Ana Luiza",
+    ...over,
+  });
+
+  it("inspeção excluída e linha sem data de conclusão ficam fora", () => {
+    const linhas = [c(), c({ status: "DELETADA" }), c({ elaboracao_concluida_em: null })];
+    assert.equal(concluidosValidos(linhas).length, 1);
+    assert.deepEqual(concluidosPorMes(linhas, AGO26, 2, mesAbsSP), [
+      { chave: JUL26, total: 0 },
+      { chave: AGO26, total: 1 },
+    ]);
+  });
+
+  it("o mês é o de São Paulo: 01/09 01h UTC ainda é agosto", () => {
+    const serie = concluidosPorMes([c({ elaboracao_concluida_em: "2026-09-01T01:00:00Z" })], AGO26 + 1, 2, mesAbsSP);
+    assert.deepEqual(serie.map((m) => m.total), [1, 0]);
+  });
+
+  it("fora da janela não entra em mês nenhum", () => {
+    const serie = concluidosPorMes([c({ elaboracao_concluida_em: "2025-01-10T12:00:00Z" })], AGO26, 6, mesAbsSP);
+    assert.equal(serie.reduce((n, m) => n + m.total, 0), 0);
+  });
+
+  it("mesmo ADM com caixa, acento ou espaço diferentes é UMA barra, com a grafia mais usada", () => {
+    const linhas = [
+      c(),
+      c(),
+      c({ elaboracao_responsavel: "ana luíza" }),
+      c({ elaboracao_responsavel: "  Ana   Luiza " }),
+      c({ elaboracao_responsavel: "Paulina Cunha" }),
+      c({ elaboracao_responsavel: "  " }),
+    ];
+    assert.deepEqual(concluidosPorAdm(linhas, null, mesAbsSP), [
+      { adm: "Ana Luiza", total: 4 },
+      { adm: "Paulina Cunha", total: 1 },
+      { adm: SEM_RESPONSAVEL, total: 1 },
+    ]);
+  });
+
+  it("filtra pelo mês pedido e o total do card fecha com o do detalhe", () => {
+    const linhas = [c(), c({ elaboracao_concluida_em: "2026-07-05T12:00:00Z" }), c({ status: "DELETADA" })];
+    assert.deepEqual(concluidosPorAdm(linhas, JUL26, mesAbsSP), [{ adm: "Ana Luiza", total: 1 }]);
+    const card = concluidosPorMes(linhas, AGO26, 6, mesAbsSP).reduce((n, m) => n + m.total, 0);
+    const detalhe = concluidosPorAdm(linhas, null, mesAbsSP).reduce((n, a) => n + a.total, 0);
+    assert.equal(card, detalhe);
   });
 });

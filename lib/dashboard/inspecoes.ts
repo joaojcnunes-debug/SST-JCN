@@ -371,6 +371,16 @@ export function tecnicosCreditados(
           // depende mais de acertar o que alguém digitou na recepção do
           // cliente. O tradutor continua ATRÁS, e não some: em 10/09 havia
           // 158 das 680 inspeções sem vínculo nenhum para preferir.
+          //
+          // ⚠️ NÃO REMOVER o caminho de "quem abriu" lá embaixo (`semRegistro`).
+          // Medido em 24/09: 818 inspeções — 639 pelo vínculo, 1 só pela
+          // grafia digitada, e 178 SEM linha nenhuma na aba Responsáveis, que
+          // só existem no gráfico por quem abriu. Esse número CRESCE (24–46 por
+          // mês desde maio; 23 das 140 criadas desde 10/09). O nome de quem
+          // abriu é o nome exato de uma conta em 19 das 20 grafias — o painel
+          // preenche sozinho —, então este caminho não é frágil: é o único que
+          // essas inspeções têm. A trava é o teste "o PLANO B sobrevive à Fase
+          // B" em inspecoes.test.ts.
           const porVinculo = idUsuario
             ? (contas.find((c) => c.id_usuario === idUsuario)?.nome ?? "").trim()
             : "";
@@ -462,4 +472,85 @@ export function resumoCredito(
     if (t.some((x) => comoTecnico(x).digitado.trim() !== "")) comRegistro++;
   }
   return { comRegistro, semRegistro: inspecoes.length - comRegistro };
+}
+
+/** Rótulo para a inspeção sem dono identificável. */
+export const SEM_AUTOR = "Não registrado";
+
+/**
+ * O DONO de uma inspeção concluída: quem a LANÇOU — o nome em `responsavel`,
+ * o mesmo que a lista de Inspeções mostra e que o Admin corrige pelo lápis.
+ * Sem ele, a conta que criou (`usuario`); sem as duas, quem clicou em
+ * Concluir. Usada pelo gráfico E pela lista da barra, para as duas nunca
+ * divergirem.
+ *
+ * Por que `responsavel` e não `usuario`: medido em 08/10, só 3 de 778 diferem,
+ * e o caso de setembro (JEQUITIBÁ, INS-2B73F927) foi criado pela conta da Ana
+ * Renata com o Nathan como responsável — e foi o Nathan quem concluiu. O nome
+ * visível é o que alguém conferiu.
+ *
+ * Decisão dele em 08/10: "se o usuário criou e construiu todo o corpo da
+ * inspeção, a conclusão é dele". Quem CLICOU em Concluir (`concluida_por_email`,
+ * v283) continua gravado, mas não decide a contagem, por dois motivos medidos:
+ *
+ *  - é quase sempre a mesma pessoa: 124 de 126 primeiras conclusões
+ *    registradas. As 2 exceções (MEDTRANS e TRANSMED, 22/09) eram a Elaine
+ *    montando tudo e o Nathan só clicando em Concluir;
+ *  - reabrir e concluir de novo é uma ARMADILHA: inspeção concluída já pode ser
+ *    editada sem reabrir, então reabrir+concluir só troca o status — e trocava
+ *    o crédito (DUNA, 02/10: a Emilia reabriu e concluiu em 3 minutos, sem
+ *    alterar nada, e a conclusão do Alexandre passou a ser dela).
+ *
+ * Quem clicou só vale de reserva quando não há quem lançou (1 caso na base).
+ */
+export function donoDaInspecao(
+  i: { responsavel?: string | null; usuario?: string | null; concluida_por_email?: string | null },
+  contas: readonly { email?: string | null; nome: string }[] = [],
+): string {
+  const nomePorEmail = (e: string | null | undefined) => {
+    const k = (e ?? "").trim().toLowerCase();
+    if (!k) return "";
+    return contas.find((c) => (c.email ?? "").trim().toLowerCase() === k)?.nome.trim() || k;
+  };
+  const cadastro = contas.map((c) => c.nome);
+  return (
+    canonicalizarTecnico(i.responsavel, cadastro) ||
+    nomePorEmail(i.usuario) ||
+    nomePorEmail(i.concluida_por_email) ||
+    SEM_AUTOR
+  );
+}
+
+export interface DonoConcluidas {
+  pessoa: string;
+  novas: number;
+  copias: number;
+  total: number;
+}
+
+/**
+ * Concluídas por DONO — quem lançou a inspeção (ver `donoDaInspecao`).
+ *
+ * O e-mail vira nome pelo cadastro; e-mail fora do cadastro aparece como veio
+ * (não some). Renovação fica fora, como em toda contagem de concluídas.
+ */
+export function concluidasPorDono(
+  inspecoes: (InspecaoContavel & { concluida_por_email?: string | null; usuario?: string | null })[],
+  contas: readonly { email?: string | null; nome: string }[] = [],
+): DonoConcluidas[] {
+  const mapa = new Map<string, DonoConcluidas>();
+  for (const i of inspecoes) {
+    if (i.status !== "CONCLUIDA" || ehRenovacao(i.tipo_criacao)) continue;
+    const pessoa = donoDaInspecao(i, contas);
+    const e = mapa.get(pessoa) ?? { pessoa, novas: 0, copias: 0, total: 0 };
+    if (ehCopiaOuRevisao(i.tipo_criacao)) e.copias++;
+    else e.novas++;
+    e.total++;
+    mapa.set(pessoa, e);
+  }
+
+  // "Não registrado" vai para o fim, por maior que seja: não é uma pessoa.
+  return [...mapa.values()].sort((a, b) =>
+    a.pessoa === SEM_AUTOR ? 1 : b.pessoa === SEM_AUTOR ? -1 : b.total - a.total,
+  );
 }

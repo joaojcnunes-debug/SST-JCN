@@ -613,6 +613,13 @@ export interface Inspecao {
   elaboracao_concluida_em: string | null;
   /** V154 — data real de conclusão da inspeção (carimbada ao concluir). */
   concluida_em: string | null;
+  /** V281 (JCN; painel v283) — e-mail de quem concluiu (gatilho). Nulo antes da auditoria. */
+  concluida_por_email?: string | null;
+  /**
+   * V282 (JCN; painel v284) — coluna CALCULADA: quem foi a campo (aba Responsáveis).
+   * Só vem quando a consulta pede pelo nome (a lista de Inspeções pede).
+   */
+  tecnicos_campo?: string | null;
   created_at: string;
   updated_at: string | null;
   empresas?: { nome_empresa: string } | null;

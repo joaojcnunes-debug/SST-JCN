@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { useUserStore } from "@/lib/store";
 import { tabelaPermitida, type TabelaVisaoGeral } from "@/lib/visao-geral/tabelas";
 
@@ -69,12 +70,17 @@ export function useVisaoGeralUnidades() {
         excluirStatus?: string,
       ): Promise<(string | null)[]> {
         if (!tabelaPermitida(tabela, modulos ?? [])) return [];
-        let q = supabase.from(tabela).select("id_empresa");
-        if (excluirStatus) q = q.neq("status", excluirStatus);
-        if (vinculos) q = q.in("id_empresa", vinculos);
-        const { data, error } = await q;
-        if (error) throw error;
-        return ((data ?? []) as { id_empresa: string | null }[]).map((r) => r.id_empresa);
+        // Paginado (painel v0.3.724): a tabela de inspeções já passa de 1000
+        // linhas, e o teto do PostgREST cortava o total em silêncio. Ordena pela
+        // única coluna lida: empate entre linhas iguais não muda a contagem.
+        return (
+          await fetchAllRows<{ id_empresa: string | null }>((de, ate) => {
+            let q = supabase.from(tabela).select("id_empresa");
+            if (excluirStatus) q = q.neq("status", excluirStatus);
+            if (vinculos) q = q.in("id_empresa", vinculos);
+            return q.order("id_empresa").range(de, ate);
+          })
+        ).map((r) => r.id_empresa);
       }
 
       const empresasQ = vinculos

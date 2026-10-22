@@ -21,6 +21,7 @@ import {
   useInspecoesByEmpresa,
 } from "@/lib/hooks/useInspecao";
 import { useUsuariosParaAssociar } from "@/lib/hooks/useInspecaoAssociados";
+import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
 import { contaDoTecnicoDigitado } from "@/lib/dashboard/vinculo-tecnicos";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId, cn } from "@/lib/utils";
@@ -104,19 +105,24 @@ function NovaInspecaoInner() {
 
   const { data: usuariosSugestao } = useUsuariosParaAssociar();
   /**
-   * `datalist`, não `select`: técnico de unidade sem usuário no painel (o de
-   * Friburgo) precisa continuar podendo ser digitado, e sem sinal na portaria
-   * do cliente a consulta falha e o campo vira input comum, sem travar nada.
+   * Quem vai a campo é ESCOLHIDO do cadastro, não digitado (07/10). O texto
+   * livre gerou 43 grafias para 15 pessoas ("Lédimo", "LÉDIMO"…); todos os
+   * técnicos têm conta no painel — inclusive o de Friburgo —, então a lista
+   * cobre todo mundo. O estado continua guardando o NOME (é ele que sai no
+   * laudo), sempre o nome exato da conta escolhida.
    * Mesma régua do ResponsavelForm — se mudar aqui, mudar lá.
    */
-  const sugestoesTecnico = useMemo(
+  const contasTecnico = useMemo(
     () =>
       (usuariosSugestao ?? [])
-        .map((u) => (u.nome ?? "").trim())
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b, "pt-BR")),
+        .filter((u) => (u.nome ?? "").trim() && (u.email ?? "").trim())
+        .map((u) => ({ nome: u.nome.trim(), email: u.email.trim() })),
     [usuariosSugestao]
   );
+  const emailDoNome = (nome: string) =>
+    contasTecnico.find((c) => c.nome === nome.trim())?.email ?? "";
+  const nomeDoEmail = (email: string) =>
+    contasTecnico.find((c) => c.email.toLowerCase() === email.toLowerCase())?.nome ?? "";
 
   const [opcoes, setOpcoes] = useState<OpcoesCopia>({
     setores: true,
@@ -586,20 +592,20 @@ function NovaInspecaoInner() {
               <div className="mt-1 space-y-2">
                 {tecnicos.map((t, i) => (
                   <div key={i} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={t}
-                      list="tecnicos-campo-sugestoes"
-                      placeholder={
-                        i === 0 ? "Técnico responsável" : "Segundo técnico"
-                      }
-                      onChange={(e) =>
-                        setTecnicos((old) =>
-                          old.map((v, j) => (j === i ? e.target.value : v))
-                        )
-                      }
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-                    />
+                    <div className="min-w-0 flex-1">
+                      <UsuarioCombobox
+                        usuarios={contasTecnico}
+                        value={emailDoNome(t)}
+                        placeholder={
+                          i === 0 ? "Digite e selecione o técnico" : "Digite e selecione o segundo técnico"
+                        }
+                        onChange={(email) =>
+                          setTecnicos((old) =>
+                            old.map((v, j) => (j === i ? nomeDoEmail(email) : v))
+                          )
+                        }
+                      />
+                    </div>
                     {tecnicos.length > 1 && (
                       <button
                         type="button"
@@ -614,11 +620,6 @@ function NovaInspecaoInner() {
                     )}
                   </div>
                 ))}
-                <datalist id="tecnicos-campo-sugestoes">
-                  {sugestoesTecnico.map((n) => (
-                    <option key={n} value={n} />
-                  ))}
-                </datalist>
                 <button
                   type="button"
                   onClick={() => setTecnicos((old) => [...old, ""])}
