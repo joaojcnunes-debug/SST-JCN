@@ -77,7 +77,13 @@ function fetchComTimeout(url: string, ms: number): Promise<Response> {
   const t = setTimeout(() => ctrl.abort(), ms);
   return fetch(url, {
     signal: ctrl.signal,
-    headers: { Accept: "application/json" },
+    // Sem User-Agent próprio o Node manda um genérico, e a BrasilAPI passou a
+    // devolver 403 para ele (medido 29/09: 403 sem UA, 200 com qualquer UA).
+    // Aí tudo caía no CNPJ.ws, lento e limitado a 3 consultas/min → 502.
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "sst-jcn/1.0 (+https://sst-jcn.vercel.app)",
+    },
   }).finally(() => clearTimeout(t));
 }
 

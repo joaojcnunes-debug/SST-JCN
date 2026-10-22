@@ -203,6 +203,8 @@ id_tipo text NN, nome text NN, icone text, ordem integer NN, ativo boolean NN, s
 
 id_transferencia text NN, id_maquina text, de_unidade text, de_localizacao text, de_responsavel text, para_unidade text, para_localizacao text, para_responsavel text, motivo text, observacoes text, maquina_nome text, maquina_tipo text, maquina_categoria text, maquina_codigo_interno text, maquina_tag text, maquina_marca text, maquina_modelo text, maquina_numero_serie text, maquina_numero_patrimonio text, maquina_foto_url text, responsavel_nome text, responsavel_email text, data_hora timestamp with time zone NN, created_at timestamp with time zone NN, status text NN, de_id_unidade text, para_id_unidade text, para_usuario_email text, para_usuario_nome text, transportado_por text, aceita_por_email text, aceita_em timestamp with time zone, recusada_por_email text, recusada_em timestamp with time zone, recusada_motivo text, cancelada_por_email text, cancelada_em timestamp with time zone, cancelada_motivo text, assinante_nome text, assinatura_png text, pdf_sha256 text, user_agent text, assinatura_ip text, consentimento_em timestamp with time zone, assinado_em timestamp with time zone, em_atendimento_por text, em_atendimento_em timestamp with time zone, id_equipamento text, id_catalogo text, quantidade numeric
 
+v280 (SEC-EQP-01): RLS `transferencias_sel` (leitura) + `transferencias_ins` (INSERT só pendente, individual, do equipamento na base de origem, de quem registra). Sem UPDATE/DELETE direto (só pelas RPCs `transferencia_*`); grant de INSERT em 31 colunas para `authenticated`. Rollback: `scripts/sql/v280_sec_eqp_01_fecha_transferencia_estoque_rollback.sql`.
+
 ### `triagens_modelo`
 
 id_triagem text NN, id_modelo text NN, ordem integer NN, created_at timestamp with time zone NN
@@ -415,6 +417,8 @@ id_devolucao text NN, id_unidade text NN, id_colaborador text NN, id_entrega tex
 
 id_item text NN, id_devolucao text NN, id_unidade text NN, id_catalogo text, id_equipamento text, nome_equipamento text, numero_serie text, numero_patrimonio text, quantidade numeric NN, estado_retorno text NN, observacao_estado text, criado_em timestamp with time zone NN
 
+v279: no item por quantidade, `numero_serie` recebe as séries enviadas em `seriais`, separadas por vírgula.
+
 ### `equipamentos_entrega_assinaturas`
 
 id_assinatura text NN, id_entrega text NN, id_unidade text NN, id_colaborador text, assinante_nome text, metodo text NN, assinatura_png text, pdf_sha256 text, user_agent text, ip text, consentimento_em timestamp with time zone, assinado_em timestamp with time zone NN, criado_por text, criado_em timestamp with time zone NN
@@ -442,6 +446,8 @@ id_item text NN, id_importacao text NN, id_unidade text NN, cprod text, xprod te
 ### `equipamentos_movimentacoes`
 
 id_movimentacao text NN, id_catalogo text NN, id_unidade text NN, tipo text NN, quantidade numeric NN, origem text NN, ref_id text, motivo text, responsavel text, criado_por text, criado_em timestamp with time zone NN
+
+v280: só leitura direta (`equipamentos_movimentacoes_sel`); gravação só pelas RPCs `equipamento_*`/`transferencia_*`.
 
 ### `equipamentos_status_historico`
 
