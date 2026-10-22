@@ -24,7 +24,7 @@ function evento(parcial: Partial<AuditoriaEvento>): AuditoriaEvento {
     modulo: "sistema",
     id_empresa: "EMP-1",
     titulo: "TERE FRUTAS",
-    usuario_email: "alguem@chabra.com.br",
+    usuario_email: "alguem@jcn.com.br",
     usuario_role: "authenticated",
     campos_alterados: ["telefone"],
     antes: { telefone: "2126193833" },
@@ -105,10 +105,10 @@ describe("formatarValor", () => {
 });
 
 describe("quemGravou", () => {
-  const nomes = new Map([["alguem@chabra.com.br", "Alguém"]]);
+  const nomes = new Map([["alguem@jcn.com.br", "Alguém"]]);
   test("e-mail conhecido vira nome; desconhecido fica o e-mail", () => {
     assert.equal(quemGravou(evento({}), nomes), "Alguém");
-    assert.equal(quemGravou(evento({ usuario_email: "outro@chabra.com.br" }), nomes), "outro@chabra.com.br");
+    assert.equal(quemGravou(evento({ usuario_email: "outro@jcn.com.br" }), nomes), "outro@jcn.com.br");
   });
 
   test("rota de serviço e psql ficam identificados, não somem", () => {
@@ -118,7 +118,7 @@ describe("quemGravou", () => {
 
   test("v256: rota de serviço com ator mostra a pessoa; sem pessoa mostra a origem", () => {
     assert.equal(
-      quemGravou(evento({ usuario_email: "alguem@chabra.com.br", usuario_role: "service_role", usuario_origem: "usuarios/criar" }), nomes),
+      quemGravou(evento({ usuario_email: "alguem@jcn.com.br", usuario_role: "service_role", usuario_origem: "usuarios/criar" }), nomes),
       "Alguém",
     );
     assert.equal(quemGravou(evento({ usuario_email: null, usuario_role: "service_role", usuario_origem: "formulario-publico" }), nomes), "Formulário público");

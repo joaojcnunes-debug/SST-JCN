@@ -17,6 +17,7 @@ export const ROTAS_AJUDA = [
   "/analise-quimicos/ajuda",
   "/apreciacao-maquinas/ajuda",
   "/relatorio-conformidade/ajuda",
+  "/epi/ajuda",
   "/equipamentos/ajuda",
   "/escala/ajuda",
   "/frota/ajuda",

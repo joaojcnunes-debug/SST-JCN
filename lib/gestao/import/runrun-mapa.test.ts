@@ -103,43 +103,43 @@ describe("normalizarEtiqueta / normalizarEtiquetas (§6: Tags -> etiquetas)", ()
 });
 
 describe("resolverVinculos (§6: Alocados -> vinculados por e-mail)", () => {
-  const contas = new Set(["ana@chabra.com.br", "bruno@chabra.com.br", "carla@chabra.com.br"]);
+  const contas = new Set(["ana@jcn.com.br", "bruno@jcn.com.br", "carla@jcn.com.br"]);
 
   test("1o alocado -> responsavel; demais -> seguidor", () => {
     const r = resolverVinculos(
       [
-        { email: "Ana@JCN Consultoria.com.br", nome: "Ana" },
-        { email: "bruno@chabra.com.br", nome: "Bruno" },
+        { email: "Ana@jcn.com.br", nome: "Ana" },
+        { email: "bruno@jcn.com.br", nome: "Bruno" },
       ],
       [],
       contas,
     );
     assert.deepEqual(r.vinculos, [
-      { email: "ana@chabra.com.br", tipo: "responsavel" },
-      { email: "bruno@chabra.com.br", tipo: "seguidor" },
+      { email: "ana@jcn.com.br", tipo: "responsavel" },
+      { email: "bruno@jcn.com.br", tipo: "seguidor" },
     ]);
     assert.deepEqual(r.naoCasados, []);
   });
 
   test("seguidores do Runrun -> seguidor", () => {
     const r = resolverVinculos(
-      [{ email: "ana@chabra.com.br", nome: "Ana" }],
-      [{ email: "carla@chabra.com.br", nome: "Carla" }],
+      [{ email: "ana@jcn.com.br", nome: "Ana" }],
+      [{ email: "carla@jcn.com.br", nome: "Carla" }],
       contas,
     );
     assert.deepEqual(r.vinculos, [
-      { email: "ana@chabra.com.br", tipo: "responsavel" },
-      { email: "carla@chabra.com.br", tipo: "seguidor" },
+      { email: "ana@jcn.com.br", tipo: "responsavel" },
+      { email: "carla@jcn.com.br", tipo: "seguidor" },
     ]);
   });
 
   test("responsavel vence quando o mesmo e-mail tambem e seguidor", () => {
     const r = resolverVinculos(
-      [{ email: "ana@chabra.com.br", nome: "Ana" }],
-      [{ email: "ana@chabra.com.br", nome: "Ana" }],
+      [{ email: "ana@jcn.com.br", nome: "Ana" }],
+      [{ email: "ana@jcn.com.br", nome: "Ana" }],
       contas,
     );
-    assert.deepEqual(r.vinculos, [{ email: "ana@chabra.com.br", tipo: "responsavel" }]);
+    assert.deepEqual(r.vinculos, [{ email: "ana@jcn.com.br", tipo: "responsavel" }]);
   });
 
   test("promove seguidor a responsavel se aparecer como 1o alocado depois", () => {
@@ -147,13 +147,13 @@ describe("resolverVinculos (§6: Alocados -> vinculados por e-mail)", () => {
     // trata): aqui o 1o alocado ja e responsavel; garante nao duplicar.
     const r = resolverVinculos(
       [
-        { email: "ana@chabra.com.br", nome: "Ana" },
-        { email: "ana@chabra.com.br", nome: "Ana" },
+        { email: "ana@jcn.com.br", nome: "Ana" },
+        { email: "ana@jcn.com.br", nome: "Ana" },
       ],
       [],
       contas,
     );
-    assert.deepEqual(r.vinculos, [{ email: "ana@chabra.com.br", tipo: "responsavel" }]);
+    assert.deepEqual(r.vinculos, [{ email: "ana@jcn.com.br", tipo: "responsavel" }]);
   });
 
   test("sem e-mail e sem conta -> naoCasados com motivo", () => {

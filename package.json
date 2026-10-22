@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sb": "supabase"
+    "sb": "supabase",
+    "test": "node --import tsx --import ./test-setup.ts --test \"lib/**/*.test.ts\" \"lib/**/*.test.tsx\" \"app/**/*.test.ts\" \"components/**/*.test.tsx\""
   },
   "dependencies": {
     "@digitalpersona/devices": "^0.2.6",
@@ -63,9 +64,11 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.15",
+    "fake-indexeddb": "^6.2.5",
     "puppeteer": "^25.1.0",
     "supabase": "^2.98.2",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "tus-js-client": "^4.3.1",
     "typescript": "^5"
   },
