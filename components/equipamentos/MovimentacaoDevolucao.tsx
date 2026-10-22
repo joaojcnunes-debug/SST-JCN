@@ -45,8 +45,11 @@ const ESTADOS: { valor: EstadoRetorno; rotulo: string }[] = [
 const hoje = () => new Date().toISOString().slice(0, 10);
 
 type Selecao = { estado: EstadoRetorno; observacao: string };
-/** Periférico / item por quantidade: além do estado, QUANTOS voltam. */
-type SelecaoEstoque = Selecao & { quantidade: number };
+/** Periférico / item por quantidade: além do estado, QUANTOS voltam e com
+ *  qual série (v266 — antes o termo de devolução saía com série vazia). */
+type SelecaoEstoque = Selecao & { quantidade: number; seriais: string };
+
+const partir = (s: string) => s.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean);
 
 export default function MovimentacaoDevolucao({
   bases,
@@ -107,10 +110,19 @@ export default function MovimentacaoDevolucao({
     () => estoqueEmPosse.filter((e) => selecaoEstoque[e.id_catalogo]),
     [estoqueEmPosse, selecaoEstoque],
   );
-  function alternarEstoque(item: { id_catalogo: string; quantidade: number }) {
+  function alternarEstoque(item: { id_catalogo: string; quantidade: number; seriais: string[] }) {
     setSelecaoEstoque((s) => {
+      // Nasce com as séries anotadas na retirada: é o caso comum (volta tudo).
       if (!s[item.id_catalogo])
-        return { ...s, [item.id_catalogo]: { estado: "integro", observacao: "", quantidade: item.quantidade } };
+        return {
+          ...s,
+          [item.id_catalogo]: {
+            estado: "integro",
+            observacao: "",
+            quantidade: item.quantidade,
+            seriais: item.seriais.join(", "),
+          },
+        };
       const resto = { ...s };
       delete resto[item.id_catalogo];
       return resto;
@@ -177,6 +189,7 @@ export default function MovimentacaoDevolucao({
           quantidade: s.quantidade,
           estado_retorno: s.estado,
           observacao_estado: s.observacao.trim() || null,
+          ...(partir(s.seriais).length ? { seriais: partir(s.seriais) } : {}),
         };
       }),
     ];
@@ -396,6 +409,21 @@ export default function MovimentacaoDevolucao({
                       </label>
                       {marcado && (
                         <div className="mt-2 grid grid-cols-1 gap-2 pl-6 sm:grid-cols-4">
+                          <div className="sm:col-span-4">
+                            <label className={labelCls}>Nº de série</label>
+                            <input
+                              className={inputCls}
+                              value={s.seriais}
+                              onChange={(ev) => ajustarEstoque(e.id_catalogo, { seriais: ev.target.value })}
+                              placeholder={s.quantidade > 1 ? "nº de série de cada um, separados por vírgula" : "nº de série (opcional)"}
+                            />
+                            {s.seriais.trim() && partir(s.seriais).length !== s.quantidade && (
+                              <p className="mt-1 text-xs text-amber-700">
+                                {partir(s.seriais).length} série{partir(s.seriais).length === 1 ? "" : "s"} para{" "}
+                                {s.quantidade} unidade{s.quantidade === 1 ? "" : "s"} — confira quais estão voltando.
+                              </p>
+                            )}
+                          </div>
                           <div>
                             <label className={labelCls}>Quantos voltam</label>
                             <input

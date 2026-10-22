@@ -344,7 +344,15 @@ export type EstoqueEmPosse = {
   tipo: string | null;
   unidade_medida: string | null;
   quantidade: number;
+  /** Séries anotadas na retirada (v238) que ainda não voltaram — a tela de
+   *  devolução já nasce com elas, para o termo não sair com série vazia (v266). */
+  seriais: string[];
 };
+
+/** "A1, B2" → ["A1", "B2"]: a RPC grava as séries do item por quantidade
+ *  juntas numa linha, separadas por vírgula. */
+const partirSeriais = (s: string | null | undefined): string[] =>
+  (s ?? "").split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean);
 
 export function useEstoqueDoColaborador(idColaborador: string | null | undefined) {
   return useQuery({
@@ -356,31 +364,38 @@ export function useEstoqueDoColaborador(idColaborador: string | null | undefined
       const [ent, dev] = await Promise.all([
         sb
           .from("equipamentos_entregas_itens")
-          .select("id_catalogo, quantidade, nome_equipamento, entrega:equipamentos_entregas!inner(id_colaborador, status)")
+          .select("id_catalogo, quantidade, nome_equipamento, numero_serie, entrega:equipamentos_entregas!inner(id_colaborador, status)")
           .is("id_equipamento", null)
           .not("id_catalogo", "is", null)
           .eq("entrega.id_colaborador", idColaborador!),
         sb
           .from("equipamentos_devolucoes_itens")
-          .select("id_catalogo, quantidade, devolucao:equipamentos_devolucoes!inner(id_colaborador)")
+          .select("id_catalogo, quantidade, numero_serie, devolucao:equipamentos_devolucoes!inner(id_colaborador)")
           .is("id_equipamento", null)
           .not("id_catalogo", "is", null)
           .eq("devolucao.id_colaborador", idColaborador!),
       ]);
       if (ent.error) throw ent.error;
       if (dev.error) throw dev.error;
-      type LinhaEnt = { id_catalogo: string; quantidade: number; nome_equipamento: string | null; entrega: { status: string | null } | null };
-      type LinhaDev = { id_catalogo: string; quantidade: number };
-      const saldo = new Map<string, { nome: string | null; qtd: number }>();
+      type LinhaEnt = { id_catalogo: string; quantidade: number; nome_equipamento: string | null; numero_serie: string | null; entrega: { status: string | null } | null };
+      type LinhaDev = { id_catalogo: string; quantidade: number; numero_serie: string | null };
+      const saldo = new Map<string, { nome: string | null; qtd: number; seriais: string[] }>();
       for (const r of (ent.data ?? []) as unknown as LinhaEnt[]) {
         if (r.entrega?.status === "cancelada") continue;
-        const cur = saldo.get(r.id_catalogo) ?? { nome: r.nome_equipamento, qtd: 0 };
+        const cur = saldo.get(r.id_catalogo) ?? { nome: r.nome_equipamento, qtd: 0, seriais: [] };
         cur.qtd += Number(r.quantidade) || 0;
+        cur.seriais.push(...partirSeriais(r.numero_serie));
         saldo.set(r.id_catalogo, cur);
       }
       for (const r of (dev.data ?? []) as unknown as LinhaDev[]) {
         const cur = saldo.get(r.id_catalogo);
-        if (cur) cur.qtd -= Number(r.quantidade) || 0;
+        if (!cur) continue;
+        cur.qtd -= Number(r.quantidade) || 0;
+        // Série que já voltou sai da lista (uma ocorrência por devolução).
+        for (const sr of partirSeriais(r.numero_serie)) {
+          const i = cur.seriais.indexOf(sr);
+          if (i >= 0) cur.seriais.splice(i, 1);
+        }
       }
       const ids = [...saldo.entries()].filter(([, v]) => v.qtd > 0).map(([k]) => k);
       if (ids.length === 0) return [];
@@ -397,6 +412,7 @@ export function useEstoqueDoColaborador(idColaborador: string | null | undefined
           tipo: info.get(id)?.tipo ?? null,
           unidade_medida: info.get(id)?.unidade_medida ?? null,
           quantidade: saldo.get(id)!.qtd,
+          seriais: saldo.get(id)!.seriais,
         }))
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
     },
@@ -492,7 +508,7 @@ export function useRegistrarEntrega() {
 
 export type ItemDevolucaoInput =
   | { id_equipamento: string; estado_retorno: EstadoRetorno; observacao_estado?: string | null }
-  | { id_catalogo: string; quantidade: number; estado_retorno: EstadoRetorno; observacao_estado?: string | null };
+  | { id_catalogo: string; quantidade: number; estado_retorno: EstadoRetorno; observacao_estado?: string | null; seriais?: string[] };
 
 export function useDevolucoes(idUnidade: string | null | undefined) {
   return useQuery({

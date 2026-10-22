@@ -65,7 +65,9 @@ export function useRequireModule(modulo: ModuloPermitido | ModuloPermitido[]) {
     if (!avisouRef.current) {
       avisouRef.current = true;
       const rotulo = modulos.map((m) => ROTULO_MODULO[m]).join(" ou ");
-      toast.error(`Sem permissão para acessar ${rotulo}`);
+      // Decisão dele (28/09): avisar e dizer o caminho — quem precisar pede o
+      // módulo ao administrador do painel (não há pedido automático).
+      toast.error(`Sem permissão para acessar ${rotulo}. Se precisar, peça ao administrador do painel.`);
     }
     router.replace("/modulos");
   }, [user, modulos, router]);

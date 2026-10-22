@@ -574,7 +574,9 @@ Veículos (tipo, status, km que só sobe), **saída com checklist** em 5 passos 
 
 ### 9.7 Equipamentos (`/equipamentos`, patrimônio interno por base)
 
-Equipamentos individuais (status Operante, Manutenção, Inativa, Baixada, Reserva — só muda pela RPC, com motivo e histórico), catálogo com estoque mínimo, **razão de estoque** (`equipamentos_movimentacoes`, saldo pela view `v_equipamentos_saldo`), entrada manual ou por **NF-e (XML)**, ajuste com motivo, transferência entre bases (aceite com assinatura), **retirada/entrega** a colaborador (termo PDF com hash, assinatura em tela ou **biometria** com matcher externo — até 5 tentativas), devolução (íntegro/avariado/inservível). Todas as regras nas RPCs `equipamento_*`/`equip_entrega_*`.
+Equipamentos individuais (status Operante, Manutenção, Inativa, Baixada, Reserva — só muda pela RPC, com motivo e histórico), catálogo com estoque mínimo, **razão de estoque** (`equipamentos_movimentacoes`, saldo pela view `v_equipamentos_saldo`), entrada manual ou por **NF-e (XML)**, ajuste com motivo, transferência entre bases (aceite com assinatura), **retirada/entrega** a colaborador (termo PDF com hash, assinatura em tela ou **biometria** com matcher externo — até 5 tentativas), devolução (íntegro/avariado/inservível; item por quantidade grava as séries informadas — v279). Todas as regras nas RPCs `equipamento_*`/`equip_entrega_*`.
+
+**Segurança (v280, SEC-EQP-01, replicado do painel v269):** as 13 RPCs do módulo (equipamentos, transferências e `epi_assinar_entrega`) só executam para usuário logado (`authenticated`); `equipamento_estornar_transferencia` não tem grant e só roda chamada por recusar/cancelar. A razão de estoque (`equipamentos_movimentacoes`) só é gravada pelas RPCs. Em `transferencias`, o único INSERT direto permitido é o da transferência individual (pendente, do equipamento que está na base de origem, de quem registra), nas 31 colunas do formulário; aceitar/recusar recusam sessão sem e-mail.
 
 ### 9.8 EPI (`/epi`, por empresa cliente)
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -61,15 +61,13 @@ export default function Modal({
   }, [open]);
 
   /**
-   * Foco inicial + armadilha de Tab. Depende SÓ de `open`, e isso é o ponto.
+   * Foco inicial. Depende SÓ de `open`, e isso é o ponto.
    *
    * 🐛 Enquanto dependia de `onClose`, o efeito rodava a cada render do pai —
    * e como o pai re-renderiza a cada tecla digitada (o valor do campo é estado
    * dele), o `.focus()` do primeiro campo roubava o cursor de volta depois de
    * UMA letra. Quem estava no 2º campo do modal via a letra entrar e o cursor
    * saltar para o 1º. Valia para os 83 modais do painel, não só para a Escala.
-   *
-   * `onClose` vem pela ref, que está sempre atualizada.
    */
   useEffect(() => {
     if (!open || !dialogRef.current) return;
@@ -80,25 +78,38 @@ export default function Modal({
     );
     const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
     (inputs[0] ?? focusable[0])?.focus();
-
-    const onKey = (e: KeyboardEvent) => {
-      e.stopPropagation();
-      if (e.key === "Escape") { onCloseRef.current(); return; }
-      if (e.key !== "Tab") return;
-      const els = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
-      if (!els.length) return;
-      const first = els[0];
-      const last = els[els.length - 1];
-      if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
-      } else {
-        if (document.activeElement === last) { e.preventDefault(); first.focus(); }
-      }
-    };
-
-    dialog.addEventListener("keydown", onKey);
-    return () => { dialog.removeEventListener("keydown", onKey); };
   }, [open]);
+
+  /**
+   * Esc fecha + armadilha de Tab, no `onKeyDown` do React (fase de bolha).
+   *
+   * 🐛 Antes era um `keydown` NATIVO no diálogo com `stopPropagation()` em toda
+   * tecla (84b31818, para a tecla não vazar do modal). Só que o React escuta na
+   * raiz/portal, ACIMA do diálogo — então nenhum `onKeyDown` dentro de modal
+   * disparava: Enter no CNPJ do "Editar Empresa" SALVAVA a empresa em vez de
+   * buscar o CNPJ (medido 07/10/2026), Enter em "Adicionar…" não adicionava,
+   * Esc da edição em linha fechava o modal inteiro.
+   *
+   * Agora quem está dentro vê a tecla primeiro; aqui ela para de subir pela
+   * árvore do React (o portal a levaria aos pais do modal). Quem já tratou a
+   * tecla (`preventDefault`) não fecha o modal nem tem o Tab desviado.
+   */
+  function onDialogKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
+    e.stopPropagation();
+    if (e.defaultPrevented) return;
+    if (e.key === "Escape") { onCloseRef.current(); return; }
+    if (e.key !== "Tab") return;
+    const dialog = e.currentTarget;
+    const els = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE));
+    if (!els.length) return;
+    const first = els[0];
+    const last = els[els.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+    } else {
+      if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }
 
   if (!open || typeof document === "undefined") return null;
 
@@ -118,6 +129,7 @@ export default function Modal({
           SIZE[size]
         )}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={onDialogKeyDown}
       >
         {title && (
           <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">

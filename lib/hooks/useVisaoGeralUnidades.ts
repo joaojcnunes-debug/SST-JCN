@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
+import { tabelaPermitida, type TabelaVisaoGeral } from "@/lib/visao-geral/tabelas";
 
 /**
  * Agrega, por UNIDADE (tabela `unidades` de acesso, via empresas.id_unidade),
@@ -50,17 +51,24 @@ export function useVisaoGeralUnidades() {
   const escopoUnidades =
     user && user.perfil !== "Admin" ? (user.unidades ?? []) : null;
 
-  return useQuery<VisaoGeralData>({
-    queryKey: ["visao-geral-unidades", vinculos, escopoUnidades],
+  // Só conta tabela de módulo que a conta tem (lib/visao-geral/tabelas.ts).
+  // null = perfil ainda não carregou: não consulta nada (senão lia tudo com a
+  // lista vazia, ou cacheava zeros) e a tela segue em "carregando".
+  const modulos = user ? [...(user.modulos_permitidos ?? [])].sort() : null;
+
+  const q = useQuery<VisaoGeralData>({
+    queryKey: ["visao-geral-unidades", vinculos, escopoUnidades, modulos],
+    enabled: modulos !== null,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
 
       // Lista de id_empresa de uma tabela (coluna leve), com filtro opcional de
       // status (soft-delete) e do escopo do usuário.
       async function idsEmpresa(
-        tabela: string,
+        tabela: TabelaVisaoGeral,
         excluirStatus?: string,
       ): Promise<(string | null)[]> {
+        if (!tabelaPermitida(tabela, modulos ?? [])) return [];
         let q = supabase.from(tabela).select("id_empresa");
         if (excluirStatus) q = q.neq("status", excluirStatus);
         if (vinculos) q = q.in("id_empresa", vinculos);
@@ -168,4 +176,7 @@ export function useVisaoGeralUnidades() {
       };
     },
   });
+  // Consulta desligada devolve `isLoading: false` no React Query v5 — sem isto
+  // a tela desenharia a Visão geral vazia enquanto o perfil carrega.
+  return modulos === null ? { ...q, isLoading: true } : q;
 }

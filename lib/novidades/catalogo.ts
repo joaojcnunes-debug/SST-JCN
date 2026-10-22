@@ -41,6 +41,60 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "janelas-enter-e-esc-funcionam",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Enter e Esc dentro das janelas fazem o que prometem",
+    texto:
+      "Dentro das janelas do sistema, o Enter de alguns campos era ignorado. No Editar Empresa, Enter no CNPJ " +
+      "salvava a empresa em vez de buscar na Receita — agora busca. Também voltaram a funcionar: Enter em " +
+      "\"Adicionar…\" adiciona o item, Enter na subtarefa da Gestão adiciona a subtarefa, Enter na senha da " +
+      "assinatura assina, e Esc numa edição em linha cancela só a edição, sem fechar a janela.",
+    onde: "Janelas de cadastro e edição em todo o sistema",
+    impacto: "Nada muda no que já está salvo. Esc fora de um campo continua fechando a janela.",
+    versoes: ["0.3.137"],
+  },
+  {
+    id: "buscar-cnpj-http-502",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Buscar CNPJ voltou a preencher a empresa",
+    texto:
+      "O botão Buscar do cadastro de empresa podia falhar com “Falha na consulta (HTTP 502)”: o serviço " +
+      "principal da Receita passou a recusar consultas sem identificação, e o serviço reserva, mais lento e " +
+      "limitado, nem sempre respondia. A consulta agora se identifica e volta a ser atendida na hora.",
+    onde: "Empresas › Nova Empresa › CNPJ › Buscar",
+    impacto: "Nada a fazer: é só buscar de novo.",
+    versoes: ["0.3.137"],
+  },
+  {
+    id: "devolucao-periferico-serie",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Devolução de periférico guarda o número de série",
+    texto:
+      "Ao devolver um periférico (headset, mouse, teclado), o campo Nº de série já vem preenchido com a " +
+      "série anotada na retirada, e ela sai no termo de devolução. Antes o termo saía com a série em branco.",
+    onde: "Equipamentos › Movimentação › Devolução",
+    impacto: "Se voltar só parte dos itens, apague do campo as séries que ficaram com a pessoa.",
+    versoes: ["0.3.137"],
+  },
+  {
+    id: "inicio-visao-geral-so-modulos-da-conta",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Início: a Visão geral por unidade conta só os módulos que você usa",
+    texto:
+      "Os números de laudos e inspeções de cada unidade, no alto do Início, somavam os documentos de todos " +
+      "os módulos — inclusive dos que a sua conta não abre. Agora eles contam só os módulos liberados para " +
+      "você, como os outros quadros do Início já faziam.",
+    onde: "Início › Visão geral por unidade",
+    impacto:
+      "Quem não tem todos os módulos vai ver números menores nas unidades — é o esperado. Nada foi apagado; " +
+      "quem tem o módulo continua vendo tudo.",
+    versoes: ["0.3.137"],
+  },
+  {
     id: "empresas-grupos-matriz-filial",
     data: "2026-10-07",
     tipo: "novidade",
