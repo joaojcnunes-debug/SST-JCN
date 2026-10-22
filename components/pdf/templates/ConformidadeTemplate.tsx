@@ -58,7 +58,8 @@ const STYLE_BLOCK = `
 .badge { font-family: monospace; font-size: 10px; font-weight: 700; border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
 .status { font-size: 9px; font-weight: 700; border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
 .fotos { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
-.fotos img { height: 150px; width: 200px; object-fit: cover; border: 1px solid #d1d5db; border-radius: 6px; }
+/* Altura fixa, largura pela proporção: a foto sai inteira (sem corte) e a linha fica alinhada. */
+.fotos img { height: 200px; width: auto; max-width: 100%; object-fit: contain; border: 1px solid #d1d5db; border-radius: 6px; display: block; }
 .obs { margin-top: 8px; font-size: 10pt; color: #111827; white-space: pre-wrap; }
 .obs .rot { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; }
 `;

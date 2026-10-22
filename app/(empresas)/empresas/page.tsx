@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { buscarEmpresas } from "@/lib/busca/empresas";
 import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
+import { useListaProgressiva } from "@/lib/hooks/useListaProgressiva";
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import { excluirComLixeira } from "@/lib/hooks/useLixeira";
 import EmpresaCard from "@/components/empresas/EmpresaCard";
@@ -18,6 +19,10 @@ import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { useCanCreate, useCanDelete, useCanEdit } from "@/lib/hooks/useUsuario";
 import { useUnidadeAtiva } from "@/lib/store";
 import type { Empresa } from "@/lib/supabase/types";
+import GrupoSelect from "@/components/empresas/GrupoSelect";
+
+const FILTRO_GRUPO_INICIO = [{ value: "", label: "Todos os grupos" }];
+const FILTRO_GRUPO_FIM = [{ value: "__sem__", label: "Sem grupo" }];
 
 function EmpresasInner() {
   const searchParams = useSearchParams();
@@ -93,6 +98,17 @@ function EmpresasInner() {
     return { ...r, foraDaUnidade };
   }, [empresas, busca, filtroUnidade, filtroGrupo, grupoDaEmpresa, nomeGrupoDe]);
 
+  // EMPRESAS-PERF-01 (09/10/2026): com 6.465 empresas a tela montava 6.465 cards,
+  // e cada card disparava a própria contagem de inspeções (HEAD count=exact) —
+  // milhares de requisições contra um PostgREST de pool 5. Busca e filtros
+  // continuam sobre a lista INTEIRA (`filtradas`); só a montagem vai em janela.
+  const { visiveis, sentinela, mostrandoTudo } = useListaProgressiva(filtradas);
+
+  // Nome da contratante (selo "Terceiros") resolvido uma vez aqui, em vez de cada
+  // card varrer as 6.465 empresas com `find`.
+  const nomePorId = useMemo(() => new Map(empresas.map((e) => [e.id_empresa, e.nome_empresa])), [empresas]);
+
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -102,7 +118,7 @@ function EmpresasInner() {
             type="text"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            placeholder="Buscar por nome, CNPJ ou grupo..."
+            placeholder="Buscar por nome, fantasia, CNPJ ou grupo..."
             className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
           />
         </div>
@@ -121,18 +137,15 @@ function EmpresasInner() {
           </select>
         )}
         {grupos.length > 0 && (
-          <select
+          <GrupoSelect
             value={filtroGrupo}
-            onChange={(e) => setFiltroGrupo(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20 sm:w-48"
+            onChange={setFiltroGrupo}
+            inicio={FILTRO_GRUPO_INICIO}
+            fim={FILTRO_GRUPO_FIM}
             title="Filtrar por grupo de empresas"
-          >
-            <option value="">Todos os grupos</option>
-            {grupos.map((g) => (
-              <option key={g.id_grupo} value={g.id_grupo}>{g.nome}</option>
-            ))}
-            <option value="__sem__">Sem grupo</option>
-          </select>
+            className="w-full sm:w-48"
+            botaoClassName="rounded-xl border-gray-200 px-3 py-2.5 shadow-sm"
+          />
         )}
         {canCreate && (
           <div className="flex items-center gap-2">
@@ -241,21 +254,32 @@ function EmpresasInner() {
       )}
 
       {!isLoading && !error && filtradas.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtradas.map((empresa) => (
-            <EmpresaCard
-              key={empresa.id_empresa}
-              empresa={empresa}
-              canEdit={canEdit}
-              grupo={grupoDaEmpresa.get(empresa.id_empresa)}
-              onEdit={() => {
-                setEditing(empresa);
-                setFormOpen(true);
-              }}
-              onDelete={canDelete ? setConfirmDel : undefined}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {visiveis.map((empresa) => (
+              <EmpresaCard
+                key={empresa.id_empresa}
+                empresa={empresa}
+                canEdit={canEdit}
+                grupo={grupoDaEmpresa.get(empresa.id_empresa)}
+                contratanteNome={
+                  empresa.id_empresa_contratante ? nomePorId.get(empresa.id_empresa_contratante) ?? null : null
+                }
+                onEdit={() => {
+                  setEditing(empresa);
+                  setFormOpen(true);
+                }}
+                onDelete={canDelete ? setConfirmDel : undefined}
+              />
+            ))}
+          </div>
+          {/* Sentinela: entra em cena antes do fim e puxa a próxima leva. */}
+          {!mostrandoTudo && (
+            <div ref={sentinela} className="py-6 text-center text-sm text-gray-400">
+              carregando mais…
+            </div>
+          )}
+        </>
       )}
 
       <EmpresaForm

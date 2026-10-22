@@ -84,7 +84,6 @@ function useInvalidarGrupos() {
 export function mensagemErroGrupo(e: { message?: string; code?: string }): string {
   const msg = e.message ?? "";
   if (msg.includes("ux_empresa_grupos_nome")) return "Já existe um grupo com esse nome.";
-  if (msg.includes("ux_empresas_matriz_por_grupo")) return "Este grupo já tem uma matriz.";
   if (e.code === "42501" || msg.includes("row-level security")) return "Você não tem permissão para isso.";
   return msg || "Não foi possível salvar.";
 }
@@ -140,8 +139,6 @@ export async function gravarGrupoDaEmpresa(p: {
   id_empresa: string;
   id_grupo: string | null;
   papel: PapelGrupo | null;
-  /** Matriz atual do grupo (outra empresa), se houver — vira filial na troca. */
-  matrizAtual?: string | null;
 }) {
   const sb = createSupabaseBrowserClient();
   if (!p.id_grupo) {
@@ -154,23 +151,15 @@ export async function gravarGrupoDaEmpresa(p: {
     if (!data?.length) throw new Error("Você não tem permissão para editar esta empresa.");
     return;
   }
-  // Trocar a matriz: entra como filial e a função promove (rebaixando a antiga),
-  // senão o índice "uma matriz por grupo" recusa a gravação.
-  const trocaMatriz = p.papel === "MATRIZ" && !!p.matrizAtual && p.matrizAtual !== p.id_empresa;
+  // v285: o grupo aceita várias matrizes (ex.: condomínios da mesma
+  // administradora), então marcar matriz não mexe nas outras empresas.
   const { data, error } = await sb
     .from("empresas")
-    .update({ id_grupo: p.id_grupo, papel_grupo: trocaMatriz ? "FILIAL" : p.papel } as never)
+    .update({ id_grupo: p.id_grupo, papel_grupo: p.papel } as never)
     .eq("id_empresa", p.id_empresa)
     .select("id_empresa");
   if (error) throw error;
   if (!data?.length) throw new Error("Você não tem permissão para editar esta empresa.");
-  if (trocaMatriz) {
-    const { error: e2 } = await sb.rpc(
-      "empresa_grupo_definir_matriz" as never,
-      { p_id_grupo: p.id_grupo, p_id_empresa: p.id_empresa } as never,
-    );
-    if (e2) throw e2;
-  }
 }
 
 /**

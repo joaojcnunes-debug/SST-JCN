@@ -3,12 +3,19 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { ChevronDown, Search, X, Building2 } from "lucide-react";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
-import { buscarEmpresas } from "@/lib/busca/empresas";
+import { buscarEmpresas, fantasiaDistinto } from "@/lib/busca/empresas";
 import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import SeloGrupo from "@/components/empresas/SeloGrupo";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 import { cn, formatCNPJ } from "@/lib/utils";
 import type { ModuloEmpresa } from "@/lib/supabase/types";
+
+/**
+ * Teto de opções montadas no dropdown (EMPRESAS-PERF-01, 09/10/2026). Com 6.465
+ * empresas o select montava 6.465 botões ao abrir, nas 24 telas que o usam.
+ * A busca continua sobre a lista inteira; só a exibição é cortada, com aviso.
+ */
+const MAX_OPCOES = 50;
 
 interface EmpresaSelectProps {
   value: string | null;
@@ -73,6 +80,16 @@ export default function EmpresaSelect({
         : 0;
     return { ...r, foraDaUnidade };
   }, [empresas, query, unidadeId, nomeGrupoDe]);
+
+  // Só as primeiras MAX_OPCOES do resultado. A selecionada continua na lista
+  // (no topo) quando o resultado a contém mas o corte a deixaria de fora.
+  const exibidas = useMemo(() => {
+    const corte = filtered.slice(0, MAX_OPCOES);
+    if (!selected || corte.some((e) => e.id_empresa === selected.id_empresa)) return corte;
+    if (!filtered.some((e) => e.id_empresa === selected.id_empresa)) return corte;
+    return [selected, ...corte];
+  }, [filtered, selected]);
+  const ocultas = Math.max(0, filtered.length - MAX_OPCOES);
 
   useEffect(() => {
     if (!open) return;
@@ -146,7 +163,7 @@ export default function EmpresaSelect({
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar por nome, CNPJ ou grupo..."
+                placeholder="Buscar por nome, fantasia, CNPJ ou grupo..."
                 className="w-full rounded-md border border-gray-200 py-1.5 pl-8 pr-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
               />
             </div>
@@ -175,7 +192,7 @@ export default function EmpresaSelect({
                 <AvisoBuscaAproximada aproximado busca={query} total={filtered.length} compacto />
               </li>
             )}
-            {filtered.map((e) => (
+            {exibidas.map((e) => (
               <li key={e.id_empresa}>
                 <button
                   type="button"
@@ -195,8 +212,10 @@ export default function EmpresaSelect({
                       <span className="ml-1.5 text-xs font-normal text-gray-500">— {detalhe(e.id_empresa)}</span>
                     )}
                   </span>
-                  {(e.cnpj || grupoDaEmpresa.has(e.id_empresa)) && (
+                  {(fantasiaDistinto(e) || e.cnpj || grupoDaEmpresa.has(e.id_empresa)) && (
                     <span className="flex max-w-full flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                      {fantasiaDistinto(e) && <span className="text-gray-600">{fantasiaDistinto(e)}</span>}
+                      {fantasiaDistinto(e) && e.cnpj && <span aria-hidden>·</span>}
                       {e.cnpj && formatCNPJ(e.cnpj)}
                       <SeloGrupo info={grupoDaEmpresa.get(e.id_empresa)} compacto />
                     </span>
@@ -204,6 +223,11 @@ export default function EmpresaSelect({
                 </button>
               </li>
             ))}
+            {!isLoading && ocultas > 0 && (
+              <li className="border-t border-gray-100 px-3 py-2 text-xs text-gray-500">
+                Mostrando {MAX_OPCOES} de {filtered.length} empresas. Refine a busca para ver as outras {ocultas}.
+              </li>
+            )}
           </ul>
         </div>
       )}

@@ -41,6 +41,145 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "empresas-fantasia-abaixo-do-nome",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Empresas: o nome fantasia aparece abaixo do nome",
+    texto:
+      "No card da empresa, nos campos de escolher empresa e na ficha, o nome fantasia aparece em letra menor " +
+      "abaixo do nome quando for diferente dele. A busca de empresa também acha pelo nome fantasia.",
+    onde: "Empresas e campos de escolher empresa",
+    versoes: ["0.3.139"],
+  },
+  {
+    id: "conformidade-fotos-inteiras-pdf",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Relatório de Conformidade: fotos inteiras no PDF",
+    texto:
+      "As fotos dos tópicos não são mais cortadas para caber na moldura. Todas saem com a mesma altura e " +
+      "a largura acompanha a foto, então aparece a imagem inteira (do teto ao chão) e as fotos de cada " +
+      "tópico ficam alinhadas. Vale para o PDF do cliente e para o laudo na tela.",
+    onde: "Relatório de Conformidade › PDF e laudo",
+    impacto: "PDFs já congelados ou assinados continuam como estão; gere de novo para pegar o novo formato.",
+    versoes: ["0.3.139"],
+  },
+  {
+    id: "conformidade-ocultar-topico-pdf",
+    data: "2026-10-22",
+    tipo: "novidade",
+    titulo: "Relatório de Conformidade: ocultar um tópico do PDF do cliente",
+    texto:
+      "Cada tópico do checklist tem o botão Ocultar do PDF. O tópico continua no relatório, com fotos e " +
+      "observação, mas não sai no PDF nem no laudo, e deixa de contar no resumo. O botão Mostrar no PDF " +
+      "traz o tópico de volta. Funciona também com o relatório finalizado.",
+    onde: "Relatório de Conformidade › tópicos do checklist",
+    impacto: "Os relatórios existentes continuam com todos os tópicos no PDF até alguém ocultar.",
+    versoes: ["0.3.139"],
+  },
+  {
+    id: "conformidade-trocar-responsavel-tecnico",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Relatório de Conformidade: dá para trocar o responsável técnico",
+    texto:
+      "Ao lado do nome do Responsável técnico (JCN Consultoria) há um botão Trocar, no relatório e na tela do laudo. " +
+      "Ele funciona também com o relatório finalizado. O novo nome vai para a folha de assinaturas e para o PDF. " +
+      "Se o laudo já tiver sido congelado ou assinado, congele uma nova versão e assine de novo.",
+    onde: "Relatório de Conformidade › relatório e laudo",
+    impacto: "Os relatórios existentes continuam com o responsável que já tinham até alguém trocar.",
+    versoes: ["0.3.139"],
+  },
+  {
+    id: "empresas-lista-abre-rapido",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "A lista de Empresas abre mais rápido",
+    texto:
+      "A tela Empresas mostra os primeiros cards logo ao abrir e carrega os outros conforme você rola. " +
+      "A busca e os filtros continuam procurando em todas as empresas. Nos campos de escolher empresa, " +
+      "a lista mostra as 50 primeiras; para achar uma empresa que não aparece, digite parte do nome, " +
+      "o CNPJ ou o CPF.",
+    onde: "Empresas e campos de escolher empresa",
+    impacto: "Nada muda nos cadastros.",
+    versoes: ["0.3.139"],
+  },
+  {
+    id: "empresa-card-clicavel",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Clicar no card da empresa abre a ficha",
+    texto:
+      "Na lista de Empresas, clicar em qualquer parte do card abre a ficha da empresa na Visão geral. " +
+      "Os botões do card continuam fazendo o de sempre: Documentos abre a aba Documentos & Laudos, " +
+      "o lápis edita e a lixeira exclui. Pelo teclado, o Tab chega ao card e o Enter abre a ficha.",
+    onde: "Empresas › card da empresa",
+    versoes: ["0.3.139"],
+  },
+  {
+    id: "empresa-pagina-documentos",
+    data: "2026-10-22",
+    tipo: "novidade",
+    titulo: "Todos os documentos de uma empresa num lugar só",
+    texto:
+      "A aba Documentos & Laudos da empresa passa a listar tudo o que a empresa tem no sistema, " +
+      "do mais recente para o mais antigo: Inspeções, AEP, AET, DRPS, Questionários, Conformidade, " +
+      "Não Conformidade, Análise de Químicos, Apreciação NR-12 e Investigação de Acidente — " +
+      "inclusive os que ainda não têm PDF. Cada linha abre o documento e, quando existe, o PDF. " +
+      "No card da empresa, o botão Inspeções virou Documentos e leva direto para essa aba; a ficha " +
+      "mostra o ID da empresa com botão para copiar.",
+    onde: "Empresas › card da empresa › Documentos (ou a aba Documentos & Laudos da ficha)",
+    impacto:
+      "Os documentos dos módulos que a sua conta não acessa não aparecem: a aba avisa quais são. " +
+      "PDFs de documentos já excluídos ficam no fim da aba, recolhidos.",
+    versoes: ["0.3.139"],
+  },
+  {
+    id: "grupo-empresas-varias-matrizes",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Grupo de empresas aceita mais de uma matriz, e o campo Grupo aceita digitação",
+    texto:
+      "Um grupo pode ter várias empresas com CNPJ de matriz, como condomínios administrados pela " +
+      "mesma imobiliária ou contabilidade. Marcar uma empresa como matriz não rebaixa mais as " +
+      "outras, e cada matriz ganhou o botão Tornar filial. O campo Grupo, no cadastro e no filtro " +
+      "de Empresas, aceita digitação direto no campo: clique para ver a lista ou digite para filtrar.",
+    onde: "Empresas › Grupos e cadastro da empresa",
+    impacto: "Nada muda nos grupos que já existem.",
+    versoes: ["0.3.139"],
+  },
+  {
+    id: "conformidade-checklist-nr24-21-itens",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Relatório de Conformidade: checklist da NR-24 com 21 perguntas",
+    texto:
+      "O checklist da NR-24 passou a ter as 21 perguntas do Checklist Completo de " +
+      "Conformidade da equipe, em cinco grupos: instalações sanitárias, vestiários e " +
+      "armários, locais para refeições, água potável e higiene/acessibilidade. Cada item " +
+      "traz a fundamentação conferida com o texto vigente da norma. Onde o modelo original " +
+      "divergia da NR-24 (chuveiros, lixeiras, refeições até 30 trabalhadores, " +
+      "higienização), o texto segue a norma.",
+    onde: "Relatório de Conformidade › Novo relatório › NR-24 · Relatório de Não Conformidade",
+    impacto: "Relatórios já criados mantêm os itens antigos; a lista nova vale para os próximos.",
+    versoes: ["0.3.139"],
+  },
+  {
+    id: "empresa-troca-unidade-avisa-quem-perde-acesso",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Trocar a unidade de uma empresa agora avisa quem deixa de vê-la",
+    texto:
+      "Ao editar uma empresa e mudar a unidade, o sistema lista os técnicos que fizeram " +
+      "inspeções nela e não têm acesso à unidade nova — para eles, a empresa e as " +
+      "inspeções sumiriam da tela. O Salvar só libera depois de marcar “Entendi, trocar " +
+      "a unidade mesmo assim”. Se ninguém perde acesso, nada muda.",
+    onde: "Empresas › Editar empresa › Unidade",
+    impacto:
+      "Se o técnico precisa continuar vendo a empresa, libere a unidade nova para ele em Usuários.",
+    versoes: ["0.3.139"],
+  },
+  {
     id: "inspecoes-pilulas-varias",
     data: "2026-10-22",
     tipo: "melhoria",

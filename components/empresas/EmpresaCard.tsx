@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Pencil, ClipboardList, Trash2, ArrowRight, MapPin } from "lucide-react";
+import { Pencil, ClipboardList, Trash2, ArrowRight, MapPin, FolderOpen } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Empresa } from "@/lib/supabase/types";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import { formatCNPJ, cn } from "@/lib/utils";
+import { fantasiaDistinto } from "@/lib/busca/empresas";
 import SeloGrupo from "@/components/empresas/SeloGrupo";
 import type { InfoGrupoDaEmpresa } from "@/lib/hooks/useGruposEmpresas";
 
@@ -40,29 +40,34 @@ export default function EmpresaCard({
   onDelete,
   canEdit = true,
   grupo,
+  contratanteNome,
 }: {
   empresa: Empresa;
   /** Grupo da empresa (v278), se tiver. */
   grupo?: InfoGrupoDaEmpresa;
+  /**
+   * Nome da contratante (só TERCEIROS). Vem da página, de um Map montado uma vez:
+   * até a v0.3.732 cada card chamava useEmpresas() e fazia `find` nas 6.465
+   * empresas (EMPRESAS-PERF-01).
+   */
+  contratanteNome?: string | null;
   onEdit: () => void;
   onDelete?: (e: Empresa) => void;
   canEdit?: boolean;
 }) {
+  // Uma contagem por card MONTADO: a página monta em janela (useListaProgressiva),
+  // então isto não roda para as empresas fora da vista.
   const { data: count } = useInspCount(empresa.id_empresa);
   const inativa = empresa.status === "Inativa";
   const initials = getInitials(empresa.nome_empresa);
   const ehTerceiros = empresa.tipo_estabelecimento === "TERCEIROS";
-  // Mesma queryKey do resto da tela — o react-query serve do cache, não é uma
-  // busca por card.
-  const { data: empresas = [] } = useEmpresas();
-  const contratante = empresa.id_empresa_contratante
-    ? empresas.find((e) => e.id_empresa === empresa.id_empresa_contratante)
-    : null;
 
   return (
     <div
       className={cn(
-        "group flex flex-col rounded-2xl border bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
+        "group relative flex flex-col rounded-2xl border bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
+        // Foco do teclado no link do nome contorna o card inteiro.
+        "has-[[data-card-link]:focus-visible]:outline-2 has-[[data-card-link]:focus-visible]:outline-offset-2 has-[[data-card-link]:focus-visible]:outline-emerald-500",
         inativa ? "border-gray-200 opacity-75" : "border-gray-100"
       )}
     >
@@ -82,19 +87,29 @@ export default function EmpresaCard({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
+            {/* 08/10: o card inteiro abre a ficha (Visão geral). O link é o
+                nome; o ::before estica a área de clique sobre o card, e os
+                outros links/botões ficam por cima com `relative z-10`. */}
             <h3 className="line-clamp-2 text-sm font-bold leading-tight text-gray-900">
-              {empresa.nome_empresa}
+              <Link
+                href={`/empresas/${empresa.id_empresa}`}
+                data-card-link
+                title="Abrir a ficha da empresa"
+                className="before:absolute before:inset-0 before:rounded-2xl before:content-[''] focus-visible:outline-none group-hover:text-verde-primary"
+              >
+                {empresa.nome_empresa}
+              </Link>
             </h3>
             {/* Bate o olho e vê que este cadastro não é um cliente, e sim um
                 local de terceiros — senão ele se confunde com os outros 474. */}
             {ehTerceiros && (
               <span
                 title={
-                  contratante
-                    ? `Estabelecimento de terceiros de ${contratante.nome_empresa}`
+                  contratanteNome
+                    ? `Estabelecimento de terceiros de ${contratanteNome}`
                     : "Estabelecimento de terceiros"
                 }
-                className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800"
+                className="relative z-10 inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800"
               >
                 <MapPin className="size-2.5" /> Terceiros
               </span>
@@ -105,11 +120,16 @@ export default function EmpresaCard({
               </span>
             )}
           </div>
+          {fantasiaDistinto(empresa) && (
+            <p className="mt-0.5 truncate text-xs text-gray-600" title="Nome fantasia">
+              {fantasiaDistinto(empresa)}
+            </p>
+          )}
           <p className="mt-0.5 text-xs text-gray-400 font-mono">
             {formatCNPJ(empresa.cnpj) || "CNPJ não informado"}
           </p>
           {grupo && (
-            <Link href={`/empresas/grupos?grupo=${grupo.id_grupo}`} className="mt-1.5 block w-fit max-w-full">
+            <Link href={`/empresas/grupos?grupo=${grupo.id_grupo}`} className="relative z-10 mt-1.5 block w-fit max-w-full">
               <SeloGrupo info={grupo} />
             </Link>
           )}
@@ -134,19 +154,22 @@ export default function EmpresaCard({
 
       {/* ── Ações ─────────────────────────────────── */}
       <div className="mt-3 flex gap-2 border-t border-gray-100 px-4 pb-4 pt-3">
+        {/* 08/10: o botão Inspeções deu lugar a Documentos, que abre a ficha
+            já na aba Documentos & Laudos (as inspeções estão lá também). */}
         <Link
-          href={`/inspecoes?empresa=${empresa.id_empresa}`}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-verde-primary px-3 py-2 text-xs font-semibold text-white transition hover:bg-verde-accent active:scale-95"
+          title="Todos os documentos desta empresa"
+          href={`/empresas/${empresa.id_empresa}?aba=documentos`}
+          className="relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-verde-primary px-3 py-2 text-xs font-semibold text-white transition hover:bg-verde-accent active:scale-95"
         >
-          <ClipboardList className="size-3.5" />
-          Inspeções
+          <FolderOpen className="size-3.5" />
+          Documentos
           <ArrowRight className="ml-auto size-3 opacity-60 transition-transform group-hover:translate-x-0.5" />
         </Link>
         {canEdit && (
           <button
             type="button"
             onClick={onEdit}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 active:scale-95"
+            className="relative z-10 flex items-center justify-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 active:scale-95"
             title="Editar empresa"
           >
             <Pencil className="size-3.5" />
@@ -156,7 +179,7 @@ export default function EmpresaCard({
           <button
             type="button"
             onClick={() => onDelete(empresa)}
-            className="flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95"
+            className="relative z-10 flex items-center justify-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 active:scale-95"
             title="Excluir empresa"
           >
             <Trash2 className="size-3.5" />

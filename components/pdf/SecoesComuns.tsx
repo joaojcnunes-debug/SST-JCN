@@ -142,7 +142,7 @@ export function SecaoIdentificacaoEmpresa({
         }}
       >
         <Campo label="Razão social" valor={empresa.razao_social ?? VAZIO} />
-        <Campo label="Nome fantasia" valor={empresa.nome_empresa ?? VAZIO} />
+        <Campo label="Nome fantasia" valor={empresa.nome_fantasia || VAZIO} />
         <Campo label={ident.label} valor={ident.valor} />
         <Campo label="CNAE / atividade" valor={cnae || VAZIO} />
         <Campo

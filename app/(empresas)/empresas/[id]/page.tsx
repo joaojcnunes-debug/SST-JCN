@@ -1,62 +1,32 @@
 "use client";
 
 import { use, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import toast from "react-hot-toast";
 import {
   ArrowLeft, Pencil, ClipboardList, Building2, ChartBar,
-  FileText, Download, BadgeCheck, MapPin, ShieldAlert,
+  MapPin, ShieldAlert, Copy,
 } from "lucide-react";
 import Link from "next/link";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useInspecoesByEmpresa } from "@/lib/hooks/useInspecao";
-import { usePdfsPorEmpresa } from "@/lib/hooks/usePdfsGerados";
-import { useRegistrosEmpresa } from "@/lib/hooks/useRegistrosEmpresa";
+import { useDocumentosEmpresa } from "@/lib/hooks/useDocumentosEmpresa";
+import DocumentosEmpresaLista from "@/components/empresas/DocumentosEmpresaLista";
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import EmpresaForm from "@/components/empresas/EmpresaForm";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import GrupoDaEmpresaResumo from "@/components/empresas/GrupoDaEmpresaResumo";
-import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { EmpresaDetalheSkeleton } from "@/components/empresas/EmpresaSkeletons";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { fmtData, cn } from "@/lib/utils";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 
-/**
- * Rótulo dos PDFs de `pdfs_gerados`, por `modulo`.
- *
- * ⚠️ A tabela tem DOIS vocabulários, e este mapa só conhecia um. Medido em
- * 2026-09-10 nos 437 PDFs da base: `drps` (247), `inspecoes` (68),
- * `nao_conformidade` (42), `aep` (41), `conformidade` (20), `aet` (15),
- * `apreciacao_maquinas` (3), `analises_quimicos` (1). As chaves `psicossocial`,
- * `analise_quimicos` (sem o S) e `questionarios_psicossociais` NÃO aparecem em
- * nenhuma linha — são de outros usos (auditoria, textos padrão).
- *
- * Sem `drps` aqui, os 247 PDFs do psicossocial — a maioria da base — saíam com
- * o slug cru na etiqueta e na opção do filtro ("drps (37)"), enquanto todos os
- * outros módulos saíam em português. Era o documento do psicólogo o único sem
- * nome na tela dele.
- */
-const MODULO_LABEL: Record<string, string> = {
-  drps: "DRPS — Psicossocial",
-  analises_quimicos: "Análise de Químicos",
-  inspecoes: "Inspeção SST",
-  conformidade: "Conformidade",
-  nao_conformidade: "Não Conformidade",
-  analise_quimicos: "Análise de Químicos",
-  apreciacao: "Apreciação NR-12",
-  apreciacao_maquinas: "Apreciação NR-12",
-  aet: "AET — Ergonomia",
-  aep: "AEP — Ergonomia",
-  psicossocial: "DRPS — Psicossocial",
-  questionarios_psicossociais: "Questionários",
-};
-const moduloLabel = (m: string) => MODULO_LABEL[m] ?? m;
 
-type Aba = "geral" | "dados" | "registros" | "documentos" | "inspecoes";
+type Aba = "geral" | "dados" | "documentos" | "inspecoes";
 
 const ABAS: { id: Aba; label: string }[] = [
   { id: "geral", label: "Visão geral" },
   { id: "dados", label: "Dados cadastrais" },
-  { id: "registros", label: "Registros por módulo" },
   { id: "documentos", label: "Documentos & Laudos" },
   { id: "inspecoes", label: "Inspeções" },
 ];
@@ -69,17 +39,17 @@ export default function EmpresaDetalhePage({ params }: Props) {
   const { id } = use(params);
   const canEdit = useCanEdit();
   const [editOpen, setEditOpen] = useState(false);
-  const [aba, setAba] = useState<Aba>("geral");
-  const [filtroMod, setFiltroMod] = useState<string>("");
+  // `?aba=documentos` vem do botão Documentos do card em /empresas (08/10).
+  const abaUrl = useSearchParams().get("aba");
+  const [aba, setAba] = useState<Aba>(
+    ABAS.some((a) => a.id === abaUrl) ? (abaUrl as Aba) : "geral",
+  );
 
   const { data: empresa, isLoading } = useEmpresa(id);
   const { data: inspecoes = [] } = useInspecoesByEmpresa(id);
-  const { data: pdfs = [], isLoading: loadingPdfs } = usePdfsPorEmpresa(id);
-  const { data: grupos = [], isLoading: loadingRegistros } = useRegistrosEmpresa(id);
+  const { data: docs, isLoading: loadingDocs } = useDocumentosEmpresa(id);
   const { data: unidades = [] } = useUnidades();
 
-  const totalRegistros = useMemo(() => grupos.reduce((s, g) => s + g.registros.length, 0), [grupos]);
-  const gruposComRegistros = grupos.filter((g) => g.registros.length > 0);
 
   const unidadeNome = useMemo(
     () => unidades.find((u) => u.id_unidade === empresa?.id_unidade)?.nome ?? null,
@@ -89,16 +59,8 @@ export default function EmpresaDetalhePage({ params }: Props) {
   // KPIs
   const inspAndamento = inspecoes.filter((i) => i.status === "EM_ANDAMENTO").length;
   const inspConcluidas = inspecoes.filter((i) => i.status === "CONCLUIDA").length;
-  const docsAssinados = pdfs.filter((p) => p.assinado).length;
-
-  // Documentos por módulo (para KPI e filtro)
-  const porModulo = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const p of pdfs) m.set(p.modulo, (m.get(p.modulo) ?? 0) + 1);
-    return Array.from(m.entries()).map(([modulo, total]) => ({ modulo, total })).sort((a, b) => b.total - a.total);
-  }, [pdfs]);
-
-  const pdfsFiltrados = filtroMod ? pdfs.filter((p) => p.modulo === filtroMod) : pdfs;
+  const totalDocs = docs?.documentos.length ?? 0;
+  const docsComPdf = docs?.documentos.filter((d) => d.pdfUrl).length ?? 0;
 
   if (isLoading) return <EmpresaDetalheSkeleton />;
   if (!empresa) {
@@ -142,6 +104,21 @@ export default function EmpresaDetalhePage({ params }: Props) {
                   </span>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(empresa.id_empresa);
+                    toast.success("ID copiado");
+                  } catch {
+                    toast.error("Não foi possível copiar");
+                  }
+                }}
+                title="Copiar o ID da empresa"
+                className="mt-2 inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 font-mono text-xs text-gray-700 hover:bg-gray-100"
+              >
+                ID {empresa.id_empresa} <Copy className="size-3" />
+              </button>
               <GrupoDaEmpresaResumo idEmpresa={empresa.id_empresa} />
             </div>
           </div>
@@ -187,76 +164,12 @@ export default function EmpresaDetalhePage({ params }: Props) {
       {/* ── Visão geral ── */}
       {aba === "geral" && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Kpi label="Inspeções" valor={inspecoes.length} sub={`${inspAndamento} em andamento`} />
-            <Kpi label="Registros (módulos)" valor={totalRegistros} sub={`${gruposComRegistros.length} módulo${gruposComRegistros.length !== 1 ? "s" : ""}`} />
-            <Kpi label="Documentos emitidos" valor={pdfs.length} sub={`${docsAssinados} assinado${docsAssinados !== 1 ? "s" : ""}`} />
+            <Kpi label="Documentos & Laudos" valor={totalDocs} sub={`${docsComPdf} com PDF`} />
             <Kpi label="Inspeções concluídas" valor={inspConcluidas} sub={`de ${inspecoes.length}`} />
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-gray-800">Registros por módulo</h3>
-            {loadingRegistros ? (
-              <p className="text-sm text-gray-400">Carregando…</p>
-            ) : gruposComRegistros.length === 0 ? (
-              <p className="text-sm text-gray-400">Nenhum registro de módulos para esta empresa ainda.</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {gruposComRegistros.map((g) => (
-                  <button
-                    key={g.modulo}
-                    type="button"
-                    onClick={() => setAba("registros")}
-                    className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-xs hover:bg-gray-50"
-                  >
-                    <span className="font-medium text-gray-700">{g.label}</span>
-                    <span className="rounded-full bg-verde-light px-1.5 py-0.5 font-semibold text-verde-primary">{g.registros.length}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Registros por módulo (nativos de cada módulo) ── */}
-      {aba === "registros" && (
-        <div className="space-y-4">
-          {loadingRegistros ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"><LoadingSkeleton rows={4} /></div>
-          ) : gruposComRegistros.length === 0 ? (
-            <div className="flex flex-col items-center rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500 shadow-sm">
-              <FileText className="size-8 text-gray-400" />
-              <p className="mt-2">Nenhum registro de módulos para esta empresa ainda.</p>
-            </div>
-          ) : (
-            gruposComRegistros.map((g) => (
-              <div key={g.modulo} className="rounded-xl border border-gray-200 bg-white shadow-sm">
-                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-                  <h3 className="text-sm font-semibold text-gray-900">{g.label}</h3>
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">{g.registros.length}</span>
-                </div>
-                <ul className="divide-y divide-gray-100">
-                  {g.registros.slice(0, 50).map((r) => (
-                    <li key={r.id} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-gray-50">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm text-gray-800">
-                          {r.titulo?.trim() || <span className="font-mono text-xs text-gray-500">{r.id}</span>}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {r.data ? fmtData(r.data) : "—"}
-                          {r.status ? ` · ${r.status}` : ""}
-                        </p>
-                      </div>
-                      <Link href={g.rota(r.id)} className="shrink-0 text-xs font-medium text-verde-primary hover:underline">
-                        Abrir →
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))
-          )}
         </div>
       )}
 
@@ -273,68 +186,8 @@ export default function EmpresaDetalhePage({ params }: Props) {
         </div>
       )}
 
-      {/* ── Documentos & Laudos (unificado via pdfs_gerados) ── */}
-      {aba === "documentos" && (
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
-            <h2 className="text-sm font-semibold text-gray-900">Documentos & Laudos ({pdfsFiltrados.length})</h2>
-            <select
-              value={filtroMod}
-              onChange={(e) => setFiltroMod(e.target.value)}
-              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-            >
-              <option value="">Todos os módulos</option>
-              {porModulo.map((m) => (
-                <option key={m.modulo} value={m.modulo}>{moduloLabel(m.modulo)} ({m.total})</option>
-              ))}
-            </select>
-          </div>
-          {loadingPdfs ? (
-            <div className="p-5"><LoadingSkeleton rows={5} /></div>
-          ) : pdfsFiltrados.length === 0 ? (
-            <div className="flex flex-col items-center p-8 text-center text-sm text-gray-500">
-              <FileText className="size-8 text-gray-400" />
-              <p className="mt-2">Nenhum documento gerado{filtroMod ? " neste módulo" : ""} para esta empresa.</p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {pdfsFiltrados.map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-gray-900">
-                      {p.tipo_documento || moduloLabel(p.modulo)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      <span className="rounded bg-gray-100 px-1.5 py-0.5 font-medium text-gray-600">{moduloLabel(p.modulo)}</span>
-                      {" · "}{fmtData(p.data_geracao)}
-                      {p.responsavel_tecnico ? ` · ${p.responsavel_tecnico}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    {p.assinado && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                        <BadgeCheck className="size-3" /> Assinado
-                      </span>
-                    )}
-                    {(p.pdf_assinado_url || p.pdf_url) ? (
-                      <a
-                        href={(p.pdf_assinado_url || p.pdf_url)!}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-verde-primary hover:underline"
-                      >
-                        <Download className="size-3.5" /> Abrir
-                      </a>
-                    ) : (
-                      <span className="text-xs text-gray-300">—</span>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      {/* ── Documentos & Laudos: TODOS os documentos da empresa, em sequência (08/10) ── */}
+      {aba === "documentos" && <DocumentosEmpresaLista data={docs} carregando={loadingDocs} />}
 
       {/* ── Inspeções ── */}
       {aba === "inspecoes" && (

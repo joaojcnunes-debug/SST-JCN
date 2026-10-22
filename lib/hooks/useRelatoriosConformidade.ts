@@ -242,11 +242,14 @@ export function useAtualizarItemConformidade() {
        *  o gating; o hook só passa o patch adiante. */
       item_titulo?: string;
       item_descricao?: string | null;
+      /** v289: tira/devolve o tópico do PDF enviado ao cliente. */
+      oculto?: boolean;
     }) => {
       const patch: Partial<RelatorioConformidadeItem> = {
         updated_at: new Date().toISOString(),
       };
       if (params.situacao !== undefined) patch.situacao = params.situacao;
+      if (params.oculto !== undefined) patch.oculto = params.oculto;
       if (params.observacao !== undefined) patch.observacao = params.observacao;
       if (params.item_titulo !== undefined) patch.item_titulo = params.item_titulo;
       if (params.item_descricao !== undefined)

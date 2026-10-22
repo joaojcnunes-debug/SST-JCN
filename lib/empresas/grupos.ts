@@ -1,9 +1,11 @@
 /**
  * Grupos de empresas (v278) — regras puras, sem React (testadas em grupos.test.ts).
  *
- * Um grupo junta empresas com mais de um CNPJ: uma MATRIZ (a principal) e as
+ * Um grupo junta empresas com mais de um CNPJ: a MATRIZ (a principal) e as
  * FILIAIS. O CNPJ já carrega a pista: os 8 primeiros dígitos (a "raiz") são os
  * mesmos em matriz e filiais da mesma empresa, e a ordem `0001` é a matriz.
+ * Desde a v285 o grupo aceita várias matrizes: condomínios administrados pela
+ * mesma imobiliária ou contabilidade são CNPJs distintos, todos matriz.
  */
 import { somenteDigitos } from "@/lib/busca/texto";
 import type { MembroGrupo, PapelGrupo } from "@/lib/supabase/types";

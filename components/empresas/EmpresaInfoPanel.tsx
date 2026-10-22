@@ -109,7 +109,7 @@ export default function EmpresaInfoPanel({
       {grupos.includes("identificacao") && (
         <Grupo titulo="Identificação">
           <Campo label="Razão social" valor={ouVazio(empresa.razao_social)} />
-          <Campo label="Nome fantasia" valor={ouVazio(empresa.nome_empresa)} />
+          <Campo label="Nome fantasia" valor={ouVazio(empresa.nome_fantasia)} />
           {identificadores(empresa).map((id) => (
             <Campo key={id.label} label={id.label} valor={id.valor} />
           ))}

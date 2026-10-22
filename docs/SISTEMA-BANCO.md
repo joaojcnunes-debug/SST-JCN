@@ -153,7 +153,7 @@ id_empresa text NN, nome_empresa text NN, razao_social text, cnpj text, grau_ris
 
 ### `empresa_grupos` (v278)
 
-id_grupo text NN (GRP-…), nome text NN (único sem diferenciar caixa), descricao text, created_at timestamptz NN, created_by text, updated_at timestamptz NN. RLS: SELECT autenticado; INSERT/UPDATE `caller_pode_editar()`; sem DELETE (só pela função `empresa_grupo_excluir`). Membros em `empresas.id_grupo` (FK RESTRICT) + `empresas.papel_grupo` ('MATRIZ'|'FILIAL', junto com id_grupo; índice único parcial = 1 matriz por grupo). Funções: `empresa_grupos_membros()`, `empresa_grupo_definir_matriz(p_id_grupo, p_id_empresa)`, `empresa_grupo_excluir(p_id_grupo)`. Rollback: `scripts/sql/v278_empresa_grupos_rollback.sql`.
+id_grupo text NN (GRP-…), nome text NN (único sem diferenciar caixa), descricao text, created_at timestamptz NN, created_by text, updated_at timestamptz NN. RLS: SELECT autenticado; INSERT/UPDATE `caller_pode_editar()`; sem DELETE (só pela função `empresa_grupo_excluir`). Membros em `empresas.id_grupo` (FK RESTRICT) + `empresas.papel_grupo` ('MATRIZ'|'FILIAL', junto com id_grupo). v283: sem o índice de 1 matriz por grupo — várias matrizes permitidas; `empresa_grupo_definir_matriz` só promove. Funções: `empresa_grupos_membros()`, `empresa_grupo_definir_matriz(p_id_grupo, p_id_empresa)`, `empresa_grupo_excluir(p_id_grupo)`. Rollback: `scripts/sql/v278_empresa_grupos_rollback.sql`.
 
 ### `funcoes_painel`
 
@@ -239,7 +239,7 @@ id_relatorio text NN, id_empresa text NN, nr_codigo text NN, nr_titulo text NN, 
 
 ### `relatorios_conformidade_itens`
 
-id_item text NN, id_relatorio text NN, item_codigo text NN, item_titulo text NN, item_descricao text, ordem integer NN, situacao text NN, observacao text, created_at timestamp with time zone NN, updated_at timestamp with time zone, foto_url text, foto_storage_path text, foto_urls ARRAY NN, foto_storage_paths ARRAY NN, item_nr_origem text
+id_item text NN, id_relatorio text NN, item_codigo text NN, item_titulo text NN, item_descricao text, ordem integer NN, situacao text NN, observacao text, created_at timestamp with time zone NN, updated_at timestamp with time zone, foto_url text, foto_storage_path text, foto_urls ARRAY NN, foto_storage_paths ARRAY NN, item_nr_origem text, oculto boolean NN default false (v284)
 
 ## DRPS (psicossocial)
 

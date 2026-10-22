@@ -450,61 +450,123 @@ export const CHECKLISTS_NR: ChecklistNR[] = [
   {
     codigo: "NR-24",
     titulo: "Condições Sanitárias e de Conforto nos Locais de Trabalho",
-    resumo: "Sanitários, vestiários, refeitórios e água potável",
+    resumo: "Sanitários, vestiários, refeições, água potável e higiene",
+    // Perguntas do "Checklist Completo de Conformidade NR-24" (05/10/2026),
+    // numeradas como no checklist: 24.1.x sanitários, 24.2.x vestiários,
+    // 24.3.x refeições, 24.4.x água potável, 24.5.x higiene/acessibilidade.
+    // A fundamentação foi conferida com o texto da Portaria SEPRT 1.066/2019
+    // (atualizada pela MTP 2.772/2022); onde o checklist citava item errado
+    // ou exigia mais que a norma, o texto foi ajustado.
     itens: [
+      // Instalações sanitárias
       {
-        codigo: "24.1",
-        titulo: "Instalações sanitárias separadas por sexo",
+        codigo: "24.1.1",
+        titulo: "Instalações sanitárias separadas por sexo, com privacidade e mantidas em conservação, limpeza e higiene",
+        descricao: "Fundamentação: NR-24, itens 24.2.2 e 24.2.3 \"a\". Até 10 trabalhadores em funções comerciais/administrativas admite-se uma instalação individual de uso comum (24.2.2.2).",
       },
       {
-        codigo: "24.2",
-        titulo: "Vasos sanitários — 1 para cada 20 trabalhadores ou fração",
+        codigo: "24.1.2",
+        titulo: "Proporção de sanitários: 1 bacia sanitária e 1 lavatório a cada 20 trabalhadores ou fração do maior turno, com mictório nas masculinas",
+        descricao: "Fundamentação: NR-24, itens 24.1.1, 24.2.1, 24.2.1.1 e 24.2.2. Mictórios (prédios a partir de 24/09/2019): 1 a cada 20 até 100 trabalhadores e 1 a cada 50 no que exceder. Lavatório 1 a cada 10 com material infectante, tóxico, irritante ou poeira (24.2.2.1).",
       },
       {
-        codigo: "24.3",
-        titulo: "Mictórios — 1 para cada 10 homens ou fração (substituíveis por vasos)",
+        codigo: "24.1.3",
+        titulo: "Compartimentos sanitários individuais, indevassáveis, com portas providas de fecho",
+        descricao: "Fundamentação: NR-24, item 24.3.1 \"a\" a \"c\".",
       },
       {
-        codigo: "24.4",
-        titulo: "Lavatórios — 1 para cada 10 trabalhadores ou fração",
+        codigo: "24.1.4",
+        titulo: "Insumos básicos sempre disponíveis: papel higiênico com suporte, sabonete e papel toalha ou secador",
+        descricao: "Fundamentação: NR-24, itens 24.3.1 \"d\" e 24.3.4. Proibido o uso de toalhas coletivas.",
       },
       {
-        codigo: "24.5",
-        titulo: "Chuveiros — 1 para cada 10 trabalhadores quando obrigatório",
-        descricao: "Obrigatório em atividades insalubres ou com sujidade intensa.",
+        codigo: "24.1.5",
+        titulo: "Recipientes para descarte de papéis usados, com tampa nos sanitários femininos",
+        descricao: "Fundamentação: NR-24, itens 24.2.3 \"d\" e 24.3.1 \"d\". Acionamento por pedal ou sem contato manual é boa prática, não exigência da NR-24.",
       },
       {
-        codigo: "24.6",
-        titulo: "Vestiários adequados quando exige troca de roupa",
-        descricao: "Armários individuais, bancos, ventilação e separação por sexo.",
+        codigo: "24.1.6",
+        titulo: "Chuveiros quando exigidos: 1 a cada 10 ou 1 a cada 20 trabalhadores, conforme a atividade",
+        descricao: "Fundamentação: NR-24, item 24.3.5. 1/10 com material infectante, substâncias tóxicas, irritantes ou aerodispersoides; 1/20 com poeiras que impregnem pele e roupas, esforço físico ou calor intenso. Devem integrar ou ficar anexos aos vestiários (24.3.5.1).",
+      },
+      // Vestiários e armários
+      {
+        codigo: "24.2.1",
+        titulo: "Vestiários disponíveis quando há troca de roupa/uniforme no local ou exigência de chuveiro",
+        descricao: "Fundamentação: NR-24, itens 24.4.1 e 24.4.2.",
       },
       {
-        codigo: "24.7",
-        titulo: "Água potável disponível e em quantidade suficiente",
+        codigo: "24.2.2",
+        titulo: "Armários individuais com sistema de trancamento para guarda de pertences",
+        descricao: "Fundamentação: NR-24, itens 24.4.3 \"e\" e 24.4.6. Sem vestiário obrigatório: escaninho, gaveta com tranca ou guarda-volume (24.4.8).",
       },
       {
-        codigo: "24.8",
-        titulo: "Refeitório fornecido quando há 30 ou mais trabalhadores",
+        codigo: "24.2.3",
+        titulo: "Armários de compartimento duplo (ou dois simples) em atividades com agentes químicos, infectantes ou poeira",
+        descricao: "Fundamentação: NR-24, itens 24.4.5 e 24.4.6.1. Dispensado quando a empresa higieniza as vestimentas diariamente ou fornece descartáveis (24.4.5.1).",
       },
       {
-        codigo: "24.9",
-        titulo: "Refeitório com mesas, assentos, lavatórios e iluminação adequados",
+        codigo: "24.2.4",
+        titulo: "Vestiários com assentos suficientes, iluminação, ventilação e piso/paredes laváveis e impermeáveis",
+        descricao: "Fundamentação: NR-24, itens 24.4.3 e 24.9.7 \"d\".",
+      },
+      // Locais para refeições
+      {
+        codigo: "24.3.1",
+        titulo: "Mais de 30 trabalhadores: local exclusivo para refeições, fora da área de trabalho e com os requisitos de refeitório",
+        descricao: "Fundamentação: NR-24, item 24.5.3 (piso e paredes laváveis, circulação, ventilação, lavatório, mesas e assentos, água potável, aquecimento, lixeira com tampa). Dispensas no item 24.5.4.",
       },
       {
-        codigo: "24.10",
-        titulo: "Local específico para aquecimento de marmitas (geladeira/micro-ondas) quando aplicável",
+        codigo: "24.3.2",
+        titulo: "Até 30 trabalhadores: local destinado ou adaptado, arejado, limpo e com mesas e assentos suficientes",
+        descricao: "Fundamentação: NR-24, item 24.5.2.",
       },
       {
-        codigo: "24.11",
-        titulo: "Áreas de vivência separadas dos locais de trabalho insalubre",
+        codigo: "24.3.3",
+        titulo: "Meio para conservação/refrigeração das refeições trazidas pelos trabalhadores",
+        descricao: "Fundamentação: NR-24, itens 24.5.2.1 \"a\" e 24.5.4 \"c\".",
       },
       {
-        codigo: "24.12",
-        titulo: "Higienização diária dos sanitários, vestiários e refeitórios",
+        codigo: "24.3.4",
+        titulo: "Meio seguro para aquecimento das refeições (ex.: forno micro-ondas)",
+        descricao: "Fundamentação: NR-24, itens 24.5.2.1 \"a\" e 24.5.3 \"j\".",
       },
       {
-        codigo: "24.13",
-        titulo: "Iluminação e ventilação adequadas em todas as áreas de vivência",
+        codigo: "24.3.5",
+        titulo: "Lavatório com água corrente no local ou próximo, para as mãos e a lavagem de utensílios",
+        descricao: "Fundamentação: NR-24, itens 24.5.2.1 \"b\" e 24.5.3 \"f\".",
+      },
+      // Água potável
+      {
+        codigo: "24.4.1",
+        titulo: "Água potável em quantidade suficiente em todos os locais de trabalho",
+        descricao: "Fundamentação: NR-24, itens 24.9.1 a 24.9.5 (reservatórios limpos e protegidos, análise periódica de potabilidade, água não potável sinalizada).",
+      },
+      {
+        codigo: "24.4.2",
+        titulo: "Bebedouros na proporção de 1 a cada 50 trabalhadores ou fração, ou sistema equivalente",
+        descricao: "Fundamentação: NR-24, item 24.9.1.1.",
+      },
+      {
+        codigo: "24.4.3",
+        titulo: "Proibido o uso de copos coletivos para consumo de água",
+        descricao: "Fundamentação: NR-24, item 24.9.1.",
+      },
+      // Condições gerais de higiene e acessibilidade
+      {
+        codigo: "24.5.1",
+        titulo: "Limpeza e higienização regulares de sanitários, vestiários e locais de refeição",
+        descricao: "Fundamentação: NR-24, itens 24.2.3 \"a\", 24.4.3 \"a\", 24.5.2 \"b\" e 24.9.6.",
+      },
+      {
+        codigo: "24.5.2",
+        titulo: "Instalação sanitária adaptada para Pessoas com Deficiência (PcD)",
+        descricao: "Fundamentação: ABNT NBR 9050 e Lei 13.146/2015 — não é exigência da NR-24.",
+      },
+      {
+        codigo: "24.5.3",
+        titulo: "Áreas de vivência com iluminação e ventilação adequadas (naturais ou artificiais)",
+        descricao: "Fundamentação: NR-24, itens 24.2.3 \"e\", 24.4.3 \"c\", 24.5.3 \"e\" e 24.9.7 \"d\".",
       },
     ],
   },

@@ -46,6 +46,7 @@
 - Ficha em Branco com seletor e seções em leque.
 
 **Lote 3 — Conformidade e Empresas (P/M):**
+> ✅ Feito em 2026-10-22 (v0.3.139): v283 (= painel v285) e v284 (= painel v289) aplicadas; ocultar tópico, fotos inteiras, trocar responsável técnico, NR-24, várias matrizes + SelectBusca/GrupoSelect, lista de Empresas progressiva, card clicável, Documentos & Laudos com todos os documentos, aviso de perda de acesso, fantasia abaixo do nome. Fora: SGG (aba, regiões, v309) e o botão de histórico da auditoria (v259).
 - Ocultar tópico do PDF (v289), fotos inteiras no PDF, Trocar responsável técnico, checklist NR-24 (21 perguntas).
 - Grupo com várias matrizes (v285), `SelectBusca`/`GrupoSelect` com digitação, lista de Empresas progressiva sem N+1,
   card clicável, Documentos & Laudos por tipo, aviso de perda de acesso ao trocar unidade, fantasia abaixo do Nome (só tela).
