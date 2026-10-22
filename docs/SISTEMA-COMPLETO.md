@@ -524,7 +524,18 @@ Questionários **configuráveis** (tipos → categorias → perguntas) cujo resu
 
 - `/riscos-psicossociais`: lista das empresas com DRPS ou QPS **concluído ou enviado ao cliente**.
 - `/riscos-psicossociais/[idEmpresa]`: dados cadastrais da empresa e, por avaliação, um bloco por **setor** (um abaixo do outro) com a tabela **Risco · Resultado final · Fonte geradora · Medidas de controle recomendadas · Possíveis agravos à saúde mental** (medidas e agravos em célula única por setor).
-- Regra: nunca leva para as telas de Análise. Cálculo pelas mesmas funções das telas de Análise (`lib/hooks/useRiscosPsicossociais.ts`). Oculto para Cliente.
+- Regra: nunca leva para as telas de Análise. Cálculo pelas mesmas funções das telas de Análise (`lib/riscos-psicossociais/carregar.ts`, usado pelo hook e pelas rotas de PDF). Oculto para Cliente.
+- **Exportar Excel e PDF** por empresa, em Riscos Psicossociais e na página AEP do Painel SST (`lib/psicossocial/exportar-xlsx.ts`, `/api/pdf/riscos-psicossociais/[idEmpresa]`, `/api/pdf/aep-psicossocial/[idEmpresa]`, template `PsicossocialEmpresaTemplate`). O normalizador da AEP mora em `lib/aep/normalizar-relatorio.ts` e as consultas da Sinalização em `lib/aep/sinalizacao-dados.ts`, para o servidor usar também.
+
+### 8.4 Consolidação Psicossocial de Grupo (`/consolidacao-grupo`, módulo `consolidacao_psicossocial`)
+
+Replicado do painel (v0.3.757–766) em 22/10/2026. Junta a AEP e o DRPS/Questionário **concluídos** das empresas de um grupo (Empresas › Grupos) para que o risco de um setor conste no mesmo setor de todas as empresas. Só lê os documentos; nada neles muda.
+- **Abas:** Fontes (documentos por empresa e papel econômico SPE/Executora/Incorporadora/Outra), Setores (nome padronizado sugerido — `lib/psico-consolidacao/setores.ts` — confirmado pelo técnico; `transita` tira o setor da harmonização), Fatores (catálogo de 13 + de-para AEP/DRPS/QPS; fatores ignorados por grupo), Comparativo AEP, Visões, Confronto AEP × DRPS, Harmonização, Sim/Não e Validação.
+- **Motor** (`lib/psico-consolidacao/motor.ts`, regras puras, testado): régua Crítico > Alto > Médio > Identificado; perfil por setor comum, lacunas (Incluir / Revisar nível), confronto (Convergente, Divergente, Só AEP, Só DRPS) e alertas (probabilidade não informada, sem base).
+- **Exportar:** 3 planilhas coloridas com fórmulas (`exceljs`), relatório ao cliente em PDF deitado (`/api/pdf/consolidacao-grupo/[idGrupo]`, `?execucao=PCX-…` para uma versão registrada) e apresentação .pptx (`pptxgenjs`, fundos em `public/apresentacao/` com a marca JCN).
+- **Validação:** "Registrar consolidação" grava uma foto imutável (execução + itens; só depois de todos os setores confirmados); a validação do cliente por empresa (Validado / Com ressalva) também é imutável — a mais recente vale. A **lista para o PGR** sai por empresa validada (setor, fator, agente, nível, ação); nada é lançado sozinho.
+- **Acesso:** ninguém começa com o módulo; o Admin libera em Usuários. Perfil Cliente não vê nada (`psico_caller_interno()`).
+- Testes: os que dependem do caso real anonimizado do painel (`lib/psico-consolidacao/__fixtures__/`) ficam pulados enquanto o arquivo não estiver no repositório.
 
 ---
 

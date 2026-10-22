@@ -1,11 +1,8 @@
 "use client";
 
-import { sinaisValidos } from "@/lib/aep/sinais-organizacional";
-import { normalizarCondicoesColeta, normalizarMotivoNi } from "@/lib/aep/coleta";
-import { normalizarMapaLista } from "@/lib/aep/evidencia";
-import { normalizarChecklistGestao } from "@/lib/aep/checklist-gestao";
-import { normalizarInventario } from "@/lib/aep/inventario";
-import { situacaoQuestionario, type SituacaoQuestionario } from "@/lib/aep/sinalizacao";
+import { normalizarRelatorio } from "@/lib/aep/normalizar-relatorio";
+import type { SituacaoQuestionario } from "@/lib/aep/sinalizacao";
+import { buscarAepsEntregues, buscarSituacaoQuestionario } from "@/lib/aep/sinalizacao-dados";
 import { montarCatalogoSetores } from "@/lib/aep/catalogo-setores";
 import { contagemParaAet } from "@/lib/aep/aiha-organizacional";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,147 +14,16 @@ import { gravar, type ImagemPendente } from "@/lib/offline/gravar";
 import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoes";
 import { ehErroDeRede } from "@/lib/offline/rede";
 import type {
-  AepCargoSetor,
-  AepChecklistCognitiva,
-  AepChecklistFisica,
-  AepChecklistOrganizacional,
   AepRelatorio,
   AepRisco,
   AepSetor,
   AepTextoPadraoCapitulo,
   ClassificacaoRiscoAET,
-  RespostaChecklist,
-  RespostaChecklistAep,
   StatusAEP,
   TipoRiscoAET,
 } from "@/lib/supabase/types";
 
-// ─── Helpers de normalização ──────────────────────────────────────────────────
-
-function toResposta(v: unknown): RespostaChecklist {
-  if (v === true || v === "sim") return "sim";
-  if (v === "nao_aplica") return "nao_aplica";
-  return "nao";
-}
-
-/**
- * Só a Ergonomia Organizacional aceita "N/I — não identificável". Precisa de um
- * normalizador próprio: o `toResposta` acima derruba qualquer valor
- * desconhecido para "nao", e o N/I gravado no jsonb sumiria na leitura.
- */
-function toRespostaOrg(v: unknown): RespostaChecklistAep {
-  if (v === "nao_identificado") return "nao_identificado";
-  return toResposta(v);
-}
-
-function normalizarChecklistFisica(raw: unknown): AepChecklistFisica {
-  const c = (raw ?? {}) as Record<string, unknown>;
-  return {
-    postura: toResposta(c.postura),
-    repetitividade: toResposta(c.repetitividade),
-    levantamento_carga: toResposta(c.levantamento_carga),
-    mobiliario: toResposta(c.mobiliario),
-    esforco_fisico: toResposta(c.esforco_fisico),
-    iluminacao: toResposta(c.iluminacao),
-    ruido: toResposta(c.ruido),
-    vibracao: toResposta(c.vibracao),
-    desconforto_termico: toResposta(c.desconforto_termico),
-  };
-}
-
-function normalizarChecklistCognitiva(raw: unknown): AepChecklistCognitiva {
-  const c = (raw ?? {}) as Record<string, unknown>;
-  return {
-    atencao_continua: toResposta(c.atencao_continua),
-    sobrecarga_mental: toResposta(c.sobrecarga_mental),
-    pressao_psicologica: toResposta(c.pressao_psicologica),
-    excesso_informacoes: toResposta(c.excesso_informacoes),
-    ritmo_mental: toResposta(c.ritmo_mental),
-  };
-}
-
-function normalizarChecklistOrganizacional(raw: unknown): AepChecklistOrganizacional {
-  const c = (raw ?? {}) as Record<string, unknown>;
-  return {
-    assedio: toRespostaOrg(c.assedio),
-    falta_suporte: toRespostaOrg(c.falta_suporte),
-    gestao_mudancas: toRespostaOrg(c.gestao_mudancas),
-    clareza_papel: toRespostaOrg(c.clareza_papel),
-    recompensas: toRespostaOrg(c.recompensas),
-    baixo_controle: toRespostaOrg(c.baixo_controle),
-    justica_organizacional: toRespostaOrg(c.justica_organizacional),
-    eventos_traumaticos: toRespostaOrg(c.eventos_traumaticos),
-    subcarga: toRespostaOrg(c.subcarga),
-    sobrecarga: toRespostaOrg(c.sobrecarga),
-    maus_relacionamentos: toRespostaOrg(c.maus_relacionamentos),
-    comunicacao_dificil: toRespostaOrg(c.comunicacao_dificil),
-    trabalho_remoto: toRespostaOrg(c.trabalho_remoto),
-  };
-}
-
-function normalizarSetor(s: unknown): AepSetor {
-  const setor = (s ?? {}) as Record<string, unknown>;
-  return {
-    id: (setor.id as string) ?? crypto.randomUUID(),
-    nome_setor: (setor.nome_setor as string) ?? "",
-    unidade: (setor.unidade as string) ?? "",
-    ghe: (setor.ghe as string) ?? "",
-    cargo: (setor.cargo as string) ?? "",
-    funcao: (setor.funcao as string) ?? "",
-    jornada: (setor.jornada as string) ?? "",
-    qtd_expostos: typeof setor.qtd_expostos === "number" ? setor.qtd_expostos : 0,
-    descricao_atividade: (setor.descricao_atividade as string) ?? "",
-    metodo_coleta: (setor.metodo_coleta as string) ?? "",
-    trabalhadores_consultados: (setor.trabalhadores_consultados as string) ?? "",
-    cargos: Array.isArray(setor.cargos) ? (setor.cargos as AepCargoSetor[]) : [],
-    observacoes_checklist: (typeof setor.observacoes_checklist === "object" && setor.observacoes_checklist !== null)
-      ? (setor.observacoes_checklist as Record<string, string>)
-      : {},
-    riscos: Array.isArray(setor.riscos) ? (setor.riscos as AepRisco[]) : [],
-    checklist_fisica: normalizarChecklistFisica(setor.checklist_fisica),
-    checklist_cognitiva: normalizarChecklistCognitiva(setor.checklist_cognitiva),
-    checklist_organizacional: normalizarChecklistOrganizacional(setor.checklist_organizacional),
-    // ⚠️ Este normalizador reconstrói o setor campo a campo — o que não estiver
-    // aqui é DESCARTADO em toda leitura. Foi por isso que os sinais precisaram
-    // entrar explicitamente. Só aceita array de string, para lixo no jsonb não
-    // virar erro de tela.
-    sinais_organizacional: (() => {
-      const bruto = setor.sinais_organizacional;
-      if (typeof bruto !== "object" || bruto === null) return {};
-      const out: Record<string, string[]> = {};
-      for (const [k, v] of Object.entries(bruto as Record<string, unknown>)) {
-        // Só chaves do catálogo atual: sinal que saiu da lista (troca de
-        // 2026-10-06) some aqui e no próximo salvamento.
-        if (Array.isArray(v)) out[k] = sinaisValidos(k, v.filter((x): x is string => typeof x === "string"));
-      }
-      return out;
-    })(),
-    // Motivo do N/I e condições da coleta (2026-10-06) — mesmo cuidado.
-    motivo_ni: normalizarMotivoNi(setor.motivo_ni),
-    condicoes_coleta: normalizarCondicoesColeta(setor.condicoes_coleta),
-    // Origem da evidência e fontes geradoras marcadas (2026-10-06).
-    origem_evidencia: normalizarMapaLista(setor.origem_evidencia),
-    fontes_geradoras: normalizarMapaLista(setor.fontes_geradoras),
-    inventario: normalizarInventario(setor.inventario),
-    // ⚠️ Mesmo cuidado dos sinais: campo fora daqui some em toda leitura.
-    aiha_organizacional:
-      typeof setor.aiha_organizacional === "object" && setor.aiha_organizacional !== null
-        ? (setor.aiha_organizacional as AepSetor["aiha_organizacional"])
-        : {},
-    parecer_tecnico: (setor.parecer_tecnico as string) ?? "",
-    recomendacoes: (setor.recomendacoes as string) ?? "",
-    necessita_aet: Boolean(setor.necessita_aet),
-  };
-}
-
-export function normalizarRelatorio(data: unknown): AepRelatorio {
-  const rel = data as Record<string, unknown>;
-  return {
-    ...rel,
-    setores: Array.isArray(rel.setores) ? rel.setores.map(normalizarSetor) : [],
-    checklist_gestao: normalizarChecklistGestao(rel.checklist_gestao),
-  } as AepRelatorio;
-}
+export { normalizarRelatorio };
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
@@ -312,56 +178,11 @@ export function useAepsEntregues(empresaId?: string | null) {
   const user = useUserStore((s) => s.user);
   return useQuery({
     queryKey: ["aep-entregues", empresaId ?? "todos"],
-    queryFn: async () => {
-      const supabase = createSupabaseBrowserClient();
-      let q = supabase
-        .from("aep_relatorios")
-        .select(
-          "*, empresas(nome_empresa, cnpj, municipio, uf, id_unidade), inspecoes!inner(id_inspecao, status, elaboracao_status, elaboracao_concluida_em, elaboracao_responsavel)"
-        )
-        .eq("inspecoes.elaboracao_status", "CONCLUIDO")
-        .neq("inspecoes.status", "DELETADA")
-        .neq("status", "DELETADO")
-        .order("created_at", { ascending: false });
-      if (empresaId) {
-        q = q.eq("id_empresa", empresaId);
-      } else if (user?.perfil === "Tecnico" && user.empresas_vinculadas?.length) {
-        q = q.in("id_empresa", user.empresas_vinculadas);
-      }
-      let q2 = supabase
-        .from("aep_relatorios")
-        .select("*, empresas(nome_empresa, cnpj, municipio, uf, id_unidade)")
-        .is("id_inspecao", null)
-        .eq("status", "CONCLUIDO")
-        .order("created_at", { ascending: false });
-      if (empresaId) {
-        q2 = q2.eq("id_empresa", empresaId);
-      } else if (user?.perfil === "Tecnico" && user.empresas_vinculadas?.length) {
-        q2 = q2.in("id_empresa", user.empresas_vinculadas);
-      }
-      const [comInsp, semInsp] = await Promise.all([q, q2]);
-      if (comInsp.error) throw comInsp.error;
-      if (semInsp.error) throw semInsp.error;
-      return [
-        ...(comInsp.data ?? []).map((r) => {
-          const insp = (
-            r as {
-              inspecoes?: { elaboracao_concluida_em?: string | null; elaboracao_responsavel?: string | null } | null;
-            }
-          ).inspecoes;
-          return {
-            ...normalizarRelatorio(r),
-            entregue_em: insp?.elaboracao_concluida_em ?? null,
-            enviado_por: insp?.elaboracao_responsavel ?? null,
-          };
-        }),
-        ...(semInsp.data ?? []).map((r) => ({
-          ...normalizarRelatorio(r),
-          entregue_em: (r as { concluido_em?: string | null }).concluido_em ?? null,
-          enviado_por: null,
-        })),
-      ];
-    },
+    queryFn: () =>
+      buscarAepsEntregues(createSupabaseBrowserClient(), {
+        idEmpresa: empresaId,
+        empresasVinculadas: user?.perfil === "Tecnico" ? user.empresas_vinculadas : null,
+      }),
     enabled: !!user,
   });
 }
@@ -376,32 +197,8 @@ export function useSituacaoQuestionarioEmpresas(idsEmpresas: string[]) {
     queryKey: ["situacao-questionario-empresas", ids],
     enabled: ids.length > 0,
     staleTime: 60_000,
-    queryFn: async (): Promise<Record<string, SituacaoQuestionario>> => {
-      // drps_* e qps_* não estão (todas) no tipo `Database`.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const sb = createSupabaseBrowserClient() as any;
-      const [d, q] = await Promise.all([
-        sb
-          .from("drps_relatorios")
-          .select("id_empresa, status, data_envio_cliente, data_conclusao, data_elaboracao, updated_at")
-          .in("id_empresa", ids),
-        sb.from("qps_aplicacoes").select("id_empresa, status, data_elaboracao, atualizado_em").in("id_empresa", ids),
-      ]);
-      if (d.error) throw d.error;
-      if (q.error) throw q.error;
-      type Linha = { id_empresa: string; status: string | null; [k: string]: string | null };
-      // Data do documento: envio ao cliente > conclusão > elaboração > última edição.
-      const dataDrps = (r: Linha) => r.data_envio_cliente ?? r.data_conclusao ?? r.data_elaboracao ?? r.updated_at ?? null;
-      const dataQps = (r: Linha) => r.data_elaboracao ?? r.atualizado_em ?? null;
-      const out: Record<string, SituacaoQuestionario> = {};
-      for (const id of ids) {
-        out[id] = situacaoQuestionario(
-          ((d.data ?? []) as Linha[]).filter((r) => r.id_empresa === id).map((r) => ({ status: r.status, data: dataDrps(r) })),
-          ((q.data ?? []) as Linha[]).filter((r) => r.id_empresa === id).map((r) => ({ status: r.status, data: dataQps(r) })),
-        );
-      }
-      return out;
-    },
+    queryFn: (): Promise<Record<string, SituacaoQuestionario>> =>
+      buscarSituacaoQuestionario(createSupabaseBrowserClient(), ids),
   });
 }
 

@@ -18,6 +18,8 @@ import { COR_NIVEL_AIHA } from "@/lib/aep/aiha-organizacional";
 import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import BotaoExportarExcelEmpresa from "@/components/ui/BotaoExportarExcelEmpresa";
+import BotaoExportarPdfEmpresa from "@/components/ui/BotaoExportarPdfEmpresa";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
 /** Cores do nível AIHA para o resumo do setor. */
@@ -111,20 +113,54 @@ export default function SinalizacaoEmpresaDetalhe({
 
   return (
     <div className="space-y-5">
-      <div>
-        <Link
-          href={basePath}
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary"
-        >
-          <ArrowLeft className="size-4" /> Voltar às empresas
-        </Link>
-        <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-          <Building2 className="size-5 text-verde-primary" />
-          {cadastro?.nome_empresa ?? sinal?.nome ?? "Empresa"}
-        </h1>
-        <p className="text-sm text-gray-500">
-          Fatores psicossociais por setor nas triagens AEP — resultado na matriz AIHA.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Link
+            href={basePath}
+            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary"
+          >
+            <ArrowLeft className="size-4" /> Voltar às empresas
+          </Link>
+          <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
+            <Building2 className="size-5 text-verde-primary" />
+            {cadastro?.nome_empresa ?? sinal?.nome ?? "Empresa"}
+          </h1>
+          <p className="text-sm text-gray-500">
+            Fatores psicossociais por setor nas triagens AEP — resultado na matriz AIHA.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <BotaoExportarPdfEmpresa
+            url={`/api/pdf/aep-psicossocial/${encodeURIComponent(idEmpresa)}`}
+            disabled={isLoading || !sinal}
+          />
+          <BotaoExportarExcelEmpresa
+            disabled={isLoading || !sinal}
+            onExportar={async () => {
+              if (!sinal) return;
+              const { baixarXlsxAepPsicossocial } = await import("@/lib/psicossocial/exportar-xlsx");
+              baixarXlsxAepPsicossocial(
+                cadastro?.nome_empresa ?? sinal.nome,
+                [
+                  ["Razão social", cadastro?.razao_social],
+                  ["Nome fantasia", cadastro?.nome_fantasia],
+                  ["CNPJ", cadastro?.cnpj ? formatCNPJ(cadastro.cnpj) : null],
+                  ["CNAE principal", [cadastro?.cnae_principal, cadastro?.cnae_descricao].filter(Boolean).join(" — ")],
+                  ["Grau de risco", cadastro?.grau_risco != null ? String(cadastro.grau_risco) : null],
+                  ["Telefone", cadastro?.telefone],
+                  ["Unidade", unidade],
+                  ["Região (município/UF)", regiao],
+                  ["Endereço", endereco],
+                  ["E-mail", cadastro?.email],
+                ],
+                sinal.avaliacoes.map((a) => ({
+                  ...a,
+                  questionario: leituraQuestionario(a.precisaQuestionario, questionarios?.[idEmpresa], a.data),
+                }))
+              );
+            }}
+          />
+        </div>
       </div>
 
       {/* Dados da empresa */}

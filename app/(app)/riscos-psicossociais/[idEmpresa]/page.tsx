@@ -13,6 +13,8 @@ import { CORES_MATRIZ } from "@/lib/drps/calculos";
 import type { NivelMatriz } from "@/lib/drps/types";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import BotaoExportarExcelEmpresa from "@/components/ui/BotaoExportarExcelEmpresa";
+import BotaoExportarPdfEmpresa from "@/components/ui/BotaoExportarPdfEmpresa";
 import { useUserStore } from "@/lib/store";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
@@ -111,18 +113,47 @@ export default function RiscosEmpresaPage() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <Link
-          href="/riscos-psicossociais"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary"
-        >
-          <ArrowLeft className="size-4" /> Voltar às empresas
-        </Link>
-        <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-          <Building2 className="size-5 text-verde-primary" />
-          {cadastro?.nome_empresa ?? riscos?.nome ?? "Empresa"}
-        </h1>
-        <p className="text-sm text-gray-500">Riscos psicossociais por setor — resultado final de cada risco.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <Link
+            href="/riscos-psicossociais"
+            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary"
+          >
+            <ArrowLeft className="size-4" /> Voltar às empresas
+          </Link>
+          <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
+            <Building2 className="size-5 text-verde-primary" />
+            {cadastro?.nome_empresa ?? riscos?.nome ?? "Empresa"}
+          </h1>
+          <p className="text-sm text-gray-500">Riscos psicossociais por setor — resultado final de cada risco.</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <BotaoExportarPdfEmpresa
+            url={`/api/pdf/riscos-psicossociais/${encodeURIComponent(idEmpresa)}`}
+            disabled={isLoading || !riscos}
+          />
+          <BotaoExportarExcelEmpresa
+            disabled={isLoading || !riscos}
+            onExportar={async () => {
+              if (!riscos) return;
+              const { baixarXlsxRiscosPsicossociais } = await import("@/lib/psicossocial/exportar-xlsx");
+              baixarXlsxRiscosPsicossociais(
+                cadastro?.nome_empresa ?? riscos.nome,
+                [
+                  ["Razão social", cadastro?.razao_social],
+                  ["Nome fantasia", cadastro?.nome_fantasia],
+                  ["CNPJ", cadastro?.cnpj ? formatCNPJ(cadastro.cnpj) : null],
+                  ["CNAE principal", [cadastro?.cnae_principal, cadastro?.cnae_descricao].filter(Boolean).join(" — ")],
+                  ["Grau de risco", cadastro?.grau_risco != null ? String(cadastro.grau_risco) : null],
+                  ["Telefone", cadastro?.telefone],
+                  ["Endereço", endereco],
+                  ["E-mail", cadastro?.email],
+                ],
+                riscos.avaliacoes
+              );
+            }}
+          />
+        </div>
       </div>
 
       {/* Dados da empresa */}
