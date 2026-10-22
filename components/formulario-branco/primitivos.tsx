@@ -31,6 +31,7 @@ export function FormularioBrancoShell({
   descricao,
   nSetores,
   onNSetoresChange,
+  controles,
   children,
 }: {
   /** "AET" ou "AEP" — vai no cabeçalho da folha e no título do PDF. */
@@ -39,6 +40,8 @@ export function FormularioBrancoShell({
   descricao: string;
   nSetores: number;
   onNSetoresChange: (n: number) => void;
+  /** Controles próprios da página, ao lado de "Setores por impressão". */
+  controles?: ReactNode;
   children: ReactNode;
 }) {
   const imprimir = useCallback(() => {
@@ -62,7 +65,8 @@ export function FormularioBrancoShell({
             <p className="mt-1 text-sm text-gray-500 max-w-xl">{descricao}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {controles}
           <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
             Setores por impressão
             <select
@@ -133,14 +137,17 @@ export function FbSecao({
 export function FbSetor({
   indice,
   total,
+  className,
   children,
 }: {
   indice: number;
   total: number;
+  /** `fb-sem-quebra` no 1º bloco quando não há capa antes dele. */
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <div className="fb-setor">
+    <div className={cn("fb-setor", className)}>
       <div className="fb-setor-faixa">
         <span>Setor {indice} de {total}</span>
         <span className="fb-setor-faixa-campo">Nome do setor: <span className="fb-campo-linha" /></span>
@@ -353,6 +360,7 @@ const CSS = `
   @page { size: A4 portrait; margin: 1.2cm 1.1cm 1.3cm; }
   .fb-folha { box-shadow: none !important; padding: 0 !important; max-width: none !important; border: 0 !important; border-radius: 0 !important; }
   .fb-setor { break-before: page; page-break-before: always; margin-top: 0; }
+  .fb-setor.fb-sem-quebra { break-before: auto; page-break-before: auto; margin-top: 10px; }
   .fb-tabela tr, .fb-avoid, .fb-campos { break-inside: avoid; page-break-inside: avoid; }
   .fb-secao-titulo, .fb-sub { break-after: avoid; page-break-after: avoid; }
   thead { display: table-header-group; }

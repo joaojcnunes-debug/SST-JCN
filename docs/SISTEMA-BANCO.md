@@ -291,6 +291,8 @@ id_relatorio text NN, id_empresa text NN, unidade text NN, setor text NN, topico
 
 id_relatorio text NN, id_empresa text NN, revisao smallint NN, status text NN, data_elaboracao date, responsavel_tecnico text, crp text, funcoes text, qtd_trabalhadores integer, qtd_homens integer, qtd_mulheres integer, agravos_saude_mental text, medidas_existentes text, usuario_email text, created_at timestamp with time zone NN, updated_at timestamp with time zone, conclusoes_por_setor jsonb, agravos_por_setor jsonb, medidas_por_setor jsonb, conclusao_geral text, data_conclusao timestamp with time zone, data_validade date, data_envio_cliente timestamp with time zone, conclusoes_por_unidade_setor jsonb, agravos_por_unidade_setor jsonb, medidas_por_unidade_setor jsonb, exibir_sem_analise boolean NN, fontes_por_setor jsonb NN
 
+v286: `alinhamentos_por_setor` jsonb e `alinhamentos_por_unidade_setor` jsonb ({setor: {agravos, medidas}} = left|center|right|justify; ausente = justify).
+
 ### `drps_respondentes`
 
 id_respondente uuid NN, id_empresa text NN, setor text NN, cargo text, respostas ARRAY NN, data_carimbo timestamp with time zone, importado_em timestamp with time zone NN, lote_importacao uuid NN, id_relatorio text NN, unidade_trabalho text
@@ -841,6 +843,8 @@ id uuid NN, modulo text NN, chave text NN, texto text NN, criado_por text, criad
 
 id_aplicacao uuid NN, id_tipo uuid NN, id_empresa text NN, titulo text NN, status text NN, responsavel text, periodo_inicio date, periodo_fim date, usuario_email text, usuario_nome text, criado_em timestamp with time zone NN, atualizado_em timestamp with time zone, observacoes_dimensoes jsonb, trabalhadores_previstos integer, unidade_cliente text, agravos_por_setor jsonb, medidas_por_setor jsonb, conclusoes_por_setor jsonb, crp text, data_elaboracao date, fontes_por_setor jsonb NN
 
+v285: `data_conclusao` date, carimbada pelo gatilho `trg_qps_carimbar_data_conclusao` na 1ª conclusão.
+
 ### `qps_categorias`
 
 id_categoria uuid NN, id_tipo uuid NN, nome text NN, descricao text, ordem integer NN, fonte_geradora text
@@ -868,6 +872,8 @@ id_aplicacao uuid NN, setor text NN, id_categoria uuid NN, probabilidade integer
 ### `qps_respondentes`
 
 id_respondente uuid NN, id_aplicacao uuid NN, setor text NN, cargo text, respostas jsonb NN, lote text, importado_em timestamp with time zone NN
+
+v285: `data_carimbo` timestamptz (Carimbo de data/hora do Forms).
 
 ### `qps_revisao`
 

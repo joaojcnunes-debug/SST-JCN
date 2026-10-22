@@ -19,6 +19,7 @@ import {
   useQpsAllPerguntas,
   useQpsAplicacao,
   useQpsCategorias,
+  useQpsCrpResolvido,
   useQpsProbabilidades,
   useQpsRespondentes,
   useQpsTipos,
@@ -32,9 +33,9 @@ import {
 import { useTextosPadrao } from "@/lib/hooks/useTextosPadrao";
 import { useSignedUrls } from "@/lib/hooks/useSignedUrl";
 import { extrairPathStorage } from "@/lib/storage/signed-url";
-import { QPS_LAUDO_TABELA, QPS_MODULO_PDF, montarLaudoQps } from "@/lib/qps/laudo";
-import { montarValoresVariaveisQps } from "@/lib/qps/variaveis";
-import { INSTRUMENTO_QAP } from "@/lib/qps/gestao";
+import { QPS_LAUDO_TABELA, QPS_MODULO_PDF, montarLaudoQps, pendenciasDoLaudo } from "@/lib/qps/laudo";
+import { montarValoresVariaveisQps, periodoDaColeta } from "@/lib/qps/variaveis";
+import { INSTRUMENTO_QPS } from "@/lib/qps/gestao";
 import { ehSupervisor } from "@/lib/hooks/useUsuario";
 
 /**
@@ -70,7 +71,13 @@ export default function LaudoQpsPage({ params }: { params: Promise<{ id: string 
   const isAdmin = ehSupervisor(user); // v229
   const apiPdfUrl = `/api/pdf/qps/${id}`;
 
-  const { data: ap } = useQpsAplicacao(id);
+  const { data: apBruta } = useQpsAplicacao(id);
+  // Mesma regra da rota do PDF: CRP em branco na aplicação → o do cadastro do profissional.
+  const { data: crpResolvido } = useQpsCrpResolvido(apBruta);
+  const ap = useMemo(
+    () => (apBruta ? { ...apBruta, crp: crpResolvido ?? apBruta.crp ?? null } : apBruta),
+    [apBruta, crpResolvido],
+  );
   const { data: empresa } = useEmpresa(ap?.id_empresa);
   const { data: tipos = [] } = useQpsTipos();
   const { data: categorias = [] } = useQpsCategorias(ap?.id_tipo ?? null);
@@ -145,13 +152,27 @@ export default function LaudoQpsPage({ params }: { params: Promise<{ id: string 
         aplicacao: ap,
         tipoNome: tipo?.nome ?? null,
         totalRespondentes: respondentes.length,
+        carimbos: respondentes.map((r) => r.data_carimbo),
         extras: {
           usuario_logado: user?.nome ?? "",
-          tipo_relatorio: `${INSTRUMENTO_QAP.sigla} — ${INSTRUMENTO_QAP.nome}`,
+          tipo_relatorio: `${INSTRUMENTO_QPS.sigla} — ${INSTRUMENTO_QPS.nome}`,
           formacao_responsavel: "Psicólogo(a)",
         },
       }),
-    [empresa, ap, tipo?.nome, respondentes.length, user?.nome],
+    [empresa, ap, tipo?.nome, respondentes, user?.nome],
+  );
+
+  // v263 — o que a equipe ainda não preencheu e que sairia em branco no PDF.
+  const pendencias = useMemo(
+    () =>
+      laudo && ap
+        ? pendenciasDoLaudo({
+            laudo,
+            periodo: periodoDaColeta(ap, respondentes.map((r) => r.data_carimbo)),
+            temCargo: respondentes.some((r) => (r.cargo ?? "").trim()),
+          })
+        : [],
+    [laudo, ap, respondentes],
   );
 
   const crp = (ap?.crp ?? "").trim();
@@ -166,7 +187,7 @@ export default function LaudoQpsPage({ params }: { params: Promise<{ id: string 
     },
   ];
   const shortId = id.replace(/-/g, "").slice(0, 8);
-  const identificadorDocumento = `${INSTRUMENTO_QAP.sigla}-${new Date().getFullYear()}-${shortId}`;
+  const identificadorDocumento = `${INSTRUMENTO_QPS.sigla}-${new Date().getFullYear()}-${shortId}`;
 
   const planoAcao = planoAcaoLinhas.map((l) => ({
     ordem: l.ordem,
@@ -195,7 +216,7 @@ export default function LaudoQpsPage({ params }: { params: Promise<{ id: string 
   const podeImprimir = !!ap && respondentes.length > 0;
   const temEditaveis = capitulos.some((c) => c.tipo !== "fixo" && c.ativo !== false);
   const registro = {
-    tipoDocumento: `${INSTRUMENTO_QAP.sigla} — ${INSTRUMENTO_QAP.nome}`,
+    tipoDocumento: `${INSTRUMENTO_QPS.sigla} — ${INSTRUMENTO_QPS.nome}`,
     empresaId: ap?.id_empresa ?? undefined,
     empresaNome: empresa?.nome_empresa ?? undefined,
     empresaCnpj: empresa?.cnpj ?? undefined,
@@ -205,7 +226,7 @@ export default function LaudoQpsPage({ params }: { params: Promise<{ id: string 
   return (
     <div className="space-y-4">
       <div className="print:hidden">
-        <h1 className="text-xl font-semibold text-gray-900">Laudo {INSTRUMENTO_QAP.sigla}</h1>
+        <h1 className="text-xl font-semibold text-gray-900">Laudo {INSTRUMENTO_QPS.sigla}</h1>
         <p className="text-sm text-gray-600">
           {ap?.titulo ?? "Carregando..."}
           {empresa ? ` · ${empresa.nome_empresa}` : ""}
@@ -258,19 +279,37 @@ export default function LaudoQpsPage({ params }: { params: Promise<{ id: string 
         />
       </div>
 
+      {pendencias.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 print:hidden">
+          <p className="font-semibold">
+            Falta preencher {pendencias.length} {pendencias.length === 1 ? "item" : "itens"} — sem isso o PDF sai com
+            campo em branco:
+          </p>
+          <ul className="mt-2 space-y-1 text-xs">
+            {pendencias.map((p) => (
+              <li key={p.campo}>
+                <span className="font-semibold">{p.campo}</span>
+                <span className="text-amber-700"> · tela {p.onde}</span>
+                {p.detalhe ? <span className="block text-amber-800">{p.detalhe}</span> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!temEditaveis && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 print:hidden">
           <span>
             Este laudo ainda não tem capa, introdução nem metodologia: são capítulos de Texto Padrão do
-            módulo QAP (os do DRPS descrevem o DRPS e por isso não foram copiados). Enquanto não existirem,
-            o PDF sai só com as seções geradas (identificação, análise por setor, planos, assinatura).
+            módulo QPS. Enquanto não existirem, o PDF sai só com as seções geradas (identificação,
+            análise por setor, planos, assinatura).
           </span>
           {isAdmin && (
             <Link
               href="/questionarios-psicossociais/texto-padrao"
               className="inline-flex items-center gap-1 font-semibold underline"
             >
-              <FileEdit className="size-3.5" /> Texto Padrão da QAP
+              <FileEdit className="size-3.5" /> Texto Padrão do QPS
             </Link>
           )}
         </div>

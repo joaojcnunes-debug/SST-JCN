@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
 import type { Usuario } from "@/lib/supabase/types";
+import { perfilEscreveNaRls, podeEditarLinhaDaUnidade } from "@/lib/acesso/linha-por-unidade";
 
 export function useCurrentUser() {
   return useUserStore((s) => s.user);
@@ -74,9 +75,7 @@ export function useVePresencaAuditoria() {
  * 2026-08-21: 7+ Visualizadores com flag têm `edit` real em 8 quadros
  * abertos). Guard ali removeria em silêncio capacidade que o banco aceita.
  */
-export function perfilEscreveNaRls(perfil?: string) {
-  return perfil === "Admin" || perfil === "Tecnico";
-}
+export { perfilEscreveNaRls } from "@/lib/acesso/linha-por-unidade";
 
 /**
  * Permissão de EDITAR dados (rascunhos, observações, situação de itens etc).
@@ -90,6 +89,16 @@ export function useCanEdit() {
   if (!user) return false;
   if (user.perfil === "Admin") return true;
   return user.pode_editar === true;
+}
+
+/**
+ * Permissão de editar UMA linha escopada por unidade. A regra (e o porquê de
+ * cada ramo) está em `lib/acesso/linha-por-unidade.ts`, que é puro e testado
+ * em `lib/qps/gravacao.test.ts`.
+ */
+export function usePodeEditarLinhaDaUnidade(idUnidadeDaEmpresa: string | null | undefined) {
+  const user = useUserStore((s) => s.user);
+  return podeEditarLinhaDaUnidade(user, idUnidadeDaEmpresa);
 }
 
 /**

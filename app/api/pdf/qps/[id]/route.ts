@@ -17,7 +17,8 @@ import type {
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import { QPS_LAUDO_TABELA, montarLaudoQps, type PlanoAcaoLinhaLaudo } from "@/lib/qps/laudo";
 import { montarValoresVariaveisQps } from "@/lib/qps/variaveis";
-import { INSTRUMENTO_QAP } from "@/lib/qps/gestao";
+import { INSTRUMENTO_QPS } from "@/lib/qps/gestao";
+import { resolverCrpQps } from "@/lib/qps/crp";
 import { montarSignatarioTecnico } from "@/lib/pdf/folha-assinatura-tecnico";
 import { assinarCapitulos, assinarImagensHtml } from "@/lib/pdf/assinar-midia";
 import { aplicarAnexosNoPdf } from "@/lib/anexos/server";
@@ -115,16 +116,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     }
 
     // CRP em branco na aplicação → o do cadastro do profissional com esse nome.
-    let crp = (ap.crp ?? "").trim();
-    if (!crp && ap.responsavel) {
-      const { data: prof } = await supabase
-        .from("usuarios")
-        .select("crp")
-        .ilike("nome", ap.responsavel.trim())
-        .limit(1)
-        .maybeSingle();
-      crp = ((prof as { crp: string | null } | null)?.crp ?? "").trim();
-    }
+    const crp = (await resolverCrpQps(supabase, ap)) ?? "";
     const apComCrp: QpsAplicacao = { ...ap, crp: crp || null };
 
     // Imagens inline (<img>) das conclusões (rich text) precisam de URL assinada no Puppeteer.
@@ -155,9 +147,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       aplicacao: apComCrp,
       tipoNome: tipo?.nome ?? null,
       totalRespondentes: respondentes.length,
+      carimbos: respondentes.map((r) => r.data_carimbo),
       extras: {
         usuario_logado: perfilLogado?.nome ?? ap.responsavel ?? user.email ?? "",
-        tipo_relatorio: `${INSTRUMENTO_QAP.sigla} — ${INSTRUMENTO_QAP.nome}`,
+        tipo_relatorio: `${INSTRUMENTO_QPS.sigla} — ${INSTRUMENTO_QPS.nome}`,
         formacao_responsavel: "Psicólogo(a)",
       },
     });
@@ -175,7 +168,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const folhaEmpresa = empresa ? { razaoSocial: empresa.nome_empresa, cnpj: empresa.cnpj ?? "" } : null;
 
     const shortId = String(id).replace(/-/g, "").slice(0, 8);
-    const identificadorDocumento = `${INSTRUMENTO_QAP.sigla}-${new Date().getFullYear()}-${shortId}`;
+    const identificadorDocumento = `${INSTRUMENTO_QPS.sigla}-${new Date().getFullYear()}-${shortId}`;
 
     const [{ default: React }, { renderToStaticMarkup }, { default: QpsTemplate }] = await Promise.all([
       import("react"),
@@ -183,34 +176,38 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       import("@/components/pdf/templates/QpsTemplate"),
     ]);
 
-    const bodyHtml = renderToStaticMarkup(
-      React.createElement(QpsTemplate, {
-        laudo,
-        empresa,
-        planoMedidas,
-        monitoramentos,
-        revisao,
-        anoMedidas,
-        capitulos,
-        valores,
-        signatarios,
-        folhaEmpresa,
-        dataHoraAssinatura,
-        identificadorDocumento,
-        planoAcao,
-      }),
-    );
-
-    const styleMatch = bodyHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/);
-    const headStyle = styleMatch ? styleMatch[1] : "";
-    const bodyWithoutStyle = bodyHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/, "");
-
-    const fullHtml = `<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8" /><title>Laudo ${INSTRUMENTO_QAP.sigla}</title>
+    // O HTML é montado duas vezes: sem e com a página de cada capítulo no
+    // Sumário (v263) — o gerarPdf mede as páginas na 1ª geração.
+    const montarHtml = (paginasSumario?: Record<string, number>) => {
+      const bodyHtml = renderToStaticMarkup(
+        React.createElement(QpsTemplate, {
+          laudo,
+          empresa,
+          planoMedidas,
+          monitoramentos,
+          revisao,
+          anoMedidas,
+          capitulos,
+          valores,
+          signatarios,
+          folhaEmpresa,
+          dataHoraAssinatura,
+          identificadorDocumento,
+          planoAcao,
+          paginasSumario,
+        }),
+      );
+      const styleMatch = bodyHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/);
+      const headStyle = styleMatch ? styleMatch[1] : "";
+      const bodyWithoutStyle = bodyHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/, "");
+      return `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8" /><title>Laudo ${INSTRUMENTO_QPS.sigla}</title>
 <style>${headStyle}</style></head>
 <body style="margin:0;padding:0;background:#fff;font-family:Inter,Arial,Helvetica,sans-serif;color:#111827;">
 ${bodyWithoutStyle}
 </body></html>`;
+    };
+    const fullHtml = montarHtml();
 
     const { gerarPdf } = await import("@/lib/pdf/gerar-pdf");
     const pdfBuffer = await gerarPdf(fullHtml, {
@@ -218,6 +215,7 @@ ${bodyWithoutStyle}
       numeroPaginasAposSeletor: '[data-slug="sumario"]',
       preferCssPageSize: true,
       capaFullBleed: true,
+      comPaginasNoSumario: montarHtml,
     });
 
     const pdfFinal = await aplicarAnexosNoPdf(supabase, "qps", id, pdfBuffer);

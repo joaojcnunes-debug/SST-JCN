@@ -190,7 +190,7 @@ export const VARIAVEIS_POR_MODULO: Record<ModuloTextoPadrao, VariavelDef[]> = {
   // são só do QPS.
   qps: [
     ...VARIAVEIS_EMPRESA,
-    { chave: "titulo_aplicacao",    rotulo: "Título da aplicação",                exemplo: "QAP - Empresa Exemplo" },
+    { chave: "titulo_aplicacao",    rotulo: "Título da aplicação",                exemplo: "QPS - Empresa Exemplo" },
     { chave: "tipo_questionario",   rotulo: "Nome do questionário (tipo)",        exemplo: "Questionário Psicossocial" },
     { chave: "unidade_cliente",     rotulo: "Unidade / filial do cliente",        exemplo: "Loja 28" },
     { chave: "total_respondentes",  rotulo: "Total de respondentes",              exemplo: "113" },
@@ -198,9 +198,10 @@ export const VARIAVEIS_POR_MODULO: Record<ModuloTextoPadrao, VariavelDef[]> = {
     { chave: "crp",                 rotulo: "CRP",                                exemplo: "06/12345" },
     { chave: "carimbo",             rotulo: "Carimbo (nome + CRP)",               exemplo: "Ana Silva\nCRP 06/12345" },
     { chave: "data_elaboracao",     rotulo: "Data de elaboração",                 exemplo: "15/05/2026" },
+    { chave: "data_conclusao",      rotulo: "Data da conclusão (quando virou CONCLUÍDO)", exemplo: "29/09/2026" },
     { chave: "data_atual",          rotulo: "Data atual (geração do PDF)",        exemplo: "15/05/2026" },
-    { chave: "periodo_inicio",      rotulo: "Período de aplicação — início",      exemplo: "01/04/2026" },
-    { chave: "periodo_fim",         rotulo: "Período de aplicação — fim",         exemplo: "30/04/2026" },
+    { chave: "periodo_inicio",      rotulo: "Período da coleta — início (digitado ou 1ª resposta)", exemplo: "01/04/2026" },
+    { chave: "periodo_fim",         rotulo: "Período da coleta — fim (digitado ou última resposta)", exemplo: "30/04/2026" },
     ...VARIAVEIS_DOC,
   ],
 };

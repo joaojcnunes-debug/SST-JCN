@@ -72,6 +72,10 @@ export function mensagemErro(
 
   // P0001 = RAISE EXCEPTION dos nossos RPCs: a mensagem já é escrita para o usuário.
   if (code === "P0001" && raw) return raw;
+  // Escrita que voltou com 0 linhas: o PostgREST não devolve erro quando a RLS
+  // filtra a linha, então quem escreve verifica a contagem e levanta isto. A
+  // mensagem já vem pronta para o usuário e diz o que conferir.
+  if (code === "nao_gravou" && raw) return raw;
 
   // Desconhecido → fallback (nunca devolve SQL cru).
   return fallback;

@@ -7,6 +7,13 @@ export type StatusRelatorio =
   | "ENVIADO_CLIENTE"
   | "DELETADO";
 
+export const ALINHAMENTOS = ["left", "center", "right", "justify"] as const;
+export type Alinhamento = (typeof ALINHAMENTOS)[number];
+/** Padrão dos quadros de Agravos e Medidas: justificado (como desde a v0.3.737). */
+export const ALINHAMENTO_PADRAO: Alinhamento = "justify";
+export type CampoAlinhavel = "agravos" | "medidas";
+export type AlinhamentosSetor = Partial<Record<CampoAlinhavel, Alinhamento>>;
+
 export interface DrpsRelatorio {
   id_relatorio: string;
   id_empresa: string;
@@ -42,6 +49,13 @@ export interface DrpsRelatorio {
   agravos_por_unidade_setor?: Record<string, Record<string, string>> | null;
   medidas_por_unidade_setor?: Record<string, Record<string, string>> | null;
   conclusoes_por_unidade_setor?: Record<string, Record<string, string>> | null;
+  /**
+   * v291 — alinhamento dos quadros de Agravos e Medidas, escolhido na Análise
+   * (botões de alinhar). {setor: {agravos, medidas}} e o override por unidade
+   * {unidade: {setor: {...}}}. Ausente = justificado (ALINHAMENTO_PADRAO).
+   */
+  alinhamentos_por_setor?: Record<string, AlinhamentosSetor> | null;
+  alinhamentos_por_unidade_setor?: Record<string, Record<string, AlinhamentosSetor>> | null;
   /**
    * v138 — true faz o tópico sem nenhuma resposta (n=0) sair como
    * "Sem análise" em vez de "Baixa". false nos relatórios anteriores, que

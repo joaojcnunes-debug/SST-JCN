@@ -11,26 +11,26 @@ describe("gestão do QPS — os textos do DRPS com o nome do instrumento", () =>
     assert.deepEqual(qap.map((a) => a.id), ACOES_OBRIGATORIAS.map((a) => a.id));
     const reaplicar = qap.find((a) => a.id === "reaplicar_drps");
     assert.ok(reaplicar);
-    assert.match(reaplicar.texto, /Reaplicação da? QAP|Reaplicação do QAP/);
+    assert.match(reaplicar.texto, /Reaplicação do QPS/);
     assert.doesNotMatch(reaplicar.texto, /DRPS/);
     assert.equal(qap.filter((a) => /DRPS/.test(a.texto)).length, 0);
   });
 
   test("comInstrumento não toca em palavras que só contêm DRPS", () => {
-    assert.equal(comInstrumento("o DRPS e o DRPSX"), "o QAP e o DRPSX");
+    assert.equal(comInstrumento("o DRPS e o DRPSX"), "o QPS e o DRPSX");
     assert.equal(comInstrumento("sem a sigla"), "sem a sigla");
     assert.equal(comInstrumento("DRPS", { sigla: "PER", nome: "x" }), "PER");
   });
 
   test("cartão Crítico do monitoramento fala do instrumento, não do DRPS", () => {
     const rec = recomendacoesMonitoramento();
-    assert.match(rec["Crítico"].texto, /reavaliação do QAP em 90 dias/);
+    assert.match(rec["Crítico"].texto, /reavaliação do QPS em 90 dias/);
     assert.equal(Object.keys(rec).length, 4);
   });
 });
 
 describe("resumoGestaoQps — a conta do Painel de Gestão é a do DRPS", () => {
-  test("percentuais e saúde geral com dados da QAP", async () => {
+  test("percentuais e saúde geral com dados do QPS", async () => {
     const { resumoGestaoQps } = await import("./gestao");
     const r = resumoGestaoQps({
       planoDB: { id_aplicacao: "A", ano: 2026, plano: { "Programa de apoio psicológico": { meses: [true, false, false, false, false, false, false, false, false, false, false, false], responsavel: "" } }, updated_at: "" },

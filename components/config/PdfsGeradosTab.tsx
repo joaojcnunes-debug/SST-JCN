@@ -15,7 +15,7 @@ import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 const MODULOS: { value: string; label: string }[] = [
   { value: "",                   label: "Todos os módulos" },
   { value: "drps",               label: "DRPS — Psicossocial" },
-  { value: "qps",                label: "QAP — Questionários Psicossociais" },
+  { value: "qps",                label: "QPS — Questionário Psicossocial" },
   { value: "aet",                label: "AET — Análise Ergonômica" },
   { value: "aep",                label: "AEP — Análise Ergonômica Preliminar" },
   { value: "sst",                label: "SST — Inspeções" },

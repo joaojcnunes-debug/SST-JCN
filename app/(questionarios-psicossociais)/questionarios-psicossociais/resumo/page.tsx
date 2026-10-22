@@ -28,10 +28,12 @@ import { useQpsResumo, type AplicacaoResumo, type EtapaQps } from "@/lib/hooks/u
 import QuadroStatusQps from "@/components/questionarios/QuadroStatusQps";
 import { cn } from "@/lib/utils";
 
+// 24/09 — eram 4 etapas; "Plano de ação (em tratamento)" saiu e "Análise"
+// deixou de dizer "sem plano de ação": o 5W2H saiu da QAP na v0.3.637 e
+// nenhuma aplicação alcançava mais aquela coluna. Ver `lib/qps/etapa.ts`.
 const ETAPAS: { chave: EtapaQps; nome: string; sub: string }[] = [
   { chave: "COLETA", nome: "Coleta", sub: "sem respondente" },
-  { chave: "ANALISE", nome: "Análise", sub: "sem plano de ação" },
-  { chave: "PLANO", nome: "Plano de ação", sub: "em tratamento" },
+  { chave: "ANALISE", nome: "Análise", sub: "com respondentes, em aberto" },
   { chave: "CONCLUIDO", nome: "Concluído", sub: "encerrada" },
 ];
 
@@ -158,7 +160,7 @@ export default function QpsResumoPage() {
         <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
           Onde o trabalho está
         </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-3 gap-3">
           {ETAPAS.map((e) => {
             const n = aplicacoes.filter((a) => a.etapa === e.chave).length;
             const gargalo = n > 0 && n === Math.max(...ETAPAS.map((x) => aplicacoes.filter((a) => a.etapa === x.chave).length)) && e.chave !== "CONCLUIDO";
@@ -178,8 +180,8 @@ export default function QpsResumoPage() {
           })}
         </div>
         <p className="text-xs text-gray-500">
-          A etapa vem do que já existe na aplicação — respondente importado, ação
-          de plano —, não do status escolhido à mão no quadro acima. Quando as
+          A etapa vem do que já existe na aplicação — respondente importado —,
+          não do status escolhido à mão no quadro acima. Quando as
           duas leituras discordam, é porque o trabalho andou e ninguém mexeu no
           status.
         </p>
@@ -377,14 +379,12 @@ function Linha({ a }: { a: AplicacaoResumo }) {
 const ETAPA_COR: Record<EtapaQps, string> = {
   COLETA: "bg-gray-100 text-gray-600",
   ANALISE: "bg-blue-100 text-blue-700",
-  PLANO: "bg-indigo-100 text-indigo-700",
   CONCLUIDO: "bg-green-100 text-green-700",
 };
 
 const ETAPA_LABEL: Record<EtapaQps, string> = {
   COLETA: "Coleta",
   ANALISE: "Análise",
-  PLANO: "Plano de ação",
   CONCLUIDO: "Concluído",
 };
 

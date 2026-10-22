@@ -46,6 +46,36 @@ export interface GerarPdfOpts {
    * normais (vêm da opção `margens`, pois o `@page` padrão não declara margem).
    */
   capaFullBleed?: boolean
+  /**
+   * Sumário com número de página (só junto de `numeroPaginasAposSeletor`).
+   * O PDF é gerado uma vez; dos links internos do Sumário (`<a href="#id">`) o
+   * Chromium grava a página de destino de cada âncora, que é lida aqui e já
+   * convertida para a numeração do rodapé (1 = primeira página após o
+   * Sumário). A função devolve o HTML com os números e ele é gerado de novo.
+   * Os números cabem na coluna que já existia, então nada muda de página
+   * entre as duas gerações.
+   */
+  comPaginasNoSumario?: (paginas: Record<string, number>) => string
+}
+
+/**
+ * Página (índice 0) de cada âncora que algum link interno do documento aponta.
+ * Lê os destinos nomeados que o Chromium grava no catálogo (/Dests).
+ */
+async function paginasDasAncoras(pdf: Uint8Array): Promise<Record<string, number>> {
+  const { PDFDocument, PDFName, PDFDict, PDFArray } = await import('pdf-lib')
+  const doc = await PDFDocument.load(pdf)
+  const indice = new Map(doc.getPages().map((p, i) => [p.ref.toString(), i]))
+  const dests = doc.catalog.lookupMaybe(PDFName.of('Dests'), PDFDict)
+  const out: Record<string, number> = {}
+  if (!dests) return out
+  for (const chave of dests.keys()) {
+    const v = dests.lookup(chave)
+    const arr = v instanceof PDFArray ? v : v instanceof PDFDict ? v.lookupMaybe(PDFName.of('D'), PDFArray) : undefined
+    const pagina = arr ? indice.get(String(arr.get(0))) : undefined
+    if (pagina !== undefined) out[chave.decodeText()] = pagina
+  }
+  return out
 }
 
 /** Converte "12mm" → pontos PDF (1pt = 1/72in). */
@@ -169,7 +199,8 @@ export async function gerarPdf(
     // Caso A: numeração a partir de um seletor — pdf-lib desenha "X / Y" só nas
     // páginas após o miolo inicial (capa/sumário), recomeçando em 1.
     if (seletor) {
-      const fullRaw = await page.pdf(basePdfOpts)
+      let fullRaw = await page.pdf(basePdfOpts)
+      const ancoras = opts?.comPaginasNoSumario ? await paginasDasAncoras(fullRaw) : {}
       let offset = 0
       try {
         const achou = await page.evaluate((sel: string) => {
@@ -190,6 +221,26 @@ export async function gerarPdf(
         }
       } catch {
         offset = 0
+      }
+
+      // 2ª geração, agora com a página de cada capítulo escrita no Sumário.
+      if (opts?.comPaginasNoSumario && offset > 0 && Object.keys(ancoras).length > 0) {
+        const paginas: Record<string, number> = {}
+        for (const [id, idx] of Object.entries(ancoras)) {
+          if (idx >= offset) paginas[id] = idx - offset + 1
+        }
+        // Aba nova: um 2º setContent na mesma aba (que acabou de ser podada
+        // para medir o offset) fica esperando o networkidle para sempre.
+        const page2 = await browser.newPage()
+        await page2.setContent(capaCss + opts.comPaginasNoSumario(paginas), { waitUntil: 'networkidle0' })
+        await page2.evaluate(() =>
+          Promise.all(
+            Array.from(document.images).map((img) =>
+              img.decode().catch(() => undefined),
+            ),
+          ),
+        )
+        fullRaw = await page2.pdf(basePdfOpts)
       }
 
       const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib')

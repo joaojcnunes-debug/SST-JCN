@@ -34,6 +34,7 @@ import {
   X,
 } from "lucide-react";
 import { useQpsMoverStatus } from "@/lib/hooks/useQuestionarios";
+import EscolherDataConclusao from "@/components/questionarios/EscolherDataConclusao";
 import type { AplicacaoResumo } from "@/lib/hooks/useQpsResumo";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { useTema } from "@/lib/store";
@@ -117,12 +118,55 @@ export default function QuadroStatusQps({ linhas }: { linhas: AplicacaoResumo[] 
    * carrega a matriz inteira da aplicação, e duplicar isso a cada arrasto seria
    * caro sem necessidade.
    *
-   * O `useEffect` zera os desvios quando o servidor responde: a partir daí a
-   * verdade é a dele. Se a gravação falhar, o refetch traz o status antigo e o
-   * cartão volta — junto com o toast que explica por quê.
+   * O `useEffect` zera os desvios quando o servidor responde com dado
+   * DIFERENTE: a partir daí a verdade é a dele. Quando a gravação falha o dado
+   * volta igual e o efeito não roda, então quem desfaz o cartão é o `catch` de
+   * `gravarStatus` — junto com o toast que explica por quê.
    */
   const [desvio, setDesvio] = useState<Record<string, StatusQpsAplicacao>>({});
   useEffect(() => setDesvio({}), [linhas]);
+
+  /**
+   * Desfaz o otimismo de UM cartão. Precisa existir porque o `useEffect` acima
+   * NÃO cobre o caminho de falha: quando a gravação é recusada o banco não
+   * muda nada, o refetch volta profundamente igual e o structural sharing do
+   * React Query devolve a **mesma referência** de `linhas` — medido com o
+   * QueryClient deste worktree. O efeito não roda, o desvio não é limpo e o
+   * cartão ficaria na coluna nova contradizendo o toast de erro.
+   */
+  const limparDesvio = (id: string) =>
+    setDesvio((d) => {
+      if (!(id in d)) return d;
+      const resto = { ...d };
+      delete resto[id];
+      return resto;
+    });
+
+  /**
+   * Grava e, se falhar, desfaz **aquele** cartão.
+   *
+   * Usa `mutateAsync` em vez do `onError` por chamada de propósito: o
+   * `useMutation` tem um observer só, e ele guarda apenas as opções da ÚLTIMA
+   * chamada (`#mutateOptions` é sobrescrito em cada `mutate`). Com dois
+   * arrastos sobrepostos, o callback do primeiro nunca rodaria e o cartão dele
+   * ficaria na coluna errada. Cada `mutateAsync` tem a própria promessa, então
+   * cada arrasto desfaz o seu. O toast vem do `onError` do hook, que roda para
+   * todas as mutations — aqui só engolimos a rejeição para não virar
+   * unhandled rejection.
+   */
+  async function gravarStatus(args: {
+    id: string;
+    idEmpresa: string;
+    status: StatusQpsAplicacao;
+    data_conclusao?: string;
+  }) {
+    setDesvio((d) => ({ ...d, [args.id]: args.status }));
+    try {
+      await mover.mutateAsync(args);
+    } catch {
+      limparDesvio(args.id);
+    }
+  }
 
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropAlvo, setDropAlvo] = useState<StatusColuna | null>(null);
@@ -167,9 +211,15 @@ export default function QuadroStatusQps({ linhas }: { linhas: AplicacaoResumo[] 
     if (!a) return;
     const atual = desvio[id] ?? a.aplicacao.status;
     if (atual === status) return;
-    setDesvio((d) => ({ ...d, [id]: status }));
-    mover.mutate({ id, idEmpresa: a.aplicacao.id_empresa, status });
+    // v263 — reconcluir: pergunta qual data vai para a capa antes de gravar.
+    if (status === "CONCLUIDO" && a.aplicacao.data_conclusao) {
+      setReconcluir({ id, idEmpresa: a.aplicacao.id_empresa, dataAnterior: a.aplicacao.data_conclusao });
+      return;
+    }
+    void gravarStatus({ id, idEmpresa: a.aplicacao.id_empresa, status });
   }
+
+  const [reconcluir, setReconcluir] = useState<{ id: string; idEmpresa: string; dataAnterior: string } | null>(null);
 
   return (
     <section className="space-y-2">
@@ -208,6 +258,21 @@ export default function QuadroStatusQps({ linhas }: { linhas: AplicacaoResumo[] 
           />
         ))}
       </div>
+
+      <EscolherDataConclusao
+        dataAnterior={reconcluir?.dataAnterior ?? null}
+        onCancelar={() => setReconcluir(null)}
+        onEscolher={(data) => {
+          if (!reconcluir) return;
+          void gravarStatus({
+            id: reconcluir.id,
+            idEmpresa: reconcluir.idEmpresa,
+            status: "CONCLUIDO",
+            data_conclusao: data,
+          });
+          setReconcluir(null);
+        }}
+      />
 
       {porStatus.fora.length > 0 && (
         <p className="text-xs text-amber-700">

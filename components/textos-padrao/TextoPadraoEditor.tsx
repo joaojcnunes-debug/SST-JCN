@@ -349,6 +349,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
                     descricao={
                       config.fixos.find((f) => f.slug_fixo === cap.slug_fixo)?.descricao ?? ""
                     }
+                    aceitaIntro={!!config.fixos.find((f) => f.slug_fixo === cap.slug_fixo)?.aceitaIntro}
                     onMover={(dir) => mover(cap, dir)}
                     onToggleMostrar={() =>
                       salvar.mutate({ id_capitulo: cap.id_capitulo, ativo: !cap.ativo })
@@ -383,7 +384,8 @@ export default function TextoPadraoEditor({ modulo }: Props) {
                 Corpo do laudo — seções do sistema (posição fixa, entre início e fim)
               </div>
               {capitulosFixos.map((cap, idx) => {
-                const descricao = config.fixos.find((f) => f.slug_fixo === cap.slug_fixo)?.descricao ?? "";
+                const fixo = config.fixos.find((f) => f.slug_fixo === cap.slug_fixo);
+                const descricao = fixo?.descricao ?? "";
                 return (
                   <FixoCard
                     key={cap.id_capitulo}
@@ -392,6 +394,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
                     total={capitulosFixos.length}
                     salvando={salvar.isPending}
                     descricao={descricao}
+                    aceitaIntro={!!fixo?.aceitaIntro}
                     onMover={(dir) => mover(cap, dir)}
                     onToggleMostrar={() => salvar.mutate({ id_capitulo: cap.id_capitulo, ativo: !cap.ativo })}
                     onSalvar={(patch) => salvar.mutate({ id_capitulo: cap.id_capitulo, ...patch })}
@@ -455,6 +458,7 @@ function FixoCard({
   total,
   salvando,
   descricao,
+  aceitaIntro,
   onMover,
   onToggleMostrar,
   onSalvar,
@@ -464,12 +468,18 @@ function FixoCard({
   total: number;
   salvando: boolean;
   descricao: string;
+  /** Fixo cujo PDF imprime `conteudo` como introdução (FixoCapitulo.aceitaIntro). */
+  aceitaIntro: boolean;
   onMover: (dir: "up" | "down") => void;
   onToggleMostrar: () => void;
-  onSalvar: (patch: { orientacao?: OrientacaoPagina; quebra_pagina?: QuebraPagina }) => void;
+  onSalvar: (patch: { orientacao?: OrientacaoPagina; quebra_pagina?: QuebraPagina; conteudo?: string | null }) => void;
 }) {
   const orientacao = capitulo.orientacao ?? "retrato";
   const quebra = capitulo.quebra_pagina ?? "nova";
+  const introGravada = capitulo.conteudo ?? "";
+  const [intro, setIntro] = useState(introGravada);
+  useEffect(() => setIntro(introGravada), [introGravada]);
+  const introMudou = intro.trim() !== introGravada.trim();
 
   return (
     <div className={cn(
@@ -568,6 +578,33 @@ function FixoCard({
             </span>
           )}
         </p>
+      )}
+
+      {aceitaIntro && (
+        <div className="mt-2 pl-16">
+          <label className="mb-1 block text-[11px] font-semibold text-gray-600">
+            Texto de introdução <span className="font-normal text-gray-400">— sai logo abaixo do título; em branco, não sai nada</span>
+          </label>
+          <textarea
+            value={intro}
+            onChange={(e) => setIntro(e.target.value)}
+            rows={2}
+            placeholder="Ex.: As medidas abaixo devem ser incorporadas ao plano de ação do PGR…"
+            className="w-full resize-y rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-xs text-gray-800 focus:border-blue-400 focus:outline-none"
+          />
+          {introMudou && (
+            <div className="mt-1 flex justify-end gap-2">
+              <button type="button" onClick={() => setIntro(introGravada)} disabled={salvando}
+                className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+                Desfazer
+              </button>
+              <button type="button" onClick={() => onSalvar({ conteudo: intro.trim() || null })} disabled={salvando}
+                className="rounded-md bg-blue-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                Salvar introdução
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

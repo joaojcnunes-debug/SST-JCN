@@ -41,6 +41,247 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "qps-aplicacao-salvar-e-responsavel",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Questionários: salvar a aplicação avisa quando não gravou, e o Responsável vira lista da equipe",
+    texto:
+      "Ao editar uma aplicação, se nada for gravado (por exemplo, por falta de permissão), a tela agora avisa " +
+      "em vez de dizer que salvou. O Responsável passa a ser escolhido numa lista com a equipe psicossocial. " +
+      "O card de detalhe deixou de vazar da tela e o lápis da Unidade voltou a funcionar.",
+    onde: "Questionários Psicossociais › Aplicação",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "aet-ia-direcao-da-escala",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "AET: a IA da observação psicossocial entende que nota alta é condição boa",
+    texto:
+      "Na escala de 1 a 5 dos fatores psicossociais da AET, nota alta é a condição favorável (zona verde). " +
+      "A IA que redige a observação passa a saber disso e não chama mais de \"baixa\" ou \"preocupante\" " +
+      "uma média em zona verde.",
+    onde: "AET › Psicossocial › Gerar com IA",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "aep-formulario-branco-sem-matriz-riscos",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Formulário em Branco da AEP sem a Matriz de Riscos",
+    texto:
+      "A seção \"Matriz de Riscos\" saiu do Formulário em Branco da AEP, como já tinha saído da tela de " +
+      "Setores. As seções seguintes foram renumeradas: 4. Indicador de AET, 5. Parecer Técnico Preliminar, " +
+      "6. Recomendações e 7. Considerações finais.",
+    onde: "AEP › Formulário em Branco",
+    impacto: "Folhas impressas antes desta versão ainda trazem a matriz; basta deixá-la em branco.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "aep-formulario-branco-so-triagem",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Formulário em Branco da AEP: imprimir só a Triagem Ergonômica",
+    texto:
+      "Para levar a campo só o que vai ser marcado lá, o Formulário em Branco da AEP ganhou a opção " +
+      "\"Só a Triagem (item 3)\": sai apenas a triagem física, cognitiva e organizacional (com os sinais, " +
+      "o roteiro de campo e o motivo do N/I), um bloco por setor, com espaço para empresa, técnico e data. " +
+      "\"Formulário completo\" continua imprimindo tudo, como antes.",
+    onde: "AEP › Formulário em Branco",
+    impacto: "Nada muda no que já existe; a escolha vale só para a impressão do formulário.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "drps-alinhar-agravos-medidas",
+    data: "2026-10-22",
+    tipo: "novidade",
+    titulo: "DRPS: botões de alinhar nos Agravos e nas Medidas",
+    texto:
+      "Na Análise do DRPS, os quadros Possíveis Agravos à Saúde Mental e Medidas de controle recomendadas " +
+      "ganharam os mesmos 4 botões do Word que a Conclusão já tem: alinhar à esquerda, centralizar, alinhar " +
+      "à direita e justificar. Um clique já salva, e o laudo, o PDF e a impressão saem com o alinhamento " +
+      "escolhido. Cada setor (e cada unidade) tem o seu.",
+    onde: "Psicossocial › Análise e Avaliação",
+    impacto:
+      "Quem não mexer continua com o texto justificado. Laudos já congelados ou assinados continuam como estão.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "drps-agravos-medidas-justificados",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Laudo do DRPS: Agravos e Medidas saem justificados",
+    texto:
+      "No laudo, os Possíveis Agravos à Saúde Mental e as Medidas de Controle recomendadas agora saem " +
+      "justificados, como a Conclusão. Cada item vira um parágrafo, com inicial maiúscula e ponto final, " +
+      "igual ao laudo dos Questionários. Não é preciso fazer nada na hora de preencher.",
+    onde: "Psicossocial › Laudo (PDF e tela)",
+    impacto: "Laudos já congelados ou assinados continuam como estão até se congelar uma nova versão.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "qps-analise-agravos-medidas-por-setor",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Questionários: agravos e medidas de cada setor voltam a aparecer e a salvar",
+    texto:
+      "Na Análise (régua do DRPS), os agravos e as medidas de controle de cada setor abriam vazios, mesmo " +
+      "salvos — só o consolidado aparecia preenchido, e quem salvava de novo substituía o que estava gravado. " +
+      "Agora cada setor abre com o que foi salvo. E o texto digitado na caixa sem apertar Enter também é " +
+      "salvo ao clicar em \"Salvar agravos e medidas\".",
+    onde: "Questionários Psicossociais › aplicação › Análise",
+    impacto:
+      "Medidas digitadas antes desta correção sem Enter não chegaram a ser salvas: confira os setores e " +
+      "preencha de novo o que estiver faltando.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "psicossocial-5w2h-folha-deitada",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Laudos psicossociais: plano de ação 5W2H na folha deitada",
+    texto:
+      "No PDF do DRPS e dos Questionários Psicossociais, a seção \"Plano de Ação 5W2H\" sai sempre na folha " +
+      "deitada (paisagem), com as 8 colunas lado a lado. Tabelas coladas nas conclusões com 5 colunas ou " +
+      "mais também vão para a folha deitada — antes só a partir de 6, e um plano de 5 colunas saía em pé com " +
+      "o texto espremido. O texto em volta da tabela continua em pé.",
+    onde: "DRPS › Laudo (PDF) · Questionários Psicossociais › Laudo (PDF)",
+    impacto: "Basta gerar o PDF de novo. Tabelas de até 4 colunas continuam em pé.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "aep-ia-criterio-drps-e-recomendacoes",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "IA da AEP: DRPS/Questionário pelo critério do sistema e Recomendações só com ações",
+    texto:
+      "O \"Gerar IA\" do Parecer e das Recomendações da AEP passa a receber pronto se o " +
+      "DRPS/Questionário é recomendado — 3 ou mais alertas organizacionais na AEP ou algum fator Alto " +
+      "ou Muito Alto no setor — em vez de o modelo decidir sozinho (ele chegou a recomendar DRPS com um " +
+      "único fator Baixo). As Recomendações ganharam um lembrete para trazer só ações por prazo " +
+      "(imediatas, preventivas, estruturais), sem repetir o diagnóstico do Parecer.",
+    onde: "AEP › Setores › Gerar IA (Parecer e Recomendações)",
+    impacto: "Textos já gerados não mudam; vale para os próximos cliques em Gerar IA.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "aet-checklist-texto-unico",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "AET: as perguntas do checklist têm o mesmo texto na tela e no PDF",
+    texto:
+      "O PDF do AET tinha a sua própria cópia dos textos padrão do checklist, e " +
+      "três deles não batiam com a tela. Agora os dois leem a mesma lista. Na " +
+      "prática muda só a pontuação da pergunta do monitor; as perguntas com texto " +
+      "editado na configuração continuam como estão.",
+    onde: "AET › Setores, Análise e PDF",
+    impacto: "Laudo já assinado não muda.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "qap-crp-do-cadastro",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Laudo da QAP mostra o CRP do psicólogo",
+    texto:
+      "O CRP ao lado do Responsável Técnico, na Análise por Setor do laudo, " +
+      "saía em branco na prévia. Agora ele vem sozinho do cadastro do " +
+      "psicólogo, o mesmo que a assinatura usa, na prévia e no PDF. O cartão " +
+      "\"CRP do responsável (laudo)\" da aplicação mostra qual número vai sair.",
+    onde: "Questionários Psicossociais › Aplicação › Laudo",
+    impacto:
+      "O nome do Responsável precisa estar igual ao do cadastro do psicólogo. " +
+      "PDF já assinado não muda: gere de novo.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "laudo-qps-igual-ao-drps-checklist",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Laudo QPS: sumário com páginas, 11 seções e sem folha em branco",
+    texto:
+      "No laudo do QPS — Questionário Psicossocial, o Sumário agora mostra a página de cada seção. A capa sai " +
+      "com a data da conclusão, que o sistema grava sozinho ao concluir; ao " +
+      "reconcluir, ele pergunta se mantém a data antiga ou usa a de hoje. Os " +
+      "setores seguem na mesma folha quando cabem, agravos e medidas saem em " +
+      "parágrafos, tabela larga da conclusão vai para a folha deitada sem " +
+      "partir palavra e acabou a folha em branco antes da assinatura. A tela " +
+      "do Laudo lista o que ainda falta preencher.",
+    onde: "Questionários Psicossociais › Aplicação › Laudo",
+    impacto:
+      "O Período Início/Fim da aplicação agora pode ser editado — é ele que " +
+      "sai na Metodologia quando a planilha importada não trouxe a data das " +
+      "respostas. Laudos já assinados não mudam.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "questionarios-psicossociais-sigla-qps",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Questionários Psicossociais: a sigla agora é QPS",
+    texto:
+      "O laudo dos Questionários Psicossociais deixou de se chamar “QAP — " +
+      "Questionário de Avaliação Psicossocial” e passou a ser “QPS — " +
+      "Questionários Psicossociais”: na capa, no texto do laudo, no título " +
+      "do PDF, no código do documento e nos textos de Gestão, Monitoramento " +
+      "e Revisão. A capa também deixou de dizer “Diagnóstico de Riscos " +
+      "Psicossociais”, frase herdada do DRPS.",
+    onde: "Questionários Psicossociais › Laudo",
+    impacto:
+      "Laudos já assinados não mudam. O DRPS continua como estava.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "qps-importacao-coluna-extra",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Importar respondentes: planilha com coluna a mais não desloca mais as respostas",
+    texto:
+      "Se a planilha do formulário trazia uma coluna de identificação a mais " +
+      "antes do setor ou da função — como “Qual sua unidade de trabalho?” —, " +
+      "o painel a lia como a primeira pergunta: todas as respostas iam para a " +
+      "pergunta seguinte e a última se perdia. Agora essa coluna é lida como " +
+      "dado do respondente, e o diagnóstico da importação avisa qual foi.",
+    onde: "Questionários Psicossociais › Aplicação › Importar respondentes",
+    impacto:
+      "Nenhuma importação feita até hoje tinha essa coluna a mais; nada do que " +
+      "já está gravado muda.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "pdf-aet-aep-gestao-com-empresa",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "PDFs de AET, AEP e Gestão do DRPS passam a sair ligados à empresa",
+    texto:
+      "Esses três documentos eram registrados sem a empresa, e por isso não " +
+      "apareciam na lista de PDFs da unidade nem na área do cliente. Os " +
+      "gerados a partir de agora já saem com a empresa.",
+    onde: "AET › Laudo, AEP › Laudo e Psicossocial › Gestão (botão Gerar PDF)",
+    impacto:
+      "Os PDFs gerados antes continuam sem a empresa; se precisar de um deles " +
+      "na área do cliente, gere de novo.",
+    versoes: ["0.3.140"],
+  },
+  {
+    id: "aet-plano-paisagem-e-introducao-dos-capitulos",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "AET: Plano de Ação deitado no PDF e introdução editável nos capítulos do sistema",
+    texto:
+      "No PDF do AET, o capítulo Plano de Ação (5W2H) agora sai em folha deitada, " +
+      "e a coluna “Quem” não quebra mais o cargo em várias linhas. O botão " +
+      "Retrato/Paisagem do Texto Padrão do AET passou a valer de verdade — antes " +
+      "tudo saía em pé. Os capítulos Agentes Ambientais, Análise Ergonômica, " +
+      "Fatores Psicossociais e Plano de Ação ganharam um campo “Texto de " +
+      "introdução”, que sai logo abaixo do título no laudo.",
+    onde: "AET › Texto Padrão (o campo) e AET › Laudo › Imprimir (o PDF)",
+    impacto:
+      "Os demais capítulos continuam em pé, como sempre saíram. Laudo sem ações " +
+      "no plano não muda nada.",
+    versoes: ["0.3.140"],
+  },
+  {
     id: "empresas-fantasia-abaixo-do-nome",
     data: "2026-10-22",
     tipo: "melhoria",

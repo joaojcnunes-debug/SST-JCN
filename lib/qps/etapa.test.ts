@@ -13,7 +13,7 @@ import { etapaDaAplicacao, statusEncerrado } from "./etapa";
  * aplicação ENTREGUE de volta para a coluna de quem nem começou.
  */
 
-const base = { nRespondentes: 0, nPlanos: 0 };
+const base = { nRespondentes: 0 };
 
 describe("etapaDaAplicacao", () => {
   test("rascunho sem respondente está em coleta", () => {
@@ -23,17 +23,10 @@ describe("etapaDaAplicacao", () => {
     );
   });
 
-  test("com respondente e sem plano está em análise", () => {
+  test("com respondente e não encerrada está em análise", () => {
     assert.equal(
-      etapaDaAplicacao({ status: "EM_ANDAMENTO", nRespondentes: 12, nPlanos: 0 }),
+      etapaDaAplicacao({ status: "EM_ANDAMENTO", nRespondentes: 12 }),
       "ANALISE",
-    );
-  });
-
-  test("com respondente e com ação está no plano de ação", () => {
-    assert.equal(
-      etapaDaAplicacao({ status: "EM_ANDAMENTO", nRespondentes: 12, nPlanos: 3 }),
-      "PLANO",
     );
   });
 
@@ -47,7 +40,7 @@ describe("etapaDaAplicacao", () => {
   // 🔑 A trava da v206.
   test("enviado ao cliente também é fim de fila", () => {
     assert.equal(
-      etapaDaAplicacao({ status: "ENVIADO_CLIENTE", nRespondentes: 40, nPlanos: 2 }),
+      etapaDaAplicacao({ status: "ENVIADO_CLIENTE", nRespondentes: 40 }),
       "CONCLUIDO",
     );
   });
@@ -60,9 +53,9 @@ describe("etapaDaAplicacao", () => {
     );
   });
 
-  test("o plano só ganha da análise quando existe ação de verdade", () => {
+  test("um respondente já tira da coleta, mesmo em rascunho", () => {
     assert.equal(
-      etapaDaAplicacao({ status: "RASCUNHO", nRespondentes: 1, nPlanos: 0 }),
+      etapaDaAplicacao({ status: "RASCUNHO", nRespondentes: 1 }),
       "ANALISE",
     );
   });

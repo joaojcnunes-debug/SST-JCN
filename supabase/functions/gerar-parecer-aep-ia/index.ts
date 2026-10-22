@@ -52,6 +52,8 @@ interface ContextoAepIA {
   }[];
   /** O setor tem indicação de AET completa (critério do sistema). */
   necessita_aet?: boolean;
+  /** DRPS/Questionário recomendado (critério do sistema: regra da AEP ou fator Alto/Muito Alto no setor). */
+  recomenda_questionario?: boolean;
   /** Fatores N/I com o motivo — "Limitações da avaliação" (2026-10-06). */
   limitacoes?: string[];
   /** Frase das condições da coleta (abordados, recusas, liderança, inibição). */
@@ -92,7 +94,7 @@ Como aplicar as premissas:
 - Trate os achados como resultado de TRIAGEM: use "identificou-se", "foram observados indícios", "indica a necessidade de aprofundamento"; nunca apresente a AEP como diagnóstico conclusivo nem como substituta da AET.
 - Fatores organizacionais: cite o nível na matriz AIHA (Trivial, Baixo, Moderado, Alto, Muito Alto) e os sinais observados que o sustentam; priorize os de nível mais alto.
 - Quando o setor tiver indicação de AET ("Necessita AET: sim"), registre que a análise ergonômica do trabalho (AET, NR-17 item 17.3.2) é o aprofundamento indicado; sem indicação, não recomende AET.
-- Quando houver fatores organizacionais relevantes (3 ou mais alertas organizacionais, ou algum fator Alto/Muito Alto), apresente o DRPS/Questionário Psicossocial como instrumento COMPLEMENTAR, que agrega a percepção dos próprios trabalhadores — não como substituto da AEP nem da AET.
+- DRPS/Questionário Psicossocial: siga a linha "Recomenda DRPS/Questionário (critério do sistema)". Com "sim", apresente-o como instrumento COMPLEMENTAR, que agrega a percepção dos próprios trabalhadores — não como substituto da AEP nem da AET. Com "não", só o mencione se a confiança da evidência for Baixa (regra abaixo).
 - Limitações da avaliação: fatores marcados N/I (não identificáveis) NÃO são achados — não os trate como presentes nem como ausentes. Quando houver, registre a limitação em uma frase, citando o motivo informado.
 - Quando houver receio dos trabalhadores em se manifestar (N/I por esse motivo ou sinais de inibição na coleta), registre que a participação foi limitada e indique o DRPS/Questionário Psicossocial, que permite resposta sem exposição, como complemento — mesmo com menos de 3 alertas organizacionais.
 - Fontes geradoras e medidas de controle existentes: quando informadas, cite-as no parecer como base do apontamento (sem listar todas por extenso).
@@ -109,6 +111,17 @@ Diretrizes:
 - Basear-se apenas nos itens marcados como Sim, nos níveis AIHA e nas observações fornecidas — não inventar dados, medições ou números
 - Referenciar NR-17, NR-01 e normas pertinentes
 - Sem bullets, apenas parágrafos corridos`;
+
+/**
+ * Lembrete do campo no FIM do pedido (painel v0.3.707): testado no ar, as
+ * Recomendações saíam descrevendo o setor, como um segundo Parecer.
+ */
+const INSTRUCAO_CAMPO: Record<CampoAep, string> = {
+  parecer_tecnico:
+    "Lembrete: é o PARECER — descreva o que foi identificado, os níveis AIHA e o encaminhamento; não liste ações nem prazos.",
+  recomendacoes:
+    "Lembrete: são as RECOMENDAÇÕES — escreva só AÇÕES práticas, classificadas como imediatas (<30 dias), preventivas (30–90 dias) ou estruturais (>90 dias); não repita a descrição do setor nem o diagnóstico.",
+};
 
 function buildPrompt(ctx: ContextoAepIA): string {
   const l: string[] = [];
@@ -170,6 +183,9 @@ function buildPrompt(ctx: ContextoAepIA): string {
   if (typeof ctx.necessita_aet === "boolean") {
     l.push(`Necessita AET (critério do sistema): ${ctx.necessita_aet ? "sim" : "não"}`);
   }
+  if (typeof ctx.recomenda_questionario === "boolean") {
+    l.push(`Recomenda DRPS/Questionário (critério do sistema): ${ctx.recomenda_questionario ? "sim" : "não"}`);
+  }
 
   if (ctx.observacoes) {
     const obs = Object.entries(ctx.observacoes)
@@ -179,6 +195,7 @@ function buildPrompt(ctx: ContextoAepIA): string {
   }
 
   l.push(`\nCampo a redigir: ${TITULO[ctx.campo]}`);
+  l.push(INSTRUCAO_CAMPO[ctx.campo]);
   if (ctx.textoAtual?.trim()) l.push(`\nTexto já redigido (refine se necessário):\n${ctx.textoAtual}`);
   l.push("\nGere o texto em JSON conforme o formato definido.");
   return l.join("\n");

@@ -33,6 +33,7 @@ import {
   montarBlocosPorSetor,
   montarBlocosPorUnidade,
   textoDoBloco,
+  alinhamentoDoBloco,
 } from "@/lib/drps/blocos";
 import type { SetorRelatorio } from "@/lib/drps/blocos";
 import { montarValoresVariaveis, substituirVariaveis, substituirVariaveisTexto } from "@/lib/drps/variaveis";
@@ -46,6 +47,7 @@ import {
 } from "@/lib/utils";
 import type { Empresa } from "@/lib/supabase/types";
 import type { DrpsRelatorio } from "@/lib/drps/types";
+import { paragrafosDoTexto } from "@/lib/qps/laudo";
 
 export default function PsicossocialLaudoPage({
   params,
@@ -700,24 +702,42 @@ function BlocoSetorLaudo({
         <tbody>
           <tr><td className="drps-header-section">Possíveis Agravos à Saúde Mental</td></tr>
           <tr>
-            <td className="align-top whitespace-pre-wrap text-[11px]">
-              {textoDoBloco(
+            <td
+              className="align-top text-[11px]"
+              style={{ textAlign: alinhamentoDoBloco(
+                drpsRel?.alinhamentos_por_unidade_setor,
+                drpsRel?.alinhamentos_por_setor,
+                relatorio.unidade,
+                relatorio.setor,
+                "agravos"
+              ) }}
+            >
+              {paragrafosDoTexto(textoDoBloco(
                 drpsRel?.agravos_por_unidade_setor,
                 drpsRel?.agravos_por_setor,
                 relatorio.unidade,
                 relatorio.setor
-              )}
+              )).map((p, i) => <p key={i} className="mb-1.5 last:mb-0">{p}</p>)}
             </td>
           </tr>
           <tr><td className="drps-header-section">Medidas de controle recomendadas (medidas que a empresa deve adotar)</td></tr>
           <tr>
-            <td className="align-top whitespace-pre-wrap text-[11px]">
-              {textoDoBloco(
+            <td
+              className="align-top text-[11px]"
+              style={{ textAlign: alinhamentoDoBloco(
+                drpsRel?.alinhamentos_por_unidade_setor,
+                drpsRel?.alinhamentos_por_setor,
+                relatorio.unidade,
+                relatorio.setor,
+                "medidas"
+              ) }}
+            >
+              {paragrafosDoTexto(textoDoBloco(
                 drpsRel?.medidas_por_unidade_setor,
                 drpsRel?.medidas_por_setor,
                 relatorio.unidade,
                 relatorio.setor
-              )}
+              )).map((p, i) => <p key={i} className="mb-1.5 last:mb-0">{p}</p>)}
             </td>
           </tr>
         </tbody>

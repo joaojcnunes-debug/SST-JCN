@@ -385,7 +385,7 @@ function pareceHeader(cols: string[]): boolean {
   return true;
 }
 
-function parseDataBR(raw: string): string | null {
+export function parseDataBR(raw: string): string | null {
   if (!raw) return null;
   // Serial Excel
   const asNum = parseFloat(raw);

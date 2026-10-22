@@ -22,7 +22,7 @@ import GestaoResumoPrint from "@/components/gestao-psicossocial/GestaoResumoPrin
 import { useQpsAplicacao } from "@/lib/hooks/useQuestionarios";
 import { useQpsMonitoramento, useQpsPlanoMedidas, useQpsRevisao } from "@/lib/hooks/useQpsGestao";
 import { corPercentual, formatarDataBR } from "@/lib/drps/gestao";
-import { INSTRUMENTO_QAP, resumoGestaoQps } from "@/lib/qps/gestao";
+import { INSTRUMENTO_QPS, resumoGestaoQps } from "@/lib/qps/gestao";
 import { QPS_MODULO_PDF } from "@/lib/qps/laudo";
 
 /** Chave em `pdfs_assinados` do resumo executivo de gestão (o DRPS usa drps_relatorios_gestao). */
@@ -102,7 +102,7 @@ export default function GestaoQpsPage({ params }: { params: Promise<{ id: string
             className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
             registrarPdf={{
               modulo: QPS_MODULO_PDF,
-              tipoDocumento: `${INSTRUMENTO_QAP.sigla} — Resumo de Gestão`,
+              tipoDocumento: `${INSTRUMENTO_QPS.sigla} — Resumo de Gestão`,
               idRelatorio: id,
               empresaId: ap?.id_empresa ?? undefined,
               responsavelTecnico: ap?.responsavel ?? undefined,

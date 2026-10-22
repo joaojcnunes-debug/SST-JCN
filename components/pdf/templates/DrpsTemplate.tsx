@@ -10,12 +10,15 @@ import {
   montarBlocosPorSetor,
   montarBlocosPorUnidade,
   textoDoBloco,
+  alinhamentoDoBloco,
 } from "@/lib/drps/blocos";
 import { listarUnidades } from "@/lib/drps/calculos";
 import { MEDIDAS_CONTROLE, MESES } from "@/lib/drps/topicos";
 import { ACOES_OBRIGATORIAS, EQUIPE_REVISAO } from "@/lib/drps/gestao";
+import { marcarTabelasLargas, paragrafosDoTexto } from "@/lib/qps/laudo";
 import { formatCNPJ, formatCPF, formatCEI, formatCAEPF, formatCNO } from "@/lib/utils";
 import type {
+  AlinhamentosSetor,
   DrpsMonitoramento,
   DrpsPlanoMedidas,
   DrpsProbabilidade,
@@ -54,6 +57,8 @@ export interface DrpsTemplateProps {
     // do texto de setor acima. Opcionais: o gerador antigo não os envia.
     agravos_por_unidade_setor?: Record<string, Record<string, string>> | null;
     medidas_por_unidade_setor?: Record<string, Record<string, string>> | null;
+    alinhamentos_por_setor?: Record<string, AlinhamentosSetor> | null;
+    alinhamentos_por_unidade_setor?: Record<string, Record<string, AlinhamentosSetor>> | null;
     conclusoes_por_unidade_setor?: Record<string, Record<string, string>> | null;
   };
   empresa: Partial<Empresa> | null;
@@ -90,9 +95,21 @@ const STYLE_BLOCK = `
 .drps-setor-bloco:first-of-type { page-break-before: auto; }
 .drps-badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; color: #fff; }
 .drps-conc { font-size: 11px; line-height: 1.5; color: #1f2937; }
+/* Agravos e medidas: um parágrafo por item, como no laudo do QPS. O alinhamento
+   vem da célula (escolhido na Análise, v291; padrão justificado). */
+td.drps-paragrafos p { font-size: 11px; line-height: 1.5; text-align: inherit; color: #1f2937; margin: 0 0 6px; }
+td.drps-paragrafos p:last-child { margin-bottom: 0; }
 .drps-conc table { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 10px; table-layout: fixed; }
 .drps-conc th, .drps-conc td { border: 1px solid #999; padding: 4px 6px; vertical-align: top; text-align: left; word-wrap: break-word; }
 .drps-conc th { background: #d4edda; color: #1e4d28; font-weight: 700; }
+.drps-quadro { margin-top: 8px; border: 1px solid #cbd5e1; }
+.drps-quadro-corpo { padding: 6px 9px; }
+/* Tabela larga colada na conclusão vai para a folha deitada (marcarTabelasLargas),
+   como no QPS. 9pt: com 8 colunas na folha deitada a palavra cabe inteira. */
+.qps-tabela-paisagem { page: paisagem; }
+div.qps-tabela-paisagem table { margin-top: 0; font-size: 9pt; }
+div.qps-tabela-paisagem th, div.qps-tabela-paisagem td { padding: 3pt 4pt; }
+div.qps-tabela-paisagem td p, div.qps-tabela-paisagem th p { font-size: 9pt; }
 .drps-conc ul { margin: 0; padding-left: 1.1em; }
 .drps-conc li { margin: 1px 0; }
 .drps-unidade-cabecalho { font-size: 12px; font-weight: 700; color: #1e4d28; background: #e8f5e9; border-left: 4px solid #0ea5e9; padding: 6px 8px; margin-bottom: 8px; page-break-after: avoid; }
@@ -137,6 +154,13 @@ const STYLE_BLOCK = `
 /* TipTap resizable grava col widths em px que estouram a página; neutraliza p/ caber em 100%. */
 .drps-conc-geral colgroup col { width: auto !important; }
 `;
+
+/** Agravos / medidas: cada item selecionado na Análise vira um parágrafo (igual ao QPS). */
+function Paragrafos({ texto }: { texto: string }) {
+  const paragrafos = paragrafosDoTexto(texto);
+  if (paragrafos.length === 0) return null;
+  return <>{paragrafos.map((p, i) => <p key={i}>{p}</p>)}</>;
+}
 
 function corMatriz(m: NivelMatriz): string {
   if (m === "Crítico") return "#111827";
@@ -268,29 +292,40 @@ function BlocoSetor({
         <tbody>
           <tr><td className="drps-header-section" colSpan={2}>Possíveis Agravos à Saúde Mental</td></tr>
           <tr>
-            <td colSpan={2} style={{ whiteSpace: "pre-wrap" }}>
-              {textoDoBloco(rel.agravos_por_unidade_setor, rel.agravos_por_setor, unidade, setor)}
+            <td
+              colSpan={2}
+              className="drps-paragrafos"
+              style={{ textAlign: alinhamentoDoBloco(rel.alinhamentos_por_unidade_setor, rel.alinhamentos_por_setor, unidade, setor, "agravos") }}
+            >
+              <Paragrafos texto={textoDoBloco(rel.agravos_por_unidade_setor, rel.agravos_por_setor, unidade, setor)} />
             </td>
           </tr>
           <tr><td className="drps-header-section" colSpan={2}>Medidas de controle recomendadas (medidas que a empresa deve adotar)</td></tr>
           <tr>
-            <td colSpan={2} style={{ whiteSpace: "pre-wrap" }}>
-              {textoDoBloco(rel.medidas_por_unidade_setor, rel.medidas_por_setor, unidade, setor)}
+            <td
+              colSpan={2}
+              className="drps-paragrafos"
+              style={{ textAlign: alinhamentoDoBloco(rel.alinhamentos_por_unidade_setor, rel.alinhamentos_por_setor, unidade, setor, "medidas") }}
+            >
+              <Paragrafos texto={textoDoBloco(rel.medidas_por_unidade_setor, rel.medidas_por_setor, unidade, setor)} />
             </td>
           </tr>
         </tbody>
       </table>
 
-      <table className="drps-tabela" style={{ marginTop: 8 }}>
-        <tbody>
-          <tr><td className="drps-header-section">Conclusão</td></tr>
-          <tr>
-            <td>
-              <div className="drps-conc" dangerouslySetInnerHTML={{ __html: conclusao || "<em style=\"color:#9ca3af\">(Conclusão não preenchida)</em>" }} />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      {/* Quadro em div, não em <td>: tabela larga colada aqui vai para a folha
+          deitada, e o Chromium não troca de página nomeada dentro de célula. */}
+      <div className="drps-quadro">
+        <div className="drps-header-section">Conclusão</div>
+        <div
+          className="drps-quadro-corpo drps-conc"
+          dangerouslySetInnerHTML={{
+            __html: conclusao
+              ? marcarTabelasLargas(conclusao)
+              : "<em style=\"color:#9ca3af\">(Conclusão não preenchida)</em>",
+          }}
+        />
+      </div>
     </section>
   );
 }
@@ -416,7 +451,7 @@ export default function DrpsTemplate({
       <h2>{numLabel(numPorSlug["drps_conclusao"], "Conclusão Geral")}</h2>
       <div
         className="drps-conc-geral"
-        dangerouslySetInnerHTML={{ __html: relatorio.conclusao_geral }}
+        dangerouslySetInnerHTML={{ __html: marcarTabelasLargas(relatorio.conclusao_geral) }}
       />
     </section>
   ) : null;
@@ -547,8 +582,10 @@ export default function DrpsTemplate({
     EM_ANDAMENTO: "Em andamento",
     CONCLUIDA: "Concluída",
   };
+  // O 5W2H tem 8 colunas: sai sempre na folha deitada, sem depender da
+  // orientação marcada no Texto Padrão (em pé o texto empilhava).
   const planoAcaoNode = planoAcaoComConteudo.length > 0 ? (
-    <section className="drps-sec">
+    <section className="drps-sec drps-cap-paisagem">
       <h2>{numLabel(numPorSlug["drps_plano_acao_5w2h"], "Plano de Ação 5W2H")}</h2>
       <p style={{ textIndent: "1.25cm" }}>
         Ações de gerenciamento dos riscos psicossociais no formato 5W2H — o quê,

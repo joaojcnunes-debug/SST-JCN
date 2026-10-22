@@ -12,14 +12,19 @@
 
 import type { StatusQpsAplicacao } from "@/lib/supabase/types";
 
-export type EtapaQps = "COLETA" | "ANALISE" | "PLANO" | "CONCLUIDO";
+// 24/09 — a etapa "PLANO" saiu. O Plano de Ação 5W2H deixou a QAP na
+// v0.3.637 (pedido dele em 18/09), então nenhuma aplicação nova passava mais
+// de "Análise": a coluna "Plano de ação (em tratamento)" do Resumo ficou
+// inalcançável e a de "Análise" passou a dizer "sem plano de ação" de todas.
+// Medido na produção: 16 em Análise, 1 em Plano (a única ação 5W2H da QAP).
+// A aplicação com respondente e não encerrada agora é "ANALISE", tenha ou não
+// ação antiga. Para voltar: devolver `nPlanos` e o `if` abaixo (git log).
+export type EtapaQps = "COLETA" | "ANALISE" | "CONCLUIDO";
 
 export interface DadosDaEtapa {
   status: StatusQpsAplicacao;
   /** Quantos respondentes já foram importados. */
   nRespondentes: number;
-  /** Quantas ações existem no plano de ação da aplicação. */
-  nPlanos: number;
 }
 
 /**
@@ -34,11 +39,9 @@ export interface DadosDaEtapa {
 export function etapaDaAplicacao({
   status,
   nRespondentes,
-  nPlanos,
 }: DadosDaEtapa): EtapaQps {
   if (status === "CONCLUIDO" || status === "ENVIADO_CLIENTE") return "CONCLUIDO";
   if (nRespondentes === 0) return "COLETA";
-  if (nPlanos > 0) return "PLANO";
   return "ANALISE";
 }
 

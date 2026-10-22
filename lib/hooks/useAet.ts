@@ -7,8 +7,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import { PERGUNTAS_DEFAULT } from "@/lib/aet/perguntas-default";
-import { mesclarChecklist, paraOBanco, type ChecklistLinhaBanco } from "@/lib/aet/checklist";
-import type { Aet13FatorConfig, Aet13FatorPergunta, Aet13FatorSemaforo, AetCargo, AetChecklist, AetChecklistPergunta, AetLaudoFatorPsi, AetLaudoQpsMeta, AetLaudoQpsResposta, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, AetTextoPadraoCapitulo, RespostaChecklist, StatusAET, ZonaPsi } from "@/lib/supabase/types";
+import { CHECKLIST_PERGUNTAS_PADRAO, mesclarChecklist, paraOBanco, type ChecklistLinhaBanco } from "@/lib/aet/checklist";
+import type { Aet13FatorConfig, Aet13FatorPergunta, Aet13FatorSemaforo, AetCargo, AetChecklist, AetChecklistPergunta, AetLaudoFatorPsi, AetLaudoQpsMeta, AetLaudoQpsResposta, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, RespostaChecklist, StatusAET, ZonaPsi } from "@/lib/supabase/types";
 import { gravar, type ImagemPendente } from "@/lib/offline/gravar";
 import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoes";
 import { ehErroDeRede } from "@/lib/offline/rede";
@@ -245,129 +245,11 @@ export function useExcluirAet() {
 
 // ─── Texto Padrão ─────────────────────────────────────────────────────────────
 
-export function useAetTextoPadrao() {
-  return useQuery({
-    queryKey: ["aet-textos-padrao"],
-    queryFn: async () => {
-      const supabase = createSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("aet_textos_padrao")
-        .select("*")
-        .order("ordem");
-      if (error) throw error;
-      return (data ?? []) as unknown as AetTextoPadraoCapitulo[];
-    },
-  });
-}
-
-export function useAetCriarCapitulo() {
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (payload: {
-      titulo: string;
-      conteudo: string;
-      ordem: number;
-      posicao_pdf?: string;
-      tipo?: "fixo" | "editavel";
-      slug_fixo?: string | null;
-      mostrar?: boolean;
-      ordem_global?: number | null;
-    }) => {
-      const supabase = createSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("aet_textos_padrao")
-        .insert({ tipo: "editavel", mostrar: true, ...payload } as never)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as unknown as AetTextoPadraoCapitulo;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
-    },
-    onError: (e: Error) => toast.error(mensagemErro(e)),
-  });
-}
-
-export function useAetSalvarCapitulo() {
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      id_capitulo,
-      ...patch
-    }: Partial<AetTextoPadraoCapitulo> & { id_capitulo: string }) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("aet_textos_padrao")
-        .update({ ...patch, updated_at: new Date().toISOString() } as never)
-        .eq("id_capitulo", id_capitulo);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
-    },
-    onError: (e: Error) => toast.error(mensagemErro(e)),
-  });
-}
-
-export function useAetSeedCapitulosFixos() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (capitulos: AetTextoPadraoCapitulo[]) => {
-      const supabase = createSupabaseBrowserClient();
-      const FIXOS: { titulo: string; slug_fixo: string; ordem_global: number }[] = [
-        { titulo: "Agentes Ambientais por Setor",       slug_fixo: "aet_agentes_ambientais",    ordem_global: 2000 },
-        { titulo: "Análise Ergonômica do Trabalho",     slug_fixo: "aet_analise_ergonomica",    ordem_global: 2500 },
-        { titulo: "Fatores Psicossociais (QPS)",        slug_fixo: "aet_psicossocial",          ordem_global: 4000 },
-        { titulo: "Considerações Finais",               slug_fixo: "aet_consideracoes_finais",  ordem_global: 5000 },
-        { titulo: "Assinatura do Responsável Técnico",  slug_fixo: "aet_assinatura",            ordem_global: 5500 },
-      ];
-      const existentes = new Set(capitulos.map((c) => c.slug_fixo).filter(Boolean));
-      const novas = FIXOS.filter((f) => !existentes.has(f.slug_fixo));
-      if (novas.length === 0) return 0;
-      const rows = novas.map((f) => ({
-        titulo: f.titulo,
-        conteudo: null,
-        tipo: "fixo" as const,
-        slug_fixo: f.slug_fixo,
-        ordem_global: f.ordem_global,
-        mostrar: true,
-        ordem: 0,
-        posicao_pdf: null,
-      }));
-      const { error } = await supabase.from("aet_textos_padrao").insert(rows as never);
-      if (error) throw error;
-      return novas.length;
-    },
-    onSuccess: (n) => {
-      qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
-      if (n === 0) toast("Todos os capítulos do sistema já estão cadastrados.", { icon: "ℹ️" });
-      else toast.success(`${n} capítulo(s) do sistema adicionado(s).`);
-    },
-    onError: () => toast.error("Erro ao adicionar capítulos do sistema"),
-  });
-}
-
-export function useAetExcluirCapitulo() {
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id_capitulo: string) => {
-      const supabase = createSupabaseBrowserClient();
-      const { error } = await supabase
-        .from("aet_textos_padrao")
-        .delete()
-        .eq("id_capitulo", id_capitulo);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["aet-textos-padrao"] });
-    },
-    onError: (e: Error) => toast.error(mensagemErro(e)),
-  });
-}
+// Os capítulos do AET vivem em `textos_padrao` (modulo 'aet', v79) — leitura
+// por useTextosPadrao("aet"), edição pelo editor compartilhado. Até 25/09/2026
+// havia aqui 5 hooks (ler/criar/salvar/semear/excluir) da tabela antiga
+// `aet_textos_padrao`, que nenhuma tela chamava mais; foram removidos. A tabela
+// segue no banco (16 linhas, sem escrita desde 26/05/2026) por decisão dele.
 
 // ─── Config OWAS Categorias ──────────────────────────────────────────────────
 
@@ -542,18 +424,9 @@ export function useAetInicializarOwasSelects() {
 
 // ─── Checklist — Perguntas configuráveis ─────────────────────────────────────
 
-export const CHECKLIST_PERGUNTAS_PADRAO: AetChecklistPergunta[] = [
-  { slug: "levantamento_acima_limite", secao: "Postura", tipo: "tristate", label: "Há registros de levantamento, transporte e descarga de materiais nesta atividade acima do limite recomendado?" },
-  { slug: "pausas_descanso", secao: "Postura", tipo: "tristate", label: "Caso a resposta anterior seja \"em pé\" a empresa oferece pausas para descanso ou disponibiliza cadeiras do tipo semi-sentado?" },
-  { slug: "uso_cadeira", secao: "Postura", tipo: "tristate", label: "Para execução das atividades do dia-dia é disponibilizado o uso de cadeira?" },
-  { slug: "cadeira_adequada", secao: "Postura", tipo: "tristate", label: "A cadeira é estofada e revestida, possui conformação de base giratória, o assento possui altura ajustável, possui ajustes de altura e inclinação, bordas do assento e apoio de coluna arredondadas e em formato anatômico?" },
-  { slug: "monitor", secao: "Postura", tipo: "tristate", label: "A Atividade necessita uso de monitor fixo sobre a mesa, caso positivo este apresenta regulagens de altura e inclinação?" },
-  { slug: "organizacao_trabalho", secao: "Organização do Trabalho", tipo: "texto", label: "As normas de produção contemplando equipamentos, modo operatório, aspectos de segurança e qualidade deverão estar descritos nas instruções internas de trabalho, elaboradas pela empresa." },
-  { slug: "exigencia_levantamento", secao: "Exigência de Tempo", tipo: "tristate", label: "Há registros de levantamento, transporte e descarga de materiais nesta atividade acima do limite recomendado?" },
-  { slug: "ritmo_por_demanda", secao: "Ritmo de Trabalho", tipo: "tristate", label: "O ritmo de trabalho é determinado pela demanda de trabalho?" },
-  { slug: "pausas_formais", secao: "Adoção de Rodízios - Ergonômico", tipo: "tristate", label: "Há pausas formais durante o ciclo de trabalho?" },
-  { slug: "rodizios_sistematizados", secao: "Adoção de Rodízios - Ergonômico", tipo: "tristate", label: "Há rodízios sistematizados entre os postos de trabalho?" },
-];
+// A lista padrão mora em lib/aet/checklist (arquivo puro) desde 30/09/2026:
+// o template do PDF tinha uma CÓPIA própria e três textos já divergiam.
+export { CHECKLIST_PERGUNTAS_PADRAO };
 
 export function useAetChecklistPerguntas() {
   return useQuery({

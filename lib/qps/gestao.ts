@@ -3,7 +3,7 @@
 // (`lib/drps/gestao.ts`, `lib/drps/topicos.ts`): catálogos, checklist e equipe
 // são os mesmos, de propósito. O que muda aqui é só o NOME do instrumento nos
 // textos: o DRPS escreve "DRPS" no corpo de duas frases, e o psicólogo não pode
-// ler "reaplicação do DRPS" dentro de uma QAP.
+// ler "reaplicação do DRPS" dentro de um QPS.
 
 import { ACOES_OBRIGATORIAS, EQUIPE_REVISAO, type AcaoRevisao } from "@/lib/drps/gestao";
 import type { NivelMatriz } from "@/lib/drps/types";
@@ -14,18 +14,18 @@ export interface InstrumentoQps {
   nome: string;
 }
 
-export const INSTRUMENTO_QAP: InstrumentoQps = {
-  sigla: "QAP",
-  nome: "Questionário de Avaliação Psicossocial",
+export const INSTRUMENTO_QPS: InstrumentoQps = {
+  sigla: "QPS",
+  nome: "Questionário Psicossocial",
 };
 
 /** Troca a palavra isolada "DRPS" pela sigla do instrumento (só a palavra inteira). */
-export function comInstrumento(texto: string, instrumento: InstrumentoQps = INSTRUMENTO_QAP): string {
+export function comInstrumento(texto: string, instrumento: InstrumentoQps = INSTRUMENTO_QPS): string {
   return texto.replace(/\bDRPS\b/g, instrumento.sigla);
 }
 
 /** Checklist de revisão do DRPS com o nome do instrumento; os ids são os mesmos (o jsonb é compatível). */
-export function acoesObrigatoriasQps(instrumento: InstrumentoQps = INSTRUMENTO_QAP): AcaoRevisao[] {
+export function acoesObrigatoriasQps(instrumento: InstrumentoQps = INSTRUMENTO_QPS): AcaoRevisao[] {
   return ACOES_OBRIGATORIAS.map((a) => ({ ...a, texto: comInstrumento(a.texto, instrumento) }));
 }
 
@@ -33,7 +33,7 @@ export { EQUIPE_REVISAO };
 
 /** Cartões de recomendação por nível de risco (os mesmos 4 do Monitoramento do DRPS). */
 export function recomendacoesMonitoramento(
-  instrumento: InstrumentoQps = INSTRUMENTO_QAP,
+  instrumento: InstrumentoQps = INSTRUMENTO_QPS,
 ): Record<NivelMatriz, { titulo: string; texto: string }> {
   return {
     Baixo: {

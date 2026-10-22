@@ -14,7 +14,7 @@ const MODULOS_GENERICOS: { key: ModuloTextoPadrao; label: string }[] = [
   { key: "aep",                label: "AEP — Ergonômico Preliminar" },
   { key: "aet",                label: "AET — Ergonômico" },
   { key: "psicossocial",       label: "DRPS — Psicossocial" },
-  { key: "qps",                label: "QAP — Questionários" },
+  { key: "qps",                label: "QPS — Questionários" },
 ];
 
 export default function TextosPadraoTab() {

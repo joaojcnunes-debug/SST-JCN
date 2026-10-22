@@ -352,6 +352,8 @@ export interface QpsAplicacao {
   /** v226 — laudo: CRP do responsável e data de elaboração impressa. */
   crp?: string | null;
   data_elaboracao?: string | null;
+  /** v285 (JCN; painel v263) — carimbada pelo gatilho ao entrar em CONCLUIDO; é a data da capa do laudo. */
+  data_conclusao?: string | null;
   criado_em: string;
   atualizado_em: string | null;
 }
@@ -364,6 +366,8 @@ export interface QpsRespondente {
   respostas: Record<string, number>;
   lote: string | null;
   importado_em: string;
+  /** v285 (JCN; painel v263) — "Carimbo de data/hora" do Forms; dá o período da coleta no laudo. */
+  data_carimbo?: string | null;
 }
 
 export interface QpsProbabilidade {

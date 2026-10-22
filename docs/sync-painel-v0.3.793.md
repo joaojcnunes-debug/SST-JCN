@@ -52,6 +52,7 @@
   card clicável, Documentos & Laudos por tipo, aviso de perda de acesso ao trocar unidade, fantasia abaixo do Nome (só tela).
 
 **Lote 4 — Psicossocial (P/M, depois G):**
+> ✅ Feito em 2026-10-22 (v0.3.140), menos a Consolidação de Grupo e o Exportar Excel/PDF por empresa: v285 (= painel v263, só estrutura — os textos do Texto Padrão ficaram de fora) e v286 (= painel v291) aplicadas; edge functions `gerar-parecer-aep-ia` v8 e `gerar-observacao-psi-ia` v3 publicadas. A v258 (apagar o capítulo Resumo vazio do QPS) não foi aplicada.
 - Rápidos (P): Formulário em Branco da AEP só com a Triagem e sem Matriz de Riscos; QPS Análise com agravos/medidas por setor;
   CRP do psicólogo vindo do cadastro; CSV do QPS ignora coluna extra; sigla QAP→QPS; AET com lista única do checklist;
   IA da AEP com o critério do sistema (edge function); conferir no banco o capítulo AIHA "1 sinal = 1 nível".
