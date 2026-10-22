@@ -41,6 +41,140 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "inspecoes-pilulas-varias",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Inspeções: marque mais de uma pílula ao mesmo tempo",
+    texto:
+      "As pílulas da lista agora combinam. Status somam (Em Andamento + Concluídas traz as duas) e se cruzam " +
+      "com Associados/Não associados (Não associados + Em Andamento traz só as em andamento sem ninguém no " +
+      "documento). Embaixo aparece o que está marcado e quantas inspeções a lista tem; Todos limpa tudo.",
+    onde: "Inspeções › lista",
+    versoes: ["0.3.138"],
+  },
+  {
+    id: "inspecoes-filtro-nao-associados",
+    data: "2026-10-22",
+    tipo: "novidade",
+    titulo: "Inspeções: filtro \"Não associados\"",
+    texto:
+      "Ao lado de Associados entrou a pílula Não associados: um clique e a lista mostra só as inspeções sem " +
+      "ninguém no documento (SGG). Os dois números somados dão o total de Todos.",
+    onde: "Inspeções › lista",
+    versoes: ["0.3.138"],
+  },
+  {
+    id: "inspecoes-coluna-status-associados",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Inspeções: coluna \"Status Assoc.\" mostra se o documento foi concluído",
+    texto:
+      "A lista de inspeções ganhou a coluna Status Assoc., ao lado de Associados. Ela mostra a situação do " +
+      "documento (SGG): Concluído, com a data da entrega; Em elaboração, com quem está nele; ou Pendente, " +
+      "quando a inspeção já terminou e ninguém assumiu.",
+    onde: "Inspeções › lista",
+    versoes: ["0.3.138"],
+  },
+  {
+    id: "dashboard-documentos-por-situacao-regra-lista",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Dashboard: Documentos por Situação igual à lista de Inspeções",
+    texto:
+      "O gráfico Documentos por Situação agora segue a mesma regra da lista de Inspeções: documento com " +
+      "alguém associado conta como Assumido, mesmo que ninguém tenha clicado em \"Assumir elaboração\". " +
+      "Antes ele aparecia como Pendente no gráfico e como \"Em elaboração\" na lista.",
+    onde: "Dashboard › Documentos por Situação",
+    impacto: "Documentos com associado que apareciam como Pendentes passam para Assumidos. Os Concluídos não mudam.",
+    versoes: ["0.3.138"],
+  },
+  {
+    id: "dashboard-documentos-adm-conta-unica",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Documentos por Mês (ADM): o card e o detalhe fazem a mesma conta",
+    texto:
+      "O gráfico Documentos por Mês (ADM) do dashboard e a tela Ver por ADM passam a ler os mesmos dados. " +
+      "O card se atualiza logo que um documento é concluído, sem esperar alguns minutos. Documento de " +
+      "inspeção excluída não conta, e o mesmo nome escrito com maiúscula, acento ou espaço diferente vira " +
+      "uma barra só.",
+    onde: "Dashboard › Documentos por Mês (ADM) › Ver por ADM",
+    impacto: "Nada a fazer.",
+    versoes: ["0.3.138"],
+  },
+  {
+    id: "inspecoes-periodo-pela-conclusao-e-filtro-tecnico",
+    data: "2026-10-22",
+    tipo: "correcao",
+    titulo: "Lista de Inspeções e dashboard passam a dar o mesmo número",
+    texto:
+      "No filtro De/Até, a inspeção concluída agora entra pela data em que foi concluída " +
+      "(as que ainda não foram concluídas seguem pela data da visita). Antes, uma visita de " +
+      "agosto concluída em setembro não aparecia em mês nenhum. O filtro Técnico passou a " +
+      "achar quem foi a campo, não só quem lançou, ignora acento (\"ledimo\" acha " +
+      "\"Lédimo\") e funciona também com uma empresa escolhida. Na coluna Data aparece o dia " +
+      "da conclusão e, na coluna Responsável, quem foi a campo quando é outra pessoa.",
+    onde: "Inspeções",
+    impacto: "Nada a fazer: vale também para as inspeções que já existem.",
+    versoes: ["0.3.138"],
+  },
+  {
+    id: "dashboard-quem-concluiu",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Inspeções Concluídas: cada inspeção conta para quem a lançou",
+    texto:
+      "O gráfico por pessoa da tela de Inspeções Concluídas conta cada inspeção concluída para " +
+      "quem a lançou — o mesmo nome da coluna Responsável da lista de Inspeções —, e não mais " +
+      "para quem foi a campo. Reabrir e concluir de novo não muda a contagem. Clique na barra " +
+      "de uma pessoa para ver a lista das inspeções dela; quando outra pessoa clicou em " +
+      "Concluir, a lista mostra quem foi.",
+    onde: "Dashboard › Inspeções Concluídas (Ver detalhe)",
+    impacto: "Os números por pessoa passam a bater com a lista de Inspeções.",
+    versoes: ["0.3.138"],
+  },
+  {
+    id: "tecnico-de-campo-por-selecao",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "O técnico de campo é escolhido da lista, não digitado",
+    texto:
+      "Em \"Quem vai a campo?\" (Nova Inspeção) e no Técnico SST da aba Responsáveis, digite " +
+      "parte do nome e escolha a pessoa na lista do cadastro. Acaba o mesmo técnico escrito de " +
+      "jeitos diferentes. Sem conexão, a aba Responsáveis continua aceitando o nome digitado.",
+    onde: "Inspeções › Nova Inspeção e aba Responsáveis",
+    impacto:
+      "Nos registros antigos digitados à mão, abrir para editar já mostra a pessoa " +
+      "reconhecida; salvar padroniza o nome.",
+    versoes: ["0.3.138"],
+  },
+  {
+    id: "ficha-inspecao-seletor-secoes",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Ficha em Branco: veja só a parte que interessa",
+    texto:
+      "A Ficha em Branco da inspeção ganhou dois leques. Em Mostrar você marca as seções " +
+      "que quer ver na tela (Setores, Cargos, Riscos…); o atalho só esta deixa uma sozinha. " +
+      "Em Gerar PDF você escolhe o que sai na impressão, independente da tela: uma seção, " +
+      "várias ou a ficha inteira. Para assinar, deixe a ficha inteira na tela e no PDF.",
+    onde: "Inspeções › abrir a inspeção › Ficha em Branco",
+    versoes: ["0.3.138"],
+  },
+  {
+    id: "documentos-por-associado-diferenca",
+    data: "2026-10-22",
+    tipo: "melhoria",
+    titulo: "Documentos por Associado explica por que as barras não somam o total",
+    texto:
+      "Embaixo do gráfico por mês, uma linha diz quantos documentos do total não " +
+      "aparecem nas barras e por quê: foram assumidos pelo botão Assumir " +
+      "elaboração, sem registro de associação (é ele que dá o mês), ou ganharam " +
+      "associado antes dos últimos 12 meses. Nenhum número mudou.",
+    onde: "Dashboard › Documentos por Associado",
+    versoes: ["0.3.138"],
+  },
+  {
     id: "janelas-enter-e-esc-funcionam",
     data: "2026-10-22",
     tipo: "correcao",

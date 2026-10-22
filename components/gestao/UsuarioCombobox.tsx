@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { buscar } from "@/lib/busca/texto";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
@@ -31,6 +31,8 @@ export default function UsuarioCombobox({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  // Id próprio por instância: a Nova Inspeção tem um combobox por técnico.
+  const listId = useId();
   const [query, setQuery] = useState("");
   const [hi, setHi] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -104,7 +106,7 @@ export default function UsuarioCombobox({
         <input
           role="combobox"
           aria-expanded={open}
-          aria-controls="usuario-combobox-list"
+          aria-controls={listId}
           aria-autocomplete="list"
           disabled={disabled}
           value={open ? query : nomeSel}
@@ -119,7 +121,7 @@ export default function UsuarioCombobox({
       </div>
       {open && (
         <ul
-          id="usuario-combobox-list"
+          id={listId}
           ref={listRef}
           role="listbox"
           className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-gray-200 bg-white py-1 shadow-lg"

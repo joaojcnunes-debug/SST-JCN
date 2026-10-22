@@ -709,7 +709,9 @@ id_foto text NN, id_inspecao text, id_empresa text, id_setor text, categoria tex
 
 ### `inspecoes`
 
-id_inspecao text NN, id_empresa text, data_inspecao date, status text, revisao integer, responsavel text, observacoes text, tipo_criacao text, id_inspecao_base text, usuario text, created_at timestamp with time zone, updated_at timestamp with time zone, data_validade date, elaboracao_concluida_em timestamp with time zone, elaboracao_responsavel text, elaboracao_status text, concluida_em timestamp with time zone
+id_inspecao text NN, id_empresa text, data_inspecao date, status text, revisao integer, responsavel text, observacoes text, tipo_criacao text, id_inspecao_base text, usuario text, created_at timestamp with time zone, updated_at timestamp with time zone, data_validade date, elaboracao_concluida_em timestamp with time zone, elaboracao_responsavel text, elaboracao_status text, concluida_em timestamp with time zone, concluida_por_email text
+
+v281 (painel v283): `concluida_por_email` carimbado pelo gatilho `inspecoes_concluida_por` (e-mail do JWT; pelo token de serviço, o cabeçalho `x-painel-ator`); limpo ao reabrir; passado preenchido pela auditoria (desde 02/10/2026). v282 (painel v284): colunas calculadas `tecnicos_campo(inspecoes)` (quem foi a campo) e `tecnicos_busca(inspecoes)` (minúsculo, sem acento; sem ninguém, quem lançou). Rollbacks em `scripts/sql/v281_*` e `v282_*`.
 
 ### `pae_contatos`
 

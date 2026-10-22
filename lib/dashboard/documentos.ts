@@ -49,6 +49,12 @@
  * detalhe via um pódio diferente do da página anterior.
  */
 
+import {
+  situacaoDocumento,
+  type ChaveDocumento,
+  type LinhaDocumento,
+} from "@/lib/inspecoes/documento";
+
 /** Uma linha de `inspecao_associados`. */
 export interface AssociacaoDoc {
   id_inspecao: string;
@@ -78,9 +84,14 @@ export interface PessoaDocumentos {
   /** A pessoa está com ele na mão agora. */
   emElaboracao: number;
   /**
-   * Creditado a ela por ter passado pelo documento, mas hoje ninguém o assumiu.
-   * São 6 na base de 27/08 — poucos, e é justamente por serem poucos que
-   * somá-los ao "em elaboração" faria o número dela parecer trabalho em curso.
+   * Creditado a ela, mas ninguém está com o documento.
+   *
+   * Até 28/09 era "passou pelo documento sem clicar em Assumir" (6 em 27/08,
+   * 75 em 22/09) e ficava fora do "em elaboração" para não parecer trabalho em
+   * curso. A decisão dele de 22/09 — quem está no chip conta como tendo
+   * assumido — virou regra aqui também: como todo documento creditado tem
+   * alguém, este número fica em ZERO por pessoa. Mantido no tipo porque as
+   * telas o leem.
    */
   semDono: number;
   /**
@@ -96,6 +107,26 @@ export interface PessoaDocumentos {
 /** Nomes iguais escritos com caixa diferente são a mesma pessoa. */
 function chave(nome: string): string {
   return nome.trim().toLowerCase();
+}
+
+/**
+ * Entregue, em elaboração ou sem ninguém — pela MESMA regra da lista de
+ * inspeções (`situacaoDocumento`). Desde 28/09: quem está no documento conta
+ * como tendo assumido, mesmo sem ter clicado em "Assumir". Antes o Dashboard
+ * lia só `elaboracao_status` e 75 documentos com gente no chip caíam em "sem
+ * dono" aqui enquanto a lista dizia "Em elaboração".
+ */
+function situacao(d: DocumentoContavel, donos: readonly { nome: string }[]): ChaveDocumento {
+  return situacaoDocumento(
+    {
+      status: d.status,
+      elaboracao_status: d.elaboracao_status as LinhaDocumento["elaboracao_status"],
+      elaboracao_responsavel: d.elaboracao_responsavel,
+      elaboracao_concluida_em: null,
+    },
+    donos.map((x) => x.nome),
+    "longo",
+  )!.chave;
 }
 
 /** Quem entrou em cada documento, sem repetir pessoa: id → (chave → entrada). */
@@ -166,7 +197,9 @@ export function porAssociado(
 
   for (const d of documentos) {
     if (d.status === "DELETADA") continue;
-    for (const dono of donosDo(d, entradas)) {
+    const donos = donosDo(d, entradas);
+    const sit = situacao(d, donos);
+    for (const dono of donos) {
       if (mes != null && (!dono.entrouEm || mesDe(dono.entrouEm) !== mes)) continue;
 
       const k = chave(dono.nome);
@@ -180,8 +213,8 @@ export function porAssociado(
           semAssoc: new Set<string>(),
         };
       e.docs.add(d.id_inspecao);
-      if (d.elaboracao_status === "CONCLUIDO") e.entregues.add(d.id_inspecao);
-      else if (d.elaboracao_status === "EM_ELABORACAO") e.emElaboracao.add(d.id_inspecao);
+      if (sit === "ENTREGUE") e.entregues.add(d.id_inspecao);
+      else if (sit === "EM_ELABORACAO") e.emElaboracao.add(d.id_inspecao);
       if (!dono.entrouEm) e.semAssoc.add(d.id_inspecao);
       pessoas.set(k, e);
     }
@@ -263,6 +296,7 @@ export function serieMensalAssociacoes(
   const vivos = new Map(
     documentos.filter((d) => d.status !== "DELETADA").map((d) => [d.id_inspecao, d]),
   );
+  const entradas = indexarAssociacoes(associacoes);
 
   // Quando cada documento entrou na fila = a associação mais antiga dele.
   const entrouEm = new Map<string, string>();
@@ -287,10 +321,149 @@ export function serieMensalAssociacoes(
     if (i < 0 || i >= nMeses) continue;
     const d = vivos.get(id)!;
     meses[i].total++;
-    if (d.elaboracao_status === "CONCLUIDO") meses[i].entregues++;
-    else if (d.elaboracao_status === "EM_ELABORACAO") meses[i].emElaboracao++;
+    const sit = situacao(d, donosDo(d, entradas));
+    if (sit === "ENTREGUE") meses[i].entregues++;
+    else if (sit === "EM_ELABORACAO") meses[i].emElaboracao++;
     else meses[i].semDono++;
   }
 
   return meses;
+}
+
+/**
+ * Quantos documentos com dono NÃO aparecem nas barras do gráfico mensal, e por
+ * quê. Cartão do Notion dele (22/09/2026): o cabeçalho dizia 550 e as barras
+ * somavam 441, sem nada na tela explicando os 109 de diferença.
+ *
+ * Os dois motivos:
+ *  - `semRegistro`: o documento foi assumido ("Assumir elaboração") sem linha
+ *    em `inspecao_associados` — sem data de entrada, não tem mês;
+ *  - `antesDoPeriodo`: tem data, mas a primeira entrada é anterior à janela
+ *    do gráfico (12 meses na tela de detalhe).
+ *
+ * `total` = documentos com dono − soma das barras; os dois motivos fecham com ele.
+ */
+export function foraDoGraficoMensal(
+  associacoes: readonly AssociacaoDoc[],
+  documentos: readonly DocumentoContavel[],
+  serie: readonly MesDocumentos[],
+): { total: number; semRegistro: number; antesDoPeriodo: number } {
+  const entradas = indexarAssociacoes(associacoes);
+  const comAlgumaData = new Set(
+    associacoes.filter((a) => a.created_at && a.id_inspecao).map((a) => a.id_inspecao),
+  );
+  let comDono = 0;
+  let semRegistro = 0;
+  for (const d of documentos) {
+    if (d.status === "DELETADA") continue;
+    if (donosDo(d, entradas).length === 0) continue;
+    comDono++;
+    if (!comAlgumaData.has(d.id_inspecao)) semRegistro++;
+  }
+  const nasBarras = serie.reduce((n, m) => n + m.total, 0);
+  const total = comDono - nasBarras;
+  return { total, semRegistro, antesDoPeriodo: total - semRegistro };
+}
+
+/**
+ * Donut "Documentos por Situação" do dashboard — pela MESMA regra da lista
+ * (`situacaoDocumento`, decisão de 22/09): gente no documento (associado ou
+ * responsável) conta como assumido, mesmo sem clicar em "Assumir". Até
+ * 13/10 o donut lia só `elaboracao_status`, e ~100 documentos que a lista
+ * mostrava "Em elaboração · Fulano" apareciam aqui como Pendentes.
+ *
+ * Pendente = inspeção já concluída em campo e ninguém no documento; com a
+ * inspeção ainda em campo e sem ninguém, não há documento a cobrar.
+ */
+export function porSituacao(
+  associacoes: readonly AssociacaoDoc[],
+  documentos: readonly DocumentoContavel[],
+): { pendentes: number; assumidos: number; concluidos: number } {
+  const entradas = indexarAssociacoes(associacoes);
+  let pendentes = 0;
+  let assumidos = 0;
+  let concluidos = 0;
+  for (const d of documentos) {
+    if (d.status === "DELETADA") continue;
+    const sit = situacao(d, donosDo(d, entradas));
+    if (sit === "ENTREGUE") concluidos++;
+    else if (sit === "EM_ELABORACAO") assumidos++;
+    else if (d.status === "CONCLUIDA") pendentes++;
+  }
+  return { pendentes, assumidos, concluidos };
+}
+
+// ─── Documentos CONCLUÍDOS pelo ADM (card "Documentos por Mês" + detalhe) ───
+//
+// Outra pergunta, outra régua: aqui não é quem se associou, é quem ENTREGOU —
+// `elaboracao_status = CONCLUIDO`, no mês de `elaboracao_concluida_em`, para
+// `elaboracao_responsavel`. O card do dashboard e a tela
+// /dashboard/documentos-emitidos contavam cada um por conta própria. Medido em
+// 09/10/2026 os dois batiam (jun 69, jul 118, ago 81, set 120, out 82), mas só
+// por sorte: o card lia uma página só, não tirava inspeção excluída e usava
+// outra chave de cache, que ninguém mandava atualizar — ficava até 5 min atrás
+// do detalhe depois de cada conclusão. Renovação entra: é documento entregue
+// de verdade (mediana de ~16 dias entre criar e concluir).
+
+/** Uma linha de `inspecoes` com a elaboração concluída. */
+export interface DocumentoConcluido {
+  status: string | null;
+  elaboracao_concluida_em: string | null;
+  elaboracao_responsavel: string | null;
+}
+
+export const SEM_RESPONSAVEL = "Sem responsável";
+
+/** Os que contam: inspeção não excluída e com data de conclusão. */
+export function concluidosValidos<T extends DocumentoConcluido>(linhas: readonly T[]): T[] {
+  return linhas.filter((l) => l.status !== "DELETADA" && !!l.elaboracao_concluida_em);
+}
+
+/** Quantos documentos foram concluídos em cada um dos últimos `nMeses`. */
+export function concluidosPorMes(
+  linhas: readonly DocumentoConcluido[],
+  mesAtual: number,
+  nMeses: number,
+  mesDe: (iso: string) => number,
+): { chave: number; total: number }[] {
+  const primeiro = mesAtual - (nMeses - 1);
+  const meses = Array.from({ length: nMeses }, (_, i) => ({ chave: primeiro + i, total: 0 }));
+  for (const l of concluidosValidos(linhas)) {
+    const i = mesDe(l.elaboracao_concluida_em!) - primeiro;
+    if (i >= 0 && i < nMeses) meses[i].total++;
+  }
+  return meses;
+}
+
+/** Chave de agrupamento do nome: sem caixa, sem acento, espaços colapsados. */
+function chaveNome(nome: string): string {
+  return nome.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/**
+ * Concluídos por ADM, no mês `mes` (mês absoluto) ou em todos (`null`).
+ * "Ana Luiza" e "ana luíza" são a mesma pessoa: agrupa sem caixa e sem acento
+ * e mostra a grafia mais usada.
+ */
+export function concluidosPorAdm(
+  linhas: readonly DocumentoConcluido[],
+  mes: number | null,
+  mesDe: (iso: string) => number,
+): { adm: string; total: number }[] {
+  const grupos = new Map<string, { total: number; grafias: Map<string, number> }>();
+  for (const l of concluidosValidos(linhas)) {
+    if (mes !== null && mesDe(l.elaboracao_concluida_em!) !== mes) continue;
+    const nome = (l.elaboracao_responsavel ?? "").replace(/\s+/g, " ").trim() || SEM_RESPONSAVEL;
+    const k = chaveNome(nome);
+    const g = grupos.get(k) ?? { total: 0, grafias: new Map<string, number>() };
+    g.total++;
+    g.grafias.set(nome, (g.grafias.get(nome) ?? 0) + 1);
+    grupos.set(k, g);
+  }
+  return Array.from(grupos.values())
+    .map((g) => ({
+      adm: [...g.grafias.entries()].reduce((a, b) => (b[1] > a[1] ? b : a))[0],
+      total: g.total,
+    }))
+    .sort((a, b) => b.total - a.total || a.adm.localeCompare(b.adm, "pt-BR"));
 }

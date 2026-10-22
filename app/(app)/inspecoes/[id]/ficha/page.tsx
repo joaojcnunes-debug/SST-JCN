@@ -2,13 +2,14 @@
 
 import { use, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BadgeCheck, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Download, Eye, Loader2, Printer } from "lucide-react";
 import toast from "react-hot-toast";
 import { baixarPdfAssinado } from "@/lib/pdf/baixar-assinado";
 import { usePdfAssinado } from "@/lib/hooks/usePdfsGerados";
 import BotaoAssinarPdf from "@/components/ui/BotaoAssinarPdf";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
 import BotaoGerarPdf from "@/components/ui/BotaoGerarPdf";
+import FichaSecoesLeque from "@/components/inspecoes/FichaSecoesLeque";
 import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
@@ -38,6 +39,24 @@ const LINHAS_EXTRA = {
   paeContatos: 4,
 } as const;
 
+// Seções que o técnico pode escolher ver — no dia a dia ele costuma querer só
+// uma parte ("quais setores essa empresa tem?") e não a ficha inteira. O
+// cabeçalho da empresa e as assinaturas aparecem sempre. Esconder é só tela
+// e impressão: o filtro não mexe em nada gravado.
+const SECOES = [
+  { id: "setores", label: "Setores" },
+  { id: "cargos", label: "Cargos" },
+  { id: "riscos", label: "Riscos" },
+  { id: "epis", label: "EPIs / EPCs" },
+  { id: "treinamentos", label: "Treinamentos" },
+  { id: "complementos", label: "Complementos" },
+  { id: "responsaveis", label: "Responsáveis" },
+  { id: "pae", label: "PAE" },
+  { id: "observacoes", label: "Observações" },
+] as const;
+type SecaoId = (typeof SECOES)[number]["id"];
+const TODAS = new Set<SecaoId>(SECOES.map((s) => s.id));
+
 function arrayEmpty(n: number): null[] {
   return Array.from({ length: n }, () => null);
 }
@@ -58,6 +77,22 @@ export default function FichaInspecaoPage({ params }: Props) {
 
   const { pdfAssinado, recarregar } = usePdfAssinado("inspecoes_ficha", id);
   const [baixando, setBaixando] = useState(false);
+  // Dois recortes independentes: o que se VÊ e o que se IMPRIME. O leque da
+  // impressão abre partindo do que está na tela, e dali o técnico ajusta.
+  const [secoes, setSecoes] = useState<Set<SecaoId>>(TODAS);
+  const [impressao, setImpressao] = useState<Set<SecaoId>>(TODAS);
+  // Assinar exige a ficha inteira nos dois: o PDF assinado fica guardado como
+  // "a ficha" desta inspeção (e a assinatura web captura a TELA; a do
+  // desktop, a IMPRESSÃO).
+  const fichaCompleta = secoes.size === TODAS.size && impressao.size === TODAS.size;
+
+  function classeSecao(s: SecaoId) {
+    return [
+      "ficha-secao",
+      secoes.has(s) ? "" : "ficha-fora-tela",
+      impressao.has(s) ? "" : "ficha-fora-impressao",
+    ].join(" ");
+  }
 
   async function handleBaixarPdf() {
     if (!pdfAssinado) return;
@@ -113,6 +148,10 @@ export default function FichaInspecaoPage({ params }: Props) {
           .ficha-no-print { display: none !important; }
           .ficha-secao { break-inside: avoid-page; }
           .ficha-tabela tr { break-inside: avoid; }
+          .ficha-fora-impressao { display: none !important; }
+        }
+        @media screen {
+          .ficha-fora-tela { display: none; }
         }
         .ficha-tabela {
           border-collapse: collapse;
@@ -195,15 +234,62 @@ export default function FichaInspecaoPage({ params }: Props) {
                 Baixar PDF Assinado
               </button>
             </>
-          ) : (
+          ) : fichaCompleta ? (
             <BotaoAssinarPdf defaultSignatoryName={inspecao.responsavel ?? undefined} tabelaNome="inspecoes_ficha" docId={id} onAssinado={recarregar} />
+          ) : (
+            <span className="text-xs text-gray-500">Para assinar, use a ficha inteira.</span>
           )}
-          <BotaoGerarPdf
-            tabelaNome="inspecoes_ficha"
-            docId={id}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+          <FichaSecoesLeque
+            gatilho={<><Printer className="size-4" /> Gerar PDF</>}
+            gatilhoClassName="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+            secoes={SECOES}
+            selecionadas={impressao}
+            onChange={setImpressao}
+            onAbrir={() => setImpressao(new Set(secoes))}
+            alinhar="direita"
+            rodape={
+              // Recorte não se assina: o PDF assinado fica guardado como "a
+              // ficha" desta inspeção, e um pedaço dela ocuparia esse lugar.
+              <BotaoGerarPdf
+                label={
+                  impressao.size === TODAS.size
+                    ? "Gerar PDF da ficha inteira"
+                    : `Gerar PDF (${impressao.size} ${impressao.size === 1 ? "seção" : "seções"})`
+                }
+                tabelaNome="inspecoes_ficha"
+                docId={id}
+                disabled={impressao.size === 0}
+                assinavel={fichaCompleta}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+              />
+            }
           />
         </div>
+      </div>
+
+      <div className="ficha-no-print flex items-center gap-3">
+        <FichaSecoesLeque
+          gatilho={
+            <>
+              <Eye className="size-4 text-verde-primary" />
+              Mostrar:{" "}
+              <span className="font-semibold">
+                {secoes.size === TODAS.size
+                  ? "Ficha inteira"
+                  : secoes.size === 0
+                    ? "nenhuma seção"
+                    : SECOES.filter((s) => secoes.has(s.id)).map((s) => s.label).join(", ")}
+              </span>
+            </>
+          }
+          gatilhoClassName="inline-flex max-w-xl items-center gap-2 truncate rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm hover:bg-gray-50"
+          secoes={SECOES}
+          selecionadas={secoes}
+          onChange={setSecoes}
+        />
+        {secoes.size === 0 && (
+          <span className="text-xs text-amber-700">Marque ao menos uma seção para ver.</span>
+        )}
       </div>
 
       {/* A ficha é uma folha imprimível com CSS próprio (.ficha-tabela usa
@@ -264,7 +350,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         </table>
 
         {/* SETORES */}
-        <div className="ficha-secao">
+        <div className={classeSecao("setores")}>
           <div className="ficha-secao-titulo">1. Setores / GHE</div>
           <p className="ficha-secao-sub">
             Setores avaliados na inspeção. Use as linhas em branco para
@@ -301,7 +387,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         </div>
 
         {/* CARGOS */}
-        <div className="ficha-secao">
+        <div className={classeSecao("cargos")}>
           <div className="ficha-secao-titulo">2. Cargos</div>
           <p className="ficha-secao-sub">
             Cargos por setor. Inclua quantidade de trabalhadores e
@@ -340,7 +426,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         </div>
 
         {/* RISCOS */}
-        <div className="ficha-secao">
+        <div className={classeSecao("riscos")}>
           <div className="ficha-secao-titulo">3. Riscos Identificados</div>
           <p className="ficha-secao-sub">
             Tipo: Físico, Químico, Biológico, Ergonômico, Acidente,
@@ -398,7 +484,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         </div>
 
         {/* EPIs / EPCs */}
-        <div className="ficha-secao">
+        <div className={classeSecao("epis")}>
           <div className="ficha-secao-titulo">4. EPIs / EPCs</div>
           <p className="ficha-secao-sub">
             Equipamentos de proteção individual e coletiva por setor.
@@ -445,7 +531,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         </div>
 
         {/* TREINAMENTOS */}
-        <div className="ficha-secao">
+        <div className={classeSecao("treinamentos")}>
           <div className="ficha-secao-titulo">5. Treinamentos NR</div>
           <table className="ficha-tabela">
             <thead>
@@ -484,7 +570,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         </div>
 
         {/* COMPLEMENTOS */}
-        <div className="ficha-secao">
+        <div className={classeSecao("complementos")}>
           <div className="ficha-secao-titulo">6. Complementos / Programas</div>
           <table className="ficha-tabela">
             <thead>
@@ -520,7 +606,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         </div>
 
         {/* RESPONSÁVEIS */}
-        <div className="ficha-secao">
+        <div className={classeSecao("responsaveis")}>
           <div className="ficha-secao-titulo">7. Responsáveis e Recepção</div>
           <table className="ficha-tabela">
             <thead>
@@ -553,7 +639,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         </div>
 
         {/* PAE */}
-        <div className="ficha-secao">
+        <div className={classeSecao("pae")}>
           <div className="ficha-secao-titulo">8. PAE — Contatos de Emergência</div>
           <table className="ficha-tabela">
             <thead>
@@ -586,7 +672,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         </div>
 
         {/* OBSERVAÇÕES */}
-        <div className="ficha-secao">
+        <div className={classeSecao("observacoes")}>
           <div className="ficha-secao-titulo">9. Observações Gerais do Técnico</div>
           <table className="ficha-tabela">
             <tbody>

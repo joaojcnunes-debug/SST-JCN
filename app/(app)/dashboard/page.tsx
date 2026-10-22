@@ -31,11 +31,14 @@ import { mesAbsSP, mesAbsAgoraSP, rotuloMesAbs } from "@/lib/dashboard/mes";
 import { RENOVACAO, type MesInspecoes } from "@/lib/dashboard/inspecoes";
 import { useInspecoesPorMes } from "@/lib/hooks/useInspecoesPorMes";
 import {
+  concluidosPorMes,
   porAssociado as agruparPorAssociado,
+  porSituacao,
   serieMensalAssociacoes,
   type AssociacaoDoc,
   type DocumentoContavel,
 } from "@/lib/dashboard/documentos";
+import { useDocumentosConcluidos } from "@/lib/hooks/useDocumentosConcluidos";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { BalaoGrafico, BalaoUmValor, LinhaBalao } from "@/components/ui/BalaoGrafico";
 import { TabelaSkeleton } from "@/components/ui/PageSkeletons";
@@ -96,32 +99,6 @@ async function fetchStats(): Promise<DashboardStats> {
 // compartilhado com o mini-gráfico da tela Início (15/09) — antes cada um
 // contava por conta própria e os dois divergiam (agosto: 153 × 140).
 
-async function fetchDocumentosPorMes(): Promise<MesData[]> {
-  const supabase = createSupabaseBrowserClient();
-  const agora = mesAbsAgoraSP();
-  const desde = new Date();
-  desde.setMonth(desde.getMonth() - 6);
-
-  const { data } = await supabase
-    .from("inspecoes")
-    .select("elaboracao_concluida_em")
-    .eq("elaboracao_status", "CONCLUIDO")
-    .gte("elaboracao_concluida_em", desde.toISOString());
-
-  const months: MesData[] = Array.from({ length: 6 }, (_, i) => ({
-    mes: rotuloMesAbs(agora - (5 - i)),
-    total: 0,
-  }));
-
-  (data ?? []).forEach(({ elaboracao_concluida_em }) => {
-    if (!elaboracao_concluida_em) return;
-    const idx = 5 - (agora - mesAbsSP(elaboracao_concluida_em));
-    if (idx >= 0 && idx < 6) months[idx].total++;
-  });
-
-  return months;
-}
-
 // Documentos que ganharam um associado no mês. A conta (e o filtro de inspeção
 // deletada) mora em lib/dashboard/documentos, junto com a do donut por pessoa —
 // as duas respondiam a mesma pergunta com números diferentes.
@@ -130,7 +107,7 @@ async function fetchDocumentosAssociadosPorMes(): Promise<MesData[]> {
   const [assoc, docs] = await Promise.all([
     fetchAllRows<AssociacaoDoc>(
       (de, ate) =>
-        supabase.from("inspecao_associados").select("created_at, nome, id_inspecao").range(de, ate),
+        supabase.from("inspecao_associados").select("created_at, nome, id_inspecao").order("id").range(de, ate),
     ),
     fetchAllRows<DocumentoContavel>(
       (de, ate) =>
@@ -138,6 +115,7 @@ async function fetchDocumentosAssociadosPorMes(): Promise<MesData[]> {
           .from("inspecoes")
           .select("id_inspecao, status, elaboracao_responsavel, elaboracao_status")
           .neq("status", "DELETADA")
+          .order("id_inspecao")
           .range(de, ate),
     ),
   ]);
@@ -146,17 +124,24 @@ async function fetchDocumentosAssociadosPorMes(): Promise<MesData[]> {
 
 async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: number }[]> {
   const supabase = createSupabaseBrowserClient();
-  const data = await fetchAllRows<{ status: string; elaboracao_status: string | null }>(
-    (de, ate) =>
-      supabase.from("inspecoes").select("status, elaboracao_status").neq("status", "DELETADA").range(de, ate),
-  );
-
-  let pendentes = 0, assumidos = 0, concluidos = 0;
-  for (const row of data) {
-    if (row.elaboracao_status === "CONCLUIDO") concluidos++;
-    else if (row.elaboracao_status === "EM_ELABORACAO") assumidos++;
-    else if (row.status === "CONCLUIDA") pendentes++; // inspeção concluída aguardando documento
-  }
+  // Mesma régua da lista de inspeções: quem está associado conta como tendo
+  // assumido (22/09) — por isso as associações entram na consulta.
+  const [assoc, docs] = await Promise.all([
+    fetchAllRows<AssociacaoDoc>(
+      (de, ate) =>
+        supabase.from("inspecao_associados").select("created_at, nome, id_inspecao").order("id").range(de, ate),
+    ),
+    fetchAllRows<DocumentoContavel>(
+      (de, ate) =>
+        supabase
+          .from("inspecoes")
+          .select("id_inspecao, status, elaboracao_responsavel, elaboracao_status")
+          .neq("status", "DELETADA")
+          .order("id_inspecao")
+          .range(de, ate),
+    ),
+  ]);
+  const { pendentes, assumidos, concluidos } = porSituacao(assoc, docs);
 
   // Ordem fixa (cor é posicional): Pendentes · Assumidos · Concluídos
   return [
@@ -175,7 +160,7 @@ async function fetchDocumentosPorAssociado(): Promise<{ name: string; value: num
   const [assoc, docs] = await Promise.all([
     fetchAllRows<AssociacaoDoc>(
       (de, ate) =>
-        supabase.from("inspecao_associados").select("created_at, nome, id_inspecao").range(de, ate),
+        supabase.from("inspecao_associados").select("created_at, nome, id_inspecao").order("id").range(de, ate),
     ),
     fetchAllRows<DocumentoContavel>(
       (de, ate) =>
@@ -183,6 +168,7 @@ async function fetchDocumentosPorAssociado(): Promise<{ name: string; value: num
           .from("inspecoes")
           .select("id_inspecao, status, elaboracao_responsavel, elaboracao_status")
           .neq("status", "DELETADA")
+          .order("id_inspecao")
           .range(de, ate),
     ),
   ]);
@@ -500,10 +486,18 @@ export default function DashboardPage() {
 
   const { data: porMes, isLoading: loadingMes } = useInspecoesPorMes();
 
-  const { data: porMesAdm, isLoading: loadingMesAdm } = useQuery({
-    queryKey: ["dashboard-por-mes-adm"],
-    queryFn: fetchDocumentosPorMes,
-  });
+  // Documentos concluídos (ADM): a mesma consulta e a mesma conta da tela
+  // /dashboard/documentos-emitidos — lib/hooks/useDocumentosConcluidos.
+  const { data: concluidosAdm, isLoading: loadingMesAdm } = useDocumentosConcluidos();
+  const porMesAdm = useMemo<MesData[] | undefined>(
+    () =>
+      concluidosAdm &&
+      concluidosPorMes(concluidosAdm, mesAbsAgoraSP(), 6, mesAbsSP).map((m) => ({
+        mes: rotuloMesAbs(m.chave),
+        total: m.total,
+      })),
+    [concluidosAdm],
+  );
 
   const { data: docSituacao = [], isLoading: loadingDocSit } = useQuery({
     queryKey: ["dashboard-doc-situacao"],

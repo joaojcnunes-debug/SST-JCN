@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Plus, ChartBar, Search } from "lucide-react";
+import { Plus, ChartBar, Search, Check } from "lucide-react";
 import { Suspense } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -25,6 +25,7 @@ import { useUnidadeAtiva } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { registrarSoftNaLixeira } from "@/lib/hooks/useLixeira";
 import { cn } from "@/lib/utils";
+import { alternarPilula } from "@/lib/inspecoes/pilulas";
 import type { Inspecao } from "@/lib/supabase/types";
 
 const PAGE_SIZE = 20;
@@ -37,7 +38,14 @@ const FILTROS: { value: FiltroInspecao; label: string }[] = [
   // Pedido de 16/09, afinado em 21/09: as inspeções que têm alguém associado ao
   // documento (SGG) — mesma pílula, mesmo jeito das outras.
   { value: "ASSOCIADOS", label: "Associados" },
+  // 21/10: o avesso — ninguém no documento. Associados + Não associados = Todos.
+  { value: "NAO_ASSOCIADOS", label: "Não associados" },
 ];
+
+// 21/10: dá para marcar mais de uma ("não associados + em andamento"). Status
+// somam entre si, associação idem, e os dois grupos se cruzam — a régua mora em
+// lib/inspecoes/pilulas (alternarPilula / separarSelecao).
+const ROTULO = Object.fromEntries(FILTROS.map((f) => [f.value, f.label])) as Record<FiltroInspecao, string>;
 
 const ORDENS: { value: OrdemInspecao; label: string }[] = [
   { value: "recentes", label: "Mais recentes" },
@@ -101,7 +109,7 @@ function InspecoesInner() {
   const [idUnidade, setIdUnidade] = useState<string>(unidadeAtivaId ?? "");
   const [dataIni, setDataIni] = useState<string>("");
   const [dataFim, setDataFim] = useState<string>("");
-  const [filtro, setFiltro] = useState<FiltroInspecao>("Todos");
+  const [filtros, setFiltros] = useState<FiltroInspecao[]>([]);
   const [ordem, setOrdem] = useState<OrdemInspecao>("recentes");
   const [buscaTecnico, setBuscaTecnico] = useState("");
   const [buscaAssociado, setBuscaAssociado] = useState("");
@@ -110,7 +118,7 @@ function InspecoesInner() {
   const { data: unidades = [] } = useUnidades();
 
   // Reseta para página 1 quando qualquer filtro muda
-  useEffect(() => { setPage(1); }, [empresaId, idUnidade, dataIni, dataFim, filtro, ordem, buscaTecnico, buscaAssociado]);
+  useEffect(() => { setPage(1); }, [empresaId, idUnidade, dataIni, dataFim, filtros, ordem, buscaTecnico, buscaAssociado]);
 
   // Mantém o filtro de unidade alinhado à Unidade ativa (inclusive ao limpá-la).
   useEffect(() => { setIdUnidade(unidadeAtivaId ?? ""); }, [unidadeAtivaId]);
@@ -133,7 +141,7 @@ function InspecoesInner() {
     idUnidade: idUnidade || null,
     dataIni,
     dataFim,
-    filtro,
+    filtros,
     ordem,
     page,
     pageSize: PAGE_SIZE,
@@ -242,6 +250,11 @@ function InspecoesInner() {
             Limpar filtros
           </button>
         )}
+        {(dataIni || dataFim) && (
+          <p className="basis-full text-[11px] text-gray-400">
+            No período, as concluídas contam pela data em que foram concluídas; as demais, pela data da visita.
+          </p>
+        )}
       </div>
 
       {empresaId && empresa && (
@@ -262,24 +275,32 @@ function InspecoesInner() {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-          {FILTROS.map((f) => (
+          {FILTROS.map((f) => {
+            const ativo = f.value === "Todos" ? filtros.length === 0 : filtros.includes(f.value);
+            return (
+            <span key={f.value} className="contents">
+            {/* Risquinho entre os dois grupos: status | associação. */}
+            {f.value === "ASSOCIADOS" && <span className="mx-1 h-5 w-px bg-gray-200" aria-hidden />}
             <button
-              key={f.value}
               type="button"
-              onClick={() => setFiltro(f.value)}
+              aria-pressed={ativo}
+              onClick={() => setFiltros((atual) => alternarPilula(atual, f.value))}
               className={cn(
-                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                filtro === f.value
+                "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                ativo
                   ? "border-verde-primary bg-verde-primary text-white"
                   : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"
               )}
             >
+              {ativo && f.value !== "Todos" && <Check className="mr-1 size-3" />}
               {f.label}
               {countData && (
                 <span className="ml-1.5 opacity-75">({countData.status[f.value]})</span>
               )}
             </button>
-          ))}
+            </span>
+            );
+          })}
           <div className="ml-auto flex items-center gap-2">
             <label className="text-xs text-gray-500">Ordenar:</label>
             <select
@@ -292,6 +313,16 @@ function InspecoesInner() {
               ))}
             </select>
           </div>
+          {filtros.length > 0 && (
+            <p className="basis-full text-xs text-gray-500">
+              Mostrando: <strong className="text-gray-700">{filtros.map((f) => ROTULO[f]).join(" + ")}</strong>
+              {countData && <> — {countData.selecionadas} {countData.selecionadas === 1 ? "inspeção" : "inspeções"}</>}
+              {" · "}
+              <button type="button" onClick={() => setFiltros([])} className="font-semibold text-verde-primary hover:underline">
+                limpar
+              </button>
+            </p>
+          )}
       </div>
 
       <div className={cn(
@@ -304,7 +335,7 @@ function InspecoesInner() {
           </div>
         ) : items.length === 0 ? (
           <div className="p-14 text-center text-sm text-gray-500">
-            Nenhuma inspeção {filtro !== "Todos" ? "nesse filtro" : "encontrada"}.
+            Nenhuma inspeção {filtros.length > 0 ? "nesse filtro" : "encontrada"}.
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -320,6 +351,7 @@ function InspecoesInner() {
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Responsável</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Associados</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 whitespace-nowrap">Status Assoc.</th>
                   <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400">Ações</th>
                 </tr>
               </thead>
@@ -410,7 +442,7 @@ function ModalEditarResponsavel({ insp, onClose }: { insp: Inspecao; onClose: ()
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inspecoes-lista"] });
       qc.invalidateQueries({ queryKey: ["inspecoes-tecnico"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-por-mes"] });
+      qc.invalidateQueries({ queryKey: ["inspecoes-por-mes"] });
       qc.invalidateQueries({ queryKey: ["dashboard-concluidas-detalhe"] });
       qc.invalidateQueries({ queryKey: ["inspecao", insp.id_inspecao] });
       toast.success("Responsável atualizado");

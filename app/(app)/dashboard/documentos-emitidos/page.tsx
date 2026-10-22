@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, FileSignature, TrendingUp, Users, X } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -14,38 +13,15 @@ import {
   Cell,
   LabelList,
 } from "recharts";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { mesAbsSP, mesAbsAgoraSP, rotuloMesAbs } from "@/lib/dashboard/mes";
+import { concluidosPorAdm, concluidosPorMes, concluidosValidos } from "@/lib/dashboard/documentos";
+import { useDocumentosConcluidos } from "@/lib/hooks/useDocumentosConcluidos";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { BalaoUmValor } from "@/components/ui/BalaoGrafico";
 
-interface DocRow {
-  elaboracao_concluida_em: string | null;
-  elaboracao_responsavel: string | null;
-}
-
-async function fetchDocumentos(): Promise<DocRow[]> {
-  const supabase = createSupabaseBrowserClient();
-  return fetchAllRows<DocRow>(
-    (de, ate) =>
-      supabase.from("inspecoes").select("elaboracao_concluida_em, elaboracao_responsavel").eq("elaboracao_status", "CONCLUIDO").range(de, ate),
-  );
-}
-
-// Mês CANÔNICO no fuso de São Paulo (não depende do fuso do navegador).
-function chaveMes(d: Date) {
-  return String(mesAbsSP(d));
-}
-function mesLabel(d: Date) {
-  return rotuloMesAbs(mesAbsSP(d), true);
-}
-
 export default function DocumentosEmitidosDashboard() {
-  const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["dashboard-documentos-adm"],
-    queryFn: fetchDocumentos,
-  });
+  // Mesma consulta e mesma conta do card "Documentos por Mês (ADM)" do dashboard.
+  const { data: rows = [], isLoading } = useDocumentosConcluidos();
 
   /**
    * Começa no MÊS CORRENTE, não no acumulado.
@@ -58,38 +34,19 @@ export default function DocumentosEmitidosDashboard() {
    * na mesma linha do título, logo abaixo de um gráfico mensal.
    */
   const [mesSel, setMesSel] = useState<string | null>(String(mesAbsAgoraSP()));
-  const now = new Date();
-
-  // Só conta linhas com data de conclusão.
-  const validas = rows.filter((r) => r.elaboracao_concluida_em);
-
-  // Por mês — últimos 12 meses (pela data de conclusão do ADM).
-  const porMes = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
-    return { chave: chaveMes(d), mes: mesLabel(d), total: 0 };
-  });
-  validas.forEach(({ elaboracao_concluida_em }) => {
-    const k = chaveMes(new Date(elaboracao_concluida_em!));
-    const item = porMes.find((m) => m.chave === k);
-    if (item) item.total++;
-  });
+  // Por mês — últimos 12 meses, pela data de conclusão no fuso de São Paulo.
+  const porMes = concluidosPorMes(rows, mesAbsAgoraSP(), 12, mesAbsSP).map((m) => ({
+    chave: String(m.chave),
+    mes: rotuloMesAbs(m.chave, true),
+    total: m.total,
+  }));
 
   const mesSelLabel = mesSel ? porMes.find((m) => m.chave === mesSel)?.mes ?? null : null;
 
   // Por ADM — filtrado pelo mês selecionado (ou todos).
-  const rowsAdm = mesSel
-    ? validas.filter((r) => chaveMes(new Date(r.elaboracao_concluida_em!)) === mesSel)
-    : validas;
-  const mapaAdm = new Map<string, number>();
-  rowsAdm.forEach(({ elaboracao_responsavel }) => {
-    const a = (elaboracao_responsavel ?? "").trim() || "Sem responsável";
-    mapaAdm.set(a, (mapaAdm.get(a) ?? 0) + 1);
-  });
-  const porAdm = Array.from(mapaAdm.entries())
-    .map(([adm, total]) => ({ adm, total }))
-    .sort((a, b) => b.total - a.total);
+  const porAdm = concluidosPorAdm(rows, mesSel ? Number(mesSel) : null, mesAbsSP);
 
-  const total = validas.length;
+  const total = concluidosValidos(rows).length;
 
   return (
     <div className="space-y-5">
@@ -186,7 +143,7 @@ export default function DocumentosEmitidosDashboard() {
           <ResponsiveContainer width="100%" height={Math.max(160, porAdm.length * 38)}>
             <BarChart data={porAdm} layout="vertical" barSize={22} margin={{ top: 4, right: 40, left: 8, bottom: 0 }}>
               <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <YAxis type="category" dataKey="adm" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} width={150} />
+              <YAxis type="category" dataKey="adm" tick={{ fontSize: 11, fill: "var(--text-body)" }} axisLine={false} tickLine={false} width={150} />
               <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo="Documentos" />} />
               <Bar dataKey="total" radius={[0, 6, 6, 0]} fill="#0ea5e9">
                 <LabelList dataKey="total" position="right" style={{ fontSize: 12, fontWeight: 700, fill: "var(--text-strong)" }} />

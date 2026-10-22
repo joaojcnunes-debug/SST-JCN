@@ -30,6 +30,7 @@ export function useInspecoesPorMes() {
             .from("inspecoes")
             .select("status, data_inspecao, concluida_em, created_at, tipo_criacao")
             .neq("status", "DELETADA")
+            .order("id_inspecao")
             .range(de, ate),
       );
       return serieMensal(linhas, mesAbsAgoraSP(), 6, (abs) => rotuloMesAbs(abs));

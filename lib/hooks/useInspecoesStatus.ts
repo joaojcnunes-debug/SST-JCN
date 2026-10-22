@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { ehRenovacao } from "@/lib/dashboard/inspecoes";
 import type { FatiaStatus } from "@/components/visao-geral/GraficosVisaoGeral";
 
@@ -12,13 +13,13 @@ export function useInspecoesStatus() {
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb
-        .from("inspecoes")
-        .select("status, tipo_criacao")
-        .neq("status", "DELETADA");
-      if (error) throw error;
+      // Paginado (07/10): sem isso o donut parava em 1000 linhas e ficava menor
+      // que o KPI do dashboard, que conta pelo banco.
+      const data = await fetchAllRows<{ status: string | null; tipo_criacao: string | null }>((de, ate) =>
+        sb.from("inspecoes").select("status, tipo_criacao").neq("status", "DELETADA").order("id_inspecao").range(de, ate),
+      );
       const c: Record<string, number> = {};
-      for (const r of (data ?? []) as { status: string | null; tipo_criacao: string | null }[]) {
+      for (const r of data) {
         // Renovação de documento não é inspeção (23/09).
         if (ehRenovacao(r.tipo_criacao)) continue;
         const s = r.status ?? "RASCUNHO";

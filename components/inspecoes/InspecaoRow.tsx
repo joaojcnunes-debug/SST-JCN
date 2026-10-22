@@ -5,9 +5,24 @@ import { Pencil, ChartBar, Trash2, RefreshCw } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { fmtData } from "@/lib/utils";
 import { iniciais, corAvatar } from "@/lib/hooks/useGestao";
-import { situacaoDocumento } from "@/lib/inspecoes/documento";
+import { situacaoDocumento, type ChaveDocumento } from "@/lib/inspecoes/documento";
 import { ehRenovacao } from "@/lib/dashboard/inspecoes";
 import type { Inspecao, InspecaoAssociado } from "@/lib/supabase/types";
+
+/** Pílula da coluna "Status Assoc." — uma por situação do documento. */
+const PILULA_DOC: Record<ChaveDocumento, { label: string; classe: string }> = {
+  ENTREGUE: { label: "Concluído", classe: "bg-emerald-100 text-emerald-800" },
+  EM_ELABORACAO: { label: "Em elaboração", classe: "bg-sky-100 text-sky-800" },
+  NINGUEM: { label: "Pendente", classe: "bg-gray-100 text-gray-500" },
+};
+
+/** Os nomes de campo são outros que não só quem lançou? */
+function campoDiferente(insp: Inspecao): boolean {
+  const campo = (insp.tecnicos_campo ?? "").trim();
+  if (!campo) return false;
+  const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  return norm(campo) !== norm(insp.responsavel ?? "");
+}
 
 export default function InspecaoRow({
   insp,
@@ -39,10 +54,26 @@ export default function InspecaoRow({
           {insp.revisao}
         </span>
       </td>
-      <td className="px-4 py-3 text-sm text-gray-600">{fmtData(insp.data_inspecao)}</td>
+      <td className="px-4 py-3 text-sm text-gray-600">
+        {fmtData(insp.data_inspecao)}
+        {/* Concluída entra no período pela data da conclusão (07/10) — sem
+            mostrar essa data, a linha parecia estar no mês errado. */}
+        {insp.status === "CONCLUIDA" && insp.concluida_em && (
+          <span className="block text-[11px] text-gray-400">
+            concluída {new Date(insp.concluida_em).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}
+          </span>
+        )}
+      </td>
       <td className="px-4 py-3 text-sm text-gray-700">
         <span className="inline-flex items-center gap-1.5">
-          {insp.responsavel ?? "—"}
+          <span>
+            {insp.responsavel ?? "—"}
+            {/* Quem foi a campo, quando não é quem lançou (07/10): é por ele que
+                o filtro Técnico acha a inspeção. */}
+            {campoDiferente(insp) && (
+              <span className="block text-[11px] text-gray-400">campo: {insp.tecnicos_campo}</span>
+            )}
+          </span>
           {onEditResponsavel && (
             <button
               type="button"
@@ -73,8 +104,7 @@ export default function InspecaoRow({
           )}
         </span>
       </td>
-      <td className="px-4 py-3">
-        {(() => {
+      {(() => {
           // Une os associados (tabela nova) com quem assumiu a elaboração pelo fluxo
           // de status (elaboracao_responsavel) — assim inspeções antigas também mostram.
           const pessoas: { key: string; nome: string }[] = associados.map((a) => ({ key: a.id, nome: a.nome }));
@@ -87,10 +117,12 @@ export default function InspecaoRow({
           // mesma que o card "Documento (SGG)" da tela do relatório usa.
           // Inspeção ainda em campo não tem documento: o rótulo some.
           const doc = situacaoDocumento(insp, pessoas.map((p) => p.nome), "curto");
-          const rotulo = doc && <span className={`block text-[10px] leading-tight ${doc.cor}`}>{doc.texto}</span>;
-          if (pessoas.length === 0) return <div><span className="text-xs text-gray-300">—</span>{rotulo}</div>;
           return (
-            <div>
+            <>
+            <td className="px-4 py-3">
+            {pessoas.length === 0 ? (
+              <span className="text-xs text-gray-300">—</span>
+            ) : (
             <div className="flex items-center -space-x-1.5">
               {pessoas.slice(0, 4).map((p) => (
                 <span
@@ -111,11 +143,32 @@ export default function InspecaoRow({
                 </span>
               )}
             </div>
-            {rotulo}
-            </div>
+            )}
+            </td>
+            {/* Status dos associados em coluna própria (pedido dele, 21/10): antes
+                era a letrinha embaixo dos avatares. Entregue = Concluído. */}
+            <td className="px-4 py-3">
+              {!doc ? (
+                <span className="text-xs text-gray-300">—</span>
+              ) : (
+                <span className="inline-flex flex-col items-start gap-0.5">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${PILULA_DOC[doc.chave].classe}`}
+                  >
+                    {PILULA_DOC[doc.chave].label}
+                  </span>
+                  {doc.chave === "ENTREGUE" && insp.elaboracao_concluida_em && (
+                    <span className="text-[11px] text-gray-400">em {fmtData(insp.elaboracao_concluida_em)}</span>
+                  )}
+                  {doc.chave === "EM_ELABORACAO" && (
+                    <span className="text-[11px] text-gray-400">{doc.texto.replace(/^Em elaboração( · )?/, "")}</span>
+                  )}
+                </span>
+              )}
+            </td>
+            </>
           );
         })()}
-      </td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-1">
           <Link

@@ -6,6 +6,7 @@ import { useUsuariosParaAssociar } from "@/lib/hooks/useInspecaoAssociados";
 import { contaDoTecnicoDigitado } from "@/lib/dashboard/vinculo-tecnicos";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
+import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
 import AvisoRascunho from "@/components/ui/AvisoRascunho";
 import { useRascunho } from "@/lib/hooks/useRascunho";
 import { gravar } from "@/lib/offline/gravar";
@@ -32,24 +33,27 @@ export default function ResponsavelForm({
   const isEdit = !!responsavel;
 
   /**
-   * Sugestões de nome para o campo "Técnico SST".
+   * O "Técnico SST" é ESCOLHIDO do cadastro, não digitado (07/10).
    *
-   * O campo é texto livre desde sempre, e o resultado medido em 2026-08-25 foi
-   * 43 grafias para 15 pessoas — "Lédimo", "LÉDIMO", "Estefano do Rosario
-   * silva" em sete variações. Cada grafia nova é uma pessoa a mais no gráfico
-   * do dashboard.
+   * Texto livre deu 43 grafias para 15 pessoas (medido em 25/08) — "Lédimo",
+   * "LÉDIMO", "Estefano do Rosario silva" em sete variações. Todos os técnicos
+   * têm conta no painel, inclusive o de Friburgo, então a lista cobre todo
+   * mundo. Escolher grava o nome exato da conta (é ele que sai no laudo) E o
+   * vínculo `id_usuario` (v204).
    *
-   * A lista é `datalist`, não `select`, de propósito: técnico de unidade que
-   * não tem usuário no painel (o de Friburgo, por exemplo) precisa continuar
-   * podendo ser digitado. E se a consulta falhar — o que acontece na portaria
-   * do cliente, sem sinal — o campo volta a ser um input comum e nada trava.
+   * Única exceção: SEM a lista — a portaria do cliente sem sinal, que é onde
+   * este registro costuma ser feito — o campo volta a aceitar digitação, para
+   * não travar a visita. O vínculo desse nome é resolvido pela regra antiga
+   * (`contaDoTecnicoDigitado`) quando a lista estiver de volta.
    */
   const { data: usuarios } = useUsuariosParaAssociar();
-  const sugestoes = (usuarios ?? [])
-    .map((u) => (u.nome ?? "").trim())
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const contas = (usuarios ?? [])
+    .filter((u) => (u.nome ?? "").trim() && (u.email ?? "").trim())
+    .map((u) => ({ id_usuario: u.id_usuario, nome: u.nome.trim(), email: u.email.trim() }));
+  const temLista = contas.length > 0;
   const [form, setForm] = useState({
+    /** Conta escolhida na lista; vazio = nada escolhido (ou modo sem lista). */
+    id_usuario: "",
     tecnico_responsavel: "",
     recepcionado_por: "",
     cargo: "",
@@ -59,6 +63,7 @@ export default function ResponsavelForm({
   useEffect(() => {
     if (open) {
       setForm({
+        id_usuario: responsavel?.id_usuario ?? "",
         tecnico_responsavel: responsavel?.tecnico_responsavel ?? "",
         recepcionado_por: responsavel?.recepcionado_por ?? "",
         cargo: responsavel?.cargo ?? "",
@@ -68,6 +73,14 @@ export default function ResponsavelForm({
       });
     }
   }, [open, responsavel]);
+
+  // Registro antigo, digitado à mão ("LÉDIMO"): se a regra reconhece a conta,
+  // o campo já abre com ela escolhida em vez de vazio.
+  const idEfetivo =
+    form.id_usuario ||
+    (form.tecnico_responsavel.trim()
+      ? contaDoTecnicoDigitado(form.tecnico_responsavel, usuarios ?? []) ?? ""
+      : "");
 
   // Rascunho contra queda de luz — só ao adicionar; nada volta sem clique.
   const rascunho = useRascunho(`responsavel:${idInspecao}`, form, {
@@ -83,7 +96,11 @@ export default function ResponsavelForm({
     mutationFn: async () => {
       const nomeDigitado = form.tecnico_responsavel.trim();
       const listaContas = usuarios ?? [];
-      const contaDoNome = contaDoTecnicoDigitado(nomeDigitado, listaContas);
+      // Escolhido na lista: a conta é FATO. Só sem escolha cai na dedução.
+      const contaDoNome =
+        (form.id_usuario && listaContas.some((u) => u.id_usuario === form.id_usuario)
+          ? form.id_usuario
+          : null) ?? contaDoTecnicoDigitado(nomeDigitado, listaContas);
       const nomeMudou =
         !isEdit ||
         (responsavel?.tecnico_responsavel ?? "").trim() !== nomeDigitado;
@@ -199,28 +216,45 @@ export default function ResponsavelForm({
         )}
         <div>
           <label className={lblCls}>Técnico SST</label>
-          <input
-            type="text"
-            list="tecnicos-sst-sugestoes"
-            autoComplete="off"
-            value={form.tecnico_responsavel}
-            onChange={(e) =>
-              setForm({ ...form, tecnico_responsavel: e.target.value })
-            }
-            className={inputCls}
-          />
-          {sugestoes.length > 0 && (
-            <datalist id="tecnicos-sst-sugestoes">
-              {sugestoes.map((nome) => (
-                <option key={nome} value={nome} />
-              ))}
-            </datalist>
+          {temLista ? (
+            <UsuarioCombobox
+              usuarios={contas}
+              value={contas.find((c) => c.id_usuario === idEfetivo)?.email ?? ""}
+              placeholder="Digite e selecione o técnico"
+              incluirVazio
+              vazioLabel="Nenhum técnico"
+              onChange={(email) => {
+                const c = contas.find((x) => x.email.toLowerCase() === email.toLowerCase());
+                setForm({
+                  ...form,
+                  id_usuario: c?.id_usuario ?? "",
+                  tecnico_responsavel: c?.nome ?? "",
+                });
+              }}
+            />
+          ) : (
+            <input
+              type="text"
+              autoComplete="off"
+              value={form.tecnico_responsavel}
+              onChange={(e) =>
+                setForm({ ...form, id_usuario: "", tecnico_responsavel: e.target.value })
+              }
+              className={inputCls}
+            />
+          )}
+          {temLista && !idEfetivo && form.tecnico_responsavel.trim() && (
+            <p className="mt-1 text-xs text-amber-700">
+              Nome gravado antes da lista: <strong>{form.tecnico_responsavel}</strong>. Selecione a
+              pessoa para padronizar.
+            </p>
           )}
           <p className="mt-1 text-xs text-gray-500">
-            Escolha o nome da lista sempre que possível — é o que faz a inspeção
-            ser contada para você. Foram dois técnicos na visita? Salve este e
-            use <strong>Adicionar</strong> de novo para o segundo, em vez de
-            escrever os dois nomes aqui.
+            {temLista
+              ? "Digite parte do nome e escolha na lista."
+              : "Sem conexão: a lista de técnicos não carregou, digite o nome."}{" "}
+            Foram dois técnicos na visita? Salve este e use <strong>Adicionar</strong> de novo
+            para o segundo.
           </p>
         </div>
         <div>
