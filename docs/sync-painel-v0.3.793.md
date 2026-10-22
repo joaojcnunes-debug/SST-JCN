@@ -52,6 +52,7 @@
   card clicável, Documentos & Laudos por tipo, aviso de perda de acesso ao trocar unidade, fantasia abaixo do Nome (só tela).
 
 **Lote 4 — Psicossocial (P/M, depois G):**
+> ✅ Consolidação de Grupo e Exportar Excel/PDF por empresa feitos em 2026-10-22 (v0.3.141): v287 (= painel v295 + glossário da v299) aplicada; exceljs 4.4.0 e pptxgenjs 3.12.0; marca e fundos da apresentação refeitos para a JCN; fixture do caso real não copiado (testes pulados sem ele).
 > ✅ Feito em 2026-10-22 (v0.3.140), menos a Consolidação de Grupo e o Exportar Excel/PDF por empresa: v285 (= painel v263, só estrutura — os textos do Texto Padrão ficaram de fora) e v286 (= painel v291) aplicadas; edge functions `gerar-parecer-aep-ia` v8 e `gerar-observacao-psi-ia` v3 publicadas. A v258 (apagar o capítulo Resumo vazio do QPS) não foi aplicada.
 - Rápidos (P): Formulário em Branco da AEP só com a Triagem e sem Matriz de Riscos; QPS Análise com agravos/medidas por setor;
   CRP do psicólogo vindo do cadastro; CSV do QPS ignora coluna extra; sigla QAP→QPS; AET com lista única do checklist;

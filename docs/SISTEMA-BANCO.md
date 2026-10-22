@@ -837,6 +837,30 @@ id uuid NN, nome text NN, cidade text, responsavel text, ativo boolean NN, criad
 
 id uuid NN, modulo text NN, chave text NN, texto text NN, criado_por text, criado_em timestamp with time zone NN
 
+## Psicossocial — consolidação de grupo (v287)
+
+Replicado do painel (v295 + glossário da v299). `empresas.papel_economico` (SPE|EXECUTORA|INCORPORADORA|OUTRA) e `empresa_grupos.psico_fatores_ignorados text[]`.
+
+### `psico_fatores`
+id_fator text PK (= chave da AEP), nome, nome_curto, ordem, ativo, updated_at. Seed dos 13 fatores. RLS: todos leem; Admin escreve.
+
+### `psico_fator_depara`
+origem (AEP|DRPS|QPS) + valor_origem (PK) → id_fator. Seed AEP (chave) e DRPS (nome do tópico).
+
+### `psico_setor_canonico`
+id_setor_canonico (SCN-…), id_grupo, nome (único por grupo, sem caixa), transita, created_at/by. RLS: equipe interna lê; `caller_pode_editar()` escreve.
+
+### `psico_setor_depara`
+id_depara (SDP-…), id_grupo, id_empresa, origem, setor_original (único por grupo/empresa/origem), id_setor_canonico, confirmado_por/em.
+
+### `psico_consolidacao_execucoes` · `psico_consolidacao_itens` · `psico_consolidacao_validacoes`
+Append-only (RLS só SELECT/INSERT + gatilho `psico_somente_insercao`). Execução (PCX-…): grupo, fontes, parametros, resultado jsonb (foto do motor). Itens: empresa × setor × fator × origem com nível. Validações (PCV-…): decisão VALIDADO|COM_RESSALVA, quem validou, data, comentário.
+
+### `psico_glossario`
+sigla PK, significado, explicacao, ordem. Admin edita.
+
+Rollback: `scripts/sql/v287_psico_consolidacao_grupo_rollback.sql` (apaga execuções e validações).
+
 ## Questionários psicossociais (QPS)
 
 ### `qps_aplicacoes`

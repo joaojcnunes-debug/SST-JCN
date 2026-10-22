@@ -32,6 +32,7 @@ import {
   Radio,
   Gauge,
   Handshake,
+  Network,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore } from "@/lib/store";
@@ -146,6 +147,17 @@ const CARDS: HubCardCfg[] = [
     categoria: "seguranca",
     skipStats: true,
     staticLabel: "Controle de EPI por empresa",
+  },
+  {
+    modulo: "consolidacao_psicossocial",
+    href: "/consolidacao-grupo",
+    title: "Consolidação Psicossocial de Grupo",
+    description: "Junta AEP e DRPS/Questionário das empresas de um grupo e define os fatores de cada setor no PGR",
+    icon: <Network className="size-12" />,
+    accent: "#4F46E5",
+    categoria: "seguranca",
+    skipStats: true,
+    staticLabel: "Grupos de empresas · validação · lista para o PGR",
   },
   // ── NR — Fatores Psicossocial ──────────────────────────────────────
   {

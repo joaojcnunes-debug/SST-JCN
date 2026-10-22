@@ -54,7 +54,8 @@ export type ModuloPermitido =
   | "frota"
   | "escala_supervisores"
   | "dimensionamento"
-  | "comercial";
+  | "comercial"
+  | "consolidacao_psicossocial";
 
 export const TODOS_MODULOS: ModuloPermitido[] = [
   "painel",
@@ -75,6 +76,7 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "escala_supervisores",
   "dimensionamento",
   "comercial",
+  "consolidacao_psicossocial",
 ];
 
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
@@ -96,6 +98,7 @@ export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   escala_supervisores: "Escala de Supervisores",
   dimensionamento: "Dimensionamento de Quadro (SST)",
   comercial: "Comercial – Oportunidades de venda",
+  consolidacao_psicossocial: "Consolidação Psicossocial de Grupo",
 };
 
 // ─── Investigação de Acidente de Trabalho ────────────────────────────────────
@@ -567,6 +570,35 @@ export interface EmpresaGrupo {
   created_at: string;
   created_by: string | null;
   updated_at: string;
+  /** v287 (JCN; painel v295): fatores psicossociais fora da consolidação deste grupo. */
+  psico_fatores_ignorados?: string[];
+}
+
+/** v287 (JCN; painel v295): papel da empresa no grupo econômico (independe de matriz/filial). */
+export type PapelEconomico = "SPE" | "EXECUTORA" | "INCORPORADORA" | "OUTRA";
+
+/** v287 (JCN; painel v295): setor padronizado de um grupo (Consolidação Psicossocial). */
+export interface PsicoSetorCanonico {
+  id_setor_canonico: string;
+  id_grupo: string;
+  nome: string;
+  /** false = o setor não transita entre as empresas e fica fora da harmonização. */
+  transita: boolean;
+  created_at: string;
+  created_by: string | null;
+}
+
+/** v287 (JCN; painel v295): nome do setor como está no documento → setor padronizado. */
+export interface PsicoSetorDepara {
+  id_depara: string;
+  id_grupo: string;
+  id_empresa: string;
+  origem: "AEP" | "DRPS" | "QPS";
+  setor_original: string;
+  id_setor_canonico: string | null;
+  confirmado_por: string | null;
+  confirmado_em: string | null;
+  created_at: string;
 }
 
 /**

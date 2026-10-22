@@ -1,6 +1,6 @@
 {
   "name": "sst-jcn",
-  "version": "0.3.140",
+  "version": "0.3.141",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -34,6 +34,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "docx": "^9.6.1",
+    "exceljs": "4.4.0",
     "html-to-image": "^1.11.13",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.14.0",
@@ -42,6 +43,7 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",
     "pkijs": "^3.4.0",
+    "pptxgenjs": "3.12.0",
     "puppeteer-core": "^25.1.0",
     "pvutils": "^1.1.5",
     "react": "19.1.0",

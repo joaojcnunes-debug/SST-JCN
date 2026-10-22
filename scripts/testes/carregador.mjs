@@ -34,7 +34,9 @@ registerHooks({
       if (achado) return proximo(pathToFileURL(achado).href, contexto);
     }
 
-    if (especificador.startsWith(".") && !path.extname(especificador)) {
+    // Biblioteca de node_modules resolve sozinha (o `require` dela não aceita file://).
+    const deBiblioteca = contexto.parentURL?.includes("/node_modules/");
+    if (especificador.startsWith(".") && !path.extname(especificador) && !deBiblioteca) {
       const daOrigem = contexto.parentURL
         ? path.dirname(fileURLToPath(contexto.parentURL))
         : raiz;

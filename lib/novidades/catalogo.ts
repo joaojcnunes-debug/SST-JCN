@@ -41,6 +41,37 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "psicossocial-consolidacao-grupo",
+    data: "2026-10-22",
+    tipo: "novidade",
+    titulo: "Novo módulo: Consolidação Psicossocial de Grupo",
+    texto:
+      "Junta a AEP e o DRPS/Questionário concluídos das empresas de um grupo (Empresas › Grupos). Abas Fontes, " +
+      "Setores (sugere um nome padronizado para cada setor, para o técnico confirmar) e Fatores; depois as análises: " +
+      "Comparativo AEP, Visões, Confronto AEP × DRPS, Harmonização (o que cada empresa precisa incluir ou revisar) e " +
+      "Sim/Não por empresa e setor. Exporta três planilhas coloridas, o relatório ao cliente em PDF e uma " +
+      "apresentação em PowerPoint. A aba Validação registra a versão enviada ao cliente e a validação de cada " +
+      "empresa, e gera a lista para lançar no PGR.",
+    onde: "Módulos › Segurança do Trabalho › Consolidação Psicossocial de Grupo",
+    impacto:
+      "Ninguém tem o módulo marcado ainda: o Admin libera a caixa \"Consolidação Psicossocial de Grupo\" em Usuários. " +
+      "A tela só lê a AEP e o DRPS/Questionário; registros e validações não podem ser editados nem apagados, e nada é " +
+      "lançado no PGR sozinho.",
+    versoes: ["0.3.141"],
+  },
+  {
+    id: "exportar-excel-pdf-psicossocial-aep-empresa",
+    data: "2026-10-22",
+    tipo: "novidade",
+    titulo: "Exportar Excel e PDF em Riscos Psicossociais e AEP",
+    texto:
+      "Na página de cada empresa, em Riscos Psicossociais e em AEP, há os botões Exportar Excel (uma linha por risco, " +
+      "pronta para filtrar, com os dados da empresa numa aba própria) e Exportar PDF (a mesma tabela da tela, numa " +
+      "aba nova).",
+    onde: "Painel SST › Riscos Psicossociais / AEP › empresa",
+    versoes: ["0.3.141"],
+  },
+  {
     id: "qps-aplicacao-salvar-e-responsavel",
     data: "2026-10-22",
     tipo: "correcao",
