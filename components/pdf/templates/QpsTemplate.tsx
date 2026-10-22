@@ -1,14 +1,22 @@
 import React from "react";
 import FolhaAssinaturas from "@/components/pdf/FolhaAssinaturas";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
-import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/SecoesComuns";
+import { SecaoIdentificacaoEmpresa } from "@/components/pdf/SecoesComuns";
 import type { Empresa, QpsMonitoramento, QpsPlanoMedidas, QpsRevisao } from "@/lib/supabase/types";
 import type { TextoPadraoCapitulo } from "@/lib/textos-padrao/types";
 import { substituirVariaveisTexto } from "@/lib/textos-padrao/variaveis";
 import { renderEditaveis, renderEditavelUm, classeQuebraFixoNova } from "./shared";
 import { MEDIDAS_CONTROLE, MESES } from "@/lib/drps/topicos";
-import { acoesObrigatoriasQps, EQUIPE_REVISAO, INSTRUMENTO_QAP, type InstrumentoQps } from "@/lib/qps/gestao";
-import { linhasPlanoComConteudo, type DadosLaudoQps, type BlocoSetorLaudo, type PlanoAcaoLinhaLaudo } from "@/lib/qps/laudo";
+import { acoesObrigatoriasQps, EQUIPE_REVISAO, INSTRUMENTO_QPS, type InstrumentoQps } from "@/lib/qps/gestao";
+import {
+  ancoraCapitulo,
+  linhasPlanoComConteudo,
+  marcarTabelasLargas,
+  paragrafosDoTexto,
+  type DadosLaudoQps,
+  type BlocoSetorLaudo,
+  type PlanoAcaoLinhaLaudo,
+} from "@/lib/qps/laudo";
 import { formatCNPJ, formatCPF, formatCEI, formatCAEPF, formatCNO } from "@/lib/utils";
 
 /**
@@ -34,6 +42,12 @@ export interface QpsTemplateProps {
   identificadorDocumento: string;
   planoAcao: PlanoAcaoLinhaLaudo[];
   instrumento?: InstrumentoQps;
+  /**
+   * v263 — página de cada capítulo (âncora → número do rodapé), medida pela
+   * rota numa 1ª geração do PDF. Ausente (prévia da tela, 1ª passada) o
+   * Sumário sai sem a coluna de página.
+   */
+  paginasSumario?: Record<string, number>;
 }
 
 const STYLE_BLOCK = `
@@ -46,20 +60,56 @@ const STYLE_BLOCK = `
 .drps-label { background: #f0f9f4; font-weight: 600; color: #1e4d28; font-size: 10.5px; width: 30%; }
 .drps-header-section { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: center; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; padding: 7px 9px; }
 .drps-title { background: #0ea5e9; color: white; font-weight: 700; font-size: 13px; text-align: center; letter-spacing: 0.06em; text-transform: uppercase; padding: 9px 11px; }
-.drps-setor-bloco { margin-bottom: 22px; page-break-before: always; page-break-inside: auto; }
-.drps-setor-bloco:first-of-type { page-break-before: auto; }
+/* v263 — o setor segue na mesma folha quando cabe (antes: 1 setor por folha,
+   com meia página em branco). O que não pode é abrir no pé da folha: o topo
+   (identificação + classificação) e cada quadro (agravos, medidas, conclusão)
+   são indivisíveis — se não cabem, vão inteiros para a próxima. */
+.drps-setor-bloco { margin-top: 22px; }
+.drps-setor-bloco:first-of-type { margin-top: 0; }
+.qps-setor-topo { break-inside: avoid; page-break-inside: avoid; }
+.qps-setor-topo + .qps-setor-topo > table:first-child { margin-top: -1px; }
+.qps-quadro { margin-top: 8px; border: 1px solid #cbd5e1; break-inside: avoid; page-break-inside: avoid; }
+.qps-quadro-titulo { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: center; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; padding: 7px 9px; }
+.qps-quadro-corpo { padding: 8px 10px; }
+div.qps-paragrafos p { font-size: 11.5px; line-height: 1.55; text-align: justify; text-indent: 0; color: #1f2937; margin: 0 0 6px; }
+div.qps-paragrafos p:last-child { margin-bottom: 0; }
+/* Na Conclusão Consolidada (dentro de .drps-sec, que é Times 12pt) a tabela e os
+   quadros ficam iguais aos dos setores. */
+.drps-sec .qps-setor-topo, .drps-sec .qps-quadro { font-family: Inter, Arial, Helvetica, sans-serif; }
 .drps-badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 10px; font-weight: 700; color: #fff; }
-.drps-conc { font-size: 11px; line-height: 1.5; color: #1f2937; }
-.drps-conc table { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 10px; table-layout: fixed; }
-.drps-conc th, .drps-conc td { border: 1px solid #999; padding: 4px 6px; vertical-align: top; text-align: left; word-wrap: break-word; }
+.drps-conc { font-size: 11.5px; line-height: 1.55; color: #1f2937; }
+.drps-conc p { text-align: justify; margin: 0 0 6px; orphans: 3; widows: 3; }
+.drps-conc p:last-child { margin-bottom: 0; }
+.drps-conc table { border-collapse: collapse; width: 100% !important; min-width: 0 !important; margin: 6px 0; font-size: 10px; table-layout: fixed; }
+.drps-conc th, .drps-conc td { border: 1px solid #999; padding: 4px 6px; vertical-align: top; text-align: left; overflow-wrap: break-word; word-break: normal; }
 .drps-conc th { background: #d4edda; color: #1e4d28; font-weight: 700; }
+.drps-conc td p, .drps-conc th p { text-align: left; margin: 0 0 3pt; line-height: 1.35; }
+.drps-conc colgroup col { width: auto !important; }
 .drps-conc ul { margin: 0; padding-left: 1.1em; }
 .drps-conc li { margin: 1px 0; }
 .drps-conc img { max-width: 100%; height: auto; }
+/* Tabela larga colada na conclusão vai para a folha deitada (marcarTabelasLargas). */
+.qps-tabela-paisagem { page: paisagem; }
+/* div.… vence .drps-conc-geral table (declarada depois, mesma força). 9pt: com
+   8 colunas iguais na folha deitada, "dimensionamento" em negrito cabe inteira. */
+div.qps-tabela-paisagem table { margin-top: 0; font-size: 9pt; }
+div.qps-tabela-paisagem th, div.qps-tabela-paisagem td { padding: 3pt 4pt; }
+div.qps-tabela-paisagem td p, div.qps-tabela-paisagem th p { font-size: 9pt; }
+/* Sumário com a página de cada capítulo. */
+.qps-sumario { width: 100%; border-collapse: collapse; font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #374151; }
+.qps-sumario td { padding: 4px 0; border-bottom: 1px dotted #D1D5DB; vertical-align: baseline; }
+.qps-sumario td.num { width: 26px; font-weight: 700; color: #0ea5e9; }
+.qps-sumario td.pag { width: 40px; text-align: right; font-weight: 700; color: #0ea5e9; }
+.qps-sumario a { color: inherit; text-decoration: none; }
 .textos-padrao-capitulo--nova-pagina { page-break-before: always; }
 .textos-padrao-capitulo--continua { page-break-before: auto; }
 .tp-cap { margin-bottom: 16pt; }
 .tp-cap h2 { font-size: 13pt; font-weight: 700; color: #1e4d28; border-bottom: 2px solid #0ea5e9; padding-bottom: 3px; margin: 0 0 8pt; }
+/* v263 — título de capítulo nunca fica sozinho no pé da folha ("3. Objetivo"
+   saía na última linha e o texto na página seguinte — no DRPS também). */
+.tp-cap h2, .drps-sec h2, .drps-sec h3 { break-after: avoid; page-break-after: avoid; }
+.tp-cap .corpo > :first-child { break-before: avoid; }
+.tp-cap .corpo p, .drps-sec p { orphans: 3; widows: 3; }
 .tp-cap .corpo { font-size: 11pt; color: #1f2937; line-height: 1.5; text-align: justify; }
 .tp-cap .corpo p { margin: 0 0 8pt; }
 .tp-cap .corpo table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 10pt; }
@@ -82,8 +132,15 @@ const STYLE_BLOCK = `
 .drps-ex-list li { margin: 3pt 0; }
 .drps-conc-geral p { font-size: 12pt; line-height: 1.6; text-align: justify; color: #1f2937; margin: 0 0 12pt; text-indent: 1.25cm; }
 .drps-conc-geral ul, .drps-conc-geral ol { margin: 0 0 12pt 1.5em; font-size: 12pt; line-height: 1.6; }
-.drps-conc-geral table { border-collapse: collapse; width: 100%; table-layout: fixed; margin: 10pt 0; font-size: 10pt; }
-.drps-conc-geral th, .drps-conc-geral td { border: 1px solid #999; padding: 4px 6px; vertical-align: top; text-align: left; word-wrap: break-word; overflow-wrap: anywhere; }
+/* v263 — as palavras partiam em qualquer letra ("enfrentam|ento",
+   "Psicossocia|l"): era o overflow-wrap:anywhere com 8 colunas espremidas em pé.
+   Agora a palavra só parte se sozinha for maior que a coluna (break-word), e a
+   tabela de 5+ colunas vai para a folha deitada (marcarTabelasLargas).
+   O layout continua FIXED de propósito: com "auto" a largura mínima da tabela
+   deitada (8 colunas) passava a da folha em pé e o Chromium recalculava o
+   documento inteiro — as páginas em pé saíam cortadas na margem direita. */
+.drps-conc-geral table { border-collapse: collapse; width: 100% !important; min-width: 0 !important; table-layout: fixed; margin: 10pt 0; font-size: 10pt; }
+.drps-conc-geral th, .drps-conc-geral td { border: 1px solid #999; padding: 4px 6px; vertical-align: top; text-align: left; overflow-wrap: break-word; word-break: normal; }
 .drps-conc-geral th { background: #d4edda; color: #1e4d28; font-weight: 700; }
 .drps-conc-geral td p, .drps-conc-geral th p { text-indent: 0; text-align: left; margin: 0 0 3pt; line-height: 1.35; }
 .drps-conc-geral td p:last-child, .drps-conc-geral th p:last-child { margin-bottom: 0; }
@@ -165,16 +222,21 @@ function BlocoSetor({
   laudo,
   empresa,
   instrumento,
+  abertura,
 }: {
   bloco: BlocoSetorLaudo;
   laudo: DadosLaudoQps;
   empresa: QpsTemplateProps["empresa"];
   instrumento: InstrumentoQps;
+  /** Título "Análise por Setor" — vai grudado no 1º setor para não ficar sozinho no pé da folha. */
+  abertura?: React.ReactNode;
 }) {
   const ap = laudo.aplicacao;
   const ids = identificadoresDaEmpresa(empresa);
   return (
     <section className="drps-setor-bloco">
+      <div className="qps-setor-topo">
+      {abertura}
       <table className="drps-tabela">
         <tbody>
           <tr>
@@ -208,32 +270,95 @@ function BlocoSetor({
           <tr><td className="drps-label">Setor</td><td colSpan={3}>{bloco.ehConsolidado ? "Todos os setores (consolidado)" : bloco.setor}</td></tr>
           <tr><td className="drps-label">Funções</td><td colSpan={3}>{bloco.cargos || "—"}</td></tr>
           <tr><td className="drps-label">Quantidade de Trabalhadores Respondentes</td><td colSpan={3}>{bloco.totalRespondentes}</td></tr>
-          <tr><td className="drps-header-section" colSpan={4}>Classificação de Risco Psicossocial</td></tr>
         </tbody>
       </table>
+      </div>
 
-      <TabelaClassificacao bloco={bloco} />
+      {/* A classificação é um bloco próprio: o setor pode começar no fim de uma
+          folha (identificação) e a tabela seguir inteira na próxima. */}
+      <div className="qps-setor-topo">
+        <table className="drps-tabela">
+          <tbody>
+            <tr><td className="drps-header-section">Classificação de Risco Psicossocial</td></tr>
+          </tbody>
+        </table>
+        <TabelaClassificacao bloco={bloco} />
+      </div>
 
-      <table className="drps-tabela" style={{ marginTop: 8 }}>
+      <QuadroParagrafos titulo="Possíveis Agravos à Saúde Mental" texto={bloco.agravos} />
+      <QuadroParagrafos
+        titulo="Medidas de controle recomendadas (medidas que a empresa deve adotar)"
+        texto={bloco.medidas}
+      />
+
+      <div className="qps-quadro">
+        <div className="qps-quadro-titulo">Conclusão</div>
+        <div
+          className="qps-quadro-corpo drps-conc"
+          dangerouslySetInnerHTML={{
+            __html: bloco.conclusao
+              ? marcarTabelasLargas(bloco.conclusao)
+              : "<em style=\"color:#9ca3af\">(Conclusão não preenchida)</em>",
+          }}
+        />
+      </div>
+    </section>
+  );
+}
+
+/** Agravos / medidas: um parágrafo por item selecionado na Análise (v263). */
+function QuadroParagrafos({ titulo, texto }: { titulo: string; texto: string | null }) {
+  const paragrafos = paragrafosDoTexto(texto);
+  return (
+    <div className="qps-quadro">
+      <div className="qps-quadro-titulo">{titulo}</div>
+      <div className="qps-quadro-corpo qps-paragrafos">
+        {paragrafos.length > 0 ? (
+          paragrafos.map((p, i) => <p key={i}>{p}</p>)
+        ) : (
+          <p style={{ color: "#9ca3af", fontStyle: "italic" }}>(Não preenchido)</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Sumário do QPS: número, título (link para o capítulo) e a página (v263). */
+function SumarioQps({
+  itens,
+  paginas,
+}: {
+  itens: { titulo: string; ancora: string }[];
+  paginas?: Record<string, number>;
+}) {
+  if (itens.length === 0) return null;
+  // A coluna da página existe sempre (vazia na 1ª passada): assim nenhuma linha
+  // do Sumário muda de altura entre as duas gerações e as páginas medidas valem.
+  return (
+    <section style={{ marginBottom: 18, fontFamily: "Arial, Helvetica, sans-serif" }}>
+      <h2
+        style={{
+          fontSize: 14,
+          fontWeight: 700,
+          color: "#0ea5e9",
+          textTransform: "uppercase",
+          letterSpacing: "0.04em",
+          borderBottom: "2px solid #0ea5e9",
+          paddingBottom: 6,
+          marginBottom: 12,
+        }}
+      >
+        Sumário
+      </h2>
+      <table className="qps-sumario">
         <tbody>
-          <tr><td className="drps-header-section" colSpan={2}>Possíveis Agravos à Saúde Mental</td></tr>
-          <tr><td colSpan={2} style={{ whiteSpace: "pre-wrap" }}>{bloco.agravos ?? ""}</td></tr>
-          <tr><td className="drps-header-section" colSpan={2}>Medidas de controle recomendadas (medidas que a empresa deve adotar)</td></tr>
-          <tr><td colSpan={2} style={{ whiteSpace: "pre-wrap" }}>{bloco.medidas ?? ""}</td></tr>
-        </tbody>
-      </table>
-
-      <table className="drps-tabela" style={{ marginTop: 8 }}>
-        <tbody>
-          <tr><td className="drps-header-section">Conclusão</td></tr>
-          <tr>
-            <td>
-              <div
-                className="drps-conc"
-                dangerouslySetInnerHTML={{ __html: bloco.conclusao || "<em style=\"color:#9ca3af\">(Conclusão não preenchida)</em>" }}
-              />
-            </td>
-          </tr>
+          {itens.map((it, i) => (
+            <tr key={it.ancora}>
+              <td className="num">{i + 1}.</td>
+              <td><a href={`#${it.ancora}`}>{it.titulo}</a></td>
+              <td className="pag">{paginas?.[it.ancora] ?? ""}</td>
+            </tr>
+          ))}
         </tbody>
       </table>
     </section>
@@ -254,7 +379,8 @@ export default function QpsTemplate({
   dataHoraAssinatura,
   identificadorDocumento,
   planoAcao,
-  instrumento = INSTRUMENTO_QAP,
+  instrumento = INSTRUMENTO_QPS,
+  paginasSumario,
 }: QpsTemplateProps) {
   const { blocos, consolidado } = laudo;
 
@@ -309,8 +435,24 @@ export default function QpsTemplate({
   }
   const numLabel = (num: number | undefined, txt: string) => (num ? `${num}. ${txt}` : txt);
 
-  const setoresNode = blocos.map((b) => (
-    <BlocoSetor key={b.setor} bloco={b} laudo={laudo} empresa={empresa} instrumento={instrumento} />
+  const aberturaAnalise = (
+    <div className="drps-sec">
+      <h2>{numLabel(numPorSlug["qps_analise_setor"], "Análise por Setor")}</h2>
+      <p style={{ textIndent: "1.25cm" }}>
+        Classificação dos fatores de risco psicossocial por setor avaliado, com gravidade
+        (calculada a partir das respostas), probabilidade e matriz de risco conforme a NR-01.
+      </p>
+    </div>
+  );
+  const setoresNode = blocos.map((b, i) => (
+    <BlocoSetor
+      key={b.setor}
+      bloco={b}
+      laudo={laudo}
+      empresa={empresa}
+      instrumento={instrumento}
+      abertura={i === 0 ? aberturaAnalise : undefined}
+    />
   ));
 
   const conclusaoNode = temConclusaoConsolidada && consolidado ? (
@@ -320,26 +462,16 @@ export default function QpsTemplate({
         Classificação consolidada de todos os respondentes ({consolidado.totalRespondentes}), com a
         conclusão técnica do responsável.
       </p>
-      <TabelaClassificacao bloco={consolidado} />
-      {(consolidado.agravos || consolidado.medidas) && (
-        <table className="drps-tabela" style={{ marginTop: 8 }}>
-          <tbody>
-            {consolidado.agravos && (
-              <>
-                <tr><td className="drps-header-section">Possíveis Agravos à Saúde Mental</td></tr>
-                <tr><td style={{ whiteSpace: "pre-wrap" }}>{consolidado.agravos}</td></tr>
-              </>
-            )}
-            {consolidado.medidas && (
-              <>
-                <tr><td className="drps-header-section">Medidas de controle recomendadas</td></tr>
-                <tr><td style={{ whiteSpace: "pre-wrap" }}>{consolidado.medidas}</td></tr>
-              </>
-            )}
-          </tbody>
-        </table>
-      )}
-      <div className="drps-conc-geral" style={{ marginTop: 10 }} dangerouslySetInnerHTML={{ __html: consolidado.conclusao ?? "" }} />
+      <div className="qps-setor-topo">
+        <TabelaClassificacao bloco={consolidado} />
+      </div>
+      {consolidado.agravos && <QuadroParagrafos titulo="Possíveis Agravos à Saúde Mental" texto={consolidado.agravos} />}
+      {consolidado.medidas && <QuadroParagrafos titulo="Medidas de controle recomendadas" texto={consolidado.medidas} />}
+      <div
+        className="drps-conc-geral"
+        style={{ marginTop: 10 }}
+        dangerouslySetInnerHTML={{ __html: marcarTabelasLargas(consolidado.conclusao) }}
+      />
     </section>
   ) : null;
 
@@ -348,7 +480,7 @@ export default function QpsTemplate({
       <h2>{numLabel(numPorSlug["qps_caracterizacao"], "Caracterização dos Trabalhadores")}</h2>
       <p style={{ textIndent: "1.25cm" }}>
         Distribuição quantitativa dos trabalhadores avaliados por setor e função, conforme os
-        respondentes do {instrumento.nome} ({instrumento.sigla}).
+        respondentes da aplicação ({instrumento.sigla} — {instrumento.nome}).
       </p>
       <table className="drps-ex-table">
         <thead>
@@ -460,8 +592,10 @@ export default function QpsTemplate({
   ) : null;
 
   const STATUS_PLANO: Record<string, string> = { PENDENTE: "Pendente", EM_ANDAMENTO: "Em andamento", CONCLUIDA: "Concluída" };
+  // O 5W2H tem 8 colunas: sai sempre na folha deitada, sem depender da
+  // orientação marcada no Texto Padrão (em pé o texto empilhava).
   const planoAcaoNode = planoAcaoComConteudo.length > 0 ? (
-    <section className="drps-sec">
+    <section className="drps-sec drps-cap-paisagem">
       <h2>{numLabel(numPorSlug["qps_plano_acao_5w2h"], "Plano de Ação 5W2H")}</h2>
       <p style={{ textIndent: "1.25cm" }}>
         Ações de gerenciamento dos riscos psicossociais no formato 5W2H — o quê, por quê, onde, quando,
@@ -500,7 +634,8 @@ export default function QpsTemplate({
 
   const revisaoNode = revisao ? (
     <section className="drps-sec">
-      <h2>Revisão e Melhoria Contínua</h2>
+      {/* Sem monitoramento, é ela que abre o capítulo — e leva o número dele. */}
+      <h2>{monitNode ? "Revisão e Melhoria Contínua" : numLabel(numPorSlug["qps_revisao"], "Revisão e Melhoria Contínua")}</h2>
       <p style={{ textIndent: "1.25cm" }}>
         Compromissos de gestão para manter o ciclo PDCA do programa de riscos psicossociais ativo, com equipe técnica designada e anotações da coordenação.
       </p>
@@ -525,10 +660,25 @@ export default function QpsTemplate({
     .filter((c) => c.ativo !== false)
     .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 
-  const sumarioTitulos = blocosOrdenados
+  // v263 — o Sumário mostra o título que a seção IMPRIME. Três seções do sistema
+  // imprimem um título diferente do nome do capítulo no Texto Padrão (a Folha de
+  // Assinaturas é componente comum a todos os laudos), e o Sumário dizia
+  // "Assinatura Técnica" para uma página que diz "Folha de Assinaturas".
+  const tituloNoCorpo: Record<string, string> = {
+    qps_assinatura: "Folha de Assinaturas",
+    qps_plano_medidas: `Medidas de Controle — Plano Anual ${anoMedidas}`,
+    qps_revisao: monitNode ? "Monitoramento do Desempenho" : "Revisão e Melhoria Contínua",
+  };
+  const sumarioItens = blocosOrdenados
     .filter((c) => renderizaNumerado(c))
-    .map((c) => (c.tipo === "fixo" ? c.titulo : substituirVariaveisTexto(c.titulo, valores)))
-    .filter((t) => t && t.trim());
+    .map((c) => ({
+      titulo:
+        c.tipo === "fixo"
+          ? (tituloNoCorpo[c.slug_fixo ?? ""] ?? c.titulo)
+          : substituirVariaveisTexto(c.titulo, valores),
+      ancora: ancoraCapitulo(c.id_capitulo),
+    }))
+    .filter((it) => it.titulo && it.titulo.trim());
 
   const folhaNode = (
     <FolhaAssinaturas
@@ -544,24 +694,15 @@ export default function QpsTemplate({
   function renderSecao(slug: string): React.ReactNode {
     switch (slug) {
       case "identificacao_empresa": return <SecaoIdentificacaoEmpresa empresa={empresa} numero={numPorSlug["identificacao_empresa"]} />;
-      case "sumario":               return <SecaoSumario titulos={sumarioTitulos} />;
+      case "sumario":               return <SumarioQps itens={sumarioItens} paginas={paginasSumario} />;
       case "qps_caracterizacao":    return caracterizacaoNode;
-      case "qps_analise_setor":     return (
-        <>
-          <div className="drps-sec" style={{ pageBreakAfter: "avoid" }}>
-            <h2>{numLabel(numPorSlug["qps_analise_setor"], "Análise por Setor")}</h2>
-            <p style={{ textIndent: "1.25cm" }}>
-              Classificação dos fatores de risco psicossocial por setor avaliado, com gravidade
-              (calculada a partir das respostas), probabilidade e matriz de risco conforme a NR-01.
-            </p>
-          </div>
-          {setoresNode}
-        </>
-      );
+      // O título vai DENTRO do 1º setor (aberturaAnalise): solto, ele ficava
+      // sozinho no pé da folha com o setor começando na seguinte.
+      case "qps_analise_setor":     return <>{setoresNode}</>;
       case "qps_conclusao":         return conclusaoNode;
       case "qps_plano_acao_5w2h":   return planoAcaoNode;
       case "qps_plano_medidas":     return medidasNode;
-      case "qps_revisao":           return <>{monitNode}{revisaoNode}</>;
+      case "qps_revisao":           return monitNode || revisaoNode ? <>{monitNode}{revisaoNode}</> : null;
       case "qps_assinatura":        return folhaNode;
       default:                      return null;
     }
@@ -577,24 +718,34 @@ export default function QpsTemplate({
       <style dangerouslySetInnerHTML={{ __html: STYLE_BLOCK }} />
 
       {temFixos ? (
-        blocosOrdenados.map((c) =>
-          c.tipo === "fixo" ? (
-            <div
-              key={c.id_capitulo}
-              className={`${classeQuebraFixoNova(c)}${c.orientacao === "paisagem" ? " drps-cap-paisagem" : ""}`}
-              data-slug={c.slug_fixo ?? undefined}
-            >{renderSecao(c.slug_fixo ?? "")}</div>
-          ) : (
-            <React.Fragment key={c.id_capitulo}>
+        blocosOrdenados.map((c) => {
+          if (c.tipo === "fixo") {
+            // v263 — seção que não imprime nada (Plano de Medidas / Revisão sem
+            // dado, Conclusão sem texto) NÃO deixa o invólucro: ele carrega a
+            // quebra de página, e duas quebras seguidas davam a folha em branco
+            // antes da Folha de Assinaturas.
+            const secao = renderSecao(c.slug_fixo ?? "");
+            if (secao == null) return null;
+            return (
+              <div
+                key={c.id_capitulo}
+                id={ancoraCapitulo(c.id_capitulo)}
+                className={`${classeQuebraFixoNova(c)}${c.orientacao === "paisagem" ? " drps-cap-paisagem" : ""}`}
+                data-slug={c.slug_fixo ?? undefined}
+              >{secao}</div>
+            );
+          }
+          return (
+            <div key={c.id_capitulo} id={ancoraCapitulo(c.id_capitulo)}>
               {renderEditavelUm(
                 numPorId[c.id_capitulo]
                   ? { ...c, titulo: `${numPorId[c.id_capitulo]}. ${c.titulo}` }
                   : c,
                 valores,
               )}
-            </React.Fragment>
-          ),
-        )
+            </div>
+          );
+        })
       ) : (
         <>
           {renderEditaveis(capitulos, valores, "inicio")}

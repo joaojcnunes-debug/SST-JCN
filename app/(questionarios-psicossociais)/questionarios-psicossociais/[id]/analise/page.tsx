@@ -19,6 +19,7 @@ import {
   useQpsAllPerguntas,
   useQpsAplicacao,
   useQpsCategorias,
+  useQpsCrpResolvido,
   useQpsProbabilidades,
   useQpsRespondentes,
   useQpsTipos,
@@ -34,6 +35,7 @@ import {
 import type { CategoriaGravidade } from "@/lib/qps/gravidade";
 import { rotuloProbabilidade } from "@/lib/drps/calculos";
 import { formatCNPJ } from "@/lib/utils";
+import { INSTRUMENTO_QPS } from "@/lib/qps/gestao";
 
 /**
  * Análise do questionário com a régua do DRPS (pedido do Sanmyo, 14/09/2026).
@@ -98,10 +100,26 @@ const editorVazio = (): EditorSetor => ({
   fontes: {},
 });
 
+/** Move o texto ainda na caixa (não confirmado) para os itens manuais. */
+function confirmarPendentes(ed: EditorSetor): EditorSetor {
+  const junta = (sel: string[], extras: string[], pendente: string) => {
+    const v = pendente.trim();
+    return v && !sel.includes(v) && !extras.includes(v) ? [...extras, v] : extras;
+  };
+  if (!ed.novoAgravo.trim() && !ed.novaMedida.trim()) return ed;
+  return {
+    ...ed,
+    agravosExtras: junta(ed.agravosSel, ed.agravosExtras, ed.novoAgravo),
+    novoAgravo: "",
+    medidasExtras: junta(ed.medidasSel, ed.medidasExtras, ed.novaMedida),
+    novaMedida: "",
+  };
+}
+
 /** Chave de gravação: o consolidado usa "*", igual à probabilidade geral. */
 const chaveSetor = (setor: string) => (setor === TODOS_OS_SETORES ? SETOR_TODA_APLICACAO : setor);
 
-const INSTRUMENTO_PADRAO = { sigla: "QAP", nome: "Questionário de Avaliação Psicossocial" };
+const INSTRUMENTO_PADRAO = INSTRUMENTO_QPS;
 
 /**
  * O que o select de probabilidade mostra selecionado:
@@ -120,6 +138,7 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
   const canEdit = useCanEdit();
 
   const { data: ap } = useQpsAplicacao(id);
+  const { data: crp } = useQpsCrpResolvido(ap);
   const { data: empresa } = useEmpresa(ap?.id_empresa);
   const { data: tipos = [] } = useQpsTipos();
   const { data: categorias = [] } = useQpsCategorias(ap?.id_tipo ?? null);
@@ -169,40 +188,54 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
 
   // ── agravos / medidas (por setor, salvos no botão, como no DRPS) ──────────
   const [editores, setEditores] = useState<Record<string, EditorSetor>>({});
-  const [editoresIniciados, setEditoresIniciados] = useState(false);
+  // Carrega o gravado de cada setor QUANDO o setor aparece, sem tocar nos que
+  // já estão na tela (não desfaz o que a pessoa está editando).
+  // Painel v0.3.721: antes carregava UMA vez, assim que a aplicação chegava — e
+  // os setores vêm dos respondentes, que chegam depois. Só o consolidado
+  // recebia o gravado; todo setor abria VAZIO, e salvar de novo substituía o
+  // que estava gravado naquele setor.
   useEffect(() => {
-    if (!ap || editoresIniciados || agravosOpcoes.length === 0) return;
-    const inicial: Record<string, EditorSetor> = {};
-    for (const s of [TODOS_OS_SETORES, ...setores]) {
-      const k = chaveSetor(s);
-      const a = parseMultiSelect(ap.agravos_por_setor?.[k], agravosOpcoes);
-      const m = parseMultiSelect(ap.medidas_por_setor?.[k], medidasOpcoes);
-      inicial[s] = {
-        ...editorVazio(),
-        agravosSel: a.selecionados,
-        agravosExtras: a.extras,
-        medidasSel: m.selecionados,
-        medidasExtras: m.extras,
-        fontes: { ...(ap.fontes_por_setor?.[k] ?? {}) },
-      };
-    }
-    setEditores(inicial);
-    setEditoresIniciados(true);
-  }, [ap, setores, agravosOpcoes, medidasOpcoes, editoresIniciados]);
+    if (!ap) return;
+    setEditores((atual) => {
+      const faltando = [TODOS_OS_SETORES, ...setores].filter((s) => !(s in atual));
+      if (faltando.length === 0) return atual;
+      const novo = { ...atual };
+      for (const s of faltando) {
+        const k = chaveSetor(s);
+        const a = parseMultiSelect(ap.agravos_por_setor?.[k], agravosOpcoes);
+        const m = parseMultiSelect(ap.medidas_por_setor?.[k], medidasOpcoes);
+        novo[s] = {
+          ...editorVazio(),
+          agravosSel: a.selecionados,
+          agravosExtras: a.extras,
+          medidasSel: m.selecionados,
+          medidasExtras: m.extras,
+          fontes: { ...(ap.fontes_por_setor?.[k] ?? {}) },
+        };
+      }
+      return novo;
+    });
+  }, [ap, setores, agravosOpcoes, medidasOpcoes]);
 
   const patchEditor = (s: string, p: Partial<EditorSetor>) =>
     setEditores((e) => ({ ...e, [s]: { ...(e[s] ?? editorVazio()), ...p } }));
 
   async function salvarAgravosMedidas() {
     if (!ap) return;
+    // O texto digitado e ainda não confirmado com Enter/"Adicionar" continua
+    // visível na caixa — vai junto, senão o toast diz "salvos" e ele se perde.
+    const finais = Object.fromEntries(
+      Object.entries(editores).map(([s, ed]) => [s, confirmarPendentes(ed)]),
+    );
+    setEditores(finais);
     const agravos: Record<string, string> = { ...(ap.agravos_por_setor ?? {}) };
     const medidas: Record<string, string> = { ...(ap.medidas_por_setor ?? {}) };
     // v262: fontes geradoras por setor ("*" = consolidado), mescladas.
     const fontes: Record<string, Record<string, string[]>> = { ...(ap.fontes_por_setor ?? {}) };
-    for (const [s, ed] of Object.entries(editores)) {
+    for (const [s, ed] of Object.entries(finais)) {
       if (Object.keys(ed.fontes).length > 0) fontes[chaveSetor(s)] = ed.fontes;
     }
-    for (const [s, ed] of Object.entries(editores)) {
+    for (const [s, ed] of Object.entries(finais)) {
       const k = chaveSetor(s);
       const a = serializeMultiSelect(ed.agravosSel, ed.agravosExtras);
       const m = serializeMultiSelect(ed.medidasSel, ed.medidasExtras);
@@ -334,6 +367,7 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
             empresaNome={empresa?.nome_empresa ?? "—"}
             empresaCnpj={empresa?.cnpj ? formatCNPJ(empresa.cnpj) : "—"}
             responsavel={ap?.responsavel ?? ""}
+            crp={crp ?? null}
             setor={s}
             ehConsolidado={s === TODOS_OS_SETORES}
             posicao={setoresExibidos.length > 1 ? { indice: idx + 1, total: setoresExibidos.length } : null}
@@ -362,6 +396,7 @@ function BlocoSetor({
   empresaNome,
   empresaCnpj,
   responsavel,
+  crp,
   setor,
   ehConsolidado,
   posicao,
@@ -381,6 +416,7 @@ function BlocoSetor({
   empresaNome: string;
   empresaCnpj: string;
   responsavel: string;
+  crp: string | null;
   setor: string;
   ehConsolidado: boolean;
   /** "n/total" no título quando a página empilha vários blocos (null = bloco único). */
@@ -417,6 +453,7 @@ function BlocoSetor({
       return;
     }
     setGerandoIA(true);
+    const paraIA = confirmarPendentes(editor);
     try {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase.functions.invoke("gerar-conclusao-drps-ia", {
@@ -434,8 +471,8 @@ function BlocoSetor({
             probabilidade: c.classificacaoProbabilidade,
             matriz: c.matriz,
           })),
-          agravos: serializeMultiSelect(editor.agravosSel, editor.agravosExtras),
-          medidasExistentes: serializeMultiSelect(editor.medidasSel, editor.medidasExtras),
+          agravos: serializeMultiSelect(paraIA.agravosSel, paraIA.agravosExtras),
+          medidasExistentes: serializeMultiSelect(paraIA.medidasSel, paraIA.medidasExtras),
           textoAtual: textoLocal || null,
         },
       });

@@ -1,7 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { dataBR, leituraQuestionario, montarSinalizacao, piorNivel, recomendaQuestionario, situacaoQuestionario } from "./sinalizacao";
+import {
+  dataBR,
+  leituraQuestionario,
+  montarSinalizacao,
+  piorNivel,
+  recomendaQuestionario,
+  situacaoQuestionario,
+  recomendaQuestionarioSetor,
+} from "./sinalizacao";
 import type { AepRelatorio } from "@/lib/supabase/types";
 
 function rel(id: string, empresa: string, data: string, setores: unknown[]): AepRelatorio {
@@ -109,4 +117,21 @@ test("leitura do DRPS/Questionário diante da AEP: necessário, em andamento, re
   assert.equal(ok.rotulo, "Atendido");
   assert.equal(ok.pendente, false);
   assert.equal(leituraQuestionario(false, { fase: "concluido", doc: "DRPS", data: "2026-01-02" }, aep).rotulo, "Não");
+});
+
+test("DRPS/Questionário para a IA de um setor: regra da AEP ou fator Alto/Muito Alto no setor", () => {
+  const um = (fator: string, nivel: string, marcado = "sim") =>
+    ({ checklist_organizacional: { [fator]: marcado }, aiha_organizacional: { [fator]: { nivel } } }) as never;
+  // 1 fator Baixo, AEP com 1 alerta → não (o caso que a IA errou no ar).
+  const baixo = um("subcarga", "Baixo");
+  assert.equal(recomendaQuestionarioSetor([baixo], baixo), false);
+  // Fator Alto no setor → sim, mesmo com poucos alertas na AEP.
+  const alto = um("assedio", "Alto");
+  assert.equal(recomendaQuestionarioSetor([alto], alto), true);
+  // Nível Alto de fator DESMARCADO não conta.
+  const desmarcado = um("assedio", "Muito Alto", "nao");
+  assert.equal(recomendaQuestionarioSetor([desmarcado], desmarcado), false);
+  // 3 alertas somando os setores da AEP → sim para qualquer setor dela.
+  const tres = [um("subcarga", "Baixo"), um("sobrecarga", "Baixo"), um("falta_suporte", "Trivial")];
+  assert.equal(recomendaQuestionarioSetor(tres, tres[0]), true);
 });

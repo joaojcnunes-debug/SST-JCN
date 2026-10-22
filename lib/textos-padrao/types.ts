@@ -99,6 +99,11 @@ export interface FixoCapitulo {
   slug_fixo: string;
   descricao: string;
   ordem_base: number;
+  /** O PDF imprime `conteudo` deste fixo como introdução, logo abaixo do
+   *  título — então o cartão mostra o campo. Só marque se o template lê:
+   *  nos outros fixos o texto seria gravado e nunca impresso. TEXTO PURO: o
+   *  template põe a string num <p>, HTML sairia com as tags. */
+  aceitaIntro?: boolean;
 }
 
 export interface ModuloConfig {
@@ -212,10 +217,10 @@ export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
     posicoesDisponiveis: ["inicio", "fim"],
     ordenacaoUnificada: true,
     fixos: [
-      { titulo: "Agentes Ambientais por Setor", slug_fixo: "aet_agentes_ambientais", descricao: "Riscos ambientais por setor — gerado automaticamente.", ordem_base: 1090 },
-      { titulo: "Análise Ergonômica do Trabalho", slug_fixo: "aet_analise_ergonomica", descricao: "Análise por setor (OWAS, biomecânica) — gerado automaticamente.", ordem_base: 1100 },
-      { titulo: "Fatores Psicossociais (QPS)", slug_fixo: "aet_psicossocial", descricao: "Resultados do QPS Nordic — gerado automaticamente.", ordem_base: 2000 },
-      { titulo: "Plano de Ação (5W2H)", slug_fixo: "aet_plano_acao", descricao: "Ações 5W2H do laudo, agrupadas por setor — só imprime quando há pelo menos uma ação (v207).", ordem_base: 4500 },
+      { titulo: "Agentes Ambientais por Setor", slug_fixo: "aet_agentes_ambientais", descricao: "Riscos ambientais por setor — gerado automaticamente.", ordem_base: 1090, aceitaIntro: true },
+      { titulo: "Análise Ergonômica do Trabalho", slug_fixo: "aet_analise_ergonomica", descricao: "Análise por setor (OWAS, biomecânica) — gerado automaticamente.", ordem_base: 1100, aceitaIntro: true },
+      { titulo: "Fatores Psicossociais (QPS)", slug_fixo: "aet_psicossocial", descricao: "Resultados do QPS Nordic — gerado automaticamente.", ordem_base: 2000, aceitaIntro: true },
+      { titulo: "Plano de Ação (5W2H)", slug_fixo: "aet_plano_acao", descricao: "Ações 5W2H do laudo, agrupadas por setor — só imprime quando há pelo menos uma ação (v207).", ordem_base: 4500, aceitaIntro: true },
       { titulo: "Considerações Finais", slug_fixo: "aet_consideracoes_finais", descricao: "Conclusão do laudo — gerado automaticamente.", ordem_base: 5000 },
       { titulo: "Assinatura do Responsável Técnico", slug_fixo: "aet_assinatura", descricao: "Folha de assinatura — gerado automaticamente.", ordem_base: 5500 },
     ],
@@ -239,10 +244,10 @@ export const MODULO_CONFIGS: Record<ModuloTextoPadrao, ModuloConfig> = {
   },
   qps: {
     modulo: "qps",
-    titulo: "Texto Padrão — QAP (Questionários Psicossociais)",
+    titulo: "Texto Padrão — QPS (Questionário Psicossocial)",
     descricao:
-      "Monte o laudo da QAP como uma lista única, igual ao DRPS: arraste/reordene os capítulos editáveis (capa, introdução, metodologia…) e as seções do sistema. A ordem definida aqui é a ordem do laudo.",
-    destino: "A ordem definida aqui é exatamente a ordem do laudo da QAP gerado.",
+      "Monte o laudo do QPS como uma lista única, igual ao DRPS: arraste/reordene os capítulos editáveis (capa, introdução, metodologia…) e as seções do sistema. A ordem definida aqui é a ordem do laudo.",
+    destino: "A ordem definida aqui é exatamente a ordem do laudo do QPS gerado.",
     posicoesDisponiveis: ["inicio", "fim"],
     ordenacaoUnificada: true,
     fixos: [

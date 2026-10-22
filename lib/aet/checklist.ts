@@ -1,3 +1,5 @@
+import type { AetChecklistPergunta } from "@/lib/supabase/types";
+
 /**
  * Checklist ergonômico do AET — como a configuração do banco se junta ao padrão.
  *
@@ -126,3 +128,26 @@ export function textoEhOPadrao(
   if (!p) return false;
   return p.label.trim() === labelAtual.trim();
 }
+
+/**
+ * As perguntas PADRÃO do checklist — a única lista.
+ *
+ * Até 30/09/2026 existiam duas: esta (em useAet.ts, "use client") e uma cópia
+ * no template do PDF, que não podia importar um arquivo de hook. Três textos já
+ * divergiam (cadeira_adequada, monitor, organizacao_trabalho): o laudo impresso
+ * dizia uma coisa e a tela outra. Duas delas têm edição no banco, que vence dos
+ * dois lados; a do monitor aparecia diferente — ficou a pontuação do PDF.
+ * Morando aqui (arquivo puro), a tela e o PDF leem a mesma lista.
+ */
+export const CHECKLIST_PERGUNTAS_PADRAO: AetChecklistPergunta[] = [
+  { slug: "levantamento_acima_limite", secao: "Postura", tipo: "tristate", label: "Há registros de levantamento, transporte e descarga de materiais nesta atividade acima do limite recomendado?" },
+  { slug: "pausas_descanso", secao: "Postura", tipo: "tristate", label: "Caso a resposta anterior seja \"em pé\" a empresa oferece pausas para descanso ou disponibiliza cadeiras do tipo semi-sentado?" },
+  { slug: "uso_cadeira", secao: "Postura", tipo: "tristate", label: "Para execução das atividades do dia-dia é disponibilizado o uso de cadeira?" },
+  { slug: "cadeira_adequada", secao: "Postura", tipo: "tristate", label: "A cadeira é estofada e revestida, possui conformação de base giratória, o assento possui altura ajustável, possui ajustes de altura e inclinação, bordas do assento e apoio de coluna arredondadas e em formato anatômico?" },
+  { slug: "monitor", secao: "Postura", tipo: "tristate", label: "A atividade necessita uso de monitor fixo sobre a mesa; caso positivo, este apresenta regulagens de altura e inclinação?" },
+  { slug: "organizacao_trabalho", secao: "Organização do Trabalho", tipo: "texto", label: "As normas de produção contemplando equipamentos, modo operatório, aspectos de segurança e qualidade deverão estar descritos nas instruções internas de trabalho, elaboradas pela empresa." },
+  { slug: "exigencia_levantamento", secao: "Exigência de Tempo", tipo: "tristate", label: "Há registros de levantamento, transporte e descarga de materiais nesta atividade acima do limite recomendado?" },
+  { slug: "ritmo_por_demanda", secao: "Ritmo de Trabalho", tipo: "tristate", label: "O ritmo de trabalho é determinado pela demanda de trabalho?" },
+  { slug: "pausas_formais", secao: "Adoção de Rodízios - Ergonômico", tipo: "tristate", label: "Há pausas formais durante o ciclo de trabalho?" },
+  { slug: "rodizios_sistematizados", secao: "Adoção de Rodízios - Ergonômico", tipo: "tristate", label: "Há rodízios sistematizados entre os postos de trabalho?" },
+];

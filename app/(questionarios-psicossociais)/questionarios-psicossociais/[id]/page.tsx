@@ -20,11 +20,16 @@ import {
   useUpdateQpsAplicacao,
   useDeleteQpsAplicacao,
   useQpsTipos,
+  useQpsCrpResolvido,
 } from "@/lib/hooks/useQuestionarios";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
+import { usePodeEditarLinhaDaUnidade } from "@/lib/hooks/useUsuario";
 import type { StatusQpsAplicacao } from "@/lib/supabase/types";
+import { mensagemErro } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import EscolherDataConclusao from "@/components/questionarios/EscolherDataConclusao";
+import ResponsavelSelect from "@/components/questionarios/ResponsavelSelect";
 
 const STATUS_LABEL: Record<StatusQpsAplicacao, string> = {
   RASCUNHO: "Rascunho",
@@ -68,6 +73,12 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
   const { data: ap, isLoading, isError } = useQpsAplicacao(id);
   const { data: tipos = [] } = useQpsTipos();
   const { data: empresa } = useEmpresa(ap?.id_empresa ?? null);
+  // O que o laudo imprime quando o campo está em branco: o CRP do cadastro do
+  // responsável — o mesmo que a assinatura usa.
+  const { data: crpDoLaudo } = useQpsCrpResolvido(ap);
+  // Espelha a policy desta tabela. Sem isto a tela oferece o lápis para quem
+  // o banco não deixa gravar: o PATCH volta vazio e a tela diz "salvo".
+  const canEdit = usePodeEditarLinhaDaUnidade(empresa?.id_unidade);
   const atualizar = useUpdateQpsAplicacao();
   const deletar = useDeleteQpsAplicacao();
 
@@ -84,6 +95,7 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
   const [editandoElab, setEditandoElab] = useState(false);
   const [novaElab, setNovaElab] = useState("");
   const [novoResponsavel, setNovoResponsavel] = useState("");
+  const [perguntarData, setPerguntarData] = useState(false);
 
   if (isLoading) {
     return (
@@ -110,17 +122,22 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
   // Capture narrowed reference so closures don't re-evaluate the possibly-undefined type
   const apDef = ap;
 
-  async function avancarStatus() {
+  async function avancarStatus(dataConclusao?: string) {
     if (!proximoStatus) return;
+    // v263 — reconcluir: antes pergunta qual data vai para a capa do laudo.
+    if (proximoStatus === "CONCLUIDO" && apDef.data_conclusao && !dataConclusao) {
+      setPerguntarData(true);
+      return;
+    }
     try {
       await atualizar.mutateAsync({
         id: apDef.id_aplicacao,
         idEmpresa: apDef.id_empresa,
-        input: { status: proximoStatus },
+        input: { status: proximoStatus, ...(dataConclusao ? { data_conclusao: dataConclusao } : {}) },
       });
       toast.success(`Status atualizado para ${STATUS_LABEL[proximoStatus]}`);
-    } catch {
-      toast.error("Erro ao atualizar status");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao atualizar status"));
     }
   }
 
@@ -134,8 +151,8 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
       });
       toast.success("Título atualizado");
       setEditandoTitulo(false);
-    } catch {
-      toast.error("Erro ao salvar título");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao salvar título"));
     }
   }
 
@@ -148,8 +165,8 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
       });
       toast.success("Responsável atualizado");
       setEditandoResponsavel(false);
-    } catch {
-      toast.error("Erro ao salvar responsável");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao salvar responsável"));
     }
   }
 
@@ -162,8 +179,8 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
       });
       toast.success("Unidade do cliente atualizada");
       setEditandoUnidade(false);
-    } catch {
-      toast.error("Erro ao salvar unidade");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao salvar unidade"));
     }
   }
 
@@ -183,8 +200,8 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
       });
       toast.success("Trabalhadores previstos atualizado");
       setEditandoPrevistos(false);
-    } catch {
-      toast.error("Erro ao salvar trabalhadores previstos");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao salvar trabalhadores previstos"));
     }
   }
 
@@ -197,8 +214,8 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
       });
       toast.success("CRP atualizado");
       setEditandoCrp(false);
-    } catch {
-      toast.error("Erro ao salvar CRP");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao salvar CRP"));
     }
   }
 
@@ -211,8 +228,22 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
       });
       toast.success("Data de elaboração atualizada");
       setEditandoElab(false);
-    } catch {
-      toast.error("Erro ao salvar a data de elaboração");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao salvar a data de elaboração"));
+    }
+  }
+
+  async function salvarData(
+    input: { periodo_inicio?: string | null; periodo_fim?: string | null; data_conclusao?: string | null },
+    ok: string,
+  ) {
+    try {
+      await atualizar.mutateAsync({ id: apDef.id_aplicacao, idEmpresa: apDef.id_empresa, input });
+      toast.success(ok);
+      return true;
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao salvar a data"));
+      return false;
     }
   }
 
@@ -227,13 +258,21 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
       await deletar.mutateAsync({ id: apDef.id_aplicacao, idEmpresa: apDef.id_empresa });
       toast.success("Aplicação removida");
       router.push("/questionarios-psicossociais");
-    } catch {
-      toast.error("Erro ao remover");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao remover"));
     }
   }
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      <EscolherDataConclusao
+        dataAnterior={perguntarData ? (ap.data_conclusao ?? null) : null}
+        onCancelar={() => setPerguntarData(false)}
+        onEscolher={(data) => {
+          setPerguntarData(false);
+          void avancarStatus(data);
+        }}
+      />
       {/* Navegação topo */}
       <div className="flex items-center gap-3">
         <Link
@@ -257,12 +296,12 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
                   autoFocus
                   className="rounded border border-gray-300 px-2 py-1 text-lg font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
-                <button onClick={salvarTitulo} className="text-green-600">
+                <button onClick={salvarTitulo} className="shrink-0 text-green-600">
                   <Check className="size-5" />
                 </button>
                 <button
                   onClick={() => setEditandoTitulo(false)}
-                  className="text-gray-400"
+                  className="shrink-0 text-gray-400"
                 >
                   <X className="size-5" />
                 </button>
@@ -272,7 +311,9 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
                 <h1 className="text-xl font-bold text-gray-900">{ap.titulo}</h1>
                 <button
                   onClick={() => { setNovoTitulo(ap.titulo); setEditandoTitulo(true); }}
-                  className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  disabled={!canEdit}
+                  title={canEdit ? "Editar" : "Seu usuário não tem permissão de edição"}
+                  className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Pencil className="size-3.5" />
                 </button>
@@ -295,7 +336,7 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
         <div className="flex gap-2 shrink-0">
           {proximoStatus && (
             <button
-              onClick={avancarStatus}
+              onClick={() => avancarStatus()}
               disabled={atualizar.isPending}
               className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
             >
@@ -319,22 +360,38 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
         </InfoCard>
         <InfoCard label="Responsável">
           {editandoResponsavel ? (
-            <div className="flex items-center gap-1">
-              <input
+            <div className="flex min-w-0 items-center gap-1">
+              <ResponsavelSelect
                 value={novoResponsavel}
-                onChange={(e) => setNovoResponsavel(e.target.value)}
-                autoFocus
-                className="flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                onChange={(nome) => setNovoResponsavel(nome ?? "")}
+                className="min-w-0 flex-1"
               />
-              <button onClick={salvarResponsavel} className="text-green-600"><Check className="size-3.5" /></button>
-              <button onClick={() => setEditandoResponsavel(false)} className="text-gray-400"><X className="size-3.5" /></button>
+              <button
+                onClick={salvarResponsavel}
+                disabled={atualizar.isPending}
+                title="Confirmar responsável"
+                className="shrink-0 rounded p-0.5 text-green-600 transition-colors hover:bg-green-50 disabled:opacity-50"
+              >
+                {atualizar.isPending
+                  ? <Loader2 className="size-3.5 animate-spin" />
+                  : <Check className="size-3.5" />}
+              </button>
+              <button
+                onClick={() => setEditandoResponsavel(false)}
+                title="Cancelar"
+                className="shrink-0 rounded p-0.5 text-gray-400 transition-colors hover:bg-gray-100"
+              >
+                <X className="size-3.5" />
+              </button>
             </div>
           ) : (
             <div className="flex items-center gap-1">
               <span>{ap.responsavel ?? "—"}</span>
               <button
                 onClick={() => { setNovoResponsavel(ap.responsavel ?? ""); setEditandoResponsavel(true); }}
-                className="ml-1 text-gray-300 hover:text-gray-500"
+                disabled={!canEdit}
+                title={canEdit ? "Editar" : "Seu usuário não tem permissão de edição"}
+                className="ml-1 text-gray-300 hover:text-gray-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Pencil className="size-3" />
               </button>
@@ -343,23 +400,25 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
         </InfoCard>
         <InfoCard label="Unidade / Filial do cliente">
           {editandoUnidade ? (
-            <div className="flex items-center gap-1">
+            <div className="flex min-w-0 items-center gap-1">
               <input
                 value={novaUnidade}
                 onChange={(e) => setNovaUnidade(e.target.value)}
                 autoFocus
                 placeholder="Ex: Loja 28"
-                className="flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
-              <button onClick={salvarUnidade} className="text-green-600"><Check className="size-3.5" /></button>
-              <button onClick={() => setEditandoUnidade(false)} className="text-gray-400"><X className="size-3.5" /></button>
+              <button onClick={salvarUnidade} className="shrink-0 text-green-600"><Check className="size-3.5" /></button>
+              <button onClick={() => setEditandoUnidade(false)} className="shrink-0 text-gray-400"><X className="size-3.5" /></button>
             </div>
           ) : (
             <div className="flex items-center gap-1">
               <span>{ap.unidade_cliente ?? "—"}</span>
               <button
                 onClick={() => { setNovaUnidade(ap.unidade_cliente ?? ""); setEditandoUnidade(true); }}
-                className="ml-1 text-gray-300 hover:text-gray-500"
+                disabled={!canEdit}
+                title={canEdit ? "Editar" : "Seu usuário não tem permissão de edição"}
+                className="ml-1 text-gray-300 hover:text-gray-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Pencil className="size-3" />
               </button>
@@ -368,7 +427,7 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
         </InfoCard>
         <InfoCard label="Trabalhadores previstos">
           {editandoPrevistos ? (
-            <div className="flex items-center gap-1">
+            <div className="flex min-w-0 items-center gap-1">
               <input
                 type="number"
                 min={1}
@@ -376,47 +435,65 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
                 value={novosPrevistos}
                 onChange={(e) => setNovosPrevistos(e.target.value)}
                 autoFocus
-                className="flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
-              <button onClick={salvarPrevistos} className="text-green-600"><Check className="size-3.5" /></button>
-              <button onClick={() => setEditandoPrevistos(false)} className="text-gray-400"><X className="size-3.5" /></button>
+              <button onClick={salvarPrevistos} className="shrink-0 text-green-600"><Check className="size-3.5" /></button>
+              <button onClick={() => setEditandoPrevistos(false)} className="shrink-0 text-gray-400"><X className="size-3.5" /></button>
             </div>
           ) : (
             <div className="flex items-center gap-1">
               <span>{ap.trabalhadores_previstos ?? "—"}</span>
               <button
                 onClick={() => { setNovosPrevistos(String(ap.trabalhadores_previstos ?? "")); setEditandoPrevistos(true); }}
-                className="ml-1 text-gray-300 hover:text-gray-500"
+                disabled={!canEdit}
+                title={canEdit ? "Editar" : "Seu usuário não tem permissão de edição"}
+                className="ml-1 text-gray-300 hover:text-gray-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Pencil className="size-3" />
               </button>
             </div>
           )}
         </InfoCard>
-        <InfoCard label="Período Início">{fmtData(ap.periodo_inicio)}</InfoCard>
-        <InfoCard label="Período Fim">{fmtData(ap.periodo_fim)}</InfoCard>
+        {/* v263 — editáveis depois de criada: é o período que a Metodologia do
+            laudo imprime ("no período de … à …"). Em branco, o laudo usa a 1ª e a
+            última data de resposta — só existe em importação feita a partir de 29/09. */}
+        <InfoCard label="Período Início (laudo)">
+          <CampoDataEditavel podeEditar={canEdit}
+            valor={ap.periodo_inicio}
+            onSalvar={(v) => salvarData({ periodo_inicio: v }, "Período início atualizado")}
+          />
+        </InfoCard>
+        <InfoCard label="Período Fim (laudo)">
+          <CampoDataEditavel podeEditar={canEdit}
+            valor={ap.periodo_fim}
+            min={ap.periodo_inicio ?? undefined}
+            onSalvar={(v) => salvarData({ periodo_fim: v }, "Período fim atualizado")}
+          />
+        </InfoCard>
         <InfoCard label="Criado em">{fmtData(ap.criado_em)}</InfoCard>
         <InfoCard label="CRP do responsável (laudo)">
           {editandoCrp ? (
-            <div className="flex items-center gap-1">
+            <div className="flex min-w-0 items-center gap-1">
               <input
                 value={novoCrp}
                 onChange={(e) => setNovoCrp(e.target.value)}
                 autoFocus
                 placeholder="Ex: 05/12345"
-                className="flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
-              <button onClick={salvarCrp} className="text-green-600"><Check className="size-3.5" /></button>
-              <button onClick={() => setEditandoCrp(false)} className="text-gray-400"><X className="size-3.5" /></button>
+              <button onClick={salvarCrp} className="shrink-0 text-green-600"><Check className="size-3.5" /></button>
+              <button onClick={() => setEditandoCrp(false)} className="shrink-0 text-gray-400"><X className="size-3.5" /></button>
             </div>
           ) : (
             <div className="flex items-center gap-1">
               <span title="Em branco, o laudo usa o CRP do cadastro do profissional com este nome">
-                {ap.crp ?? "— (usa o do cadastro)"}
+                {ap.crp ?? (crpDoLaudo ? `${crpDoLaudo} (do cadastro)` : "— (sem CRP no cadastro)")}
               </span>
               <button
                 onClick={() => { setNovoCrp(ap.crp ?? ""); setEditandoCrp(true); }}
-                className="ml-1 text-gray-300 hover:text-gray-500"
+                disabled={!canEdit}
+                title={canEdit ? "Editar" : "Seu usuário não tem permissão de edição"}
+                className="ml-1 text-gray-300 hover:text-gray-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Pencil className="size-3" />
               </button>
@@ -425,28 +502,37 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
         </InfoCard>
         <InfoCard label="Data de elaboração (laudo)">
           {editandoElab ? (
-            <div className="flex items-center gap-1">
+            <div className="flex min-w-0 items-center gap-1">
               <input
                 type="date"
                 value={novaElab}
                 onChange={(e) => setNovaElab(e.target.value)}
                 autoFocus
-                className="flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
-              <button onClick={salvarElaboracao} className="text-green-600"><Check className="size-3.5" /></button>
-              <button onClick={() => setEditandoElab(false)} className="text-gray-400"><X className="size-3.5" /></button>
+              <button onClick={salvarElaboracao} className="shrink-0 text-green-600"><Check className="size-3.5" /></button>
+              <button onClick={() => setEditandoElab(false)} className="shrink-0 text-gray-400"><X className="size-3.5" /></button>
             </div>
           ) : (
             <div className="flex items-center gap-1">
               <span>{fmtData(ap.data_elaboracao)}</span>
               <button
                 onClick={() => { setNovaElab(ap.data_elaboracao ?? ""); setEditandoElab(true); }}
-                className="ml-1 text-gray-300 hover:text-gray-500"
+                disabled={!canEdit}
+                title={canEdit ? "Editar" : "Seu usuário não tem permissão de edição"}
+                className="ml-1 text-gray-300 hover:text-gray-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Pencil className="size-3" />
               </button>
             </div>
           )}
+        </InfoCard>
+        <InfoCard label="Data da conclusão (capa do laudo)">
+          <CampoDataEditavel podeEditar={canEdit}
+            valor={ap.data_conclusao}
+            vazio="— (carimbada ao concluir)"
+            onSalvar={(v) => salvarData({ data_conclusao: v }, "Data da conclusão atualizada")}
+          />
         </InfoCard>
       </div>
 
@@ -472,6 +558,62 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
   );
 }
 
+/** Data com lápis para editar (v263) — em branco grava NULL. */
+function CampoDataEditavel({
+  valor,
+  onSalvar,
+  min,
+  vazio = "—",
+  podeEditar,
+}: {
+  valor: string | null | undefined;
+  onSalvar: (v: string | null) => Promise<boolean>;
+  min?: string;
+  vazio?: string;
+  podeEditar: boolean;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [novo, setNovo] = useState("");
+  if (editando) {
+    return (
+      <div className="flex min-w-0 items-center gap-1">
+        <input
+          type="date"
+          value={novo}
+          min={min}
+          onChange={(e) => setNovo(e.target.value)}
+          autoFocus
+          className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        />
+        <button
+          onClick={async () => { if (await onSalvar(novo || null)) setEditando(false); }}
+          className="shrink-0 text-green-600"
+          aria-label="Salvar"
+        >
+          <Check className="size-3.5" />
+        </button>
+        <button onClick={() => setEditando(false)} className="shrink-0 text-gray-400" aria-label="Cancelar">
+          <X className="size-3.5" />
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1">
+      <span>{valor ? fmtData(valor) : vazio}</span>
+      <button
+        onClick={() => { setNovo(valor ?? ""); setEditando(true); }}
+        disabled={!podeEditar}
+        title={podeEditar ? "Editar" : "Seu usuário não tem permissão de edição"}
+        className="ml-1 text-gray-300 hover:text-gray-500 disabled:cursor-not-allowed disabled:opacity-40"
+        aria-label="Editar"
+      >
+        <Pencil className="size-3" />
+      </button>
+    </div>
+  );
+}
+
 function InfoCard({
   label,
   destaque,
@@ -484,7 +626,11 @@ function InfoCard({
   return (
     <div
       className={cn(
-        "rounded-xl border p-4 shadow-sm",
+        // `min-w-0`: item de grid tambem trava em `min-width: auto`, entao um
+        // card com conteudo largo alarga a COLUNA inteira e a pagina passa a
+        // ter rolagem horizontal. Medido: o card do Responsavel forcava 380px
+        // num espaco de 358 e a pagina vazava 5px no celular.
+        "min-w-0 rounded-xl border p-4 shadow-sm",
         destaque
           ? "border-indigo-200 bg-indigo-50"
           : "border-gray-200 bg-white"

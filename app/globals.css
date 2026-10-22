@@ -494,9 +494,22 @@ select:focus {
 .pulse-alerta { animation: pulse-alerta 1.9s ease-in-out infinite; }
 
 /* Acessibilidade: respeita redução de movimento */
+/* Abertura de menu suspenso (dropdown). Mesma curva do reveal-up, bem mais
+   curta: menu que demora parece travado. `transform-origin` no topo para o
+   painel "descer" da borda do campo que o abriu. */
+@keyframes menu-abrir {
+  from { opacity: 0; transform: translateY(-4px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.menu-abrir {
+  animation: menu-abrir 140ms cubic-bezier(.2,.7,.3,1) both;
+  transform-origin: top center;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-aurora,
   .reveal-up,
+  .menu-abrir,
   .pulse-alerta { animation: none; }
   .tilt-3d { transition: none; }
   .tilt-3d:hover { transform: none; }

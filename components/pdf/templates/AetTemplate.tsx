@@ -13,7 +13,7 @@ import FolhaAssinaturas from "@/components/pdf/FolhaAssinaturas";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
 import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/SecoesComuns";
 import { classeQuebraFixoNova, numerarCapitulos, numLabel } from "@/components/pdf/templates/shared";
-import { algumaVisivel, perguntaOculta } from "@/lib/aet/checklist";
+import { CHECKLIST_PERGUNTAS_PADRAO, algumaVisivel, perguntaOculta } from "@/lib/aet/checklist";
 import {
   apenasSetoresExistentes,
   consolidarPiorCaso,
@@ -85,25 +85,17 @@ const SLUG_TO_OWAS_FIELD: Record<string, string> = {
 
 export interface AetChecklistPerguntaLike { slug: string; secao?: string | null; label: string; oculta?: boolean | null }
 
-// Labels padrão do checklist (fallback quando não há custom no banco). Espelha
-// CHECKLIST_PERGUNTAS_PADRAO de useAet.ts (que é "use client").
+// Labels padrão do checklist (fallback quando não há custom no banco). A lista
+// é a MESMA da tela (lib/aet/checklist) desde 30/09/2026 — antes era uma cópia
+// daqui, e três textos divergiam do que a tela mostrava.
 const CHECKLIST_PADRAO: AetChecklistPerguntaLike[] = [
-  { slug: "levantamento_acima_limite", secao: "Postura", label: "Há registros de levantamento, transporte e descarga de materiais nesta atividade acima do limite recomendado?" },
+  ...CHECKLIST_PERGUNTAS_PADRAO,
   // Estava FALTANDO aqui: `pergunta()` cai no slug quando nao acha o rotulo, e
   // "trabalho_predominante" saia CRU no laudo, 1x por setor (17x no da
   // NOVAPARECIDA). O rotulo e o mesmo de OWAS_SELECTS_PADRAO (useAet.ts) — este
   // campo e um select do OWAS, nao uma pergunta do checklist, e por isso passou
   // batido. E ele que a pergunta seguinte chama de "a resposta anterior".
   { slug: "trabalho_predominante", secao: "Postura", label: "O trabalho executado durante aos chamados decorrentes do dia-dia, são realizados preponderantemente de qual forma?" },
-  { slug: "pausas_descanso", secao: "Postura", label: 'Caso a resposta anterior seja "em pé" a empresa oferece pausas para descanso ou disponibiliza cadeiras do tipo semi-sentado?' },
-  { slug: "uso_cadeira", secao: "Postura", label: "Para execução das atividades do dia-dia é disponibilizado o uso de cadeira?" },
-  { slug: "cadeira_adequada", secao: "Postura", label: "A cadeira é estofada e revestida, possui base giratória, assento com altura ajustável, ajustes de altura e inclinação, bordas arredondadas e formato anatômico?" },
-  { slug: "monitor", secao: "Postura", label: "A atividade necessita uso de monitor fixo sobre a mesa; caso positivo, este apresenta regulagens de altura e inclinação?" },
-  { slug: "organizacao_trabalho", secao: "Organização do Trabalho", label: "As normas de produção (equipamentos, modo operatório, segurança e qualidade) devem estar descritas nas instruções internas de trabalho, elaboradas pela empresa." },
-  { slug: "exigencia_levantamento", secao: "Exigência de Tempo", label: "Há registros de levantamento, transporte e descarga de materiais nesta atividade acima do limite recomendado?" },
-  { slug: "ritmo_por_demanda", secao: "Ritmo de Trabalho", label: "O ritmo de trabalho é determinado pela demanda de trabalho?" },
-  { slug: "pausas_formais", secao: "Adoção de Rodízios - Ergonômico", label: "Há pausas formais durante o ciclo de trabalho?" },
-  { slug: "rodizios_sistematizados", secao: "Adoção de Rodízios - Ergonômico", label: "Há rodízios sistematizados entre os postos de trabalho?" },
 ];
 
 const SLUGS_PADRAO = new Set([
@@ -183,6 +175,11 @@ tr { page-break-inside: avoid; break-inside: avoid; }
 .textos-padrao-capitulo { margin-bottom: 18pt; page-break-inside: auto; }
 .textos-padrao-capitulo--nova-pagina { page-break-before: always; }
 .textos-padrao-capitulo--continua    { page-break-before: auto; margin-top: 16pt; }
+/* Orientação por capítulo (Texto Padrão). Até 28/09/2026 o AET ignorava a
+   coluna e tudo saía em pé; a rota já gera com capaFullBleed, que liga o
+   preferCSSPageSize. Trocar de página nomeada já força a quebra. */
+@page paisagem { size: A4 landscape; }
+.cap-paisagem, .textos-padrao-capitulo--paisagem { page: paisagem; }
 /* Capa no estilo DRPS (img 100%, sem full-bleed → não corta caixas na borda) */
 .tp-capa { page: capa; position: relative; width: 210mm; height: 297mm; overflow: hidden; page-break-after: always; }
 .tp-capa img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; z-index: 0; }
@@ -1077,7 +1074,11 @@ export default function AetTemplate({
         conteudoFixo = null;
     }
     return conteudoFixo ? (
-      <div key={c.id_capitulo} className={classeQuebraFixoNova(c)} data-slug={c.slug_fixo ?? undefined}>
+      <div
+        key={c.id_capitulo}
+        className={`${classeQuebraFixoNova(c)}${c.orientacao === "paisagem" ? " cap-paisagem" : ""}`}
+        data-slug={c.slug_fixo ?? undefined}
+      >
         {conteudoFixo}
       </div>
     ) : null;

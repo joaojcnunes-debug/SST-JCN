@@ -90,11 +90,17 @@ export function useSalvarCapituloTexto(modulo: ModuloTextoPadrao) {
     }) => {
       const supabase = createSupabaseBrowserClient();
       const { id_capitulo, ...rest } = args;
-      const { error } = await supabase
+      // Exige a linha de volta: UPDATE barrado pela RLS não dá erro, afeta 0
+      // linhas — e a tela diria "salvo" sem ter salvo (o defeito da v0.3.588).
+      const { data, error } = await supabase
         .from("textos_padrao")
         .update({ ...rest, updated_at: new Date().toISOString() } as never)
-        .eq("id_capitulo", id_capitulo);
+        .eq("id_capitulo", id_capitulo)
+        .select("id_capitulo");
       if (error) throw error;
+      if (!data?.length) {
+        throw new Error("O banco não gravou a alteração — sua conta pode não ter permissão para editar este texto.");
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: KEY(modulo) });

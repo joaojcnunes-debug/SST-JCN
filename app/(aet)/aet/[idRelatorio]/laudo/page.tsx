@@ -34,7 +34,6 @@ import { detectRegistroTipo } from "@/lib/registro-profissional";
 import {
   useAetRelatorio,
   useSalvarAet,
-  useAetTextoPadrao,
   useAetChecklistPerguntas,
   useAetOwasConfig,
   useAet13FatoresConfig,
@@ -81,7 +80,6 @@ import { montarValoresAet } from "@/lib/textos-padrao/variaveis-aet";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import type {
   AetSetor,
-  AetTextoPadraoCapitulo,
   AetChecklistPergunta,
   AetOwasCategoria,
   ClassificacaoRiscoAET,
@@ -494,6 +492,8 @@ export default function AetLaudoPage({
                 modulo: "aet",
                 tipoDocumento: "Avaliação Ergonômica do Trabalho",
                 idRelatorio,
+                // Sem a empresa, o hub e o portal do cliente não listam o PDF.
+                empresaId: (rel as { id_empresa?: string })?.id_empresa ?? undefined,
                 empresaNome: empresa?.nome_empresa ?? undefined,
                 empresaCnpj: empresa?.cnpj ?? undefined,
                 responsavelTecnico: responsavel || undefined,
@@ -846,7 +846,7 @@ export default function AetLaudoPage({
 
                 const introFixo = cap.conteudo ? (
                   <p className="mb-4 text-xs leading-relaxed text-gray-700 border-l-2 border-gray-300 pl-3">
-                    {cap.conteudo}
+                    {substituirVariaveisTexto(cap.conteudo, valoresCapitulos)}
                   </p>
                 ) : null;
 
@@ -961,11 +961,10 @@ export default function AetLaudoPage({
                     break;
 
                   case "aet_psicossocial":
+                    // A introdução vai DENTRO da seção, depois do título — igual
+                    // ao PDF (secaoPsicossocial). Saía acima do "N." aqui.
                     content = fatoresPsi.length > 0 ? (
                       <>
-                        {introFixo && (
-                          <div className="mb-4">{introFixo}</div>
-                        )}
                         <PsicossocialSections
                           fatoresPsi={fatoresPsi}
                           fatoresConfig={fatoresConfig}
@@ -978,6 +977,7 @@ export default function AetLaudoPage({
                           nivelPgrFromZona={nivelPgrFromZona}
                           numero={numPorSlug["aet_psicossocial"]}
                           titulo={cap.titulo}
+                          intro={introFixo}
                         />
                       </>
                     ) : null;
@@ -1879,6 +1879,7 @@ function PsicossocialSections({
   nivelPgrFromZona,
   numero,
   titulo,
+  intro,
 }: {
   fatoresPsi: AetLaudoFatorPsi[];
   fatoresConfig: Aet13FatorConfig[];
@@ -1893,6 +1894,8 @@ function PsicossocialSections({
   /** Número do capítulo, do modelo — o mesmo que sai no PDF. */
   numero?: number;
   titulo?: string;
+  /** Texto do capítulo fixo em Texto Padrão; sai logo abaixo do título. */
+  intro?: React.ReactNode;
 }) {
   const nomeSetor = (idSetor: string) =>
     setores.find((s) => s.id === idSetor)?.nome_setor?.trim() || "Setor sem nome";
@@ -1926,6 +1929,7 @@ function PsicossocialSections({
       {/* UM capítulo com subtítulos, igual ao PDF. Eram 4 seções numeradas
           (14, 15, 16, 17) — e era isso que empurrava as Considerações para 20. */}
       <Section num={numero ? String(numero) : "14"} title={titulo?.trim() || "Avaliação dos Fatores Psicossociais — QPS Nordic"}>
+        {intro}
         <p className="text-xs leading-relaxed text-gray-700">
           A avaliação dos fatores psicossociais foi realizada por meio do instrumento QPS Nordic
           (Questionário de Fatores Psicossociais no Trabalho), desenvolvido pelos institutos

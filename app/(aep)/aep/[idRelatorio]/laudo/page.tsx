@@ -608,6 +608,8 @@ export default function AepLaudoPage({
               modulo: "aep",
               tipoDocumento: "Análise Ergonômica Preliminar",
               idRelatorio,
+              // Sem a empresa, o hub e o portal do cliente não listam o PDF.
+              empresaId: (rel as { id_empresa?: string })?.id_empresa ?? undefined,
               empresaNome: empresa?.nome_empresa ?? undefined,
               empresaCnpj: empresa?.cnpj ?? undefined,
               responsavelTecnico: rel.responsavel_elaboracao ?? undefined,

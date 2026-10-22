@@ -101,6 +101,21 @@ export function recomendaQuestionario(setores: AepRelatorio["setores"]): boolean
   return DRPS_POR_RECEIO && (setores ?? []).some((s) => temReceioManifestacao(s as unknown as SetorColeta));
 }
 
+/**
+ * Para a IA do Parecer/Recomendações de UM setor (painel v0.3.707): o DRPS/
+ * Questionário entra como complemento quando a AEP já o recomenda (regra acima)
+ * OU o setor tem algum fator "Sim" Alto/Muito Alto na matriz AIHA — a premissa
+ * do RT. Decidido aqui, e não pelo modelo: testado no ar no painel, a IA chegou a
+ * recomendar DRPS para 1 fator Baixo.
+ */
+export function recomendaQuestionarioSetor(setoresDaAep: AepRelatorio["setores"], setor: AepRelatorio["setores"][number]): boolean {
+  if (recomendaQuestionario(setoresDaAep)) return true;
+  const cl = (setor.checklist_organizacional ?? {}) as unknown as Record<string, string>;
+  return Object.entries(setor.aiha_organizacional ?? {}).some(
+    ([fator, a]) => cl[fator] === "sim" && (a?.nivel === "Alto" || a?.nivel === "Muito Alto"),
+  );
+}
+
 /** Situação do DRPS/Questionário Psicossocial que a empresa JÁ TEM. */
 export interface SituacaoQuestionario {
   /** "concluido" = concluído ou enviado ao cliente; "andamento" = rascunho/em andamento. */

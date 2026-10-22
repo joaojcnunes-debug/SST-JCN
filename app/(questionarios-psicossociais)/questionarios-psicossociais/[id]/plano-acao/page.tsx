@@ -21,7 +21,7 @@ import {
   type AcaoComo,
 } from "@/lib/hooks/useAcaoCatalogo";
 import ComboTagInline from "@/components/drps/ComboTagInline";
-import { INSTRUMENTO_QAP } from "@/lib/qps/gestao";
+import { INSTRUMENTO_QPS } from "@/lib/qps/gestao";
 
 /**
  * Plano de Ação 5W2H da aplicação — espelho de `psicossocial/[idRelatorio]/plano-acao`
@@ -90,7 +90,7 @@ export default function PlanoAcaoQpsPage({ params }: { params: Promise<{ id: str
         <p className="text-sm text-gray-600">
           {ap.titulo} · ações de gerenciamento dos riscos psicossociais no formato 5W2H
           (O quê, Por quê, Onde, Quando, Quem, Como, Quanto custa). Compõe um capítulo
-          próprio do laudo da {INSTRUMENTO_QAP.sigla}.
+          próprio do laudo do {INSTRUMENTO_QPS.sigla}.
         </p>
       </div>
 

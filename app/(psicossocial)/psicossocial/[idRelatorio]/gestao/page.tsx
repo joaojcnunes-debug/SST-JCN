@@ -102,6 +102,8 @@ export default function GestaoPage({
               modulo: "drps",
               tipoDocumento: "DRPS — Resumo de Gestão",
               idRelatorio,
+              // Sem a empresa, o hub e o portal do cliente não listam o PDF.
+              empresaId: relatorioDrps?.id_empresa ?? undefined,
             }}
           />
         </div>

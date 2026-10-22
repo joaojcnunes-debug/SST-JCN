@@ -10,6 +10,7 @@ import { useCanCreate } from "@/lib/hooks/useUsuario";
 import EmpresaForm from "@/components/empresas/EmpresaForm";
 import { useQpsTipos, useCreateQpsAplicacao } from "@/lib/hooks/useQuestionarios";
 import { useUserStore } from "@/lib/store";
+import ResponsavelSelect from "@/components/questionarios/ResponsavelSelect";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 
 interface Form {
@@ -183,7 +184,7 @@ export default function NovaAplicacaoPage() {
               value={form.titulo}
               onChange={(e) => setF("titulo", e.target.value)}
               required
-              placeholder="Ex: DRPS 2025 – Unidade Centro"
+              placeholder="Ex: QPS 2026 – Unidade Centro"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -193,12 +194,9 @@ export default function NovaAplicacaoPage() {
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
               Responsável
             </label>
-            <input
-              type="text"
+            <ResponsavelSelect
               value={form.responsavel}
-              onChange={(e) => setF("responsavel", e.target.value)}
-              placeholder="Nome do técnico"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onChange={(nome) => setF("responsavel", nome ?? "")}
             />
           </div>
 

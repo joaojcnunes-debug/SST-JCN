@@ -14,8 +14,12 @@ import {
   listarUnidades,
 } from "./calculos";
 import { TOPICOS } from "./topicos";
+import { ALINHAMENTOS, ALINHAMENTO_PADRAO } from "./types";
 import { fontesEscolhidas, guardadasDe, textoFontes, type FontesPorSetor } from "@/lib/psicossocial/fontes";
 import type {
+  Alinhamento,
+  AlinhamentosSetor,
+  CampoAlinhavel,
   DrpsProbabilidade,
   DrpsProbabilidadeUnidade,
   DrpsRespondente,
@@ -124,6 +128,29 @@ export function textoDoBloco(
     if (proprio && proprio.trim()) return proprio;
   }
   return porSetor?.[setor] ?? "";
+}
+
+/**
+ * Alinhamento dos quadros de Agravos e Medidas (v291), escolhido na Análise
+ * pelos botões de alinhar, como no Word. Mesma herança do texto: o valor da
+ * unidade, senão o do setor, senão JUSTIFICADO — que é como esses quadros saem
+ * desde a v0.3.737, então relatório sem escolha nenhuma não muda.
+ */
+export function alinhamentoDoBloco(
+  porUnidade: Record<string, Record<string, AlinhamentosSetor>> | null | undefined,
+  porSetor: Record<string, AlinhamentosSetor> | null | undefined,
+  unidade: string | undefined,
+  setor: string,
+  campo: CampoAlinhavel
+): Alinhamento {
+  const valido = (v: unknown): v is Alinhamento =>
+    typeof v === "string" && (ALINHAMENTOS as readonly string[]).includes(v);
+  if (unidade) {
+    const proprio = porUnidade?.[unidade]?.[setor]?.[campo];
+    if (valido(proprio)) return proprio;
+  }
+  const doSetor = porSetor?.[setor]?.[campo];
+  return valido(doSetor) ? doSetor : ALINHAMENTO_PADRAO;
 }
 
 /** Funções (cargos) distintas de um recorte de respondentes, em uma linha. */

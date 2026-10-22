@@ -10,10 +10,18 @@
 // As duas convivem no mesmo arquivo, e os diagnósticos não se misturam: texto
 // que não casou não conta como "fora da escala".
 
+import { parseDataBR } from "@/lib/drps/calculos";
+
 export interface QpsLinhaParsed {
   setor: string;
   cargo: string | null;
   respostas: Record<string, number>; // id_pergunta → valor numérico
+  /**
+   * v263 — "Carimbo de data/hora" do Forms em ISO (null se a coluna não existe
+   * ou não é data). É daí que sai o período da coleta impresso no laudo, como
+   * no DRPS.
+   */
+  data_carimbo: string | null;
 }
 
 export interface QpsDiagnostico {
@@ -437,9 +445,34 @@ export function parsearQpsCsv(
     // alternativas. O setor, esse, é sempre lido — com ou sem detecção —, então
     // continua fora das perguntas.
     const metaIdxs = new Set([tsIdx, setorIdx, cIdx].filter((i) => i !== -1));
-    const questionCols = header
+    let questionCols = header
       .map((_, i) => i)
       .filter((i) => !metaIdxs.has(i));
+
+    // Coluna de identificação a mais ANTES do setor/cargo (ex.: "Qual sua
+    // unidade de trabalho?", que o Forms do DRPS Grupo A.C.F tem). Sem isto
+    // ela virava a 1ª pergunta: TODAS as respostas deslizavam uma casa e a da
+    // última pergunta se perdia, em silêncio num questionário numérico.
+    //
+    // Por palavra-chave não dá: "unidade" também aparece em pergunta de
+    // verdade ("Minha unidade oferece…"). A regra é pelo que o arquivo prova:
+    // só quando há MAIS colunas do que perguntas, e só as que estão antes da
+    // última coluna de identificação — o Forms põe os dados do respondente
+    // primeiro. Arquivo que casa exato (o caso de todas as importações até
+    // 28/09) não muda nada.
+    const excesso = questionCols.length - nPerg;
+    if (excesso > 0) {
+      const ultimaMeta = Math.max(...metaIdxs);
+      const extras = questionCols.filter((i) => i < ultimaMeta).slice(0, excesso);
+      if (extras.length > 0) {
+        questionCols = questionCols.filter((i) => !extras.includes(i));
+        erros.push(
+          `${extras.map((i) => `"${header[i]?.trim()}" (col ${i + 1})`).join(", ")}: ` +
+            `lida como dado do respondente, não como pergunta — a planilha tem ` +
+            `${excesso} coluna(s) a mais que o questionário.`,
+        );
+      }
+    }
     if (questionCols.length > 0) questionStartIdx = -1; // usamos questionColsArr
     const questionColsArr = questionCols;
 
@@ -459,6 +492,7 @@ export function parsearQpsCsv(
       }
 
       const cargo = cIdx !== -1 ? (campos[cargoIdx]?.trim() || null) : null;
+      const data_carimbo = tsIdx !== -1 ? parseDataBR(campos[tsIdx]?.trim() ?? "") : null;
 
       // Extrai respostas pelas colunas de questão identificadas
       const respostas: Record<string, number> = {};
@@ -484,7 +518,7 @@ export function parsearQpsCsv(
         continue;
       }
 
-      linhas.push({ setor, cargo, respostas });
+      linhas.push({ setor, cargo, respostas, data_carimbo });
     }
 
     return {
@@ -526,6 +560,7 @@ export function parsearQpsCsv(
     }
 
     const cargo = campos[cargoIdx]?.trim() || null;
+    const data_carimbo = parseDataBR(campos[0]?.trim() ?? "");
     const respostas: Record<string, number> = {};
     nColsResposta = campos.length - questionStartIdx;
 
@@ -542,7 +577,7 @@ export function parsearQpsCsv(
       continue;
     }
 
-    linhas.push({ setor, cargo, respostas });
+    linhas.push({ setor, cargo, respostas, data_carimbo });
   }
 
   return {

@@ -32,6 +32,54 @@ function csv(respostasPorLinha: string[][], nPerguntas: number): string {
   return [header, ...linhas].join("\n");
 }
 
+describe("coluna de identificação a mais (ex.: Unidade) não vira pergunta", () => {
+  const perguntas = ["p1", "p2", "p3", "p4", "p5"].map((id) => P(id));
+  const respostas = ["1", "2", "3", "4", "5"];
+  const cabec = ["P1", "P2", "P3", "P4", "P5"];
+  const montar = (meta: string[], valoresMeta: string[]) =>
+    [[...meta, ...cabec].join(","), [...valoresMeta, ...respostas].join(",")].join("\n");
+
+  test("Unidade ANTES do setor: cada resposta na sua pergunta, a última não se perde", () => {
+    const r = parsearQpsCsv(
+      montar(["Carimbo", "Unidade", "Setor", "Função"], ["01/01/2026", "MATRIZ", "Producao", "Operador"]),
+      perguntas, 1, 5,
+    );
+    assert.deepEqual(r.linhas[0].respostas, { p1: 1, p2: 2, p3: 3, p4: 4, p5: 5 });
+    assert.equal(r.linhas[0].setor, "Producao");
+    assert.equal(r.diagnostico.nColsResposta, 5);
+    assert.ok(r.erros.some((e) => e.includes('"Unidade" (col 2)')), "avisa qual coluna saiu");
+  });
+
+  test("Unidade ENTRE setor e função também sai", () => {
+    const r = parsearQpsCsv(
+      montar(["Carimbo", "Setor", "Unidade", "Função"], ["01/01/2026", "Producao", "MATRIZ", "Operador"]),
+      perguntas, 1, 5,
+    );
+    assert.deepEqual(r.linhas[0].respostas, { p1: 1, p2: 2, p3: 3, p4: 4, p5: 5 });
+    assert.equal(r.linhas[0].cargo, "Operador");
+  });
+
+  test("arquivo que casa exato não muda — nem aviso", () => {
+    const r = parsearQpsCsv(
+      montar(["Carimbo", "Setor", "Função"], ["01/01/2026", "Producao", "Operador"]),
+      perguntas, 1, 5,
+    );
+    assert.deepEqual(r.linhas[0].respostas, { p1: 1, p2: 2, p3: 3, p4: 4, p5: 5 });
+    assert.ok(!r.erros.some((e) => e.includes("dado do respondente")));
+  });
+
+  test("pergunta com 'unidade' no texto NÃO é tirada quando não sobra coluna", () => {
+    const r = parsearQpsCsv(
+      [
+        ["Carimbo", "Setor", "Função", "Minha unidade oferece apoio", "P2"].join(","),
+        ["01/01/2026", "Producao", "Operador", "4", "2"].join(","),
+      ].join("\n"),
+      [P("p1"), P("p2")], 1, 5,
+    );
+    assert.deepEqual(r.linhas[0].respostas, { p1: 4, p2: 2 });
+  });
+});
+
 describe("chave de comparação da alternativa", () => {
   test("ignora acento, caixa e espaço sobrando", () => {
     assert.equal(chaveAlternativa("Às vezes"), chaveAlternativa("as   VEZES  "));
@@ -238,5 +286,20 @@ describe("célula vazia", () => {
     assert.equal(r.linhas[0].respostas.p1, undefined);
     assert.equal(r.linhas[0].respostas.p2, 2);
     assert.equal(r.diagnostico.totalAlternativaNaoCasou, 0);
+  });
+});
+
+describe("v263 — Carimbo de data/hora vira data_carimbo (período da coleta no laudo)", () => {
+  test("com cabeçalho: lê a coluna do carimbo", () => {
+    const r = parsearQpsCsv(csv([["1", "2"], ["3", "4"]], 2), [P("p1"), P("p2")], 0, 4);
+    assert.equal(r.linhas.length, 2);
+    for (const l of r.linhas) assert.ok(l.data_carimbo && !Number.isNaN(new Date(l.data_carimbo).getTime()));
+    assert.equal(new Date(r.linhas[1].data_carimbo!).getMinutes(), 1);
+  });
+  test("carimbo que não é data fica null (não derruba a linha)", () => {
+    const texto = ["Carimbo de data/hora,Setor,Cargo,Pergunta 1", "ontem,Producao,Operador,2"].join("\n");
+    const r = parsearQpsCsv(texto, [P("p1")], 0, 4);
+    assert.equal(r.linhas.length, 1);
+    assert.equal(r.linhas[0].data_carimbo, null);
   });
 });

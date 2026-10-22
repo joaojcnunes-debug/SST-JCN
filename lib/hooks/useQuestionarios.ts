@@ -3,7 +3,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { resolverCrpQps } from "@/lib/qps/crp";
 import { mensagemErro } from "@/lib/errors";
+import { exigeLinhaGravada } from "@/lib/qps/gravacao";
 import { gravar } from "@/lib/offline/gravar";
 import type { TipoExcel } from "@/lib/qps/parsearExcel";
 import type {
@@ -325,6 +327,16 @@ export function useQpsAplicacao(id: string | null | undefined) {
   });
 }
 
+/** CRP que o laudo imprime: o da aplicação ou, em branco, o do cadastro do responsável. */
+export function useQpsCrpResolvido(ap: QpsAplicacao | null | undefined) {
+  return useQuery({
+    queryKey: ["qps-crp-resolvido", ap?.crp ?? null, ap?.responsavel ?? null],
+    enabled: !!ap,
+    staleTime: 60_000,
+    queryFn: () => resolverCrpQps(qpsDb(), ap),
+  });
+}
+
 export interface QpsAplicacaoInput {
   id_tipo: string;
   id_empresa: string;
@@ -348,6 +360,8 @@ export interface QpsAplicacaoInput {
   /** v226 — laudo: CRP do responsável e data de elaboração. */
   crp?: string | null;
   data_elaboracao?: string | null;
+  /** v263 — data da capa; o gatilho carimba ao concluir, a tela deixa corrigir. */
+  data_conclusao?: string | null;
 }
 
 export function useCreateQpsAplicacao() {
@@ -381,11 +395,18 @@ export function useUpdateQpsAplicacao() {
       input: Partial<QpsAplicacaoInput & { status: StatusQpsAplicacao }>;
     }) => {
       const sb = qpsDb();
-      const { error } = await sb
+      // `.select()` não é cosmético: sem ele o PATCH barrado por RLS volta
+      // SEM erro e com 0 linhas, e a tela comemora um salvamento que não
+      // aconteceu (era por isso que editar aplicação em andamento "não
+      // salvava" — o valor velho voltava no refetch seguinte). Com o select,
+      // 0 linhas de volta = falha, e quem chama cai no catch.
+      const { data, error } = await sb
         .from("qps_aplicacoes")
         .update({ ...input, atualizado_em: new Date().toISOString() })
-        .eq("id_aplicacao", id);
+        .eq("id_aplicacao", id)
+        .select("id_aplicacao");
       if (error) throw error;
+      exigeLinhaGravada(data, "alteração");
       return idEmpresa;
     },
     onSuccess: (_d, vars) => {
@@ -412,15 +433,27 @@ export function useQpsMoverStatus() {
       id: string;
       idEmpresa: string;
       status: StatusQpsAplicacao;
+      /** v263 — ao reconcluir, a data escolhida no EscolherDataConclusao. */
+      data_conclusao?: string;
     }) => {
       const sb = qpsDb();
-      const { error } = await sb
+      const { data, error } = await sb
         .from("qps_aplicacoes")
-        .update({ status: args.status, atualizado_em: new Date().toISOString() })
-        .eq("id_aplicacao", args.id);
+        .update({
+          status: args.status,
+          ...(args.data_conclusao ? { data_conclusao: args.data_conclusao } : {}),
+          atualizado_em: new Date().toISOString(),
+        })
+        .eq("id_aplicacao", args.id)
+        .select("id_aplicacao");
       if (error) throw error;
+      exigeLinhaGravada(data, "mudança de status");
     },
-    onSuccess: (_d, vars) => {
+    // Invalida nos DOIS caminhos, não só no sucesso. O quadro move o cartão de
+    // forma otimista e só desfaz quando o refetch chega: se a falha não
+    // invalidasse, o cartão ficaria na coluna nova contradizendo o toast que
+    // acabou de dizer que não gravou.
+    onSettled: (_d, _e, vars) => {
       qc.invalidateQueries({ queryKey: ["qps-resumo"] });
       qc.invalidateQueries({ queryKey: ["qps-aplicacao", vars.id] });
       qc.invalidateQueries({ queryKey: ["qps-aplicacoes", vars.idEmpresa] });
@@ -443,11 +476,13 @@ export function useDeleteQpsAplicacao() {
   return useMutation({
     mutationFn: async ({ id, idEmpresa }: { id: string; idEmpresa: string }) => {
       const sb = qpsDb();
-      const { error } = await sb
+      const { data, error } = await sb
         .from("qps_aplicacoes")
         .update({ status: "DELETADO", atualizado_em: new Date().toISOString() })
-        .eq("id_aplicacao", id);
+        .eq("id_aplicacao", id)
+        .select("id_aplicacao");
       if (error) throw error;
+      exigeLinhaGravada(data, "remoção");
       return idEmpresa;
     },
     onSuccess: (_d, vars) =>
@@ -564,7 +599,12 @@ export function useImportarQpsLote() {
       linhas,
     }: {
       idAplicacao: string;
-      linhas: Array<{ setor: string; cargo: string | null; respostas: Record<string, number> }>;
+      linhas: Array<{
+        setor: string;
+        cargo: string | null;
+        respostas: Record<string, number>;
+        data_carimbo?: string | null;
+      }>;
     }) => {
       const sb = qpsDb();
       const lote = crypto.randomUUID();
@@ -573,6 +613,8 @@ export function useImportarQpsLote() {
         setor: l.setor,
         cargo: l.cargo,
         respostas: l.respostas,
+        // v263 — período da coleta no laudo (sai do Carimbo de data/hora do Forms).
+        data_carimbo: l.data_carimbo ?? null,
         lote,
       }));
       const { error } = await sb.from("qps_respondentes").insert(rows);
@@ -771,6 +813,57 @@ export function useImportarExcelQps() {
       qc.invalidateQueries({ queryKey: ["qps-categorias"] });
       qc.invalidateQueries({ queryKey: ["qps-perguntas"] });
       qc.invalidateQueries({ queryKey: ["qps-all-perguntas"] });
+    },
+  });
+}
+
+// ─── Time de psicossocial (seletor de Responsável) ───────────────────────────
+
+export interface MembroTimePsi {
+  id_usuario: string;
+  nome: string;
+  cargo: string | null;
+  funcao: string | null;
+}
+
+/** Módulos que definem o time. Medido em 06/10/2026: os dois conjuntos são
+ *  hoje idênticos (17 contas), mas nada no schema acopla as duas strings —
+ *  por isso o filtro pergunta pelos dois, e não por um. */
+const MODULOS_TIME_PSI = ["questionarios_psicossociais", "psicossocial"];
+
+/**
+ * Quem pode ser Responsável por uma aplicação: conta ativa, não-Cliente, com
+ * um dos módulos psicossociais em `modulos_permitidos`.
+ *
+ * `modulos_permitidos` é `text[]`, então o filtro é `overlaps` (`ov.`) — um
+ * filtro só para os dois módulos, em vez de um `or=` com dois `cs.`.
+ *
+ * As colunas são pedidas uma a uma de propósito: `select=*` em `usuarios`
+ * devolve as 34 colunas da tabela para qualquer autenticado (a policy de
+ * leitura é `using (true)`), incluindo `crp` e `certificado_pfx_path`. O
+ * seletor não precisa de nada disso.
+ */
+export function useTimePsicossocial() {
+  return useQuery({
+    queryKey: ["qps-time-psicossocial"],
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<MembroTimePsi[]> => {
+      const sb = qpsDb();
+      const { data, error } = await sb
+        .from("usuarios")
+        .select("id_usuario,nome,cargo,funcao")
+        .eq("ativo_sistema", true)
+        .neq("perfil", "Cliente")
+        .overlaps("modulos_permitidos", MODULOS_TIME_PSI)
+        .order("nome", { ascending: true });
+      if (error) throw error;
+      const lista = ((data ?? []) as MembroTimePsi[]).filter((u) => (u.nome ?? "").trim());
+      // Quem é do setor aparece primeiro: ter o módulo inclui contas de TI e
+      // suporte, que ninguém escolhe como responsável de um laudo.
+      return lista.sort((a, b) => {
+        const psi = (u: MembroTimePsi) => ((u.funcao ?? "").trim().toLowerCase() === "psicossocial" ? 0 : 1);
+        return psi(a) - psi(b) || a.nome.localeCompare(b.nome, "pt-BR");
+      });
     },
   });
 }

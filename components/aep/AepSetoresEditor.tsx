@@ -1,6 +1,6 @@
 "use client";
 
-import { recomendaQuestionario, totalAlertasOrganizacionais } from "@/lib/aep/sinalizacao";
+import { recomendaQuestionario, recomendaQuestionarioSetor, totalAlertasOrganizacionais } from "@/lib/aep/sinalizacao";
 import {
   DRPS_POR_RECEIO,
   MOTIVOS_NI,
@@ -1420,6 +1420,8 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
             };
           }),
           necessita_aet: !!setor.necessita_aet,
+          // DRPS/Questionário decidido pelo sistema (o modelo não decide sozinho; painel v0.3.707).
+          recomenda_questionario: recomendaQuestionarioSetor(setores, setor),
           // Limitações (N/I com motivo) e condições da coleta (2026-10-06).
           limitacoes: limitacoesDaAvaliacao(
             setor,

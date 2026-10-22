@@ -4,6 +4,7 @@ import { use, useMemo, useState } from "react";
 import { BarChart2, ChevronLeft, Loader2, Info, Building2, Save } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
 import {
   useQpsAplicacao,
   useQpsRespondentes,
@@ -61,8 +62,8 @@ export default function ResultadosPage({ params }: { params: Promise<{ id: strin
         input: { observacoes_dimensoes: obsLocal },
       });
       toast.success("Análise salva");
-    } catch {
-      toast.error("Erro ao salvar análise");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao salvar análise"));
     }
   }
 
@@ -100,8 +101,8 @@ export default function ResultadosPage({ params }: { params: Promise<{ id: strin
       });
       toast.success("Probabilidade ajustada");
       setCelulaEditando(null);
-    } catch {
-      toast.error("Erro ao salvar ajuste");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao salvar ajuste"));
     }
   }
 

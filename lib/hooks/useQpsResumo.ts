@@ -221,7 +221,6 @@ export function useQpsResumo() {
         const etapa = etapaDaAplicacao({
           status: ap.status,
           nRespondentes: resp.length,
-          nPlanos: acoes5w2h.length,
         });
 
         const emp = empresaPorId.get(ap.id_empresa);

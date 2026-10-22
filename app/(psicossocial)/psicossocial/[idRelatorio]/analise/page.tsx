@@ -14,6 +14,7 @@ import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import RichTextEditor from "@/components/drps/RichTextEditor";
+import AlinhamentoBotoes from "@/components/drps/AlinhamentoBotoes";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
 import DrpsSumarioPrint from "@/components/drps/DrpsSumarioPrint";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
@@ -39,6 +40,7 @@ import {
   montarBlocosPorSetor,
   montarBlocosPorUnidade,
   textoDoBloco,
+  alinhamentoDoBloco,
 } from "@/lib/drps/blocos";
 import type { SetorRelatorio } from "@/lib/drps/blocos";
 import { AGRAVOS_OPCOES } from "@/lib/drps/topicos";
@@ -63,7 +65,8 @@ import type { Empresa } from "@/lib/supabase/types";
 import FonteGeradoraCampo from "@/components/psicossocial/FonteGeradoraCampo";
 import { useAdicionarFontesCatalogo, useCatalogoFontes } from "@/lib/hooks/useFontesGeradoras";
 import { fontesEscolhidas, textoFontes } from "@/lib/psicossocial/fontes";
-import type { DrpsRelatorio, StatusRelatorio } from "@/lib/drps/types";
+import type { Alinhamento, CampoAlinhavel, DrpsRelatorio, StatusRelatorio } from "@/lib/drps/types";
+import { paragrafosDoTexto } from "@/lib/qps/laudo";
 
 /**
  * Separa um texto multi-linha em itens predefinidos e itens extras (manuais).
@@ -833,6 +836,53 @@ export default function AnalisePage({
                     ...destino,
                   });
                 }}
+                alinhamentoAgravos={alinhamentoDoBloco(
+                  relatorio?.alinhamentos_por_unidade_setor,
+                  relatorio?.alinhamentos_por_setor,
+                  unidadeAtiva,
+                  r.setor,
+                  "agravos",
+                )}
+                alinhamentoMedidas={alinhamentoDoBloco(
+                  relatorio?.alinhamentos_por_unidade_setor,
+                  relatorio?.alinhamentos_por_setor,
+                  unidadeAtiva,
+                  r.setor,
+                  "medidas",
+                )}
+                onAlinhar={(campo, valor) => {
+                  if (!relatorio || !canEdit) return;
+                  // Grava na hora, como a conclusão. Mesma regra da v138: numa
+                  // unidade, só o override dela; em "Todas", o valor do setor.
+                  const destino: Partial<DrpsRelatorio> = unidadeAtiva
+                    ? {
+                        alinhamentos_por_unidade_setor: {
+                          ...(relatorio.alinhamentos_por_unidade_setor ?? {}),
+                          [unidadeAtiva]: {
+                            ...(relatorio.alinhamentos_por_unidade_setor?.[unidadeAtiva] ?? {}),
+                            [r.setor]: {
+                              ...(relatorio.alinhamentos_por_unidade_setor?.[unidadeAtiva]?.[r.setor] ?? {}),
+                              [campo]: valor,
+                            },
+                          },
+                        },
+                      }
+                    : {
+                        alinhamentos_por_setor: {
+                          ...(relatorio.alinhamentos_por_setor ?? {}),
+                          [r.setor]: {
+                            ...(relatorio.alinhamentos_por_setor?.[r.setor] ?? {}),
+                            [campo]: valor,
+                          },
+                        },
+                      };
+                  salvar.mutate({
+                    id_relatorio: idRelatorio,
+                    id_empresa: relatorio.id_empresa,
+                    ...destino,
+                    _toast: "Alinhamento salvo",
+                  });
+                }}
                 editor={(() => {
                   const ed = getEditor(r.setor);
                   return {
@@ -1053,6 +1103,9 @@ function BlocoSetor({
   onSalvarConclusao,
   editor,
   cargoResponsavel,
+  alinhamentoAgravos,
+  alinhamentoMedidas,
+  onAlinhar,
 }: {
   relatorio: SetorRelatorio;
   drpsRel: DrpsRelatorio | null;
@@ -1065,6 +1118,9 @@ function BlocoSetor({
   onSalvarConclusao: (texto: string) => void;
   editor: BlocoEditorProps;
   cargoResponsavel?: string | null;
+  alinhamentoAgravos: Alinhamento;
+  alinhamentoMedidas: Alinhamento;
+  onAlinhar: (campo: CampoAlinhavel, valor: Alinhamento) => void;
 }) {
   const [textoLocal, setTextoLocal] = useState(conclusao);
   const [gerandoIA, setGerandoIA] = useState(false);
@@ -1341,9 +1397,18 @@ function BlocoSetor({
           </tr>
           <tr>
             <td colSpan={4} className="align-top">
-              <div className="mb-1 text-[9px] font-normal italic text-gray-600">
-                Ex: tudo aquilo que pode acontecer com colaboradores se os
-                riscos psicossociais não forem identificados e controlados.
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[9px] font-normal italic text-gray-600">
+                  Ex: tudo aquilo que pode acontecer com colaboradores se os
+                  riscos psicossociais não forem identificados e controlados.
+                </div>
+                <div className="print:hidden">
+                  <AlinhamentoBotoes
+                    valor={alinhamentoAgravos}
+                    onChange={(v) => onAlinhar("agravos", v)}
+                    disabled={!canEdit}
+                  />
+                </div>
               </div>
               <div className="print:hidden">
                 <ComboTagInline
@@ -1359,13 +1424,13 @@ function BlocoSetor({
                   disabled={!canEdit}
                 />
               </div>
-              <div className="hidden whitespace-pre-wrap print:block">
-                {textoDoBloco(
+              <div className="hidden print:block" style={{ textAlign: alinhamentoAgravos }}>
+                {paragrafosDoTexto(textoDoBloco(
                   drpsRel?.agravos_por_unidade_setor,
                   drpsRel?.agravos_por_setor,
                   relatorio.unidade,
                   relatorio.setor,
-                )}
+                )).map((p, i) => <p key={i} className="mb-1.5 last:mb-0">{p}</p>)}
               </div>
             </td>
           </tr>
@@ -1376,9 +1441,18 @@ function BlocoSetor({
           </tr>
           <tr>
             <td colSpan={4} className="align-top">
-              <div className="mb-1 text-[9px] font-normal italic text-gray-600">
-                Ex: medidas que a empresa deve adotar para controlar os riscos
-                psicossociais identificados.
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[9px] font-normal italic text-gray-600">
+                  Ex: medidas que a empresa deve adotar para controlar os riscos
+                  psicossociais identificados.
+                </div>
+                <div className="print:hidden">
+                  <AlinhamentoBotoes
+                    valor={alinhamentoMedidas}
+                    onChange={(v) => onAlinhar("medidas", v)}
+                    disabled={!canEdit}
+                  />
+                </div>
               </div>
               <div className="print:hidden">
                 <ComboTagInline
@@ -1394,13 +1468,13 @@ function BlocoSetor({
                   disabled={!canEdit}
                 />
               </div>
-              <div className="hidden whitespace-pre-wrap print:block">
-                {textoDoBloco(
+              <div className="hidden print:block" style={{ textAlign: alinhamentoMedidas }}>
+                {paragrafosDoTexto(textoDoBloco(
                   drpsRel?.medidas_por_unidade_setor,
                   drpsRel?.medidas_por_setor,
                   relatorio.unidade,
                   relatorio.setor,
-                )}
+                )).map((p, i) => <p key={i} className="mb-1.5 last:mb-0">{p}</p>)}
               </div>
             </td>
           </tr>

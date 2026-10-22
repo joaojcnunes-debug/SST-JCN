@@ -6,13 +6,8 @@
 //
 // Cliente: supabase.functions.invoke('gerar-observacao-psi-ia', { body })
 //
-// ⚠️ ESTA CÓPIA NÃO RODA. `functions.invoke('<name>')` é redirecionado para a
-// rota Next `/api/fn/<name>` (ver makeLocalFunctions em lib/supabase/client.ts).
-// Quem executa é app/api/fn/gerar-observacao-psi-ia/route.ts. O arquivo fica
-// aqui como origem do porte — e é mantido EM SINCRONIA de propósito: neste
-// projeto, duas cópias da mesma regra já divergiram em silêncio mais de uma vez
-// (a régua de zona psi, os textos padrão do checklist do AET). Mudou lá, muda
-// aqui. O porquê da proibição de escrever a média está no comentário da rota.
+// No JCN esta é a função que roda (functions.invoke chama a edge function).
+// O texto do painel dizia que ela não rodava: lá as chamadas vão para /api/fn.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
@@ -57,6 +52,7 @@ Responda APENAS com JSON válido (sem markdown, sem cercas, sem texto fora do JS
 
 Diretrizes:
 - Mencionar explicitamente o nome do setor e do fator
+- Escala de 1 a 5 em que nota ALTA = condição BOA: média 4,0 ou mais é zona verde (favorável); abaixo de 2,0 é vermelha (crítica). Nunca chamar de "baixa" ou "preocupante" uma média em zona verde
 - Comentar a zona de risco obtida em PALAVRAS. NÃO escrever o número da média no texto
 - Se houver pergunta crítica, citá-la brevemente como achado mais relevante
 - Propor 1 ou 2 encaminhamentos genéricos alinhados à zona (sem inventar ações detalhadas)
