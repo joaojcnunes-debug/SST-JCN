@@ -1,7 +1,8 @@
 // v295 — E-mail dos avisos da Gestão (atribuição, seguidor, status, comentário, menção).
 // Os avisos nascem por gatilho no banco (gestao_notificacoes); o worker /api/gestao/google/sync
 // (agendador, 1/min) chama enviarAvisosPendentes: reserva no banco (sem duplicar entre chamadas),
-// envia pelo Resend e marca enviado/erro. Sem RESEND_API_KEY não reserva nada (nada se perde).
+// envia pelo Gmail (JCN, SMTP com senha de app) ou pelo Resend e marca enviado/erro. Sem nenhum
+// dos dois não reserva nada (nada se perde).
 
 import type { createSupabaseServiceClient } from "@/lib/supabase/client";
 
@@ -86,35 +87,96 @@ export function montarEmailAviso(a: AvisoReservado, appUrl: string): { assunto: 
 
 const pausa = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Por onde o e-mail sai. JCN (sem domínio próprio): Gmail por SMTP com senha de app
+ * (GMAIL_USER + GMAIL_APP_PASSWORD) — o remetente é a própria conta Gmail, ~500 e-mails/dia.
+ * Sem Gmail, Resend (RESEND_API_KEY), como no painel. Sem nenhum dos dois: só o sino.
+ */
+export type CanalEmail =
+  | { tipo: "gmail"; usuario: string; senha: string; nome: string }
+  | { tipo: "resend"; chave: string; from: string };
+
+export function escolherCanalEmail(env: Record<string, string | undefined>): CanalEmail | null {
+  const usuario = env.GMAIL_USER?.trim();
+  // A senha de app vem em 4 grupos com espaço ("abcd efgh ijkl mnop"); o SMTP quer sem espaço.
+  const senha = env.GMAIL_APP_PASSWORD?.replace(/\s+/g, "");
+  if (usuario && senha) return { tipo: "gmail", usuario, senha, nome: env.EMAIL_REMETENTE_NOME?.trim() || "SST JCN Consultoria" };
+  const chave = env.RESEND_API_KEY?.trim();
+  if (chave) return { tipo: "resend", chave, from: env.FROM_EMAIL ?? "SST JCN Consultoria <onboarding@resend.dev>" };
+  return null;
+}
+
+type Enviar = (para: string, assunto: string, html: string) => Promise<string | null>; // null = ok
+
+async function criarEnvio(canal: CanalEmail): Promise<{ enviar: Enviar; fechar: () => void; pausaMs: number }> {
+  if (canal.tipo === "gmail") {
+    const nodemailer = (await import("nodemailer")).default;
+    const t = nodemailer.createTransport({
+      service: "gmail",
+      pool: true,
+      maxConnections: 1,
+      auth: { user: canal.usuario, pass: canal.senha },
+    });
+    return {
+      enviar: async (para, assunto, html) => {
+        try {
+          await t.sendMail({ from: { name: canal.nome, address: canal.usuario }, to: para, subject: assunto, html });
+          return null;
+        } catch (e) {
+          // Sem a senha no texto: o nodemailer não a inclui na mensagem de erro.
+          return (e instanceof Error ? e.message : "falha").slice(0, 200);
+        }
+      },
+      fechar: () => t.close(),
+      pausaMs: 300,
+    };
+  }
+  return {
+    enviar: async (para, assunto, html) => {
+      try {
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${canal.chave}` },
+          body: JSON.stringify({ from: canal.from, to: para, subject: assunto, html }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        return res.ok ? null : `HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`;
+      } catch (e) {
+        return e instanceof Error ? e.name : "falha";
+      }
+    },
+    fechar: () => {},
+    pausaMs: 550, // limite do Resend: 2 envios/segundo
+  };
+}
+
 /** Envia até `limite` avisos pendentes. Best-effort: nunca lança. */
 export async function enviarAvisosPendentes(
   sb: Svc,
-  cfg: { resendKey: string | undefined; from: string; appUrl: string; limite?: number }
+  cfg: { canal: CanalEmail | null; appUrl: string; limite?: number }
 ): Promise<{ enviados: number; falhas: number }> {
-  if (!cfg.resendKey) return { enviados: 0, falhas: 0 };
+  if (!cfg.canal) return { enviados: 0, falhas: 0 };
   const { data, error } = await sb.rpc("gestao_aviso_email_reservar", { p_limite: cfg.limite ?? 20 } as never);
-  if (error || !Array.isArray(data)) return { enviados: 0, falhas: 0 };
+  if (error || !Array.isArray(data) || (data as unknown[]).length === 0) return { enviados: 0, falhas: 0 };
+  const { enviar, fechar, pausaMs } = await criarEnvio(cfg.canal);
   let enviados = 0;
   let falhas = 0;
-  for (const a of data as AvisoReservado[]) {
-    let ok = false;
-    let erro: string | null = null;
-    try {
-      const { assunto, html } = montarEmailAviso(a, cfg.appUrl);
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.resendKey}` },
-        body: JSON.stringify({ from: cfg.from, to: a.destinatario, subject: assunto, html }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      ok = res.ok;
-      if (!ok) erro = `HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`;
-    } catch (e) {
-      erro = e instanceof Error ? e.name : "falha";
+  try {
+    for (const a of data as AvisoReservado[]) {
+      let erro: string | null;
+      try {
+        const { assunto, html } = montarEmailAviso(a, cfg.appUrl);
+        erro = await enviar(a.destinatario, assunto, html);
+      } catch (e) {
+        erro = e instanceof Error ? e.name : "falha";
+      }
+      const ok = erro === null;
+      await sb.rpc("gestao_aviso_email_concluir", { p_id: a.id, p_ok: ok, p_erro: erro } as never);
+      if (ok) enviados++; else falhas++;
+      await pausa(pausaMs);
     }
-    await sb.rpc("gestao_aviso_email_concluir", { p_id: a.id, p_ok: ok, p_erro: erro } as never);
-    if (ok) enviados++; else falhas++;
-    await pausa(550); // limite do Resend: 2 envios/segundo
+  } finally {
+    fechar();
   }
   return { enviados, falhas };
 }

@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { createSupabaseServiceClient, createSupabaseServerClient } from "@/lib/supabase/client";
 import { podeProcessar, montarEvento, origemPublica, planejarDestinatarios, tokenConfere, type TarefaEvento } from "@/lib/gestao/google/helpers";
 import { puxarInboundTodas } from "@/lib/gestao/google/inbound";
-import { enviarAvisosPendentes } from "@/lib/gestao/avisos-email";
+import { enviarAvisosPendentes, escolherCanalEmail } from "@/lib/gestao/avisos-email";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -88,8 +88,7 @@ export async function GET(req: NextRequest) {
   let emails = { enviados: 0, falhas: 0 };
   try {
     emails = await enviarAvisosPendentes(sb, {
-      resendKey: process.env.RESEND_API_KEY,
-      from: process.env.FROM_EMAIL ?? "SST JCN Consultoria <onboarding@resend.dev>",
+      canal: escolherCanalEmail(process.env),
       appUrl: origemPublica(process.env.APP_URL, req.nextUrl.origin),
     });
   } catch {
