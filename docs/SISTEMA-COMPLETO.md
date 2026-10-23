@@ -70,7 +70,7 @@ Alias de import: `@/*` → raiz.
 
 | Grupo | Rotas |
 |---|---|
-| `(public)` | `/login` |
+| `(public)` | `/login`, `/privacidade`, `/termos` (Política de Privacidade e Termos de Serviço, abertas sem login — usadas na tela de consentimento do Google; `components/legal/PaginaLegal.tsx`) |
 | `(hub)` | `/inicio`, `/visao-geral`, `/modulos`, `/validades`, `/gestao` |
 | `(admin)` | `/usuarios`, `/funcoes`, `/config`, `/pdfs-gerados`, `/lixeira`, `/auditoria`, `/presenca`, `/portal-sst` |
 | `(app)` | Módulo **Painel SST**: `/dashboard`, `/inspecoes`, `/relatorios`, `/certificados`, `/riscos-psicossociais`, `/aep-psicossocial`, `/acoes`, `/texto-padrao` |
@@ -117,7 +117,7 @@ Alias de import: `@/*` → raiz.
 
 ### 1.5 Middleware (`middleware.ts`)
 
-- Roda em tudo, menos estáticos, imagens, `manifest.webmanifest` e `sw.js`. Públicos: `/login` e `/f/`.
+- Roda em tudo, menos estáticos, imagens, `manifest.webmanifest` e `sw.js`. Públicos: `/login`, `/f/`, `/privacidade` e `/termos`.
 - Sem URL/chave do Supabase configuradas: `/api/*` → 500 JSON; resto → `/login`.
 - Valida a sessão com `@supabase/ssr` (`auth.getUser()`). Sem usuário: `/api/*` → **401 JSON** `{ok:false, error:"Sessao expirada. Entre de novo."}`; páginas → `/login?next=<rota>`.
 - Não checa perfil nem módulo (isso é feito nos hooks e na RLS).

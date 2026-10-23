@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_PATHS = ["/login", "/f/"];
+// /privacidade e /termos: o Google lê as duas na tela de consentimento do OAuth (Google Agenda).
+const PUBLIC_PATHS = ["/login", "/f/", "/privacidade", "/termos"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
