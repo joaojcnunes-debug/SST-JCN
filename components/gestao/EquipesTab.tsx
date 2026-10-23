@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import { Plus, Trash2, Users, ShieldCheck, X, Pencil, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { confirmar } from "@/components/ui/confirm";
-import { iniciais, corAvatar, useQuadros, useAcessosGestao } from "@/lib/hooks/useGestao";
+import { useQuadros, useAcessosGestao } from "@/lib/hooks/useGestao";
 import {
   useEquipes, useEquipeMembros, useSalvarEquipe, useExcluirEquipe, useDefinirMembroEquipe, useAlterarAcessoEquipe,
   useUsuariosParaMembro, type GestaoNivel, type PapelEquipe,
 } from "@/lib/hooks/useGestaoAcesso";
+import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 
 const NIVEIS: { value: GestaoNivel; label: string }[] = [
   { value: "full", label: "Visualizador total (vê todas as tarefas)" },
@@ -119,7 +120,7 @@ export default function EquipesTab({ motivo, motivoOk }: { motivo: string; motiv
                 const nome = nomePorEmail.get(m.usuario_email.toLowerCase()) ?? m.usuario_email;
                 return (
                   <div key={m.id} className="flex items-center gap-2 rounded-md px-1 py-1">
-                    <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: corAvatar(nome) }}>{iniciais(nome)}</span>
+                    <AvatarPessoa nome={nome} className="size-7 text-[10px]" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-gray-800">{nome}</p>
                       <p className="truncate text-[11px] text-gray-400">{m.usuario_email}</p>

@@ -11,7 +11,7 @@ import { useUserStore } from "@/lib/store";
 /** Slug de status. Os 4 defaults existem em todo quadro; quadros podem ter status customizados. */
 export type StatusTarefa = string;
 export type TipoStatus = "nao_iniciado" | "ativo" | "concluido";
-export type VistaGestao = "quadro" | "lista" | "calendario" | "timeline";
+export type VistaGestao = "quadro" | "lista" | "calendario" | "timeline" | "painel";
 export type AgruparPor = "status" | "responsavel" | "prioridade" | "etiqueta";
 export type PrioridadeTarefa = "Baixa" | "Media" | "Alta" | "Urgente";
 
@@ -97,6 +97,11 @@ export interface GestaoTarefa {
   responsavel: string | null;
   prazo: string | null;
   data_inicio: string | null;
+  /** 'HH:MM:SS' (coluna TIME, v298). */
+  hora_inicio: string | null;
+  hora_fim: string | null;
+  /** v300: preenchido na tarefa "filha" de uma subtarefa aberta na janela (fica fora das listas). */
+  id_tarefa_pai: string | null;
   ordem: number;
   etiquetas: string[];
   subtarefas: Subtarefa[];
@@ -106,6 +111,11 @@ export interface GestaoTarefa {
   created_by: string | null;
   created_at: string;
   updated_at: string | null;
+  /** Só no app (filtro "Mostrar subtarefas"): título da tarefa-mãe, para o cartão/linha. */
+  titulo_mae?: string;
+  /** Só no app: subtarefa da lista que ainda não tem tarefa filha (id em gestao_subtarefas).
+   *  É um cartão de exibição — não arrasta nem edita na linha; ao abrir vira filha (v300). */
+  sub_linha?: string;
 }
 
 export const STATUS_TAREFA: { value: StatusTarefa; label: string; cor: string }[] = [
@@ -684,6 +694,30 @@ export function useUsuarios() {
   });
 }
 
+/** v302: fotos das contas Google (e-mail em minúsculas → URL), gravadas ao conectar o Google Agenda.
+ *  Sem permissão ou sem foto → mapa vazio (o avatar cai nas iniciais). */
+export function useFotosUsuarios() {
+  return useQuery({
+    queryKey: ["gestao-usuario-fotos"],
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.from("gestao_usuario_fotos").select("usuario_email,foto_url");
+      if (error) return new Map<string, string>();
+      return new Map(((data ?? []) as { usuario_email: string; foto_url: string }[]).map((f) => [f.usuario_email, f.foto_url]));
+    },
+  });
+}
+
+/** v302: URL da foto de uma pessoa, pelo e-mail ou (quando só há o nome) pelo cadastro de usuários. */
+export function useFotoDe(nome: string | null | undefined, email?: string | null): string | null {
+  const { data: fotos } = useFotosUsuarios();
+  const { data: usuarios } = useUsuarios();
+  if (!fotos || fotos.size === 0) return null;
+  const em = (email ?? (nome ? usuarios?.find((u) => u.nome === nome)?.email : null) ?? "").toLowerCase();
+  return em ? fotos.get(em) ?? null : null;
+}
+
 // ---- Vínculos por tarefa (responsável | seguidor por e-mail — v187/F1.2) ----
 
 /** Vínculos de UMA tarefa (para pré-popular o seletor do modal). */
@@ -741,17 +775,18 @@ export function useVinculadosQuadro(idQuadro: string | null | undefined) {
 export function useSalvarVinculados() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (p: { id_tarefa: string; responsavelEmail: string | null; seguidoresEmails: string[] }) => {
+    // v295: N responsáveis (antes 1). Quem é responsável não entra também como seguidor.
+    mutationFn: async (p: { id_tarefa: string; responsaveisEmails: string[]; seguidoresEmails: string[] }) => {
       const sb = createSupabaseBrowserClient();
       const rpc = (sb as unknown as {
         rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
       }).rpc;
-      const resp = p.responsavelEmail ? p.responsavelEmail.trim().toLowerCase() : null;
-      const segs = [...new Set(p.seguidoresEmails.map((e) => e.trim().toLowerCase()).filter(Boolean))].filter((e) => e !== resp);
+      const resps = [...new Set(p.responsaveisEmails.map((e) => e.trim().toLowerCase()).filter(Boolean))];
+      const segs = [...new Set(p.seguidoresEmails.map((e) => e.trim().toLowerCase()).filter(Boolean))].filter((e) => !resps.includes(e));
 
       // Estado desejado, por chave e-mail+tipo.
       const desejado = new Map<string, { email: string; tipo: TipoVinculo }>();
-      if (resp) desejado.set(`${resp}|responsavel`, { email: resp, tipo: "responsavel" });
+      for (const e of resps) desejado.set(`${e}|responsavel`, { email: e, tipo: "responsavel" });
       for (const e of segs) desejado.set(`${e}|seguidor`, { email: e, tipo: "seguidor" });
 
       // Estado atual (SELECT direto preservado na v196).
@@ -1168,6 +1203,47 @@ export function useAutomacaoTick() {
   }, []);
 }
 
+/**
+ * F3.A: reflete as tarefas com prazo na Agenda Google dos vinculados conectados. Sem cron, o
+ * worker /api/gestao/google/sync roda ao abrir a Gestão e logo depois de cada gravação que deu
+ * certo (criar/editar/mover/concluir/vincular): antes só rodava ao abrir, e a tarefa recém-criada
+ * ficava parada na fila até alguém recarregar. O servidor deduplica por minuto — chamada que cai
+ * num minuto já processado é refeita na virada do minuto. Best-effort: nunca derruba a página.
+ */
+export function useSyncGoogleAgenda() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    let vivo = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const agendar = (ms: number) => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => void disparar(), ms);
+    };
+    const disparar = async () => {
+      timer = undefined;
+      try {
+        const r = await fetch("/api/gestao/google/sync");
+        const j = (await r.json().catch(() => ({}))) as { skipped?: string; pendentes?: number };
+        // Minuto já processado, ou fila maior que o lote do worker (50 — ex.: ao conectar uma conta
+        // com muitas tarefas): continua na virada do minuto.
+        if (vivo && (j.skipped === "dedup-minuto" || (j.pendentes ?? 0) >= 50)) agendar(61_000 - (Date.now() % 60_000));
+      } catch {
+        /* silencioso — a fila drena na próxima */
+      }
+    };
+    void disparar();
+    // Espera 1,5 s: várias gravações seguidas (tarefa + vinculados) viram uma chamada só.
+    const parar = qc.getMutationCache().subscribe((ev) => {
+      if (ev.type === "updated" && ev.action.type === "success") agendar(1500);
+    });
+    return () => {
+      vivo = false;
+      parar();
+      if (timer) clearTimeout(timer);
+    };
+  }, [qc]);
+}
+
 export function useTarefas(idQuadro: string | null | undefined) {
   return useQuery({
     queryKey: ["gestao-tarefas", idQuadro],
@@ -1178,10 +1254,48 @@ export function useTarefas(idQuadro: string | null | undefined) {
         .from("gestao_tarefas")
         .select("*")
         .eq("id_quadro", idQuadro!)
+        // v300: a filha de uma subtarefa só abre pela subtarefa — não entra no quadro/listas.
+        .is("id_tarefa_pai", null)
         .order("ordem", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as GestaoTarefa[];
+    },
+  });
+}
+
+/** Subtarefas de um quadro para o filtro "Mostrar": as linhas (gestao_subtarefas) das tarefas do
+ *  quadro e as filhas já abertas (gestao_tarefas com id_tarefa_pai). Só lê quando `enabled`. */
+export interface SubtarefaDoQuadro {
+  id: string;
+  id_tarefa: string;
+  texto: string;
+  feito: boolean;
+  ordem: number;
+  responsavel_email: string | null;
+  id_tarefa_filha: string | null;
+  created_at: string;
+}
+export function useSubtarefasDoQuadro(idQuadro: string | null | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["gestao-subtarefas-quadro", idQuadro],
+    enabled: !!idQuadro && enabled,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const [linhas, filhas] = await Promise.all([
+        sb.from("gestao_subtarefas")
+          .select("id,id_tarefa,texto,feito,ordem,responsavel_email,id_tarefa_filha,created_at,mae:gestao_tarefas!gestao_subtarefas_id_tarefa_fkey!inner(id_quadro)")
+          .eq("mae.id_quadro", idQuadro!)
+          .order("ordem", { ascending: true }),
+        sb.from("gestao_tarefas").select("*").eq("id_quadro", idQuadro!).not("id_tarefa_pai", "is", null),
+      ]);
+      if (linhas.error) throw linhas.error;
+      if (filhas.error) throw filhas.error;
+      return {
+        linhas: (linhas.data ?? []) as unknown as SubtarefaDoQuadro[],
+        filhas: (filhas.data ?? []) as unknown as GestaoTarefa[],
+      };
     },
   });
 }
@@ -1209,6 +1323,30 @@ export function useMinhasTarefas(enabled = true) {
         if (!b.prazo) return -1;
         return a.prazo.localeCompare(b.prazo);
       });
+    },
+  });
+}
+
+/** Agenda do Meu Espaço: as tarefas COM DATA em que estou alocado (responsável ou seguidor), em
+ *  todos os quadros. A chave começa com "gestao-minhas" para pegar as mesmas invalidações. */
+export function useMinhasTarefasAgenda(enabled = true) {
+  const email = useUserStore((s) => s.user?.email ?? null);
+  return useQuery({
+    queryKey: ["gestao-minhas", "agenda", email],
+    enabled: enabled && !!email,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_tarefa_vinculados")
+        .select("tarefa:gestao_tarefas!inner(*)")
+        .eq("usuario_email", (email as string).toLowerCase());
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as { tarefa: GestaoTarefa | null }[];
+      const porId = new Map<string, GestaoTarefa>();
+      // v300: a filha de uma subtarefa só abre pela subtarefa — fica fora, como nas outras vistas.
+      // Só o que tem data entra na Agenda (prazo ou, sem prazo, a data de início).
+      for (const r of rows) if (r.tarefa && !r.tarefa.id_tarefa_pai && (r.tarefa.prazo || r.tarefa.data_inicio)) porId.set(r.tarefa.id_tarefa, r.tarefa);
+      return [...porId.values()];
     },
   });
 }
@@ -1264,6 +1402,8 @@ export function useSalvarTarefa() {
           responsavel: t.responsavel ?? null,
           prazo: t.prazo ?? null,
           data_inicio: t.data_inicio ?? null,
+          hora_inicio: t.hora_inicio ?? null,
+          hora_fim: t.hora_fim ?? null,
           ordem: t.ordem ?? 0,
           etiquetas: t.etiquetas ?? [],
           // subtarefas NAO e gravado aqui (F2.1/v199): vive em gestao_subtarefas e o
@@ -1489,7 +1629,9 @@ export async function gerarIaGestao(body: { acao: "subtarefas" | "descricao"; ti
 // Tipos de pergunta (F1 GESTAO-KANBAN-03). `tipo` default "texto".
 export type TipoPergunta =
   | "texto" | "texto_longo" | "email" | "cnpj" | "cpf" | "telefone"
-  | "data" | "data_hora" | "selecao" | "multipla";
+  | "data" | "data_hora" | "selecao" | "multipla"
+  // Arquivos de evidência (OS de T.I): upload em /api/gestao/form/anexo com o ticket do envio.
+  | "anexo";
 // `destino` diz onde a resposta é gravada na tarefa:
 //   "descricao" (default) | "etiquetas" | "prazo" | "campo:<id do gestao_campos>"
 // F1.5 (v230): `id` estável (referenciado por condicao/titulo_composicao), `ajuda` (texto sob o
@@ -1513,6 +1655,8 @@ export type TokenTitulo = string;
 export interface GestaoFormulario {
   id: string;
   id_quadro: string;
+  /** Só no app (useTodosFormularios): nome da lista dona do formulário. */
+  quadro_nome?: string | null;
   titulo: string;
   descricao: string | null;
   token: string;
@@ -1546,6 +1690,21 @@ export function useFormulariosQuadro(idQuadro: string | null | undefined) {
       const { data, error } = await sb.from("gestao_formularios").select("*").eq("id_quadro", idQuadro!).order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as GestaoFormulario[];
+    },
+  });
+}
+
+/** Todos os formulários que eu enxergo (RLS), com o nome da lista — "Formulários de outras listas". */
+export function useTodosFormularios(enabled: boolean) {
+  return useQuery({
+    queryKey: ["gestao-formularios", "__todos__"],
+    enabled,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.from("gestao_formularios").select("*, quadro:gestao_quadros(nome)").order("titulo", { ascending: true });
+      if (error) throw error;
+      return ((data ?? []) as unknown as (GestaoFormulario & { quadro: { nome: string } | null })[])
+        .map(({ quadro, ...f }) => ({ ...f, quadro_nome: quadro?.nome ?? null }) as GestaoFormulario);
     },
   });
 }
@@ -1809,6 +1968,8 @@ export interface GestaoSubtarefa {
   etapa: string | null;
   tipo: string | null;
   responsavel_email: string | null;
+  /** v300: tarefa filha criada no 1º duplo clique (janela completa da subtarefa). */
+  id_tarefa_filha: string | null;
   created_at: string;
 }
 
@@ -1821,12 +1982,53 @@ export function useSubtarefas(idTarefa: string | null | undefined) {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb
         .from("gestao_subtarefas")
-        .select("id,id_tarefa,texto,feito,ordem,etapa,tipo,responsavel_email,created_at")
+        .select("id,id_tarefa,texto,feito,ordem,etapa,tipo,responsavel_email,id_tarefa_filha,created_at")
         .eq("id_tarefa", idTarefa!)
         .order("ordem", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
       return (data ?? []) as unknown as GestaoSubtarefa[];
+    },
+  });
+}
+
+/** v300: abre a subtarefa na janela completa — a RPC cria a tarefa filha no 1º uso (ou devolve a
+ *  existente) e aqui se lê a linha inteira para o TarefaModal. */
+export function useAbrirSubtarefa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id_subtarefa: string; id_tarefa: string }) => {
+      const sb = createSupabaseBrowserClient();
+      const { data: idFilha, error } = await sb.rpc("gestao_subtarefa_abrir", { p_id_subtarefa: p.id_subtarefa } as never);
+      if (error) throw error;
+      const { data, error: e2 } = await sb.from("gestao_tarefas").select("*").eq("id_tarefa", idFilha as unknown as string).single();
+      if (e2) throw e2;
+      return data as unknown as GestaoTarefa;
+    },
+    onSuccess: (_t, p) => qc.invalidateQueries({ queryKey: ["gestao-subtarefas", p.id_tarefa] }),
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível abrir a subtarefa.")),
+  });
+}
+
+/** v300: lê uma tarefa pelo id (RLS decide). Para o link direto/aviso que aponta para a filha de uma
+ *  subtarefa, que não vem na lista do quadro. */
+export async function buscarTarefa(idTarefa: string): Promise<GestaoTarefa | null> {
+  const sb = createSupabaseBrowserClient();
+  const { data } = await sb.from("gestao_tarefas").select("*").eq("id_tarefa", idTarefa).maybeSingle();
+  return (data as unknown as GestaoTarefa | null) ?? null;
+}
+
+/** v300: título da tarefa-mãe (cabeçalho da janela da subtarefa quando a mãe não está na lista em mãos). */
+export function useTituloTarefa(idTarefa: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-tarefa-titulo", idTarefa],
+    enabled: !!idTarefa,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.from("gestao_tarefas").select("titulo").eq("id_tarefa", idTarefa!).maybeSingle();
+      if (error) throw error;
+      return (data as { titulo?: string } | null)?.titulo ?? null;
     },
   });
 }

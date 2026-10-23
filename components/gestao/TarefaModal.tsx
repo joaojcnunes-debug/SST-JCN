@@ -3,28 +3,31 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { mensagemErro } from "@/lib/errors";
+import { Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, ChevronDown, ChevronUp, Sparkles, Maximize2, CornerDownRight } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import MultiChipInput from "@/components/ui/MultiChipInput";
 import { useUserStore } from "@/lib/store";
 import {
   useSalvarTarefa, useExcluirTarefa,
   useVinculados, useSalvarVinculados,
-  useSubtarefas, useSalvarSubtarefas,
+  useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTituloTarefa,
   useAddComentario, useExcluirComentario,
   useDependencias, useAddDependencia, useExcluirDependencia,
-  useUsuarios, useCriarNotificacao, detectarMencoes, gerarIaGestao, useRegistrarAtividade,
-  iniciais, corAvatar,
+  useUsuarios, gerarIaGestao, useRegistrarAtividade,
   PRIORIDADES,
   type GestaoTarefa, type StatusTarefa, type PrioridadeTarefa, type Subtarefa, type GestaoSubtarefa, type GestaoStatus, type GestaoCampo, type GestaoVinculado,
 } from "@/lib/hooks/useGestao";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
+import { nomesResponsaveis } from "@/lib/gestao/responsaveis";
 import CampoInput from "@/components/gestao/CampoInput";
 import TempoTracker from "@/components/gestao/TempoTracker";
 import AnexosTarefa from "@/components/gestao/AnexosTarefa";
 import HistoricoTarefa from "@/components/gestao/HistoricoTarefa";
 import TarefaSidebar from "@/components/gestao/TarefaSidebar";
 import { confirmar } from "@/components/ui/confirm";
+import AvatarPessoa from "@/components/gestao/AvatarPessoa";
+import { proximaGeracao } from "@/lib/gestao/recorrencia";
 
 function Secao({ titulo, badge, defaultOpen = false, children }: { titulo: string; badge?: number; defaultOpen?: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -85,9 +88,7 @@ export default function TarefaModal({
   const { data: subtarefasTabela = EMPTY_SUBTAREFAS } = useSubtarefas(tarefa?.id_tarefa);
   const { data: vinculados = EMPTY_VINCULADOS } = useVinculados(tarefa?.id_tarefa);
   const userNome = useUserStore((s) => s.user?.nome ?? null);
-  const userEmail = useUserStore((s) => s.user?.email ?? null);
   const { data: usuariosFull = EMPTY_USUARIOS } = useUsuarios();
-  const criarNotif = useCriarNotificacao();
   const registrarAtiv = useRegistrarAtividade();
   const emailDe = (nome: string | null) => (nome ? usuariosFull.find((u) => u.nome === nome)?.email ?? null : null);
   const nomeDe = (email: string | null) => (email ? usuariosFull.find((u) => u.email.toLowerCase() === email.toLowerCase())?.nome ?? null : null);
@@ -104,15 +105,26 @@ export default function TarefaModal({
   const addDep = useAddDependencia();
   const excluirDep = useExcluirDependencia();
   const tarefaMap = useMemo(() => new Map(tarefasQuadro.map((t) => [t.id_tarefa, t])), [tarefasQuadro]);
+  // v300: esta janela é a de uma subtarefa (tarefa filha)? Sem recorrência, subtarefas e dependências.
+  const idPai = tarefa?.id_tarefa_pai ?? null;
+  const ehSub = !!idPai;
+  const { data: tituloPaiLido } = useTituloTarefa(idPai && !tarefaMap.has(idPai) ? idPai : null);
+  const tituloPai = idPai ? tarefaMap.get(idPai)?.titulo ?? tituloPaiLido ?? null : null;
+  // v300: duplo clique numa subtarefa abre a janela completa dela (por cima desta).
+  const abrirSubtarefa = useAbrirSubtarefa();
+  const [subAberta, setSubAberta] = useState<GestaoTarefa | null>(null);
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.slug, s])), [statuses]);
 
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
-  const [responsavelEmail, setResponsavelEmail] = useState("");
+  // v295: vários responsáveis (botão "+ responsável"). O banco espelha todos em `responsavel`.
+  const [responsaveisEmails, setResponsaveisEmails] = useState<string[]>([]);
   const [seguidoresEmails, setSeguidoresEmails] = useState<string[]>([]);
   const [prioridade, setPrioridade] = useState<PrioridadeTarefa>("Media");
   const [prazo, setPrazo] = useState("");
   const [dataInicio, setDataInicio] = useState("");
+  const [horaInicio, setHoraInicio] = useState("");
+  const [horaFim, setHoraFim] = useState("");
   const [status, setStatus] = useState<StatusTarefa>(statusInicial);
   const [recTipo, setRecTipo] = useState<"" | "diaria" | "semanal" | "mensal">("");
   const [recInt, setRecInt] = useState(1);
@@ -129,6 +141,9 @@ export default function TarefaModal({
     setPrioridade(tarefa?.prioridade ?? "Media");
     setPrazo(tarefa?.prazo ?? "");
     setDataInicio(tarefa?.data_inicio ?? "");
+    // Coluna TIME volta 'HH:MM:SS'; o <input type="time"> trabalha em 'HH:MM'.
+    setHoraInicio(tarefa?.hora_inicio?.slice(0, 5) ?? "");
+    setHoraFim(tarefa?.hora_fim?.slice(0, 5) ?? "");
     setStatus(tarefa?.status ?? statusInicial);
     setRecTipo(tarefa?.recorrencia?.tipo ?? "");
     setRecInt(tarefa?.recorrencia?.intervalo ?? 1);
@@ -156,10 +171,13 @@ export default function TarefaModal({
     const chave = nova ? "__nova__" : `${tarefa!.id_tarefa}#${assinatura}`;
     if (vincInitRef.current === chave) return;
     vincInitRef.current = chave;
-    const resp = vinculados.find((v) => v.tipo === "responsavel")?.usuario_email
-      ?? emailDe(tarefa?.responsavel ?? null)?.toLowerCase()
-      ?? "";
-    setResponsavelEmail(resp);
+    const resps = vinculados.filter((v) => v.tipo === "responsavel").map((v) => v.usuario_email);
+    // Fallback ao texto legado (tarefa sem vínculo ainda): nomes → e-mails conhecidos.
+    setResponsaveisEmails(
+      resps.length > 0
+        ? resps
+        : nomesResponsaveis(tarefa?.responsavel).map((n) => emailDe(n)?.toLowerCase()).filter((e): e is string => !!e)
+    );
     setSeguidoresEmails(vinculados.filter((v) => v.tipo === "seguidor").map((v) => v.usuario_email));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tarefa, vinculados]);
@@ -168,15 +186,19 @@ export default function TarefaModal({
   // abertura ja semeia do jsonb espelhado (imediato, sem flash); quando a leitura da tabela
   // chega, re-sincroniza UMA vez por assinatura (mesmo guard dos vinculos) — antes de o
   // usuario editar. Tarefa nova nao tem linha na tabela: o seed [] da abertura basta.
+  // v300: a janela da subtarefa muda a linha no banco (título/status/responsável) — a assinatura
+  // inclui o responsável, e depois da 1ª carga as linhas ainda não salvas (sem id) são mantidas.
   const subInitRef = useRef<string | null>(null);
   useEffect(() => {
     if (!open) { subInitRef.current = null; return; }
     if (!tarefa?.id_tarefa) return;
-    const assinatura = subtarefasTabela.map((s) => `${s.ordem}:${s.feito ? 1 : 0}:${s.texto}`).join("|");
+    const assinatura = subtarefasTabela.map((s) => `${s.ordem}:${s.feito ? 1 : 0}:${s.responsavel_email ?? ""}:${s.texto}`).join("|");
     const chave = `${tarefa.id_tarefa}#${assinatura}`;
     if (subInitRef.current === chave) return;
+    const primeira = subInitRef.current === null;
     subInitRef.current = chave;
-    setSubtarefas(subtarefasTabela.map((s) => ({ id: s.id, texto: s.texto, feito: s.feito, responsavel_email: s.responsavel_email })));
+    const daTabela = subtarefasTabela.map((s) => ({ id: s.id, texto: s.texto, feito: s.feito, responsavel_email: s.responsavel_email }));
+    setSubtarefas((atuais) => (primeira ? daTabela : [...daTabela, ...atuais.filter((s) => !s.id)]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tarefa, subtarefasTabela]);
 
@@ -203,6 +225,19 @@ export default function TarefaModal({
     } catch { toast.error("IA indisponível no momento."); } finally { setIaLoad(null); }
   }
 
+  function abrirSub(s: Subtarefa & { id?: string }) {
+    if (!tarefa || !s.id) {
+      toast("Salve a tarefa para abrir esta subtarefa.");
+      return;
+    }
+    abrirSubtarefa.mutate({ id_subtarefa: s.id, id_tarefa: tarefa.id_tarefa }, { onSuccess: (t) => setSubAberta(t) });
+  }
+  function fecharSub() {
+    setSubAberta(null);
+    // O que mudou na janela da subtarefa volta para a linha pelo banco (v300) — recarrega a lista.
+    if (tarefa) qc.invalidateQueries({ queryKey: ["gestao-subtarefas", tarefa.id_tarefa] });
+  }
+
   function addSub() {
     const t = novaSub.trim();
     if (!t) return;
@@ -213,6 +248,10 @@ export default function TarefaModal({
   async function handleSalvar() {
     if (!titulo.trim()) {
       toast.error("Informe o título da tarefa.");
+      return;
+    }
+    if (horaInicio && horaFim && dataInicio && dataInicio === prazo && horaFim < horaInicio) {
+      toast.error("A hora fim não pode ser antes da hora de início no mesmo dia.");
       return;
     }
     // Guarda de conclusão: bloqueia concluir se há dependências não concluídas.
@@ -227,7 +266,8 @@ export default function TarefaModal({
     }
     // Responsável agora vem do vínculo (por e-mail); o texto `responsavel` (nome) é
     // mantido em compat p/ ICS/notificar. O trigger-espelho server-side também o reflete.
-    const respNome = nomeDe(responsavelEmail) ?? null;
+    // Mesmo formato do espelho do banco (v295): nomes na ordem, separados por vírgula.
+    const respNome = responsaveisEmails.map((e) => nomeDe(e) ?? e).join(", ") || null;
     // Flush do buffer de subtarefa ainda não confirmado por Enter/botão (#2a): sem
     // isto, o texto digitado e não confirmado era descartado em silêncio ao salvar.
     const subPend = novaSub.trim();
@@ -242,13 +282,22 @@ export default function TarefaModal({
       prioridade,
       prazo: prazo || null,
       data_inicio: dataInicio || null,
+      hora_inicio: horaInicio || null,
+      hora_fim: horaFim || null,
       status,
       etiquetas,
       pontos: pontos.trim() === "" ? null : Math.max(0, parseInt(pontos, 10) || 0),
       // subtarefas NAO vai mais no payload da tarefa (F2.1/v199): persiste na tabela abaixo.
       campos: valoresCampos,
       recorrencia: recTipo
-        ? { tipo: recTipo, intervalo: Math.max(1, recInt || 1), proxima_geracao: tarefa?.recorrencia?.proxima_geracao || prazo || new Date().toISOString().slice(0, 10) }
+        ? {
+            tipo: recTipo,
+            intervalo: Math.max(1, recInt || 1),
+            // Recalcula quando muda o término/tipo/intervalo (antes ficava presa à data original).
+            proxima_geracao: proximaGeracao(tarefa ? { recorrencia: tarefa.recorrencia, prazo: tarefa.prazo } : null, {
+              tipo: recTipo, intervalo: recInt, prazo: prazo || null, dataInicio: dataInicio || null, hoje: new Date().toLocaleDateString("sv-SE"),
+            }),
+          }
         : null,
     });
 
@@ -256,25 +305,16 @@ export default function TarefaModal({
     // (subsFinal ja inclui o flush do novaSub — UX-A). Na CRIACAO usa append (reconciliar:false)
     // p/ NAO apagar subtarefas que uma automacao (esteira/checklists em tarefa_criada) acabou de
     // criar server-side. O trigger-espelho reescreve o jsonb.
-    await salvarSub.mutateAsync({ id_tarefa: idSalvo, subtarefas: subsFinal, reconciliar: !!tarefa?.id_tarefa });
+    if (!ehSub) await salvarSub.mutateAsync({ id_tarefa: idSalvo, subtarefas: subsFinal, reconciliar: !!tarefa?.id_tarefa });
 
-    // Vínculos: 1 responsável + N seguidores (por e-mail). O espelho reflete o responsável.
+    // Vínculos: N responsáveis + N seguidores (por e-mail). O espelho reflete os responsáveis.
     await salvarVinc.mutateAsync({
       id_tarefa: idSalvo,
-      responsavelEmail: responsavelEmail.trim() || null,
+      responsaveisEmails,
       seguidoresEmails,
     });
 
-    // Notificações (best-effort)
-    const respEmail = responsavelEmail.trim().toLowerCase() || null;
-    const respMudou = respNome !== (tarefa?.responsavel ?? null);
-    const statusNome = statuses.find((s) => s.slug === status)?.nome ?? status;
-    if (respMudou && respEmail && respEmail !== userEmail) {
-      criarNotif.mutate({ destinatario: respEmail, tipo: "atribuicao", titulo: `Você foi atribuído à tarefa: ${titulo.trim()}`, id_tarefa: idSalvo, id_quadro: idQuadro });
-    }
-    if (tarefa && !respMudou && status !== tarefa.status && respEmail && respEmail !== userEmail) {
-      criarNotif.mutate({ destinatario: respEmail, tipo: "status", titulo: `"${titulo.trim()}" mudou para ${statusNome}`, id_tarefa: idSalvo, id_quadro: idQuadro });
-    }
+    // Avisos (atribuição, seguidor, status) e e-mail: gerados no banco por gatilho (v295).
 
     // Histórico de atividades
     const nomeStatus = (slug: string) => statuses.find((s) => s.slug === slug)?.nome ?? slug;
@@ -291,14 +331,15 @@ export default function TarefaModal({
     if (eventos.length) registrarAtiv.mutate({ id_tarefa: idSalvo, ator: userNome, eventos });
 
     // Automações rodam no servidor (v120: trigger em gestao_tarefas + gestao_automacao_prazos).
-    toast.success(tarefa ? "Tarefa atualizada" : "Tarefa criada");
+    toast.success(ehSub ? "Subtarefa atualizada" : tarefa ? "Tarefa atualizada" : "Tarefa criada");
     onClose();
   }
 
   async function handleExcluir() {
     if (!tarefa) return;
-    if (!(await confirmar({ title: "Excluir tarefa?", description: `"${tarefa.titulo}" e seus comentários/apontamentos serão removidos. Esta ação não pode ser desfeita.` }))) return;
-    excluir.mutate(tarefa.id_tarefa, { onSuccess: () => { toast.success("Tarefa excluída"); onClose(); } });
+    const oQue = ehSub ? "subtarefa" : "tarefa";
+    if (!(await confirmar({ title: `Excluir ${oQue}?`, description: `"${tarefa.titulo}" e seus comentários/apontamentos serão removidos${ehSub ? " (sai também da lista de subtarefas)" : ""}. Esta ação não pode ser desfeita.` }))) return;
+    excluir.mutate(tarefa.id_tarefa, { onSuccess: () => { toast.success(ehSub ? "Subtarefa excluída" : "Tarefa excluída"); onClose(); } });
   }
 
   function enviarComentario() {
@@ -310,15 +351,7 @@ export default function TarefaModal({
       { onSuccess: () => {
         setNovoComentario("");
         invalidarTimeline();
-        const respEmail = emailDe(t.responsavel);
-        if (respEmail && respEmail !== userEmail) {
-          criarNotif.mutate({ destinatario: respEmail, tipo: "comentario", titulo: `Novo comentário em "${t.titulo}"`, id_tarefa: t.id_tarefa, id_quadro: idQuadro });
-        }
-        for (const em of detectarMencoes(texto, usuariosFull)) {
-          if (em !== userEmail && em !== respEmail) {
-            criarNotif.mutate({ destinatario: em, tipo: "mencao", titulo: `Você foi mencionado em "${t.titulo}"`, id_tarefa: t.id_tarefa, id_quadro: idQuadro });
-          }
-        }
+        // Avisos de comentário e de menção (@nome): gerados no banco por gatilho (v295).
       } },
     );
   }
@@ -331,7 +364,7 @@ export default function TarefaModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={tarefa ? "Editar tarefa" : "Nova tarefa"}
+      title={ehSub ? "Subtarefa" : tarefa ? "Editar tarefa" : "Nova tarefa"}
       size="xl"
       footer={
         !ro ? (
@@ -351,6 +384,12 @@ export default function TarefaModal({
     >
       <div className="flex flex-col gap-4 lg:flex-row">
         <div className="min-w-0 flex-1 space-y-3">
+        {ehSub && (
+          <p className="flex items-center gap-1.5 text-xs text-gray-500">
+            <CornerDownRight className="size-3.5 shrink-0" />
+            Subtarefa de <span className="truncate font-medium text-gray-700">{tituloPai ?? "…"}</span>
+          </p>
+        )}
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Título *</label>
           <input value={titulo} disabled={ro} onChange={(e) => setTitulo(e.target.value)} placeholder="O que precisa ser feito?" className={inputCls} />
@@ -366,27 +405,26 @@ export default function TarefaModal({
           </div>
           <textarea value={descricao} disabled={ro} onChange={(e) => setDescricao(e.target.value)} rows={3} className={inputCls} />
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Responsável</label>
-            <UsuarioCombobox
-              usuarios={usuariosFull}
-              value={responsavelEmail}
-              onChange={setResponsavelEmail}
-              disabled={ro}
-              incluirVazio
-              vazioLabel="Sem responsável"
-              placeholder="Buscar responsável…"
-            />
-          </div>
+        {/* Datas lado a lado, horas logo abaixo; responsável desce para junto dos seguidores. */}
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Data de início</label>
             <input type="date" value={dataInicio} disabled={ro} max={prazo || undefined} onChange={(e) => setDataInicio(e.target.value)} className={inputCls} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Prazo</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Data de término</label>
             <input type="date" value={prazo} disabled={ro} min={dataInicio || undefined} onChange={(e) => setPrazo(e.target.value)} className={inputCls} />
           </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Hora de início</label>
+            <input type="time" value={horaInicio} disabled={ro} onChange={(e) => setHoraInicio(e.target.value)} className={inputCls} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-gray-600">Hora fim</label>
+            <input type="time" value={horaFim} disabled={ro} onChange={(e) => setHoraFim(e.target.value)} className={inputCls} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600">Prioridade</label>
             <select value={prioridade} disabled={ro} onChange={(e) => setPrioridade(e.target.value as PrioridadeTarefa)} className={inputCls}>
@@ -406,6 +444,48 @@ export default function TarefaModal({
         </div>
 
         <div>
+          <label className="mb-1 block text-xs font-medium text-gray-600">
+            {responsaveisEmails.length > 1 ? `Responsáveis (${responsaveisEmails.length})` : "Responsável"}
+          </label>
+          {/* Campo de busca menor, com os selecionados ao lado. */}
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start">
+            {!ro && (
+              <div className="w-full shrink-0 sm:w-60">
+                <UsuarioCombobox
+                  usuarios={usuariosFull.filter((u) => !responsaveisEmails.includes(u.email.toLowerCase()))}
+                  value=""
+                  onChange={(em) => {
+                    if (!em) return;
+                    const e = em.toLowerCase();
+                    setResponsaveisEmails((s) => [...new Set([...s, e])]);
+                    setSeguidoresEmails((s) => s.filter((x) => x.toLowerCase() !== e)); // responsável não é também seguidor
+                  }}
+                  placeholder={responsaveisEmails.length === 0 ? "Buscar responsável…" : "Adicionar responsável…"}
+                />
+              </div>
+            )}
+            {responsaveisEmails.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 sm:pt-1.5">
+                {responsaveisEmails.map((em) => {
+                  const nome = nomeDe(em) ?? em;
+                  return (
+                    <span key={em} className="inline-flex items-center gap-1 rounded-full bg-verde-light/60 py-0.5 pl-1 pr-2 text-xs font-medium text-verde-primary">
+                      <AvatarPessoa nome={nome} email={em} className="size-5 text-[9px]" />
+                      {nome}
+                      {!ro && (
+                        <button type="button" aria-label={`Remover responsável ${nome}`} onClick={() => setResponsaveisEmails((s) => s.filter((x) => x !== em))} className="text-gray-400 hover:text-red-600">
+                          <X className="size-3" />
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Seguidores</label>
           {seguidoresEmails.length > 0 && (
             <div className="mb-1.5 flex flex-wrap gap-1.5">
@@ -413,7 +493,7 @@ export default function TarefaModal({
                 const nome = nomeDe(em) ?? em;
                 return (
                   <span key={em} className="inline-flex items-center gap-1 rounded-full bg-gray-100 py-0.5 pl-1 pr-2 text-xs font-medium text-gray-700">
-                    <span className="flex size-5 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: corAvatar(nome) }}>{iniciais(nome)}</span>
+                    <AvatarPessoa nome={nome} email={em} className="size-5 text-[9px]" />
                     {nome}
                     {!ro && (
                       <button type="button" aria-label={`Remover seguidor ${nome}`} onClick={() => setSeguidoresEmails((s) => s.filter((x) => x !== em))} className="text-gray-400 hover:text-red-600">
@@ -427,7 +507,7 @@ export default function TarefaModal({
           )}
           {!ro && (
             <UsuarioCombobox
-              usuarios={usuariosFull.filter((u) => u.email !== responsavelEmail && !seguidoresEmails.includes(u.email))}
+              usuarios={usuariosFull.filter((u) => !responsaveisEmails.includes(u.email.toLowerCase()) && !seguidoresEmails.includes(u.email))}
               value=""
               onChange={(em) => { if (em) setSeguidoresEmails((s) => [...new Set([...s, em])]); }}
               placeholder="Adicionar seguidor…"
@@ -435,6 +515,7 @@ export default function TarefaModal({
           )}
         </div>
 
+        {!ehSub && (
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Recorrência</label>
           <div className="flex flex-wrap items-center gap-2">
@@ -453,12 +534,14 @@ export default function TarefaModal({
           </div>
           {recTipo && <p className="mt-1 text-[11px] text-gray-400">Uma nova tarefa é criada automaticamente a cada período (a partir do prazo).</p>}
         </div>
+        )}
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Etiquetas</label>
           <MultiChipInput value={etiquetas} onChange={setEtiquetas} sugestoes={etiquetasSugeridas} placeholder="Adicionar etiqueta…" ro={ro} />
         </div>
 
+        {!ehSub && (
         <div>
           <div className="mb-1 flex items-center justify-between">
             <label className="block text-xs font-medium text-gray-600">
@@ -472,7 +555,7 @@ export default function TarefaModal({
           </div>
           <div className="space-y-1.5">
             {subtarefas.map((s, i) => (
-              <div key={i} className="flex items-center gap-2">
+              <div key={i} className="flex items-center gap-2" onDoubleClick={() => abrirSub(s)} title="Duplo clique abre a subtarefa">
                 <button type="button" disabled={ro} onClick={() => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, feito: !x.feito } : x))} className="text-gray-400 hover:text-verde-primary">
                   {s.feito ? <CheckSquare className="size-4 text-verde-primary" /> : <Square className="size-4" />}
                 </button>
@@ -485,7 +568,7 @@ export default function TarefaModal({
                 {s.responsavel_email && (() => {
                   const nome = nomeDe(s.responsavel_email) ?? s.responsavel_email;
                   return (
-                    <span title={nome} className="flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: corAvatar(nome) }}>{iniciais(nome)}</span>
+                    <AvatarPessoa nome={nome} email={s.responsavel_email} title={nome} className="size-5 text-[9px]" />
                   );
                 })()}
                 <div className="w-32 shrink-0">
@@ -500,6 +583,16 @@ export default function TarefaModal({
                     className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:bg-gray-50"
                   />
                 </div>
+                <button
+                  type="button"
+                  onClick={() => abrirSub(s)}
+                  disabled={abrirSubtarefa.isPending}
+                  aria-label={`Abrir subtarefa ${s.texto}`}
+                  title="Abrir subtarefa"
+                  className="text-gray-300 hover:text-verde-primary disabled:opacity-50"
+                >
+                  {abrirSubtarefa.isPending && abrirSubtarefa.variables?.id_subtarefa === s.id ? <Loader2 className="size-4 animate-spin" /> : <Maximize2 className="size-4" />}
+                </button>
                 {!ro && (
                   <button type="button" onClick={() => setSubtarefas((arr) => arr.filter((_, j) => j !== i))} className="text-gray-300 hover:text-red-600">
                     <X className="size-4" />
@@ -523,6 +616,7 @@ export default function TarefaModal({
             )}
           </div>
         </div>
+        )}
 
         {campos.length > 0 && (
           <Secao titulo="Campos personalizados">
@@ -555,7 +649,7 @@ export default function TarefaModal({
           </Secao>
         )}
 
-        {tarefa && (
+        {tarefa && !ehSub && (
           <Secao titulo="Dependências">
             <div className="space-y-2">
             <div>
@@ -621,6 +715,20 @@ export default function TarefaModal({
           />
         )}
       </div>
+
+      {subAberta && (
+        <TarefaModal
+          open
+          onClose={fecharSub}
+          idQuadro={subAberta.id_quadro}
+          tarefa={subAberta}
+          statuses={statuses}
+          campos={campos}
+          tarefasQuadro={tarefasQuadro}
+          podeEditar={podeEditar}
+          etiquetasSugeridas={etiquetasSugeridas}
+        />
+      )}
     </Modal>
   );
 }

@@ -69,6 +69,10 @@ export interface VisaoGeralViewProps {
   /** Inspeções por status (donut). */
   inspecoesPorStatus?: FatiaStatus[];
   onLogout: () => void;
+  /** Sino de notificações da Gestão, ao lado da saudação (só para quem usa a Gestão). */
+  sinoNotificacoes?: React.ReactNode;
+  /** Notificações não lidas da Gestão — número vermelho no item "Gestão JCN Consultoria" do menu. */
+  gestaoNaoLidas?: number;
 }
 
 /**
@@ -94,6 +98,8 @@ export default function VisaoGeralView({
   inspecoesPorMes,
   inspecoesPorStatus,
   onLogout,
+  sinoNotificacoes,
+  gestaoNaoLidas = 0,
 }: VisaoGeralViewProps) {
   const totais = data?.totais;
   const unidades = data?.unidades ?? [];
@@ -168,7 +174,7 @@ export default function VisaoGeralView({
           <NavItem icon={<FileClock className="size-[15px]" />} label="Validades" />
         </Link>
         <Link href="/gestao" onClick={aoNavegar}>
-          <NavItem icon={<KanbanSquare className="size-[15px]" />} label="Gestão JCN Consultoria" />
+          <NavItem icon={<KanbanSquare className="size-[15px]" />} label="Gestão JCN Consultoria" alerta={gestaoNaoLidas} />
         </Link>
       </nav>
 
@@ -273,9 +279,12 @@ export default function VisaoGeralView({
           <AvisoRevisaoTrava />
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="reveal-up">
-              <h1 className="text-3xl font-bold text-gray-900">
-                {saudacao}{primeiroNome ? `, ${primeiroNome}` : ""} <span aria-hidden>👋</span>
-              </h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {saudacao}{primeiroNome ? `, ${primeiroNome}` : ""} <span aria-hidden>👋</span>
+                </h1>
+                {sinoNotificacoes}
+              </div>
               <p className="mt-1 text-sm text-gray-500">
                 Visão geral por unidade{dataExtenso ? ` · ${dataExtenso}` : ""}
               </p>
@@ -480,11 +489,14 @@ function NavItem({
   label,
   active,
   badge,
+  alerta = 0,
 }: {
   icon: React.ReactNode;
   label: string;
   active?: boolean;
   badge?: number;
+  /** Itens novos (ex.: notificações não lidas): bolinha vermelha no ícone + número vermelho. */
+  alerta?: number;
 }) {
   return (
     <div
@@ -496,8 +508,16 @@ function NavItem({
       {active && (
         <span className="absolute -left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-emerald-400" />
       )}
-      <span className={active ? "text-white" : "text-white/40"}>{icon}</span>
+      <span className={cn("relative", active ? "text-white" : "text-white/40")}>
+        {icon}
+        {alerta > 0 && <span className="absolute -right-1 -top-1 size-2 animate-pulse rounded-full bg-red-500" />}
+      </span>
       <span className="flex-1 truncate text-left">{label}</span>
+      {alerta > 0 && (
+        <span className="rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white" title={`${alerta} não lida(s)`}>
+          {alerta > 99 ? "99+" : alerta}
+        </span>
+      )}
       {badge !== undefined && (
         <span className="rounded-full bg-white/10 px-1.5 text-[10px] font-semibold text-white/70">{badge}</span>
       )}

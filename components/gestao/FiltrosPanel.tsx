@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Filter, ChevronDown, Trash2, Bookmark } from "lucide-react";
+import SelectVerde from "@/components/gestao/SelectVerde";
 import {
   useFiltrosSalvos, useSalvarFiltro, useExcluirFiltro, contarFiltros,
   PRIORIDADES, FILTRO_VAZIO,
@@ -65,10 +66,10 @@ export default function FiltrosPanel({
             {/* Responsável */}
             <div className="mb-3">
               <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">Responsável</label>
-              <select value={filtros.responsavel} disabled={filtros.semResponsavel} onChange={(e) => set({ responsavel: e.target.value })} className="w-full rounded-md border border-gray-200 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-50">
-                <option value="">Todos</option>
-                {usuarios.map((u) => <option key={u} value={u}>{u}</option>)}
-              </select>
+              {/* Lista verde (o <select> nativo abria com o destaque azul do sistema). */}
+              <SelectVerde valor={filtros.responsavel} desabilitado={filtros.semResponsavel} onChange={(v) => set({ responsavel: v })}
+                busca={usuarios.length > 8} placeholderBusca="Buscar pessoa…"
+                opcoes={[{ value: "", label: "Todos" }, ...usuarios.map((u) => ({ value: u, label: u }))]} />
               <label className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-gray-600">
                 <input type="checkbox" checked={filtros.semResponsavel} onChange={(e) => set({ semResponsavel: e.target.checked, responsavel: e.target.checked ? "" : filtros.responsavel })} className="size-3.5 rounded accent-verde-primary" /> Sem responsável
               </label>

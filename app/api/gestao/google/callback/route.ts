@@ -4,7 +4,7 @@ import {
   createSupabaseServerClient,
   createSupabaseServiceClient,
 } from "@/lib/supabase/client";
-import { STATE_COOKIE, validarState } from "@/lib/gestao/google/helpers";
+import { STATE_COOKIE, origemPublica, validarState } from "@/lib/gestao/google/helpers";
 import { registrarWatch } from "@/lib/gestao/google/inbound";
 
 export const runtime = "nodejs";
@@ -18,16 +18,19 @@ export const dynamic = "force-dynamic";
  * validarState/STATE_COOKIE vivem em @/lib/gestao/google/helpers (route.ts não exporta não-handler).
  */
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
+const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo";
 
-function voltarPraGestao(origin: string, flag: string): NextResponse {
-  const res = NextResponse.redirect(`${origin}/gestao?google=${flag}`, 302);
+function voltarPraGestao(origin: string, flag: string, extra?: Record<string, string>): NextResponse {
+  const qs = new URLSearchParams({ google: flag, ...extra });
+  const res = NextResponse.redirect(`${origin}/gestao?${qs}`, 302);
   // Consome o cookie de state (uso único).
   res.cookies.set(STATE_COOKIE, "", { path: "/api/gestao/google", maxAge: 0 });
   return res;
 }
 
 export async function GET(req: NextRequest) {
-  const origin = req.nextUrl.origin;
+  // Endereço PÚBLICO: dentro do container a origem da requisição é https://0.0.0.0:3000.
+  const origin = origemPublica(process.env.APP_URL, req.nextUrl.origin);
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const queryState = url.searchParams.get("state");
@@ -74,7 +77,7 @@ export async function GET(req: NextRequest) {
     // Não logar corpo (pode conter token/erro sensível).
     return voltarPraGestao(origin, "erro_troca");
   }
-  const tok = (await tokenRes.json()) as { refresh_token?: string };
+  const tok = (await tokenRes.json()) as { refresh_token?: string; access_token?: string };
   const refreshToken = tok.refresh_token;
   if (!refreshToken) {
     // Sem refresh_token (consent sem offline/prompt) → pedir reconsentimento.
@@ -92,6 +95,33 @@ export async function GET(req: NextRequest) {
     return voltarPraGestao(origin, "erro_gravar");
   }
 
+  // v302: foto da conta Google (no lugar das iniciais). Best-effort: sem o escopo de perfil (conexão
+  // antiga) ou se o Google não responder, a pessoa segue com as iniciais. Tamanho 128px (o padrão é 96).
+  if (tok.access_token) {
+    try {
+      const uiRes = await fetch(GOOGLE_USERINFO_URL, { headers: { Authorization: `Bearer ${tok.access_token}` } });
+      if (uiRes.ok) {
+        const ui = (await uiRes.json()) as { picture?: string };
+        if (ui.picture?.startsWith("https://")) {
+          await svc.rpc("gestao_salvar_foto", { p_email: user.email, p_foto_url: ui.picture.replace(/=s\d+-c$/, "=s128-c") } as never);
+        }
+      }
+    } catch {
+      // neutro
+    }
+  }
+
+  // Etapa 2 (v293): enfileira as tarefas abertas com prazo que a pessoa JÁ tem — sem isto a agenda
+  // ficava vazia até cada tarefa ser editada. O /sync disparado ao voltar para a Gestão envia.
+  // Best-effort: falhar aqui não desfaz a conexão (as tarefas entram quando forem alteradas).
+  let enviadas = 0;
+  try {
+    const { data: qtd } = await svc.rpc("gestao_google_enfileirar_usuario", { p_email: user.email } as never);
+    if (typeof qtd === "number") enviadas = qtd;
+  } catch {
+    // neutro
+  }
+
   // Watch best-effort (F3.B): registra o canal push logo após conectar. Se o Google recusar
   // (domínio não verificado etc.), segue SÓ com polling — não bloqueia a conexão nem loga segredo.
   try {
@@ -104,5 +134,5 @@ export async function GET(req: NextRequest) {
     // neutro: polling cobre o inbound sem o watch
   }
 
-  return voltarPraGestao(origin, "conectado");
+  return voltarPraGestao(origin, "conectado", { enviadas: String(enviadas) });
 }

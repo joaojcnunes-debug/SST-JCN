@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
   const sb = createSupabaseServiceClient({ email: null, origem: "google-agenda/aviso-do-google" });
   const { data: contaRow } = await sb
     .from("gestao_google_contas")
-    .select("usuario_email,calendar_id,sync_token,channel_token")
+    .select("usuario_email,calendar_id,sync_token,channel_token,importar_desde")
     .eq("channel_id", channelId)
     .eq("ativo", true)
     .maybeSingle();
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     calendar_id: string | null;
     sync_token: string | null;
     channel_token: string | null;
+    importar_desde: string | null;
   } | null;
 
   // Conta ausente OU token divergente → 401 (comparação em tempo constante; não revela existência).

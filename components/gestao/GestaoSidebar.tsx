@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, BarChart3, Bell, Lock, UserSquare, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users } from "lucide-react";
 import {
   useSalvarEspaco, useExcluirEspaco, useSalvarPasta, useExcluirPasta,
   useCriarQuadro, useRenomearQuadro, useExcluirQuadro,
@@ -20,11 +20,6 @@ export default function GestaoSidebar({
   podeEditar,
   meuEspacoAtivo,
   onMeuEspaco,
-  painelAtivo,
-  onPainel,
-  inboxAtivo,
-  onInbox,
-  inboxCount,
   colabAtivo = false,
   onColab,
   mostrarColab = false,
@@ -37,11 +32,6 @@ export default function GestaoSidebar({
   podeEditar: boolean;
   meuEspacoAtivo: boolean;
   onMeuEspaco: () => void;
-  painelAtivo: boolean;
-  onPainel: () => void;
-  inboxAtivo: boolean;
-  onInbox: () => void;
-  inboxCount: number;
   /** "Colaboradores" (v235): só para gestor/supervisor — o servidor decide quem aparece. */
   colabAtivo?: boolean;
   onColab?: () => void;
@@ -96,15 +86,6 @@ export default function GestaoSidebar({
         <UserSquare className="size-4" /> Meu Espaço
       </button>
       <div className="mb-1 border-t border-white/[0.07]" />
-      <button type="button" onClick={onInbox} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${inboxAtivo ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
-        {inboxAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}
-        <Bell className="size-4" /> Notificações
-        {inboxCount > 0 && <span className="ml-auto rounded-full bg-verde-accent px-1.5 text-[11px] font-bold text-verde-dark">{inboxCount}</span>}
-      </button>
-      <button type="button" onClick={onPainel} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${painelAtivo ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
-        {painelAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}
-        <BarChart3 className="size-4" /> Painel
-      </button>
       {mostrarColab && onColab && (
         <button type="button" onClick={onColab} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${colabAtivo ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
           {colabAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}

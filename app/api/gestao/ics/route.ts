@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
     .from("gestao_tarefas")
     .select("id_tarefa,titulo,status,responsavel,prioridade,prazo")
     .eq("id_quadro", q.id_quadro)
+    .is("id_tarefa_pai", null) // v300: filha de subtarefa fica fora (só abre pela subtarefa)
     .not("prazo", "is", null);
 
   const now = stamp();

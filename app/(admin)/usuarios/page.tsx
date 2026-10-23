@@ -36,10 +36,20 @@ import {
   useGestaoMembros,
   useMeuPapelGestao,
   useDefinirMembro,
-  useEquipes,
   useEquipeMembros,
-  useDefinirMembroEquipe,
+  useGestaoUnidades,
+  useQuadrosAcesso,
+  useDefinirUnidades,
 } from "@/lib/hooks/useGestaoAcesso";
+import { useAcessosGestao } from "@/lib/hooks/useGestao";
+import {
+  mesmoConjunto,
+  planoAcessoQuadros,
+  quadrosDeSetor,
+  quadrosIndividuais,
+  quadrosViaEquipe,
+  unidadesIniciais,
+} from "@/lib/gestao/acesso-unidade-setor";
 import { usePagination } from "@/lib/hooks/usePagination";
 import { cn, gerarId } from "@/lib/utils";
 import type {
@@ -329,11 +339,21 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
   const initGestaoRef = useRef(false);
   // Equipes da Gestão (v235): cadastrar o colaborador direto numa equipe — ele herda os quadros
   // da equipe e já entra no módulo. Aplicado no Salvar via RPC gestao_equipe_definir_membro.
-  const { data: equipesGestao = [] } = useEquipes();
   const { data: equipeMembros = [], isSuccess: equipeMembrosOk } = useEquipeMembros();
-  const definirMembroEquipe = useDefinirMembroEquipe();
   const [equipesSel, setEquipesSel] = useState<Set<string>>(new Set());
-  const [equipesIni, setEquipesIni] = useState<Set<string>>(new Set());
+  // v294: colunas Unidades × Setores. Marcar = nível total no quadro; a unidade também filtra
+  // as tarefas dos quadros de setor (gestao_ve_tarefa). Só grava se o gestor mexeu nelas.
+  const { data: unidadesGestao = [] } = useGestaoUnidades(souGestorGestao);
+  const { data: quadrosAcesso = [], isSuccess: quadrosAcessoOk } = useQuadrosAcesso(souGestorGestao);
+  const { data: acessosGestao = [], isSuccess: acessosGestaoOk } = useAcessosGestao();
+  const definirUnidades = useDefinirUnidades();
+  const [unidadesSel, setUnidadesSel] = useState<Set<string>>(new Set());
+  const [unidadesIni, setUnidadesIni] = useState<Set<string>>(new Set());
+  const [setoresSel, setSetoresSel] = useState<Set<string>>(new Set());
+  const [setoresIni, setSetoresIni] = useState<Set<string>>(new Set());
+  const initColunasRef = useRef(false);
+  const setoresGestao = quadrosDeSetor(quadrosAcesso);
+  const viaEquipe = quadrosViaEquipe(acessosGestao, equipesSel);
 
   const [form, setForm] = useState({
     nome: "",
@@ -461,9 +481,26 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
       usuario ? equipeMembros.filter((m) => m.usuario_email.toLowerCase() === (usuario.email ?? "").toLowerCase()).map((m) => m.id_equipe) : []
     );
     setEquipesSel(minhas);
-    setEquipesIni(new Set(minhas));
     initGestaoRef.current = true;
   }, [open, usuario, membrosOk, membrosGestao, equipeMembrosOk, equipeMembros]);
+
+  // v294: estado inicial das colunas Unidades/Setores (uma vez por abertura, com tudo carregado).
+  useEffect(() => {
+    if (!open) { initColunasRef.current = false; return; }
+    if (initColunasRef.current || !souGestorGestao) return;
+    if (usuario && !(membrosOk && equipeMembrosOk && quadrosAcessoOk && acessosGestaoOk)) return;
+    const email = (usuario?.email ?? "").trim().toLowerCase();
+    const minhasEquipes = new Set(
+      equipeMembros.filter((m) => m.usuario_email.toLowerCase() === email).map((m) => m.id_equipe)
+    );
+    const acessa = new Set([...quadrosIndividuais(acessosGestao, email), ...quadrosViaEquipe(acessosGestao, minhasEquipes)]);
+    const membro = membrosGestao.find((m) => m.usuario_email.toLowerCase() === email);
+    const uni = usuario ? unidadesIniciais(membro?.unidades, quadrosAcesso, acessa) : new Set<string>();
+    const set = new Set(quadrosDeSetor(quadrosAcesso).filter((q) => acessa.has(q.id_quadro)).map((q) => q.id_quadro));
+    setUnidadesSel(uni); setUnidadesIni(new Set(uni));
+    setSetoresSel(set); setSetoresIni(new Set(set));
+    initColunasRef.current = true;
+  }, [open, usuario, souGestorGestao, membrosOk, membrosGestao, equipeMembrosOk, equipeMembros, quadrosAcessoOk, quadrosAcesso, acessosGestaoOk, acessosGestao]);
 
   const [buscaEmpresa, setBuscaEmpresa] = useState("");
   // Limpa busca ao abrir/fechar modal
@@ -660,13 +697,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
       // Sincroniza o acesso à Gestão (roster) quando o gestor mudou o toggle.
       // Admin tem acesso automático (não passa pelo roster). Falha aqui NÃO
       // derruba o save já concluído — useDefinirMembro avisa o erro.
-      // Equipes (v235): entra nas marcadas, sai das desmarcadas. Falha aqui não derruba o save.
-      if (souGestorGestao) {
-        const email = form.email.trim().toLowerCase();
-        for (const id of equipesSel) if (!equipesIni.has(id)) await definirMembroEquipe.mutateAsync({ id_equipe: id, email, papel: "membro", ativo: true }).catch(() => {});
-        for (const id of equipesIni) if (!equipesSel.has(id)) await definirMembroEquipe.mutateAsync({ id_equipe: id, email, papel: "membro", ativo: false }).catch(() => {});
-      }
-      if (souGestorGestao && form.perfil !== "Admin" && acessoGestao !== acessoGestaoIni && !(acessoGestao && [...equipesSel].some((id) => !equipesIni.has(id)))) {
+      // Equipes (v235) saíram desta tela em 19/10: entrar/sair de equipe é na Gestão › Equipes.
+      // As equipes atuais da pessoa (equipesSel) só servem p/ marcar "via equipe" nos Setores.
+      if (souGestorGestao && form.perfil !== "Admin" && acessoGestao !== acessoGestaoIni) {
         await definirMembroGestao
           .mutateAsync({
             alvo: form.email.trim().toLowerCase(),
@@ -677,6 +710,40 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               : "Acesso à Gestão removido na tela de usuários",
           })
           .catch(() => {});
+      }
+      // v294: Unidades/Setores — só se o gestor mexeu. Grants pelo mesmo RPC do "Compartilhar"
+      // (log + motivo); depois as unidades (exige o membro no roster, gravado logo acima).
+      const mexeuColunas = !mesmoConjunto(unidadesSel, unidadesIni) || !mesmoConjunto(setoresSel, setoresIni);
+      if (souGestorGestao && form.perfil !== "Admin" && acessoGestao && mexeuColunas) {
+        const email = form.email.trim().toLowerCase();
+        const { conceder, revogar } = planoAcessoQuadros({
+          quadros: quadrosAcesso,
+          individuais: quadrosIndividuais(acessosGestao, email),
+          viaEquipe: quadrosViaEquipe(acessosGestao, equipesSel),
+          unidadesSel,
+          setoresSel,
+        });
+        const sb = createSupabaseBrowserClient() as unknown as {
+          rpc(fn: string, args: Record<string, unknown>): Promise<{ error: { message: string } | null }>;
+        };
+        let falhas = 0;
+        for (const [acao, ids] of [["concedeu", conceder], ["revogou", revogar]] as const) {
+          for (const id of ids) {
+            const { error } = await sb.rpc("gestao_alterar_acesso", {
+              p_alvo: email, p_acao: acao, p_recurso_tipo: "list", p_recurso_id: id, p_nivel_novo: "full",
+              p_motivo: "Unidades/Setores na tela de usuários",
+            });
+            if (error) falhas++;
+          }
+        }
+        if (!mesmoConjunto(unidadesSel, unidadesIni)) {
+          await definirUnidades
+            .mutateAsync({ alvo: email, unidades: [...unidadesSel], motivo: "Unidades/Setores na tela de usuários" })
+            .catch(() => { falhas++; });
+        }
+        qc.invalidateQueries({ queryKey: ["gestao-acessos"] });
+        qc.invalidateQueries({ queryKey: ["gestao-meu-nivel"] });
+        if (falhas > 0) toast.error(`Gestão: ${falhas} alteração(ões) de acesso não foram gravadas.`);
       }
       qc.invalidateQueries({ queryKey: ["usuarios"] });
       toast.success(isEdit ? "Usuário atualizado" : "Usuário criado");
@@ -1133,23 +1200,58 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             <p className="mt-1 text-[11px] text-gray-500">
               {form.perfil === "Admin"
                 ? "Admin tem acesso automático à Gestão."
-                : "Libera a entrada no módulo. NÃO dá visibilidade de quadro — isso é por equipe (abaixo) ou por convite em cada quadro (Membros e acessos)."}
+                : "Libera a entrada no módulo. O que a pessoa vê é o que estiver marcado em Unidades e Setores (ou nas equipes)."}
             </p>
-            {equipesGestao.filter((e) => e.ativo).length > 0 && (
-              <div className="mt-2">
-                <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500">Equipes da Gestão</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {equipesGestao.filter((e) => e.ativo).map((e) => {
-                    const on = equipesSel.has(e.id);
-                    return (
-                      <button key={e.id} type="button" onClick={() => { setEquipesSel((s) => { const n = new Set(s); if (n.has(e.id)) n.delete(e.id); else n.add(e.id); return n; }); if (!on) setAcessoGestao(true); }}
-                        className={cn("rounded-full border px-2.5 py-1 text-xs transition", on ? "border-verde-primary bg-verde-light font-medium text-verde-primary" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
-                        {e.nome}
-                      </button>
-                    );
-                  })}
+            {form.perfil !== "Admin" && (unidadesGestao.length > 0 || setoresGestao.length > 0) && (
+              <div className="mt-2 grid gap-3 rounded-md border border-gray-200 bg-white p-3 sm:grid-cols-2">
+                <div>
+                  <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500">Unidades</p>
+                  <div className="space-y-0.5">
+                    {unidadesGestao.map((u) => (
+                      <label key={u.id_unidade} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          checked={unidadesSel.has(u.id_unidade)}
+                          onChange={() => {
+                            setUnidadesSel((s) => { const n = new Set(s); if (n.has(u.id_unidade)) n.delete(u.id_unidade); else n.add(u.id_unidade); return n; });
+                            setAcessoGestao(true);
+                          }}
+                          className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                        />
+                        <span className="text-sm text-gray-700">{u.nome}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-                <p className="mt-1 text-[11px] text-gray-500">Entrar numa equipe herda os quadros dela e já libera o módulo.</p>
+                <div>
+                  <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500">Setores</p>
+                  <div className="max-h-64 space-y-0.5 overflow-y-auto">
+                    {setoresGestao.map((q) => {
+                      const equipe = viaEquipe.has(q.id_quadro);
+                      return (
+                        <label key={q.id_quadro} className={cn("flex items-center gap-2 rounded px-2 py-1", equipe ? "opacity-70" : "cursor-pointer hover:bg-gray-50")}>
+                          <input
+                            type="checkbox"
+                            checked={equipe || setoresSel.has(q.id_quadro)}
+                            disabled={equipe}
+                            onChange={() => {
+                              setSetoresSel((s) => { const n = new Set(s); if (n.has(q.id_quadro)) n.delete(q.id_quadro); else n.add(q.id_quadro); return n; });
+                              setAcessoGestao(true);
+                            }}
+                            className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                          />
+                          <span className="text-sm text-gray-700">{q.nome}</span>
+                          {equipe && <span className="text-[10px] text-gray-400">via equipe</span>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                <p className="text-[11px] text-gray-500 sm:col-span-2">
+                  Nos setores, a pessoa vê só as tarefas das unidades marcadas (e as sem unidade).
+                  Sem nenhuma unidade marcada, vê todas as unidades. Tarefas em que ela é responsável,
+                  seguidora ou que criou continuam aparecendo.
+                </p>
               </div>
             )}
           </Field>

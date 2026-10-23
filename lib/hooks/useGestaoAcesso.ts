@@ -82,6 +82,8 @@ export interface GestaoMembro {
   usuario_email: string;
   papel: GestaoPapel;
   ativo: boolean;
+  /** v294: unidades que o membro vê. null/vazio = todas. */
+  unidades?: string[] | null;
   adicionado_por: string | null;
   created_at: string;
 }
@@ -155,6 +157,54 @@ export function useAlterarAcesso() {
       toast.success("Acesso atualizado");
     },
     onError: (e) => toast.error(mensagemErro(e, "Não foi possível alterar o acesso.")),
+  });
+}
+
+// ── Unidades e setores na tela de usuários (v294) ────────────────────────────────
+export interface GestaoUnidade { id_unidade: string; nome: string; ordem: number }
+
+/** As 6 unidades da Gestão (RLS: membro do módulo lê). */
+export function useGestaoUnidades(enabled = true) {
+  return useQuery({
+    queryKey: ["gestao-unidades"],
+    enabled,
+    staleTime: 10 * 60 * 1000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.from("gestao_unidades" as never).select("id_unidade,nome,ordem").order("ordem");
+      if (error) throw error;
+      return (data ?? []) as unknown as GestaoUnidade[];
+    },
+  });
+}
+
+/** Quadros com unidade e dono (Meu Quadro), p/ montar as colunas. Gestor vê todos pela RLS. */
+export function useQuadrosAcesso(enabled = true) {
+  return useQuery({
+    queryKey: ["gestao-quadros", "acesso"],
+    enabled,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.from("gestao_quadros").select("id_quadro,nome,id_unidade,dono_email" as "*");
+      if (error) throw error;
+      return (data ?? []) as unknown as { id_quadro: string; nome: string; id_unidade: string | null; dono_email: string | null }[];
+    },
+  });
+}
+
+/** Grava as unidades do membro (vazio = todas) — gestao_definir_unidades (gestor, com log). */
+export function useDefinirUnidades() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { alvo: string; unidades: string[]; motivo: string }) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await (sb as unknown as GestaoRpc).rpc("gestao_definir_unidades", {
+        p_alvo: p.alvo, p_unidades: p.unidades, p_motivo: p.motivo,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-membros"] }),
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível gravar as unidades.")),
   });
 }
 

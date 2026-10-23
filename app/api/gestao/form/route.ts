@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServiceClient } from "@/lib/supabase/client";
 import { comporTitulo, faltando, normalizarEtiquetaForm, perguntaVisivel } from "@/lib/gestao/formularios";
+import { chaveTicketAnexo, gerarTicketAnexo } from "@/lib/gestao/anexo-ticket";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,9 @@ export const dynamic = "force-dynamic";
  * Precisa de CF Access "Bypass" no path /api/gestao/* p/ ser alcançável de fora.
  *   GET  ?token=...  -> definição pública do formulário
  *   POST { token, titulo, descricao?, prazo?, prioridade?, respostas[] } -> cria tarefa
+ * Pergunta tipo "anexo" (OS de T.I): chega aqui só com os NOMES dos arquivos (regra de
+ * obrigatória); o POST devolve { id_tarefa, ticket_anexo } e os arquivos sobem um a um em
+ * /api/gestao/form/anexo, que confere o ticket (lib/gestao/anexo-ticket.ts).
  */
 // F1 (GESTAO-KANBAN-03): pergunta tipada com destino estruturado.
 //   tipo:   texto|texto_longo|email|cnpj|cpf|telefone|data|data_hora|selecao|multipla
@@ -121,6 +125,8 @@ export async function POST(req: NextRequest) {
     // Pergunta condicional oculta: a resposta (se veio) é ignorada.
     if (!perguntaVisivel(p, perguntas, respostas)) return;
     const r = respostas[i];
+    // Anexo: os arquivos sobem depois (rota /anexo) e aparecem nos anexos da tarefa — não vão p/ a descrição.
+    if (p.tipo === "anexo") return;
     if (p.pendente_anexo && !vaziaResp(r)) anexoPendente = true;
     const dest = p.destino ?? "descricao";
     if (dest === "etiquetas") {
@@ -231,5 +237,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true });
+  // Ticket só quando o form tem pergunta de anexo (a chave HMAC é o token service_role, server-only).
+  const temAnexo = perguntas.some((p) => p.tipo === "anexo");
+  const ticket_anexo = temAnexo ? gerarTicketAnexo(chaveTicketAnexo(), idTarefa) : undefined;
+  return NextResponse.json({ ok: true, id_tarefa: idTarefa, ticket_anexo });
 }

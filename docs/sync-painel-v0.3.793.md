@@ -65,6 +65,7 @@
   e adaptar/deixar de fora a parte do agente do SGG.
 
 **Lote 5 — Gestão (M/G, em ordem obrigatória):**
+> ✅ Feito em 2026-10-23 (v0.3.142): v288 (= painel v292+v293+v298+v301+v302), v289 (= v294, com TODAS as unidades do JCN e gatilho para as novas), v290 (= v296), v291 (= v297; no JCN a rotina roda pelo pg_cron `gestao-diario` às 07:05 e o job `gestao-automacao-prazos` saiu) e v292 (= v300) aplicadas. Anexo do formulário refeito com URL assinada do Storage (50 MB por arquivo). Fora: v303 (usuário oculto), v306 (acesso "Financeiro") e o botão OS (T.I). Falta configurar na Vercel: Google OAuth, `GESTAO_GOOGLE_ENC_KEY` e `RESEND_API_KEY`/`FROM_EMAIL`.
 - Só front, sem migration (P): Agenda do Meu Espaço, Calendário do Meu Quadro, múltipla escolha em lista fechada,
   formulários das outras listas, recorrência recalcula, Mostrar/Agrupar, Painel como visão da lista, rodapé do menu,
   notificações no painel todo.
