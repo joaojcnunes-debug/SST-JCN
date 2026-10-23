@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-meu-quadro-dono-responsavel",
+    data: "2026-10-23",
+    tipo: "melhoria",
+    titulo: "Gestão: tarefa do Meu Quadro já nasce com você como responsável",
+    texto:
+      "Ao criar uma tarefa no seu Meu Quadro, você entra como responsável automaticamente (a janela da tarefa já " +
+      "vem preenchida e dá para trocar). Assim a tarefa com prazo vai para a sua Google Agenda e aparece no Meu Espaço.",
+    onde: "Gestão › Meu Espaço › Meu Quadro",
+    impacto: "As tarefas que já estavam no Meu Quadro sem responsável receberam o dono do quadro.",
+    versoes: ["0.3.146"],
+  },
+  {
     id: "gestao-varios-responsaveis-avisos-email",
     data: "2026-10-23",
     tipo: "novidade",

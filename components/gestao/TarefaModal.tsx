@@ -28,6 +28,7 @@ import TarefaSidebar from "@/components/gestao/TarefaSidebar";
 import { confirmar } from "@/components/ui/confirm";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 import { proximaGeracao } from "@/lib/gestao/recorrencia";
+import { useMeuQuadro } from "@/lib/hooks/useGestaoAcesso";
 
 function Secao({ titulo, badge, defaultOpen = false, children }: { titulo: string; badge?: number; defaultOpen?: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -88,6 +89,10 @@ export default function TarefaModal({
   const { data: subtarefasTabela = EMPTY_SUBTAREFAS } = useSubtarefas(tarefa?.id_tarefa);
   const { data: vinculados = EMPTY_VINCULADOS } = useVinculados(tarefa?.id_tarefa);
   const userNome = useUserStore((s) => s.user?.nome ?? null);
+  const userEmail = useUserStore((s) => s.user?.email ?? null);
+  // Tarefa nova no MEU Quadro já vem comigo como responsável (dá para tirar antes de salvar).
+  const { data: idMeuQuadro } = useMeuQuadro(open);
+  const novaNoMeuQuadro = !tarefa?.id_tarefa && !!idMeuQuadro && idQuadro === idMeuQuadro;
   const { data: usuariosFull = EMPTY_USUARIOS } = useUsuarios();
   const registrarAtiv = useRegistrarAtividade();
   const emailDe = (nome: string | null) => (nome ? usuariosFull.find((u) => u.nome === nome)?.email ?? null : null);
@@ -168,10 +173,15 @@ export default function TarefaModal({
       .map((v) => `${v.tipo}:${v.usuario_email}`)
       .sort()
       .join("|");
-    const chave = nova ? "__nova__" : `${tarefa!.id_tarefa}#${assinatura}`;
+    const chave = nova ? `__nova__#${novaNoMeuQuadro ? "meu" : ""}` : `${tarefa!.id_tarefa}#${assinatura}`;
     if (vincInitRef.current === chave) return;
     vincInitRef.current = chave;
     const resps = vinculados.filter((v) => v.tipo === "responsavel").map((v) => v.usuario_email);
+    if (novaNoMeuQuadro && userEmail) {
+      setResponsaveisEmails([userEmail.toLowerCase()]);
+      setSeguidoresEmails([]);
+      return;
+    }
     // Fallback ao texto legado (tarefa sem vínculo ainda): nomes → e-mails conhecidos.
     setResponsaveisEmails(
       resps.length > 0
@@ -180,7 +190,7 @@ export default function TarefaModal({
     );
     setSeguidoresEmails(vinculados.filter((v) => v.tipo === "seguidor").map((v) => v.usuario_email));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, tarefa, vinculados]);
+  }, [open, tarefa, vinculados, novaNoMeuQuadro]);
 
   // Subtarefas (F2.1/v199): a TABELA gestao_subtarefas e a fonte de verdade. O efeito de
   // abertura ja semeia do jsonb espelhado (imediato, sem flash); quando a leitura da tabela
@@ -312,6 +322,9 @@ export default function TarefaModal({
       id_tarefa: idSalvo,
       responsaveisEmails,
       seguidoresEmails,
+      // Tarefa nova sem responsável escolhido: mantém o que o banco pôs ao criar (dono do Meu
+      // Quadro, v294) em vez de apagar.
+      manterResponsaveisAtuais: !tarefa,
     });
 
     // Avisos (atribuição, seguidor, status) e e-mail: gerados no banco por gatilho (v295).
