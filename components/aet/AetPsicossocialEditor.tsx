@@ -331,8 +331,8 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
       const obs = data?.data?.observacao ?? data?.observacao ?? "";
       if (obs) setObservacoes((prev) => ({ ...prev, [fatorKey]: textoParaHtml(obs) }));
       else toast.error("IA não retornou texto");
-    } catch {
-      toast.error("Erro ao gerar com IA");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao gerar com IA"));
     } finally {
       setGerandoObsIA(null);
     }

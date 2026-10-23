@@ -59,7 +59,7 @@ import type {
   PerfilUsuario,
   Usuario,
 } from "@/lib/supabase/types";
-import { ROTULO_MODULO, TODOS_MODULOS } from "@/lib/supabase/types";
+import { CATEGORIAS_MODULO, ROTULO_MODULO, TODOS_MODULOS } from "@/lib/supabase/types";
 
 const PERFIS: PerfilUsuario[] = ["Admin", "Tecnico", "Visualizador", "Cliente"];
 
@@ -849,6 +849,16 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     }));
   }
 
+  /** Marca (ou desmarca) um lote de módulos de uma vez — todos ou os de uma categoria. */
+  function marcarModulos(lote: ModuloPermitido[], marcar: boolean) {
+    setForm((f) => ({
+      ...f,
+      modulos_permitidos: marcar
+        ? [...f.modulos_permitidos, ...lote.filter((m) => !f.modulos_permitidos.includes(m))]
+        : f.modulos_permitidos.filter((m) => !lote.includes(m)),
+    }));
+  }
+
   return (
     <Modal
       open={open}
@@ -1152,23 +1162,60 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           // sem este filtro leriam "18 de 17".
           label={`Acesso aos módulos — ${form.modulos_permitidos.filter((m) => TODOS_MODULOS.includes(m)).length} de ${TODOS_MODULOS.length}`}
         >
-          <div className="grid gap-2 rounded-md border border-gray-200 bg-white p-3 sm:grid-cols-2">
-            {TODOS_MODULOS.map((m) => (
-              <label
-                key={m}
-                className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-gray-50"
-              >
-                <input
-                  type="checkbox"
-                  checked={form.modulos_permitidos.includes(m)}
-                  onChange={() => toggleModulo(m)}
-                  className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
-                />
-                <span className="text-sm text-gray-700">
-                  {ROTULO_MODULO[m]}
-                </span>
-              </label>
-            ))}
+          <div className="space-y-3 rounded-md border border-gray-200 bg-white p-3">
+            {(() => {
+              const todosMarcados = TODOS_MODULOS.every((m) => form.modulos_permitidos.includes(m));
+              return (
+                <button
+                  type="button"
+                  onClick={() => marcarModulos(TODOS_MODULOS, !todosMarcados)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary/40 bg-verde-light px-3 py-1.5 text-xs font-medium text-verde-primary hover:bg-verde-primary hover:text-white"
+                >
+                  {todosMarcados ? "Desmarcar todos os módulos" : "Marcar todos os módulos"}
+                </button>
+              );
+            })()}
+            {CATEGORIAS_MODULO.map((cat) => {
+              const marcados = cat.modulos.filter((m) => form.modulos_permitidos.includes(m)).length;
+              const cheia = marcados === cat.modulos.length;
+              return (
+                <div key={cat.label} className="border-t border-gray-100 pt-2">
+                  <div className="mb-1 flex items-center justify-between gap-2 px-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                      {cat.label}{" "}
+                      <span className="font-normal normal-case tracking-normal text-gray-400">
+                        — {marcados} de {cat.modulos.length}
+                      </span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => marcarModulos(cat.modulos, !cheia)}
+                      className="text-[11px] font-medium text-verde-primary hover:underline"
+                    >
+                      {cheia ? "desmarcar categoria" : "marcar categoria"}
+                    </button>
+                  </div>
+                  <div className="grid gap-x-2 sm:grid-cols-2">
+                    {cat.modulos.map((m) => (
+                      <label
+                        key={m}
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.modulos_permitidos.includes(m)}
+                          onChange={() => toggleModulo(m)}
+                          className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {ROTULO_MODULO[m]}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
           <p className="mt-1 text-[11px] text-gray-500">
             Funções administrativas (gestão de usuários, configurações)

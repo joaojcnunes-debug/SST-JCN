@@ -222,7 +222,7 @@ export default function TarefaModal({
       const d = await gerarIaGestao({ acao: "descricao", titulo: titulo.trim(), descricao });
       if (d.descricao) { setDescricao((prev) => (prev.trim() ? `${prev}\n\n${d.descricao}` : d.descricao!)); toast.success("Descrição sugerida pela IA"); }
       else toast.error("A IA não retornou uma descrição.");
-    } catch { toast.error("IA indisponível no momento."); } finally { setIaLoad(null); }
+    } catch (e) { toast.error(mensagemErro(e, "IA indisponível no momento.")); } finally { setIaLoad(null); }
   }
   async function iaSubtarefas() {
     if (!titulo.trim()) { toast.error("Informe o título primeiro."); return; }
@@ -232,7 +232,7 @@ export default function TarefaModal({
       const novas = (d.subtarefas ?? []).map((t) => ({ texto: t, feito: false, responsavel_email: null }));
       if (novas.length) { setSubtarefas((s) => [...s, ...novas]); toast.success(`${novas.length} subtarefa(s) sugerida(s)`); }
       else toast.error("A IA não sugeriu subtarefas.");
-    } catch { toast.error("IA indisponível no momento."); } finally { setIaLoad(null); }
+    } catch (e) { toast.error(mensagemErro(e, "IA indisponível no momento.")); } finally { setIaLoad(null); }
   }
 
   function abrirSub(s: Subtarefa & { id?: string }) {

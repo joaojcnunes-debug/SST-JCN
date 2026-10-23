@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
+import { erroLimiteIaDaFuncao } from "@/lib/ia/limite-groq";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 // llama-4-scout morreu no Groq em 17/07/2026 (medido 404 em 14/09). O qwen3.6
 // exige reasoning_effort "none": com raciocinio ligado gasta os max_tokens
 // pensando e o JSON mode devolve 400 json_validate_failed (medido 14/09).
-const VISION_MODEL = "qwen/qwen3.6-27b";
+// v0.3.148 (painel v0.3.662): o painel trocou para o qwen3.8-27b. Na conta Groq do JCN o
+// qwen3.6 dá 404 (ver a edge function analisar-maquina-ia), então vira lista com fallback.
+const VISION_MODELS = [
+  "qwen/qwen3.8-27b",
+  "meta-llama/llama-4-maverick-17b-128e-instruct",
+  "qwen/qwen3.6-27b",
+];
 // Era 4. Cada foto custa ~1.870 tokens de entrada num plano de 8.000/min:
 // 4 fotos encostam no teto, 3 cabem com folga.
 const MAX_FOTOS = 3;
@@ -69,31 +76,46 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const groqRes = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: VISION_MODEL,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: [
-              ...dataUrls.map((url) => ({ type: "image_url", image_url: { url } })),
-              { type: "text", text: `Analise ${dataUrls.length > 1 ? "estas imagens (mesma máquina, ângulos diferentes)" : "esta imagem"} e retorne os dados técnicos da máquina no formato JSON definido.` },
-            ],
-          },
-        ],
-        response_format: { type: "json_object" },
-        reasoning_effort: "none",
-        temperature: 0.1,
-        max_tokens: 900,
-      }),
-    });
+    // Tenta os modelos em ordem; modelo retirado/sem acesso (404, 400) passa para o próximo.
+    // 429 (limite) também tenta o próximo — cada modelo tem a sua cota.
+    let groqRes: Response | null = null;
+    const falhas: string[] = [];
+    for (const model of VISION_MODELS) {
+      groqRes = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: [
+                ...dataUrls.map((url) => ({ type: "image_url", image_url: { url } })),
+                { type: "text", text: `Analise ${dataUrls.length > 1 ? "estas imagens (mesma máquina, ângulos diferentes)" : "esta imagem"} e retorne os dados técnicos da máquina no formato JSON definido.` },
+              ],
+            },
+          ],
+          response_format: { type: "json_object" },
+          // qwen3.x com raciocínio ligado gasta os max_tokens pensando e o JSON mode falha.
+          ...(model.startsWith("qwen/qwen3") ? { reasoning_effort: "none" } : {}),
+          temperature: 0.1,
+          max_tokens: 900,
+        }),
+      });
+      if (groqRes.ok) break;
+      falhas.push(`${model}: ${groqRes.status} ${(await groqRes.text()).slice(0, 200)}`);
+      if (groqRes.status === 401) break;
+    }
 
-    if (!groqRes.ok) {
-      const txt = await groqRes.text();
-      return NextResponse.json({ error: `Groq ${groqRes.status}: ${txt.slice(0, 300)}` }, { status: 502 });
+    if (!groqRes || !groqRes.ok) {
+      const txt = falhas.join(" | ");
+      // Todos no limite: a frase com a espera (mesma da IA nas edge functions).
+      const limite = erroLimiteIaDaFuncao(groqRes?.status ?? 502, JSON.stringify({ error: txt }));
+      if (limite) {
+        return NextResponse.json({ error: limite.message, codigo: limite.code }, { status: 429 });
+      }
+      return NextResponse.json({ error: `Groq falhou em todos os modelos — ${txt.slice(0, 600)}` }, { status: 502 });
     }
 
     const groqData = await groqRes.json();

@@ -41,6 +41,30 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "usuarios-modulos-por-categoria",
+    data: "2026-10-23",
+    tipo: "melhoria",
+    titulo: "Usuários: módulos separados por categoria e botão Marcar todos",
+    texto:
+      "Na janela do usuário, o Acesso aos módulos aparece nas mesmas três categorias da tela Módulos (Segurança do " +
+      "Trabalho, Fatores Psicossociais e JCN Sistema Interno), com o botão Marcar todos e a opção de marcar uma " +
+      "categoria inteira.",
+    onde: "Sistema › Usuários › editar usuário",
+    versoes: ["0.3.148"],
+  },
+  {
+    id: "ia-limite-tente-de-novo",
+    data: "2026-10-23",
+    tipo: "melhoria",
+    titulo: "IA: quando o limite de uso é atingido, a tela diz quanto esperar",
+    texto:
+      "Se muita gente usar a IA ao mesmo tempo, o serviço recusa por alguns segundos. Em vez de \"Erro ao gerar com " +
+      "IA\", a tela agora mostra \"Limite de uso da IA atingido. Tente de novo em N segundos\". A análise da foto da " +
+      "plaqueta (Máquinas, na inspeção) passou a tentar outros modelos quando um não está disponível.",
+    onde: "Todos os botões de IA",
+    versoes: ["0.3.148"],
+  },
+  {
     id: "gestao-meu-quadro-dono-responsavel",
     data: "2026-10-23",
     tipo: "melhoria",

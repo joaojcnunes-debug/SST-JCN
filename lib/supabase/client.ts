@@ -5,6 +5,7 @@ import {
 } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
+import { erroLimiteIaDaFuncao } from "@/lib/ia/limite-groq";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
@@ -20,7 +21,33 @@ if (!url || !anonKey) {
 }
 
 export function createSupabaseBrowserClient() {
-  return createBrowserClient<Database>(url, anonKey);
+  return comLimiteIa(createBrowserClient<Database>(url, anonKey));
+}
+
+// v0.3.148 (painel v0.3.663, adaptado): quando a edge function de IA falha porque o Groq
+// recusou por limite (429), o functions.invoke devolve um erro genérico ("non-2xx"). Aqui o
+// invoke lê o corpo da resposta e troca o erro por { code: "limite_ia", message: "Tente de
+// novo em N segundos" }, que o mensagemErro mostra. Os outros erros passam como estão.
+const MARCA_LIMITE_IA = Symbol.for("sst-jcn.functions.limite-ia");
+function comLimiteIa<C extends { functions: unknown }>(cliente: C): C {
+  const fns = cliente.functions as {
+    invoke: (nome: string, opcoes?: unknown) => Promise<{ data: unknown; error: unknown }>;
+    [MARCA_LIMITE_IA]?: true;
+  };
+  if (fns[MARCA_LIMITE_IA]) return cliente; // createBrowserClient reaproveita a mesma instância
+  const original = fns.invoke.bind(fns);
+  fns.invoke = async (nome, opcoes) => {
+    const r = await original(nome, opcoes);
+    const ctx = (r.error as { context?: unknown } | null)?.context;
+    if (ctx instanceof Response) {
+      const texto = await ctx.clone().text().catch(() => "");
+      const limite = erroLimiteIaDaFuncao(ctx.status, texto);
+      if (limite) return { data: null, error: limite };
+    }
+    return r;
+  };
+  fns[MARCA_LIMITE_IA] = true;
+  return cliente;
 }
 
 // Server client: usado em Route Handlers, Server Actions e Server Components.

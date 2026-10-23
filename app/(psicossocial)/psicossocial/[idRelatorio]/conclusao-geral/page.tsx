@@ -159,6 +159,8 @@ export default function ConclusaoGeralPage({
         }
       );
       if (error) {
+        // Limite do Groq (429): o erro já vem pronto para a tela (lib/ia/limite-groq.ts).
+        if ((error as { code?: string }).code === "limite_ia") throw error;
         // Extrai mensagem real do body da Edge Function (supabase-js encapsula em FunctionsHttpError)
         let msg = error.message as string;
         try {

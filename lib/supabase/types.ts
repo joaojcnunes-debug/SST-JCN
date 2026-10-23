@@ -79,6 +79,46 @@ export const TODOS_MODULOS: ModuloPermitido[] = [
   "consolidacao_psicossocial",
 ];
 
+/**
+ * Módulos por categoria, na tela de Usuários (Acesso aos módulos). Mesmas três
+ * categorias da página Módulos; Gestão Gerencial, Comercial e Transferências
+ * (que lá não têm card) entram no Sistema Interno. Todo módulo de TODOS_MODULOS
+ * aparece em exatamente uma — o teste confere. (Replicado do painel v0.3.752.)
+ */
+export const CATEGORIAS_MODULO: { label: string; modulos: ModuloPermitido[] }[] = [
+  {
+    label: "Segurança do Trabalho",
+    modulos: [
+      "painel",
+      "conformidade",
+      "nao_conformidade",
+      "apreciacao_maquinas",
+      "analise_quimicos",
+      "aet",
+      "aep",
+      "investigacao_acidente",
+      "epi",
+      "consolidacao_psicossocial",
+    ],
+  },
+  {
+    label: "NR — Fatores Psicossociais",
+    modulos: ["psicossocial", "questionarios_psicossociais"],
+  },
+  {
+    label: "JCN Sistema Interno",
+    modulos: [
+      "gestao_gerencial",
+      "comercial",
+      "dimensionamento",
+      "equipamentos",
+      "transferencias",
+      "frota",
+      "escala_supervisores",
+    ],
+  },
+];
+
 export const ROTULO_MODULO: Record<ModuloPermitido, string> = {
   investigacao_acidente: "Investigação de Acidente de Trabalho",
   gestao_gerencial: "Gestão Gerencial",
