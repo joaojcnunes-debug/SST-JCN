@@ -1,6 +1,21 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { linkTarefa, montarEmailAviso, type AvisoReservado } from "./avisos-email";
+import { escolherCanalEmail, linkTarefa, montarEmailAviso, type AvisoReservado } from "./avisos-email";
+
+describe("canal do e-mail dos avisos", () => {
+  test("Gmail vence o Resend e a senha de app perde os espaços", () => {
+    const c = escolherCanalEmail({ GMAIL_USER: "sst@gmail.com", GMAIL_APP_PASSWORD: "abcd efgh ijkl mnop", RESEND_API_KEY: "re_x" });
+    assert.deepEqual(c, { tipo: "gmail", usuario: "sst@gmail.com", senha: "abcdefghijklmnop", nome: "SST JCN Consultoria" });
+  });
+  test("nome do remetente configurável", () => {
+    const c = escolherCanalEmail({ GMAIL_USER: "sst@gmail.com", GMAIL_APP_PASSWORD: "x", EMAIL_REMETENTE_NOME: "Gestão JCN" });
+    assert.equal(c?.tipo === "gmail" && c.nome, "Gestão JCN");
+  });
+  test("sem Gmail completo cai no Resend; sem nada, null", () => {
+    assert.equal(escolherCanalEmail({ GMAIL_USER: "sst@gmail.com", RESEND_API_KEY: "re_x" })?.tipo, "resend");
+    assert.equal(escolherCanalEmail({}), null);
+  });
+});
 
 const BASE: AvisoReservado = {
   id: "1", destinatario: "ana@jcnconsultoria.com.br", nome: "Ana Souza", tipo: "atribuicao",
