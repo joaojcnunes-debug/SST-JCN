@@ -776,7 +776,9 @@ export function useSalvarVinculados() {
   const qc = useQueryClient();
   return useMutation({
     // v295: N responsáveis (antes 1). Quem é responsável não entra também como seguidor.
-    mutationFn: async (p: { id_tarefa: string; responsaveisEmails: string[]; seguidoresEmails: string[] }) => {
+    // manterResponsaveisAtuais: com a lista de responsáveis VAZIA, preserva os que já estão no banco
+    // (tarefa recém-criada no Meu Quadro nasce com o dono como responsável — v294 JCN).
+    mutationFn: async (p: { id_tarefa: string; responsaveisEmails: string[]; seguidoresEmails: string[]; manterResponsaveisAtuais?: boolean }) => {
       const sb = createSupabaseBrowserClient();
       const rpc = (sb as unknown as {
         rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
@@ -798,6 +800,9 @@ export function useSalvarVinculados() {
       const atual = new Map<string, { email: string; tipo: TipoVinculo }>();
       for (const r of (atuaisRows ?? []) as unknown as { usuario_email: string; tipo: TipoVinculo }[]) {
         atual.set(`${r.usuario_email}|${r.tipo}`, { email: r.usuario_email, tipo: r.tipo });
+      }
+      if (p.manterResponsaveisAtuais && resps.length === 0) {
+        for (const [k, v] of atual) if (v.tipo === "responsavel") desejado.set(k, v);
       }
 
       // Delta: remover (atuais − desejados), depois adicionar (desejados − atuais).

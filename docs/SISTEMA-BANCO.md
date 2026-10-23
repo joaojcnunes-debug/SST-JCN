@@ -543,7 +543,9 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
 
 - **v293 — segurança:** `gestao_google_ler_token`, `gestao_google_salvar_conta` e `gestao_google_status` passam a ser só `service_role` (estavam abertas a anon/authenticated desde a portação da v209).
 
-Rollbacks: `scripts/sql/v288…v293_*_rollback.sql` (desfazer de trás para a frente: v293 → v288).
+- **v294 — Meu Quadro:** gatilho `trg_gestao_meu_quadro_dono` (AFTER INSERT em `gestao_tarefas`): tarefa nova num quadro com `dono_email` e sem responsável recebe o dono como responsável (`origem = 'meu-quadro'`); fora: filha de subtarefa e escrita do sync do Google.
+
+Rollbacks: `scripts/sql/v288…v294_*_rollback.sql` (desfazer de trás para a frente: v294 → v288).
 
 ### `gestao_acesso_log`
 
