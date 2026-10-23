@@ -74,6 +74,9 @@
 - Formulário com anexos: refazer o envio direto ao Storage (Vercel).
 - Precisa de segredos: Google OAuth, `GESTAO_GOOGLE_ENC_KEY`, `GESTAO_CRON_TOKEN`, Resend.
 
+**Lote 6 — sobras do Sistema (P):**
+> ✅ Feito em 2026-10-23 (v0.3.148): Usuários com módulos por categoria + Marcar todos (= v0.3.752, categorias do JCN); limite do Groq (429) com "Tente de novo em N segundos" (= v0.3.663, adaptado: no JCN a leitura é no cliente, sem republicar as edge functions); visão `/api/maquina/analisar-foto` com lista de modelos começando no `qwen3.8-27b` (= v0.3.662, adaptado: o `qwen3.6` dá 404 na conta do JCN). Também no dia: páginas `/privacidade` e `/termos`, rotas públicas da Gestão liberadas, v293 (RPCs da Google Agenda só servidor), v294 (Meu Quadro com o dono responsável) e e-mail dos avisos pelo Gmail.
+
 **Decisões de negócio (perguntar antes):**
 - v290: remover a trava por módulo do banco?
 - v303: usuário oculto?

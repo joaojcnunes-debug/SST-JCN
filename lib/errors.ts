@@ -72,6 +72,9 @@ export function mensagemErro(
 
   // P0001 = RAISE EXCEPTION dos nossos RPCs: a mensagem já é escrita para o usuário.
   if (code === "P0001" && raw) return raw;
+  // Limite do Groq (429) — também já escrita para o usuário, com os segundos de
+  // espera (lib/ia/limite-groq.ts).
+  if (code === "limite_ia" && raw) return raw;
   // Escrita que voltou com 0 linhas: o PostgREST não devolve erro quando a RLS
   // filtra a linha, então quem escreve verifica a contagem e levanta isto. A
   // mensagem já vem pronta para o usuário e diz o que conferir.
