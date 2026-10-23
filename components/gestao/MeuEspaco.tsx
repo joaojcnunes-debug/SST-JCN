@@ -2,11 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { KanbanSquare, LayoutList, CalendarClock, CheckSquare, List, Eye, EyeOff } from "lucide-react";
+import { KanbanSquare, LayoutList, CalendarDays, CalendarClock, CheckSquare, List, Eye, EyeOff } from "lucide-react";
 import MinhasTarefas from "@/components/gestao/MinhasTarefas";
 import MeuQuadro from "@/components/gestao/MeuQuadro";
-import { PRIORIDADES, useSalvarTarefa, type GestaoTarefa, type GestaoStatus, type GestaoQuadro, type PrioridadeTarefa } from "@/lib/hooks/useGestao";
-import { useMeusNiveisQuadros, nivelPodeEditar } from "@/lib/hooks/useGestaoAcesso";
+import GoogleAgendaCard from "@/components/gestao/GoogleAgendaCard";
+import VistaCalendario from "@/components/gestao/VistaCalendario";
+import { PRIORIDADES, useSalvarTarefa, useMinhasTarefasAgenda, type GestaoTarefa, type GestaoStatus, type GestaoQuadro, type PrioridadeTarefa } from "@/lib/hooks/useGestao";
+import { useMeusNiveisQuadros, nivelPodeEditar, useMeuQuadro } from "@/lib/hooks/useGestaoAcesso";
 
 function diasAte(iso: string): number {
   const hoje = new Date();
@@ -26,7 +28,9 @@ const FILAS: { value: PrioridadeTarefa; label: string; cor: string }[] = [...PRI
  *
  * Vistas: **Kanban por urgência** (default; pedido do operador 2026-09-18) — uma fila por
  * prioridade, Urgente → Baixa, concluídas ocultas por padrão; e **Lista** por quadro
- * (`MinhasTarefas`, a vista original). Abrir o card leva ao modal da tarefa no quadro dela.
+ * (`MinhasTarefas`, a vista original); e **Agenda** — o calendário do mês com as tarefas em que
+ * estou alocado (responsável ou seguidor), de qualquer quadro; sem prazo, vale a data de início.
+ * Abrir o card leva ao modal da tarefa no quadro dela.
  *
  * Arrastar entre filas = mudar a prioridade (UX-03). A vista mistura quadros, e o nível de
  * edição é POR QUADRO: `useMeusNiveisQuadros` resolve `gestao_meu_nivel` para cada quadro
@@ -53,12 +57,16 @@ export default function MeuEspaco({
   /** v235: abre o Meu Quadro como quadro completo (lista/calendário/timeline). */
   onAbrirQuadro: (idQuadro: string) => void;
 }) {
-  const [vista, setVista] = useState<"kanban" | "lista">("kanban");
+  const [vista, setVista] = useState<"kanban" | "lista" | "agenda">("kanban");
   const [mostrarConcluidas, setMostrarConcluidas] = useState(false);
   const nomeQuadro = useMemo(() => new Map(quadros.map((q) => [q.id_quadro, q.nome])), [quadros]);
 
+  // Agenda: onde estou alocado — responsável ou seguidor (pedido do operador 2026-10-20).
+  const { data: idMeuQuadro } = useMeuQuadro();
+  const { data: daAgenda = [] } = useMinhasTarefasAgenda(vista === "agenda");
+
   // Nível de edição por quadro (só para não-gestor; gestor é `full` em todos).
-  const idsQuadros = useMemo(() => [...new Set(tarefas.map((t) => t.id_quadro))].sort(), [tarefas]);
+  const idsQuadros = useMemo(() => [...new Set([...tarefas, ...daAgenda].map((t) => t.id_quadro))].sort(), [tarefas, daAgenda]);
   const niveis = useMeusNiveisQuadros(idsQuadros, !souGestor);
   const podeEditar = (t: GestaoTarefa) => souGestor || nivelPodeEditar(niveis.get(t.id_quadro));
 
@@ -116,6 +124,10 @@ export default function MeuEspaco({
 
   return (
     <div className="mt-4">
+      {/* Etapa 1 Google Agenda: conectar/desconectar a conta Google do próprio usuário. */}
+      <div className="mb-4">
+        <GoogleAgendaCard />
+      </div>
       {/* v235: o quadro PESSOAL primeiro (criar/arrastar); abaixo, as tarefas em que estou vinculado. */}
       <MeuQuadro onAbrirCompleto={onAbrirQuadro} />
       <h2 className="mt-6 text-base font-semibold text-gray-800">Tarefas em que estou vinculado <span className="text-sm font-normal text-gray-400">— {tarefas.length} em outros quadros</span></h2>
@@ -127,6 +139,9 @@ export default function MeuEspaco({
           <button type="button" onClick={() => setVista("lista")} className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${vista === "lista" ? "bg-verde-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}>
             <LayoutList className="size-4" /> Por quadro
           </button>
+          <button type="button" onClick={() => setVista("agenda")} className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${vista === "agenda" ? "bg-verde-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}>
+            <CalendarDays className="size-4" /> Agenda
+          </button>
         </div>
         <button type="button" onClick={() => setMostrarConcluidas((v) => !v)} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${mostrarConcluidas ? "border-verde-primary bg-verde-light/60 text-verde-primary" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
           {mostrarConcluidas ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
@@ -134,7 +149,17 @@ export default function MeuEspaco({
         </button>
       </div>
 
-      {vista === "lista" ? (
+      {vista === "agenda" ? (
+        <VistaCalendario
+          tarefas={mostrarConcluidas ? daAgenda : daAgenda.filter((t) => !concluida(t))}
+          statuses={[]}
+          concluida={concluida}
+          podeEditar={podeEditar}
+          rotulo={(t) => (t.id_quadro === idMeuQuadro ? "Meu Quadro" : nomeQuadro.get(t.id_quadro) ?? "Lista")}
+          inicioSemPrazo
+          onAbrir={onAbrir}
+        />
+      ) : vista === "lista" ? (
         <MinhasTarefas tarefas={visiveis} quadros={quadros} statusMap={statusMap} onAbrir={onAbrir} />
       ) : tarefas.length === 0 ? (
         <div className="mt-6 rounded-xl border border-dashed border-gray-200 p-10 text-center text-sm text-gray-400">Você não tem tarefas atribuídas.</div>

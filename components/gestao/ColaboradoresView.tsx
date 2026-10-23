@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Search, Users, KanbanSquare, Loader2 } from "lucide-react";
-import { iniciais, corAvatar } from "@/lib/hooks/useGestao";
 import { useColaboradores, useAbrirQuadroPessoal } from "@/lib/hooks/useGestaoAcesso";
+import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 
 /**
  * "Colaboradores" (GESTAO-EQUIPES-01): lista dos colaboradores que o usuário pode acompanhar —
@@ -43,7 +43,7 @@ export default function ColaboradoresView({ onAbrirQuadro }: { onAbrirQuadro: (i
             const nome = c.nome ?? c.usuario_email;
             return (
               <button key={c.usuario_email} type="button" disabled={abrindo === c.usuario_email} onClick={() => abrirDe(c.usuario_email, nome)} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left shadow-sm transition hover:border-verde-primary/50 hover:shadow-md disabled:opacity-60">
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white" style={{ backgroundColor: corAvatar(nome) }}>{iniciais(nome)}</span>
+                <AvatarPessoa nome={nome} className="size-9 text-xs" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-gray-800">{nome}</span>
                   <span className="block truncate text-[11px] text-gray-400">{c.usuario_email}</span>

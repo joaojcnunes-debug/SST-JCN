@@ -2,12 +2,13 @@
 
 import { CalendarClock, CheckSquare, Repeat, Clock, Flag, Check, Paperclip, Target, ShieldQuestion } from "lucide-react";
 import {
-  iniciais, corAvatar, formatarDuracao,
+  formatarDuracao,
   useVinculadosQuadro, useUsuarios, useAprovacaoTarefa,
   PRIORIDADES,
   type GestaoTarefa, type GestaoStatus, type GestaoCampo,
 } from "@/lib/hooks/useGestao";
 import { formatarCampoValor } from "@/components/gestao/CampoInput";
+import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 
 const corPrioridade = (p: string) => PRIORIDADES.find((x) => x.value === p)?.cor ?? "#94a3b8";
 const labelPrioridade = (p: string) => PRIORIDADES.find((x) => x.value === p)?.label ?? p;
@@ -97,7 +98,10 @@ export default function TarefaCard({
             {selecionado && <Check className="size-3" />}
           </span>
         )}
-        <p className={`flex-1 text-sm font-medium ${concluido ? "text-gray-400 line-through" : "text-gray-800"}`}>{t.titulo}</p>
+        <div className="min-w-0 flex-1">
+          <p className={`text-sm font-medium ${concluido ? "text-gray-400 line-through" : "text-gray-800"}`}>{t.titulo}</p>
+          {t.titulo_mae && <p className="mt-0.5 truncate text-[11px] text-gray-400" title={t.titulo_mae}>↳ Subtarefa de {t.titulo_mae}</p>}
+        </div>
       </div>
 
       {(t.etiquetas ?? []).length > 0 && (
@@ -172,15 +176,13 @@ export default function TarefaCard({
         {pilha.length > 0 && (
           <div className="ml-auto flex items-center -space-x-1.5">
             {pilha.map((p) => (
-              <span
+              <AvatarPessoa
                 key={p.key}
-                className={`flex size-6 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ${p.tipo === "responsavel" ? "ring-verde-primary" : "ring-white"}`}
-                style={{ background: corAvatar(p.nome) }}
+                nome={p.nome}
+                className={`size-6 text-[10px] ring-2 ${p.tipo === "responsavel" ? "ring-verde-primary" : "ring-white"}`}
                 title={`${p.tipo === "responsavel" ? "Responsável" : "Seguidor"}: ${p.nome}`}
-                aria-label={`${p.tipo === "responsavel" ? "Responsável" : "Seguidor"}: ${p.nome}`}
-              >
-                {iniciais(p.nome)}
-              </span>
+                ariaLabel={`${p.tipo === "responsavel" ? "Responsável" : "Seguidor"}: ${p.nome}`}
+              />
             ))}
           </div>
         )}

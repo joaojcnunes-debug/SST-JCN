@@ -9,8 +9,6 @@ import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
-  iniciais,
-  corAvatar,
   useQuadros,
   useAcessosGestao,
 } from "@/lib/hooks/useGestao";
@@ -22,6 +20,7 @@ import {
   useAlterarAcessoEquipe,
   type GestaoNivel,
 } from "@/lib/hooks/useGestaoAcesso";
+import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 
 // Níveis do resolver v117, rotulados por VISIBILIDADE de tarefa (camada v197):
 // `full` = vê TODAS as tarefas do quadro; `view` = vê o quadro mas só as tarefas em que
@@ -241,7 +240,7 @@ export default function MembrosModal({ open, onClose }: { open: boolean; onClose
                     {it.id_equipe ? (
                       <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-verde-light text-verde-primary"><Users className="size-4" /></span>
                     ) : (
-                      <span className="flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ backgroundColor: corAvatar(it.nome) }}>{iniciais(it.nome)}</span>
+                      <AvatarPessoa nome={it.nome} className="size-7 text-[10px]" />
                     )}
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-gray-800">{it.nome}</p>

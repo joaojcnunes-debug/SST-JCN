@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ChevronRight, ChevronsLeft, ChevronsRight, Home, Smartphone } from "lucide-react";
 import { useSidebarMini, useUserStore } from "@/lib/store";
 import { useOperacoesOffline } from "@/lib/hooks/useOperacoesOffline";
 import UnidadeAtivaChip from "@/components/layout/UnidadeAtivaChip";
 import ThemeToggle from "@/components/layout/ThemeToggle";
+import AvatarPessoa from "@/components/gestao/AvatarPessoa";
+import NotificacoesSino, { linkNotificacao } from "@/components/gestao/NotificacoesSino";
+import { useMeuPapelGestao } from "@/lib/hooks/useGestaoAcesso";
 
 // ─── Breadcrumb mapping ───────────────────────────────────────────────────────
 
@@ -37,6 +40,8 @@ const ROUTE_LABELS: Record<string, string> = {
   padrao:                "Padrão Semanal",
   conferencia:           "Conferência",
   calendario:            "Calendário",
+  comercial:             "Oportunidades",
+  gestao:                "Gestão JCN Consultoria",
 };
 
 function buildCrumbs(pathname: string): { label: string; href: string }[] {
@@ -102,8 +107,48 @@ function PendenciasChip() {
 // Sem props: o que a barra mostra e a TRILHA, montada do pathname por
 // buildCrumbs(). O antigo prop `title` era passado por 21 lugares e nunca
 // chegou a ser desenhado.
-export default function ModuleTopbar() {
+function AvatarFoto({ nome, email, initials }: { nome: string; email: string | null | undefined; initials: string }) {
+  const iniciais = (
+    <span className="flex size-8 items-center justify-center rounded-full bg-white/15 text-xs font-bold text-white ring-1 ring-white/25">{initials}</span>
+  );
+  return (
+    <AvatarPessoa nome={nome} email={email} className="size-8 text-xs ring-1 ring-white/25" fallback={iniciais} />
+  );
+}
+
+/** Sigla/foto de quem está logado, com a bolinha vermelha de notificações não lidas. */
+function BotaoSigla({ avisos, onClick, nome, email, initials }: { avisos: number; onClick?: () => void; nome: string; email: string | null | undefined; initials: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
+      title={avisos > 0 ? `${avisos} notificação(ões) não lida(s)` : onClick ? "Notificações" : undefined}
+      aria-label={avisos > 0 ? `${avisos} notificações não lidas` : "Notificações"}
+      className="relative z-40 flex size-8 shrink-0 items-center justify-center rounded-full disabled:cursor-default"
+    >
+      {/* Foto da conta Google (de quem conectou o Google na Gestão, v302); senão as iniciais, como antes. */}
+      <AvatarFoto nome={nome} email={email} initials={initials} />
+      {avisos > 0 && (
+        <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[#006B54]">
+          {avisos > 99 ? "99+" : avisos}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/**
+ * `recolher=false`: telas com menu próprio (Gestão), onde o botão de recolher a SidebarShell não faz nada.
+ * `avisos`/`onAvisos` (Gestão): bolinha vermelha com o número de notificações não lidas na sigla do nome;
+ * clicar na sigla abre as notificações.
+ */
+export default function ModuleTopbar({ recolher = true, avisos = 0, onAvisos }: { recolher?: boolean; avisos?: number; onAvisos?: () => void } = {}) {
   const user = useUserStore((s) => s.user);
+  const router = useRouter();
+  // Fora da Gestão (sem onAvisos): quem usa a Gestão vê o contador na sigla e abre a lista ali mesmo.
+  const { data: papelGestao } = useMeuPapelGestao();
+  const notifGlobal = !onAvisos && !!papelGestao && user?.perfil !== "Cliente";
   const toggleSidebar = useSidebarMini((s) => s.toggle);
   const pathname = usePathname();
   const crumbs = buildCrumbs(pathname);
@@ -121,6 +166,7 @@ export default function ModuleTopbar() {
             gaveta. Qual seta aparece quem decide é o CSS (globals.css), a
             partir do data-sidebar no <html>: assim nada aqui depende de
             estado e servidor e cliente renderizam igual. */}
+        {recolher && (
         <button
           type="button"
           onClick={toggleSidebar}
@@ -131,6 +177,7 @@ export default function ModuleTopbar() {
           <ChevronsLeft className="sidebar-seta-fechar size-4" />
           <ChevronsRight className="sidebar-seta-abrir size-4" />
         </button>
+        )}
 
         <nav className="flex min-w-0 items-center gap-1" aria-label="breadcrumb">
           <Link
@@ -176,9 +223,16 @@ export default function ModuleTopbar() {
                 {user.perfil}
               </span>
             </div>
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs font-bold text-white ring-1 ring-white/25">
-              {initials}
-            </div>
+            {notifGlobal ? (
+              <NotificacoesSino
+                onAbrir={(n) => router.push(linkNotificacao(n))}
+                gatilho={({ naoLidas, alternar }) => (
+                  <BotaoSigla avisos={naoLidas} onClick={alternar} nome={user.nome} email={user.email} initials={initials} />
+                )}
+              />
+            ) : (
+              <BotaoSigla avisos={avisos} onClick={onAvisos} nome={user.nome} email={user.email} initials={initials} />
+            )}
           </div>
         )}
       </div>

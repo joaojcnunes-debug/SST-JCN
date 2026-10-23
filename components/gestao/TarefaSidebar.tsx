@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { Send, X, ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
-import { iniciais, corAvatar, type GestaoStatus } from "@/lib/hooks/useGestao";
+import { type GestaoStatus } from "@/lib/hooks/useGestao";
 import { useTarefaHistorico, descreverMovimentacao } from "@/lib/hooks/useTarefaHistorico";
+import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 
 function quando(iso: string): string {
   const d = new Date(iso);
@@ -83,12 +84,7 @@ export default function TarefaSidebar({
               const idComentario = item.key.slice("cmt:".length);
               return (
                 <div key={item.key} className="group flex gap-2">
-                  <span
-                    className="flex size-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                    style={{ background: corAvatar(item.ator ?? "?") }}
-                  >
-                    {iniciais(item.ator ?? "?")}
-                  </span>
+                  <AvatarPessoa nome={item.ator ?? "?"} className="size-7 text-[10px]" />
                   <div className="flex-1 rounded-lg bg-gray-50 px-3 py-1.5">
                     <p className="text-[11px] text-gray-400">
                       {item.ator ?? "—"} · {quando(item.created_at)}

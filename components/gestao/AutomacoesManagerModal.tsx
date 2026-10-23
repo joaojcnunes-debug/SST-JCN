@@ -5,6 +5,7 @@ import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
 import AutomacaoCondicaoBuilder from "@/components/gestao/AutomacaoCondicaoBuilder";
+import { acaoCompleta } from "@/lib/gestao/automacao-completa";
 import {
   useAutomacoes, useSalvarAutomacao, useExcluirAutomacao, useUsuariosLista, useUsuarios,
   useModelos, useQuadros,
@@ -80,13 +81,19 @@ export default function AutomacoesManagerModal({
         {automacoes.map((a) => {
           const usaEou = !!(a.condicao?.all || a.condicao?.any);
           const emails = a.acao?.emails ?? [];
+          const completa = acaoCompleta(a.acao);
           return (
-          <div key={a.id} className="space-y-2 rounded-lg border border-gray-200 p-3">
+          <div key={a.id} className={`space-y-2 rounded-lg border p-3 ${completa ? "border-gray-200" : "border-amber-300 bg-amber-50/40"}`}>
+            {!completa && (
+              <p className="text-xs font-medium text-amber-700">Incompleta — escolha a ação e o destino/valor abaixo; depois marque “Ativa”. Enquanto isso ela não roda.</p>
+            )}
             <div className="flex items-center gap-2">
               <input defaultValue={a.nome} disabled={!podeEditar} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== a.nome) setCampo(a, { nome: v }); }}
                 className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm font-medium focus:border-verde-primary focus:outline-none" />
-              <label className="inline-flex items-center gap-1 text-xs text-gray-500">
-                <input type="checkbox" disabled={!podeEditar} checked={a.ativo} onChange={(e) => setCampo(a, { ativo: e.target.checked })} className="size-3.5 rounded accent-verde-primary" /> Ativa
+              {/* v297: incompleta não liga (o banco também força desligada) — evita a "Nova automação" vazia
+                  rodando (uma, no Geral, apagava o responsável a cada mudança de status). */}
+              <label className="inline-flex items-center gap-1 text-xs text-gray-500" title={completa ? undefined : "Complete a ação (destino/valor) para poder ativar"}>
+                <input type="checkbox" disabled={!podeEditar || !completa} checked={a.ativo && completa} onChange={(e) => setCampo(a, { ativo: e.target.checked })} className="size-3.5 rounded accent-verde-primary" /> Ativa
               </label>
               {podeEditar && <button type="button" onClick={async () => { if (await confirmar({ title: `Excluir automação "${a.nome}"?` })) excluir.mutate(a.id); }} className="rounded p-1 text-gray-300 hover:text-red-600"><Trash2 className="size-4" /></button>}
             </div>
@@ -278,7 +285,7 @@ export default function AutomacoesManagerModal({
           </div>
         );})}
         {podeEditar && (
-          <button type="button" onClick={() => salvar.mutate({ id_quadro: idQuadro, nome: "Nova automação", gatilho: "status_muda", ordem: automacoes.length })} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-verde-primary ring-1 ring-dashed ring-verde-primary/40 hover:bg-verde-light/40">
+          <button type="button" onClick={() => salvar.mutate({ id_quadro: idQuadro, nome: "Nova automação", gatilho: "status_muda", ordem: automacoes.length, ativo: false })} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-verde-primary ring-1 ring-dashed ring-verde-primary/40 hover:bg-verde-light/40">
             <Plus className="size-4" /> Nova automação
           </button>
         )}

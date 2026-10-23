@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import NotificacoesSino, { linkNotificacao } from "@/components/gestao/NotificacoesSino";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, useEffect } from "react";
 import UnidadeAtivaChip from "@/components/layout/UnidadeAtivaChip";
 import {
   Shield,
+  Bell,
   Brain,
   Building2,
   LogOut,
@@ -457,6 +459,22 @@ function InicioContent() {
                 {user.perfil}
               </p>
             </div>
+          )}
+          {papelGestao && (
+            <NotificacoesSino
+              onAbrir={(n) => router.push(linkNotificacao(n))}
+              gatilho={({ naoLidas, alternar }) => (
+                <button type="button" onClick={alternar} title={naoLidas > 0 ? `${naoLidas} notificação(ões) não lida(s)` : "Notificações"}
+                  className="relative z-40 flex items-center rounded-md bg-white/10 px-3 py-2 text-white transition-colors hover:bg-white/20">
+                  <Bell className="size-4" />
+                  {naoLidas > 0 && (
+                    <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[#006B54]">
+                      {naoLidas > 99 ? "99+" : naoLidas}
+                    </span>
+                  )}
+                </button>
+              )}
+            />
           )}
           {isAdmin && (
             <Link

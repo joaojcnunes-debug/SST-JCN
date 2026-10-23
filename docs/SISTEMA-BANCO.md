@@ -533,6 +533,16 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
 
 ## Gestão (kanban)
 
+### Mudanças de 23/10/2026 (v288–v292, replicadas do painel v292–v302)
+
+- **v288 — Google Agenda:** `gestao_tarefas.hora_inicio`/`hora_fim time`; `gestao_google_contas.importar_desde`; `gestao_google_eventos.origem` (`painel`|`google`); tabela `gestao_usuario_fotos` (usuario_email PK, foto_url https, origem, atualizado_em; membros leem, só RPC grava). RPCs só `service_role`: `gestao_google_remover_conta`, `gestao_google_enfileirar_usuario`, `gestao_google_aplicar_inbound` (7 args, com horas), `gestao_google_tarefa_do_evento`, `gestao_google_sincronizar_convidados`, `gestao_google_soltar_eventos`, `gestao_salvar_foto`. Vínculo com `origem = 'google-convidado'` = convidado do evento.
+- **v289 — acesso por unidade:** tabela `gestao_unidades` (id_unidade PK → `unidades`, nome, apelidos normalizados, ordem), semeada com TODAS as unidades do JCN e mantida pelo gatilho `trg_gestao_unidade_nova` em `unidades`; `gestao_quadros.id_unidade`, `gestao_tarefas.id_unidade` (gatilho `trg_gestao_tarefa_unidade`), `gestao_membros.unidades text[]` (null = sem restrição). `gestao_unidade_ok()` entra no ramo "nível total" de `gestao_ve_tarefa`. RPC `gestao_definir_unidades` (gestor, motivo, log `alterou_unidades`).
+- **v290 — avisos:** espelho `responsavel` com todos os responsáveis; `gestao_avisar()` + gatilhos `trg_gestao_aviso_vinculo`/`_status`/`_comentario`; `gestao_notificacoes.email_tentativas`/`email_reservado_em`/`email_erro`; RPCs `gestao_aviso_email_reservar`/`_concluir` (service_role) usadas pelo `/api/gestao/google/sync` (Resend).
+- **v291 — rotina e automações:** `gestao_automacao_completa()` + gatilho que desliga automação incompleta; `definir_responsavel` sem valor não apaga mais; aviso "Nova tarefa em <quadro>" (`trg_gestao_aviso_quadro_ins/_upd`, adiados); `gestao_cron_diario` gera todas as recorrências atrasadas e copia vínculos; `gestao_rotina_diaria()` (1x/dia a partir das 7h de Brasília). **pg_cron:** um job só, `gestao-diario` às 10:05 UTC (07:05 de Brasília) chamando a rotina; `gestao-automacao-prazos` saiu (a rotina chama o tick).
+- **v292 — subtarefa em janela:** `gestao_tarefas.id_tarefa_pai`, `gestao_subtarefas.id_tarefa_filha`; RPC `gestao_subtarefa_abrir`; gatilhos de sincronia lista ↔ filha.
+
+Rollbacks: `scripts/sql/v288…v292_*_rollback.sql` (desfazer de trás para a frente: v292 → v288).
+
 ### `gestao_acesso_log`
 
 id uuid NN, ator_email text NN, alvo_email text NN, acao USER-DEFINED NN, recurso_tipo USER-DEFINED, recurso_id text, nivel_anterior USER-DEFINED, nivel_novo USER-DEFINED, motivo text NN, created_at timestamp with time zone NN

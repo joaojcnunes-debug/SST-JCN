@@ -1,6 +1,7 @@
 "use client";
 
-import { useAtividades, formatarDuracao, iniciais, corAvatar, type GestaoAtividade } from "@/lib/hooks/useGestao";
+import { useAtividades, formatarDuracao, type GestaoAtividade } from "@/lib/hooks/useGestao";
+import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 
 function quando(iso: string): string {
   const d = new Date(iso);
@@ -37,7 +38,7 @@ export default function HistoricoTarefa({ idTarefa }: { idTarefa: string }) {
         const ator = a.ator || "Alguém";
         return (
           <li key={a.id} className="flex items-start gap-2 text-sm">
-            <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: corAvatar(ator) }}>{iniciais(ator)}</span>
+            <AvatarPessoa nome={ator} className="mt-0.5 size-6 text-[10px]" />
             <div className="min-w-0 flex-1">
               <p className="text-gray-700"><span className="font-medium text-gray-900">{ator}</span> {texto(a)}</p>
               <p className="text-[11px] text-gray-400">{quando(a.created_at)}</p>

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie, ResponsiveContainer } from "recharts";
 import { CheckCircle2, AlertTriangle, ListTodo, Target, Clock } from "lucide-react";
 import { PRIORIDADES, formatarDuracao, type GestaoTarefa, type GestaoStatus } from "@/lib/hooks/useGestao";
+import { nomesResponsaveis } from "@/lib/gestao/responsaveis";
 
 function diasAte(iso: string): number {
   const hoje = new Date();
@@ -60,7 +61,11 @@ export default function PainelGestao({
 
   const porResponsavel = useMemo(() => {
     const m = new Map<string, number>();
-    for (const t of tarefas) { const k = t.responsavel?.trim() || "Sem responsável"; m.set(k, (m.get(k) ?? 0) + 1); }
+    // v295: tarefa com vários responsáveis conta para cada um.
+    for (const t of tarefas) {
+      const nomes = nomesResponsaveis(t.responsavel);
+      for (const k of nomes.length ? nomes : ["Sem responsável"]) m.set(k, (m.get(k) ?? 0) + 1);
+    }
     return [...m.entries()].map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor).slice(0, 10);
   }, [tarefas]);
 
@@ -69,8 +74,8 @@ export default function PainelGestao({
     for (const t of tarefas) {
       const seg = tempoPorTarefa.get(t.id_tarefa) ?? 0;
       if (seg <= 0) continue;
-      const k = t.responsavel?.trim() || "Sem responsável";
-      m.set(k, (m.get(k) ?? 0) + seg);
+      const nomes = nomesResponsaveis(t.responsavel);
+      for (const k of nomes.length ? nomes : ["Sem responsável"]) m.set(k, (m.get(k) ?? 0) + seg);
     }
     return [...m.entries()].map(([nome, seg]) => ({ nome, horas: +(seg / 3600).toFixed(1) })).sort((a, b) => b.horas - a.horas).slice(0, 10);
   }, [tarefas, tempoPorTarefa]);

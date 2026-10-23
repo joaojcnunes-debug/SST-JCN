@@ -17,14 +17,28 @@ export default function VistaCalendario({
   statuses,
   podeEditar,
   onAbrir,
+  concluida,
+  rotulo,
+  inicioSemPrazo = false,
 }: {
   tarefas: GestaoTarefa[];
   statuses: GestaoStatus[];
-  podeEditar: boolean;
+  /** Booleano (um quadro) ou por tarefa (Agenda do Meu Espaço: o nível de edição é POR QUADRO). */
+  podeEditar: boolean | ((t: GestaoTarefa) => boolean);
   onAbrir: (t: GestaoTarefa) => void;
+  /** Agenda do Meu Espaço: tarefas de vários quadros — o status se resolve por quadro, não só pelo slug. */
+  concluida?: (t: GestaoTarefa) => boolean;
+  /** Texto extra no título (dica) do item, ex.: o nome do quadro. */
+  rotulo?: (t: GestaoTarefa) => string;
+  /** Agenda do Meu Espaço: tarefa sem prazo aparece (e arrasta) pela data de início. */
+  inicioSemPrazo?: boolean;
 }) {
   const salvar = useSalvarTarefa();
   const concluidoSet = useMemo(() => new Set(statuses.filter((s) => s.tipo === "concluido").map((s) => s.slug)), [statuses]);
+  const estaConcluida = (t: GestaoTarefa) => (concluida ? concluida(t) : concluidoSet.has(t.status));
+  const diaDa = (t: GestaoTarefa) => t.prazo ?? (inicioSemPrazo ? t.data_inicio : null);
+  const editavel = (t: GestaoTarefa) => (typeof podeEditar === "function" ? podeEditar(t) : podeEditar);
+  const algumEditavel = typeof podeEditar === "function" ? tarefas.some(podeEditar) : podeEditar;
   const [mes, setMes] = useState(() => startOfMonth(new Date()));
   const [dragId, setDragId] = useState<string | null>(null);
   const [diaHover, setDiaHover] = useState<string | null>(null);
@@ -41,21 +55,25 @@ export default function VistaCalendario({
   const porDia = useMemo(() => {
     const m = new Map<string, GestaoTarefa[]>();
     for (const t of tarefas) {
-      if (!t.prazo) continue;
-      if (!m.has(t.prazo)) m.set(t.prazo, []);
-      m.get(t.prazo)!.push(t);
+      const dia = diaDa(t);
+      if (!dia) continue;
+      if (!m.has(dia)) m.set(dia, []);
+      m.get(dia)!.push(t);
     }
     return m;
-  }, [tarefas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tarefas, inicioSemPrazo]);
 
-  const semPrazo = tarefas.filter((t) => !t.prazo).length;
+  const semPrazo = tarefas.filter((t) => !diaDa(t)).length;
 
   function soltar(diaKey: string) {
     setDiaHover(null);
     const t = tarefas.find((x) => x.id_tarefa === dragId);
     setDragId(null);
-    if (!t || !podeEditar || t.prazo === diaKey) return;
-    salvar.mutate({ id_tarefa: t.id_tarefa, id_quadro: t.id_quadro, prazo: diaKey });
+    if (!t || !editavel(t) || diaDa(t) === diaKey) return;
+    // Sem prazo (Agenda): move a data de início, não cria um prazo.
+    if (!t.prazo && inicioSemPrazo) salvar.mutate({ id_tarefa: t.id_tarefa, id_quadro: t.id_quadro, data_inicio: diaKey });
+    else salvar.mutate({ id_tarefa: t.id_tarefa, id_quadro: t.id_quadro, prazo: diaKey });
   }
 
   return (
@@ -92,12 +110,12 @@ export default function VistaCalendario({
                   <button
                     key={t.id_tarefa}
                     type="button"
-                    draggable={podeEditar}
+                    draggable={editavel(t)}
                     onDragStart={() => setDragId(t.id_tarefa)}
                     onDragEnd={() => { setDragId(null); setDiaHover(null); }}
                     onClick={() => onAbrir(t)}
-                    title={t.titulo}
-                    className={`flex w-full items-center gap-1 rounded px-1.5 py-0.5 text-left text-[11px] hover:bg-gray-100 ${dragId === t.id_tarefa ? "opacity-40" : ""} ${concluidoSet.has(t.status) ? "text-gray-400 line-through" : "text-gray-700"}`}
+                    title={rotulo ? `${t.titulo} · ${rotulo(t)}` : t.titulo}
+                    className={`flex w-full items-center gap-1 rounded px-1.5 py-0.5 text-left text-[11px] hover:bg-gray-100 ${dragId === t.id_tarefa ? "opacity-40" : ""} ${estaConcluida(t) ? "text-gray-400 line-through" : "text-gray-700"}`}
                   >
                     <span className="size-1.5 shrink-0 rounded-full" style={{ background: corPrioridade(t.prioridade) }} />
                     <span className="truncate">{t.titulo}</span>
@@ -110,9 +128,9 @@ export default function VistaCalendario({
       </div>
 
       {semPrazo > 0 && (
-        <p className="mt-2 text-xs text-gray-400">{semPrazo} tarefa(s) sem prazo não aparecem no calendário.</p>
+        <p className="mt-2 text-xs text-gray-400">{semPrazo} tarefa(s) sem {inicioSemPrazo ? "data" : "prazo"} não aparecem no calendário.</p>
       )}
-      {podeEditar && <p className="mt-1 text-xs text-gray-400">Arraste uma tarefa para outro dia para mudar o prazo.</p>}
+      {algumEditavel && <p className="mt-1 text-xs text-gray-400">Arraste uma tarefa para outro dia para mudar o prazo.</p>}
     </div>
   );
 }

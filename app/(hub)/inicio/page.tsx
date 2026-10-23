@@ -14,6 +14,9 @@ import { useInspecoesStatus } from "@/lib/hooks/useInspecoesStatus";
 import { useInspecoesPorMes } from "@/lib/hooks/useInspecoesPorMes";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import VisaoGeralView, { type PendenciaItem } from "@/components/visao-geral/VisaoGeralView";
+import NotificacoesSino, { linkNotificacao } from "@/components/gestao/NotificacoesSino";
+import { useNotificacoes } from "@/lib/hooks/useGestao";
+import { useMeuPapelGestao } from "@/lib/hooks/useGestaoAcesso";
 
 export default function VisaoGeralPage() {
   const router = useRouter();
@@ -27,6 +30,12 @@ export default function VisaoGeralPage() {
   const { data: laudosVal = [], isLoading: laudosLoading } = useLaudosValidade();
   const { data: inspecoesPorStatus = [] } = useInspecoesStatus();
   const { data: serieInspecoes = [] } = useInspecoesPorMes();
+  // Notificações da Gestão também na página inicial (sino + número no menu) — só para quem
+  // usa a Gestão (papel não nulo). A lista vem filtrada ao destinatário pelo banco (RLS).
+  const { data: papelGestao } = useMeuPapelGestao();
+  const { data: notificacoes = [] } = useNotificacoes();
+  const usaGestao = !!papelGestao;
+  const gestaoNaoLidas = usaGestao ? notificacoes.filter((n) => !n.lida).length : 0;
 
   // Saúde dos documentos (anel): total + composição por status de validade.
   // Enquanto carrega devolve undefined: a Visão geral ESCONDE o anel nesse caso,
@@ -125,6 +134,15 @@ export default function VisaoGeralPage() {
       inspecoesPorMes={inspecoesPorMes}
       inspecoesPorStatus={inspecoesPorStatus}
       onLogout={handleLogout}
+      gestaoNaoLidas={gestaoNaoLidas}
+      sinoNotificacoes={
+        usaGestao ? (
+          <NotificacoesSino
+            alinhar="esquerda"
+            onAbrir={(n) => router.push(linkNotificacao(n))}
+          />
+        ) : null
+      }
     />
   );
 }

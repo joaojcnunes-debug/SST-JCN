@@ -1,14 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNotificacoes, useMarcarLida, type GestaoNotificacao } from "@/lib/hooks/useGestao";
 
-const ICONE_TIPO: Record<string, string> = { atribuicao: "📌", comentario: "💬", mencao: "@", status: "🔄", prazo: "⏰" };
+const ICONE_TIPO: Record<string, string> = { atribuicao: "📌", seguidor: "👁", quadro: "🗂", comentario: "💬", mencao: "@", status: "🔄", prazo: "⏰" };
 
-export default function NotificacoesSino({ onAbrir }: { onAbrir: (n: GestaoNotificacao) => void }) {
+/** Link da Gestão que abre a lista e a tarefa da notificação (fora da Gestão: barra superior, Módulos, Início). */
+export function linkNotificacao(n: GestaoNotificacao): string {
+  const qs = new URLSearchParams();
+  if (n.id_quadro) qs.set("quadro", n.id_quadro);
+  if (n.id_tarefa) qs.set("tarefa", n.id_tarefa);
+  return `/gestao${qs.size ? `?${qs}` : ""}`;
+}
+
+/**
+ * `alinhar`: para que lado a lista abre (padrão "direita" = encostada na borda direita do sino).
+ * `gatilho`: troca o botão do sino por outro (ex.: a sigla/foto na barra superior, com o contador).
+ */
+export default function NotificacoesSino({ onAbrir, alinhar = "direita", gatilho }: {
+  onAbrir: (n: GestaoNotificacao) => void;
+  alinhar?: "direita" | "esquerda";
+  gatilho?: (p: { naoLidas: number; alternar: () => void }) => ReactNode;
+}) {
   const { data: notifs = [] } = useNotificacoes();
   const marcar = useMarcarLida();
   const [aberto, setAberto] = useState(false);
@@ -16,14 +32,16 @@ export default function NotificacoesSino({ onAbrir }: { onAbrir: (n: GestaoNotif
 
   return (
     <div className="relative">
+      {gatilho ? gatilho({ naoLidas, alternar: () => setAberto((v) => !v) }) : (
       <button type="button" onClick={() => setAberto((v) => !v)} title="Notificações" className="relative z-40 rounded-lg border border-gray-200 bg-white p-2 text-gray-600 hover:bg-gray-50">
         <Bell className="size-4" />
         {naoLidas > 0 && <span className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold text-white">{naoLidas > 9 ? "9+" : naoLidas}</span>}
       </button>
+      )}
       {aberto && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setAberto(false)} />
-          <div className="absolute right-0 z-40 mt-2 w-80 rounded-xl border border-gray-200 bg-white shadow-lg">
+          <div className={`absolute ${alinhar === "esquerda" ? "left-0" : "right-0"} z-40 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-gray-200 bg-white shadow-lg`}>
             <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
               <span className="text-sm font-semibold text-gray-700">Notificações</span>
               {naoLidas > 0 && (

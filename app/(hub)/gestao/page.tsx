@@ -3,21 +3,25 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, ListChecks } from "lucide-react";
+import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, ListChecks, Sun, Moon } from "lucide-react";
 import toast from "react-hot-toast";
-import { useUserStore } from "@/lib/store";
+import { useUserStore, useTema } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import {
-  useQuadros, useTarefas, useReordenar, useUsuariosLista, useSalvarTarefa, useAcaoMassa,
-  useMinhasTarefas, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
+  useQuadros, useTarefas, useSubtarefasDoQuadro, useAbrirSubtarefa, useUsuarios, useReordenar, useUsuariosLista, useSalvarTarefa, useAcaoMassa,
+  useMinhasTarefas, useMinhasTarefasAgenda, buscarTarefa, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
   usePreferenciaVisao, useSalvarPreferenciaVisao,
   useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro,
-  useEspacos, usePastas, useTodasDependencias, useAutomacaoTick, useTempoQuadro, useAnexosCountQuadro,
+  useEspacos, usePastas, useTodasDependencias, useAutomacaoTick, useSyncGoogleAgenda, useTempoQuadro, useAnexosCountQuadro,
   corAvatar, formatarDuracao,
   PRIORIDADES, FILTRO_VAZIO, contarFiltros,
   type GestaoTarefa, type StatusTarefa, type VistaGestao, type AgruparPor, type GestaoStatus, type GestaoNotificacao, type PrioridadeTarefa, type FiltrosGestao,
 } from "@/lib/hooks/useGestao";
 import GestaoSidebar from "@/components/gestao/GestaoSidebar";
+import ModuleTopbar from "@/components/layout/ModuleTopbar";
+import SelectVerde from "@/components/gestao/SelectVerde";
+import { useQueryClient } from "@tanstack/react-query";
+import { montarSubtarefas, itensMostrar, type MostrarItens } from "@/lib/gestao/subtarefas-vista";
 import NotificacoesSino from "@/components/gestao/NotificacoesSino";
 import TarefaModal from "@/components/gestao/TarefaModal";
 import StatusManagerModal from "@/components/gestao/StatusManagerModal";
@@ -33,6 +37,7 @@ import { useMeuPapelGestao, useMeuNivel, nivelPodeEditar, useColaboradores } fro
 import ColaboradoresView from "@/components/gestao/ColaboradoresView";
 import TarefaCard from "@/components/gestao/TarefaCard";
 import FiltrosPanel from "@/components/gestao/FiltrosPanel";
+import { nomesResponsaveis, temResponsavel } from "@/lib/gestao/responsaveis";
 import MeuEspaco from "@/components/gestao/MeuEspaco";
 import CaixaEntrada from "@/components/gestao/CaixaEntrada";
 import PainelGestao from "@/components/gestao/PainelGestao";
@@ -55,11 +60,24 @@ const VISTAS: { value: VistaGestao; label: string; icon: typeof KanbanSquare }[]
   { value: "lista", label: "Lista", icon: LayoutList },
   { value: "calendario", label: "Calendário", icon: CalendarDays },
   { value: "timeline", label: "Timeline", icon: GanttChartSquare },
+  // O Painel (gráficos) saiu do menu da esquerda: agora é uma visão de cada lista.
+  { value: "painel", label: "Painel", icon: BarChart3 },
 ];
+
+const LIMITE_COL = 100;
+// Agrupar/Mostrar: SelectVerde no tamanho dos botões Quadro/Lista/Calendário (text-sm).
+const SELECT_FILTRO = "w-auto min-w-[9rem]";
+const ITEM_RODAPE = "flex w-full items-center gap-2.5 rounded-lg px-3 py-[7px] text-sm font-medium text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white/90";
 
 export default function GestaoChabraPage() {
   const router = useRouter();
   const user = useUserStore((s) => s.user);
+  // Rodapé do menu igual ao da Visão geral (Sistema, tema, OS), com "Voltar" para Módulos no lugar do "Sair".
+  const tema = useTema((s) => s.tema);
+  const toggleTema = useTema((s) => s.toggle);
+  const [temaMontado, setTemaMontado] = useState(false);
+  useEffect(() => setTemaMontado(true), []);
+  const escuro = temaMontado && tema === "dark";
   const { data: meuPapelGestao, isFetched: papelGestaoFetched } = useMeuPapelGestao();
   const souGestor = meuPapelGestao === "owner" || meuPapelGestao === "admin";
   const { data: configs } = useConfiguracoes();
@@ -92,11 +110,7 @@ export default function GestaoChabraPage() {
   const { data: campos = [] } = useCamposQuadro(quadro?.id_quadro);
   const { data: etiquetasCat = [] } = useEtiquetasQuadro(quadro?.id_quadro);
   useAutomacaoTick();  // fallback de agendamento sem pg_cron (.107): scan de prazos 1x/dia
-  useEffect(() => {
-    // F3.A: reflete tarefas com prazo na Agenda Google dos vinculados conectados. Best-effort ao
-    // abrir a Gestão; dedup por minuto no server. Nunca derruba a página (fila drena na próxima).
-    void fetch("/api/gestao/google/sync").catch(() => {});
-  }, []);
+  useSyncGoogleAgenda();  // F3.A: tarefas com prazo → Agenda Google (ao abrir e após cada gravação)
   const salvar = useSalvarTarefa();
   const acaoMassa = useAcaoMassa();
   const { data: tempoEntries = [] } = useTempoQuadro(quadro?.id_quadro, tarefas.map((t) => t.id_tarefa));
@@ -130,10 +144,13 @@ export default function GestaoChabraPage() {
   const [calendarioOpen, setCalendarioOpen] = useState(false);
   const [membrosOpen, setMembrosOpen] = useState(false);
   const [quadroAgrupar, setQuadroAgrupar] = useState<"status" | "responsavel" | "prioridade" | "etiqueta">("status");
+  // Filtro "Mostrar": só tarefas (padrão), só subtarefas ou as duas. Com subtarefas o volume cresce
+  // muito (milhares no Psicossocial), então cada coluna mostra LIMITE_COL por vez ("Mostrar mais").
+  const [mostrar, setMostrar] = useState<MostrarItens>("tarefas");
+  const [limiteCol, setLimiteCol] = useState<Record<string, number>>({});
   const [online, setOnline] = useState(true);
   const [boardScrolled, setBoardScrolled] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
-  const [painelView, setPainelView] = useState(false);
   const [inboxView, setInboxView] = useState(false);
   // "Meu Espaço" (UX-C1): container pessoal, mutuamente exclusivo com as demais vistas
   // de topo (inbox/painel/quadro). Consolidou a antiga aba "Minhas tarefas" (removida no
@@ -147,8 +164,15 @@ export default function GestaoChabraPage() {
   const mostrarColab = souGestor || colaboradores.length > 0;
   const [selecaoModo, setSelecaoModo] = useState(false);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
-  const { data: minhas = [] } = useMinhasTarefas(meuEspacoView || inboxView);
-  const { data: todosStatus = [] } = useTodosStatus(meuEspacoView || inboxView);
+  const { data: minhasTodas = [] } = useMinhasTarefas(meuEspacoView || inboxView);
+  // v300: as filhas de subtarefa ficam fora das listas, mas o aviso (prazo, comentário) abre por elas.
+  const minhas = useMemo(() => minhasTodas.filter((t) => !t.id_tarefa_pai), [minhasTodas]);
+  // Calendário do MEU QUADRO: além das tarefas do quadro, mostra as que estou alocado em qualquer
+  // outro quadro (pedido do operador 2026-10-20 — "criada na Recepção e não aparece no meu calendário").
+  const ehMeuQuadro = !!quadro?.dono_email && !!user?.email && quadro.dono_email.toLowerCase() === user.email.toLowerCase();
+  const calendarioPessoal = ehMeuQuadro && vista === "calendario" && !meuEspacoView && !inboxView;
+  const { data: alocadasAgenda = [] } = useMinhasTarefasAgenda(calendarioPessoal);
+  const { data: todosStatus = [] } = useTodosStatus(meuEspacoView || inboxView || calendarioPessoal);
   const statusGlobalMap = useMemo(() => new Map(todosStatus.map((s) => [`${s.id_quadro}|${s.slug}`, s])), [todosStatus]);
   const { data: notificacoes = [] } = useNotificacoes();
   const marcarLida = useMarcarLida();
@@ -169,7 +193,7 @@ export default function GestaoChabraPage() {
     if (ro && el.parentElement) ro.observe(el.parentElement);
     window.addEventListener("resize", medir);
     return () => { ro?.disconnect(); window.removeEventListener("resize", medir); };
-  }, [vista, inboxView, painelView, meuEspacoView, loadingQuadros, loadingTarefas, loadingStatus]);
+  }, [vista, inboxView, meuEspacoView, loadingQuadros, loadingTarefas, loadingStatus]);
   // 3.5rem = rodapé (dica "Arraste os cards" + pb-7); piso de 320px para telas baixas.
   const alturaColuna = boardTop > 0 ? `max(320px, calc(100vh - ${boardTop}px - 3.5rem))` : undefined;
 
@@ -179,6 +203,55 @@ export default function GestaoChabraPage() {
     // query resolveu com NULL explícito (não-membro) — erro/loading mantém a guarda dormindo.
     if (papelGestaoFetched && meuPapelGestao === null && user) router.replace("/inicio");
   }, [user, user?.perfil, papelGestaoFetched, meuPapelGestao, router]);
+
+  // Volta do consentimento do Google (/api/gestao/google/callback → /gestao?google=<flag>): avisa,
+  // abre o Meu Espaço (onde fica o cartão Google Agenda) e limpa a flag da URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const flag = params.get("google");
+    if (!flag) return;
+    if (flag === "conectado") {
+      const n = Number(params.get("enviadas") ?? 0);
+      toast.success(
+        n > 0
+          ? `Google Agenda conectada! ${n === 1 ? "1 tarefa sua com prazo está indo" : `${n} tarefas suas com prazo estão indo`} para a sua agenda — em instantes aparecem lá.`
+          : "Google Agenda conectada! Suas tarefas com prazo vão aparecer na sua agenda.",
+        { duration: 6000 },
+      );
+    } else if (flag === "sem_refresh") toast.error("O Google não liberou o acesso contínuo. Tente conectar de novo e aceite todas as permissões.");
+    else toast.error("Não foi possível conectar a Google Agenda. Tente de novo.");
+    setMeuEspacoView(true);
+    params.delete("google");
+    params.delete("enviadas");
+    const resto = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${resto ? `?${resto}` : ""}`);
+  }, []);
+
+  // Link direto para uma tarefa (/gestao?quadro=<id>&tarefa=<id>) — usado pelo sino de
+  // notificações da página inicial. Abre a lista da tarefa e, quando ela carregar, a tarefa.
+  const tarefaDoLink = useRef<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tarefa = params.get("tarefa");
+    const q = params.get("quadro");
+    if (!tarefa && !q) return;
+    if (q) setQuadroId(q);
+    tarefaDoLink.current = tarefa;
+    params.delete("tarefa");
+    params.delete("quadro");
+    const resto = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${resto ? `?${resto}` : ""}`);
+  }, []);
+  useEffect(() => {
+    const id = tarefaDoLink.current;
+    if (!id) return;
+    const t = items.find((x) => x.id_tarefa === id);
+    if (t) { tarefaDoLink.current = null; setEditando(t); setModalOpen(true); return; }
+    // v300: a filha de uma subtarefa não vem na lista do quadro — lê direto quando a lista já carregou.
+    if (loadingTarefas || !items.length) return;
+    tarefaDoLink.current = null;
+    buscarTarefa(id).then((x) => { if (x) { setEditando(x); setModalOpen(true); } });
+  }, [items, loadingTarefas]);
 
   useEffect(() => {
     let t: ReturnType<typeof setTimeout> | undefined;
@@ -192,7 +265,29 @@ export default function GestaoChabraPage() {
     return () => { if (t) clearTimeout(t); window.removeEventListener("online", recompute); window.removeEventListener("offline", recompute); };
   }, []);
 
-  useEffect(() => setItems(tarefas), [tarefas]);
+  const qc = useQueryClient();
+  const abrirSub = useAbrirSubtarefa();
+  const { data: usuariosEmail = [] } = useUsuarios();
+  const { data: subsQuadro } = useSubtarefasDoQuadro(quadro?.id_quadro, mostrar !== "tarefas");
+  const subItens = useMemo(() => {
+    if (mostrar === "tarefas" || !subsQuadro) return [];
+    const nomes = new Map(usuariosEmail.map((u) => [u.email.toLowerCase(), u.nome]));
+    const sts = statusList.length ? statusList : quadro ? statusPadrao(quadro.id_quadro) : [];
+    return montarSubtarefas({ maes: tarefas, linhas: subsQuadro.linhas, filhas: subsQuadro.filhas, statuses: sts, nomeDe: (e) => nomes.get(e.toLowerCase()) ?? null });
+  }, [mostrar, subsQuadro, tarefas, usuariosEmail, statusList, quadro]);
+  useEffect(() => setItems(itensMostrar(mostrar, tarefas, subItens)), [tarefas, subItens, mostrar]);
+  useEffect(() => setLimiteCol({}), [quadroId, mostrar, quadroAgrupar]);
+
+  /** Abre a janela da tarefa; a subtarefa ainda sem filha ganha a filha na hora (v300). */
+  async function abrirItem(t: GestaoTarefa) {
+    if (t.sub_linha && t.id_tarefa_pai) {
+      const filha = await abrirSub.mutateAsync({ id_subtarefa: t.sub_linha, id_tarefa: t.id_tarefa_pai }).catch(() => null);
+      if (!filha) return;
+      qc.invalidateQueries({ queryKey: ["gestao-subtarefas-quadro", t.id_quadro] });
+      setEditando({ ...filha, titulo_mae: t.titulo_mae });
+    } else setEditando(t);
+    setModalOpen(true);
+  }
 
   // Limpa a seleção ao trocar de lista ou de visão.
   useEffect(() => { setSelecaoModo(false); setSelecionados(new Set()); }, [quadroId, vista]);
@@ -241,9 +336,9 @@ export default function GestaoChabraPage() {
     return { idsDaBusca: new Set(r.itens.map((t) => t.id_tarefa)), buscaAproximada: r.aproximado };
   }, [items, busca]);
   const passaFiltro = (t: GestaoTarefa) => {
-    if (soMinhas && (t.responsavel ?? "") !== (user?.nome ?? "")) return false;
+    if (soMinhas && !temResponsavel(t.responsavel, user?.nome)) return false;
     if (filtros.semResponsavel && (t.responsavel ?? "").trim()) return false;
-    if (filtros.responsavel && (t.responsavel ?? "") !== filtros.responsavel) return false;
+    if (filtros.responsavel && !temResponsavel(t.responsavel, filtros.responsavel)) return false;
     if (filtros.prioridades.length && !filtros.prioridades.includes(t.prioridade)) return false;
     if (filtros.status.length && !filtros.status.includes(t.status)) return false;
     if (filtros.etiquetas.length && !filtros.etiquetas.some((e) => (t.etiquetas ?? []).includes(e))) return false;
@@ -284,7 +379,7 @@ export default function GestaoChabraPage() {
     if (quadroAgrupar === "status") return colunasDef.map((c) => ({ slug: c.slug, nome: c.nome, cor: c.cor }));
     if (quadroAgrupar === "prioridade") return PRIORIDADES.map((p) => ({ slug: p.value, nome: p.label, cor: p.cor }));
     if (quadroAgrupar === "responsavel") {
-      const nomes = [...new Set(items.map((t) => t.responsavel).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "pt-BR"));
+      const nomes = [...new Set(items.flatMap((t) => nomesResponsaveis(t.responsavel)))].sort((a, b) => a.localeCompare(b, "pt-BR"));
       return [...nomes.map((n) => ({ slug: n, nome: n, cor: corAvatar(n) })), { slug: "__none__", nome: "Sem responsável", cor: "#cbd5e1" }];
     }
     const tags = [...new Set(items.flatMap((t) => t.etiquetas ?? []))].sort((a, b) => a.localeCompare(b, "pt-BR"));
@@ -295,7 +390,7 @@ export default function GestaoChabraPage() {
     const pertence = (t: GestaoTarefa, chave: string) => {
       if (quadroAgrupar === "status") return t.status === chave;
       if (quadroAgrupar === "prioridade") return t.prioridade === chave;
-      if (quadroAgrupar === "responsavel") return (t.responsavel || "__none__") === chave;
+      if (quadroAgrupar === "responsavel") return chave === "__none__" ? nomesResponsaveis(t.responsavel).length === 0 : temResponsavel(t.responsavel, chave);
       return chave === "__none__" ? (t.etiquetas?.length ?? 0) === 0 : (t.etiquetas ?? []).includes(chave);
     };
     const m: Record<string, GestaoTarefa[]> = {};
@@ -327,7 +422,7 @@ export default function GestaoChabraPage() {
     setDropAlvo(null);
     const dragged = items.find((t) => t.id_tarefa === dragId);
     setDragId(null);
-    if (!dragged || !podeEditar) return;
+    if (!dragged || !podeEditar || dragged.sub_linha) return;
     const rest = items.filter((t) => t.id_tarefa !== dragId);
     const col = rest.filter((t) => t.status === targetStatus).sort((a, b) => a.ordem - b.ordem);
     const fora = rest.filter((t) => t.status !== targetStatus);
@@ -339,7 +434,8 @@ export default function GestaoChabraPage() {
     col.splice(idx, 0, { ...dragged, status: targetStatus });
     const reindex = col.map((t, i) => ({ ...t, ordem: i }));
     setItems([...fora, ...reindex]);
-    reordenar.mutate(reindex.map((t) => ({ id_tarefa: t.id_tarefa, status: targetStatus, ordem: t.ordem })));
+    // Cartões de subtarefa sem filha (sub_linha) não existem em gestao_tarefas: ficam fora da gravação.
+    reordenar.mutate(reindex.filter((t) => !t.sub_linha).map((t) => ({ id_tarefa: t.id_tarefa, status: targetStatus, ordem: t.ordem })));
   }
 
   // Soltar num grupo: por status reaproveita soltar(); nos demais, define o campo do grupo.
@@ -348,7 +444,7 @@ export default function GestaoChabraPage() {
     setColHover(null);
     const dragged = items.find((t) => t.id_tarefa === dragId);
     setDragId(null);
-    if (!dragged || !podeEditar) return;
+    if (!dragged || !podeEditar || dragged.sub_linha) return;
     const base = { id_tarefa: dragged.id_tarefa, id_quadro: dragged.id_quadro };
     if (quadroAgrupar === "prioridade") {
       const prio = chave as PrioridadeTarefa;
@@ -378,6 +474,15 @@ export default function GestaoChabraPage() {
    * lugares: a barra do desktop e a gaveta do celular. `aoNavegar` fecha a
    * gaveta ao escolher uma lista.
    */
+  const seletorMostrar = (
+    <div className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500">
+      Mostrar:
+      <SelectVerde<MostrarItens> valor={mostrar} onChange={setMostrar} className={SELECT_FILTRO}
+        opcoes={[{ value: "tarefas", label: "Só tarefas" }, { value: "subtarefas", label: "Só subtarefas" }, { value: "ambas", label: "Tarefas e subtarefas" }]} />
+      {mostrar !== "tarefas" && !subsQuadro && <span className="text-xs text-gray-400">carregando…</span>}
+    </div>
+  );
+
   const menuLateral = (aoNavegar: () => void) => (
     <>
       <Link href="/inicio" className="flex items-center gap-2.5 border-b border-white/[0.09] px-4 py-3.5 transition-colors hover:bg-white/[0.05]">
@@ -394,7 +499,21 @@ export default function GestaoChabraPage() {
       </Link>
       <div className="flex-1 overflow-y-auto px-2 py-2">
         <p className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">Espaços</p>
-        <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={painelView || inboxView || meuEspacoView || colabView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setPainelView(false); setInboxView(false); setMeuEspacoView(false); setColabView(false); aoNavegar(); }} podeEditar={souGestor} meuEspacoAtivo={meuEspacoView} onMeuEspaco={() => { setMeuEspacoView(true); setPainelView(false); setInboxView(false); setColabView(false); aoNavegar(); }} painelAtivo={painelView} onPainel={() => { setPainelView(true); setInboxView(false); setMeuEspacoView(false); setColabView(false); aoNavegar(); }} inboxAtivo={inboxView} onInbox={() => { setInboxView(true); setPainelView(false); setMeuEspacoView(false); setColabView(false); aoNavegar(); }} inboxCount={inboxCount} mostrarColab={mostrarColab} colabAtivo={colabView} onColab={() => { setColabView(true); setPainelView(false); setInboxView(false); setMeuEspacoView(false); aoNavegar(); }} />
+        <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={inboxView || meuEspacoView || colabView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setInboxView(false); setMeuEspacoView(false); setColabView(false); aoNavegar(); }} podeEditar={souGestor} meuEspacoAtivo={meuEspacoView} onMeuEspaco={() => { setMeuEspacoView(true); setInboxView(false); setColabView(false); aoNavegar(); }} mostrarColab={mostrarColab} colabAtivo={colabView} onColab={() => { setColabView(true); setInboxView(false); setMeuEspacoView(false); aoNavegar(); }} />
+      </div>
+      <div className="space-y-0.5 border-t border-white/[0.09] p-2">
+        {user?.perfil === "Admin" && (
+          <Link href="/usuarios" onClick={aoNavegar} className={ITEM_RODAPE}>
+            <Settings className="size-[15px] shrink-0 text-white/40" /> Sistema
+          </Link>
+        )}
+        <button type="button" onClick={toggleTema} className={ITEM_RODAPE}>
+          {escuro ? <Sun className="size-[15px] shrink-0 text-white/40" /> : <Moon className="size-[15px] shrink-0 text-white/40" />}
+          {escuro ? "Modo claro" : "Modo escuro"}
+        </button>
+        <Link href="/modulos" onClick={aoNavegar} className={ITEM_RODAPE}>
+          <ArrowLeft className="size-[15px] shrink-0 text-white/40" /> Voltar
+        </Link>
       </div>
     </>
   );
@@ -443,8 +562,10 @@ export default function GestaoChabraPage() {
 
       {/* Conteúdo: desloca pela sidebar e ocupa toda a largura restante */}
       <div className="md:pl-[220px] print:pl-0">
-        {/* `pt-16` abaixo de 768px é o espaço do hambúrguer, que é fixo. */}
-        <div className="px-5 pb-7 pt-16 sm:px-8 md:pt-7">
+        {/* Barra superior igual à dos outros módulos (nome/perfil de quem está logado, tema, unidade).
+            No celular o hambúrguer fixo fica por cima dela, no espaço que ela já reserva (ml-12). */}
+        <ModuleTopbar recolher={false} avisos={inboxCount} onAvisos={() => { setInboxView(true); setMeuEspacoView(false); setColabView(false); }} />
+        <div className="px-5 pb-7 pt-5 sm:px-8 md:pt-7">
           {!online && (
             <div className="fixed inset-x-0 top-0 z-[60] bg-amber-500 px-3 py-1.5 text-center text-sm font-medium text-white shadow-md">
               Sem conexão — as alterações podem não ser salvas até reconectar.
@@ -495,21 +616,10 @@ export default function GestaoChabraPage() {
               tarefas={minhas}
               quadros={quadros}
               statusMap={statusGlobalMap}
-              onAbrirNotif={(n) => { if (!n.lida) marcarLida.mutate({ id: n.id }); if (n.id_quadro) setQuadroId(n.id_quadro); setInboxView(false); const t = n.id_tarefa ? minhas.find((x) => x.id_tarefa === n.id_tarefa) : undefined; if (t) { setEditando(t); setModalOpen(true); } }}
+              onAbrirNotif={(n) => { if (!n.lida) marcarLida.mutate({ id: n.id }); if (n.id_quadro) setQuadroId(n.id_quadro); setInboxView(false); const t = n.id_tarefa ? minhasTodas.find((x) => x.id_tarefa === n.id_tarefa) : undefined; if (t) { setEditando(t); setModalOpen(true); } }}
               onMarcarLida={(id) => marcarLida.mutate({ id })}
               onAbrirTarefa={(t) => { setQuadroId(t.id_quadro); setInboxView(false); setEditando(t); setModalOpen(true); }}
             />
-          </div>
-        ) : painelView ? (
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary"><BarChart3 className="size-6" /></span>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Painel{quadro ? ` — ${quadro.nome}` : ""}</h1>
-                <p className="text-sm text-gray-500">Métricas da lista selecionada</p>
-              </div>
-            </div>
-            <PainelGestao tarefas={items} statuses={statuses} tempoPorTarefa={tempoPorTarefa} />
           </div>
         ) : colabView ? (
           <div>
@@ -529,6 +639,10 @@ export default function GestaoChabraPage() {
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Meu Espaço</h1>
                 <p className="text-sm text-gray-500">Tarefas em que sou responsável ou seguidor — {minhas.length} em todos os quadros</p>
+              </div>
+              {/* Sino com contador vermelho de não lidas; abre a lista e leva à tarefa. */}
+              <div className="ml-auto">
+                <NotificacoesSino onAbrir={(n) => { if (n.id_quadro) setQuadroId(n.id_quadro); setMeuEspacoView(false); const t = n.id_tarefa ? minhasTodas.find((x) => x.id_tarefa === n.id_tarefa) : undefined; if (t) { setEditando(t); setModalOpen(true); } }} />
               </div>
             </div>
             {/* UX-C1: vista agregada. O container MeuEspaco reserva o ponto de extensão
@@ -630,16 +744,16 @@ export default function GestaoChabraPage() {
             })}
           </div>
           {vista === "quadro" && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-xs font-medium text-gray-500">Agrupar:</span>
-              {([["status", "Status"], ["responsavel", "Responsável"], ["prioridade", "Prioridade"], ["etiqueta", "Etiqueta"]] as const).map(([v, l]) => (
-                <button key={v} type="button" onClick={() => setQuadroAgrupar(v)}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${quadroAgrupar === v ? "bg-verde-primary text-white" : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50"}`}>
-                  {l}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500">
+                Agrupar:
+                <SelectVerde valor={quadroAgrupar} onChange={setQuadroAgrupar} className={SELECT_FILTRO}
+                  opcoes={[{ value: "status", label: "Status" }, { value: "responsavel", label: "Responsável" }, { value: "prioridade", label: "Prioridade" }, { value: "etiqueta", label: "Etiqueta" }]} />
+              </div>
+              {seletorMostrar}
             </div>
           )}
+          {(vista === "calendario" || vista === "timeline" || vista === "painel") && seletorMostrar}
         </div>
 
         <AvisoBuscaAproximada
@@ -699,7 +813,7 @@ export default function GestaoChabraPage() {
                   </div>
 
                   <div className="min-h-[40px] flex-1 space-y-2 overflow-y-auto overscroll-contain p-0.5">
-                    {lista.map((t) => (
+                    {(mostrar === "tarefas" ? lista : lista.slice(0, limiteCol[col.slug] ?? LIMITE_COL)).map((t) => (
                       <div key={t.id_tarefa}>
                         {quadroAgrupar === "status" && dropAlvo?.col === col.slug && dropAlvo.beforeId === t.id_tarefa && dragId !== t.id_tarefa && (
                           <div className="mb-2 h-1 rounded-full bg-verde-primary/70" />
@@ -711,12 +825,12 @@ export default function GestaoChabraPage() {
                           tempoSeg={tempoPorTarefa.get(t.id_tarefa) ?? 0}
                           anexos={anexosCount.get(t.id_tarefa) ?? 0}
                           campos={campos}
-                          arrastavel={podeEditar && quadroAgrupar !== "etiqueta"}
+                          arrastavel={podeEditar && quadroAgrupar !== "etiqueta" && !t.sub_linha}
                           arrastando={dragId === t.id_tarefa}
-                          selecionavel={selecaoModo}
+                          selecionavel={selecaoModo && !t.sub_linha}
                           selecionado={selecionados.has(t.id_tarefa)}
                           onToggleSel={() => toggleSel(t.id_tarefa)}
-                          onAbrir={() => { setEditando(t); setModalOpen(true); }}
+                          onAbrir={() => abrirItem(t)}
                           onDragStart={() => setDragId(t.id_tarefa)}
                           onDragEnd={() => { setDragId(null); setColHover(null); setDropAlvo(null); }}
                           onDragOver={(e) => { if (dragId) { e.preventDefault(); e.stopPropagation(); setColHover(col.slug); setDropAlvo({ col: col.slug, beforeId: t.id_tarefa }); } }}
@@ -726,6 +840,12 @@ export default function GestaoChabraPage() {
                     ))}
                     {quadroAgrupar === "status" && dropAlvo?.col === col.slug && dropAlvo.beforeId === null && dragId && (
                       <div className="h-1 rounded-full bg-verde-primary/70" />
+                    )}
+                    {mostrar !== "tarefas" && lista.length > (limiteCol[col.slug] ?? LIMITE_COL) && (
+                      <button type="button" onClick={() => setLimiteCol((m) => ({ ...m, [col.slug]: (m[col.slug] ?? LIMITE_COL) + LIMITE_COL }))}
+                        className="w-full rounded-lg border border-dashed border-gray-300 py-1.5 text-xs font-medium text-gray-500 hover:border-verde-primary hover:text-verde-primary">
+                        Mostrar mais ({lista.length - (limiteCol[col.slug] ?? LIMITE_COL)} restantes)
+                      </button>
                     )}
                     {lista.length === 0 && (
                       <div className="rounded-lg border border-dashed border-gray-200 px-2 py-6 text-center text-xs text-gray-300">{todas.length > 0 ? "Nada no filtro" : "Sem tarefas"}</div>
@@ -745,21 +865,27 @@ export default function GestaoChabraPage() {
             agruparPor={agruparPor}
             onAgruparPor={mudarAgrupar}
             podeEditar={podeEditar}
-            onAbrir={(t) => { setEditando(t); setModalOpen(true); }}
+            seletorMostrar={seletorMostrar}
+            onAbrir={abrirItem}
           />
         ) : vista === "calendario" ? (
           <VistaCalendario
-            tarefas={items.filter(passaFiltro)}
+            tarefas={calendarioPessoal ? [...items.filter(passaFiltro), ...alocadasAgenda.filter((t) => t.id_quadro !== quadro.id_quadro)] : items.filter(passaFiltro)}
             statuses={statuses}
-            podeEditar={podeEditar}
-            onAbrir={(t) => { setEditando(t); setModalOpen(true); }}
+            podeEditar={calendarioPessoal ? (t) => podeEditar && t.id_quadro === quadro.id_quadro : podeEditar}
+            concluida={calendarioPessoal ? (t) => (t.id_quadro === quadro.id_quadro ? statusMap.get(t.status)?.tipo : statusGlobalMap.get(`${t.id_quadro}|${t.status}`)?.tipo) === "concluido" : undefined}
+            rotulo={calendarioPessoal ? (t) => quadros.find((q) => q.id_quadro === t.id_quadro)?.nome ?? "Lista" : undefined}
+            inicioSemPrazo={calendarioPessoal}
+            onAbrir={(t) => { if (t.id_quadro !== quadro.id_quadro) setQuadroId(t.id_quadro); setEditando(t); setModalOpen(true); }}
           />
+        ) : vista === "painel" ? (
+          <PainelGestao tarefas={items.filter(passaFiltro)} statuses={statuses} tempoPorTarefa={tempoPorTarefa} />
         ) : (
           <VistaTimeline
             tarefas={items.filter(passaFiltro)}
             statuses={statuses}
             dependencias={dependencias}
-            onAbrir={(t) => { setEditando(t); setModalOpen(true); }}
+            onAbrir={abrirItem}
           />
         )}
 
@@ -778,7 +904,7 @@ export default function GestaoChabraPage() {
       {quadro && (
         <TarefaModal
           open={modalOpen}
-          onClose={() => setModalOpen(false)}
+          onClose={() => { setModalOpen(false); if (mostrar !== "tarefas") qc.invalidateQueries({ queryKey: ["gestao-subtarefas-quadro", quadro.id_quadro] }); }}
           idQuadro={quadro.id_quadro}
           tarefa={editando}
           statusInicial={statusNovo}
@@ -838,6 +964,7 @@ export default function GestaoChabraPage() {
           open={formulariosOpen}
           onClose={() => setFormulariosOpen(false)}
           idQuadro={quadro.id_quadro}
+          podeEditarOutras={souGestor}
           statuses={statuses}
           etiquetas={etiquetasCat}
           usuarios={usuarios}

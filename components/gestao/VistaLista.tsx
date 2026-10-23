@@ -4,12 +4,16 @@ import { useCallback, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, ArrowUpDown } from "lucide-react";
 import {
   useSalvarTarefa, useUsuariosLista,
-  iniciais, corAvatar,
+  corAvatar,
   PRIORIDADES,
   type GestaoTarefa, type AgruparPor, type PrioridadeTarefa, type GestaoStatus, type GestaoCampo,
 } from "@/lib/hooks/useGestao";
 import { formatarCampoValor } from "@/components/gestao/CampoInput";
+import { nomesResponsaveis } from "@/lib/gestao/responsaveis";
+import AvatarPessoa from "@/components/gestao/AvatarPessoa";
+import SelectVerde from "@/components/gestao/SelectVerde";
 
+const LIMITE_GRUPO = 200;
 const ordemPrio = (p: string) => PRIORIDADES.findIndex((x) => x.value === p);
 const fmtData = (iso: string | null) => {
   if (!iso) return "—";
@@ -34,6 +38,7 @@ export default function VistaLista({
   agruparPor,
   onAgruparPor,
   podeEditar,
+  seletorMostrar,
   onAbrir,
 }: {
   tarefas: GestaoTarefa[];
@@ -42,6 +47,8 @@ export default function VistaLista({
   agruparPor: AgruparPor | null;
   onAgruparPor: (a: AgruparPor | null) => void;
   podeEditar: boolean;
+  /** Filtro "Mostrar" (tarefas/subtarefas) do quadro, desenhado ao lado do Agrupar. */
+  seletorMostrar?: React.ReactNode;
   onAbrir: (t: GestaoTarefa) => void;
 }) {
   const totalCols = 6 + campos.length;
@@ -52,6 +59,7 @@ export default function VistaLista({
   const [sortBy, setSortBy] = useState<Coluna>("prazo");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [recolhidos, setRecolhidos] = useState<Set<string>>(new Set());
+  const [limites, setLimites] = useState<Record<string, number>>({});
 
   function ordenar(col: Coluna) {
     if (sortBy === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -94,8 +102,10 @@ export default function VistaLista({
         const p = PRIORIDADES.find((x) => x.value === t.prioridade);
         add(t.prioridade, p?.label ?? t.prioridade, t, p?.cor);
       } else if (agruparPor === "responsavel") {
-        const r = t.responsavel?.trim() || "Sem responsável";
-        add(r, r, t, t.responsavel ? corAvatar(t.responsavel) : "#cbd5e1");
+        // v295: com vários responsáveis a tarefa aparece no grupo de cada um (como etiquetas).
+        const nomes = nomesResponsaveis(t.responsavel);
+        if (nomes.length === 0) add("Sem responsável", "Sem responsável", t, "#cbd5e1");
+        for (const r of nomes) add(r, r, t, corAvatar(r));
       } else {
         const tags = t.etiquetas?.length ? t.etiquetas : ["Sem etiqueta"];
         for (const tag of tags) add(tag, tag, t, "#94a3b8");
@@ -120,18 +130,12 @@ export default function VistaLista({
 
   return (
     <div className="mt-5">
-      <div className="mb-2 flex items-center gap-2">
-        <span className="text-xs font-medium text-gray-500">Agrupar:</span>
-        {AGRUPAMENTOS.map((a) => (
-          <button
-            key={a.value || "none"}
-            type="button"
-            onClick={() => onAgruparPor(a.value || null)}
-            className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${(agruparPor ?? "") === a.value ? "bg-verde-primary text-white" : "bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-50"}`}
-          >
-            {a.label}
-          </button>
-        ))}
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <div className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500">
+          Agrupar:
+          <SelectVerde<AgruparPor | ""> valor={agruparPor ?? ""} opcoes={AGRUPAMENTOS} onChange={(v) => onAgruparPor(v || null)} className="w-auto min-w-[9rem]" />
+        </div>
+        {seletorMostrar}
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
@@ -153,8 +157,10 @@ export default function VistaLista({
               return (
                 <GrupoBloco key={g.chave} grupo={g} recolhido={recolhido} agrupar={!!agruparPor} cols={totalCols}
                   onToggle={() => setRecolhidos((s) => { const n = new Set(s); if (n.has(g.chave)) n.delete(g.chave); else n.add(g.chave); return n; })}>
-                  {!recolhido && g.itens.map((t) => {
+                  {!recolhido && g.itens.slice(0, limites[g.chave] ?? LIMITE_GRUPO).map((t) => {
                     const st = statusMap.get(t.status);
+                    // Subtarefa ainda sem janela (sub_linha) é só exibição: edita abrindo.
+                    const editavel = podeEditar && !t.sub_linha;
                     const dias = t.prazo ? Math.round((new Date(t.prazo + "T00:00:00").getTime() - new Date().setHours(0, 0, 0, 0)) / 86_400_000) : null;
                     const atrasada = dias != null && dias < 0 && st?.tipo !== "concluido";
                     return (
@@ -163,9 +169,10 @@ export default function VistaLista({
                           <button type="button" onClick={() => onAbrir(t)} className="text-left font-medium text-gray-800 hover:text-verde-primary">
                             {t.titulo}
                           </button>
+                          {t.titulo_mae && <p className="text-[11px] text-gray-400">↳ Subtarefa de {t.titulo_mae}</p>}
                         </td>
                         <td className="px-3 py-2">
-                          {podeEditar ? (
+                          {editavel ? (
                             <select value={t.status} onChange={(e) => patch(t, { status: e.target.value })}
                               className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs font-medium hover:border-gray-200 focus:border-verde-primary focus:outline-none" style={{ color: st?.cor }}>
                               {/* No escuro o color-scheme deixa o menu nativo escuro; #374151 fixo
@@ -175,7 +182,7 @@ export default function VistaLista({
                           ) : <span className="text-xs font-medium" style={{ color: st?.cor }}>{st?.nome}</span>}
                         </td>
                         <td className="px-3 py-2">
-                          {podeEditar ? (
+                          {editavel ? (
                             <select value={t.prioridade} onChange={(e) => patch(t, { prioridade: e.target.value as PrioridadeTarefa })}
                               className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs font-medium hover:border-gray-200 focus:border-verde-primary focus:outline-none" style={{ color: PRIORIDADES.find((p) => p.value === t.prioridade)?.cor }}>
                               {PRIORIDADES.map((p) => <option key={p.value} value={p.value} style={{ color: "#374151" }}>{p.label}</option>)}
@@ -183,24 +190,24 @@ export default function VistaLista({
                           ) : <span className="text-xs">{PRIORIDADES.find((p) => p.value === t.prioridade)?.label}</span>}
                         </td>
                         <td className="px-3 py-2">
-                          {podeEditar ? (
+                          {editavel ? (
                             <input list="gestao-lista-usuarios" defaultValue={t.responsavel ?? ""} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (t.responsavel ?? "")) patch(t, { responsavel: v || null }); }}
                               placeholder="—" className="w-32 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-verde-primary focus:outline-none" />
                           ) : (
                             <span className="inline-flex items-center gap-1.5 text-sm text-gray-600">
-                              {t.responsavel && <span className="flex size-5 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: corAvatar(t.responsavel) }}>{iniciais(t.responsavel)}</span>}
+                              {t.responsavel && <AvatarPessoa nome={t.responsavel} className="size-5 text-[9px]" />}
                               {t.responsavel ?? "—"}
                             </span>
                           )}
                         </td>
                         <td className="px-3 py-2">
-                          {podeEditar ? (
+                          {editavel ? (
                             <input type="date" value={t.data_inicio ?? ""} onChange={(e) => patch(t, { data_inicio: e.target.value || null })}
                               className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm text-gray-600 hover:border-gray-200 focus:border-verde-primary focus:outline-none" />
                           ) : <span className="text-sm text-gray-600">{fmtData(t.data_inicio)}</span>}
                         </td>
                         <td className="px-3 py-2">
-                          {podeEditar ? (
+                          {editavel ? (
                             <input type="date" value={t.prazo ?? ""} onChange={(e) => patch(t, { prazo: e.target.value || null })}
                               className={`rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-verde-primary focus:outline-none ${atrasada ? "font-medium text-red-600" : "text-gray-600"}`} />
                           ) : <span className={`text-sm ${atrasada ? "font-medium text-red-600" : "text-gray-600"}`}>{fmtData(t.prazo)}</span>}
@@ -211,6 +218,16 @@ export default function VistaLista({
                       </tr>
                     );
                   })}
+                  {!recolhido && g.itens.length > (limites[g.chave] ?? LIMITE_GRUPO) && (
+                    <tr className="border-t border-gray-100">
+                      <td colSpan={totalCols} className="px-3 py-2 text-center">
+                        <button type="button" onClick={() => setLimites((m) => ({ ...m, [g.chave]: (m[g.chave] ?? LIMITE_GRUPO) + LIMITE_GRUPO }))}
+                          className="text-xs font-medium text-gray-500 hover:text-verde-primary">
+                          Mostrar mais ({g.itens.length - (limites[g.chave] ?? LIMITE_GRUPO)} restantes)
+                        </button>
+                      </td>
+                    </tr>
+                  )}
                 </GrupoBloco>
               );
             })}

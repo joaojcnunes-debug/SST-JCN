@@ -41,6 +41,60 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-varios-responsaveis-avisos-email",
+    data: "2026-10-23",
+    tipo: "novidade",
+    titulo: "Gestão: vários responsáveis por tarefa e avisos também por e-mail",
+    texto:
+      "O botão \"+\" inclui mais de um responsável na tarefa. Quem é responsável ou seguidor recebe aviso no sino e " +
+      "por e-mail quando é incluído, quando o status muda, quando há comentário e quando é mencionado com @nome. " +
+      "Os membros do quadro são avisados de tarefa nova nele, e a tarefa que vence hoje também gera e-mail.",
+    onde: "Módulos › Gestão JCN Consultoria",
+    impacto:
+      "Quem fez a ação não é avisado. Avisos antigos não geram e-mail. Os e-mails saem quando alguém abre a Gestão.",
+    versoes: ["0.3.142"],
+  },
+  {
+    id: "gestao-google-agenda-completa",
+    data: "2026-10-23",
+    tipo: "novidade",
+    titulo: "Gestão: Google Agenda com hora, evento que vira tarefa e foto da conta",
+    texto:
+      "A tarefa ganha Hora de início e Hora fim e vai para a agenda com horário. Ao conectar, as tarefas abertas que " +
+      "já existem vão para a agenda. O evento que você cria no Google Agenda vira tarefa no seu Meu Quadro, e os " +
+      "convidados entram como responsáveis. O card Google Agenda mostra o status e tem o botão Desconectar, e a foto " +
+      "da conta Google aparece no lugar das iniciais.",
+    onde: "Gestão › Meu Espaço › Google Agenda",
+    impacto: "Quem já estava conectado precisa reconectar uma vez para a foto aparecer.",
+    versoes: ["0.3.142"],
+  },
+  {
+    id: "gestao-acesso-por-unidade",
+    data: "2026-10-23",
+    tipo: "novidade",
+    titulo: "Gestão: acesso por unidade",
+    texto:
+      "Em Usuários, o acesso à Gestão ganhou as colunas Unidades e Setores. Quem tem unidades marcadas vê, nos quadros " +
+      "de setor, só as tarefas dessas unidades; continua vendo as tarefas em que é responsável, seguidor ou criador.",
+    onde: "Usuários › Acesso ao módulo Gestão",
+    impacto: "Ninguém tem unidade marcada: todos continuam vendo o que já viam.",
+    versoes: ["0.3.142"],
+  },
+  {
+    id: "gestao-subtarefa-janela-formulario-anexos",
+    data: "2026-10-23",
+    tipo: "melhoria",
+    titulo: "Gestão: subtarefa abre como tarefa, formulário com anexos e novas vistas",
+    texto:
+      "Duplo clique na subtarefa abre a janela completa (descrição, datas, responsáveis, comentários, anexos). O " +
+      "formulário público aceita fotos, vídeos e documentos (até 10 arquivos de 50 MB) e múltipla escolha em lista " +
+      "fechada. O Meu Espaço ganhou a Agenda, o calendário do Meu Quadro mostra os outros quadros, e as listas têm " +
+      "Mostrar/Agrupar. A recorrência cria as repetições que ficaram para trás, e uma automação incompleta não fica mais " +
+      "ativa (antes, uma delas podia apagar o responsável).",
+    onde: "Módulos › Gestão JCN Consultoria",
+    versoes: ["0.3.142"],
+  },
+  {
     id: "psicossocial-consolidacao-grupo",
     data: "2026-10-22",
     tipo: "novidade",

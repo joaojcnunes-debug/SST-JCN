@@ -9,7 +9,8 @@ import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
 import { confirmar } from "@/components/ui/confirm";
 import { dependentesDe } from "@/lib/gestao/formularios";
 import {
-  useFormulariosQuadro, useSalvarFormulario, useExcluirFormulario, useUsuarios, useCamposQuadro, novoIdPergunta,
+  useFormulariosQuadro, useTodosFormularios, useSalvarFormulario, useExcluirFormulario, useUsuarios, useCamposQuadro,
+  useStatusQuadro, useEtiquetasQuadro, novoIdPergunta,
   PRIORIDADES, type GestaoFormulario, type PerguntaFormulario, type TipoPergunta, type GestaoStatus, type GestaoEtiqueta,
 } from "@/lib/hooks/useGestao";
 
@@ -21,6 +22,8 @@ const TIPOS: { value: TipoPergunta; label: string }[] = [
   { value: "email", label: "E-mail" }, { value: "cnpj", label: "CNPJ" }, { value: "cpf", label: "CPF" },
   { value: "telefone", label: "Telefone" }, { value: "data", label: "Data" }, { value: "data_hora", label: "Data e hora" },
   { value: "selecao", label: "Seleção (uma)" }, { value: "multipla", label: "Seleção (várias)" },
+  // Upload no form público: fotos, vídeos, qualquer formato (até 10 × 50 MB; vão para os anexos da tarefa).
+  { value: "anexo", label: "Anexo (arquivos)" },
 ];
 
 const EMPTY_USUARIOS: { nome: string; email: string }[] = [];
@@ -43,7 +46,7 @@ function draftDe(f: GestaoFormulario): Draft {
 }
 
 export default function FormulariosManagerModal({
-  open, onClose, idQuadro, statuses, etiquetas, podeEditar,
+  open, onClose, idQuadro, statuses, etiquetas, podeEditar, podeEditarOutras = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -53,14 +56,26 @@ export default function FormulariosManagerModal({
   /** Nomes de usuários (legado; o picker de responsável usa a lista rica nome+email via useUsuarios). */
   usuarios: string[];
   podeEditar: boolean;
+  /** Gestor: vê e edita também os formulários das outras listas (ex.: a OS do Suporte T.I). */
+  podeEditarOutras?: boolean;
 }) {
   const { data: forms = [] } = useFormulariosQuadro(idQuadro);
+  const { data: todos = [] } = useTodosFormularios(open && podeEditarOutras);
+  const outras = todos.filter((f) => f.id_quadro !== idQuadro);
   const { data: usuariosFull = EMPTY_USUARIOS } = useUsuarios();
-  const { data: campos = [] } = useCamposQuadro(idQuadro);
   const salvar = useSalvarFormulario();
   const excluir = useExcluirFormulario();
   const [editId, setEditId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  // O formulário em edição pode ser de outra lista: status, etiquetas e campos vêm da lista DONA dele
+  // (a tarefa nasce lá), não da lista aberta.
+  const quadroEdicao = [...forms, ...outras].find((f) => f.id === editId)?.id_quadro ?? idQuadro;
+  const deOutra = quadroEdicao !== idQuadro;
+  const { data: campos = [] } = useCamposQuadro(quadroEdicao);
+  const { data: statusOutra = [] } = useStatusQuadro(deOutra ? quadroEdicao : null);
+  const { data: etiquetasOutra = [] } = useEtiquetasQuadro(deOutra ? quadroEdicao : null);
+  const statusesEd = deOutra ? statusOutra : statuses;
+  const etiquetasEd = deOutra ? etiquetasOutra : etiquetas;
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -75,7 +90,7 @@ export default function FormulariosManagerModal({
 
   function salvarEdicao() {
     if (!editId || !draft) return;
-    salvar.mutate({ id: editId, id_quadro: idQuadro, ...draft }, {
+    salvar.mutate({ id: editId, id_quadro: quadroEdicao, ...draft }, {
       onSuccess: () => { toast.success("Formulário salvo"); setEditId(null); setDraft(null); },
     });
   }
@@ -88,14 +103,8 @@ export default function FormulariosManagerModal({
 
   const up = (patch: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...patch } : d));
 
-  return (
-    <Modal open={open} onClose={onClose} title="Formulários de entrada" size="lg">
-      <div className="space-y-3">
-        <p className="text-xs text-gray-500">
-          Crie um link público para captar solicitações. Cada envio vira uma tarefa nesta lista — sem login.
-        </p>
-
-        {forms.map((f) => (
+  // Um formulário (cabeçalho + editor). `apagavel` é só para os da lista aberta.
+  const cartao = (f: GestaoFormulario, editavel: boolean, apagavel: boolean) => (
           <div key={f.id} className="rounded-lg border border-gray-200">
             <div className="flex items-center gap-2 p-2.5">
               <span className={`size-2 shrink-0 rounded-full ${f.ativo ? "bg-green-500" : "bg-gray-300"}`} title={f.ativo ? "Ativo" : "Inativo"} />
@@ -103,13 +112,13 @@ export default function FormulariosManagerModal({
               <button type="button" onClick={() => copiarLink(f.token)} className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50" title="Copiar link público">
                 <Link2 className="size-3.5" /> Link
               </button>
-              {podeEditar && (
+              {editavel && (
                 <>
-                  <button type="button" onClick={() => salvar.mutate({ id: f.id, id_quadro: idQuadro, ativo: !f.ativo })} className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">
+                  <button type="button" onClick={() => salvar.mutate({ id: f.id, id_quadro: f.id_quadro, ativo: !f.ativo })} className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50">
                     {f.ativo ? "Desativar" : "Ativar"}
                   </button>
                   <button type="button" onClick={() => (editId === f.id ? (setEditId(null), setDraft(null)) : abrirEdicao(f))} className="rounded p-1 text-gray-400 hover:bg-gray-100" title="Editar"><Pencil className="size-4" /></button>
-                  <button type="button" onClick={async () => { if (await confirmar({ title: "Excluir formulário?", description: "O link público deixa de funcionar." })) excluir.mutate(f.id); }} className="rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-600" title="Excluir"><Trash2 className="size-4" /></button>
+                  {apagavel && <button type="button" onClick={async () => { if (await confirmar({ title: "Excluir formulário?", description: "O link público deixa de funcionar." })) excluir.mutate(f.id); }} className="rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-600" title="Excluir"><Trash2 className="size-4" /></button>}
                 </>
               )}
             </div>
@@ -136,7 +145,7 @@ export default function FormulariosManagerModal({
                     <label className="mb-1 block text-xs font-medium text-gray-600">Status inicial</label>
                     <select value={draft.status_inicial ?? ""} onChange={(e) => up({ status_inicial: e.target.value || null })} className={inputCls}>
                       <option value="">1º da lista</option>
-                      {statuses.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
+                      {statusesEd.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
                     </select>
                   </div>
                   <div>
@@ -161,7 +170,7 @@ export default function FormulariosManagerModal({
 
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">Etiquetas padrão</label>
-                  <MultiChipInput value={draft.etiquetas_padrao} onChange={(v) => up({ etiquetas_padrao: v })} sugestoes={etiquetas.map((e) => e.nome)} placeholder="Adicionar…" />
+                  <MultiChipInput value={draft.etiquetas_padrao} onChange={(v) => up({ etiquetas_padrao: v })} sugestoes={etiquetasEd.map((e) => e.nome)} placeholder="Adicionar…" />
                 </div>
 
                 {/* F1.5: título da tarefa montado das respostas (como no Runrun). Vazio = o respondente digita. */}
@@ -263,7 +272,23 @@ export default function FormulariosManagerModal({
               </div>
             )}
           </div>
-        ))}
+  );
+
+  // Formulários das outras listas, agrupados pelo nome da lista.
+  const gruposOutras = [...outras.reduce((m, f) => {
+    const nome = f.quadro_nome ?? "Outra lista";
+    m.set(nome, [...(m.get(nome) ?? []), f]);
+    return m;
+  }, new Map<string, GestaoFormulario[]>())].sort(([a], [b]) => a.localeCompare(b, "pt-BR"));
+
+  return (
+    <Modal open={open} onClose={onClose} title="Formulários de entrada" size="lg">
+      <div className="space-y-3">
+        <p className="text-xs text-gray-500">
+          Crie um link público para captar solicitações. Cada envio vira uma tarefa nesta lista — sem login.
+        </p>
+
+        {forms.map((f) => cartao(f, podeEditar, podeEditar))}
 
         {forms.length === 0 && <p className="text-sm text-gray-400">Nenhum formulário ainda.</p>}
 
@@ -271,6 +296,19 @@ export default function FormulariosManagerModal({
           <button type="button" onClick={novo} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-verde-primary ring-1 ring-dashed ring-verde-primary/40 hover:bg-verde-light/40">
             <Plus className="size-4" /> Novo formulário
           </button>
+        )}
+
+        {podeEditarOutras && gruposOutras.length > 0 && (
+          <div className="space-y-2 border-t border-gray-100 pt-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Formulários de outras listas</p>
+            <p className="text-[11px] text-gray-400">Cada envio continua virando tarefa na lista do formulário (indicada acima de cada grupo).</p>
+            {gruposOutras.map(([nome, lista]) => (
+              <div key={nome} className="space-y-1.5">
+                <p className="text-xs font-medium text-gray-600">{nome}</p>
+                {lista.map((f) => cartao(f, true, false))}
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </Modal>
