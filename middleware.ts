@@ -2,7 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 // /privacidade e /termos: o Google lê as duas na tela de consentimento do OAuth (Google Agenda).
-const PUBLIC_PATHS = ["/login", "/f/", "/privacidade", "/termos"];
+// /api/gestao/form (formulário público + anexos), /api/gestao/ics (feed assinado pelo Google/Outlook) e
+// /api/gestao/google/webhook (aviso do Google) são chamados SEM sessão; cada rota confere o próprio
+// token (form/ics/canal do Google) — no painel isto era o Bypass do Cloudflare em /api/gestao/*.
+const PUBLIC_PATHS = ["/login", "/f/", "/privacidade", "/termos", "/api/gestao/form", "/api/gestao/ics", "/api/gestao/google/webhook"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
