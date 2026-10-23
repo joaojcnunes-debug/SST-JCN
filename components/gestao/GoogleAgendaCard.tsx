@@ -17,7 +17,7 @@ const fmtData = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
  */
 export default function GoogleAgendaCard() {
   const qc = useQueryClient();
-  const { data: st, isLoading } = useQuery<StatusGoogle>({
+  const { data: st, isLoading, isError } = useQuery<StatusGoogle>({
     queryKey: ["gestao-google-status"],
     queryFn: async () => {
       const r = await fetch("/api/gestao/google/status");
@@ -52,6 +52,15 @@ export default function GoogleAgendaCard() {
       confirmLabel: "Desconectar",
       variant: "danger",
     })) desconectar.mutate();
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <p className="font-semibold">Google Agenda</p>
+        <p className="text-xs">Não foi possível consultar a conexão com o Google. Se continuar, avise o administrador (configuração do servidor).</p>
+      </div>
+    );
   }
 
   if (isLoading || !st) {

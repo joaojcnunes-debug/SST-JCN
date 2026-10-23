@@ -20,6 +20,11 @@ export async function GET() {
   if (!user?.email) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
-  const sb = createSupabaseServiceClient({ email: user.email, origem: "google-agenda/status" });
-  return NextResponse.json(await statusDaConta(sb, user.email));
+  try {
+    const sb = createSupabaseServiceClient({ email: user.email, origem: "google-agenda/status" });
+    return NextResponse.json(await statusDaConta(sb, user.email));
+  } catch (e) {
+    // Ex.: SUPABASE_SERVICE_ROLE_KEY ausente na Vercel. A mensagem não traz segredo.
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Falha ao consultar a conta Google." }, { status: 500 });
+  }
 }

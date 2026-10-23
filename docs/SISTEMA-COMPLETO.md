@@ -117,7 +117,7 @@ Alias de import: `@/*` → raiz.
 
 ### 1.5 Middleware (`middleware.ts`)
 
-- Roda em tudo, menos estáticos, imagens, `manifest.webmanifest` e `sw.js`. Públicos: `/login`, `/f/`, `/privacidade` e `/termos`.
+- Roda em tudo, menos estáticos, imagens, `manifest.webmanifest` e `sw.js`. Públicos: `/login`, `/f/`, `/privacidade`, `/termos` e as APIs sem sessão da Gestão (`/api/gestao/form` — formulário e anexos —, `/api/gestao/ics` e `/api/gestao/google/webhook`), que conferem o próprio token.
 - Sem URL/chave do Supabase configuradas: `/api/*` → 500 JSON; resto → `/login`.
 - Valida a sessão com `@supabase/ssr` (`auth.getUser()`). Sem usuário: `/api/*` → **401 JSON** `{ok:false, error:"Sessao expirada. Entre de novo."}`; páginas → `/login?next=<rota>`.
 - Não checa perfil nem módulo (isso é feito nos hooks e na RLS).
