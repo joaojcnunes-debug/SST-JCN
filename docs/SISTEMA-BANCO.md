@@ -541,7 +541,9 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
 - **v291 — rotina e automações:** `gestao_automacao_completa()` + gatilho que desliga automação incompleta; `definir_responsavel` sem valor não apaga mais; aviso "Nova tarefa em <quadro>" (`trg_gestao_aviso_quadro_ins/_upd`, adiados); `gestao_cron_diario` gera todas as recorrências atrasadas e copia vínculos; `gestao_rotina_diaria()` (1x/dia a partir das 7h de Brasília). **pg_cron:** um job só, `gestao-diario` às 10:05 UTC (07:05 de Brasília) chamando a rotina; `gestao-automacao-prazos` saiu (a rotina chama o tick).
 - **v292 — subtarefa em janela:** `gestao_tarefas.id_tarefa_pai`, `gestao_subtarefas.id_tarefa_filha`; RPC `gestao_subtarefa_abrir`; gatilhos de sincronia lista ↔ filha.
 
-Rollbacks: `scripts/sql/v288…v292_*_rollback.sql` (desfazer de trás para a frente: v292 → v288).
+- **v293 — segurança:** `gestao_google_ler_token`, `gestao_google_salvar_conta` e `gestao_google_status` passam a ser só `service_role` (estavam abertas a anon/authenticated desde a portação da v209).
+
+Rollbacks: `scripts/sql/v288…v293_*_rollback.sql` (desfazer de trás para a frente: v293 → v288).
 
 ### `gestao_acesso_log`
 
