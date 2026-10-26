@@ -53,9 +53,9 @@ export const CATALOGO: Novidade[] = [
       "relação das empresas em que a pessoa atuou.",
     onde: "Painel SST › Dashboard",
     impacto:
-      "Inspeção sem técnico na aba Responsáveis conta para quem abriu; o Admin escolhe o técnico na nota que aparece na " +
-      "tela de inspeções.",
-    versoes: ["0.3.149"],
+      "Inspeção sem técnico na aba Responsáveis conta para quem abriu; um supervisor (Admin ou nível Aprovação) escolhe o " +
+      "técnico na nota que aparece na tela de inspeções.",
+    versoes: ["0.3.149", "0.3.150"],
   },
   {
     id: "usuarios-modulos-por-categoria",
