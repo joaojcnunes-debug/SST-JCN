@@ -33,8 +33,15 @@ export interface InspecaoContavel {
   status: string;
   /** Data da VISITA — data pura "AAAA-MM-DD". */
   data_inspecao: string | null;
-  /** Quando foi finalizada. Nulo em registro antigo. */
+  /** Quando foi finalizada. Nulo em registro antigo. Regravada se reabrir e concluir de novo. */
   concluida_em: string | null;
+  /**
+   * v295: a PRIMEIRA conclusão, travada no banco — reabrir e concluir de novo não a muda. É ela que
+   * decide o mês (pedido de 26/10: "conta no mês em que o técnico finalizou; reaberta por outra
+   * pessoa, a contagem permanece"). Por isso também conta a inspeção reaberta que ainda não voltou
+   * a CONCLUIDA.
+   */
+  primeira_conclusao_em?: string | null;
   created_at: string;
   /** "BRANCO" (visita nova) | "COPIA_EMPRESA" | "REVISAO" | "RENOVACAO" */
   tipo_criacao: string | null;
@@ -92,11 +99,19 @@ export function ehRenovacao(tipoCriacao: string | null | undefined): boolean {
  * coluna que pode ser nula.
  */
 export function mesDeConclusao(i: InspecaoContavel): number | null {
-  if (i.status !== "CONCLUIDA") return null;
+  if (i.status === "DELETADA") return null;
   // Renovação não é inspeção concluída — sai daqui e, por aqui, de toda tela
   // que conta concluídas pelo mês.
   if (ehRenovacao(i.tipo_criacao)) return null;
+  // v295: a 1ª conclusão manda, mesmo que a inspeção esteja reaberta agora.
+  if (i.primeira_conclusao_em) return mesAbsSP(i.primeira_conclusao_em);
+  if (i.status !== "CONCLUIDA") return null;
   return mesAbsSP(i.concluida_em || i.created_at);
+}
+
+/** O instante que decide o mês da conclusão (o mesmo de `mesDeConclusao`). */
+export function instanteDeConclusao(i: InspecaoContavel): string {
+  return i.primeira_conclusao_em || i.concluida_em || i.created_at;
 }
 
 /**
@@ -126,9 +141,10 @@ export const BACKFILL_V154 = Date.parse("2026-08-04T16:47:48Z");
  * inspeção foi lançada) e para tudo que foi concluído antes da v154.
  */
 export function conclusaoEhAproximada(i: InspecaoContavel): boolean {
-  if (i.status !== "CONCLUIDA") return false;
-  if (!i.concluida_em) return true;
-  return Date.parse(i.concluida_em) < BACKFILL_V154;
+  if (mesDeConclusao(i) == null) return false;
+  const data = i.primeira_conclusao_em || i.concluida_em;
+  if (!data) return true;
+  return Date.parse(data) < BACKFILL_V154;
 }
 
 /** Mês em que a VISITA aconteceu. Data pura — nunca passa por fuso. */

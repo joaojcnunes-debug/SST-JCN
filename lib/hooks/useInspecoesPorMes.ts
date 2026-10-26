@@ -28,7 +28,8 @@ export function useInspecoesPorMes() {
         (de, ate) =>
           supabase
             .from("inspecoes")
-            .select("status, data_inspecao, concluida_em, created_at, tipo_criacao")
+            // primeira_conclusao_em (v295): a reaberta continua no mês da 1ª conclusão.
+            .select("status, data_inspecao, concluida_em, primeira_conclusao_em, created_at, tipo_criacao")
             .neq("status", "DELETADA")
             .order("id_inspecao")
             .range(de, ate),

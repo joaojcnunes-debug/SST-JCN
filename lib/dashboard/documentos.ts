@@ -410,13 +410,31 @@ export interface DocumentoConcluido {
   status: string | null;
   elaboracao_concluida_em: string | null;
   elaboracao_responsavel: string | null;
+  /**
+   * v295: a PRIMEIRA conclusão do documento e o responsável naquele momento, travados no banco.
+   * Pedido de 26/10: mesma regra das inspeções — reabrir e concluir de novo não muda o mês nem a
+   * pessoa. Quando existem, valem no lugar das colunas acima.
+   */
+  primeira_elaboracao_em?: string | null;
+  primeira_elaboracao_por?: string | null;
+  id_inspecao?: string;
+}
+
+/** O instante que decide o mês do documento concluído (1ª conclusão, se houver). */
+export function dataConclusaoDoc(l: DocumentoConcluido): string | null {
+  return l.primeira_elaboracao_em || l.elaboracao_concluida_em || null;
+}
+
+/** Quem leva o documento concluído (o responsável na 1ª conclusão, se houver). */
+export function admDoDoc(l: DocumentoConcluido): string {
+  return ((l.primeira_elaboracao_por || l.elaboracao_responsavel) ?? "").replace(/\s+/g, " ").trim() || SEM_RESPONSAVEL;
 }
 
 export const SEM_RESPONSAVEL = "Sem responsável";
 
 /** Os que contam: inspeção não excluída e com data de conclusão. */
 export function concluidosValidos<T extends DocumentoConcluido>(linhas: readonly T[]): T[] {
-  return linhas.filter((l) => l.status !== "DELETADA" && !!l.elaboracao_concluida_em);
+  return linhas.filter((l) => l.status !== "DELETADA" && !!dataConclusaoDoc(l));
 }
 
 /** Quantos documentos foram concluídos em cada um dos últimos `nMeses`. */
@@ -429,14 +447,14 @@ export function concluidosPorMes(
   const primeiro = mesAtual - (nMeses - 1);
   const meses = Array.from({ length: nMeses }, (_, i) => ({ chave: primeiro + i, total: 0 }));
   for (const l of concluidosValidos(linhas)) {
-    const i = mesDe(l.elaboracao_concluida_em!) - primeiro;
+    const i = mesDe(dataConclusaoDoc(l)!) - primeiro;
     if (i >= 0 && i < nMeses) meses[i].total++;
   }
   return meses;
 }
 
 /** Chave de agrupamento do nome: sem caixa, sem acento, espaços colapsados. */
-function chaveNome(nome: string): string {
+export function chaveNome(nome: string): string {
   return nome.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
@@ -452,8 +470,8 @@ export function concluidosPorAdm(
 ): { adm: string; total: number }[] {
   const grupos = new Map<string, { total: number; grafias: Map<string, number> }>();
   for (const l of concluidosValidos(linhas)) {
-    if (mes !== null && mesDe(l.elaboracao_concluida_em!) !== mes) continue;
-    const nome = (l.elaboracao_responsavel ?? "").replace(/\s+/g, " ").trim() || SEM_RESPONSAVEL;
+    if (mes !== null && mesDe(dataConclusaoDoc(l)!) !== mes) continue;
+    const nome = admDoDoc(l);
     const k = chaveNome(nome);
     const g = grupos.get(k) ?? { total: 0, grafias: new Map<string, number>() };
     g.total++;

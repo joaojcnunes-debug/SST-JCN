@@ -654,3 +654,27 @@ describe("concluídas por dono = quem lançou (08/10)", () => {
     assert.deepEqual(r.map((x) => x.pessoa), ["fora@x.com"]);
   });
 });
+
+describe("v295 — 1ª conclusão travada (26/10/2026)", () => {
+  const base = {
+    id_inspecao: "I9",
+    data_inspecao: "2026-09-10",
+    created_at: "2026-09-10T12:00:00Z",
+    tipo_criacao: "BRANCO",
+  };
+  it("conta no mês da 1ª conclusão, mesmo que tenha sido concluída de novo depois", () => {
+    const i = { ...base, status: "CONCLUIDA", concluida_em: "2026-10-20T12:00:00Z", primeira_conclusao_em: "2026-09-15T12:00:00Z" };
+    assert.equal(mesDeConclusao(i), 2026 * 12 + 8);
+  });
+  it("reaberta (ainda não concluída de novo) continua contando no mês da 1ª conclusão", () => {
+    const i = { ...base, status: "EM_ANDAMENTO", concluida_em: null, primeira_conclusao_em: "2026-09-15T12:00:00Z" };
+    assert.equal(mesDeConclusao(i), 2026 * 12 + 8);
+  });
+  it("nunca concluída não conta; renovação não conta nem com a data", () => {
+    assert.equal(mesDeConclusao({ ...base, status: "EM_ANDAMENTO", concluida_em: null }), null);
+    assert.equal(
+      mesDeConclusao({ ...base, status: "CONCLUIDA", tipo_criacao: "RENOVACAO", concluida_em: null, primeira_conclusao_em: "2026-09-15T12:00:00Z" }),
+      null,
+    );
+  });
+});
