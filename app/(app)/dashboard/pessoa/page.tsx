@@ -70,7 +70,8 @@ function useRegistros(fonte: FontePessoa, nome: string): { registros: Registro[]
       const opcoes = { tecnicosDeCampo: tec.data ?? new Map(), cadastro: contasL.map((c) => c.nome), contas: contasL };
       const reab = new Set((reabInsp.data ?? []).map((r) => r.id_inspecao));
       return (insp.data ?? [])
-        .filter((r) => mesDeConclusao(r) != null && tecnicosCreditados(r, opcoes).nomes.some((n) => chaveNome(n) === chave))
+        // Nome EXATO, como a barra do gráfico (porTecnico agrupa pelo nome canônico, não pela chave).
+        .filter((r) => mesDeConclusao(r) != null && tecnicosCreditados(r, opcoes).nomes.includes(nome))
         .map((r) => ({
           id_inspecao: r.id_inspecao,
           id_empresa: r.id_empresa ?? null,
@@ -138,6 +139,9 @@ function Conteudo() {
   const empresas = [...porEmpresa.values()].sort(
     (a, b) => b.itens.length - a.itens.length || a.empresa.localeCompare(b.empresa, "pt-BR"),
   );
+  // No gráfico de associados a empresa conta 1 vez POR MÊS; "todos os meses" lá é a soma dos meses.
+  // Este é o número que bate com o gráfico.
+  const empresasMes = new Set(recorte.map((r) => `${r.id_empresa ?? r.empresa}|${r.mes}`)).size;
   const unidade = fonte === "inspecoes" ? "inspeç" : "documento";
   const plural = (n: number) => (fonte === "inspecoes" ? (n !== 1 ? "ões" : "ão") : n !== 1 ? "s" : "");
 
@@ -164,6 +168,11 @@ function Conteudo() {
                 <strong>{empresas.length}</strong> empresa{empresas.length !== 1 ? "s" : ""} · <strong>{recorte.length}</strong>{" "}
                 {unidade}
                 {plural(recorte.length)} {mes == null ? "em todos os meses" : `em ${rotuloMesAbs(mes, true)}`}
+                {fonte === "associados" && mes == null && empresasMes !== empresas.length && (
+                  <span className="block text-xs text-gray-500">
+                    No gráfico: <strong>{empresasMes}</strong> — a mesma empresa conta uma vez em cada mês em que foi associada.
+                  </span>
+                )}
               </>
             )}
           </p>

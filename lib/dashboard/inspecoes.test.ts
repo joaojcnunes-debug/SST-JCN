@@ -12,6 +12,7 @@ import {
   porTecnico,
   resumoCredito,
   serieMensal,
+  tecnicosCreditados,
   type InspecaoContavel,
 } from "./inspecoes";
 import { mesAbsDataSP, rotuloMesAbs } from "./mes";
@@ -676,5 +677,40 @@ describe("v295 — 1ª conclusão travada (26/10/2026)", () => {
       mesDeConclusao({ ...base, status: "CONCLUIDA", tipo_criacao: "RENOVACAO", concluida_em: null, primeira_conclusao_em: "2026-09-15T12:00:00Z" }),
       null,
     );
+  });
+});
+
+describe("v297 — técnico travado na 1ª conclusão (26/10/2026)", () => {
+  const base = {
+    id_inspecao: "I9",
+    status: "CONCLUIDA",
+    data_inspecao: "2026-09-10",
+    concluida_em: "2026-10-20T12:00:00Z",
+    primeira_conclusao_em: "2026-09-15T12:00:00Z",
+    created_at: "2026-09-10T12:00:00Z",
+    tipo_criacao: "BRANCO",
+    responsavel: "Quem Abriu",
+  };
+  const contas = [
+    { id_usuario: "U1", nome: "Ana Campo" },
+    { id_usuario: "U2", nome: "Beto Reabriu" },
+  ];
+  // Hoje a aba tem os dois: Beto se incluiu ao reabrir.
+  const tecnicosDeCampo = new Map([["I9", [{ digitado: "Ana", idUsuario: "U1" }, { digitado: "Beto", idUsuario: "U2" }]]]);
+
+  it("quem reabre e se inclui na aba não leva o crédito", () => {
+    const i = { ...base, primeira_conclusao_tecnicos: [{ digitado: "Ana", idUsuario: "U1" }] };
+    assert.deepEqual(tecnicosCreditados(i, { tecnicosDeCampo, contas }), { nomes: ["Ana Campo"], semRegistro: false });
+  });
+  it("sem ninguém na 1ª conclusão (snapshot vazio) vale a aba atual — onde a nota do supervisor grava", () => {
+    const i = { ...base, primeira_conclusao_tecnicos: [] };
+    const so = new Map([["I9", [{ digitado: "Ana", idUsuario: "U1" }]]]);
+    assert.deepEqual(tecnicosCreditados(i, { tecnicosDeCampo: so, contas }), { nomes: ["Ana Campo"], semRegistro: false });
+  });
+  it("snapshot vazio e aba vazia continua sem registro, para quem abriu", () => {
+    const i = { ...base, primeira_conclusao_tecnicos: [] };
+    const r = tecnicosCreditados(i, { tecnicosDeCampo: new Map(), contas, cadastro: ["Quem Abriu"] });
+    assert.equal(r.semRegistro, true);
+    assert.deepEqual(r.nomes, ["Quem Abriu"]);
   });
 });

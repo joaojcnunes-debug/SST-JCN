@@ -16,7 +16,28 @@ const ROTULO_TABELA: Record<string, string> = {
   inspecao_maquinas_setores: "Máquinas × setores",
   responsaveis: "Responsáveis",
   inspecao_associados: "Associados",
+  cargos: "Cargos",
+  epi_epc: "EPI/EPC",
+  complementos: "Complementos",
+  pae_contatos: "Contatos do PAE",
+  treinamentos_nr: "Treinamentos",
+  acoes_5w2h: "Plano de ação",
 };
+
+/** Campos que dão nome a um item incluído/excluído quando a auditoria não tem título. */
+const CAMPOS_NOME = [
+  "tecnico_responsavel", "nome", "nome_setor", "nome_cargo", "descricao", "nome_maquina", "tipo",
+  "legenda", "titulo", "o_que", "nr",
+];
+
+function nomeDoItem(titulo: string | null | undefined, registro: Record<string, unknown> | null | undefined): string {
+  if (titulo) return titulo;
+  for (const k of CAMPOS_NOME) {
+    const v = registro?.[k];
+    if (typeof v === "string" && v.trim()) return valor(v.trim());
+  }
+  return "";
+}
 
 function valor(v: unknown): string {
   if (v === null || v === undefined || v === "") return "—";
@@ -93,11 +114,22 @@ export default function ReaberturasAviso({
                             <td className="py-1 pr-2">{nomeDoEmail(a.por)}</td>
                             <td className="py-1 pr-2">
                               {ROTULO_TABELA[a.tabela] ?? a.tabela}
-                              {a.acao !== "editou" ? ` (${a.acao})` : ""}
                             </td>
-                            <td className="py-1 pr-2 font-mono">{a.campo}</td>
-                            <td className="py-1 pr-2 text-red-700">{valor(a.antes)}</td>
-                            <td className="py-1 text-emerald-700">{valor(a.depois)}</td>
+                            {a.campo === "(registro)" ? (
+                              // Criação/exclusão de um item da aba: o que importa é QUAL item (título da auditoria).
+                              <td className="py-1" colSpan={3}>
+                                <span className={a.acao === "excluiu" ? "text-red-700" : "text-emerald-700"}>
+                                  {a.acao === "criou" ? "incluído" : a.acao === "excluiu" ? "excluído" : a.acao}
+                                </span>
+                                {nomeDoItem(a.titulo, a.registro) ? `: ${nomeDoItem(a.titulo, a.registro)}` : ""}
+                              </td>
+                            ) : (
+                              <>
+                                <td className="py-1 pr-2 font-mono">{a.campo}</td>
+                                <td className="py-1 pr-2 text-red-700">{valor(a.antes)}</td>
+                                <td className="py-1 text-emerald-700">{valor(a.depois)}</td>
+                              </>
+                            )}
                           </tr>
                         ))}
                       </tbody>

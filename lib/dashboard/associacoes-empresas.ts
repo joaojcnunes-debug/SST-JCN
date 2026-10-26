@@ -8,7 +8,7 @@
  * Fontes de um EVENTO (pessoa recebe um documento numa data):
  *  - `inspecao_associados`: a linha da associação (`created_at`, `nome`). Quem associou não importa;
  *  - `dashboard_assuncoes()` (v295): quando o documento ganhou responsável pelo botão "Assumir
- *    elaboração" — a data vem da auditoria (existe desde 24/09/2026). Documento assumido antes disso
+ *    elaboração" — a data vem da auditoria (que só existe a partir de quando foi ligada). Documento assumido antes disso
  *    e sem linha de associação continua sem data: não entra em mês nenhum (e a tela diz quantos são).
  *
  * Regras:
@@ -33,6 +33,12 @@ export interface LinhaAssuncao {
   id_inspecao: string;
   responsavel: string | null;
   assumido_em: string | null;
+  /**
+   * v297: "assuncao" = botão "Assumir elaboração"; "associacao_removida" = associação que já foi
+   * excluída (a auditoria guarda a linha). Ela conta no mês em que aconteceu: o histórico não some
+   * quando alguém desfaz a associação depois.
+   */
+  origem?: "assuncao" | "associacao_removida" | null;
 }
 
 export interface DocumentoDaEmpresa {
@@ -90,7 +96,8 @@ export function eventosDeAssociacao(
     });
   };
   for (const a of associacoes) somar(a.id_inspecao, a.nome, a.created_at, "associacao");
-  for (const a of assuncoes) somar(a.id_inspecao, a.responsavel, a.assumido_em, "assuncao");
+  for (const a of assuncoes)
+    somar(a.id_inspecao, a.responsavel, a.assumido_em, a.origem === "associacao_removida" ? "associacao" : "assuncao");
   return [...primeiro.values()];
 }
 

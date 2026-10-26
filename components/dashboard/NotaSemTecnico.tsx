@@ -6,7 +6,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { UserPlus } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { gerarId } from "@/lib/utils";
 import { mensagemErro } from "@/lib/errors";
 import { nomeDaEmpresa, type ContaDoPainel, type InspecaoConcluida } from "@/lib/hooks/useDashboardFontes";
 
@@ -15,6 +14,9 @@ import { nomeDaEmpresa, type ContaDoPainel, type InspecaoConcluida } from "@/lib
  * Responsáveis conta para quem a abriu, marcada "sem registro". Aqui o supervisor escolhe quem foi
  * a campo; a escolha vira uma linha em `responsaveis` (com o vínculo `id_usuario`, v204) e a
  * inspeção passa a contar para esse técnico.
+ *
+ * v297: grava pela função `dashboard_definir_tecnico` — o banco confere que é supervisor, não
+ * duplica e não inventa a data da visita (`data_hora` fica vazia). A linha salva sai da lista.
  */
 export default function NotaSemTecnico({
   inspecoes,
@@ -27,10 +29,12 @@ export default function NotaSemTecnico({
   const [aberta, setAberta] = useState(false);
   const [escolha, setEscolha] = useState<Record<string, string>>({});
   const [salvando, setSalvando] = useState<string | null>(null);
-  if (inspecoes.length === 0) return null;
+  const [salvas, setSalvas] = useState<ReadonlySet<string>>(new Set());
+  const pendentes = inspecoes.filter((i) => !salvas.has(i.id_inspecao));
+  if (pendentes.length === 0) return null;
 
   const tecnicos = [...contas]
-    .filter((c) => c.perfil !== "Cliente")
+    .filter((c) => c.perfil !== "Cliente" && c.ativo)
     .sort((a, b) => (a.perfil === "Tecnico" ? 0 : 1) - (b.perfil === "Tecnico" ? 0 : 1) || a.nome.localeCompare(b.nome, "pt-BR"));
 
   async function salvar(i: InspecaoConcluida) {
@@ -40,15 +44,12 @@ export default function NotaSemTecnico({
     setSalvando(i.id_inspecao);
     try {
       const sb = createSupabaseBrowserClient();
-      const { error } = await sb.from("responsaveis").insert({
-        id_responsavel: gerarId("RSP"),
-        id_inspecao: i.id_inspecao,
-        id_empresa: i.id_empresa ?? null,
-        tecnico_responsavel: conta.nome,
-        id_usuario: conta.id_usuario,
-        data_hora: new Date().toISOString(),
-      } as never);
+      const { error } = await sb.rpc(
+        "dashboard_definir_tecnico" as never,
+        { p_id_inspecao: i.id_inspecao, p_id_usuario: conta.id_usuario } as never,
+      );
       if (error) throw error;
+      setSalvas((s) => new Set(s).add(i.id_inspecao));
       toast.success(`${conta.nome} registrado como técnico da inspeção.`);
       qc.invalidateQueries({ queryKey: ["dashboard-tecnicos-de-campo"] });
     } catch (e) {
@@ -62,8 +63,8 @@ export default function NotaSemTecnico({
     <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p>
-          <strong>Nota para os supervisores:</strong> {inspecoes.length} inspeç{inspecoes.length !== 1 ? "ões concluídas não têm" : "ão concluída não tem"}{" "}
-          técnico registrado na aba Responsáveis e {inspecoes.length !== 1 ? "contam" : "conta"} para quem abriu (&quot;sem registro&quot;).
+          <strong>Nota para os supervisores:</strong> {pendentes.length} inspeç{pendentes.length !== 1 ? "ões concluídas não têm" : "ão concluída não tem"}{" "}
+          técnico registrado na aba Responsáveis e {pendentes.length !== 1 ? "contam" : "conta"} para quem abriu (&quot;sem registro&quot;).
           Selecione quem foi a campo.
         </p>
         <button
@@ -76,7 +77,7 @@ export default function NotaSemTecnico({
       </div>
       {aberta && (
         <ul className="mt-2 space-y-1">
-          {inspecoes.map((i) => (
+          {pendentes.map((i) => (
             <li key={i.id_inspecao} className="flex flex-wrap items-center gap-2 rounded-md bg-white/80 px-2 py-1.5">
               <Link href={`/inspecoes/${i.id_inspecao}`} className="min-w-[12rem] flex-1 font-medium text-gray-800 hover:underline">
                 {nomeDaEmpresa(i.empresas)}
