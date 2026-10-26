@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dashboard-filtro-unidade",
+    data: "2026-10-26",
+    tipo: "melhoria",
+    titulo: "Dashboard: filtro por unidade nas telas de inspeções, documentos e associados",
+    texto:
+      "As telas Inspeções realizadas por TST, Documentos concluídos (ADM) e Documentos associados ganharam o filtro " +
+      "Unidade no topo. Ele começa na unidade ativa do sistema e vale também para a página da pessoa, aberta ao clicar " +
+      "num nome.",
+    onde: "Painel SST › Dashboard › Inspeções / Documentos concluídos / Documentos associados",
+    versoes: ["0.3.152"],
+  },
+  {
     id: "dashboard-tst-primeira-conclusao",
     data: "2026-10-26",
     tipo: "novidade",

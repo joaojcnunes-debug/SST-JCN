@@ -19,12 +19,18 @@ import { useDocumentosConcluidos } from "@/lib/hooks/useDocumentosConcluidos";
 import { nomeDaEmpresa, useContasDoPainel, useReaberturas } from "@/lib/hooks/useDashboardFontes";
 import ReaberturasAviso from "@/components/dashboard/ReaberturasAviso";
 import TickPessoa from "@/components/dashboard/TickPessoa";
+import FiltroUnidade from "@/components/dashboard/FiltroUnidade";
+import { useFiltroUnidadeDashboard } from "@/lib/hooks/useFiltroUnidadeDashboard";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { BalaoUmValor } from "@/components/ui/BalaoGrafico";
 
 export default function DocumentosEmitidosDashboard() {
   // Mesma consulta e mesma conta do card "Documentos por Mês (ADM)" do dashboard.
-  const { data: rows = [], isLoading } = useDocumentosConcluidos();
+  const { data: todas = [], isLoading: carregandoDocs } = useDocumentosConcluidos();
+  // Filtro por unidade (26/10): recorta pela empresa do documento; a régua não muda.
+  const unidade = useFiltroUnidadeDashboard();
+  const rows = todas.filter((r) => unidade.naUnidade(r.id_empresa));
+  const isLoading = carregandoDocs || unidade.carregando;
 
   /**
    * Começa no MÊS CORRENTE, não no acumulado.
@@ -66,17 +72,21 @@ export default function DocumentosEmitidosDashboard() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
-          <ArrowLeft className="size-4" /> Voltar ao dashboard
-        </Link>
-        <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-          <FileSignature className="size-5 text-verde-primary" />
-          Documentos Concluídos (ADM)
-        </h1>
-        <p className="text-sm text-gray-500">
-          {isLoading ? "Carregando…" : `${total} documento${total !== 1 ? "s" : ""} concluído${total !== 1 ? "s" : ""} (elaborados no SGG e enviados)`}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
+            <ArrowLeft className="size-4" /> Voltar ao dashboard
+          </Link>
+          <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
+            <FileSignature className="size-5 text-verde-primary" />
+            Documentos Concluídos (ADM)
+          </h1>
+          <p className="text-sm text-gray-500">
+            {isLoading ? "Carregando…" : `${total} documento${total !== 1 ? "s" : ""} concluído${total !== 1 ? "s" : ""} (elaborados no SGG e enviados)`}
+            {unidade.nomeUnidade ? ` · unidade ${unidade.nomeUnidade}` : ""}
+          </p>
+        </div>
+        <FiltroUnidade idUnidade={unidade.idUnidade} unidades={unidade.unidades} onChange={unidade.setIdUnidade} />
       </div>
 
       {/* Por mês */}
