@@ -28,6 +28,7 @@ export const ACOES: { value: string; label: string; grupo: string }[] = [
   { value: "mover_tarefa_quadro", label: "Mover tarefa para outro quadro", grupo: "Outros quadros" },
   { value: "criar_tarefa_quadro", label: "Criar tarefa em outro quadro", grupo: "Outros quadros" },
   { value: "duplicar_tarefa", label: "Duplicar a tarefa", grupo: "Outros quadros" },
+  { value: "aguardar", label: "Aguardar (o resto roda depois)", grupo: "Tempo" },
 ];
 
 const GRUPOS = [...new Set(ACOES.map((a) => a.grupo))];
@@ -203,6 +204,17 @@ export default function AutomacaoAcaoEditor({
               {outrosQuadros.map((q) => <option key={q.id_quadro} value={q.id_quadro}>{q.nome}</option>)}
             </select>
             <input defaultValue={acao.titulo_template ?? ""} disabled={disabled} onBlur={(e) => onChange({ titulo_template: e.target.value.trim() || undefined })} placeholder="título ({titulo} (cópia))" className={`${sel} min-w-[10rem]`} />
+          </>
+        )}
+
+        {acao.tipo === "aguardar" && (
+          <>
+            <input type="number" min={1} defaultValue={acao.quantidade ?? ""} disabled={disabled} onBlur={(e) => onChange({ quantidade: e.target.value.trim() })} placeholder="quanto" className={`${sel} w-20`} />
+            <select value={acao.unidade ?? "dias"} disabled={disabled} onChange={(e) => onChange({ unidade: e.target.value as "horas" | "dias" })} className={sel}>
+              <option value="dias">dias</option>
+              <option value="horas">horas</option>
+            </select>
+            <span className="text-[11px] text-gray-400">as ações seguintes rodam depois; use o “só se…” nelas (ex.: se ainda não concluída)</span>
           </>
         )}
 

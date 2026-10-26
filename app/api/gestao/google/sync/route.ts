@@ -83,6 +83,14 @@ export async function GET(req: NextRequest) {
     // silencioso; o próximo tick tenta de novo
   }
 
+  // v299: relógio das automações (esperas, agenda, tarefa parada, data de início). O banco limita a
+  // 1 execução a cada 5 min; no JCN o pg_cron também chama a cada 10 min. Best-effort.
+  try {
+    await sb.rpc("gestao_automacao_relogio");
+  } catch {
+    // silencioso; o próximo tick tenta de novo
+  }
+
   // v296: e-mail dos avisos da Gestão — independe do Google (vai antes da checagem do OAuth).
   // Best-effort: nunca derruba o worker.
   let emails = { enviados: 0, falhas: 0 };

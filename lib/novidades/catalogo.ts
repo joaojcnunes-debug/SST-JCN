@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-automacoes-pacote-b",
+    data: "2026-10-26",
+    tipo: "novidade",
+    titulo: "Gestão: automações por agenda, cobrança de tarefa parada e espera",
+    texto:
+      "As automações agora podem rodar num horário (todo dia, dias úteis, dias da semana ou dia do mês), agindo nas " +
+      "tarefas do quadro ou criando uma tarefa a partir de um modelo. Também cobram tarefas paradas há N horas ou dias " +
+      "(ou no mesmo status), avisam quando a data de início chega e quando as tarefas que bloqueavam outra são " +
+      "concluídas. A nova ação Aguardar faz o resto da automação rodar depois de um tempo.",
+    onde: "Gestão › quadro › Automações",
+    versoes: ["0.3.154"],
+  },
+  {
     id: "gestao-automacoes-pacote-a",
     data: "2026-10-26",
     tipo: "novidade",

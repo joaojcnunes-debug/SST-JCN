@@ -7,7 +7,8 @@ import { confirmar } from "@/components/ui/confirm";
 import AutomacaoCondicaoBuilder from "@/components/gestao/AutomacaoCondicaoBuilder";
 import AutomacaoAcaoEditor from "@/components/gestao/AutomacaoAcaoEditor";
 import AutomacoesHistorico from "@/components/gestao/AutomacoesHistorico";
-import { acoesCompletas, acoesDaRegra } from "@/lib/gestao/automacao-completa";
+import { AgendaEditor, ModeloTarefaEditor, ParadaEditor } from "@/components/gestao/AutomacaoGatilhoTempo";
+import { acoesDaRegra, regraCompleta } from "@/lib/gestao/automacao-completa";
 import {
   useAutomacoes, useSalvarAutomacao, useExcluirAutomacao, useUsuariosLista, useUsuarios,
   useModelos, useQuadros, useEtiquetasQuadro,
@@ -32,7 +33,13 @@ const GATILHOS: { value: GatilhoAutomacao; label: string; grupo: string }[] = [
   { value: "tarefa_aprovada", label: "Quando a tarefa é aprovada", grupo: "Pessoas" },
   { value: "prazo_proximo", label: "Quando o prazo se aproxima", grupo: "Datas" },
   { value: "prazo_vencido", label: "Quando o prazo vence (atrasada)", grupo: "Datas" },
+  // v299 (Pacote B) — rodam no relógio, a cada 10 min
+  { value: "data_inicio_chega", label: "Quando a data de início chega", grupo: "Datas" },
+  { value: "agendado", label: "Em um horário (agenda)", grupo: "Tempo e cobrança" },
+  { value: "tarefa_parada", label: "Quando a tarefa fica parada (SLA)", grupo: "Tempo e cobrança" },
+  { value: "dependencia_liberada", label: "Quando as tarefas que bloqueiam são concluídas", grupo: "Tempo e cobrança" },
 ];
+const NO_RELOGIO = new Set<GatilhoAutomacao>(["agendado", "tarefa_parada", "data_inicio_chega"]);
 const GRUPOS_GATILHO = [...new Set(GATILHOS.map((g) => g.grupo))];
 
 /** Variáveis aceitas nos textos (comentário, e-mail, aviso, título, valor de campo). */
@@ -41,6 +48,8 @@ const VARIAVEIS: Partial<Record<GatilhoAutomacao | "sempre", string[]>> = {
   comentario_adicionado: ["{comentario}", "{autor_comentario}"],
   etiqueta_adicionada: ["{etiqueta}"],
   responsavel_adicionado: ["{novo_responsavel}"],
+  tarefa_parada: ["{dias_parada}"],
+  dependencia_liberada: ["{bloqueadora}"],
 };
 
 const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none";
@@ -76,8 +85,12 @@ export default function AutomacoesManagerModal({
   // Merge preserva a condição PLANA legada (de/para/dias_antes) — não zera o que não foi tocado.
   const setCond = (a: GestaoAutomacao, patch: Partial<CondicaoAutomacao>) => salvar.mutate({ id: a.id, id_quadro: idQuadro, condicao: { ...a.condicao, ...patch } });
   // Substitui a condição inteira (construtor E/OU e troca de modo). Mantém dias_antes dos gatilhos de prazo.
-  const setCondFull = (a: GestaoAutomacao, cond: CondicaoAutomacao) =>
-    salvar.mutate({ id: a.id, id_quadro: idQuadro, condicao: a.condicao?.dias_antes ? { dias_antes: a.condicao.dias_antes, ...cond } : cond });
+  // Mantém a configuração do gatilho (prazo, agenda, modelo, parada) — só troca o E/OU.
+  const setCondFull = (a: GestaoAutomacao, cond: CondicaoAutomacao) => {
+    const { dias_antes, agenda, modo, modelo_tarefa, parada } = a.condicao ?? {};
+    const manter = Object.fromEntries(Object.entries({ dias_antes, agenda, modo, modelo_tarefa, parada }).filter(([, v]) => v !== undefined));
+    salvar.mutate({ id: a.id, id_quadro: idQuadro, condicao: { ...manter, ...cond } });
+  };
   const setAcoes = (a: GestaoAutomacao, acoes: AcaoAutomacao[]) => salvar.mutate({ id: a.id, id_quadro: idQuadro, acoes });
 
   return (
@@ -98,7 +111,8 @@ export default function AutomacoesManagerModal({
         {automacoes.map((a) => {
           const usaEou = !!(a.condicao?.all || a.condicao?.any);
           const acoes = acoesDaRegra(a);
-          const completa = acoesCompletas(acoes);
+          const completa = regraCompleta(a.gatilho, a.condicao, acoes);
+          const criaTarefa = a.gatilho === "agendado" && a.condicao?.modo === "criar_tarefa";
           const variaveis = [...(VARIAVEIS.sempre ?? []), ...(VARIAVEIS[a.gatilho] ?? [])];
           const trocarAcao = (i: number, patch: Partial<AcaoAutomacao> | null, substituir = false) => {
             const nova = acoes.map((x, j) => (j === i ? (substituir ? { id: x.id ?? novoId(), ...patch } : { ...x, ...patch }) : x));
@@ -150,6 +164,14 @@ export default function AutomacoesManagerModal({
                   </select>
                 </>
               )}
+              {a.gatilho === "tarefa_parada" && <ParadaEditor condicao={a.condicao ?? {}} onChange={(p) => setCond(a, p)} disabled={!podeEditar} />}
+              {a.gatilho === "data_inicio_chega" && (
+                <>
+                  <input type="number" min={0} max={90} value={a.condicao?.dias_antes ?? "0"} disabled={!podeEditar}
+                    onChange={(e) => setCond(a, { dias_antes: e.target.value || undefined })} className={`${sel} w-16`} />
+                  <span className="text-gray-400">dia(s) antes (0 = no dia)</span>
+                </>
+              )}
               {a.gatilho === "prazo_proximo" && (
                 <>
                   <input type="number" min={0} max={90} value={a.condicao?.dias_antes ?? "3"} disabled={!podeEditar}
@@ -159,8 +181,18 @@ export default function AutomacoesManagerModal({
               )}
             </div>
 
+            {a.gatilho === "agendado" && (
+              <div className="space-y-2 pl-1">
+                <AgendaEditor condicao={a.condicao ?? {}} onChange={(p) => setCond(a, p)} disabled={!podeEditar} />
+                {criaTarefa && (
+                  <ModeloTarefaEditor key={a.id} modelo={a.condicao?.modelo_tarefa ?? {}} onChange={(m) => setCond(a, { modelo_tarefa: m })}
+                    etiquetas={etiquetas} usuariosFull={usuariosFull} disabled={!podeEditar} variaveis="{data}" />
+                )}
+              </div>
+            )}
+
             {/* SE — condição E/OU da regra (todos os gatilhos) */}
-            <div className="space-y-2">
+            {!criaTarefa && <div className="space-y-2">
               <label className="inline-flex items-center gap-1.5 text-xs text-gray-500">
                 <input type="checkbox" disabled={!podeEditar} checked={usaEou}
                   onChange={(e) => setCondFull(a, e.target.checked ? { all: [] } : {})} className="size-3.5 rounded accent-verde-primary" />
@@ -170,11 +202,11 @@ export default function AutomacoesManagerModal({
                 <AutomacaoCondicaoBuilder key={a.id} condicao={a.condicao} statuses={statuses} campos={campos} quadros={quadros}
                   etiquetas={etiquetas} disabled={!podeEditar} onAplicar={(cond) => setCondFull(a, cond)} />
               )}
-            </div>
+            </div>}
 
             {/* ENTÃO — ações, em ordem */}
             <div className="space-y-2">
-              <span className="text-xs font-semibold uppercase text-gray-400">Então, em ordem</span>
+              <span className="text-xs font-semibold uppercase text-gray-400">{criaTarefa ? "Depois, na tarefa criada (opcional)" : "Então, em ordem"}</span>
               {acoes.map((x, i) => {
                 const chave = `${a.id}:${x.id ?? i}`;
                 const temCond = !!(x.condicao?.all || x.condicao?.any);
@@ -226,6 +258,7 @@ export default function AutomacoesManagerModal({
             <p className="text-[11px] text-gray-400">
               Variáveis nos textos: {variaveis.join(" ")}
               {(a.gatilho === "prazo_proximo" || a.gatilho === "prazo_vencido") && " · Verificada todo dia às 7h pelo servidor."}
+              {NO_RELOGIO.has(a.gatilho) && " · Verificada pelo servidor a cada 10 minutos (não precisa estar com o quadro aberto)."}
             </p>
           </div>
         );})}
@@ -235,7 +268,7 @@ export default function AutomacoesManagerModal({
           </button>
         )}
         {automacoes.length === 0 && !podeEditar && <p className="text-sm text-gray-400">Nenhuma automação.</p>}
-        <p className="pt-1 text-xs text-gray-400">As automações rodam no servidor: os gatilhos da tarefa disparam na hora; os de prazo, todo dia às 7h. Veja o que rodou na aba Histórico.</p>
+        <p className="pt-1 text-xs text-gray-400">As automações rodam no servidor: os gatilhos da tarefa disparam na hora; os de prazo, todo dia às 7h; agenda, tarefa parada e data de início, a cada 10 minutos. Veja o que rodou na aba Histórico.</p>
       </div>
       )}
     </Modal>
