@@ -32,7 +32,7 @@ import {
   useTecnicosDeCampo,
   type InspecaoConcluida,
 } from "@/lib/hooks/useDashboardFontes";
-import { useUserStore } from "@/lib/store";
+import { useIsSupervisor } from "@/lib/hooks/useUsuario";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { BalaoGrafico, BalaoUmValor, LinhaBalao } from "@/components/ui/BalaoGrafico";
 import ReaberturasAviso from "@/components/dashboard/ReaberturasAviso";
@@ -71,7 +71,8 @@ export default function InspecoesConcluidasDashboard() {
   const { data: tecnicosDeCampo = new Map(), isLoading: loadingTec } = useTecnicosDeCampo();
   const { data: contas = [] } = useContasDoPainel();
   const { data: reaberturas = [] } = useReaberturas("inspecao");
-  const ehAdmin = useUserStore((s) => s.user?.perfil === "Admin");
+  // Nota para os SUPERVISORES (26/10): Admin ou nível Aprovação — a mesma regra de toda tela (ehSupervisor).
+  const ehSupervisor = useIsSupervisor();
   const carregando = isLoading || loadingTec;
 
   const [mesSel, setMesSelBruto] = useState<string | null>(String(mesAbsAgoraSP()));
@@ -225,7 +226,7 @@ export default function InspecoesConcluidasDashboard() {
             />
           )}
           {!carregando && semRegistroRows.length > 0 &&
-            (ehAdmin ? (
+            (ehSupervisor ? (
               <NotaSemTecnico inspecoes={semRegistroRows} contas={contas} />
             ) : (
               <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
