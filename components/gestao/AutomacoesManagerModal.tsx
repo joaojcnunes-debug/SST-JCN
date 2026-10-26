@@ -33,6 +33,7 @@ const GATILHOS: { value: GatilhoAutomacao; label: string; grupo: string }[] = [
   { value: "responsavel_adicionado", label: "Quando um responsável é adicionado", grupo: "Pessoas" },
   { value: "comentario_adicionado", label: "Quando alguém comenta", grupo: "Pessoas" },
   { value: "tarefa_aprovada", label: "Quando a tarefa é aprovada", grupo: "Pessoas" },
+  { value: "tarefa_rejeitada", label: "Quando a aprovação é recusada", grupo: "Pessoas" },
   { value: "prazo_proximo", label: "Quando o prazo se aproxima", grupo: "Datas" },
   { value: "prazo_vencido", label: "Quando o prazo vence (atrasada)", grupo: "Datas" },
   // v299 (Pacote B) — rodam no relógio, a cada 10 min

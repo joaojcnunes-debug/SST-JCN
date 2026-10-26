@@ -40,6 +40,8 @@ export interface GestaoQuadro {
   restrito: boolean;
   /** v235: quadro pessoal ("Meu Quadro") do usuário — sem espaço/pasta; vive em Meu Espaço/Colaboradores. */
   dono_email?: string | null;
+  /** v294: quadro de unidade (Teresópolis…); null = quadro de setor. */
+  id_unidade?: string | null;
 }
 
 export interface GestaoStatus {
@@ -170,7 +172,7 @@ export function useQuadros() {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb
         .from("gestao_quadros")
-        .select("id_quadro,nome,descricao,id_espaco,id_pasta,ordem")
+        .select("id_quadro,nome,descricao,id_espaco,id_pasta,ordem,id_unidade")
         .order("ordem", { ascending: true })
         .order("created_at", { ascending: true });
       if (error) throw error;
@@ -1092,6 +1094,8 @@ export type GatilhoAutomacao =
   | "status_muda" | "tarefa_criada" | "prazo_proximo" | "prazo_vencido"
   // motor v2 (F2.2a/b): gatilhos novos
   | "subtarefa_concluida" | "tarefa_movida_quadro" | "tarefa_aprovada"
+  // recusa da aprovação (gestao_decidir_aprovacao já dispara)
+  | "tarefa_rejeitada"
   // v298 (Pacote A, levantamento Jira/Trello/ClickUp/Notion)
   | "responsavel_adicionado" | "prioridade_muda" | "campo_muda" | "etiqueta_adicionada" | "comentario_adicionado"
   // v299 (Pacote B — tempo e cobrança; rodam no relógio, a cada 10 min)
@@ -1148,8 +1152,8 @@ export interface AcaoAutomacao {
   // ações do motor v2 (F2.2a/b/c)
   modelo_slug?: string;                       // criar_subtarefas_modelo
   aprovador_email?: string;                   // solicitar_aprovacao (opcional)
-  id_quadro_destino?: string;                 // mover/criar_tarefa_quadro
-  status_destino?: string;                    // mover_tarefa_quadro
+  id_quadro_destino?: string;                 // mover/criar_tarefa_quadro; '@unidade' = quadro da unidade da tarefa (v302, só criar)
+  status_destino?: string;                    // mover/criar_tarefa_quadro: etapa no destino (criar: v302)
   titulo_template?: string;                   // criar_tarefa_quadro ({{titulo}})
   copiar_campos?: string;                     // criar_tarefa_quadro — o motor lê texto ('true'|'1')
   emails?: string[];                          // adicionar_vinculados, enviar_email (endereços extras)
