@@ -8,7 +8,8 @@ import AutomacaoCondicaoBuilder from "@/components/gestao/AutomacaoCondicaoBuild
 import AutomacaoAcaoEditor from "@/components/gestao/AutomacaoAcaoEditor";
 import AutomacoesHistorico from "@/components/gestao/AutomacoesHistorico";
 import { AgendaEditor, ModeloTarefaEditor, ParadaEditor } from "@/components/gestao/AutomacaoGatilhoTempo";
-import { acoesDaRegra, regraCompleta } from "@/lib/gestao/automacao-completa";
+import { acoesDaRegra, regraCompleta, GATILHOS_SST } from "@/lib/gestao/automacao-completa";
+import { useUnidades } from "@/lib/hooks/useUnidades";
 import { receitasDoQuadro } from "@/lib/gestao/receitas-automacao";
 import {
   useAutomacoes, useSalvarAutomacao, useExcluirAutomacao, useUsuariosLista, useUsuarios,
@@ -41,6 +42,10 @@ const GATILHOS: { value: GatilhoAutomacao; label: string; grupo: string }[] = [
   { value: "dependencia_liberada", label: "Quando as tarefas que bloqueiam são concluídas", grupo: "Tempo e cobrança" },
   // v300 (Pacote C)
   { value: "manual", label: "Quando alguém clica no botão ⚡ (manual)", grupo: "Botão" },
+  // v301 (Pacote D) — criam uma tarefa do modelo neste quadro
+  { value: "sst_inspecao_concluida", label: "Quando uma inspeção é concluída (1ª vez)", grupo: "SST" },
+  { value: "sst_documento_concluido", label: "Quando um documento é concluído (1ª vez)", grupo: "SST" },
+  { value: "sst_vencimento", label: "Quando um documento ou extintor vai vencer", grupo: "SST" },
 ];
 const NO_RELOGIO = new Set<GatilhoAutomacao>(["agendado", "tarefa_parada", "data_inicio_chega"]);
 const GRUPOS_GATILHO = [...new Set(GATILHOS.map((g) => g.grupo))];
@@ -54,6 +59,9 @@ const VARIAVEIS: Partial<Record<GatilhoAutomacao | "sempre", string[]>> = {
   tarefa_parada: ["{dias_parada}"],
   dependencia_liberada: ["{bloqueadora}"],
   manual: ["{executado_por}"],
+  sst_inspecao_concluida: ["{empresa}", "{unidade}", "{tecnico}", "{data_inspecao}", "{id_inspecao}"],
+  sst_documento_concluido: ["{empresa}", "{unidade}", "{tecnico}", "{responsavel_elaboracao}", "{id_inspecao}"],
+  sst_vencimento: ["{empresa}", "{unidade}", "{item}", "{validade}", "{dias_para_vencer}", "{id_inspecao}"],
 };
 
 const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none";
@@ -78,6 +86,7 @@ export default function AutomacoesManagerModal({
   const { data: modelos = [] } = useModelos(idQuadro);
   const { data: quadros = [] } = useQuadros();
   const { data: etiquetas = [] } = useEtiquetasQuadro(idQuadro);
+  const { data: unidades = [] } = useUnidades();
   const salvar = useSalvarAutomacao();
   const excluir = useExcluirAutomacao();
   // ação com o "só se…" aberto (chave: id da regra + id da ação)
@@ -93,8 +102,8 @@ export default function AutomacoesManagerModal({
   // Substitui a condição inteira (construtor E/OU e troca de modo). Mantém dias_antes dos gatilhos de prazo.
   // Mantém a configuração do gatilho (prazo, agenda, modelo, parada) — só troca o E/OU.
   const setCondFull = (a: GestaoAutomacao, cond: CondicaoAutomacao) => {
-    const { dias_antes, agenda, modo, modelo_tarefa, parada } = a.condicao ?? {};
-    const manter = Object.fromEntries(Object.entries({ dias_antes, agenda, modo, modelo_tarefa, parada }).filter(([, v]) => v !== undefined));
+    const { dias_antes, agenda, modo, modelo_tarefa, parada, fonte } = a.condicao ?? {};
+    const manter = Object.fromEntries(Object.entries({ dias_antes, agenda, modo, modelo_tarefa, parada, fonte }).filter(([, v]) => v !== undefined));
     salvar.mutate({ id: a.id, id_quadro: idQuadro, condicao: { ...manter, ...cond } });
   };
   const setAcoes = (a: GestaoAutomacao, acoes: AcaoAutomacao[]) => salvar.mutate({ id: a.id, id_quadro: idQuadro, acoes });
@@ -118,7 +127,8 @@ export default function AutomacoesManagerModal({
           const usaEou = !!(a.condicao?.all || a.condicao?.any);
           const acoes = acoesDaRegra(a);
           const completa = regraCompleta(a.gatilho, a.condicao, acoes);
-          const criaTarefa = a.gatilho === "agendado" && a.condicao?.modo === "criar_tarefa";
+          const ehSst = (GATILHOS_SST as readonly string[]).includes(a.gatilho);
+          const criaTarefa = ehSst || (a.gatilho === "agendado" && a.condicao?.modo === "criar_tarefa");
           const variaveis = [...(VARIAVEIS.sempre ?? []), ...(VARIAVEIS[a.gatilho] ?? [])];
           const trocarAcao = (i: number, patch: Partial<AcaoAutomacao> | null, substituir = false) => {
             const nova = acoes.map((x, j) => (j === i ? (substituir ? { id: x.id ?? novoId(), ...patch } : { ...x, ...patch }) : x));
@@ -170,6 +180,19 @@ export default function AutomacoesManagerModal({
                   </select>
                 </>
               )}
+              {a.gatilho === "sst_vencimento" && (
+                <>
+                  <select value={a.condicao?.fonte ?? ""} disabled={!podeEditar} onChange={(e) => setCond(a, { fonte: (e.target.value || undefined) as never })} className={sel}>
+                    <option value="">o quê…</option>
+                    <option value="documento">documento (validade da inspeção)</option>
+                    <option value="extintor">extintor</option>
+                  </select>
+                  <span className="text-gray-400">vence em até</span>
+                  <input type="number" min={0} max={365} value={a.condicao?.dias_antes ?? ""} disabled={!podeEditar}
+                    onChange={(e) => setCond(a, { dias_antes: e.target.value || undefined })} placeholder="30" className={`${sel} w-20`} />
+                  <span className="text-gray-400">dias</span>
+                </>
+              )}
               {a.gatilho === "tarefa_parada" && <ParadaEditor condicao={a.condicao ?? {}} onChange={(p) => setCond(a, p)} disabled={!podeEditar} />}
               {a.gatilho === "data_inicio_chega" && (
                 <>
@@ -187,6 +210,11 @@ export default function AutomacoesManagerModal({
               )}
             </div>
 
+            {ehSst && (
+              <ModeloTarefaEditor key={`${a.id}-sst`} modelo={a.condicao?.modelo_tarefa ?? {}} onChange={(m) => setCond(a, { modelo_tarefa: m })}
+                etiquetas={etiquetas} usuariosFull={usuariosFull} disabled={!podeEditar} variaveis={(VARIAVEIS[a.gatilho] ?? []).join(" ")} />
+            )}
+
             {a.gatilho === "agendado" && (
               <div className="space-y-2 pl-1">
                 <AgendaEditor condicao={a.condicao ?? {}} onChange={(p) => setCond(a, p)} disabled={!podeEditar} />
@@ -198,7 +226,7 @@ export default function AutomacoesManagerModal({
             )}
 
             {/* SE — condição E/OU da regra (todos os gatilhos) */}
-            {!criaTarefa && <div className="space-y-2">
+            {(!criaTarefa || ehSst) && <div className="space-y-2">
               <label className="inline-flex items-center gap-1.5 text-xs text-gray-500">
                 <input type="checkbox" disabled={!podeEditar} checked={usaEou}
                   onChange={(e) => setCondFull(a, e.target.checked ? { all: [] } : {})} className="size-3.5 rounded accent-verde-primary" />
@@ -206,7 +234,7 @@ export default function AutomacoesManagerModal({
               </label>
               {usaEou && (
                 <AutomacaoCondicaoBuilder key={a.id} condicao={a.condicao} statuses={statuses} campos={campos} quadros={quadros}
-                  etiquetas={etiquetas} disabled={!podeEditar} onAplicar={(cond) => setCondFull(a, cond)} />
+                  etiquetas={etiquetas} unidades={unidades} sst={ehSst} disabled={!podeEditar} onAplicar={(cond) => setCondFull(a, cond)} />
               )}
             </div>}
 
@@ -266,6 +294,8 @@ export default function AutomacoesManagerModal({
               {(a.gatilho === "prazo_proximo" || a.gatilho === "prazo_vencido") && " · Verificada todo dia às 7h pelo servidor."}
               {NO_RELOGIO.has(a.gatilho) && " · Verificada pelo servidor a cada 10 minutos (não precisa estar com o quadro aberto)."}
               {a.gatilho === "manual" && " · Aparece no ⚡ da tarefa e das ações em massa (quando ativa)."}
+              {ehSst && " · Cria a tarefa neste quadro uma vez por evento (reabrir e concluir de novo não repete)."}
+              {a.gatilho === "sst_vencimento" && " Verificado pelo servidor a partir das 7h."}
             </p>
           </div>
         );})}

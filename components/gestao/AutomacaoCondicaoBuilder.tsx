@@ -41,15 +41,19 @@ const PRAZO_ESTADOS = [
 
 const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none";
 
-function clausulaVazia(): ClausulaCondicao {
-  return { campo: "status", op: "=", valor: "" };
+function clausulaVazia(sst = false): ClausulaCondicao {
+  return { campo: sst ? "empresa" : "status", op: sst ? "contains" : "=", valor: "" };
 }
 
 export default function AutomacaoCondicaoBuilder({
-  condicao, statuses, campos, quadros, etiquetas = [], disabled, onAplicar,
+  condicao, statuses, campos, quadros, etiquetas = [], unidades = [], sst = false, disabled, onAplicar,
 }: {
   condicao: CondicaoAutomacao;
   etiquetas?: { id: string; nome: string }[];
+  /** v301: para a condição "Unidade (SST)". */
+  unidades?: { id_unidade: string; nome: string }[];
+  /** v301: gatilho do SST — oferece só os campos do evento (empresa, unidade, técnico, fonte). */
+  sst?: boolean;
   statuses: GestaoStatus[];
   campos: GestaoCampo[];
   quadros: GestaoQuadro[];
@@ -60,7 +64,13 @@ export default function AutomacaoCondicaoBuilder({
   const [any, setAny] = useState<ClausulaCondicao[]>(() => condicao.any ?? []);
   const [sujo, setSujo] = useState(false);
 
-  const camposCond: { value: string; label: string }[] = [
+  const camposSst: { value: string; label: string }[] = [
+    { value: "empresa", label: "Empresa (nome)" },
+    { value: "unidade", label: "Unidade" },
+    { value: "tecnico", label: "Técnico" },
+    { value: "fonte", label: "O que vence (documento/extintor)" },
+  ];
+  const camposTarefa: { value: string; label: string }[] = [
     { value: "status", label: "Status atual" },
     { value: "status_de", label: "Status de (origem)" },
     { value: "status_para", label: "Status para (destino)" },
@@ -80,6 +90,7 @@ export default function AutomacaoCondicaoBuilder({
     { value: "prioridade_de", label: "Prioridade anterior (gatilho)" },
     ...campos.map((c) => ({ value: `campo:${c.id}`, label: `Campo: ${c.nome}` })),
   ];
+  const camposCond = sst ? camposSst : camposTarefa;
 
   function editar(
     grupo: "all" | "any",
@@ -91,7 +102,7 @@ export default function AutomacaoCondicaoBuilder({
     setSujo(true);
   }
   function adicionar(grupo: "all" | "any") {
-    (grupo === "all" ? setAll : setAny)((cs) => [...cs, clausulaVazia()]);
+    (grupo === "all" ? setAll : setAny)((cs) => [...cs, clausulaVazia(sst)]);
     setSujo(true);
   }
   function remover(grupo: "all" | "any", i: number) {
@@ -122,6 +133,8 @@ export default function AutomacaoCondicaoBuilder({
       </select>
     );
     if (c.campo === "origem") return opcoes(ORIGENS);
+    if (c.campo === "unidade") return opcoes(unidades.map((u) => ({ value: u.id_unidade, label: u.nome })), "unidade…");
+    if (c.campo === "fonte") return opcoes([{ value: "documento", label: "Documento" }, { value: "extintor", label: "Extintor" }]);
     if (c.campo === "prazo_estado") return opcoes(PRAZO_ESTADOS);
     if (c.campo === "dia_semana") return opcoes(DIAS.slice(1).map((d, k) => ({ value: String(k + 1), label: d })), "dia…");
     if (c.campo === "campo_alterado") return opcoes(campos.map((x) => ({ value: x.id, label: x.nome })), "campo…");

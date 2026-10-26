@@ -81,7 +81,12 @@ export interface CondicaoMin {
   modo?: string;
   modelo_tarefa?: ModeloTarefaMin;
   parada?: { quantidade?: string };
+  fonte?: string;
+  dias_antes?: string;
 }
+
+/** Gatilhos que nascem fora da Gestão (v301) e sempre criam uma tarefa do modelo. */
+export const GATILHOS_SST = ["sst_inspecao_concluida", "sst_documento_concluido", "sst_vencimento"] as const;
 
 export function agendaValida(a: AgendaMin | null | undefined): boolean {
   if (!a || !/^([01]\d|2[0-3]):[0-5]\d$/.test(a.hora ?? "")) return false;
@@ -109,6 +114,12 @@ export function regraCompleta(gatilho: string, condicao: CondicaoMin | null | un
     if (!agendaValida(c.agenda)) return false;
     if ((c.modo ?? "cada_tarefa") === "criar_tarefa") return modeloTarefaValido(c.modelo_tarefa) && (acoes.length === 0 || acoesCompletas(acoes));
     return acoesCompletas(acoes);
+  }
+  if ((GATILHOS_SST as readonly string[]).includes(gatilho)) {
+    if (!modeloTarefaValido(c.modelo_tarefa)) return false;
+    if (acoes.length > 0 && !acoesCompletas(acoes)) return false;
+    if (gatilho === "sst_vencimento") return ["documento", "extintor"].includes(c.fonte ?? "") && /^\d+$/.test(c.dias_antes ?? "");
+    return true;
   }
   if (gatilho === "tarefa_parada") {
     const q = c.parada?.quantidade ?? "";

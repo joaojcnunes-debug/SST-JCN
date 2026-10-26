@@ -96,3 +96,17 @@ describe("v300 — rodízio e botão manual", () => {
     assert.equal(regraCompleta("manual", {}, []), false);
   });
 });
+
+describe("v301 — gatilhos do SST", () => {
+  const modelo = { titulo: "Elaborar documento: {empresa}" };
+  test("precisam do título do modelo; ações são opcionais", () => {
+    assert.equal(regraCompleta("sst_inspecao_concluida", { modelo_tarefa: modelo }, []), true);
+    assert.equal(regraCompleta("sst_documento_concluido", { modelo_tarefa: { titulo: "" } }, []), false);
+    assert.equal(regraCompleta("sst_inspecao_concluida", { modelo_tarefa: modelo }, [{ tipo: "comentar", texto: "" }]), false);
+  });
+  test("vencimento precisa da fonte (documento/extintor) e dos dias", () => {
+    assert.equal(regraCompleta("sst_vencimento", { modelo_tarefa: modelo, fonte: "extintor", dias_antes: "30" }, []), true);
+    assert.equal(regraCompleta("sst_vencimento", { modelo_tarefa: modelo, fonte: "treinamento", dias_antes: "30" }, []), false);
+    assert.equal(regraCompleta("sst_vencimento", { modelo_tarefa: modelo, fonte: "documento" }, []), false);
+  });
+});

@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-automacoes-pacote-d",
+    data: "2026-10-26",
+    tipo: "novidade",
+    titulo: "Gestão: automações ligadas às inspeções e aos vencimentos",
+    texto:
+      "As automações da Gestão agora reagem ao SST: quando uma inspeção ou um documento é concluído pela primeira vez, " +
+      "e quando um documento ou extintor está para vencer, uma tarefa é criada no quadro escolhido, já com empresa, " +
+      "unidade, técnico e validade. Há receitas prontas para elaboração, recarga de extintor e renovação de documento.",
+    onde: "Gestão › quadro › Automações (grupo SST)",
+    versoes: ["0.3.156"],
+  },
+  {
     id: "gestao-automacoes-pacote-c",
     data: "2026-10-26",
     tipo: "novidade",

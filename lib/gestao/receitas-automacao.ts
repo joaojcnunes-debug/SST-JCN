@@ -134,6 +134,42 @@ export function receitasDoQuadro(statuses: readonly StatusMin[]): Receita[] {
       acoes: [{ id: id(1), tipo: "atribuir_rodizio", modo: "rodizio", emails: [] }],
     },
     {
+      id: "sst-inspecao-elaboracao",
+      titulo: "SST: inspeção concluída vira tarefa de elaboração",
+      descricao: "Cada inspeção concluída (1ª vez) cria aqui a tarefa de elaborar o documento, com prazo de 5 dias úteis.",
+      gatilho: "sst_inspecao_concluida",
+      condicao: {
+        modelo_tarefa: {
+          titulo: "Elaborar documento: {empresa}",
+          descricao: "Inspeção {id_inspecao} — visita em {data_inspecao} por {tecnico} ({unidade}).",
+          prioridade: "Media", prazo_dias: "5", prazo_uteis: "true",
+        },
+      },
+      acoes: [],
+    },
+    {
+      id: "sst-extintor-recarga",
+      titulo: "SST: extintor vencendo em 30 dias vira tarefa de recarga",
+      descricao: "Cada extintor a 30 dias da validade cria aqui uma tarefa de recarga (uma vez por extintor e validade).",
+      gatilho: "sst_vencimento",
+      condicao: {
+        fonte: "extintor", dias_antes: "30",
+        modelo_tarefa: { titulo: "Recarga: {item} — {empresa} (vence {validade})", prioridade: "Alta", prazo_dias: "10", prazo_uteis: "true" },
+      },
+      acoes: [],
+    },
+    {
+      id: "sst-documento-renovar",
+      titulo: "SST: documento vencendo em 60 dias vira tarefa de renovação",
+      descricao: "O documento mais recente de cada empresa a 60 dias da validade cria aqui a tarefa de renovação.",
+      gatilho: "sst_vencimento",
+      condicao: {
+        fonte: "documento", dias_antes: "60",
+        modelo_tarefa: { titulo: "Renovar documento: {empresa} (vence {validade})", prioridade: "Alta", prazo_dias: "20", prazo_uteis: "true" },
+      },
+      acoes: [{ id: id(1), tipo: "notificar", valor: "Documento de {empresa} vence em {dias_para_vencer} dias" }],
+    },
+    {
       id: "botao-urgente",
       titulo: "Botão: marcar como urgente e avisar",
       descricao: "Aparece no ⚡ da tarefa e das ações em massa: prioridade Urgente, etiqueta “urgente” e aviso.",
