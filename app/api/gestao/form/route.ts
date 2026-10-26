@@ -211,6 +211,8 @@ export async function POST(req: NextRequest) {
     recorrencia: null,
     pontos: null,
     created_by: responsavelEmailResolvido ?? "Formulário",
+    // v298: marca a origem para as automações ("Origem da tarefa = Formulário").
+    origem: { tipo: "formulario", id_formulario: f.id },
     created_at: now,
     updated_at: now,
   } as never);

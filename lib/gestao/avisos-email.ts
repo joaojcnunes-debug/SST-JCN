@@ -19,6 +19,8 @@ export interface AvisoReservado {
   tarefa_titulo: string | null;
   quadro_nome: string | null;
   prazo: string | null;
+  /** v298: corpo do e-mail da ação "enviar e-mail" das automações. */
+  mensagem?: string | null;
 }
 
 const ROTULO_TIPO: Record<string, string> = {
@@ -29,6 +31,7 @@ const ROTULO_TIPO: Record<string, string> = {
   mencao: "Você foi mencionado num comentário",
   quadro: "Nova tarefa num quadro seu",
   prazo: "Prazo de uma tarefa sua",
+  automacao: "Mensagem automática da Gestão",
 };
 
 function esc(s: string | null | undefined): string {
@@ -71,6 +74,7 @@ export function montarEmailAviso(a: AvisoReservado, appUrl: string): { assunto: 
       <tr><td style="padding:24px;">
         <p style="margin:0 0 6px;color:#6b7280;font-size:13px;">${esc(ROTULO_TIPO[a.tipo] ?? "Aviso da Gestão")}</p>
         <h2 style="margin:0 0 16px;font-size:18px;line-height:1.35;color:#111827;">${primeiro ? `${esc(primeiro)}, ` : ""}${esc(a.titulo)}</h2>
+        ${a.mensagem ? `<p style="margin:0 0 18px;font-size:14px;line-height:1.5;color:#374151;white-space:pre-line;">${esc(a.mensagem)}</p>` : ""}
         ${tabela ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 22px;font-size:14px;">${tabela}</table>` : ""}
         <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="background:#0284c7;border-radius:8px;">
           <a href="${esc(linkTarefa(appUrl, a))}" style="display:inline-block;padding:11px 24px;font-weight:700;color:#ffffff;text-decoration:none;font-size:14px;">Abrir no painel →</a>

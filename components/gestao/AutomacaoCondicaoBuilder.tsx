@@ -17,6 +17,26 @@ const OPS: { value: string; label: string }[] = [
   { value: "!=", label: "é diferente de" },
   { value: "in", label: "está em (lista, vírgula)" },
   { value: "contains", label: "contém" },
+  // v298
+  { value: "nao_contem", label: "não contém" },
+  { value: "vazio", label: "está vazio" },
+  { value: "nao_vazio", label: "não está vazio" },
+];
+
+const SEM_VALOR = new Set(["vazio", "nao_vazio"]);
+
+const ORIGENS = [
+  { value: "manual", label: "Criada à mão" },
+  { value: "formulario", label: "Formulário" },
+  { value: "recorrencia", label: "Recorrência" },
+  { value: "automacao", label: "Automação" },
+];
+const DIAS = ["", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+const PRAZO_ESTADOS = [
+  { value: "vazio", label: "Sem prazo" },
+  { value: "vencido", label: "Vencido" },
+  { value: "hoje", label: "Vence hoje" },
+  { value: "futuro", label: "No futuro" },
 ];
 
 const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none";
@@ -26,9 +46,10 @@ function clausulaVazia(): ClausulaCondicao {
 }
 
 export default function AutomacaoCondicaoBuilder({
-  condicao, statuses, campos, quadros, disabled, onAplicar,
+  condicao, statuses, campos, quadros, etiquetas = [], disabled, onAplicar,
 }: {
   condicao: CondicaoAutomacao;
+  etiquetas?: { id: string; nome: string }[];
   statuses: GestaoStatus[];
   campos: GestaoCampo[];
   quadros: GestaoQuadro[];
@@ -46,6 +67,17 @@ export default function AutomacaoCondicaoBuilder({
     { value: "prioridade", label: "Prioridade" },
     { value: "quadro", label: "Quadro" },
     { value: "etiqueta", label: "Etiqueta" },
+    // v298
+    { value: "responsavel", label: "Responsável (nome)" },
+    { value: "titulo", label: "Título" },
+    { value: "origem", label: "Origem da tarefa" },
+    { value: "prazo_estado", label: "Prazo" },
+    { value: "dia_semana", label: "Dia da semana (hoje)" },
+    { value: "etiqueta_nova", label: "Etiqueta adicionada (gatilho)" },
+    { value: "campo_alterado", label: "Campo alterado (gatilho)" },
+    { value: "comentario", label: "Texto do comentário (gatilho)" },
+    { value: "responsavel_email", label: "E-mail do responsável adicionado (gatilho)" },
+    { value: "prioridade_de", label: "Prioridade anterior (gatilho)" },
     ...campos.map((c) => ({ value: `campo:${c.id}`, label: `Campo: ${c.nome}` })),
   ];
 
@@ -69,7 +101,7 @@ export default function AutomacaoCondicaoBuilder({
 
   function aplicar() {
     const limpa = (cs: ClausulaCondicao[]) =>
-      cs.filter((c) => c.campo).map((c) => ({ campo: c.campo, op: c.op || "=", valor: c.valor ?? "" }));
+      cs.filter((c) => c.campo).map((c) => ({ campo: c.campo, op: c.op || "=", valor: SEM_VALOR.has(c.op) ? "" : c.valor ?? "" }));
     const allL = limpa(all);
     const anyL = limpa(any);
     const cond: CondicaoAutomacao = {};
@@ -82,7 +114,21 @@ export default function AutomacaoCondicaoBuilder({
   }
 
   function valorWidget(grupo: "all" | "any", i: number, c: ClausulaCondicao) {
-    if (c.campo === "prioridade") {
+    if (SEM_VALOR.has(c.op)) return null;
+    const opcoes = (lista: { value: string; label: string }[], vazio = "valor…") => (
+      <select value={c.valor} disabled={disabled} onChange={(e) => editar(grupo, i, { valor: e.target.value })} className={sel}>
+        <option value="">{vazio}</option>
+        {lista.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    );
+    if (c.campo === "origem") return opcoes(ORIGENS);
+    if (c.campo === "prazo_estado") return opcoes(PRAZO_ESTADOS);
+    if (c.campo === "dia_semana") return opcoes(DIAS.slice(1).map((d, k) => ({ value: String(k + 1), label: d })), "dia…");
+    if (c.campo === "campo_alterado") return opcoes(campos.map((x) => ({ value: x.id, label: x.nome })), "campo…");
+    if ((c.campo === "etiqueta" || c.campo === "etiqueta_nova") && etiquetas.length > 0 && c.op !== "in") {
+      return opcoes(etiquetas.map((x) => ({ value: x.nome, label: x.nome })), "etiqueta…");
+    }
+    if (c.campo === "prioridade" || c.campo === "prioridade_de") {
       return (
         <select value={c.valor} disabled={disabled} onChange={(e) => editar(grupo, i, { valor: e.target.value })} className={sel}>
           <option value="">valor…</option>

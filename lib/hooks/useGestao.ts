@@ -1091,7 +1091,9 @@ export function useExcluirTempo() {
 export type GatilhoAutomacao =
   | "status_muda" | "tarefa_criada" | "prazo_proximo" | "prazo_vencido"
   // motor v2 (F2.2a/b): gatilhos novos
-  | "subtarefa_concluida" | "tarefa_movida_quadro" | "tarefa_aprovada";
+  | "subtarefa_concluida" | "tarefa_movida_quadro" | "tarefa_aprovada"
+  // v298 (Pacote A, levantamento Jira/Trello/ClickUp/Notion)
+  | "responsavel_adicionado" | "prioridade_muda" | "campo_muda" | "etiqueta_adicionada" | "comentario_adicionado";
 
 /** Uma cláusula do construtor E/OU. Campos aceitos pelo motor (gestao_automacao_cond_teste):
  *  status, status_de, status_para, prioridade, quadro, etiqueta, campo:<id>. Ops: '=' '!=' 'in' 'contains'. */
@@ -1111,6 +1113,8 @@ export interface CondicaoAutomacao {
 /** Ação da automação. `tipo` é o discriminador lido pelo motor (gestao_automacao_aplicar).
  *  Cada ramo consome só as chaves abaixo (o motor ignora as demais). */
 export interface AcaoAutomacao {
+  /** v298: identificador local da ação na lista (o motor ignora) — mantém o editor estável ao reordenar. */
+  id?: string;
   tipo?: string;
   valor?: string;
   campo_id?: string;
@@ -1121,8 +1125,18 @@ export interface AcaoAutomacao {
   status_destino?: string;                    // mover_tarefa_quadro
   titulo_template?: string;                   // criar_tarefa_quadro ({{titulo}})
   copiar_campos?: string;                     // criar_tarefa_quadro — o motor lê texto ('true'|'1')
-  emails?: string[];                          // adicionar_vinculados
+  emails?: string[];                          // adicionar_vinculados, enviar_email (endereços extras)
   vinculo_tipo?: string;                      // adicionar_vinculados: responsavel|seguidor (ver nota do executor)
+  // v298
+  texto?: string;                             // comentar (aceita variáveis)
+  assunto?: string;                           // enviar_email
+  mensagem?: string;                          // enviar_email
+  para?: "vinculados" | "responsaveis" | "";  // enviar_email: a quem da tarefa (+ emails)
+  base?: "hoje" | "prazo" | "data_inicio" | "criacao"; // definir_prazo
+  dias?: string;                              // definir_prazo (inteiro; negativo = antes)
+  uteis?: string;                             // definir_prazo: 'true' = dias úteis
+  /** Só executa esta ação se a condição casar (E/OU) — o "se/senão" da regra. */
+  condicao?: CondicaoAutomacao;
 }
 
 export interface GestaoAutomacao {
@@ -1133,6 +1147,8 @@ export interface GestaoAutomacao {
   gatilho: GatilhoAutomacao;
   condicao: CondicaoAutomacao;
   acao: AcaoAutomacao;
+  /** v298: as ações, em ordem. Regra antiga: vazio, e vale `acao`. */
+  acoes?: AcaoAutomacao[];
   ordem: number;
 }
 
@@ -1158,7 +1174,7 @@ export function useSalvarAutomacao() {
         const { error } = await sb.from("gestao_automacoes").insert({
           id: crypto.randomUUID(), id_quadro: a.id_quadro,
           nome: a.nome ?? "Nova automação", ativo: a.ativo ?? true,
-          gatilho: a.gatilho ?? "status_muda", condicao: a.condicao ?? {}, acao: a.acao ?? {}, ordem: a.ordem ?? 0,
+          gatilho: a.gatilho ?? "status_muda", condicao: a.condicao ?? {}, acoes: a.acoes ?? [], ordem: a.ordem ?? 0,
         } as never);
         if (error) throw error;
         return;
@@ -1169,12 +1185,40 @@ export function useSalvarAutomacao() {
       if (a.gatilho !== undefined) patch.gatilho = a.gatilho;
       if (a.condicao !== undefined) patch.condicao = a.condicao;
       if (a.acao !== undefined) patch.acao = a.acao;
+      if (a.acoes !== undefined) patch.acoes = a.acoes;
       if (a.ordem !== undefined) patch.ordem = a.ordem;
       const { error } = await sb.from("gestao_automacoes").update(patch as never).eq("id", a.id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-automacoes"] }),
     onError: (e) => toast.error(mensagemErro(e, "Não foi possível salvar a automação.")),
+  });
+}
+
+/** Uma execução registrada (v298, gestao_automacao_historico). */
+export interface ExecucaoAutomacao {
+  created_at: string;
+  id_automacao: string;
+  automacao: string;
+  id_tarefa: string | null;
+  tarefa: string | null;
+  gatilho: string;
+  resultado: "ok" | "skip" | "erro" | string;
+  detalhe: string | null;
+}
+
+/** Histórico das execuções das automações do quadro (mais recentes primeiro). */
+export function useHistoricoAutomacoes(idQuadro: string | null | undefined, ativo: boolean) {
+  return useQuery({
+    queryKey: ["gestao-automacoes-historico", idQuadro],
+    enabled: !!idQuadro && ativo,
+    refetchInterval: ativo ? 15_000 : false,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("gestao_automacao_historico" as never, { p_id_quadro: idQuadro, p_limite: 200 } as never);
+      if (error) throw error;
+      return (data ?? []) as ExecucaoAutomacao[];
+    },
   });
 }
 
