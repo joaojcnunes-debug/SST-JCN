@@ -1093,7 +1093,9 @@ export type GatilhoAutomacao =
   // motor v2 (F2.2a/b): gatilhos novos
   | "subtarefa_concluida" | "tarefa_movida_quadro" | "tarefa_aprovada"
   // v298 (Pacote A, levantamento Jira/Trello/ClickUp/Notion)
-  | "responsavel_adicionado" | "prioridade_muda" | "campo_muda" | "etiqueta_adicionada" | "comentario_adicionado";
+  | "responsavel_adicionado" | "prioridade_muda" | "campo_muda" | "etiqueta_adicionada" | "comentario_adicionado"
+  // v299 (Pacote B — tempo e cobrança; rodam no relógio, a cada 10 min)
+  | "agendado" | "tarefa_parada" | "data_inicio_chega" | "dependencia_liberada";
 
 /** Uma cláusula do construtor E/OU. Campos aceitos pelo motor (gestao_automacao_cond_teste):
  *  status, status_de, status_para, prioridade, quadro, etiqueta, campo:<id>. Ops: '=' '!=' 'in' 'contains'. */
@@ -1108,6 +1110,25 @@ export interface CondicaoAutomacao {
   dias_antes?: string;
   all?: ClausulaCondicao[];
   any?: ClausulaCondicao[];
+  // v299
+  /** gatilho agendado: quando roda. dias_semana: 1 = segunda … 7 = domingo. */
+  agenda?: { freq?: "diaria" | "dias_uteis" | "semanal" | "mensal"; hora?: string; dias_semana?: number[]; dia_mes?: string };
+  /** gatilho agendado: age em cada tarefa que casar (padrão) ou cria uma tarefa do modelo. */
+  modo?: "cada_tarefa" | "criar_tarefa";
+  modelo_tarefa?: ModeloTarefa;
+  /** gatilho tarefa_parada: há quanto tempo sem atividade (base atualizacao) ou no mesmo status. */
+  parada?: { quantidade?: string; unidade?: "horas" | "dias"; base?: "atualizacao" | "status" };
+}
+
+/** Tarefa criada por uma automação (agenda; gatilhos do SST). Textos aceitam variáveis. */
+export interface ModeloTarefa {
+  titulo?: string;
+  descricao?: string;
+  prioridade?: string;
+  prazo_dias?: string;
+  prazo_uteis?: string;
+  etiquetas?: string[];
+  responsaveis?: string[];
 }
 
 /** Ação da automação. `tipo` é o discriminador lido pelo motor (gestao_automacao_aplicar).
@@ -1135,6 +1156,8 @@ export interface AcaoAutomacao {
   base?: "hoje" | "prazo" | "data_inicio" | "criacao"; // definir_prazo
   dias?: string;                              // definir_prazo (inteiro; negativo = antes)
   uteis?: string;                             // definir_prazo: 'true' = dias úteis
+  quantidade?: string;                        // aguardar (v299)
+  unidade?: "horas" | "dias";                 // aguardar (v299)
   /** Só executa esta ação se a condição casar (E/OU) — o "se/senão" da regra. */
   condicao?: CondicaoAutomacao;
 }

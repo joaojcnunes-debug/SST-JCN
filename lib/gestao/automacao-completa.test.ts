@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { acaoCompleta, acoesCompletas, acoesDaRegra } from "./automacao-completa";
+import { acaoCompleta, acoesCompletas, acoesDaRegra, agendaValida, regraCompleta } from "./automacao-completa";
 
 describe("automação completa (mesma regra do banco, v297)", () => {
   test("sem tipo ou tipo desconhecido não roda", () => {
@@ -53,5 +53,33 @@ describe("v298 — ações novas e lista de ações", () => {
     assert.deepEqual(acoesDaRegra({ acoes: [], acao: { tipo: "notificar" } }), [{ tipo: "notificar" }]);
     assert.deepEqual(acoesDaRegra({ acoes: [{ tipo: "concluir" }], acao: { tipo: "notificar" } }), [{ tipo: "concluir" }]);
     assert.deepEqual(acoesDaRegra({ acao: {} }), []);
+  });
+});
+
+describe("v299 — tempo e cobrança", () => {
+  test("aguardar precisa de quantidade inteira > 0 e unidade horas/dias", () => {
+    assert.equal(acaoCompleta({ tipo: "aguardar", quantidade: "2", unidade: "dias" }), true);
+    assert.equal(acaoCompleta({ tipo: "aguardar", quantidade: "3" }), true);
+    assert.equal(acaoCompleta({ tipo: "aguardar", quantidade: "0", unidade: "horas" }), false);
+    assert.equal(acaoCompleta({ tipo: "aguardar", quantidade: "2", unidade: "semanas" }), false);
+  });
+  test("agenda: hora HH:MM e frequência com o que precisa", () => {
+    assert.equal(agendaValida({ freq: "diaria", hora: "08:00" }), true);
+    assert.equal(agendaValida({ freq: "diaria", hora: "8:00" }), false);
+    assert.equal(agendaValida({ freq: "semanal", hora: "08:00" }), false);
+    assert.equal(agendaValida({ freq: "semanal", hora: "08:00", dias_semana: [1] }), true);
+    assert.equal(agendaValida({ freq: "mensal", hora: "23:59", dia_mes: "ultimo" }), true);
+    assert.equal(agendaValida({ freq: "mensal", hora: "08:00", dia_mes: "32" }), false);
+  });
+  test("regra agendada que cria tarefa: precisa do título; ações são opcionais", () => {
+    const agenda = { freq: "dias_uteis", hora: "07:30" };
+    assert.equal(regraCompleta("agendado", { agenda, modo: "criar_tarefa", modelo_tarefa: { titulo: "Rotina {data}" } }, []), true);
+    assert.equal(regraCompleta("agendado", { agenda, modo: "criar_tarefa", modelo_tarefa: { titulo: " " } }, []), false);
+    assert.equal(regraCompleta("agendado", { agenda, modo: "cada_tarefa" }, []), false);
+    assert.equal(regraCompleta("agendado", { agenda }, [{ tipo: "concluir" }]), true);
+  });
+  test("tarefa parada precisa da quantidade", () => {
+    assert.equal(regraCompleta("tarefa_parada", { parada: { quantidade: "3" } }, [{ tipo: "notificar" }]), true);
+    assert.equal(regraCompleta("tarefa_parada", {}, [{ tipo: "notificar" }]), false);
   });
 });
