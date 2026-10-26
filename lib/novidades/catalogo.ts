@@ -41,6 +41,23 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dashboard-tst-primeira-conclusao",
+    data: "2026-10-26",
+    tipo: "novidade",
+    titulo: "Dashboard: Inspeções realizadas por TST, reaberturas e a página de cada pessoa",
+    texto:
+      "O gráfico de inspeções passa a se chamar Inspeções realizadas por TST: cada inspeção conta para o técnico que foi a " +
+      "campo, no mês em que foi concluída pela primeira vez — reabrir e concluir de novo não muda a contagem, e um aviso " +
+      "mostra quem reabriu e a lista dos campos alterados. Documentos concluídos seguem a mesma regra. Documentos " +
+      "associados contam empresas por pessoa em cada mês, com um gráfico acumulado. Clicar no nome de alguém abre a " +
+      "relação das empresas em que a pessoa atuou.",
+    onde: "Painel SST › Dashboard",
+    impacto:
+      "Inspeção sem técnico na aba Responsáveis conta para quem abriu; o Admin escolhe o técnico na nota que aparece na " +
+      "tela de inspeções.",
+    versoes: ["0.3.149"],
+  },
+  {
     id: "usuarios-modulos-por-categoria",
     data: "2026-10-23",
     tipo: "melhoria",

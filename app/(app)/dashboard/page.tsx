@@ -32,13 +32,13 @@ import { RENOVACAO, type MesInspecoes } from "@/lib/dashboard/inspecoes";
 import { useInspecoesPorMes } from "@/lib/hooks/useInspecoesPorMes";
 import {
   concluidosPorMes,
-  porAssociado as agruparPorAssociado,
   porSituacao,
-  serieMensalAssociacoes,
   type AssociacaoDoc,
   type DocumentoContavel,
 } from "@/lib/dashboard/documentos";
+import { empresasAssociadasPorMes, empresasPorPessoa, eventosDeAssociacao } from "@/lib/dashboard/associacoes-empresas";
 import { useDocumentosConcluidos } from "@/lib/hooks/useDocumentosConcluidos";
+import { useAssociacoesEmpresas } from "@/lib/hooks/useDashboardFontes";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { BalaoGrafico, BalaoUmValor, LinhaBalao } from "@/components/ui/BalaoGrafico";
 import { TabelaSkeleton } from "@/components/ui/PageSkeletons";
@@ -99,29 +99,6 @@ async function fetchStats(): Promise<DashboardStats> {
 // compartilhado com o mini-gráfico da tela Início (15/09) — antes cada um
 // contava por conta própria e os dois divergiam (agosto: 153 × 140).
 
-// Documentos que ganharam um associado no mês. A conta (e o filtro de inspeção
-// deletada) mora em lib/dashboard/documentos, junto com a do donut por pessoa —
-// as duas respondiam a mesma pergunta com números diferentes.
-async function fetchDocumentosAssociadosPorMes(): Promise<MesData[]> {
-  const supabase = createSupabaseBrowserClient();
-  const [assoc, docs] = await Promise.all([
-    fetchAllRows<AssociacaoDoc>(
-      (de, ate) =>
-        supabase.from("inspecao_associados").select("created_at, nome, id_inspecao").order("id").range(de, ate),
-    ),
-    fetchAllRows<DocumentoContavel>(
-      (de, ate) =>
-        supabase
-          .from("inspecoes")
-          .select("id_inspecao, status, elaboracao_responsavel, elaboracao_status")
-          .neq("status", "DELETADA")
-          .order("id_inspecao")
-          .range(de, ate),
-    ),
-  ]);
-  return serieMensalAssociacoes(assoc, docs, mesAbsAgoraSP(), 6, (abs) => rotuloMesAbs(abs), mesAbsSP);
-}
-
 async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: number }[]> {
   const supabase = createSupabaseBrowserClient();
   // Mesma régua da lista de inspeções: quem está associado conta como tendo
@@ -149,45 +126,6 @@ async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: numb
     { name: "Assumidos",  value: assumidos },
     { name: "Concluídos", value: concluidos },
   ];
-}
-
-// Documentos por pessoa (donut). Top 6 + "Outros". A união das duas fontes
-// (associados + quem assumiu a elaboração) mora em lib/dashboard/documentos: a
-// tela de detalhe usava só a primeira e perdia 109 documentos, trocando até a
-// ordem do pódio.
-async function fetchDocumentosPorAssociado(): Promise<{ name: string; value: number }[]> {
-  const supabase = createSupabaseBrowserClient();
-  const [assoc, docs] = await Promise.all([
-    fetchAllRows<AssociacaoDoc>(
-      (de, ate) =>
-        supabase.from("inspecao_associados").select("created_at, nome, id_inspecao").order("id").range(de, ate),
-    ),
-    fetchAllRows<DocumentoContavel>(
-      (de, ate) =>
-        supabase
-          .from("inspecoes")
-          .select("id_inspecao, status, elaboracao_responsavel, elaboracao_status")
-          .neq("status", "DELETADA")
-          .order("id_inspecao")
-          .range(de, ate),
-    ),
-  ]);
-
-  // Documentos ASSOCIADOS a cada pessoa NO MÊS CORRENTE — o mesmo número, no
-  // mesmo recorte, que a tela de detalhe mostra ao abrir (decisão de 15/09).
-  //
-  // Até 15/09 era o acumulado de sempre e media ENTREGUES; a tela abria no
-  // mês e também media entregues — dois recortes sob o mesmo título, e ele
-  // viu os números diferentes. Mês corrente nos dois, e não acumulado, para
-  // manter a lição de 27/08: acumulado num painel é lido como produção do mês.
-  const ordenado = agruparPorAssociado(assoc, docs, { mes: mesAbsAgoraSP(), mesDe: mesAbsSP })
-    .map((p) => ({ name: p.nome, value: p.total }))
-    .filter((p) => p.value > 0);
-  const TOP = 6;
-  if (ordenado.length <= TOP) return ordenado;
-  const outros = ordenado.slice(TOP).reduce((s, x) => s + x.value, 0);
-  const top = ordenado.slice(0, TOP);
-  return outros > 0 ? [...top, { name: "Outros", value: outros }] : top;
 }
 
 async function fetchInspecoesRecentes(): Promise<InspecaoComEmpresa[]> {
@@ -331,9 +269,9 @@ function GraficoInspecoesMes({
     <div className={`glass reveal-up flex flex-col rounded-2xl p-5 ${className ?? ""}`}>
       <div className="mb-4 flex items-start justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold text-gray-800">Inspeções por Mês</h2>
+          <h2 className="text-sm font-semibold text-gray-800">Inspeções realizadas por TST</h2>
           <p className="mt-0.5 text-xs text-gray-400">
-            Últimos 6 meses · concluídas, pela data de conclusão · o mesmo número do detalhe
+            Últimos 6 meses · no mês da 1ª conclusão (reabrir não muda) · o mesmo número do detalhe
             {estimadas > 0 && <> · antes de 04/08/26 a data é estimada</>}
           </p>
         </div>
@@ -504,14 +442,22 @@ export default function DashboardPage() {
     queryFn: fetchDocumentosPorSituacao,
   });
 
-  const { data: docAssociado = [], isLoading: loadingDocAssoc } = useQuery({
-    queryKey: ["dashboard-doc-associado"],
-    queryFn: fetchDocumentosPorAssociado,
-  });
-  const { data: assocPorMes, isLoading: loadingAssocMes } = useQuery({
-    queryKey: ["dashboard-assoc-por-mes"],
-    queryFn: fetchDocumentosAssociadosPorMes,
-  });
+  // Documentos associados (26/10/2026): EMPRESAS por pessoa, no mês da associação (ou de quando
+  // foi assumido), sem acumular — a mesma conta da tela /dashboard/por-associados
+  // (lib/dashboard/associacoes-empresas).
+  const { data: fonteAssoc, isLoading: loadingAssoc } = useAssociacoesEmpresas();
+  const loadingDocAssoc = loadingAssoc;
+  const loadingAssocMes = loadingAssoc;
+  const { assocPorMes, docAssociado } = useMemo(() => {
+    if (!fonteAssoc) return { assocPorMes: undefined, docAssociado: [] as { name: string; value: number }[] };
+    const eventos = eventosDeAssociacao(fonteAssoc.assoc, fonteAssoc.assuncoes, fonteAssoc.docs, mesAbsSP);
+    const serie = empresasAssociadasPorMes(eventos, mesAbsAgoraSP(), 6).map((m) => ({ mes: rotuloMesAbs(m.chave), total: m.total }));
+    const ordenado = empresasPorPessoa(eventos, mesAbsAgoraSP()).map((p) => ({ name: p.pessoa, value: p.total }));
+    const TOP = 6;
+    const outros = ordenado.slice(TOP).reduce((soma, x) => soma + x.value, 0);
+    const donut = ordenado.length <= TOP ? ordenado : outros > 0 ? [...ordenado.slice(0, TOP), { name: "Outros", value: outros }] : ordenado.slice(0, TOP);
+    return { assocPorMes: serie, docAssociado: donut };
+  }, [fonteAssoc]);
   const assocColors = useMemo(
     () => docAssociado.map((d) => (d.name === "Outros" ? "#9ca3af" : corAvatar(d.name))),
     [docAssociado],
@@ -615,18 +561,18 @@ export default function DashboardPage() {
         <GraficoMes
           className="lg:col-span-2"
           titulo="Documentos Associados por Mês"
-          sub="documentos que ganharam associado no mês (escritório)"
+          sub="empresas associadas no mês, por pessoa, sem acumular (escritório)"
           data={assocPorMes}
           loading={loadingAssocMes}
           link="/dashboard/por-associados"
           linkLabel="Ver por pessoa"
           linkTitle="Documentos do SGG por mês e por pessoa do administrativo — não é inspeção de campo"
-          rotulo="Documentos"
+          rotulo="Empresas"
         />
         <GraficoDonut
           className="lg:col-start-3"
           titulo="Documentos por Associado"
-          sub="Associados neste mês (SGG) — não é campo"
+          sub="Empresas associadas neste mês — não é campo"
           data={docAssociado}
           colors={assocColors}
           loading={loadingDocAssoc}

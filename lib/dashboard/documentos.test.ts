@@ -434,3 +434,26 @@ describe("documentos concluídos pelo ADM (card × detalhe)", () => {
     assert.equal(card, detalhe);
   });
 });
+
+describe("v295 — documento: 1ª conclusão e responsável daquele momento (26/10/2026)", () => {
+  const mesDe = (iso: string) => Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7)) - 1;
+  it("reconcluído por outra pessoa continua no mês e na pessoa da 1ª conclusão", () => {
+    const linhas = [
+      {
+        status: "CONCLUIDA",
+        elaboracao_concluida_em: "2026-10-20T12:00:00Z",
+        elaboracao_responsavel: "Bruno",
+        primeira_elaboracao_em: "2026-09-15T12:00:00Z",
+        primeira_elaboracao_por: "Ana",
+      },
+    ];
+    assert.deepEqual(concluidosPorAdm(linhas, 2026 * 12 + 8, mesDe), [{ adm: "Ana", total: 1 }]);
+    assert.deepEqual(concluidosPorAdm(linhas, 2026 * 12 + 9, mesDe), []);
+  });
+  it("reaberto (sem conclusão atual) ainda conta pela 1ª conclusão", () => {
+    const linhas = [
+      { status: "CONCLUIDA", elaboracao_concluida_em: null, elaboracao_responsavel: null, primeira_elaboracao_em: "2026-09-15T12:00:00Z", primeira_elaboracao_por: "Ana" },
+    ];
+    assert.equal(concluidosValidos(linhas).length, 1);
+  });
+});

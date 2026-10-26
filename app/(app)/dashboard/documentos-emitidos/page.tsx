@@ -14,8 +14,11 @@ import {
   LabelList,
 } from "recharts";
 import { mesAbsSP, mesAbsAgoraSP, rotuloMesAbs } from "@/lib/dashboard/mes";
-import { concluidosPorAdm, concluidosPorMes, concluidosValidos } from "@/lib/dashboard/documentos";
+import { concluidosPorAdm, concluidosPorMes, concluidosValidos, dataConclusaoDoc, SEM_RESPONSAVEL } from "@/lib/dashboard/documentos";
 import { useDocumentosConcluidos } from "@/lib/hooks/useDocumentosConcluidos";
+import { nomeDaEmpresa, useContasDoPainel, useReaberturas } from "@/lib/hooks/useDashboardFontes";
+import ReaberturasAviso from "@/components/dashboard/ReaberturasAviso";
+import TickPessoa from "@/components/dashboard/TickPessoa";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { BalaoUmValor } from "@/components/ui/BalaoGrafico";
 
@@ -47,6 +50,19 @@ export default function DocumentosEmitidosDashboard() {
   const porAdm = concluidosPorAdm(rows, mesSel ? Number(mesSel) : null, mesAbsSP);
 
   const total = concluidosValidos(rows).length;
+
+  // v295 (26/10): reaberturas do documento depois da 1ª conclusão — a contagem não muda.
+  const { data: reaberturas = [] } = useReaberturas("documento");
+  const { data: contas = [] } = useContasDoPainel();
+  const nomePorEmail = new Map(contas.map((c) => [c.email.toLowerCase(), c.nome]));
+  const nomeDoEmail = (e: string | null) => (e ? nomePorEmail.get(e.toLowerCase()) ?? e : "—");
+  const empresaPorId = new Map(rows.map((r) => [r.id_inspecao, nomeDaEmpresa(r.empresas)]));
+  const idsRecorte = new Set(
+    concluidosValidos(rows)
+      .filter((r) => mesSel === null || String(mesAbsSP(dataConclusaoDoc(r)!)) === mesSel)
+      .map((r) => r.id_inspecao),
+  );
+  const reabRecorte = reaberturas.filter((r) => idsRecorte.has(r.id_inspecao));
 
   return (
     <div className="space-y-5">
@@ -110,8 +126,9 @@ export default function DocumentosEmitidosDashboard() {
               </h2>
               <p className="text-xs text-gray-400">
                 {mesSelLabel
-                  ? "Documentos concluídos neste mês"
+                  ? "Documentos concluídos neste mês — no mês e na pessoa da 1ª conclusão"
                   : "Soma de todos os meses — não é a produção de um mês"}
+                {" · clique no nome para ver as empresas"}
               </p>
             </div>
           </div>
@@ -133,6 +150,16 @@ export default function DocumentosEmitidosDashboard() {
             </button>
           )}
         </div>
+        {!isLoading && reabRecorte.length > 0 && (
+          <div className="mb-3">
+            <ReaberturasAviso
+              reaberturas={reabRecorte}
+              nomeDoEmail={nomeDoEmail}
+              empresaDe={(id) => empresaPorId.get(id) ?? id}
+              titulo={reabRecorte.length !== 1 ? "documentos foram reabertos depois de concluídos" : "documento foi reaberto depois de concluído"}
+            />
+          </div>
+        )}
         {isLoading ? (
           <LoadingSkeleton rows={4} />
         ) : porAdm.length === 0 ? (
@@ -143,7 +170,14 @@ export default function DocumentosEmitidosDashboard() {
           <ResponsiveContainer width="100%" height={Math.max(160, porAdm.length * 38)}>
             <BarChart data={porAdm} layout="vertical" barSize={22} margin={{ top: 4, right: 40, left: 8, bottom: 0 }}>
               <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <YAxis type="category" dataKey="adm" tick={{ fontSize: 11, fill: "var(--text-body)" }} axisLine={false} tickLine={false} width={150} />
+              <YAxis
+                type="category"
+                dataKey="adm"
+                axisLine={false}
+                tickLine={false}
+                width={150}
+                tick={(p: object) => <TickPessoa {...p} fonte="documentos" naoClicaveis={[SEM_RESPONSAVEL]} />}
+              />
               <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo="Documentos" />} />
               <Bar dataKey="total" radius={[0, 6, 6, 0]} fill="#0ea5e9">
                 <LabelList dataKey="total" position="right" style={{ fontSize: 12, fontWeight: 700, fill: "var(--text-strong)" }} />

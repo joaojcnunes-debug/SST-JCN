@@ -2,110 +2,73 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, ArrowRight, FileSignature, TrendingUp, X } from "lucide-react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Cell,
-  LabelList,
-} from "recharts";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { ArrowLeft, ArrowRight, FileSignature, Layers, TrendingUp, X } from "lucide-react";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, LabelList } from "recharts";
 import { mesAbsSP, mesAbsAgoraSP, rotuloMesAbs } from "@/lib/dashboard/mes";
 import {
-  foraDoGraficoMensal,
-  porAssociado as agruparPorAssociado,
-  resumoAssociacao,
-  serieMensalAssociacoes,
-  type AssociacaoDoc,
-  type DocumentoContavel,
-} from "@/lib/dashboard/documentos";
+  acumuladoPorPessoa,
+  empresasAssociadasPorMes,
+  empresasPorPessoa,
+  eventosDeAssociacao,
+  semDataDeAssociacao,
+  type PessoaEmpresas,
+} from "@/lib/dashboard/associacoes-empresas";
+import { useAssociacoesEmpresas } from "@/lib/hooks/useDashboardFontes";
 import { corAvatar } from "@/lib/hooks/useGestao";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { BalaoUmValor } from "@/components/ui/BalaoGrafico";
+import TickPessoa from "@/components/dashboard/TickPessoa";
 
 /**
- * Detalhe da elaboração do documento (SGG) por pessoa.
+ * Documentos associados — em EMPRESAS por pessoa, mês a mês (pedido de 26/10/2026).
  *
- * ⚠️ Esta tela NÃO mede inspeção de campo — mede quem montou o documento
- * depois da visita. Até 27/08/2026 ela se chamava "Inspeções Associadas" e o
- * número saía com a palavra "inspeções", o que fez a primeira colocada (uma
- * Auxiliar Administrativo, com zero visitas) ser lida como a técnica que mais
- * trabalhou. A conta está em `lib/dashboard/documentos`, junto com o donut do
- * dashboard que fazia a mesma pergunta e respondia outro número.
+ * ⚠️ Trabalho de ESCRITÓRIO (quem montou o documento depois da visita), não inspeção de campo.
  *
- * ─── 15/09: UM número só ────────────────────────────────────────────────────
+ *  - "Por pessoa": quantas empresas foram associadas à pessoa NO mês — tanto faz se ela mesma se
+ *    associou ou se outra pessoa a associou. Duas empresas iguais no mês contam 1. Sem acumular.
+ *  - "Por pessoa — acumulado": a soma dos meses até o mês escolhido.
+ *  - Documento assumido pelo botão "Assumir elaboração" (sem linha de associação) entra no mês em que
+ *    foi assumido — data da auditoria (v295, existe desde 24/09/2026).
+ *  - Até 25/10 contava DOCUMENTOS, creditados a quem estava com o documento agora.
  *
- * De 27/08 a 15/09 a barra media ENTREGUES e o balão abria quatro números
- * (entregues, está elaborando, voltou para a fila, passou pelas mãos dela).
- * Ele pediu: "apenas quantos documentos o usuário foi associado" — e que o
- * donut do dashboard bata com esta tela. Agora:
- *
- *  - barra e balão = `total` (documentos associados à pessoa, regras 1 e 2 da
- *    régua: conta para quem está com o documento AGORA);
- *  - o gráfico mensal conta documentos que ganharam associado no mês;
- *  - abre no MÊS CORRENTE, o mesmo recorte do donut do dashboard (decisão
- *    dele em 15/09, mantendo a lição de 27/08: acumulado lido como produção
- *    do mês). O acumulado fica a um clique.
+ * A conta mora em lib/dashboard/associacoes-empresas (testada).
  */
-
-async function fetchDados(): Promise<{ assoc: AssociacaoDoc[]; docs: DocumentoContavel[] }> {
-  const supabase = createSupabaseBrowserClient();
-  const [assoc, docs] = await Promise.all([
-    fetchAllRows<AssociacaoDoc>((de, ate) =>
-      supabase
-        .from("inspecao_associados")
-        .select("created_at, nome, id_inspecao")
-        .order("id")
-        .range(de, ate),
-    ),
-    fetchAllRows<DocumentoContavel>((de, ate) =>
-      supabase
-        .from("inspecoes")
-        .select("id_inspecao, status, elaboracao_responsavel, elaboracao_status")
-        .neq("status", "DELETADA")
-        .order("id_inspecao")
-        .range(de, ate),
-    ),
-  ]);
-  return { assoc, docs };
-}
-
 export default function PorAssociadosDashboard() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["dashboard-por-associados"],
-    queryFn: fetchDados,
-  });
-  const assoc = data?.assoc ?? [];
-  const docs = data?.docs ?? [];
+  const { data, isLoading } = useAssociacoesEmpresas();
+  const eventos = data ? eventosDeAssociacao(data.assoc, data.assuncoes, data.docs, mesAbsSP) : [];
 
-  // Mês corrente por padrão — mesma razão da tela de documentos emitidos:
-  // aberta no acumulado, a barra soma meses e é lida como produção do mês.
   const [mesSel, setMesSel] = useState<number | null>(mesAbsAgoraSP());
   const mesAtual = mesAbsAgoraSP();
 
-  const porMes = serieMensalAssociacoes(
-    assoc,
-    docs,
-    mesAtual,
-    12,
-    (abs) => rotuloMesAbs(abs, true),
-    mesAbsSP,
-  );
+  const porMes = empresasAssociadasPorMes(eventos, mesAtual, 12).map((m) => ({ ...m, mes: rotuloMesAbs(m.chave, true) }));
   const mesSelLabel = mesSel != null ? porMes.find((m) => m.chave === mesSel)?.mes ?? null : null;
+  const porPessoa = empresasPorPessoa(eventos, mesSel);
+  const acumulado = acumuladoPorPessoa(eventos, mesSel ?? mesAtual);
+  const semData = data ? semDataDeAssociacao(data.docs, eventos) : 0;
+  const empresasTotal = new Set(eventos.map((e) => e.id_empresa)).size;
 
-  const porAssociado = agruparPorAssociado(assoc, docs, { mes: mesSel, mesDe: mesAbsSP });
-  const credito = resumoAssociacao(assoc, docs);
-  // Documentos distintos com alguém trabalhando neles (associado ou responsável).
-  const totalDocumentos = credito.comAssociacao + credito.semAssociacao;
-  // O cabeçalho conta todo documento com dono; as barras, só os que têm data
-  // de entrada dentro dos 12 meses. Em 22/09 eram 550 × 441 sem explicação.
-  const fora = foraDoGraficoMensal(assoc, docs, porMes);
+  const grafico = (dados: PessoaEmpresas[], rotulo: string) => (
+    <ResponsiveContainer width="100%" height={Math.max(160, dados.length * 38)}>
+      <BarChart data={dados} layout="vertical" barSize={22} margin={{ top: 4, right: 40, left: 8, bottom: 0 }}>
+        <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
+        <YAxis
+          type="category"
+          dataKey="pessoa"
+          axisLine={false}
+          tickLine={false}
+          width={150}
+          tick={(p: object) => <TickPessoa {...p} fonte="associados" />}
+        />
+        <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo={rotulo} />} />
+        <Bar dataKey="total" radius={[0, 6, 6, 0]}>
+          {dados.map((p) => (
+            <Cell key={p.pessoa} fill={corAvatar(p.pessoa)} />
+          ))}
+          <LabelList dataKey="total" position="right" style={{ fontSize: 12, fontWeight: 700, fill: "var(--text-strong)" }} />
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
 
   return (
     <div className="space-y-5">
@@ -115,22 +78,16 @@ export default function PorAssociadosDashboard() {
         </Link>
         <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
           <FileSignature className="size-5 text-verde-primary" />
-          Documentos por Associado (elaboração no SGG)
+          Documentos Associados (empresas por pessoa)
         </h1>
         <p className="text-sm text-gray-500">
-          {isLoading
-            ? "Carregando…"
-            : `${totalDocumentos} documento${totalDocumentos !== 1 ? "s" : ""} com associado, no total`}
+          {isLoading ? "Carregando…" : `${empresasTotal} empresa${empresasTotal !== 1 ? "s" : ""} com documento associado, no total`}
         </p>
-        {/* O aviso é o remédio da confusão que originou esta tela: quem lia
-            "inspeções" achava que era ranking de técnico de campo. */}
-        {/* text-sky-800, não 900: a camada noturna de globals.css cobre até o
-            800 — no 900 o texto fica escuro sobre fundo escuro. */}
         <p className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-          Isto é <strong>trabalho de escritório</strong>: quem montou o documento depois da visita.
-          Não é inspeção de campo — para saber quem foi à visita, veja{" "}
+          Isto é <strong>trabalho de escritório</strong>: quem montou o documento depois da visita. Não é inspeção de campo — para
+          saber quem foi à visita, veja{" "}
           <Link href="/dashboard/inspecoes-concluidas" className="font-semibold underline">
-            Inspeções Concluídas
+            Inspeções realizadas por TST
           </Link>
           .
         </p>
@@ -143,9 +100,7 @@ export default function PorAssociadosDashboard() {
             <TrendingUp className="size-4 text-verde-primary" />
             <div>
               <h2 className="text-sm font-semibold text-gray-800">Por mês (últimos 12 meses)</h2>
-              <p className="text-xs text-gray-400">
-                Documentos que ganharam associado em cada mês
-              </p>
+              <p className="text-xs text-gray-400">Empresas associadas no mês (soma das pessoas, sem acumular)</p>
             </div>
           </div>
           <p className="text-xs text-gray-400">Clique num mês para filtrar abaixo</p>
@@ -157,9 +112,7 @@ export default function PorAssociadosDashboard() {
             <BarChart data={porMes} barSize={26} margin={{ top: 16, right: 4, left: 0, bottom: 0 }}>
               <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
-              <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo="Documentos" />} />
-              {/* Documentos que entraram na fila no mês — o mesmo `total` do card
-                  "Documentos Associados por Mês" do dashboard. */}
+              <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo="Empresas" />} />
               <Bar
                 dataKey="total"
                 radius={[6, 6, 0, 0]}
@@ -177,43 +130,27 @@ export default function PorAssociadosDashboard() {
             </BarChart>
           </ResponsiveContainer>
         )}
-        {!isLoading && fora.total > 0 && (
+        {!isLoading && semData > 0 && (
           <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-            As barras somam <strong>{totalDocumentos - fora.total}</strong> dos {totalDocumentos} documentos
-            do total acima. Os outros <strong>{fora.total}</strong> não têm mês neste gráfico:
-            {fora.semRegistro > 0 && (
-              <>
-                {" "}
-                <strong>{fora.semRegistro}</strong> {fora.semRegistro !== 1 ? "foram assumidos" : "foi assumido"}{" "}
-                pelo botão &quot;Assumir elaboração&quot;, sem registro de associação (é esse registro que dá a data)
-              </>
-            )}
-            {fora.semRegistro > 0 && fora.antesDoPeriodo > 0 && " e"}
-            {fora.antesDoPeriodo > 0 && (
-              <>
-                {" "}
-                <strong>{fora.antesDoPeriodo}</strong> {fora.antesDoPeriodo !== 1 ? "ganharam" : "ganhou"} associado
-                antes dos últimos 12 meses
-              </>
-            )}
-            .
+            <strong>{semData}</strong> documento{semData !== 1 ? "s têm" : " tem"} responsável de elaboração sem data de entrada (assumido
+            antes de 24/09/2026, quando a auditoria começou, e sem registro de associação) — {semData !== 1 ? "não entram" : "não entra"} em
+            mês nenhum.
           </p>
         )}
       </div>
 
-      {/* Por associado */}
+      {/* Por pessoa — no mês */}
       <div className="reveal-up card-hover rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <FileSignature className="size-4 text-verde-primary" />
             <div>
-              <h2 className="text-sm font-semibold text-gray-800">
-                Por pessoa {mesSelLabel ? `— ${mesSelLabel}` : "— acumulado de todos os meses"}
-              </h2>
+              <h2 className="text-sm font-semibold text-gray-800">Por pessoa {mesSelLabel ? `— ${mesSelLabel}` : "— todos os meses"}</h2>
               <p className="text-xs text-gray-400">
                 {mesSelLabel
-                  ? "Quantos documentos cada pessoa foi associada neste mês"
-                  : "Soma de todos os meses — não é a produção de um mês"}
+                  ? "Empresas associadas a cada pessoa neste mês (por ela ou por outra pessoa), sem acumular"
+                  : "Soma dos meses — não é a produção de um mês"}
+                {" · clique no nome para ver as empresas"}
               </p>
             </div>
           </div>
@@ -235,45 +172,34 @@ export default function PorAssociadosDashboard() {
             </button>
           )}
         </div>
-
-        {/* Os documentos sem linha de associação não têm data de entrada: contam
-            no total e somem do recorte por mês. Dizer isso evita a pergunta
-            "por que a soma dos meses não fecha com o total?". */}
-        {!isLoading && credito.semAssociacao > 0 && (
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            <strong>{credito.semAssociacao}</strong> documento
-            {credito.semAssociacao !== 1 ? "s têm" : " tem"} responsável de elaboração sem
-            registro de associação
-            {mesSel != null ? (
-              <> — {credito.semAssociacao !== 1 ? "eles não aparecem" : "ele não aparece"} neste mês, só no total.</>
-            ) : (
-              <> — {credito.semAssociacao !== 1 ? "contam" : "conta"} no total, mas sem data de entrada não {credito.semAssociacao !== 1 ? "entram" : "entra"} no recorte por mês.</>
-            )}
-          </div>
-        )}
-
         {isLoading ? (
           <LoadingSkeleton rows={4} />
-        ) : porAssociado.length === 0 ? (
-          <p className="py-6 text-center text-sm text-gray-500">
-            Nenhum documento{mesSelLabel ? ` em ${mesSelLabel}` : ""}.
-          </p>
+        ) : porPessoa.length === 0 ? (
+          <p className="py-6 text-center text-sm text-gray-500">Nenhuma empresa associada{mesSelLabel ? ` em ${mesSelLabel}` : ""}.</p>
         ) : (
-          <ResponsiveContainer width="100%" height={Math.max(160, porAssociado.length * 38)}>
-            <BarChart data={porAssociado} layout="vertical" barSize={22} margin={{ top: 4, right: 40, left: 8, bottom: 0 }}>
-              <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <YAxis type="category" dataKey="nome" tick={{ fontSize: 11, fill: "#374151" }} axisLine={false} tickLine={false} width={150} />
-              <Tooltip cursor={{ fill: "var(--grafico-cursor)" }} content={<BalaoUmValor rotulo="Documentos" />} />
-              {/* A barra mede o TOTAL de documentos associados (15/09). Até
-                  então media entregues, com o resto no balão. */}
-              <Bar dataKey="total" radius={[0, 6, 6, 0]}>
-                {porAssociado.map((p) => (
-                  <Cell key={p.nome} fill={corAvatar(p.nome)} />
-                ))}
-                <LabelList dataKey="total" position="right" style={{ fontSize: 12, fontWeight: 700, fill: "var(--text-strong)" }} />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          grafico(porPessoa, "Empresas")
+        )}
+      </div>
+
+      {/* Por pessoa — acumulado */}
+      <div className="reveal-up card-hover rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center gap-2">
+          <Layers className="size-4 text-verde-primary" />
+          <div>
+            <h2 className="text-sm font-semibold text-gray-800">
+              Por pessoa — acumulado até {rotuloMesAbs(mesSel ?? mesAtual, true)}
+            </h2>
+            <p className="text-xs text-gray-400">
+              Soma, mês a mês, das empresas associadas a cada pessoa até o mês escolhido no gráfico de cima
+            </p>
+          </div>
+        </div>
+        {isLoading ? (
+          <LoadingSkeleton rows={4} />
+        ) : acumulado.length === 0 ? (
+          <p className="py-6 text-center text-sm text-gray-500">Nenhuma empresa associada até aqui.</p>
+        ) : (
+          grafico(acumulado, "Empresas (acumulado)")
         )}
       </div>
 
@@ -282,7 +208,7 @@ export default function PorAssociadosDashboard() {
           href="/dashboard/inspecoes-concluidas"
           className="inline-flex items-center gap-1.5 rounded-lg bg-verde-light px-3 py-2 text-xs font-semibold text-verde-primary transition-colors hover:bg-verde-primary hover:text-white"
         >
-          Ver produção de campo (inspeções concluídas)
+          Ver produção de campo (inspeções realizadas por TST)
           <ArrowRight className="size-3.5" />
         </Link>
       </div>
