@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-automacoes-pacote-a",
+    data: "2026-10-26",
+    tipo: "novidade",
+    titulo: "Gestão: automações com várias ações, novos gatilhos e histórico",
+    texto:
+      "Cada automação agora executa várias ações em sequência, e cada ação pode ter a sua própria condição. Novos " +
+      "gatilhos: prioridade, campo ou etiqueta alterados, responsável adicionado e comentário. Novas ações: comentar, " +
+      "enviar e-mail, definir prazo relativo (dias úteis), adicionar ou remover etiqueta, concluir e duplicar. Os textos " +
+      "aceitam variáveis como {titulo}, {responsavel} e {prazo}. A aba Histórico mostra o que cada automação fez.",
+    onde: "Gestão › quadro › Automações",
+    versoes: ["0.3.153"],
+  },
+  {
     id: "dashboard-filtro-unidade",
     data: "2026-10-26",
     tipo: "melhoria",

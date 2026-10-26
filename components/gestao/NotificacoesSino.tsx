@@ -6,7 +6,7 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useNotificacoes, useMarcarLida, type GestaoNotificacao } from "@/lib/hooks/useGestao";
 
-const ICONE_TIPO: Record<string, string> = { atribuicao: "📌", seguidor: "👁", quadro: "🗂", comentario: "💬", mencao: "@", status: "🔄", prazo: "⏰" };
+const ICONE_TIPO: Record<string, string> = { atribuicao: "📌", seguidor: "👁", quadro: "🗂", comentario: "💬", mencao: "@", status: "🔄", prazo: "⏰", automacao: "⚡" };
 
 /** Link da Gestão que abre a lista e a tarefa da notificação (fora da Gestão: barra superior, Módulos, Início). */
 export function linkNotificacao(n: GestaoNotificacao): string {
