@@ -1097,7 +1097,9 @@ export type GatilhoAutomacao =
   // v299 (Pacote B — tempo e cobrança; rodam no relógio, a cada 10 min)
   | "agendado" | "tarefa_parada" | "data_inicio_chega" | "dependencia_liberada"
   // v300 (Pacote C): só quando alguém clica no ⚡ (tarefa ou ações em massa)
-  | "manual";
+  | "manual"
+  // v301 (Pacote D): eventos do SST — criam uma tarefa do modelo no quadro da regra
+  | "sst_inspecao_concluida" | "sst_documento_concluido" | "sst_vencimento";
 
 /** Uma cláusula do construtor E/OU. Campos aceitos pelo motor (gestao_automacao_cond_teste):
  *  status, status_de, status_para, prioridade, quadro, etiqueta, campo:<id>. Ops: '=' '!=' 'in' 'contains'. */
@@ -1120,6 +1122,8 @@ export interface CondicaoAutomacao {
   modelo_tarefa?: ModeloTarefa;
   /** gatilho tarefa_parada: há quanto tempo sem atividade (base atualizacao) ou no mesmo status. */
   parada?: { quantidade?: string; unidade?: "horas" | "dias"; base?: "atualizacao" | "status" };
+  /** gatilho sst_vencimento: o que vence (dias_antes = com quantos dias de antecedência). */
+  fonte?: "documento" | "extintor";
 }
 
 /** Tarefa criada por uma automação (agenda; gatilhos do SST). Textos aceitam variáveis. */
