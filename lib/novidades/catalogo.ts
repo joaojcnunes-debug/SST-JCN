@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-criar-tarefa-etapa",
+    data: "2026-10-26",
+    tipo: "melhoria",
+    titulo: "Gestão: criar tarefa em outro quadro escolhe a etapa e os responsáveis",
+    texto:
+      "Na automação que cria (ou move) tarefa em outro quadro, agora dá para escolher a etapa de destino, os " +
+      "responsáveis da tarefa nova e mandar para o quadro da unidade da tarefa. Também entrou o gatilho " +
+      "\"Quando a aprovação é recusada\".",
+    onde: "Gestão › quadro › Automações",
+    versoes: ["0.3.157"],
+  },
+  {
     id: "gestao-automacoes-pacote-d",
     data: "2026-10-26",
     tipo: "novidade",

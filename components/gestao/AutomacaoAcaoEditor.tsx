@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
 import {
-  PRIORIDADES,
+  PRIORIDADES, useStatusQuadro,
   type AcaoAutomacao, type GestaoCampo, type GestaoEtiqueta, type GestaoQuadro, type GestaoStatus,
 } from "@/lib/hooks/useGestao";
 
@@ -34,7 +34,24 @@ export const ACOES: { value: string; label: string; grupo: string }[] = [
 
 const GRUPOS = [...new Set(ACOES.map((a) => a.grupo))];
 
+/** Destino '@unidade' (v302 = painel v313): a tarefa nova vai para o quadro da unidade dela (etiqueta da cidade). */
+export const QUADRO_DA_UNIDADE = "@unidade";
+
 const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none";
+
+/** Etapa no quadro destino. Os quadros de unidade têm as mesmas etapas: '@unidade' lista as do primeiro. */
+function EtapaDestino({ idQuadro, value, onChange, disabled }: {
+  idQuadro: string | undefined; value: string | undefined; onChange: (slug: string | undefined) => void; disabled: boolean;
+}) {
+  const { data: etapas = [] } = useStatusQuadro(idQuadro);
+  if (!idQuadro) return null;
+  return (
+    <select value={value ?? ""} disabled={disabled} onChange={(e) => onChange(e.target.value || undefined)} className={sel}>
+      <option value="">1ª etapa</option>
+      {etapas.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
+    </select>
+  );
+}
 
 export default function AutomacaoAcaoEditor({
   acao, onChange, onTrocarTipo, statuses, campos, etiquetas, quadros, outrosQuadros, modelos, usuarios, usuariosFull, disabled,
@@ -53,6 +70,7 @@ export default function AutomacaoAcaoEditor({
   disabled: boolean;
 }) {
   const emails = acao.emails ?? [];
+  const quadroDeUnidade = quadros.find((q) => q.id_unidade)?.id_quadro;
   const chipsEmails = (
     <>
       {emails.length > 0 && (
@@ -181,13 +199,19 @@ export default function AutomacaoAcaoEditor({
         )}
 
         {(acao.tipo === "mover_tarefa_quadro" || acao.tipo === "criar_tarefa_quadro") && (
-          <select value={acao.id_quadro_destino ?? ""} disabled={disabled} onChange={(e) => onChange({ id_quadro_destino: e.target.value || undefined })} className={sel}>
-            <option value="">quadro destino…</option>
-            {(acao.tipo === "mover_tarefa_quadro" ? outrosQuadros : quadros).map((q) => <option key={q.id_quadro} value={q.id_quadro}>{q.nome}</option>)}
-          </select>
-        )}
-        {acao.tipo === "mover_tarefa_quadro" && (
-          <input defaultValue={acao.status_destino ?? ""} disabled={disabled} onBlur={(e) => onChange({ status_destino: e.target.value.trim() || undefined })} placeholder="status destino (slug, opcional)" className={sel} />
+          <>
+            <select value={acao.id_quadro_destino ?? ""} disabled={disabled} onChange={(e) => onChange({ id_quadro_destino: e.target.value || undefined, status_destino: undefined })} className={sel}>
+              <option value="">quadro destino…</option>
+              {acao.tipo === "criar_tarefa_quadro" && <option value={QUADRO_DA_UNIDADE}>Quadro da unidade (etiqueta da cidade)</option>}
+              {(acao.tipo === "mover_tarefa_quadro" ? outrosQuadros : quadros).map((q) => <option key={q.id_quadro} value={q.id_quadro}>{q.nome}</option>)}
+            </select>
+            <EtapaDestino
+              idQuadro={acao.id_quadro_destino === QUADRO_DA_UNIDADE ? quadroDeUnidade : acao.id_quadro_destino}
+              value={acao.status_destino}
+              onChange={(slug) => onChange({ status_destino: slug })}
+              disabled={disabled}
+            />
+          </>
         )}
         {acao.tipo === "criar_tarefa_quadro" && (
           <>
@@ -256,6 +280,13 @@ export default function AutomacaoAcaoEditor({
             </label>
           </div>
           <p className="text-[11px] font-semibold uppercase text-gray-400">Pessoas (na ordem do rodízio)</p>
+          {chipsEmails}
+        </div>
+      )}
+
+      {acao.tipo === "criar_tarefa_quadro" && (
+        <div className="space-y-1.5 rounded-md border border-gray-100 bg-gray-50/60 p-2 text-sm">
+          <span className="text-[11px] font-semibold uppercase text-gray-400">Responsáveis da tarefa nova (opcional)</span>
           {chipsEmails}
         </div>
       )}
