@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, Filter, History, Plus, Trash2, Workflow, X } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, Filter, History, Plus, Trash2, Workflow, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import AutomacaoCondicaoBuilder from "@/components/gestao/AutomacaoCondicaoBuilder";
@@ -9,6 +9,7 @@ import AutomacaoAcaoEditor from "@/components/gestao/AutomacaoAcaoEditor";
 import AutomacoesHistorico from "@/components/gestao/AutomacoesHistorico";
 import { AgendaEditor, ModeloTarefaEditor, ParadaEditor } from "@/components/gestao/AutomacaoGatilhoTempo";
 import { acoesDaRegra, regraCompleta } from "@/lib/gestao/automacao-completa";
+import { receitasDoQuadro } from "@/lib/gestao/receitas-automacao";
 import {
   useAutomacoes, useSalvarAutomacao, useExcluirAutomacao, useUsuariosLista, useUsuarios,
   useModelos, useQuadros, useEtiquetasQuadro,
@@ -38,6 +39,8 @@ const GATILHOS: { value: GatilhoAutomacao; label: string; grupo: string }[] = [
   { value: "agendado", label: "Em um horário (agenda)", grupo: "Tempo e cobrança" },
   { value: "tarefa_parada", label: "Quando a tarefa fica parada (SLA)", grupo: "Tempo e cobrança" },
   { value: "dependencia_liberada", label: "Quando as tarefas que bloqueiam são concluídas", grupo: "Tempo e cobrança" },
+  // v300 (Pacote C)
+  { value: "manual", label: "Quando alguém clica no botão ⚡ (manual)", grupo: "Botão" },
 ];
 const NO_RELOGIO = new Set<GatilhoAutomacao>(["agendado", "tarefa_parada", "data_inicio_chega"]);
 const GRUPOS_GATILHO = [...new Set(GATILHOS.map((g) => g.grupo))];
@@ -50,6 +53,7 @@ const VARIAVEIS: Partial<Record<GatilhoAutomacao | "sempre", string[]>> = {
   responsavel_adicionado: ["{novo_responsavel}"],
   tarefa_parada: ["{dias_parada}"],
   dependencia_liberada: ["{bloqueadora}"],
+  manual: ["{executado_por}"],
 };
 
 const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none";
@@ -78,6 +82,8 @@ export default function AutomacoesManagerModal({
   const excluir = useExcluirAutomacao();
   // ação com o "só se…" aberto (chave: id da regra + id da ação)
   const [condAberta, setCondAberta] = useState<string | null>(null);
+  const [receitasAbertas, setReceitasAbertas] = useState(false);
+  const receitas = receitasDoQuadro(statuses);
 
   const outrosQuadros = quadros.filter((q) => q.id_quadro !== idQuadro);
 
@@ -259,13 +265,37 @@ export default function AutomacoesManagerModal({
               Variáveis nos textos: {variaveis.join(" ")}
               {(a.gatilho === "prazo_proximo" || a.gatilho === "prazo_vencido") && " · Verificada todo dia às 7h pelo servidor."}
               {NO_RELOGIO.has(a.gatilho) && " · Verificada pelo servidor a cada 10 minutos (não precisa estar com o quadro aberto)."}
+              {a.gatilho === "manual" && " · Aparece no ⚡ da tarefa e das ações em massa (quando ativa)."}
             </p>
           </div>
         );})}
         {podeEditar && (
-          <button type="button" onClick={() => salvar.mutate({ id_quadro: idQuadro, nome: "Nova automação", gatilho: "status_muda", ordem: automacoes.length, ativo: false, acoes: [{ id: novoId() }] })} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-verde-primary ring-1 ring-dashed ring-verde-primary/40 hover:bg-verde-light/40">
-            <Plus className="size-4" /> Nova automação
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => salvar.mutate({ id_quadro: idQuadro, nome: "Nova automação", gatilho: "status_muda", ordem: automacoes.length, ativo: false, acoes: [{ id: novoId() }] })} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-verde-primary ring-1 ring-dashed ring-verde-primary/40 hover:bg-verde-light/40">
+              <Plus className="size-4" /> Nova automação
+            </button>
+            <button type="button" onClick={() => setReceitasAbertas((v) => !v)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50">
+              <BookOpen className="size-4" /> {receitasAbertas ? "Fechar receitas" : "Usar uma receita pronta"}
+            </button>
+          </div>
+        )}
+        {podeEditar && receitasAbertas && (
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {receitas.map((r) => (
+              <li key={r.id}>
+                <button type="button"
+                  onClick={() => {
+                    // nasce desligada: a pessoa revisa e liga (a que precisa de pessoas não liga sem elas)
+                    salvar.mutate({ id_quadro: idQuadro, nome: r.titulo, gatilho: r.gatilho, condicao: r.condicao, acoes: r.acoes, ordem: automacoes.length, ativo: false });
+                    setReceitasAbertas(false);
+                  }}
+                  className="h-full w-full rounded-lg border border-gray-200 bg-white p-2.5 text-left hover:border-verde-primary/50 hover:bg-verde-light/20">
+                  <p className="text-sm font-semibold text-gray-800">{r.titulo}</p>
+                  <p className="mt-0.5 text-xs text-gray-500">{r.descricao}</p>
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
         {automacoes.length === 0 && !podeEditar && <p className="text-sm text-gray-400">Nenhuma automação.</p>}
         <p className="pt-1 text-xs text-gray-400">As automações rodam no servidor: os gatilhos da tarefa disparam na hora; os de prazo, todo dia às 7h; agenda, tarefa parada e data de início, a cada 10 minutos. Veja o que rodou na aba Histórico.</p>

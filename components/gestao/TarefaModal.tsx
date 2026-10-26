@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import { Trash2, Loader2, Plus, Square, CheckSquare, X, ArrowRight, ChevronDown, ChevronUp, Sparkles, Maximize2, CornerDownRight } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import BotaoAutomacoes from "@/components/gestao/BotaoAutomacoes";
 import MultiChipInput from "@/components/ui/MultiChipInput";
 import { useUserStore } from "@/lib/store";
 import {
@@ -383,9 +384,12 @@ export default function TarefaModal({
         !ro ? (
           <div className="flex items-center justify-between">
             {tarefa ? (
-              <button type="button" onClick={handleExcluir} disabled={excluir.isPending} className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
-                <Trash2 className="size-4" /> Excluir
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={handleExcluir} disabled={excluir.isPending} className="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50">
+                  <Trash2 className="size-4" /> Excluir
+                </button>
+                {!ehSub && <BotaoAutomacoes idQuadro={tarefa.id_quadro} ids={[tarefa.id_tarefa]} />}
+              </div>
             ) : <span />}
             <button type="button" onClick={handleSalvar} disabled={salvar.isPending} className="inline-flex items-center gap-2 rounded-lg bg-verde-primary px-5 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50">
               {salvar.isPending && <Loader2 className="size-4 animate-spin" />}

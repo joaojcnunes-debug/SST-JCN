@@ -21,6 +21,7 @@ export const ACOES: { value: string; label: string; grupo: string }[] = [
   { value: "remover_etiqueta", label: "Remover etiqueta", grupo: "Tarefa" },
   { value: "criar_subtarefas_modelo", label: "Criar subtarefas a partir de modelo", grupo: "Tarefa" },
   { value: "adicionar_vinculados", label: "Adicionar vinculados (responsável/seguidor)", grupo: "Pessoas" },
+  { value: "atribuir_rodizio", label: "Atribuir em rodízio / menor carga", grupo: "Pessoas" },
   { value: "solicitar_aprovacao", label: "Solicitar aprovação", grupo: "Pessoas" },
   { value: "notificar", label: "Notificar todos os vinculados (sino)", grupo: "Comunicação" },
   { value: "enviar_email", label: "Enviar e-mail", grupo: "Comunicação" },
@@ -238,6 +239,23 @@ export default function AutomacaoAcaoEditor({
           <textarea defaultValue={acao.mensagem ?? ""} disabled={disabled} onBlur={(e) => onChange({ mensagem: e.target.value })} rows={3}
             placeholder="Mensagem (opcional) — o e-mail já leva a tarefa, o quadro, o prazo e o botão para abrir." className={`${sel} w-full`} />
           <p className="text-[11px] font-semibold uppercase text-gray-400">Também enviar para</p>
+          {chipsEmails}
+        </div>
+      )}
+
+      {acao.tipo === "atribuir_rodizio" && (
+        <div className="space-y-1.5 rounded-md border border-gray-100 bg-gray-50/60 p-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <select value={acao.modo ?? "rodizio"} disabled={disabled} onChange={(e) => onChange({ modo: e.target.value as "rodizio" | "menor_carga" })} className={sel}>
+              <option value="rodizio">rodízio (um de cada vez, na ordem)</option>
+              <option value="menor_carga">quem tem menos tarefas abertas</option>
+            </select>
+            <label className="inline-flex items-center gap-1 text-xs text-gray-500">
+              <input type="checkbox" disabled={disabled} checked={acao.substituir === "true"} onChange={(e) => onChange({ substituir: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-verde-primary" />
+              substituir os responsáveis atuais
+            </label>
+          </div>
+          <p className="text-[11px] font-semibold uppercase text-gray-400">Pessoas (na ordem do rodízio)</p>
           {chipsEmails}
         </div>
       )}

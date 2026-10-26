@@ -83,3 +83,16 @@ describe("v299 — tempo e cobrança", () => {
     assert.equal(regraCompleta("tarefa_parada", {}, [{ tipo: "notificar" }]), false);
   });
 });
+
+describe("v300 — rodízio e botão manual", () => {
+  test("rodízio precisa de pessoas e de um modo conhecido", () => {
+    assert.equal(acaoCompleta({ tipo: "atribuir_rodizio", emails: [] }), false);
+    assert.equal(acaoCompleta({ tipo: "atribuir_rodizio", emails: ["a@b.com"] }), true);
+    assert.equal(acaoCompleta({ tipo: "atribuir_rodizio", emails: ["a@b.com"], modo: "menor_carga" }), true);
+    assert.equal(acaoCompleta({ tipo: "atribuir_rodizio", emails: ["a@b.com"], modo: "sorteio" }), false);
+  });
+  test("botão manual só precisa das ações completas", () => {
+    assert.equal(regraCompleta("manual", {}, [{ tipo: "concluir" }]), true);
+    assert.equal(regraCompleta("manual", {}, []), false);
+  });
+});

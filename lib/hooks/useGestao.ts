@@ -1095,7 +1095,9 @@ export type GatilhoAutomacao =
   // v298 (Pacote A, levantamento Jira/Trello/ClickUp/Notion)
   | "responsavel_adicionado" | "prioridade_muda" | "campo_muda" | "etiqueta_adicionada" | "comentario_adicionado"
   // v299 (Pacote B — tempo e cobrança; rodam no relógio, a cada 10 min)
-  | "agendado" | "tarefa_parada" | "data_inicio_chega" | "dependencia_liberada";
+  | "agendado" | "tarefa_parada" | "data_inicio_chega" | "dependencia_liberada"
+  // v300 (Pacote C): só quando alguém clica no ⚡ (tarefa ou ações em massa)
+  | "manual";
 
 /** Uma cláusula do construtor E/OU. Campos aceitos pelo motor (gestao_automacao_cond_teste):
  *  status, status_de, status_para, prioridade, quadro, etiqueta, campo:<id>. Ops: '=' '!=' 'in' 'contains'. */
@@ -1158,6 +1160,8 @@ export interface AcaoAutomacao {
   uteis?: string;                             // definir_prazo: 'true' = dias úteis
   quantidade?: string;                        // aguardar (v299)
   unidade?: "horas" | "dias";                 // aguardar (v299)
+  modo?: "rodizio" | "menor_carga";           // atribuir_rodizio (v300); emails = a lista de pessoas
+  substituir?: string;                        // atribuir_rodizio: 'true' = tira os outros responsáveis
   /** Só executa esta ação se a condição casar (E/OU) — o "se/senão" da regra. */
   condicao?: CondicaoAutomacao;
 }
@@ -1242,6 +1246,26 @@ export function useHistoricoAutomacoes(idQuadro: string | null | undefined, ativ
       if (error) throw error;
       return (data ?? []) as ExecucaoAutomacao[];
     },
+  });
+}
+
+/** v300: roda uma automação "manual" nas tarefas escolhidas (o banco confere a permissão de cada uma). */
+export function useExecutarAutomacaoManual() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ids }: { id: string; ids: string[] }) => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.rpc("gestao_automacao_executar_manual" as never, { p_id_automacao: id, p_ids: ids } as never);
+      if (error) throw error;
+      return (data ?? { executadas: 0, ignoradas: 0 }) as { executadas: number; ignoradas: number };
+    },
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+      qc.invalidateQueries({ queryKey: ["gestao-automacoes-historico"] });
+      toast.success(`Automação rodou em ${r.executadas} tarefa${r.executadas !== 1 ? "s" : ""}` +
+        (r.ignoradas ? ` (${r.ignoradas} sem permissão ou de outro quadro)` : "."));
+    },
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível rodar a automação.")),
   });
 }
 

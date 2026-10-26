@@ -15,6 +15,7 @@ export interface AcaoMin {
   dias?: string;
   quantidade?: string;
   unidade?: string;
+  modo?: string;
 }
 
 const tem = (v: unknown) => typeof v === "string" && v.trim() !== "";
@@ -34,6 +35,8 @@ export function acaoCompleta(acao: AcaoMin | null | undefined): boolean {
       return tem(acao.campo_id);
     case "adicionar_vinculados":
       return temLista(acao.emails);
+    case "atribuir_rodizio":
+      return temLista(acao.emails) && ["rodizio", "menor_carga"].includes(acao.modo ?? "rodizio");
     case "mover_tarefa_quadro":
     case "criar_tarefa_quadro":
       return tem(acao.id_quadro_destino);

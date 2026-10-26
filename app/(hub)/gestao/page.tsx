@@ -995,6 +995,8 @@ export default function GestaoChabraPage() {
       {selecaoModo && selecionados.size > 0 && (
         <BarraAcoesMassa
           count={selecionados.size}
+          idQuadro={quadro?.id_quadro}
+          ids={[...selecionados]}
           statuses={statuses}
           usuarios={usuarios}
           etiquetas={etiquetasCat}
