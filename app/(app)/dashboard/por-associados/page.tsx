@@ -18,6 +18,8 @@ import { corAvatar } from "@/lib/hooks/useGestao";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { BalaoUmValor } from "@/components/ui/BalaoGrafico";
 import TickPessoa from "@/components/dashboard/TickPessoa";
+import FiltroUnidade from "@/components/dashboard/FiltroUnidade";
+import { useFiltroUnidadeDashboard } from "@/lib/hooks/useFiltroUnidadeDashboard";
 
 /**
  * Documentos associados — em EMPRESAS por pessoa, mês a mês (pedido de 26/10/2026).
@@ -34,8 +36,12 @@ import TickPessoa from "@/components/dashboard/TickPessoa";
  * A conta mora em lib/dashboard/associacoes-empresas (testada).
  */
 export default function PorAssociadosDashboard() {
-  const { data, isLoading } = useAssociacoesEmpresas();
-  const eventos = data ? eventosDeAssociacao(data.assoc, data.assuncoes, data.docs, mesAbsSP) : [];
+  const { data, isLoading: carregandoAssoc } = useAssociacoesEmpresas();
+  // Filtro por unidade (26/10): recorta pela empresa do documento; a régua não muda.
+  const unidade = useFiltroUnidadeDashboard();
+  const isLoading = carregandoAssoc || unidade.carregando;
+  const docsUnidade = data ? data.docs.filter((d) => unidade.naUnidade(d.id_empresa)) : [];
+  const eventos = data ? eventosDeAssociacao(data.assoc, data.assuncoes, docsUnidade, mesAbsSP) : [];
 
   const [mesSel, setMesSel] = useState<number | null>(mesAbsAgoraSP());
   const mesAtual = mesAbsAgoraSP();
@@ -44,7 +50,7 @@ export default function PorAssociadosDashboard() {
   const mesSelLabel = mesSel != null ? porMes.find((m) => m.chave === mesSel)?.mes ?? null : null;
   const porPessoa = empresasPorPessoa(eventos, mesSel);
   const acumulado = acumuladoPorPessoa(eventos, mesSel ?? mesAtual);
-  const semData = data ? semDataDeAssociacao(data.docs, eventos) : 0;
+  const semData = data ? semDataDeAssociacao(docsUnidade, eventos) : 0;
   const empresasTotal = new Set(eventos.map((e) => e.id_empresa)).size;
 
   const grafico = (dados: PessoaEmpresas[], rotulo: string) => (
@@ -72,25 +78,29 @@ export default function PorAssociadosDashboard() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
-          <ArrowLeft className="size-4" /> Voltar ao dashboard
-        </Link>
-        <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-          <FileSignature className="size-5 text-verde-primary" />
-          Documentos Associados (empresas por pessoa)
-        </h1>
-        <p className="text-sm text-gray-500">
-          {isLoading ? "Carregando…" : `${empresasTotal} empresa${empresasTotal !== 1 ? "s" : ""} com documento associado, no total`}
-        </p>
-        <p className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
-          Isto é <strong>trabalho de escritório</strong>: quem montou o documento depois da visita. Não é inspeção de campo — para
-          saber quem foi à visita, veja{" "}
-          <Link href="/dashboard/inspecoes-concluidas" className="font-semibold underline">
-            Inspeções realizadas por TST
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
+            <ArrowLeft className="size-4" /> Voltar ao dashboard
           </Link>
-          .
-        </p>
+          <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
+            <FileSignature className="size-5 text-verde-primary" />
+            Documentos Associados (empresas por pessoa)
+          </h1>
+          <p className="text-sm text-gray-500">
+            {isLoading ? "Carregando…" : `${empresasTotal} empresa${empresasTotal !== 1 ? "s" : ""} com documento associado, no total`}
+            {unidade.nomeUnidade ? ` · unidade ${unidade.nomeUnidade}` : ""}
+          </p>
+          <p className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+            Isto é <strong>trabalho de escritório</strong>: quem montou o documento depois da visita. Não é inspeção de campo — para
+            saber quem foi à visita, veja{" "}
+            <Link href="/dashboard/inspecoes-concluidas" className="font-semibold underline">
+              Inspeções realizadas por TST
+            </Link>
+            .
+          </p>
+        </div>
+        <FiltroUnidade idUnidade={unidade.idUnidade} unidades={unidade.unidades} onChange={unidade.setIdUnidade} />
       </div>
 
       {/* Por mês */}

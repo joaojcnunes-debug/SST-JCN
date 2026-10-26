@@ -38,6 +38,8 @@ import { BalaoGrafico, BalaoUmValor, LinhaBalao } from "@/components/ui/BalaoGra
 import ReaberturasAviso from "@/components/dashboard/ReaberturasAviso";
 import NotaSemTecnico from "@/components/dashboard/NotaSemTecnico";
 import TickPessoa from "@/components/dashboard/TickPessoa";
+import FiltroUnidade from "@/components/dashboard/FiltroUnidade";
+import { useFiltroUnidadeDashboard } from "@/lib/hooks/useFiltroUnidadeDashboard";
 
 /**
  * Inspeções realizadas por TST (pedido de 26/10/2026).
@@ -67,7 +69,11 @@ function BlocoPessoa({ active, payload, label }: { active?: boolean; payload?: {
 const ROTULO_TOTAL = { fontSize: 12, fontWeight: 700, fill: "var(--text-strong)" } as const;
 
 export default function InspecoesConcluidasDashboard() {
-  const { data: rows = [], isLoading } = useInspecoesConcluidas();
+  const { data: todas = [], isLoading: carregandoInsp } = useInspecoesConcluidas();
+  // Filtro por unidade (26/10): recorta pela empresa da inspeção; a régua não muda.
+  const unidade = useFiltroUnidadeDashboard();
+  const rows = todas.filter((r) => unidade.naUnidade(r.id_empresa));
+  const isLoading = carregandoInsp || unidade.carregando;
   const { data: tecnicosDeCampo = new Map(), isLoading: loadingTec } = useTecnicosDeCampo();
   const { data: contas = [] } = useContasDoPainel();
   const { data: reaberturas = [] } = useReaberturas("inspecao");
@@ -125,19 +131,23 @@ export default function InspecoesConcluidasDashboard() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
-          <ArrowLeft className="size-4" /> Voltar ao dashboard
-        </Link>
-        <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-          <CheckCircle2 className="size-5 text-verde-primary" />
-          Inspeções realizadas por TST
-        </h1>
-        <p className="text-sm text-gray-500">
-          {carregando
-            ? "Carregando…"
-            : `${total} inspeç${total !== 1 ? "ões" : "ão"} concluída${total !== 1 ? "s" : ""} no total · cada uma conta para o técnico que foi a campo, no mês da 1ª conclusão`}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
+            <ArrowLeft className="size-4" /> Voltar ao dashboard
+          </Link>
+          <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
+            <CheckCircle2 className="size-5 text-verde-primary" />
+            Inspeções realizadas por TST
+          </h1>
+          <p className="text-sm text-gray-500">
+            {carregando
+              ? "Carregando…"
+              : `${total} inspeç${total !== 1 ? "ões" : "ão"} concluída${total !== 1 ? "s" : ""} no total · cada uma conta para o técnico que foi a campo, no mês da 1ª conclusão`}
+            {unidade.nomeUnidade ? ` · unidade ${unidade.nomeUnidade}` : ""}
+          </p>
+        </div>
+        <FiltroUnidade idUnidade={unidade.idUnidade} unidades={unidade.unidades} onChange={unidade.setIdUnidade} />
       </div>
 
       {/* Por mês */}

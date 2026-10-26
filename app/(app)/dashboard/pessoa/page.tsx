@@ -19,6 +19,8 @@ import {
 import { useDocumentosConcluidos } from "@/lib/hooks/useDocumentosConcluidos";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import type { FontePessoa } from "@/components/dashboard/TickPessoa";
+import FiltroUnidade from "@/components/dashboard/FiltroUnidade";
+import { useFiltroUnidadeDashboard } from "@/lib/hooks/useFiltroUnidadeDashboard";
 
 /**
  * Página da pessoa (pedido de 26/10/2026): ao clicar no nome num gráfico "por pessoa" do Dashboard,
@@ -121,7 +123,11 @@ function Conteudo() {
   const fonteBruta = params.get("fonte");
   const fonte: FontePessoa = fonteBruta === "documentos" || fonteBruta === "associados" ? fonteBruta : "inspecoes";
   const nome = params.get("nome") ?? "";
-  const { registros, carregando } = useRegistros(fonte, nome);
+  const { registros: todos, carregando: carregandoRegs } = useRegistros(fonte, nome);
+  // Mesma unidade do gráfico de onde veio (o filtro é compartilhado entre as telas do dashboard).
+  const filtroUnidade = useFiltroUnidadeDashboard();
+  const registros = todos.filter((r) => filtroUnidade.naUnidade(r.id_empresa));
+  const carregando = carregandoRegs || filtroUnidade.carregando;
   const [mes, setMes] = useState<number | null>(null);
   const [aberta, setAberta] = useState<string | null>(null);
 
@@ -147,15 +153,21 @@ function Conteudo() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <Link href={VOLTAR[fonte]} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
-          <ArrowLeft className="size-4" /> Voltar ao gráfico
-        </Link>
-        <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-          <UserRound className="size-5 text-verde-primary" />
-          {nome || "Pessoa"}
-        </h1>
-        <p className="text-sm text-gray-500">{TITULO[fonte]} — empresas em que atuou</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href={VOLTAR[fonte]} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
+            <ArrowLeft className="size-4" /> Voltar ao gráfico
+          </Link>
+          <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
+            <UserRound className="size-5 text-verde-primary" />
+            {nome || "Pessoa"}
+          </h1>
+          <p className="text-sm text-gray-500">
+            {TITULO[fonte]} — empresas em que atuou
+            {filtroUnidade.nomeUnidade ? ` · unidade ${filtroUnidade.nomeUnidade}` : ""}
+          </p>
+        </div>
+        <FiltroUnidade idUnidade={filtroUnidade.idUnidade} unidades={filtroUnidade.unidades} onChange={filtroUnidade.setIdUnidade} />
       </div>
 
       <div className="reveal-up rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
