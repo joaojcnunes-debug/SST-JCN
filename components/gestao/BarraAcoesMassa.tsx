@@ -1,12 +1,15 @@
 "use client";
 
 import { X, Trash2 } from "lucide-react";
+import BotaoAutomacoes from "@/components/gestao/BotaoAutomacoes";
 import { PRIORIDADES, type GestaoStatus, type GestaoEtiqueta } from "@/lib/hooks/useGestao";
 
 const sel = "rounded-md border border-white/20 bg-white/10 px-2 py-1 text-sm text-white focus:outline-none [&>option]:text-gray-800";
 
 export default function BarraAcoesMassa({
   count,
+  idQuadro,
+  ids = [],
   statuses,
   usuarios,
   etiquetas,
@@ -18,6 +21,9 @@ export default function BarraAcoesMassa({
   onCancelar,
 }: {
   count: number;
+  /** v300: para o menu ⚡ das automações manuais do quadro. */
+  idQuadro?: string;
+  ids?: string[];
   statuses: GestaoStatus[];
   usuarios: string[];
   etiquetas: GestaoEtiqueta[];
@@ -55,6 +61,8 @@ export default function BarraAcoesMassa({
             {etiquetas.map((et) => <option key={et.id} value={et.nome}>{et.nome}</option>)}
           </select>
         )}
+
+        {idQuadro && <BotaoAutomacoes idQuadro={idQuadro} ids={ids} escuro />}
 
         <button type="button" onClick={onExcluir} className="inline-flex items-center gap-1 rounded-md bg-red-500/90 px-2.5 py-1 text-sm font-medium hover:bg-red-500">
           <Trash2 className="size-3.5" /> Excluir

@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-automacoes-pacote-c",
+    data: "2026-10-26",
+    tipo: "novidade",
+    titulo: "Gestão: receitas prontas, botão ⚡ e distribuição em rodízio",
+    texto:
+      "No modal de automações há receitas prontas para começar em um clique (aviso ao concluir, cobrança de tarefa " +
+      "parada, e-mail na véspera do prazo, pauta semanal e outras). A nova ação distribui tarefas em rodízio ou para quem " +
+      "tem menos tarefas abertas. Automações do tipo manual aparecem no botão ⚡ da tarefa e das ações em massa.",
+    onde: "Gestão › quadro › Automações; tarefa › ⚡",
+    versoes: ["0.3.155"],
+  },
+  {
     id: "gestao-automacoes-pacote-b",
     data: "2026-10-26",
     tipo: "novidade",
