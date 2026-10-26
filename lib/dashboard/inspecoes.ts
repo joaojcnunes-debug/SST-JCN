@@ -42,6 +42,12 @@ export interface InspecaoContavel {
    * a CONCLUIDA.
    */
   primeira_conclusao_em?: string | null;
+  /**
+   * v297: os técnicos da aba Responsáveis NO MOMENTO da 1ª conclusão, travados no banco. Quem reabre
+   * e se inclui na aba não leva o crédito. Vazio = não havia ninguém (sem registro): aí vale a aba
+   * atual, que é onde a nota do supervisor grava o técnico.
+   */
+  primeira_conclusao_tecnicos?: readonly TecnicoDeCampo[] | null;
   created_at: string;
   /** "BRANCO" (visita nova) | "COPIA_EMPRESA" | "REVISAO" | "RENOVACAO" */
   tipo_criacao: string | null;
@@ -372,9 +378,13 @@ export function tecnicosCreditados(
   opcoes: OpcoesPorTecnico = {},
 ): CreditoDaInspecao {
   const { tecnicosDeCampo, cadastro = [], contas = [] } = opcoes;
-  const digitados = i.id_inspecao
-    ? tecnicosDeCampo?.get(i.id_inspecao) ?? []
-    : [];
+  const travados = i.primeira_conclusao_tecnicos ?? [];
+  const digitados =
+    travados.length > 0
+      ? travados
+      : i.id_inspecao
+        ? tecnicosDeCampo?.get(i.id_inspecao) ?? []
+        : [];
 
   const deCampo = [
     ...new Set(

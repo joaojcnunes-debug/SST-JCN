@@ -54,8 +54,9 @@ export const CATALOGO: Novidade[] = [
     onde: "Painel SST › Dashboard",
     impacto:
       "Inspeção sem técnico na aba Responsáveis conta para quem abriu; um supervisor (Admin ou nível Aprovação) escolhe o " +
-      "técnico na nota que aparece na tela de inspeções.",
-    versoes: ["0.3.149", "0.3.150"],
+      "técnico na nota que aparece na tela de inspeções. Quem reabre e se inclui na aba Responsáveis não leva o crédito: " +
+      "vale quem estava lá na primeira conclusão.",
+    versoes: ["0.3.149", "0.3.150", "0.3.151"],
   },
   {
     id: "usuarios-modulos-por-categoria",

@@ -76,3 +76,29 @@ describe("associações por empresa", () => {
     assert.equal(n, 1);
   });
 });
+
+describe("v297 — associação excluída depois", () => {
+  test("conta no mês em que aconteceu (vem da auditoria como associacao_removida)", () => {
+    const ev = eventosDeAssociacao(
+      [],
+      [{ id_inspecao: "I3", responsavel: "Ana Souza", assumido_em: "2026-09-05T10:00:00Z", origem: "associacao_removida" }],
+      docs,
+      mesDe,
+    );
+    assert.equal(ev.length, 1);
+    assert.equal(ev[0].origem, "associacao");
+    assert.equal(ev[0].mes, SET);
+    assert.deepEqual(empresasPorPessoa(ev, SET), [{ pessoa: "Ana Souza", total: 1 }]);
+  });
+  test("removida e associada de novo: vale a 1ª data, a empresa conta uma vez", () => {
+    const ev = eventosDeAssociacao(
+      [{ id_inspecao: "I3", nome: "Ana Souza", created_at: "2026-10-02T10:00:00Z" }],
+      [{ id_inspecao: "I3", responsavel: "Ana Souza", assumido_em: "2026-09-05T10:00:00Z", origem: "associacao_removida" }],
+      docs,
+      mesDe,
+    );
+    assert.equal(ev.length, 1);
+    assert.equal(ev[0].mes, SET);
+    assert.deepEqual(acumuladoPorPessoa(ev, OUT), [{ pessoa: "Ana Souza", total: 1 }]);
+  });
+});

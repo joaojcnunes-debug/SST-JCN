@@ -28,7 +28,7 @@ import TickPessoa from "@/components/dashboard/TickPessoa";
  *    associou ou se outra pessoa a associou. Duas empresas iguais no mês contam 1. Sem acumular.
  *  - "Por pessoa — acumulado": a soma dos meses até o mês escolhido.
  *  - Documento assumido pelo botão "Assumir elaboração" (sem linha de associação) entra no mês em que
- *    foi assumido — data da auditoria (v295, existe desde 24/09/2026).
+ *    foi assumido — data da auditoria (v295; só existe a partir de quando a auditoria foi ligada).
  *  - Até 25/10 contava DOCUMENTOS, creditados a quem estava com o documento agora.
  *
  * A conta mora em lib/dashboard/associacoes-empresas (testada).
@@ -133,7 +133,7 @@ export default function PorAssociadosDashboard() {
         {!isLoading && semData > 0 && (
           <p className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
             <strong>{semData}</strong> documento{semData !== 1 ? "s têm" : " tem"} responsável de elaboração sem data de entrada (assumido
-            antes de 24/09/2026, quando a auditoria começou, e sem registro de associação) — {semData !== 1 ? "não entram" : "não entra"} em
+            antes de a auditoria começar, e sem registro de associação) — {semData !== 1 ? "não entram" : "não entra"} em
             mês nenhum.
           </p>
         )}

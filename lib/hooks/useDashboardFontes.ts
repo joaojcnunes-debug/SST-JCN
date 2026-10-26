@@ -43,7 +43,7 @@ export function useInspecoesConcluidas() {
         sb
           .from("inspecoes")
           .select(
-            "id_inspecao, status, data_inspecao, concluida_em, primeira_conclusao_em, primeira_conclusao_por, concluida_por_email, usuario, created_at, tipo_criacao, responsavel, id_empresa, empresas(nome_empresa)",
+            "id_inspecao, status, data_inspecao, concluida_em, primeira_conclusao_em, primeira_conclusao_por, primeira_conclusao_tecnicos, concluida_por_email, usuario, created_at, tipo_criacao, responsavel, id_empresa, empresas(nome_empresa)",
           )
           .neq("status", "DELETADA")
           .or("status.eq.CONCLUIDA,primeira_conclusao_em.not.is.null")
@@ -81,6 +81,8 @@ export interface ContaDoPainel {
   email: string;
   nome: string;
   perfil: string;
+  /** false = conta desativada — fica para traduzir nomes antigos, mas não é oferecida na nota. */
+  ativo: boolean;
 }
 
 /** Contas do painel — traduzem e-mail/id em nome e listam os técnicos para a "nota do supervisor". */
@@ -94,7 +96,13 @@ export function useContasDoPainel() {
       if (error) throw error;
       return ((data ?? []) as { id_usuario: string; email: string | null; nome: string | null; perfil: string; ativo_sistema: boolean | null }[])
         .filter((u) => (u.nome ?? "").trim() !== "")
-        .map((u) => ({ id_usuario: u.id_usuario, email: (u.email ?? "").trim(), nome: (u.nome ?? "").trim(), perfil: u.perfil }));
+        .map((u) => ({
+          id_usuario: u.id_usuario,
+          email: (u.email ?? "").trim(),
+          nome: (u.nome ?? "").trim(),
+          perfil: u.perfil,
+          ativo: u.ativo_sistema !== false,
+        }));
     },
   });
 }
@@ -107,6 +115,10 @@ export interface AlteracaoAuditada {
   depois: unknown;
   por: string | null;
   em: string;
+  /** Título do item na auditoria (ex.: nome do setor) — identifica o que foi criado/excluído (v296). */
+  titulo?: string | null;
+  /** v297: o registro inteiro, só em inclusão/exclusão de item ("(registro)") — dá nome ao item sem título. */
+  registro?: Record<string, unknown> | null;
 }
 
 export interface Reabertura {
