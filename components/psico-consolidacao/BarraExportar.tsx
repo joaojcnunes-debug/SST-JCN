@@ -25,8 +25,11 @@ export default function BarraExportar({
   documentosEscolhidos,
   incluirTrivial,
   nomeCurto,
+  rotulo = "Exportar o grupo inteiro:",
 }: {
-  idGrupo: string;
+  /** Sem grupo (consolidação por empresa): o relatório ao cliente em PDF, que é do grupo, não aparece. */
+  idGrupo?: string;
+  rotulo?: string;
   dados: DadosPlanilha;
   /** Nome curto de cada fator (cabeçalho das tabelas da apresentação). */
   nomeCurto: (id: string) => string;
@@ -61,6 +64,7 @@ export default function BarraExportar({
   };
 
   const pdf = () => {
+    if (!idGrupo) return;
     const q = new URLSearchParams();
     if (documentosEscolhidos) q.set("docs", documentosEscolhidos.join(","));
     if (!incluirTrivial) q.set("trivial", "0");
@@ -71,7 +75,7 @@ export default function BarraExportar({
     "inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50";
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-1 text-xs text-gray-500">Exportar o grupo inteiro:</span>
+      <span className="mr-1 text-xs text-gray-500">{rotulo}</span>
       {(Object.keys(NOMES) as Qual[]).map((q) => (
         <button key={q} type="button" disabled={!!gerando} onClick={() => excel(q)} className={botao}>
           {gerando === q ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-3.5 text-green-700" />}
@@ -82,9 +86,11 @@ export default function BarraExportar({
         {gerando === "pptx" ? <Loader2 className="size-3.5 animate-spin" /> : <Presentation className="size-3.5 text-orange-600" />}
         Apresentação (PowerPoint)
       </button>
-      <button type="button" onClick={pdf} className={`${botao} border-verde-primary text-verde-primary`}>
-        <FileDown className="size-3.5" /> Relatório ao cliente (PDF)
-      </button>
+      {idGrupo && (
+        <button type="button" onClick={pdf} className={`${botao} border-verde-primary text-verde-primary`}>
+          <FileDown className="size-3.5" /> Relatório ao cliente (PDF)
+        </button>
+      )}
     </div>
   );
 }

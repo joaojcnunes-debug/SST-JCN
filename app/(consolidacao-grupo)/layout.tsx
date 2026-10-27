@@ -10,7 +10,7 @@
  */
 
 import type { ReactNode } from "react";
-import { Network } from "lucide-react";
+import { Building2, Network } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -19,7 +19,10 @@ import { useRequireModule } from "@/lib/hooks/useRequireModule";
 const SECTIONS: NavSection[] = [
   {
     label: "Consolidação",
-    items: [{ href: "/consolidacao-grupo", label: "Grupos de empresas", icon: Network }],
+    items: [
+      { href: "/consolidacao-grupo", label: "Grupos de empresas", icon: Network },
+      { href: "/consolidacao-grupo/empresas", label: "Consolidação por empresa", icon: Building2 },
+    ],
   },
 ];
 
