@@ -21,7 +21,7 @@ const SECTIONS: NavSection[] = [
     label: "Consolidação",
     items: [
       { href: "/consolidacao-grupo", label: "Grupos de empresas", icon: Network },
-      { href: "/consolidacao-grupo/empresas", label: "Consolidação por empresa", icon: Building2 },
+      { href: "/consolidacao-grupo/por-empresa", label: "Por empresa", icon: Building2 },
     ],
   },
 ];

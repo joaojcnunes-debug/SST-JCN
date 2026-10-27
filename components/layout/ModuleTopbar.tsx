@@ -42,6 +42,7 @@ const ROUTE_LABELS: Record<string, string> = {
   calendario:            "Calendário",
   comercial:             "Oportunidades",
   gestao:                "Gestão JCN Consultoria",
+  "por-empresa":         "Consolidação por empresa",
 };
 
 function buildCrumbs(pathname: string): { label: string; href: string }[] {
