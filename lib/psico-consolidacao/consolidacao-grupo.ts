@@ -50,6 +50,19 @@ const erro = (r: { error: { message?: string } | null }) => {
 };
 
 /**
+ * Empresas do conjunto: num grupo, as que têm `empresas.id_grupo` nele; numa consolidação
+ * por empresa (v303), as da lista gravada na própria linha.
+ */
+async function membrosDe(sb: Sb, grupo: EmpresaGrupo, todos: MembroGrupo[] | null): Promise<MembroGrupo[]> {
+  if (grupo.tipo === "CONSOLIDACAO") {
+    const r = await sb.rpc("psico_consolidacao_membros", { p_id_grupo: grupo.id_grupo });
+    erro(r);
+    return (r.data ?? []) as MembroGrupo[];
+  }
+  return (todos ?? []).filter((x) => x.id_grupo === grupo.id_grupo);
+}
+
+/**
  * @param documentos ids dos documentos escolhidos na tela; vazio/ausente = os padrão
  *   (o mais recente de cada empresa em cada origem).
  */
@@ -70,7 +83,7 @@ export async function carregarConsolidacao(
   for (const r of [g, m, cat, dep, can, sdp, glo]) erro(r);
   if (!g.data) return null;
 
-  const membros = ((m.data ?? []) as MembroGrupo[]).filter((x) => x.id_grupo === idGrupo);
+  const membros = await membrosDe(sb, g.data as EmpresaGrupo, m.data as MembroGrupo[] | null);
   const ids = membros.filter((x) => x.visivel).map((x) => x.id_empresa);
   const [fontes, pap] = await Promise.all([
     carregarFontesDoGrupo(sb, ids),
@@ -147,7 +160,7 @@ export async function carregarRegistro(sb: Sb, idGrupo: string, idExecucao: stri
   ]);
   for (const r of [g, m, cat, glo, ex]) erro(r);
   if (!g.data || !ex.data) return null;
-  const membros = ((m.data ?? []) as MembroGrupo[]).filter((x) => x.id_grupo === idGrupo);
+  const membros = await membrosDe(sb, g.data as EmpresaGrupo, m.data as MembroGrupo[] | null);
   const curto = new Map(((cat.data ?? []) as PsicoFator[]).map((f) => [f.id_fator, f.nome_curto || f.nome]));
   return {
     grupo: g.data as EmpresaGrupo,

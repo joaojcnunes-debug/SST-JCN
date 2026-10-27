@@ -612,6 +612,13 @@ export interface EmpresaGrupo {
   updated_at: string;
   /** v287 (JCN; painel v295): fatores psicossociais fora da consolidação deste grupo. */
   psico_fatores_ignorados?: string[];
+  /**
+   * v303: GRUPO = grupo de verdade (empresas pelo `empresas.id_grupo`); CONSOLIDACAO =
+   * consolidação por empresa salva, com as empresas em `empresas_consolidacao` e fora das
+   * listas de grupos.
+   */
+  tipo?: "GRUPO" | "CONSOLIDACAO";
+  empresas_consolidacao?: string[];
 }
 
 /** v287 (JCN; painel v295): papel da empresa no grupo econômico (independe de matriz/filial). */

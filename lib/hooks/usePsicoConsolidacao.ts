@@ -10,7 +10,7 @@ import { gerarId } from "@/lib/utils";
 import { carregarFontesDoGrupo } from "@/lib/psico-consolidacao/carregar-grupo";
 import { chaveSetor } from "@/lib/psico-consolidacao/setores";
 import type { OrigemFonte, PsicoFator, PsicoFatorDepara } from "@/lib/psico-consolidacao/fatores";
-import type { PapelEconomico, PsicoSetorCanonico, PsicoSetorDepara } from "@/lib/supabase/types";
+import type { EmpresaGrupo, MembroGrupo, PapelEconomico, PsicoSetorCanonico, PsicoSetorDepara } from "@/lib/supabase/types";
 import { CHAVE_GRUPOS } from "@/lib/hooks/useGruposEmpresas";
 import type { Decisao, ExecucaoLinha, ValidacaoLinha, montarRegistro } from "@/lib/psico-consolidacao/registro";
 
@@ -307,5 +307,93 @@ export function useRegistrarValidacao(idGrupo: string | null) {
       toast.success("Validação registrada.");
     },
     onError: (e: Error) => toast.error(mensagemErro(e)),
+  });
+}
+
+// ── Consolidação por empresa (v303): uma linha de empresa_grupos do tipo CONSOLIDACAO ──
+// Fica sob CHAVE_GRUPOS para que tudo o que invalida os grupos (fatores ignorados,
+// exclusão) também recarregue as consolidações.
+
+const CHAVE_CONSOLIDACOES = [...CHAVE_GRUPOS, "consolidacoes"] as const;
+
+export function useConsolidacoesPorEmpresa() {
+  return useQuery({
+    queryKey: CHAVE_CONSOLIDACOES,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await sb()
+        .from("empresa_grupos" as never)
+        .select("*")
+        .eq("tipo", "CONSOLIDACAO")
+        .order("nome");
+      if (error) throw error;
+      return (data ?? []) as unknown as EmpresaGrupo[];
+    },
+  });
+}
+
+/** Empresas da consolidação no formato dos membros de grupo (`visivel` pela unidade de quem pede). */
+export function useMembrosDaConsolidacao(idGrupo: string | null, empresas: string[] | undefined) {
+  return useQuery({
+    queryKey: [...CHAVE_CONSOLIDACOES, "membros", idGrupo, (empresas ?? []).join(",")],
+    enabled: !!idGrupo,
+    queryFn: async () => {
+      const { data, error } = await sb().rpc("psico_consolidacao_membros" as never, { p_id_grupo: idGrupo } as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as MembroGrupo[];
+    },
+  });
+}
+
+function mensagemErroConsolidacao(e: { message?: string; code?: string }): string {
+  const msg = e.message ?? "";
+  if (msg.includes("ux_empresa_grupos_nome")) return "Já existe uma consolidação com esse nome.";
+  if (msg.includes("psico_consolidacao_execucoes")) return "Esta consolidação tem registro gravado e não pode ser excluída.";
+  return mensagemErro(e);
+}
+
+export function useSalvarConsolidacaoPorEmpresa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (p: { id_grupo?: string | null; nome: string; empresas: string[] }) => {
+      const nome = p.nome.trim();
+      if (!nome) throw new Error("Dê um nome à consolidação.");
+      if (p.empresas.length === 0) throw new Error("Escolha ao menos uma empresa.");
+      if (p.id_grupo) {
+        const { error } = await sb()
+          .from("empresa_grupos" as never)
+          .update({ nome, empresas_consolidacao: p.empresas, updated_at: new Date().toISOString() } as never)
+          .eq("id_grupo", p.id_grupo)
+          .eq("tipo", "CONSOLIDACAO");
+        if (error) throw error;
+        return p.id_grupo;
+      }
+      const id = gerarId("PCE");
+      const { error } = await sb()
+        .from("empresa_grupos" as never)
+        .insert({ id_grupo: id, nome, tipo: "CONSOLIDACAO", empresas_consolidacao: p.empresas } as never);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CHAVE_CONSOLIDACOES });
+      toast.success("Consolidação salva.");
+    },
+    onError: (e: Error) => toast.error(mensagemErroConsolidacao(e)),
+  });
+}
+
+export function useExcluirConsolidacaoPorEmpresa() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id_grupo: string) => {
+      const { error } = await sb().rpc("empresa_grupo_excluir" as never, { p_id_grupo: id_grupo } as never);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: CHAVE_CONSOLIDACOES });
+      toast.success("Consolidação excluída.");
+    },
+    onError: (e: Error) => toast.error(mensagemErroConsolidacao(e)),
   });
 }
