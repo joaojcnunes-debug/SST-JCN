@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dimensionamento-desligados-quadro",
+    data: "2026-10-27",
+    tipo: "correcao",
+    titulo: "Dimensionamento: quem saiu da empresa não conta mais no quadro necessário",
+    texto:
+      "No Headcount, quem tem desligamento no mês escolhido continua na produção desse mês, mas o déficit para " +
+      "eliminar o vencido agora desconta só a equipe que continua. A equipe mostra \"saiu em dd/mm\" e a tabela do " +
+      "quadro necessário ganhou a coluna \"Equipe que continua\".",
+    onde: "Dimensionamento › Headcount",
+    versoes: ["0.3.158"],
+  },
+  {
     id: "gestao-criar-tarefa-etapa",
     data: "2026-10-26",
     tipo: "melhoria",

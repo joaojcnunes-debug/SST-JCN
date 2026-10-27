@@ -14,6 +14,10 @@ export interface PessoaDaEquipe {
   alocacao: number;
   /** Fração do mês em que esteve na casa (admissão/desligamento). */
   presenca: number;
+  /** Desligado dentro do mês: produz nele, mas não entra no quadro necessário dos meses seguintes. */
+  saiNoMes: boolean;
+  /** 'AAAA-MM-DD' ou "" */
+  dataDesligamento: string;
   ritmo: string;
   /** Quanto equivale de uma pessoa integral no mês. */
   equivalente: number;

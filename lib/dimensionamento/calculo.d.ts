@@ -117,6 +117,8 @@ export interface ResumoArea {
   pessoas: number;
   deficit: number;
   quadro: number;
+  /** Parte do quadro que continua depois do mês (desligados no mês ficam de fora). É o que o déficit desconta. */
+  quadroFica: number;
   cabecas: number;
   custoDeficit: number;
   custoTotal: number;
@@ -148,6 +150,8 @@ export interface ResultadoHeadcount {
   demandaDoMes: number;
   clientesDoMes: number;
   quadroAtual: number;
+  /** Equipe que continua depois do mês, em tempo integral. */
+  quadroFica: number;
   cabecasAtual: number;
   cenarios: PrazoDoHeadcount[];
   [campo: string]: any;
@@ -204,6 +208,8 @@ export interface Motor {
   pesoPorte(p: Parametros, porte: CodigoPorte): number;
   /** Fração do mês em que a pessoa esteve na casa (admissão/desligamento). */
   presencaNoMes(c: Colaborador, ano: number, mes: number): number;
+  /** 1 se a pessoa continua na casa depois do mês; 0 se foi desligada até o fim dele (ou não foi admitida). */
+  ficaAposMes(c: Colaborador, ano: number, mes: number): number;
   fatorRampup(mesesDeCasa: number, rampup?: number[]): number;
   producaoMes(colab: Colaborador, entrega: string, mes: number, p: Parametros): number;
   precisaMes(u: Unidade, entrega: string, mes: number, p: Parametros): number;

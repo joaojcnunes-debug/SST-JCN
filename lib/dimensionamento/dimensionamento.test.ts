@@ -526,6 +526,26 @@ test('cabeças x tempo integral: meia alocação é uma pessoa e meio equivalent
   perto(h.quadroAtual, 2.5);
 });
 
+test('headcount: quem foi desligado no mês produz nele, mas não entra no déficit do prazo', () => {
+  // 2 técnicos; um sai em 23/10. Em outubro ele ainda vale presença parcial, mas não ajuda nos meses seguintes.
+  const sai = tecnico({ dataDesligamento: '2026-10-23' });
+  const f = fluxo([unidade(mesesConst(60))], [tecnico(), sai], { mesAtual: 9 });
+  const h = Motor.headcount(f.total, { mes: 9, prazos: [6] });
+  const a = h.cenarios[0].areas[TEC];
+  assert.ok(a.quadro > 1.5 && a.quadro < 2, 'em outubro o desligado ainda conta parcial');
+  perto(a.quadroFica, 1);                                    // só quem continua
+  perto(h.quadroFica, 1);
+  assert.strictEqual(a.deficit, Math.max(0, Math.ceil(a.pessoas - 1 - 1e-9)));
+  // desligado no último dia do mês também não continua; admitido no meio do mês continua inteiro
+  assert.strictEqual(Motor.ficaAposMes({ dataDesligamento: '2026-10-31' }, 2026, 9), 0);
+  assert.strictEqual(Motor.ficaAposMes({ dataDesligamento: '2026-11-01' }, 2026, 9), 1);
+  assert.strictEqual(Motor.ficaAposMes({ dataAdmissao: '2026-10-20' }, 2026, 9), 1);
+  assert.strictEqual(Motor.ficaAposMes({ dataAdmissao: '2026-11-03' }, 2026, 9), 0);
+  // sem desligamento, nada muda: quadroFica = quadro
+  const h0 = Motor.headcount(fluxo([unidade(mesesConst(60))], equipe(2, 1), { mesAtual: 9 }).total, { mes: 9, prazos: [6] });
+  perto(h0.quadroFica, h0.quadroAtual);
+});
+
 test('cabeças: quem entra no meio do mês conta como pessoa inteira e meia presença', () => {
   const novato = administrativo({ dataAdmissao: '2026-09-16' });   // entra dia 16 de setembro
   const f = fluxo([unidade(mesesConst(10))], [administrativo(), novato, tecnico()], { mesAtual: 8 });
