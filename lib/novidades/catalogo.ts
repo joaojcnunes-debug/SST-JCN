@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "consolidacao-por-empresa",
+    data: "2026-10-27",
+    tipo: "novidade",
+    titulo: "Consolidação: consolidar várias empresas sem montar um grupo",
+    texto:
+      "Nova página \"Consolidação por empresa\" no menu da Consolidação: escolha as empresas na hora (dá para marcar " +
+      "todas as de uma busca) e veja as mesmas análises da consolidação de grupo — Comparativo AEP, Visões, Confronto, " +
+      "Harmonização e Sim/Não — com as planilhas e a apresentação. Os setores são casados pelo nome e nada fica " +
+      "gravado; para validar com o cliente e gerar o PDF, use um grupo.",
+    onde: "Consolidação › Consolidação por empresa",
+    versoes: ["0.3.159"],
+  },
+  {
     id: "dimensionamento-desligados-quadro",
     data: "2026-10-27",
     tipo: "correcao",
