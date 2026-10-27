@@ -34,7 +34,8 @@ export function useGruposEmpresas() {
       if (g.error) throw g.error;
       if (m.error) throw m.error;
       return {
-        grupos: (g.data ?? []) as unknown as EmpresaGrupo[],
+        // v303: consolidação por empresa também mora em empresa_grupos, mas não é grupo
+        grupos: ((g.data ?? []) as unknown as EmpresaGrupo[]).filter((x) => x.tipo !== "CONSOLIDACAO"),
         membros: (m.data ?? []) as unknown as MembroGrupo[],
       };
     },
@@ -83,7 +84,7 @@ function useInvalidarGrupos() {
 /** Traduz o erro do banco para a pessoa. */
 export function mensagemErroGrupo(e: { message?: string; code?: string }): string {
   const msg = e.message ?? "";
-  if (msg.includes("ux_empresa_grupos_nome")) return "Já existe um grupo com esse nome.";
+  if (msg.includes("ux_empresa_grupos_nome")) return "Já existe um grupo (ou consolidação) com esse nome.";
   if (e.code === "42501" || msg.includes("row-level security")) return "Você não tem permissão para isso.";
   return msg || "Não foi possível salvar.";
 }

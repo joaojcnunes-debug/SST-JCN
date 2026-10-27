@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "consolidacao-por-empresa-completa",
+    data: "2026-10-27",
+    tipo: "melhoria",
+    titulo: "Consolidação por empresa agora faz tudo o que a de grupo faz",
+    texto:
+      "Em Consolidação › Por empresa, crie uma consolidação com um nome e as empresas que quiser: ela tem as mesmas " +
+      "abas da de grupo — inclusive Setores, Fatores e Validação — e o relatório ao cliente em PDF. A seleção fica " +
+      "salva para você voltar a ela, dá para editar as empresas depois, e nenhuma empresa muda de grupo.",
+    onde: "Consolidação › Por empresa",
+    versoes: ["0.3.161"],
+  },
+  {
     id: "consolidacao-por-empresa",
     data: "2026-10-27",
     tipo: "novidade",
