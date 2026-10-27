@@ -109,6 +109,7 @@ export default function HeadcountPage() {
 
   const semProducao = equipe.filter((p) => p.semProducao);
   const foraDoCalculo = equipe.filter((p) => p.foraDoCalculo);
+  const saem = equipe.filter((p) => p.saiNoMes);
   // A quebra por unidade só faz sentido quando o alvo é o TOTAL. Com uma unidade
   // escolhida, os blocos abaixo repetiriam a tabela e os gráficos que já estão no topo.
   const porUnidade = unidadeId ? [] : (derivado?.porUnidade ?? []);
@@ -225,7 +226,12 @@ export default function HeadcountPage() {
           rotulo="Equipe atual"
           valor={nf(hc?.cabecasAtual)}
           sufixo={Number(hc?.cabecasAtual) === 1 ? "pessoa" : "pessoas"}
-          nota={`equivalem a ${nf(hc?.quadroAtual, 1)} em tempo integral`}
+          nota={
+            `equivalem a ${nf(hc?.quadroAtual, 1)} em tempo integral` +
+            (Math.abs(Number(hc?.quadroFica) - Number(hc?.quadroAtual)) > 0.05
+              ? ` · ${nf(hc?.quadroFica, 1)} continuam depois de ${hc?.nomeMes?.toLowerCase()}`
+              : "")
+          }
           cor="text-slate-900"
           borda="border-l-slate-400"
         />
@@ -248,6 +254,15 @@ export default function HeadcountPage() {
             {equipe.length} {equipe.length === 1 ? "pessoa" : "pessoas"} com alocação aqui. O cálculo
             usa o equivalente em tempo integral — {nf(hc?.quadroAtual, 1)} — porque quem divide a
             jornada com outra unidade, ou entrou no meio do mês, não trabalha o mês inteiro aqui.
+            {saem.length > 0 && (
+              <>
+                {" "}
+                {saem.map((p) => p.nome).join(", ")} {saem.length === 1 ? "saiu" : "saíram"} da empresa em{" "}
+                {hc?.nomeMes?.toLowerCase()}: {saem.length === 1 ? "conta" : "contam"} na produção do mês, mas
+                não no quadro necessário — o déficit desconta só a equipe que continua (
+                {nf(hc?.quadroFica, 1)} em tempo integral).
+              </>
+            )}
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -268,7 +283,14 @@ export default function HeadcountPage() {
                   key={p.id}
                   className={p.semProducao ? "bg-rose-50/60" : p.foraDoCalculo ? "bg-slate-50/80" : undefined}
                 >
-                  <td className="px-4 py-2 font-medium text-slate-900">{p.nome}</td>
+                  <td className="px-4 py-2 font-medium text-slate-900">
+                    {p.nome}
+                    {p.saiNoMes && (
+                      <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+                        saiu em {p.dataDesligamento.split("-").reverse().join("/")}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2 text-slate-600">{p.funcao || "—"}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{nf(p.alocacao)}%</td>
                   <td className="px-4 py-2 text-right tabular-nums">{nf(p.presenca * 100)}%</td>
@@ -396,6 +418,9 @@ function TabelaQuadro({ titulo, cenario }: { titulo: string; cenario: Cenario | 
             <tr>
               <th className="px-4 py-2 font-semibold">Área</th>
               <th className="px-4 py-2 text-right font-semibold">Quadro necessário</th>
+              <th className="px-4 py-2 text-right font-semibold" title="Equipe em tempo integral que continua depois do mês — quem foi desligado no mês não entra">
+                Equipe que continua
+              </th>
               <th className="px-4 py-2 text-right font-semibold">Déficit</th>
               <th className="px-4 py-2 font-semibold">Etapa que manda</th>
               <th className="px-4 py-2 text-right font-semibold">Custo do déficit</th>
@@ -409,6 +434,7 @@ function TabelaQuadro({ titulo, cenario }: { titulo: string; cenario: Cenario | 
                 <tr key={area}>
                   <td className="px-4 py-2 font-medium text-slate-900">{Calculo.FUNCAO_CURTA[area]}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{nf(a.pessoas)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums text-slate-600">{nf(a.quadroFica, 1)}</td>
                   <td className={`px-4 py-2 text-right tabular-nums ${Number(a.deficit) > 0 ? "font-semibold text-rose-700" : "text-slate-500"}`}>
                     {Number(a.deficit) > 0 ? `+${nf(a.deficit)}` : "—"}
                   </td>
@@ -420,6 +446,9 @@ function TabelaQuadro({ titulo, cenario }: { titulo: string; cenario: Cenario | 
             <tr className="bg-slate-50 font-semibold">
               <td className="px-4 py-2">Total</td>
               <td className="px-4 py-2 text-right tabular-nums">{nf(cenario?.pessoas)}</td>
+              <td className="px-4 py-2 text-right tabular-nums text-slate-600">
+                {nf(Number(cenario?.areas?.tecnico?.quadroFica ?? 0) + Number(cenario?.areas?.administrativo?.quadroFica ?? 0), 1)}
+              </td>
               <td className="px-4 py-2 text-right tabular-nums text-rose-700">+{nf(cenario?.deficit)}</td>
               <td className="px-4 py-2" />
               <td className="px-4 py-2 text-right tabular-nums">{moeda(cenario?.custoDeficit) ?? "—"}</td>
