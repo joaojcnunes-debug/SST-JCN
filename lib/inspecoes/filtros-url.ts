@@ -5,7 +5,7 @@
  */
 
 import type { FiltroInspecao } from "./pilulas";
-import type { Prioridade } from "./prioridade";
+import type { PrioridadeInspecao } from "./prioridade";
 
 export type Documento = "PENDENTE" | "EM_ELABORACAO" | "ENTREGUE";
 export type OrdemLista = "recentes" | "antigas" | "revisao" | "prioridade" | "espera" | "prazo";
@@ -23,7 +23,8 @@ export interface FiltrosLista {
   ate: string;
   pilulas: FiltroInspecao[];
   documento: Documento[];
-  prioridade: Prioridade[];
+  /** Prioridade EFETIVA (a maior entre a marcada e a calculada). */
+  prioridade: PrioridadeInspecao[];
   /** Espera mínima em dias (0 = sem filtro). */
   espera: number;
   ordem: OrdemLista;
@@ -36,7 +37,7 @@ export const FILTROS_VAZIOS: FiltrosLista = {
 
 const PILULAS_OK: FiltroInspecao[] = ["RASCUNHO", "EM_ANDAMENTO", "CONCLUIDA", "ASSOCIADOS", "NAO_ASSOCIADOS"];
 const DOC_OK: Documento[] = ["PENDENTE", "EM_ELABORACAO", "ENTREGUE"];
-const PRI_OK: Prioridade[] = ["URGENTE", "ALTA", "MEDIA", "BAIXA"];
+const PRI_OK: PrioridadeInspecao[] = ["CRITICA", "GRAVE", "MEDIA", "BAIXA"];
 const ORDEM_OK: OrdemLista[] = ["recentes", "antigas", "revisao", "prioridade", "espera", "prazo"];
 const PERIODO_OK: Periodo[] = ["hoje", "7d", "30d", "mes", "mes_passado", "personalizado"];
 const DATA = /^\d{4}-\d{2}-\d{2}$/;

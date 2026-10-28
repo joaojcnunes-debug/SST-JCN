@@ -15,15 +15,14 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlarmClock, CalendarClock, CheckCircle2, ClipboardList, FileText, Flame, Hourglass, Loader2, Search } from "lucide-react";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
-import SeloPrioridade from "@/components/inspecoes/SeloPrioridade";
-import ModalPrioridade from "@/components/inspecoes/ModalPrioridade";
+import { PrioridadeCelula } from "@/components/inspecoes/PrioridadeInspecao";
+import PrioridadeCalculada from "@/components/inspecoes/PrioridadeCalculada";
 import { useFilaAtribuida, usePessoasAtribuicao, useResumoFila, type FiltrosFila } from "@/lib/hooks/useInspecoesAtribuidas";
-import { useIsSupervisor } from "@/lib/hooks/useUsuario";
+import { useCanEdit, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import { useUserStore } from "@/lib/store";
-import { COR_PRIORIDADE, PRIORIDADES, ROTULO_PRIORIDADE, hojeSP, textoEspera, type Prioridade } from "@/lib/inspecoes/prioridade";
+import { PRIORIDADES_DESC, PRIORIDADE_INFO, hojeSP, textoEspera, type PrioridadeInspecao } from "@/lib/inspecoes/prioridade";
 import { ROTULO_PERIODO, intervaloDoPeriodo, type Periodo } from "@/lib/inspecoes/filtros-url";
 import { cn, fmtData } from "@/lib/utils";
-import type { Inspecao } from "@/lib/supabase/types";
 
 type Papel = "tecnico" | "associado";
 
@@ -47,19 +46,19 @@ function MinhasInner() {
   const pathname = usePathname();
   const eu = useUserStore((s) => s.user);
   const supervisor = useIsSupervisor();
+  const canEdit = useCanEdit();
   const { data: pessoas = [] } = usePessoasAtribuicao(supervisor);
 
   const ler = (k: string) => params.get(k) ?? "";
   const [pessoa, setPessoa] = useState(ler("pessoa"));
   const [papel, setPapel] = useState<Papel>(ler("papel") === "associado" ? "associado" : "tecnico");
   const [situacao, setSituacao] = useState<"abertas" | "todas">(ler("situacao") === "todas" ? "todas" : "abertas");
-  const [prioridade, setPrioridade] = useState<Prioridade[]>(ler("prioridade").split(",").filter((p): p is Prioridade => (PRIORIDADES as string[]).includes(p)));
+  const [prioridade, setPrioridade] = useState<PrioridadeInspecao[]>(ler("prioridade").split(",").filter((p): p is PrioridadeInspecao => (PRIORIDADES_DESC as readonly string[]).includes(p)));
   const [espera, setEspera] = useState(Number(ler("espera")) || 0);
   const [periodo, setPeriodo] = useState<Periodo>((Object.keys(ROTULO_PERIODO) as string[]).includes(ler("periodo")) ? (ler("periodo") as Periodo) : "");
   const [q, setQ] = useState(ler("q"));
   const [qDeb, setQDeb] = useState(q);
   const [ordem, setOrdem] = useState<FiltrosFila["ordem"]>((["prioridade", "espera", "prazo", "recentes"] as const).find((o) => o === ler("ordem")) ?? "prioridade");
-  const [editPrio, setEditPrio] = useState<Inspecao | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setQDeb(q), 300);
@@ -100,7 +99,7 @@ function MinhasInner() {
     const feitoEm = (x: (typeof r)[number]) => (papel === "tecnico" ? x.concluida_em : x.elaboracao_concluida_em);
     return {
       abertas: abertas.length,
-      urgentes: abertas.filter((x) => x.prioridade_efetiva === "URGENTE").length,
+      urgentes: abertas.filter((x) => x.prioridade_efetiva === "CRITICA" || x.prioridade_efetiva === "GRAVE").length,
       vencidas: abertas.filter((x) => x.prazo && x.prazo < hoje).length,
       paradas: abertas.filter((x) => (x.dias_espera ?? 0) > 15).length,
       noMes: r.filter((x) => (feitoEm(x) ?? "").slice(0, 7) === mes && (papel === "tecnico" ? x.status === "CONCLUIDA" : true)).length,
@@ -153,7 +152,7 @@ function MinhasInner() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {[
           { k: "abertas", rot: "Abertas", v: kpis.abertas, icone: Hourglass, cor: "text-gray-800", acao: () => { limparCartao(); setSituacao("abertas"); } },
-          { k: "urgentes", rot: "Urgentes", v: kpis.urgentes, icone: Flame, cor: "text-red-700", acao: () => { limparCartao(); setSituacao("abertas"); setPrioridade(["URGENTE"]); } },
+          { k: "urgentes", rot: "Críticas e urgentes", v: kpis.urgentes, icone: Flame, cor: "text-red-700", acao: () => { limparCartao(); setSituacao("abertas"); setPrioridade(["CRITICA", "GRAVE"]); } },
           { k: "vencidas", rot: "Prazo vencido", v: kpis.vencidas, icone: AlarmClock, cor: "text-red-700", acao: () => { limparCartao(); setSituacao("abertas"); setOrdem("prazo"); } },
           { k: "paradas", rot: "Esperando +15 dias", v: kpis.paradas, icone: CalendarClock, cor: "text-orange-700", acao: () => { limparCartao(); setSituacao("abertas"); setEspera(15); setOrdem("espera"); } },
           { k: "mes", rot: papel === "tecnico" ? "Concluídas no mês" : "Entregues no mês", v: kpis.noMes, icone: CheckCircle2, cor: "text-emerald-700", acao: () => { limparCartao(); setSituacao("todas"); setPeriodo("mes"); setOrdem("recentes"); } },
@@ -174,11 +173,11 @@ function MinhasInner() {
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          {PRIORIDADES.map((p) => {
+          {PRIORIDADES_DESC.map((p) => {
             const on = prioridade.includes(p);
             return (
-              <button key={p} type="button" onClick={() => setPrioridade(on ? prioridade.filter((x) => x !== p) : [...prioridade, p])} className={cn("rounded-full px-2.5 py-1 text-xs ring-1", on ? cn(COR_PRIORIDADE[p], "font-semibold ring-2") : "bg-white text-gray-600 ring-gray-200 hover:bg-gray-50")}>
-                {ROTULO_PRIORIDADE[p]}
+              <button key={p} type="button" onClick={() => setPrioridade(on ? prioridade.filter((x) => x !== p) : [...prioridade, p])} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? cn(PRIORIDADE_INFO[p].classe, "font-semibold ring-2 ring-verde-primary/30") : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
+                {PRIORIDADE_INFO[p].label}
               </button>
             );
           })}
@@ -220,8 +219,10 @@ function MinhasInner() {
               const espera = textoEspera(i.status, i.dias_espera);
               return (
                 <li key={i.id_inspecao} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-verde-light/20">
-                  <div className="w-28 shrink-0">
-                    <SeloPrioridade insp={i} onEditar={supervisor ? setEditPrio : undefined} compacto />
+                  <div className="w-32 shrink-0">
+                    {/* a marcada (quem edita troca aqui) + a calculada, quando passa, e o prazo */}
+                    <PrioridadeCelula id={i.id_inspecao} valor={i.prioridade} podeEditar={canEdit} />
+                    <PrioridadeCalculada insp={i} podeEditarPrazo={canEdit} compacto />
                   </div>
                   <div className="min-w-[200px] flex-1">
                     <p className="font-medium text-gray-900">{i.empresas?.nome_empresa ?? "—"}</p>
@@ -249,8 +250,6 @@ function MinhasInner() {
         )}
       </div>
       {itens.length >= 500 && <p className="text-xs text-gray-400">Mostrando as 500 primeiras — use os filtros para afinar.</p>}
-
-      {editPrio && <ModalPrioridade insp={editPrio} onClose={() => setEditPrio(null)} />}
     </div>
   );
 }

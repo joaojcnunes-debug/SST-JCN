@@ -1,7 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import { useQuery } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { COLUNAS_PRIORIDADE } from "@/lib/hooks/useInspecao";
 import { filtroPeriodo } from "@/lib/inspecoes/periodo";
@@ -109,24 +108,5 @@ export function usePessoasAtribuicao(enabled = true) {
       return ((data ?? []) as Array<{ id_usuario: string; nome: string; perfil: string; ativo_sistema: boolean | null }>)
         .filter((u) => u.ativo_sistema !== false && (u.nome ?? "").trim());
     },
-  });
-}
-
-/** Prioridade manual e prazo (só supervisor — o banco barra os outros). */
-export function useDefinirPrioridade() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (p: { id_inspecao: string; prioridade: string | null; prazo: string | null }) => {
-      const { error } = await createSupabaseBrowserClient()
-        .from("inspecoes")
-        .update({ prioridade: p.prioridade, prazo: p.prazo } as never)
-        .eq("id_inspecao", p.id_inspecao);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      for (const k of ["inspecoes-lista", "inspecoes-counts", "inspecoes-atribuidas", "inspecao"]) qc.invalidateQueries({ queryKey: [k] });
-      toast.success("Prioridade atualizada");
-    },
-    onError: (e: Error) => toast.error(e.message.includes("supervisor") ? "Só supervisor define a prioridade e o prazo." : e.message),
   });
 }

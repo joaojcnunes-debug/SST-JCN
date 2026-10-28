@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { Pencil, ChartBar, Trash2, RefreshCw } from "lucide-react";
 import StatusBadge from "./StatusBadge";
-import SeloPrioridade from "./SeloPrioridade";
 import { fmtData } from "@/lib/utils";
+import { PrioridadeCelula } from "./PrioridadeInspecao";
+import PrioridadeCalculada from "./PrioridadeCalculada";
 import { iniciais, corAvatar } from "@/lib/hooks/useGestao";
 import { situacaoDocumento, type ChaveDocumento } from "@/lib/inspecoes/documento";
 import { ehRenovacao } from "@/lib/dashboard/inspecoes";
@@ -30,17 +31,20 @@ export default function InspecaoRow({
   associados = [],
   onDelete,
   onEditResponsavel,
-  onEditarPrioridade,
+  onEditAssociados,
   showEmpresa,
+  podeEditarPrioridade,
 }: {
   insp: Inspecao;
+  /** v308: quem edita inspeção troca a prioridade direto na coluna. */
+  podeEditarPrioridade?: boolean;
   /** Associados à elaboração do Documento SGG desta inspeção. */
   associados?: InspecaoAssociado[];
   onDelete?: (insp: Inspecao) => void;
   /** Quando fornecido (apenas Admin), mostra o lápis para editar o responsável. */
   onEditResponsavel?: (insp: Inspecao) => void;
-  /** v306: supervisor define prioridade e prazo. */
-  onEditarPrioridade?: (insp: Inspecao) => void;
+  /** Idem, para associar/remover quem elabora o documento direto da lista (26/10). */
+  onEditAssociados?: (insp: Inspecao) => void;
   showEmpresa?: boolean;
 }) {
   return (
@@ -57,6 +61,12 @@ export default function InspecaoRow({
         <span className="inline-flex size-6 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600">
           {insp.revisao}
         </span>
+      </td>
+      {/* v308: a prioridade se edita AQUI; dentro da inspeção ela só aparece. */}
+      <td className="px-4 py-3">
+        <PrioridadeCelula id={insp.id_inspecao} valor={insp.prioridade} podeEditar={!!podeEditarPrioridade} />
+        {/* 28/10: a calculada (quando passa a marcada), a espera e o prazo — mesma regra de quem edita. */}
+        <PrioridadeCalculada insp={insp} podeEditarPrazo={!!podeEditarPrioridade} />
       </td>
       <td className="px-4 py-3 text-sm text-gray-600">
         {fmtData(insp.data_inspecao)}
@@ -108,10 +118,6 @@ export default function InspecaoRow({
           )}
         </span>
       </td>
-      {/* v306: prioridade efetiva, espera e prazo (o porquê no balão). */}
-      <td className="px-4 py-3">
-        <SeloPrioridade insp={insp} onEditar={onEditarPrioridade} />
-      </td>
       {(() => {
           // Une os associados (tabela nova) com quem assumiu a elaboração pelo fluxo
           // de status (elaboracao_responsavel) — assim inspeções antigas também mostram.
@@ -128,6 +134,7 @@ export default function InspecaoRow({
           return (
             <>
             <td className="px-4 py-3">
+            <span className="inline-flex items-center gap-1.5">
             {pessoas.length === 0 ? (
               <span className="text-xs text-gray-300">—</span>
             ) : (
@@ -152,6 +159,17 @@ export default function InspecaoRow({
               )}
             </div>
             )}
+            {onEditAssociados && (
+              <button
+                type="button"
+                onClick={() => onEditAssociados(insp)}
+                className="flex size-6 items-center justify-center rounded-md text-gray-300 transition hover:bg-verde-light hover:text-verde-primary"
+                title="Editar associados"
+              >
+                <Pencil className="size-3" />
+              </button>
+            )}
+            </span>
             </td>
             {/* Status dos associados em coluna própria (pedido dele, 21/10): antes
                 era a letrinha embaixo dos avatares. Entregue = Concluído. */}

@@ -9,7 +9,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import InspecaoRow from "@/components/inspecoes/InspecaoRow";
-import ModalPrioridade from "@/components/inspecoes/ModalPrioridade";
 import { useAssociadosPorInspecao } from "@/lib/hooks/useInspecaoAssociados";
 import { TabelaSkeleton } from "@/components/ui/PageSkeletons";
 import Pagination from "@/components/ui/Pagination";
@@ -18,7 +17,8 @@ import { useInspecoesPaginadas, type FiltroInspecao } from "@/lib/hooks/useInspe
 import { useIdsAtribuidas, usePessoasAtribuicao } from "@/lib/hooks/useInspecoesAtribuidas";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useUnidades } from "@/lib/hooks/useUnidades";
-import { useCanCreate, useCanDelete, useIsSupervisor } from "@/lib/hooks/useUsuario";
+import { useCanCreate, useCanDelete, useCanEdit, useCurrentUser, useIsSupervisor } from "@/lib/hooks/useUsuario";
+import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
 import { useUnidadeAtiva, useUserStore } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { registrarSoftNaLixeira } from "@/lib/hooks/useLixeira";
@@ -36,7 +36,7 @@ import {
   type OrdemLista,
   type Periodo,
 } from "@/lib/inspecoes/filtros-url";
-import { COR_PRIORIDADE, PRIORIDADES, ROTULO_PRIORIDADE, hojeSP, type Prioridade } from "@/lib/inspecoes/prioridade";
+import { PRIORIDADES_DESC, PRIORIDADE_INFO, hojeSP, type PrioridadeInspecao } from "@/lib/inspecoes/prioridade";
 import type { Inspecao } from "@/lib/supabase/types";
 
 const PAGE_SIZE = 20;
@@ -111,13 +111,14 @@ function InspecoesInner() {
   const pathname = usePathname();
   const canCreate = useCanCreate();
   const canDelete = useCanDelete();
+  const canEdit = useCanEdit();
   // v229: trocar o técnico responsável é ato de supervisão (nível Aprovação), não só de Admin.
   const isAdmin = useIsSupervisor();
   const eu = useUserStore((s) => s.user);
   const qc = useQueryClient();
   const [confirmDel, setConfirmDel] = useState<Inspecao | null>(null);
   const [editResp, setEditResp] = useState<Inspecao | null>(null);
-  const [editPrio, setEditPrio] = useState<Inspecao | null>(null);
+  const [editAssoc, setEditAssoc] = useState<Inspecao | null>(null);
   const [maisFiltros, setMaisFiltros] = useState(false);
 
   const delInsp = useMutation({
@@ -415,15 +416,15 @@ function InspecoesInner() {
           ))}
           <span className="mx-1 h-5 w-px bg-gray-200" aria-hidden />
           <span className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Prioridade</span>
-          {PRIORIDADES.map((p) => (
+          {PRIORIDADES_DESC.map((p) => (
             <Pilula
               key={p}
               ativo={f.prioridade.includes(p)}
-              onClick={() => set({ prioridade: alternar<Prioridade>(f.prioridade, p) })}
+              onClick={() => set({ prioridade: alternar<PrioridadeInspecao>(f.prioridade, p) })}
               contagem={extras?.prioridade[p] ?? 0}
-              className={!f.prioridade.includes(p) ? COR_PRIORIDADE[p].split(" ").filter((c) => c.startsWith("text-")).join(" ") : undefined}
+              className={!f.prioridade.includes(p) ? PRIORIDADE_INFO[p].classe.split(" ").filter((c) => c.startsWith("text-")).join(" ") : undefined}
             >
-              {ROTULO_PRIORIDADE[p]}
+              {PRIORIDADE_INFO[p].label}
             </Pilula>
           ))}
         </div>
@@ -460,10 +461,10 @@ function InspecoesInner() {
                     <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Empresa</th>
                   )}
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-400">Rev.</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Prioridade</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Data</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Responsável</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Prioridade</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Associados</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 whitespace-nowrap">Status Assoc.</th>
                   <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400">Ações</th>
@@ -477,8 +478,9 @@ function InspecoesInner() {
                     associados={associadosMap?.get(i.id_inspecao) ?? []}
                     onDelete={canDelete ? setConfirmDel : undefined}
                     onEditResponsavel={isAdmin ? setEditResp : undefined}
-                    onEditarPrioridade={isAdmin ? setEditPrio : undefined}
+                    onEditAssociados={isAdmin ? setEditAssoc : undefined}
                     showEmpresa={!f.empresa}
+                    podeEditarPrioridade={canEdit}
                   />
                 ))}
               </tbody>
@@ -513,7 +515,51 @@ function InspecoesInner() {
       {editResp && (
         <ModalEditarResponsavel insp={editResp} onClose={() => setEditResp(null)} />
       )}
-      {editPrio && <ModalPrioridade insp={editPrio} onClose={() => setEditPrio(null)} />}
+      {editAssoc && (
+        <ModalEditarAssociados insp={editAssoc} onClose={() => setEditAssoc(null)} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Associados da elaboração direto da lista (26/10) — o mesmo bloco da tela do
+ * relatório, com as mesmas regras (tirar o responsável limpa o nome do documento).
+ * Só supervisor abre, como o lápis do responsável.
+ */
+function ModalEditarAssociados({ insp, onClose }: { insp: Inspecao; onClose: () => void }) {
+  const qc = useQueryClient();
+  const user = useCurrentUser();
+  const fechar = () => {
+    // Tirar o responsável muda a própria inspeção (elaboracao_*), não só os associados.
+    qc.invalidateQueries({ queryKey: ["inspecoes-lista"] });
+    onClose();
+  };
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={fechar}>
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="border-b border-gray-100 px-5 py-4">
+          <h2 className="font-semibold text-gray-900">Editar associados</h2>
+          <p className="mt-0.5 text-xs text-gray-400">
+            Inspeção {insp.id_inspecao} · {insp.empresas?.nome_empresa ?? "—"}
+          </p>
+        </div>
+        <div className="min-h-40 px-5 pb-4">
+          <AssociadosElaboracao
+            idInspecao={insp.id_inspecao}
+            user={user}
+            isAdmin
+            responsavelNome={insp.elaboracao_responsavel}
+            elaboracaoStatus={insp.elaboracao_status}
+            concluidaEm={insp.elaboracao_concluida_em}
+          />
+        </div>
+        <div className="flex justify-end border-t border-gray-100 px-5 py-4">
+          <button type="button" onClick={fechar} className="rounded-lg bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent">
+            Fechar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
