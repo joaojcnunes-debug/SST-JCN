@@ -1,6 +1,6 @@
 {
   "name": "sst-jcn",
-  "version": "0.3.168",
+  "version": "0.3.169",
   "private": true,
   "scripts": {
     "dev": "next dev",
