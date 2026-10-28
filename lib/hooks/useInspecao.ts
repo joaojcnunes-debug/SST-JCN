@@ -282,9 +282,11 @@ interface InspecoesPaginadasParams {
   prioridade?: string[];
   /** v306: espera mínima em dias (coluna calculada dias_espera). */
   esperaMin?: number;
+  /** v308: complexidade marcada. */
+  complexidade?: string[];
 }
 
-type LinhaContagemV306 = LinhaContagem & { situacao_documento: string | null; prioridade_efetiva: string | null };
+type LinhaContagemV306 = LinhaContagem & { situacao_documento: string | null; prioridade_efetiva: string | null; complexidade: string | null };
 
 /** Colunas calculadas da v306 que a lista pede pelo nome. */
 export const COLUNAS_PRIORIDADE = "situacao_documento, dias_espera, prioridade_auto, prioridade_efetiva";
@@ -301,7 +303,7 @@ async function idsEmpresaPorNome(supabase: any, termo: string): Promise<string[]
  * builder; o que precisa de pré-busca (ids de empresa) chega pronto.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function aplicarFiltrosV306(q: any, p: { busca?: string; idsEmpresa?: string[] | null; ids?: string[] | null; documento?: string[]; prioridade?: string[]; esperaMin?: number }) {
+function aplicarFiltrosV306(q: any, p: { busca?: string; idsEmpresa?: string[] | null; ids?: string[] | null; documento?: string[]; prioridade?: string[]; esperaMin?: number; complexidade?: string[] }) {
   let query = q;
   const termo = (p.busca ?? "").trim().replace(/[(),*%]/g, " ").trim();
   if (termo) {
@@ -313,6 +315,7 @@ function aplicarFiltrosV306(q: any, p: { busca?: string; idsEmpresa?: string[] |
   if (p.documento?.length) query = query.in("situacao_documento", p.documento);
   if (p.prioridade?.length) query = query.in("prioridade_efetiva", p.prioridade);
   if (p.esperaMin && p.esperaMin > 0) query = query.gte("dias_espera", p.esperaMin);
+  if (p.complexidade?.length) query = query.in("complexidade", p.complexidade);
   return query;
 }
 
@@ -394,6 +397,7 @@ export function useInspecoesPaginadas({
   documento = [],
   prioridade = [],
   esperaMin = 0,
+  complexidade = [],
 }: InspecoesPaginadasParams) {
   // Lista todas as inspeções por padrão (paginadas); filtros são opcionais.
   const base: FiltrosBase = { idEmpresa, tecnico, idUnidade, dataIni, dataFim };
@@ -402,7 +406,7 @@ export function useInspecoesPaginadas({
   const selLista = idUnidade
     ? `*, tecnicos_campo, ${COLUNAS_PRIORIDADE}, empresas!inner(nome_empresa, id_unidade)`
     : `*, tecnicos_campo, ${COLUNAS_PRIORIDADE}, empresas(nome_empresa)`;
-  const v306 = { busca, ids, documento, prioridade, esperaMin };
+  const v306 = { busca, ids, documento, prioridade, esperaMin, complexidade };
 
   const lista = useQuery({
     queryKey: ["inspecoes-lista", idEmpresa, tecnico, associado, idUnidade, dataIni, dataFim, filtros, ordem, page, pageSize, v306],
@@ -442,8 +446,8 @@ export function useInspecoesPaginadas({
   // v306: as contagens também levam a situação do documento e a prioridade (colunas
   // calculadas) — contadas em memória sobre os mesmos filtros de base + busca e "só as minhas".
   const selCounts = idUnidade
-    ? "status, elaboracao_responsavel, situacao_documento, prioridade_efetiva, inspecao_associados(nome), empresas!inner(id_unidade)"
-    : "status, elaboracao_responsavel, situacao_documento, prioridade_efetiva, inspecao_associados(nome)";
+    ? "status, elaboracao_responsavel, situacao_documento, prioridade_efetiva, complexidade, inspecao_associados(nome), empresas!inner(id_unidade)"
+    : "status, elaboracao_responsavel, situacao_documento, prioridade_efetiva, complexidade, inspecao_associados(nome)";
   const baseV306 = { busca, ids };
   const linhas = useQuery({
     queryKey: ["inspecoes-counts", idEmpresa, tecnico, idUnidade, dataIni, dataFim, baseV306],
@@ -465,16 +469,18 @@ export function useInspecoesPaginadas({
     () => (linhas.data ? contarPilulas(linhas.data, associado, separarSelecao(filtros)) : undefined),
     [linhas.data, associado, filtros],
   );
-  // Documento e prioridade: quantas há de cada (sobre os filtros de base, sem as pílulas).
+  // Documento, prioridade e complexidade: quantas há de cada (sobre os filtros de base, sem as pílulas).
   const extras = useMemo(() => {
     if (!linhas.data) return undefined;
     const doc: Record<string, number> = {};
     const pri: Record<string, number> = {};
+    const cpx: Record<string, number> = {};
     for (const l of linhas.data) {
       if (l.situacao_documento) doc[l.situacao_documento] = (doc[l.situacao_documento] ?? 0) + 1;
       if (l.prioridade_efetiva) pri[l.prioridade_efetiva] = (pri[l.prioridade_efetiva] ?? 0) + 1;
+      if (l.complexidade) cpx[l.complexidade] = (cpx[l.complexidade] ?? 0) + 1;
     }
-    return { documento: doc, prioridade: pri };
+    return { documento: doc, prioridade: pri, complexidade: cpx };
   }, [linhas.data]);
 
   return { lista, counts: { data: contagens, extras } };

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Plus, ChartBar, Search, Check, SlidersHorizontal, X, UserCheck, ListTodo } from "lucide-react";
+import { Plus, ChartBar, Check, SlidersHorizontal, X, UserCheck, ListTodo, LayoutList, ClipboardList, FileText } from "lucide-react";
 import { Suspense } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -31,12 +31,15 @@ import {
   escreverFiltros,
   intervaloDoPeriodo,
   lerFiltros,
+  trocarVisao,
   type Documento,
+  type Visao,
   type FiltrosLista,
   type OrdemLista,
   type Periodo,
 } from "@/lib/inspecoes/filtros-url";
 import { PRIORIDADES_DESC, PRIORIDADE_INFO, hojeSP, type PrioridadeInspecao } from "@/lib/inspecoes/prioridade";
+import { COMPLEXIDADES_DESC, COMPLEXIDADE_INFO, type ComplexidadeInspecao } from "@/lib/inspecoes/complexidade";
 import type { Inspecao } from "@/lib/supabase/types";
 
 const PAGE_SIZE = 20;
@@ -76,7 +79,25 @@ const ORDENS: { value: OrdemLista; label: string }[] = [
 
 const ESPERAS = [0, 7, 15, 30];
 
+const VISOES: { value: Visao; label: string; icone: typeof ClipboardList; dica: string }[] = [
+  { value: "", label: "Todas", icone: LayoutList, dica: "Campo e documento juntos" },
+  { value: "tecnicos", label: "Técnicos (campo)", icone: ClipboardList, dica: "Quem foi a campo e o andamento da inspeção" },
+  { value: "associados", label: "Associados (documento)", icone: FileText, dica: "Quem está no documento e a situação dele" },
+];
+
 const alternar = <T,>(lista: T[], v: T) => (lista.includes(v) ? lista.filter((x) => x !== v) : [...lista, v]);
+
+/** Só a cor do texto da classe do selo — a pílula desligada fica branca, com o texto na cor. */
+const corDoTexto = (classe: string) => classe.split(" ").filter((c) => c.startsWith("text-")).join(" ");
+
+function GrupoPilulas({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-24 shrink-0 text-[11px] font-medium uppercase tracking-wider text-gray-400">{titulo}</span>
+      {children}
+    </div>
+  );
+}
 
 export default function InspecoesPage() {
   return (
@@ -186,8 +207,10 @@ function InspecoesInner() {
   const nomes = useMemo(() => pessoas.map((p) => p.nome.trim()), [pessoas]);
   const { de: dataIni, ate: dataFim } = intervaloDoPeriodo(f.periodo, hojeSP(), f.de, f.ate);
 
-  // "Só as minhas": as inspeções em que eu fui a campo ou estou no documento (v306).
-  const minhas = useIdsAtribuidas(null, "todos", f.minhas && !!eu);
+  // "Só as minhas": as inspeções em que eu fui a campo ou estou no documento (v306) — na visão
+  // Técnicos só o campo; na Associados só o documento.
+  const papelMinhas = f.visao === "tecnicos" ? "tecnico" : f.visao === "associados" ? "associado" : "todos";
+  const minhas = useIdsAtribuidas(null, papelMinhas, f.minhas && !!eu);
   const idsMinhas = f.minhas ? (minhas.data ?? []) : null;
 
   const { data: empresa } = useEmpresa(f.empresa || null);
@@ -207,6 +230,7 @@ function InspecoesInner() {
     documento: f.documento,
     prioridade: f.prioridade,
     esperaMin: f.espera,
+    complexidade: f.complexidade,
   });
   const countData = counts.data;
   const extras = counts.extras;
@@ -228,7 +252,7 @@ function InspecoesInner() {
   if (f.periodo) etiquetas.push({ chave: "periodo", texto: `Período: ${f.periodo === "personalizado" ? `${dataIni || "…"} a ${dataFim || "…"}` : ROTULO_PERIODO[f.periodo]}`, limpar: () => set({ periodo: "", de: "", ate: "" }) });
   if (f.unidade) etiquetas.push({ chave: "unidade", texto: `Unidade: ${unidades.find((u) => u.id_unidade === f.unidade)?.nome ?? "…"}`, limpar: () => set({ unidade: "" }) });
   if (f.espera > 0) etiquetas.push({ chave: "espera", texto: `Esperando há +${f.espera} dias`, limpar: () => set({ espera: 0 }) });
-  const algumFiltro = etiquetas.length > 0 || f.pilulas.length > 0 || f.documento.length > 0 || f.prioridade.length > 0;
+  const algumFiltro = etiquetas.length > 0 || f.pilulas.length > 0 || f.documento.length > 0 || f.prioridade.length > 0 || f.complexidade.length > 0;
   const extrasLigados = contarFiltrosExtras(f);
   const sel = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
   const rot = "mb-1 block text-[11px] font-medium uppercase tracking-wider text-gray-500";
@@ -236,22 +260,10 @@ function InspecoesInner() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex flex-1 flex-wrap items-end gap-3">
-          <div className="relative min-w-[220px] flex-1 max-w-sm">
-            <label className={rot}>Buscar</label>
-            <Search className="pointer-events-none absolute left-2.5 top-[31px] size-3.5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="ID da inspeção ou nome da empresa…"
-              value={f.q}
-              onChange={(e) => set({ q: e.target.value })}
-              className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
-            />
-          </div>
-          <div className="min-w-[240px] flex-1 max-w-xl">
-            <label className={rot}>Empresa</label>
-            <EmpresaSelect value={f.empresa || null} onChange={(id) => set({ empresa: id ?? "" })} modulo="sst" unidadeId={unidadeAtivaId || null} />
-          </div>
+        {/* 28/10: a busca por ID/empresa saiu daqui — a empresa se escolhe no seletor. */}
+        <div className="min-w-[240px] flex-1 max-w-xl">
+          <label className={rot}>Empresa</label>
+          <EmpresaSelect value={f.empresa || null} onChange={(id) => set({ empresa: id ?? "" })} modulo="sst" unidadeId={unidadeAtivaId || null} />
         </div>
         <div className="flex gap-2">
           <Link href="/inspecoes/minhas" className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50" title="Só o que foi atribuído a você, com prioridade e tempo de espera">
@@ -279,28 +291,51 @@ function InspecoesInner() {
         </div>
       </div>
 
+      {/* 28/10: três visões — o lado do campo (técnicos), o do documento (associados) ou tudo.
+          Cada uma mostra só os filtros dela; trocar de visão limpa o que ficaria escondido. */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-gray-200">
+        {VISOES.map((v) => (
+          <button
+            key={v.value || "todas"}
+            type="button"
+            onClick={() => setF((atual) => trocarVisao(atual, v.value))}
+            className={cn(
+              "-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium",
+              f.visao === v.value ? "border-verde-primary text-verde-primary" : "border-transparent text-gray-500 hover:text-gray-700",
+            )}
+          >
+            <v.icone className="size-4" /> {v.label}
+          </button>
+        ))}
+        <span className="ml-auto pb-1 text-[11px] text-gray-400">{VISOES.find((v) => v.value === f.visao)?.dica}</span>
+      </div>
+
       <div className="flex flex-wrap items-end gap-3">
-        <div>
-          <label className={rot}>Técnico</label>
-          <select value={f.tecnico} onChange={(e) => set({ tecnico: e.target.value })} className={cn(sel, "min-w-[180px]")}>
-            <option value="">Todos os técnicos</option>
-            {f.tecnico && !nomes.includes(f.tecnico) && <option value={f.tecnico}>{f.tecnico}</option>}
-            {nomes.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className={rot}>Associado</label>
-          <select value={f.associado} onChange={(e) => set({ associado: e.target.value })} className={cn(sel, "min-w-[180px]")}>
-            <option value="">Todos os associados</option>
-            {f.associado && !nomes.includes(f.associado) && <option value={f.associado}>{f.associado}</option>}
-            {nomes.map((n) => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </div>
+        {f.visao !== "associados" && (
+          <div>
+            <label className={rot}>Técnico</label>
+            <select value={f.tecnico} onChange={(e) => set({ tecnico: e.target.value })} className={cn(sel, "min-w-[180px]")}>
+              <option value="">Todos os técnicos</option>
+              {f.tecnico && !nomes.includes(f.tecnico) && <option value={f.tecnico}>{f.tecnico}</option>}
+              {nomes.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+        )}
+        {f.visao !== "tecnicos" && (
+          <div>
+            <label className={rot}>Associado</label>
+            <select value={f.associado} onChange={(e) => set({ associado: e.target.value })} className={cn(sel, "min-w-[180px]")}>
+              <option value="">Todos os associados</option>
+              {f.associado && !nomes.includes(f.associado) && <option value={f.associado}>{f.associado}</option>}
+              {nomes.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+        )}
         <button
           type="button"
           aria-pressed={f.minhas}
           onClick={() => set({ minhas: !f.minhas })}
-          title="Só as inspeções em que você foi a campo ou está no documento"
+          title={f.visao === "tecnicos" ? "Só as inspeções em que você foi a campo" : f.visao === "associados" ? "Só os documentos em que você está" : "Só as inspeções em que você foi a campo ou está no documento"}
           className={cn(
             "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium",
             f.minhas ? "border-verde-primary bg-verde-primary text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50",
@@ -392,47 +427,72 @@ function InspecoesInner() {
         </p>
       )}
 
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          {FILTROS.map((fi) => {
-            const ativo = fi.value === "Todos" ? f.pilulas.length === 0 : f.pilulas.includes(fi.value);
-            return (
-              <span key={fi.value} className="contents">
-                {/* Risquinho entre os dois grupos: status | associação. */}
-                {fi.value === "ASSOCIADOS" && <span className="mx-1 h-5 w-px bg-gray-200" aria-hidden />}
-                <Pilula ativo={ativo} semCheck={fi.value === "Todos"} onClick={() => set({ pilulas: alternarPilula(f.pilulas, fi.value) })} contagem={countData?.status[fi.value]}>
-                  {fi.label}
-                </Pilula>
-              </span>
-            );
-          })}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Documento</span>
-          {DOCUMENTOS.map((d) => (
-            <Pilula key={d.value} ativo={f.documento.includes(d.value)} onClick={() => set({ documento: alternar(f.documento, d.value) })} contagem={extras?.documento[d.value] ?? 0}>
-              {d.label}
-            </Pilula>
-          ))}
-          <span className="mx-1 h-5 w-px bg-gray-200" aria-hidden />
-          <span className="text-[11px] font-medium uppercase tracking-wider text-gray-400">Prioridade</span>
-          {PRIORIDADES_DESC.map((p) => (
-            <Pilula
-              key={p}
-              ativo={f.prioridade.includes(p)}
-              onClick={() => set({ prioridade: alternar<PrioridadeInspecao>(f.prioridade, p) })}
-              contagem={extras?.prioridade[p] ?? 0}
-              className={!f.prioridade.includes(p) ? PRIORIDADE_INFO[p].classe.split(" ").filter((c) => c.startsWith("text-")).join(" ") : undefined}
-            >
-              {PRIORIDADE_INFO[p].label}
-            </Pilula>
-          ))}
+      <div className="space-y-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+        {/* Campo (status da inspeção) — Todas e Técnicos */}
+        {f.visao !== "associados" && (
+          <GrupoPilulas titulo="Status">
+            {FILTROS.filter((fi) => fi.value !== "ASSOCIADOS" && fi.value !== "NAO_ASSOCIADOS").map((fi) => (
+              <Pilula
+                key={fi.value}
+                ativo={fi.value === "Todos" ? !f.pilulas.some((p) => p !== "ASSOCIADOS" && p !== "NAO_ASSOCIADOS") : f.pilulas.includes(fi.value)}
+                semCheck={fi.value === "Todos"}
+                onClick={() => set({ pilulas: fi.value === "Todos" ? f.pilulas.filter((p) => p === "ASSOCIADOS" || p === "NAO_ASSOCIADOS") : alternarPilula(f.pilulas, fi.value) })}
+                contagem={countData?.status[fi.value]}
+              >
+                {fi.label}
+              </Pilula>
+            ))}
+          </GrupoPilulas>
+        )}
+        {/* Documento (associação e situação) — Todas e Associados */}
+        {f.visao !== "tecnicos" && (
+          <GrupoPilulas titulo="Documento">
+            {FILTROS.filter((fi) => fi.value === "ASSOCIADOS" || fi.value === "NAO_ASSOCIADOS").map((fi) => (
+              <Pilula key={fi.value} ativo={f.pilulas.includes(fi.value)} onClick={() => set({ pilulas: alternarPilula(f.pilulas, fi.value) })} contagem={countData?.status[fi.value]}>
+                {fi.label}
+              </Pilula>
+            ))}
+            <span className="mx-1 h-5 w-px bg-gray-200" aria-hidden />
+            {DOCUMENTOS.map((d) => (
+              <Pilula key={d.value} ativo={f.documento.includes(d.value)} onClick={() => set({ documento: alternar(f.documento, d.value) })} contagem={extras?.documento[d.value] ?? 0}>
+                {d.label}
+              </Pilula>
+            ))}
+          </GrupoPilulas>
+        )}
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <GrupoPilulas titulo="Prioridade">
+            {PRIORIDADES_DESC.map((p) => (
+              <Pilula
+                key={p}
+                ativo={f.prioridade.includes(p)}
+                onClick={() => set({ prioridade: alternar<PrioridadeInspecao>(f.prioridade, p) })}
+                contagem={extras?.prioridade[p] ?? 0}
+                className={!f.prioridade.includes(p) ? corDoTexto(PRIORIDADE_INFO[p].classe) : undefined}
+              >
+                {PRIORIDADE_INFO[p].label}
+              </Pilula>
+            ))}
+          </GrupoPilulas>
+          <GrupoPilulas titulo="Complexidade">
+            {COMPLEXIDADES_DESC.map((c) => (
+              <Pilula
+                key={c}
+                ativo={f.complexidade.includes(c)}
+                onClick={() => set({ complexidade: alternar<ComplexidadeInspecao>(f.complexidade, c) })}
+                contagem={extras?.complexidade[c] ?? 0}
+                className={!f.complexidade.includes(c) ? corDoTexto(COMPLEXIDADE_INFO[c].classe) : undefined}
+              >
+                {COMPLEXIDADE_INFO[c].label}
+              </Pilula>
+            ))}
+          </GrupoPilulas>
         </div>
         {algumFiltro && (
           <p className="text-xs text-gray-500">
             {f.pilulas.length > 0 && <>Mostrando: <strong className="text-gray-700">{f.pilulas.map((p) => ROTULO[p]).join(" + ")}</strong> · </>}
             {total} {total === 1 ? "inspeção" : "inspeções"} ·{" "}
-            <button type="button" onClick={() => setF({ ...FILTROS_VAZIOS, unidade: "", ordem: f.ordem })} className="font-semibold text-verde-primary hover:underline">
+            <button type="button" onClick={() => setF({ ...FILTROS_VAZIOS, visao: f.visao, unidade: "", ordem: f.ordem })} className="font-semibold text-verde-primary hover:underline">
               limpar todos os filtros
             </button>
           </p>
@@ -462,6 +522,7 @@ function InspecoesInner() {
                   )}
                   <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-400">Rev.</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Prioridade</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Complexidade</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Data</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Responsável</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>

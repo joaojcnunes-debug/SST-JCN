@@ -6,12 +6,20 @@
 
 import type { FiltroInspecao } from "./pilulas";
 import type { PrioridadeInspecao } from "./prioridade";
+import { COMPLEXIDADES, type ComplexidadeInspecao } from "./complexidade";
 
 export type Documento = "PENDENTE" | "EM_ELABORACAO" | "ENTREGUE";
+/**
+ * Visão da lista (28/10): "" = Todas; "tecnicos" = o lado do campo (técnico, status da inspeção,
+ * data da visita); "associados" = o lado do documento (associado, associação, situação do documento).
+ * Cada visão mostra só os filtros dela.
+ */
+export type Visao = "" | "tecnicos" | "associados";
 export type OrdemLista = "recentes" | "antigas" | "revisao" | "prioridade" | "espera" | "prazo";
 export type Periodo = "" | "hoje" | "7d" | "30d" | "mes" | "mes_passado" | "personalizado";
 
 export interface FiltrosLista {
+  visao: Visao;
   q: string;
   empresa: string;
   tecnico: string;
@@ -25,15 +33,35 @@ export interface FiltrosLista {
   documento: Documento[];
   /** Prioridade EFETIVA (a maior entre a marcada e a calculada). */
   prioridade: PrioridadeInspecao[];
+  /** Complexidade marcada (v308). */
+  complexidade: ComplexidadeInspecao[];
   /** Espera mínima em dias (0 = sem filtro). */
   espera: number;
   ordem: OrdemLista;
 }
 
 export const FILTROS_VAZIOS: FiltrosLista = {
-  q: "", empresa: "", tecnico: "", associado: "", minhas: false, unidade: "",
-  periodo: "", de: "", ate: "", pilulas: [], documento: [], prioridade: [], espera: 0, ordem: "recentes",
+  visao: "", q: "", empresa: "", tecnico: "", associado: "", minhas: false, unidade: "",
+  periodo: "", de: "", ate: "", pilulas: [], documento: [], prioridade: [], complexidade: [], espera: 0, ordem: "recentes",
 };
+
+/**
+ * Trocar de visão limpa os filtros que a nova visão não mostra — filtro escondido ligado faz a
+ * lista "sumir" sem motivo aparente. Empresa, unidade, período, "só as minhas", prioridade,
+ * complexidade, espera e ordem valem nas três.
+ */
+export function trocarVisao(f: FiltrosLista, visao: Visao): FiltrosLista {
+  const novo = { ...f, visao };
+  if (visao === "tecnicos") {
+    novo.associado = "";
+    novo.documento = [];
+    novo.pilulas = f.pilulas.filter((p) => p !== "ASSOCIADOS" && p !== "NAO_ASSOCIADOS");
+  } else if (visao === "associados") {
+    novo.tecnico = "";
+    novo.pilulas = f.pilulas.filter((p) => p === "ASSOCIADOS" || p === "NAO_ASSOCIADOS");
+  }
+  return novo;
+}
 
 const PILULAS_OK: FiltroInspecao[] = ["RASCUNHO", "EM_ANDAMENTO", "CONCLUIDA", "ASSOCIADOS", "NAO_ASSOCIADOS"];
 const DOC_OK: Documento[] = ["PENDENTE", "EM_ELABORACAO", "ENTREGUE"];
@@ -49,7 +77,9 @@ const lista = <T extends string>(v: string | null, ok: readonly T[]) =>
 export function lerFiltros(sp: URLSearchParams, unidadePadrao = ""): FiltrosLista {
   const periodo = (PERIODO_OK as string[]).includes(sp.get("periodo") ?? "") ? (sp.get("periodo") as Periodo) : "";
   const espera = Number(sp.get("espera"));
+  const visao = sp.get("visao");
   return {
+    visao: visao === "tecnicos" || visao === "associados" ? visao : "",
     q: sp.get("q") ?? "",
     empresa: sp.get("empresa") ?? "",
     tecnico: sp.get("tecnico") ?? "",
@@ -62,6 +92,7 @@ export function lerFiltros(sp: URLSearchParams, unidadePadrao = ""): FiltrosList
     pilulas: lista(sp.get("status"), PILULAS_OK),
     documento: lista(sp.get("doc"), DOC_OK),
     prioridade: lista(sp.get("prioridade"), PRI_OK),
+    complexidade: lista(sp.get("complexidade"), COMPLEXIDADES),
     espera: Number.isFinite(espera) && espera > 0 ? Math.floor(espera) : 0,
     ordem: (ORDEM_OK as string[]).includes(sp.get("ordem") ?? "") ? (sp.get("ordem") as OrdemLista) : "recentes",
   };
@@ -71,6 +102,7 @@ export function lerFiltros(sp: URLSearchParams, unidadePadrao = ""): FiltrosList
 export function escreverFiltros(f: FiltrosLista, unidadePadrao = ""): URLSearchParams {
   const sp = new URLSearchParams();
   const put = (k: string, v: string) => v && sp.set(k, v);
+  put("visao", f.visao);
   put("q", f.q.trim());
   put("empresa", f.empresa);
   put("tecnico", f.tecnico);
@@ -85,6 +117,7 @@ export function escreverFiltros(f: FiltrosLista, unidadePadrao = ""): URLSearchP
   put("status", f.pilulas.join(","));
   put("doc", f.documento.join(","));
   put("prioridade", f.prioridade.join(","));
+  put("complexidade", f.complexidade.join(","));
   if (f.espera > 0) sp.set("espera", String(f.espera));
   if (f.ordem !== "recentes") sp.set("ordem", f.ordem);
   return sp;

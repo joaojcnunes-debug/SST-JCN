@@ -713,6 +713,8 @@ export interface Inspecao {
   dias_espera?: number | null;
   prioridade_auto?: "BAIXA" | "MEDIA" | "GRAVE" | "CRITICA" | null;
   prioridade_efetiva?: "BAIXA" | "MEDIA" | "GRAVE" | "CRITICA" | null;
+  /** v308 — complexidade marcada na lista (manual); nula = não definida. */
+  complexidade?: "BAIXA" | "MEDIA" | "ALTA" | "MUITO_ALTA" | null;
   created_at: string;
   updated_at: string | null;
   empresas?: { nome_empresa: string } | null;

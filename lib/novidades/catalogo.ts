@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "inspecoes-visoes-complexidade",
+    data: "2026-10-28",
+    tipo: "melhoria",
+    titulo: "Inspeções: filtros por Técnicos ou Associados e a coluna Complexidade",
+    texto:
+      "A lista de Inspeções ganhou três visões: Todas, Técnicos (campo) e Associados (documento). Cada uma mostra " +
+      "só os filtros que fazem sentido para ela. A busca do topo saiu: escolha a empresa no seletor. Ao lado da " +
+      "Prioridade há a coluna Complexidade (Baixa, Média, Alta, Muito alta), marcada na própria linha e com filtro. " +
+      "Em Minhas inspeções, os filtros ganharam títulos e a busca é pelo nome da empresa.",
+    onde: "Painel › Inspeções · Painel › Minhas inspeções",
+    versoes: ["0.3.166"],
+  },
+  {
     id: "inspecoes-minhas-e-filtros",
     data: "2026-10-28",
     tipo: "novidade",
