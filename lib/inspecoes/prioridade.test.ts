@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { diasEntre, motivosPrioridade, pesoPrioridade, textoEspera } from "./prioridade";
+import { calculadaSobe, diasEntre, motivosPrioridade, pesoPrioridade, textoEspera } from "./prioridade";
 import { escreverFiltros, FILTROS_VAZIOS, intervaloDoPeriodo, lerFiltros } from "./filtros-url";
 
 test("dias entre datas, sem fuso", () => {
@@ -9,27 +9,26 @@ test("dias entre datas, sem fuso", () => {
   assert.equal(diasEntre("2026-12-31", "2027-01-01"), 1);
 });
 
-test("motivos: prazo vencido, documento vencendo e espera longa, com a marca manual na frente", () => {
-  const m = motivosPrioridade(
-    { prioridade: "BAIXA", prazo: "2026-10-26", data_validade: "2026-11-10", dias_espera: 32 },
-    "2026-10-28",
-  );
-  assert.deepEqual(m, [
-    "Marcada como Baixa pelo supervisor",
-    "Prazo vencido há 2 dias",
-    "Documento vence em 13 dias",
-    "Aguardando há 32 dias",
-  ]);
-  // nada esperando (entregue): só a marca manual; prazo e espera não contam
-  assert.deepEqual(motivosPrioridade({ prioridade: null, prazo: "2026-10-01", dias_espera: null }, "2026-10-28"), []);
-  // espera curta e prazo longe: sem motivo
+test("motivos da calculada: prazo vencido, documento vencendo e espera longa", () => {
+  const m = motivosPrioridade({ prazo: "2026-10-26", data_validade: "2026-11-10", dias_espera: 32 }, "2026-10-28");
+  assert.deepEqual(m, ["Prazo vencido há 2 dias", "Documento vence em 13 dias", "Aguardando há 32 dias"]);
+  // nada esperando (entregue): sem calculada, prazo não conta
+  assert.deepEqual(motivosPrioridade({ prazo: "2026-10-01", dias_espera: null }, "2026-10-28"), []);
   assert.deepEqual(motivosPrioridade({ prazo: "2026-12-01", dias_espera: 3 }, "2026-10-28"), []);
   assert.deepEqual(motivosPrioridade({ prazo: "2026-10-28", dias_espera: 1 }, "2026-10-28"), ["Prazo vence hoje"]);
 });
 
-test("peso e texto da espera", () => {
-  assert.ok(pesoPrioridade("URGENTE") > pesoPrioridade("ALTA"));
-  assert.equal(pesoPrioridade(null), 0);
+test("escala do painel: Crítica > Urgente (GRAVE) > Média > Baixa; a calculada só sobe a marcada", () => {
+  assert.ok(pesoPrioridade("CRITICA") > pesoPrioridade("GRAVE"));
+  assert.ok(pesoPrioridade("GRAVE") > pesoPrioridade("MEDIA"));
+  assert.equal(pesoPrioridade("URGENTE"), 0, "valor fora da escala não pesa");
+  assert.equal(calculadaSobe({ prioridade: "BAIXA", prioridade_auto: "CRITICA" }), true);
+  assert.equal(calculadaSobe({ prioridade: "CRITICA", prioridade_auto: "MEDIA" }), false);
+  assert.equal(calculadaSobe({ prioridade: null, prioridade_auto: "BAIXA" }), true);
+  assert.equal(calculadaSobe({ prioridade: null, prioridade_auto: null }), false);
+});
+
+test("texto da espera", () => {
   assert.equal(textoEspera("EM_ANDAMENTO", 12), "Aberta há 12 dias");
   assert.equal(textoEspera("CONCLUIDA", 1), "Documento aguardando há 1 dia");
   assert.equal(textoEspera("CONCLUIDA", null), null);
@@ -40,13 +39,13 @@ test("filtros no endereço: ida e volta, e valor inválido vira padrão", () => 
     ...FILTROS_VAZIOS,
     q: "chabra", tecnico: "Ledimo", minhas: true, unidade: "UNI-1", periodo: "personalizado" as const,
     de: "2026-10-01", ate: "2026-10-28", pilulas: ["CONCLUIDA" as const], documento: ["PENDENTE" as const],
-    prioridade: ["URGENTE" as const, "ALTA" as const], espera: 15, ordem: "prioridade" as const,
+    prioridade: ["CRITICA" as const, "GRAVE" as const], espera: 15, ordem: "prioridade" as const,
   };
-  const sp = escreverFiltros(f);
-  assert.deepEqual(lerFiltros(sp), f);
-  const ruim = lerFiltros(new URLSearchParams("status=XYZ,CONCLUIDA&doc=nada&espera=-3&ordem=foo&de=ontem"));
+  assert.deepEqual(lerFiltros(escreverFiltros(f)), f);
+  const ruim = lerFiltros(new URLSearchParams("status=XYZ,CONCLUIDA&doc=nada&prioridade=URGENTE,GRAVE&espera=-3&ordem=foo&de=ontem"));
   assert.deepEqual(ruim.pilulas, ["CONCLUIDA"]);
   assert.deepEqual(ruim.documento, []);
+  assert.deepEqual(ruim.prioridade, ["GRAVE"]);
   assert.equal(ruim.espera, 0);
   assert.equal(ruim.ordem, "recentes");
   assert.equal(ruim.de, "");

@@ -1,6 +1,7 @@
 "use client";
 
 import LiberacaoComercial from "@/components/comercial/LiberacaoComercial";
+import PrioridadeSelo from "@/components/inspecoes/PrioridadeInspecao";
 import { use, useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -468,6 +469,7 @@ export default function InspecaoEditorPage({ params }: Props) {
               podeEditar={canEdit}
               invalidar={[["inspecao", id]]}
             />
+            <PrioridadeSelo valor={inspecao.prioridade} />
           </div>
         </div>
       </div>
