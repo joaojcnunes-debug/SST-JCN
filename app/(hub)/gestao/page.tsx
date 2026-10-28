@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, ListChecks, Sun, Moon } from "lucide-react";
+import { ArrowLeft, KanbanSquare, Menu as MenuIcon, Plus, Search, X, LayoutList, CalendarDays, GanttChartSquare, SlidersHorizontal, Tags, Tag, Zap, Settings, ChevronDown, Clock, CheckSquare, CheckCheck, BarChart3, FileText, Bell, Trash2, Users, UserSquare, ListChecks, Sun, Moon, Share2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useUserStore, useTema } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
@@ -143,6 +143,8 @@ export default function GestaoChabraPage() {
   const [modelosOpen, setModelosOpen] = useState(false);
   const [calendarioOpen, setCalendarioOpen] = useState(false);
   const [membrosOpen, setMembrosOpen] = useState(false);
+  // v305: "Compartilhar" abre o mesmo modal já na aba "Por lista" desta lista
+  const [membrosFoco, setMembrosFoco] = useState<string | null>(null);
   const [quadroAgrupar, setQuadroAgrupar] = useState<"status" | "responsavel" | "prioridade" | "etiqueta">("status");
   // Filtro "Mostrar": só tarefas (padrão), só subtarefas ou as duas. Com subtarefas o volume cresce
   // muito (milhares no Psicossocial), então cada coluna mostra LIMITE_COL por vez ("Mostrar mais").
@@ -691,8 +693,13 @@ export default function GestaoChabraPage() {
               <X className="size-4" /> Limpar
             </button>
           )}
+          {souGestor && quadro && (
+            <button type="button" onClick={() => { setMembrosFoco(quadro.id_quadro); setMembrosOpen(true); }} title="Quem acessa esta lista, e dar acesso a ela" className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+              <Share2 className="size-4" /> Compartilhar
+            </button>
+          )}
           {souGestor && (
-            <button type="button" onClick={() => setMembrosOpen(true)} title="Membros e acessos da Gestão — quem vê cada quadro" className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+            <button type="button" onClick={() => { setMembrosFoco(null); setMembrosOpen(true); }} title="Membros e acessos da Gestão — quem vê cada quadro" className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
               <Users className="size-4" /> Membros e acessos
             </button>
           )}
@@ -990,7 +997,7 @@ export default function GestaoChabraPage() {
         />
       )}
 
-      <MembrosModal open={membrosOpen} onClose={() => setMembrosOpen(false)} />
+      <MembrosModal open={membrosOpen} onClose={() => setMembrosOpen(false)} quadroFoco={membrosFoco} />
 
       {selecaoModo && selecionados.size > 0 && (
         <BarraAcoesMassa

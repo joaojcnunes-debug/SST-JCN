@@ -1939,6 +1939,10 @@ export interface GestaoAcesso {
   id_equipe?: string | null;
   papel: "viewer" | "editor";
   nivel: import("@/lib/gestao/niveis").GestaoNivel;
+  /** Recurso do grant: espaço, pasta, lista (id_quadro) ou tarefa. */
+  recurso_tipo?: "space" | "folder" | "list" | "task";
+  recurso_id?: string;
+  restritivo?: boolean | null;
   created_at: string;
 }
 
