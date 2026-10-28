@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { calculadaSobe, diasEntre, motivosPrioridade, pesoPrioridade, textoEspera } from "./prioridade";
-import { escreverFiltros, FILTROS_VAZIOS, intervaloDoPeriodo, lerFiltros } from "./filtros-url";
+import { escreverFiltros, FILTROS_VAZIOS, intervaloDoPeriodo, lerFiltros, trocarVisao } from "./filtros-url";
 
 test("dias entre datas, sem fuso", () => {
   assert.equal(diasEntre("2026-10-28", "2026-10-30"), 2);
@@ -54,6 +54,30 @@ test("filtros no endereço: ida e volta, e valor inválido vira padrão", () => 
   assert.equal(lerFiltros(new URLSearchParams("unidade="), "UNI-A").unidade, "");
   assert.equal(escreverFiltros({ ...FILTROS_VAZIOS, unidade: "" }, "UNI-A").get("unidade"), "");
   assert.equal(escreverFiltros(FILTROS_VAZIOS).toString(), "");
+});
+
+test("visão e complexidade no endereço; trocar de visão limpa o que fica escondido", () => {
+  const f = { ...FILTROS_VAZIOS, visao: "associados" as const, complexidade: ["MUITO_ALTA" as const, "BAIXA" as const] };
+  assert.deepEqual(lerFiltros(escreverFiltros(f)), f);
+  assert.equal(lerFiltros(new URLSearchParams("visao=xyz&complexidade=ALTA,URGENTE")).visao, "");
+  assert.deepEqual(lerFiltros(new URLSearchParams("complexidade=ALTA,URGENTE")).complexidade, ["ALTA"]);
+
+  const tudo = {
+    ...FILTROS_VAZIOS, tecnico: "Ledimo", associado: "Ana", documento: ["PENDENTE" as const],
+    pilulas: ["CONCLUIDA" as const, "ASSOCIADOS" as const], prioridade: ["CRITICA" as const], empresa: "EMP-1",
+  };
+  const tec = trocarVisao(tudo, "tecnicos");
+  assert.equal(tec.associado, "");
+  assert.deepEqual(tec.documento, []);
+  assert.deepEqual(tec.pilulas, ["CONCLUIDA"]);
+  assert.equal(tec.tecnico, "Ledimo");
+  assert.deepEqual(tec.prioridade, ["CRITICA"], "prioridade vale nas três");
+  const assoc = trocarVisao(tudo, "associados");
+  assert.equal(assoc.tecnico, "");
+  assert.deepEqual(assoc.pilulas, ["ASSOCIADOS"]);
+  assert.deepEqual(assoc.documento, ["PENDENTE"]);
+  assert.equal(assoc.empresa, "EMP-1");
+  assert.deepEqual(trocarVisao(tudo, ""), { ...tudo, visao: "" }, "Todas não limpa nada");
 });
 
 test("atalhos de período", () => {

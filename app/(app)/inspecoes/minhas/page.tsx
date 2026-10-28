@@ -17,6 +17,7 @@ import { AlarmClock, CalendarClock, CheckCircle2, ClipboardList, FileText, Flame
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { PrioridadeCelula } from "@/components/inspecoes/PrioridadeInspecao";
 import PrioridadeCalculada from "@/components/inspecoes/PrioridadeCalculada";
+import ComplexidadeCelula from "@/components/inspecoes/ComplexidadeCelula";
 import { useFilaAtribuida, usePessoasAtribuicao, useResumoFila, type FiltrosFila } from "@/lib/hooks/useInspecoesAtribuidas";
 import { useCanEdit, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import { useUserStore } from "@/lib/store";
@@ -114,6 +115,7 @@ function MinhasInner() {
   };
   const itens = fila.data ?? [];
   const sel = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
+  const rot = "mb-1 block text-[11px] font-medium uppercase tracking-wider text-gray-500";
 
   return (
     <div className="space-y-4">
@@ -164,42 +166,59 @@ function MinhasInner() {
         ))}
       </div>
 
+      {/* 28/10: cada filtro com o título em cima, como na lista de Inspeções. */}
       <div className="flex flex-wrap items-end gap-3">
-        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-sm">
-          {(["abertas", "todas"] as const).map((s) => (
-            <button key={s} type="button" onClick={() => setSituacao(s)} className={cn("rounded-md px-3 py-1", situacao === s ? "bg-verde-primary font-medium text-white" : "text-gray-600 hover:bg-gray-50")}>
-              {s === "abertas" ? "Só as abertas" : "Todas"}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {PRIORIDADES_DESC.map((p) => {
-            const on = prioridade.includes(p);
-            return (
-              <button key={p} type="button" onClick={() => setPrioridade(on ? prioridade.filter((x) => x !== p) : [...prioridade, p])} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? cn(PRIORIDADE_INFO[p].classe, "font-semibold ring-2 ring-verde-primary/30") : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
-                {PRIORIDADE_INFO[p].label}
+        <div>
+          <label className={rot}>Situação</label>
+          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-sm">
+            {(["abertas", "todas"] as const).map((s) => (
+              <button key={s} type="button" onClick={() => setSituacao(s)} className={cn("rounded-md px-3 py-1", situacao === s ? "bg-verde-primary font-medium text-white" : "text-gray-600 hover:bg-gray-50")}>
+                {s === "abertas" ? "Só as abertas" : "Todas"}
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
-        <select value={espera} onChange={(e) => setEspera(Number(e.target.value))} className={sel} aria-label="Tempo de espera">
-          <option value={0}>Qualquer espera</option>
-          {[7, 15, 30, 45].map((d) => <option key={d} value={d}>Esperando há +{d} dias</option>)}
-        </select>
-        <select value={periodo} onChange={(e) => setPeriodo(e.target.value as Periodo)} className={sel} aria-label="Período">
-          <option value="">Qualquer data</option>
-          {(Object.keys(ROTULO_PERIODO) as Exclude<Periodo, "">[]).filter((p) => p !== "personalizado").map((p) => <option key={p} value={p}>{ROTULO_PERIODO[p]}</option>)}
-        </select>
+        <div>
+          <label className={rot}>Prioridade</label>
+          <div className="flex flex-wrap items-center gap-1.5 py-0.5">
+            {PRIORIDADES_DESC.map((p) => {
+              const on = prioridade.includes(p);
+              return (
+                <button key={p} type="button" onClick={() => setPrioridade(on ? prioridade.filter((x) => x !== p) : [...prioridade, p])} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? cn(PRIORIDADE_INFO[p].classe, "font-semibold ring-2 ring-verde-primary/30") : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
+                  {PRIORIDADE_INFO[p].label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <label className={rot}>Tempo de espera</label>
+          <select value={espera} onChange={(e) => setEspera(Number(e.target.value))} className={sel}>
+            <option value={0}>Qualquer espera</option>
+            {[7, 15, 30, 45].map((d) => <option key={d} value={d}>Esperando há +{d} dias</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={rot}>Período</label>
+          <select value={periodo} onChange={(e) => setPeriodo(e.target.value as Periodo)} className={sel}>
+            <option value="">Qualquer data</option>
+            {(Object.keys(ROTULO_PERIODO) as Exclude<Periodo, "">[]).filter((p) => p !== "personalizado").map((p) => <option key={p} value={p}>{ROTULO_PERIODO[p]}</option>)}
+          </select>
+        </div>
         <div className="relative min-w-[200px] flex-1 max-w-xs">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Empresa ou ID…" className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-sm focus:border-verde-primary focus:outline-none" />
+          <label className={rot}>Empresa</label>
+          <Search className="pointer-events-none absolute left-2.5 top-[31px] size-3.5 text-gray-400" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome da empresa…" className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-sm focus:border-verde-primary focus:outline-none" />
         </div>
-        <select value={ordem} onChange={(e) => setOrdem(e.target.value as FiltrosFila["ordem"])} className={cn(sel, "ml-auto")} aria-label="Ordenar">
-          <option value="prioridade">Mais urgente primeiro</option>
-          <option value="espera">Esperando há mais tempo</option>
-          <option value="prazo">Prazo mais próximo</option>
-          <option value="recentes">Mais recentes</option>
-        </select>
+        <div className="ml-auto">
+          <label className={rot}>Ordenar</label>
+          <select value={ordem} onChange={(e) => setOrdem(e.target.value as FiltrosFila["ordem"])} className={sel}>
+            <option value="prioridade">Mais urgente primeiro</option>
+            <option value="espera">Esperando há mais tempo</option>
+            <option value="prazo">Prazo mais próximo</option>
+            <option value="recentes">Mais recentes</option>
+          </select>
+        </div>
       </div>
 
       <div className={cn("overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm", fila.isFetching && "opacity-70 transition-opacity")}>
@@ -223,6 +242,9 @@ function MinhasInner() {
                     {/* a marcada (quem edita troca aqui) + a calculada, quando passa, e o prazo */}
                     <PrioridadeCelula id={i.id_inspecao} valor={i.prioridade} podeEditar={canEdit} />
                     <PrioridadeCalculada insp={i} podeEditarPrazo={canEdit} compacto />
+                    <div className="mt-1">
+                      <ComplexidadeCelula id={i.id_inspecao} valor={i.complexidade} podeEditar={canEdit} />
+                    </div>
                   </div>
                   <div className="min-w-[200px] flex-1">
                     <p className="font-medium text-gray-900">{i.empresas?.nome_empresa ?? "—"}</p>

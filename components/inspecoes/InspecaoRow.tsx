@@ -6,6 +6,7 @@ import StatusBadge from "./StatusBadge";
 import { fmtData } from "@/lib/utils";
 import { PrioridadeCelula } from "./PrioridadeInspecao";
 import PrioridadeCalculada from "./PrioridadeCalculada";
+import ComplexidadeCelula from "./ComplexidadeCelula";
 import { iniciais, corAvatar } from "@/lib/hooks/useGestao";
 import { situacaoDocumento, type ChaveDocumento } from "@/lib/inspecoes/documento";
 import { ehRenovacao } from "@/lib/dashboard/inspecoes";
@@ -67,6 +68,10 @@ export default function InspecaoRow({
         <PrioridadeCelula id={insp.id_inspecao} valor={insp.prioridade} podeEditar={!!podeEditarPrioridade} />
         {/* 28/10: a calculada (quando passa a marcada), a espera e o prazo — mesma regra de quem edita. */}
         <PrioridadeCalculada insp={insp} podeEditarPrazo={!!podeEditarPrioridade} />
+      </td>
+      {/* v308 (JCN): complexidade — mesma mecânica e mesma regra de quem edita da prioridade. */}
+      <td className="px-4 py-3">
+        <ComplexidadeCelula id={insp.id_inspecao} valor={insp.complexidade} podeEditar={!!podeEditarPrioridade} />
       </td>
       <td className="px-4 py-3 text-sm text-gray-600">
         {fmtData(insp.data_inspecao)}

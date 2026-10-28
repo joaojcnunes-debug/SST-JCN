@@ -60,11 +60,12 @@ export function useFilaAtribuida(f: FiltrosFila) {
       if (f.esperaMin > 0) q = q.gte("dias_espera", f.esperaMin);
       const periodo = filtroPeriodo(f.dataIni, f.dataFim);
       if (periodo) q = q.or(periodo);
+      // 28/10: a busca é só pelo nome da empresa (o ID saiu do campo).
       const termo = f.busca.trim().replace(/[(),*%]/g, " ").trim();
       if (termo) {
         const { data: emps } = await sb.from("empresas").select("id_empresa").ilike("nome_empresa", `%${termo}%`).limit(300);
         const ids = ((emps ?? []) as { id_empresa: string }[]).map((e) => e.id_empresa);
-        q = q.or([`id_inspecao.ilike.*${termo}*`, ...(ids.length ? [`id_empresa.in.(${ids.join(",")})`] : [])].join(","));
+        q = ids.length ? q.in("id_empresa", ids) : q.eq("id_inspecao", "__nenhuma__");
       }
       if (f.ordem === "prioridade") q = q.order("prioridade_ord", { ascending: false }).order("dias_espera", { ascending: false, nullsFirst: false });
       else if (f.ordem === "espera") q = q.order("dias_espera", { ascending: false, nullsFirst: false });
