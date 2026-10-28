@@ -221,12 +221,11 @@ describe("entregue × em aberto", () => {
 });
 
 describe("o que não foi entregue, separado", () => {
-  it("associada sem clicar em Assumir conta como em elaboração, igual à lista (28/09)", () => {
+  it("28/10: associada que ainda não iniciou fica em 'atribuído' (semDono), igual à lista", () => {
     const docs = [
       doc({ id_inspecao: "A", elaboracao_responsavel: "Ana", elaboracao_status: "CONCLUIDO" }),
       doc({ id_inspecao: "B", elaboracao_responsavel: "Ana", elaboracao_status: "EM_ELABORACAO" }),
-      // Ana está no chip, mas ninguém clicou em "Assumir": até 28/09 isto era
-      // "sem dono" aqui e "Em elaboração · Ana" na lista de inspeções.
+      // Ana está no chip, mas não começou: a lista diz "Atribuído · Ana".
       doc({ id_inspecao: "C", elaboracao_responsavel: null, elaboracao_status: "PENDENTE" }),
     ];
     const r = porAssociado(
@@ -236,7 +235,7 @@ describe("o que não foi entregue, separado", () => {
     );
     assert.deepEqual(
       [r[0].total, r[0].entregues, r[0].emElaboracao, r[0].semDono, r[0].emAberto],
-      [3, 1, 2, 0, 2],
+      [3, 1, 1, 1, 2],
     );
   });
 
@@ -253,23 +252,24 @@ describe("o que não foi entregue, separado", () => {
 });
 
 describe("porSituacao — donut do dashboard pela régua da lista (13/10)", () => {
-  it("associado sem clicar em Assumir sai de Pendentes e vai para Assumidos", () => {
+  it("28/10: associado sem início vai para Atribuídos; Assumidos só com início de verdade", () => {
     const docs = [
       doc({ id_inspecao: "A", elaboracao_status: "CONCLUIDO" }),
       doc({ id_inspecao: "B", elaboracao_status: "EM_ELABORACAO" }),
-      // Bia no chip, ninguém clicou em "Assumir": a lista diz "Em elaboração · Bia".
+      // Bia no chip, sem início: a lista diz "Atribuído · Bia".
       doc({ id_inspecao: "C", elaboracao_status: "PENDENTE" }),
       doc({ id_inspecao: "D", elaboracao_status: null, elaboracao_responsavel: "Caio" }),
       doc({ id_inspecao: "E", elaboracao_status: "PENDENTE" }),
     ];
     assert.deepEqual(porSituacao([assoc({ id_inspecao: "C", nome: "Bia" })], docs), {
       pendentes: 1,
-      assumidos: 3,
+      atribuidos: 2,
+      assumidos: 1,
       concluidos: 1,
     });
   });
 
-  it("inspeção em campo sem ninguém não é pendência; com associado já conta como assumida", () => {
+  it("inspeção em campo sem ninguém não é pendência; com associado conta como atribuída", () => {
     const docs = [
       doc({ id_inspecao: "A", status: "EM_ANDAMENTO", elaboracao_status: null }),
       doc({ id_inspecao: "B", status: "EM_ANDAMENTO", elaboracao_status: null }),
@@ -277,7 +277,8 @@ describe("porSituacao — donut do dashboard pela régua da lista (13/10)", () =
     ];
     assert.deepEqual(porSituacao([assoc({ id_inspecao: "B" }), assoc({ id_inspecao: "C" })], docs), {
       pendentes: 0,
-      assumidos: 1,
+      atribuidos: 1,
+      assumidos: 0,
       concluidos: 0,
     });
   });
@@ -337,10 +338,10 @@ describe("serieMensalAssociacoes — safra do mês", () => {
     for (const m of serie) {
       assert.equal(m.entregues + m.emElaboracao + m.semDono, m.total);
     }
-    // B e C têm gente no documento (a linha de associação): em elaboração,
-    // como a lista diz — não "sem dono" (28/09).
+    // B e C têm gente no documento, mas ninguém começou: desde 28/10 (v309) são
+    // "Atribuídos" — contam em semDono, não em elaboração, como a lista diz.
     const ago = serie[serie.length - 1];
-    assert.deepEqual([ago.entregues, ago.emElaboracao, ago.semDono], [1, 2, 0]);
+    assert.deepEqual([ago.entregues, ago.emElaboracao, ago.semDono], [1, 0, 2]);
   });
 
   it("inspeção deletada e mês fora da janela não entram", () => {

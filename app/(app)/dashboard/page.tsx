@@ -118,13 +118,15 @@ async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: numb
           .range(de, ate),
     ),
   ]);
-  const { pendentes, assumidos, concluidos } = porSituacao(assoc, docs);
+  const { pendentes, atribuidos, assumidos, concluidos } = porSituacao(assoc, docs);
 
-  // Ordem fixa (cor é posicional): Pendentes · Assumidos · Concluídos
+  // Ordem fixa (cor é posicional): Pendentes · Atribuídos · Em elaboração · Concluídos.
+  // 28/10 (v309): "Atribuídos" = tem associado, mas o trabalho ainda não começou.
   return [
-    { name: "Pendentes",  value: pendentes },
-    { name: "Assumidos",  value: assumidos },
-    { name: "Concluídos", value: concluidos },
+    { name: "Pendentes",     value: pendentes },
+    { name: "Atribuídos",    value: atribuidos },
+    { name: "Em elaboração", value: assumidos },
+    { name: "Concluídos",    value: concluidos },
   ];
 }
 
@@ -158,8 +160,8 @@ async function fetchInspecoesRecentes(): Promise<InspecaoComEmpresa[]> {
 // ─── Constantes visuais ───────────────────────────────────────────────────────
 
 const PIE_COLORS = ["#d97706", "#0ea5e9", "#94a3b8"];
-// Documentos por situação: Pendentes (cinza) · Assumidos (âmbar) · Concluídos (verde)
-const DOC_COLORS = ["#94a3b8", "#d97706", "#0ea5e9"];
+// Documentos por situação: Pendentes (cinza) · Atribuídos (âmbar claro) · Em elaboração (âmbar) · Concluídos (azul)
+const DOC_COLORS = ["#94a3b8", "#fcd34d", "#d97706", "#0ea5e9"];
 
 const KPI_CONFIG = [
   { key: "empresasAtivas" as const, label: "Empresas Ativas",  icon: Building2,    color: "#0ea5e9", from: "#ecfdf5" },
@@ -549,7 +551,7 @@ export default function DashboardPage() {
         />
         <GraficoDonut
           titulo="Documentos por Situação"
-          sub="Pendentes · Assumidos · Concluídos"
+          sub="Pendentes · Atribuídos · Em elaboração · Concluídos"
           data={docSituacao}
           colors={DOC_COLORS}
           loading={loadingDocSit}

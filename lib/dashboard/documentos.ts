@@ -84,14 +84,12 @@ export interface PessoaDocumentos {
   /** A pessoa está com ele na mão agora. */
   emElaboracao: number;
   /**
-   * Creditado a ela, mas ninguém está com o documento.
+   * Atribuído a ela, mas o trabalho ainda não começou.
    *
-   * Até 28/09 era "passou pelo documento sem clicar em Assumir" (6 em 27/08,
-   * 75 em 22/09) e ficava fora do "em elaboração" para não parecer trabalho em
-   * curso. A decisão dele de 22/09 — quem está no chip conta como tendo
-   * assumido — virou regra aqui também: como todo documento creditado tem
-   * alguém, este número fica em ZERO por pessoa. Mantido no tipo porque as
-   * telas o leem.
+   * Até 28/09 era "passou pelo documento sem clicar em Assumir"; de 28/09 a
+   * 28/10 ficou em zero (quem estava no chip contava como em elaboração). Desde
+   * 28/10/2026 (v309) volta a ter número: estar no documento é ATRIBUÍDO, e só
+   * o início de verdade (botão ou 1ª edição) leva para "em elaboração".
    */
   semDono: number;
   /**
@@ -110,11 +108,10 @@ function chave(nome: string): string {
 }
 
 /**
- * Entregue, em elaboração ou sem ninguém — pela MESMA regra da lista de
- * inspeções (`situacaoDocumento`). Desde 28/09: quem está no documento conta
- * como tendo assumido, mesmo sem ter clicado em "Assumir". Antes o Dashboard
- * lia só `elaboracao_status` e 75 documentos com gente no chip caíam em "sem
- * dono" aqui enquanto a lista dizia "Em elaboração".
+ * Entregue, em elaboração, atribuído ou sem ninguém — pela MESMA regra da lista
+ * de inspeções (`situacaoDocumento`). De 28/09 a 28/10 quem estava no documento
+ * contava como em elaboração; desde 28/10/2026 (v309) isso é ATRIBUÍDO, e "em
+ * elaboração" só depois do início de verdade.
  */
 function situacao(d: DocumentoContavel, donos: readonly { nome: string }[]): ChaveDocumento {
   return situacaoDocumento(
@@ -264,7 +261,7 @@ export interface MesDocumentos {
   entregues: number;
   /** Dos que entraram no mês, quantos ainda estão com alguém. */
   emElaboracao: number;
-  /** Dos que entraram no mês, quantos voltaram para a fila sem dono. */
+  /** Dos que entraram no mês, quantos ainda não começaram (atribuídos) ou voltaram para a fila. */
   semDono: number;
   /** Documentos que entraram no mês, no total. */
   total: number;
@@ -367,10 +364,10 @@ export function foraDoGraficoMensal(
 
 /**
  * Donut "Documentos por Situação" do dashboard — pela MESMA regra da lista
- * (`situacaoDocumento`, decisão de 22/09): gente no documento (associado ou
- * responsável) conta como assumido, mesmo sem clicar em "Assumir". Até
- * 13/10 o donut lia só `elaboracao_status`, e ~100 documentos que a lista
- * mostrava "Em elaboração · Fulano" apareciam aqui como Pendentes.
+ * (`situacaoDocumento`). Até 13/10 o donut lia só `elaboracao_status`; de 13/10
+ * a 28/10 gente no documento contava como assumido. Desde 28/10/2026 (v309):
+ * gente no documento sem início = **Atribuídos**; `assumidos` = em elaboração
+ * de verdade (botão ou 1ª edição).
  *
  * Pendente = inspeção já concluída em campo e ninguém no documento; com a
  * inspeção ainda em campo e sem ninguém, não há documento a cobrar.
@@ -378,9 +375,10 @@ export function foraDoGraficoMensal(
 export function porSituacao(
   associacoes: readonly AssociacaoDoc[],
   documentos: readonly DocumentoContavel[],
-): { pendentes: number; assumidos: number; concluidos: number } {
+): { pendentes: number; atribuidos: number; assumidos: number; concluidos: number } {
   const entradas = indexarAssociacoes(associacoes);
   let pendentes = 0;
+  let atribuidos = 0;
   let assumidos = 0;
   let concluidos = 0;
   for (const d of documentos) {
@@ -388,9 +386,10 @@ export function porSituacao(
     const sit = situacao(d, donosDo(d, entradas));
     if (sit === "ENTREGUE") concluidos++;
     else if (sit === "EM_ELABORACAO") assumidos++;
+    else if (sit === "ATRIBUIDO") atribuidos++;
     else if (d.status === "CONCLUIDA") pendentes++;
   }
-  return { pendentes, assumidos, concluidos };
+  return { pendentes, atribuidos, assumidos, concluidos };
 }
 
 // ─── Documentos CONCLUÍDOS pelo ADM (card "Documentos por Mês" + detalhe) ───

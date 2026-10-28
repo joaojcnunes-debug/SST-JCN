@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "documento-atribuido-x-em-elaboracao",
+    data: "2026-10-28",
+    tipo: "melhoria",
+    titulo: "Documento: \"Atribuído\" separado de \"Em elaboração\"",
+    texto:
+      "Ter um associado no documento não quer dizer que o trabalho começou. Agora o documento com associado aparece como " +
+      "Atribuído (não iniciado) e só passa para Em elaboração quando o associado clica em Iniciar elaboração ou faz a primeira " +
+      "edição no documento, com a inspeção já concluída em campo. Fica registrado quando e por quem o trabalho começou. Em Minhas " +
+      "inspeções › Como associado há o botão Iniciar, o filtro Documento e há quantos dias cada documento espera para começar.",
+    onde: "Painel › Inspeções · Minhas inspeções · Dashboard › Documentos por Situação",
+    impacto: "Os documentos com associado que ninguém começou deixam de contar como Em elaboração e passam para Atribuídos.",
+    versoes: ["0.3.172"],
+  },
+  {
     id: "gestao-acessos-no-menu",
     data: "2026-10-28",
     tipo: "melhoria",

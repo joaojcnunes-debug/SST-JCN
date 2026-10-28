@@ -709,7 +709,13 @@ export interface Inspecao {
   prioridade_definida_por?: string | null;
   prioridade_definida_em?: string | null;
   /** v306/v307 — colunas CALCULADAS (só vêm quando a consulta pede pelo nome). */
-  situacao_documento?: "PENDENTE" | "EM_ELABORACAO" | "ENTREGUE" | null;
+  situacao_documento?: "PENDENTE" | "ATRIBUIDO" | "EM_ELABORACAO" | "ENTREGUE" | null;
+  /** v309 — quando o trabalho no documento começou, quem começou e como (BOTAO ou AUTOMATICO = 1ª edição). */
+  elaboracao_iniciada_em?: string | null;
+  elaboracao_iniciada_por?: string | null;
+  elaboracao_inicio_origem?: "BOTAO" | "AUTOMATICO" | null;
+  /** v309 — coluna CALCULADA: a primeira atribuição (inspecao_associados). */
+  atribuido_em?: string | null;
   dias_espera?: number | null;
   prioridade_auto?: "BAIXA" | "MEDIA" | "GRAVE" | "CRITICA" | null;
   prioridade_efetiva?: "BAIXA" | "MEDIA" | "GRAVE" | "CRITICA" | null;

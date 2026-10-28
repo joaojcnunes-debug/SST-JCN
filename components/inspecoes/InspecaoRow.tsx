@@ -16,6 +16,8 @@ import type { Inspecao, InspecaoAssociado } from "@/lib/supabase/types";
 const PILULA_DOC: Record<ChaveDocumento, { label: string; classe: string }> = {
   ENTREGUE: { label: "Concluído", classe: "bg-emerald-100 text-emerald-800" },
   EM_ELABORACAO: { label: "Em elaboração", classe: "bg-sky-100 text-sky-800" },
+  // 28/10 (v309): tem associado, mas ninguém começou o documento.
+  ATRIBUIDO: { label: "Atribuído", classe: "bg-amber-50 text-amber-800" },
   NINGUEM: { label: "Pendente", classe: "bg-gray-100 text-gray-500" },
 };
 
@@ -192,7 +194,12 @@ export default function InspecaoRow({
                     <span className="text-[11px] text-gray-400">em {fmtData(insp.elaboracao_concluida_em)}</span>
                   )}
                   {doc.chave === "EM_ELABORACAO" && (
-                    <span className="text-[11px] text-gray-400">{doc.texto.replace(/^Em elaboração( · )?/, "")}</span>
+                    <span className="text-[11px] text-gray-400" title={insp.elaboracao_iniciada_em ? `Iniciado em ${fmtData(insp.elaboracao_iniciada_em)}${insp.elaboracao_inicio_origem === "AUTOMATICO" ? " (pela 1ª edição)" : ""}` : undefined}>
+                      {doc.texto.replace(/^Em elaboração( · )?/, "")}
+                    </span>
+                  )}
+                  {doc.chave === "ATRIBUIDO" && (
+                    <span className="text-[11px] text-amber-700/80">{doc.texto.replace(/^Atribuído( · )?/, "")} · não iniciado</span>
                   )}
                 </span>
               )}

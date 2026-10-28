@@ -39,6 +39,8 @@ export interface FiltrosFila {
   papel: Exclude<PapelAtribuicao, "todos">;
   /** Status da inspeção (vazio = todos). 28/10: substituiu "abertas/todas". */
   status: string[];
+  /** Situação do documento (coluna calculada; v309 tem ATRIBUIDO). Vazio = todas. */
+  documento: string[];
   prioridade: string[];
   esperaMin: number;
   dataIni: string;
@@ -56,6 +58,7 @@ export function useFilaAtribuida(f: FiltrosFila) {
       const sb = createSupabaseBrowserClient();
       let q = rpcAtribuidas(sb, f.idUsuario, f.papel).select(`*, tecnicos_campo, ${COLUNAS_PRIORIDADE}, empresas(nome_empresa)`);
       if (f.status.length) q = q.in("status", f.status);
+      if (f.documento.length) q = q.in("situacao_documento", f.documento);
       if (f.prioridade.length) q = q.in("prioridade_efetiva", f.prioridade);
       if (f.esperaMin > 0) q = q.gte("dias_espera", f.esperaMin);
       const periodo = filtroPeriodo(f.dataIni, f.dataFim);
