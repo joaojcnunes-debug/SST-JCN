@@ -232,44 +232,61 @@ function MinhasInner() {
             {papel === "tecnico" ? "Como técnico, entram as inspeções em que você foi a campo (aba Responsáveis)." : "Como associado, entram os documentos em que você está associado ou assumiu a elaboração."}
           </p>
         ) : (
-          <ul className="divide-y divide-gray-50">
-            {itens.map((i) => {
-              const doc = i.situacao_documento ? DOC_ROTULO[i.situacao_documento] : null;
-              const espera = textoEspera(i.status, i.dias_espera);
-              return (
-                <li key={i.id_inspecao} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-verde-light/20">
-                  <div className="w-36 shrink-0">
-                    {/* a marcada (quem edita troca aqui) + a calculada, quando passa, e o prazo.
-                        Cada seletor com o nome em cima: vazios, os dois mostravam só "—". */}
-                    <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Prioridade</p>
-                    <PrioridadeCelula id={i.id_inspecao} valor={i.prioridade} podeEditar={canEdit} />
-                    <PrioridadeCalculada insp={i} podeEditarPrazo={canEdit} compacto />
-                    <p className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-gray-400">Complexidade</p>
-                    <ComplexidadeCelula id={i.id_inspecao} valor={i.complexidade} podeEditar={canEdit} />
-                  </div>
-                  <div className="min-w-[200px] flex-1">
-                    <p className="font-medium text-gray-900">{i.empresas?.nome_empresa ?? "—"}</p>
-                    <p className="text-[11px] text-gray-400">
-                      <span className="font-mono">{i.id_inspecao}</span> · rev. {i.revisao}
-                      {i.data_inspecao && <> · visita {fmtData(i.data_inspecao)}</>}
-                      {i.tecnicos_campo && papel === "associado" && <> · campo: {i.tecnicos_campo}</>}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <StatusBadge status={i.status} />
-                    {doc && <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", doc.cor)}>{doc.texto}</span>}
-                  </div>
-                  <div className="w-44 shrink-0 text-xs text-gray-500">{espera ?? (i.status === "CONCLUIDA" ? "Nada esperando" : "")}</div>
-                  <Link
-                    href={papel === "associado" ? `/inspecoes/${i.id_inspecao}/relatorio` : `/inspecoes/${i.id_inspecao}`}
-                    className="shrink-0 rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:border-verde-primary hover:text-verde-primary"
-                  >
-                    {papel === "associado" ? "Abrir documento" : "Abrir inspeção"}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          // 28/10: tabela com a linha de títulos no topo, como a lista de Inspeções (antes cada
+          // cartão repetia "Prioridade"/"Complexidade" em cima dos seletores).
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-gray-50/70">
+                  {["Prioridade", "Complexidade", "Empresa", "Status", "Espera"].map((t) => (
+                    <th key={t} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">{t}</th>
+                  ))}
+                  <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {itens.map((i) => {
+                  const doc = i.situacao_documento ? DOC_ROTULO[i.situacao_documento] : null;
+                  const espera = textoEspera(i.status, i.dias_espera);
+                  return (
+                    <tr key={i.id_inspecao} className="align-top hover:bg-verde-light/20">
+                      <td className="px-4 py-3">
+                        {/* a marcada (quem edita troca aqui) + a calculada, quando passa, e o prazo */}
+                        <PrioridadeCelula id={i.id_inspecao} valor={i.prioridade} podeEditar={canEdit} />
+                        <PrioridadeCalculada insp={i} podeEditarPrazo={canEdit} compacto />
+                      </td>
+                      <td className="px-4 py-3">
+                        <ComplexidadeCelula id={i.id_inspecao} valor={i.complexidade} podeEditar={canEdit} />
+                      </td>
+                      <td className="min-w-[220px] px-4 py-3">
+                        <p className="font-medium text-gray-900">{i.empresas?.nome_empresa ?? "—"}</p>
+                        <p className="text-[11px] text-gray-400">
+                          <span className="font-mono">{i.id_inspecao}</span> · rev. {i.revisao}
+                          {i.data_inspecao && <> · visita {fmtData(i.data_inspecao)}</>}
+                          {i.tecnicos_campo && papel === "associado" && <> · campo: {i.tecnicos_campo}</>}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <StatusBadge status={i.status} />
+                          {doc && <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", doc.cor)}>{doc.texto}</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-gray-500">{espera ?? (i.status === "CONCLUIDA" ? "Nada esperando" : "—")}</td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={papel === "associado" ? `/inspecoes/${i.id_inspecao}/relatorio` : `/inspecoes/${i.id_inspecao}`}
+                          className="inline-block whitespace-nowrap rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:border-verde-primary hover:text-verde-primary"
+                        >
+                          {papel === "associado" ? "Abrir documento" : "Abrir inspeção"}
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
       {itens.length >= 500 && <p className="text-xs text-gray-400">Mostrando as 500 primeiras — use os filtros para afinar.</p>}
