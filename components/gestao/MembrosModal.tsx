@@ -21,16 +21,11 @@ import {
   type GestaoNivel,
 } from "@/lib/hooks/useGestaoAcesso";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
+import SeletorNivel, { LegendaNiveis } from "@/components/gestao/SeletorNivel";
+import { rotuloNivel } from "@/lib/gestao/niveis";
 
-// Níveis do resolver v117, rotulados por VISIBILIDADE de tarefa (camada v197):
-// `full` = vê TODAS as tarefas do quadro; `view` = vê o quadro mas só as tarefas em que
-// está vinculado. comment/edit são avançados.
-const NIVEIS: { value: GestaoNivel; label: string }[] = [
-  { value: "full", label: "Visualizador total (vê todas as tarefas)" },
-  { value: "view", label: "Vinculado (vê só as tarefas dele)" },
-  { value: "comment", label: "Pode comentar" },
-  { value: "edit", label: "Pode editar" },
-];
+// v304: o nível é escolhido em dois eixos — o que VÊ (todas / só as próprias) e o que FAZ
+// (ver / comentar / editar). Ver lib/gestao/niveis.ts.
 
 // RPC direto (tipado à parte) para conceder em vários quadros numa ação só — 1 toast.
 type GestaoRpc = { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ error: { message: string } | null }> };
@@ -58,7 +53,8 @@ export default function MembrosModal({ open, onClose }: { open: boolean; onClose
   const motivoOk = motivo.trim().length >= 5;
 
   const [novoEmail, setNovoEmail] = useState("");
-  const [novoNivel, setNovoNivel] = useState<GestaoNivel>("full");
+  // Sem nível pré-escolhido: antes vinha marcado o máximo (`full`) com cara de "só ver".
+  const [novoNivel, setNovoNivel] = useState<GestaoNivel | "">("");
   const [novoQuadros, setNovoQuadros] = useState<Set<string>>(new Set());
   const [concedendo, setConcedendo] = useState(false);
 
@@ -102,7 +98,7 @@ export default function MembrosModal({ open, onClose }: { open: boolean; onClose
   }
 
   async function conceder() {
-    if (!novoEmail || novoQuadros.size === 0 || !motivoOk || concedendo) return;
+    if (!novoEmail || !novoNivel || novoQuadros.size === 0 || !motivoOk || concedendo) return;
     setConcedendo(true);
     const emailLc = novoEmail.toLowerCase();
     const ehAdmin = perfilPorEmail.get(emailLc) === "Admin";
@@ -177,6 +173,8 @@ export default function MembrosModal({ open, onClose }: { open: boolean; onClose
           {!motivoOk && motivo.length > 0 && <p className="mt-0.5 text-[11px] text-amber-600">Mínimo 5 caracteres.</p>}
         </div>
 
+        <LegendaNiveis />
+
         {aba === "equipes" ? <EquipesTab motivo={motivo} motivoOk={motivoOk} /> : (<>
         {/* Conceder acesso: usuário + nível + N quadros */}
         <div className="rounded-lg border border-dashed border-gray-300 p-3">
@@ -186,9 +184,7 @@ export default function MembrosModal({ open, onClose }: { open: boolean; onClose
               <option value="">Selecione o usuário…</option>
               {usuarios.map((u) => <option key={u.email} value={u.email}>{u.nome} ({u.email})</option>)}
             </select>
-            <select value={novoNivel} onChange={(e) => setNovoNivel(e.target.value as GestaoNivel)} className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none">
-              {NIVEIS.map((n) => <option key={n.value} value={n.value}>{n.label}</option>)}
-            </select>
+            <SeletorNivel value={novoNivel} onChange={setNovoNivel} className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none" />
           </div>
 
           {/* Multi-seleção de quadros */}
@@ -218,7 +214,7 @@ export default function MembrosModal({ open, onClose }: { open: boolean; onClose
           </div>
 
           <div className="mt-2 flex justify-end">
-            <button type="button" onClick={conceder} disabled={!novoEmail || novoQuadros.size === 0 || !motivoOk || pendente}
+            <button type="button" onClick={conceder} disabled={!novoEmail || !novoNivel || novoQuadros.size === 0 || !motivoOk || pendente}
               className="rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50">
               Conceder acesso
             </button>
@@ -246,15 +242,13 @@ export default function MembrosModal({ open, onClose }: { open: boolean; onClose
                       <p className="truncate text-sm font-medium text-gray-800">{it.nome}</p>
                       <p className="truncate text-[11px] text-gray-400">{it.id_equipe ? "acesso herdado pelos membros da equipe" : it.usuario_email}</p>
                     </div>
-                    <select
+                    <SeletorNivel
                       value={it.nivel}
                       disabled={!motivoOk || pendente}
-                      title={!motivoOk ? "Preencha o motivo" : "Alterar nível"}
-                      onChange={(e) => mudarNivel(it, g.id_quadro, e.target.value as GestaoNivel)}
+                      title={!motivoOk ? "Preencha o motivo" : rotuloNivel(it.nivel)}
+                      onChange={(n) => mudarNivel(it, g.id_quadro, n)}
                       className="shrink-0 rounded-md border border-gray-200 px-1.5 py-1 text-xs text-gray-700 focus:outline-none disabled:opacity-50"
-                    >
-                      {NIVEIS.map((n) => <option key={n.value} value={n.value}>{n.label}</option>)}
-                    </select>
+                    />
                     <button type="button" disabled={!motivoOk || pendente}
                       title={!motivoOk ? "Preencha o motivo" : "Remover acesso"}
                       onClick={() => remover(it, g.id_quadro, it.nome)}

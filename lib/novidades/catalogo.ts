@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-niveis-claros",
+    data: "2026-10-28",
+    tipo: "melhoria",
+    titulo: "Gestão: níveis de acesso com nomes que dizem o que a pessoa vê e faz",
+    texto:
+      "Em Membros e acessos, o nível agora diz o que a pessoa vê (todas as tarefas do quadro ou só as próprias) e o que " +
+      "faz (só ver, ver e comentar, ou ver e editar). O antigo \"Visualizador total\" é \"Todas as tarefas · ver e " +
+      "editar\" — ele sempre permitiu editar. E existem dois níveis novos: ver todas as tarefas só lendo, ou lendo e " +
+      "comentando. Os acessos já dados continuam iguais.",
+    onde: "Gestão › Membros e acessos",
+    versoes: ["0.3.162"],
+  },
+  {
     id: "consolidacao-por-empresa-completa",
     data: "2026-10-27",
     tipo: "melhoria",

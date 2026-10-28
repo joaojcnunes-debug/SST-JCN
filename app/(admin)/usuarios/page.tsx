@@ -1297,7 +1297,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                 <p className="text-[11px] text-gray-500 sm:col-span-2">
                   Nos setores, a pessoa vê só as tarefas das unidades marcadas (e as sem unidade).
                   Sem nenhuma unidade marcada, vê todas as unidades. Tarefas em que ela é responsável,
-                  seguidora ou que criou continuam aparecendo.
+                  seguidora ou que criou continuam aparecendo. Marcar um setor dá o nível{" "}
+                  <strong>Todas as tarefas · ver e editar</strong> nele; para só ver ou só comentar, use
+                  Gestão › Membros e acessos.
                 </p>
               </div>
             )}
