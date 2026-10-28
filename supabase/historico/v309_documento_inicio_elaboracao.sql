@@ -66,6 +66,7 @@ create or replace function public.documento_inicio_automatico_trg()
 returns trigger language plpgsql security definer set search_path to 'public' as $$
 declare
   v_id text;
+  v_pk text[];
   v_insp record;
   v_usuario record;
   c_ignora constant text[] := array[
@@ -88,6 +89,17 @@ begin
     v_id := new.registro_id;
   else
     v_id := coalesce(new.depois ->> 'id_inspecao', new.antes ->> 'id_inspecao');
+    -- numa EDIÇÃO o antes/depois só traz o que mudou: busca a inspeção na linha atual pela chave
+    -- (v309b — sem isto, editar um risco/setor/foto não marcava o início; só criar ou excluir)
+    if v_id is null and new.acao = 'editou' and new.registro_id is not null then
+      select t.pk_colunas into v_pk from public.auditoria_tabelas t where t.tabela = new.tabela;
+      if cardinality(v_pk) = 1 and exists (
+           select 1 from information_schema.columns
+            where table_schema = 'public' and table_name = new.tabela and column_name = 'id_inspecao') then
+        execute format('select id_inspecao::text from public.%I where %I::text = $1', new.tabela, v_pk[1])
+          into v_id using new.registro_id;
+      end if;
+    end if;
   end if;
   if v_id is null then return null; end if;
 
