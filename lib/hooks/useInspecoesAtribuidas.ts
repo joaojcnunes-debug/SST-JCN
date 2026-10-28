@@ -37,8 +37,8 @@ export function useIdsAtribuidas(idUsuario: string | null, papel: PapelAtribuica
 export interface FiltrosFila {
   idUsuario: string | null;
   papel: Exclude<PapelAtribuicao, "todos">;
-  /** "abertas" = ainda esperando algo (dias_espera não nulo); "todas" = inclui as já resolvidas. */
-  situacao: "abertas" | "todas";
+  /** Status da inspeção (vazio = todos). 28/10: substituiu "abertas/todas". */
+  status: string[];
   prioridade: string[];
   esperaMin: number;
   dataIni: string;
@@ -55,7 +55,7 @@ export function useFilaAtribuida(f: FiltrosFila) {
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
       let q = rpcAtribuidas(sb, f.idUsuario, f.papel).select(`*, tecnicos_campo, ${COLUNAS_PRIORIDADE}, empresas(nome_empresa)`);
-      if (f.situacao === "abertas") q = q.not("dias_espera", "is", null);
+      if (f.status.length) q = q.in("status", f.status);
       if (f.prioridade.length) q = q.in("prioridade_efetiva", f.prioridade);
       if (f.esperaMin > 0) q = q.gte("dias_espera", f.esperaMin);
       const periodo = filtroPeriodo(f.dataIni, f.dataFim);
