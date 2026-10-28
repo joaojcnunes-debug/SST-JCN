@@ -1938,7 +1938,7 @@ export interface GestaoAcesso {
   /** v235: grant de equipe (principal = equipe, não pessoa). */
   id_equipe?: string | null;
   papel: "viewer" | "editor";
-  nivel: "view" | "comment" | "edit" | "full";
+  nivel: import("@/lib/gestao/niveis").GestaoNivel;
   created_at: string;
 }
 

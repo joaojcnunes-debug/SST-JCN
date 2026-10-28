@@ -10,13 +10,8 @@ import {
   useUsuariosParaMembro, type GestaoNivel, type PapelEquipe,
 } from "@/lib/hooks/useGestaoAcesso";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
-
-const NIVEIS: { value: GestaoNivel; label: string }[] = [
-  { value: "full", label: "Visualizador total (vê todas as tarefas)" },
-  { value: "view", label: "Vinculado (vê só as tarefas dele)" },
-  { value: "comment", label: "Pode comentar" },
-  { value: "edit", label: "Pode editar" },
-];
+import SeletorNivel from "@/components/gestao/SeletorNivel";
+import { rotuloNivel } from "@/lib/gestao/niveis";
 const inputCls = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none";
 
 /**
@@ -41,7 +36,7 @@ export default function EquipesTab({ motivo, motivoOk }: { motivo: string; motiv
   const [editNome, setEditNome] = useState<string | null>(null);
   const [buscaUsuario, setBuscaUsuario] = useState("");
   const [novoPapel, setNovoPapel] = useState<PapelEquipe>("membro");
-  const [novoNivel, setNovoNivel] = useState<GestaoNivel>("full");
+  const [novoNivel, setNovoNivel] = useState<GestaoNivel | "">("");
   const [novoQuadros, setNovoQuadros] = useState<Set<string>>(new Set());
 
   const equipe = equipes.find((e) => e.id === sel) ?? null;
@@ -63,8 +58,9 @@ export default function EquipesTab({ motivo, motivoOk }: { motivo: string; motiv
     setNovoNome(""); if (id) setSel(id);
   }
   async function conceder() {
-    if (!equipe || novoQuadros.size === 0 || !motivoOk) return;
-    for (const q of novoQuadros) await alterarAcesso.mutateAsync({ id_equipe: equipe.id, recursoTipo: "list", recursoId: q, nivel: novoNivel, motivo: motivo.trim() });
+    if (!equipe || !novoNivel || novoQuadros.size === 0 || !motivoOk) return;
+    const nivel = novoNivel;
+    for (const q of novoQuadros) await alterarAcesso.mutateAsync({ id_equipe: equipe.id, recursoTipo: "list", recursoId: q, nivel, motivo: motivo.trim() });
     toast.success(`Equipe com acesso a ${novoQuadros.size} quadro${novoQuadros.size > 1 ? "s" : ""}`);
     setNovoQuadros(new Set());
   }
@@ -161,9 +157,7 @@ export default function EquipesTab({ motivo, motivoOk }: { motivo: string; motiv
               {acessosDa.map((a) => (
                 <div key={a.id} className="flex items-center gap-2 rounded-md px-1 py-1">
                   <span className="min-w-0 flex-1 truncate text-sm text-gray-800">{nomeQuadro.get(a.id_quadro) ?? a.id_quadro}</span>
-                  <select value={a.nivel} disabled={!motivoOk || pendente} title={!motivoOk ? "Preencha o motivo" : "Alterar nível"} onChange={(e) => alterarAcesso.mutate({ id_equipe: equipe.id, recursoTipo: "list", recursoId: a.id_quadro, nivel: e.target.value as GestaoNivel, motivo: motivo.trim() })} className="rounded-md border border-gray-200 px-1.5 py-1 text-xs text-gray-700 focus:outline-none disabled:opacity-50">
-                    {NIVEIS.map((n) => <option key={n.value} value={n.value}>{n.label}</option>)}
-                  </select>
+                  <SeletorNivel value={a.nivel} disabled={!motivoOk || pendente} title={!motivoOk ? "Preencha o motivo" : rotuloNivel(a.nivel)} onChange={(n) => alterarAcesso.mutate({ id_equipe: equipe.id, recursoTipo: "list", recursoId: a.id_quadro, nivel: n, motivo: motivo.trim() })} className="rounded-md border border-gray-200 px-1.5 py-1 text-xs text-gray-700 focus:outline-none disabled:opacity-50" />
                   <button type="button" disabled={!motivoOk || pendente} title={!motivoOk ? "Preencha o motivo" : "Remover acesso"} onClick={() => alterarAcesso.mutate({ id_equipe: equipe.id, recursoTipo: "list", recursoId: a.id_quadro, nivel: null, motivo: motivo.trim() })} className="flex size-7 shrink-0 items-center justify-center rounded-md text-gray-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"><Trash2 className="size-4" /></button>
                 </div>
               ))}
@@ -182,10 +176,8 @@ export default function EquipesTab({ motivo, motivoOk }: { motivo: string; motiv
                   })}
                 </div>
                 <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
-                  <select value={novoNivel} onChange={(e) => setNovoNivel(e.target.value as GestaoNivel)} className={inputCls}>
-                    {NIVEIS.map((n) => <option key={n.value} value={n.value}>{n.label}</option>)}
-                  </select>
-                  <button type="button" onClick={conceder} disabled={novoQuadros.size === 0 || !motivoOk || pendente} title={!motivoOk ? "Preencha o motivo" : ""} className="rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50">Conceder à equipe</button>
+                  <SeletorNivel value={novoNivel} onChange={setNovoNivel} className={inputCls} />
+                  <button type="button" onClick={conceder} disabled={!novoNivel || novoQuadros.size === 0 || !motivoOk || pendente} title={!motivoOk ? "Preencha o motivo" : ""} className="rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50">Conceder à equipe</button>
                 </div>
               </div>
             </div>

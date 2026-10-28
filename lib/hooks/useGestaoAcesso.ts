@@ -5,9 +5,13 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { mensagemErro } from "@/lib/errors";
+import type { GestaoNivel } from "@/lib/gestao/niveis";
+
+// v304: os níveis e as regras deles moram em lib/gestao/niveis.ts (reexportados aqui).
+export type { GestaoNivel } from "@/lib/gestao/niveis";
+export { nivelPodeVer, nivelPodeEditar, nivelPodeComentar, nivelVeTodas } from "@/lib/gestao/niveis";
 
 export type GestaoPapel = "owner" | "admin" | "membro";
-export type GestaoNivel = "view" | "comment" | "edit" | "full";
 export type GestaoRecurso = "space" | "folder" | "list" | "task";
 export type GestaoAcaoAcesso = "concedeu" | "revogou";
 
@@ -67,13 +71,6 @@ export function useMeusNiveisQuadros(ids: string[], enabled = true) {
     results.forEach((r, i) => m.set(ids[i], r.data ?? null));
     return m;
   }, [results, ids]);
-}
-
-export function nivelPodeVer(n: GestaoNivel | null | undefined) {
-  return n === "view" || n === "comment" || n === "edit" || n === "full";
-}
-export function nivelPodeEditar(n: GestaoNivel | null | undefined) {
-  return n === "edit" || n === "full";
 }
 
 // ── Roster + concessão de acesso (base da Fase 4) ───────────────────────────
