@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users, ShieldCheck } from "lucide-react";
 import {
   useSalvarEspaco, useExcluirEspaco, useSalvarPasta, useExcluirPasta,
   useCriarQuadro, useRenomearQuadro, useExcluirQuadro,
@@ -23,6 +23,7 @@ export default function GestaoSidebar({
   colabAtivo = false,
   onColab,
   mostrarColab = false,
+  onAcessos,
 }: {
   espacos: GestaoEspaco[];
   pastas: GestaoPasta[];
@@ -36,6 +37,8 @@ export default function GestaoSidebar({
   colabAtivo?: boolean;
   onColab?: () => void;
   mostrarColab?: boolean;
+  /** "Membros e acessos": só para gestor — sem a função, o item não aparece. */
+  onAcessos?: () => void;
 }) {
   const salvarEspaco = useSalvarEspaco();
   const excluirEspaco = useExcluirEspaco();
@@ -90,6 +93,13 @@ export default function GestaoSidebar({
         <button type="button" onClick={onColab} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${colabAtivo ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
           {colabAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}
           <Users className="size-4" /> Colaboradores
+        </button>
+      )}
+      {/* 28/10: "Membros e acessos" saiu da barra da lista e veio para cá, ao lado de Colaboradores.
+          Só gestor (como o botão antigo); abre o mesmo modal. */}
+      {onAcessos && (
+        <button type="button" onClick={onAcessos} title="Membros e acessos da Gestão — quem vê cada quadro" className="mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent">
+          <ShieldCheck className="size-4" /> Membros e acessos
         </button>
       )}
       <div className="mb-1 border-t border-white/[0.07]" />
