@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-acessos-no-menu",
+    data: "2026-10-28",
+    tipo: "melhoria",
+    titulo: "Gestão: Membros e acessos agora fica no menu lateral",
+    texto:
+      "O botão Membros e acessos saiu da barra de cima da lista e foi para o menu lateral da Gestão, logo abaixo de " +
+      "Colaboradores. Ele abre a mesma tela de antes. O Compartilhar de cada lista continua na barra.",
+    onde: "Gestão › menu lateral › Membros e acessos",
+    versoes: ["0.3.168"],
+  },
+  {
     id: "inspecoes-visoes-complexidade",
     data: "2026-10-28",
     tipo: "melhoria",

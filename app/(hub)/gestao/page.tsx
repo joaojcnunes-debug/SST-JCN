@@ -501,7 +501,7 @@ export default function GestaoChabraPage() {
       </Link>
       <div className="flex-1 overflow-y-auto px-2 py-2">
         <p className="mb-1 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/30">Espaços</p>
-        <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={inboxView || meuEspacoView || colabView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setInboxView(false); setMeuEspacoView(false); setColabView(false); aoNavegar(); }} podeEditar={souGestor} meuEspacoAtivo={meuEspacoView} onMeuEspaco={() => { setMeuEspacoView(true); setInboxView(false); setColabView(false); aoNavegar(); }} mostrarColab={mostrarColab} colabAtivo={colabView} onColab={() => { setColabView(true); setInboxView(false); setMeuEspacoView(false); aoNavegar(); }} />
+        <GestaoSidebar espacos={espacos} pastas={pastas} quadros={quadros} quadroId={inboxView || meuEspacoView || colabView ? null : (quadro?.id_quadro ?? null)} onSelect={(id) => { setQuadroId(id); setInboxView(false); setMeuEspacoView(false); setColabView(false); aoNavegar(); }} podeEditar={souGestor} meuEspacoAtivo={meuEspacoView} onMeuEspaco={() => { setMeuEspacoView(true); setInboxView(false); setColabView(false); aoNavegar(); }} mostrarColab={mostrarColab} colabAtivo={colabView} onColab={() => { setColabView(true); setInboxView(false); setMeuEspacoView(false); aoNavegar(); }} onAcessos={souGestor ? () => { setMembrosFoco(null); setMembrosOpen(true); aoNavegar(); } : undefined} />
       </div>
       <div className="space-y-0.5 border-t border-white/[0.09] p-2">
         {user?.perfil === "Admin" && (
@@ -696,11 +696,6 @@ export default function GestaoChabraPage() {
           {souGestor && quadro && (
             <button type="button" onClick={() => { setMembrosFoco(quadro.id_quadro); setMembrosOpen(true); }} title="Quem acessa esta lista, e dar acesso a ela" className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
               <Share2 className="size-4" /> Compartilhar
-            </button>
-          )}
-          {souGestor && (
-            <button type="button" onClick={() => { setMembrosFoco(null); setMembrosOpen(true); }} title="Membros e acessos da Gestão — quem vê cada quadro" className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
-              <Users className="size-4" /> Membros e acessos
             </button>
           )}
           {podeEditar && (
