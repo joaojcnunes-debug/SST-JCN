@@ -18,23 +18,25 @@ import { serieMensal, type InspecaoContavel, type MesInspecoes } from "@/lib/das
  * A consulta não filtra por `concluida_em` de propósito: linha com valor nulo
  * nunca passa numa comparação, e o fallback para `created_at` mora na régua.
  */
-export function useInspecoesPorMes() {
-  return useQuery<MesInspecoes[]>({
+export function useInspecoesPorMes(naUnidade?: (idEmpresa: string | null | undefined) => boolean) {
+  return useQuery<(InspecaoContavel & { id_empresa: string | null })[], Error, MesInspecoes[]>({
     queryKey: ["inspecoes-por-mes"],
     staleTime: 60 * 1000,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
-      const linhas = await fetchAllRows<InspecaoContavel>(
+      return fetchAllRows<InspecaoContavel & { id_empresa: string | null }>(
         (de, ate) =>
           supabase
             .from("inspecoes")
             // primeira_conclusao_em (v295): a reaberta continua no mês da 1ª conclusão.
-            .select("status, data_inspecao, concluida_em, primeira_conclusao_em, created_at, tipo_criacao")
+            .select("status, data_inspecao, concluida_em, primeira_conclusao_em, created_at, tipo_criacao, id_empresa")
             .neq("status", "DELETADA")
             .order("id_inspecao")
             .range(de, ate),
       );
-      return serieMensal(linhas, mesAbsAgoraSP(), 6, (abs) => rotuloMesAbs(abs));
     },
+    // 28/10: o Dashboard recorta pela unidade (a mesma do detalhe); a tela Início manda todas.
+    select: (linhas) =>
+      serieMensal(naUnidade ? linhas.filter((l) => naUnidade(l.id_empresa)) : linhas, mesAbsAgoraSP(), 6, (abs) => rotuloMesAbs(abs)),
   });
 }

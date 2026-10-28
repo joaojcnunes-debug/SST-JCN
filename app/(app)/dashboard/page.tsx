@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
   ClipboardList,
@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Target,
   AlertTriangle,
+  Users,
 } from "lucide-react";
 import {
   BarChart,
@@ -28,148 +29,135 @@ import {
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { mesAbsSP, mesAbsAgoraSP, rotuloMesAbs } from "@/lib/dashboard/mes";
-import { RENOVACAO, type MesInspecoes } from "@/lib/dashboard/inspecoes";
+import { ehRenovacao, type MesInspecoes } from "@/lib/dashboard/inspecoes";
+import { situacaoPorColaborador, LIMITE_PARADA, type LinhaColaborador } from "@/lib/dashboard/colaboradores";
 import { useInspecoesPorMes } from "@/lib/hooks/useInspecoesPorMes";
 import {
   concluidosPorMes,
   porSituacao,
+  chaveNome,
   type AssociacaoDoc,
   type DocumentoContavel,
 } from "@/lib/dashboard/documentos";
 import { empresasAssociadasPorMes, empresasPorPessoa, eventosDeAssociacao } from "@/lib/dashboard/associacoes-empresas";
 import { useDocumentosConcluidos } from "@/lib/hooks/useDocumentosConcluidos";
-import { useAssociacoesEmpresas } from "@/lib/hooks/useDashboardFontes";
+import { useAssociacoesEmpresas, useTecnicosDeCampo, useContasDoPainel, nomeDaEmpresa } from "@/lib/hooks/useDashboardFontes";
+import { useFiltroUnidadeDashboard } from "@/lib/hooks/useFiltroUnidadeDashboard";
+import { useIsSupervisor } from "@/lib/hooks/useUsuario";
+import FiltroUnidade from "@/components/dashboard/FiltroUnidade";
+import { hojeSP } from "@/lib/inspecoes/prioridade";
+import { situacaoDocumento, type LinhaDocumento } from "@/lib/inspecoes/documento";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { BalaoGrafico, BalaoUmValor, LinhaBalao } from "@/components/ui/BalaoGrafico";
 import { TabelaSkeleton } from "@/components/ui/PageSkeletons";
 import { cn, fmtData } from "@/lib/utils";
 import { useUserStore, useTema } from "@/lib/store";
 import { corAvatar } from "@/lib/hooks/useGestao";
-import type { Inspecao, Empresa } from "@/lib/supabase/types";
+import type { StatusInspecao } from "@/lib/supabase/types";
 import { useState, useEffect, useMemo } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface DashboardStats {
-  empresasAtivas: number;
-  totalInspecoes: number;
-  emAndamento: number;
-  concluidas: number;
-  rascunho: number;
-}
-
-interface InspecaoComEmpresa extends Inspecao {
-  empresa_nome?: string;
-}
 
 interface MesData {
   mes: string;
   total: number;
 }
 
+/**
+ * Uma inspeção como o Dashboard a lê — com a empresa (recorte por unidade, 28/10) e as colunas
+ * calculadas do banco (v306/v309): situação do documento, espera, prioridade efetiva.
+ */
+interface InspecaoPainel {
+  id_inspecao: string;
+  id_empresa: string | null;
+  status: string;
+  tipo_criacao: string | null;
+  data_inspecao: string | null;
+  concluida_em: string | null;
+  primeira_conclusao_em?: string | null;
+  primeira_conclusao_tecnicos?: { digitado: string; idUsuario: string | null }[] | null;
+  created_at: string;
+  updated_at: string | null;
+  responsavel: string | null;
+  elaboracao_status: string | null;
+  elaboracao_responsavel: string | null;
+  prazo: string | null;
+  tecnicos_campo: string | null;
+  situacao_documento: string | null;
+  dias_espera: number | null;
+  prioridade_efetiva: string | null;
+  empresas?: { nome_empresa: string | null } | { nome_empresa: string | null }[] | null;
+  inspecao_associados?: { nome: string | null }[] | null;
+}
+
 // ─── Fetch ────────────────────────────────────────────────────────────────────
 
-async function fetchStats(): Promise<DashboardStats> {
+/**
+ * Todas as inspeções (exceto excluídas) com o que os cartões precisam — UMA consulta para os KPIs, o
+ * donut de documentos, a Atividade recente e a Situação por colaborador. Antes eram contagens
+ * separadas no banco, que não davam para recortar pela unidade (28/10).
+ */
+async function fetchInspecoesPainel(): Promise<InspecaoPainel[]> {
   const supabase = createSupabaseBrowserClient();
-  // Renovação de documento (23/09) não é inspeção: fica fora dos quatro cards.
-  // `or` com `is.null` e não `neq` sozinho — no PostgREST `neq` descarta a
-  // linha com valor nulo, e registro antigo sem `tipo_criacao` sumiria junto.
-  const inspecoes = () =>
+  return fetchAllRows<InspecaoPainel>((de, ate) =>
     supabase
       .from("inspecoes")
-      .select("id_inspecao", { count: "exact", head: true })
-      .or(`tipo_criacao.is.null,tipo_criacao.neq.${RENOVACAO}`);
-  const [empAtivas, total, andamento, concluidas, rascunho] = await Promise.all([
-    supabase.from("empresas").select("id_empresa", { count: "exact", head: true }).eq("status", "Ativo"),
-    inspecoes().neq("status", "DELETADA"),
-    inspecoes().eq("status", "EM_ANDAMENTO"),
-    inspecoes().eq("status", "CONCLUIDA"),
-    inspecoes().eq("status", "RASCUNHO"),
-  ]);
-  return {
-    empresasAtivas: empAtivas.count ?? 0,
-    totalInspecoes: total.count ?? 0,
-    emAndamento: andamento.count ?? 0,
-    concluidas: concluidas.count ?? 0,
-    rascunho: rascunho.count ?? 0,
-  };
+      .select(
+        "id_inspecao, id_empresa, status, tipo_criacao, data_inspecao, concluida_em, primeira_conclusao_em, primeira_conclusao_tecnicos, created_at, updated_at, responsavel, " +
+          "elaboracao_status, elaboracao_responsavel, prazo, tecnicos_campo, situacao_documento, dias_espera, prioridade_efetiva, " +
+          "empresas(nome_empresa), inspecao_associados(nome)",
+      )
+      .neq("status", "DELETADA")
+      .order("id_inspecao")
+      .range(de, ate),
+  );
+}
+
+async function fetchEmpresas(): Promise<{ id_empresa: string; status: string | null }[]> {
+  const supabase = createSupabaseBrowserClient();
+  return fetchAllRows<{ id_empresa: string; status: string | null }>((de, ate) =>
+    supabase.from("empresas").select("id_empresa, status").order("id_empresa").range(de, ate),
+  );
 }
 
 // Inspeções por mês: a consulta e a régua moram em lib/hooks/useInspecoesPorMes,
 // compartilhado com o mini-gráfico da tela Início (15/09) — antes cada um
 // contava por conta própria e os dois divergiam (agosto: 153 × 140).
 
-async function fetchDocumentosPorSituacao(): Promise<{ name: string; value: number }[]> {
-  const supabase = createSupabaseBrowserClient();
-  // Mesma régua da lista de inspeções: quem está associado conta como tendo
-  // assumido (22/09) — por isso as associações entram na consulta.
-  const [assoc, docs] = await Promise.all([
-    fetchAllRows<AssociacaoDoc>(
-      (de, ate) =>
-        supabase.from("inspecao_associados").select("created_at, nome, id_inspecao").order("id").range(de, ate),
-    ),
-    fetchAllRows<DocumentoContavel>(
-      (de, ate) =>
-        supabase
-          .from("inspecoes")
-          .select("id_inspecao, status, elaboracao_responsavel, elaboracao_status")
-          .neq("status", "DELETADA")
-          .order("id_inspecao")
-          .range(de, ate),
-    ),
-  ]);
-  const { pendentes, atribuidos, assumidos, concluidos } = porSituacao(assoc, docs);
-
-  // Ordem fixa (cor é posicional): Pendentes · Atribuídos · Em elaboração · Concluídos.
-  // 28/10 (v309): "Atribuídos" = tem associado, mas o trabalho ainda não começou.
-  return [
-    { name: "Pendentes",     value: pendentes },
-    { name: "Atribuídos",    value: atribuidos },
-    { name: "Em elaboração", value: assumidos },
-    { name: "Concluídos",    value: concluidos },
-  ];
-}
-
-async function fetchInspecoesRecentes(): Promise<InspecaoComEmpresa[]> {
-  const supabase = createSupabaseBrowserClient();
-  const { data: insp, error } = await supabase
-    .from("inspecoes")
-    .select("*")
-    .neq("status", "DELETADA")
-    .order("data_inspecao", { ascending: false, nullsFirst: false })
-    .limit(8);
-  if (error) throw error;
-
-  const inspecoes = (insp ?? []) as unknown as Inspecao[];
-  const ids = Array.from(new Set(inspecoes.map((i) => i.id_empresa)));
-  if (ids.length === 0) return [];
-
-  const { data: emps } = await supabase
-    .from("empresas")
-    .select("id_empresa, nome_empresa")
-    .in("id_empresa", ids);
-
-  const empMap = new Map(
-    ((emps ?? []) as unknown as Pick<Empresa, "id_empresa" | "nome_empresa">[])
-      .map((e) => [e.id_empresa, e.nome_empresa])
-  );
-
-  return inspecoes.map((i) => ({ ...i, empresa_nome: empMap.get(i.id_empresa) ?? "—" }));
-}
+/** Todas as chaves que a tela lê — o "Atualizar" recarrega todas (antes só os KPIs). */
+// "dashboard-stats" é o prefixo que as telas de inspeção e empresas já invalidam ao gravar.
+const CHAVES_DASHBOARD = [
+  "dashboard-stats",
+  "inspecoes-por-mes",
+  "dashboard-documentos-adm",
+  "dashboard-associacoes-empresas",
+  "dashboard-tecnicos-de-campo",
+  "dashboard-contas-painel",
+  "dashboard-empresa-unidade",
+];
 
 // ─── Constantes visuais ───────────────────────────────────────────────────────
 
 const PIE_COLORS = ["#d97706", "#0ea5e9", "#94a3b8"];
-// Documentos por situação: Pendentes (cinza) · Atribuídos (âmbar claro) · Em elaboração (âmbar) · Concluídos (azul)
-const DOC_COLORS = ["#94a3b8", "#fcd34d", "#d97706", "#0ea5e9"];
+// Documentos por situação: Aguardando campo (cinza claro) · Pendentes (cinza) · Atribuídos (âmbar claro) ·
+// Em elaboração (âmbar) · Concluídos (azul)
+const DOC_COLORS = ["#cbd5e1", "#94a3b8", "#fcd34d", "#d97706", "#0ea5e9"];
 
-const KPI_CONFIG = [
-  { key: "empresasAtivas" as const, label: "Empresas Ativas",  icon: Building2,    color: "#0ea5e9", from: "#ecfdf5" },
-  { key: "totalInspecoes" as const, label: "Total Inspeções",  icon: ClipboardList, color: "#0369a1", from: "#eff6ff" },
-  { key: "emAndamento"    as const, label: "Em Andamento",     icon: Clock,         color: "#d97706", from: "#fffbeb" },
-  { key: "concluidas"     as const, label: "Concluídas",       icon: CheckCircle2,  color: "#16a34a", from: "#f0fdf4" },
-  { key: "rascunho"       as const, label: "Rascunhos",        icon: FileText,      color: "#64748b", from: "#f8fafc" },
-] as const;
+// `status`: o filtro da lista de Inspeções que o cartão abre.
+const KPI_CONFIG: {
+  key: "empresasAtivas" | "totalInspecoes" | "emAndamento" | "concluidas" | "rascunho";
+  label: string;
+  icon: React.ElementType;
+  color: string;
+  from: string;
+  status?: string;
+}[] = [
+  { key: "empresasAtivas", label: "Empresas Ativas", icon: Building2,     color: "#0ea5e9", from: "#ecfdf5" },
+  { key: "totalInspecoes", label: "Total Inspeções", icon: ClipboardList, color: "#0369a1", from: "#eff6ff" },
+  { key: "emAndamento",    label: "Em Andamento",    icon: Clock,         color: "#d97706", from: "#fffbeb", status: "EM_ANDAMENTO" },
+  { key: "concluidas",     label: "Concluídas",      icon: CheckCircle2,  color: "#16a34a", from: "#f0fdf4", status: "CONCLUIDA" },
+  { key: "rascunho",       label: "Rascunhos",       icon: FileText,      color: "#64748b", from: "#f8fafc", status: "RASCUNHO" },
+];
 
 // ─── Gráfico mensal reutilizável (Técnicos / ADM) ──────────────────────────────
 
@@ -402,6 +390,8 @@ function GraficoDonut({
 
 export default function DashboardPage() {
   const user = useUserStore((s) => s.user);
+  const qc = useQueryClient();
+  const supervisor = useIsSupervisor();
   const [greeting, setGreeting] = useState("");
   const [lastUpdate, setLastUpdate] = useState("");
 
@@ -419,56 +409,133 @@ export default function DashboardPage() {
     return () => clearInterval(t);
   }, [user?.nome]);
 
-  const { data: stats, isLoading: loadingStats, refetch } = useQuery({
-    queryKey: ["dashboard-stats"],
-    queryFn: fetchStats,
-  });
+  // 28/10: a MESMA unidade das telas de detalhe (começa na unidade ativa). Antes a tela principal
+  // somava todas as unidades e o detalhe abria na unidade ativa — "o mesmo número do detalhe" não era.
+  const unidade = useFiltroUnidadeDashboard();
+  const naUnidade = unidade.naUnidade;
 
-  const { data: porMes, isLoading: loadingMes } = useInspecoesPorMes();
+  // "Atualizar" recarrega TODOS os cartões (antes só os KPIs; o resto ficava com o número velho).
+  const atualizar = () => {
+    for (const k of CHAVES_DASHBOARD) qc.invalidateQueries({ queryKey: [k] });
+    setLastUpdate(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+  };
+
+  const { data: todasInsp, isLoading: loadingInsp } = useQuery({
+    queryKey: ["dashboard-stats", "inspecoes"],
+    queryFn: fetchInspecoesPainel,
+  });
+  const { data: todasEmp, isLoading: loadingEmp } = useQuery({
+    queryKey: ["dashboard-stats", "empresas"],
+    queryFn: fetchEmpresas,
+  });
+  const insp = useMemo(() => (todasInsp ?? []).filter((i) => naUnidade(i.id_empresa)), [todasInsp, naUnidade]);
+  const hoje = hojeSP();
+
+  const stats = useMemo(() => {
+    if (!todasInsp || !todasEmp) return undefined;
+    // Renovação de documento (23/09) não é inspeção: fica fora dos cartões de inspeção.
+    const deCampo = insp.filter((i) => !ehRenovacao(i.tipo_criacao));
+    const andamento = deCampo.filter((i) => i.status === "EM_ANDAMENTO");
+    return {
+      empresasAtivas: todasEmp.filter((e) => e.status === "Ativo" && naUnidade(e.id_empresa)).length,
+      totalInspecoes: deCampo.length,
+      emAndamento: andamento.length,
+      // "Requer atenção" só quando há inspeção PARADA (antes acendia com qualquer uma aberta).
+      emAndamentoParadas: andamento.filter((i) => (i.dias_espera ?? 0) > LIMITE_PARADA).length,
+      concluidas: deCampo.filter((i) => i.status === "CONCLUIDA").length,
+      rascunho: deCampo.filter((i) => i.status === "RASCUNHO").length,
+    };
+  }, [todasInsp, todasEmp, insp, naUnidade]);
+  const loadingStats = loadingInsp || loadingEmp || unidade.carregando;
+
+  const { data: porMes, isLoading: loadingMes } = useInspecoesPorMes(naUnidade);
 
   // Documentos concluídos (ADM): a mesma consulta e a mesma conta da tela
   // /dashboard/documentos-emitidos — lib/hooks/useDocumentosConcluidos.
   const { data: concluidosAdm, isLoading: loadingMesAdm } = useDocumentosConcluidos();
+  const concluidosUnidade = useMemo(() => (concluidosAdm ?? []).filter((d) => naUnidade(d.id_empresa)), [concluidosAdm, naUnidade]);
   const porMesAdm = useMemo<MesData[] | undefined>(
     () =>
       concluidosAdm &&
-      concluidosPorMes(concluidosAdm, mesAbsAgoraSP(), 6, mesAbsSP).map((m) => ({
+      concluidosPorMes(concluidosUnidade, mesAbsAgoraSP(), 6, mesAbsSP).map((m) => ({
         mes: rotuloMesAbs(m.chave),
         total: m.total,
       })),
-    [concluidosAdm],
+    [concluidosAdm, concluidosUnidade],
   );
-
-  const { data: docSituacao = [], isLoading: loadingDocSit } = useQuery({
-    queryKey: ["dashboard-doc-situacao"],
-    queryFn: fetchDocumentosPorSituacao,
-  });
 
   // Documentos associados (26/10/2026): EMPRESAS por pessoa, no mês da associação (ou de quando
   // foi assumido), sem acumular — a mesma conta da tela /dashboard/por-associados
   // (lib/dashboard/associacoes-empresas).
   const { data: fonteAssoc, isLoading: loadingAssoc } = useAssociacoesEmpresas();
-  const loadingDocAssoc = loadingAssoc;
-  const loadingAssocMes = loadingAssoc;
   const { assocPorMes, docAssociado } = useMemo(() => {
     if (!fonteAssoc) return { assocPorMes: undefined, docAssociado: [] as { name: string; value: number }[] };
-    const eventos = eventosDeAssociacao(fonteAssoc.assoc, fonteAssoc.assuncoes, fonteAssoc.docs, mesAbsSP);
+    const docsUnidade = fonteAssoc.docs.filter((d) => naUnidade(d.id_empresa));
+    const eventos = eventosDeAssociacao(fonteAssoc.assoc, fonteAssoc.assuncoes, docsUnidade, mesAbsSP);
     const serie = empresasAssociadasPorMes(eventos, mesAbsAgoraSP(), 6).map((m) => ({ mes: rotuloMesAbs(m.chave), total: m.total }));
     const ordenado = empresasPorPessoa(eventos, mesAbsAgoraSP()).map((p) => ({ name: p.pessoa, value: p.total }));
     const TOP = 6;
     const outros = ordenado.slice(TOP).reduce((soma, x) => soma + x.value, 0);
     const donut = ordenado.length <= TOP ? ordenado : outros > 0 ? [...ordenado.slice(0, TOP), { name: "Outros", value: outros }] : ordenado.slice(0, TOP);
     return { assocPorMes: serie, docAssociado: donut };
-  }, [fonteAssoc]);
+  }, [fonteAssoc, naUnidade]);
   const assocColors = useMemo(
     () => docAssociado.map((d) => (d.name === "Outros" ? "#9ca3af" : corAvatar(d.name))),
     [docAssociado],
   );
 
-  const { data: recentes, isLoading: loadingRecentes } = useQuery({
-    queryKey: ["dashboard-recentes"],
-    queryFn: fetchInspecoesRecentes,
-  });
+  // Documentos por situação — pela régua da lista (lib/inspecoes/documento), com as associações.
+  const docSituacao = useMemo(() => {
+    if (!todasInsp || !fonteAssoc) return [];
+    const ids = new Set(insp.map((i) => i.id_inspecao));
+    const assoc: AssociacaoDoc[] = fonteAssoc.assoc.filter((a) => ids.has(a.id_inspecao));
+    const docs: DocumentoContavel[] = insp.map((i) => ({
+      id_inspecao: i.id_inspecao,
+      status: i.status,
+      elaboracao_responsavel: i.elaboracao_responsavel,
+      elaboracao_status: i.elaboracao_status,
+    }));
+    const s = porSituacao(assoc, docs);
+    // Ordem fixa (cor é posicional), na ordem do caminho do documento.
+    return [
+      { name: "Aguardando campo", value: s.aguardandoCampo },
+      { name: "Pendentes",        value: s.pendentes },
+      { name: "Atribuídos",       value: s.atribuidos },
+      { name: "Em elaboração",    value: s.assumidos },
+      { name: "Concluídos",       value: s.concluidos },
+    ];
+  }, [todasInsp, fonteAssoc, insp]);
+
+  // Situação por colaborador (28/10) — lib/dashboard/colaboradores.
+  const { data: tecnicosDeCampo, isLoading: loadingTec } = useTecnicosDeCampo();
+  const { data: contas = [] } = useContasDoPainel();
+  const colaboradores = useMemo<LinhaColaborador[] | undefined>(() => {
+    if (!todasInsp || !tecnicosDeCampo || !concluidosAdm) return undefined;
+    const associados = new Map<string, string[]>();
+    for (const i of insp) {
+      const nomes = (i.inspecao_associados ?? []).map((a) => (a.nome ?? "").trim()).filter(Boolean);
+      if (nomes.length) associados.set(i.id_inspecao, nomes);
+    }
+    return situacaoPorColaborador({
+      inspecoes: insp,
+      associados,
+      documentos: concluidosUnidade,
+      opcoes: { tecnicosDeCampo, cadastro: contas.map((c) => c.nome), contas },
+      mesAtual: mesAbsAgoraSP(),
+      mesDe: mesAbsSP,
+      hoje,
+    });
+  }, [todasInsp, tecnicosDeCampo, concluidosAdm, insp, concluidosUnidade, contas, hoje]);
+  const idPorNome = useMemo(() => new Map(contas.map((c) => [chaveNome(c.nome), c.id_usuario])), [contas]);
+
+  // Atividade recente: o que MEXEU por último (antes: a data da visita, que põe visita futura no topo).
+  const recentes = useMemo(
+    () =>
+      [...insp]
+        .sort((a, b) => (b.updated_at ?? b.created_at).localeCompare(a.updated_at ?? a.created_at))
+        .slice(0, 8),
+    [insp],
+  );
 
   const pieData = useMemo(() => {
     if (!stats) return [];
@@ -479,25 +546,38 @@ export default function DashboardPage() {
     ].filter((d) => d.value > 0);
   }, [stats]);
 
+  // Os cartões abrem a lista de Inspeções já filtrada (na mesma unidade).
+  const naLista = (status?: string) => {
+    const sp = new URLSearchParams();
+    if (status) sp.set("status", status);
+    // Sempre, mesmo vazia: sem o parâmetro a lista abriria na unidade ativa, não em "todas".
+    sp.set("unidade", unidade.idUnidade);
+    return `/inspecoes?${sp.toString()}`;
+  };
+
   return (
     <div className="space-y-5">
 
       {/* ── Cabeçalho ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900">{greeting || "Dashboard"}</h1>
           <p className="mt-0.5 text-xs text-gray-400">
             Última atualização às {lastUpdate || "—"}
+            {unidade.nomeUnidade ? ` · unidade ${unidade.nomeUnidade}` : " · todas as unidades"}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 active:scale-95"
-        >
-          <RefreshCw className="size-3.5" />
-          Atualizar
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <FiltroUnidade idUnidade={unidade.idUnidade} unidades={unidade.unidades} onChange={unidade.setIdUnidade} />
+          <button
+            type="button"
+            onClick={atualizar}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 shadow-sm transition hover:bg-gray-50 active:scale-95"
+          >
+            <RefreshCw className="size-3.5" />
+            Atualizar
+          </button>
+        </div>
       </div>
 
       {/* ── KPIs ──────────────────────────────────────────────────────── */}
@@ -506,16 +586,21 @@ export default function DashboardPage() {
           ? Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="h-28 animate-pulse rounded-2xl bg-gray-200/70" />
             ))
-          : KPI_CONFIG.map(({ key, label, icon: Icon, color, from }) => (
-              <KpiCard
-                key={key}
-                label={label}
-                value={stats?.[key] ?? 0}
-                icon={Icon}
-                color={color}
-                from={from}
-                warn={key === "emAndamento" && (stats?.emAndamento ?? 0) > 0}
-              />
+          : KPI_CONFIG.map(({ key, label, icon: Icon, color, from, status }) => (
+              <Link key={key} href={key === "empresasAtivas" ? "/empresas" : naLista(status)} className="block">
+                <KpiCard
+                  label={label}
+                  value={stats?.[key] ?? 0}
+                  icon={Icon}
+                  color={color}
+                  from={from}
+                  aviso={
+                    key === "emAndamento" && (stats?.emAndamentoParadas ?? 0) > 0
+                      ? `${stats!.emAndamentoParadas} parada${stats!.emAndamentoParadas !== 1 ? "s" : ""} há +${LIMITE_PARADA} dias`
+                      : undefined
+                  }
+                />
+              </Link>
             ))}
       </section>
 
@@ -528,11 +613,11 @@ export default function DashboardPage() {
         <GraficoInspecoesMes
           className="lg:col-span-2"
           data={porMes}
-          loading={loadingMes}
+          loading={loadingMes || unidade.carregando}
         />
         <GraficoDonut
           titulo="Por Status"
-          sub="Inspeções — distribuição total"
+          sub="Inspeções — distribuição total (sem renovação)"
           data={pieData}
           colors={PIE_COLORS}
           loading={loadingStats}
@@ -542,8 +627,9 @@ export default function DashboardPage() {
         <GraficoMes
           className="lg:col-span-2"
           titulo="Documentos por Mês (ADM)"
+          sub="concluídos no mês, na 1ª conclusão"
           data={porMesAdm}
-          loading={loadingMesAdm}
+          loading={loadingMesAdm || unidade.carregando}
           link="/dashboard/documentos-emitidos"
           linkLabel="Ver por ADM"
           linkTitle="Produção de documentos por ADM (elaborados no SGG e enviados), por mês"
@@ -551,42 +637,113 @@ export default function DashboardPage() {
         />
         <GraficoDonut
           titulo="Documentos por Situação"
-          sub="Pendentes · Atribuídos · Em elaboração · Concluídos"
+          sub="Aguardando campo · Pendentes · Atribuídos (não iniciados) · Em elaboração · Concluídos"
           data={docSituacao}
           colors={DOC_COLORS}
-          loading={loadingDocSit}
+          loading={loadingStats || loadingAssoc}
         />
 
-        {/* Linha 3: Documentos em elaboração (barra) + por pessoa (donut). Os dois
-            medem trabalho de ESCRITÓRIO; até 27/08/2026 o título dizia
-            "Inspeções Associadas" e era lido como produção de campo. */}
+        {/* Linha 3: empresas associadas (barra) + por pessoa (donut). Os dois medem trabalho de
+            ESCRITÓRIO. Desde 26/10 contam EMPRESAS por pessoa (28/10: o título dizia "Documentos"). */}
         <GraficoMes
           className="lg:col-span-2"
-          titulo="Documentos Associados por Mês"
-          sub="empresas associadas no mês, por pessoa, sem acumular (escritório)"
+          titulo="Empresas Associadas por Mês"
+          sub="empresas associadas no mês, somadas por pessoa, sem acumular (escritório)"
           data={assocPorMes}
-          loading={loadingAssocMes}
+          loading={loadingAssoc || unidade.carregando}
           link="/dashboard/por-associados"
           linkLabel="Ver por pessoa"
-          linkTitle="Documentos do SGG por mês e por pessoa do administrativo — não é inspeção de campo"
+          linkTitle="Empresas associadas por mês e por pessoa do administrativo — não é inspeção de campo"
           rotulo="Empresas"
         />
         <GraficoDonut
           className="lg:col-start-3"
-          titulo="Documentos por Associado"
+          titulo="Empresas por Associado"
           sub="Empresas associadas neste mês — não é campo"
           data={docAssociado}
           colors={assocColors}
-          loading={loadingDocAssoc}
+          loading={loadingAssoc}
         />
+      </section>
+
+      {/* ── Situação por colaborador ───────────────────────────────────── */}
+      <section>
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+              <Users className="size-4 text-verde-primary" /> Situação por colaborador
+            </h2>
+            <p className="mt-0.5 text-xs text-gray-400">
+              O que está com cada pessoa agora e o que ela entregou no mês. Campo pela aba Responsáveis (sem ninguém, quem abriu);
+              documento pelos associados.
+            </p>
+          </div>
+          <Link href="/inspecoes/minhas" className="flex items-center gap-1 text-xs font-medium text-verde-primary transition hover:underline">
+            Minhas inspeções <ArrowRight className="size-3" />
+          </Link>
+        </div>
+        <div className="glass reveal-up overflow-hidden rounded-2xl">
+          {!colaboradores || loadingTec || unidade.carregando ? (
+            <div className="p-4">
+              <TabelaSkeleton linhas={5} />
+            </div>
+          ) : colaboradores.length === 0 ? (
+            <p className="p-10 text-center text-sm text-gray-500">Ninguém com inspeção ou documento em aberto, nem entrega no mês.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50/70 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                    <th className="px-4 py-3 text-left">Colaborador</th>
+                    <th className="px-4 py-3 text-right" title="Inspeções em Rascunho ou Em andamento">Campo aberto</th>
+                    <th className="px-4 py-3 text-right" title={`Abertas há mais de ${LIMITE_PARADA} dias`}>Parado +{LIMITE_PARADA}d</th>
+                    <th className="px-4 py-3 text-right" title="Documento atribuído, inspeção concluída em campo, ainda não iniciado">Doc. não iniciado</th>
+                    <th className="px-4 py-3 text-right">Em elaboração</th>
+                    <th className="px-4 py-3 text-right" title="Documentos concluídos neste mês (1ª conclusão)">Entregues no mês</th>
+                    <th className="px-4 py-3 text-right" title="Itens abertos com prioridade efetiva Crítica ou Urgente">Críticas/urgentes</th>
+                    <th className="px-4 py-3 text-right">Prazo vencido</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {colaboradores.map((c, idx) => {
+                    const id = idPorNome.get(chaveNome(c.pessoa));
+                    return (
+                      <tr key={c.pessoa} className={cn("transition-colors hover:bg-verde-light/30", idx < colaboradores.length - 1 && "border-b border-gray-50")}>
+                        <td className="px-4 py-2.5">
+                          {supervisor && id ? (
+                            <Link href={`/inspecoes/minhas?pessoa=${id}`} className="font-medium text-gray-900 hover:text-verde-primary hover:underline" title="Abrir a fila desta pessoa">
+                              {c.pessoa}
+                            </Link>
+                          ) : (
+                            <span className="font-medium text-gray-900">{c.pessoa}</span>
+                          )}
+                        </td>
+                        <Num v={c.campoAbertas} />
+                        <Num v={c.campoParadas} alerta="laranja" />
+                        <Num v={c.docAtribuidos} alerta={c.docAtribuidos > 0 ? "ambar" : undefined} />
+                        <Num v={c.docEmElaboracao} />
+                        <Num v={c.entreguesMes} alerta={c.entreguesMes > 0 ? "verde" : undefined} />
+                        <Num v={c.criticas} alerta="vermelho" />
+                        <Num v={c.prazoVencido} alerta="vermelho" />
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* ── Atividade recente ─────────────────────────────────────────── */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-800">Atividade Recente</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-gray-800">Atividade Recente</h2>
+            <p className="mt-0.5 text-xs text-gray-400">As inspeções alteradas por último</p>
+          </div>
           <Link
-            href="/inspecoes"
+            href={naLista()}
             className="flex items-center gap-1 text-xs font-medium text-verde-primary transition hover:underline"
           >
             Ver todas <ArrowRight className="size-3" />
@@ -594,13 +751,13 @@ export default function DashboardPage() {
         </div>
 
         <div className="glass reveal-up delay-2 overflow-hidden rounded-2xl">
-          {loadingRecentes ? (
+          {loadingStats ? (
             <div className="p-4">
               <TabelaSkeleton linhas={6} />
             </div>
-          ) : !recentes || recentes.length === 0 ? (
+          ) : recentes.length === 0 ? (
             <div className="p-10 text-center text-sm text-gray-500">
-              Nenhuma inspeção registrada ainda.{" "}
+              Nenhuma inspeção registrada{unidade.nomeUnidade ? " nesta unidade" : ""}.{" "}
               <Link href="/inspecoes/nova" className="font-medium text-verde-primary hover:underline">
                 Crie a primeira →
               </Link>
@@ -610,7 +767,7 @@ export default function DashboardPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/70">
-                    {["Empresa", "Técnico", "Resp. Documento", "Status", "Data", ""].map((h) => (
+                    {["Empresa", "Técnico de campo", "Documento", "Status", "Visita", "Alterada", ""].map((h) => (
                       <th
                         key={h}
                         className={cn(
@@ -624,41 +781,54 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentes.map((insp, idx) => (
-                    <tr
-                      key={insp.id_inspecao}
-                      className={cn(
-                        "transition-colors hover:bg-verde-light/30",
-                        idx < recentes.length - 1 && "border-b border-gray-50"
-                      )}
-                    >
-                      <td className="px-4 py-3 font-medium text-gray-900">
-                        {insp.empresa_nome}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {insp.responsavel?.trim() || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {insp.elaboracao_responsavel?.trim() || (
-                          <span className="text-gray-300">—</span>
+                  {recentes.map((i, idx) => {
+                    const campo = (i.tecnicos_campo ?? "").trim();
+                    const doc = situacaoDocumento(
+                      {
+                        status: i.status,
+                        elaboracao_status: i.elaboracao_status as LinhaDocumento["elaboracao_status"],
+                        elaboracao_responsavel: i.elaboracao_responsavel,
+                        elaboracao_concluida_em: null,
+                      },
+                      (i.inspecao_associados ?? []).map((a) => a.nome ?? ""),
+                      "curto",
+                    );
+                    return (
+                      <tr
+                        key={i.id_inspecao}
+                        className={cn(
+                          "transition-colors hover:bg-verde-light/30",
+                          idx < recentes.length - 1 && "border-b border-gray-50"
                         )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <StatusBadge status={insp.status} />
-                      </td>
-                      <td className="px-4 py-3 text-gray-500">
-                        {fmtData(insp.data_inspecao)}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link
-                          href={`/inspecoes/${insp.id_inspecao}`}
-                          className="inline-flex items-center gap-1 rounded-lg bg-verde-light px-2.5 py-1 text-xs font-medium text-verde-primary transition hover:bg-verde-border"
-                        >
-                          Abrir <ArrowRight className="size-3" />
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
+                      >
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          {nomeDaEmpresa(i.empresas)}
+                          {ehRenovacao(i.tipo_criacao) && <span className="ml-1.5 rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-normal text-gray-500">renovação</span>}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {campo || (
+                            <span title="Ninguém na aba Responsáveis: conta para quem abriu">
+                              {i.responsavel?.trim() || "—"} <span className="text-[11px] text-amber-600">(sem registro)</span>
+                            </span>
+                          )}
+                        </td>
+                        <td className={cn("px-4 py-3 text-xs", doc?.cor ?? "text-gray-300")}>{doc?.texto ?? "—"}</td>
+                        <td className="px-4 py-3">
+                          <StatusBadge status={i.status as StatusInspecao} />
+                        </td>
+                        <td className="px-4 py-3 text-gray-500">{fmtData(i.data_inspecao)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-gray-500">{fmtData(i.updated_at ?? i.created_at)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <Link
+                            href={`/inspecoes/${i.id_inspecao}`}
+                            className="inline-flex items-center gap-1 rounded-lg bg-verde-light px-2.5 py-1 text-xs font-medium text-verde-primary transition hover:bg-verde-border"
+                          >
+                            Abrir <ArrowRight className="size-3" />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -669,6 +839,23 @@ export default function DashboardPage() {
   );
 }
 
+/** Célula numérica da Situação por colaborador: zero fica apagado; o resto, na cor do alerta. */
+function Num({ v, alerta }: { v: number; alerta?: "vermelho" | "laranja" | "ambar" | "verde" }) {
+  const cor =
+    v === 0
+      ? "text-gray-300"
+      : alerta === "vermelho"
+        ? "font-semibold text-red-600"
+        : alerta === "laranja"
+          ? "font-semibold text-orange-600"
+          : alerta === "ambar"
+            ? "font-semibold text-amber-700"
+            : alerta === "verde"
+              ? "font-semibold text-emerald-700"
+              : "text-gray-800";
+  return <td className={cn("px-4 py-2.5 text-right tabular-nums", cor)}>{v}</td>;
+}
+
 // ─── KpiCard ──────────────────────────────────────────────────────────────────
 
 function KpiCard({
@@ -677,15 +864,17 @@ function KpiCard({
   icon: Icon,
   color,
   from,
-  warn = false,
+  aviso,
 }: {
   label: string;
   value: number;
   icon: React.ElementType;
   color: string;
   from: string;
-  warn?: boolean;
+  /** Texto do alerta (ex.: "2 paradas há +30 dias"). Sem ele, o cartão fica normal. */
+  aviso?: string;
 }) {
+  const warn = !!aviso;
   const escuro = useTema((s) => s.tema) === "dark";
   return (
     <div
@@ -726,10 +915,10 @@ function KpiCard({
         {value.toLocaleString("pt-BR")}
       </p>
 
-      {warn && value > 0 && (
+      {aviso && (
         <p className="mt-1 flex items-center gap-1 text-[10px] font-medium text-amber-600">
           <AlertTriangle className="size-3" />
-          Requer atenção
+          {aviso}
         </p>
       )}
     </div>

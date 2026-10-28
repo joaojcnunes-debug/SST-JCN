@@ -41,6 +41,23 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dashboard-revisao-colaborador",
+    data: "2026-10-28",
+    tipo: "melhoria",
+    titulo: "Dashboard: números por unidade e a situação de cada colaborador",
+    texto:
+      "A tela principal do Dashboard agora tem o filtro de Unidade, como as telas de detalhe, e todos os cartões seguem a unidade escolhida. " +
+      "O novo quadro Situação por colaborador mostra, para cada pessoa, o que está aberto em campo, o que está parado há mais de 30 dias, " +
+      "os documentos não iniciados e em elaboração, o que foi entregue no mês, os itens críticos e os prazos vencidos. " +
+      "Em Documentos por Situação há a fatia Aguardando campo, para o documento cuja inspeção ainda não terminou. " +
+      "A Atividade recente mostra as inspeções alteradas por último, com o técnico de campo e os associados do documento. " +
+      "Os cartões de KPI abrem a lista de Inspeções já filtrada, e o botão Atualizar recarrega a tela inteira.",
+    onde: "Painel › Dashboard",
+    impacto:
+      "Os números da tela principal passam a ser da unidade ativa (como no detalhe). O aviso de Em Andamento só aparece quando há inspeção parada há mais de 30 dias.",
+    versoes: ["0.3.173"],
+  },
+  {
     id: "documento-atribuido-x-em-elaboracao",
     data: "2026-10-28",
     tipo: "melhoria",
