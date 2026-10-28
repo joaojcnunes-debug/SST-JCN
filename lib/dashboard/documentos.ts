@@ -371,12 +371,16 @@ export function foraDoGraficoMensal(
  *
  * Pendente = inspeção já concluída em campo e ninguém no documento; com a
  * inspeção ainda em campo e sem ninguém, não há documento a cobrar.
+ *
+ * Aguardando campo (28/10/2026, pedido dele): tem associado, mas a inspeção ainda não saiu do campo —
+ * o documento nem pode começar. Antes contava em Atribuídos e inflava a fila de "não iniciados".
  */
 export function porSituacao(
   associacoes: readonly AssociacaoDoc[],
   documentos: readonly DocumentoContavel[],
-): { pendentes: number; atribuidos: number; assumidos: number; concluidos: number } {
+): { aguardandoCampo: number; pendentes: number; atribuidos: number; assumidos: number; concluidos: number } {
   const entradas = indexarAssociacoes(associacoes);
+  let aguardandoCampo = 0;
   let pendentes = 0;
   let atribuidos = 0;
   let assumidos = 0;
@@ -386,10 +390,12 @@ export function porSituacao(
     const sit = situacao(d, donosDo(d, entradas));
     if (sit === "ENTREGUE") concluidos++;
     else if (sit === "EM_ELABORACAO") assumidos++;
-    else if (sit === "ATRIBUIDO") atribuidos++;
-    else if (d.status === "CONCLUIDA") pendentes++;
+    else if (sit === "ATRIBUIDO") {
+      if (d.status === "CONCLUIDA") atribuidos++;
+      else aguardandoCampo++;
+    } else if (d.status === "CONCLUIDA") pendentes++;
   }
-  return { pendentes, atribuidos, assumidos, concluidos };
+  return { aguardandoCampo, pendentes, atribuidos, assumidos, concluidos };
 }
 
 // ─── Documentos CONCLUÍDOS pelo ADM (card "Documentos por Mês" + detalhe) ───

@@ -262,6 +262,7 @@ describe("porSituacao — donut do dashboard pela régua da lista (13/10)", () =
       doc({ id_inspecao: "E", elaboracao_status: "PENDENTE" }),
     ];
     assert.deepEqual(porSituacao([assoc({ id_inspecao: "C", nome: "Bia" })], docs), {
+      aguardandoCampo: 0,
       pendentes: 1,
       atribuidos: 2,
       assumidos: 1,
@@ -269,15 +270,16 @@ describe("porSituacao — donut do dashboard pela régua da lista (13/10)", () =
     });
   });
 
-  it("inspeção em campo sem ninguém não é pendência; com associado conta como atribuída", () => {
+  it("inspeção em campo sem ninguém não é pendência; com associado fica 'aguardando campo' (28/10)", () => {
     const docs = [
       doc({ id_inspecao: "A", status: "EM_ANDAMENTO", elaboracao_status: null }),
       doc({ id_inspecao: "B", status: "EM_ANDAMENTO", elaboracao_status: null }),
       doc({ id_inspecao: "C", status: "DELETADA", elaboracao_status: "PENDENTE" }),
     ];
     assert.deepEqual(porSituacao([assoc({ id_inspecao: "B" }), assoc({ id_inspecao: "C" })], docs), {
+      aguardandoCampo: 1,
       pendentes: 0,
-      atribuidos: 1,
+      atribuidos: 0,
       assumidos: 0,
       concluidos: 0,
     });
