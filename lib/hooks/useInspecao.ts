@@ -257,7 +257,7 @@ export function useInspecoesByTecnico(tecnico: string) {
 // ─── Paginação server-side para a listagem principal ────────────────────────
 
 export type { FiltroInspecao, ContagensInspecoes } from "@/lib/inspecoes/pilulas";
-export type OrdemInspecao = "recentes" | "antigas" | "revisao";
+export type OrdemInspecao = import("@/lib/inspecoes/filtros-url").OrdemLista;
 
 interface InspecoesPaginadasParams {
   idEmpresa: string | null;
@@ -272,6 +272,48 @@ interface InspecoesPaginadasParams {
   ordem: OrdemInspecao;
   page: number;
   pageSize: number;
+  /** v306: busca por ID da inspeção ou nome da empresa. */
+  busca?: string;
+  /** v306: só estas inspeções ("Só as minhas"); null = sem restrição. */
+  ids?: string[] | null;
+  /** v306: situação do documento (coluna calculada situacao_documento). */
+  documento?: string[];
+  /** v306: prioridade efetiva (coluna calculada prioridade_efetiva). */
+  prioridade?: string[];
+  /** v306: espera mínima em dias (coluna calculada dias_espera). */
+  esperaMin?: number;
+}
+
+type LinhaContagemV306 = LinhaContagem & { situacao_documento: string | null; prioridade_efetiva: string | null };
+
+/** Colunas calculadas da v306 que a lista pede pelo nome. */
+export const COLUNAS_PRIORIDADE = "situacao_documento, dias_espera, prioridade_auto, prioridade_efetiva";
+
+/** Ids das empresas cujo nome casa com a busca (para "buscar por empresa" sem join). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function idsEmpresaPorNome(supabase: any, termo: string): Promise<string[]> {
+  const { data } = await supabase.from("empresas").select("id_empresa").ilike("nome_empresa", `%${termo}%`).limit(300);
+  return ((data ?? []) as { id_empresa: string }[]).map((e) => e.id_empresa);
+}
+
+/**
+ * Filtros da v306 (busca, "só as minhas", documento, prioridade, espera) — síncronos sobre o
+ * builder; o que precisa de pré-busca (ids de empresa) chega pronto.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function aplicarFiltrosV306(q: any, p: { busca?: string; idsEmpresa?: string[] | null; ids?: string[] | null; documento?: string[]; prioridade?: string[]; esperaMin?: number }) {
+  let query = q;
+  const termo = (p.busca ?? "").trim().replace(/[(),*%]/g, " ").trim();
+  if (termo) {
+    const partes = [`id_inspecao.ilike.*${termo}*`];
+    if (p.idsEmpresa?.length) partes.push(`id_empresa.in.(${p.idsEmpresa.join(",")})`);
+    query = query.or(partes.join(","));
+  }
+  if (p.ids) query = p.ids.length ? query.in("id_inspecao", p.ids) : query.eq("id_inspecao", "__nenhuma__");
+  if (p.documento?.length) query = query.in("situacao_documento", p.documento);
+  if (p.prioridade?.length) query = query.in("prioridade_efetiva", p.prioridade);
+  if (p.esperaMin && p.esperaMin > 0) query = query.gte("dias_espera", p.esperaMin);
+  return query;
 }
 
 // Filtro por associado à elaboração (cross-table). Separado em dois passos:
@@ -347,23 +389,31 @@ export function useInspecoesPaginadas({
   ordem,
   page,
   pageSize,
+  busca = "",
+  ids = null,
+  documento = [],
+  prioridade = [],
+  esperaMin = 0,
 }: InspecoesPaginadasParams) {
   // Lista todas as inspeções por padrão (paginadas); filtros são opcionais.
   const base: FiltrosBase = { idEmpresa, tecnico, idUnidade, dataIni, dataFim };
   // Quando filtra por unidade, precisa de inner join em empresas para o eq funcionar.
-  // `tecnicos_campo` é coluna calculada (v284): o `*` não a traz sozinho.
+  // `tecnicos_campo` e as da v306 são colunas calculadas: o `*` não as traz sozinho.
   const selLista = idUnidade
-    ? "*, tecnicos_campo, empresas!inner(nome_empresa, id_unidade)"
-    : "*, tecnicos_campo, empresas(nome_empresa)";
+    ? `*, tecnicos_campo, ${COLUNAS_PRIORIDADE}, empresas!inner(nome_empresa, id_unidade)`
+    : `*, tecnicos_campo, ${COLUNAS_PRIORIDADE}, empresas(nome_empresa)`;
+  const v306 = { busca, ids, documento, prioridade, esperaMin };
 
   const lista = useQuery({
-    queryKey: ["inspecoes-lista", idEmpresa, tecnico, associado, idUnidade, dataIni, dataFim, filtros, ordem, page, pageSize],
+    queryKey: ["inspecoes-lista", idEmpresa, tecnico, associado, idUnidade, dataIni, dataFim, filtros, ordem, page, pageSize, v306],
     placeholderData: (prev) => prev,
     queryFn: async () => {
       const supabase = createSupabaseBrowserClient();
       const idsAssoc = await idsPorAssociado(supabase, associado);
+      const idsEmpresa = busca.trim().length >= 2 ? await idsEmpresaPorNome(supabase, busca.trim()) : null;
       let q = aplicarFiltros(supabase.from("inspecoes").select(selLista, { count: "exact" }), base);
       q = aplicarFiltroAssociado(q, associado, idsAssoc);
+      q = aplicarFiltrosV306(q, { ...v306, idsEmpresa });
       // Pílulas marcadas: status somam entre si (in), associação pela coluna
       // calculada do banco (v239) — há alguém no documento, linha em
       // inspecao_associados ou elaboracao_responsavel. Os dois grupos se cruzam.
@@ -372,6 +422,10 @@ export function useInspecoesPaginadas({
       if (sel.associacao.length === 1) q = q.is("tem_associado", sel.associacao[0] === "ASSOCIADOS");
       if (ordem === "recentes") q = q.order("created_at", { ascending: false });
       else if (ordem === "antigas") q = q.order("created_at", { ascending: true });
+      // v306: pelas colunas calculadas — mais urgente / esperando há mais tempo / prazo mais perto
+      else if (ordem === "prioridade") q = q.order("prioridade_ord", { ascending: false }).order("dias_espera", { ascending: false, nullsFirst: false });
+      else if (ordem === "espera") q = q.order("dias_espera", { ascending: false, nullsFirst: false }).order("created_at", { ascending: true });
+      else if (ordem === "prazo") q = q.order("prazo", { ascending: true, nullsFirst: false }).order("prioridade_ord", { ascending: false });
       else q = q.order("revisao", { ascending: false }).order("created_at", { ascending: false });
       const from = (page - 1) * pageSize;
       q = q.range(from, from + pageSize - 1);
@@ -385,18 +439,22 @@ export function useInspecoesPaginadas({
   // de base (empresa/técnico/unidade/período). A pílula ativa e a caixa de
   // associado ficam de fora de propósito — a conta é em memória
   // (contarPilulas), para trocar de pílula ou digitar não ir ao banco de novo.
+  // v306: as contagens também levam a situação do documento e a prioridade (colunas
+  // calculadas) — contadas em memória sobre os mesmos filtros de base + busca e "só as minhas".
   const selCounts = idUnidade
-    ? "status, elaboracao_responsavel, inspecao_associados(nome), empresas!inner(id_unidade)"
-    : "status, elaboracao_responsavel, inspecao_associados(nome)";
+    ? "status, elaboracao_responsavel, situacao_documento, prioridade_efetiva, inspecao_associados(nome), empresas!inner(id_unidade)"
+    : "status, elaboracao_responsavel, situacao_documento, prioridade_efetiva, inspecao_associados(nome)";
+  const baseV306 = { busca, ids };
   const linhas = useQuery({
-    queryKey: ["inspecoes-counts", idEmpresa, tecnico, idUnidade, dataIni, dataFim],
+    queryKey: ["inspecoes-counts", idEmpresa, tecnico, idUnidade, dataIni, dataFim, baseV306],
     staleTime: 30_000,
-    queryFn: async (): Promise<LinhaContagem[]> => {
+    queryFn: async (): Promise<LinhaContagemV306[]> => {
       const supabase = createSupabaseBrowserClient();
+      const idsEmpresa = busca.trim().length >= 2 ? await idsEmpresaPorNome(supabase, busca.trim()) : null;
       // Paginado: sem isso o PostgREST para em 1000 linhas e "Todos (N)" fica
       // menor que o total da própria lista (07/10).
-      return fetchAllRows<LinhaContagem>((de, ate) =>
-        aplicarFiltros(supabase.from("inspecoes").select(selCounts), base)
+      return fetchAllRows<LinhaContagemV306>((de, ate) =>
+        aplicarFiltrosV306(aplicarFiltros(supabase.from("inspecoes").select(selCounts), base), { ...baseV306, idsEmpresa })
           .order("id_inspecao")
           .range(de, ate),
       );
@@ -407,6 +465,17 @@ export function useInspecoesPaginadas({
     () => (linhas.data ? contarPilulas(linhas.data, associado, separarSelecao(filtros)) : undefined),
     [linhas.data, associado, filtros],
   );
+  // Documento e prioridade: quantas há de cada (sobre os filtros de base, sem as pílulas).
+  const extras = useMemo(() => {
+    if (!linhas.data) return undefined;
+    const doc: Record<string, number> = {};
+    const pri: Record<string, number> = {};
+    for (const l of linhas.data) {
+      if (l.situacao_documento) doc[l.situacao_documento] = (doc[l.situacao_documento] ?? 0) + 1;
+      if (l.prioridade_efetiva) pri[l.prioridade_efetiva] = (pri[l.prioridade_efetiva] ?? 0) + 1;
+    }
+    return { documento: doc, prioridade: pri };
+  }, [linhas.data]);
 
-  return { lista, counts: { data: contagens } };
+  return { lista, counts: { data: contagens, extras } };
 }

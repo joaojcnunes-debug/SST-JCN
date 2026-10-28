@@ -13,6 +13,7 @@ import {
   Award,
   Brain,
   PersonStanding,
+  ListTodo,
 } from "lucide-react";
 import { useUserStore } from "@/lib/store";
 import SidebarShell, { type NavItem, type NavSection } from "./SidebarShell";
@@ -20,6 +21,8 @@ import SidebarShell, { type NavItem, type NavSection } from "./SidebarShell";
 const PRINCIPAL: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, variant: "dashboard" },
   { href: "/inspecoes", label: "Inspeções", icon: ClipboardList },
+  // v306: o que foi atribuído a quem está logado (técnico/associado), com prioridade e espera.
+  { href: "/inspecoes/minhas", label: "Minhas inspeções", icon: ListTodo },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3, variant: "report" },
 ];
 

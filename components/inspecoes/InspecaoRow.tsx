@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Pencil, ChartBar, Trash2, RefreshCw } from "lucide-react";
 import StatusBadge from "./StatusBadge";
+import SeloPrioridade from "./SeloPrioridade";
 import { fmtData } from "@/lib/utils";
 import { iniciais, corAvatar } from "@/lib/hooks/useGestao";
 import { situacaoDocumento, type ChaveDocumento } from "@/lib/inspecoes/documento";
@@ -29,6 +30,7 @@ export default function InspecaoRow({
   associados = [],
   onDelete,
   onEditResponsavel,
+  onEditarPrioridade,
   showEmpresa,
 }: {
   insp: Inspecao;
@@ -37,6 +39,8 @@ export default function InspecaoRow({
   onDelete?: (insp: Inspecao) => void;
   /** Quando fornecido (apenas Admin), mostra o lápis para editar o responsável. */
   onEditResponsavel?: (insp: Inspecao) => void;
+  /** v306: supervisor define prioridade e prazo. */
+  onEditarPrioridade?: (insp: Inspecao) => void;
   showEmpresa?: boolean;
 }) {
   return (
@@ -103,6 +107,10 @@ export default function InspecaoRow({
             </span>
           )}
         </span>
+      </td>
+      {/* v306: prioridade efetiva, espera e prazo (o porquê no balão). */}
+      <td className="px-4 py-3">
+        <SeloPrioridade insp={insp} onEditar={onEditarPrioridade} />
       </td>
       {(() => {
           // Une os associados (tabela nova) com quem assumiu a elaboração pelo fluxo

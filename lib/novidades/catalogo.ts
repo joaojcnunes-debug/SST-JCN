@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "inspecoes-minhas-e-filtros",
+    data: "2026-10-28",
+    tipo: "novidade",
+    titulo: "Inspeções: Minhas inspeções, prioridade e filtros que não se perdem",
+    texto:
+      "Nova página Minhas inspeções: o técnico vê as inspeções em que foi a campo e o associado os documentos em que " +
+      "está, o mais urgente primeiro, com há quantos dias cada uma espera e o prazo. A prioridade é calculada " +
+      "sozinha (prazo, validade do documento, tempo parado) e o supervisor pode marcar uma prioridade e um prazo. Na " +
+      "lista de Inspeções: busca por ID ou empresa, técnico e associado numa lista, \"Só as minhas\", atalhos de " +
+      "período, filtros de Documento e Prioridade, e os filtros ficam no link.",
+    onde: "Painel › Minhas inspeções · Painel › Inspeções",
+    versoes: ["0.3.164"],
+  },
+  {
     id: "gestao-acessos-reorganizado",
     data: "2026-10-28",
     tipo: "melhoria",

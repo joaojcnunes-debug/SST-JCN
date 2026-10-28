@@ -703,6 +703,16 @@ export interface Inspecao {
    * Só vem quando a consulta pede pelo nome (a lista de Inspeções pede).
    */
   tecnicos_campo?: string | null;
+  /** v306 — prioridade MANUAL (supervisor), prazo e quem definiu. */
+  prioridade?: "BAIXA" | "MEDIA" | "ALTA" | "URGENTE" | null;
+  prazo?: string | null;
+  prioridade_definida_por?: string | null;
+  prioridade_definida_em?: string | null;
+  /** v306 — colunas CALCULADAS (só vêm quando a consulta pede pelo nome). */
+  situacao_documento?: "PENDENTE" | "EM_ELABORACAO" | "ENTREGUE" | null;
+  dias_espera?: number | null;
+  prioridade_auto?: "BAIXA" | "MEDIA" | "ALTA" | "URGENTE" | null;
+  prioridade_efetiva?: "BAIXA" | "MEDIA" | "ALTA" | "URGENTE" | null;
   created_at: string;
   updated_at: string | null;
   empresas?: { nome_empresa: string } | null;
