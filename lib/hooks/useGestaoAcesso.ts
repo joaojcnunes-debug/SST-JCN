@@ -182,9 +182,11 @@ export function useQuadrosAcesso(enabled = true) {
     enabled,
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb.from("gestao_quadros").select("id_quadro,nome,id_unidade,dono_email" as "*");
+      const { data, error } = await sb.from("gestao_quadros").select("id_quadro,nome,id_unidade,dono_email,id_espaco,id_pasta" as "*");
       if (error) throw error;
-      return (data ?? []) as unknown as { id_quadro: string; nome: string; id_unidade: string | null; dono_email: string | null }[];
+      return (data ?? []) as unknown as {
+        id_quadro: string; nome: string; id_unidade: string | null; dono_email: string | null; id_espaco: string | null; id_pasta: string | null;
+      }[];
     },
   });
 }
@@ -350,6 +352,79 @@ export function useColaboradores(enabled = true) {
       const { data, error } = await (sb as unknown as GestaoRpc).rpc<Colaborador[]>("gestao_colaboradores_visiveis");
       if (error) throw error;
       return (data ?? []) as Colaborador[];
+    },
+  });
+}
+
+// ── Membros e acessos: espaço/pasta, acesso efetivo e histórico (v305) ─────────
+
+/** TODOS os grants (espaço, pasta, lista e tarefa; pessoas e equipes). Só gestor abre o modal. */
+export function useTodosAcessosGestao(enabled = true) {
+  return useQuery({
+    queryKey: ["gestao-acessos", "todos-recursos"],
+    enabled,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb.from("gestao_acessos").select("*").order("recurso_tipo").order("recurso_id");
+      if (error) throw error;
+      return (data ?? []) as unknown as import("@/lib/hooks/useGestao").GestaoAcesso[];
+    },
+  });
+}
+
+export interface AcessoEfetivo {
+  email: string;
+  nome: string | null;
+  id_quadro: string;
+  quadro: string;
+  nivel: GestaoNivel;
+  origens: import("@/lib/gestao/acessos").OrigemAcesso[];
+  unidades: string[] | null;
+}
+
+/** Nível que cada pessoa TEM em cada lista e de onde vem (gestao_acessos_efetivos, só gestor). */
+export function useAcessosEfetivos(p: { email?: string | null; idQuadro?: string | null }, enabled = true) {
+  return useQuery({
+    queryKey: ["gestao-acessos", "efetivos", p.email ?? null, p.idQuadro ?? null],
+    enabled: enabled && !!(p.email || p.idQuadro),
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await (sb as unknown as GestaoRpc).rpc<AcessoEfetivo[]>("gestao_acessos_efetivos", {
+        p_email: p.email ?? null, p_id_quadro: p.idQuadro ?? null,
+      });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export interface LogAcesso {
+  id: string;
+  ator_email: string | null;
+  alvo_email: string | null;
+  acao: string;
+  recurso_tipo: string | null;
+  recurso_id: string | null;
+  nivel_anterior: GestaoNivel | null;
+  nivel_novo: GestaoNivel | null;
+  motivo: string | null;
+  created_at: string;
+}
+
+/** Histórico das alterações de acesso (gestao_acesso_log; RLS: só gestor). As mais recentes primeiro. */
+export function useLogAcessos(limite = 300, enabled = true) {
+  return useQuery({
+    queryKey: ["gestao-acessos", "log", limite],
+    enabled,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_acesso_log" as never)
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(limite);
+      if (error) throw error;
+      return (data ?? []) as unknown as LogAcesso[];
     },
   });
 }

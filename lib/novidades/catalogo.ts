@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "gestao-acessos-reorganizado",
+    data: "2026-10-28",
+    tipo: "melhoria",
+    titulo: "Gestão: dar acesso a espaços e pastas, a várias pessoas de uma vez, e ver quem acessa o quê",
+    texto:
+      "Membros e acessos foi reorganizado. Dá para dar acesso a um espaço ou pasta inteiros (vale também para as " +
+      "listas criadas depois), escolher várias pessoas de uma vez e copiar os acessos de outra pessoa. As abas Por " +
+      "pessoa e Por lista mostram o acesso que vale de fato e de onde ele vem, e o botão Compartilhar da lista abre " +
+      "direto em quem acessa aquela lista. O motivo é pedido só na hora de confirmar, e a aba Histórico mostra as " +
+      "alterações feitas.",
+    onde: "Gestão › Membros e acessos · Gestão › lista › Compartilhar",
+    versoes: ["0.3.163"],
+  },
+  {
     id: "gestao-niveis-claros",
     data: "2026-10-28",
     tipo: "melhoria",
