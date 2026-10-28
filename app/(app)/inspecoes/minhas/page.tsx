@@ -238,13 +238,14 @@ function MinhasInner() {
               const espera = textoEspera(i.status, i.dias_espera);
               return (
                 <li key={i.id_inspecao} className="flex flex-wrap items-center gap-3 px-4 py-3 hover:bg-verde-light/20">
-                  <div className="w-32 shrink-0">
-                    {/* a marcada (quem edita troca aqui) + a calculada, quando passa, e o prazo */}
+                  <div className="w-36 shrink-0">
+                    {/* a marcada (quem edita troca aqui) + a calculada, quando passa, e o prazo.
+                        Cada seletor com o nome em cima: vazios, os dois mostravam só "—". */}
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Prioridade</p>
                     <PrioridadeCelula id={i.id_inspecao} valor={i.prioridade} podeEditar={canEdit} />
                     <PrioridadeCalculada insp={i} podeEditarPrazo={canEdit} compacto />
-                    <div className="mt-1">
-                      <ComplexidadeCelula id={i.id_inspecao} valor={i.complexidade} podeEditar={canEdit} />
-                    </div>
+                    <p className="mt-1.5 text-[10px] font-medium uppercase tracking-wider text-gray-400">Complexidade</p>
+                    <ComplexidadeCelula id={i.id_inspecao} valor={i.complexidade} podeEditar={canEdit} />
                   </div>
                   <div className="min-w-[200px] flex-1">
                     <p className="font-medium text-gray-900">{i.empresas?.nome_empresa ?? "—"}</p>

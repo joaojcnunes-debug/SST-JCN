@@ -51,7 +51,7 @@ export const CATALOGO: Novidade[] = [
       "Prioridade há a coluna Complexidade (Baixa, Média, Alta, Muito alta), marcada na própria linha e com filtro. " +
       "Em Minhas inspeções, os filtros ganharam títulos e a busca é pelo nome da empresa.",
     onde: "Painel › Inspeções · Painel › Minhas inspeções",
-    versoes: ["0.3.166"],
+    versoes: ["0.3.166", "0.3.167"],
   },
   {
     id: "inspecoes-minhas-e-filtros",
