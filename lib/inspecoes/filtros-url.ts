@@ -8,7 +8,8 @@ import type { FiltroInspecao } from "./pilulas";
 import type { PrioridadeInspecao } from "./prioridade";
 import { COMPLEXIDADES, type ComplexidadeInspecao } from "./complexidade";
 
-export type Documento = "PENDENTE" | "EM_ELABORACAO" | "ENTREGUE";
+/** v309 (28/10): ATRIBUIDO = tem associado, mas o trabalho ainda não começou. */
+export type Documento = "PENDENTE" | "ATRIBUIDO" | "EM_ELABORACAO" | "ENTREGUE";
 /**
  * Visão da lista (28/10): "" = Todas; "tecnicos" = o lado do campo (técnico, status da inspeção,
  * data da visita); "associados" = o lado do documento (associado, associação, situação do documento).
@@ -64,7 +65,7 @@ export function trocarVisao(f: FiltrosLista, visao: Visao): FiltrosLista {
 }
 
 const PILULAS_OK: FiltroInspecao[] = ["RASCUNHO", "EM_ANDAMENTO", "CONCLUIDA", "ASSOCIADOS", "NAO_ASSOCIADOS"];
-const DOC_OK: Documento[] = ["PENDENTE", "EM_ELABORACAO", "ENTREGUE"];
+const DOC_OK: Documento[] = ["PENDENTE", "ATRIBUIDO", "EM_ELABORACAO", "ENTREGUE"];
 const PRI_OK: PrioridadeInspecao[] = ["CRITICA", "GRAVE", "MEDIA", "BAIXA"];
 const ORDEM_OK: OrdemLista[] = ["recentes", "antigas", "revisao", "prioridade", "espera", "prazo"];
 const PERIODO_OK: Periodo[] = ["hoje", "7d", "30d", "mes", "mes_passado", "personalizado"];

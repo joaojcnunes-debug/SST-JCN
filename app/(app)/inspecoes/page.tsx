@@ -65,6 +65,8 @@ const ROTULO = Object.fromEntries(FILTROS.map((f) => [f.value, f.label])) as Rec
 // v306 (28/10): a coluna "Status Assoc." vira filtro, e a prioridade também.
 const DOCUMENTOS: { value: Documento; label: string }[] = [
   { value: "PENDENTE", label: "Pendente" },
+  // 28/10 (v309): associado sem início ≠ em elaboração.
+  { value: "ATRIBUIDO", label: "Atribuído (não iniciado)" },
   { value: "EM_ELABORACAO", label: "Em elaboração" },
   { value: "ENTREGUE", label: "Entregue" },
 ];

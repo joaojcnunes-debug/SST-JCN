@@ -35,14 +35,27 @@ describe("situacaoDocumento", () => {
     assert.equal(situacaoDocumento(insp, [], "longo")?.texto, "Concluído por —");
   });
 
-  it("o caso do print: associado no chip e nenhum status conta como assumido", () => {
+  it("28/10: associado no chip sem início é ATRIBUÍDO, não em elaboração", () => {
     const insp: LinhaDocumento = { ...base }; // elaboracao_status null, inspeção CONCLUIDA
     assert.deepEqual(situacaoDocumento(insp, ["Emilia dos Reis"], "curto"), {
-      chave: "EM_ELABORACAO",
-      texto: "Em elaboração · Emilia",
-      cor: "text-sky-700",
+      chave: "ATRIBUIDO",
+      texto: "Atribuído · Emilia",
+      cor: "text-amber-700",
     });
-    assert.equal(situacaoDocumento(insp, ["Emilia dos Reis"], "longo")?.texto, "Em elaboração · Emilia dos Reis");
+    assert.equal(situacaoDocumento(insp, ["Emilia dos Reis"], "longo")?.texto, "Atribuído a Emilia dos Reis — ainda não iniciado");
+  });
+
+  it("em elaboração mostra desde quando, e se o início veio da 1ª edição", () => {
+    const insp: LinhaDocumento = {
+      ...base, elaboracao_status: "EM_ELABORACAO", elaboracao_responsavel: "Sarah Lima",
+      elaboracao_iniciada_em: "2026-10-27T10:00:00", elaboracao_inicio_origem: "AUTOMATICO",
+    };
+    assert.equal(situacaoDocumento(insp, [], "curto")?.texto, "Em elaboração · Sarah");
+    assert.equal(situacaoDocumento(insp, [], "longo")?.texto, "Em elaboração · Sarah Lima · desde 27/10/2026 (início pela 1ª edição)");
+    assert.equal(
+      situacaoDocumento({ ...insp, elaboracao_inicio_origem: "BOTAO" }, [], "longo")?.texto,
+      "Em elaboração · Sarah Lima · desde 27/10/2026",
+    );
   });
 
   it("o responsável vem na frente dos associados, e a lista conta os outros", () => {
@@ -65,6 +78,6 @@ describe("situacaoDocumento", () => {
     assert.equal(situacaoDocumento(insp, [], "curto"), null);
     assert.equal(situacaoDocumento(insp, [], "longo")?.chave, "NINGUEM");
     // Com gente no documento, rotula mesmo em campo.
-    assert.equal(situacaoDocumento(insp, ["Ana Luiza"], "curto")?.texto, "Em elaboração · Ana");
+    assert.equal(situacaoDocumento(insp, ["Ana Luiza"], "curto")?.texto, "Atribuído · Ana");
   });
 });

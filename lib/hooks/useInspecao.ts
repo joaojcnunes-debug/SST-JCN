@@ -289,7 +289,7 @@ interface InspecoesPaginadasParams {
 type LinhaContagemV306 = LinhaContagem & { situacao_documento: string | null; prioridade_efetiva: string | null; complexidade: string | null };
 
 /** Colunas calculadas da v306 que a lista pede pelo nome. */
-export const COLUNAS_PRIORIDADE = "situacao_documento, dias_espera, prioridade_auto, prioridade_efetiva";
+export const COLUNAS_PRIORIDADE = "situacao_documento, atribuido_em, dias_espera, prioridade_auto, prioridade_efetiva";
 
 /** Ids das empresas cujo nome casa com a busca (para "buscar por empresa" sem join). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

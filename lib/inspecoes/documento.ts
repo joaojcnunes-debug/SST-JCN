@@ -18,6 +18,13 @@
  *
  * Desde 28/09 o Dashboard › Documentos por Associado também conta por esta
  * função (`lib/dashboard/documentos.ts`), e as duas telas dizem o mesmo.
+ *
+ * **28/10/2026 — a regra de 22/09 foi revista** (pedido dele: ter o associado
+ * no documento não significa que ele começou a atuar). Estar no documento agora
+ * é **ATRIBUÍDO**; "Em elaboração" só depois do início de verdade
+ * (`elaboracao_status = EM_ELABORACAO`), que vem do botão "Iniciar elaboração"
+ * ou, sozinho, da primeira edição do associado no documento (banco v309,
+ * `elaboracao_iniciada_em/_por` e `elaboracao_inicio_origem`).
  */
 
 import { fmtData, fmtDataHora } from "@/lib/utils";
@@ -29,9 +36,12 @@ export interface LinhaDocumento {
   elaboracao_status: "PENDENTE" | "EM_ELABORACAO" | "CONCLUIDO" | null;
   elaboracao_responsavel: string | null;
   elaboracao_concluida_em: string | null;
+  /** v309: quando o trabalho no documento começou e como (botão ou 1ª edição). */
+  elaboracao_iniciada_em?: string | null;
+  elaboracao_inicio_origem?: string | null;
 }
 
-export type ChaveDocumento = "ENTREGUE" | "EM_ELABORACAO" | "NINGUEM";
+export type ChaveDocumento = "ENTREGUE" | "EM_ELABORACAO" | "ATRIBUIDO" | "NINGUEM";
 
 export interface SituacaoDocumento {
   chave: ChaveDocumento;
@@ -85,12 +95,25 @@ export function situacaoDocumento(
     };
   }
 
-  // Assumido pelo fluxo de status OU simplesmente com gente no documento.
-  if (insp.elaboracao_status === "EM_ELABORACAO" || fila.length > 0) {
+  // Em elaboração só quando o trabalho começou de fato (botão ou 1ª edição — v309).
+  if (insp.elaboracao_status === "EM_ELABORACAO") {
+    const desde =
+      !curto && insp.elaboracao_iniciada_em
+        ? ` · desde ${fmtData(insp.elaboracao_iniciada_em)}${insp.elaboracao_inicio_origem === "AUTOMATICO" ? " (início pela 1ª edição)" : ""}`
+        : "";
     return {
       chave: "EM_ELABORACAO",
-      texto: quem ? `Em elaboração · ${quem}` : "Em elaboração",
+      texto: (quem ? `Em elaboração · ${quem}` : "Em elaboração") + desde,
       cor: "text-sky-700",
+    };
+  }
+
+  // Gente no documento, mas ninguém começou (28/10: antes isto contava como em elaboração).
+  if (fila.length > 0) {
+    return {
+      chave: "ATRIBUIDO",
+      texto: curto ? `Atribuído · ${quem}` : `Atribuído a ${principal} — ainda não iniciado`,
+      cor: "text-amber-700",
     };
   }
 

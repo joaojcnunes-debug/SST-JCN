@@ -250,6 +250,8 @@ export default function RelatorioChabraPage({ params }: Props) {
   // Visualizadores (que leem a inspeção e montam o documento). Só Cliente não.
   const podeElaborar = !!user && user.perfil !== "Cliente";
   const salvarElab = useSalvarElaboracao(id);
+  // 28/10 (v309): quem já está no documento "inicia" (não precisa se associar de novo).
+  const souAssociado = !!user && associados.some((a) => a.id_usuario === user.id_usuario || a.nome?.trim().toLowerCase() === user.nome?.trim().toLowerCase());
 
   async function handleBaixarPdf() {
     if (!pdfAssinado) return;
@@ -411,15 +413,15 @@ export default function RelatorioChabraPage({ params }: Props) {
                   onClick={() => salvarElab.mutate(
                     { elaboracao_status: "EM_ELABORACAO", elaboracao_responsavel: user?.nome ?? null },
                     { onSuccess: () => {
-                      toast.success("Você assumiu a elaboração do documento");
-                      if (user?.id_usuario && user?.nome) {
+                      toast.success(souAssociado ? "Elaboração iniciada" : "Você assumiu a elaboração do documento");
+                      if (!souAssociado && user?.id_usuario && user?.nome) {
                         associarSelf.mutate({ id_inspecao: id, id_usuario: user.id_usuario, nome: user.nome, created_by: user.nome });
                       }
                     } },
                   )}
                   className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
                 >
-                  Assumir elaboração (eu)
+                  {souAssociado ? "Iniciar elaboração" : "Assumir elaboração (eu)"}
                 </button>
               )}
               {inspecao.elaboracao_status === "EM_ELABORACAO" && (inspecao.elaboracao_responsavel === user?.nome || ehSupervisor(user)) && (

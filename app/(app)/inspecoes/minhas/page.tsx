@@ -13,7 +13,10 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlarmClock, CalendarClock, CheckCircle2, ClipboardList, FileText, Flame, Hourglass, Loader2, Search } from "lucide-react";
+import { AlarmClock, CalendarClock, CheckCircle2, ClipboardList, FileText, Flame, Hourglass, Loader2, Play, Search } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { PrioridadeCelula } from "@/components/inspecoes/PrioridadeInspecao";
 import PrioridadeCalculada from "@/components/inspecoes/PrioridadeCalculada";
@@ -22,7 +25,7 @@ import FiltroSuspenso from "@/components/ui/FiltroSuspenso";
 import { useFilaAtribuida, usePessoasAtribuicao, useResumoFila, type FiltrosFila } from "@/lib/hooks/useInspecoesAtribuidas";
 import { useCanEdit, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import { useUserStore } from "@/lib/store";
-import { PRIORIDADES_DESC, PRIORIDADE_INFO, hojeSP, textoEspera, type PrioridadeInspecao } from "@/lib/inspecoes/prioridade";
+import { PRIORIDADES_DESC, PRIORIDADE_INFO, diasEntre, hojeSP, textoEspera, type PrioridadeInspecao } from "@/lib/inspecoes/prioridade";
 import { ROTULO_PERIODO, intervaloDoPeriodo, type Periodo } from "@/lib/inspecoes/filtros-url";
 import { cn, fmtData } from "@/lib/utils";
 
@@ -36,8 +39,17 @@ const STATUS_FILTRO: { value: StatusFiltro; label: string }[] = [
   { value: "CONCLUIDA", label: "Concluídas" },
 ];
 
+/** 28/10 (v309): na aba do associado, filtrar pelo andamento do documento. */
+type DocFiltro = "ATRIBUIDO" | "EM_ELABORACAO" | "ENTREGUE";
+const DOC_FILTRO: { value: DocFiltro; label: string }[] = [
+  { value: "ATRIBUIDO", label: "Atribuído (não iniciado)" },
+  { value: "EM_ELABORACAO", label: "Em elaboração" },
+  { value: "ENTREGUE", label: "Entregue" },
+];
+
 const DOC_ROTULO: Record<string, { texto: string; cor: string }> = {
   PENDENTE: { texto: "Documento pendente", cor: "bg-gray-100 text-gray-600" },
+  ATRIBUIDO: { texto: "Atribuído · não iniciado", cor: "bg-amber-50 text-amber-800" },
   EM_ELABORACAO: { texto: "Em elaboração", cor: "bg-sky-100 text-sky-800" },
   ENTREGUE: { texto: "Documento entregue", cor: "bg-emerald-100 text-emerald-800" },
 };
@@ -63,6 +75,7 @@ function MinhasInner() {
   const [pessoa, setPessoa] = useState(ler("pessoa"));
   const [papel, setPapel] = useState<Papel>(ler("papel") === "associado" ? "associado" : "tecnico");
   const [status, setStatus] = useState<StatusFiltro[]>(ler("status").split(",").filter((s): s is StatusFiltro => STATUS_FILTRO.some((x) => x.value === s)));
+  const [documento, setDocumento] = useState<DocFiltro[]>(ler("doc").split(",").filter((d): d is DocFiltro => DOC_FILTRO.some((x) => x.value === d)));
   const [prioridade, setPrioridade] = useState<PrioridadeInspecao[]>(ler("prioridade").split(",").filter((p): p is PrioridadeInspecao => (PRIORIDADES_DESC as readonly string[]).includes(p)));
   const [espera, setEspera] = useState(Number(ler("espera")) || 0);
   const [periodo, setPeriodo] = useState<Periodo>((Object.keys(ROTULO_PERIODO) as string[]).includes(ler("periodo")) ? (ler("periodo") as Periodo) : "");
@@ -81,6 +94,7 @@ function MinhasInner() {
     if (pessoa) sp.set("pessoa", pessoa);
     if (papel !== "tecnico") sp.set("papel", papel);
     if (status.length) sp.set("status", status.join(","));
+    if (papel === "associado" && documento.length) sp.set("doc", documento.join(","));
     if (prioridade.length) sp.set("prioridade", prioridade.join(","));
     if (espera) sp.set("espera", String(espera));
     if (periodo) sp.set("periodo", periodo);
@@ -89,7 +103,7 @@ function MinhasInner() {
     const s = sp.toString();
     router.replace(`${pathname}${s ? "?" + s : ""}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pessoa, papel, status, prioridade, espera, periodo, q, ordem]);
+  }, [pessoa, papel, status, documento, prioridade, espera, periodo, q, ordem]);
 
   // "pessoa" vazio = eu (o banco usa o e-mail de quem chama).
   const idUsuario = supervisor && pessoa && pessoa !== eu?.id_usuario ? pessoa : null;
@@ -97,7 +111,7 @@ function MinhasInner() {
   const hoje = hojeSP();
   const { de, ate } = intervaloDoPeriodo(periodo, hoje);
 
-  const fila = useFilaAtribuida({ idUsuario, papel, status, prioridade, esperaMin: espera, dataIni: de, dataFim: ate, busca: qDeb.trim().length >= 2 ? qDeb : "", ordem });
+  const fila = useFilaAtribuida({ idUsuario, papel, status, documento: papel === "associado" ? documento : [], prioridade, esperaMin: espera, dataIni: de, dataFim: ate, busca: qDeb.trim().length >= 2 ? qDeb : "", ordem });
   const resumoTec = useResumoFila(idUsuario, "tecnico");
   const resumoAssoc = useResumoFila(idUsuario, "associado");
   const resumo = papel === "tecnico" ? resumoTec.data : resumoAssoc.data;
@@ -119,6 +133,7 @@ function MinhasInner() {
 
   const limparCartao = () => {
     setStatus([]);
+    setDocumento([]);
     setPeriodo("");
     setPrioridade([]);
     setEspera(0);
@@ -185,6 +200,12 @@ function MinhasInner() {
           {/* 28/10: lista suspensa como "Tempo de espera", com caixinhas (dá para marcar mais de uma). */}
           <FiltroSuspenso ariaLabel="Filtrar por status" opcoes={STATUS_FILTRO} value={status} onChange={(v) => setStatus(v as StatusFiltro[])} />
         </div>
+        {papel === "associado" && (
+          <div>
+            <label className={rot}>Documento</label>
+            <FiltroSuspenso ariaLabel="Filtrar pelo andamento do documento" opcoes={DOC_FILTRO} value={documento} onChange={(v) => setDocumento(v as DocFiltro[])} />
+          </div>
+        )}
         <div>
           <label className={rot}>Prioridade</label>
           <FiltroSuspenso
@@ -276,8 +297,23 @@ function MinhasInner() {
                           {doc && <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", doc.cor)}>{doc.texto}</span>}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{espera ?? (i.status === "CONCLUIDA" ? "Nada esperando" : "—")}</td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-xs text-gray-500">
+                        {espera ?? (i.status === "CONCLUIDA" ? "Nada esperando" : "—")}
+                        {/* 28/10 (v309): quanto tempo levou (ou está levando) para começar o documento */}
+                        {i.situacao_documento === "ATRIBUIDO" && i.atribuido_em && (
+                          <p className="font-medium text-amber-700">{textoAtribuido(i.atribuido_em, hoje)}</p>
+                        )}
+                        {i.situacao_documento === "EM_ELABORACAO" && i.elaboracao_iniciada_em && (
+                          <p className="text-sky-700">
+                            Iniciado em {fmtData(i.elaboracao_iniciada_em)}
+                            {i.elaboracao_inicio_origem === "AUTOMATICO" && <span className="text-gray-400"> (1ª edição)</span>}
+                          </p>
+                        )}
+                      </td>
+                      <td className="space-y-1 px-4 py-3 text-right">
+                        {papel === "associado" && !idUsuario && i.situacao_documento === "ATRIBUIDO" && (
+                          <IniciarElaboracao id={i.id_inspecao} nome={eu?.nome ?? ""} />
+                        )}
                         <Link
                           href={papel === "associado" ? `/inspecoes/${i.id_inspecao}/relatorio` : `/inspecoes/${i.id_inspecao}`}
                           className="inline-block whitespace-nowrap rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:border-verde-primary hover:text-verde-primary"
@@ -295,5 +331,45 @@ function MinhasInner() {
       </div>
       {itens.length >= 500 && <p className="text-xs text-gray-400">Mostrando as 500 primeiras — use os filtros para afinar.</p>}
     </div>
+  );
+}
+
+/** "Atribuído há 4 dias, não iniciado" (a partir da primeira associação). */
+function textoAtribuido(atribuidoEm: string, hoje: string): string {
+  const n = Math.max(0, diasEntre(hojeSP(new Date(atribuidoEm)), hoje));
+  return n === 0 ? "Atribuído hoje, não iniciado" : `Atribuído há ${n} dia${n === 1 ? "" : "s"}, não iniciado`;
+}
+
+/**
+ * 28/10 (v309): o associado marca que começou o documento — a mesma RPC do botão do relatório
+ * (set_elaboracao_documento); o banco carimba quando e quem (origem BOTAO). Se ele esquecer, a
+ * primeira edição dele no documento marca sozinha.
+ */
+function IniciarElaboracao({ id, nome }: { id: string; nome: string }) {
+  const qc = useQueryClient();
+  const iniciar = useMutation({
+    mutationFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (createSupabaseBrowserClient() as any).rpc("set_elaboracao_documento", {
+        p_id_inspecao: id, p_status: "EM_ELABORACAO", p_responsavel: nome || null, p_concluida_em: null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      for (const k of ["inspecoes-atribuidas", "inspecao", "inspecoes-lista", "inspecoes-counts"]) qc.invalidateQueries({ queryKey: [k] });
+      toast.success("Elaboração iniciada");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <button
+      type="button"
+      disabled={iniciar.isPending}
+      onClick={() => iniciar.mutate()}
+      className="mr-1 inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-verde-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+      title="Marca que você começou a trabalhar neste documento"
+    >
+      {iniciar.isPending ? <Loader2 className="size-3 animate-spin" /> : <Play className="size-3" />} Iniciar
+    </button>
   );
 }
