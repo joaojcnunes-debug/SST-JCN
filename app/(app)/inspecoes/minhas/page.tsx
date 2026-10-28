@@ -18,6 +18,7 @@ import StatusBadge from "@/components/inspecoes/StatusBadge";
 import { PrioridadeCelula } from "@/components/inspecoes/PrioridadeInspecao";
 import PrioridadeCalculada from "@/components/inspecoes/PrioridadeCalculada";
 import ComplexidadeCelula from "@/components/inspecoes/ComplexidadeCelula";
+import FiltroSuspenso from "@/components/ui/FiltroSuspenso";
 import { useFilaAtribuida, usePessoasAtribuicao, useResumoFila, type FiltrosFila } from "@/lib/hooks/useInspecoesAtribuidas";
 import { useCanEdit, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import { useUserStore } from "@/lib/store";
@@ -181,32 +182,18 @@ function MinhasInner() {
         {/* 28/10: Status da inspeção no lugar de "Situação" (Só as abertas / Todas). Vazio = todos. */}
         <div>
           <label className={rot}>Status</label>
-          <div className="flex flex-wrap items-center gap-1.5 py-0.5">
-            <button type="button" onClick={() => setStatus([])} className={cn("rounded-full border px-2.5 py-1 text-xs", status.length === 0 ? "border-verde-primary bg-verde-primary font-semibold text-white" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
-              Todos
-            </button>
-            {STATUS_FILTRO.map((s) => {
-              const on = status.includes(s.value);
-              return (
-                <button key={s.value} type="button" onClick={() => setStatus(on ? status.filter((x) => x !== s.value) : [...status, s.value])} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-verde-primary bg-verde-primary font-semibold text-white" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
+          {/* 28/10: lista suspensa como "Tempo de espera", com caixinhas (dá para marcar mais de uma). */}
+          <FiltroSuspenso ariaLabel="Filtrar por status" opcoes={STATUS_FILTRO} value={status} onChange={(v) => setStatus(v as StatusFiltro[])} />
         </div>
         <div>
           <label className={rot}>Prioridade</label>
-          <div className="flex flex-wrap items-center gap-1.5 py-0.5">
-            {PRIORIDADES_DESC.map((p) => {
-              const on = prioridade.includes(p);
-              return (
-                <button key={p} type="button" onClick={() => setPrioridade(on ? prioridade.filter((x) => x !== p) : [...prioridade, p])} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? cn(PRIORIDADE_INFO[p].classe, "font-semibold ring-2 ring-verde-primary/30") : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
-                  {PRIORIDADE_INFO[p].label}
-                </button>
-              );
-            })}
-          </div>
+          <FiltroSuspenso
+            ariaLabel="Filtrar por prioridade"
+            rotuloTodos="Todas"
+            opcoes={PRIORIDADES_DESC.map((p) => ({ value: p, label: PRIORIDADE_INFO[p].label }))}
+            value={prioridade}
+            onChange={(v) => setPrioridade(v as PrioridadeInspecao[])}
+          />
         </div>
         <div>
           <label className={rot}>Tempo de espera</label>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { Plus, ChartBar, Check, SlidersHorizontal, X, UserCheck, ListTodo, LayoutList, ClipboardList, FileText } from "lucide-react";
+import { Plus, ChartBar, SlidersHorizontal, X, UserCheck, ListTodo, LayoutList, ClipboardList, FileText } from "lucide-react";
 import { Suspense } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -23,7 +23,8 @@ import { useUnidadeAtiva, useUserStore } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { registrarSoftNaLixeira } from "@/lib/hooks/useLixeira";
 import { cn } from "@/lib/utils";
-import { alternarPilula } from "@/lib/inspecoes/pilulas";
+import { FILTROS_ASSOCIACAO, FILTROS_STATUS } from "@/lib/inspecoes/pilulas";
+import FiltroSuspenso from "@/components/ui/FiltroSuspenso";
 import {
   FILTROS_VAZIOS,
   ROTULO_PERIODO,
@@ -85,44 +86,11 @@ const VISOES: { value: Visao; label: string; icone: typeof ClipboardList; dica: 
   { value: "associados", label: "Associados (documento)", icone: FileText, dica: "Quem está no documento e a situação dele" },
 ];
 
-const alternar = <T,>(lista: T[], v: T) => (lista.includes(v) ? lista.filter((x) => x !== v) : [...lista, v]);
-
-/** Só a cor do texto da classe do selo — a pílula desligada fica branca, com o texto na cor. */
-const corDoTexto = (classe: string) => classe.split(" ").filter((c) => c.startsWith("text-")).join(" ");
-
-function GrupoPilulas({ titulo, children }: { titulo: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="w-24 shrink-0 text-[11px] font-medium uppercase tracking-wider text-gray-400">{titulo}</span>
-      {children}
-    </div>
-  );
-}
-
 export default function InspecoesPage() {
   return (
     <Suspense fallback={null}>
       <InspecoesInner />
     </Suspense>
-  );
-}
-
-function Pilula({ ativo, onClick, children, contagem, className, semCheck }: { ativo: boolean; onClick: () => void; children: React.ReactNode; contagem?: number; className?: string; semCheck?: boolean }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={ativo}
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-        ativo ? "border-verde-primary bg-verde-primary text-white" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50",
-        className,
-      )}
-    >
-      {ativo && !semCheck && <Check className="mr-1 size-3" />}
-      {children}
-      {contagem !== undefined && <span className="ml-1.5 opacity-75">({contagem})</span>}
-    </button>
   );
 }
 
@@ -428,65 +396,66 @@ function InspecoesInner() {
       )}
 
       <div className="space-y-2 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-        {/* Campo (status da inspeção) — Todas e Técnicos */}
-        {f.visao !== "associados" && (
-          <GrupoPilulas titulo="Status">
-            {FILTROS.filter((fi) => fi.value !== "ASSOCIADOS" && fi.value !== "NAO_ASSOCIADOS").map((fi) => (
-              <Pilula
-                key={fi.value}
-                ativo={fi.value === "Todos" ? !f.pilulas.some((p) => p !== "ASSOCIADOS" && p !== "NAO_ASSOCIADOS") : f.pilulas.includes(fi.value)}
-                semCheck={fi.value === "Todos"}
-                onClick={() => set({ pilulas: fi.value === "Todos" ? f.pilulas.filter((p) => p === "ASSOCIADOS" || p === "NAO_ASSOCIADOS") : alternarPilula(f.pilulas, fi.value) })}
-                contagem={countData?.status[fi.value]}
-              >
-                {fi.label}
-              </Pilula>
-            ))}
-          </GrupoPilulas>
-        )}
-        {/* Documento (associação e situação) — Todas e Associados */}
-        {f.visao !== "tecnicos" && (
-          <GrupoPilulas titulo="Documento">
-            {FILTROS.filter((fi) => fi.value === "ASSOCIADOS" || fi.value === "NAO_ASSOCIADOS").map((fi) => (
-              <Pilula key={fi.value} ativo={f.pilulas.includes(fi.value)} onClick={() => set({ pilulas: alternarPilula(f.pilulas, fi.value) })} contagem={countData?.status[fi.value]}>
-                {fi.label}
-              </Pilula>
-            ))}
-            <span className="mx-1 h-5 w-px bg-gray-200" aria-hidden />
-            {DOCUMENTOS.map((d) => (
-              <Pilula key={d.value} ativo={f.documento.includes(d.value)} onClick={() => set({ documento: alternar(f.documento, d.value) })} contagem={extras?.documento[d.value] ?? 0}>
-                {d.label}
-              </Pilula>
-            ))}
-          </GrupoPilulas>
-        )}
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <GrupoPilulas titulo="Prioridade">
-            {PRIORIDADES_DESC.map((p) => (
-              <Pilula
-                key={p}
-                ativo={f.prioridade.includes(p)}
-                onClick={() => set({ prioridade: alternar<PrioridadeInspecao>(f.prioridade, p) })}
-                contagem={extras?.prioridade[p] ?? 0}
-                className={!f.prioridade.includes(p) ? corDoTexto(PRIORIDADE_INFO[p].classe) : undefined}
-              >
-                {PRIORIDADE_INFO[p].label}
-              </Pilula>
-            ))}
-          </GrupoPilulas>
-          <GrupoPilulas titulo="Complexidade">
-            {COMPLEXIDADES_DESC.map((c) => (
-              <Pilula
-                key={c}
-                ativo={f.complexidade.includes(c)}
-                onClick={() => set({ complexidade: alternar<ComplexidadeInspecao>(f.complexidade, c) })}
-                contagem={extras?.complexidade[c] ?? 0}
-                className={!f.complexidade.includes(c) ? corDoTexto(COMPLEXIDADE_INFO[c].classe) : undefined}
-              >
-                {COMPLEXIDADE_INFO[c].label}
-              </Pilula>
-            ))}
-          </GrupoPilulas>
+        {/* 28/10: os grupos de pílulas viraram listas suspensas (como "Tempo de espera"), com
+            caixinhas — continua dando para marcar mais de uma em cada. */}
+        <div className="flex flex-wrap items-end gap-3">
+          {/* Campo (status da inspeção) — Todas e Técnicos */}
+          {f.visao !== "associados" && (
+            <div>
+              <label className={rot}>Status</label>
+              <FiltroSuspenso
+                ariaLabel="Filtrar por status"
+                opcoes={FILTROS_STATUS.map((s) => ({ value: s, label: ROTULO[s], contagem: countData?.status[s] }))}
+                value={f.pilulas.filter((p) => p !== "ASSOCIADOS" && p !== "NAO_ASSOCIADOS")}
+                onChange={(v) => {
+                  // marcar os três é o mesmo que não filtrar (como nas pílulas)
+                  const status = v.length === FILTROS_STATUS.length ? [] : (v as FiltroInspecao[]);
+                  set({ pilulas: [...status, ...f.pilulas.filter((p) => p === "ASSOCIADOS" || p === "NAO_ASSOCIADOS")] });
+                }}
+              />
+            </div>
+          )}
+          {/* Documento (associação e situação) — Todas e Associados */}
+          {f.visao !== "tecnicos" && (
+            <div>
+              <label className={rot}>Documento</label>
+              <FiltroSuspenso
+                ariaLabel="Filtrar por documento"
+                opcoes={[
+                  ...FILTROS_ASSOCIACAO.map((a, i) => ({ value: a, label: ROTULO[a], contagem: countData?.status[a], secao: i === 0 ? "Associação" : undefined })),
+                  ...DOCUMENTOS.map((d, i) => ({ value: d.value, label: d.label, contagem: extras?.documento[d.value] ?? 0, secao: i === 0 ? "Situação do documento" : undefined })),
+                ]}
+                value={[...f.pilulas.filter((p) => p === "ASSOCIADOS" || p === "NAO_ASSOCIADOS"), ...f.documento]}
+                onChange={(v) => {
+                  const assoc = v.filter((x): x is FiltroInspecao => x === "ASSOCIADOS" || x === "NAO_ASSOCIADOS");
+                  set({
+                    pilulas: [...f.pilulas.filter((p) => p !== "ASSOCIADOS" && p !== "NAO_ASSOCIADOS"), ...(assoc.length === FILTROS_ASSOCIACAO.length ? [] : assoc)],
+                    documento: v.filter((x): x is Documento => DOCUMENTOS.some((d) => d.value === x)),
+                  });
+                }}
+              />
+            </div>
+          )}
+          <div>
+            <label className={rot}>Prioridade</label>
+            <FiltroSuspenso
+              ariaLabel="Filtrar por prioridade"
+              rotuloTodos="Todas"
+              opcoes={PRIORIDADES_DESC.map((p) => ({ value: p, label: PRIORIDADE_INFO[p].label, contagem: extras?.prioridade[p] ?? 0 }))}
+              value={f.prioridade}
+              onChange={(v) => set({ prioridade: v as PrioridadeInspecao[] })}
+            />
+          </div>
+          <div>
+            <label className={rot}>Complexidade</label>
+            <FiltroSuspenso
+              ariaLabel="Filtrar por complexidade"
+              rotuloTodos="Todas"
+              opcoes={COMPLEXIDADES_DESC.map((c) => ({ value: c, label: COMPLEXIDADE_INFO[c].label, contagem: extras?.complexidade[c] ?? 0 }))}
+              value={f.complexidade}
+              onChange={(v) => set({ complexidade: v as ComplexidadeInspecao[] })}
+            />
+          </div>
         </div>
         {algumFiltro && (
           <p className="text-xs text-gray-500">

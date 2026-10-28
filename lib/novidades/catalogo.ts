@@ -60,9 +60,10 @@ export const CATALOGO: Novidade[] = [
       "A lista de Inspeções ganhou três visões: Todas, Técnicos (campo) e Associados (documento). Cada uma mostra " +
       "só os filtros que fazem sentido para ela. A busca do topo saiu: escolha a empresa no seletor. Ao lado da " +
       "Prioridade há a coluna Complexidade (Baixa, Média, Alta, Muito alta), marcada na própria linha e com filtro. " +
-      "Em Minhas inspeções, os filtros ganharam títulos e a busca é pelo nome da empresa.",
+      "Em Minhas inspeções, os filtros ganharam títulos e a busca é pelo nome da empresa. Nas duas telas, Status, " +
+      "Documento, Prioridade e Complexidade viraram listas suspensas, como o Tempo de espera; dá para marcar mais de uma opção em cada.",
     onde: "Painel › Inspeções · Painel › Minhas inspeções",
-    versoes: ["0.3.166", "0.3.167", "0.3.169", "0.3.170"],
+    versoes: ["0.3.166", "0.3.167", "0.3.169", "0.3.170", "0.3.171"],
   },
   {
     id: "inspecoes-minhas-e-filtros",
