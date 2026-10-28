@@ -26,6 +26,14 @@ import { ROTULO_PERIODO, intervaloDoPeriodo, type Periodo } from "@/lib/inspecoe
 import { cn, fmtData } from "@/lib/utils";
 
 type Papel = "tecnico" | "associado";
+type StatusFiltro = "RASCUNHO" | "EM_ANDAMENTO" | "CONCLUIDA";
+
+/** As pílulas de Status — os mesmos rótulos da lista de Inspeções. */
+const STATUS_FILTRO: { value: StatusFiltro; label: string }[] = [
+  { value: "RASCUNHO", label: "Rascunho" },
+  { value: "EM_ANDAMENTO", label: "Em Andamento" },
+  { value: "CONCLUIDA", label: "Concluídas" },
+];
 
 const DOC_ROTULO: Record<string, { texto: string; cor: string }> = {
   PENDENTE: { texto: "Documento pendente", cor: "bg-gray-100 text-gray-600" },
@@ -53,7 +61,7 @@ function MinhasInner() {
   const ler = (k: string) => params.get(k) ?? "";
   const [pessoa, setPessoa] = useState(ler("pessoa"));
   const [papel, setPapel] = useState<Papel>(ler("papel") === "associado" ? "associado" : "tecnico");
-  const [situacao, setSituacao] = useState<"abertas" | "todas">(ler("situacao") === "todas" ? "todas" : "abertas");
+  const [status, setStatus] = useState<StatusFiltro[]>(ler("status").split(",").filter((s): s is StatusFiltro => STATUS_FILTRO.some((x) => x.value === s)));
   const [prioridade, setPrioridade] = useState<PrioridadeInspecao[]>(ler("prioridade").split(",").filter((p): p is PrioridadeInspecao => (PRIORIDADES_DESC as readonly string[]).includes(p)));
   const [espera, setEspera] = useState(Number(ler("espera")) || 0);
   const [periodo, setPeriodo] = useState<Periodo>((Object.keys(ROTULO_PERIODO) as string[]).includes(ler("periodo")) ? (ler("periodo") as Periodo) : "");
@@ -71,7 +79,7 @@ function MinhasInner() {
     const sp = new URLSearchParams();
     if (pessoa) sp.set("pessoa", pessoa);
     if (papel !== "tecnico") sp.set("papel", papel);
-    if (situacao !== "abertas") sp.set("situacao", situacao);
+    if (status.length) sp.set("status", status.join(","));
     if (prioridade.length) sp.set("prioridade", prioridade.join(","));
     if (espera) sp.set("espera", String(espera));
     if (periodo) sp.set("periodo", periodo);
@@ -80,7 +88,7 @@ function MinhasInner() {
     const s = sp.toString();
     router.replace(`${pathname}${s ? "?" + s : ""}`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pessoa, papel, situacao, prioridade, espera, periodo, q, ordem]);
+  }, [pessoa, papel, status, prioridade, espera, periodo, q, ordem]);
 
   // "pessoa" vazio = eu (o banco usa o e-mail de quem chama).
   const idUsuario = supervisor && pessoa && pessoa !== eu?.id_usuario ? pessoa : null;
@@ -88,7 +96,7 @@ function MinhasInner() {
   const hoje = hojeSP();
   const { de, ate } = intervaloDoPeriodo(periodo, hoje);
 
-  const fila = useFilaAtribuida({ idUsuario, papel, situacao, prioridade, esperaMin: espera, dataIni: de, dataFim: ate, busca: qDeb.trim().length >= 2 ? qDeb : "", ordem });
+  const fila = useFilaAtribuida({ idUsuario, papel, status, prioridade, esperaMin: espera, dataIni: de, dataFim: ate, busca: qDeb.trim().length >= 2 ? qDeb : "", ordem });
   const resumoTec = useResumoFila(idUsuario, "tecnico");
   const resumoAssoc = useResumoFila(idUsuario, "associado");
   const resumo = papel === "tecnico" ? resumoTec.data : resumoAssoc.data;
@@ -109,6 +117,8 @@ function MinhasInner() {
   const abertasPapel = (p: Papel) => ((p === "tecnico" ? resumoTec.data : resumoAssoc.data) ?? []).filter((x) => x.dias_espera != null).length;
 
   const limparCartao = () => {
+    setStatus([]);
+    setPeriodo("");
     setPrioridade([]);
     setEspera(0);
     setOrdem("prioridade");
@@ -153,11 +163,11 @@ function MinhasInner() {
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
         {[
-          { k: "abertas", rot: "Abertas", v: kpis.abertas, icone: Hourglass, cor: "text-gray-800", acao: () => { limparCartao(); setSituacao("abertas"); } },
-          { k: "urgentes", rot: "Críticas e urgentes", v: kpis.urgentes, icone: Flame, cor: "text-red-700", acao: () => { limparCartao(); setSituacao("abertas"); setPrioridade(["CRITICA", "GRAVE"]); } },
-          { k: "vencidas", rot: "Prazo vencido", v: kpis.vencidas, icone: AlarmClock, cor: "text-red-700", acao: () => { limparCartao(); setSituacao("abertas"); setOrdem("prazo"); } },
-          { k: "paradas", rot: "Esperando +15 dias", v: kpis.paradas, icone: CalendarClock, cor: "text-orange-700", acao: () => { limparCartao(); setSituacao("abertas"); setEspera(15); setOrdem("espera"); } },
-          { k: "mes", rot: papel === "tecnico" ? "Concluídas no mês" : "Entregues no mês", v: kpis.noMes, icone: CheckCircle2, cor: "text-emerald-700", acao: () => { limparCartao(); setSituacao("todas"); setPeriodo("mes"); setOrdem("recentes"); } },
+          { k: "abertas", rot: "Abertas", v: kpis.abertas, icone: Hourglass, cor: "text-gray-800", acao: () => limparCartao() },
+          { k: "urgentes", rot: "Críticas e urgentes", v: kpis.urgentes, icone: Flame, cor: "text-red-700", acao: () => { limparCartao(); setPrioridade(["CRITICA", "GRAVE"]); } },
+          { k: "vencidas", rot: "Prazo vencido", v: kpis.vencidas, icone: AlarmClock, cor: "text-red-700", acao: () => { limparCartao(); setOrdem("prazo"); } },
+          { k: "paradas", rot: "Esperando +15 dias", v: kpis.paradas, icone: CalendarClock, cor: "text-orange-700", acao: () => { limparCartao(); setEspera(15); setOrdem("espera"); } },
+          { k: "mes", rot: papel === "tecnico" ? "Concluídas no mês" : "Entregues no mês", v: kpis.noMes, icone: CheckCircle2, cor: "text-emerald-700", acao: () => { limparCartao(); if (papel === "tecnico") setStatus(["CONCLUIDA"]); setPeriodo("mes"); setOrdem("recentes"); } },
         ].map((c) => (
           <button key={c.k} type="button" onClick={c.acao} className="rounded-xl border border-gray-100 bg-white p-3 text-left shadow-sm transition hover:border-verde-primary/40 hover:shadow">
             <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-gray-500"><c.icone className="size-3.5" /> {c.rot}</p>
@@ -168,14 +178,21 @@ function MinhasInner() {
 
       {/* 28/10: cada filtro com o título em cima, como na lista de Inspeções. */}
       <div className="flex flex-wrap items-end gap-3">
+        {/* 28/10: Status da inspeção no lugar de "Situação" (Só as abertas / Todas). Vazio = todos. */}
         <div>
-          <label className={rot}>Situação</label>
-          <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-sm">
-            {(["abertas", "todas"] as const).map((s) => (
-              <button key={s} type="button" onClick={() => setSituacao(s)} className={cn("rounded-md px-3 py-1", situacao === s ? "bg-verde-primary font-medium text-white" : "text-gray-600 hover:bg-gray-50")}>
-                {s === "abertas" ? "Só as abertas" : "Todas"}
-              </button>
-            ))}
+          <label className={rot}>Status</label>
+          <div className="flex flex-wrap items-center gap-1.5 py-0.5">
+            <button type="button" onClick={() => setStatus([])} className={cn("rounded-full border px-2.5 py-1 text-xs", status.length === 0 ? "border-verde-primary bg-verde-primary font-semibold text-white" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
+              Todos
+            </button>
+            {STATUS_FILTRO.map((s) => {
+              const on = status.includes(s.value);
+              return (
+                <button key={s.value} type="button" onClick={() => setStatus(on ? status.filter((x) => x !== s.value) : [...status, s.value])} className={cn("rounded-full border px-2.5 py-1 text-xs", on ? "border-verde-primary bg-verde-primary font-semibold text-white" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50")}>
+                  {s.label}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div>
@@ -228,7 +245,7 @@ function MinhasInner() {
           <p className="p-12 text-center text-sm text-red-600">Não foi possível carregar a fila.</p>
         ) : itens.length === 0 ? (
           <p className="p-12 text-center text-sm text-gray-500">
-            {situacao === "abertas" ? "Nada esperando aqui. " : "Nenhuma inspeção com esses filtros. "}
+            Nenhuma inspeção com esses filtros.{" "}
             {papel === "tecnico" ? "Como técnico, entram as inspeções em que você foi a campo (aba Responsáveis)." : "Como associado, entram os documentos em que você está associado ou assumiu a elaboração."}
           </p>
         ) : (
