@@ -51,7 +51,7 @@ export const CATALOGO: Novidade[] = [
       "(a observação do técnico) viu. Cada cruzamento sai como Convergente, Nível divergente, Só questionário, Só AEP ou Sem " +
       "indicação, com DRPS e QPS em colunas separadas. A página abre nas divergências e mostra os setores que aparecem numa fonte só.",
     onde: "Consolidação › Conciliação DRPS/QPS × AEP",
-    versoes: ["0.3.174"],
+    versoes: ["0.3.174", "0.3.175"],
   },
   {
     id: "dashboard-revisao-colaborador",

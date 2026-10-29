@@ -43,6 +43,7 @@ const ROUTE_LABELS: Record<string, string> = {
   comercial:             "Oportunidades",
   gestao:                "Gestão JCN Consultoria",
   "por-empresa":         "Consolidação por empresa",
+  conciliacao:           "Conciliação DRPS/QPS × AEP",
   minhas:                "Minhas inspeções",
 };
 

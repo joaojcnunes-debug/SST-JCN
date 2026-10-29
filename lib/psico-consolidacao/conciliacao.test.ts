@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { classificar, conciliarEmpresa, documentosDaEmpresa, resumirEmpresa } from "./conciliacao";
+import { classificar, conciliarEmpresa, documentosDaEmpresa, resumirEmpresa, tituloComAcento } from "./conciliacao";
 import type { DocumentoFonte, LinhaFonte } from "./fontes";
 
 const linha = (x: Partial<LinhaFonte>): LinhaFonte => ({
@@ -98,4 +98,19 @@ test("resumo: documentos padrão, o que falta e a contagem de divergências", ()
   assert.deepEqual(s.falta, ["AEP"]);
   assert.equal(s.divergencias, 0);
   assert.equal(s.porClasse["Sem par"], 2);
+});
+
+test("nome do setor: caixa de título com o acento do documento; sem setor em comum é avisado", () => {
+  assert.equal(tituloComAcento("IMPLEMENTAÇÃO DE SISTEMAS"), "Implementação de Sistemas");
+  assert.equal(tituloComAcento("Atendimento ao Cliente"), "Atendimento ao Cliente");
+  assert.equal(tituloComAcento("RH"), "RH");
+  const r = conciliarEmpresa({
+    ...base,
+    setoresAep: [{ idDocumento: "AEP-1", setorOriginal: "Atendimento ao Cliente" }],
+    linhas: [linha({ setorOriginal: "IMPLEMENTAÇÃO" })],
+  });
+  assert.deepEqual(r.setores.map((s) => s.setor), ["Atendimento ao Cliente", "Implementação"]);
+  assert.equal(r.setoresEmComum, 0);
+  const docs = { AEP: { id: "AEP-1" }, DRPS: { id: "DRPS-1" } } as never;
+  assert.equal(resumirEmpresa("E1", docs, r).semSetorEmComum, true);
 });
