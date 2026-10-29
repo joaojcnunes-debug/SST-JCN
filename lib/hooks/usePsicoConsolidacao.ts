@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { carregarFontesDoGrupo } from "@/lib/psico-consolidacao/carregar-grupo";
+import { carregarFontesConciliacao } from "@/lib/psico-consolidacao/carregar-conciliacao";
 import { chaveSetor } from "@/lib/psico-consolidacao/setores";
 import type { OrigemFonte, PsicoFator, PsicoFatorDepara } from "@/lib/psico-consolidacao/fatores";
 import type { EmpresaGrupo, MembroGrupo, PapelEconomico, PsicoSetorCanonico, PsicoSetorDepara } from "@/lib/supabase/types";
@@ -49,6 +50,18 @@ export function useFontesDoGrupo(idGrupo: string | null, idsEmpresa: string[]) {
     enabled: !!idGrupo && idsEmpresa.length > 0,
     staleTime: 60_000,
     queryFn: () => carregarFontesDoGrupo(sb(), idsEmpresa),
+  });
+}
+
+/**
+ * Conciliação DRPS/QPS × AEP (29/10/2026): AEP + DRPS/QPS concluídos de todas as empresas que o
+ * usuário enxerga, ou de uma só (tela de detalhe).
+ */
+export function useFontesConciliacao(idEmpresa?: string) {
+  return useQuery({
+    queryKey: ["psico-conciliacao", idEmpresa ?? "todas"],
+    staleTime: 60_000,
+    queryFn: () => carregarFontesConciliacao(sb(), idEmpresa),
   });
 }
 

@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-drps-qps-aep",
+    data: "2026-10-29",
+    tipo: "novidade",
+    titulo: "Consolidação: Conciliação DRPS/QPS × AEP",
+    texto:
+      "Nova página no módulo Consolidação, abaixo de Por empresa. Ela lista as empresas com AEP ou questionário concluído e " +
+      "compara, setor por setor e fator por fator, o que o DRPS e o QPS (a percepção de quem trabalha) apontam com o que a AEP " +
+      "(a observação do técnico) viu. Cada cruzamento sai como Convergente, Nível divergente, Só questionário, Só AEP ou Sem " +
+      "indicação, com DRPS e QPS em colunas separadas. A página abre nas divergências e mostra os setores que aparecem numa fonte só.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP",
+    versoes: ["0.3.174"],
+  },
+  {
     id: "dashboard-revisao-colaborador",
     data: "2026-10-28",
     tipo: "melhoria",
