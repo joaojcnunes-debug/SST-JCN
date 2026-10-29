@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  alertasRevisao,
   baixaRepresentatividade,
   chaveParecer,
   classificar,
@@ -9,6 +10,7 @@ import {
   documentosDaEmpresa,
   indexarPareceres,
   itensDoFechamento,
+  mesesEntre,
   prioridadeDe,
   resumirEmpresa,
   semelhancaSetor,
@@ -225,4 +227,27 @@ test("parecer: pendente, sem ação, desatualizado e a foto do fechamento", () =
     [["assedio", "Só questionário", "CONFIRMAR", "ACA-1"], ["sobrecarga", "Só questionário", null, null]],
   );
   assert.equal(resumirEmpresa("E1", { AEP: { id: "AEP-1" }, DRPS: { id: "DRPS-1" } } as never, r, idx).pareceres.pendentes, 1);
+});
+
+test("alertas de revisão: documento antigo, fontes distantes e fechamento desatualizado", () => {
+  assert.equal(mesesEntre("2024-10-29", "2026-10-29"), 24);
+  assert.equal(mesesEntre("2024-10-30", "2026-10-29"), 23);
+  assert.equal(mesesEntre(null, "2026-10-29"), null);
+
+  const hoje = "2026-10-29";
+  const tipos = (x: Parameters<typeof alertasRevisao>[0]) => alertasRevisao(x).map((a) => a.tipo);
+  // Tudo recente e no mesmo período: nada.
+  assert.deepEqual(tipos({ documentos: { AEP: { id: "A2", data: "2026-05-01" }, DRPS: { id: "D2", data: "2026-08-01" } }, hoje }), []);
+  // AEP de 2 anos atrás e a 15 meses do DRPS.
+  const velha = alertasRevisao({ documentos: { AEP: { id: "A1", data: "2024-09-10" }, DRPS: { id: "D2", data: "2025-12-20" } }, hoje });
+  assert.deepEqual(velha.map((a) => a.tipo), ["documento-antigo", "documentos-distantes"]);
+  assert.match(velha[0].texto, /10\/09\/2024.*NR-01, 1\.5\.4\.4\.6/);
+  assert.match(velha[1].texto, /15 meses/);
+  // Fechada com a AEP A1; hoje a mais recente é a A2 — mesmo se a tela ainda compara a A1.
+  const fechamento = { fechado_em: "2026-06-01T12:00:00Z", documentos: { AEP: { id: "A1" }, DRPS: { id: "D2" } } };
+  assert.deepEqual(
+    tipos({ documentos: { AEP: { id: "A1", data: "2026-01-01" }, DRPS: { id: "D2", data: "2026-02-01" } }, maisRecentes: { AEP: { id: "A2", data: "2026-09-01" }, DRPS: { id: "D2", data: "2026-02-01" } }, ultimoFechamento: fechamento, hoje }),
+    ["fechamento-desatualizado"],
+  );
+  assert.deepEqual(tipos({ documentos: { AEP: { id: "A1", data: "2026-01-01" }, DRPS: { id: "D2", data: "2026-02-01" } }, ultimoFechamento: fechamento, hoje }), []);
 });

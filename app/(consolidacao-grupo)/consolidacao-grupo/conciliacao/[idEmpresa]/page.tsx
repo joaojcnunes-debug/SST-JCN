@@ -8,11 +8,12 @@
 // v0.3.176 (banco v310, NR-01/NR-17): parecer por cruzamento (Confirmar no PGR, AET,
 // Descartar) com ação 5W2H, ligação de setores escritos de outro jeito, representatividade
 // do questionário, sugestão de AET e o fechamento (foto imutável) com histórico.
+// v0.3.178: alertas de revisão no topo e o PDF de cada fechamento (anexo do PGR).
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertTriangle, ArrowLeft, CheckCircle2, ClipboardCheck, GitCompareArrows, Microscope } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarClock, CheckCircle2, ClipboardCheck, GitCompareArrows, Microscope } from "lucide-react";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { ConfirmHost } from "@/components/ui/confirm";
 import { SeloClasse, TextoNivel, COR_CLASSE, EXPLICACAO_CLASSE } from "@/components/psico-consolidacao/ConciliacaoSelos";
@@ -25,6 +26,9 @@ import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
   ADESAO_MINIMA,
   CLASSES,
+  MESES_DISTANCIA,
+  MESES_REVISAO,
+  alertasRevisao,
   DIVERGENCIAS,
   MIN_RESPONDENTES,
   ROTULO_DECISAO,
@@ -43,6 +47,7 @@ import {
 } from "@/lib/psico-consolidacao/conciliacao";
 import type { OrigemFonte } from "@/lib/psico-consolidacao/fatores";
 import type { DocumentoFonte } from "@/lib/psico-consolidacao/fontes";
+import { hojeSP } from "@/lib/inspecoes/prioridade";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
 const ORIGENS: OrigemFonte[] = ["AEP", "DRPS", "QPS"];
@@ -98,6 +103,17 @@ export default function ConciliacaoEmpresaPage() {
       deparaSetores: ligacoes,
     });
   }, [fontes.data, catalogo.data, idEmpresa, usados, ligacoes]);
+
+  const alertas = useMemo(
+    () =>
+      alertasRevisao({
+        documentos: escolhidos,
+        maisRecentes: padrao,
+        ultimoFechamento: registros.data?.fechamentos[0] ?? null,
+        hoje: hojeSP(),
+      }),
+    [escolhidos, padrao, registros.data],
+  );
 
   const pareceres = useMemo(() => indexarPareceres(registros.data?.pareceres ?? []), [registros.data]);
   const contagem = useMemo(
@@ -193,6 +209,19 @@ export default function ConciliacaoEmpresaPage() {
             .join(" · ")}
         </p>
       </div>
+
+      {alertas.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <p className="mb-1 flex items-center gap-1.5 font-semibold">
+            <CalendarClock className="size-4" /> Revisão
+          </p>
+          <ul className="list-disc space-y-0.5 pl-5 text-xs">
+            {alertas.map((a) => (
+              <li key={a.texto}>{a.texto}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* ── Documentos usados ─────────────────────────────────────────── */}
       <div className="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-3">
@@ -542,7 +571,12 @@ function ComoComparamos() {
         <p>
           <b>Parecer</b> (qualquer pessoa que edita a empresa): Confirmar no inventário do PGR, Aprofundar com AET ou Descartar
           com justificativa. Confirmar e AET podem criar a ação 5W2H no Plano de Ação. <b>Fechar a conciliação</b> guarda uma foto
-          que não muda mais (NR-01: histórico da avaliação).
+          que não muda mais (NR-01: histórico da avaliação). Cada fechamento tem o seu PDF, para anexar ao PGR.
+        </p>
+        <p>
+          <b>Revisão:</b> a página avisa quando um documento usado tem {MESES_REVISAO / 12} anos ou mais (NR-01, 1.5.4.4.6:
+          a avaliação de riscos é revista a cada 2 anos), quando a AEP e o questionário têm {MESES_DISTANCIA} meses ou mais de
+          diferença e quando há documento mais recente que os do último fechamento.
         </p>
       </div>
     </details>

@@ -121,7 +121,8 @@ export interface RegistrosConciliacao {
 
 /**
  * O que a equipe gravou na Conciliação (v310): ligações de setor, pareceres e fechamentos.
- * Na lista (sem `idEmpresa`) os fechamentos vêm sem os itens — só a data e o resumo.
+ * Na lista (sem `idEmpresa`) os fechamentos vêm sem os itens — só a data, o resumo e os
+ * documentos (para o alerta de fechamento desatualizado, v0.3.178).
  */
 export async function carregarRegistrosConciliacao(sb: Sb, idEmpresa?: string): Promise<RegistrosConciliacao> {
   const filtro = <T>(tabela: string, select: string, ordem: string) =>
@@ -135,7 +136,7 @@ export async function carregarRegistrosConciliacao(sb: Sb, idEmpresa?: string): 
     filtro<ParecerConciliacao>("psico_conciliacao_pareceres", "*", "id_parecer"),
     filtro<FechamentoConciliacao>(
       "psico_conciliacao_fechamentos",
-      idEmpresa ? "*" : "id_fechamento, id_empresa, fechado_por, fechado_em, resumo",
+      idEmpresa ? "*" : "id_fechamento, id_empresa, fechado_por, fechado_em, resumo, documentos",
       "fechado_em",
     ),
   ]);
