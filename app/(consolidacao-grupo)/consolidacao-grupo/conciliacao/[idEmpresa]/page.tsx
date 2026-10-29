@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AlertTriangle, ArrowLeft, CheckCircle2, ClipboardCheck, GitCompareArrows, Microscope } from "lucide-react";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import { ConfirmHost } from "@/components/ui/confirm";
 import { SeloClasse, TextoNivel, COR_CLASSE, EXPLICACAO_CLASSE } from "@/components/psico-consolidacao/ConciliacaoSelos";
 import ParecerModal, { type ContextoParecer } from "@/components/psico-consolidacao/ParecerModal";
 import LigacaoSetores from "@/components/psico-consolidacao/LigacaoSetores";
@@ -385,6 +386,7 @@ export default function ConciliacaoEmpresaPage() {
 
       <ComoComparamos />
 
+      <ConfirmHost />
       {parecerAberto && <ParecerModal ctx={parecerAberto} podeEditar={podeEditar} onClose={() => setParecerAberto(null)} />}
     </div>
   );
@@ -415,7 +417,7 @@ function CelulaAep({ c }: { c: CelulaConciliacao }) {
         {c.aep.nivelAiha ? <TextoNivel texto={c.aep.nivelAiha} degrau={c.aep.degrau} /> : <span className="font-medium text-gray-700">Sim · sem AIHA</span>}
         {c.aep.sinais.length > 0 && (
           <p className="mt-0.5 max-w-xs text-[11px] leading-snug text-gray-500" title={c.aep.sinais.join("\n")}>
-            {c.aep.sinais.length} sinal{c.aep.sinais.length > 1 ? "is" : ""}: {c.aep.sinais.join("; ")}
+            {c.aep.sinais.length} {c.aep.sinais.length > 1 ? "sinais" : "sinal"}: {c.aep.sinais.join("; ")}
           </p>
         )}
       </div>
