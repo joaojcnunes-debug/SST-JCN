@@ -1,6 +1,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { classificar, conciliarEmpresa, documentosDaEmpresa, resumirEmpresa, tituloComAcento } from "./conciliacao";
+import {
+  baixaRepresentatividade,
+  chaveParecer,
+  classificar,
+  conciliarEmpresa,
+  contarPareceres,
+  documentosDaEmpresa,
+  indexarPareceres,
+  itensDoFechamento,
+  prioridadeDe,
+  resumirEmpresa,
+  semelhancaSetor,
+  situacaoParecer,
+  sugereAet,
+  sugerirPares,
+  tituloComAcento,
+  type ParecerConciliacao,
+} from "./conciliacao";
 import type { DocumentoFonte, LinhaFonte } from "./fontes";
 
 const linha = (x: Partial<LinhaFonte>): LinhaFonte => ({
@@ -113,4 +130,99 @@ test("nome do setor: caixa de título com o acento do documento; sem setor em co
   assert.equal(r.setoresEmComum, 0);
   const docs = { AEP: { id: "AEP-1" }, DRPS: { id: "DRPS-1" } } as never;
   assert.equal(resumirEmpresa("E1", docs, r).semSetorEmComum, true);
+});
+
+test("setores ligados à mão: viram um só, com o nome do destino e os dois originais", () => {
+  const r = conciliarEmpresa({
+    ...base,
+    setoresAep: [{ idDocumento: "AEP-1", setorOriginal: "SAC", expostos: 20 }],
+    deparaSetores: [{ chave_de: "SAC", chave_para: "ATENDIMENTO AO CLIENTE", nome_para: "Atendimento ao Cliente" }],
+    linhas: [aep({ setorOriginal: "SAC", nivelAiha: "Alto" }), linha({ setorOriginal: "Atendimento ao Cliente", nivel: "Alto", respondentes: 15 })],
+  });
+  assert.equal(r.setores.length, 1);
+  const s = r.setores[0];
+  assert.equal(s.setor, "Atendimento ao Cliente");
+  assert.deepEqual(s.originais, { AEP: ["SAC"], DRPS: ["Atendimento ao Cliente"] });
+  assert.deepEqual(s.chavesOriginais.sort(), ["ATENDIMENTO AO CLIENTE", "SAC"]);
+  assert.equal(s.expostos, 20);
+  assert.equal(s.respondentes.DRPS, 15);
+  assert.equal(r.setoresEmComum, 1);
+  const c = r.celulas.find((x) => x.idFator === "assedio")!;
+  assert.equal(c.classe.DRPS, "Convergente");
+  assert.equal(c.chaveSetor, "ATENDIMENTO AO CLIENTE");
+});
+
+test("sugestão de pares: siglas, palavras em comum e cada setor uma vez", () => {
+  assert.ok(semelhancaSetor("SAC", "Atendimento") >= 0.8);
+  assert.ok(semelhancaSetor("RH", "Recursos Humanos") >= 0.8);
+  assert.ok(semelhancaSetor("Produção", "PRODUCAO INDUSTRIAL") >= 0.5);
+  assert.equal(semelhancaSetor("Financeiro", "Produção"), 0);
+  const r = conciliarEmpresa({
+    ...base,
+    setoresAep: [
+      { idDocumento: "AEP-1", setorOriginal: "SAC" },
+      { idDocumento: "AEP-1", setorOriginal: "Financeiro" },
+    ],
+    linhas: [linha({ setorOriginal: "Atendimento ao Cliente" }), linha({ setorOriginal: "Produção Industrial" })],
+  });
+  const pares = sugerirPares(r.setores);
+  assert.deepEqual(pares.map((p) => [p.aep.setor, p.questionario.setor]), [["SAC", "Atendimento ao Cliente"]]);
+});
+
+test("representatividade, sugestão de AET e prioridade", () => {
+  assert.equal(baixaRepresentatividade(2, null), true, "menos de 3 respondentes");
+  assert.equal(baixaRepresentatividade(5, 20), true, "25% de adesão");
+  assert.equal(baixaRepresentatividade(12, 20), false);
+  assert.equal(baixaRepresentatividade(null, 20), false);
+  const q = (degrau: number) => ({ degrau, nivel: "", respondentes: 5 });
+  assert.equal(sugereAet("Nível divergente", q(4)), true);
+  assert.equal(sugereAet("Só questionário", q(3)), true);
+  assert.equal(sugereAet("Só questionário", q(2)), false, "Médio só: não pede AET");
+  assert.equal(sugereAet("Só AEP", q(1)), false);
+  const a = { degrau: 4, nivelAiha: "Muito Alto", sinais: [] };
+  const alta = prioridadeDe("Nível divergente", a, q(2), 40, false);
+  assert.ok(alta > prioridadeDe("Só AEP", a, q(1), 40, false));
+  assert.ok(alta > prioridadeDe("Nível divergente", a, q(2), 40, true), "baixa representatividade cai");
+  assert.equal(prioridadeDe("Sem indicação", null, q(1), 40, false), 0);
+
+  const r = conciliarEmpresa({
+    ...base,
+    setoresAep: [{ idDocumento: "AEP-1", setorOriginal: "Produção", expostos: 40, necessitaAet: true }],
+    linhas: [aep({ nivelAiha: "Muito Alto" }), linha({ nivel: "Médio", respondentes: 6 })],
+  });
+  const c = r.celulas.find((x) => x.idFator === "assedio")!;
+  assert.equal(c.classe.DRPS, "Nível divergente");
+  assert.equal(c.sugereAet.DRPS, true);
+  assert.equal(c.baixaRepresentatividade.DRPS, true, "6 de 40");
+  assert.equal(r.setores[0].necessitaAet, true);
+});
+
+test("parecer: pendente, sem ação, desatualizado e a foto do fechamento", () => {
+  const r = conciliarEmpresa({
+    ...base,
+    setoresAep: [{ idDocumento: "AEP-1", setorOriginal: "Produção" }],
+    linhas: [linha({ nivel: "Alto" }), linha({ fatorOriginal: "Sobrecarga", nivel: "Alto" })],
+  });
+  // assedio e sobrecarga: Só questionário.
+  const par = (x: Partial<ParecerConciliacao>): ParecerConciliacao => ({
+    id_parecer: "P1", id_empresa: "E1", setor_chave: "PRODUCAO", setor_nome: "Produção", id_fator: "assedio",
+    questionario: "DRPS", decisao: "CONFIRMAR", justificativa: null, classe: "Só questionário", documentos: {},
+    id_acao: null, atualizado_por: null, atualizado_em: null, ...x,
+  });
+  assert.equal(situacaoParecer("Só questionário", undefined), "pendente");
+  assert.equal(situacaoParecer("Convergente", undefined), "nao-precisa");
+  assert.equal(situacaoParecer("Só questionário", par({})), "sem-acao");
+  assert.equal(situacaoParecer("Só questionário", par({ id_acao: "ACA-1" })), "ok");
+  assert.equal(situacaoParecer("Só questionário", par({ decisao: "DESCARTAR", justificativa: "x" })), "ok");
+  assert.equal(situacaoParecer("Nível divergente", par({ id_acao: "ACA-1" })), "desatualizado");
+
+  const idx = indexarPareceres([par({ id_acao: "ACA-1" })]);
+  assert.equal(chaveParecer("PRODUCAO", "assedio", "DRPS"), [...idx.keys()][0]);
+  assert.deepEqual(contarPareceres(r, idx), { pendentes: 1, semAcao: 0, desatualizados: 0, comParecer: 1 });
+  const itens = itensDoFechamento(r, idx, (id) => id.toUpperCase());
+  assert.deepEqual(
+    itens.map((i) => [i.id_fator, i.classe, i.decisao, i.id_acao]),
+    [["assedio", "Só questionário", "CONFIRMAR", "ACA-1"], ["sobrecarga", "Só questionário", null, null]],
+  );
+  assert.equal(resumirEmpresa("E1", { AEP: { id: "AEP-1" }, DRPS: { id: "DRPS-1" } } as never, r, idx).pareceres.pendentes, 1);
 });
