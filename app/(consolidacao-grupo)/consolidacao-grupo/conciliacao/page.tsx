@@ -63,14 +63,14 @@ export default function ConciliacaoPage() {
     () => ({
       todas: linhas.length,
       divergencia: linhas.filter((l) => l.resumo.divergencias > 0).length,
-      falta: linhas.filter((l) => l.resumo.falta.length > 0).length,
+      falta: linhas.filter((l) => l.resumo.falta.length > 0 || l.resumo.semSetorEmComum).length,
     }),
     [linhas],
   );
 
   const visiveis = useMemo(() => {
     const base = linhas.filter((l) =>
-      filtro === "divergencia" ? l.resumo.divergencias > 0 : filtro === "falta" ? l.resumo.falta.length > 0 : true,
+      filtro === "divergencia" ? l.resumo.divergencias > 0 : filtro === "falta" ? l.resumo.falta.length > 0 || l.resumo.semSetorEmComum : true,
     );
     const achadas = busca.trim()
       ? buscar(base, busca, (l) => [l.empresa.nome, l.empresa.cnpj ?? "", l.empresa.municipio ?? ""]).itens
@@ -78,7 +78,7 @@ export default function ConciliacaoPage() {
     // Mais divergências primeiro; quem não dá para conciliar vai para o fim.
     return [...achadas].sort(
       (a, b) =>
-        Number(a.resumo.falta.length > 0) - Number(b.resumo.falta.length > 0) ||
+        Number(a.resumo.falta.length > 0 || a.resumo.semSetorEmComum) - Number(b.resumo.falta.length > 0 || b.resumo.semSetorEmComum) ||
         b.resumo.divergencias - a.resumo.divergencias ||
         a.empresa.nome.localeCompare(b.empresa.nome, "pt-BR"),
     );
@@ -115,7 +115,7 @@ export default function ConciliacaoPage() {
           [
             ["todas", "Todas"],
             ["divergencia", "Com divergência"],
-            ["falta", "Falta documento"],
+            ["falta", "Não dá para conciliar"],
           ] as const
         ).map(([k, rotulo]) => (
           <button
@@ -175,10 +175,12 @@ export default function ConciliacaoPage() {
                       </td>
                     );
                   })}
-                  {r.falta.length > 0 ? (
+                  {r.falta.length > 0 || r.semSetorEmComum ? (
                     <td colSpan={2} className="px-3 py-2.5">
                       <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
-                        Falta {r.falta.join(" e ")} — não dá para conciliar
+                        {r.falta.length > 0
+                          ? `Falta ${r.falta.join(" e ")} — não dá para conciliar`
+                          : "Nenhum setor em comum — confira os nomes dos setores"}
                       </span>
                     </td>
                   ) : (

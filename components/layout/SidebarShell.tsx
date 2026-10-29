@@ -183,8 +183,9 @@ function NavItemView({
     (href !== "/dashboard" && pathname.startsWith(href + "/") &&
       // /empresas/grupos tem item próprio no menu de Empresas.
       !(href === "/empresas" && pathname.startsWith("/empresas/grupos")) &&
-      // /consolidacao-grupo/por-empresa tem item próprio no menu da Consolidação.
+      // /consolidacao-grupo/por-empresa e /conciliacao têm item próprio no menu da Consolidação.
       !(href === "/consolidacao-grupo" && pathname.startsWith("/consolidacao-grupo/por-empresa")) &&
+      !(href === "/consolidacao-grupo" && pathname.startsWith("/consolidacao-grupo/conciliacao")) &&
       // /inspecoes/minhas tem item próprio no menu do Painel.
       !(href === "/inspecoes" && pathname.startsWith("/inspecoes/minhas"))) ||
     (href === "/inspecoes" &&
