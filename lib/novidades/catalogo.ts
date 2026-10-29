@@ -54,7 +54,7 @@ export const CATALOGO: Novidade[] = [
       "as colunas Pareceres e Fechada em e o filtro Falta parecer ou ação.",
     onde: "Consolidação › Conciliação DRPS/QPS × AEP",
     impacto: "Qualquer pessoa que edita a empresa dá parecer, liga setores e fecha a conciliação. Nada muda na AEP, no DRPS ou no QPS.",
-    versoes: ["0.3.176"],
+    versoes: ["0.3.176", "0.3.177"],
   },
   {
     id: "conciliacao-drps-qps-aep",
