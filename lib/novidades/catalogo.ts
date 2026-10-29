@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-pdf-revisao",
+    data: "2026-10-29",
+    tipo: "melhoria",
+    titulo: "Conciliação DRPS/QPS × AEP: PDF para o PGR e avisos de revisão",
+    texto:
+      "Cada conciliação fechada tem agora o seu PDF, para anexar ao PGR: documentos comparados, método, resumo, os pareceres " +
+      "setor por setor e as ações do Plano de Ação com responsável, prazo e situação. A página também avisa quando é hora de " +
+      "revisar: documento com 2 anos ou mais (NR-01, 1.5.4.4.6), AEP e questionário com 1 ano ou mais de diferença, e documento " +
+      "mais recente que os do último fechamento. Na lista, a coluna Revisão e o filtro Precisa revisar.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP (botão PDF em Conciliações fechadas)",
+    impacto: "Só leitura: o PDF sai da foto gravada no fechamento. Nada muda na AEP, no DRPS ou no QPS.",
+    versoes: ["0.3.178"],
+  },
+  {
     id: "conciliacao-parecer-nr01-nr17",
     data: "2026-10-29",
     tipo: "melhoria",

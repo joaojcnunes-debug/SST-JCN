@@ -2,9 +2,10 @@
 
 // Conciliação DRPS/QPS × AEP — fechar a conciliação (foto imutável para o histórico do
 // PGR, NR-01) e as conciliações já fechadas da empresa (v0.3.176, banco v310).
+// v0.3.178: cada fechamento tem o seu PDF (/api/pdf/conciliacao/[idEmpresa]?fechamento=).
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Loader2, Lock } from "lucide-react";
+import { ChevronDown, ChevronRight, FileDown, Loader2, Lock } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { SeloClasse } from "@/components/psico-consolidacao/ConciliacaoSelos";
 import { useFecharConciliacao } from "@/lib/hooks/useConciliacaoParecer";
@@ -42,7 +43,7 @@ export default function FechamentosConciliacao({
           <p className="text-sm font-semibold text-gray-800">Conciliações fechadas</p>
           <p className="text-xs text-gray-500">
             Fechar guarda uma foto (documentos, régua, resultados e pareceres) que não muda mais: é o registro da avaliação para
-            o PGR.
+            o PGR. O PDF de cada fechamento serve de anexo.
           </p>
         </div>
         {podeEditar && podeFechar && (
@@ -65,18 +66,29 @@ export default function FechamentosConciliacao({
             const aberta = visto === f.id_fechamento;
             return (
               <li key={f.id_fechamento} className="py-2">
-                <button
-                  type="button"
-                  onClick={() => setVisto(aberta ? null : f.id_fechamento)}
-                  className="flex w-full items-center gap-2 text-left text-gray-700"
-                >
-                  {aberta ? <ChevronDown className="size-4 text-gray-400" /> : <ChevronRight className="size-4 text-gray-400" />}
-                  <span className="font-medium">{fmtData(f.fechado_em)}</span>
-                  <span className="text-xs text-gray-500">por {f.fechado_por}</span>
-                  <span className="ml-auto text-xs text-gray-500">
-                    {f.itens?.length ?? 0} cruzamento(s){p ? ` · ${p.semAcao} sem ação` : ""}
-                  </span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setVisto(aberta ? null : f.id_fechamento)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left text-gray-700"
+                  >
+                    {aberta ? <ChevronDown className="size-4 text-gray-400" /> : <ChevronRight className="size-4 text-gray-400" />}
+                    <span className="font-medium">{fmtData(f.fechado_em)}</span>
+                    <span className="text-xs text-gray-500">por {f.fechado_por}</span>
+                    <span className="ml-auto text-xs text-gray-500">
+                      {f.itens?.length ?? 0} cruzamento(s){p ? ` · ${p.semAcao} sem ação` : ""}
+                    </span>
+                  </button>
+                  <a
+                    href={`/api/pdf/conciliacao/${encodeURIComponent(idEmpresa)}?fechamento=${encodeURIComponent(f.id_fechamento)}`}
+                    target="_blank"
+                    rel="noopener"
+                    title="PDF desta conciliação fechada, para anexar ao PGR"
+                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-300 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                  >
+                    <FileDown className="size-3.5" /> PDF
+                  </a>
+                </div>
                 {aberta && (
                   <div className="mt-2 space-y-2 pl-6">
                     <p className="text-xs text-gray-500">

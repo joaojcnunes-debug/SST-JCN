@@ -24,7 +24,8 @@
 //  • representatividade do questionário: respondentes × expostos do setor na AEP;
 //  • prioridade de cada cruzamento (classe, nível, expostos, representatividade);
 //  • sugestão de AET (NR-17, 17.3.2: avaliação mais aprofundada) na divergência;
-//  • parecer por cruzamento (Confirmar no PGR, AET, Descartar) e o que ainda falta.
+//  • parecer por cruzamento (Confirmar no PGR, AET, Descartar) e o que ainda falta;
+//  • alertas de revisão (v0.3.178): documento antigo, fontes distantes, fechamento desatualizado.
 //
 // Função pura, testada em conciliacao.test.ts.
 
@@ -656,6 +657,83 @@ export function itensDoFechamento(
         decisao: p && p.classe === classe ? p.decisao : null,
         justificativa: p && p.classe === classe ? p.justificativa : null,
         id_acao: p?.id_acao ?? null,
+      });
+    }
+  }
+  return out;
+}
+
+// ── Alertas de revisão (v0.3.178) ─────────────────────────────────────────────
+
+/** NR-01, 1.5.4.4.6: a avaliação de riscos é revista a cada 2 anos. */
+export const MESES_REVISAO = 24;
+/** AEP e questionário mais distantes que isto comparam momentos diferentes da empresa. */
+export const MESES_DISTANCIA = 12;
+
+export type TipoAlertaRevisao = "documento-antigo" | "documentos-distantes" | "fechamento-desatualizado";
+
+export interface AlertaRevisao {
+  tipo: TipoAlertaRevisao;
+  texto: string;
+}
+
+type DocAlerta = Pick<DocumentoFonte, "id" | "data">;
+
+/** Meses completos de `de` até `ate` (datas "AAAA-MM-DD…"); null sem data. */
+export function mesesEntre(de: string | null | undefined, ate: string | null | undefined): number | null {
+  if (!de || !ate) return null;
+  const [a, b] = [de, ate].map((s) => s.slice(0, 10).split("-").map(Number));
+  if (a.length < 3 || b.length < 3 || [...a, ...b].some((n) => !Number.isFinite(n))) return null;
+  return (b[0] - a[0]) * 12 + (b[1] - a[1]) - (b[2] < a[2] ? 1 : 0);
+}
+
+const dataBr = (s: string) => s.slice(0, 10).split("-").reverse().join("/");
+const ROTULO_ORIGEM: Record<OrigemFonte, string> = { AEP: "A AEP", DRPS: "O DRPS", QPS: "O QPS" };
+
+/**
+ * O que pede revisão na conciliação de uma empresa:
+ *  • documento-antigo         — documento usado com 2 anos ou mais (NR-01, 1.5.4.4.6);
+ *  • documentos-distantes     — AEP e questionário com 1 ano ou mais de diferença;
+ *  • fechamento-desatualizado — o documento mais recente de alguma origem não é o do último fechamento.
+ * @param documentos os comparados agora; `maisRecentes` (padrão: os mesmos) vale para o fechamento.
+ */
+export function alertasRevisao(p: {
+  documentos: Partial<Record<OrigemFonte, DocAlerta>>;
+  maisRecentes?: Partial<Record<OrigemFonte, DocAlerta>>;
+  ultimoFechamento?: { fechado_em: string; documentos: Record<string, { id: string } | undefined> } | null;
+  hoje: string;
+}): AlertaRevisao[] {
+  const out: AlertaRevisao[] = [];
+  const origens: OrigemFonte[] = ["AEP", "DRPS", "QPS"];
+  for (const o of origens) {
+    const d = p.documentos[o];
+    const m = mesesEntre(d?.data, p.hoje);
+    if (d?.data && m != null && m >= MESES_REVISAO) {
+      out.push({
+        tipo: "documento-antigo",
+        texto: `${ROTULO_ORIGEM[o]} é de ${dataBr(d.data)}, há mais de ${MESES_REVISAO / 12} anos: a avaliação de riscos deve ser revista (NR-01, 1.5.4.4.6).`,
+      });
+    }
+  }
+  const aep = p.documentos.AEP;
+  for (const q of QUESTIONARIOS) {
+    const d = p.documentos[q];
+    const m = mesesEntre(aep?.data, d?.data);
+    if (aep?.data && d?.data && m != null && Math.abs(m) >= MESES_DISTANCIA) {
+      out.push({
+        tipo: "documentos-distantes",
+        texto: `A AEP (${dataBr(aep.data)}) e o ${q} (${dataBr(d.data)}) têm ${Math.abs(m)} meses de diferença: comparam momentos diferentes da empresa. Avalie atualizar o mais antigo.`,
+      });
+    }
+  }
+  const f = p.ultimoFechamento;
+  if (f) {
+    const atuais = p.maisRecentes ?? p.documentos;
+    const mudou = origens.some((o) => (atuais[o]?.id ?? null) !== (f.documentos?.[o]?.id ?? null));
+    if (mudou) {
+      out.push({
+        tipo: "fechamento-desatualizado",
+        texto: `Os documentos mais recentes não são os do último fechamento (${new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo" }).format(new Date(f.fechado_em))}): concilie e feche de novo para o registro do PGR ficar em dia.`,
       });
     }
   }

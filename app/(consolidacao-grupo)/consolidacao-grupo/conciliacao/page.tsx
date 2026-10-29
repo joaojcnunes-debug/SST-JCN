@@ -11,29 +11,42 @@
 //
 // v0.3.176 (banco v310): as ligações de setor entram no cálculo; colunas Pareceres (o que
 // falta resolver) e Fechada em (a última conciliação guardada); filtro "Falta parecer".
+// v0.3.178: coluna Revisão (documento antigo, datas distantes, fechar de novo) e o filtro.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, GitCompareArrows, Search } from "lucide-react";
+import { CalendarClock, ChevronRight, GitCompareArrows, Search } from "lucide-react";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { COR_CLASSE, EXPLICACAO_CLASSE } from "@/components/psico-consolidacao/ConciliacaoSelos";
 import { buscar } from "@/lib/busca/texto";
 import { useFontesConciliacao, usePsicoCatalogo } from "@/lib/hooks/usePsicoConsolidacao";
 import { useRegistrosConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import {
+  alertasRevisao,
   conciliarEmpresa,
   documentosDaEmpresa,
   indexarPareceres,
   resumirEmpresa,
+  type AlertaRevisao,
   type LigacaoSetor,
   type ParecerConciliacao,
   type ResumoEmpresa,
+  type TipoAlertaRevisao,
 } from "@/lib/psico-consolidacao/conciliacao";
 import type { EmpresaFonte } from "@/lib/psico-consolidacao/carregar-grupo";
+import type { FechamentoConciliacao } from "@/lib/psico-consolidacao/carregar-conciliacao";
+import { hojeSP } from "@/lib/inspecoes/prioridade";
 import type { OrigemFonte } from "@/lib/psico-consolidacao/fatores";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
-type Filtro = "todas" | "divergencia" | "parecer" | "falta";
+type Filtro = "todas" | "divergencia" | "parecer" | "falta" | "revisao";
+
+interface Linha {
+  empresa: EmpresaFonte;
+  resumo: ResumoEmpresa;
+  fechadaEm: string | null;
+  alertas: AlertaRevisao[];
+}
 
 const ORIGENS: { origem: OrigemFonte; rotulo: string }[] = [
   { origem: "AEP", rotulo: "AEP" },
@@ -63,15 +76,17 @@ export default function ConciliacaoPage() {
     };
     const ligacoes = agrupar<LigacaoSetor>(registros.data.ligacoes);
     const pareceres = agrupar<ParecerConciliacao>(registros.data.pareceres);
-    const fechadaEm = new Map<string, string>();
-    for (const f of registros.data.fechamentos) if (!fechadaEm.has(f.id_empresa)) fechadaEm.set(f.id_empresa, f.fechado_em);
+    // Os fechamentos vêm do mais recente para o mais antigo: o primeiro de cada empresa é o último.
+    const ultimo = new Map<string, FechamentoConciliacao>();
+    for (const f of registros.data.fechamentos) if (!ultimo.has(f.id_empresa)) ultimo.set(f.id_empresa, f);
+    const hoje = hojeSP();
     const porEmpresa = new Map<string, typeof todas>();
     for (const l of todas) {
       const lista = porEmpresa.get(l.idEmpresa);
       if (lista) lista.push(l);
       else porEmpresa.set(l.idEmpresa, [l]);
     }
-    return empresas.map((e): { empresa: EmpresaFonte; resumo: ResumoEmpresa; fechadaEm: string | null } => {
+    return empresas.map((e): Linha => {
       const docs = documentosDaEmpresa(documentos, e.idEmpresa);
       const ids = new Set(Object.values(docs).map((d) => d!.id));
       const r = conciliarEmpresa({
@@ -83,10 +98,12 @@ export default function ConciliacaoPage() {
         depara: catalogo.data.depara,
         deparaSetores: ligacoes.get(e.idEmpresa) ?? [],
       });
+      const fechamento = ultimo.get(e.idEmpresa) ?? null;
       return {
         empresa: e,
         resumo: resumirEmpresa(e.idEmpresa, docs, r, indexarPareceres(pareceres.get(e.idEmpresa) ?? [])),
-        fechadaEm: fechadaEm.get(e.idEmpresa) ?? null,
+        fechadaEm: fechamento?.fechado_em ?? null,
+        alertas: alertasRevisao({ documentos: docs, ultimoFechamento: fechamento, hoje }),
       };
     });
   }, [fontes.data, catalogo.data, registros.data]);
@@ -97,6 +114,7 @@ export default function ConciliacaoPage() {
       divergencia: linhas.filter((l) => l.resumo.divergencias > 0).length,
       parecer: linhas.filter((l) => faltaResolver(l.resumo)).length,
       falta: linhas.filter((l) => l.resumo.falta.length > 0 || l.resumo.semSetorEmComum).length,
+      revisao: linhas.filter((l) => l.alertas.length > 0).length,
     }),
     [linhas],
   );
@@ -109,7 +127,9 @@ export default function ConciliacaoPage() {
           ? faltaResolver(l.resumo)
           : filtro === "falta"
             ? l.resumo.falta.length > 0 || l.resumo.semSetorEmComum
-            : true,
+            : filtro === "revisao"
+              ? l.alertas.length > 0
+              : true,
     );
     const achadas = busca.trim()
       ? buscar(base, busca, (l) => [l.empresa.nome, l.empresa.cnpj ?? "", l.empresa.municipio ?? ""]).itens
@@ -156,6 +176,7 @@ export default function ConciliacaoPage() {
             ["divergencia", "Com divergência"],
             ["parecer", "Falta parecer ou ação"],
             ["falta", "Não dá para conciliar"],
+            ["revisao", "Precisa revisar"],
           ] as const
         ).map(([k, rotulo]) => (
           <button
@@ -195,11 +216,12 @@ export default function ConciliacaoPage() {
                 <th className="px-3 py-3">Divergências</th>
                 <th className="px-3 py-3">Pareceres</th>
                 <th className="px-3 py-3">Fechada em</th>
+                <th className="px-3 py-3">Revisão</th>
                 <th className="px-3 py-3" />
               </tr>
             </thead>
             <tbody>
-              {visiveis.map(({ empresa: e, resumo: r, fechadaEm }) => (
+              {visiveis.map(({ empresa: e, resumo: r, fechadaEm, alertas }) => (
                 <tr key={e.idEmpresa} className="border-b border-gray-50 last:border-0 hover:bg-indigo-50/30">
                   <td className="px-4 py-2.5">
                     <Link href={`/consolidacao-grupo/conciliacao/${e.idEmpresa}`} className="font-medium text-gray-900 hover:text-indigo-700 hover:underline">
@@ -251,6 +273,19 @@ export default function ConciliacaoPage() {
                   <td className="whitespace-nowrap px-3 py-2.5 text-xs text-gray-600">
                     {fechadaEm ? fmtData(fechadaEm) : <span className="text-gray-300">—</span>}
                   </td>
+                  <td className="px-3 py-2.5 text-xs">
+                    {alertas.length === 0 ? (
+                      <span className="text-gray-300">—</span>
+                    ) : (
+                      <span
+                        title={alertas.map((a) => a.texto).join("\n")}
+                        className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200"
+                      >
+                        <CalendarClock className="size-3" />
+                        {alertas.length === 1 ? ROTULO_ALERTA[alertas[0].tipo] : `${alertas.length} avisos`}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2.5 text-right">
                     <Link href={`/consolidacao-grupo/conciliacao/${e.idEmpresa}`} className="inline-flex items-center text-xs font-medium text-indigo-700 hover:underline">
                       Abrir <ChevronRight className="size-3.5" />
@@ -265,6 +300,12 @@ export default function ConciliacaoPage() {
     </div>
   );
 }
+
+const ROTULO_ALERTA: Record<TipoAlertaRevisao, string> = {
+  "documento-antigo": "Documento antigo",
+  "documentos-distantes": "Datas distantes",
+  "fechamento-desatualizado": "Fechar de novo",
+};
 
 /** A empresa tem o que resolver: divergência sem parecer, parecer desatualizado ou risco sem ação. */
 function faltaResolver(r: ResumoEmpresa): boolean {
