@@ -2,24 +2,43 @@
 
 // Conciliação DRPS/QPS × AEP de UMA empresa (29/10/2026): setor × fator, com o nível de
 // cada fonte lado a lado e a classe de DRPS × AEP e de QPS × AEP (coluna própria).
-// Abre nas divergências; dá para ver tudo e trocar o documento de cada origem.
-// A régua mora em lib/psico-consolidacao/conciliacao.ts.
+// Abre nas divergências, as mais importantes primeiro; dá para ver tudo e trocar o
+// documento de cada origem. A régua mora em lib/psico-consolidacao/conciliacao.ts.
+//
+// v0.3.176 (banco v310, NR-01/NR-17): parecer por cruzamento (Confirmar no PGR, AET,
+// Descartar) com ação 5W2H, ligação de setores escritos de outro jeito, representatividade
+// do questionário, sugestão de AET e o fechamento (foto imutável) com histórico.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, GitCompareArrows } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, ClipboardCheck, GitCompareArrows, Microscope } from "lucide-react";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { SeloClasse, TextoNivel, COR_CLASSE, EXPLICACAO_CLASSE } from "@/components/psico-consolidacao/ConciliacaoSelos";
+import ParecerModal, { type ContextoParecer } from "@/components/psico-consolidacao/ParecerModal";
+import LigacaoSetores from "@/components/psico-consolidacao/LigacaoSetores";
+import FechamentosConciliacao from "@/components/psico-consolidacao/FechamentosConciliacao";
 import { useFontesConciliacao, usePsicoCatalogo } from "@/lib/hooks/usePsicoConsolidacao";
+import { useRegistrosConciliacao } from "@/lib/hooks/useConciliacaoParecer";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
+  ADESAO_MINIMA,
   CLASSES,
   DIVERGENCIAS,
+  MIN_RESPONDENTES,
+  ROTULO_DECISAO,
+  chaveParecer,
   conciliarEmpresa,
+  contarPareceres,
   documentosDaEmpresa,
+  indexarPareceres,
+  itensDoFechamento,
+  situacaoParecer,
   type CelulaConciliacao,
   type ClasseConciliacao,
+  type ParecerConciliacao,
   type Questionario,
+  type SetorConciliacao,
 } from "@/lib/psico-consolidacao/conciliacao";
 import type { OrigemFonte } from "@/lib/psico-consolidacao/fatores";
 import type { DocumentoFonte } from "@/lib/psico-consolidacao/fontes";
@@ -29,16 +48,23 @@ const ORIGENS: OrigemFonte[] = ["AEP", "DRPS", "QPS"];
 const sel =
   "rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
 
+type Ordem = "prioridade" | "setor";
+
 export default function ConciliacaoEmpresaPage() {
   const { idEmpresa: bruto } = useParams<{ idEmpresa: string }>();
   const idEmpresa = decodeURIComponent(bruto);
   const fontes = useFontesConciliacao(idEmpresa);
   const catalogo = usePsicoCatalogo();
+  const registros = useRegistrosConciliacao(idEmpresa);
+  const podeEditar = useCanEdit();
 
   // Documento escolhido por origem; ausente = o padrão (o mais recente). "" = não usar.
   const [escolha, setEscolha] = useState<Partial<Record<OrigemFonte, string>>>({});
   const [classes, setClasses] = useState<Set<ClasseConciliacao>>(() => new Set(DIVERGENCIAS));
+  const [soPendentes, setSoPendentes] = useState(false);
   const [setor, setSetor] = useState("");
+  const [ordem, setOrdem] = useState<Ordem>("prioridade");
+  const [parecerAberto, setParecerAberto] = useState<ContextoParecer | null>(null);
 
   const empresa = fontes.data?.empresas.find((e) => e.idEmpresa === idEmpresa);
   const docsPorOrigem = useMemo(() => {
@@ -47,15 +73,18 @@ export default function ConciliacaoEmpresaPage() {
     return m;
   }, [fontes.data, idEmpresa]);
   const padrao = useMemo(() => documentosDaEmpresa(fontes.data?.documentos ?? [], idEmpresa), [fontes.data, idEmpresa]);
-  const usados = useMemo(() => {
-    const s = new Set<string>();
+  const escolhidos = useMemo(() => {
+    const out: Partial<Record<OrigemFonte, DocumentoFonte>> = {};
     for (const o of ORIGENS) {
       const id = escolha[o] ?? padrao[o]?.id;
-      if (id) s.add(id);
+      const d = id ? docsPorOrigem[o]?.find((x) => x.id === id) : undefined;
+      if (d) out[o] = d;
     }
-    return s;
-  }, [escolha, padrao]);
+    return out;
+  }, [escolha, padrao, docsPorOrigem]);
+  const usados = useMemo(() => new Set(Object.values(escolhidos).map((d) => d!.id)), [escolhidos]);
 
+  const ligacoes = useMemo(() => registros.data?.ligacoes ?? [], [registros.data]);
   const resultado = useMemo(() => {
     if (!fontes.data || !catalogo.data) return null;
     return conciliarEmpresa({
@@ -65,8 +94,16 @@ export default function ConciliacaoEmpresaPage() {
       documentos: usados,
       fatores: catalogo.data.fatores,
       depara: catalogo.data.depara,
+      deparaSetores: ligacoes,
     });
-  }, [fontes.data, catalogo.data, idEmpresa, usados]);
+  }, [fontes.data, catalogo.data, idEmpresa, usados, ligacoes]);
+
+  const pareceres = useMemo(() => indexarPareceres(registros.data?.pareceres ?? []), [registros.data]);
+  const contagem = useMemo(
+    () => (resultado ? contarPareceres(resultado, pareceres) : { pendentes: 0, semAcao: 0, desatualizados: 0, comParecer: 0 }),
+    [resultado, pareceres],
+  );
+  const setorPorChave = useMemo(() => new Map((resultado?.setores ?? []).map((s) => [s.chave, s])), [resultado]);
 
   const nomeFator = useMemo(
     () => new Map((catalogo.data?.fatores ?? []).map((f) => [f.id_fator, f.nome_curto || f.nome])),
@@ -75,25 +112,58 @@ export default function ConciliacaoEmpresaPage() {
 
   const visiveis = useMemo(() => {
     if (!resultado) return [];
-    return resultado.celulas.filter(
-      (c) =>
-        (!setor || c.setor === setor) &&
-        resultado.questionarios.some((q) => c.classe[q] && classes.has(c.classe[q]!)),
-    );
-  }, [resultado, classes, setor]);
+    const qs = resultado.questionarios;
+    const lista = resultado.celulas.filter((c) => {
+      if (setor && c.chaveSetor !== setor) return false;
+      if (soPendentes) {
+        return qs.some((q) => {
+          const s = situacaoParecer(c.classe[q], pareceres.get(chaveParecer(c.chaveSetor, c.idFator, q)));
+          return s === "pendente" || s === "desatualizado" || s === "sem-acao";
+        });
+      }
+      return qs.some((q) => c.classe[q] && classes.has(c.classe[q]!));
+    });
+    if (ordem === "prioridade") {
+      const p = (c: CelulaConciliacao) => Math.max(...qs.map((q) => c.prioridade[q]));
+      lista.sort((a, b) => p(b) - p(a));
+    }
+    return lista;
+  }, [resultado, classes, setor, soPendentes, ordem, pareceres]);
 
-  const semPar = resultado?.setores.filter((s) => !s.avaliadoPor.includes("AEP") || !s.avaliadoPor.some((o) => o !== "AEP")) ?? [];
-
-  const alternar = (c: ClasseConciliacao) =>
+  const alternar = (c: ClasseConciliacao) => {
+    setSoPendentes(false);
     setClasses((atual) => {
       const n = new Set(atual);
       if (n.has(c)) n.delete(c);
       else n.add(c);
       return n;
     });
+  };
 
-  if (fontes.isLoading || catalogo.isLoading) return <LoadingSkeleton />;
-  const erro = fontes.error ?? catalogo.error;
+  const abrirParecer = (c: CelulaConciliacao, q: Questionario) => {
+    const s = setorPorChave.get(c.chaveSetor);
+    setParecerAberto({
+      idEmpresa,
+      celula: c,
+      questionario: q,
+      fator: nomeFator.get(c.idFator) ?? c.idFator,
+      expostos: s?.expostos ?? null,
+      necessitaAet: s?.necessitaAet ?? false,
+      documentos: Object.fromEntries(Object.entries(escolhidos).map(([o, d]) => [o, d!.id])),
+      atual: pareceres.get(chaveParecer(c.chaveSetor, c.idFator, q)),
+    });
+  };
+
+  const montarFechamento = () => ({
+    documentos: Object.fromEntries(
+      Object.entries(escolhidos).map(([o, d]) => [o, { id: d!.id, titulo: d!.titulo, data: d!.data }]),
+    ),
+    resumo: { totais: resultado?.totais ?? {}, pareceres: contagem, questionarios: resultado?.questionarios ?? [] },
+    itens: resultado ? itensDoFechamento(resultado, pareceres, (id) => nomeFator.get(id) ?? id) : [],
+  });
+
+  if (fontes.isLoading || catalogo.isLoading || registros.isLoading) return <LoadingSkeleton />;
+  const erro = fontes.error ?? catalogo.error ?? registros.error;
   if (erro) {
     return <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">Não foi possível carregar: {(erro as Error).message}</p>;
   }
@@ -159,8 +229,8 @@ export default function ConciliacaoEmpresaPage() {
         </p>
       ) : (
         <>
-          {/* ── Totais ─────────────────────────────────────────────────── */}
-          <div className="grid gap-3 md:grid-cols-2">
+          {/* ── Totais e pareceres ─────────────────────────────────────── */}
+          <div className="grid gap-3 md:grid-cols-3">
             {resultado.questionarios.map((q) => (
               <div key={q} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                 <p className="mb-2 text-sm font-semibold text-gray-800">{q} × AEP</p>
@@ -174,7 +244,7 @@ export default function ConciliacaoEmpresaPage() {
                       className={cn(
                         "rounded-full px-2.5 py-1 text-xs font-medium ring-1 ring-inset transition",
                         COR_CLASSE[c],
-                        !classes.has(c) && "opacity-40",
+                        (soPendentes || !classes.has(c)) && "opacity-40",
                       )}
                     >
                       {c} <span className="font-bold">{resultado.totais[q][c]}</span>
@@ -183,6 +253,27 @@ export default function ConciliacaoEmpresaPage() {
                 </div>
               </div>
             ))}
+            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+                <ClipboardCheck className="size-4 text-indigo-600" /> Pareceres
+              </p>
+              <ul className="space-y-1 text-xs text-gray-600">
+                <li>
+                  <b className={contagem.pendentes > 0 ? "text-amber-700" : "text-emerald-700"}>{contagem.pendentes}</b> divergência(s) sem parecer
+                </li>
+                <li>
+                  <b className={contagem.semAcao > 0 ? "text-amber-700" : "text-gray-700"}>{contagem.semAcao}</b> risco(s) apontado(s) sem ação no plano
+                </li>
+                {contagem.desatualizados > 0 && (
+                  <li>
+                    <b className="text-amber-700">{contagem.desatualizados}</b> parecer(es) de outra situação — rever
+                  </li>
+                )}
+                <li>
+                  <b className="text-gray-700">{contagem.comParecer}</b> com parecer
+                </li>
+              </ul>
+            </div>
           </div>
 
           {/* ── Filtros ────────────────────────────────────────────────── */}
@@ -190,13 +281,27 @@ export default function ConciliacaoEmpresaPage() {
             <select value={setor} onChange={(e) => setSetor(e.target.value)} className={sel}>
               <option value="">Todos os setores</option>
               {resultado.setores.map((s) => (
-                <option key={s.setor} value={s.setor}>{s.setor}</option>
+                <option key={s.chave} value={s.chave}>{s.setor}</option>
               ))}
             </select>
-            <button type="button" onClick={() => setClasses(new Set(DIVERGENCIAS))} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
+            <select value={ordem} onChange={(e) => setOrdem(e.target.value as Ordem)} className={sel} title="Ordem da tabela">
+              <option value="prioridade">Mais importantes primeiro</option>
+              <option value="setor">Por setor</option>
+            </select>
+            <button type="button" onClick={() => { setSoPendentes(false); setClasses(new Set(DIVERGENCIAS)); }} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
               Só divergências
             </button>
-            <button type="button" onClick={() => setClasses(new Set(CLASSES))} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
+            <button
+              type="button"
+              onClick={() => setSoPendentes((v) => !v)}
+              className={cn(
+                "rounded-lg border px-2.5 py-1.5 text-xs",
+                soPendentes ? "border-indigo-600 bg-indigo-600 text-white" : "border-gray-200 text-gray-600 hover:bg-gray-50",
+              )}
+            >
+              O que falta resolver
+            </button>
+            <button type="button" onClick={() => { setSoPendentes(false); setClasses(new Set(CLASSES)); }} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
               Mostrar tudo
             </button>
             <span className="text-xs text-gray-400">
@@ -207,7 +312,9 @@ export default function ConciliacaoEmpresaPage() {
           {/* ── Tabela ─────────────────────────────────────────────────── */}
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
             {visiveis.length === 0 ? (
-              <p className="p-10 text-center text-sm text-gray-500">Nenhum cruzamento nas classes marcadas.</p>
+              <p className="p-10 text-center text-sm text-gray-500">
+                {soPendentes ? "Nada a resolver: toda divergência tem parecer e ação." : "Nenhum cruzamento nas classes marcadas."}
+              </p>
             ) : (
               <table className="w-full text-sm">
                 <thead>
@@ -221,16 +328,31 @@ export default function ConciliacaoEmpresaPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visiveis.map((c) => (
-                    <tr key={`${c.setor}|${c.idFator}`} className="border-b border-gray-50 align-top last:border-0">
-                      <td className="px-4 py-2.5 font-medium text-gray-900">{c.setor}</td>
-                      <td className="px-3 py-2.5 text-gray-700">{nomeFator.get(c.idFator) ?? c.idFator}</td>
-                      <td className="px-3 py-2.5"><CelulaAep c={c} /></td>
-                      {resultado.questionarios.map((q) => (
-                        <CelulasQuestionario key={q} c={c} q={q} />
-                      ))}
-                    </tr>
-                  ))}
+                  {visiveis.map((c) => {
+                    const s = setorPorChave.get(c.chaveSetor);
+                    return (
+                      <tr key={`${c.chaveSetor}|${c.idFator}`} className="border-b border-gray-50 align-top last:border-0">
+                        <td className="px-4 py-2.5">
+                          <span className="font-medium text-gray-900">{c.setor}</span>
+                          {s?.expostos != null && <p className="text-[11px] text-gray-400">{s.expostos} expostos</p>}
+                          {s?.necessitaAet && <p className="text-[11px] font-medium text-indigo-700">AEP indica AET</p>}
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-700">{nomeFator.get(c.idFator) ?? c.idFator}</td>
+                        <td className="px-3 py-2.5"><CelulaAep c={c} /></td>
+                        {resultado.questionarios.map((q) => (
+                          <CelulasQuestionario
+                            key={q}
+                            c={c}
+                            q={q}
+                            setor={s}
+                            parecer={pareceres.get(chaveParecer(c.chaveSetor, c.idFator, q))}
+                            podeEditar={podeEditar}
+                            onParecer={() => abrirParecer(c, q)}
+                          />
+                        ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -238,27 +360,9 @@ export default function ConciliacaoEmpresaPage() {
         </>
       )}
 
-      {/* ── Setores sem par ──────────────────────────────────────────────── */}
-      {podeConciliar && semPar.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-sm font-semibold text-gray-800">Setores que aparecem numa fonte só</p>
-          <p className="mb-2 text-xs text-gray-500">
-            Não dá para conciliar estes setores. Se for o mesmo setor escrito de outro jeito, ajuste o nome no documento.
-          </p>
-          <ul className="space-y-1 text-sm">
-            {semPar.map((s) => (
-              <li key={s.setor} className="text-gray-700">
-                <span className="font-medium">{s.setor}</span>{" "}
-                <span className="text-xs text-gray-500">
-                  — só em {s.avaliadoPor.join(", ")}
-                  {Object.entries(s.originais)
-                    .map(([o, nomes]) => ` · ${o}: "${nomes!.join('", "')}"`)
-                    .join("")}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {/* ── Setores sem par e ligação ────────────────────────────────────── */}
+      {podeConciliar && (
+        <LigacaoSetores idEmpresa={idEmpresa} setores={resultado.setores} ligacoes={ligacoes} podeEditar={podeEditar} />
       )}
 
       {resultado.linhasSemFator > 0 && (
@@ -267,6 +371,21 @@ export default function ConciliacaoEmpresaPage() {
           Fatores da Consolidação).
         </p>
       )}
+
+      {podeConciliar && (
+        <FechamentosConciliacao
+          idEmpresa={idEmpresa}
+          historico={registros.data?.fechamentos ?? []}
+          contagem={contagem}
+          podeEditar={podeEditar}
+          podeFechar={resultado.setoresEmComum > 0}
+          montar={montarFechamento}
+        />
+      )}
+
+      <ComoComparamos />
+
+      {parecerAberto && <ParecerModal ctx={parecerAberto} podeEditar={podeEditar} onClose={() => setParecerAberto(null)} />}
     </div>
   );
 }
@@ -284,6 +403,7 @@ function Colunas({ q }: { q: Questionario }) {
     <>
       <th className="px-3 py-3">{q} (questionário)</th>
       <th className="px-3 py-3">{q} × AEP</th>
+      <th className="px-3 py-3">Parecer {q}</th>
     </>
   );
 }
@@ -305,23 +425,124 @@ function CelulaAep({ c }: { c: CelulaConciliacao }) {
   return <span className="text-xs text-gray-400">Não</span>;
 }
 
-function CelulasQuestionario({ c, q }: { c: CelulaConciliacao; q: Questionario }) {
+function CelulasQuestionario({
+  c,
+  q,
+  setor,
+  parecer,
+  podeEditar,
+  onParecer,
+}: {
+  c: CelulaConciliacao;
+  q: Questionario;
+  setor: SetorConciliacao | undefined;
+  parecer: ParecerConciliacao | undefined;
+  podeEditar: boolean;
+  onParecer: () => void;
+}) {
   const lado = q === "DRPS" ? c.drps : c.qps;
+  const classe = c.classe[q];
+  const situacao = situacaoParecer(classe, parecer);
+  const expostos = setor?.expostos ?? null;
   return (
     <>
       <td className="px-3 py-2.5">
         {lado ? (
           <div>
             <TextoNivel texto={lado.nivel} degrau={lado.degrau} />
-            {lado.respondentes != null && <p className="text-[11px] text-gray-400">{lado.respondentes} resp.</p>}
+            {lado.respondentes != null && (
+              <p className={cn("text-[11px]", c.baixaRepresentatividade[q] ? "font-medium text-amber-700" : "text-gray-400")}>
+                {lado.respondentes}
+                {expostos ? ` de ${expostos}` : ""} resp.
+                {expostos ? ` (${Math.round((lado.respondentes / expostos) * 100)}%)` : ""}
+              </p>
+            )}
           </div>
         ) : (
           <span className="text-xs text-gray-300">—</span>
         )}
       </td>
       <td className="px-3 py-2.5">
-        <SeloClasse classe={c.classe[q]} />
+        <SeloClasse classe={classe} />
+        {c.sugereAet[q] && (
+          <p className="mt-1 flex items-center gap-1 text-[11px] font-medium text-indigo-700" title="NR-17, 17.3.2: avaliação mais aprofundada">
+            <Microscope className="size-3" /> Sugere AET
+          </p>
+        )}
+        {c.baixaRepresentatividade[q] && (
+          <p className="mt-1 flex items-center gap-1 text-[11px] text-amber-700" title="Poucos respondentes para o tamanho do setor: resultado só indicativo">
+            <AlertTriangle className="size-3" /> Baixa representatividade
+          </p>
+        )}
+      </td>
+      <td className="px-3 py-2.5">
+        {situacao === "nao-precisa" && !parecer ? (
+          classe && classe !== "Sem par" && podeEditar ? (
+            <button type="button" onClick={onParecer} className="text-[11px] text-gray-400 hover:text-indigo-700 hover:underline">
+              Dar parecer
+            </button>
+          ) : (
+            <span className="text-xs text-gray-300">—</span>
+          )
+        ) : situacao === "pendente" ? (
+          <button
+            type="button"
+            onClick={onParecer}
+            disabled={!podeEditar}
+            className="rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-default disabled:opacity-70"
+          >
+            {podeEditar ? "Dar parecer" : "Sem parecer"}
+          </button>
+        ) : (
+          <button type="button" onClick={onParecer} className="text-left">
+            <span className="flex items-center gap-1 text-[11px] font-medium text-gray-800">
+              {situacao === "ok" && <CheckCircle2 className="size-3 text-emerald-600" />}
+              {parecer ? ROTULO_DECISAO[parecer.decisao].split(" (")[0] : ""}
+            </span>
+            {situacao === "sem-acao" && <span className="block text-[11px] text-amber-700">sem ação no plano</span>}
+            {situacao === "desatualizado" && <span className="block text-[11px] text-amber-700">rever (os documentos mudaram)</span>}
+            {parecer?.id_acao && <span className="block text-[11px] text-gray-400">Ação {parecer.id_acao}</span>}
+          </button>
+        )}
       </td>
     </>
+  );
+}
+
+function ComoComparamos() {
+  return (
+    <details className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-600 shadow-sm">
+      <summary className="cursor-pointer font-semibold text-gray-800">Como comparamos (método)</summary>
+      <div className="mt-3 space-y-2 text-xs leading-relaxed">
+        <p>
+          Os dois lados vão para uma escala de 4 degraus. Questionário (DRPS/QPS): Baixo 1 · Médio 2 · Alto 3 · Crítico 4.
+          AEP (nível AIHA gravado no setor): Trivial/Baixo 1 · Moderado 2 · Alto 3 · Muito Alto 4.
+        </p>
+        <p>
+          O questionário <b>aponta</b> o fator a partir de Médio; a AEP, com o fator &quot;Sim&quot; e AIHA a partir de Moderado (&quot;Sim&quot;
+          sem AIHA aponta, sem nível). Os dois apontam com até 1 degrau de diferença: <b>Convergente</b>; 2 ou mais:{" "}
+          <b>Nível divergente</b>. Só um aponta: <b>Só questionário</b> ou <b>Só AEP</b>. Nenhum: <b>Sem indicação</b>. O setor
+          não existe numa das fontes: <b>Sem par</b>.
+        </p>
+        <p>
+          <b>Representatividade:</b> o questionário do setor é só indicativo com menos de {MIN_RESPONDENTES} respondentes ou com
+          adesão abaixo de {Math.round(ADESAO_MINIMA * 100)}% dos expostos informados na AEP (NR-01: a consulta aos trabalhadores
+          sobre a percepção dos riscos).
+        </p>
+        <p>
+          <b>Sugere AET</b> (NR-17, 17.3.2 — avaliação mais aprofundada) quando os níveis divergem ou quando os trabalhadores
+          apontam Alto/Crítico e a AEP não viu o fator.
+        </p>
+        <p>
+          <b>Ordem de importância:</b> o tipo de divergência pesa mais, depois o maior nível das duas fontes e o número de
+          expostos; com representatividade baixa, cai.
+        </p>
+        <p>
+          <b>Parecer</b> (qualquer pessoa que edita a empresa): Confirmar no inventário do PGR, Aprofundar com AET ou Descartar
+          com justificativa. Confirmar e AET podem criar a ação 5W2H no Plano de Ação. <b>Fechar a conciliação</b> guarda uma foto
+          que não muda mais (NR-01: histórico da avaliação).
+        </p>
+      </div>
+    </details>
   );
 }

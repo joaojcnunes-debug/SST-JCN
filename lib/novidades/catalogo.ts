@@ -41,6 +41,22 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-parecer-nr01-nr17",
+    data: "2026-10-29",
+    tipo: "melhoria",
+    titulo: "Conciliação DRPS/QPS × AEP: parecer, ação no plano e histórico (NR-01 e NR-17)",
+    texto:
+      "Cada divergência entre o questionário e a AEP agora recebe um parecer: Confirmar no inventário do PGR, Aprofundar com AET " +
+      "ou Descartar com justificativa, e Confirmar ou AET podem criar a ação 5W2H no Plano de Ação. A tabela abre pelo que mais " +
+      "pede atenção, mostra quantos responderam frente aos expostos do setor (com aviso de baixa representatividade) e indica quando " +
+      "a divergência sugere AET (NR-17). Setores escritos de outro jeito podem ser ligados na própria página, com sugestão de pares " +
+      "parecidos. Fechar a conciliação guarda uma foto com documentos, régua, resultados e pareceres, que fica no histórico. Na lista, " +
+      "as colunas Pareceres e Fechada em e o filtro Falta parecer ou ação.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP",
+    impacto: "Qualquer pessoa que edita a empresa dá parecer, liga setores e fecha a conciliação. Nada muda na AEP, no DRPS ou no QPS.",
+    versoes: ["0.3.176"],
+  },
+  {
     id: "conciliacao-drps-qps-aep",
     data: "2026-10-29",
     tipo: "novidade",

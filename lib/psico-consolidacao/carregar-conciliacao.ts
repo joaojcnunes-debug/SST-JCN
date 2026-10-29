@@ -10,7 +10,7 @@ import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 import { carregarRiscosPsicossociais } from "@/lib/riscos-psicossociais/carregar";
 import type { AepRelatorio } from "@/lib/supabase/types";
 import type { EmpresaFonte, FontesDoGrupo } from "./carregar-grupo";
-import type { SetorAvaliadoAep } from "./conciliacao";
+import type { ItemFechamento, LigacaoSetor, ParecerConciliacao, SetorAvaliadoAep } from "./conciliacao";
 import {
   documentoDaAep,
   documentoDaAvaliacao,
@@ -62,7 +62,14 @@ export async function carregarFontesConciliacao(sb: Sb, idEmpresa?: string): Pro
     out.pendencias.push(...pendenciasDaAep(a));
     for (const s of a.setores ?? []) {
       const setor = (s.nome_setor ?? "").trim();
-      if (setor) out.setoresAep.push({ idDocumento: a.id_relatorio, setorOriginal: setor });
+      if (setor) {
+        out.setoresAep.push({
+          idDocumento: a.id_relatorio,
+          setorOriginal: setor,
+          expostos: Number(s.qtd_expostos) || null,
+          necessitaAet: !!s.necessita_aet,
+        });
+      }
     }
   }
 
@@ -88,4 +95,50 @@ export async function carregarFontesConciliacao(sb: Sb, idEmpresa?: string): Pro
   out.empresas = [...empresas.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
   out.documentos.sort((a, b) => (b.data ?? "").localeCompare(a.data ?? ""));
   return out;
+}
+
+/** Conciliação fechada (psico_conciliacao_fechamentos, v310). */
+export interface FechamentoConciliacao {
+  id_fechamento: string;
+  id_empresa: string;
+  fechado_por: string;
+  fechado_em: string;
+  documentos: Record<string, { id: string; titulo: string; data: string | null }>;
+  regua: Record<string, unknown>;
+  resumo: {
+    totais?: Record<string, Record<string, number>>;
+    pareceres?: { pendentes: number; semAcao: number; desatualizados: number; comParecer: number };
+  };
+  itens: ItemFechamento[];
+  observacao: string | null;
+}
+
+export interface RegistrosConciliacao {
+  ligacoes: LigacaoSetor[];
+  pareceres: ParecerConciliacao[];
+  fechamentos: FechamentoConciliacao[];
+}
+
+/**
+ * O que a equipe gravou na Conciliação (v310): ligações de setor, pareceres e fechamentos.
+ * Na lista (sem `idEmpresa`) os fechamentos vêm sem os itens — só a data e o resumo.
+ */
+export async function carregarRegistrosConciliacao(sb: Sb, idEmpresa?: string): Promise<RegistrosConciliacao> {
+  const filtro = <T>(tabela: string, select: string, ordem: string) =>
+    fetchAllRows<T>((de, ate) => {
+      let q = sb.from(tabela).select(select);
+      if (idEmpresa) q = q.eq("id_empresa", idEmpresa);
+      return q.order(ordem).range(de, ate);
+    });
+  const [ligacoes, pareceres, fechamentos] = await Promise.all([
+    filtro<LigacaoSetor>("psico_conciliacao_setor_depara", "*", "id_depara"),
+    filtro<ParecerConciliacao>("psico_conciliacao_pareceres", "*", "id_parecer"),
+    filtro<FechamentoConciliacao>(
+      "psico_conciliacao_fechamentos",
+      idEmpresa ? "*" : "id_fechamento, id_empresa, fechado_por, fechado_em, resumo",
+      "fechado_em",
+    ),
+  ]);
+  fechamentos.sort((a, b) => b.fechado_em.localeCompare(a.fechado_em));
+  return { ligacoes, pareceres, fechamentos };
 }
