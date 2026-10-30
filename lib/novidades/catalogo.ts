@@ -50,10 +50,11 @@ export const CATALOGO: Novidade[] = [
       "cronômetro em segundos quando o seu tempo está correndo, azul quando outra pessoa está trabalhando, âmbar quando " +
       "está aguardando o cliente, cinza quando está pausado ou não iniciado, e índigo quando foi entregue. Iniciar, " +
       "Retomar e Pausar ficam na própria faixa. Logo abaixo aparecem os indicadores (trabalhado, você hoje, aguardando " +
-      "cliente, sessões e pessoas), uma linha do tempo com as sessões de cada pessoa e as esperas do cliente, barras por " +
-      "pessoa e a lista das sessões.",
+      "cliente, sessões e pessoas). A linha do tempo, o tempo por pessoa e a lista das sessões ficam em Detalhes, que " +
+      "abre e fecha. O botão de levar para o canto transforma o painel numa janelinha flutuante, que dá para arrastar, " +
+      "com o cronômetro e o Pausar. Ela também aparece sozinha quando o seu tempo está correndo e você rola o documento.",
     onde: "Relatório da inspeção (card Documento SGG)",
-    versoes: ["0.3.186"],
+    versoes: ["0.3.186", "0.3.187"],
   },
   {
     id: "documento-desfazer-conclusao",
