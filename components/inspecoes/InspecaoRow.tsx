@@ -43,8 +43,11 @@ export default function InspecaoRow({
   onEditAssociados,
   showEmpresa,
   podeEditarPrioridade,
+  comAcoes = true,
 }: {
   insp: Inspecao;
+  /** 30/10: coluna Ações (Editar, Relatório, Excluir) — só supervisor/admin; o cabeçalho segue a mesma regra. */
+  comAcoes?: boolean;
   /** v308: quem edita inspeção troca a prioridade direto na coluna. */
   podeEditarPrioridade?: boolean;
   /** Associados à elaboração do Documento SGG desta inspeção. */
@@ -216,34 +219,36 @@ export default function InspecaoRow({
       {/* Ações presas à direita (30/10): com nome de empresa longo ou zoom no
           navegador a tabela rola de lado, e os botões sumiam no fim da rolagem.
           Fundo opaco para o conteúdo não passar por baixo. */}
-      <td className={`${ACOES_FIXAS} ${FUNDO_ACOES}`}>
-        <div className="flex items-center justify-end gap-1">
-          <Link
-            href={`/inspecoes/${insp.id_inspecao}`}
-            className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-verde-light hover:text-verde-primary"
-            title="Editar inspeção"
-          >
-            <Pencil className="size-3.5" />
-          </Link>
-          <Link
-            href={`/inspecoes/${insp.id_inspecao}/relatorio`}
-            className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-sky-50 hover:text-sky-600"
-            title="Ver relatório"
-          >
-            <ChartBar className="size-3.5" />
-          </Link>
-          {onDelete && (
-            <button
-              type="button"
-              onClick={() => onDelete(insp)}
-              className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500"
-              title="Excluir inspeção"
+      {comAcoes && (
+        <td className={`${ACOES_FIXAS} ${FUNDO_ACOES}`}>
+          <div className="flex items-center justify-end gap-1">
+            <Link
+              href={`/inspecoes/${insp.id_inspecao}`}
+              className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-verde-light hover:text-verde-primary"
+              title="Editar inspeção"
             >
-              <Trash2 className="size-3.5" />
-            </button>
-          )}
-        </div>
-      </td>
+              <Pencil className="size-3.5" />
+            </Link>
+            <Link
+              href={`/inspecoes/${insp.id_inspecao}/relatorio`}
+              className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-sky-50 hover:text-sky-600"
+              title="Ver relatório"
+            >
+              <ChartBar className="size-3.5" />
+            </Link>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(insp)}
+                className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+                title="Excluir inspeção"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            )}
+          </div>
+        </td>
+      )}
     </tr>
   );
 }

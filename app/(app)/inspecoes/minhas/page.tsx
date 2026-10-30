@@ -314,12 +314,15 @@ function MinhasInner() {
                         {papel === "associado" && !idUsuario && i.situacao_documento === "ATRIBUIDO" && (
                           <IniciarElaboracao id={i.id_inspecao} nome={eu?.nome ?? ""} />
                         )}
-                        <Link
-                          href={papel === "associado" ? `/inspecoes/${i.id_inspecao}/relatorio` : `/inspecoes/${i.id_inspecao}`}
-                          className="inline-block whitespace-nowrap rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:border-verde-primary hover:text-verde-primary"
-                        >
-                          {papel === "associado" ? "Abrir documento" : "Abrir inspeção"}
-                        </Link>
+                        {/* 30/10: o associado só abre o documento depois de Iniciar (supervisor/admin abrem direto). */}
+                        {!(papel === "associado" && !supervisor && i.situacao_documento === "ATRIBUIDO") && (
+                          <Link
+                            href={papel === "associado" ? `/inspecoes/${i.id_inspecao}/relatorio` : `/inspecoes/${i.id_inspecao}`}
+                            className="inline-block whitespace-nowrap rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:border-verde-primary hover:text-verde-primary"
+                          >
+                            {papel === "associado" ? "Abrir documento" : "Abrir inspeção"}
+                          </Link>
+                        )}
                       </td>
                     </tr>
                   );

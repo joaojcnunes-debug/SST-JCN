@@ -356,6 +356,16 @@ OAuth (`/api/gestao/google/connect` → `callback`, refresh token cifrado com `G
 
 **Coluna Ações fixa (v0.3.179, 2026-10-30, sem banco):** a coluna Ações da lista fica presa à direita (`sticky`, `ACOES_FIXAS` em `components/inspecoes/InspecaoRow.tsx`; o cabeçalho usa a mesma), com fundo opaco e uma sombra leve à esquerda. Com nome de empresa longo, zoom no navegador ou tela de notebook, a tabela rola de lado e os botões Editar / Relatório / Excluir continuam à vista. As células passaram de `px-4` para `px-3`, e com isso a tabela cabe sem rolagem em mais telas.
 
+**Ações só de supervisor; associado inicia antes de abrir (v0.3.180, 2026-10-30, sem banco):**
+- **Lista de Inspeções:**
+  - a coluna Ações (Editar, Relatório, Excluir; `comAcoes` em `InspecaoRow`) e a troca de prioridade, complexidade e prazo (`podeEditarPrioridade`) só aparecem para supervisor/admin (`useIsSupervisor`: perfil Admin ou nível Aprovação/Admin);
+  - técnicos e associados só consultam a lista e trabalham por Minhas inspeções.
+- **Documento (relatório `/inspecoes/[id]/relatorio` e Versão PGR `/inspecoes/[id]/pgr`):**
+  - quem está associado à inspeção e não é supervisor/admin, com `elaboracao_status` PENDENTE (o "Atribuído"), vê o aviso "Inicie a elaboração para abrir o documento" com o botão ▶ Iniciar, no lugar do documento (`components/inspecoes/AguardandoInicio.tsx`, regra em `lib/inspecoes/inicio.ts`, testada);
+  - Iniciar usa o mesmo RPC `set_elaboracao_documento` de Minhas inspeções, e o documento abre na hora.
+- **Minhas inspeções:** para o associado, "Abrir documento" só aparece depois do Iniciar.
+- **Editor da inspeção** (`/inspecoes/[id]`): não foi bloqueado.
+
 **Nova (`/inspecoes/nova`):** empresa + tipo: `BRANCO`, `REVISAO` (copia inspeção da mesma empresa), `COPIA_EMPRESA` (copia de outra empresa), `RENOVACAO` (registro administrativo; não conta nos gráficos). Revisão = maior revisão da empresa + 1. A cópia escolhe o que levar (setores, cargos, riscos, EPIs, responsáveis, fotos) e remapeia os IDs. "Quem vai a campo" cria `responsaveis` (com `id_usuario`): o técnico é **escolhido do cadastro** (busca por nome); offline, a aba Responsáveis aceita nome digitado. Nasce `EM_ANDAMENTO`. `/inspecoes/ficha` gera a **Ficha de Inspeção** em branco para imprimir, com dois leques: **Mostrar** (seções na tela) e **Gerar PDF** (seções na impressão, independente da tela) — `FichaSecoesLeque`.
 
 **Editor (`/inspecoes/[id]`, aba na URL `?aba=`):**

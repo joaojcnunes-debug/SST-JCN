@@ -17,6 +17,7 @@ import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
+import AguardandoInicio, { useAguardandoInicio } from "@/components/inspecoes/AguardandoInicio";
 import StorageImg from "@/components/ui/StorageImg";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import {
@@ -109,8 +110,12 @@ export default function PgrPage({ params }: Props) {
     finally { setBaixando(false); }
   }
 
-  if (isLoading) return <LoadingSkeleton rows={10} />;
+  // 30/10: associado só abre o documento depois de Iniciar (supervisor/admin abrem direto).
+  const inicio = useAguardandoInicio(id, data?.inspecao.elaboracao_status);
+
+  if (isLoading || inicio.carregando) return <LoadingSkeleton rows={10} />;
   if (!data) return null;
+  if (inicio.aguardando) return <AguardandoInicio idInspecao={id} empresa={empresa?.nome_empresa} />;
 
   const { inspecao, responsaveis, paeContatos } = data;
 

@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "inspecoes-acoes-supervisor-iniciar",
+    data: "2026-10-30",
+    tipo: "melhoria",
+    titulo: "Inspeções: ações só para supervisores; associado abre o documento depois de Iniciar",
+    texto:
+      "Na lista de Inspeções, a coluna Ações (Editar, Relatório e Excluir) e a troca de prioridade e complexidade ficam só " +
+      "para supervisores e administradores. Técnicos e associados consultam a lista e trabalham pela tela Minhas inspeções. " +
+      "O associado só abre o documento (relatório e Versão PGR) depois de apertar Iniciar: em Minhas inspeções o botão " +
+      "Abrir documento aparece depois do Iniciar, e quem chega ao documento por outro caminho vê o aviso com o botão Iniciar.",
+    onde: "Inspeções e Minhas inspeções",
+    impacto: "Supervisores e administradores continuam com tudo como antes.",
+    versoes: ["0.3.180"],
+  },
+  {
     id: "inspecoes-acoes-fixas",
     data: "2026-10-30",
     tipo: "melhoria",
