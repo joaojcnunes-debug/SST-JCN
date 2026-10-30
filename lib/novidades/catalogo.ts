@@ -49,10 +49,11 @@ export const CATALOGO: Novidade[] = [
       "Na lista de Inspeções, a coluna Ações (Editar, Relatório e Excluir) e a troca de prioridade e complexidade ficam só " +
       "para supervisores e administradores. Técnicos e associados consultam a lista e trabalham pela tela Minhas inspeções. " +
       "O associado só abre o documento (relatório e Versão PGR) depois de apertar Iniciar: em Minhas inspeções o botão " +
-      "Abrir documento aparece depois do Iniciar, e quem chega ao documento por outro caminho vê o aviso com o botão Iniciar.",
+      "Abrir documento aparece depois do Iniciar, e quem chega ao documento por outro caminho vê o aviso com o botão Iniciar. " +
+      "O botão Nova Inspeção fica nas duas telas, Inspeções e Minhas inspeções, para quem pode criar inspeção.",
     onde: "Inspeções e Minhas inspeções",
     impacto: "Supervisores e administradores continuam com tudo como antes.",
-    versoes: ["0.3.180"],
+    versoes: ["0.3.180", "0.3.181"],
   },
   {
     id: "inspecoes-acoes-fixas",

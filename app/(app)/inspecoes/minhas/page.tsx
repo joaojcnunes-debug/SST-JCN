@@ -13,7 +13,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { AlarmClock, CalendarClock, CheckCircle2, ClipboardList, FileText, Flame, Hourglass, Loader2, Play, Search } from "lucide-react";
+import { AlarmClock, CalendarClock, CheckCircle2, ClipboardList, FileText, Flame, Hourglass, Loader2, Play, Plus, Search } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -23,7 +23,7 @@ import PrioridadeCalculada from "@/components/inspecoes/PrioridadeCalculada";
 import ComplexidadeCelula from "@/components/inspecoes/ComplexidadeCelula";
 import FiltroSuspenso from "@/components/ui/FiltroSuspenso";
 import { useFilaAtribuida, usePessoasAtribuicao, useResumoFila, type FiltrosFila } from "@/lib/hooks/useInspecoesAtribuidas";
-import { useCanEdit, useIsSupervisor } from "@/lib/hooks/useUsuario";
+import { useCanCreate, useCanEdit, useIsSupervisor } from "@/lib/hooks/useUsuario";
 import { useUserStore } from "@/lib/store";
 import { PRIORIDADES_DESC, PRIORIDADE_INFO, diasEntre, hojeSP, textoEspera, type PrioridadeInspecao } from "@/lib/inspecoes/prioridade";
 import { ROTULO_PERIODO, intervaloDoPeriodo, type Periodo } from "@/lib/inspecoes/filtros-url";
@@ -69,6 +69,7 @@ function MinhasInner() {
   const eu = useUserStore((s) => s.user);
   const supervisor = useIsSupervisor();
   const canEdit = useCanEdit();
+  const canCreate = useCanCreate();
   const { data: pessoas = [] } = usePessoasAtribuicao(supervisor);
 
   const ler = (k: string) => params.get(k) ?? "";
@@ -154,17 +155,29 @@ function MinhasInner() {
             {idUsuario ? <>Fila de <strong>{nomePessoa}</strong></> : "O que foi atribuído a você"} — o mais urgente primeiro.
           </p>
         </div>
-        {supervisor && (
-          <label className="flex flex-col">
-            <span className="mb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500">Ver a fila de</span>
-            <select value={pessoa} onChange={(e) => setPessoa(e.target.value)} className={cn(sel, "min-w-[240px]")}>
-              <option value="">Eu ({eu?.nome ?? "…"})</option>
-              {pessoas.filter((p) => p.id_usuario !== eu?.id_usuario).map((p) => (
-                <option key={p.id_usuario} value={p.id_usuario}>{p.nome} · {p.perfil}</option>
-              ))}
-            </select>
-          </label>
-        )}
+        <div className="flex flex-wrap items-end gap-2">
+          {supervisor && (
+            <label className="flex flex-col">
+              <span className="mb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500">Ver a fila de</span>
+              <select value={pessoa} onChange={(e) => setPessoa(e.target.value)} className={cn(sel, "min-w-[240px]")}>
+                <option value="">Eu ({eu?.nome ?? "…"})</option>
+                {pessoas.filter((p) => p.id_usuario !== eu?.id_usuario).map((p) => (
+                  <option key={p.id_usuario} value={p.id_usuario}>{p.nome} · {p.perfil}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {/* 30/10: técnicos e associados trabalham daqui — a Nova Inspeção fica também aqui, com a regra da lista (pode_criar). */}
+          {canCreate && (
+            <Link
+              href="/inspecoes/nova"
+              className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+            >
+              <Plus className="size-4" />
+              Nova Inspeção
+            </Link>
+          )}
+        </div>
       </div>
 
       <div className="flex gap-1 border-b border-gray-200">
