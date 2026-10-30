@@ -415,6 +415,8 @@ OAuth (`/api/gestao/google/connect` → `callback`, refresh token cifrado com `G
 
 **Nova (`/inspecoes/nova`):** empresa + tipo: `BRANCO`, `REVISAO` (copia inspeção da mesma empresa), `COPIA_EMPRESA` (copia de outra empresa), `RENOVACAO` (registro administrativo; não conta nos gráficos). Revisão = maior revisão da empresa + 1. A cópia escolhe o que levar (setores, cargos, riscos, EPIs, responsáveis, fotos) e remapeia os IDs. "Quem vai a campo" cria `responsaveis` (com `id_usuario`): o técnico é **escolhido do cadastro** (busca por nome); offline, a aba Responsáveis aceita nome digitado. Nasce `EM_ANDAMENTO`. `/inspecoes/ficha` gera a **Ficha de Inspeção** em branco para imprimir, com dois leques: **Mostrar** (seções na tela) e **Gerar PDF** (seções na impressão, independente da tela) — `FichaSecoesLeque`.
 
+**Copiar p/ Empresa (botão do editor, `CopiarParaEmpresaModal`):** cria uma inspeção `COPIA_EMPRESA` em outra empresa com o que for marcado. **Desde 0.3.189 a nova inspeção fica com a data de hoje** (`hojeSP()`), e não a da origem; antes ela nascia "aberta há N dias" e caía no mês errado dos gráficos. Na Nova inspeção a data é a que a pessoa escolhe.
+
 **Editor (`/inspecoes/[id]`, aba na URL `?aba=`):**
 1. **Setores** (`setores`): setor/GHE, descrição, conformidades, não conformidades.
 2. **Cargos** (`cargos`): setor, cargo, descrição.

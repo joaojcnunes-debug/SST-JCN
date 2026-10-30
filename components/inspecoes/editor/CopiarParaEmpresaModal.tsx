@@ -11,6 +11,7 @@ import { useInspecao } from "@/lib/hooks/useInspecao";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
 import { useUserStore } from "@/lib/store";
+import { hojeSP } from "@/lib/inspecoes/prioridade";
 import type { Cargo, Risco, Setor } from "@/lib/supabase/types";
 
 interface Props {
@@ -68,7 +69,9 @@ export default function CopiarParaEmpresaModal({
       const novaInsp = {
         id_inspecao: novaInspId,
         id_empresa: destinoId,
-        data_inspecao: full.inspecao.data_inspecao,
+        // 30/10: a cópia é trabalho de hoje — a data da origem fazia a nova inspeção nascer
+        // "aberta há 113 dias" e entrar no mês errado dos gráficos.
+        data_inspecao: hojeSP(),
         status: "EM_ANDAMENTO" as const,
         revisao: 1,
         responsavel: user?.nome ?? null,
@@ -230,7 +233,9 @@ export default function CopiarParaEmpresaModal({
       <div className="space-y-4">
         <p className="text-sm text-gray-600">
           Cria uma nova inspeção em outra empresa, copiando os dados
-          selecionados desta inspeção.
+          selecionados desta inspeção. A nova inspeção fica com a data de
+          hoje ({hojeSP().split("-").reverse().join("/")}), não a da inspeção
+          de origem.
         </p>
 
         <div>

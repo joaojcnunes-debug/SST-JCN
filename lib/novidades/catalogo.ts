@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "inspecao-copia-data-de-hoje",
+    data: "2026-10-30",
+    tipo: "correcao",
+    titulo: "Copiar para outra empresa: a nova inspeção fica com a data de hoje",
+    texto:
+      "Ao copiar uma inspeção para outra empresa, a nova inspeção passa a ter a data do dia da cópia, e não mais a data " +
+      "da inspeção de origem. Antes ela aparecia como aberta há muitos dias e entrava no mês errado dos gráficos.",
+    onde: "Editor da inspeção › Copiar p/ Empresa",
+    versoes: ["0.3.189"],
+  },
+  {
     id: "documento-painel-tempo",
     data: "2026-10-30",
     tipo: "melhoria",
