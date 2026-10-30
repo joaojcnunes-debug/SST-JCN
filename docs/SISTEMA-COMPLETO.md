@@ -365,6 +365,7 @@ OAuth (`/api/gestao/google/connect` → `callback`, refresh token cifrado com `G
   - Iniciar usa o mesmo RPC `set_elaboracao_documento` de Minhas inspeções, e o documento abre na hora.
 - **Minhas inspeções:** para o associado, "Abrir documento" só aparece depois do Iniciar.
 - **Editor da inspeção** (`/inspecoes/[id]`): não foi bloqueado.
+- **0.3.181:** o botão **Nova Inspeção** aparece também em Minhas inspeções (ao lado de "Ver a fila de"), com a mesma regra da lista (`useCanCreate`, `pode_criar`), porque técnicos e associados trabalham dali.
 
 **Nova (`/inspecoes/nova`):** empresa + tipo: `BRANCO`, `REVISAO` (copia inspeção da mesma empresa), `COPIA_EMPRESA` (copia de outra empresa), `RENOVACAO` (registro administrativo; não conta nos gráficos). Revisão = maior revisão da empresa + 1. A cópia escolhe o que levar (setores, cargos, riscos, EPIs, responsáveis, fotos) e remapeia os IDs. "Quem vai a campo" cria `responsaveis` (com `id_usuario`): o técnico é **escolhido do cadastro** (busca por nome); offline, a aba Responsáveis aceita nome digitado. Nasce `EM_ANDAMENTO`. `/inspecoes/ficha` gera a **Ficha de Inspeção** em branco para imprimir, com dois leques: **Mostrar** (seções na tela) e **Gerar PDF** (seções na impressão, independente da tela) — `FichaSecoesLeque`.
 
