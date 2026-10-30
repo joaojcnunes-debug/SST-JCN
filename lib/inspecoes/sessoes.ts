@@ -103,34 +103,51 @@ export function resumirSessoes(sessoes: readonly SessaoDocumento[], agora: numbe
     pessoas.set(s.id_usuario, p);
   }
 
+  const espera = esperasDoCliente(ordem, agora, ate);
+  return {
+    trabalhadoMs,
+    aguardandoClienteMs: espera.intervalos.reduce((t, [de, a]) => t + (a - de), 0),
+    porPessoa: [...pessoas.values()].sort((a, b) => b.ms - a.ms),
+    aguardandoClienteAgora: espera.agora,
+    primeiraEm: ordem[0]?.inicio ?? null,
+  };
+}
+
+/**
+ * Os períodos de "aguardando cliente" (do fim da pausa até o próximo início no documento, ou até
+ * `ate`/agora), já juntando os que se sobrepõem — a linha do tempo do painel desenha estes.
+ */
+export function esperasDoCliente(
+  sessoes: readonly SessaoDocumento[],
+  agora: number,
+  ate?: number,
+): { intervalos: [number, number][]; agora: boolean } {
+  const ordem = [...sessoes].sort((a, b) => ms(a.inicio) - ms(b.inicio));
   const esperas: [number, number][] = [];
-  let aguardandoClienteAgora = false;
+  let aguardandoAgora = false;
   for (const s of ordem) {
     if (s.motivo_fim !== "AGUARDANDO_CLIENTE" || !s.fim) continue;
     const de = ms(s.fim);
     const volta = ordem.find((o) => ms(o.inicio) >= de);
     const fimEspera = volta ? ms(volta.inicio) : (ate ?? agora);
-    if (!volta && ate === undefined) aguardandoClienteAgora = true;
+    if (!volta && ate === undefined) aguardandoAgora = true;
     if (fimEspera > de) esperas.push([de, fimEspera]);
   }
   esperas.sort((a, b) => a[0] - b[0]);
-  let aguardandoClienteMs = 0;
-  let corrente: [number, number] | null = null;
+  const juntas: [number, number][] = [];
   for (const e of esperas) {
-    if (!corrente || e[0] > corrente[1]) {
-      if (corrente) aguardandoClienteMs += corrente[1] - corrente[0];
-      corrente = [e[0], e[1]];
-    } else corrente[1] = Math.max(corrente[1], e[1]);
+    const ultima = juntas[juntas.length - 1];
+    if (ultima && e[0] <= ultima[1]) ultima[1] = Math.max(ultima[1], e[1]);
+    else juntas.push([e[0], e[1]]);
   }
-  if (corrente) aguardandoClienteMs += corrente[1] - corrente[0];
+  return { intervalos: juntas, agora: aguardandoAgora };
+}
 
-  return {
-    trabalhadoMs,
-    aguardandoClienteMs,
-    porPessoa: [...pessoas.values()].sort((a, b) => b.ms - a.ms),
-    aguardandoClienteAgora,
-    primeiraEm: ordem[0]?.inicio ?? null,
-  };
+/** "01:42:07" — o cronômetro do painel (as horas passam de 24 se precisar). */
+export function fmtCronometro(totalMs: number): string {
+  const s = Math.max(0, Math.floor(totalMs / 1000));
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
 }
 
 /** A sessão correndo agora desta pessoa neste documento. */
