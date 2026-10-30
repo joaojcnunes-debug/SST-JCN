@@ -32,6 +32,8 @@ import { useInspecao, useSalvarElaboracao } from "@/lib/hooks/useInspecao";
 import { ehSupervisor, useCurrentUser } from "@/lib/hooks/useUsuario";
 import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
 import AguardandoInicio, { useAguardandoInicio } from "@/components/inspecoes/AguardandoInicio";
+import { ControleSessao, TotaisSessao } from "@/components/inspecoes/SessaoDocumento";
+import { useAgora, useIniciarSessao, useSessoesDocumentos } from "@/lib/hooks/useDocumentoSessoes";
 import EnviarRiscosSgg from "@/components/inspecoes/EnviarRiscosSgg";
 import { useAssociarUsuario, useInspecaoAssociados } from "@/lib/hooks/useInspecaoAssociados";
 import { situacaoDocumento } from "@/lib/inspecoes/documento";
@@ -264,12 +266,15 @@ export default function RelatorioChabraPage({ params }: Props) {
   }
 
   const { data: capitulosSst = [] } = useTextosPadrao("sst");
-  // 30/10: associado só abre o documento depois de Iniciar (supervisor/admin abrem direto).
+  // 30/10: associado só abre o documento com a própria sessão de tempo aberta (supervisor/admin abrem direto).
   const inicio = useAguardandoInicio(id, data?.inspecao.elaboracao_status);
+  const sessoesDoc = useSessoesDocumentos([id]);
+  const agora = useAgora();
+  const iniciarSessao = useIniciarSessao();
 
   if (isLoading || inicio.carregando) return <LoadingSkeleton rows={10} />;
   if (!data || !ctx) return null;
-  if (inicio.aguardando) return <AguardandoInicio idInspecao={id} empresa={empresa?.nome_empresa} />;
+  if (inicio.aguardando) return <AguardandoInicio idInspecao={id} empresa={empresa?.nome_empresa} jaTrabalhou={inicio.jaTrabalhou} />;
 
   const { inspecao, responsaveis, paeContatos } = data;
 
@@ -406,26 +411,44 @@ export default function RelatorioChabraPage({ params }: Props) {
                 {/* Mesma frase da coluna "Associados" da lista (lib/inspecoes/documento). */}
                 {situacaoDocumento(inspecao, associados.map((a) => a.nome), "longo")?.texto}
               </p>
+              <TotaisSessao
+                sessoes={sessoesDoc.data ?? []}
+                agora={agora}
+                ate={inspecao.elaboracao_concluida_em ? new Date(inspecao.elaboracao_concluida_em).getTime() : undefined}
+                detalhado
+              />
             </div>
           </div>
           {podeElaborar && (
             <div className="flex flex-wrap gap-2">
-              {(inspecao.elaboracao_status ?? "PENDENTE") === "PENDENTE" && (
+              {/* v311: o associado aponta o tempo (Iniciar/Retomar/Pausar) — iniciar já põe o documento em elaboração. */}
+              <ControleSessao
+                idInspecao={id}
+                sessoes={sessoesDoc.data ?? []}
+                idUsuario={user?.id_usuario}
+                agora={agora}
+                podeApontar={souAssociado && inspecao.elaboracao_status !== "CONCLUIDO"}
+              />
+              {!souAssociado && (inspecao.elaboracao_status ?? "PENDENTE") === "PENDENTE" && (
                 <button
                   type="button"
                   disabled={salvarElab.isPending || !user?.nome}
                   onClick={() => salvarElab.mutate(
                     { elaboracao_status: "EM_ELABORACAO", elaboracao_responsavel: user?.nome ?? null },
                     { onSuccess: () => {
-                      toast.success(souAssociado ? "Elaboração iniciada" : "Você assumiu a elaboração do documento");
-                      if (!souAssociado && user?.id_usuario && user?.nome) {
-                        associarSelf.mutate({ id_inspecao: id, id_usuario: user.id_usuario, nome: user.nome, created_by: user.nome });
+                      toast.success("Você assumiu a elaboração do documento");
+                      if (user?.id_usuario && user?.nome) {
+                        // Assumiu = associou-se: o tempo dele começa a contar junto (v311).
+                        associarSelf.mutate(
+                          { id_inspecao: id, id_usuario: user.id_usuario, nome: user.nome, created_by: user.nome },
+                          { onSuccess: () => iniciarSessao.mutate(id) },
+                        );
                       }
                     } },
                   )}
                   className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
                 >
-                  {souAssociado ? "Iniciar elaboração" : "Assumir elaboração (eu)"}
+                  Assumir elaboração (eu)
                 </button>
               )}
               {inspecao.elaboracao_status === "EM_ELABORACAO" && (inspecao.elaboracao_responsavel === user?.nome || ehSupervisor(user)) && (

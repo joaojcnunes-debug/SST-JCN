@@ -32,6 +32,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { useInspecao, type InspecaoFull } from "@/lib/hooks/useInspecao";
+import { useAguardandoInicio } from "@/components/inspecoes/AguardandoInicio";
 import { gravar } from "@/lib/offline/gravar";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
@@ -100,6 +101,9 @@ export default function InspecaoEditorPage({ params }: Props) {
   const currentUser = useCurrentUser();
 
   const { data, isLoading, error } = useInspecao(id);
+  // v311: o editor não bloqueia, mas com a sessão do associado aberta avisa a atividade
+  // (sem isso o tempo pausaria sozinho em 30 min enquanto ele edita aqui).
+  useAguardandoInicio(id, data?.inspecao?.elaboracao_status);
   // v259: só para o número da aba (1 = já tem AEP/AET nesta inspeção).
   const { data: aepDaInspecao } = useLaudoErgoDaInspecao("aep", id);
   const { data: aetDaInspecao } = useLaudoErgoDaInspecao("aet", id);
