@@ -52,9 +52,10 @@ export const CATALOGO: Novidade[] = [
       "Retomar e Pausar ficam na própria faixa. Logo abaixo aparecem os indicadores (trabalhado, você hoje, aguardando " +
       "cliente, sessões e pessoas). A linha do tempo, o tempo por pessoa e a lista das sessões ficam em Detalhes, que " +
       "abre e fecha. O botão de levar para o canto transforma o painel numa janelinha flutuante, que dá para arrastar, " +
-      "com o cronômetro e o Pausar. Ela também aparece sozinha quando o seu tempo está correndo e você rola o documento.",
+      "com o cronômetro e o Pausar. Ela também aparece sozinha quando o seu tempo está correndo e você rola o documento. " +
+      "Ao Liberar ou Concluir o documento, o cronômetro para na hora.",
     onde: "Relatório da inspeção (card Documento SGG)",
-    versoes: ["0.3.186", "0.3.187"],
+    versoes: ["0.3.186", "0.3.187", "0.3.188"],
   },
   {
     id: "documento-desfazer-conclusao",

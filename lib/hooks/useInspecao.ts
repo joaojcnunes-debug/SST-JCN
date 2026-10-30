@@ -5,6 +5,7 @@ import { contarPilulas, separarSelecao, type FiltroInspecao, type LinhaContagem 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
+import { CHAVE_SESSOES } from "@/lib/hooks/useDocumentoSessoes";
 import { filtroPeriodo } from "@/lib/inspecoes/periodo";
 import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoes";
 import { ehErroDeRede } from "@/lib/offline/rede";
@@ -211,6 +212,11 @@ export function useSalvarElaboracao(idInspecao: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
       qc.invalidateQueries({ queryKey: ["dashboard-documentos-adm"] });
+      // Concluir/Liberar fecham as sessões de tempo no banco (gatilho da v311): sem recarregar,
+      // o cronômetro do painel seguia correndo na tela até a próxima leitura (até 1 min).
+      for (const k of [CHAVE_SESSOES, "inspecoes-atribuidas", "inspecoes-lista", "inspecoes-counts"]) {
+        qc.invalidateQueries({ queryKey: [k] });
+      }
     },
   });
 }
