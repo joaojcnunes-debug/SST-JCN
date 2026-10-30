@@ -32,7 +32,7 @@ import { useInspecao, useSalvarElaboracao } from "@/lib/hooks/useInspecao";
 import { ehSupervisor, useCurrentUser } from "@/lib/hooks/useUsuario";
 import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
 import AguardandoInicio, { useAguardandoInicio } from "@/components/inspecoes/AguardandoInicio";
-import { ControleSessao, TotaisSessao } from "@/components/inspecoes/SessaoDocumento";
+import { ControleSessao, ListaSessoes, TotaisSessao } from "@/components/inspecoes/SessaoDocumento";
 import { useAgora, useIniciarSessao, useSessoesDocumentos } from "@/lib/hooks/useDocumentoSessoes";
 import EnviarRiscosSgg from "@/components/inspecoes/EnviarRiscosSgg";
 import { useAssociarUsuario, useInspecaoAssociados } from "@/lib/hooks/useInspecaoAssociados";
@@ -417,6 +417,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                 ate={inspecao.elaboracao_concluida_em ? new Date(inspecao.elaboracao_concluida_em).getTime() : undefined}
                 detalhado
               />
+              <ListaSessoes idInspecao={id} sessoes={sessoesDoc.data ?? []} agora={agora} podeCorrigir={ehSupervisor(user)} />
             </div>
           </div>
           {podeElaborar && (

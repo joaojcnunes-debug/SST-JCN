@@ -3,12 +3,18 @@
 // Apontamento de tempo do documento (v311, 30/10/2026): Iniciar/Retomar, o cronômetro da minha
 // sessão, Pausar com motivo e os totais (trabalhado, aguardando cliente, por pessoa).
 // Usado em Minhas inspeções (compacto) e no card "Documento (SGG)" do relatório.
+// v312: a lista das sessões e a correção pelo supervisor (com justificativa e histórico).
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Clock, Loader2, Pause, Play } from "lucide-react";
-import { useIniciarSessao, usePausarSessao } from "@/lib/hooks/useDocumentoSessoes";
+import { ChevronDown, ChevronRight, Clock, Loader2, Pause, Play } from "lucide-react";
+import Modal from "@/components/ui/Modal";
+import { useCorrecoesSessoes, useCorrigirSessao, useIniciarSessao, usePausarSessao } from "@/lib/hooks/useDocumentoSessoes";
 import {
   MOTIVOS_PAUSA,
+  ROTULO_MOTIVO,
+  duracao,
+  estaAberta,
+  fimEfetivo,
   fmtDuracao,
   minhaSessaoAberta,
   resumirSessoes,
@@ -104,6 +110,160 @@ function BotaoPausar({ idInspecao }: { idInspecao: string }) {
         </span>
       )}
     </span>
+  );
+}
+
+/** "2026-10-30T14:05" (horário local) para o <input type="datetime-local">. */
+function paraInput(iso: string): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+const dataHora = (iso: string) =>
+  new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+
+/**
+ * As sessões do documento, uma por linha (v312): quem, início, fim, duração, motivo e os selos
+ * "automática" e "corrigida". O supervisor corrige início/fim com justificativa — o antes/depois
+ * fica no histórico (documento_sessoes_correcoes).
+ */
+export function ListaSessoes({
+  idInspecao,
+  sessoes,
+  agora,
+  podeCorrigir,
+}: {
+  idInspecao: string;
+  sessoes: readonly SessaoDocumento[];
+  agora: number;
+  podeCorrigir: boolean;
+}) {
+  const [aberta, setAberta] = useState(false);
+  const [corrigindo, setCorrigindo] = useState<SessaoDocumento | null>(null);
+  const correcoes = useCorrecoesSessoes(idInspecao, aberta);
+  if (sessoes.length === 0) return null;
+  const ordem = [...sessoes].sort((a, b) => b.inicio.localeCompare(a.inicio));
+  return (
+    <div className="mt-2">
+      <button type="button" onClick={() => setAberta((v) => !v)} className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-verde-primary">
+        {aberta ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />} Sessões de trabalho ({sessoes.length})
+      </button>
+      {aberta && (
+        <div className="mt-1 overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-left text-[10px] uppercase tracking-wider text-gray-400">
+                <th className="py-1 pr-3">Pessoa</th>
+                <th className="py-1 pr-3">Início</th>
+                <th className="py-1 pr-3">Fim</th>
+                <th className="py-1 pr-3">Duração</th>
+                <th className="py-1 pr-3">Motivo</th>
+                {podeCorrigir && <th className="py-1" />}
+              </tr>
+            </thead>
+            <tbody>
+              {ordem.map((s) => {
+                const hist = (correcoes.data ?? []).filter((c) => c.id_sessao === s.id_sessao);
+                return (
+                  <tr key={s.id_sessao} className="border-t border-gray-50 align-top">
+                    <td className="py-1 pr-3 text-gray-700">{s.nome}</td>
+                    <td className="py-1 pr-3 whitespace-nowrap">{dataHora(s.inicio)}</td>
+                    <td className="py-1 pr-3 whitespace-nowrap">
+                      {s.fim ? dataHora(s.fim) : estaAberta(s, agora) ? <span className="font-medium text-emerald-700">correndo</span> : dataHora(s.ultima_atividade)}
+                    </td>
+                    <td className="py-1 pr-3 font-medium text-gray-700">{fmtDuracao(duracao(s, agora))}</td>
+                    <td className="py-1 pr-3 text-gray-500">
+                      {s.motivo_fim ? ROTULO_MOTIVO[s.motivo_fim] : "—"}
+                      {s.corrigida && (
+                        <span
+                          className="ml-1 rounded bg-amber-50 px-1 text-[10px] font-medium text-amber-700"
+                          title={hist.map((c) => `${dataHora(c.corrigido_em)} · ${c.corrigido_por}: ${c.justificativa}`).join("\n") || "Corrigida pelo supervisor"}
+                        >
+                          corrigida
+                        </span>
+                      )}
+                    </td>
+                    {podeCorrigir && (
+                      <td className="py-1 text-right">
+                        <button type="button" onClick={() => setCorrigindo(s)} className="text-[11px] text-gray-400 hover:text-verde-primary hover:underline">
+                          Corrigir
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {corrigindo && <CorrigirSessaoModal sessao={corrigindo} agora={agora} onClose={() => setCorrigindo(null)} />}
+    </div>
+  );
+}
+
+function CorrigirSessaoModal({ sessao, agora, onClose }: { sessao: SessaoDocumento; agora: number; onClose: () => void }) {
+  const corrigir = useCorrigirSessao();
+  const [inicio, setInicio] = useState(paraInput(sessao.inicio));
+  const [fim, setFim] = useState(paraInput(new Date(fimEfetivo(sessao, agora)).toISOString()));
+  const [justificativa, setJustificativa] = useState("");
+  const iniIso = inicio ? new Date(inicio).toISOString() : "";
+  const fimIso = fim ? new Date(fim).toISOString() : "";
+  const erro = !inicio || !fim
+    ? "Informe início e fim."
+    : fimIso < iniIso
+      ? "O fim vem antes do início."
+      : new Date(fim).getTime() > Date.now() + 60_000
+        ? "O fim não pode estar no futuro."
+        : justificativa.trim().length < 5
+          ? "Escreva a justificativa (5 letras ou mais)."
+          : null;
+  const campo = "mt-1 w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Corrigir sessão — ${sessao.nome}`}
+      footer={
+        <div className="flex w-full items-center justify-between gap-2">
+          <span className="text-xs text-amber-700">{erro}</span>
+          <div className="flex gap-2">
+            <button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              disabled={!!erro || corrigir.isPending}
+              onClick={() => corrigir.mutate({ idSessao: sessao.id_sessao, inicio: iniIso, fim: fimIso, justificativa: justificativa.trim() }, { onSuccess: onClose })}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-verde-accent disabled:opacity-50"
+            >
+              {corrigir.isPending && <Loader2 className="size-3.5 animate-spin" />} Salvar correção
+            </button>
+          </div>
+        </div>
+      }
+    >
+      <div className="space-y-3 text-sm">
+        <p className="text-xs text-gray-500">
+          Hoje: {dataHora(sessao.inicio)} → {sessao.fim ? dataHora(sessao.fim) : "correndo"} ({fmtDuracao(duracao(sessao, agora))}). Fim igual ao
+          início zera a sessão. O horário de antes fica no histórico.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-xs font-semibold text-gray-600">Início</span>
+            <input type="datetime-local" value={inicio} onChange={(e) => setInicio(e.target.value)} className={campo} />
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold text-gray-600">Fim</span>
+            <input type="datetime-local" value={fim} onChange={(e) => setFim(e.target.value)} className={campo} />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-xs font-semibold text-gray-600">Justificativa (obrigatória)</span>
+          <textarea value={justificativa} onChange={(e) => setJustificativa(e.target.value)} rows={3} placeholder="Ex.: esqueceu o cronômetro ligado no almoço" className={campo} />
+        </label>
+      </div>
+    </Modal>
   );
 }
 

@@ -41,6 +41,21 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "documento-tempo-correcao-indicadores",
+    data: "2026-10-30",
+    tipo: "novidade",
+    titulo: "Tempo nos documentos: correção pelo supervisor e indicadores no Dashboard",
+    texto:
+      "No relatório, o card Documento (SGG) lista as sessões de trabalho de cada pessoa. O supervisor corrige o início ou o fim " +
+      "de uma sessão (por exemplo, quando alguém esqueceu o cronômetro ligado), com justificativa obrigatória, e o horário " +
+      "anterior fica guardado. No Dashboard, a nova página Tempo nos documentos mostra quem está trabalhando agora, os " +
+      "documentos parados há 3 dias ou mais, as horas apontadas por mês e por pessoa e o tempo médio por complexidade dos " +
+      "documentos entregues, uma base para prever prazos.",
+    onde: "Relatório da inspeção (card Documento) e Dashboard › Situação por colaborador › Tempo nos documentos",
+    impacto: "Correção e página de indicadores só para supervisores e administradores.",
+    versoes: ["0.3.183"],
+  },
+  {
     id: "documento-apontamento-tempo",
     data: "2026-10-30",
     tipo: "novidade",

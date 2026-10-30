@@ -678,9 +678,17 @@ export default function DashboardPage() {
               documento pelos associados.
             </p>
           </div>
-          <Link href="/inspecoes/minhas" className="flex items-center gap-1 text-xs font-medium text-verde-primary transition hover:underline">
-            Minhas inspeções <ArrowRight className="size-3" />
-          </Link>
+          <div className="flex items-center gap-3">
+            {/* v0.3.183: horas apontadas nos documentos (sessões da v311) — só supervisão. */}
+            {supervisor && (
+              <Link href="/dashboard/tempo-documentos" className="flex items-center gap-1 text-xs font-medium text-verde-primary transition hover:underline">
+                Tempo nos documentos <ArrowRight className="size-3" />
+              </Link>
+            )}
+            <Link href="/inspecoes/minhas" className="flex items-center gap-1 text-xs font-medium text-verde-primary transition hover:underline">
+              Minhas inspeções <ArrowRight className="size-3" />
+            </Link>
+          </div>
         </div>
         <div className="glass reveal-up overflow-hidden rounded-2xl">
           {!colaboradores || loadingTec || unidade.carregando ? (

@@ -46,6 +46,19 @@ export interface SessaoDocumento {
   fim: string | null;
   motivo_fim: MotivoFim | null;
   fechada_auto: boolean;
+  /** v312: ajustada por um supervisor (o antes/depois fica em documento_sessoes_correcoes). */
+  corrigida?: boolean;
+}
+
+/** Correção de sessão pelo supervisor (documento_sessoes_correcoes, v312). */
+export interface CorrecaoSessao {
+  id_correcao: string;
+  id_sessao: string;
+  antes: { inicio: string; fim: string | null; motivo_fim: string | null };
+  depois: { inicio: string; fim: string | null; motivo_fim: string | null };
+  justificativa: string;
+  corrigido_por: string;
+  corrigido_em: string;
 }
 
 const ms = (iso: string) => new Date(iso).getTime();

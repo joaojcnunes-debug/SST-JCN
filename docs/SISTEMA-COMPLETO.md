@@ -375,6 +375,14 @@ OAuth (`/api/gestao/google/connect` → `callback`, refresh token cifrado com `G
     - **Minhas inspeções:** na aba associado, ▶ Iniciar/Retomar abre o documento já contando, e há o cronômetro com Pausar; a coluna Espera mostra "Trabalhado …" e "Aguardando cliente há …"; o topo mostra "Hoje: … apontadas".
     - **Relatório:** o card Documento (SGG) tem o mesmo controle e os totais por pessoa; "Assumir elaboração (eu)" associa e já inicia a sessão.
   - **Bloqueio (regra nova):** o associado (não supervisor) só abre o relatório e a Versão PGR com a **própria sessão correndo**. Sem ela, vê o aviso com Iniciar/Retomar (`lib/inspecoes/inicio.ts`). O documento entregue abre para leitura.
+- **0.3.183 (banco v312) — correção e indicadores:**
+  - **Correção pelo supervisor:** no card Documento (SGG), "Sessões de trabalho (N)" lista cada sessão (pessoa, início, fim, duração, motivo, selo "corrigida" com o histórico no título). O supervisor/admin corrige início e fim com justificativa (`ListaSessoes`/`CorrigirSessaoModal`, RPC `documento_sessao_corrigir`). O antes fica em `documento_sessoes_correcoes`.
+  - **Dashboard › Tempo nos documentos** (`/dashboard/tempo-documentos`): só supervisão. Link "Tempo nos documentos" em Situação por colaborador. Filtro de unidade. As contas estão em `lib/dashboard/tempo-documentos.ts`, testadas. A página mostra:
+    - **trabalhando agora:** quem está com o cronômetro correndo;
+    - **parados:** documentos em elaboração sem ninguém há 3 dias ou mais, com "aguardando cliente" marcado;
+    - **horas por mês:** últimos 12 meses; a sessão entra no mês em que começou; clicar num mês filtra as pessoas;
+    - **horas por pessoa:** com o número de documentos;
+    - **média por complexidade dos documentos entregues:** trabalhado, aguardando cliente e do início à entrega.
 - **0.3.181:** o botão **Nova Inspeção** aparece também em Minhas inspeções (ao lado de "Ver a fila de"), com a mesma regra da lista (`useCanCreate`, `pode_criar`), porque técnicos e associados trabalham dali.
 
 **Nova (`/inspecoes/nova`):** empresa + tipo: `BRANCO`, `REVISAO` (copia inspeção da mesma empresa), `COPIA_EMPRESA` (copia de outra empresa), `RENOVACAO` (registro administrativo; não conta nos gráficos). Revisão = maior revisão da empresa + 1. A cópia escolhe o que levar (setores, cargos, riscos, EPIs, responsáveis, fotos) e remapeia os IDs. "Quem vai a campo" cria `responsaveis` (com `id_usuario`): o técnico é **escolhido do cadastro** (busca por nome); offline, a aba Responsáveis aceita nome digitado. Nasce `EM_ANDAMENTO`. `/inspecoes/ficha` gera a **Ficha de Inspeção** em branco para imprimir, com dois leques: **Mostrar** (seções na tela) e **Gerar PDF** (seções na impressão, independente da tela) — `FichaSecoesLeque`.
