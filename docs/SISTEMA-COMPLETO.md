@@ -375,6 +375,7 @@ OAuth (`/api/gestao/google/connect` → `callback`, refresh token cifrado com `G
     - **Minhas inspeções:** na aba associado, ▶ Iniciar/Retomar abre o documento já contando, e há o cronômetro com Pausar; a coluna Espera mostra "Trabalhado …" e "Aguardando cliente há …"; o topo mostra "Hoje: … apontadas".
     - **Relatório:** o card Documento (SGG) tem o mesmo controle e os totais por pessoa; "Assumir elaboração (eu)" associa e já inicia a sessão.
   - **Bloqueio (regra nova):** o associado (não supervisor) só abre o relatório e a Versão PGR com a **própria sessão correndo**. Sem ela, vê o aviso com Iniciar/Retomar (`lib/inspecoes/inicio.ts`). O documento entregue abre para leitura.
+- **0.3.188 — Liberar/Concluir param o cronômetro na hora:** o banco já fechava as sessões (gatilho, motivo LIBERADO/CONCLUIDO), mas `useSalvarElaboracao` não recarregava as sessões, e o painel seguia "Seu tempo está correndo" por até 1 min. Agora ele recarrega as sessões e as listas de inspeções.
 - **0.3.187 — painel compacto e janelinha no canto:**
   - **Mais baixo:** faixa de `py-3` com cronômetro `text-2xl` e indicadores em uma linha. Linha do tempo, por pessoa e sessões ficam em **Detalhes**, que abre e fecha.
   - **"Levar para o canto"** (ícone na faixa): vira uma **janelinha flutuante** com:
