@@ -41,6 +41,21 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "documento-apontamento-tempo",
+    data: "2026-10-30",
+    tipo: "novidade",
+    titulo: "Documento: controle do tempo trabalhado (Iniciar, Pausar, Retomar)",
+    texto:
+      "O Iniciar do documento agora conta o tempo de trabalho de cada associado. Iniciar ou Retomar abre o documento com o " +
+      "cronômetro correndo, e Pausar pede o motivo: pausa, aguardando cliente, aguardando informação do técnico, outra " +
+      "prioridade ou fim do expediente. Com 30 minutos sem atividade, a sessão pausa sozinha. O tempo \"aguardando cliente\" " +
+      "aparece à parte e não entra no tempo trabalhado. Minhas inspeções mostra o trabalhado de cada documento e o total de " +
+      "hoje; o card Documento (SGG) mostra o tempo de cada pessoa. O associado abre o documento com o tempo contando.",
+    onde: "Minhas inspeções (aba Como associado) e o relatório da inspeção",
+    impacto: "Supervisores e administradores abrem o documento direto. Documento entregue abre para leitura.",
+    versoes: ["0.3.182"],
+  },
+  {
     id: "inspecoes-acoes-supervisor-iniciar",
     data: "2026-10-30",
     tipo: "melhoria",
