@@ -53,7 +53,7 @@ export const CATALOGO: Novidade[] = [
       "documentos entregues, uma base para prever prazos.",
     onde: "Relatório da inspeção (card Documento) e Dashboard › Situação por colaborador › Tempo nos documentos",
     impacto: "Correção e página de indicadores só para supervisores e administradores.",
-    versoes: ["0.3.183"],
+    versoes: ["0.3.183", "0.3.184"],
   },
   {
     id: "documento-apontamento-tempo",

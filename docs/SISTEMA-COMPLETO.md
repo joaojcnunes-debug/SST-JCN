@@ -375,6 +375,7 @@ OAuth (`/api/gestao/google/connect` → `callback`, refresh token cifrado com `G
     - **Minhas inspeções:** na aba associado, ▶ Iniciar/Retomar abre o documento já contando, e há o cronômetro com Pausar; a coluna Espera mostra "Trabalhado …" e "Aguardando cliente há …"; o topo mostra "Hoje: … apontadas".
     - **Relatório:** o card Documento (SGG) tem o mesmo controle e os totais por pessoa; "Assumir elaboração (eu)" associa e já inicia a sessão.
   - **Bloqueio (regra nova):** o associado (não supervisor) só abre o relatório e a Versão PGR com a **própria sessão correndo**. Sem ela, vê o aviso com Iniciar/Retomar (`lib/inspecoes/inicio.ts`). O documento entregue abre para leitura.
+- **0.3.184 (banco v313):** pausar ou concluir com uma sessão já parada há 30 min fecha essa sessão na última atividade (INATIVIDADE), sem contar até "agora".
 - **0.3.183 (banco v312) — correção e indicadores:**
   - **Correção pelo supervisor:** no card Documento (SGG), "Sessões de trabalho (N)" lista cada sessão (pessoa, início, fim, duração, motivo, selo "corrigida" com o histórico no título). O supervisor/admin corrige início e fim com justificativa (`ListaSessoes`/`CorrigirSessaoModal`, RPC `documento_sessao_corrigir`). O antes fica em `documento_sessoes_correcoes`.
   - **Dashboard › Tempo nos documentos** (`/dashboard/tempo-documentos`): só supervisão. Link "Tempo nos documentos" em Situação por colaborador. Filtro de unidade. As contas estão em `lib/dashboard/tempo-documentos.ts`, testadas. A página mostra:
