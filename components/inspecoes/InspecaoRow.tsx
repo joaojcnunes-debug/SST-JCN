@@ -21,6 +21,12 @@ const PILULA_DOC: Record<ChaveDocumento, { label: string; classe: string }> = {
   NINGUEM: { label: "Pendente", classe: "bg-gray-100 text-gray-500" },
 };
 
+/** Coluna Ações fixa à direita — o cabeçalho (app/(app)/inspecoes/page.tsx) usa a mesma, com o fundo dele. */
+export const ACOES_FIXAS = "sticky right-0 z-[1] px-3 py-3 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]";
+/** Fundo opaco da célula; no hover, o verde da linha (verde-light 25%) por cima do branco. */
+const FUNDO_ACOES =
+  "bg-white group-hover:bg-[linear-gradient(rgb(232_245_233/0.25),rgb(232_245_233/0.25))] dark:group-hover:bg-none";
+
 /** Os nomes de campo são outros que não só quem lançou? */
 function campoDiferente(insp: Inspecao): boolean {
   const campo = (insp.tecnicos_campo ?? "").trim();
@@ -51,31 +57,31 @@ export default function InspecaoRow({
   showEmpresa?: boolean;
 }) {
   return (
-    <tr className="border-b border-gray-50 transition-colors hover:bg-verde-light/25 last:border-b-0">
-      <td className="px-4 py-3 font-mono text-xs text-gray-400">
+    <tr className="group border-b border-gray-50 transition-colors hover:bg-verde-light/25 last:border-b-0">
+      <td className="px-3 py-3 font-mono text-xs text-gray-400">
         {insp.id_inspecao}
       </td>
       {showEmpresa && (
-        <td className="px-4 py-3 font-medium text-gray-800">
+        <td className="px-3 py-3 font-medium text-gray-800">
           {insp.empresas?.nome_empresa ?? "—"}
         </td>
       )}
-      <td className="px-4 py-3 text-center">
+      <td className="px-3 py-3 text-center">
         <span className="inline-flex size-6 items-center justify-center rounded-full bg-gray-100 text-xs font-semibold text-gray-600">
           {insp.revisao}
         </span>
       </td>
       {/* v308: a prioridade se edita AQUI; dentro da inspeção ela só aparece. */}
-      <td className="px-4 py-3">
+      <td className="px-3 py-3">
         <PrioridadeCelula id={insp.id_inspecao} valor={insp.prioridade} podeEditar={!!podeEditarPrioridade} />
         {/* 28/10: a calculada (quando passa a marcada), a espera e o prazo — mesma regra de quem edita. */}
         <PrioridadeCalculada insp={insp} podeEditarPrazo={!!podeEditarPrioridade} />
       </td>
       {/* v308 (JCN): complexidade — mesma mecânica e mesma regra de quem edita da prioridade. */}
-      <td className="px-4 py-3">
+      <td className="px-3 py-3">
         <ComplexidadeCelula id={insp.id_inspecao} valor={insp.complexidade} podeEditar={!!podeEditarPrioridade} />
       </td>
-      <td className="px-4 py-3 text-sm text-gray-600">
+      <td className="px-3 py-3 text-sm text-gray-600">
         {fmtData(insp.data_inspecao)}
         {/* Concluída entra no período pela data da conclusão (07/10) — sem
             mostrar essa data, a linha parecia estar no mês errado. */}
@@ -85,7 +91,7 @@ export default function InspecaoRow({
           </span>
         )}
       </td>
-      <td className="px-4 py-3 text-sm text-gray-700">
+      <td className="px-3 py-3 text-sm text-gray-700">
         <span className="inline-flex items-center gap-1.5">
           <span>
             {insp.responsavel ?? "—"}
@@ -110,7 +116,7 @@ export default function InspecaoRow({
       {/* Status antes de Associados (pedido dele, 22/09): a pílula fica mais
           perto do responsável e os avatares encostam nas Ações. O cabeçalho da
           lista (app/(app)/inspecoes/page.tsx) segue esta mesma ordem. */}
-      <td className="px-4 py-3">
+      <td className="px-3 py-3">
         <span className="inline-flex flex-wrap items-center gap-1">
           <StatusBadge status={insp.status} />
           {/* Renovação de documento (23/09): está na lista, mas não conta nos
@@ -140,7 +146,7 @@ export default function InspecaoRow({
           const doc = situacaoDocumento(insp, pessoas.map((p) => p.nome), "curto");
           return (
             <>
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
             <span className="inline-flex items-center gap-1.5">
             {pessoas.length === 0 ? (
               <span className="text-xs text-gray-300">—</span>
@@ -180,7 +186,7 @@ export default function InspecaoRow({
             </td>
             {/* Status dos associados em coluna própria (pedido dele, 21/10): antes
                 era a letrinha embaixo dos avatares. Entregue = Concluído. */}
-            <td className="px-4 py-3">
+            <td className="px-3 py-3">
               {!doc ? (
                 <span className="text-xs text-gray-300">—</span>
               ) : (
@@ -207,7 +213,10 @@ export default function InspecaoRow({
             </>
           );
         })()}
-      <td className="px-4 py-3">
+      {/* Ações presas à direita (30/10): com nome de empresa longo ou zoom no
+          navegador a tabela rola de lado, e os botões sumiam no fim da rolagem.
+          Fundo opaco para o conteúdo não passar por baixo. */}
+      <td className={`${ACOES_FIXAS} ${FUNDO_ACOES}`}>
         <div className="flex items-center justify-end gap-1">
           <Link
             href={`/inspecoes/${insp.id_inspecao}`}

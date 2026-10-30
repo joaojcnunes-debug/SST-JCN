@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "inspecoes-acoes-fixas",
+    data: "2026-10-30",
+    tipo: "melhoria",
+    titulo: "Inspeções: botões de ação sempre à vista na lista",
+    texto:
+      "Na lista de Inspeções, a coluna Ações (Editar, Relatório e Excluir) agora fica presa à direita. Com nome de empresa " +
+      "longo, zoom no navegador ou tela menor, a tabela rola de lado e os botões continuam à vista. As colunas ficaram um " +
+      "pouco mais próximas, e a tabela cabe sem rolagem em mais telas.",
+    onde: "Inspeções",
+    versoes: ["0.3.179"],
+  },
+  {
     id: "conciliacao-pdf-revisao",
     data: "2026-10-29",
     tipo: "melhoria",
