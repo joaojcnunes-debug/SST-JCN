@@ -565,6 +565,19 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
     - `documento_sessao_quem(id)` (interna): usuário ativo não Cliente que enxerga a empresa.
   - **Gatilho `trg_documento_sessoes_fechar_por_status`** (AFTER UPDATE OF elaboracao_status em `inspecoes`): concluir fecha as sessões abertas como CONCLUIDO; liberar, como LIBERADO.
   - Nenhum dado mudou. Rollback: `scripts/sql/v311_documento_sessoes_tempo_rollback.sql`.
+- **v312 — documento: correção de sessão pelo supervisor (30/10/2026):**
+  - **Coluna nova:** `documento_sessoes.corrigida` boolean.
+  - **Tabela `documento_sessoes_correcoes`:**
+    - id_correcao `DSC-`, id_sessao (sem FK), id_inspecao FK `inspecoes` cascade;
+    - antes/depois jsonb (inicio, fim, motivo_fim), justificativa (CHECK 5+ letras), corrigido_por (e-mail), corrigido_em;
+    - sem trava append-only, para não travar a exclusão definitiva da inspeção;
+    - sem escrita direta; RLS de leitura igual à das sessões; auditoria desligada (a tabela já é a trilha).
+  - **Função `documento_sessao_corrigir(id_sessao, inicio, fim, justificativa)`** (SECURITY DEFINER):
+    - só perfil Admin ou nível Aprovação/Admin que enxerga a empresa;
+    - fim ≥ início e não no futuro; sem sobrepor outra sessão da mesma pessoa;
+    - sessão aberta fecha como PAUSA; fim = início zera a sessão;
+    - grava o antes/depois e marca `corrigida`.
+  - Rollback: `scripts/sql/v312_documento_sessoes_correcao_rollback.sql`.
 - **v305 — acesso efetivo (28/10/2026):** `gestao_acessos_efetivos(p_email, p_id_quadro)` (SECURITY DEFINER, só gestor — 42501): para cada pessoa da Gestão × lista não pessoal, o nível de `gestao_resolver_nivel` e as `origens` (jsonb: tipo direto/equipe/gestor, equipe, recurso list/folder/space, nome do recurso, nível, restritivo), mais `gestao_membros.unidades`. Base das abas Por pessoa e Por lista de Membros e acessos. Só leitura. Rollback: `scripts/sql/v305_gestao_acessos_efetivos_rollback.sql`.
 - **v304 — níveis de acesso claros (28/10/2026):** `gestao_nivel` ganha `view_all` (vê todas as tarefas, só lê) e `comment_all` (vê todas e comenta). O nível tem dois eixos: o que faz (`gestao_nivel_ord`: ver 1 · comentar 2 · editar 3 · full 4) e o que vê (`gestao_nivel_ve_todas`: full, view_all, comment_all). `gestao_resolver_nivel`: na especificidade mais alta, os grants da pessoa e das equipes somam (maior capacidade; vê todas se algum vê); o restritivo é teto nos dois eixos. Com os 4 níveis antigos o resultado é o mesmo. `gestao_ve_tarefa` e `gestao_aviso_quadro_trg` usam "vê todas" em vez de `= 'full'`; `gestao_alterar_acesso` impede o membro comum de conceder qualquer nível "vê todas". Rollback: `scripts/sql/v304_gestao_niveis_claros_rollback.sql` (converte view_all→view e comment_all→comment).
 - **v303 — consolidação por empresa salva (27/10/2026):** `empresa_grupos.tipo` (GRUPO|CONSOLIDACAO) e `empresas_consolidacao text[]`; trigger que impede empresa de entrar numa CONSOLIDACAO pelo `id_grupo`; nome único por tipo; função `psico_consolidacao_membros(id)`. Ver `empresa_grupos`.
