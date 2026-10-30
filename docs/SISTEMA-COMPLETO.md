@@ -375,6 +375,19 @@ OAuth (`/api/gestao/google/connect` → `callback`, refresh token cifrado com `G
     - **Minhas inspeções:** na aba associado, ▶ Iniciar/Retomar abre o documento já contando, e há o cronômetro com Pausar; a coluna Espera mostra "Trabalhado …" e "Aguardando cliente há …"; o topo mostra "Hoje: … apontadas".
     - **Relatório:** o card Documento (SGG) tem o mesmo controle e os totais por pessoa; "Assumir elaboração (eu)" associa e já inicia a sessão.
   - **Bloqueio (regra nova):** o associado (não supervisor) só abre o relatório e a Versão PGR com a **própria sessão correndo**. Sem ela, vê o aviso com Iniciar/Retomar (`lib/inspecoes/inicio.ts`). O documento entregue abre para leitura.
+- **0.3.186 — painel de tempo:** o card Documento (SGG) do relatório ganhou o `PainelTempoDocumento` (`components/inspecoes/PainelTempoDocumento.tsx`), que mostra:
+  - **faixa colorida pela situação:**
+    - verde: o meu tempo correndo, com cronômetro HH:MM:SS que anda a cada segundo só enquanto há sessão aberta;
+    - azul: outra pessoa trabalhando;
+    - âmbar: aguardando cliente, com o tempo desde a pausa;
+    - cinza: pausado ou não iniciado;
+    - índigo: entregue, com o total trabalhado;
+    - Iniciar/Retomar ou Pausar com motivo, na própria faixa;
+  - **indicadores:** trabalhado, você hoje, aguardando cliente, sessões · pessoas;
+  - **linha do tempo:** do primeiro início até agora ou até a entrega; as sessões ficam na cor de cada pessoa e as esperas do cliente, em listras âmbar (`esperasDoCliente`, `fmtCronometro` em `lib/inspecoes/sessoes.ts`, testadas);
+  - barras por pessoa e a lista de sessões, com Corrigir.
+
+  O controle saiu do cabeçalho do card; Assumir, Concluir, Liberar, Desfazer e Reabrir continuam lá.
 - **0.3.185 (banco v314) — conclusão por engano:**
   - **Confirmação:** "Concluir (emitido e enviado)" pede confirmação antes (`confirmar`, `ConfirmHost` no relatório).
   - **Desfazer conclusão:** fica 10 min no card para **quem concluiu**, com "até HH:MM". O documento volta a Em elaboração, o tempo da pessoa é reaberto e, se era a primeira conclusão, ele deixa de contar como emitido no mês.

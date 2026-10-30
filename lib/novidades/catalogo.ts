@@ -41,6 +41,21 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "documento-painel-tempo",
+    data: "2026-10-30",
+    tipo: "melhoria",
+    titulo: "Documento: painel de tempo em destaque",
+    texto:
+      "O card Documento (SGG) do relatório ganhou um painel de tempo. Uma faixa colorida mostra a situação: verde com " +
+      "cronômetro em segundos quando o seu tempo está correndo, azul quando outra pessoa está trabalhando, âmbar quando " +
+      "está aguardando o cliente, cinza quando está pausado ou não iniciado, e índigo quando foi entregue. Iniciar, " +
+      "Retomar e Pausar ficam na própria faixa. Logo abaixo aparecem os indicadores (trabalhado, você hoje, aguardando " +
+      "cliente, sessões e pessoas), uma linha do tempo com as sessões de cada pessoa e as esperas do cliente, barras por " +
+      "pessoa e a lista das sessões.",
+    onde: "Relatório da inspeção (card Documento SGG)",
+    versoes: ["0.3.186"],
+  },
+  {
     id: "documento-desfazer-conclusao",
     data: "2026-10-30",
     tipo: "melhoria",

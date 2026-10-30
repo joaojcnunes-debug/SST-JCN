@@ -33,7 +33,7 @@ import { useInspecao, useSalvarElaboracao } from "@/lib/hooks/useInspecao";
 import { ehSupervisor, useCurrentUser } from "@/lib/hooks/useUsuario";
 import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
 import AguardandoInicio, { useAguardandoInicio } from "@/components/inspecoes/AguardandoInicio";
-import { ControleSessao, ListaSessoes, TotaisSessao } from "@/components/inspecoes/SessaoDocumento";
+import PainelTempoDocumento from "@/components/inspecoes/PainelTempoDocumento";
 import {
   MINUTOS_DESFAZER_CONCLUSAO,
   useAgora,
@@ -430,25 +430,10 @@ export default function RelatorioChabraPage({ params }: Props) {
                 {/* Mesma frase da coluna "Associados" da lista (lib/inspecoes/documento). */}
                 {situacaoDocumento(inspecao, associados.map((a) => a.nome), "longo")?.texto}
               </p>
-              <TotaisSessao
-                sessoes={sessoesDoc.data ?? []}
-                agora={agora}
-                ate={inspecao.elaboracao_concluida_em ? new Date(inspecao.elaboracao_concluida_em).getTime() : undefined}
-                detalhado
-              />
-              <ListaSessoes idInspecao={id} sessoes={sessoesDoc.data ?? []} agora={agora} podeCorrigir={ehSupervisor(user)} />
             </div>
           </div>
           {podeElaborar && (
             <div className="flex flex-wrap gap-2">
-              {/* v311: o associado aponta o tempo (Iniciar/Retomar/Pausar) — iniciar já põe o documento em elaboração. */}
-              <ControleSessao
-                idInspecao={id}
-                sessoes={sessoesDoc.data ?? []}
-                idUsuario={user?.id_usuario}
-                agora={agora}
-                podeApontar={souAssociado && inspecao.elaboracao_status !== "CONCLUIDO"}
-              />
               {!souAssociado && (inspecao.elaboracao_status ?? "PENDENTE") === "PENDENTE" && (
                 <button
                   type="button"
@@ -543,6 +528,19 @@ export default function RelatorioChabraPage({ params }: Props) {
             </div>
           )}
         </div>
+        {/* v0.3.186: o tempo do documento em destaque — situação, cronômetro, Iniciar/Pausar,
+            indicadores, linha do tempo, por pessoa e as sessões (v311–v314). */}
+        {podeElaborar && (
+          <PainelTempoDocumento
+            idInspecao={id}
+            sessoes={sessoesDoc.data ?? []}
+            idUsuario={user?.id_usuario}
+            podeApontar={souAssociado && inspecao.elaboracao_status !== "CONCLUIDO"}
+            podeCorrigir={ehSupervisor(user)}
+            concluidaEm={inspecao.elaboracao_concluida_em}
+            entregue={inspecao.elaboracao_status === "CONCLUIDO"}
+          />
+        )}
         {podeElaborar && (
           <AssociadosElaboracao
             idInspecao={id}

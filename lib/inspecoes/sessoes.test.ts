@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { estaAberta, fmtDuracao, minhaSessaoAberta, resumirSessoes, type SessaoDocumento } from "./sessoes";
+import { esperasDoCliente, estaAberta, fmtCronometro, fmtDuracao, minhaSessaoAberta, resumirSessoes, type SessaoDocumento } from "./sessoes";
 
 const H = 3_600_000;
 const M = 60_000;
@@ -50,4 +50,16 @@ test("minha sessão aberta e formato", () => {
   assert.equal(fmtDuracao(45 * M), "45min");
   assert.equal(fmtDuracao(H + 5 * M), "1h05");
   assert.equal(fmtDuracao(51 * H), "2d 3h");
+  assert.equal(fmtCronometro(H + 42 * M + 7_000), "01:42:07");
+  assert.equal(fmtCronometro(26 * H), "26:00:00");
+});
+
+test("esperas do cliente juntam as sobrepostas (a linha do tempo do painel)", () => {
+  const e = esperasDoCliente([
+    s({ id_sessao: "A", inicio: t(0), fim: t(H), motivo_fim: "AGUARDANDO_CLIENTE", ultima_atividade: t(H) }),
+    s({ id_sessao: "B", id_usuario: "U2", inicio: t(30 * M), fim: t(2 * H), motivo_fim: "AGUARDANDO_CLIENTE", ultima_atividade: t(2 * H) }),
+    s({ id_sessao: "C", inicio: t(5 * H), fim: t(6 * H), motivo_fim: "PAUSA", ultima_atividade: t(6 * H) }),
+  ], base + 10 * H);
+  assert.deepEqual(e.intervalos.map(([a, b]) => [(a - base) / H, (b - base) / H]), [[1, 5]]);
+  assert.equal(e.agora, false);
 });

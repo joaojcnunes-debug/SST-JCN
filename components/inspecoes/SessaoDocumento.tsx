@@ -68,7 +68,7 @@ export function ControleSessao({
   );
 }
 
-function BotaoPausar({ idInspecao }: { idInspecao: string }) {
+export function BotaoPausar({ idInspecao, destaque }: { idInspecao: string; destaque?: boolean }) {
   const pausar = usePausarSessao();
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLSpanElement>(null);
@@ -86,7 +86,12 @@ function BotaoPausar({ idInspecao }: { idInspecao: string }) {
         type="button"
         disabled={pausar.isPending}
         onClick={() => setAberto((v) => !v)}
-        className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        className={cn(
+          "inline-flex items-center gap-1 whitespace-nowrap font-medium disabled:opacity-50",
+          destaque
+            ? "rounded-lg bg-white/95 px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-white"
+            : "rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-50",
+        )}
       >
         {pausar.isPending ? <Loader2 className="size-3 animate-spin" /> : <Pause className="size-3" />} Pausar
         <ChevronDown className="size-3" />
