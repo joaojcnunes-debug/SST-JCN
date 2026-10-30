@@ -579,6 +579,16 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
     - grava o antes/depois e marca `corrigida`.
   - Rollback: `scripts/sql/v312_documento_sessoes_correcao_rollback.sql`.
 - **v313 — documento: pausar e concluir fecham antes as sessões paradas (30/10/2026):** `documento_sessao_pausar` e o gatilho `documento_sessoes_fechar_por_status_trg` chamam `documento_sessoes_fechar_inativas()` antes de fechar. Sem isso, pausar uma sessão já parada há 30 min ou mais (antes da rodada do pg_cron), ou concluir o documento com uma delas aberta, gravava o fim como "agora" e inflava o tempo. A sessão parada fecha como INATIVIDADE na última atividade, e o pausar devolve false. Nenhum dado mudou.
+- **v314 — documento: desfazer a conclusão por engano (30/10/2026):**
+  - **Coluna nova:** `inspecoes.elaboracao_concluida_por` (e-mail de quem concluiu). O gatilho `trg_inspecoes_elaboracao_concluida_por` (BEFORE UPDATE OF elaboracao_status) grava ao entrar em CONCLUIDO e limpa ao sair.
+  - **Função `documento_desfazer_conclusao(id)`** (SECURITY DEFINER):
+    - só quem concluiu, até 10 min depois;
+    - volta a EM_ELABORACAO com o mesmo responsável e limpa `elaboracao_concluida_em`;
+    - se esta conclusão foi a primeira, limpa `primeira_elaboracao_em/_por`, para o documento não contar como emitido no mês;
+    - reabre a sessão de tempo da pessoa fechada pela conclusão, se ela não abriu outra.
+  - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
+  - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
+  - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
 - **v305 — acesso efetivo (28/10/2026):** `gestao_acessos_efetivos(p_email, p_id_quadro)` (SECURITY DEFINER, só gestor — 42501): para cada pessoa da Gestão × lista não pessoal, o nível de `gestao_resolver_nivel` e as `origens` (jsonb: tipo direto/equipe/gestor, equipe, recurso list/folder/space, nome do recurso, nível, restritivo), mais `gestao_membros.unidades`. Base das abas Por pessoa e Por lista de Membros e acessos. Só leitura. Rollback: `scripts/sql/v305_gestao_acessos_efetivos_rollback.sql`.
 - **v304 — níveis de acesso claros (28/10/2026):** `gestao_nivel` ganha `view_all` (vê todas as tarefas, só lê) e `comment_all` (vê todas e comenta). O nível tem dois eixos: o que faz (`gestao_nivel_ord`: ver 1 · comentar 2 · editar 3 · full 4) e o que vê (`gestao_nivel_ve_todas`: full, view_all, comment_all). `gestao_resolver_nivel`: na especificidade mais alta, os grants da pessoa e das equipes somam (maior capacidade; vê todas se algum vê); o restritivo é teto nos dois eixos. Com os 4 níveis antigos o resultado é o mesmo. `gestao_ve_tarefa` e `gestao_aviso_quadro_trg` usam "vê todas" em vez de `= 'full'`; `gestao_alterar_acesso` impede o membro comum de conceder qualquer nível "vê todas". Rollback: `scripts/sql/v304_gestao_niveis_claros_rollback.sql` (converte view_all→view e comment_all→comment).
 - **v303 — consolidação por empresa salva (27/10/2026):** `empresa_grupos.tipo` (GRUPO|CONSOLIDACAO) e `empresas_consolidacao text[]`; trigger que impede empresa de entrar numa CONSOLIDACAO pelo `id_grupo`; nome único por tipo; função `psico_consolidacao_membros(id)`. Ver `empresa_grupos`.

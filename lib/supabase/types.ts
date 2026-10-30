@@ -694,6 +694,8 @@ export interface Inspecao {
   elaboracao_responsavel: string | null;
   elaboracao_status: "PENDENTE" | "EM_ELABORACAO" | "CONCLUIDO" | null;
   elaboracao_concluida_em: string | null;
+  /** v314 — e-mail de quem concluiu o documento (o Desfazer de 10 min); nulo fora de CONCLUIDO. */
+  elaboracao_concluida_por?: string | null;
   /** V154 — data real de conclusão da inspeção (carimbada ao concluir). */
   concluida_em: string | null;
   /** V281 (JCN; painel v283) — e-mail de quem concluiu (gatilho). Nulo antes da auditoria. */

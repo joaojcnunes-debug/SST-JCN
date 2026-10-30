@@ -20,6 +20,7 @@ import {
   BadgeCheck,
   Download,
   Loader2,
+  Undo2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { usePdfAssinado } from "@/lib/hooks/usePdfsGerados";
@@ -33,7 +34,14 @@ import { ehSupervisor, useCurrentUser } from "@/lib/hooks/useUsuario";
 import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
 import AguardandoInicio, { useAguardandoInicio } from "@/components/inspecoes/AguardandoInicio";
 import { ControleSessao, ListaSessoes, TotaisSessao } from "@/components/inspecoes/SessaoDocumento";
-import { useAgora, useIniciarSessao, useSessoesDocumentos } from "@/lib/hooks/useDocumentoSessoes";
+import {
+  MINUTOS_DESFAZER_CONCLUSAO,
+  useAgora,
+  useDesfazerConclusao,
+  useIniciarSessao,
+  useSessoesDocumentos,
+} from "@/lib/hooks/useDocumentoSessoes";
+import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import EnviarRiscosSgg from "@/components/inspecoes/EnviarRiscosSgg";
 import { useAssociarUsuario, useInspecaoAssociados } from "@/lib/hooks/useInspecaoAssociados";
 import { situacaoDocumento } from "@/lib/inspecoes/documento";
@@ -271,6 +279,7 @@ export default function RelatorioChabraPage({ params }: Props) {
   const sessoesDoc = useSessoesDocumentos([id]);
   const agora = useAgora();
   const iniciarSessao = useIniciarSessao();
+  const desfazer = useDesfazerConclusao();
 
   if (isLoading || inicio.carregando) return <LoadingSkeleton rows={10} />;
   if (!data || !ctx) return null;
@@ -350,6 +359,15 @@ export default function RelatorioChabraPage({ params }: Props) {
     ? blocosSst.filter((c) => (c.ordem ?? 0) >= ordemCorpoSst).map(renderBlocoSst)
     : null;
   const dataInspFmt = fmtData(inspecao.data_inspecao);
+  // v314: o Desfazer aparece para quem concluiu, por 10 min a partir da conclusão.
+  const concluidaMs = inspecao.elaboracao_concluida_em ? new Date(inspecao.elaboracao_concluida_em).getTime() : 0;
+  const limiteDesfazer = concluidaMs + MINUTOS_DESFAZER_CONCLUSAO * 60_000;
+  const podeDesfazer =
+    inspecao.elaboracao_status === "CONCLUIDO" &&
+    !!user?.email &&
+    inspecao.elaboracao_concluida_por === user.email.toLowerCase() &&
+    agora < limiteDesfazer;
+  const desfazerAte = new Date(limiteDesfazer).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <div className="space-y-4">
@@ -400,6 +418,7 @@ export default function RelatorioChabraPage({ params }: Props) {
         </div>
       </div>
 
+      <ConfirmHost />
       {/* Documento (SGG) — elaboração pelo ADM (não imprime) */}
       <div className="no-print rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -457,10 +476,20 @@ export default function RelatorioChabraPage({ params }: Props) {
                   <button
                     type="button"
                     disabled={salvarElab.isPending}
-                    onClick={() => salvarElab.mutate(
-                      { elaboracao_status: "CONCLUIDO", elaboracao_concluida_em: new Date().toISOString() },
-                      { onSuccess: () => toast.success("Documento concluído — enviado ao cliente") },
-                    )}
+                    onClick={async () => {
+                      // 30/10 (v314): confirmação antes — concluir conta como emitido e para o tempo de todos.
+                      const ok = await confirmar({
+                        title: "Concluir o documento?",
+                        description: `Ele passa a contar como emitido e enviado, e o tempo de quem está trabalhando nele para. Se for engano, você tem ${MINUTOS_DESFAZER_CONCLUSAO} minutos para desfazer; depois, só um supervisor reabre.`,
+                        confirmLabel: "Concluir",
+                        variant: "primary",
+                      });
+                      if (!ok) return;
+                      salvarElab.mutate(
+                        { elaboracao_status: "CONCLUIDO", elaboracao_concluida_em: new Date().toISOString() },
+                        { onSuccess: () => toast.success("Documento concluído — enviado ao cliente") },
+                      );
+                    }}
                     className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                   >
                     <BadgeCheck className="size-4" /> Concluir (emitido e enviado)
@@ -474,6 +503,19 @@ export default function RelatorioChabraPage({ params }: Props) {
                     Liberar
                   </button>
                 </>
+              )}
+              {/* v314: quem concluiu desfaz sozinho por 10 min (volta a Em elaboração e reabre o tempo). */}
+              {podeDesfazer && (
+                <button
+                  type="button"
+                  disabled={desfazer.isPending}
+                  onClick={() => desfazer.mutate(id)}
+                  title="Concluiu por engano? Volta para Em elaboração e o seu tempo continua"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {desfazer.isPending ? <Loader2 className="size-4 animate-spin" /> : <Undo2 className="size-4" />} Desfazer conclusão
+                  <span className="text-xs font-normal text-amber-700">(até {desfazerAte})</span>
+                </button>
               )}
               {inspecao.elaboracao_status === "CONCLUIDO" && ehSupervisor(user) && (
                 <button
