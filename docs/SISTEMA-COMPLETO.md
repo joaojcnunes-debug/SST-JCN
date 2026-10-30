@@ -375,6 +375,10 @@ OAuth (`/api/gestao/google/connect` → `callback`, refresh token cifrado com `G
     - **Minhas inspeções:** na aba associado, ▶ Iniciar/Retomar abre o documento já contando, e há o cronômetro com Pausar; a coluna Espera mostra "Trabalhado …" e "Aguardando cliente há …"; o topo mostra "Hoje: … apontadas".
     - **Relatório:** o card Documento (SGG) tem o mesmo controle e os totais por pessoa; "Assumir elaboração (eu)" associa e já inicia a sessão.
   - **Bloqueio (regra nova):** o associado (não supervisor) só abre o relatório e a Versão PGR com a **própria sessão correndo**. Sem ela, vê o aviso com Iniciar/Retomar (`lib/inspecoes/inicio.ts`). O documento entregue abre para leitura.
+- **0.3.185 (banco v314) — conclusão por engano:**
+  - **Confirmação:** "Concluir (emitido e enviado)" pede confirmação antes (`confirmar`, `ConfirmHost` no relatório).
+  - **Desfazer conclusão:** fica 10 min no card para **quem concluiu**, com "até HH:MM". O documento volta a Em elaboração, o tempo da pessoa é reaberto e, se era a primeira conclusão, ele deixa de contar como emitido no mês.
+  - **Depois dos 10 min:** só o Reabrir do supervisor, que não mexe na primeira conclusão.
 - **0.3.184 (banco v313):** pausar ou concluir com uma sessão já parada há 30 min fecha essa sessão na última atividade (INATIVIDADE), sem contar até "agora".
 - **0.3.183 (banco v312) — correção e indicadores:**
   - **Correção pelo supervisor:** no card Documento (SGG), "Sessões de trabalho (N)" lista cada sessão (pessoa, início, fim, duração, motivo, selo "corrigida" com o histórico no título). O supervisor/admin corrige início e fim com justificativa (`ListaSessoes`/`CorrigirSessaoModal`, RPC `documento_sessao_corrigir`). O antes fica em `documento_sessoes_correcoes`.

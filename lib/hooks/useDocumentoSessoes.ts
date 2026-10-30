@@ -128,6 +128,27 @@ export function usePausarSessao() {
   });
 }
 
+/** Minutos que quem concluiu o documento tem para desfazer sozinho (v314; depois, só o Reabrir do supervisor). */
+export const MINUTOS_DESFAZER_CONCLUSAO = 10;
+
+/** Quem concluiu o documento por engano desfaz em até 10 min: volta a Em elaboração e reabre o tempo (v314). */
+export function useDesfazerConclusao() {
+  const invalidar = useInvalidar();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (idInspecao: string) => {
+      const { error } = await sb().rpc("documento_desfazer_conclusao", { p_id_inspecao: idInspecao });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      invalidar();
+      qc.invalidateQueries({ queryKey: ["dashboard-documentos-adm"] });
+      toast.success("Conclusão desfeita — o documento voltou para Em elaboração");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 /** Histórico das correções das sessões de um documento (v312). */
 export function useCorrecoesSessoes(idInspecao: string, ativo: boolean) {
   return useQuery({

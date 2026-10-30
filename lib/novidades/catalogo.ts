@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "documento-desfazer-conclusao",
+    data: "2026-10-30",
+    tipo: "melhoria",
+    titulo: "Documento: confirmação ao concluir e Desfazer por 10 minutos",
+    texto:
+      "O botão Concluir do documento agora pede confirmação. Se mesmo assim o documento for concluído por engano, quem " +
+      "concluiu vê o botão Desfazer conclusão por 10 minutos: o documento volta para Em elaboração, o tempo de trabalho " +
+      "continua de onde parou e ele deixa de contar como emitido no mês. Depois dos 10 minutos, só um supervisor reabre.",
+    onde: "Relatório da inspeção (card Documento SGG)",
+    versoes: ["0.3.185"],
+  },
+  {
     id: "documento-tempo-correcao-indicadores",
     data: "2026-10-30",
     tipo: "novidade",
