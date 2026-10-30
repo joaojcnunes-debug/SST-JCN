@@ -68,7 +68,8 @@ export function ControleSessao({
   );
 }
 
-export function BotaoPausar({ idInspecao, destaque }: { idInspecao: string; destaque?: boolean }) {
+/** `variante`: "lista" (Minhas inspeções), "faixa" (painel do documento) ou "mini" (janelinha flutuante). */
+export function BotaoPausar({ idInspecao, variante = "lista" }: { idInspecao: string; variante?: "lista" | "faixa" | "mini" }) {
   const pausar = usePausarSessao();
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLSpanElement>(null);
@@ -88,9 +89,11 @@ export function BotaoPausar({ idInspecao, destaque }: { idInspecao: string; dest
         onClick={() => setAberto((v) => !v)}
         className={cn(
           "inline-flex items-center gap-1 whitespace-nowrap font-medium disabled:opacity-50",
-          destaque
-            ? "rounded-lg bg-white/95 px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-white"
-            : "rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-50",
+          variante === "faixa"
+            ? "rounded-lg bg-white/95 px-3 py-1.5 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-white"
+            : variante === "mini"
+              ? "rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-emerald-800 hover:bg-white"
+              : "rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-50",
         )}
       >
         {pausar.isPending ? <Loader2 className="size-3 animate-spin" /> : <Pause className="size-3" />} Pausar
