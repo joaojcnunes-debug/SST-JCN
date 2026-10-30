@@ -499,7 +499,9 @@ function InspecoesInner() {
                   <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Status</th>
                   <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">Associados</th>
                   <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400 whitespace-nowrap">Status Assoc.</th>
-                  <th className={cn(ACOES_FIXAS, "bg-gray-50 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400")}>Ações</th>
+                  {isAdmin && (
+                    <th className={cn(ACOES_FIXAS, "bg-gray-50 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-400")}>Ações</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -508,11 +510,14 @@ function InspecoesInner() {
                     key={i.id_inspecao}
                     insp={i}
                     associados={associadosMap?.get(i.id_inspecao) ?? []}
-                    onDelete={canDelete ? setConfirmDel : undefined}
+                    // 30/10: a lista é de consulta para técnicos e associados — as ações e a troca de
+                    // prioridade/complexidade são de supervisor/admin; o resto age em Minhas inspeções.
+                    comAcoes={isAdmin}
+                    onDelete={isAdmin && canDelete ? setConfirmDel : undefined}
                     onEditResponsavel={isAdmin ? setEditResp : undefined}
                     onEditAssociados={isAdmin ? setEditAssoc : undefined}
                     showEmpresa={!f.empresa}
-                    podeEditarPrioridade={canEdit}
+                    podeEditarPrioridade={isAdmin && canEdit}
                   />
                 ))}
               </tbody>

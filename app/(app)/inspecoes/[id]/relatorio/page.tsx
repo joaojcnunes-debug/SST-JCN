@@ -31,6 +31,7 @@ import { abrirMidiaAssinada } from "@/lib/storage/abrir-midia-assinada";
 import { useInspecao, useSalvarElaboracao } from "@/lib/hooks/useInspecao";
 import { ehSupervisor, useCurrentUser } from "@/lib/hooks/useUsuario";
 import AssociadosElaboracao from "@/components/inspecoes/AssociadosElaboracao";
+import AguardandoInicio, { useAguardandoInicio } from "@/components/inspecoes/AguardandoInicio";
 import EnviarRiscosSgg from "@/components/inspecoes/EnviarRiscosSgg";
 import { useAssociarUsuario, useInspecaoAssociados } from "@/lib/hooks/useInspecaoAssociados";
 import { situacaoDocumento } from "@/lib/inspecoes/documento";
@@ -263,9 +264,12 @@ export default function RelatorioChabraPage({ params }: Props) {
   }
 
   const { data: capitulosSst = [] } = useTextosPadrao("sst");
+  // 30/10: associado só abre o documento depois de Iniciar (supervisor/admin abrem direto).
+  const inicio = useAguardandoInicio(id, data?.inspecao.elaboracao_status);
 
-  if (isLoading) return <LoadingSkeleton rows={10} />;
+  if (isLoading || inicio.carregando) return <LoadingSkeleton rows={10} />;
   if (!data || !ctx) return null;
+  if (inicio.aguardando) return <AguardandoInicio idInspecao={id} empresa={empresa?.nome_empresa} />;
 
   const { inspecao, responsaveis, paeContatos } = data;
 
