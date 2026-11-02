@@ -180,7 +180,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
               disabled={!canEdit}
               onChange={(e) => setTitulo(e.target.value)}
               placeholder="Ex: Eng. de Segurança"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
             />
           </div>
           <div>
@@ -191,7 +191,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
               disabled={!canEdit}
               onChange={(e) => setRegistro(e.target.value)}
               placeholder={detectRegistroTipo(titulo).placeholder}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
             />
           </div>
         </div>
@@ -204,7 +204,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
             value={data}
             disabled={!canEdit}
             onChange={(e) => setData(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
           />
         </div>
 
@@ -216,7 +216,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
             value={validade}
             disabled={!canEdit}
             onChange={(e) => setValidade(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
           />
         </div>
 
@@ -228,7 +228,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
               <button
                 type="button"
                 onClick={() => setEndereco(enderecoCadastro)}
-                className="text-[11px] font-medium text-emerald-700 hover:underline"
+                className="text-[11px] font-medium text-sky-700 hover:underline"
               >
                 Puxar do cadastro
               </button>
@@ -240,7 +240,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
             disabled={!canEdit}
             onChange={(e) => setEndereco(e.target.value)}
             placeholder="Rua, nº, bairro — cidade/UF"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
           />
           {empresaFull && !enderecoCadastro ? (
             <p className="mt-1 text-[11px] text-amber-700">
@@ -265,7 +265,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
             onChange={(e) => setConclusao(e.target.value)}
             rows={5}
             placeholder="Conclusões gerais, encaminhamentos, observações..."
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm leading-relaxed focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm leading-relaxed focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
           />
         </div>
 
@@ -273,7 +273,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
           <button
             type="submit"
             disabled={salvar.isPending}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {salvar.isPending
               ? <><Loader2 className="size-4 animate-spin" /> Salvando…</>

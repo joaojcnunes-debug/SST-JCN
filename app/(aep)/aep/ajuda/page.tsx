@@ -563,8 +563,8 @@ function ConteudoAepAjudaPage() {
       {/* Cabeçalho */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100">
-            <HelpCircle className="size-6 text-emerald-700" />
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-sky-100">
+            <HelpCircle className="size-6 text-sky-700" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Guia Técnico da AEP</h1>
@@ -576,7 +576,7 @@ function ConteudoAepAjudaPage() {
         <button
           type="button"
           onClick={handlePrint}
-          className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+          className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 transition-colors"
         >
           <Printer className="size-4" />
           Exportar PDF
@@ -584,12 +584,12 @@ function ConteudoAepAjudaPage() {
       </div>
 
       {/* O que é */}
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+      <div className="rounded-xl border border-sky-200 bg-sky-50 p-5">
         <div className="flex items-start gap-3">
-          <BookOpen className="size-5 shrink-0 text-emerald-700 mt-0.5" />
+          <BookOpen className="size-5 shrink-0 text-sky-700 mt-0.5" />
           <div className="space-y-2">
-            <p className="font-semibold text-emerald-900">O que é a AEP e qual é o seu papel?</p>
-            <p className="text-sm text-emerald-800 leading-relaxed">
+            <p className="font-semibold text-sky-900">O que é a AEP e qual é o seu papel?</p>
+            <p className="text-sm text-sky-800 leading-relaxed">
               A <strong>Análise Ergonômica Preliminar</strong> é a triagem do GRO/PGR para riscos ergonômicos, prevista na NR-01.
               Ela mapeia todos os setores da empresa de forma qualitativa, identificando onde há fatores de risco e qual é o nível de
               urgência de cada um. Quando a AEP identifica riscos Altos ou Críticos, esses setores devem evoluir para a
@@ -706,15 +706,15 @@ function ConteudoAepAjudaPage() {
       {/* Parecer */}
       <div>
         <div className="mb-4 flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-100">
-            <FileText className="size-4 text-emerald-700" />
+          <div className="flex size-9 items-center justify-center rounded-lg bg-sky-100">
+            <FileText className="size-4 text-sky-700" />
           </div>
           <div>
             <h2 className="font-semibold text-gray-800">Como redigir o Parecer Técnico Preliminar</h2>
             <p className="text-xs text-gray-500">Campo por setor — o seu diagnóstico técnico das condições ergonômicas da área avaliada.</p>
           </div>
         </div>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 space-y-4">
+        <div className="rounded-xl border border-sky-200 bg-sky-50 p-5 space-y-4">
           <p className="text-sm text-gray-700 leading-relaxed">
             O Parecer é o texto onde você, como profissional, assume a responsabilidade técnica pelo diagnóstico. Não é um resumo dos
             checklists — é a sua interpretação do que foi encontrado. Um parecer fraco diz &ldquo;há riscos ergonômicos no setor&rdquo;. Um parecer
@@ -730,13 +730,13 @@ function ConteudoAepAjudaPage() {
               ["3. Contexto do setor",            "Número de trabalhadores expostos, turnos, regime de trabalho, tempo de exposição diário, e qualquer condicionante relevante (trabalhadores com restrições, gestantes, trabalhadores novos)."],
               ["4. Indicação de aprofundamento",  "Se identificou risco Alto ou Crítico, indique expressamente: 'Recomenda-se elaboração de AET completa para este posto'. Sem essa indicação, o gestor pode interpretar que a AEP é suficiente."],
             ].map(([t, d], i) => (
-              <div key={i} className="rounded-lg border border-emerald-200 bg-white p-3.5 flex items-start gap-3">
-                <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-emerald-500" />
+              <div key={i} className="rounded-lg border border-sky-200 bg-white p-3.5 flex items-start gap-3">
+                <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-sky-500" />
                 <div><p className="text-sm font-semibold text-gray-800">{t}</p><p className="text-xs text-gray-600 mt-0.5">{d}</p></div>
               </div>
             ))}
           </div>
-          <div className="rounded-lg border border-emerald-300 bg-white p-4">
+          <div className="rounded-lg border border-sky-300 bg-white p-4">
             <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Exemplo de parecer — Linha de Montagem</p>
             <p className="text-sm text-gray-700 leading-relaxed italic">
               &ldquo;O setor de Produção — Linha de Montagem 01 apresenta risco ergonômico de nível Alto. Foram identificados movimentos

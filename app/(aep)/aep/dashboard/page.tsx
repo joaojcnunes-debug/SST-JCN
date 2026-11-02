@@ -55,7 +55,7 @@ export default function AepDashboardPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {(
           [
-            { label: "Análises",      value: totalAnalises,               color: "bg-emerald-50 border-emerald-200 text-emerald-700", status: null },
+            { label: "Análises",      value: totalAnalises,               color: "bg-sky-50 border-sky-200 text-sky-700", status: null },
             { label: "Rascunho",      value: porStatus("RASCUNHO"),       color: "bg-gray-50 border-gray-200 text-gray-700",          status: "RASCUNHO" },
             { label: "Em andamento",  value: porStatus("EM_ANDAMENTO"),   color: "bg-yellow-50 border-yellow-200 text-yellow-700",    status: "EM_ANDAMENTO" },
             { label: "Concluídas",    value: porStatus("CONCLUIDO"),      color: "bg-blue-50 border-blue-200 text-blue-700",          status: "CONCLUIDO" },
@@ -72,7 +72,7 @@ export default function AepDashboardPage() {
               disabled={!clicavel}
               onClick={() => setFiltroStatus(status === null || filtroStatus === status ? null : (status as StatusAEP))}
               title={clicavel ? (status ? `Mostrar só "${label}"` : "Mostrar todas") : undefined}
-              className={`rounded-xl border p-4 text-center ${color} ${clicavel ? "cursor-pointer hover:shadow-sm" : "cursor-default"} ${ativo ? "ring-2 ring-offset-1 ring-emerald-500" : ""}`}
+              className={`rounded-xl border p-4 text-center ${color} ${clicavel ? "cursor-pointer hover:shadow-sm" : "cursor-default"} ${ativo ? "ring-2 ring-offset-1 ring-sky-500" : ""}`}
             >
               <p className="text-3xl font-bold">{value}</p>
               <p className="text-xs font-medium mt-1">{label}</p>
@@ -83,7 +83,7 @@ export default function AepDashboardPage() {
       {filtroStatus && (
         <p className="text-xs text-gray-500">
           Mostrando só as análises com status <strong>{STATUS_LABEL_AEP[filtroStatus]}</strong>.{" "}
-          <button type="button" onClick={() => setFiltroStatus(null)} className="font-semibold text-emerald-700 underline">
+          <button type="button" onClick={() => setFiltroStatus(null)} className="font-semibold text-sky-700 underline">
             Mostrar todas
           </button>
         </p>
@@ -110,7 +110,7 @@ export default function AepDashboardPage() {
           return (
             <div
               key={rel.id_relatorio}
-              className="group flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md"
+              className="group flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-sky-300 hover:shadow-md"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -155,7 +155,7 @@ export default function AepDashboardPage() {
               <div className="flex gap-2 mt-auto pt-2 border-t border-gray-100">
                 <button
                   onClick={() => router.push(`/aep/${rel.id_relatorio}/setores`)}
-                  className="flex-1 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                  className="flex-1 rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100"
                 >
                   Editar
                 </button>

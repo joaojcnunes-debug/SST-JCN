@@ -181,7 +181,7 @@ export default function SinalizacaoEmpresasLista({
           <Contador
             rotulo="Empresas sinalizadas"
             valor={empresas.length}
-            cor="border-emerald-200 bg-emerald-50 text-emerald-800"
+            cor="border-sky-200 bg-sky-50 text-sky-800"
             ativo={false}
             onClick={() => {
               setF(FILTROS_VAZIOS);

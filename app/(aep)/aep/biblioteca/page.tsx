@@ -64,7 +64,7 @@ function LinhaItem({ item, isAdmin, mostrarPadrao }: { item: ItemBiblioteca; isA
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           onBlur={salvarTexto}
-          className="min-w-0 flex-1 resize-y rounded border border-gray-200 px-2 py-1 text-sm focus:border-emerald-500 focus:outline-none"
+          className="min-w-0 flex-1 resize-y rounded border border-gray-200 px-2 py-1 text-sm focus:border-sky-500 focus:outline-none"
         />
       ) : (
         <p className="min-w-0 flex-1 py-1 text-sm text-gray-800">{item.texto}</p>
@@ -76,7 +76,7 @@ function LinhaItem({ item, isAdmin, mostrarPadrao }: { item: ItemBiblioteca; isA
             disabled={!isAdmin}
             checked={item.padrao}
             onChange={(e) => atualizar.mutate({ id: item.id_item, patch: { padrao: e.target.checked } })}
-            className="size-3 accent-emerald-600"
+            className="size-3 accent-sky-600"
           />
           padrão
         </label>
@@ -136,13 +136,13 @@ function ListaTopico({
             onChange={(e) => setNovo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), enviar())}
             placeholder={isAdmin ? `Incluir em ${ROTULO_TOPICO[topico].toLowerCase()}…` : `Sugerir opção de ${ROTULO_TOPICO[topico].toLowerCase()}…`}
-            className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:border-emerald-500 focus:outline-none"
+            className="min-w-0 flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:border-sky-500 focus:outline-none"
           />
           <button
             type="button"
             disabled={incluir.isPending || !novo.trim()}
             onClick={enviar}
-            className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded border border-sky-300 bg-sky-50 px-2.5 text-xs font-semibold text-sky-700 hover:bg-sky-100 disabled:opacity-50"
           >
             {incluir.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
             {isAdmin ? "Incluir" : "Sugerir"}
@@ -238,7 +238,7 @@ function Sugestoes({ b, isAdmin }: { b: Biblioteca; isAdmin: boolean }) {
                   type="button"
                   disabled={atualizar.isPending}
                   onClick={() => atualizar.mutate({ id: i.id_item, patch: { status: "ativo" } })}
-                  className="inline-flex items-center gap-1 rounded bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                  className="inline-flex items-center gap-1 rounded bg-sky-600 px-2 py-1 text-xs font-semibold text-white hover:bg-sky-700"
                 >
                   <Check className="size-3.5" /> Aprovar
                 </button>
@@ -277,7 +277,7 @@ export default function BibliotecaPsiPage() {
     <div className="w-full space-y-4 p-4 sm:p-6">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-          <BookMarked className="size-5 text-emerald-600" /> Biblioteca psicossocial
+          <BookMarked className="size-5 text-sky-600" /> Biblioteca psicossocial
         </h1>
         <p className="mt-1 max-w-4xl text-sm text-gray-500">
           Base de opções do inventário de risco da AEP: em cada tópico de cada fator, o técnico marca as opções daqui e
