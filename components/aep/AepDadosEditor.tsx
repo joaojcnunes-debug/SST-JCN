@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { useEffect, useState } from "react";
@@ -91,6 +92,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
           <h1 className="text-xl font-bold text-gray-900">Dados da Análise</h1>
           <p className="text-sm text-gray-500">{empresa?.nome_empresa ?? "—"}</p>
         </div>
+        <BotaoHistoricoDocumento docTabela="aep_relatorios" docId={idRelatorio} className="ml-auto" />
       </div>
 
       {/* Levar para o campo — tela de entrada da análise. A coleta acontece na

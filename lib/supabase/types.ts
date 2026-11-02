@@ -2499,6 +2499,9 @@ export interface AuditoriaEvento {
   campos_alterados: string[];
   antes: Record<string, unknown> | null;
   depois: Record<string, unknown> | null;
+  /** v259: documento dono do registro (a inspeção de um risco, o AET de uma ação…). NULL fora dos 13 documentos. */
+  doc_tabela?: string | null;
+  doc_id?: string | null;
 }
 
 export interface AuditoriaTabela {

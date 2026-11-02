@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { useEffect, useState } from "react";
@@ -401,6 +402,8 @@ export default function EditorInvestigacaoPage() {
             <p className="text-xs text-gray-500">{id}</p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+        <BotaoHistoricoDocumento docTabela="investigacoes_acidente" docId={id} />
         {!ro && (
           <button
             type="button"
@@ -412,6 +415,7 @@ export default function EditorInvestigacaoPage() {
             {salvando ? "Enviando…" : dirty ? "Salvar" : "Salvo"}
           </button>
         )}
+        </div>
       </div>
 
       {/* 1. Dados gerais */}

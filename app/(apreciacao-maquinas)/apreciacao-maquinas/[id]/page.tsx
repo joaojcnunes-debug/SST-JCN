@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { useEffect, useMemo, useState } from "react";
@@ -528,6 +529,7 @@ export default function DetalheApreciacaoPage() {
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
         <div className="flex items-center gap-2">
+          <BotaoHistoricoDocumento docTabela="apreciacoes_maquinas" docId={id} />
           <span
             className={`rounded-full px-3 py-1 text-xs font-bold ${
               finalizada

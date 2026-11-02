@@ -254,6 +254,12 @@ Lista `pdfs_gerados` (status `gerado`/`congelado`, versão, sha256, arquivo no b
 - Legado: `document_audit_logs` (histórico por documento; assinatura de PDF grava `assinou_pdf`).
 - Tela com filtros (período, e-mail, módulo, ação, empresa, tabela, registro, campo, texto) e paginação por cursor.
 
+**0.3.193 (do Painel SST, banco v316):**
+- **Botão Histórico** (`components/auditoria/BotaoHistoricoDocumento.tsx`), nos 13 documentos com tela própria: inspeção, empresa, AEP, AET, DRPS, QPS, Conformidade, Não conformidade, Apreciação NR-12, Químicos, Investigação, Equipamento e Veículo.
+  - Mostra a linha do tempo do documento e dos itens dele, com o antes e o depois de cada campo (`DetalheEvento`, que a Auditoria também usa).
+  - Vê quem consegue abrir o documento.
+- **Exportar XLSX** na Auditoria (`lib/auditoria/exportar-xlsx.ts`): leva todos os eventos dos filtros, até 20.000, nas abas Eventos e Campos alterados.
+
 ### 4.7 Presença (`/presenca`)
 Ping a cada 60 s (aba visível, atividade nos últimos 5 min, online, uma aba por vez, exceto Cliente) → `presenca_ping` grava blocos de 5 min em `presenca_pings`. Ativo ≤ 5 min, ausente ≤ 30 min, fora > 30 min. Admin pode encerrar a sessão de alguém (`presenca_encerrar_sessao`). Retenção 180 dias (limpeza disparada pelo navegador do Admin).
 

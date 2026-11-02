@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { use, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
@@ -130,6 +131,7 @@ export default function EmpresaDetalhePage({ params }: Props) {
             >
               <ChartBar className="size-3.5" /> Consolidado
             </Link>
+            <BotaoHistoricoDocumento docTabela="empresas" docId={empresa.id_empresa} className="px-3 py-1.5 text-xs [&_svg]:size-3.5" />
             {canEdit && (
               <button
                 type="button"
