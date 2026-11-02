@@ -267,8 +267,8 @@ function ConteudoAjudaRelatorioConformidade() {
         {/* Cabeçalho */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-4">
-            <div className="shrink-0 rounded-xl bg-emerald-100 p-3">
-              <ShieldCheck className="size-7 text-emerald-700" />
+            <div className="shrink-0 rounded-xl bg-sky-100 p-3">
+              <ShieldCheck className="size-7 text-sky-700" />
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -288,7 +288,7 @@ function ConteudoAjudaRelatorioConformidade() {
           <button
             type="button"
             onClick={handlePrint}
-            className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+            className="print:hidden shrink-0 flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 transition-colors"
           >
             <Printer className="size-4" />
             Exportar PDF
@@ -296,12 +296,12 @@ function ConteudoAjudaRelatorioConformidade() {
         </div>
 
         {/* Box "O que é" */}
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-4 space-y-2">
+        <div className="rounded-xl border border-sky-200 bg-sky-50 px-5 py-4 space-y-2">
           <div className="flex items-center gap-2">
-            <Info className="size-4 text-emerald-700 shrink-0" />
-            <p className="text-sm font-bold text-emerald-800">O que é o Relatório de Conformidade?</p>
+            <Info className="size-4 text-sky-700 shrink-0" />
+            <p className="text-sm font-bold text-sky-800">O que é o Relatório de Conformidade?</p>
           </div>
-          <p className="text-sm text-emerald-900 leading-relaxed">
+          <p className="text-sm text-sky-900 leading-relaxed">
             O Relatório de Conformidade é o instrumento de auditoria que verifica a adequação da empresa
             às Normas Regulamentadoras aplicáveis. Cada item inspecionado é classificado como{" "}
             <span className="font-semibold">Conforme</span>,{" "}
@@ -316,7 +316,7 @@ function ConteudoAjudaRelatorioConformidade() {
         {/* Fluxo de trabalho */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
-            <ListChecks className="size-5 text-emerald-600" />
+            <ListChecks className="size-5 text-sky-600" />
             <h2 className="text-base font-bold text-gray-900">Fluxo de trabalho</h2>
           </div>
           <div className="space-y-3">
@@ -369,7 +369,7 @@ function ConteudoAjudaRelatorioConformidade() {
         {/* Seções expandíveis */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
-            <BookOpen className="size-5 text-emerald-600" />
+            <BookOpen className="size-5 text-sky-600" />
             <h2 className="text-base font-bold text-gray-900">Conceitos e critérios técnicos</h2>
           </div>
           <div className="space-y-2">
@@ -382,13 +382,13 @@ function ConteudoAjudaRelatorioConformidade() {
         {/* Boas práticas */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
-            <Star className="size-5 text-emerald-600" />
+            <Star className="size-5 text-sky-600" />
             <h2 className="text-base font-bold text-gray-900">Boas práticas de auditoria</h2>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white overflow-hidden divide-y divide-gray-50">
             {BOAS_PRATICAS.map((item, i) => (
               <div key={i} className="flex items-start gap-3 px-4 py-3">
-                <Lightbulb className="size-4 text-emerald-500 shrink-0 mt-0.5" />
+                <Lightbulb className="size-4 text-sky-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-gray-700 leading-relaxed">{item}</p>
               </div>
             ))}
@@ -397,7 +397,7 @@ function ConteudoAjudaRelatorioConformidade() {
 
         {/* Rodapé informativo */}
         <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 flex items-start gap-3">
-          <ShieldCheck className="size-5 text-emerald-500 shrink-0 mt-0.5" />
+          <ShieldCheck className="size-5 text-sky-500 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="text-xs font-semibold text-gray-800">
               O relatório é evidência técnica e legal

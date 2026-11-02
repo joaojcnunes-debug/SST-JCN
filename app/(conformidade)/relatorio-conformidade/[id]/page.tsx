@@ -266,7 +266,7 @@ export default function DetalheConformidadePage({
               type="button"
               onClick={handleFinalizar}
               disabled={atualizarRelatorio.isPending}
-              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50"
             >
               <ShieldCheck className="size-4" /> Finalizar
             </button>
