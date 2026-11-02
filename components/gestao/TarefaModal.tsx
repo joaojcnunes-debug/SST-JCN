@@ -15,7 +15,7 @@ import {
   useSubtarefas, useSalvarSubtarefas, useAbrirSubtarefa, useTituloTarefa,
   useAddComentario, useExcluirComentario,
   useDependencias, useAddDependencia, useExcluirDependencia,
-  useUsuarios, gerarIaGestao, useRegistrarAtividade,
+  useUsuarios, gerarIaGestao, useRegistrarAtividade, useCamposDeOrigem,
   PRIORIDADES,
   type GestaoTarefa, type StatusTarefa, type PrioridadeTarefa, type Subtarefa, type GestaoSubtarefa, type GestaoStatus, type GestaoCampo, type GestaoVinculado,
 } from "@/lib/hooks/useGestao";
@@ -30,6 +30,25 @@ import { confirmar } from "@/components/ui/confirm";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 import { proximaGeracao } from "@/lib/gestao/recorrencia";
 import { useMeuQuadro } from "@/lib/hooks/useGestaoAcesso";
+
+/** Valor de um campo do cartão de origem (v315 = Painel v325): lista vira etiquetas; o resto, texto. */
+function ValorOrigem({ valor }: { valor: unknown }) {
+  if (Array.isArray(valor)) {
+    if (!valor.length) return <span className="text-sm text-gray-300">—</span>;
+    return (
+      <div className="flex flex-wrap gap-1">
+        {valor.map((v, i) => (
+          <span key={i} className="rounded-full bg-verde-light px-2 py-0.5 text-xs text-gray-800">{String(v)}</span>
+        ))}
+      </div>
+    );
+  }
+  if (typeof valor === "boolean") return <span className="text-sm text-gray-800">{valor ? "Sim" : "Não"}</span>;
+  if (typeof valor === "string" && /^\d{4}-\d{2}-\d{2}/.test(valor)) {
+    return <span className="text-sm text-gray-800">{new Date(valor.length === 10 ? valor + "T12:00:00" : valor).toLocaleDateString("pt-BR")}</span>;
+  }
+  return <span className="whitespace-pre-wrap text-sm text-gray-800">{valor == null || valor === "" ? "—" : String(valor)}</span>;
+}
 
 function Secao({ titulo, badge, defaultOpen = false, children }: { titulo: string; badge?: number; defaultOpen?: boolean; children: React.ReactNode }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -108,6 +127,8 @@ export default function TarefaModal({
     if (tarefa) qc.invalidateQueries({ queryKey: ["gestao-tarefa-timeline", tarefa.id_tarefa] });
   };
   const { data: deps } = useDependencias(tarefa?.id_tarefa);
+  // v315 (Painel v325): campos que vieram de outro quadro — só leitura.
+  const { data: camposOrigem = [] } = useCamposDeOrigem(tarefa?.id_tarefa);
   const addDep = useAddDependencia();
   const excluirDep = useExcluirDependencia();
   const tarefaMap = useMemo(() => new Map(tarefasQuadro.map((t) => [t.id_tarefa, t])), [tarefasQuadro]);
@@ -636,14 +657,30 @@ export default function TarefaModal({
         )}
 
         {campos.length > 0 && (
-          <Secao titulo="Campos personalizados">
+          // Tarefa nova já abre os campos (ex.: Produtos, que as automações leem).
+          <Secao titulo="Campos personalizados" defaultOpen={!tarefa}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {campos.map((c) => (
-                <div key={c.id}>
+                <div key={c.id} className={c.tipo === "multi" ? "sm:col-span-2" : undefined}>
                   <label className="mb-1 block text-[11px] text-gray-500">{c.nome}</label>
                   <CampoInput campo={c} value={valoresCampos[c.id]} onChange={(v) => setValoresCampos((s) => ({ ...s, [c.id]: v }))} disabled={ro} />
                 </div>
               ))}
+            </div>
+          </Secao>
+        )}
+
+        {camposOrigem.length > 0 && (
+          // v315 (Painel v325): o roteamento copia os campos do cartão de origem; aqui eles só aparecem (quem muda é o quadro de origem).
+          <Secao titulo={`Do ${[...new Set(camposOrigem.map((c) => c.quadro))].join(" / ")}`} defaultOpen>
+            <div className="space-y-2">
+              {camposOrigem.map((c) => (
+                <div key={c.id}>
+                  <p className="mb-1 text-[11px] text-gray-500">{c.nome}</p>
+                  <ValorOrigem valor={c.valor} />
+                </div>
+              ))}
+              <p className="text-[11px] text-gray-400">Só leitura — vem do cartão de origem.</p>
             </div>
           </Secao>
         )}

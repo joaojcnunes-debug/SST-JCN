@@ -1,13 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, MapPin, UserPlus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2, MapPin, Trash2, UserMinus, UserPlus } from "lucide-react";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 import { useAcessosEfetivos } from "@/lib/hooks/useGestaoAcesso";
-import { chaveRecurso, descreverOrigem, origensComEfeito, type NoEspaco } from "@/lib/gestao/acessos";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { chaveRecurso, descreverOrigem, origensComEfeito, type NoEspaco, type TipoRecurso } from "@/lib/gestao/acessos";
 import { rotuloNivel, nivelVeTodas } from "@/lib/gestao/niveis";
 import { cn } from "@/lib/utils";
+import BuscaUnica, { type OpcaoBusca } from "./BuscaUnica";
+import TirarDaListaDialog, { type AlvoTirar } from "./TirarDaListaDialog";
 import type { DadosAcessos } from "./useDadosAcessos";
+import type { Passo } from "./useGravarAcessos";
 
 const COR_EFEITO = {
   vale: "bg-emerald-50 text-emerald-800 ring-emerald-200",
@@ -35,44 +40,135 @@ function listasDaArvore(arv: NoEspaco[]) {
  * ou por lista (quem acessa — o "Compartilhar" da lista abre aqui). Cada linha mostra o nível
  * efetivo e as regras que levaram a ele, marcando a que manda, a que é teto e a que ficou sem
  * efeito por haver outra mais específica.
+ * v0.3.851: busca no lugar do select; "Tirar desta lista" em cada linha e "Tirar da Gestão" na pessoa.
  */
 export default function AbaEfetivo({
   d,
   modo,
   quadroInicial,
   onDarAcesso,
+  pedirMotivo,
+  executar,
+  gravando,
 }: {
   d: DadosAcessos;
   modo: "pessoa" | "lista";
   quadroInicial?: string | null;
   onDarAcesso: (idQuadro: string) => void;
+  pedirMotivo: (titulo: string, resumo?: string) => Promise<string | null>;
+  executar: (passos: Passo[], motivo: string, sucesso: string) => Promise<boolean>;
+  gravando: boolean;
 }) {
   const [email, setEmail] = useState("");
   const [quadro, setQuadro] = useState(quadroInicial ?? "");
+  const [perfil, setPerfil] = useState("");
+  const [tirar, setTirar] = useState<AlvoTirar | null>(null);
   const listas = useMemo(() => listasDaArvore(d.arvore), [d.arvore]);
   const caminhoLista = useMemo(() => new Map(listas.map((l) => [l.id, l.caminho])), [listas]);
   const q = useAcessosEfetivos(modo === "pessoa" ? { email } : { idQuadro: quadro });
   const linhas = q.data ?? [];
   const unidades = linhas[0]?.unidades;
 
+  const perfis = useMemo(() => [...new Set(d.usuarios.map((u) => u.perfil).filter(Boolean))].sort(), [d.usuarios]);
+  const opcoesPessoa = useMemo<OpcaoBusca[]>(
+    () =>
+      d.usuarios
+        .filter((u) => !perfil || u.perfil === perfil)
+        .map((u) => {
+          const admin = u.perfil === "Admin";
+          const fora = !admin && !d.membrosAtivos.has(u.email.toLowerCase());
+          return {
+            id: u.email,
+            titulo: u.nome,
+            sub: u.email,
+            marca: admin ? "Admin" : fora ? "fora da Gestão" : undefined,
+            marcaCls: fora ? "bg-gray-100 text-gray-500" : "bg-verde-light text-verde-primary",
+          };
+        }),
+    [d.usuarios, d.membrosAtivos, perfil],
+  );
+  const opcoesLista = useMemo<OpcaoBusca[]>(() => listas.map((l) => ({ id: l.id, titulo: l.caminho })), [listas]);
+
+  // ── Tirar da Gestão (por pessoa): sai das equipes, perde os acessos diretos e fica inativa no
+  // roster (mantém o papel, para reativar igual). A conta do painel não muda. Perfil Admin vê tudo
+  // pelo perfil, então não há o que tirar aqui.
+  const papel = email ? d.papelPorEmail.get(email.toLowerCase()) : undefined;
+  const podeTirarDaGestao = !!email && !!papel && d.perfilPorEmail.get(email.toLowerCase()) !== "Admin";
+  const responsavelEm = useQuery({
+    queryKey: ["gestao-acessos", "responsavel-em", email],
+    enabled: podeTirarDaGestao,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { count, error } = await sb
+        .from("gestao_tarefa_vinculados")
+        .select("id", { count: "exact", head: true })
+        .eq("usuario_email", email.toLowerCase())
+        .eq("tipo", "responsavel");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
+  async function tirarDaGestao() {
+    if (!podeTirarDaGestao || !papel) return;
+    const k = email.toLowerCase();
+    const nome = d.nomePorEmail.get(k) ?? email;
+    const equipes = d.equipeMembros.filter((m) => m.usuario_email.toLowerCase() === k).map((m) => m.id_equipe);
+    const diretos = d.acessos.filter(
+      (a) => !a.id_equipe && (a.usuario_email ?? "").toLowerCase() === k && a.recurso_tipo && a.recurso_tipo !== "task" && a.recurso_id,
+    );
+    const nTarefas = responsavelEm.data ?? 0;
+    const motivo = await pedirMotivo(
+      "Tirar da Gestão",
+      `${nome} deixa de ver a Gestão: sai de ${equipes.length} equipe(s)` +
+        (equipes.length ? ` (${equipes.map((i) => d.nomeEquipe.get(i) ?? "?").join(", ")})` : "") +
+        ` e perde ${diretos.length} acesso(s) direto(s). A conta do painel continua.` +
+        (nTarefas ? ` Atenção: é responsável em ${nTarefas} tarefa(s), que continuam no nome dela — para deixá-las sem dono, tire-a em cada tarefa.` : ""),
+    );
+    if (!motivo) return;
+    const passos: Passo[] = [
+      ...diretos.map((a) => ({ op: "pessoa" as const, email, tipo: a.recurso_tipo as TipoRecurso, id: a.recurso_id!, nivel: null })),
+      ...equipes.map((id_equipe) => ({ op: "sair_equipe" as const, id_equipe, email })),
+      { op: "membro", email, papel, ativo: false },
+    ];
+    if (await executar(passos, motivo, `${nome} saiu da Gestão`)) setEmail("");
+  }
+
+  async function confirmarTirar(passos: Passo[], resumo: string) {
+    setTirar(null);
+    const motivo = await pedirMotivo("Tirar desta lista", resumo);
+    if (!motivo) return;
+    await executar(passos, motivo, "Acesso retirado");
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         {modo === "pessoa" ? (
-          <select value={email} onChange={(e) => setEmail(e.target.value)} className="min-w-[260px] flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm">
-            <option value="">Escolha a pessoa…</option>
-            {d.usuarios.map((u) => (
-              <option key={u.email} value={u.email}>{u.nome} ({u.email})</option>
-            ))}
-          </select>
+          <>
+            <BuscaUnica
+              opcoes={opcoesPessoa}
+              value={email}
+              onChange={setEmail}
+              placeholder="Buscar pessoa por nome ou e-mail…"
+              filtros={
+                <select value={perfil} onChange={(e) => setPerfil(e.target.value)} className="rounded-md border border-gray-200 px-2 py-1 text-sm" aria-label="Filtrar por perfil">
+                  <option value="">Todos os perfis</option>
+                  {perfis.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              }
+            />
+            {podeTirarDaGestao && (
+              <button type="button" disabled={gravando} onClick={tirarDaGestao} className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2.5 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50">
+                <UserMinus className="size-4" /> Tirar da Gestão
+              </button>
+            )}
+          </>
         ) : (
           <>
-            <select value={quadro} onChange={(e) => setQuadro(e.target.value)} className="min-w-[260px] flex-1 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm">
-              <option value="">Escolha a lista…</option>
-              {listas.map((l) => (
-                <option key={l.id} value={l.id}>{l.caminho}</option>
-              ))}
-            </select>
+            <BuscaUnica opcoes={opcoesLista} value={quadro} onChange={setQuadro} placeholder="Buscar lista pelo nome, pasta ou espaço…" />
             {quadro && (
               <button type="button" onClick={() => onDarAcesso(quadro)} className="inline-flex items-center gap-1 rounded-md border border-verde-primary px-2.5 py-1.5 text-sm font-medium text-verde-primary hover:bg-verde-light">
                 <UserPlus className="size-4" /> Dar acesso a esta lista
@@ -121,6 +217,23 @@ export default function AbaEfetivo({
                 <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", nivelVeTodas(l.nivel) ? "bg-verde-light text-verde-primary" : "bg-gray-100 text-gray-700")}>
                   {rotuloNivel(l.nivel)}
                 </span>
+                <button
+                  type="button"
+                  disabled={gravando}
+                  title="Tirar desta lista"
+                  onClick={() =>
+                    setTirar({
+                      email: l.email,
+                      nome: l.nome ?? d.nomePorEmail.get(l.email.toLowerCase()) ?? l.email,
+                      idQuadro: l.id_quadro,
+                      caminho: caminhoLista.get(l.id_quadro) ?? l.quadro,
+                      origens: l.origens ?? [],
+                    })
+                  }
+                  className="flex size-7 shrink-0 items-center justify-center rounded-md text-gray-300 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                >
+                  <Trash2 className="size-4" />
+                </button>
               </div>
             );
           })}
@@ -129,6 +242,7 @@ export default function AbaEfetivo({
       {modo === "lista" && quadro && !d.indice.has(chaveRecurso("list", quadro)) && (
         <p className="text-[11px] text-gray-400">Lista pessoal (Meu Quadro): o acesso é do dono e do supervisor da equipe dele.</p>
       )}
+      <TirarDaListaDialog d={d} alvo={tirar} onClose={() => setTirar(null)} onConfirmar={confirmarTirar} />
     </div>
   );
 }

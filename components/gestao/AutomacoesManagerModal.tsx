@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDown, ArrowUp, BookOpen, Filter, History, Plus, Trash2, Workflow, X } from "lucide-react";
+import toast from "react-hot-toast";
+import { AlertTriangle, ArrowDown, ArrowUp, BookOpen, Filter, History, Plus, Trash2, UserCog, Workflow, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import AutomacaoCondicaoBuilder from "@/components/gestao/AutomacaoCondicaoBuilder";
 import AutomacaoAcaoEditor from "@/components/gestao/AutomacaoAcaoEditor";
+import ProdutoResponsaveisAba from "@/components/gestao/ProdutoResponsaveisAba";
 import AutomacoesHistorico from "@/components/gestao/AutomacoesHistorico";
 import { AgendaEditor, ModeloTarefaEditor, ParadaEditor } from "@/components/gestao/AutomacaoGatilhoTempo";
 import { acoesDaRegra, regraCompleta, GATILHOS_SST } from "@/lib/gestao/automacao-completa";
@@ -80,7 +82,7 @@ export default function AutomacoesManagerModal({
   campos: GestaoCampo[];
   podeEditar: boolean;
 }) {
-  const [aba, setAba] = useState<"regras" | "historico">("regras");
+  const [aba, setAba] = useState<"regras" | "produtos" | "historico">("regras");
   const { data: automacoes = [] } = useAutomacoes(idQuadro);
   const { data: usuarios = [] } = useUsuariosLista();
   const { data: usuariosFull = EMPTY_USUARIOS } = useUsuarios();
@@ -97,22 +99,45 @@ export default function AutomacoesManagerModal({
 
   const outrosQuadros = quadros.filter((q) => q.id_quadro !== idQuadro);
 
-  const setCampo = (a: GestaoAutomacao, patch: Partial<GestaoAutomacao>) => salvar.mutate({ id: a.id, id_quadro: idQuadro, ...patch });
+  // v315: o banco pausa a regra ATIVA que fica incompleta e a religa quando ela completa de novo.
+  // Aqui só avisa na hora, para ninguém fechar a janela sem perceber.
+  const avisarPausa = (a: GestaoAutomacao, depois: { gatilho?: string; condicao?: CondicaoAutomacao; acoes?: AcaoAutomacao[] }) => {
+    const completaDepois = regraCompleta(depois.gatilho ?? a.gatilho, depois.condicao ?? a.condicao, depois.acoes ?? acoesDaRegra(a));
+    if (a.ativo && !completaDepois) {
+      toast(`"${a.nome}" foi pausada porque ficou incompleta. Ela volta a rodar sozinha quando você completar as ações.`, { icon: "⏸️", duration: 6000 });
+    } else if (!a.ativo && a.pausada_em && completaDepois) {
+      toast.success(`"${a.nome}" está completa de novo e voltou a rodar.`);
+    }
+  };
+  const setCampo = (a: GestaoAutomacao, patch: Partial<GestaoAutomacao>) => {
+    if (patch.gatilho) avisarPausa(a, { gatilho: patch.gatilho });
+    salvar.mutate({ id: a.id, id_quadro: idQuadro, ...patch });
+  };
   // Merge preserva a condição PLANA legada (de/para/dias_antes) — não zera o que não foi tocado.
-  const setCond = (a: GestaoAutomacao, patch: Partial<CondicaoAutomacao>) => salvar.mutate({ id: a.id, id_quadro: idQuadro, condicao: { ...a.condicao, ...patch } });
-  // Substitui a condição inteira (construtor E/OU e troca de modo). Mantém dias_antes dos gatilhos de prazo.
+  const setCond = (a: GestaoAutomacao, patch: Partial<CondicaoAutomacao>) => {
+    avisarPausa(a, { condicao: { ...a.condicao, ...patch } });
+    salvar.mutate({ id: a.id, id_quadro: idQuadro, condicao: { ...a.condicao, ...patch } });
+  };
+  // Substitui a condição inteira (construtor E/OU e troca de modo).
   // Mantém a configuração do gatilho (prazo, agenda, modelo, parada) — só troca o E/OU.
   const setCondFull = (a: GestaoAutomacao, cond: CondicaoAutomacao) => {
     const { dias_antes, agenda, modo, modelo_tarefa, parada, fonte } = a.condicao ?? {};
     const manter = Object.fromEntries(Object.entries({ dias_antes, agenda, modo, modelo_tarefa, parada, fonte }).filter(([, v]) => v !== undefined));
+    avisarPausa(a, { condicao: { ...manter, ...cond } });
     salvar.mutate({ id: a.id, id_quadro: idQuadro, condicao: { ...manter, ...cond } });
   };
-  const setAcoes = (a: GestaoAutomacao, acoes: AcaoAutomacao[]) => salvar.mutate({ id: a.id, id_quadro: idQuadro, acoes });
+  const setAcoes = (a: GestaoAutomacao, acoes: AcaoAutomacao[]) => {
+    avisarPausa(a, { acoes });
+    salvar.mutate({ id: a.id, id_quadro: idQuadro, acoes });
+  };
+  const pausadas = automacoes.filter((a) => !a.ativo && a.pausada_em);
+  const hora = (iso: string) => new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const dia = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 
   return (
     <Modal open={open} onClose={onClose} title="Automações" size="quadrado">
       <div className="mb-3 flex gap-1 border-b border-gray-100">
-        {([["regras", "Regras", Workflow], ["historico", "Histórico", History]] as const).map(([k, rot, Icone]) => (
+        {([["regras", "Regras", Workflow], ["produtos", "Funcionários por produto", UserCog], ["historico", "Histórico", History]] as const).map(([k, rot, Icone]) => (
           <button key={k} type="button" onClick={() => setAba(k)}
             className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-sm font-medium ${aba === k ? "border-verde-primary text-verde-primary" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
             <Icone className="size-4" /> {rot}
@@ -122,8 +147,22 @@ export default function AutomacoesManagerModal({
 
       {aba === "historico" ? (
         <AutomacoesHistorico idQuadro={idQuadro} />
+      ) : aba === "produtos" ? (
+        <ProdutoResponsaveisAba idQuadro={idQuadro} automacoes={automacoes} usuarios={usuariosFull} podeEditar={podeEditar} />
       ) : (
       <div className="space-y-3">
+        {pausadas.length > 0 && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <div>
+              <p className="font-semibold">
+                {pausadas.length === 1 ? "1 regra está pausada" : `${pausadas.length} regras estão pausadas`} porque ficou incompleta e não está rodando:
+              </p>
+              <p className="text-xs">{pausadas.map((a) => `${a.nome} (desde ${dia(a.pausada_em!)} ${hora(a.pausada_em!)})`).join(" · ")}</p>
+              <p className="mt-0.5 text-xs text-amber-800">Complete as ações dela — ela volta a rodar sozinha. Se ficar mais de 15 min assim, quem mexeu recebe um aviso.</p>
+            </div>
+          </div>
+        )}
         {automacoes.map((a) => {
           const usaEou = !!(a.condicao?.all || a.condicao?.any);
           const acoes = acoesDaRegra(a);
@@ -144,9 +183,13 @@ export default function AutomacoesManagerModal({
           };
           return (
           <div key={a.id} className={`space-y-2 rounded-lg border p-3 ${completa ? "border-gray-200" : "border-amber-300 bg-amber-50/40"}`}>
-            {!completa && (
+            {!completa && (a.pausada_em ? (
+              <p className="flex items-center gap-1 text-xs font-semibold text-amber-800">
+                <AlertTriangle className="size-3.5" /> Pausada desde {dia(a.pausada_em)} {hora(a.pausada_em)} porque ficou incompleta. Complete as ações e ela volta a rodar sozinha.
+              </p>
+            ) : (
               <p className="text-xs font-medium text-amber-700">Incompleta — toda ação precisa do destino/valor dela; depois marque “Ativa”. Enquanto isso ela não roda.</p>
-            )}
+            ))}
             <div className="flex items-center gap-2">
               <input defaultValue={a.nome} disabled={!podeEditar} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== a.nome) setCampo(a, { nome: v }); }}
                 className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm font-medium focus:border-verde-primary focus:outline-none" />

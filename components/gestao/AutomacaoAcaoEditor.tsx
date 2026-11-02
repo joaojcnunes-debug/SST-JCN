@@ -180,6 +180,19 @@ export default function AutomacaoAcaoEditor({
               {modelos.map((m) => <option key={m.slug} value={m.slug}>{m.titulo}</option>)}
             </select>
             {modelos.length === 0 && <span className="text-[11px] text-gray-400">crie um modelo de checklist primeiro</span>}
+            {/* v315: quem fica com as subtarefas deste produto nesta unidade (é avisado ao ser alocado). */}
+            <div className="min-w-[14rem]">
+              <UsuarioCombobox
+                usuarios={usuariosFull}
+                value={acao.responsavel_email ?? ""}
+                onChange={(email) => onChange({ responsavel_email: email || undefined })}
+                disabled={disabled}
+                incluirVazio
+                vazioLabel="Sem responsável"
+                placeholder="Responsável (opcional; senão, Funcionários por produto)"
+                className={`${sel} w-full`}
+              />
+            </div>
           </>
         )}
 

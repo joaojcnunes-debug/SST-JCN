@@ -589,6 +589,23 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
+- **v315 — Gestão: lote do Painel SST (02/11/2026).** São as v312 (partes 2 a 4), v319, v322, v323, v324, v325, v326 e v327 do Painel.
+  - **Adaptações ao JCN:** pg_cron no lugar do worker; sem a "tarefa restrita" (Painel v306) e sem o usuário oculto (v303).
+  - **Conferência antes de aplicar:** as funções trocadas (`gestao_automacao_acao`, `gestao_automacao_completa_trg`, `gestao_automacao_vencimentos`) tinham o mesmo corpo do "antes" do Painel. `gestao_decidir_aprovacao` ganhou também o `coalesce` da v287 de lá.
+  - **Tabela `gestao_produto_responsaveis`:** id_quadro (FK, cascade), usuario_email, produtos text[] e ordem.
+    - Leitura: `gestao_pode_ver`. Escrita: `gestao_pode_editar_q`.
+    - A ação `criar_subtarefas_modelo` usa `responsavel_email` da própria ação. Sem ele, usa o funcionário ligado ao produto que a condição da automação procura ("Produtos contém X").
+  - **`gestao_automacoes.pausada_em/_por/_avisada`:** o gatilho pausa, com carimbo, a regra ATIVA que fica incompleta e a religa quando ela completa de novo.
+    - `gestao_automacoes_pausadas_avisar()` roda no pg_cron `gestao-automacoes-pausadas` (5 min) e avisa quem pausou depois de 15 min.
+  - **`gestao_automacao_vencimentos`:** no empate de validade na mesma empresa, vale a maior revisão e depois a criada por último.
+  - **`gestao_campos_de_origem(id_tarefa)`:** devolve os campos de outro quadro gravados na tarefa. Só leitura.
+  - **`gestao_pessoas_do_quadro(id_quadro)`:** devolve quem tem acesso ao quadro (sem administradores) e a equipe cujo nome bate com o do quadro.
+  - **Subtarefas:**
+    - recusar a aprovação cria a subtarefa "Corrigir a recusa (dd/mm): motivo" para quem pediu;
+    - o gatilho `gestao_aviso_subtarefa` avisa o novo responsável de subtarefa aberta;
+    - `gestao_minhas_tarefas()` devolve vinculado mais responsável de subtarefa aberta, com o mesmo filtro de acesso;
+    - índice novo: `idx_gestao_subtarefas_resp`.
+  - Rollback: `scripts/sql/v315_gestao_lote_painel_rollback.sql`.
 - **v305 — acesso efetivo (28/10/2026):** `gestao_acessos_efetivos(p_email, p_id_quadro)` (SECURITY DEFINER, só gestor — 42501): para cada pessoa da Gestão × lista não pessoal, o nível de `gestao_resolver_nivel` e as `origens` (jsonb: tipo direto/equipe/gestor, equipe, recurso list/folder/space, nome do recurso, nível, restritivo), mais `gestao_membros.unidades`. Base das abas Por pessoa e Por lista de Membros e acessos. Só leitura. Rollback: `scripts/sql/v305_gestao_acessos_efetivos_rollback.sql`.
 - **v304 — níveis de acesso claros (28/10/2026):** `gestao_nivel` ganha `view_all` (vê todas as tarefas, só lê) e `comment_all` (vê todas e comenta). O nível tem dois eixos: o que faz (`gestao_nivel_ord`: ver 1 · comentar 2 · editar 3 · full 4) e o que vê (`gestao_nivel_ve_todas`: full, view_all, comment_all). `gestao_resolver_nivel`: na especificidade mais alta, os grants da pessoa e das equipes somam (maior capacidade; vê todas se algum vê); o restritivo é teto nos dois eixos. Com os 4 níveis antigos o resultado é o mesmo. `gestao_ve_tarefa` e `gestao_aviso_quadro_trg` usam "vê todas" em vez de `= 'full'`; `gestao_alterar_acesso` impede o membro comum de conceder qualquer nível "vê todas". Rollback: `scripts/sql/v304_gestao_niveis_claros_rollback.sql` (converte view_all→view e comment_all→comment).
 - **v303 — consolidação por empresa salva (27/10/2026):** `empresa_grupos.tipo` (GRUPO|CONSOLIDACAO) e `empresas_consolidacao text[]`; trigger que impede empresa de entrar numa CONSOLIDACAO pelo `id_grupo`; nome único por tipo; função `psico_consolidacao_membros(id)`. Ver `empresa_grupos`.
