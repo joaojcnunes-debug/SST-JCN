@@ -17,7 +17,6 @@ import {
   AlertTriangle,
   Camera,
   FileText,
-  Send,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -25,7 +24,6 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gravar } from "@/lib/offline/gravar";
 import type { InspecaoFull } from "@/lib/hooks/useInspecao";
 import { gerarId } from "@/lib/utils";
-import { useImportarMaquinasInspecao } from "@/lib/hooks/useInventarioMaquinas";
 import RevisaoIAModal, { type CampoRevisaoIA } from "@/components/ui/RevisaoIAModal";
 import StorageImg from "@/components/ui/StorageImg";
 import { abrirMidiaAssinada } from "@/lib/storage/abrir-midia-assinada";
@@ -152,7 +150,6 @@ export default function MaquinasTab({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [analisandoId, setAnalisandoId] = useState<string | null>(null);
   const [expandedParecer, setExpandedParecer] = useState<string | null>(null);
-  const importarApreciacao = useImportarMaquinasInspecao();
   // Sugestões da IA aguardando revisão (modal aceitar/editar/rejeitar)
   const [revisaoIA, setRevisaoIA] = useState<{
     maquina: InspecaoMaquina;
@@ -229,8 +226,8 @@ export default function MaquinasTab({
 
   function refresh() {
     qc.invalidateQueries({ queryKey: ["inspecao", idInspecao] });
-    // máquinas salvas/deletadas aqui alimentam o banner/modal de importação
-    qc.invalidateQueries({ queryKey: ["inspecao-maquinas-pendentes"] });
+    // A Relação de Máquinas (Apreciação) lê direto desta tabela desde 30/09/2026.
+    qc.invalidateQueries({ queryKey: ["relacao-maquinas"] });
   }
 
   function f<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -724,25 +721,6 @@ export default function MaquinasTab({
     w.document.close();
   }
 
-  /** Envia as máquinas da inspeção pro inventário NR-12 (módulo Apreciação). */
-  async function enviarParaApreciacao() {
-    try {
-      const r = await importarApreciacao.mutateAsync(maquinas);
-      if (r.criadas > 0) {
-        toast.success(
-          `${r.criadas} máquina${r.criadas > 1 ? "s" : ""} enviada${r.criadas > 1 ? "s" : ""} pro inventário NR-12` +
-            (r.ignoradas > 0 ? ` · ${r.ignoradas} já existia(m)` : "") +
-            " — disponíveis em Apreciação de Máquinas",
-          { duration: 6000 }
-        );
-      } else {
-        toast(`Todas as ${r.ignoradas} máquinas já estão no inventário NR-12.`, { icon: "ℹ️" });
-      }
-    } catch {
-      // toast de erro já emitido pelo hook
-    }
-  }
-
   // ─── render helpers ────────────────────────────────────────────────────────
 
   function BoolToggle({
@@ -961,22 +939,6 @@ export default function MaquinasTab({
             >
               <FileText className="size-3.5" />
               Relatório
-            </button>
-          )}
-          {maquinas.length > 0 && !readOnly && (
-            <button
-              type="button"
-              onClick={enviarParaApreciacao}
-              disabled={importarApreciacao.isPending}
-              title="Envia as máquinas desta inspeção pro inventário do módulo Apreciação de Máquinas NR-12 (sem duplicar)"
-              className="inline-flex items-center gap-1.5 rounded-md border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100 disabled:opacity-50"
-            >
-              {importarApreciacao.isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Send className="size-3.5" />
-              )}
-              Enviar p/ Apreciação NR-12
             </button>
           )}
           {!readOnly && (

@@ -458,6 +458,15 @@ Cabeçalho do editor: links Relatório, PGR e Ficha; dados da empresa; quadro **
 - `TreinamentoForm` guarda os vinculados numa ref, e o formulário não zera quando a inspeção recarrega.
 - Assinar PDF A1 e Assinar com imagem aplicam `perfilPodeAssinarPorOutro`: quem assina só por si vê só o próprio nome e é avisado antes se não tem certificado.
 
+**Lote do Painel SST (0.3.191):**
+- **Cópia completa** (`lib/inspecoes/copiar.ts`, testada): a Nova inspeção (cópia/revisão) e o Copiar p/ Empresa usam `montarCopia`/`gravarCopia`.
+  - Cada linha vai inteira e só os ids e vínculos são remapeados.
+  - Levam setores, cargos, riscos, EPI, treinamentos (com as ligações por setor, cargo e risco), complementos, PAE, extintores, máquinas, responsáveis e fotos.
+  - A opção Ergonomia (`lib/inspecoes/copiar-ergonomia.ts`) copia a AEP/AET como Rascunho, com o plano de ação e as respostas QPS da AET.
+- **EPI/EPC:** o lançamento pode ir para vários setores de uma vez (`EpiForm`). A aba EPIs fica agrupada por setor e risco, com filtro de setor.
+- **Associar-me:** fica no card Documento (SGG), para quem não é supervisor e só até o documento ser entregue.
+- **Menu lateral:** a largura é ajustável (`SidebarAlca`, `--sidebar-w`, `useSidebarMini.largura` de 180 a 420px). Vale também para a Gestão.
+
 ### 7.2 Relatório de Conformidade (`/relatorio-conformidade`)
 
 Empresa + NR do catálogo (`lib/conformidade/checklists.ts`: NR-01, 05, 06, 07, 09, 10, 12, 17, 20, 23, 24 — 21 perguntas em 5 grupos —, 26, 35) ou "LIVRE". Tópico pode ser **ocultado do PDF** (`oculto`, v284: fica no relatório, sai do PDF/laudo e do resumo). Botão **Trocar** responsável técnico (vale finalizado e no laudo). Fotos saem **inteiras** no PDF (altura fixa, largura da foto). Itens **copiados** para `relatorios_conformidade_itens` (situação `CONFORME | NAO_APLICAVEL | PENDENTE`, observação, fotos até 8 MB, itens de outra NR ou livres). Relatório `RASCUNHO → FINALIZADO` (finalizado = somente leitura). **Avaliação % = (Conformes + N/A) / total × 100.** IA para observações. Laudo: Introdução, Fundamentação Legal, itens por NR, resultado %, Considerações Finais, assinaturas (Responsável Técnico e Responsável da Empresa).
@@ -473,6 +482,11 @@ Empresa + NR do catálogo (`lib/conformidade/checklists.ts`: NR-01, 05, 06, 07, 
 - **Método HRN (ISO/TR 14121-2):** POD (Muito Provável 4, Provável 3, Improvável 2, Remota 1) × FEP (Diariamente 4, Semanalmente 3, Mensalmente 2, Anualmente 1) × GPD (Catastrófica 4, Grave 3, Moderada 2, Baixa 1) = **HRN 1–64**; classificação sugerida ≤8 Desprezível, ≤18 Baixo, ≤36 Médio, >36 Alto (o técnico pode alterar); risco residual pela mesma régua; NPE só informativo; categoria de segurança NBR 14153 (B, 1–4).
 - Só finaliza sem itens pendentes. "Gerar plano" cria ações para os itens não conformes (prioridade pelo nível); pode enviar ao Plano de Ação central.
 - **Laudo:** capa, sumário, identificação, Introdução, Fundamentação Legal, Objetivo/Base normativa/Método, Relação de máquinas, **Apreciação por máquina** (Setor → Máquina, 4.1, 4.2… com identificação, foto, operadores, constatações, tabela perigo → risco inicial → medidas de engenharia/administrativas → risco residual, parecer; checklist opcional), Conclusão Geral, Plano de Ação NR-12, Considerações Finais, assinatura. IA de parecer e de análise de foto.
+
+**0.3.191:**
+- A Relação de Máquinas lê `inspecao_maquinas`, da inspeção mais recente de cada empresa (`lib/hooks/useRelacaoMaquinas.ts`). É só leitura, e cada linha abre a aba Máquinas.
+- O cadastro avulso, o `ImportarMaquinasInspecaoModal` e o "Enviar p/ Apreciação NR-12" saíram.
+- `inventario_maquinas` continua no banco, só para o vínculo legado do laudo (`useMaquina`).
 
 ### 7.5 Análise de Químicos (`/analise-quimicos`)
 

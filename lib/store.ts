@@ -44,6 +44,20 @@ interface SidebarMiniState {
   mini: boolean;
   setMini: (v: boolean) => void;
   toggle: () => void;
+  /** Largura (px) escolhida arrastando a borda do menu. O script de pré-hidratação
+   *  põe em `--sidebar-w` no <html>; vale para a SidebarShell e para o menu da Gestão. */
+  largura: number;
+  setLargura: (px: number) => void;
+}
+
+/** Limites da largura do menu arrastável (px). */
+export const SIDEBAR_LARGURA_PADRAO = 220;
+export const SIDEBAR_LARGURA_MIN = 180;
+export const SIDEBAR_LARGURA_MAX = 420;
+
+export function limitarLarguraSidebar(px: number): number {
+  if (!Number.isFinite(px)) return SIDEBAR_LARGURA_PADRAO;
+  return Math.round(Math.min(SIDEBAR_LARGURA_MAX, Math.max(SIDEBAR_LARGURA_MIN, px)));
 }
 
 export const useSidebarMini = create<SidebarMiniState>()(
@@ -52,6 +66,8 @@ export const useSidebarMini = create<SidebarMiniState>()(
       mini: false,
       setMini: (v) => set({ mini: v }),
       toggle: () => set({ mini: !get().mini }),
+      largura: SIDEBAR_LARGURA_PADRAO,
+      setLargura: (px) => set({ largura: limitarLarguraSidebar(px) }),
     }),
     {
       name: "sidebar-mini",

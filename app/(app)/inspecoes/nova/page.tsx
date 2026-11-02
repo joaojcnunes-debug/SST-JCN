@@ -24,27 +24,21 @@ import { useUsuariosParaAssociar } from "@/lib/hooks/useInspecaoAssociados";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
 import { contaDoTecnicoDigitado } from "@/lib/dashboard/vinculo-tecnicos";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  ITENS_COPIA,
+  OPCOES_COPIA_PADRAO,
+  gravarCopia,
+  montarCopia,
+  type OpcoesCopia,
+} from "@/lib/inspecoes/copiar";
+import { copiarErgonomia } from "@/lib/inspecoes/copiar-ergonomia";
 import { gerarId, cn } from "@/lib/utils";
 import { useUserStore } from "@/lib/store";
-import type {
-  Cargo,
-  Inspecao,
-  Risco,
-  Setor,
-  TipoCriacao,
-} from "@/lib/supabase/types";
+import type { Inspecao, TipoCriacao } from "@/lib/supabase/types";
 
 type Step = 1 | 2 | 3;
 type Tipo = "BRANCO" | "REVISAO" | "COPIA_EMPRESA" | "RENOVACAO";
 
-interface OpcoesCopia {
-  setores: boolean;
-  cargos: boolean;
-  riscos: boolean;
-  epis: boolean;
-  responsaveis: boolean;
-  fotos: boolean;
-}
 
 export default function NovaInspecaoPage() {
   return (
@@ -124,14 +118,7 @@ function NovaInspecaoInner() {
   const nomeDoEmail = (email: string) =>
     contasTecnico.find((c) => c.email.toLowerCase() === email.toLowerCase())?.nome ?? "";
 
-  const [opcoes, setOpcoes] = useState<OpcoesCopia>({
-    setores: true,
-    cargos: true,
-    riscos: true,
-    epis: true,
-    responsaveis: false,
-    fotos: false,
-  });
+  const [opcoes, setOpcoes] = useState<OpcoesCopia>(OPCOES_COPIA_PADRAO);
 
   // Inspeções da empresa destino — usadas para calcular o próximo número de
   // revisão, sempre sequencial dentro da empresa independente do responsável
@@ -198,135 +185,30 @@ function NovaInspecaoInner() {
         .insert(insertInsp as never);
       if (errInsp) throw errInsp;
 
-      // Cópia de dados (REVISAO ou COPIA_EMPRESA).
+      // Cópia de dados (REVISAO ou COPIA_EMPRESA): tudo o que foi marcado, com
+      // todas as colunas (ver lib/inspecoes/copiar.ts).
       if (!semBase && baseFull) {
-        const mapaSetor = new Map<string, string>();
-        const mapaCargo = new Map<string, string>();
-        const mapaRisco = new Map<string, string>();
+        const linhas = montarCopia(baseFull, {
+          idInspecao: novaId,
+          idEmpresa: empresaDestinoId,
+          opcoes,
+          usuarioEmail: user?.email ?? null,
+          agora: new Date().toISOString(),
+          gerarId,
+          gerarUuid: () => crypto.randomUUID(),
+        });
+        await gravarCopia(supabase, linhas);
 
-        if (opcoes.setores && baseFull.setores.length > 0) {
-          const novosSetores = baseFull.setores.map<Partial<Setor>>((s) => {
-            const novoId = gerarId("SET");
-            mapaSetor.set(s.id_setor, novoId);
-            return {
-              id_setor: novoId,
-              id_inspecao: novaId,
-              id_empresa: empresaDestinoId,
-              setor_ghe: s.setor_ghe,
-              descricao: s.descricao,
-              conformidade: s.conformidade,
-              nao_conformidade: s.nao_conformidade,
-            };
+        if (opcoes.ergonomia && inspBaseId) {
+          const ergo = await copiarErgonomia(supabase, {
+            idOrigem: inspBaseId,
+            idInspecao: novaId,
+            idEmpresa: empresaDestinoId,
+            gerarId,
           });
-          const { error } = await supabase
-            .from("setores")
-            .insert(novosSetores as never);
-          if (error) throw error;
-        }
-
-        if (opcoes.cargos && opcoes.setores && baseFull.cargos.length > 0) {
-          const novosCargos = baseFull.cargos.map<Partial<Cargo>>((c) => {
-            const novoId = gerarId("CGO");
-            mapaCargo.set(c.id_cargo, novoId);
-            return {
-              id_cargo: novoId,
-              id_inspecao: novaId,
-              id_empresa: empresaDestinoId,
-              id_setor: mapaSetor.get(c.id_setor) ?? c.id_setor,
-              cargo: c.cargo,
-              descricao: c.descricao,
-            };
-          });
-          const { error } = await supabase
-            .from("cargos")
-            .insert(novosCargos as never);
-          if (error) throw error;
-        }
-
-        if (opcoes.riscos && baseFull.riscos.length > 0) {
-          const novosRiscos = baseFull.riscos.map<Partial<Risco>>((r) => {
-            const novoId = gerarId("RSC");
-            mapaRisco.set(r.id_risco, novoId);
-            return {
-              ...r,
-              id_risco: novoId,
-              id_inspecao: novaId,
-              id_empresa: empresaDestinoId,
-              id_setor: r.id_setor
-                ? mapaSetor.get(r.id_setor) ?? r.id_setor
-                : null,
-              id_cargo: r.id_cargo
-                ? mapaCargo.get(r.id_cargo) ?? r.id_cargo
-                : null,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            };
-          });
-          const { error } = await supabase
-            .from("riscos")
-            .insert(novosRiscos as never);
-          if (error) throw error;
-        }
-
-        if (opcoes.epis && opcoes.riscos && baseFull.epis.length > 0) {
-          const novos = baseFull.epis.map((e) => ({
-            id_protecao: gerarId("EPI"),
-            id_risco: mapaRisco.get(e.id_risco) ?? e.id_risco,
-            id_inspecao: novaId,
-            id_empresa: empresaDestinoId,
-            id_setor: e.id_setor
-              ? mapaSetor.get(e.id_setor) ?? e.id_setor
-              : null,
-            tipo: e.tipo,
-            descricao: e.descricao,
-            ca: e.ca,
-            recomendado: e.recomendado,
-          }));
-          const { error } = await supabase
-            .from("epi_epc")
-            .insert(novos as never);
-          if (error) throw error;
-        }
-
-        if (opcoes.responsaveis && baseFull.responsaveis.length > 0) {
-          const novos = baseFull.responsaveis.map((r) => ({
-            id_responsavel: gerarId("RSP"),
-            id_inspecao: novaId,
-            id_empresa: empresaDestinoId,
-            tecnico_responsavel: r.tecnico_responsavel,
-            // Carrega o vínculo junto (v204, Fase B1): a cópia herda um fato
-            // que a inspeção de origem já tinha gravado, em vez de nascer
-            // vazia e voltar a depender do texto digitado.
-            id_usuario: r.id_usuario ?? null,
-            recepcionado_por: r.recepcionado_por,
-            cargo: r.cargo,
-            data_hora: r.data_hora,
-          }));
-          const { error } = await supabase
-            .from("responsaveis")
-            .insert(novos as never);
-          if (error) throw error;
-        }
-
-        if (opcoes.fotos && baseFull.fotos.length > 0) {
-          const novos = baseFull.fotos.map((f) => ({
-            id_foto: gerarId("FOTO"),
-            id_inspecao: novaId,
-            id_empresa: empresaDestinoId,
-            id_setor: f.id_setor
-              ? mapaSetor.get(f.id_setor) ?? f.id_setor
-              : null,
-            categoria: f.categoria,
-            legenda: f.legenda,
-            arquivo_foto: f.arquivo_foto,
-            storage_path: f.storage_path,
-            data_upload: new Date().toISOString(),
-            usuario: user?.email ?? null,
-          }));
-          const { error } = await supabase
-            .from("fotos")
-            .insert(novos as never);
-          if (error) throw error;
+          if (ergo.erro) {
+            toast.error(`Inspeção criada, mas a Ergonomia (AEP/AET) não foi copiada: ${ergo.erro}`, { duration: 8000 });
+          }
         }
       }
 
@@ -799,31 +681,29 @@ function OpcoesCopiaPanel({
         O que copiar da inspeção base
       </p>
       <div className="grid grid-cols-2 gap-2 rounded-lg border border-gray-200 bg-white p-3">
-        {(
-          [
-            ["setores", "Setores"],
-            ["cargos", "Cargos (precisa setores)"],
-            ["riscos", "Riscos"],
-            ["epis", "EPIs/EPCs (precisa riscos)"],
-            ["responsaveis", "Responsáveis"],
-            ["fotos", "Fotos"],
-          ] as const
-        ).map(([key, label]) => (
-          <label
-            key={key}
-            className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-gray-50"
-          >
-            <input
-              type="checkbox"
-              checked={opcoes[key]}
-              onChange={(e) =>
-                setOpcoes({ ...opcoes, [key]: e.target.checked })
-              }
-              className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
-            />
-            <span>{label}</span>
-          </label>
-        ))}
+        {ITENS_COPIA.map(({ chave, rotulo, precisa }) => {
+          const travado = !!precisa && !opcoes[precisa];
+          return (
+            <label
+              key={chave}
+              className={`flex items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-gray-50 ${travado ? "opacity-50" : "cursor-pointer"}`}
+            >
+              <input
+                type="checkbox"
+                checked={opcoes[chave] && !travado}
+                disabled={travado}
+                onChange={(e) =>
+                  setOpcoes({ ...opcoes, [chave]: e.target.checked })
+                }
+                className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+              />
+              <span>
+                {rotulo}
+                {precisa && " (precisa " + ITENS_COPIA.find((i) => i.chave === precisa)!.rotulo.toLowerCase() + ")"}
+              </span>
+            </label>
+          );
+        })}
       </div>
     </div>
   );

@@ -51,6 +51,14 @@ export default function EpiForm({
   // Setor filtro — afeta só a lista de riscos exibida, não é persistido
   const [idSetorFiltro, setIdSetorFiltro] = useState<string>("");
 
+  // ── Vários setores de uma vez (só ao ADICIONAR) ───────────────────────────
+  // O EPI aponta para um RISCO, e o risco é de um setor: "Ruído" do Corte e
+  // "Ruído" da Expedição são linhas diferentes. Por isso a escolha é de riscos,
+  // agrupados por setor — cada risco marcado recebe os equipamentos escolhidos.
+  // `setoresSel` só filtra a lista (vazio = todos); quem vale são `riscosSel`.
+  const [setoresSel, setSetoresSel] = useState<string[]>([]);
+  const [riscosSel, setRiscosSel] = useState<string[]>([]);
+
   const [form, setForm] = useState({
     id_risco: "",
     tipo: "EPI" as "EPI" | "EPC",
@@ -84,14 +92,66 @@ export default function EpiForm({
     return out;
   }, [escolhidos, extras]);
 
-  // CA e fotos são de CADA equipamento. Com vários selecionados não há valor
-  // único que sirva, então os campos somem e o usuário edita item a item.
+  // Riscos que valem de fato: ao editar é o do select; ao adicionar, os marcados.
+  const riscosAlvo = isEdit ? (form.id_risco ? [form.id_risco] : []) : riscosSel;
+  const totalLinhas = isEdit ? 1 : itens.length * riscosAlvo.length;
+
+  // CA é de CADA equipamento: com vários equipamentos não há valor único que
+  // sirva. O mesmo equipamento em vários setores pode levar o mesmo CA.
   const varios = !isEdit && itens.length > 1;
+  // Foto sobe uma vez para UMA linha: com 2+ linhas o mesmo arquivo seria
+  // apontado por vários registros, e excluir um levaria a foto dos outros.
+  const semFotos = !isEdit && totalLinhas > 1;
+
+  // Riscos agrupados por setor, na ordem dos setores da inspeção.
+  const nomeSetor = useMemo(
+    () => new Map(setores.map((s) => [s.id_setor, s.setor_ghe])),
+    [setores],
+  );
+  const grupos = useMemo(() => {
+    const porSetor = new Map<string, Risco[]>();
+    for (const r of riscos) {
+      const k = r.id_setor ?? "";
+      const arr = porSetor.get(k) ?? [];
+      arr.push(r);
+      porSetor.set(k, arr);
+    }
+    const ordem = [...setores.map((s) => s.id_setor), ""];
+    return ordem
+      .filter((k) => porSetor.has(k))
+      .map((k) => ({
+        idSetor: k,
+        nome: k ? nomeSetor.get(k) ?? "Setor" : "Sem setor",
+        riscos: porSetor.get(k)!,
+      }));
+  }, [riscos, setores, nomeSetor]);
+  const gruposVisiveis = useMemo(
+    () =>
+      setoresSel.length ? grupos.filter((g) => setoresSel.includes(g.idSetor)) : grupos,
+    [grupos, setoresSel],
+  );
+
+  const gemeosPendentes = useMemo(() => {
+    const marcadas = new Set(
+      riscos.filter((r) => riscosSel.includes(r.id_risco)).map(chaveRisco),
+    );
+    return gruposVisiveis
+      .flatMap((g) => g.riscos)
+      .filter((r) => !riscosSel.includes(r.id_risco) && marcadas.has(chaveRisco(r)))
+      .map((r) => r.id_risco);
+  }, [riscos, riscosSel, gruposVisiveis]);
+  const setoresComRisco = new Set(
+    riscos.filter((r) => riscosSel.includes(r.id_risco)).map((r) => r.id_setor ?? ""),
+  ).size;
+
+  function alternarRisco(id: string) {
+    setRiscosSel((v) => (v.includes(id) ? v.filter((x) => x !== id) : [...v, id]));
+  }
 
   // Rascunho contra queda de luz — guarda também o que já foi escolhido/digitado.
   const rascunhoValor = useMemo(
-    () => ({ form, escolhidos, extras }),
-    [form, escolhidos, extras],
+    () => ({ form, escolhidos, extras, setoresSel, riscosSel }),
+    [form, escolhidos, extras, setoresSel, riscosSel],
   );
   const rascunho = useRascunho(`epi:${idInspecao}`, rascunhoValor, {
     ativo: open && !isEdit,
@@ -102,6 +162,8 @@ export default function EpiForm({
     setEscolhidos([]);
     setExtras([]);
     setNovoValor("");
+    setSetoresSel([]);
+    setRiscosSel([]);
     // Inicializa o setor filtro a partir do risco vinculado (ou do EPI)
     const riscoDoEpi = riscos.find((r) => r.id_risco === epi?.id_risco);
     setIdSetorFiltro(riscoDoEpi?.id_setor ?? epi?.id_setor ?? "");
@@ -136,14 +198,15 @@ export default function EpiForm({
   const mutation = useMutation({
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
-      const r = riscos.find((x) => x.id_risco === form.id_risco);
+      const setorDoRisco = (id: string) =>
+        riscos.find((x) => x.id_risco === id)?.id_setor ?? null;
 
       // Com vários itens não há foto a subir: o upload só acontece quando o
       // registro é único, senão a mesma foto iria parar em N equipamentos.
       //
       // `prepararFotoSlots` decide os caminhos sem subir nada — quem sobe é o
       // `gravar()`, no momento certo, tenha rede ou não.
-      const preparado = varios
+      const preparado = semFotos
         ? { urls: [] as string[], paths: [] as string[], imagens: [], paraRemover: [] }
         : prepararFotoSlots(
             supabase,
@@ -158,16 +221,15 @@ export default function EpiForm({
       // O EPI aponta para um risco, que pode ter sido criado offline e ainda
       // estar na fila. Enquanto o RiscoForm não entrar no offline isto devolve
       // sempre null — mas já fica certo para quando entrar.
-      const criadorDoRisco = form.id_risco
-        ? await operacaoPendenteQueCria("riscos", "id_risco", form.id_risco)
-        : null;
-      const depende_de = criadorDoRisco ? [criadorDoRisco] : undefined;
+      const criadores = await Promise.all(
+        riscosAlvo.map((id) => operacaoPendenteQueCria("riscos", "id_risco", id)),
+      );
+      const pendentes = [...new Set(criadores.filter((c): c is string => !!c))];
+      const depende_de = pendentes.length ? pendentes : undefined;
 
       const comum = {
-        id_risco: form.id_risco,
         tipo: form.tipo,
         recomendado: form.recomendado,
-        id_setor: r?.id_setor ?? null,
       };
 
       let resultado;
@@ -176,6 +238,8 @@ export default function EpiForm({
       if (isEdit && epi) {
         const payload = {
           ...comum,
+          id_risco: form.id_risco,
+          id_setor: setorDoRisco(form.id_risco),
           descricao: form.descricao.trim(),
           ca: form.ca.trim() || null,
           fotos_urls: urls,
@@ -193,18 +257,22 @@ export default function EpiForm({
         });
         linhas = [{ ...epi, ...payload } as EpiEpc];
       } else {
-        // Uma linha por equipamento escolhido, num insert só — se algo falhar,
-        // não fica meia lista gravada.
-        const rows = itens.map((descricao) => ({
-          id_protecao: gerarId("EPI"),
-          id_inspecao: idInspecao,
-          id_empresa: idEmpresa,
-          ...comum,
-          descricao,
-          ca: varios ? null : form.ca.trim() || null,
-          fotos_urls: urls,
-          fotos_storage_paths: paths,
-        }));
+        // Uma linha por equipamento × risco marcado, num insert só — se algo
+        // falhar, não fica meia lista gravada (nem metade dos setores).
+        const rows = riscosAlvo.flatMap((idRisco) =>
+          itens.map((descricao) => ({
+            id_protecao: gerarId("EPI"),
+            id_inspecao: idInspecao,
+            id_empresa: idEmpresa,
+            ...comum,
+            id_risco: idRisco,
+            id_setor: setorDoRisco(idRisco),
+            descricao,
+            ca: varios ? null : form.ca.trim() || null,
+            fotos_urls: urls,
+            fotos_storage_paths: paths,
+          })),
+        );
         resultado = await gravar({
           tabela: "epi_epc",
           tipo: "insert",
@@ -240,7 +308,13 @@ export default function EpiForm({
         // A lista de sugestões passa a considerar o que acabou de ser cadastrado.
         qc.invalidateQueries({ queryKey: ["epi-sugestoes"] });
         toast.success(
-          isEdit ? "Atualizado" : n > 1 ? `${n} equipamentos adicionados` : "Adicionado",
+          isEdit
+            ? "Atualizado"
+            : setoresComRisco > 1
+            ? `${n} registros adicionados em ${setoresComRisco} setores`
+            : n > 1
+            ? `${n} equipamentos adicionados`
+            : "Adicionado",
         );
       } else {
         // Sem rede não há o que revalidar: a lista da tela é atualizada à mão.
@@ -276,8 +350,8 @@ export default function EpiForm({
       toast.error("Escolha ao menos um equipamento — ou digite um que não esteja na lista");
       return;
     }
-    if (!form.id_risco) {
-      toast.error("Vincule a um risco");
+    if (riscosAlvo.length === 0) {
+      toast.error(isEdit ? "Vincule a um risco" : "Marque ao menos um risco");
       return;
     }
     mutation.mutate();
@@ -299,10 +373,110 @@ export default function EpiForm({
               setForm(v.form);
               setEscolhidos(v.escolhidos);
               setExtras(v.extras);
+              // Rascunho de antes desta mudança só tinha `form.id_risco`.
+              const ids = new Set(riscos.map((r) => r.id_risco));
+              setSetoresSel(v.setoresSel ?? []);
+              setRiscosSel(
+                (v.riscosSel ?? (v.form.id_risco ? [v.form.id_risco] : [])).filter((id) =>
+                  ids.has(id),
+                ),
+              );
             }}
             onDescartar={rascunho.descartar}
           />
         )}
+        {!isEdit ? (
+          <>
+            {/* 1. Setores — filtram a lista de riscos abaixo (nenhum = todos) */}
+            <div>
+              <label className={lblCls}>
+                Setores
+                <span className="ml-1 text-xs font-normal text-gray-500">
+                  (marque um ou vários; nenhum = todos)
+                </span>
+              </label>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {grupos.map((g) => {
+                  const ativo = setoresSel.includes(g.idSetor);
+                  const marcados = g.riscos.filter((r) => riscosSel.includes(r.id_risco)).length;
+                  return (
+                    <button
+                      key={g.idSetor || "_sem"}
+                      type="button"
+                      aria-pressed={ativo}
+                      onClick={() =>
+                        setSetoresSel((v) =>
+                          ativo ? v.filter((x) => x !== g.idSetor) : [...v, g.idSetor],
+                        )
+                      }
+                      className={
+                        "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors " +
+                        (ativo
+                          ? "border-verde-primary bg-verde-light text-verde-primary"
+                          : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50")
+                      }
+                    >
+                      {g.nome}
+                      {marcados > 0 && (
+                        <span className="ml-1 rounded-full bg-verde-primary px-1.5 text-[10px] text-white">
+                          {marcados}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Riscos — agrupados por setor; cada marcado recebe os equipamentos */}
+            <div>
+              <label className={lblCls}>
+                Riscos vinculados *
+                {riscosSel.length > 0 && (
+                  <span className="ml-1 text-xs font-normal text-gray-500">
+                    ({riscosSel.length} marcado{riscosSel.length !== 1 ? "s" : ""} em{" "}
+                    {setoresComRisco} setor{setoresComRisco !== 1 ? "es" : ""})
+                  </span>
+                )}
+              </label>
+              <div className="mt-1 max-h-64 space-y-2 overflow-y-auto rounded-md border border-gray-300 p-2">
+                {gruposVisiveis.map((g) => (
+                  <fieldset key={g.idSetor || "_sem"}>
+                    <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      {g.nome}
+                    </legend>
+                    {g.riscos.map((r) => (
+                      <label
+                        key={r.id_risco}
+                        className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 text-sm text-gray-800 hover:bg-gray-50"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={riscosSel.includes(r.id_risco)}
+                          onChange={() => alternarRisco(r.id_risco)}
+                          className="size-4 accent-verde-primary"
+                        />
+                        <span>
+                          {iconeDe(r.tipo_risco)} {r.tipo_risco} — {r.agente ?? r.id_risco}
+                        </span>
+                      </label>
+                    ))}
+                  </fieldset>
+                ))}
+              </div>
+              {gemeosPendentes.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setRiscosSel((v) => [...v, ...gemeosPendentes])}
+                  className="mt-1 text-xs font-medium text-verde-primary hover:underline"
+                >
+                  + Marcar o mesmo risco nos outros setores ({gemeosPendentes.length})
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
         {/* 1. Setor — filtra os riscos abaixo */}
         <div>
           <label className={lblCls}>Setor</label>
@@ -350,6 +524,8 @@ export default function EpiForm({
             ))}
           </select>
         </div>
+          </>
+        )}
 
         {/* 3. Tipo + Recomendado */}
         <div className="grid gap-3 md:grid-cols-2">
@@ -434,25 +610,32 @@ export default function EpiForm({
           )}
         </div>
 
-        {/* 5 e 6. CA e fotos são de cada equipamento — só com um item de cada vez */}
-        {varios ? (
+        {/* 5 e 6. CA é de cada equipamento; foto é de cada registro */}
+        {!isEdit && totalLinhas > 1 && (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            <strong>{itens.length} equipamentos selecionados.</strong> CA e fotos são
-            de cada um, então não aparecem aqui — adicione todos e depois edite item
-            a item para preencher.
+            <strong>
+              Serão criados {totalLinhas} registros
+              {riscosAlvo.length > 1 &&
+                ` (${itens.length} equipamento${itens.length !== 1 ? "s" : ""} × ${riscosAlvo.length} riscos)`}
+              .
+            </strong>{" "}
+            {varios ? "CA e fotos" : "Fotos"} não aparecem aqui — adicione e depois
+            edite item a item para preencher.
           </p>
-        ) : (
+        )}
+        {!varios && (
+          <div>
+            <label className={lblCls}>Certificado de Aprovação (CA)</label>
+            <input
+              type="text"
+              value={form.ca}
+              onChange={(e) => setForm({ ...form, ca: e.target.value })}
+              className={inputCls}
+            />
+          </div>
+        )}
+        {!semFotos && (
           <>
-            <div>
-              <label className={lblCls}>Certificado de Aprovação (CA)</label>
-              <input
-                type="text"
-                value={form.ca}
-                onChange={(e) => setForm({ ...form, ca: e.target.value })}
-                className={inputCls}
-              />
-            </div>
-
             <div>
               <label className={lblCls}>
                 Fotos{" "}
@@ -482,8 +665,8 @@ export default function EpiForm({
               ? "Salvando..."
               : isEdit
               ? "Salvar"
-              : itens.length > 1
-              ? `Adicionar ${itens.length}`
+              : totalLinhas > 1
+              ? `Adicionar ${totalLinhas}`
               : "Adicionar"}
           </button>
         </div>
@@ -491,6 +674,10 @@ export default function EpiForm({
     </Modal>
   );
 }
+
+// "Mesmo risco" = mesmo tipo + mesmo agente (sem ligar para maiúscula).
+const chaveRisco = (r: Risco) =>
+  `${r.tipo_risco}|${(r.agente ?? "").trim().toLowerCase()}`;
 
 const inputCls =
   "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
