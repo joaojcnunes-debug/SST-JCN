@@ -145,7 +145,7 @@ export default function TransferenciasPendentes() {
                       <button
                         type="button"
                         onClick={() => setAssinando(t)}
-                        className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                        className="inline-flex items-center gap-1 rounded-md bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sky-700"
                       >
                         <Check className="size-3.5" />
                         Receber e assinar

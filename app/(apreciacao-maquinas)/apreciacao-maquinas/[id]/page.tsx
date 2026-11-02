@@ -1021,7 +1021,7 @@ export default function DetalheApreciacaoPage() {
                       <td className="border border-gray-200 px-2 py-1 text-center">
                         <input type="checkbox" checked={temAtual} disabled={readOnly}
                           onChange={() => !readOnly && setSistemasAtual((prev) => temAtual ? prev.filter((s) => s !== sis) : [...prev, sis])}
-                          className="accent-emerald-600 size-3.5"
+                          className="accent-sky-600 size-3.5"
                         />
                       </td>
                       <td className="border border-gray-200 px-2 py-1 text-center">
@@ -1331,7 +1331,7 @@ export default function DetalheApreciacaoPage() {
                   ? "Avalie todos os itens pendentes antes de finalizar"
                   : ""
               }
-              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50"
             >
               <CheckCircle2 className="size-4" /> Finalizar apreciação
             </button>

@@ -73,7 +73,7 @@ export default function BiometriaCaptura({
           type="button"
           onClick={capturar}
           disabled={lendo || ocupado}
-          className="inline-flex shrink-0 items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+          className="inline-flex shrink-0 items-center gap-2 rounded-md bg-sky-600 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
         >
           {lendo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Fingerprint className="h-4 w-4" />}
           {lendo ? "Lendo…" : "Ler digital"}

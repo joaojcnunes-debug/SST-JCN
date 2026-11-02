@@ -78,30 +78,30 @@ export default function EstoquePorQuantidade({
   const total = linhas.reduce((n, l) => n + l.qtd, 0);
 
   return (
-    <section className="rounded-lg border border-emerald-200 bg-emerald-50/40">
+    <section className="rounded-lg border border-sky-200 bg-sky-50/40">
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5">
-        <h2 className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-sky-900">
           <Boxes className="size-4" />
           Periféricos e itens por quantidade
-          <span className="font-normal text-emerald-800/80">
+          <span className="font-normal text-sky-800/80">
             · {total} unidade{total === 1 ? "" : "s"} em estoque, sem ficha própria
           </span>
         </h2>
         <Link
           href="/equipamentos/movimentacao"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 hover:underline"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-sky-800 hover:underline"
         >
           <PackagePlus className="size-3.5" />
           Dar entrada / retirar
         </Link>
       </div>
-      <ul className="grid grid-cols-1 gap-2 border-t border-emerald-100 p-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-2 border-t border-sky-100 p-3 sm:grid-cols-2 lg:grid-cols-3">
         {linhas.map((l) => {
           const abaixo = l.minimo > 0 && l.qtd < l.minimo;
           return (
             <li
               key={l.chave}
-              className="flex items-center justify-between gap-3 rounded-md border border-emerald-100 bg-white px-3 py-2"
+              className="flex items-center justify-between gap-3 rounded-md border border-sky-100 bg-white px-3 py-2"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-gray-900">{l.nome}</p>

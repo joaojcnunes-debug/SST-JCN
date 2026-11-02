@@ -339,16 +339,16 @@ function ConteudoAjudaAnaliseQuimicosPage() {
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Cabeçalho */}
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-6 py-6">
+        <div className="rounded-xl border border-sky-200 bg-sky-50 px-6 py-6">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4">
-              <div className="shrink-0 size-12 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center">
-                <FlaskConical className="size-6 text-emerald-700" />
+              <div className="shrink-0 size-12 rounded-xl bg-sky-100 border border-sky-200 flex items-center justify-center">
+                <FlaskConical className="size-6 text-sky-700" />
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <BookOpen className="size-3.5 text-emerald-600" />
-                  <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">
+                  <BookOpen className="size-3.5 text-sky-600" />
+                  <span className="text-[11px] font-bold text-sky-600 uppercase tracking-wider">
                     Manual de Instrução
                   </span>
                 </div>
@@ -373,9 +373,9 @@ function ConteudoAjudaAnaliseQuimicosPage() {
         </div>
 
         {/* O que é */}
-        <div className="rounded-xl border border-emerald-200 bg-white p-6 space-y-3">
+        <div className="rounded-xl border border-sky-200 bg-white p-6 space-y-3">
           <div className="flex items-center gap-2">
-            <Info className="size-4 text-emerald-600" />
+            <Info className="size-4 text-sky-600" />
             <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
               O que é este módulo?
             </h2>
@@ -609,9 +609,9 @@ function ConteudoAjudaAnaliseQuimicosPage() {
         </div>
 
         {/* Boas práticas */}
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 space-y-3">
+        <div className="rounded-xl border border-sky-200 bg-sky-50 p-5 space-y-3">
           <div className="flex items-center gap-2">
-            <Sparkles className="size-4 text-emerald-600" />
+            <Sparkles className="size-4 text-sky-600" />
             <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
               Boas práticas
             </h2>
@@ -619,7 +619,7 @@ function ConteudoAjudaAnaliseQuimicosPage() {
           <ul className="space-y-2.5">
             {BOAS_PRATICAS.map((bp, i) => (
               <li key={i} className="flex items-start gap-3">
-                <span className="shrink-0 size-5 rounded-full bg-emerald-200 text-emerald-800 text-[10px] font-bold flex items-center justify-center mt-0.5">
+                <span className="shrink-0 size-5 rounded-full bg-sky-200 text-sky-800 text-[10px] font-bold flex items-center justify-center mt-0.5">
                   {i + 1}
                 </span>
                 <p className="text-xs text-gray-700 leading-relaxed">{bp}</p>
