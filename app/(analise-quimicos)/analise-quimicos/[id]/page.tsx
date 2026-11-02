@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { use, useState, useEffect } from "react";
@@ -82,6 +83,7 @@ export default function AnaliseDetalhePage({
           <ArrowLeft className="size-3.5" /> Voltar ao histórico
         </Link>
         <div className="flex items-center gap-2">
+          <BotaoHistoricoDocumento docTabela="analises_quimicos" docId={id} />
           {/* Os botões de PDF (gerar, assinar, baixar) moram na tela do laudo */}
           <Link
             href={`/analise-quimicos/${id}/laudo`}

@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { use, useMemo, useRef, useState } from "react";
@@ -219,6 +220,7 @@ export default function DetalheNaoConformidadePage({
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
         <div className="flex items-center gap-2">
+          <BotaoHistoricoDocumento docTabela="relatorios_nao_conformidade" docId={id} />
           {canEdit && finalizado && (
             <button
               type="button"

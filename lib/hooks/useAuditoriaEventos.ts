@@ -37,6 +37,8 @@ interface PaginaAuditoria {
   total?: number;
   /** Menor id da página — cursor da próxima. null quando acabou. */
   proximo: number | null;
+  /** Menor id lido, mesmo quando a página veio incompleta. */
+  ultimoId: number | null;
 }
 
 // Meia-noite LOCAL do dia, em ISO — o banco guarda timestamptz, então o filtro
@@ -48,14 +50,14 @@ function fimDoDia(d: string) {
   return new Date(`${d}T23:59:59.999`).toISOString();
 }
 
-async function buscarPagina(f: FiltrosAuditoria, cursor: number | null): Promise<PaginaAuditoria> {
+async function buscarPagina(f: FiltrosAuditoria, cursor: number | null, porPagina = POR_PAGINA): Promise<PaginaAuditoria & { lidos: number }> {
   const sb = createSupabaseBrowserClient();
   let q = sb
     .from("auditoria_eventos")
     // Contagem exata só na 1ª página: nas seguintes o número já é conhecido.
     .select("*", cursor === null ? { count: "exact" } : undefined)
     .order("id", { ascending: false })
-    .limit(POR_PAGINA);
+    .limit(porPagina);
 
   if (f.de) q = q.gte("ocorrido_em", inicioDoDia(f.de));
   if (f.ate) q = q.lte("ocorrido_em", fimDoDia(f.ate));
@@ -78,10 +80,42 @@ async function buscarPagina(f: FiltrosAuditoria, cursor: number | null): Promise
   const brutos = (data ?? []) as unknown as AuditoriaEvento[];
   const eventos = f.soConclusoes ? brutos.filter(ehConclusao) : brutos;
   return {
+    ultimoId: brutos.length ? brutos[brutos.length - 1].id : null,
     eventos,
     total: cursor === null ? (count ?? undefined) : undefined,
-    proximo: brutos.length === POR_PAGINA ? brutos[brutos.length - 1].id : null,
+    proximo: brutos.length === porPagina ? brutos[brutos.length - 1].id : null,
+    lidos: brutos.length,
   };
+}
+
+/** Teto da exportação: acima disso a planilha fica pesada demais para o Excel abrir bem. */
+export const LIMITE_EXPORTACAO = 20000;
+
+/**
+ * Todos os eventos dos filtros, para o XLSX. Páginas de 1.000 pelo mesmo
+ * cursor da tela; para quando a página vem vazia (não quando vem "menor que
+ * 1.000": se o PostgREST tiver teto de linhas menor, parar ali perderia o resto).
+ */
+export async function buscarTodosParaExportar(
+  f: FiltrosAuditoria,
+  aoProgredir?: (lidos: number, total?: number) => void,
+): Promise<{ eventos: AuditoriaEvento[]; cortado: boolean }> {
+  const eventos: AuditoriaEvento[] = [];
+  let cursor: number | null = null;
+  let total: number | undefined;
+  let lidos = 0;
+  for (;;) {
+    const pagina = await buscarPagina(f, cursor, 1000);
+    if (cursor === null) total = pagina.total;
+    if (pagina.lidos === 0) return { eventos, cortado: false };
+    eventos.push(...pagina.eventos);
+    lidos += pagina.lidos;
+    aoProgredir?.(lidos, total);
+    if (total !== undefined && lidos >= total) return { eventos, cortado: false };
+    if (lidos >= LIMITE_EXPORTACAO) return { eventos, cortado: total === undefined || total > lidos };
+    // O cursor anda pelo último id LIDO (antes do filtro de conclusão).
+    cursor = pagina.ultimoId;
+  }
 }
 
 export function useAuditoriaEventos(filtros: FiltrosAuditoria) {
@@ -113,24 +147,27 @@ export function useAuditoriaTabelas() {
 }
 
 /**
- * Linha do tempo de UM registro (Fase 3: aba "Histórico" dentro do documento).
- * Mesma leitura, sem paginação: um documento raramente passa de algumas
- * centenas de eventos.
+ * Aba "Histórico" do documento (v259): tudo do documento E dos itens dele
+ * (riscos, setores, ações…), pelo `doc_tabela`/`doc_id` que o gatilho grava.
+ * Quem não é Admin lê só se consegue abrir o documento (policy da v259).
+ * Sem paginação; o teto de 1.000 é só guarda (a tela avisa quando bate nele).
  */
-export function useAuditoriaRegistro(tabela: string | null | undefined, registroId: string | null | undefined) {
+export const LIMITE_HISTORICO = 1000;
+
+export function useHistoricoDocumento(docTabela: string | null | undefined, docId: string | null | undefined, ativo = true) {
   return useQuery({
-    queryKey: ["auditoria-registro", tabela ?? "", registroId ?? ""],
-    enabled: !!tabela && !!registroId,
+    queryKey: ["auditoria-historico", docTabela ?? "", docId ?? ""],
+    enabled: ativo && !!docTabela && !!docId,
     staleTime: 30 * 1000,
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb
         .from("auditoria_eventos")
         .select("*")
-        .eq("tabela", tabela!)
-        .eq("registro_id", registroId!)
+        .eq("doc_tabela", docTabela!)
+        .eq("doc_id", docId!)
         .order("id", { ascending: false })
-        .limit(500);
+        .limit(LIMITE_HISTORICO);
       if (error) throw error;
       return (data ?? []) as unknown as AuditoriaEvento[];
     },

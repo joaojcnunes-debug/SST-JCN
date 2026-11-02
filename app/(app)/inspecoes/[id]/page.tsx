@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import LiberacaoComercial from "@/components/comercial/LiberacaoComercial";
 import PrioridadeSelo from "@/components/inspecoes/PrioridadeInspecao";
 import { use, useCallback, useState } from "react";
@@ -387,6 +388,7 @@ export default function InspecaoEditorPage({ params }: Props) {
             >
               <ClipboardEdit className="size-4" /> Ficha em Branco
             </Link>
+            <BotaoHistoricoDocumento docTabela="inspecoes" docId={id} />
             {canEdit && (
               <button
                 type="button"

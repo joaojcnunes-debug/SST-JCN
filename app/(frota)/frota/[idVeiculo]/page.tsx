@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { use, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -220,6 +221,7 @@ export default function VeiculoPage({ params }: { params: Promise<{ idVeiculo: s
             <Pencil className="size-4" />
             Editar
           </Link>
+          <BotaoHistoricoDocumento docTabela="frota_veiculos" docId={veiculo.id_veiculo} className="py-2" />
           {/*
             O Excluir agora sabe se pode. Antes ele SEMPRE chamava a lixeira, e
             num veículo com saída registrada a chave estrangeira derrubava o

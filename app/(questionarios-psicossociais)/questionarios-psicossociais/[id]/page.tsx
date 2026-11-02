@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { use, useState } from "react";
 import Link from "next/link";
 import {
@@ -334,6 +335,7 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
         </div>
 
         <div className="flex gap-2 shrink-0">
+          <BotaoHistoricoDocumento docTabela="qps_aplicacoes" docId={id} />
           {proximoStatus && (
             <button
               onClick={() => avancarStatus()}

@@ -13,30 +13,31 @@ import {
   ExternalLink,
   X,
   CheckCircle2,
+  FileSpreadsheet,
 } from "lucide-react";
-import { useAuditoriaEventos, useAuditoriaTabelas, type FiltrosAuditoria } from "@/lib/hooks/useAuditoriaEventos";
+import {
+  buscarTodosParaExportar,
+  useAuditoriaEventos,
+  useAuditoriaTabelas,
+  LIMITE_EXPORTACAO,
+  type FiltrosAuditoria,
+} from "@/lib/hooks/useAuditoriaEventos";
+import { baixarXlsxAuditoria } from "@/lib/auditoria/exportar-xlsx";
 import { useUsuarios } from "@/lib/hooks/useGestao";
 import { useEmpresas } from "@/lib/hooks/useEmpresas";
 import {
   agruparPorDia,
   descreverEvento,
   ehConclusao,
-  formatarValor,
   quemGravou,
   rotaDoRegistro,
-  rotuloCampo,
   rotuloModulo,
   rotuloTabela,
 } from "@/lib/auditoria/eventos";
 import type { AuditoriaAcao, AuditoriaEvento } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
-
-const ACAO_CORES: Record<AuditoriaAcao, string> = {
-  criou: "bg-emerald-100 text-emerald-700",
-  editou: "bg-amber-100 text-amber-700",
-  excluiu: "bg-red-100 text-red-700",
-};
+import { ACAO_CORES, DetalheEvento } from "@/components/auditoria/DetalheEvento";
 
 /** Quando a decisão de guardar tudo deve ser revista (AAAA-MM-DD, compara como texto). */
 const REVISAO_RETENCAO = "2027-09-01";
@@ -105,6 +106,23 @@ function AuditoriaConteudo() {
   // Retenção (decisão dele, 23/09/2026): nada é apagado. Medido: ~60 MB/mês em
   // uso normal, 47 GB livres. A linha no topo vira aviso quando a data chega.
   const revisaoRetencaoVencida = dataLocal(0) >= REVISAO_RETENCAO;
+  // Exportar: relê TUDO dos filtros no servidor (a lista da tela é paginada).
+  const [exportando, setExportando] = useState<string | null>(null);
+  const [erroExportar, setErroExportar] = useState<string | null>(null);
+  const exportar = async () => {
+    setErroExportar(null);
+    setExportando("Lendo…");
+    try {
+      const { eventos: todos, cortado } = await buscarTodosParaExportar(filtros, (lidos, tot) =>
+        setExportando(`${lidos.toLocaleString("pt-BR")}${tot !== undefined ? ` de ${Math.min(tot, LIMITE_EXPORTACAO).toLocaleString("pt-BR")}` : ""}…`),
+      );
+      baixarXlsxAuditoria({ eventos: todos, nomes, nomesEmpresas, descricaoFiltros: descreverFiltros(filtros, nomes, nomesEmpresas), cortado });
+    } catch (e) {
+      setErroExportar(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExportando(null);
+    }
+  };
   const periodoAtivo = (dias: number | null) =>
     dias === null ? !filtros.de && !filtros.ate : filtros.de === dataLocal(dias) && filtros.ate === dataLocal(0);
 
@@ -263,7 +281,23 @@ function AuditoriaConteudo() {
           >
             <RefreshCw className={cn("size-3", isFetching && "animate-spin")} /> Atualizar
           </button>
+          <button
+            type="button"
+            onClick={exportar}
+            disabled={!!exportando || isLoading || total === 0}
+            title={`Baixa todos os eventos destes filtros (até ${LIMITE_EXPORTACAO.toLocaleString("pt-BR")})`}
+            className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {exportando ? <Loader2 className="size-3 animate-spin" /> : <FileSpreadsheet className="size-3" />}
+            {exportando ?? "Exportar XLSX"}
+          </button>
         </div>
+        {erroExportar && <p className="text-xs text-red-700">Não foi possível exportar: {erroExportar}</p>}
+        {total !== undefined && total > LIMITE_EXPORTACAO && (
+          <p className="text-xs text-amber-700">
+            São {total.toLocaleString("pt-BR")} eventos: a exportação leva os {LIMITE_EXPORTACAO.toLocaleString("pt-BR")} mais recentes. Estreite o período para levar o resto.
+          </p>
+        )}
       </div>
 
       {/* Resultado */}
@@ -312,6 +346,24 @@ function AuditoriaConteudo() {
       )}
     </div>
   );
+}
+
+/** Os filtros em uma linha, para o cabeçalho da planilha. */
+function descreverFiltros(f: FiltrosAuditoria, nomes: ReadonlyMap<string, string>, nomesEmpresas: ReadonlyMap<string, string>): string {
+  const br = (d: string) => d.split("-").reverse().join("/");
+  const partes: string[] = [];
+  if (f.de || f.ate) partes.push(`período ${f.de ? br(f.de) : "início"} a ${f.ate ? br(f.ate) : "hoje"}`);
+  else partes.push("todo o período");
+  if (f.email) partes.push(`pessoa ${nomes.get(f.email) ?? f.email}`);
+  if (f.modulo) partes.push(`módulo ${rotuloModulo(f.modulo)}`);
+  if (f.acao) partes.push(`ação ${f.acao}`);
+  if (f.idEmpresa) partes.push(`empresa ${nomesEmpresas.get(f.idEmpresa) ?? f.idEmpresa}`);
+  if (f.tabela) partes.push(`tabela ${f.tabela}`);
+  if (f.registroId) partes.push(`registro ${f.registroId}`);
+  if (f.campo) partes.push(`campo ${f.campo}`);
+  if (f.busca) partes.push(`busca "${f.busca}"`);
+  if (f.soConclusoes) partes.push("só conclusões");
+  return partes.join(" · ");
 }
 
 const SELECT = "w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-verde-primary focus:outline-none";
@@ -380,62 +432,4 @@ function LinhaEvento({
       {aberto && <DetalheEvento ev={ev} />}
     </li>
   );
-}
-
-function DetalheEvento({ ev }: { ev: AuditoriaEvento }) {
-  const [tudo, setTudo] = useState(false);
-  if (ev.acao === "editou") {
-    return (
-      <div className="mx-3 mb-3 overflow-x-auto rounded-md border border-gray-200">
-        <table className="w-full text-xs">
-          <thead className="bg-gray-50 text-left text-[10px] font-semibold uppercase tracking-wide text-gray-500">
-            <tr>
-              <th className="px-2 py-1.5">Campo</th>
-              <th className="px-2 py-1.5">Antes</th>
-              <th className="px-2 py-1.5">Depois</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {ev.campos_alterados.map((c) => (
-              <tr key={c} className="align-top">
-                <td className="whitespace-nowrap px-2 py-1.5 font-medium text-gray-700">{rotuloCampo(c)}</td>
-                <td className="max-w-[24rem] break-words px-2 py-1.5 text-red-700"><Valor v={ev.antes?.[c]} /></td>
-                <td className="max-w-[24rem] break-words px-2 py-1.5 text-emerald-700"><Valor v={ev.depois?.[c]} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    );
-  }
-  // Criou / excluiu: a linha inteira, sem os campos vazios.
-  const linha = (ev.acao === "criou" ? ev.depois : ev.antes) ?? {};
-  const entradas = Object.entries(linha).filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && v.length === 0));
-  const visiveis = tudo ? entradas : entradas.slice(0, 12);
-  return (
-    <div className="mx-3 mb-3 rounded-md border border-gray-200 bg-gray-50 p-2">
-      <dl className="grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
-        {visiveis.map(([k, v]) => (
-          <div key={k} className="flex gap-2">
-            <dt className="w-32 shrink-0 truncate font-medium text-gray-600" title={k}>{rotuloCampo(k)}</dt>
-            <dd className="min-w-0 break-words text-gray-800"><Valor v={v} /></dd>
-          </div>
-        ))}
-      </dl>
-      {entradas.length > 12 && (
-        <button type="button" onClick={() => setTudo((t) => !t)} className="mt-2 text-xs font-medium text-verde-primary hover:underline">
-          {tudo ? "Mostrar menos" : `Ver todos os ${entradas.length} campos`}
-        </button>
-      )}
-    </div>
-  );
-}
-
-function Valor({ v }: { v: unknown }) {
-  const texto = formatarValor(v);
-  const ehObjeto = v !== null && typeof v === "object" && !Array.isArray(v);
-  if (ehObjeto || texto.length > 300) {
-    return <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px]">{ehObjeto ? JSON.stringify(v, null, 1) : texto}</pre>;
-  }
-  return <>{texto}</>;
 }

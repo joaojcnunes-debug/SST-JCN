@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { useEffect, useState } from "react";
@@ -126,7 +127,10 @@ export default function AetDadosPage({ idRelatorio }: { idRelatorio: string }) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <h1 className="text-lg font-semibold text-gray-900">Dados Gerais</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold text-gray-900">Dados Gerais</h1>
+        <BotaoHistoricoDocumento docTabela="aet_relatorios" docId={idRelatorio} />
+      </div>
 
       {/* Levar para o campo — esta é a tela de entrada do laudo (a raiz
           redireciona para cá), então é aqui que a decisão de copiar para o

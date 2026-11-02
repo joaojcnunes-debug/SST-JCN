@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Upload, Trash2, ImageOff } from "lucide-react";
@@ -341,9 +342,12 @@ export default function EquipamentoForm({ equipamento }: { equipamento?: Equipam
           {editando ? "Editar equipamento" : "Novo equipamento"}
         </h1>
         {editando && (
-          <span className="rounded bg-gray-100 px-2 py-1 font-mono text-[11px] text-gray-500">
-            {equipamento.id_equipamento}
-          </span>
+          <div className="flex items-center gap-2">
+            <BotaoHistoricoDocumento docTabela="equipamentos" docId={equipamento.id_equipamento} />
+            <span className="rounded bg-gray-100 px-2 py-1 font-mono text-[11px] text-gray-500">
+              {equipamento.id_equipamento}
+            </span>
+          </div>
         )}
       </div>
 

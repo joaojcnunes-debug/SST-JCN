@@ -589,6 +589,14 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
+- **v316 — auditoria: Histórico por documento (02/11/2026).** É a v259 do Painel SST, aplicada igual. Antes de aplicar, conferimos aqui: as 80 regras apontam para colunas que existem, `auditoria_registrar()` tinha o mesmo corpo do "antes" do Painel e a policy era a mesma.
+  - **`auditoria_eventos.doc_tabela/doc_id`:** guardam o documento dono, com índice parcial.
+  - **`auditoria_doc_regras`:** diz de que documento é cada tabela (filho direto, neto via tabela intermediária ou `anexos` pelo `modulo`).
+  - **`auditoria_doc_de(tabela, linha)`:** aplica as regras e nunca lança erro.
+  - **`auditoria_registrar()`:** passa a gravar o documento dono.
+  - **Eventos antigos:** foram ligados ao documento (229 de 948 na aplicação).
+  - **Leitura:** a policy `auditoria_eventos_sel` = `caller_ve_presenca()` OU `auditoria_doc_visivel()`, que é SECURITY INVOKER e pergunta ao próprio documento se a pessoa o enxerga.
+  - Rollback: `scripts/sql/v316_auditoria_historico_documento_rollback.sql`.
 - **v315 — Gestão: lote do Painel SST (02/11/2026).** São as v312 (partes 2 a 4), v319, v322, v323, v324, v325, v326 e v327 do Painel.
   - **Adaptações ao JCN:** pg_cron no lugar do worker; sem a "tarefa restrita" (Painel v306) e sem o usuário oculto (v303).
   - **Conferência antes de aplicar:** as funções trocadas (`gestao_automacao_acao`, `gestao_automacao_completa_trg`, `gestao_automacao_vencimentos`) tinham o mesmo corpo do "antes" do Painel. `gestao_decidir_aprovacao` ganhou também o `coalesce` da v287 de lá.

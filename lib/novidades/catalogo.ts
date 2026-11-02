@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "lote-painel-historico-documento",
+    data: "2026-11-02",
+    tipo: "novidade",
+    titulo: "Histórico: veja quem mudou o quê em cada documento",
+    texto:
+      "Os documentos ganharam o botão Histórico: inspeção, empresa, AEP, AET, DRPS, QPS, Conformidade, Não " +
+      "conformidade, Apreciação NR-12, Químicos, Investigação de acidente, Equipamento e Veículo. Ele mostra, dia a " +
+      "dia, quem criou, editou ou excluiu o documento e os itens dele (setores, riscos, fotos, ações…), com o antes e " +
+      "o depois de cada campo. Vê o histórico quem consegue abrir o documento. Na Auditoria, o botão Exportar XLSX " +
+      "baixa todos os eventos dos filtros escolhidos.",
+    onde: "Botão Histórico no topo de cada documento e Sistema › Auditoria",
+    versoes: ["0.3.193"],
+  },
+  {
     id: "lote-painel-gestao-automacoes",
     data: "2026-11-02",
     tipo: "novidade",

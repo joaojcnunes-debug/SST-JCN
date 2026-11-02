@@ -1,5 +1,6 @@
 "use client";
 
+import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { useMemo, useRef, useState, use } from "react";
 import {
   Upload,
@@ -96,6 +97,7 @@ export default function DadosPage({
 
   return (
     <div className="space-y-4">
+      <div className="flex items-start justify-between gap-3">
       <div>
         <h1 className="text-xl font-semibold text-gray-900">
           Dados do Formulário
@@ -106,6 +108,8 @@ export default function DadosPage({
           demográficas extras antes das respostas são aceitas — se uma delas for
           a unidade de trabalho, ela é reconhecida e gravada.
         </p>
+      </div>
+        <BotaoHistoricoDocumento docTabela="drps_relatorios" docId={idRelatorio} className="shrink-0" />
       </div>
 
       <DrpsFiltro idRelatorio={idRelatorio} />
