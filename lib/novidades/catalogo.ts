@@ -41,6 +41,33 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "lote-painel-gestao-automacoes",
+    data: "2026-11-02",
+    tipo: "novidade",
+    titulo: "Gestão: Funcionários por produto, automação pausada que volta sozinha e campos de outro quadro",
+    texto:
+      "Nas Automações do quadro, a nova aba Funcionários por produto liga cada funcionário aos produtos que ele cuida: " +
+      "as subtarefas criadas pelo modelo daquele produto já nascem com ele como responsável, e ele é avisado. A ação " +
+      "também aceita escolher o responsável na hora. A automação que fica incompleta enquanto você edita é pausada " +
+      "e volta a rodar sozinha quando você completa; se ficar 15 minutos parada, quem mexeu recebe um aviso. A tarefa " +
+      "criada a partir de outro quadro mostra, só para leitura, os campos que vieram de lá.",
+    onde: "Gestão › Configurar › Automações e janela da tarefa",
+    versoes: ["0.3.192"],
+  },
+  {
+    id: "lote-painel-gestao-subtarefas-acessos",
+    data: "2026-11-02",
+    tipo: "melhoria",
+    titulo: "Gestão: responsável de subtarefa é avisado, recusa vira correção e busca em Membros e acessos",
+    texto:
+      "Quem é colocado como responsável de uma subtarefa recebe o aviso de atribuição e passa a ver a tarefa em " +
+      "Minhas tarefas e na Agenda. Recusar uma aprovação cria a subtarefa \"Corrigir a recusa\" para quem pediu, e a " +
+      "tarefa fica segurada até a correção. Em Membros e acessos, as abas Por pessoa e Por lista ganharam busca e o " +
+      "botão de tirar a pessoa da lista.",
+    onde: "Gestão JCN Consultoria",
+    versoes: ["0.3.192"],
+  },
+  {
     id: "lote-painel-copia-completa",
     data: "2026-11-02",
     tipo: "melhoria",

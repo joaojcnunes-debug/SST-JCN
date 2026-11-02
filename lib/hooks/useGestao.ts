@@ -1167,6 +1167,7 @@ export interface AcaoAutomacao {
   // ações do motor v2 (F2.2a/b/c)
   modelo_slug?: string;                       // criar_subtarefas_modelo
   aprovador_email?: string;                   // solicitar_aprovacao (opcional)
+  responsavel_email?: string;                 // criar_subtarefas_modelo (v315 = painel v319, opcional)
   id_quadro_destino?: string;                 // mover/criar_tarefa_quadro; '@unidade' = quadro da unidade da tarefa (v302, só criar)
   status_destino?: string;                    // mover/criar_tarefa_quadro: etapa no destino (criar: v302)
   titulo_template?: string;                   // criar_tarefa_quadro ({{titulo}})
@@ -1200,6 +1201,9 @@ export interface GestaoAutomacao {
   /** v298: as ações, em ordem. Regra antiga: vazio, e vale `acao`. */
   acoes?: AcaoAutomacao[];
   ordem: number;
+  /** v315 (Painel v323): quando a regra ATIVA foi pausada por ficar incompleta (volta sozinha ao completar). */
+  pausada_em?: string | null;
+  pausada_por?: string | null;
 }
 
 export function useAutomacoes(idQuadro: string | null | undefined) {
@@ -1419,25 +1423,26 @@ export function useSubtarefasDoQuadro(idQuadro: string | null | undefined, enabl
   });
 }
 
-/** Minhas tarefas em TODOS os quadros: onde estou vinculado (responsável OU seguidor),
- *  por e-mail — não mais por nome (v187/F1.2). O e-mail é gravado em minúsculas na tabela;
- *  o filtro por igualdade exata sobre o valor normalizado equivale a lower(usuario_email). */
+/** Tarefas em que estou alocado: vinculado (responsável OU seguidor) ou responsável de uma
+ *  subtarefa ainda aberta (v0.3.806) — antes quem só tinha a subtarefa não achava a tarefa em
+ *  Minhas tarefas/Agenda. RPC v315 (Painel v312): mesmo filtro de acesso da RLS, sem pagá-la linha a linha. */
+async function buscarTarefasAlocadas(): Promise<GestaoTarefa[]> {
+  const sb = createSupabaseBrowserClient();
+  const { data, error } = await sb.rpc("gestao_minhas_tarefas" as never);
+  if (error) throw error;
+  return (data ?? []) as unknown as GestaoTarefa[];
+}
+
+/** Minhas tarefas em TODOS os quadros: onde estou vinculado (responsável OU seguidor) ou sou
+ *  responsável de subtarefa aberta, por e-mail — não mais por nome (v187/F1.2). */
 export function useMinhasTarefas(enabled = true) {
   const email = useUserStore((s) => s.user?.email ?? null);
   return useQuery({
     queryKey: ["gestao-minhas", email],
     enabled: enabled && !!email,
     queryFn: async () => {
-      const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb
-        .from("gestao_tarefa_vinculados")
-        .select("tarefa:gestao_tarefas!inner(*)")
-        .eq("usuario_email", (email as string).toLowerCase());
-      if (error) throw error;
-      const rows = (data ?? []) as unknown as { tarefa: GestaoTarefa | null }[];
-      const porId = new Map<string, GestaoTarefa>();
-      for (const r of rows) if (r.tarefa) porId.set(r.tarefa.id_tarefa, r.tarefa);
-      return [...porId.values()].sort((a, b) => {
+      const tarefas = await buscarTarefasAlocadas();
+      return tarefas.sort((a, b) => {
         if (!a.prazo) return 1;
         if (!b.prazo) return -1;
         return a.prazo.localeCompare(b.prazo);
@@ -1446,26 +1451,19 @@ export function useMinhasTarefas(enabled = true) {
   });
 }
 
-/** Agenda do Meu Espaço: as tarefas COM DATA em que estou alocado (responsável ou seguidor), em
- *  todos os quadros. A chave começa com "gestao-minhas" para pegar as mesmas invalidações. */
+/** Agenda do Meu Espaço: as tarefas COM DATA em que estou alocado (responsável, seguidor ou
+ *  responsável de subtarefa aberta), em todos os quadros. A chave começa com "gestao-minhas" para
+ *  pegar as mesmas invalidações. */
 export function useMinhasTarefasAgenda(enabled = true) {
   const email = useUserStore((s) => s.user?.email ?? null);
   return useQuery({
     queryKey: ["gestao-minhas", "agenda", email],
     enabled: enabled && !!email,
     queryFn: async () => {
-      const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb
-        .from("gestao_tarefa_vinculados")
-        .select("tarefa:gestao_tarefas!inner(*)")
-        .eq("usuario_email", (email as string).toLowerCase());
-      if (error) throw error;
-      const rows = (data ?? []) as unknown as { tarefa: GestaoTarefa | null }[];
-      const porId = new Map<string, GestaoTarefa>();
+      const tarefas = await buscarTarefasAlocadas();
       // v300: a filha de uma subtarefa só abre pela subtarefa — fica fora, como nas outras vistas.
       // Só o que tem data entra na Agenda (prazo ou, sem prazo, a data de início).
-      for (const r of rows) if (r.tarefa && !r.tarefa.id_tarefa_pai && (r.tarefa.prazo || r.tarefa.data_inicio)) porId.set(r.tarefa.id_tarefa, r.tarefa);
-      return [...porId.values()];
+      return tarefas.filter((t) => !t.id_tarefa_pai && (t.prazo || t.data_inicio));
     },
   });
 }
@@ -1943,6 +1941,112 @@ export function useExcluirModelo() {
   });
 }
 
+// ---- v315 (Painel v325): campos que vieram de outro quadro (ex.: Produtos do Comercial), só leitura ----
+export interface GestaoCampoOrigem {
+  id: string;
+  nome: string;
+  tipo: string;
+  quadro: string;
+  valor: unknown;
+}
+
+export function useCamposDeOrigem(idTarefa: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-campos-origem", idTarefa],
+    enabled: !!idTarefa,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient() as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> };
+      const { data, error } = await sb.rpc("gestao_campos_de_origem", { p_id_tarefa: idTarefa });
+      if (error) throw error;
+      return (data ?? []) as GestaoCampoOrigem[];
+    },
+  });
+}
+
+// ---- v315 (Painel v322): funcionário responsável pelas subtarefas de cada produto, por quadro ----
+export interface GestaoProdutoResponsavel {
+  id: string;
+  id_quadro: string;
+  usuario_email: string;
+  produtos: string[];
+  ordem: number;
+  created_at: string;
+}
+
+/** v315 (Painel v326): quem tem acesso a um quadro em Membros e acessos (sem os administradores). */
+export function usePessoasDoQuadro(idQuadro: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-pessoas-quadro", idQuadro],
+    enabled: !!idQuadro,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient() as unknown as { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }> };
+      const { data, error } = await sb.rpc("gestao_pessoas_do_quadro", { p_id_quadro: idQuadro });
+      if (error) throw error;
+      return (data ?? []) as { email: string; nome: string; nivel: string }[];
+    },
+  });
+}
+
+export function useProdutoResponsaveis(idQuadro: string | null | undefined) {
+  return useQuery({
+    queryKey: ["gestao-produto-responsaveis", idQuadro],
+    enabled: !!idQuadro,
+    queryFn: async () => {
+      const sb = createSupabaseBrowserClient();
+      const { data, error } = await sb
+        .from("gestao_produto_responsaveis" as never)
+        .select("*")
+        .eq("id_quadro", idQuadro!)
+        .order("ordem", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as unknown as GestaoProdutoResponsavel[];
+    },
+  });
+}
+
+export function useSalvarProdutoResponsavel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (r: Partial<GestaoProdutoResponsavel> & { id_quadro: string }) => {
+      const sb = createSupabaseBrowserClient();
+      if (!r.id) {
+        const { error } = await sb.from("gestao_produto_responsaveis" as never).insert({
+          id_quadro: r.id_quadro,
+          usuario_email: (r.usuario_email ?? "").toLowerCase(),
+          produtos: r.produtos ?? [],
+          ordem: r.ordem ?? 0,
+        } as never);
+        if (error) throw error;
+        return;
+      }
+      const { id, ...patch } = r;
+      const { error } = await sb
+        .from("gestao_produto_responsaveis" as never)
+        .update({ ...patch, ...(patch.usuario_email ? { usuario_email: patch.usuario_email.toLowerCase() } : {}), updated_at: new Date().toISOString() } as never)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-produto-responsaveis"] }),
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível salvar o funcionário do produto.")),
+  });
+}
+
+export function useExcluirProdutoResponsavel() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const sb = createSupabaseBrowserClient();
+      const { error } = await sb.from("gestao_produto_responsaveis" as never).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["gestao-produto-responsaveis"] }),
+    onError: (e) => toast.error(mensagemErro(e, "Não foi possível excluir a linha.")),
+  });
+}
+
 // ---- Acessos por lista (permissões finas) ----
 export interface GestaoAcesso {
   id: string;
@@ -2203,6 +2307,7 @@ export function useSalvarSubtarefas() {
     onSuccess: (_d, p) => {
       qc.invalidateQueries({ queryKey: ["gestao-subtarefas", p.id_tarefa] });
       qc.invalidateQueries({ queryKey: ["gestao-tarefas"] });
+      qc.invalidateQueries({ queryKey: ["gestao-minhas"] });
     },
     onError: (e) => toast.error(mensagemErro(e, "Não foi possível salvar as subtarefas.")),
   });

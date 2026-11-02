@@ -672,6 +672,16 @@ Gerenciador de tarefas (estilo ClickUp/Runrun.it). Hierarquia **Espaço › Past
 - A janela de Automações usa o `Modal` `size="quadrado"`.
 - O Esc do `FiltroSuspenso` fecha só a lista aberta.
 
+**0.3.192 (do Painel SST, banco v315):**
+- **Membros e acessos:** busca e "tirar da lista" nas abas Por pessoa e Por lista (`BuscaUnica`, `TirarDaListaDialog`).
+- **Automações:**
+  - a aba **Funcionários por produto** (`ProdutoResponsaveisAba`) liga o funcionário aos produtos de cada quadro;
+  - a ação "subtarefas do modelo" tem **Responsável** opcional;
+  - a regra que fica incompleta mostra "Pausada desde…" e volta sozinha ao completar.
+- **Tarefa:** mostra só para leitura os campos que vieram de outro quadro (`useCamposDeOrigem`). Os campos de múltipla escolha ocupam a linha toda, e a tarefa nova já abre os campos.
+- **Minhas tarefas e Agenda:** usam `gestao_minhas_tarefas()`, que também traz as tarefas em que a pessoa é responsável de subtarefa aberta.
+- **Aprovação:** recusar cria a subtarefa de correção.
+
 ### 9.2 SGG — envio de riscos ao sistema externo
 
 `POST /api/sgg/enviar-riscos` (botão na inspeção). Exige Admin ou `pode_enviar_sgg`; empresa com `sgg_base_sgg` e `sgg_id`. Resolve setor e cargos nos dados-mestres (`MESTRES_POSTGREST_URL`) pelo nome exato do setor; um envio por setor; converte probabilidade/severidade para a escala AIHA 5×5 (`lib/sgg/mapa-aiha.ts`); envia por socket unix com HMAC; registra em `sgg_envios` (pendente, enviado, erro, duplicado, indeterminado).

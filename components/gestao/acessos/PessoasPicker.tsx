@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export interface PessoaOpcao { email: string; nome: string; perfil: string }
 
-const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+export const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 /**
  * Escolha de VÁRIAS pessoas (v305): busca por nome ou e-mail (sem acento), filtro por perfil,

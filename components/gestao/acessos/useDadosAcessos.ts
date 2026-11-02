@@ -29,12 +29,14 @@ export function useDadosAcessos(ativo: boolean) {
   const perfilPorEmail = useMemo(() => new Map(usuarios.map((u) => [u.email.toLowerCase(), u.perfil])), [usuarios]);
   const nomeEquipe = useMemo(() => new Map(equipes.map((e) => [e.id, e.nome])), [equipes]);
   const membrosAtivos = useMemo(() => new Set(membros.filter((m) => m.ativo).map((m) => m.usuario_email.toLowerCase())), [membros]);
+  /** Papel no roster de quem está ATIVO (owner/admin/membro). */
+  const papelPorEmail = useMemo(() => new Map(membros.filter((m) => m.ativo).map((m) => [m.usuario_email.toLowerCase(), m.papel])), [membros]);
 
   /** Nome e caminho de um grant; recurso apagado aparece com o id. */
   const recursoDe = (tipo: string | null | undefined, id: string | null | undefined) =>
     (tipo && id ? indice.get(chaveRecurso(tipo as "space" | "folder" | "list", id)) : undefined) ?? { nome: id ?? "?", caminho: id ?? "?", tipo: (tipo ?? "list") as "list" };
 
-  return { arvore, indice, acessos, usuarios, equipes, equipeMembros, nomePorEmail, perfilPorEmail, nomeEquipe, membrosAtivos, recursoDe };
+  return { arvore, indice, acessos, usuarios, equipes, equipeMembros, nomePorEmail, perfilPorEmail, nomeEquipe, membrosAtivos, papelPorEmail, recursoDe };
 }
 
 export type DadosAcessos = ReturnType<typeof useDadosAcessos>;

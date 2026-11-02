@@ -87,8 +87,10 @@ export default function MembrosModal({
         {aba === "pessoas" && (
           <AbaPessoas key={chaveDarAcesso} d={d} recursosIniciais={recursosIniciais} pedirMotivo={pedirMotivo} executar={executar} gravando={gravando} />
         )}
-        {aba === "por_pessoa" && <AbaEfetivo d={d} modo="pessoa" onDarAcesso={darAcessoNaLista} />}
-        {aba === "por_lista" && <AbaEfetivo key={quadroFoco ?? ""} d={d} modo="lista" quadroInicial={quadroFoco} onDarAcesso={darAcessoNaLista} />}
+        {aba === "por_pessoa" && <AbaEfetivo d={d} modo="pessoa" onDarAcesso={darAcessoNaLista} pedirMotivo={pedirMotivo} executar={executar} gravando={gravando} />}
+        {aba === "por_lista" && (
+          <AbaEfetivo key={quadroFoco ?? ""} d={d} modo="lista" quadroInicial={quadroFoco} onDarAcesso={darAcessoNaLista} pedirMotivo={pedirMotivo} executar={executar} gravando={gravando} />
+        )}
         {aba === "equipes" && <EquipesTab d={d} pedirMotivo={pedirMotivo} executar={executar} gravando={gravando} />}
         {aba === "historico" && <AbaHistorico d={d} />}
 
