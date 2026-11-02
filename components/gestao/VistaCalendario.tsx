@@ -100,9 +100,9 @@ export default function VistaCalendario({
               key={key}
               onDragOver={(e) => { if (dragId) { e.preventDefault(); setDiaHover(key); } }}
               onDrop={() => soltar(key)}
-              className={`min-h-[92px] bg-white p-1 transition ${doMes ? "" : "bg-gray-50/60"} ${diaHover === key ? "ring-2 ring-inset ring-verde-primary/40" : ""}`}
+              className={`min-h-[92px] bg-white p-1 transition ${doMes ? "" : "bg-gray-50/60"} ${diaHover === key ? "ring-2 ring-inset ring-marca-primary/40" : ""}`}
             >
-              <div className={`mb-1 flex size-6 items-center justify-center rounded-full text-xs ${isToday(d) ? "bg-verde-primary font-bold text-white" : doMes ? "text-gray-700" : "text-gray-300"}`}>
+              <div className={`mb-1 flex size-6 items-center justify-center rounded-full text-xs ${isToday(d) ? "bg-marca-primary font-bold text-white" : doMes ? "text-gray-700" : "text-gray-300"}`}>
                 {format(d, "d")}
               </div>
               <div className="space-y-1">

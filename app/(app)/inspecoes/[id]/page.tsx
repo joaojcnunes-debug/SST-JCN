@@ -404,7 +404,7 @@ export default function InspecaoEditorPage({ params }: Props) {
                 type="button"
                 onClick={() => mudarStatus.mutate("CONCLUIDA")}
                 disabled={mudarStatus.isPending}
-                className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
               >
                 {mudarStatus.isPending ? (
                   <Loader2 className="size-4 animate-spin" />
@@ -419,7 +419,7 @@ export default function InspecaoEditorPage({ params }: Props) {
                 type="button"
                 onClick={() => marcarRenovacao.mutate("concluir")}
                 disabled={marcarRenovacao.isPending || mudarStatus.isPending}
-                className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-1.5 text-sm font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary bg-white px-3 py-1.5 text-sm font-semibold text-marca-primary hover:bg-marca-light disabled:opacity-60"
                 title="Conclui sem contar como inspeção: serve para registrar a empresa ou a renovação dos documentos dela"
               >
                 {marcarRenovacao.isPending ? (
@@ -435,7 +435,7 @@ export default function InspecaoEditorPage({ params }: Props) {
                 type="button"
                 onClick={() => marcarRenovacao.mutate("marcar")}
                 disabled={marcarRenovacao.isPending}
-                className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-1.5 text-sm font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary bg-white px-3 py-1.5 text-sm font-semibold text-marca-primary hover:bg-marca-light disabled:opacity-60"
                 title="Continua concluída, mas deixa de contar como inspeção: serve para registro de empresa ou renovação de documentos"
               >
                 {marcarRenovacao.isPending ? (
@@ -537,7 +537,7 @@ export default function InspecaoEditorPage({ params }: Props) {
                 className={cn(
                   "flex shrink-0 items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors",
                   active
-                    ? "border-verde-primary text-verde-primary"
+                    ? "border-marca-primary text-marca-primary"
                     : "border-transparent text-gray-600 hover:text-gray-900"
                 )}
               >
@@ -548,7 +548,7 @@ export default function InspecaoEditorPage({ params }: Props) {
                     className={cn(
                       "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
                       active
-                        ? "bg-verde-primary text-white"
+                        ? "bg-marca-primary text-white"
                         : "bg-gray-100 text-gray-600"
                     )}
                   >

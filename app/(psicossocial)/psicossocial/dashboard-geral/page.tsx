@@ -364,8 +364,8 @@ function Coluna({
                       </div>
                     )}
                     <div className="mt-1.5 flex items-center gap-2 text-xs">
-                      <FileText className="size-3.5 text-verde-primary" />
-                      <strong className="text-verde-primary">
+                      <FileText className="size-3.5 text-marca-primary" />
+                      <strong className="text-marca-primary">
                         Rev. {r.revisao}
                       </strong>
                       {r.data_elaboracao && (

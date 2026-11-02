@@ -13,7 +13,7 @@ import type { Passo } from "@/components/gestao/acessos/useGravarAcessos";
 import { lerChave, ROTULO_TIPO, type TipoRecurso } from "@/lib/gestao/acessos";
 import { rotuloNivel, type GestaoNivel } from "@/lib/gestao/niveis";
 
-const inputCls = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none";
+const inputCls = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none";
 const ICONE: Record<TipoRecurso, typeof List> = { space: LayoutGrid, folder: Folder, list: List };
 
 /**
@@ -106,11 +106,11 @@ export default function EquipesTab({
       <div className="space-y-1">
         <div className="flex gap-1">
           <input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") criar(); }} placeholder="Nova equipe…" className={`${inputCls} min-w-0 flex-1`} />
-          <button type="button" onClick={criar} disabled={novoNome.trim().length < 2 || pendente} title="Criar equipe" className="rounded-md bg-verde-primary px-2 text-white hover:bg-verde-accent disabled:opacity-50"><Plus className="size-4" /></button>
+          <button type="button" onClick={criar} disabled={novoNome.trim().length < 2 || pendente} title="Criar equipe" className="rounded-md bg-marca-primary px-2 text-white hover:bg-marca-accent disabled:opacity-50"><Plus className="size-4" /></button>
         </div>
         <div className="max-h-[26rem] space-y-0.5 overflow-auto">
           {d.equipes.map((e) => (
-            <button key={e.id} type="button" onClick={() => setSel(e.id)} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${sel === e.id ? "bg-verde-light text-verde-primary" : "text-gray-700 hover:bg-gray-50"} ${e.ativo ? "" : "opacity-50"}`}>
+            <button key={e.id} type="button" onClick={() => setSel(e.id)} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm ${sel === e.id ? "bg-marca-light text-marca-primary" : "text-gray-700 hover:bg-gray-50"} ${e.ativo ? "" : "opacity-50"}`}>
               <Users className="size-4 shrink-0" />
               <span className="min-w-0 flex-1 truncate">{e.nome}</span>
               <span className="text-[11px] text-gray-400">{contagem.get(e.id) ?? 0}</span>
@@ -129,7 +129,7 @@ export default function EquipesTab({
             {editNome !== null ? (
               <>
                 <input autoFocus value={editNome} onChange={(e) => setEditNome(e.target.value)} className={`${inputCls} flex-1`} />
-                <button type="button" onClick={async () => { await salvar.mutateAsync({ id: equipe.id, nome: editNome, descricao: equipe.descricao, ativo: equipe.ativo }); setEditNome(null); }} className="rounded-md p-1 text-verde-primary hover:bg-verde-light"><Check className="size-4" /></button>
+                <button type="button" onClick={async () => { await salvar.mutateAsync({ id: equipe.id, nome: editNome, descricao: equipe.descricao, ativo: equipe.ativo }); setEditNome(null); }} className="rounded-md p-1 text-marca-primary hover:bg-marca-light"><Check className="size-4" /></button>
                 <button type="button" onClick={() => setEditNome(null)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-4" /></button>
               </>
             ) : (
@@ -171,7 +171,7 @@ export default function EquipesTab({
                     <option value="membro">Membro</option>
                     <option value="supervisor">Supervisor</option>
                   </select>
-                  <button type="button" onClick={adicionarPessoas} disabled={!novas.length || pendente} className="rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50">
+                  <button type="button" onClick={adicionarPessoas} disabled={!novas.length || pendente} className="rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
                     Adicionar {novas.length ? `(${novas.length})` : ""}
                   </button>
                 </div>
@@ -188,7 +188,7 @@ export default function EquipesTab({
                 const Icone = ICONE[a.recurso_tipo as TipoRecurso] ?? List;
                 return (
                   <div key={a.id} className="flex items-center gap-2 rounded-md px-1 py-1">
-                    <Icone className="size-3.5 shrink-0 text-verde-primary" />
+                    <Icone className="size-3.5 shrink-0 text-marca-primary" />
                     <span className="min-w-0 flex-1 truncate text-sm text-gray-800" title={r.caminho}>
                       {r.caminho} <span className="text-[10px] text-gray-400">{ROTULO_TIPO[a.recurso_tipo as TipoRecurso]}</span>
                     </span>
@@ -202,7 +202,7 @@ export default function EquipesTab({
                 <RecursoPicker arvore={d.arvore} value={recursos} onChange={setRecursos} altura="max-h-44" />
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   <SeletorNivel value={novoNivel} onChange={setNovoNivel} className={inputCls} />
-                  <button type="button" onClick={conceder} disabled={!recursos.size || !novoNivel || pendente} className="rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50">Conceder à equipe</button>
+                  <button type="button" onClick={conceder} disabled={!recursos.size || !novoNivel || pendente} className="rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">Conceder à equipe</button>
                 </div>
               </div>
             </div>

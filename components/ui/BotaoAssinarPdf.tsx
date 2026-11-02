@@ -176,7 +176,7 @@ export default function BotaoAssinarPdf({
           type="button"
           onClick={() => setOpenImg(true)}
           disabled={capturando}
-          className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary/40 bg-white px-3 py-1.5 text-sm font-semibold text-verde-primary hover:bg-verde-primary/5 disabled:opacity-60 print:hidden"
+          className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary/40 bg-white px-3 py-1.5 text-sm font-semibold text-marca-primary hover:bg-marca-primary/5 disabled:opacity-60 print:hidden"
           title="Assinar carimbando a imagem de assinatura cadastrada no perfil"
         >
           <PenLine className="size-4" />

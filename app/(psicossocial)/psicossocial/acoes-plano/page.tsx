@@ -40,7 +40,7 @@ export default function AcoesPlanoPage() {
     <div className="mx-auto max-w-3xl space-y-4 reveal-up">
       <div className="glass rounded-2xl p-5">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-verde-light text-verde-primary">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-marca-light text-marca-primary">
             <ClipboardCheck className="size-5" />
           </div>
           <div>
@@ -66,7 +66,7 @@ export default function AcoesPlanoPage() {
               type="button"
               onClick={handleCriarOque}
               disabled={criarOque.isPending || !novoOque.trim()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-3 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
             >
               {criarOque.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
               Adicionar
@@ -175,9 +175,9 @@ function OqueItem({
               value={editOqueTxt}
               onChange={(e) => setEditOqueTxt(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") salvarOque(); if (e.key === "Escape") setEditOque(false); }}
-              className="flex-1 rounded-lg border border-verde-primary/40 px-2.5 py-1.5 text-sm"
+              className="flex-1 rounded-lg border border-marca-primary/40 px-2.5 py-1.5 text-sm"
             />
-            <button type="button" onClick={salvarOque} disabled={atualizarOque.isPending} className="rounded-md p-1.5 text-verde-primary hover:bg-verde-light" title="Salvar"><Check className="size-4" /></button>
+            <button type="button" onClick={salvarOque} disabled={atualizarOque.isPending} className="rounded-md p-1.5 text-marca-primary hover:bg-marca-light" title="Salvar"><Check className="size-4" /></button>
             <button type="button" onClick={() => setEditOque(false)} className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100" title="Cancelar"><X className="size-4" /></button>
           </>
         ) : (
@@ -213,9 +213,9 @@ function OqueItem({
                     value={editComoTxt}
                     onChange={(e) => setEditComoTxt(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") salvarComo(); if (e.key === "Escape") setEditComoId(null); }}
-                    className="flex-1 rounded-md border border-verde-primary/40 px-2 py-1 text-sm"
+                    className="flex-1 rounded-md border border-marca-primary/40 px-2 py-1 text-sm"
                   />
-                  <button type="button" onClick={salvarComo} disabled={atualizarComo.isPending} className="rounded p-1 text-verde-primary hover:bg-verde-light"><Check className="size-3.5" /></button>
+                  <button type="button" onClick={salvarComo} disabled={atualizarComo.isPending} className="rounded p-1 text-marca-primary hover:bg-marca-light"><Check className="size-3.5" /></button>
                   <button type="button" onClick={() => setEditComoId(null)} className="rounded p-1 text-gray-400 hover:bg-gray-100"><X className="size-3.5" /></button>
                 </>
               ) : (
@@ -246,7 +246,7 @@ function OqueItem({
                 placeholder='Novo "Como" para esta ação...'
                 className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm"
               />
-              <button type="button" onClick={adicionarComo} disabled={criarComo.isPending || !novoComo.trim()} className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50">
+              <button type="button" onClick={adicionarComo} disabled={criarComo.isPending || !novoComo.trim()} className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
                 {criarComo.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />} Como
               </button>
             </div>

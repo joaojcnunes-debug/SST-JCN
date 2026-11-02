@@ -787,7 +787,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 type="button"
                 onClick={handleSave}
                 disabled={salvar.isPending}
-                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
               >
                 {salvar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                 Salvar
@@ -822,7 +822,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                   type="number" min={0}
                   value={meta.n_respondentes ?? ""}
                   onChange={(e) => setMeta((m) => ({ ...m, n_respondentes: e.target.value ? Number(e.target.value) : null }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
                   placeholder="ex: 42"
                 />
               </div>
@@ -832,7 +832,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                   type="number" min={0}
                   value={meta.total_elegivel ?? ""}
                   onChange={(e) => setMeta((m) => ({ ...m, total_elegivel: e.target.value ? Number(e.target.value) : null }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
                   placeholder="ex: 50"
                 />
               </div>
@@ -853,7 +853,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                   type="date"
                   value={meta.periodo_inicio ?? ""}
                   onChange={(e) => setMeta((m) => ({ ...m, periodo_inicio: e.target.value || null }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
                 />
               </div>
               <div>
@@ -862,7 +862,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                   type="date"
                   value={meta.periodo_fim ?? ""}
                   onChange={(e) => setMeta((m) => ({ ...m, periodo_fim: e.target.value || null }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
                 />
               </div>
               <div>
@@ -870,7 +870,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 <select
                   value={meta.modo_aplicacao ?? ""}
                   onChange={(e) => setMeta((m) => ({ ...m, modo_aplicacao: e.target.value || null }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
                 >
                   <option value="">Selecione…</option>
                   {FORMAS_COLETA.map((f) => <option key={f} value={f}>{f}</option>)}
@@ -882,7 +882,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                   type="text"
                   value={meta.tecnico_aplicador ?? ""}
                   onChange={(e) => setMeta((m) => ({ ...m, tecnico_aplicador: e.target.value || null }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
                   placeholder="Nome do técnico que conduziu a aplicação"
                 />
               </div>
@@ -893,7 +893,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 rows={2}
                 value={meta.observacao_geral ?? ""}
                 onChange={(e) => setMeta((m) => ({ ...m, observacao_geral: e.target.value || null }))}
-                className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
                 placeholder="Contexto da aplicação, observações relevantes…"
               />
             </div>
@@ -902,7 +902,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 type="button"
                 onClick={handleSalvarMeta}
                 disabled={salvarMeta.isPending}
-                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
               >
                 {salvarMeta.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                 Salvar Dados QPS
@@ -1007,7 +1007,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                       disabled={!canEdit}
                       rows={2}
                       onChange={(e) => updateSetor(setor.id, { descricao_atividade: e.target.value })}
-                      className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-50"
+                      className="w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none disabled:bg-gray-50"
                     />
                   </div>
                 </div>
@@ -1143,7 +1143,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                       <span className="text-xs text-gray-500">Aplicar perfil OWAS:</span>
                       <select defaultValue=""
                         onChange={(e) => { if (e.target.value) aplicarPerfil(setor.id, e.target.value); e.target.value = ""; }}
-                        className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-verde-primary focus:outline-none">
+                        className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-marca-primary focus:outline-none">
                         <option value="" disabled>Selecionar perfil...</option>
                         {perfisOwas.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
                       </select>
@@ -1518,7 +1518,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                   type="button"
                   onClick={handleSalvarConsideracoes}
                   disabled={salvar.isPending}
-                  className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
                 >
                   {salvar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                   Salvar Considerações
@@ -1560,7 +1560,7 @@ function OwasGroup({
           {categoria.opcoes.map((opt) => (
             <label key={opt.value} className={cn("flex items-center gap-2 text-xs text-gray-700", disabled && "cursor-not-allowed opacity-60")}>
               <input type="checkbox" checked={selected.includes(opt.value)} disabled={disabled} onChange={() => onToggle(opt.value)}
-                className="size-3.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary" />
+                className="size-3.5 rounded border-gray-300 text-marca-primary focus:ring-marca-primary" />
               {opt.label}
             </label>
           ))}
@@ -1614,7 +1614,7 @@ function TextInput({ label, value, disabled, onChange }: { label: string; value:
     <div>
       <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
       <input type="text" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-50" />
+        className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none disabled:bg-gray-50" />
     </div>
   );
 }
@@ -1646,12 +1646,12 @@ function CargoList({ cargos, disabled, onChange }: { cargos: AetCargo[]; disable
               <div className="flex items-center gap-2">
                 <input type="text" value={cargo.nome} disabled={disabled} onChange={(e) => updateCargo(idx, { nome: e.target.value })}
                   placeholder="Nome do cargo"
-                  className="flex-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm font-medium focus:border-verde-primary focus:outline-none disabled:bg-white" />
+                  className="flex-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-sm font-medium focus:border-marca-primary focus:outline-none disabled:bg-white" />
                 <div className="flex items-center gap-1 shrink-0">
                   <input type="number" min={0} value={cargo.quantidade || ""} disabled={disabled}
                     onChange={(e) => updateCargo(idx, { quantidade: Number(e.target.value) })}
                     placeholder="Qtd" title="Quantidade de pessoas neste cargo"
-                    className="w-16 rounded-md border border-gray-300 px-2 py-1.5 text-sm text-center focus:border-verde-primary focus:outline-none disabled:bg-white" />
+                    className="w-16 rounded-md border border-gray-300 px-2 py-1.5 text-sm text-center focus:border-marca-primary focus:outline-none disabled:bg-white" />
                   <span className="text-xs text-gray-400 whitespace-nowrap">pessoas</span>
                 </div>
                 {!disabled && (
@@ -1660,7 +1660,7 @@ function CargoList({ cargos, disabled, onChange }: { cargos: AetCargo[]; disable
               </div>
               <textarea value={cargo.descricao} disabled={disabled} rows={2} onChange={(e) => updateCargo(idx, { descricao: e.target.value })}
                 placeholder="Descrição da atividade deste cargo..."
-                className="w-full resize-none rounded-md border border-gray-300 px-2.5 py-1.5 text-xs focus:border-verde-primary focus:outline-none disabled:bg-white" />
+                className="w-full resize-none rounded-md border border-gray-300 px-2.5 py-1.5 text-xs focus:border-marca-primary focus:outline-none disabled:bg-white" />
             </div>
           ))}
         </div>
@@ -1692,12 +1692,12 @@ function TagInput({ label, value, disabled, onChange }: { label: string; value: 
   return (
     <div>
       <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
-      <div className={cn("flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-md border border-gray-300 px-2 py-1.5 focus-within:border-verde-primary focus-within:ring-2 focus-within:ring-verde-primary/20", disabled && "bg-gray-50")}>
+      <div className={cn("flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-md border border-gray-300 px-2 py-1.5 focus-within:border-marca-primary focus-within:ring-2 focus-within:ring-marca-primary/20", disabled && "bg-gray-50")}>
         {items.map((item, idx) => (
-          <span key={idx} className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2.5 py-0.5 text-xs font-medium text-verde-primary">
+          <span key={idx} className="inline-flex items-center gap-1 rounded-full bg-marca-light px-2.5 py-0.5 text-xs font-medium text-marca-primary">
             {item}
             {!disabled && (
-              <button type="button" onClick={() => removeItem(idx)} className="text-verde-primary/50 hover:text-verde-primary"><X className="size-3" /></button>
+              <button type="button" onClick={() => removeItem(idx)} className="text-marca-primary/50 hover:text-marca-primary"><X className="size-3" /></button>
             )}
           </span>
         ))}

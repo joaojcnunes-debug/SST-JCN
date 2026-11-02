@@ -105,7 +105,7 @@ export default function MedidasPage({
           <select
             value={ano}
             onChange={(e) => setAno(Number(e.target.value))}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           >
             {[anoAtual - 1, anoAtual, anoAtual + 1, anoAtual + 2].map((a) => (
               <option key={a} value={a}>
@@ -121,7 +121,7 @@ export default function MedidasPage({
           type="button"
           onClick={onSalvar}
           disabled={!canEdit || !dirty || salvar.isPending || !relatorio}
-          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Save className="size-4" />
           {salvar.isPending ? "Salvando..." : "Salvar Plano"}
@@ -166,7 +166,7 @@ export default function MedidasPage({
                           disabled={!canEdit}
                           className={
                             m
-                              ? "flex size-7 mx-auto items-center justify-center rounded bg-verde-primary text-white hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-60"
+                              ? "flex size-7 mx-auto items-center justify-center rounded bg-marca-primary text-white hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-60"
                               : "flex size-7 mx-auto items-center justify-center rounded border border-gray-300 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                           }
                         >
@@ -183,7 +183,7 @@ export default function MedidasPage({
                         }
                         disabled={!canEdit}
                         placeholder="—"
-                        className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                        className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
                       />
                     </td>
                   </tr>

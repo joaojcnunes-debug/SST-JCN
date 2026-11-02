@@ -97,7 +97,7 @@ export default function EscalaPage({
                   e.target.value === "todos" ? "todos" : Number(e.target.value)
                 )
               }
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             >
               <option value="todos">
                 Todos os tópicos ({topicosCalc.length})

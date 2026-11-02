@@ -91,7 +91,7 @@ export default function FichaSecoesLeque<T extends string>({
               <button
                 type="button"
                 onClick={() => onChange(todas ? new Set() : new Set(secoes.map((s) => s.id)))}
-                className="flex w-full items-center gap-2 border-b border-gray-100 px-3 py-2 text-left text-sm font-semibold text-gray-900 hover:bg-verde-light"
+                className="flex w-full items-center gap-2 border-b border-gray-100 px-3 py-2 text-left text-sm font-semibold text-gray-900 hover:bg-marca-light"
               >
                 <Caixa marcada={todas} parcial={!todas && selecionadas.size > 0} />
                 Ficha inteira
@@ -100,7 +100,7 @@ export default function FichaSecoesLeque<T extends string>({
             {secoes.map((s) => {
               const marcada = selecionadas.has(s.id);
               return (
-                <li key={s.id} className="group flex items-center hover:bg-verde-light">
+                <li key={s.id} className="group flex items-center hover:bg-marca-light">
                   <button
                     type="button"
                     onClick={() => alternar(s.id)}
@@ -112,7 +112,7 @@ export default function FichaSecoesLeque<T extends string>({
                   <button
                     type="button"
                     onClick={() => onChange(new Set([s.id]))}
-                    className="mr-2 rounded px-1.5 py-0.5 text-xs text-verde-primary opacity-0 hover:underline focus:opacity-100 group-hover:opacity-100"
+                    className="mr-2 rounded px-1.5 py-0.5 text-xs text-marca-primary opacity-0 hover:underline focus:opacity-100 group-hover:opacity-100"
                   >
                     só esta
                   </button>
@@ -133,7 +133,7 @@ function Caixa({ marcada, parcial }: { marcada: boolean; parcial?: boolean }) {
       className={cn(
         "flex size-4 shrink-0 items-center justify-center rounded border",
         marcada || parcial
-          ? "border-verde-primary bg-verde-primary text-white"
+          ? "border-marca-primary bg-marca-primary text-white"
           : "border-gray-300 bg-white"
       )}
     >

@@ -62,7 +62,7 @@ export default function EmpresasMultiSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+        className="flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
       >
         <span className="flex items-center gap-2 truncate">
           <Building2 className="size-4 shrink-0 text-gray-400" />
@@ -82,7 +82,7 @@ export default function EmpresasMultiSelect({
           {selecionadas.map((e) => (
             <span
               key={e.id_empresa}
-              className="inline-flex max-w-full items-center gap-1 rounded-full bg-verde-light px-2 py-0.5 text-xs text-gray-800"
+              className="inline-flex max-w-full items-center gap-1 rounded-full bg-marca-light px-2 py-0.5 text-xs text-gray-800"
             >
               <span className="truncate">{e.nome_empresa}</span>
               <button
@@ -111,14 +111,14 @@ export default function EmpresasMultiSelect({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar por nome, fantasia, CNPJ ou grupo..."
-                className="w-full rounded-md border border-gray-200 py-1.5 pl-8 pr-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                className="w-full rounded-md border border-gray-200 py-1.5 pl-8 pr-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
               />
             </div>
             {naoMarcadasDaBusca.length > 1 && naoMarcadasDaBusca.length <= MAX_OPCOES && (
               <button
                 type="button"
                 onClick={() => onChange([...value, ...naoMarcadasDaBusca.map((e) => e.id_empresa)])}
-                className="text-xs font-medium text-verde-primary hover:underline"
+                className="text-xs font-medium text-marca-primary hover:underline"
               >
                 Marcar as {naoMarcadasDaBusca.length} da busca
               </button>
@@ -136,15 +136,15 @@ export default function EmpresasMultiSelect({
               <li key={e.id_empresa}>
                 <label
                   className={cn(
-                    "flex w-full cursor-pointer items-start gap-2 px-3 py-2 text-left text-sm hover:bg-verde-light",
-                    marcadas.has(e.id_empresa) && "bg-verde-light/60",
+                    "flex w-full cursor-pointer items-start gap-2 px-3 py-2 text-left text-sm hover:bg-marca-light",
+                    marcadas.has(e.id_empresa) && "bg-marca-light/60",
                   )}
                 >
                   <input
                     type="checkbox"
                     checked={marcadas.has(e.id_empresa)}
                     onChange={() => alternar(e.id_empresa)}
-                    className="mt-0.5 size-4 shrink-0 rounded border-gray-300 text-verde-primary"
+                    className="mt-0.5 size-4 shrink-0 rounded border-gray-300 text-marca-primary"
                   />
                   <span className="min-w-0">
                     <span className="block font-medium text-gray-900">{e.nome_empresa}</span>

@@ -123,14 +123,14 @@ export default function CampoGrupoEmpresa({
               if (e.key === "Escape") setCriando(false);
             }}
             placeholder="Nome do grupo (ex.: Grupo Mad Brew)"
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           />
           <div className="flex shrink-0 gap-2">
             <button
               type="button"
               onClick={() => criarGrupo()}
               disabled={!nomeNovo.trim() || criar.isPending}
-              className="rounded-md bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+              className="rounded-md bg-marca-primary px-3 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
             >
               {criar.isPending ? "Criando…" : "Criar grupo"}
             </button>
@@ -153,7 +153,7 @@ export default function CampoGrupoEmpresa({
                 key={p}
                 className={cn(
                   "flex cursor-pointer items-center gap-2 rounded-lg border-2 px-3 py-2 text-sm transition-colors",
-                  valor.papel === p ? "border-verde-primary bg-verde-light" : "border-gray-200 bg-white hover:border-gray-300",
+                  valor.papel === p ? "border-marca-primary bg-marca-light" : "border-gray-200 bg-white hover:border-gray-300",
                 )}
               >
                 <input
@@ -161,7 +161,7 @@ export default function CampoGrupoEmpresa({
                   name="papel-grupo"
                   checked={valor.papel === p}
                   onChange={() => onChange({ ...valor, papel: p })}
-                  className="text-verde-primary focus:ring-verde-primary/30"
+                  className="text-marca-primary focus:ring-marca-primary/30"
                 />
                 <span>
                   <span className="block font-semibold text-gray-900">{ROTULO_PAPEL[p]}</span>

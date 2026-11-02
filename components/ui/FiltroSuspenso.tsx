@@ -69,8 +69,8 @@ export default function FiltroSuspenso({
         aria-label={ariaLabel}
         onClick={() => setAberto((a) => !a)}
         className={cn(
-          "inline-flex min-w-[150px] items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-left text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30",
-          marcadas.length > 0 && "border-verde-primary",
+          "inline-flex min-w-[150px] items-center justify-between gap-2 rounded-md border border-gray-300 bg-white px-2 py-1.5 text-left text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30",
+          marcadas.length > 0 && "border-marca-primary",
           className,
         )}
       >
@@ -82,7 +82,7 @@ export default function FiltroSuspenso({
           <button
             type="button"
             onClick={() => onChange([])}
-            className={cn("flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50", value.length === 0 && "font-semibold text-verde-primary")}
+            className={cn("flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-gray-50", value.length === 0 && "font-semibold text-marca-primary")}
           >
             <span className="flex size-4 items-center justify-center">{value.length === 0 && <Check className="size-3.5" />}</span>
             {rotuloTodos}
@@ -93,7 +93,7 @@ export default function FiltroSuspenso({
               <div key={o.value}>
                 {o.secao && <p className="mt-1 border-t border-gray-100 px-3 pb-0.5 pt-1.5 text-[10px] font-medium uppercase tracking-wider text-gray-400">{o.secao}</p>}
                 <label className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
-                  <input type="checkbox" checked={on} onChange={() => alternar(o.value)} className="size-4 rounded border-gray-300 text-verde-primary" />
+                  <input type="checkbox" checked={on} onChange={() => alternar(o.value)} className="size-4 rounded border-gray-300 text-marca-primary" />
                   <span className="flex-1">{o.label}</span>
                   {o.contagem !== undefined && <span className="text-xs text-gray-400">({o.contagem})</span>}
                 </label>

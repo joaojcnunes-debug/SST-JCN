@@ -123,7 +123,7 @@ export default function VistaLista({
     <th className={`px-3 py-2.5 ${className}`}>
       <button type="button" onClick={() => ordenar(col)} className="inline-flex items-center gap-1 hover:text-gray-700">
         {children}
-        <ArrowUpDown className={`size-3 ${sortBy === col ? "text-verde-primary" : "text-gray-300"}`} />
+        <ArrowUpDown className={`size-3 ${sortBy === col ? "text-marca-primary" : "text-gray-300"}`} />
       </button>
     </th>
   );
@@ -166,7 +166,7 @@ export default function VistaLista({
                     return (
                       <tr key={t.id_tarefa} className="border-t border-gray-100 hover:bg-gray-50/60">
                         <td className="px-3 py-2">
-                          <button type="button" onClick={() => onAbrir(t)} className="text-left font-medium text-gray-800 hover:text-verde-primary">
+                          <button type="button" onClick={() => onAbrir(t)} className="text-left font-medium text-gray-800 hover:text-marca-primary">
                             {t.titulo}
                           </button>
                           {t.titulo_mae && <p className="text-[11px] text-gray-400">↳ Subtarefa de {t.titulo_mae}</p>}
@@ -174,7 +174,7 @@ export default function VistaLista({
                         <td className="px-3 py-2">
                           {editavel ? (
                             <select value={t.status} onChange={(e) => patch(t, { status: e.target.value })}
-                              className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs font-medium hover:border-gray-200 focus:border-verde-primary focus:outline-none" style={{ color: st?.cor }}>
+                              className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs font-medium hover:border-gray-200 focus:border-marca-primary focus:outline-none" style={{ color: st?.cor }}>
                               {/* No escuro o color-scheme deixa o menu nativo escuro; #374151 fixo
                                   ficava texto escuro sobre fundo escuro. */}
                               {statuses.map((s) => <option key={s.slug} value={s.slug} style={{ color: "var(--text-body)" }}>{s.nome}</option>)}
@@ -184,7 +184,7 @@ export default function VistaLista({
                         <td className="px-3 py-2">
                           {editavel ? (
                             <select value={t.prioridade} onChange={(e) => patch(t, { prioridade: e.target.value as PrioridadeTarefa })}
-                              className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs font-medium hover:border-gray-200 focus:border-verde-primary focus:outline-none" style={{ color: PRIORIDADES.find((p) => p.value === t.prioridade)?.cor }}>
+                              className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs font-medium hover:border-gray-200 focus:border-marca-primary focus:outline-none" style={{ color: PRIORIDADES.find((p) => p.value === t.prioridade)?.cor }}>
                               {PRIORIDADES.map((p) => <option key={p.value} value={p.value} style={{ color: "#374151" }}>{p.label}</option>)}
                             </select>
                           ) : <span className="text-xs">{PRIORIDADES.find((p) => p.value === t.prioridade)?.label}</span>}
@@ -192,7 +192,7 @@ export default function VistaLista({
                         <td className="px-3 py-2">
                           {editavel ? (
                             <input list="gestao-lista-usuarios" defaultValue={t.responsavel ?? ""} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (t.responsavel ?? "")) patch(t, { responsavel: v || null }); }}
-                              placeholder="—" className="w-32 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-verde-primary focus:outline-none" />
+                              placeholder="—" className="w-32 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-marca-primary focus:outline-none" />
                           ) : (
                             <span className="inline-flex items-center gap-1.5 text-sm text-gray-600">
                               {t.responsavel && <AvatarPessoa nome={t.responsavel} className="size-5 text-[9px]" />}
@@ -203,13 +203,13 @@ export default function VistaLista({
                         <td className="px-3 py-2">
                           {editavel ? (
                             <input type="date" value={t.data_inicio ?? ""} onChange={(e) => patch(t, { data_inicio: e.target.value || null })}
-                              className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm text-gray-600 hover:border-gray-200 focus:border-verde-primary focus:outline-none" />
+                              className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm text-gray-600 hover:border-gray-200 focus:border-marca-primary focus:outline-none" />
                           ) : <span className="text-sm text-gray-600">{fmtData(t.data_inicio)}</span>}
                         </td>
                         <td className="px-3 py-2">
                           {editavel ? (
                             <input type="date" value={t.prazo ?? ""} onChange={(e) => patch(t, { prazo: e.target.value || null })}
-                              className={`rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-verde-primary focus:outline-none ${atrasada ? "font-medium text-red-600" : "text-gray-600"}`} />
+                              className={`rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-marca-primary focus:outline-none ${atrasada ? "font-medium text-red-600" : "text-gray-600"}`} />
                           ) : <span className={`text-sm ${atrasada ? "font-medium text-red-600" : "text-gray-600"}`}>{fmtData(t.prazo)}</span>}
                         </td>
                         {campos.map((c) => (
@@ -222,7 +222,7 @@ export default function VistaLista({
                     <tr className="border-t border-gray-100">
                       <td colSpan={totalCols} className="px-3 py-2 text-center">
                         <button type="button" onClick={() => setLimites((m) => ({ ...m, [g.chave]: (m[g.chave] ?? LIMITE_GRUPO) + LIMITE_GRUPO }))}
-                          className="text-xs font-medium text-gray-500 hover:text-verde-primary">
+                          className="text-xs font-medium text-gray-500 hover:text-marca-primary">
                           Mostrar mais ({g.itens.length - (limites[g.chave] ?? LIMITE_GRUPO)} restantes)
                         </button>
                       </td>

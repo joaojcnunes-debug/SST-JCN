@@ -121,34 +121,34 @@ function AddAusencia({
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs text-gray-600">
           Profissional
-          <select value={idProf} onChange={(e) => setIdProf(e.target.value)} className="min-w-[180px] rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none">
+          <select value={idProf} onChange={(e) => setIdProf(e.target.value)} className="min-w-[180px] rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none">
             <option value="">Selecione…</option>
             {profissionais.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-gray-600">
           Tipo
-          <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none">
+          <select value={tipo} onChange={(e) => setTipo(e.target.value)} className="rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none">
             {TIPOS_AUSENCIA.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs text-gray-600">
           Início
-          <input type="date" value={ini} onChange={(e) => setIni(e.target.value)} className="rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none" />
+          <input type="date" value={ini} onChange={(e) => setIni(e.target.value)} className="rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none" />
         </label>
         <label className="flex flex-col gap-1 text-xs text-gray-600">
           Fim <span className="text-gray-400">(opcional)</span>
-          <input type="date" value={fim} onChange={(e) => setFim(e.target.value)} min={ini} className="rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none" />
+          <input type="date" value={fim} onChange={(e) => setFim(e.target.value)} min={ini} className="rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none" />
         </label>
         <label className="flex flex-1 flex-col gap-1 text-xs text-gray-600">
           Observação
-          <input type="text" value={obs} onChange={(e) => setObs(e.target.value)} placeholder="opcional" className="min-w-[120px] rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none" />
+          <input type="text" value={obs} onChange={(e) => setObs(e.target.value)} placeholder="opcional" className="min-w-[120px] rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none" />
         </label>
         <button
           type="button"
           onClick={salvar}
           disabled={mut.criar.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
         >
           {mut.criar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Registrar
         </button>

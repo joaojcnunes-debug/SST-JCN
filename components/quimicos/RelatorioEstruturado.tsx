@@ -95,19 +95,19 @@ export default function RelatorioEstruturado({
               <table className="w-full border-collapse text-sm">
                 <thead>
                   <tr>
-                    <th className="border border-verde-border bg-verde-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+                    <th className="border border-marca-border bg-marca-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
                       #
                     </th>
-                    <th className="border border-verde-border bg-verde-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+                    <th className="border border-marca-border bg-marca-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
                       Nome Químico
                     </th>
-                    <th className="border border-verde-border bg-verde-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+                    <th className="border border-marca-border bg-marca-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
                       Número CAS
                     </th>
-                    <th className="border border-verde-border bg-verde-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+                    <th className="border border-marca-border bg-marca-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
                       Fórmula
                     </th>
-                    <th className="border border-verde-border bg-verde-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+                    <th className="border border-marca-border bg-marca-primary px-2 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
                       Concentração
                     </th>
                   </tr>
@@ -282,7 +282,7 @@ export default function RelatorioEstruturado({
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <section className="break-inside-avoid">
-      <h3 className="mb-2 border-b-2 border-verde-primary pb-1 text-base font-bold text-verde-primary">
+      <h3 className="mb-2 border-b-2 border-marca-primary pb-1 text-base font-bold text-marca-primary">
         {titulo}
       </h3>
       <div className="space-y-2">{children}</div>
@@ -392,7 +392,7 @@ function Parecer({ texto }: { texto?: string }) {
     .filter(Boolean);
 
   return (
-    <div className="rounded-md border-l-4 border-verde-primary bg-verde-light/30 p-4 text-sm leading-relaxed text-gray-900 print:bg-white">
+    <div className="rounded-md border-l-4 border-marca-primary bg-marca-light/30 p-4 text-sm leading-relaxed text-gray-900 print:bg-white">
       {paragrafos.length > 1 ? (
         paragrafos.map((p, i) => (
           <p key={i} className={i > 0 ? "mt-3" : ""}>
@@ -415,7 +415,7 @@ function Bloco({ texto, destacar }: { texto?: string; destacar?: boolean }) {
   const conteudo = humanize(texto);
   if (destacar) {
     return (
-      <div className="rounded-md border-l-4 border-verde-primary bg-verde-light/30 p-3 text-sm leading-relaxed text-gray-900 break-words">
+      <div className="rounded-md border-l-4 border-marca-primary bg-marca-light/30 p-3 text-sm leading-relaxed text-gray-900 break-words">
         {conteudo}
       </div>
     );
@@ -490,10 +490,10 @@ function QuadroDecisorio({ c }: { c: NonNullable<AnaliseQuimico["conclusao_rapid
     <table className="w-full border-collapse text-sm">
       <thead>
         <tr>
-          <th className="border border-verde-border bg-verde-primary px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+          <th className="border border-marca-border bg-marca-primary px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
             Item
           </th>
-          <th className="border border-verde-border bg-verde-primary px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
+          <th className="border border-marca-border bg-marca-primary px-3 py-1.5 text-left text-[10px] font-bold uppercase tracking-wider text-white">
             Conclusão
           </th>
         </tr>

@@ -77,7 +77,7 @@ export default function MatrizesTab() {
         <button
           type="button"
           onClick={novaMatriz}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
         >
           <Plus className="size-4" /> Nova Matriz
         </button>
@@ -90,7 +90,7 @@ export default function MatrizesTab() {
             className={cn(
               "rounded-lg border bg-white p-3",
               m.ativa
-                ? "border-verde-primary ring-1 ring-verde-primary/20"
+                ? "border-marca-primary ring-1 ring-marca-primary/20"
                 : "border-gray-200"
             )}
           >
@@ -99,7 +99,7 @@ export default function MatrizesTab() {
                 <p className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                   {m.nome}
                   {m.ativa && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2 py-0.5 text-[11px] font-medium text-verde-primary">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-marca-light px-2 py-0.5 text-[11px] font-medium text-marca-primary">
                       <Check className="size-3" /> Ativa
                     </span>
                   )}
@@ -119,7 +119,7 @@ export default function MatrizesTab() {
                     type="button"
                     onClick={() => ativar.mutate(m.id_matriz)}
                     disabled={ativar.isPending}
-                    className="rounded-md border border-verde-primary px-2.5 py-1 text-xs font-medium text-verde-primary hover:bg-verde-light disabled:opacity-50"
+                    className="rounded-md border border-marca-primary px-2.5 py-1 text-xs font-medium text-marca-primary hover:bg-marca-light disabled:opacity-50"
                     title="Tornar ativa"
                   >
                     Ativar
@@ -139,7 +139,7 @@ export default function MatrizesTab() {
                     setEditing(m);
                     setEditorOpen(true);
                   }}
-                  className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                  className="rounded p-1.5 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
                   title="Editar"
                 >
                   <Pencil className="size-4" />
@@ -419,7 +419,7 @@ function MatrizEditorModal({
               value={nome}
               onChange={(e) => setNome(e.target.value)}
               placeholder="Ex: ABNT NBR 14280"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               required
             />
           </div>
@@ -431,7 +431,7 @@ function MatrizEditorModal({
               type="text"
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             />
           </div>
         </div>
@@ -568,7 +568,7 @@ function MatrizEditorModal({
                         type="text"
                         value={s}
                         onChange={(e) => renameSev(j, e.target.value)}
-                        className="w-full rounded border-0 bg-transparent px-1 py-0.5 text-center text-xs font-medium hover:bg-white focus:bg-white focus:outline focus:outline-1 focus:outline-verde-primary"
+                        className="w-full rounded border-0 bg-transparent px-1 py-0.5 text-center text-xs font-medium hover:bg-white focus:bg-white focus:outline focus:outline-1 focus:outline-marca-primary"
                       />
                       <div className="mt-0.5 flex items-center justify-center gap-1">
                         <span className="text-[9px] text-gray-500">peso</span>
@@ -612,7 +612,7 @@ function MatrizEditorModal({
                           type="text"
                           value={p}
                           onChange={(e) => renameProb(i, e.target.value)}
-                          className="flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs font-medium hover:bg-white focus:bg-white focus:outline focus:outline-1 focus:outline-verde-primary"
+                          className="flex-1 rounded border-0 bg-transparent px-1 py-0.5 text-left text-xs font-medium hover:bg-white focus:bg-white focus:outline focus:outline-1 focus:outline-marca-primary"
                         />
                         <input
                           type="number"
@@ -645,7 +645,7 @@ function MatrizEditorModal({
                             onChange={(e) =>
                               setCelula(i, j, e.target.value)
                             }
-                            className="w-full cursor-pointer rounded border-0 px-1 py-2 text-center text-xs font-semibold focus:outline focus:outline-2 focus:outline-verde-primary"
+                            className="w-full cursor-pointer rounded border-0 px-1 py-2 text-center text-xs font-semibold focus:outline focus:outline-2 focus:outline-marca-primary"
                             style={{
                               backgroundColor: cfg.bg,
                               color: cfg.cor,
@@ -691,7 +691,7 @@ function MatrizEditorModal({
           <button
             type="submit"
             disabled={save.isPending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             <Save className="size-4" />
             {save.isPending ? "Salvando..." : "Salvar matriz"}

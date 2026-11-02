@@ -53,7 +53,7 @@ export default function Pagination({
               className={cn(
                 "min-w-[28px] rounded-lg px-2 py-1 text-xs font-medium transition",
                 p === page
-                  ? "bg-verde-primary text-white shadow-sm"
+                  ? "bg-marca-primary text-white shadow-sm"
                   : "text-gray-600 hover:bg-gray-100"
               )}
             >

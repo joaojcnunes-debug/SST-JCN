@@ -21,8 +21,8 @@ pensada para **portar/refletir no Painel-SST (Chabra)**.
   4. **Assinatura do recebedor** (não-repúdio): desenho na tela **ou** biometria (digital).
   5. **Transferência entre empresas** (RPC atômica, só equipe interna).
 
-**Diferença estética Painel-SST:** os componentes usam as classes `verde-primary`/`verde-accent`/
-`verde-dark` — **as mesmas do Painel** (lá o hex é verde `#006B54`; no JCN é azul `#0ea5e9`).
+**Diferença estética Painel-SST:** no Painel os componentes usam `verde-primary`/`verde-accent`/
+`verde-dark` (hex verde `#006B54`). No JCN essas classes viraram `marca-*` (azul `#0ea5e9`) na 0.3.201.
 Portar os componentes **como estão** já herda a marca verde do Painel automaticamente.
 
 ---

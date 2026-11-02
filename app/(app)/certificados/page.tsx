@@ -88,7 +88,7 @@ function situacaoDe(validade: string | null): Situacao {
 }
 
 const inputCls =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
 
 interface Form {
   id_empresa: string | null;
@@ -247,7 +247,7 @@ export default function CertificadosPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-            <Award className="size-5 text-verde-primary" />
+            <Award className="size-5 text-marca-primary" />
             Certificados
           </h1>
           <p className="text-sm text-gray-500">
@@ -258,7 +258,7 @@ export default function CertificadosPage() {
           <button
             type="button"
             onClick={() => setEditando("novo")}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90"
           >
             <Plus className="size-4" /> Novo certificado
           </button>
@@ -290,7 +290,7 @@ export default function CertificadosPage() {
         {/* Por emissor */}
         <div className="h-fit rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-800">
-            <UserCheck className="size-4 text-verde-primary" /> Por emissor
+            <UserCheck className="size-4 text-marca-primary" /> Por emissor
           </h2>
           <p className="mb-3 text-xs text-gray-400">Clique para filtrar a lista</p>
           {isLoading ? (
@@ -572,7 +572,7 @@ function CertificadoModal({
             type="button"
             disabled={salvar.isPending}
             onClick={() => salvar.mutate()}
-            className="rounded-lg bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
+            className="rounded-lg bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
           >
             {salvar.isPending ? "Salvando..." : "Salvar"}
           </button>

@@ -49,7 +49,7 @@ export default function MeiosPropagacaoMultiSelect({
         disabled={disabled}
         className={cn(
           "flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm",
-          "focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30",
+          "focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30",
           disabled && "opacity-60 cursor-not-allowed"
         )}
       >
@@ -60,7 +60,7 @@ export default function MeiosPropagacaoMultiSelect({
             value.map((v) => (
               <span
                 key={v}
-                className="rounded bg-verde-light px-1.5 py-0.5 text-xs font-medium text-verde-primary"
+                className="rounded bg-marca-light px-1.5 py-0.5 text-xs font-medium text-marca-primary"
               >
                 {v}
                 <span
@@ -70,7 +70,7 @@ export default function MeiosPropagacaoMultiSelect({
                     e.stopPropagation();
                     toggle(v);
                   }}
-                  className="ml-1 inline-block cursor-pointer text-verde-primary/70 hover:text-verde-primary"
+                  className="ml-1 inline-block cursor-pointer text-marca-primary/70 hover:text-marca-primary"
                 >
                   <X className="inline size-3" />
                 </span>
@@ -106,15 +106,15 @@ export default function MeiosPropagacaoMultiSelect({
                       type="button"
                       onClick={() => toggle(opt)}
                       className={cn(
-                        "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-verde-light",
-                        checked && "bg-verde-light"
+                        "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-marca-light",
+                        checked && "bg-marca-light"
                       )}
                     >
                       <span
                         className={cn(
                           "flex size-4 shrink-0 items-center justify-center rounded border",
                           checked
-                            ? "border-verde-primary bg-verde-primary text-white"
+                            ? "border-marca-primary bg-marca-primary text-white"
                             : "border-gray-300 bg-white"
                         )}
                       >

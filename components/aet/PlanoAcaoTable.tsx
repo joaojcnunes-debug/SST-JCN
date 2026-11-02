@@ -174,7 +174,7 @@ export default function PlanoAcaoTable({
                 ? "Tudo que não foi cancelado já está no Plano de Ação do PGR"
                 : "Copia as ações para o Plano de Ação da empresa (PGR e Portal do Cliente)"
             }
-            className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-primary/90 disabled:opacity-50"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-marca-primary/90 disabled:opacity-50"
           >
             {enviar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Send className="size-3.5" />}
             Enviar para o Plano de Ação do PGR
@@ -309,7 +309,7 @@ function GrupoSetor({
               type="button"
               onClick={onAdicionar}
               disabled={adicionando}
-              className="inline-flex items-center gap-1 rounded-md border border-verde-primary/40 bg-white px-2 py-1 text-[11px] font-semibold text-verde-primary hover:bg-verde-primary/5 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-md border border-marca-primary/40 bg-white px-2 py-1 text-[11px] font-semibold text-marca-primary hover:bg-marca-primary/5 disabled:opacity-50"
             >
               {adicionando ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" />}
               Adicionar ação
@@ -525,7 +525,7 @@ function AcaoRow({
             value={acao.status}
             onChange={(e) => salvarStatusOuPrioridade("status", e.target.value)}
             className={cn(
-              "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-verde-primary",
+              "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold focus:outline-none focus:ring-1 focus:ring-marca-primary",
               STATUS_CORES[acao.status],
             )}
           >
@@ -689,7 +689,7 @@ function AcaoRow({
 }
 
 const inputClass =
-  "w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-gray-50";
+  "w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50";
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (

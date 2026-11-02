@@ -175,7 +175,7 @@ export default function EnviarRiscosSgg({
           type="button"
           onClick={() => void enviarTodos()}
           disabled={ocupado !== null || pendentes.length === 0}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
         >
           <Send className="size-4" />
           Enviar todos os setores ({pendentes.length})

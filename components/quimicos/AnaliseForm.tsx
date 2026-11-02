@@ -67,7 +67,7 @@ const CONDICOES_INIT: CondicoesUsoQuimico = {
 const lblCls =
   "text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1 block";
 const inputCls =
-  "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary";
+  "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary";
 
 export default function AnaliseForm() {
   const router = useRouter();
@@ -580,7 +580,7 @@ export default function AnaliseForm() {
             disabled={gerar.isPending}
             className={`flex items-center justify-center gap-2 rounded-md border-2 px-3 py-2.5 text-sm font-semibold transition-colors ${
               modo === "PDF"
-                ? "border-verde-primary bg-verde-light/30 text-verde-primary"
+                ? "border-marca-primary bg-marca-light/30 text-marca-primary"
                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
             }`}
           >
@@ -593,7 +593,7 @@ export default function AnaliseForm() {
             disabled={gerar.isPending}
             className={`flex items-center justify-center gap-2 rounded-md border-2 px-3 py-2.5 text-sm font-semibold transition-colors ${
               modo === "Manual"
-                ? "border-verde-primary bg-verde-light/30 text-verde-primary"
+                ? "border-marca-primary bg-marca-light/30 text-marca-primary"
                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
             }`}
           >
@@ -800,7 +800,7 @@ export default function AnaliseForm() {
                 setComponentes((arr) => [...arr, { ...COMPONENTE_VAZIO }])
               }
               disabled={gerar.isPending}
-              className="mt-2 inline-flex items-center gap-1 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+              className="mt-2 inline-flex items-center gap-1 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
             >
               <Plus className="size-3.5" />
               Adicionar componente
@@ -962,7 +962,7 @@ export default function AnaliseForm() {
           type="button"
           onClick={handleSubmit}
           disabled={gerar.isPending}
-          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent disabled:opacity-50"
         >
           {gerar.isPending ? (
             <>

@@ -289,7 +289,7 @@ export default function VisaoGeralView({
                 Visão geral por unidade{dataExtenso ? ` · ${dataExtenso}` : ""}
               </p>
               <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs text-gray-500 shadow-sm">
-                <span className="size-1.5 rounded-full bg-verde-primary" />
+                <span className="size-1.5 rounded-full bg-marca-primary" />
                 {escopoRestrito
                   ? `${vinculadasCount} empresa(s) vinculada(s)`
                   : `Acesso total · ${totais?.unidades ?? 0} unidades`}
@@ -304,7 +304,7 @@ export default function VisaoGeralView({
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                     Saúde dos documentos
                   </p>
-                  <Link href="/validades" className="text-xs font-semibold text-verde-primary hover:underline">
+                  <Link href="/validades" className="text-xs font-semibold text-marca-primary hover:underline">
                     Gerenciar →
                   </Link>
                 </div>
@@ -376,7 +376,7 @@ export default function VisaoGeralView({
                       </span>
                     </p>
                   )}
-                  <Link href="/validades" className="text-xs font-semibold text-verde-primary hover:underline">
+                  <Link href="/validades" className="text-xs font-semibold text-marca-primary hover:underline">
                     Gerenciar →
                   </Link>
                 </div>
@@ -570,21 +570,21 @@ function UnidadeCard({ u, delay = 0 }: { u: UnidadeResumo; delay?: number }) {
       href={href}
       onClick={onPick}
       style={{ animationDelay: `${delay}ms` }}
-      className="reveal-up group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-verde-primary hover:shadow-md"
+      className="reveal-up group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-marca-primary hover:shadow-md"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span
             className={cn(
               "flex size-8 items-center justify-center rounded-lg",
-              semUnidade ? "bg-gray-100 text-gray-400" : "bg-verde-light text-verde-primary",
+              semUnidade ? "bg-gray-100 text-gray-400" : "bg-marca-light text-marca-primary",
             )}
           >
             <MapPin className="size-4" />
           </span>
           <span className="font-semibold text-gray-900">{u.nome}</span>
         </div>
-        <ArrowRight className="size-4 text-gray-300 transition-colors group-hover:text-verde-primary" />
+        <ArrowRight className="size-4 text-gray-300 transition-colors group-hover:text-marca-primary" />
       </div>
       <div className="mt-3 flex items-center gap-4 text-sm">
         <Metric label="empresas" valor={u.empresas} />

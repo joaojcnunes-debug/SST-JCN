@@ -10,7 +10,7 @@ import {
 } from "@/lib/hooks/useGestao";
 import { confirmar } from "@/components/ui/confirm";
 
-const inputCls = "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none";
+const inputCls = "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none";
 
 type Draft = Pick<GestaoSubtarefaModelo, "slug" | "titulo" | "itens">;
 
@@ -99,12 +99,12 @@ export default function ModelosManagerModal({
                   <div className="space-y-1.5">
                     {draft.itens.map((it, i) => (
                       <div key={i} className="flex items-center gap-2">
-                        <input value={it.texto} onChange={(e) => upItem(i, { texto: e.target.value })} placeholder="Texto da subtarefa" className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none" />
-                        <input value={it.etapa ?? ""} onChange={(e) => upItem(i, { etapa: e.target.value || null })} placeholder="etapa (opc.)" className="w-28 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none" />
+                        <input value={it.texto} onChange={(e) => upItem(i, { texto: e.target.value })} placeholder="Texto da subtarefa" className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none" />
+                        <input value={it.etapa ?? ""} onChange={(e) => upItem(i, { etapa: e.target.value || null })} placeholder="etapa (opc.)" className="w-28 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none" />
                         <button type="button" onClick={() => up({ itens: draft.itens.filter((_, j) => j !== i) })} className="text-gray-300 hover:text-red-600"><X className="size-4" /></button>
                       </div>
                     ))}
-                    <button type="button" onClick={() => up({ itens: [...draft.itens, { texto: "", etapa: null, tipo: null }] })} className="inline-flex items-center gap-1 text-xs font-medium text-verde-primary hover:underline">
+                    <button type="button" onClick={() => up({ itens: [...draft.itens, { texto: "", etapa: null, tipo: null }] })} className="inline-flex items-center gap-1 text-xs font-medium text-marca-primary hover:underline">
                       <Plus className="size-3.5" /> Adicionar item
                     </button>
                   </div>
@@ -112,7 +112,7 @@ export default function ModelosManagerModal({
 
                 <div className="flex justify-end gap-2 pt-1">
                   <button type="button" onClick={() => { setEditId(null); setDraft(null); }} className="rounded-md px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100">Cancelar</button>
-                  <button type="button" onClick={salvarEdicao} disabled={salvar.isPending} className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-dark disabled:opacity-60">
+                  <button type="button" onClick={salvarEdicao} disabled={salvar.isPending} className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-dark disabled:opacity-60">
                     <Check className="size-4" /> Salvar
                   </button>
                 </div>
@@ -124,7 +124,7 @@ export default function ModelosManagerModal({
         {modelos.length === 0 && <p className="text-sm text-gray-400">Nenhum modelo ainda.</p>}
 
         {podeEditar && (
-          <button type="button" onClick={novo} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-verde-primary ring-1 ring-dashed ring-verde-primary/40 hover:bg-verde-light/40">
+          <button type="button" onClick={novo} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-marca-primary ring-1 ring-dashed ring-marca-primary/40 hover:bg-marca-light/40">
             <Plus className="size-4" /> Novo modelo
           </button>
         )}

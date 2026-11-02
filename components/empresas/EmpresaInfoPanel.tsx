@@ -60,7 +60,7 @@ function Campo({ label, valor }: { label: string; valor: string }) {
 function Grupo({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-verde-primary">{titulo}</p>
+      <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-marca-primary">{titulo}</p>
       <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">{children}</div>
     </div>
   );

@@ -35,7 +35,7 @@ export default function BodyMap({
               key={v}
               type="button"
               onClick={() => setVista(v)}
-              className={`rounded-md px-3 py-1 capitalize transition ${vista === v ? "bg-verde-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}
+              className={`rounded-md px-3 py-1 capitalize transition ${vista === v ? "bg-marca-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}
             >
               {v}
             </button>

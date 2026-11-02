@@ -80,11 +80,11 @@ export default function PorAssociadosDashboard() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
+          <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-marca-primary">
             <ArrowLeft className="size-4" /> Voltar ao dashboard
           </Link>
           <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-            <FileSignature className="size-5 text-verde-primary" />
+            <FileSignature className="size-5 text-marca-primary" />
             Documentos Associados (empresas por pessoa)
           </h1>
           <p className="text-sm text-gray-500">
@@ -107,7 +107,7 @@ export default function PorAssociadosDashboard() {
       <div className="reveal-up card-hover rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <TrendingUp className="size-4 text-verde-primary" />
+            <TrendingUp className="size-4 text-marca-primary" />
             <div>
               <h2 className="text-sm font-semibold text-gray-800">Por mês (últimos 12 meses)</h2>
               <p className="text-xs text-gray-400">Empresas associadas no mês (soma das pessoas, sem acumular)</p>
@@ -153,7 +153,7 @@ export default function PorAssociadosDashboard() {
       <div className="reveal-up card-hover rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <FileSignature className="size-4 text-verde-primary" />
+            <FileSignature className="size-4 text-marca-primary" />
             <div>
               <h2 className="text-sm font-semibold text-gray-800">Por pessoa {mesSelLabel ? `— ${mesSelLabel}` : "— todos os meses"}</h2>
               <p className="text-xs text-gray-400">
@@ -194,7 +194,7 @@ export default function PorAssociadosDashboard() {
       {/* Por pessoa — acumulado */}
       <div className="reveal-up card-hover rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
-          <Layers className="size-4 text-verde-primary" />
+          <Layers className="size-4 text-marca-primary" />
           <div>
             <h2 className="text-sm font-semibold text-gray-800">
               Por pessoa — acumulado até {rotuloMesAbs(mesSel ?? mesAtual, true)}
@@ -216,7 +216,7 @@ export default function PorAssociadosDashboard() {
       <div className="flex justify-end">
         <Link
           href="/dashboard/inspecoes-concluidas"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-verde-light px-3 py-2 text-xs font-semibold text-verde-primary transition-colors hover:bg-verde-primary hover:text-white"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-marca-light px-3 py-2 text-xs font-semibold text-marca-primary transition-colors hover:bg-marca-primary hover:text-white"
         >
           Ver produção de campo (inspeções realizadas por TST)
           <ArrowRight className="size-3.5" />

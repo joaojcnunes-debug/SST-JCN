@@ -78,7 +78,7 @@ export default function AnaliseDetalhePage({
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <Link
           href="/analise-quimicos/historico"
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-verde-primary"
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-marca-primary"
         >
           <ArrowLeft className="size-3.5" /> Voltar ao histórico
         </Link>
@@ -87,7 +87,7 @@ export default function AnaliseDetalhePage({
           {/* Os botões de PDF (gerar, assinar, baixar) moram na tela do laudo */}
           <Link
             href={`/analise-quimicos/${id}/laudo`}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
             title="Abrir o laudo para gerar, assinar ou baixar o PDF"
           >
             <Printer className="size-4" /> Laudo / PDF
@@ -216,14 +216,14 @@ export default function AnaliseDetalhePage({
               );
             }
           }}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-100"
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none disabled:bg-gray-100"
         />
         <span className="text-xs text-gray-400">Usada nos alertas de vencimento da Visão geral.</span>
       </div>
 
       {/* Conclusão rápida */}
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm print:border-0 print:shadow-none print:p-2">
-        <h2 className="mb-3 text-base font-bold text-verde-primary">
+        <h2 className="mb-3 text-base font-bold text-marca-primary">
           Conclusão Rápida
         </h2>
         <ConclusaoRapidaCard conclusao={analise.conclusao_rapida} />
@@ -248,7 +248,7 @@ export default function AnaliseDetalhePage({
       {/* Relatório técnico estruturado (gerado pelo programa a partir dos
           campos da CONCLUSAO_RAPIDA) */}
       <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border-0 print:shadow-none print:p-2">
-        <h2 className="mb-3 text-base font-bold text-verde-primary">
+        <h2 className="mb-3 text-base font-bold text-marca-primary">
           Relatório Técnico Completo
         </h2>
         <RelatorioEstruturado analise={analise} empresa={empresa ?? null} />

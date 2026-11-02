@@ -119,14 +119,14 @@ function EmpresasInner() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por nome, fantasia, CNPJ ou grupo..."
-            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
           />
         </div>
         {unidades.length > 0 && (
           <select
             value={filtroUnidade}
             onChange={(e) => setFiltroUnidade(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+            className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm shadow-sm transition focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
             title="Filtrar por unidade"
           >
             <option value="">Todas as unidades</option>
@@ -163,7 +163,7 @@ function EmpresasInner() {
                 setEditing(null);
                 setFormOpen(true);
               }}
-              className="inline-flex items-center gap-2 rounded-xl bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-marca-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marca-accent active:scale-95"
             >
               <Plus className="size-4" />
               Nova Empresa
@@ -179,7 +179,7 @@ function EmpresasInner() {
           <strong>{filtroUnidade === "__sem__" ? "sem unidade" : unidades.find((u) => u.id_unidade === filtroUnidade)?.nome ?? "esta unidade"}</strong>
           {" · "}
           {empresas.length - filtradas.length} em outras unidades —{" "}
-          <button type="button" onClick={() => setFiltroUnidade("")} className="font-semibold text-verde-primary hover:underline">
+          <button type="button" onClick={() => setFiltroUnidade("")} className="font-semibold text-marca-primary hover:underline">
             ver todas
           </button>
         </p>
@@ -201,8 +201,8 @@ function EmpresasInner() {
 
       {!isLoading && !error && filtradas.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white p-14 text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-light">
-            <Building2 className="size-7 text-verde-primary" />
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-marca-light">
+            <Building2 className="size-7 text-marca-primary" />
           </div>
           <p className="mt-4 text-sm font-semibold text-gray-800">
             Nenhuma empresa {busca ? "encontrada" : "cadastrada"}
@@ -224,7 +224,7 @@ function EmpresasInner() {
             <button
               type="button"
               onClick={() => setFormOpen(true)}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-verde-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-verde-accent"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-marca-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-marca-accent"
             >
               <Plus className="size-4" />
               Cadastrar empresa

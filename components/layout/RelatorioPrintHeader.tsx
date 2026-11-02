@@ -32,7 +32,7 @@ export default function RelatorioPrintHeader({
   const logoUrl = configs?.logo_url?.trim() || "";
 
   return (
-    <header className="mb-4 flex items-center justify-between gap-3 border-b-2 border-verde-primary pb-3 print:mb-3 print:pb-2">
+    <header className="mb-4 flex items-center justify-between gap-3 border-b-2 border-marca-primary pb-3 print:mb-3 print:pb-2">
       <div className="flex items-center gap-3">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -47,7 +47,7 @@ export default function RelatorioPrintHeader({
             }}
           />
         ) : (
-          <div className="flex size-12 items-center justify-center rounded-md bg-verde-primary text-white print:size-14">
+          <div className="flex size-12 items-center justify-center rounded-md bg-marca-primary text-white print:size-14">
             <Shield className="size-6" />
           </div>
         )}
@@ -62,7 +62,7 @@ export default function RelatorioPrintHeader({
       </div>
 
       <div className="text-right leading-tight">
-        <p className="text-sm font-bold text-verde-primary print:text-[13px]">
+        <p className="text-sm font-bold text-marca-primary print:text-[13px]">
           {titulo}
         </p>
         {subtitulo && (

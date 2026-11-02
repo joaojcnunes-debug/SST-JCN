@@ -110,7 +110,7 @@ export default function EpiAuditoriaTab({ empresaId }: { empresaId: string }) {
           type="button"
           onClick={exportarCsv}
           disabled={filtradas.length === 0}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
         >
           <Download className="size-4" /> Exportar CSV
         </button>
@@ -118,7 +118,7 @@ export default function EpiAuditoriaTab({ empresaId }: { empresaId: string }) {
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center gap-1.5 border-b border-gray-100 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-gray-500">
-          <ShieldCheck className="size-3.5 text-verde-primary" /> Trilha de
+          <ShieldCheck className="size-3.5 text-marca-primary" /> Trilha de
           assinaturas (auditoria)
         </div>
         {isLoading ? (
@@ -155,7 +155,7 @@ export default function EpiAuditoriaTab({ empresaId }: { empresaId: string }) {
                       <span
                         className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
                           l.metodo === "digital"
-                            ? "bg-sky-50 text-verde-accent"
+                            ? "bg-sky-50 text-marca-accent"
                             : "bg-gray-100 text-gray-600"
                         }`}
                       >

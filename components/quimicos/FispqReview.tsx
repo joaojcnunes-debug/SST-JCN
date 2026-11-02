@@ -28,7 +28,7 @@ interface FispqReviewProps {
 const lblCls =
   "text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1 block";
 const inputCls =
-  "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary";
+  "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary";
 
 /**
  * Badge minúsculo ao lado do label indicando a ORIGEM do valor:
@@ -341,7 +341,7 @@ export default function FispqReview({
                             nome: e.target.value || undefined,
                           })
                         }
-                        className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none"
+                        className="flex-1 rounded border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none"
                         placeholder={idx === 0 ? "Ex: Tolueno" : ""}
                         disabled={disabled}
                       />
@@ -353,7 +353,7 @@ export default function FispqReview({
                       type="text"
                       value={c.cas}
                       onChange={(e) => setComponente(idx, { cas: e.target.value })}
-                      className="w-full rounded border border-gray-200 px-2 py-1 font-mono text-sm focus:border-verde-primary focus:outline-none"
+                      className="w-full rounded border border-gray-200 px-2 py-1 font-mono text-sm focus:border-marca-primary focus:outline-none"
                       placeholder={idx === 0 ? "Ex: 108-88-3" : ""}
                       disabled={disabled}
                     />
@@ -367,7 +367,7 @@ export default function FispqReview({
                           concentracao: e.target.value || undefined,
                         })
                       }
-                      className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none"
+                      className="w-full rounded border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none"
                       placeholder={idx === 0 ? "Ex: 60%" : ""}
                       disabled={disabled}
                     />
@@ -395,7 +395,7 @@ export default function FispqReview({
           type="button"
           onClick={adicionarComponente}
           disabled={disabled}
-          className="mt-2 inline-flex items-center gap-1 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+          className="mt-2 inline-flex items-center gap-1 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
         >
           <Plus className="size-3.5" />
           Adicionar componente

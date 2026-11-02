@@ -32,9 +32,9 @@ import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
 const inputCls =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
 const selectCls =
-  "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
+  "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
 
 /** Bloco de informação do cartão: rótulo pequeno + valor em destaque. */
 function Bloco({
@@ -96,7 +96,7 @@ function Contador({
       className={cn(
         "rounded-xl border p-3 text-left transition hover:shadow-sm",
         cor,
-        ativo && "ring-2 ring-verde-primary ring-offset-1"
+        ativo && "ring-2 ring-marca-primary ring-offset-1"
       )}
     >
       <div className="text-2xl font-bold">{valor}</div>
@@ -164,7 +164,7 @@ export default function SinalizacaoEmpresasLista({
     <div className="space-y-5">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-          <Brain className="size-5 text-verde-primary" />
+          <Brain className="size-5 text-marca-primary" />
           {titulo}
         </h1>
         <p className="text-sm text-gray-500">
@@ -318,7 +318,7 @@ export default function SinalizacaoEmpresasLista({
                 setF(FILTROS_VAZIOS);
                 setBusca("");
               }}
-              className="inline-flex items-center gap-1 font-semibold text-verde-primary hover:underline"
+              className="inline-flex items-center gap-1 font-semibold text-marca-primary hover:underline"
             >
               <FilterX className="size-3.5" /> Limpar filtros ({nAtivos})
             </button>
@@ -344,11 +344,11 @@ export default function SinalizacaoEmpresasLista({
               <li key={e.idEmpresa}>
                 <Link
                   href={`${basePath}/${encodeURIComponent(e.idEmpresa)}`}
-                  className="block rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-verde-primary/40 hover:shadow-md"
+                  className="block rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-marca-primary/40 hover:shadow-md"
                 >
                   {/* Linha 1: empresa, unidade/região, nível */}
                   <div className="flex items-start gap-3">
-                    <Building2 className="mt-0.5 size-5 shrink-0 text-verde-primary" />
+                    <Building2 className="mt-0.5 size-5 shrink-0 text-marca-primary" />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-base font-semibold text-gray-900">{e.nome}</div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-gray-500">

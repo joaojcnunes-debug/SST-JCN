@@ -145,7 +145,7 @@ export default function PaeTab({
           <button
             type="button"
             onClick={() => adicionar(null)}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
           >
             <Plus className="size-4" /> Adicionar contato (nível raiz)
           </button>
@@ -192,7 +192,7 @@ export default function PaeTab({
               if (ativo && typeof ativo.blur === "function") ativo.blur();
               toast.success("Alterações salvas");
             }}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent"
           >
             <Save className="size-4" /> Salvar alterações
           </button>
@@ -303,7 +303,7 @@ function ContatoNode({
                   }
                 }}
                 placeholder="Nome"
-                className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-7 pr-2 text-sm font-medium focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-7 pr-2 text-sm font-medium focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
               />
             </div>
             <input
@@ -319,7 +319,7 @@ function ContatoNode({
                 }
               }}
               placeholder="Cargo"
-              className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+              className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
             />
             <div className="relative">
               <Phone className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
@@ -336,7 +336,7 @@ function ContatoNode({
                   }
                 }}
                 placeholder="Telefone"
-                className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-7 pr-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-7 pr-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
               />
             </div>
           </div>
@@ -346,7 +346,7 @@ function ContatoNode({
               <button
                 type="button"
                 onClick={onAddChild}
-                className="rounded-md border border-verde-primary bg-verde-light px-2 py-1 text-[11px] font-semibold text-verde-primary hover:bg-verde-primary hover:text-white"
+                className="rounded-md border border-marca-primary bg-marca-light px-2 py-1 text-[11px] font-semibold text-marca-primary hover:bg-marca-primary hover:text-white"
                 title="Adicionar subordinado"
               >
                 + Subordinado

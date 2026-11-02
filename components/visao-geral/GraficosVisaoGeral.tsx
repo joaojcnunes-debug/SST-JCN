@@ -57,7 +57,7 @@ function DonutCard({
           {sub && <p className="text-xs text-gray-400">{sub}</p>}
         </div>
         {link && (
-          <Link href={link.href} className="shrink-0 text-xs font-semibold text-verde-primary hover:underline">
+          <Link href={link.href} className="shrink-0 text-xs font-semibold text-marca-primary hover:underline">
             {link.label} →
           </Link>
         )}
@@ -121,7 +121,7 @@ export default function GraficosVisaoGeral({
             <p className="text-sm text-gray-500">
               <span className="font-semibold text-gray-900">{totalInsp}</span> concluídas nos últimos {inspecoesPorMes.length} meses
             </p>
-            <Link href="/dashboard" className="text-xs font-semibold text-verde-primary hover:underline">Ver →</Link>
+            <Link href="/dashboard" className="text-xs font-semibold text-marca-primary hover:underline">Ver →</Link>
           </div>
           <div className="h-[150px]">
             <ResponsiveContainer width="100%" height="100%">

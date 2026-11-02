@@ -263,7 +263,7 @@ export default function FuncoesPage() {
         <button
           type="button"
           onClick={() => setEditando("nova")}
-          className="inline-flex items-center gap-2 rounded-xl bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95"
+          className="inline-flex items-center gap-2 rounded-xl bg-marca-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marca-accent active:scale-95"
         >
           <Plus className="size-4" /> Nova função
         </button>
@@ -298,7 +298,7 @@ export default function FuncoesPage() {
                   </h2>
                   <p className="mt-0.5 text-sm text-gray-600">{f.descricao}</p>
                   <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
-                    <span className="rounded-md bg-verde-primary/10 px-2 py-0.5 font-medium text-verde-primary" title={nivel?.ajuda}>
+                    <span className="rounded-md bg-marca-primary/10 px-2 py-0.5 font-medium text-marca-primary" title={nivel?.ajuda}>
                       <ShieldCheck className="mr-1 inline size-3" />
                       {nivel?.label ?? f.nivel}
                     </span>
@@ -333,7 +333,7 @@ export default function FuncoesPage() {
                     disabled={suas.length === 0}
                     onClick={() => setAplicar({ funcao: f, contas: suas })}
                     title="Grava o padrão desta função em TODAS as contas dela (módulos, nível, perfil, flags)"
-                    className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary/40 px-3 py-1.5 text-sm font-medium text-verde-primary hover:bg-verde-primary/5 disabled:opacity-40"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary/40 px-3 py-1.5 text-sm font-medium text-marca-primary hover:bg-marca-primary/5 disabled:opacity-40"
                   >
                     <Wand2 className="size-4" /> Aplicar padrão a todas
                   </button>
@@ -537,7 +537,7 @@ function LinhaConta({ conta, funcoes, padrao, onMover, onAplicar }: {
       <select
         value={conta.funcao ?? ""}
         onChange={(e) => onMover(e.target.value || null)}
-        className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs focus:border-verde-primary focus:outline-none"
+        className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs focus:border-marca-primary focus:outline-none"
         aria-label={`Função de ${conta.nome}`}
       >
         <option value="">— sem função —</option>
@@ -604,7 +604,7 @@ function EditarFuncaoModal({ funcao, proximaOrdem, onClose, onSaved }: {
     };
     setForm((f) => ({ ...f, nivel: n, ...sug[n] }));
   }
-  const input = "w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
+  const input = "w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
 
   return (
     <Modal
@@ -615,7 +615,7 @@ function EditarFuncaoModal({ funcao, proximaOrdem, onClose, onSaved }: {
       footer={
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
-          <button type="submit" form="form-funcao" disabled={salvar.isPending} className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60">
+          <button type="submit" form="form-funcao" disabled={salvar.isPending} className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60">
             {salvar.isPending ? "Salvando…" : "Salvar"}
           </button>
         </div>
@@ -660,14 +660,14 @@ function EditarFuncaoModal({ funcao, proximaOrdem, onClose, onSaved }: {
           </label>
         </div>
         <label className="inline-flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={form.ve_presenca_auditoria === true} onChange={(e) => setForm({ ...form, ve_presenca_auditoria: e.target.checked })} className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30" />
+          <input type="checkbox" checked={form.ve_presenca_auditoria === true} onChange={(e) => setForm({ ...form, ve_presenca_auditoria: e.target.checked })} className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30" />
           <span className="text-gray-700">vê Sistema › Presença e Auditoria (só leitura; Admin sempre vê)</span>
         </label>
         {form.perfil_padrao !== "Admin" && (
           <div className="flex flex-wrap gap-4 text-sm">
             {([["pode_criar_padrao", "pode criar"], ["pode_editar_padrao", "pode editar"], ["pode_excluir_padrao", "pode excluir laudo inteiro"]] as const).map(([k, rot]) => (
               <label key={k} className="inline-flex items-center gap-2">
-                <input type="checkbox" checked={form[k] === true} onChange={(e) => setForm({ ...form, [k]: e.target.checked })} className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30" />
+                <input type="checkbox" checked={form[k] === true} onChange={(e) => setForm({ ...form, [k]: e.target.checked })} className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30" />
                 <span className="text-gray-700">{rot}</span>
               </label>
             ))}
@@ -678,7 +678,7 @@ function EditarFuncaoModal({ funcao, proximaOrdem, onClose, onSaved }: {
           <div className="grid gap-1.5 sm:grid-cols-2">
             {TODOS_MODULOS.map((m) => (
               <label key={m} className="inline-flex items-center gap-2">
-                <input type="checkbox" checked={form.modulos_padrao.includes(m)} onChange={() => toggleModulo(m)} className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30" />
+                <input type="checkbox" checked={form.modulos_padrao.includes(m)} onChange={() => toggleModulo(m)} className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30" />
                 <span className="text-sm text-gray-700">{ROTULO_MODULO[m]}</span>
               </label>
             ))}

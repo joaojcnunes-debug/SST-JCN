@@ -134,7 +134,8 @@ Alias de import: `@/*` → raiz.
 - **Tema (0.3.194, Etapa 0.1 do `docs/plano-skin-viva-jcn.md`):** as cores da marca são os tokens `--color-marca-*`:
   - primary `#0ea5e9`, accent `#0284c7`, dark `#0369a1`;
   - light `#e0f2fe`, border `#bae6fd`, deep `#0b1e33`.
-- Os nomes antigos `verde-*` são só apelidos de `marca-*`. Saem na troca de nome (0.final).
+- **0.3.201 (0.final):** as classes `verde-*` foram renomeadas para `marca-*` em todo o código, e os nomes antigos saíram do tema. Não use mais `verde-primary` e afins.
+- **Porte para o Painel SST:** o Painel continua com `verde-*`. Ao gerar um MD do JCN para o Painel, troque `marca-*` por `verde-*` no patch.
 - O menu lateral (SidebarShell e Gestão) usa o degradê `#0369a1 → #0b1e33 → #071526`.
 - A topbar dos módulos usa `#0369a1 → #0284c7`. O manifest usa `theme_color` `#0369a1`.
 - Verde só onde é **significado** (concluído, em dia, risco baixo, sucesso, assinado, confirmar ✓). O verde do Excel fica nos botões de planilha. A varredura por módulo segue o plano: a 0.2 (0.3.195) cobriu Questionários e DRPS; a 0.3 (0.3.196) a AEP e a AET; a 0.4 (0.3.197) Conformidade e Não conformidade (lá o verde de "conforme/encerrada/baixa" fica); a 0.5 (0.3.198) Inspeções e os componentes de tela (`ListaReordenavel`, `AssinaturaRelatorio`); a 0.6 (0.3.199) Apreciação de Máquinas, Químicos e Equipamentos; a 0.7 (0.3.200) Frota, EPI, Escala, Gestão e o resto (botão de atualização do app inclusive); com o verde de marca trocado por `sky-*` (o mesmo azul de `marca-primary`).

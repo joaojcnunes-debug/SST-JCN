@@ -193,7 +193,7 @@ export default function CopiarEpiModal({ open, onClose, epi }: Props) {
                   setIdSetorDestino("");
                   setIdRiscoDestino("");
                 }}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               >
                 <option value="">Selecione...</option>
                 {inspecoes.map((i) => (
@@ -221,7 +221,7 @@ export default function CopiarEpiModal({ open, onClose, epi }: Props) {
                   setIdSetorDestino(e.target.value);
                   setIdRiscoDestino("");
                 }}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               >
                 <option value="">Selecione...</option>
                 {setores.map((s) => (
@@ -250,7 +250,7 @@ export default function CopiarEpiModal({ open, onClose, epi }: Props) {
               <select
                 value={idRiscoDestino}
                 onChange={(e) => setIdRiscoDestino(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               >
                 <option value="">Selecione...</option>
                 {riscos.map((r) => (
@@ -281,7 +281,7 @@ export default function CopiarEpiModal({ open, onClose, epi }: Props) {
               type="button"
               onClick={() => copiar.mutate()}
               disabled={!podeConfirmar || copiar.isPending}
-              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
             >
               <Copy className="size-4" />
               {copiar.isPending ? "Copiando..." : "Copiar EPI/EPC"}

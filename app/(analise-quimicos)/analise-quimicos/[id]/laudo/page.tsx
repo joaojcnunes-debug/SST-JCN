@@ -82,7 +82,7 @@ export default function LaudoAnaliseQuimicoPage({
   // estruturado gerado automaticamente.
   const analiseBodyScreenNode = (
     <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm print:border-0 print:shadow-none print:p-2">
-      <h2 className="mb-3 text-base font-bold text-verde-primary">Relatório Técnico Completo</h2>
+      <h2 className="mb-3 text-base font-bold text-marca-primary">Relatório Técnico Completo</h2>
       <RelatorioEstruturado analise={analise} empresa={empresa ?? null} />
     </section>
   );
@@ -214,7 +214,7 @@ export default function LaudoAnaliseQuimicoPage({
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <Link
           href={`/analise-quimicos/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-verde-primary"
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-marca-primary"
         >
           <ArrowLeft className="size-3.5" /> Editar análise
         </Link>
@@ -242,7 +242,7 @@ export default function LaudoAnaliseQuimicoPage({
           apiPdfUrl={`/api/pdf/analise-quimicos/${id}`}
           tabelaNome="analises_quimicos"
           docId={id}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
           registrarPdf={{
             modulo: "analises_quimicos",
             tipoDocumento: "Análise de Agente Químico",
@@ -287,7 +287,7 @@ export default function LaudoAnaliseQuimicoPage({
 
       {/* Conclusão rápida */}
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm print:border-0 print:shadow-none print:p-2">
-        <h2 className="mb-3 text-base font-bold text-verde-primary">Conclusão Rápida</h2>
+        <h2 className="mb-3 text-base font-bold text-marca-primary">Conclusão Rápida</h2>
         <ConclusaoRapidaCard conclusao={analise.conclusao_rapida} />
       </section>
 

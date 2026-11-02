@@ -224,7 +224,7 @@ function InspecoesInner() {
   if (f.espera > 0) etiquetas.push({ chave: "espera", texto: `Esperando há +${f.espera} dias`, limpar: () => set({ espera: 0 }) });
   const algumFiltro = etiquetas.length > 0 || f.pilulas.length > 0 || f.documento.length > 0 || f.prioridade.length > 0 || f.complexidade.length > 0;
   const extrasLigados = contarFiltrosExtras(f);
-  const sel = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
+  const sel = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30";
   const rot = "mb-1 block text-[11px] font-medium uppercase tracking-wider text-gray-500";
 
   return (
@@ -252,7 +252,7 @@ function InspecoesInner() {
           {canCreate && (
             <Link
               href={f.empresa ? `/inspecoes/nova?empresa=${f.empresa}` : "/inspecoes/nova"}
-              className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+              className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent"
             >
               <Plus className="size-4" />
               Nova Inspeção
@@ -271,7 +271,7 @@ function InspecoesInner() {
             onClick={() => setF((atual) => trocarVisao(atual, v.value))}
             className={cn(
               "-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium",
-              f.visao === v.value ? "border-verde-primary text-verde-primary" : "border-transparent text-gray-500 hover:text-gray-700",
+              f.visao === v.value ? "border-marca-primary text-marca-primary" : "border-transparent text-gray-500 hover:text-gray-700",
             )}
           >
             <v.icone className="size-4" /> {v.label}
@@ -308,7 +308,7 @@ function InspecoesInner() {
           title={f.visao === "tecnicos" ? "Só as inspeções em que você foi a campo" : f.visao === "associados" ? "Só os documentos em que você está" : "Só as inspeções em que você foi a campo ou está no documento"}
           className={cn(
             "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium",
-            f.minhas ? "border-verde-primary bg-verde-primary text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50",
+            f.minhas ? "border-marca-primary bg-marca-primary text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50",
           )}
         >
           <UserCheck className="size-4" /> Só as minhas
@@ -337,7 +337,7 @@ function InspecoesInner() {
           onClick={() => setMaisFiltros((v) => !v)}
           className={cn("inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium", maisFiltros ? "border-gray-400 bg-gray-50 text-gray-800" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50")}
         >
-          <SlidersHorizontal className="size-4" /> Mais filtros{extrasLigados > 0 && <span className="rounded-full bg-verde-primary px-1.5 text-[10px] font-semibold text-white">{extrasLigados}</span>}
+          <SlidersHorizontal className="size-4" /> Mais filtros{extrasLigados > 0 && <span className="rounded-full bg-marca-primary px-1.5 text-[10px] font-semibold text-white">{extrasLigados}</span>}
         </button>
         <div className="ml-auto flex items-center gap-2">
           <label className="text-xs text-gray-500">Ordenar:</label>
@@ -372,7 +372,7 @@ function InspecoesInner() {
       {etiquetas.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           {etiquetas.map((e) => (
-            <span key={e.chave} className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2.5 py-0.5 text-xs text-verde-dark">
+            <span key={e.chave} className="inline-flex items-center gap-1 rounded-full bg-marca-light px-2.5 py-0.5 text-xs text-marca-dark">
               {e.texto}
               <button type="button" onClick={e.limpar} aria-label={`Tirar ${e.texto}`} className="rounded-full p-0.5 hover:bg-white"><X className="size-3" /></button>
             </span>
@@ -381,7 +381,7 @@ function InspecoesInner() {
       )}
 
       {f.empresa && empresa && (
-        <div className="rounded-lg border border-verde-border bg-verde-light px-4 py-2 text-sm text-verde-dark">
+        <div className="rounded-lg border border-marca-border bg-marca-light px-4 py-2 text-sm text-marca-dark">
           Mostrando inspeções de <strong>{empresa.nome_empresa}</strong>
         </div>
       )}
@@ -391,7 +391,7 @@ function InspecoesInner() {
         <p className="text-xs text-gray-500">
           Mostrando só as inspeções de{" "}
           <strong>{unidades.find((u) => u.id_unidade === f.unidade)?.nome ?? "esta unidade"}</strong> —{" "}
-          <button type="button" onClick={() => set({ unidade: "" })} className="font-semibold text-verde-primary hover:underline">
+          <button type="button" onClick={() => set({ unidade: "" })} className="font-semibold text-marca-primary hover:underline">
             ver todas as unidades
           </button>
         </p>
@@ -463,7 +463,7 @@ function InspecoesInner() {
           <p className="text-xs text-gray-500">
             {f.pilulas.length > 0 && <>Mostrando: <strong className="text-gray-700">{f.pilulas.map((p) => ROTULO[p]).join(" + ")}</strong> · </>}
             {total} {total === 1 ? "inspeção" : "inspeções"} ·{" "}
-            <button type="button" onClick={() => setF({ ...FILTROS_VAZIOS, visao: f.visao, unidade: "", ordem: f.ordem })} className="font-semibold text-verde-primary hover:underline">
+            <button type="button" onClick={() => setF({ ...FILTROS_VAZIOS, visao: f.visao, unidade: "", ordem: f.ordem })} className="font-semibold text-marca-primary hover:underline">
               limpar todos os filtros
             </button>
           </p>
@@ -592,7 +592,7 @@ function ModalEditarAssociados({ insp, onClose }: { insp: Inspecao; onClose: () 
           />
         </div>
         <div className="flex justify-end border-t border-gray-100 px-5 py-4">
-          <button type="button" onClick={fechar} className="rounded-lg bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent">
+          <button type="button" onClick={fechar} className="rounded-lg bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent">
             Fechar
           </button>
         </div>
@@ -665,7 +665,7 @@ function ModalEditarResponsavel({ insp, onClose }: { insp: Inspecao; onClose: ()
             value={nome}
             autoFocus
             onChange={(e) => setNome(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-verde-primary/40"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-marca-primary/40"
           >
             <option value="">Selecione o técnico…</option>
             {opcoes.map((t) => (
@@ -684,7 +684,7 @@ function ModalEditarResponsavel({ insp, onClose }: { insp: Inspecao; onClose: ()
             type="button"
             onClick={() => save.mutate(nome.trim())}
             disabled={save.isPending || !nome.trim()}
-            className="rounded-lg bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+            className="rounded-lg bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
           >
             {save.isPending ? "Salvando..." : "Salvar"}
           </button>

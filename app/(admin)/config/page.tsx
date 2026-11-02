@@ -100,7 +100,7 @@ export default function ConfigPage() {
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-verde-primary text-white"
+                    ? "bg-marca-primary text-white"
                     : "text-gray-600 hover:bg-gray-100"
                 )}
               >
@@ -258,7 +258,7 @@ function ListaEditor({
             type="button"
             onClick={() => save.mutate({ chave, valor: local })}
             disabled={save.isPending}
-            className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-marca-accent disabled:opacity-50"
           >
             <Save className="size-3.5" /> Salvar
           </button>
@@ -278,7 +278,7 @@ function ListaEditor({
               type="text"
               value={item}
               onChange={(e) => rename(i, e.target.value)}
-              className="flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-verde-primary focus:bg-white focus:outline-none"
+              className="flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-marca-primary focus:bg-white focus:outline-none"
             />
             <button
               type="button"
@@ -317,7 +317,7 @@ function ListaEditor({
           onChange={(e) => setNovo(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
           placeholder="Adicionar item..."
-          className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+          className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
         />
         <button
           type="button"
@@ -370,7 +370,7 @@ function ListaReadOnly({
             key={item}
             className="flex items-center gap-3 rounded-md border border-gray-200 bg-white px-3 py-2"
           >
-            <span className="flex size-6 items-center justify-center rounded-full bg-verde-light text-xs font-bold text-verde-primary">
+            <span className="flex size-6 items-center justify-center rounded-full bg-marca-light text-xs font-bold text-marca-primary">
               {i}
             </span>
             <span className="text-sm text-gray-800">{item}</span>
@@ -510,7 +510,7 @@ function AtualizacaoTab() {
             <button
               type="button"
               onClick={handleDownload}
-              className="inline-flex items-center gap-2 rounded-lg bg-verde-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+              className="inline-flex items-center gap-2 rounded-lg bg-marca-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent"
             >
               <Download className="size-4" />
               Baixar e instalar versão mais recente
@@ -525,7 +525,7 @@ function AtualizacaoTab() {
               </div>
               <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200">
                 <div
-                  className="h-full rounded-full bg-verde-primary transition-all duration-300"
+                  className="h-full rounded-full bg-marca-primary transition-all duration-300"
                   style={{ width: `${dlState.percent}%` }}
                 />
               </div>
@@ -535,7 +535,7 @@ function AtualizacaoTab() {
 
           {dlState.status === "installing" && (
             <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Loader2 className="size-4 animate-spin text-verde-primary" />
+              <Loader2 className="size-4 animate-spin text-marca-primary" />
               Abrindo instalador… siga as instruções na tela.
             </div>
           )}
@@ -548,7 +548,7 @@ function AtualizacaoTab() {
               <button
                 type="button"
                 onClick={() => setDlState({ status: "idle" })}
-                className="text-sm font-medium text-verde-primary hover:underline"
+                className="text-sm font-medium text-marca-primary hover:underline"
               >
                 Tentar novamente
               </button>
@@ -620,7 +620,7 @@ function LogoUpload({ configs }: { configs: Configs }) {
 
       <div className="flex items-center gap-2">
         <label
-          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-sm font-medium text-white hover:bg-verde-accent ${
+          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-sm font-medium text-white hover:bg-marca-accent ${
             uploading ? "opacity-50" : ""
           }`}
         >
@@ -717,7 +717,7 @@ function AssinaturaEmpresaUpload({ configs }: { configs: Configs }) {
 
       <div className="flex items-center gap-2">
         <label
-          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-sm font-medium text-white hover:bg-verde-accent ${
+          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-sm font-medium text-white hover:bg-marca-accent ${
             uploading ? "opacity-50 pointer-events-none" : ""
           }`}
         >

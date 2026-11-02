@@ -164,7 +164,7 @@ export default function AcoesPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
-            <Target className="size-6 text-verde-primary" />
+            <Target className="size-6 text-marca-primary" />
             Plano de Ação
           </h1>
           <p className="text-sm text-gray-600">
@@ -177,7 +177,7 @@ export default function AcoesPage() {
           <button
             type="button"
             onClick={() => setPdfOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl border border-verde-primary bg-white px-4 py-2.5 text-sm font-semibold text-verde-primary shadow-sm transition hover:bg-verde-primary/5 active:scale-95"
+            className="inline-flex items-center gap-2 rounded-xl border border-marca-primary bg-white px-4 py-2.5 text-sm font-semibold text-marca-primary shadow-sm transition hover:bg-marca-primary/5 active:scale-95"
           >
             <Printer className="size-4" /> Baixar PDF
           </button>
@@ -188,7 +188,7 @@ export default function AcoesPage() {
                 setEditing(null);
                 setFormOpen(true);
               }}
-              className="inline-flex items-center gap-2 rounded-xl bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95"
+              className="inline-flex items-center gap-2 rounded-xl bg-marca-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marca-accent active:scale-95"
             >
               <Plus className="size-4" /> Nova Ação
             </button>
@@ -206,14 +206,14 @@ export default function AcoesPage() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar ação, responsável ou local..."
-              className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             />
           </div>
           <EmpresaSelect allowAll value={filtroEmpresa || null} onChange={(id) => setFiltroEmpresa(id ?? "")} placeholder="Todas as empresas" className="min-w-64" />
           <select
             value={filtroStatus}
             onChange={(e) => setFiltroStatus(e.target.value as AcaoStatus | "")}
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           >
             <option value="">Todos status</option>
             {(Object.keys(STATUS_CFG) as AcaoStatus[]).map((s) => (
@@ -227,7 +227,7 @@ export default function AcoesPage() {
             onChange={(e) =>
               setFiltroPrior(e.target.value as AcaoPrioridade | "")
             }
-            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           >
             <option value="">Toda prioridade</option>
             {(Object.keys(PRIORIDADE_CFG) as AcaoPrioridade[]).map((p) => (
@@ -247,8 +247,8 @@ export default function AcoesPage() {
           </div>
         ) : filtradas.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-14 text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-light">
-              <Target className="size-7 text-verde-primary" />
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-marca-light">
+              <Target className="size-7 text-marca-primary" />
             </div>
             <p className="mt-4 text-sm font-semibold text-gray-800">
               {acoes.length === 0 ? "Nenhuma ação cadastrada ainda" : "Nenhuma ação encontrada"}
@@ -287,10 +287,10 @@ export default function AcoesPage() {
                   return (
                     <Fragment key={a.id_acao}>
                       {abreGrupo && (
-                        <tr className="border-b border-gray-100 bg-verde-light">
+                        <tr className="border-b border-gray-100 bg-marca-light">
                           <td colSpan={7} className="px-3 py-2">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                              <Building2 className="size-4 text-verde-primary" />
+                              <Building2 className="size-4 text-marca-primary" />
                               <span className="text-sm font-semibold text-gray-900">
                                 {empresaPorId.get(a.id_empresa) ?? a.id_empresa}
                               </span>
@@ -302,7 +302,7 @@ export default function AcoesPage() {
                           </td>
                         </tr>
                       )}
-                      <tr className="border-b border-gray-50 transition-colors hover:bg-verde-light/25 last:border-b-0">
+                      <tr className="border-b border-gray-50 transition-colors hover:bg-marca-light/25 last:border-b-0">
                         <td className="px-3 py-2.5">
                           <p className="font-medium text-gray-900">{a.what_acao}</p>
                           {a.why_justificativa && (
@@ -373,7 +373,7 @@ export default function AcoesPage() {
                                     setEditing(a);
                                     setFormOpen(true);
                                   }}
-                                  className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-verde-light hover:text-verde-primary"
+                                  className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-marca-light hover:text-marca-primary"
                                   title="Editar"
                                 >
                                   <Pencil className="size-4" />
@@ -561,7 +561,7 @@ function ModalPdfPlano({
               type="checkbox"
               checked={aplicarFiltros}
               onChange={(e) => setAplicarFiltros(e.target.checked)}
-              className="mt-0.5 size-4 accent-verde-primary"
+              className="mt-0.5 size-4 accent-marca-primary"
             />
             <span className="text-xs text-gray-700">
               Aplicar os filtros da tela ({descricaoFiltros}).
@@ -591,7 +591,7 @@ function ModalPdfPlano({
           <BotaoGerarPdf
             label="Gerar PDF"
             disabled={!idEmpresa || totalNoPdf === 0}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent disabled:opacity-50"
             apiPdfUrl={idEmpresa ? montarUrlPdf(idEmpresa, aplicarFiltros) : undefined}
             tabelaNome="plano_acao"
             docId={idEmpresa || undefined}

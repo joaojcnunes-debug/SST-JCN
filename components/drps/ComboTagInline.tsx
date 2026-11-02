@@ -93,14 +93,14 @@ export default function ComboTagInline({
       <div
         onClick={() => !disabled && setOpen(true)}
         className={`flex ${g.caixa} flex-wrap items-center gap-1 rounded-md border ${
-          disabled ? "cursor-not-allowed border-gray-200 bg-gray-50" : "cursor-text border-gray-300 bg-white focus-within:border-verde-primary focus-within:ring-1 focus-within:ring-verde-primary/30"
+          disabled ? "cursor-not-allowed border-gray-200 bg-gray-50" : "cursor-text border-gray-300 bg-white focus-within:border-marca-primary focus-within:ring-1 focus-within:ring-marca-primary/30"
         }`}
       >
         {selecionados.map((s) => (
-          <span key={s} className={`inline-flex items-center gap-1 rounded-full bg-verde-light px-2 py-0.5 ${g.chip} text-verde-primary`}>
+          <span key={s} className={`inline-flex items-center gap-1 rounded-full bg-marca-light px-2 py-0.5 ${g.chip} text-marca-primary`}>
             {s}
             {!disabled && (
-              <button type="button" onClick={(e) => { e.stopPropagation(); onToggle(s); }} className="text-verde-primary/60 hover:text-red-600">
+              <button type="button" onClick={(e) => { e.stopPropagation(); onToggle(s); }} className="text-marca-primary/60 hover:text-red-600">
                 <X className="size-3" />
               </button>
             )}
@@ -152,9 +152,9 @@ export default function ComboTagInline({
                 <button
                   type="button"
                   onClick={() => escolher(opt)}
-                  className={`flex w-full items-center gap-2 px-3 py-1 text-left ${g.item} text-gray-800 hover:bg-verde-light`}
+                  className={`flex w-full items-center gap-2 px-3 py-1 text-left ${g.item} text-gray-800 hover:bg-marca-light`}
                 >
-                  <Plus className="size-3 text-verde-primary/70" />
+                  <Plus className="size-3 text-marca-primary/70" />
                   {opt}
                 </button>
               </li>

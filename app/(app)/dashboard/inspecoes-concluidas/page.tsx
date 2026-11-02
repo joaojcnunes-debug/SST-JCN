@@ -133,11 +133,11 @@ export default function InspecoesConcluidasDashboard() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
+          <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-marca-primary">
             <ArrowLeft className="size-4" /> Voltar ao dashboard
           </Link>
           <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-            <CheckCircle2 className="size-5 text-verde-primary" />
+            <CheckCircle2 className="size-5 text-marca-primary" />
             Inspeções realizadas por TST
           </h1>
           <p className="text-sm text-gray-500">
@@ -154,7 +154,7 @@ export default function InspecoesConcluidasDashboard() {
       <div className="reveal-up card-hover rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <TrendingUp className="size-4 text-verde-primary" />
+            <TrendingUp className="size-4 text-marca-primary" />
             <h2 className="text-sm font-semibold text-gray-800">Por mês (últimos 12 meses)</h2>
           </div>
           <p className="text-xs text-gray-400">Clique num mês para filtrar abaixo</p>
@@ -190,7 +190,7 @@ export default function InspecoesConcluidasDashboard() {
       <div className="reveal-up card-hover rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Users className="size-4 text-verde-primary" />
+            <Users className="size-4 text-marca-primary" />
             <div>
               <h2 className="text-sm font-semibold text-gray-800">
                 Por técnico {mesSelLabel ? `— ${mesSelLabel}` : "— acumulado de todos os meses"}
@@ -285,7 +285,7 @@ export default function InspecoesConcluidasDashboard() {
         <div className="reveal-up rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
             <div className="flex items-center gap-2">
-              <ListChecks className="size-4 text-verde-primary" />
+              <ListChecks className="size-4 text-marca-primary" />
               <h2 className="text-sm font-semibold text-gray-800">
                 {pessoaSel} — {listaPessoa.length} inspeç{listaPessoa.length !== 1 ? "ões" : "ão"}
                 {mesSelLabel ? ` concluída${listaPessoa.length !== 1 ? "s" : ""} em ${mesSelLabel}` : " (todos os meses)"}
@@ -314,7 +314,7 @@ export default function InspecoesConcluidasDashboard() {
                 {listaPessoa.map((i) => (
                   <tr key={i.id_inspecao} className="border-b border-gray-50 last:border-0">
                     <td className="py-2 pr-3">
-                      <Link href={`/inspecoes/${i.id_inspecao}`} className="text-gray-800 hover:text-verde-primary hover:underline">
+                      <Link href={`/inspecoes/${i.id_inspecao}`} className="text-gray-800 hover:text-marca-primary hover:underline">
                         {nomeDaEmpresa(i.empresas)}
                       </Link>
                     </td>

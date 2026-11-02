@@ -88,7 +88,7 @@ export default function EmpresaDetalhePage({ params }: Props) {
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-4">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-verde-light text-verde-primary">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-marca-light text-marca-primary">
               <Building2 className="size-6" />
             </div>
             <div className="min-w-0">
@@ -154,11 +154,11 @@ export default function EmpresaDetalhePage({ params }: Props) {
             onClick={() => setAba(a.id)}
             className={cn(
               "relative px-4 py-2 text-sm font-medium transition-colors",
-              aba === a.id ? "text-verde-primary" : "text-gray-500 hover:text-gray-800",
+              aba === a.id ? "text-marca-primary" : "text-gray-500 hover:text-gray-800",
             )}
           >
             {a.label}
-            {aba === a.id && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-verde-primary" />}
+            {aba === a.id && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-marca-primary" />}
           </button>
         ))}
       </div>
@@ -198,7 +198,7 @@ export default function EmpresaDetalhePage({ params }: Props) {
             <h2 className="text-sm font-semibold text-gray-900">Inspeções ({inspecoes.length})</h2>
             <Link
               href={`/inspecoes/nova?empresa=${empresa.id_empresa}`}
-              className="rounded-md bg-verde-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
+              className="rounded-md bg-marca-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-marca-accent"
             >
               + Nova
             </Link>
@@ -225,7 +225,7 @@ export default function EmpresaDetalhePage({ params }: Props) {
                     <StatusBadge status={i.status} />
                     <Link
                       href={`/inspecoes/${i.id_inspecao}`}
-                      className="text-xs font-medium text-verde-primary hover:underline"
+                      className="text-xs font-medium text-marca-primary hover:underline"
                     >
                       Abrir →
                     </Link>

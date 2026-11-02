@@ -152,7 +152,7 @@ export default function AetAnalisePage({ idRelatorio }: { idRelatorio: string })
             type="button"
             onClick={handleSave}
             disabled={salvar.isPending}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
           >
             {salvar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Salvar
@@ -194,7 +194,7 @@ export default function AetAnalisePage({ idRelatorio }: { idRelatorio: string })
                       if (e.target.value) aplicarPerfil(setor.id, e.target.value);
                       e.target.value = "";
                     }}
-                    className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-verde-primary focus:outline-none"
+                    className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 focus:border-marca-primary focus:outline-none"
                   >
                     <option value="" disabled>Selecionar perfil...</option>
                     {perfisOwas.map((p) => (
@@ -399,7 +399,7 @@ function OwasGroup({
                 checked={selected.includes(opt.value)}
                 disabled={disabled}
                 onChange={() => onToggle(opt.value)}
-                className="size-3.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary"
+                className="size-3.5 rounded border-gray-300 text-marca-primary focus:ring-marca-primary"
               />
               {opt.label}
             </label>

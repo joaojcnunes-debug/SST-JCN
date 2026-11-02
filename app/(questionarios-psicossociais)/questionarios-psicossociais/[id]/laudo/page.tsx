@@ -244,7 +244,7 @@ export default function LaudoQpsPage({ params }: { params: Promise<{ id: string 
               type="button"
               onClick={handleBaixarPdf}
               disabled={baixando}
-              className="inline-flex items-center gap-1.5 rounded-md border border-verde-accent bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-md border border-marca-accent bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
             >
               {baixando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
               Baixar PDF Assinado
@@ -274,7 +274,7 @@ export default function LaudoQpsPage({ params }: { params: Promise<{ id: string 
           tabelaNome={QPS_LAUDO_TABELA}
           docId={id}
           disabled={!podeImprimir}
-          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-50"
           registrarPdf={{ modulo: QPS_MODULO_PDF, idRelatorio: id, ...registro }}
         />
       </div>

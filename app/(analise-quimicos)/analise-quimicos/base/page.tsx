@@ -180,14 +180,14 @@ export default function BaseReferenciaPage() {
       <div className="flex items-center justify-between">
         <Link
           href="/analise-quimicos"
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-verde-primary"
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-marca-primary"
         >
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
         <button
           type="button"
           onClick={() => setCriando(true)}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
         >
           <Plus className="size-4" /> Novo agente
         </button>
@@ -246,13 +246,13 @@ export default function BaseReferenciaPage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por nome, CAS ou código eSocial..."
-            className="w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary"
+            className="w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary"
           />
         </div>
         <select
           value={anexo}
           onChange={(e) => setAnexo(e.target.value as "todos" | AnexoNR15)}
-          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary"
+          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary"
         >
           {ANEXOS.map((a) => (
             <option key={a.value} value={a.value}>
@@ -265,7 +265,7 @@ export default function BaseReferenciaPage() {
             type="checkbox"
             checked={soCancerigeno}
             onChange={(e) => setSoCancerigeno(e.target.checked)}
-            className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary"
+            className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary"
           />
           Cancerígenos
         </label>
@@ -274,7 +274,7 @@ export default function BaseReferenciaPage() {
             type="checkbox"
             checked={soPele}
             onChange={(e) => setSoPele(e.target.checked)}
-            className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary"
+            className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary"
           />
           Absorção pele
         </label>
@@ -510,7 +510,7 @@ function EditModal({ row, onClose }: EditModalProps) {
 
   const lbl = "text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1 block";
   const inp =
-    "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary";
+    "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" aria-hidden="true">
@@ -730,7 +730,7 @@ function EditModal({ row, onClose }: EditModalProps) {
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
             >
               {saving && <Loader2 className="size-4 animate-spin" />}
               {ehNovo ? "Criar" : "Salvar"}
@@ -757,7 +757,7 @@ function FlagCheck({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary"
+        className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary"
       />
       {label}
     </label>

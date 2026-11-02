@@ -77,7 +77,7 @@ export default function CapaEditor({ bgImagemUrl, caixas, onChange }: Props) {
         <button
           type="button"
           onClick={adicionar}
-          className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2 py-1 text-xs font-semibold text-white hover:bg-verde-accent"
+          className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2 py-1 text-xs font-semibold text-white hover:bg-marca-accent"
         >
           <Plus className="size-3.5" /> Adicionar caixa
         </button>
@@ -303,7 +303,7 @@ function PainelEdicao({
             title="Negrito"
             className={cn(
               "rounded p-1 hover:bg-gray-200",
-              caixa.bold && "bg-verde-light text-verde-primary"
+              caixa.bold && "bg-marca-light text-marca-primary"
             )}
           >
             <Bold className="size-3.5" />
@@ -314,7 +314,7 @@ function PainelEdicao({
             title="Esquerda"
             className={cn(
               "rounded p-1 hover:bg-gray-200",
-              caixa.align === "left" && "bg-verde-light text-verde-primary"
+              caixa.align === "left" && "bg-marca-light text-marca-primary"
             )}
           >
             <AlignLeft className="size-3.5" />
@@ -325,7 +325,7 @@ function PainelEdicao({
             title="Centro"
             className={cn(
               "rounded p-1 hover:bg-gray-200",
-              caixa.align === "center" && "bg-verde-light text-verde-primary"
+              caixa.align === "center" && "bg-marca-light text-marca-primary"
             )}
           >
             <AlignCenter className="size-3.5" />
@@ -336,7 +336,7 @@ function PainelEdicao({
             title="Direita"
             className={cn(
               "rounded p-1 hover:bg-gray-200",
-              caixa.align === "right" && "bg-verde-light text-verde-primary"
+              caixa.align === "right" && "bg-marca-light text-marca-primary"
             )}
           >
             <AlignRight className="size-3.5" />
@@ -389,7 +389,7 @@ function PainelEdicao({
               title="Inserir variável"
               className={cn(
                 "inline-flex items-center gap-1 rounded px-2 py-1 hover:bg-gray-200",
-                varOpen && "bg-verde-light text-verde-primary"
+                varOpen && "bg-marca-light text-marca-primary"
               )}
             >
               <Braces className="size-3.5" />
@@ -403,7 +403,7 @@ function PainelEdicao({
                       <button
                         type="button"
                         onClick={() => insertVariavel(v.chave)}
-                        className="flex w-full flex-col items-start px-3 py-1.5 text-left hover:bg-verde-light"
+                        className="flex w-full flex-col items-start px-3 py-1.5 text-left hover:bg-marca-light"
                       >
                         <span className="text-xs font-medium text-gray-900">
                           {v.rotulo}
@@ -436,7 +436,7 @@ function PainelEdicao({
         onChange={(e) => onChange({ conteudo: e.target.value })}
         rows={3}
         placeholder="Texto da caixa (use {{variavel}} para campos dinâmicos)"
-        className="w-full resize-none rounded-md border border-gray-300 px-2 py-1.5 text-xs focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+        className="w-full resize-none rounded-md border border-gray-300 px-2 py-1.5 text-xs focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
       />
 
       <p className="mt-1 text-[10px] text-gray-500">

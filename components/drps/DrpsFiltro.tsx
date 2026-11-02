@@ -65,7 +65,7 @@ export default function DrpsFiltro({ idRelatorio }: { idRelatorio: string }) {
           <select
             value={unidade}
             onChange={(e) => setUnidade(e.target.value)}
-            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           >
             <option value="Todas">Todas as unidades ({unidades.length})</option>
             {unidades.map((u) => (
@@ -83,7 +83,7 @@ export default function DrpsFiltro({ idRelatorio }: { idRelatorio: string }) {
       <select
         value={setor}
         onChange={(e) => setSetor(e.target.value)}
-        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
       >
         <option value="Todos">Todos os setores</option>
         {setores.map((s) => (

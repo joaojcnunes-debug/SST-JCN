@@ -82,7 +82,7 @@ export default function AbaEfetivo({
             titulo: u.nome,
             sub: u.email,
             marca: admin ? "Admin" : fora ? "fora da Gestão" : undefined,
-            marcaCls: fora ? "bg-gray-100 text-gray-500" : "bg-verde-light text-verde-primary",
+            marcaCls: fora ? "bg-gray-100 text-gray-500" : "bg-marca-light text-marca-primary",
           };
         }),
     [d.usuarios, d.membrosAtivos, perfil],
@@ -170,7 +170,7 @@ export default function AbaEfetivo({
           <>
             <BuscaUnica opcoes={opcoesLista} value={quadro} onChange={setQuadro} placeholder="Buscar lista pelo nome, pasta ou espaço…" />
             {quadro && (
-              <button type="button" onClick={() => onDarAcesso(quadro)} className="inline-flex items-center gap-1 rounded-md border border-verde-primary px-2.5 py-1.5 text-sm font-medium text-verde-primary hover:bg-verde-light">
+              <button type="button" onClick={() => onDarAcesso(quadro)} className="inline-flex items-center gap-1 rounded-md border border-marca-primary px-2.5 py-1.5 text-sm font-medium text-marca-primary hover:bg-marca-light">
                 <UserPlus className="size-4" /> Dar acesso a esta lista
               </button>
             )}
@@ -214,7 +214,7 @@ export default function AbaEfetivo({
                     ))}
                   </div>
                 </div>
-                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", nivelVeTodas(l.nivel) ? "bg-verde-light text-verde-primary" : "bg-gray-100 text-gray-700")}>
+                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", nivelVeTodas(l.nivel) ? "bg-marca-light text-marca-primary" : "bg-gray-100 text-gray-700")}>
                   {rotuloNivel(l.nivel)}
                 </span>
                 <button

@@ -326,7 +326,7 @@ function NovaInspecaoInner() {
                 type="button"
                 disabled={!podeAvancar1}
                 onClick={() => setStep(2)}
-                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
               >
                 Próximo <ChevronRight className="size-4" />
               </button>
@@ -345,7 +345,7 @@ function NovaInspecaoInner() {
                   setInspBaseId(null);
                   setEmpresaOrigemId(null);
                 }}
-                icon={<Sparkles className="size-5 text-verde-primary" />}
+                icon={<Sparkles className="size-5 text-marca-primary" />}
                 titulo="Em Branco"
                 desc="Começar do zero, sem dados prévios."
               />
@@ -356,7 +356,7 @@ function NovaInspecaoInner() {
                   setInspBaseId(null);
                   setEmpresaOrigemId(null);
                 }}
-                icon={<Copy className="size-5 text-verde-primary" />}
+                icon={<Copy className="size-5 text-marca-primary" />}
                 titulo="Nova Revisão"
                 desc="Copia dados de uma inspeção anterior desta mesma empresa."
               />
@@ -366,7 +366,7 @@ function NovaInspecaoInner() {
                   setTipo("COPIA_EMPRESA");
                   setInspBaseId(null);
                 }}
-                icon={<Building2 className="size-5 text-verde-primary" />}
+                icon={<Building2 className="size-5 text-marca-primary" />}
                 titulo="Cópia de Outra Empresa"
                 desc="Importa dados de uma inspeção de outra empresa."
               />
@@ -377,7 +377,7 @@ function NovaInspecaoInner() {
                   setInspBaseId(null);
                   setEmpresaOrigemId(null);
                 }}
-                icon={<RefreshCw className="size-5 text-verde-primary" />}
+                icon={<RefreshCw className="size-5 text-marca-primary" />}
                 titulo="Renovação de documento"
                 desc="Não é visita a campo: registra a empresa ou a renovação dos documentos dela, sem contar nos gráficos de inspeção."
               />
@@ -435,7 +435,7 @@ function NovaInspecaoInner() {
                 type="button"
                 disabled={!podeAvancar2}
                 onClick={() => setStep(3)}
-                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
               >
                 Próximo <ChevronRight className="size-4" />
               </button>
@@ -448,7 +448,7 @@ function NovaInspecaoInner() {
             <h2 className="text-lg font-semibold">
               {tipo === "RENOVACAO" ? "Dados da renovação" : "Dados da inspeção"}
             </h2>
-            <div className="rounded-md border border-verde-primary/30 bg-verde-light/50 px-3 py-2 text-sm text-gray-700">
+            <div className="rounded-md border border-marca-primary/30 bg-marca-light/50 px-3 py-2 text-sm text-gray-700">
               {tipo === "RENOVACAO" ? "Esta renovação" : "Esta inspeção"} será gravada como{" "}
               <strong>Rev. {proximaRevisao}</strong> nesta empresa.
               {tipo === "RENOVACAO" && (
@@ -463,7 +463,7 @@ function NovaInspecaoInner() {
                 type="date"
                 value={dataInsp}
                 onChange={(e) => setDataInsp(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             {tipo !== "RENOVACAO" && (
@@ -505,7 +505,7 @@ function NovaInspecaoInner() {
                 <button
                   type="button"
                   onClick={() => setTecnicos((old) => [...old, ""])}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-verde-primary hover:text-verde-accent"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-marca-primary hover:text-marca-accent"
                 >
                   <Plus className="size-4" /> adicionar outro técnico
                 </button>
@@ -526,7 +526,7 @@ function NovaInspecaoInner() {
                 onChange={(e) => setObs(e.target.value)}
                 rows={4}
                 placeholder="Notas iniciais (opcional)"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
 
@@ -542,7 +542,7 @@ function NovaInspecaoInner() {
                 type="button"
                 disabled={create.isPending}
                 onClick={() => create.mutate()}
-                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
               >
                 {create.isPending && <Loader2 className="size-4 animate-spin" />}
                 {tipo === "RENOVACAO" ? "Registrar Renovação →" : "Criar Inspeção →"}
@@ -573,9 +573,9 @@ function Stepper({ step }: { step: Step }) {
             className={cn(
               "flex size-7 items-center justify-center rounded-full border-2 text-xs font-bold",
               s.n === step
-                ? "border-verde-primary bg-verde-primary text-white"
+                ? "border-marca-primary bg-marca-primary text-white"
                 : s.n < step
-                ? "border-verde-primary bg-verde-light text-verde-primary"
+                ? "border-marca-primary bg-marca-light text-marca-primary"
                 : "border-gray-300 bg-white text-gray-400"
             )}
           >
@@ -618,7 +618,7 @@ function TipoCard({
       className={cn(
         "rounded-xl border-2 p-4 text-left transition-colors",
         ativo
-          ? "border-verde-primary bg-verde-light"
+          ? "border-marca-primary bg-marca-light"
           : "border-gray-200 bg-white hover:border-gray-300"
       )}
     >
@@ -648,7 +648,7 @@ function SelectInspecaoBase({
       <select
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value || null)}
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
       >
         <option value="">Selecione...</option>
         {inspecoes
@@ -695,7 +695,7 @@ function OpcoesCopiaPanel({
                 onChange={(e) =>
                   setOpcoes({ ...opcoes, [chave]: e.target.checked })
                 }
-                className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
               />
               <span>
                 {rotulo}

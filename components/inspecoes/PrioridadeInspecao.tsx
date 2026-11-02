@@ -80,7 +80,7 @@ export function PrioridadeCelula({
         aria-label="Prioridade da inspeção"
         title="Prioridade desta inspeção"
         className={cn(
-          "cursor-pointer rounded-full border px-2 py-0.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:opacity-60",
+          "cursor-pointer rounded-full border px-2 py-0.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-marca-primary/30 disabled:opacity-60",
           atual ? PRIORIDADE_INFO[atual].classe : "border-dashed border-gray-300 bg-white text-gray-400",
         )}
       >

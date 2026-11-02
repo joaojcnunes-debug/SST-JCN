@@ -125,7 +125,7 @@ export default function AetListPage() {
             {canCreate && (
               <Link
                 href="/aet/novo"
-                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
               >
                 <FilePlus className="size-4" /> Criar primeiro laudo
               </Link>

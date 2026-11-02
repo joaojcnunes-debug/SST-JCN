@@ -41,7 +41,7 @@ export default function NovaInvestigacaoPage() {
         <button
           type="submit"
           disabled={!empresaId || criar.isPending}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-marca-primary px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Save className="size-4" />
           {criar.isPending ? "Criando..." : "Criar e continuar"}

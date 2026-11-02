@@ -170,7 +170,7 @@ export default function MetadadosPage({
             type="button"
             onClick={onSubmit}
             disabled={!canEdit || salvar.isPending || !relatorio}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-60"
           >
             <Save className="size-4" />
             {salvar.isPending ? "Salvando..." : "Salvar Metadados"}
@@ -214,4 +214,4 @@ function Field({
 }
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
+  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30";

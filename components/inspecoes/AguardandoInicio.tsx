@@ -72,7 +72,7 @@ export default function AguardandoInicio({
           type="button"
           disabled={iniciar.isPending}
           onClick={() => iniciar.mutate(idInspecao)}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {iniciar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />} {rotulo}
         </button>

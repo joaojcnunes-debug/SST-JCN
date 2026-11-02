@@ -143,7 +143,7 @@ export default function AnaliseRenderer({ texto }: { texto: string }) {
           return (
             <h3
               key={idx}
-              className="mt-6 border-b-2 border-verde-primary pb-1 text-base font-bold text-verde-primary"
+              className="mt-6 border-b-2 border-marca-primary pb-1 text-base font-bold text-marca-primary"
             >
               {renderInline(b.content ?? "")}
             </h3>
@@ -180,7 +180,7 @@ export default function AnaliseRenderer({ texto }: { texto: string }) {
                     {header.map((h, j) => (
                       <th
                         key={j}
-                        className="border border-verde-border bg-verde-primary px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wider text-white"
+                        className="border border-marca-border bg-marca-primary px-2 py-1.5 text-left text-xs font-bold uppercase tracking-wider text-white"
                       >
                         {renderInline(h)}
                       </th>

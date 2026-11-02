@@ -85,7 +85,7 @@ export default function DrpsListaPage() {
             <button
               type="button"
               onClick={() => setNovaEmpresaOpen(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-md border border-verde-primary bg-white px-3 py-2 text-sm font-semibold text-verde-primary shadow-sm hover:bg-verde-light"
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-marca-primary bg-white px-3 py-2 text-sm font-semibold text-marca-primary shadow-sm hover:bg-marca-light"
             >
               <Building2 className="size-4" /> Nova Empresa
             </button>
@@ -107,7 +107,7 @@ export default function DrpsListaPage() {
             {canCreate && (
               <Link
                 href={`/psicossocial/novo?empresa=${idEmpresa}`}
-                className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+                className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent"
               >
                 <Plus className="size-4" /> Novo Relatório
               </Link>
@@ -155,7 +155,7 @@ export default function DrpsListaPage() {
                       <td className="px-4 py-2.5">
                         <Link
                           href={`/psicossocial/${r.id_relatorio}/dashboard`}
-                          className="inline-flex items-center gap-1.5 font-mono text-sm font-semibold text-verde-primary hover:underline"
+                          className="inline-flex items-center gap-1.5 font-mono text-sm font-semibold text-marca-primary hover:underline"
                         >
                           <FileText className="size-4" /> Rev. {r.revisao}
                         </Link>
@@ -185,7 +185,7 @@ export default function DrpsListaPage() {
                         <div className="flex justify-end gap-1">
                           <Link
                             href={`/psicossocial/${r.id_relatorio}/dashboard`}
-                            className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                            className="rounded p-1.5 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
                             title="Abrir"
                           >
                             <ArrowRight className="size-4" />

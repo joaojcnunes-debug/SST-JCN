@@ -269,7 +269,7 @@ export default function AssinarPdfModal({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Senha do arquivo .pfx"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 pr-10 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 pr-10 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
               onKeyDown={(e) => e.key === "Enter" && !loading && handleAssinar()}
               disabled={loading}
             />
@@ -307,7 +307,7 @@ export default function AssinarPdfModal({
             type="button"
             onClick={handleAssinar}
             disabled={loading || !password || !emailSelecionado}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
           >
             {step === "gerando" ? (
               <><Loader2 className="size-4 animate-spin" /> Gerando PDF...</>

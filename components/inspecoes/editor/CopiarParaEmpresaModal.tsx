@@ -182,7 +182,7 @@ export default function CopiarParaEmpresaModal({
             type="button"
             onClick={() => copiar.mutate()}
             disabled={!destinoId || copiar.isPending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {copiar.isPending ? (
               <Loader2 className="size-4 animate-spin" />
@@ -219,7 +219,7 @@ function Checkbox({
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+        className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
       />
       <span>{label}</span>
     </label>

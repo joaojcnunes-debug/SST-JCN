@@ -93,7 +93,7 @@ export default function DocumentosEmpresaLista({
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Buscar título, responsável, ID…"
-                className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-2 text-xs focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-2 text-xs focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
           </div>
@@ -148,7 +148,7 @@ export default function DocumentosEmpresaLista({
                   <div className="flex shrink-0 items-center gap-3 pl-[5.75rem] sm:pl-0">
                     {d.pdfAssinado && <SeloAssinado />}
                     {d.pdfUrl && <LinkPdf href={d.pdfUrl} />}
-                    <Link href={d.rota} className="text-xs font-medium text-verde-primary hover:underline">
+                    <Link href={d.rota} className="text-xs font-medium text-marca-primary hover:underline">
                       Abrir →
                     </Link>
                   </div>
@@ -205,7 +205,7 @@ function LinkPdf({ href }: { href: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-verde-primary hover:underline"
+      className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:text-marca-primary hover:underline"
     >
       <Download className="size-3.5" /> PDF
     </a>
@@ -220,7 +220,7 @@ function Chip({ ativo, onClick, children }: { ativo: boolean; onClick: () => voi
       className={cn(
         "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
         ativo
-          ? "border-verde-primary bg-verde-primary text-white"
+          ? "border-marca-primary bg-marca-primary text-white"
           : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50",
       )}
     >

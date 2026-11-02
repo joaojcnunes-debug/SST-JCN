@@ -57,13 +57,13 @@ export default function StatusManagerModal({
               defaultValue={s.nome}
               disabled={!podeEditar}
               onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== s.nome) salvar.mutate({ id: s.id, id_quadro: idQuadro, nome: v }); }}
-              className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none"
+              className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none"
             />
             <select
               value={s.tipo}
               disabled={!podeEditar}
               onChange={(e) => salvar.mutate({ id: s.id, id_quadro: idQuadro, tipo: e.target.value as TipoStatus })}
-              className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 focus:border-verde-primary focus:outline-none"
+              className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 focus:border-marca-primary focus:outline-none"
               title="Tipo (semântica)"
             >
               {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -78,7 +78,7 @@ export default function StatusManagerModal({
           </div>
         ))}
         {podeEditar && (
-          <button type="button" onClick={adicionar} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-verde-primary ring-1 ring-dashed ring-verde-primary/40 hover:bg-verde-light/40">
+          <button type="button" onClick={adicionar} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-marca-primary ring-1 ring-dashed ring-marca-primary/40 hover:bg-marca-light/40">
             <Plus className="size-4" /> Adicionar status
           </button>
         )}

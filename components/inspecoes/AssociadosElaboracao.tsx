@@ -150,7 +150,7 @@ export default function AssociadosElaboracao({
                   created_by: user.nome,
                 })
               }
-              className="inline-flex items-center gap-1 rounded-full border border-dashed border-verde-primary/50 px-2 py-1 text-xs font-medium text-verde-primary hover:bg-verde-primary/5 disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-full border border-dashed border-marca-primary/50 px-2 py-1 text-xs font-medium text-marca-primary hover:bg-marca-primary/5 disabled:opacity-50"
             >
               <UserPlus className="size-3" /> Associar-me
             </button>
@@ -161,7 +161,7 @@ export default function AssociadosElaboracao({
             <button
               type="button"
               onClick={() => setAberto((v) => !v)}
-              className="inline-flex items-center gap-1 rounded-full border border-dashed border-verde-primary/50 px-2 py-1 text-xs font-medium text-verde-primary hover:bg-verde-primary/5"
+              className="inline-flex items-center gap-1 rounded-full border border-dashed border-marca-primary/50 px-2 py-1 text-xs font-medium text-marca-primary hover:bg-marca-primary/5"
             >
               <UserPlus className="size-3" /> Associar usuário
             </button>
@@ -175,7 +175,7 @@ export default function AssociadosElaboracao({
                       value={busca}
                       onChange={(e) => setBusca(e.target.value)}
                       placeholder="Buscar usuário..."
-                      className="w-full rounded-md border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                      className="w-full rounded-md border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                     />
                   </div>
                   <div className="max-h-52 overflow-auto py-1">

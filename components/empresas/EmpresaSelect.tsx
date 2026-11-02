@@ -110,7 +110,7 @@ export default function EmpresaSelect({
         disabled={disabled}
         className={cn(
           "flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm",
-          "focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30",
+          "focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30",
           disabled && "opacity-60 cursor-not-allowed"
         )}
       >
@@ -164,7 +164,7 @@ export default function EmpresaSelect({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Buscar por nome, fantasia, CNPJ ou grupo..."
-                className="w-full rounded-md border border-gray-200 py-1.5 pl-8 pr-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                className="w-full rounded-md border border-gray-200 py-1.5 pl-8 pr-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
               />
             </div>
           </div>
@@ -202,8 +202,8 @@ export default function EmpresaSelect({
                     setQuery("");
                   }}
                   className={cn(
-                    "flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-verde-light",
-                    value === e.id_empresa && "bg-verde-light"
+                    "flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-marca-light",
+                    value === e.id_empresa && "bg-marca-light"
                   )}
                 >
                   <span className="font-medium text-gray-900">

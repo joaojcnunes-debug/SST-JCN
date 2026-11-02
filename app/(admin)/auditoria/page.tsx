@@ -161,7 +161,7 @@ function AuditoriaConteudo() {
               className={cn(
                 "rounded-full border px-2.5 py-0.5 text-xs font-medium",
                 periodoAtivo(p.dias)
-                  ? "border-verde-primary bg-verde-light text-verde-primary"
+                  ? "border-marca-primary bg-marca-light text-marca-primary"
                   : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50",
               )}
             >
@@ -249,7 +249,7 @@ function AuditoriaConteudo() {
                   className={cn(INPUT, "pl-7")}
                 />
               </div>
-              <button type="button" onClick={confirmarTexto} className="rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-dark">
+              <button type="button" onClick={confirmarTexto} className="rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-dark">
                 Buscar
               </button>
             </div>
@@ -366,8 +366,8 @@ function descreverFiltros(f: FiltrosAuditoria, nomes: ReadonlyMap<string, string
   return partes.join(" · ");
 }
 
-const SELECT = "w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-verde-primary focus:outline-none";
-const INPUT = "w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-verde-primary focus:outline-none";
+const SELECT = "w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-marca-primary focus:outline-none";
+const INPUT = "w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 focus:border-marca-primary focus:outline-none";
 
 function Campo({ rotulo, className, children }: { rotulo: string; className?: string; children: ReactNode }) {
   return (
@@ -410,7 +410,7 @@ function LinhaEvento({
             <span className="font-semibold">{quemGravou(ev, nomes)}</span>{" "}
             <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase", ACAO_CORES[ev.acao])}>{ev.acao}</span>{" "}
             {concluiu && (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-verde-light px-1.5 py-0.5 text-[10px] font-bold uppercase text-verde-primary">
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-marca-light px-1.5 py-0.5 text-[10px] font-bold uppercase text-marca-primary">
                 <CheckCircle2 className="size-3" /> concluiu
               </span>
             )}{" "}
@@ -424,7 +424,7 @@ function LinhaEvento({
           </p>
         </div>
         {rota && (
-          <Link href={rota} className="mt-0.5 shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-verde-primary" title="Abrir o registro">
+          <Link href={rota} className="mt-0.5 shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-marca-primary" title="Abrir o registro">
             <ExternalLink className="size-4" />
           </Link>
         )}

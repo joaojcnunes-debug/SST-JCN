@@ -740,7 +740,7 @@ export default function MaquinasTab({
             className={cn(
               "rounded px-2 py-0.5 text-xs font-medium transition-colors",
               value === opt.value
-                ? "bg-verde-primary text-white"
+                ? "bg-marca-primary text-white"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             )}
           >
@@ -912,7 +912,7 @@ export default function MaquinasTab({
               className={cn(
                 "px-3 py-1.5 transition-colors",
                 view === "lista"
-                  ? "bg-verde-primary text-white"
+                  ? "bg-marca-primary text-white"
                   : "bg-white text-gray-600 hover:bg-gray-50"
               )}
             >
@@ -924,7 +924,7 @@ export default function MaquinasTab({
               className={cn(
                 "border-l border-gray-200 px-3 py-1.5 transition-colors",
                 view === "por-setor"
-                  ? "bg-verde-primary text-white"
+                  ? "bg-marca-primary text-white"
                   : "bg-white text-gray-600 hover:bg-gray-50"
               )}
             >
@@ -945,7 +945,7 @@ export default function MaquinasTab({
             <button
               type="button"
               onClick={openNew}
-              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent"
+              className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-marca-accent"
             >
               <Plus className="size-3.5" />
               Adicionar Máquina
@@ -1013,7 +1013,7 @@ export default function MaquinasTab({
                     value={form.nome}
                     onChange={(e) => f("nome", e.target.value)}
                     placeholder="Ex: Prensa Hidráulica 50T"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
                   />
                 </div>
                 {(
@@ -1031,7 +1031,7 @@ export default function MaquinasTab({
                     <input
                       value={form[k] as string}
                       onChange={(e) => f(k, e.target.value)}
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
                     />
                   </div>
                 ))}
@@ -1050,7 +1050,7 @@ export default function MaquinasTab({
                     value={form.potencia}
                     onChange={(e) => f("potencia", e.target.value)}
                     placeholder="Ex: 5 kW"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
                   />
                 </div>
                 <div>
@@ -1059,7 +1059,7 @@ export default function MaquinasTab({
                     value={form.tensao}
                     onChange={(e) => f("tensao", e.target.value)}
                     placeholder="Ex: 220 V"
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
                   />
                 </div>
               </div>
@@ -1093,7 +1093,7 @@ export default function MaquinasTab({
                 <select
                   value={form.grau_risco}
                   onChange={(e) => f("grau_risco", e.target.value)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none sm:w-48"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none sm:w-48"
                 >
                   <option value="">— não avaliado —</option>
                   {(["BAIXO", "MEDIO", "ALTO", "CRITICO"] as GrauRisco[]).map((g) => (
@@ -1110,7 +1110,7 @@ export default function MaquinasTab({
                 value={form.observacoes}
                 onChange={(e) => f("observacoes", e.target.value)}
                 rows={3}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none"
               />
             </div>
 
@@ -1156,7 +1156,7 @@ export default function MaquinasTab({
                   <button
                     type="button"
                     onClick={() => fileRef.current?.click()}
-                    className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 hover:border-verde-primary hover:text-verde-primary"
+                    className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-gray-300 text-gray-400 hover:border-marca-primary hover:text-marca-primary"
                   >
                     <Camera className="size-5" />
                     <span className="text-[10px]">Foto</span>
@@ -1188,7 +1188,7 @@ export default function MaquinasTab({
               type="button"
               onClick={handleSave}
               disabled={saving || form.ids_setores.length === 0}
-              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
             >
               {saving && <Loader2 className="size-4 animate-spin" />}
               {editando ? "Salvar alterações" : "Adicionar"}

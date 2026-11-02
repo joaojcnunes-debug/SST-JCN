@@ -18,7 +18,7 @@ const fmtPrazo = (iso: string) => { const [, m, d] = iso.split("-"); return `${d
 const corPrioridade = (p: string) => PRIORIDADES.find((x) => x.value === p)?.cor ?? "#94a3b8";
 
 function IconeNotif({ tipo }: { tipo: string }) {
-  if (tipo === "atribuicao") return <UserPlus className="size-4 text-verde-primary" />;
+  if (tipo === "atribuicao") return <UserPlus className="size-4 text-marca-primary" />;
   if (tipo === "status") return <ArrowRightLeft className="size-4 text-indigo-500" />;
   if (tipo === "comentario") return <MessageSquare className="size-4 text-amber-500" />;
   if (tipo === "mencao") return <AtSign className="size-4 text-pink-500" />;
@@ -111,7 +111,7 @@ export default function CaixaEntrada({
             {naoLidas.map((n) => (
               <li key={n.id} className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
                 <IconeNotif tipo={n.tipo} />
-                <button type="button" onClick={() => onAbrirNotif(n)} className="flex-1 truncate text-left text-sm text-gray-700 hover:text-verde-primary" title={n.titulo}>
+                <button type="button" onClick={() => onAbrirNotif(n)} className="flex-1 truncate text-left text-sm text-gray-700 hover:text-marca-primary" title={n.titulo}>
                   {n.titulo}
                 </button>
                 <span className="shrink-0 text-[11px] text-gray-400">{quando(n.created_at)}</span>
@@ -135,7 +135,7 @@ export default function CaixaEntrada({
               {lidas.map((n) => (
                 <li key={n.id} className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/60 px-3 py-2">
                   <IconeNotif tipo={n.tipo} />
-                  <button type="button" onClick={() => onAbrirNotif(n)} className="flex-1 truncate text-left text-sm text-gray-500 hover:text-verde-primary" title={n.titulo}>
+                  <button type="button" onClick={() => onAbrirNotif(n)} className="flex-1 truncate text-left text-sm text-gray-500 hover:text-marca-primary" title={n.titulo}>
                     {n.titulo}
                   </button>
                   <span className="shrink-0 text-[11px] text-gray-400">{quando(n.created_at)}</span>
@@ -183,7 +183,7 @@ function AprovacaoLinha({ aprovacao, titulo, onAbrir }: { aprovacao: GestaoAprov
     <li className="rounded-lg border border-amber-200 bg-amber-50/40 px-3 py-2">
       <div className="flex items-center gap-2">
         <ShieldQuestion className="size-4 shrink-0 text-amber-600" />
-        <button type="button" onClick={onAbrir} className="flex-1 truncate text-left text-sm font-medium text-gray-700 hover:text-verde-primary" title={titulo}>
+        <button type="button" onClick={onAbrir} className="flex-1 truncate text-left text-sm font-medium text-gray-700 hover:text-marca-primary" title={titulo}>
           {titulo}
         </button>
         <span className="shrink-0 text-[11px] text-gray-400">{quando(aprovacao.created_at)}</span>
@@ -195,7 +195,7 @@ function AprovacaoLinha({ aprovacao, titulo, onAbrir }: { aprovacao: GestaoAprov
           onChange={(e) => setMotivo(e.target.value)}
           placeholder="Motivo (opcional)"
           disabled={ocupado}
-          className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 placeholder:text-gray-400 focus:border-verde-primary focus:outline-none"
+          className="min-w-0 flex-1 rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700 placeholder:text-gray-400 focus:border-marca-primary focus:outline-none"
         />
         <button
           type="button"

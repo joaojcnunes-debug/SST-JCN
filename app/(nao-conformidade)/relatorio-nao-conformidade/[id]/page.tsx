@@ -215,7 +215,7 @@ export default function DetalheNaoConformidadePage({
       <div className="flex flex-wrap items-center justify-between gap-2 print:hidden">
         <Link
           href="/relatorio-nao-conformidade"
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-verde-primary"
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-marca-primary"
         >
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>

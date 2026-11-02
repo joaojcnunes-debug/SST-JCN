@@ -34,7 +34,7 @@ const MODULO_COLOR: Record<string, string> = {
   qps:                 "bg-fuchsia-100 text-fuchsia-700",
   aet:                 "bg-orange-100 text-orange-700",
   aep:                 "bg-yellow-100 text-yellow-700",
-  sst:                 "bg-verde-light text-verde-primary",
+  sst:                 "bg-marca-light text-marca-primary",
   conformidade:        "bg-blue-100 text-blue-700",
   nao_conformidade:    "bg-red-100 text-red-700",
   analise_quimicos:    "bg-cyan-100 text-cyan-700",

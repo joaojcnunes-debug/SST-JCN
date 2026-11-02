@@ -51,7 +51,7 @@ function RelatoriosInner() {
     <div className="space-y-6">
       <header className="reveal-up rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="flex items-start gap-3">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary">
+          <div className="flex size-11 items-center justify-center rounded-xl bg-marca-light text-marca-primary">
             <BarChart3 className="size-6" />
           </div>
           <div className="flex-1">
@@ -79,8 +79,8 @@ function RelatoriosInner() {
 
       {!empresaId ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white p-14 text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-light">
-            <Building2 className="size-7 text-verde-primary" />
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-marca-light">
+            <Building2 className="size-7 text-marca-primary" />
           </div>
           <p className="mt-4 text-sm font-semibold text-gray-800">Selecione uma empresa</p>
           <p className="mt-1 text-xs text-gray-400">Os relatórios são organizados por empresa.</p>
@@ -89,9 +89,9 @@ function RelatoriosInner() {
         <>
           {/* Card empresa */}
           {empresa && (
-            <div className="rounded-2xl border border-verde-border bg-gradient-to-r from-verde-light/60 to-white p-4">
+            <div className="rounded-2xl border border-marca-border bg-gradient-to-r from-marca-light/60 to-white p-4">
               <div className="flex items-center gap-3">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-verde-primary text-white shadow-sm">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-marca-primary text-white shadow-sm">
                   <Building2 className="size-5" />
                 </div>
                 <div>
@@ -112,7 +112,7 @@ function RelatoriosInner() {
             </h2>
             <Link
               href={`/empresas/${empresaId}/relatorio`}
-              className="group tilt-3d sheen flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:border-verde-primary/50 hover:-translate-y-0.5 hover:shadow-md"
+              className="group tilt-3d sheen flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-all hover:border-marca-primary/50 hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="flex size-12 items-center justify-center rounded-xl bg-blue-50 text-blue-700 transition-colors group-hover:bg-blue-100">
                 <Layers className="size-6" />
@@ -127,7 +127,7 @@ function RelatoriosInner() {
                   ao longo do tempo.
                 </p>
               </div>
-              <span className="text-sm font-medium text-verde-primary opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="text-sm font-medium text-marca-primary opacity-0 transition-opacity group-hover:opacity-100">
                 Abrir →
               </span>
             </Link>
@@ -158,7 +158,7 @@ function RelatoriosInner() {
                   </thead>
                   <tbody>
                     {inspecoesValidas.map((i) => (
-                      <tr key={i.id_inspecao} className="border-b border-gray-50 transition-colors hover:bg-verde-light/25 last:border-b-0">
+                      <tr key={i.id_inspecao} className="border-b border-gray-50 transition-colors hover:bg-marca-light/25 last:border-b-0">
                         <td className="px-4 py-2.5">
                           <span className="font-mono text-xs text-gray-500">
                             Rev. {i.revisao}
@@ -177,7 +177,7 @@ function RelatoriosInner() {
                           <div className="flex justify-end gap-1.5">
                             <Link
                               href={`/inspecoes/${i.id_inspecao}/relatorio`}
-                              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-verde-light hover:border-verde-primary hover:text-verde-primary"
+                              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-marca-light hover:border-marca-primary hover:text-marca-primary"
                               title="Relatório executivo (capa JCN Consultoria)"
                             >
                               <ChartBar className="size-3.5" />

@@ -64,7 +64,7 @@ export default function RevisaoQpsPage({ params }: { params: Promise<{ id: strin
           type="button"
           onClick={onSalvar}
           disabled={!canEdit || !dirty || salvar.isPending || !ap}
-          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Save className="size-4" />
           {salvar.isPending ? "Salvando..." : "Salvar Revisão"}
@@ -84,7 +84,7 @@ export default function RevisaoQpsPage({ params }: { params: Promise<{ id: strin
                 checked={!!checklist[a.id]}
                 onChange={() => toggle(setChecklist, a.id)}
                 disabled={!canEdit}
-                className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30 disabled:cursor-not-allowed"
+                className="mt-0.5 rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30 disabled:cursor-not-allowed"
               />
               <span className="text-sm text-gray-800">{a.texto}</span>
             </label>
@@ -105,7 +105,7 @@ export default function RevisaoQpsPage({ params }: { params: Promise<{ id: strin
                 checked={!!equipe[m.id]}
                 onChange={() => toggle(setEquipe, m.id)}
                 disabled={!canEdit}
-                className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30 disabled:cursor-not-allowed"
+                className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30 disabled:cursor-not-allowed"
               />
               <span className="text-sm text-gray-800">{m.texto}</span>
             </label>
@@ -124,7 +124,7 @@ export default function RevisaoQpsPage({ params }: { params: Promise<{ id: strin
           disabled={!canEdit}
           rows={6}
           placeholder="Registros, observações, próximos passos..."
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:cursor-not-allowed disabled:bg-gray-50"
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30 disabled:cursor-not-allowed disabled:bg-gray-50"
         />
       </div>
     </div>

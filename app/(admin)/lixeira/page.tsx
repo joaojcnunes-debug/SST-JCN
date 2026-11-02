@@ -86,7 +86,7 @@ export default function LixeiraPage() {
                 type="button"
                 onClick={() => setConfirmar(r)}
                 disabled={restaurar.isPending}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-1.5 text-sm font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-marca-primary bg-white px-3 py-1.5 text-sm font-semibold text-marca-primary hover:bg-marca-light disabled:opacity-50"
               >
                 {restaurar.isPending ? (
                   <Loader2 className="size-3.5 animate-spin" />

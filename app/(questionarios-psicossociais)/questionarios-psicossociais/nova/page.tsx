@@ -124,7 +124,7 @@ export default function NovaAplicacaoPage() {
                   <button
                     type="button"
                     onClick={() => setNovaEmpresaOpen(true)}
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-verde-primary bg-white px-3 py-2 text-sm font-semibold text-verde-primary shadow-sm hover:bg-verde-light"
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-marca-primary bg-white px-3 py-2 text-sm font-semibold text-marca-primary shadow-sm hover:bg-marca-light"
                   >
                     <Building2 className="size-4" /> Nova Empresa
                   </button>

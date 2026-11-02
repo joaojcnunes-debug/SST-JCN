@@ -81,7 +81,7 @@ export default function PlanoAcaoPage({
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
-          <Workflow className="size-5 text-verde-primary" />
+          <Workflow className="size-5 text-marca-primary" />
           Plano de Ação 5W2H
         </h1>
         <p className="text-sm text-gray-600">
@@ -119,7 +119,7 @@ export default function PlanoAcaoPage({
           type="button"
           onClick={handleAdicionar}
           disabled={salvar.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary/40 bg-white px-4 py-2 text-sm font-semibold text-verde-primary hover:bg-verde-primary/5 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary/40 bg-white px-4 py-2 text-sm font-semibold text-marca-primary hover:bg-marca-primary/5 disabled:opacity-50"
         >
           {salvar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
           Adicionar ação
@@ -246,7 +246,7 @@ function LinhaCard({
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="inline-flex size-7 items-center justify-center rounded-full bg-verde-primary/10 text-sm font-bold text-verde-primary">
+        <span className="inline-flex size-7 items-center justify-center rounded-full bg-marca-primary/10 text-sm font-bold text-marca-primary">
           {numero}
         </span>
         <span className={`rounded-md border px-2 py-0.5 text-[11px] font-semibold ${statusInfo.classe}`}>
@@ -347,7 +347,7 @@ function LinhaCard({
             <select
               value={form.status}
               onChange={(e) => set("status", e.target.value as StatusPlanoAcao)}
-              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none"
+              className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none"
             >
               {STATUS_OPCOES.map((s) => (
                 <option key={s.valor} value={s.valor}>{s.label}</option>
@@ -368,7 +368,7 @@ function LinhaCard({
               type="button"
               onClick={handleSalvar}
               disabled={salvar.isPending}
-              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
             >
               {salvar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               Salvar
@@ -381,7 +381,7 @@ function LinhaCard({
 }
 
 const inputCls =
-  "w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 read-only:bg-gray-50 read-only:text-gray-600";
+  "w-full rounded-md border border-gray-300 px-2.5 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 read-only:bg-gray-50 read-only:text-gray-600";
 
 /** Dropdown de múltipla escolha de setores (checkboxes, fecha ao clicar fora). */
 function MultiSelectSetores({
@@ -430,7 +430,7 @@ function MultiSelectSetores({
               >
                 <span
                   className={`flex size-4 shrink-0 items-center justify-center rounded border ${
-                    ativo ? "border-verde-primary bg-verde-primary text-white" : "border-gray-300 bg-white"
+                    ativo ? "border-marca-primary bg-marca-primary text-white" : "border-gray-300 bg-white"
                   }`}
                 >
                   {ativo && <Check className="size-3" />}

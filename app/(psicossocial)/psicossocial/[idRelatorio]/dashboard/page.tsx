@@ -204,7 +204,7 @@ export default function DashboardPage({
               disabled={!canEdit}
               onChange={(e) => { setCnpj(e.target.value); setDirty(true); }}
               placeholder="00.000.000/0000-00"
-              className="w-36 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+              className="w-36 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
             />
           </div>
 
@@ -217,7 +217,7 @@ export default function DashboardPage({
               value={status}
               disabled={!canEdit}
               onChange={(e) => { setStatus(e.target.value as StatusRelatorio); setDirty(true); }}
-              className={`rounded-full border-0 px-2 py-0.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:cursor-default ${statusAtual?.cls ?? ""}`}
+              className={`rounded-full border-0 px-2 py-0.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-marca-primary/30 disabled:cursor-default ${statusAtual?.cls ?? ""}`}
             >
               {STATUS_OPCOES.map((s) => (
                 <option key={s.v} value={s.v}>{s.label}</option>
@@ -235,7 +235,7 @@ export default function DashboardPage({
               value={data}
               disabled={!canEdit}
               onChange={(e) => { setData(e.target.value); setDirty(true); }}
-              className="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+              className="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
             />
           </div>
 
@@ -272,7 +272,7 @@ export default function DashboardPage({
               disabled={!canEdit}
               onChange={(e) => { setCrp(e.target.value); setDirty(true); }}
               placeholder="00/00000"
-              className="w-24 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+              className="w-24 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
             />
           </div>
 
@@ -282,7 +282,7 @@ export default function DashboardPage({
               type="button"
               onClick={handleSalvar}
               disabled={salvar.isPending || salvarEmpresa.isPending}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50 shrink-0"
+              className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-marca-accent disabled:opacity-50 shrink-0"
             >
               {(salvar.isPending || salvarEmpresa.isPending)
                 ? <Loader2 className="size-3 animate-spin" />

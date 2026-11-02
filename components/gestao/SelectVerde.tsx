@@ -60,7 +60,7 @@ export default function SelectVerde<T extends string>({
         onClick={() => setAberto((a) => !a)}
         className={cn(
           "flex w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 py-1.5 text-left text-sm font-medium text-gray-700 transition disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400",
-          aberto ? "border-verde-primary ring-1 ring-verde-primary" : "border-gray-200 hover:border-verde-primary/60",
+          aberto ? "border-marca-primary ring-1 ring-marca-primary" : "border-gray-200 hover:border-marca-primary/60",
           className,
         )}
       >
@@ -76,7 +76,7 @@ export default function SelectVerde<T extends string>({
                 value={termo}
                 onChange={(e) => setTermo(e.target.value)}
                 placeholder={placeholderBusca}
-                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+                className="w-full rounded-lg border border-gray-200 px-2.5 py-1.5 text-sm focus:border-marca-primary focus:outline-none"
               />
             </div>
           )}
@@ -92,7 +92,7 @@ export default function SelectVerde<T extends string>({
                     onClick={() => escolher(o.value)}
                     className={cn(
                       "flex w-full items-center justify-between gap-3 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-left text-sm transition",
-                      sel ? "bg-verde-primary font-medium text-white" : "text-gray-700 hover:bg-verde-light/60 hover:text-verde-primary",
+                      sel ? "bg-marca-primary font-medium text-white" : "text-gray-700 hover:bg-marca-light/60 hover:text-marca-primary",
                     )}
                   >
                     {o.label}

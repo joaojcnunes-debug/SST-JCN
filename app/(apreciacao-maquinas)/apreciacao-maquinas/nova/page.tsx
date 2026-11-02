@@ -74,7 +74,7 @@ export default function NovaApreciacaoPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <Link
         href="/apreciacao-maquinas"
-        className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-verde-primary"
+        className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-marca-primary"
       >
         <ArrowLeft className="size-3.5" /> Voltar
       </Link>

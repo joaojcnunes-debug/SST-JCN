@@ -72,7 +72,7 @@ function Inner() {
 
       <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm reveal-up">
         <div className="flex items-center gap-3">
-          <Sparkles className="size-6 text-verde-primary" />
+          <Sparkles className="size-6 text-marca-primary" />
           <div>
             <h1 className="text-lg font-semibold text-gray-900">
               Novo Relatório DRPS
@@ -92,7 +92,7 @@ function Inner() {
           </div>
 
           {idEmpresa && (
-            <div className="rounded-md border border-verde-primary/30 bg-verde-light/50 px-3 py-2 text-sm text-gray-700">
+            <div className="rounded-md border border-marca-primary/30 bg-marca-light/50 px-3 py-2 text-sm text-gray-700">
               Este será o relatório{" "}
               <strong>Rev. {proximaRevisao}</strong> da empresa selecionada.
             </div>
@@ -158,7 +158,7 @@ function Inner() {
               type="button"
               onClick={onCriar}
               disabled={!idEmpresa || criar.isPending}
-              className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent disabled:opacity-50"
             >
               {criar.isPending && <Loader2 className="size-4 animate-spin" />}
               Criar Relatório →
@@ -171,4 +171,4 @@ function Inner() {
 }
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
+  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30";

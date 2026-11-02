@@ -28,7 +28,7 @@ export default function PerguntasTab() {
         <select
           value={tipoSel}
           onChange={(e) => setTipoSel(e.target.value)}
-          className="mt-1 w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          className="mt-1 w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
         >
           {tipos.map((t) => (
             <option key={t.id_tipo} value={t.id_tipo}>

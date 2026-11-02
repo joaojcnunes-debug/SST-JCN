@@ -40,9 +40,9 @@ export default function GestaoGerencialPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         <Link
           href="/gestao-gerencial/unidades"
-          className="group flex flex-col rounded-lg border border-gray-200 bg-white p-5 transition hover:border-verde-primary hover:shadow-sm"
+          className="group flex flex-col rounded-lg border border-gray-200 bg-white p-5 transition hover:border-marca-primary hover:shadow-sm"
         >
-          <span className="flex size-11 items-center justify-center rounded-lg bg-verde-light text-verde-primary">
+          <span className="flex size-11 items-center justify-center rounded-lg bg-marca-light text-marca-primary">
             <Building2 className="size-6" />
           </span>
           <p className="mt-3 font-semibold text-gray-900">Escalas e Substituições</p>
@@ -63,7 +63,7 @@ export default function GestaoGerencialPage() {
         {temEscala ? (
           <Link
             href="/escala"
-            className="group flex flex-col rounded-lg border border-gray-200 bg-white p-5 transition hover:border-verde-primary hover:shadow-sm"
+            className="group flex flex-col rounded-lg border border-gray-200 bg-white p-5 transition hover:border-marca-primary hover:shadow-sm"
           >
             <span className="flex size-11 items-center justify-center rounded-lg bg-cyan-50 text-[#0891B2]">
               <CalendarDays className="size-6" />

@@ -109,7 +109,7 @@ export default function VistaTimeline({
           const concluido = concluidoSet.has(t.status);
           return (
             <div key={t.id_tarefa} className="flex border-b border-gray-100 hover:bg-gray-50/60" style={{ height: ROWH }}>
-              <button type="button" onClick={() => onAbrir(t)} className="shrink-0 truncate px-3 text-left text-sm text-gray-700 hover:text-verde-primary" style={{ width: LABELW }} title={t.titulo}>
+              <button type="button" onClick={() => onAbrir(t)} className="shrink-0 truncate px-3 text-left text-sm text-gray-700 hover:text-marca-primary" style={{ width: LABELW }} title={t.titulo}>
                 {t.titulo}
               </button>
               <div className="relative" style={{ width: largura }}>
@@ -119,7 +119,7 @@ export default function VistaTimeline({
                 ))}
                 {/* linha de hoje */}
                 {dias.map((d, i) => isToday(d) && (
-                  <div key={`t-${i}`} className="absolute top-0 z-10 h-full w-px bg-verde-primary/50" style={{ left: i * COLW + COLW / 2 }} />
+                  <div key={`t-${i}`} className="absolute top-0 z-10 h-full w-px bg-marca-primary/50" style={{ left: i * COLW + COLW / 2 }} />
                 ))}
                 {/* barra */}
                 <button

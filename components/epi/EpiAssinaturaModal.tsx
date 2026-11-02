@@ -244,7 +244,7 @@ export default function EpiAssinaturaModal({
             disabled={digitalPossivel === false}
             className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 ${
               metodo === "digital"
-                ? "bg-verde-primary text-white"
+                ? "bg-marca-primary text-white"
                 : "text-gray-500 hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-transparent"
             }`}
           >
@@ -255,7 +255,7 @@ export default function EpiAssinaturaModal({
             onClick={() => setMetodo("canvas")}
             className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 ${
               metodo === "canvas"
-                ? "bg-verde-primary text-white"
+                ? "bg-marca-primary text-white"
                 : "text-gray-500 hover:bg-gray-100"
             }`}
           >
@@ -283,7 +283,7 @@ export default function EpiAssinaturaModal({
         )}
         {modoVerificacao && agenteOk !== false && (
           <div className="flex items-start gap-2 rounded-lg border border-sky-100 bg-sky-50 p-2.5 text-[11px] text-sky-900">
-            <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-verde-primary" />
+            <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-marca-primary" />
             Colaborador com biometria cadastrada — a digital será{" "}
             <strong>conferida com o cadastro</strong> antes de assinar.
           </div>
@@ -321,7 +321,7 @@ export default function EpiAssinaturaModal({
               type="button"
               onClick={lerDigital}
               disabled={capturando || !consentimento || digitalPossivel === false}
-              className="flex w-full items-center justify-center gap-2 rounded-md border border-sky-300 bg-white px-4 py-3 text-sm font-semibold text-verde-accent hover:bg-sky-50 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-sky-300 bg-white px-4 py-3 text-sm font-semibold text-marca-accent hover:bg-sky-50 disabled:opacity-50"
             >
               {capturando ? (
                 <>
@@ -394,7 +394,7 @@ export default function EpiAssinaturaModal({
             type="button"
             onClick={confirmar}
             disabled={confirmarDesabilitado}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
           >
             {assinar.isPending ? (
               <>

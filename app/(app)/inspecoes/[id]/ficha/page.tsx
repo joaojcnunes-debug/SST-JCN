@@ -241,7 +241,7 @@ export default function FichaInspecaoPage({ params }: Props) {
           )}
           <FichaSecoesLeque
             gatilho={<><Printer className="size-4" /> Gerar PDF</>}
-            gatilhoClassName="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+            gatilhoClassName="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent"
             secoes={SECOES}
             selecionadas={impressao}
             onChange={setImpressao}
@@ -260,7 +260,7 @@ export default function FichaInspecaoPage({ params }: Props) {
                 docId={id}
                 disabled={impressao.size === 0}
                 assinavel={fichaCompleta}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-marca-primary px-3 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
               />
             }
           />
@@ -271,7 +271,7 @@ export default function FichaInspecaoPage({ params }: Props) {
         <FichaSecoesLeque
           gatilho={
             <>
-              <Eye className="size-4 text-verde-primary" />
+              <Eye className="size-4 text-marca-primary" />
               Mostrar:{" "}
               <span className="font-semibold">
                 {secoes.size === TODAS.size

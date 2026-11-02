@@ -60,7 +60,7 @@ export default function ConfirmDialog({
             "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white transition disabled:opacity-50",
             variant === "danger"
               ? "bg-red-500 hover:bg-red-600"
-              : "bg-verde-primary hover:bg-verde-accent"
+              : "bg-marca-primary hover:bg-marca-accent"
           )}
         >
           {loading && <Loader2 className="size-3.5 animate-spin" />}

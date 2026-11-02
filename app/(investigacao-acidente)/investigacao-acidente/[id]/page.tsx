@@ -253,7 +253,7 @@ export default function EditorInvestigacaoPage() {
   }
 
   const inputCls =
-    "w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-gray-50";
+    "w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50";
   function updPessoa<K extends keyof PessoaEnvolvida>(i: number, k: K, v: PessoaEnvolvida[K]) {
     const arr = [...form.pessoas_envolvidas];
     arr[i] = { ...arr[i], [k]: v };
@@ -409,7 +409,7 @@ export default function EditorInvestigacaoPage() {
             type="button"
             onClick={handleSalvar}
             disabled={salvando || salvar.isPending || !dirty}
-            className="inline-flex items-center gap-2 rounded-xl bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-xl bg-marca-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             {salvando || salvar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             {salvando ? "Enviando…" : dirty ? "Salvar" : "Salvo"}
@@ -464,7 +464,7 @@ export default function EditorInvestigacaoPage() {
             opcoes={[["", "—"], ["LEVE", "Leve"], ["GRAVE", "Grave"], ["FATAL", "Fatal"]]} />
           <div className="flex items-end gap-3">
             <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" disabled={ro} checked={form.houve_afastamento} onChange={(e) => set("houve_afastamento", e.target.checked)} className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary" />
+              <input type="checkbox" disabled={ro} checked={form.houve_afastamento} onChange={(e) => set("houve_afastamento", e.target.checked)} className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary" />
               Houve afastamento
             </label>
             {form.houve_afastamento && (
@@ -512,7 +512,7 @@ export default function EditorInvestigacaoPage() {
                     set("testemunhas", arr);
                   }}
                   placeholder="Nome da testemunha"
-                  className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                  className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                 />
                 {!ro && (
                   <button type="button" onClick={() => set("testemunhas", form.testemunhas.filter((_, j) => j !== i))} className="flex size-8 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600">
@@ -530,7 +530,7 @@ export default function EditorInvestigacaoPage() {
                 }}
                 placeholder="Depoimento"
                 rows={2}
-                className="mt-2 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                className="mt-2 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
               />
             </div>
           ))}
@@ -635,7 +635,7 @@ export default function EditorInvestigacaoPage() {
                   </button>
                 )}
               </div>
-              <textarea disabled={ro} value={r.relato} onChange={(e) => updRelato(i, "relato", e.target.value)} placeholder="Relato sob o ponto de vista desta pessoa" rows={2} className="mt-2 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-gray-50" />
+              <textarea disabled={ro} value={r.relato} onChange={(e) => updRelato(i, "relato", e.target.value)} placeholder="Relato sob o ponto de vista desta pessoa" rows={2} className="mt-2 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50" />
             </div>
           ))}
           {!ro && (
@@ -672,7 +672,7 @@ export default function EditorInvestigacaoPage() {
                     arr[i] = { ...arr[i], pergunta: e.target.value };
                     set("cinco_porques", arr);
                   }}
-                  className="mb-1.5 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                  className="mb-1.5 w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                 />
                 <input
                   disabled={ro}
@@ -683,7 +683,7 @@ export default function EditorInvestigacaoPage() {
                     arr[i] = { ...arr[i], resposta: e.target.value };
                     set("cinco_porques", arr);
                   }}
-                  className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                  className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                 />
               </div>
             ))}
@@ -704,7 +704,7 @@ export default function EditorInvestigacaoPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {ISHIKAWA_CATS.map((cat) => (
             <div key={cat} className="rounded-lg border border-gray-200 p-3">
-              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-verde-primary">{cat}</p>
+              <p className="mb-1.5 text-xs font-bold uppercase tracking-wide text-marca-primary">{cat}</p>
               <MultiChipInput
                 value={form.ishikawa[cat] ?? []}
                 onChange={(v) => set("ishikawa", { ...form.ishikawa, [cat]: v })}
@@ -729,7 +729,7 @@ export default function EditorInvestigacaoPage() {
                     <p className="text-sm font-medium text-gray-800">{f.label}</p>
                     {f.hint && <p className="text-[11px] text-gray-400">{f.hint}</p>}
                   </div>
-                  <select disabled={ro} value={fa.resposta} onChange={(e) => setFator(f.key, { resposta: e.target.value as FatorAvaliacao["resposta"] })} className="shrink-0 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-gray-50">
+                  <select disabled={ro} value={fa.resposta} onChange={(e) => setFator(f.key, { resposta: e.target.value as FatorAvaliacao["resposta"] })} className="shrink-0 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50">
                     <option value="">—</option>
                     <option value="sim">Sim</option>
                     <option value="nao">Não</option>
@@ -871,7 +871,7 @@ export default function EditorInvestigacaoPage() {
               apiPdfUrl={`/api/pdf/investigacao-acidente/${id}`}
               tabelaNome="investigacoes_acidente"
               docId={id}
-              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-verde-accent"
+              className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-marca-accent"
             />
             <BotaoAssinarPdf
               apiPdfUrl={`/api/pdf/investigacao-acidente/${id}`}
@@ -891,7 +891,7 @@ export default function EditorInvestigacaoPage() {
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <section className="reveal-up space-y-3 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h2 className="text-sm font-bold uppercase tracking-wider text-verde-primary">{titulo}</h2>
+      <h2 className="text-sm font-bold uppercase tracking-wider text-marca-primary">{titulo}</h2>
       {children}
     </section>
   );
@@ -916,7 +916,7 @@ function Campo({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-gray-50"
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50"
       />
     </div>
   );
@@ -935,7 +935,7 @@ function Area({
         value={value}
         rows={rows}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-gray-50"
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50"
       />
     </div>
   );
@@ -977,7 +977,7 @@ function Checklist({
               onClick={() => toggle(op)}
               className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
                 on
-                  ? "border-verde-primary bg-verde-primary/10 text-verde-primary"
+                  ? "border-marca-primary bg-marca-primary/10 text-marca-primary"
                   : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
               } disabled:cursor-not-allowed disabled:opacity-60`}
             >
@@ -1002,7 +1002,7 @@ function Sel({
         disabled={ro}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-gray-50"
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50"
       >
         {opcoes.map(([v, l]) => (
           <option key={v} value={v}>{l}</option>

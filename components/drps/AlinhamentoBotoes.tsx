@@ -44,7 +44,7 @@ export default function AlinhamentoBotoes({
           }}
           className={cn(
             "rounded p-1.5 text-gray-700 hover:bg-gray-200 disabled:opacity-30",
-            valor === v && "bg-verde-light text-verde-primary"
+            valor === v && "bg-marca-light text-marca-primary"
           )}
         >
           <Icone className="size-3.5" />

@@ -93,7 +93,7 @@ export default function MonitoramentoQpsPage({ params }: { params: Promise<{ id:
             id="qps-monitoramento-setor"
             value={setor}
             onChange={(e) => setSetor(e.target.value)}
-            className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+            className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none"
           >
             {[TODOS_OS_SETORES, ...setores].map((s) => (
               <option key={s} value={s}>
@@ -163,7 +163,7 @@ export default function MonitoramentoQpsPage({ params }: { params: Promise<{ id:
                           value={m?.data_intervencao ?? ""}
                           disabled={!podeEditar}
                           onChange={(e) => atualizar(c.id_categoria, "data_intervencao", e.target.value)}
-                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
                         />
                       </td>
                       <td className="px-2 py-1.5">
@@ -177,7 +177,7 @@ export default function MonitoramentoQpsPage({ params }: { params: Promise<{ id:
                               atualizar(c.id_categoria, "responsavel", e.target.value);
                           }}
                           placeholder="—"
-                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
                         />
                       </td>
                       <td className="px-2 py-1.5">
@@ -185,7 +185,7 @@ export default function MonitoramentoQpsPage({ params }: { params: Promise<{ id:
                           value={m?.status ?? "Pendente"}
                           disabled={!podeEditar}
                           onChange={(e) => atualizar(c.id_categoria, "status", e.target.value)}
-                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
                         >
                           {STATUS.map((s) => (
                             <option key={s} value={s}>
@@ -200,7 +200,7 @@ export default function MonitoramentoQpsPage({ params }: { params: Promise<{ id:
                           value={m?.proxima_avaliacao ?? ""}
                           disabled={!podeEditar}
                           onChange={(e) => atualizar(c.id_categoria, "proxima_avaliacao", e.target.value)}
-                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
                         />
                       </td>
                     </tr>

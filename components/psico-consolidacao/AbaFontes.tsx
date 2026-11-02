@@ -111,7 +111,7 @@ export default function AbaFontes({
                             type="checkbox"
                             checked={escolhidos.has(d.id)}
                             onChange={() => onAlternar(d.id)}
-                            className="size-3.5 rounded border-gray-300 text-verde-primary"
+                            className="size-3.5 rounded border-gray-300 text-marca-primary"
                           />
                           <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold", COR_ORIGEM[d.origem])}>
                             {d.origem}

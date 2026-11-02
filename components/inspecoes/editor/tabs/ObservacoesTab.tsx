@@ -75,7 +75,7 @@ export default function ObservacoesTab({
         readOnly={readOnly}
         rows={14}
         placeholder="Observações gerais da inspeção..."
-        className="w-full rounded-xl border border-gray-300 bg-white p-4 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+        className="w-full rounded-xl border border-gray-300 bg-white p-4 text-sm shadow-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
       />
       {!readOnly && (
         <div className="flex items-center justify-between">
@@ -86,7 +86,7 @@ export default function ObservacoesTab({
             type="button"
             onClick={() => save.mutate()}
             disabled={!dirty || save.isPending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-marca-accent disabled:opacity-50"
           >
             {save.isPending ? (
               <Loader2 className="size-4 animate-spin" />

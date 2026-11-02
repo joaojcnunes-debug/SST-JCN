@@ -18,7 +18,7 @@ import { useUserStore } from "@/lib/store";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
 const inputCls =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
+  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
 
 export default function RiscosPsicossociaisPage() {
   const user = useUserStore((s) => s.user);
@@ -43,7 +43,7 @@ export default function RiscosPsicossociaisPage() {
     <div className="space-y-5">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-          <Brain className="size-5 text-verde-primary" />
+          <Brain className="size-5 text-marca-primary" />
           Riscos Psicossociais
         </h1>
         <p className="text-sm text-gray-500">
@@ -89,7 +89,7 @@ export default function RiscosPsicossociaisPage() {
                     href={`/riscos-psicossociais/${encodeURIComponent(e.idEmpresa)}`}
                     className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50"
                   >
-                    <Building2 className="size-5 shrink-0 text-verde-primary" />
+                    <Building2 className="size-5 shrink-0 text-marca-primary" />
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-semibold text-gray-900">{e.nome}</div>
                       <div className="text-xs text-gray-500">

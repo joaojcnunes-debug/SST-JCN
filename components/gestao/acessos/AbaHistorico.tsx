@@ -46,7 +46,7 @@ export default function AbaHistorico({ d }: { d: DadosAcessos }) {
     <div className="space-y-2">
       <div className="relative">
         <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
-        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Filtrar por pessoa, lista ou motivo…" className="w-full rounded-md border border-gray-200 py-1 pl-7 pr-2 text-sm focus:border-verde-primary focus:outline-none" />
+        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Filtrar por pessoa, lista ou motivo…" className="w-full rounded-md border border-gray-200 py-1 pl-7 pr-2 text-sm focus:border-marca-primary focus:outline-none" />
       </div>
       <p className="text-[11px] text-gray-400">As 300 alterações mais recentes. Só gestores veem este histórico.</p>
       {isLoading ? (

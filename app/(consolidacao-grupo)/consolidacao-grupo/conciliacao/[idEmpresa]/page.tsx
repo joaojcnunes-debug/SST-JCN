@@ -52,7 +52,7 @@ import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
 const ORIGENS: OrigemFonte[] = ["AEP", "DRPS", "QPS"];
 const sel =
-  "rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
+  "rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-800 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
 
 type Ordem = "prioridade" | "setor";
 

@@ -137,7 +137,7 @@ export default function AbaSetores({
               type="button"
               disabled={pendentes.length === 0 || confirmar.isPending}
               onClick={() => salvar(pendentes)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
               {confirmar.isPending ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
               Confirmar {pendentes.length} pendente(s)

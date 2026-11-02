@@ -125,7 +125,7 @@ function LinhaHistorico({ ev, nomes }: { ev: AuditoriaEvento; nomes: ReadonlyMap
           <span className="font-semibold">{quemGravou(ev, nomes)}</span>{" "}
           <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase", ACAO_CORES[ev.acao])}>{ev.acao}</span>{" "}
           {ehConclusao(ev) && (
-            <span className="rounded-full bg-verde-light px-1.5 py-0.5 text-[10px] font-bold uppercase text-verde-primary">concluiu</span>
+            <span className="rounded-full bg-marca-light px-1.5 py-0.5 text-[10px] font-bold uppercase text-marca-primary">concluiu</span>
           )}{" "}
           {descreverEvento(ev).replace(/^(criou|editou|excluiu) /, "")}
         </span>

@@ -321,7 +321,7 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
               id="qps-analise-setor"
               value={setor}
               onChange={(e) => setSetor(e.target.value)}
-              className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none"
+              className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none"
             >
               {opcoesSetor.map((s) => (
                 <option key={s} value={s}>
@@ -334,7 +334,7 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
             type="button"
             onClick={salvarAgravosMedidas}
             disabled={!canEdit || salvando}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Salvar agravos e medidas
@@ -776,7 +776,7 @@ function BlocoSetor({
                   onClick={gerarConclusaoIA}
                   disabled={!canEdit || gerandoIA || comBase.length === 0}
                   title="Gerar conclusão técnica com IA a partir das categorias avaliadas, agravos e medidas"
-                  className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2 py-1 text-[10px] font-semibold normal-case tracking-normal text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2 py-1 text-[10px] font-semibold normal-case tracking-normal text-white shadow-sm hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {gerandoIA ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="size-3" />}
                   {gerandoIA ? "Gerando..." : "Gerar com IA"}

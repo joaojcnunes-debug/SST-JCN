@@ -5,7 +5,7 @@ import { Plus, Search, X } from "lucide-react";
 import { type GestaoCampo } from "@/lib/hooks/useGestao";
 import { normalizarTexto, tokenizar } from "@/lib/busca/texto";
 
-const cls = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-50";
+const cls = "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none disabled:bg-gray-50";
 
 /** Input de edição de um campo personalizado conforme o tipo. */
 export default function CampoInput({
@@ -36,7 +36,7 @@ export default function CampoInput({
     case "checkbox":
       return (
         <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-          <input type="checkbox" disabled={disabled} checked={!!value} onChange={(e) => onChange(e.target.checked)} className="size-4 rounded accent-verde-primary" /> Sim
+          <input type="checkbox" disabled={disabled} checked={!!value} onChange={(e) => onChange(e.target.checked)} className="size-4 rounded accent-marca-primary" /> Sim
         </label>
       );
     case "selecao":
@@ -94,7 +94,7 @@ function MultiInput({ opcoes, value, onChange, disabled }: {
           const on = arr.includes(o);
           return (
             <button type="button" key={o} disabled={disabled} onClick={() => onChange(on ? arr.filter((x) => x !== o) : [...arr, o])}
-              className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${on ? "bg-verde-primary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+              className={`rounded-full px-2.5 py-1 text-xs font-medium transition ${on ? "bg-marca-primary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
               {o}
             </button>
           );
@@ -138,7 +138,7 @@ function SeletorGrupo({ rotulo, opcoes, arr, onChange, disabled }: {
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
         {marcados.map((o) => (
-          <span key={o} className="inline-flex items-center gap-1 rounded-full bg-verde-primary px-2.5 py-1 text-xs font-medium text-white">
+          <span key={o} className="inline-flex items-center gap-1 rounded-full bg-marca-primary px-2.5 py-1 text-xs font-medium text-white">
             {o}
             {!disabled && (
               <button type="button" onClick={() => alternar(o)} className="text-white/70 hover:text-white" aria-label={`Remover ${o}`}>
@@ -150,7 +150,7 @@ function SeletorGrupo({ rotulo, opcoes, arr, onChange, disabled }: {
         {marcados.length === 0 && disabled && <span className="text-xs text-gray-400">—</span>}
         {!disabled && (
           <button type="button" onClick={() => { setAberto((v) => !v); setBusca(""); }}
-            className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2.5 py-1 text-xs text-gray-500 hover:border-verde-primary hover:text-verde-primary">
+            className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2.5 py-1 text-xs text-gray-500 hover:border-marca-primary hover:text-marca-primary">
             <Plus className="size-3" /> Adicionar
           </button>
         )}
@@ -162,13 +162,13 @@ function SeletorGrupo({ rotulo, opcoes, arr, onChange, disabled }: {
             <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); setAberto(false); } }}
               placeholder={`Filtrar ${rotulo}…`}
-              className="w-full rounded border border-gray-200 py-1 pl-7 pr-2 text-sm focus:border-verde-primary focus:outline-none" />
+              className="w-full rounded border border-gray-200 py-1 pl-7 pr-2 text-sm focus:border-marca-primary focus:outline-none" />
           </div>
           <ul className="max-h-56 overflow-y-auto py-1">
             {lista.map((o) => (
               <li key={o}>
                 <label className="flex cursor-pointer items-center gap-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50">
-                  <input type="checkbox" checked={arr.includes(o)} onChange={() => alternar(o)} className="size-4 rounded accent-verde-primary" />
+                  <input type="checkbox" checked={arr.includes(o)} onChange={() => alternar(o)} className="size-4 rounded accent-marca-primary" />
                   {o}
                 </label>
               </li>

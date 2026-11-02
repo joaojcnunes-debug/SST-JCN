@@ -69,7 +69,7 @@ export default function GoogleAgendaCard() {
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-      <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${st.conectado ? "bg-verde-light text-verde-primary" : "bg-gray-100 text-gray-500"}`}>
+      <span className={`flex size-10 shrink-0 items-center justify-center rounded-lg ${st.conectado ? "bg-marca-light text-marca-primary" : "bg-gray-100 text-gray-500"}`}>
         {st.conectado ? <CalendarCheck2 className="size-5" /> : <CalendarDays className="size-5" />}
       </span>
       <div className="min-w-0 flex-1">
@@ -92,7 +92,7 @@ export default function GoogleAgendaCard() {
         <button
           type="button"
           onClick={() => { window.location.href = "/api/gestao/google/connect"; }}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marca-accent active:scale-95"
         >
           <CalendarDays className="size-4" /> Conectar de novo
         </button>
@@ -112,7 +112,7 @@ export default function GoogleAgendaCard() {
           onClick={() => { window.location.href = "/api/gestao/google/connect"; }}
           disabled={!st.configurado}
           title={st.configurado ? undefined : "Integração com o Google não configurada neste ambiente"}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marca-accent active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <CalendarDays className="size-4" /> Conectar Google Agenda
         </button>

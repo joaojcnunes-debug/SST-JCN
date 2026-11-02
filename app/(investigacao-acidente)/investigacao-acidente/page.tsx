@@ -56,13 +56,13 @@ export default function InvestigacoesPage() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por empresa ou acidentado..."
-            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
           />
         </div>
         {canCreate && (
           <Link
             href="/investigacao-acidente/nova"
-            className="inline-flex items-center gap-2 rounded-xl bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95"
+            className="inline-flex items-center gap-2 rounded-xl bg-marca-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marca-accent active:scale-95"
           >
             <Plus className="size-4" /> Nova investigação
           </Link>
@@ -126,7 +126,7 @@ export default function InvestigacoesPage() {
                 <div className="mt-3 flex items-center justify-end gap-1 border-t border-gray-100 pt-2">
                   <Link
                     href={`/investigacao-acidente/${i.id_investigacao}`}
-                    className="flex size-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-verde-primary"
+                    className="flex size-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-100 hover:text-marca-primary"
                     title="Editar"
                   >
                     <Pencil className="size-4" />

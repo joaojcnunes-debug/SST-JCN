@@ -55,7 +55,7 @@ export function DetalheEvento({ ev }: { ev: AuditoriaEvento }) {
         ))}
       </dl>
       {entradas.length > 12 && (
-        <button type="button" onClick={() => setTudo((t) => !t)} className="mt-2 text-xs font-medium text-verde-primary hover:underline">
+        <button type="button" onClick={() => setTudo((t) => !t)} className="mt-2 text-xs font-medium text-marca-primary hover:underline">
           {tudo ? "Mostrar menos" : `Ver todos os ${entradas.length} campos`}
         </button>
       )}

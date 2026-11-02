@@ -116,7 +116,7 @@ export default function AbaValidacao({
                 type="button"
                 onClick={salvar}
                 disabled={registrar.isPending}
-                className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
                 {registrar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
                 Registrar consolidação
@@ -229,7 +229,7 @@ function Registro({
   const pdf = `/api/pdf/consolidacao-grupo/${encodeURIComponent(idGrupo)}?execucao=${encodeURIComponent(ex.id_execucao)}`;
 
   return (
-    <div className={cn("rounded-xl border bg-white shadow-sm", maisRecente ? "border-verde-primary/50" : "border-gray-200")}>
+    <div className={cn("rounded-xl border bg-white shadow-sm", maisRecente ? "border-marca-primary/50" : "border-gray-200")}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
         <button type="button" onClick={onAbrir} className="inline-flex items-center gap-1.5 font-medium text-gray-900">
           {aberto ? <ChevronDown className="size-4 text-gray-400" /> : <ChevronRight className="size-4 text-gray-400" />}
@@ -267,7 +267,7 @@ function Registro({
           onClick={() => rodar("pgr", () => listaPgr(validadasMapa))}
           disabled={!!gerando || validadasMapa.size === 0}
           title={validadasMapa.size === 0 ? "Registre a validação de ao menos uma empresa" : "Só as empresas validadas entram na lista"}
-          className="inline-flex items-center gap-1 rounded-md border border-verde-primary px-2 py-0.5 text-xs font-medium text-verde-primary hover:bg-verde-light disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-md border border-marca-primary px-2 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light disabled:opacity-50"
         >
           {gerando === "pgr" ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-3.5" />} Lista para o PGR ({validadasMapa.size})
         </button>
@@ -423,7 +423,7 @@ function LinhaEmpresa({
                     { onSuccess: () => setForm(null) },
                   )
                 }
-                className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
               >
                 {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />} Salvar
               </button>

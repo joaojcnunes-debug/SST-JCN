@@ -38,7 +38,7 @@ function ValorOrigem({ valor }: { valor: unknown }) {
     return (
       <div className="flex flex-wrap gap-1">
         {valor.map((v, i) => (
-          <span key={i} className="rounded-full bg-verde-light px-2 py-0.5 text-xs text-gray-800">{String(v)}</span>
+          <span key={i} className="rounded-full bg-marca-light px-2 py-0.5 text-xs text-gray-800">{String(v)}</span>
         ))}
       </div>
     );
@@ -392,7 +392,7 @@ export default function TarefaModal({
   }
 
   const inputCls =
-    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-gray-50";
+    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50";
   const feitas = subtarefas.filter((s) => s.feito).length;
 
   return (
@@ -412,7 +412,7 @@ export default function TarefaModal({
                 {!ehSub && <BotaoAutomacoes idQuadro={tarefa.id_quadro} ids={[tarefa.id_tarefa]} />}
               </div>
             ) : <span />}
-            <button type="button" onClick={handleSalvar} disabled={salvar.isPending} className="inline-flex items-center gap-2 rounded-lg bg-verde-primary px-5 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50">
+            <button type="button" onClick={handleSalvar} disabled={salvar.isPending} className="inline-flex items-center gap-2 rounded-lg bg-marca-primary px-5 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
               {salvar.isPending && <Loader2 className="size-4 animate-spin" />}
               {tarefa ? "Salvar" : "Criar tarefa"}
             </button>
@@ -436,7 +436,7 @@ export default function TarefaModal({
           <div className="mb-1 flex items-center justify-between">
             <label className="block text-xs font-medium text-gray-600">Descrição</label>
             {!ro && (
-              <button type="button" onClick={iaDescricao} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-verde-primary hover:bg-verde-light/50 disabled:opacity-50">
+              <button type="button" onClick={iaDescricao} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">
                 {iaLoad === "desc" ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Redigir com IA
               </button>
             )}
@@ -507,7 +507,7 @@ export default function TarefaModal({
                 {responsaveisEmails.map((em) => {
                   const nome = nomeDe(em) ?? em;
                   return (
-                    <span key={em} className="inline-flex items-center gap-1 rounded-full bg-verde-light/60 py-0.5 pl-1 pr-2 text-xs font-medium text-verde-primary">
+                    <span key={em} className="inline-flex items-center gap-1 rounded-full bg-marca-light/60 py-0.5 pl-1 pr-2 text-xs font-medium text-marca-primary">
                       <AvatarPessoa nome={nome} email={em} className="size-5 text-[9px]" />
                       {nome}
                       {!ro && (
@@ -565,7 +565,7 @@ export default function TarefaModal({
             </select>
             {recTipo && (
               <span className="flex items-center gap-1 text-sm text-gray-600">a cada
-                <input type="number" min="1" value={recInt} disabled={ro} onChange={(e) => setRecInt(parseInt(e.target.value || "1", 10))} className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none" />
+                <input type="number" min="1" value={recInt} disabled={ro} onChange={(e) => setRecInt(parseInt(e.target.value || "1", 10))} className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none" />
                 {recTipo === "diaria" ? "dia(s)" : recTipo === "semanal" ? "semana(s)" : "mês(es)"}
               </span>
             )}
@@ -586,7 +586,7 @@ export default function TarefaModal({
               Subtarefas {subtarefas.length > 0 && <span className="text-gray-400">({feitas}/{subtarefas.length})</span>}
             </label>
             {!ro && (
-              <button type="button" onClick={iaSubtarefas} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-verde-primary hover:bg-verde-light/50 disabled:opacity-50">
+              <button type="button" onClick={iaSubtarefas} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">
                 {iaLoad === "sub" ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Sugerir com IA
               </button>
             )}
@@ -594,14 +594,14 @@ export default function TarefaModal({
           <div className="space-y-1.5">
             {subtarefas.map((s, i) => (
               <div key={i} className="flex items-center gap-2" onDoubleClick={() => abrirSub(s)} title="Duplo clique abre a subtarefa">
-                <button type="button" disabled={ro} onClick={() => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, feito: !x.feito } : x))} className="text-gray-400 hover:text-verde-primary">
-                  {s.feito ? <CheckSquare className="size-4 text-verde-primary" /> : <Square className="size-4" />}
+                <button type="button" disabled={ro} onClick={() => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, feito: !x.feito } : x))} className="text-gray-400 hover:text-marca-primary">
+                  {s.feito ? <CheckSquare className="size-4 text-marca-primary" /> : <Square className="size-4" />}
                 </button>
                 <input
                   value={s.texto}
                   disabled={ro}
                   onChange={(e) => setSubtarefas((arr) => arr.map((x, j) => j === i ? { ...x, texto: e.target.value } : x))}
-                  className={`flex-1 rounded border border-transparent px-1.5 py-1 text-sm hover:border-gray-200 focus:border-verde-primary focus:outline-none ${s.feito ? "text-gray-400 line-through" : "text-gray-700"}`}
+                  className={`flex-1 rounded border border-transparent px-1.5 py-1 text-sm hover:border-gray-200 focus:border-marca-primary focus:outline-none ${s.feito ? "text-gray-400 line-through" : "text-gray-700"}`}
                 />
                 {s.responsavel_email && (() => {
                   const nome = nomeDe(s.responsavel_email) ?? s.responsavel_email;
@@ -618,7 +618,7 @@ export default function TarefaModal({
                     incluirVazio
                     vazioLabel="Sem responsável"
                     placeholder="Responsável…"
-                    className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:bg-gray-50"
+                    className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:bg-gray-50"
                   />
                 </div>
                 <button
@@ -627,7 +627,7 @@ export default function TarefaModal({
                   disabled={abrirSubtarefa.isPending}
                   aria-label={`Abrir subtarefa ${s.texto}`}
                   title="Abrir subtarefa"
-                  className="text-gray-300 hover:text-verde-primary disabled:opacity-50"
+                  className="text-gray-300 hover:text-marca-primary disabled:opacity-50"
                 >
                   {abrirSubtarefa.isPending && abrirSubtarefa.variables?.id_subtarefa === s.id ? <Loader2 className="size-4 animate-spin" /> : <Maximize2 className="size-4" />}
                 </button>
@@ -640,7 +640,7 @@ export default function TarefaModal({
             ))}
             {!ro && (
               <div className="flex items-center gap-2">
-                <button type="button" onClick={addSub} disabled={!novaSub.trim()} aria-label="Adicionar subtarefa" className="text-gray-400 hover:text-verde-primary disabled:text-gray-300 disabled:hover:text-gray-300">
+                <button type="button" onClick={addSub} disabled={!novaSub.trim()} aria-label="Adicionar subtarefa" className="text-gray-400 hover:text-marca-primary disabled:text-gray-300 disabled:hover:text-gray-300">
                   <Plus className="size-4" />
                 </button>
                 <input
@@ -648,7 +648,7 @@ export default function TarefaModal({
                   onChange={(e) => setNovaSub(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSub(); } }}
                   placeholder="Adicionar subtarefa (Enter ou +)…"
-                  className="flex-1 rounded border border-gray-200 px-1.5 py-1 text-sm focus:border-verde-primary focus:outline-none"
+                  className="flex-1 rounded border border-gray-200 px-1.5 py-1 text-sm focus:border-marca-primary focus:outline-none"
                 />
               </div>
             )}
@@ -714,7 +714,7 @@ export default function TarefaModal({
                   const concl = !!t && statusMap.get(t.status)?.tipo === "concluido";
                   return (
                     <div key={d.id} className="flex items-center gap-2 text-sm">
-                      <span className={`size-2 shrink-0 rounded-full ${concl ? "bg-verde-primary" : "bg-gray-300"}`} />
+                      <span className={`size-2 shrink-0 rounded-full ${concl ? "bg-marca-primary" : "bg-gray-300"}`} />
                       <span className={`min-w-0 flex-1 truncate ${concl ? "text-gray-400 line-through" : "text-gray-700"}`}>{t?.titulo ?? d.tarefa}</span>
                       {!ro && <button type="button" onClick={() => excluirDep.mutate(d.id)} className="text-gray-300 hover:text-red-600"><X className="size-3.5" /></button>}
                     </div>
@@ -724,7 +724,7 @@ export default function TarefaModal({
               </div>
               {!ro && (
                 <select value="" onChange={(e) => { if (e.target.value) addDep.mutate({ id_tarefa: tarefa.id_tarefa, depende_de: e.target.value }); }}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none">
+                  className="mt-1 w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none">
                   <option value="">+ Adicionar dependência…</option>
                   {tarefasQuadro.filter((t) => t.id_tarefa !== tarefa.id_tarefa && !deps?.dependeDe.some((d) => d.tarefa === t.id_tarefa)).map((t) => (
                     <option key={t.id_tarefa} value={t.id_tarefa}>{t.titulo}</option>

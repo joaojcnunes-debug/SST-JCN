@@ -404,7 +404,7 @@ export default function RelatorioChabraPage({ params }: Props) {
           <BotaoGerarPdf
             tabelaNome="inspecoes_relatorio"
             docId={id}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
+            className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent"
             registrarPdf={{
               modulo: "inspecoes",
               tipoDocumento: "Relatório de Inspeção SST",
@@ -423,7 +423,7 @@ export default function RelatorioChabraPage({ params }: Props) {
       <div className="no-print rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <FileSignature className="size-4 shrink-0 text-verde-primary" />
+            <FileSignature className="size-4 shrink-0 text-marca-primary" />
             <div>
               <p className="text-sm font-semibold text-gray-800">Documento (SGG)</p>
               <p className="text-xs text-gray-500">
@@ -451,7 +451,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                       }
                     } },
                   )}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
                 >
                   Assumir elaboração (eu)
                 </button>
@@ -583,22 +583,22 @@ export default function RelatorioChabraPage({ params }: Props) {
         ============================================================ */}
         <section className="capa-page relative overflow-hidden">
           {/* Faixa verde lateral */}
-          <div className="absolute left-0 top-0 h-full w-3 bg-verde-dark print:w-4" />
-          <div className="absolute left-3 top-0 h-full w-1 bg-verde-primary print:left-4" />
+          <div className="absolute left-0 top-0 h-full w-3 bg-marca-dark print:w-4" />
+          <div className="absolute left-3 top-0 h-full w-1 bg-marca-primary print:left-4" />
 
           <div className="grid min-h-[800px] grid-cols-2 gap-8 p-12 pl-16 md:p-16 md:pl-20">
             {/* Esquerda */}
             <div className="flex flex-col justify-center">
               <h1 className="text-4xl font-bold leading-tight text-gray-900 md:text-5xl">
                 RELATÓRIO DE INSPEÇÃO
-                <span className="block text-verde-primary">SST</span>
+                <span className="block text-marca-primary">SST</span>
               </h1>
               <p className="mt-4 text-base text-gray-600">
                 Saúde e Segurança do Trabalho
               </p>
 
-              <div className="mt-8 rounded-lg border-2 border-verde-border bg-verde-light/50 p-5 print:border-[#c8e6c9] print:bg-[#e8f5e9]/50">
-                <p className="text-sm font-bold uppercase tracking-wide text-verde-dark">
+              <div className="mt-8 rounded-lg border-2 border-marca-border bg-marca-light/50 p-5 print:border-[#c8e6c9] print:bg-[#e8f5e9]/50">
+                <p className="text-sm font-bold uppercase tracking-wide text-marca-dark">
                   {empresa?.nome_empresa ?? "—"}
                 </p>
                 <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-gray-700">
@@ -661,8 +661,8 @@ export default function RelatorioChabraPage({ params }: Props) {
         ============================================================ */}
         <section className="border-t border-gray-200 px-8 py-8 md:px-12">
           {/* Header verde compacto repetido */}
-          <header className="mb-6 border-b-2 border-verde-primary pb-3">
-            <h2 className="text-base font-bold tracking-tight text-verde-primary">
+          <header className="mb-6 border-b-2 border-marca-primary pb-3">
+            <h2 className="text-base font-bold tracking-tight text-marca-primary">
               RELATÓRIO DE INSPEÇÃO SST
             </h2>
             <p className="text-[11px] text-gray-600">
@@ -806,7 +806,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                   {Object.entries(ctx.porTipo).map(([tipo, count]) => (
                     <span
                       key={tipo}
-                      className="inline-flex items-center gap-1 rounded-full border border-verde-border bg-verde-light px-2 py-0.5 text-xs font-medium text-verde-dark print:border-[#c8e6c9] print:bg-[#e8f5e9]"
+                      className="inline-flex items-center gap-1 rounded-full border border-marca-border bg-marca-light px-2 py-0.5 text-xs font-medium text-marca-dark print:border-[#c8e6c9] print:bg-[#e8f5e9]"
                     >
                       <span>{iconeDe(tipo)}</span>
                       {tipo}: <strong>{count}</strong>
@@ -913,7 +913,7 @@ export default function RelatorioChabraPage({ params }: Props) {
         {ctx.fotosGerais.length > 0 && (
           <section className="secao-setor border-t border-gray-200 px-8 py-6 md:px-12">
             <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-900">
-              <Camera className="size-4 text-verde-primary" />
+              <Camera className="size-4 text-marca-primary" />
               Fotos Gerais
             </h3>
             <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -1196,7 +1196,7 @@ function SetorBlock({
       {fotos.length > 0 && (
         <div className="mb-3">
           <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-gray-900">
-            <Camera className="size-3.5 text-verde-primary" />
+            <Camera className="size-3.5 text-marca-primary" />
             Registro Fotográfico ({fotos.length})
           </h3>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
@@ -1222,7 +1222,7 @@ function SetorBlock({
       {cargos.length > 0 && (
         <div className="mb-4">
           <h3 className="mb-1.5 flex items-center gap-1.5 text-xs font-bold text-gray-900">
-            <Briefcase className="size-3.5 text-verde-primary" />
+            <Briefcase className="size-3.5 text-marca-primary" />
             Cargos do setor ({cargos.length})
           </h3>
           <div className="space-y-1.5">
@@ -1558,7 +1558,7 @@ function RiscoCard({ risco, epis, perguntasMap }: { risco: Risco; epis: EpiEpc[]
         {epis.length > 0 && (
           <div className="rounded border border-gray-200 bg-white px-2 py-1.5 text-[11px]">
             <p className="mb-1 flex items-center gap-1 font-bold text-gray-700">
-              <ShieldCheck className="size-3 text-verde-primary" />
+              <ShieldCheck className="size-3 text-marca-primary" />
               EPIs vinculados a este risco ({epis.length})
             </p>
             <ul className="space-y-2">
@@ -1788,7 +1788,7 @@ function Campo({
 function FotoCard({ foto }: { foto: Foto }) {
   return (
     <div
-      className="cursor-pointer overflow-hidden rounded border border-gray-200 hover:ring-2 hover:ring-verde-primary print:cursor-default print:ring-0"
+      className="cursor-pointer overflow-hidden rounded border border-gray-200 hover:ring-2 hover:ring-marca-primary print:cursor-default print:ring-0"
       onClick={() => abrirMidiaAssinada(foto.arquivo_foto)}
       title="Clique para ampliar"
     >

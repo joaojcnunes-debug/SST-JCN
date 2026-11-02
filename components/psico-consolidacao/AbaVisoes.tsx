@@ -46,7 +46,7 @@ export default function AbaVisoes({ a }: { a: Analise }) {
             onClick={() => setVisao(v.id)}
             className={cn(
               "rounded-full border px-3 py-1 text-xs font-medium",
-              visao === v.id ? "border-verde-primary bg-verde-primary text-white" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50",
+              visao === v.id ? "border-marca-primary bg-marca-primary text-white" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50",
             )}
           >
             {v.label}

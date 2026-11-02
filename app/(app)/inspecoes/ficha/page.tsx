@@ -62,7 +62,7 @@ export default function FichaSelecionarPage() {
     <div className="space-y-4">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
-          <ClipboardEdit className="size-5 text-verde-primary" />
+          <ClipboardEdit className="size-5 text-marca-primary" />
           Ficha em Branco
         </h1>
         <p className="text-sm text-gray-600">
@@ -81,10 +81,10 @@ export default function FichaSelecionarPage() {
         </div>
 
         {idEmpresa && (
-          <div className="rounded-md border border-verde-border bg-verde-light/40 p-3 text-xs text-gray-700">
+          <div className="rounded-md border border-marca-border bg-marca-light/40 p-3 text-xs text-gray-700">
             <p>
               Próxima revisão para esta empresa:{" "}
-              <strong className="text-verde-primary">
+              <strong className="text-marca-primary">
                 Rev. {proximaRevisao}
               </strong>
             </p>
@@ -104,7 +104,7 @@ export default function FichaSelecionarPage() {
             type="button"
             onClick={() => criar.mutate()}
             disabled={!idEmpresa || criar.isPending}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent disabled:opacity-50"
           >
             {criar.isPending ? (
               <Loader2 className="size-4 animate-spin" />

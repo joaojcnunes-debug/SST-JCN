@@ -86,7 +86,7 @@ export default function CargosTab({
                     setEditing(null);
                     setFormOpen(true);
                   }}
-                  className="flex items-center gap-1 rounded-md bg-verde-primary px-2 py-1 text-xs font-medium text-white hover:bg-verde-accent cursor-pointer"
+                  className="flex items-center gap-1 rounded-md bg-marca-primary px-2 py-1 text-xs font-medium text-white hover:bg-marca-accent cursor-pointer"
                 >
                   <Plus className="size-3" /> Cargo
                 </span>
@@ -121,7 +121,7 @@ export default function CargosTab({
                               setEditing(c);
                               setFormOpen(true);
                             }}
-                            className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                            className="rounded p-1.5 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
                             title="Editar"
                           >
                             <Pencil className="size-4" />

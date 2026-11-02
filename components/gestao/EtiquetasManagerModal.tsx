@@ -52,7 +52,7 @@ export default function EtiquetasManagerModal({
               defaultValue={e.nome}
               disabled={!podeEditar}
               onBlur={(ev) => { const v = ev.target.value.trim(); if (v && v !== e.nome) salvar.mutate({ id: e.id, id_quadro: idQuadro, nome: v }); }}
-              className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none"
+              className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none"
             />
             {podeEditar && (
               <div className="flex shrink-0 items-center">
@@ -64,7 +64,7 @@ export default function EtiquetasManagerModal({
           </div>
         ))}
         {podeEditar && (
-          <button type="button" onClick={adicionar} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-verde-primary ring-1 ring-dashed ring-verde-primary/40 hover:bg-verde-light/40">
+          <button type="button" onClick={adicionar} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-marca-primary ring-1 ring-dashed ring-marca-primary/40 hover:bg-marca-light/40">
             <Plus className="size-4" /> Adicionar etiqueta
           </button>
         )}

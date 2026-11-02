@@ -169,7 +169,7 @@ export default function FotoForm({
               type="file"
               accept="image/*"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="mt-1 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-verde-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-verde-accent"
+              className="mt-1 block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-marca-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-marca-accent"
             />
             {file && (
               <p className="mt-1 text-xs text-gray-500">
@@ -229,7 +229,7 @@ export default function FotoForm({
             <p className="text-xs text-gray-500">Enviando... {progress}%</p>
             <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200">
               <div
-                className="h-full bg-verde-primary transition-all"
+                className="h-full bg-marca-primary transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -247,7 +247,7 @@ export default function FotoForm({
           <button
             type="submit"
             disabled={mutation.isPending || (!isEdit && !file)}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {mutation.isPending ? "Enviando..." : isEdit ? "Salvar" : "Enviar"}
           </button>
@@ -258,5 +258,5 @@ export default function FotoForm({
 }
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
+  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30";
 const lblCls = "text-sm font-medium text-gray-700";

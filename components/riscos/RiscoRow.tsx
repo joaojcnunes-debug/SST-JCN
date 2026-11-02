@@ -39,7 +39,7 @@ export default function RiscoRow({
               <button
                 type="button"
                 onClick={() => onEdit?.(risco)}
-                className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                className="rounded p-1.5 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
                 title="Editar"
               >
                 <Pencil className="size-4" />

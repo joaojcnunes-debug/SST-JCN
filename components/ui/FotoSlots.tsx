@@ -97,7 +97,7 @@ export default function FotoSlots({ slots, onChange, max = 4, disabled, bucket =
               <button
                 type="button"
                 onClick={() => refs.current[i]?.click()}
-                className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400 hover:border-verde-primary hover:bg-verde-light hover:text-verde-primary"
+                className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-400 hover:border-marca-primary hover:bg-marca-light hover:text-marca-primary"
                 title="Adicionar foto"
               >
                 <ImagePlus className="size-5" />

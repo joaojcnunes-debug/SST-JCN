@@ -16,7 +16,7 @@ function fmtBytes(n: number | null): string {
 }
 
 function IconeAnexo({ mime }: { mime: string | null }) {
-  if (mime?.startsWith("image/")) return <ImageIcon className="size-4 text-verde-primary" />;
+  if (mime?.startsWith("image/")) return <ImageIcon className="size-4 text-marca-primary" />;
   if (mime === "application/pdf") return <FileText className="size-4 text-red-500" />;
   return <FileIcon className="size-4 text-gray-400" />;
 }
@@ -72,7 +72,7 @@ export default function AnexosTarefa({ idTarefa, podeEditar }: { idTarefa: strin
           {anexos.map((a) => (
             <li key={a.id} className="flex items-center gap-2 rounded-md border border-gray-100 bg-gray-50/60 px-2 py-1.5">
               <IconeAnexo mime={a.mime} />
-              <button type="button" onClick={() => abrir(a.storage_path)} className="flex-1 truncate text-left text-sm text-gray-700 hover:text-verde-primary hover:underline" title={a.nome}>
+              <button type="button" onClick={() => abrir(a.storage_path)} className="flex-1 truncate text-left text-sm text-gray-700 hover:text-marca-primary hover:underline" title={a.nome}>
                 {a.nome}
               </button>
               <span className="shrink-0 text-[11px] text-gray-400">{fmtBytes(a.tamanho_bytes)}</span>

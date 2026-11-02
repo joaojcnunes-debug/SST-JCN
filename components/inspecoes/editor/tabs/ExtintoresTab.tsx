@@ -81,7 +81,7 @@ export default function ExtintoresTab({
               setEditing(null);
               setFormOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
           >
             <Plus className="size-4" /> Novo Extintor
           </button>
@@ -302,7 +302,7 @@ function ExtintorCard({
             <button
               type="button"
               onClick={() => onEdit(e)}
-              className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+              className="rounded p-1.5 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
               title="Editar"
             >
               <Pencil className="size-4" />
