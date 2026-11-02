@@ -200,7 +200,7 @@ export default function VeiculoPage({ params }: { params: Promise<{ idVeiculo: s
         <div className="flex flex-wrap items-center gap-2">
           {viagemAberta ? (
             <button type="button" onClick={() => setFechandoViagem(viagemAberta)}
-              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+              className="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-700">
               <Undo2 className="size-4" />
               Registrar retorno
             </button>
@@ -488,14 +488,14 @@ function AbaSaidas({ idVeiculo, placa }: { idVeiculo: string; placa: string }) {
                   )}
                   {naRua && (
                     <button type="button" onClick={() => setFechando(s)}
-                      className="mt-1 inline-flex items-center gap-1 rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100">
+                      className="mt-1 inline-flex items-center gap-1 rounded border border-sky-300 bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-800 hover:bg-sky-100">
                       <Undo2 className="size-3" />
                       Registrar retorno
                     </button>
                   )}
                   {url && (
                     <a href={url} target="_blank" rel="noopener noreferrer"
-                      className="mt-1 block text-xs font-medium text-emerald-700 hover:underline">
+                      className="mt-1 block text-xs font-medium text-sky-700 hover:underline">
                       ↗ Abrir rota no Maps
                     </a>
                   )}

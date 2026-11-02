@@ -128,7 +128,7 @@ export default function DetalheViagem({
         )}
         {url && (
           <a href={url} target="_blank" rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100">
+            className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-100">
             <MapPin className="size-4" />
             Abrir rota no Google Maps
           </a>

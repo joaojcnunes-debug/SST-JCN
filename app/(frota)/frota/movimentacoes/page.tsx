@@ -303,7 +303,7 @@ function AbaViagens({ placaDe }: { placaDe: (id: string) => string }) {
                       <p className="text-[11px] text-gray-400">voltou sem km</p>
                     ) : (
                       <button type="button" onClick={() => setFechando(s)}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100">
+                        className="inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-sky-50 px-3 py-1.5 text-sm font-semibold text-sky-800 hover:bg-sky-100">
                         <Undo2 className="size-4" />
                         Registrar retorno
                       </button>

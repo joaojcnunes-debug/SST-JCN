@@ -506,7 +506,7 @@ function NavItem({
       )}
     >
       {active && (
-        <span className="absolute -left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-emerald-400" />
+        <span className="absolute -left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-sky-400" />
       )}
       <span className={cn("relative", active ? "text-white" : "text-white/40")}>
         {icon}

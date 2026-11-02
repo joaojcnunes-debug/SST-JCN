@@ -67,7 +67,7 @@ export default function EmpresaCard({
       className={cn(
         "group relative flex flex-col rounded-2xl border bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md",
         // Foco do teclado no link do nome contorna o card inteiro.
-        "has-[[data-card-link]:focus-visible]:outline-2 has-[[data-card-link]:focus-visible]:outline-offset-2 has-[[data-card-link]:focus-visible]:outline-emerald-500",
+        "has-[[data-card-link]:focus-visible]:outline-2 has-[[data-card-link]:focus-visible]:outline-offset-2 has-[[data-card-link]:focus-visible]:outline-sky-500",
         inativa ? "border-gray-200 opacity-75" : "border-gray-100"
       )}
     >

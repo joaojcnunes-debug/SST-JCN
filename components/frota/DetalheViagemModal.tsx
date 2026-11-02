@@ -63,7 +63,7 @@ export default function DetalheViagemModal({
                 <button
                   type="button"
                   onClick={() => setFechandoViagem(true)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800 hover:bg-sky-100"
                 >
                   <Undo2 className="size-4" />
                   Registrar retorno

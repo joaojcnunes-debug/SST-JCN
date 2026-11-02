@@ -117,7 +117,7 @@ export default function RegistrarRetornoModal({ saida, placa, aberto, onFechar }
             Cancelar
           </button>
           <button type="button" onClick={salvar} disabled={registrar.isPending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+            className="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">
             {registrar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Undo2 className="size-4" />}
             Registrar retorno
           </button>

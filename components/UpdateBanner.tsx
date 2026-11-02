@@ -183,7 +183,7 @@ export default function UpdateBanner() {
             <button
               type="button"
               onClick={() => getAPI()?.installUpdate?.()}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold hover:bg-green-500"
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-sky-600 px-3 py-2 text-xs font-semibold hover:bg-sky-500"
             >
               <RefreshCw className="size-3.5" />
               Reiniciar agora
