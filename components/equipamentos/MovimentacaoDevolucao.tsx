@@ -395,7 +395,7 @@ export default function MovimentacaoDevolucao({
                       key={e.id_catalogo}
                       className={cn(
                         "rounded-md border px-3 py-2",
-                        marcado ? "border-emerald-300 bg-emerald-50/40" : "border-gray-200",
+                        marcado ? "border-sky-300 bg-sky-50/40" : "border-gray-200",
                       )}
                     >
                       <label className="flex cursor-pointer items-center gap-2 text-sm">

@@ -63,7 +63,7 @@ export default function AssinaturaAceiteModal({
               type="button"
               onClick={confirmar}
               disabled={pending}
-              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50"
             >
               {pending ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
               Confirmar recebimento

@@ -178,7 +178,7 @@ export default function ProdutoCatalogoForm({
             />
           )}
           {periferico && (
-            <p className="mt-1 text-[11px] text-emerald-700">
+            <p className="mt-1 text-[11px] text-sky-700">
               Periférico: entra <b>por quantidade</b>, sem plaqueta.
             </p>
           )}

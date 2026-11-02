@@ -111,7 +111,7 @@ Ordem sugerida: Empresas → Inspeções/Riscos → EPI → AET/AEP → Psicosso
 
 | Etapa | Status | Versão | Observação |
 |---|---|---|---|
-| 0 Azul total | em andamento | 0.3.198 | 0.1 feita (0.3.194); 0.2 Questionários + DRPS (0.3.195); 0.3 AEP + AET (0.3.196); 0.4 Conformidade + NC (0.3.197); 0.5 Inspeções + componentes (0.3.198); próximas: Inspeções, Máquinas/Químicos/Equipamentos, Frota/EPI/resto, 0.final |
+| 0 Azul total | em andamento | 0.3.199 | 0.1 feita (0.3.194); 0.2 Questionários + DRPS (0.3.195); 0.3 AEP + AET (0.3.196); 0.4 Conformidade + NC (0.3.197); 0.5 Inspeções + componentes (0.3.198); 0.6 Máquinas + Químicos + Equipamentos (0.3.199); próximas: 0.7 Frota, EPI e o resto; 0.final |
 | 0b PDFs | aguardando decisão | | |
 | 1 Dicas (piloto) | pendente | | |
 | 2 Casca inset | pendente | | |

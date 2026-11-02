@@ -439,7 +439,7 @@ export default function MovimentacaoEntrega({
         {base && fonte !== "aparelho" && (emEstoque.length > 0 || fonte === "estoque") && (
           <div className="mt-2 space-y-1">
             {fonte === "tudo" && estoqueEncontrado.length > 0 && (
-              <p className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+              <p className="px-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-sky-700">
                 Periféricos e itens por quantidade · {emEstoque.length} no estoque desta base
               </p>
             )}
@@ -556,7 +556,7 @@ export default function MovimentacaoEntrega({
                 }
                 const p = e.produto;
                 return (
-                  <tr key={chave} className="bg-emerald-50/40">
+                  <tr key={chave} className="bg-sky-50/40">
                     <td className="px-3 py-2">
                       <span className="font-medium">{p.nome}</span>
                       <span className="block text-xs text-gray-500">
