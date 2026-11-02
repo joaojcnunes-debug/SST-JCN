@@ -18,6 +18,7 @@ import {
   type GestaoTarefa, type StatusTarefa, type VistaGestao, type AgruparPor, type GestaoStatus, type GestaoNotificacao, type PrioridadeTarefa, type FiltrosGestao,
 } from "@/lib/hooks/useGestao";
 import GestaoSidebar from "@/components/gestao/GestaoSidebar";
+import SidebarAlca from "@/components/layout/SidebarAlca";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import SelectVerde from "@/components/gestao/SelectVerde";
 import { useQueryClient } from "@tanstack/react-query";
@@ -537,8 +538,11 @@ export default function GestaoChabraPage() {
       {/* Menu lateral fixo (verde, igual ao app). `md:flex` + 220px: o resto do
           painel abre a barra a partir de 768px e esta abria só em 1024px —
           entre os dois números a /gestao ficava sem navegação nenhuma. */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)" }}>
+      {/* Largura em --sidebar-w (a mesma do resto do painel, arrastável pela alça).
+          Classes próprias, não as da SidebarShell: a Gestão não recolhe (mini). */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-w)] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)" }}>
         {menuLateral(() => {})}
+        <SidebarAlca />
       </aside>
 
       {/* Gaveta do celular */}
@@ -563,7 +567,7 @@ export default function GestaoChabraPage() {
       )}
 
       {/* Conteúdo: desloca pela sidebar e ocupa toda a largura restante */}
-      <div className="md:pl-[220px] print:pl-0">
+      <div className="md:pl-[var(--sidebar-w)] print:pl-0">
         {/* Barra superior igual à dos outros módulos (nome/perfil de quem está logado, tema, unidade).
             No celular o hambúrguer fixo fica por cima dela, no espaço que ela já reserva (ml-12). */}
         <ModuleTopbar recolher={false} avisos={inboxCount} onAvisos={() => { setInboxView(true); setMeuEspacoView(false); setColabView(false); }} />

@@ -14,7 +14,8 @@ import { buscar } from "@/lib/busca/texto";
 import AvisoBuscaAproximada from "@/components/ui/AvisoBuscaAproximada";
 
 /** Bloco de "Associados" da elaboração (Documento SGG). Vários usuários podem se
- *  associar; admin pode associar/remover qualquer um. Convive com o fluxo de status. */
+ *  associar ("Associar-me", só a si mesmos); admin pode associar/remover qualquer
+ *  um. Convive com o fluxo de status. */
 export default function AssociadosElaboracao({
   idInspecao,
   user,
@@ -128,6 +129,32 @@ export default function AssociadosElaboracao({
             )}
           </span>
         ))}
+
+        {/* Quem não é supervisor se associa SÓ a si mesmo (decisão dele, 28/09) —
+            e remove só a si mesmo (`podeRemover`). Documento entregue fica de
+            fora: entrar nele depois daria crédito por trabalho já feito. */}
+        {!isAdmin &&
+          user?.id_usuario &&
+          user.nome &&
+          !jaAssociados.has(user.id_usuario) &&
+          !ehResponsavel(user.nome) &&
+          elaboracaoStatus !== "CONCLUIDO" && (
+            <button
+              type="button"
+              disabled={associar.isPending}
+              onClick={() =>
+                associar.mutate({
+                  id_inspecao: idInspecao,
+                  id_usuario: user.id_usuario,
+                  nome: user.nome,
+                  created_by: user.nome,
+                })
+              }
+              className="inline-flex items-center gap-1 rounded-full border border-dashed border-verde-primary/50 px-2 py-1 text-xs font-medium text-verde-primary hover:bg-verde-primary/5 disabled:opacity-50"
+            >
+              <UserPlus className="size-3" /> Associar-me
+            </button>
+          )}
 
         {isAdmin && disponiveis.length > 0 && (
           <div className="relative">

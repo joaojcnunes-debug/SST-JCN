@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import { useSidebarMini, useUserStore } from "@/lib/store";
 import { decidirVoltar } from "@/lib/navegacao/voltar";
+import SidebarAlca from "@/components/layout/SidebarAlca";
 
 /**
  * Esta ABA já navegou entre rotas depois de carregar?
@@ -416,7 +417,9 @@ export default function SidebarShell({
       {/* Sidebar desktop — view-transition-name fixo: o shell não cruza entre páginas,
           só a área de conteúdo transiciona (ver globals.css). */}
       <aside className="sidebar-shell fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)", viewTransitionName: "sidebar" }}>
+        {/* A largura (w-[220px]) vem de --sidebar-w no CSS: a SidebarAlca na borda deixa arrastar. */}
         {Content}
+        <SidebarAlca />
       </aside>
 
       {/* Sidebar mobile com overlay */}

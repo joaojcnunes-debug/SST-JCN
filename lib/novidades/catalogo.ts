@@ -41,6 +41,42 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "lote-painel-copia-completa",
+    data: "2026-11-02",
+    tipo: "melhoria",
+    titulo: "Copiar inspeção leva tudo, inclusive a AEP e a AET",
+    texto:
+      "A cópia para outra empresa e a revisão agora levam também treinamentos, complementos, PAE, extintores e máquinas, " +
+      "além de setores, cargos, riscos, EPIs, responsáveis e fotos. A AEP e a AET da inspeção também podem ir junto: " +
+      "entram na empresa destino como Rascunho, com a data de hoje. Você escolhe o que levar na janela da cópia.",
+    onde: "Nova inspeção (cópia ou revisão) e Editor da inspeção › Copiar p/ Empresa",
+    versoes: ["0.3.191"],
+  },
+  {
+    id: "lote-painel-epi-setores-associar",
+    data: "2026-11-02",
+    tipo: "melhoria",
+    titulo: "EPI em vários setores de uma vez, Associar-me e menu com largura ajustável",
+    texto:
+      "Um EPI ou EPC pode ser lançado em vários setores de uma vez, e a aba EPIs fica agrupada por setor e risco, com " +
+      "filtro de setor. No card Documento (SGG), quem não é supervisor pode se associar ao documento com Associar-me. " +
+      "O menu lateral pode ficar mais largo ou mais estreito arrastando a borda; dois cliques na borda voltam ao padrão.",
+    onde: "Aba EPIs da inspeção, relatório da inspeção e menu lateral",
+    versoes: ["0.3.191"],
+  },
+  {
+    id: "lote-painel-relacao-maquinas",
+    data: "2026-11-02",
+    tipo: "atencao",
+    titulo: "Relação de Máquinas vem direto das inspeções",
+    texto:
+      "A Relação de Máquinas (NR-12, item 1.7 \"a\") passa a listar as máquinas da aba Máquinas das inspeções, a " +
+      "inspeção mais recente de cada empresa. A tela é só de consulta: cada linha abre a aba Máquinas da inspeção para " +
+      "corrigir. Saíram o cadastro avulso, o Importar de inspeção e o botão Enviar p/ Apreciação NR-12 da inspeção.",
+    onde: "Apreciação de Máquinas › Relação de Máquinas",
+    versoes: ["0.3.191"],
+  },
+  {
     id: "lote-painel-inspecoes-treinamento",
     data: "2026-11-02",
     tipo: "correcao",

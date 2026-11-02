@@ -758,6 +758,16 @@ select:focus {
                 padding-left 180ms cubic-bezier(.2, .7, .3, 1);
   }
 
+  /* Largura arrastável (SidebarAlca): --sidebar-w no <html>, posto pelo script de
+     pré-hidratação e pela alça. Os layouts seguem com w-/md:pl-[220px] na marcação. */
+  html .sidebar-shell { width: var(--sidebar-w); }
+  html .md\:pl-\[220px\] { padding-left: var(--sidebar-w); }
+  html[data-sidebar="mini"] .sidebar-shell .sidebar-alca { display: none; }
+  html[data-sidebar-arrastando],
+  html[data-sidebar-arrastando] * { cursor: col-resize !important; user-select: none !important; }
+  html[data-sidebar-arrastando] .sidebar-shell,
+  html[data-sidebar-arrastando] .md\:pl-\[220px\] { transition: none; }
+
   html[data-sidebar="mini"] .sidebar-shell { width: var(--sidebar-w-mini); }
   /* Compensação do conteúdo: os layouts dos módulos usam md:pl-[220px]. */
   html[data-sidebar="mini"] .md\:pl-\[220px\] { padding-left: var(--sidebar-w-mini); }

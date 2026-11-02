@@ -33,17 +33,43 @@ export default function EpisTab({
   const [confirm, setConfirm] = useState<EpiEpc | null>(null);
   const [copiando, setCopiando] = useState<EpiEpc | null>(null);
 
-  const riscoMap = useMemo(() => new Map(riscos.map((r) => [r.id_risco, r])), [riscos]);
+  const riscoMap = useMemo(
+    () => new Map(riscos.map((r) => [r.id_risco, r])),
+    [riscos],
+  );
 
-  const grupos = useMemo(() => {
-    const acc = new Map<string, EpiEpc[]>();
+  // Setor → risco → EPIs. Agrupar só por risco mostrava "Queda de materiais"
+  // três vezes sem dizer de qual setor era cada uma.
+  const [setorFiltro, setSetorFiltro] = useState("");
+  const setorGrupos = useMemo(() => {
+    const porSetor = new Map<string, Map<string, EpiEpc[]>>();
     for (const e of epis) {
-      const arr = acc.get(e.id_risco) ?? [];
+      const s = riscoMap.get(e.id_risco)?.id_setor ?? e.id_setor ?? "";
+      const porRisco = porSetor.get(s) ?? new Map<string, EpiEpc[]>();
+      const arr = porRisco.get(e.id_risco) ?? [];
       arr.push(e);
-      acc.set(e.id_risco, arr);
+      porRisco.set(e.id_risco, arr);
+      porSetor.set(s, porRisco);
     }
-    return acc;
-  }, [epis]);
+    const nome = new Map(setores.map((s) => [s.id_setor, s.setor_ghe]));
+    const ordem = [...setores.map((s) => s.id_setor), ...porSetor.keys()];
+    return [...new Set(ordem)]
+      .filter((k) => porSetor.has(k))
+      .map((k) => {
+        const riscosDoSetor = [...porSetor.get(k)!.entries()];
+        return {
+          idSetor: k,
+          nome: k ? (nome.get(k) ?? "Setor") : "Sem setor",
+          riscos: riscosDoSetor,
+          total: riscosDoSetor.reduce((n, [, l]) => n + l.length, 0),
+        };
+      });
+  }, [epis, setores, riscoMap]);
+  // Filtro que aponta para setor sem EPI (último excluído) volta a mostrar todos.
+  const filtroValido = setorGrupos.some((g) => g.idSetor === setorFiltro);
+  const setoresVisiveis = filtroValido
+    ? setorGrupos.filter((g) => g.idSetor === setorFiltro)
+    : setorGrupos;
 
   const del = useExcluirDaInspecao({
     idInspecao,
@@ -63,8 +89,27 @@ export default function EpisTab({
 
   return (
     <div className="space-y-3">
-      {!readOnly && (
-        <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {setorGrupos.length > 1 ? (
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            Setor
+            <select
+              value={filtroValido ? setorFiltro : ""}
+              onChange={(e) => setSetorFiltro(e.target.value)}
+              className="rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            >
+              <option value="">Todos ({epis.length})</option>
+              {setorGrupos.map((g) => (
+                <option key={g.idSetor || "_sem"} value={g.idSetor}>
+                  {g.nome} ({g.total})
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <span />
+        )}
+        {!readOnly && (
           <button
             type="button"
             onClick={() => {
@@ -75,121 +120,153 @@ export default function EpisTab({
           >
             <Plus className="size-4" /> Adicionar EPI/EPC
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {epis.length === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-500">
           Nenhum EPI/EPC cadastrado.
         </div>
       ) : (
-        Array.from(grupos.entries()).map(([idRisco, lista]) => {
-          const r = riscoMap.get(idRisco);
-          return (
-            <div
-              key={idRisco}
-              className="overflow-hidden rounded-xl border border-gray-200 bg-white"
-            >
-              <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 text-sm">
-                <span className="text-base">
-                  {r ? iconeDe(r.tipo_risco) : <ShieldCheck className="size-4" />}
-                </span>
-                <span className="font-semibold text-gray-900">
-                  {r?.tipo_risco ?? "Risco"} — {r?.agente ?? "—"}
-                </span>
-                <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-gray-600">
-                  {lista.length}
-                </span>
-              </div>
-              <table className="w-full text-sm">
-                <thead className="bg-white text-xs uppercase text-gray-500 border-b border-gray-100">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-medium">Tipo</th>
-                    <th className="px-4 py-2 text-left font-medium">Descrição</th>
-                    <th className="px-4 py-2 text-left font-medium">CA</th>
-                    <th className="px-4 py-2 text-left font-medium">Recomendado</th>
-                    <th className="px-4 py-2 text-left font-medium">Fotos</th>
-                    <th className="px-4 py-2 text-right font-medium">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {lista.map((e) => (
-                    <tr key={e.id_protecao} className="hover:bg-gray-50">
-                      <td className="px-4 py-2">
-                        <span className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-xs font-medium text-gray-700">
-                          {e.tipo}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 font-medium text-gray-900">
-                        {e.descricao}
-                      </td>
-                      <td className="px-4 py-2 text-gray-600">{e.ca ?? "—"}</td>
-                      <td className="px-4 py-2 text-gray-600">{e.recomendado ?? "—"}</td>
-                      <td className="px-4 py-2">
-                        {e.fotos_urls && e.fotos_urls.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {e.fotos_urls.map((url, i) => (
-                              <a
-                                key={i}
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title={`Foto ${i + 1}`}
-                              >
-                                <StorageImg
-                                  stored={e.fotos_storage_paths?.[i] || url}
-                                  alt={`Foto ${i + 1}`}
-                                  className="h-9 w-9 rounded border border-gray-200 object-cover hover:opacity-80"
-                                />
-                              </a>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2">
-                        <div className="flex justify-end gap-1">
-                          {!readOnly && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditing(e);
-                                  setFormOpen(true);
-                                }}
-                                className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
-                                title="Editar"
-                              >
-                                <Pencil className="size-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setCopiando(e)}
-                                className="rounded p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-700"
-                                title="Copiar para outra empresa"
-                              >
-                                <Copy className="size-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirm(e)}
-                                className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
-                                title="Excluir"
-                              >
-                                <Trash2 className="size-4" />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          );
-        })
+        setoresVisiveis.map((g) => (
+          <section key={g.idSetor || "_sem"} className="space-y-2">
+            <h3 className="flex items-center gap-2 pt-1 text-sm font-semibold uppercase tracking-wide text-gray-700">
+              {g.nome}
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium normal-case tracking-normal text-gray-600">
+                {g.total} {g.total === 1 ? "item" : "itens"}
+              </span>
+            </h3>
+            {g.riscos.map(([idRisco, lista]) => {
+              const r = riscoMap.get(idRisco);
+              return (
+                <div
+                  key={idRisco}
+                  className="overflow-x-auto rounded-xl border border-gray-200 bg-white"
+                >
+                  <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 text-sm">
+                    <span className="text-base">
+                      {r ? (
+                        iconeDe(r.tipo_risco)
+                      ) : (
+                        <ShieldCheck className="size-4" />
+                      )}
+                    </span>
+                    <span className="font-semibold text-gray-900">
+                      {r?.tipo_risco ?? "Risco"} — {r?.agente ?? "—"}
+                    </span>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-gray-600">
+                      {lista.length}
+                    </span>
+                  </div>
+                  {/* Larguras fixas: com `auto` cada tabela escolhia as suas e as
+                  colunas dançavam de um bloco para o outro. */}
+                  <table className="w-full min-w-[44rem] table-fixed text-sm">
+                    <thead className="bg-white text-xs uppercase text-gray-500 border-b border-gray-100">
+                      <tr>
+                        <th className="w-20 px-4 py-2 text-left font-medium">
+                          Tipo
+                        </th>
+                        <th className="px-4 py-2 text-left font-medium">
+                          Descrição
+                        </th>
+                        <th className="w-32 px-4 py-2 text-left font-medium">
+                          CA
+                        </th>
+                        <th className="w-36 px-4 py-2 text-left font-medium">
+                          Recomendado
+                        </th>
+                        <th className="w-44 px-4 py-2 text-left font-medium">
+                          Fotos
+                        </th>
+                        <th className="w-32 px-4 py-2 text-right font-medium">
+                          Ações
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {lista.map((e) => (
+                        <tr key={e.id_protecao} className="hover:bg-gray-50">
+                          <td className="px-4 py-2">
+                            <span className="rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-xs font-medium text-gray-700">
+                              {e.tipo}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 font-medium text-gray-900">
+                            {e.descricao}
+                          </td>
+                          <td className="px-4 py-2 text-gray-600">
+                            {e.ca ?? "—"}
+                          </td>
+                          <td className="px-4 py-2 text-gray-600">
+                            {e.recomendado ?? "—"}
+                          </td>
+                          <td className="px-4 py-2">
+                            {e.fotos_urls && e.fotos_urls.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {e.fotos_urls.map((url, i) => (
+                                  <a
+                                    key={i}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={`Foto ${i + 1}`}
+                                  >
+                                    <StorageImg
+                                      stored={e.fotos_storage_paths?.[i] || url}
+                                      alt={`Foto ${i + 1}`}
+                                      className="h-9 w-9 rounded border border-gray-200 object-cover hover:opacity-80"
+                                    />
+                                  </a>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2">
+                            <div className="flex justify-end gap-1">
+                              {!readOnly && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditing(e);
+                                      setFormOpen(true);
+                                    }}
+                                    className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                                    title="Editar"
+                                  >
+                                    <Pencil className="size-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setCopiando(e)}
+                                    className="rounded p-1.5 text-gray-500 hover:bg-blue-50 hover:text-blue-700"
+                                    title="Copiar para outra empresa"
+                                  >
+                                    <Copy className="size-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setConfirm(e)}
+                                    className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-alert"
+                                    title="Excluir"
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })}
+          </section>
+        ))
       )}
 
       <CopiarEpiModal
