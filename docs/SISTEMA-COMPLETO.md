@@ -229,6 +229,7 @@ Menu: Usuários, Funções, Configurações, PDFs Gerados, Lixeira, Auditoria, P
 ### 4.1 Usuários (`/usuarios`)
 
 - Formulário: nome, e-mail, senha; **função** (obrigatória ao criar, aplica os padrões); cargo; CPF/CRP/CRM/MTE; perfil; flags; empresas vinculadas (Técnico: várias; Cliente: 1); unidades (≥1); módulos; papel na Gestão; imagem de assinatura (bucket `fotos`); certificado A1/A3 (upload do .pfx em `/api/cert/upload`, bucket privado `certificados`; "Verificar" em `/api/cert/validar` lê validade e titular — a senha nunca é gravada).
+- **0.3.190 (do Painel SST, v0.3.849):** o acesso à Gestão é uma caixa dentro de "Acesso aos módulos". As colunas Unidades × Setores (v294) saíram desta tela e ficam só em Gestão › Membros e acessos.
 - O campo "Nova senha" usa `autocomplete="new-password"` (o navegador não autopreenche).
 - **Criar** `POST /api/usuarios/criar` · **Credenciais** `POST /api/usuarios/credenciais` · **Excluir** `POST /api/usuarios/excluir` — só Admin, respostas `{ok, error}`:
   - Com `SUPABASE_SERVICE_ROLE_KEY`: Admin API do Auth (`createUser` com e-mail confirmado + INSERT, desfeito se falhar; `updateUserById`; `deleteUser`).
@@ -452,6 +453,11 @@ Cabeçalho do editor: links Relatório, PGR e Ficha; dados da empresa; quadro **
 
 **Riscos Psicossociais:** ver 8.3.
 
+**Lote do Painel SST (0.3.190):**
+- "Mais recentes" e "Mais antigas" ordenam por `data_inspecao` (a data da visita) e desempatam por `created_at`. Vale para `useInspecoesPaginadas` e para a fila de Minhas inspeções.
+- `TreinamentoForm` guarda os vinculados numa ref, e o formulário não zera quando a inspeção recarrega.
+- Assinar PDF A1 e Assinar com imagem aplicam `perfilPodeAssinarPorOutro`: quem assina só por si vê só o próprio nome e é avisado antes se não tem certificado.
+
 ### 7.2 Relatório de Conformidade (`/relatorio-conformidade`)
 
 Empresa + NR do catálogo (`lib/conformidade/checklists.ts`: NR-01, 05, 06, 07, 09, 10, 12, 17, 20, 23, 24 — 21 perguntas em 5 grupos —, 26, 35) ou "LIVRE". Tópico pode ser **ocultado do PDF** (`oculto`, v284: fica no relatório, sai do PDF/laudo e do resumo). Botão **Trocar** responsável técnico (vale finalizado e no laudo). Fotos saem **inteiras** no PDF (altura fixa, largura da foto). Itens **copiados** para `relatorios_conformidade_itens` (situação `CONFORME | NAO_APLICAVEL | PENDENTE`, observação, fotos até 8 MB, itens de outra NR ou livres). Relatório `RASCUNHO → FINALIZADO` (finalizado = somente leitura). **Avaliação % = (Conformes + N/A) / total × 100.** IA para observações. Laudo: Introdução, Fundamentação Legal, itens por NR, resultado %, Considerações Finais, assinaturas (Responsável Técnico e Responsável da Empresa).
@@ -474,6 +480,8 @@ Empresa + NR do catálogo (`lib/conformidade/checklists.ts`: NR-01, 05, 06, 07, 
 - `base_referencia_quimicos` (e cópia estática `lib/quimicos/base_referencia.ts`): agente, CAS, LT mg/m³ e ppm, grau NR-15, teto, pele, eSocial, IARC, inflamável, cancerígeno, TLV ACGIH, Decreto 3048, GFIP, anexo.
 - **Fluxo:** FISPQ em PDF → parser (`lib/fispq/parser.ts`) → revisão → CAS casados com a base; IA completa campos faltantes. Lookup por CAS e depois por nome; em misturas, **pior caso** (pior grau NR-15 e IARC). **Tudo na base → conclusão por template, sem IA** (`lib/quimicos/gerarTemplate.ts`); algum componente fora da base → IA `analisar-quimico-ia`.
 - **Laudo:** identificação do agente, condições de uso, insalubridade NR-15, periculosidade NR-16, previdenciário, carcinogenicidade, óleo mineral, medidas de controle, emergência, medição, parecer técnico, quadro decisório, assinatura.
+
+**0.3.190:** o parser da FISPQ (`lib/fispq/parser.ts`) junta acentos soltos de PDFs em LaTeX e aceita o rótulo "Nome da substância ou mistura (nome comercial)". A análise ganhou o botão **Laudo / PDF** no topo.
 
 ### 7.6 AEP — Análise Ergonômica Preliminar (`/aep`)
 
@@ -643,6 +651,13 @@ Gerenciador de tarefas (estilo ClickUp/Runrun.it). Hierarquia **Espaço › Past
 - **Aprovações** (`gestao_aprovacoes`), **formulários públicos** (`gestao_formularios`, `/f/[token]`, cria tarefa), **agenda** (feed ICS e Google Agenda — ver 5.8), **IA** (`gestao-ia`: sugere subtarefas e descrição).
 - **Importação do Runrun.it:** scripts `scripts/importar-runrun*.ts` com mapeamentos testados em `lib/gestao/import/*`.
 
+**0.3.190 (do Painel SST):**
+- O menu lateral pesquisa as listas pelo nome da lista, da pasta ou do espaço (`lib/busca/texto`).
+- O campo multi separa NRs e Outros, com busca, e mostra o que está marcado mesmo fora da lista.
+- Anexos e tempo dos cartões são buscados em lotes (`emLotes`), sem o erro 431 nos quadros grandes.
+- A janela de Automações usa o `Modal` `size="quadrado"`.
+- O Esc do `FiltroSuspenso` fecha só a lista aberta.
+
 ### 9.2 SGG — envio de riscos ao sistema externo
 
 `POST /api/sgg/enviar-riscos` (botão na inspeção). Exige Admin ou `pode_enviar_sgg`; empresa com `sgg_base_sgg` e `sgg_id`. Resolve setor e cargos nos dados-mestres (`MESTRES_POSTGREST_URL`) pelo nome exato do setor; um envio por setor; converte probabilidade/severidade para a escala AIHA 5×5 (`lib/sgg/mapa-aiha.ts`); envia por socket unix com HMAC; registra em `sgg_envios` (pendente, enviado, erro, duplicado, indeterminado).
@@ -662,6 +677,8 @@ Grade mensal, padrão semanal, conferência, calendário anual, relatórios e co
 Headcount por unidade e função. `precisa = Σ clientes que vencem no mês × peso do porte` (P 1,0 · M 1,5 · G 2,0); `produção = produção/dia × dias úteis × fração alocada × presença × ramp-up`; `consegue = Σ produção × ocupação-alvo`; `sobra = consegue − precisa`; status déficit/atenção (<10%)/ok; faltam/sobram/ideal em pessoas; custo. Tabelas `dim_*` (unidades, funções, colaboradores com alocação ≤100%, demanda mensal, parâmetros, histórico por trigger). Sincronização com a API externa (`/api/dimensionamento/sincronizar`).
 
 **Desligados no quadro necessário (v0.3.158, 2026-10-27):** quem tem data de desligamento dentro do mês escolhido continua contando na produção desse mês (pela presença), mas o **déficit** do "Quadro necessário para eliminar em N meses" desconta só a **equipe que continua** depois do mês (`quadroFica`, função `ficaAposMes` no motor): desligado até o último dia do mês = 0; admitido no meio do mês = inteiro dali em diante. Antes o déficit descontava o quadro do mês (com o desligado ainda valendo a presença parcial) e pedia gente de menos. Na tela: selo "saiu em dd/mm" na equipe, aviso no texto, coluna **Equipe que continua** na tabela do quadro necessário e "X continuam depois de <mês>" no cartão Equipe atual.
+
+**0.3.190:** a linha do gráfico "Quadro necessário em cada prazo" é `quadroFica` (a equipe que continua), não `quadroAtual`.
 
 ### 9.9 Comercial (`/comercial`, regra `lib/comercial/oportunidades.ts`, testada)
 

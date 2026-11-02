@@ -41,6 +41,46 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "lote-painel-inspecoes-treinamento",
+    data: "2026-11-02",
+    tipo: "correcao",
+    titulo: "Inspeções: ordem pela data da visita e formulário de treinamento que não apaga mais",
+    texto:
+      "\"Mais recentes\" na lista de Inspeções e em Minhas inspeções passa a ordenar pela data da visita (a coluna Data), " +
+      "não pela data em que a inspeção foi cadastrada. No formulário de treinamento, o que você digita não some mais " +
+      "quando a inspeção recarrega no meio do preenchimento.",
+    onde: "Inspeções, Minhas inspeções e aba Treinamentos da inspeção",
+    versoes: ["0.3.190"],
+  },
+  {
+    id: "lote-painel-gestao",
+    data: "2026-11-02",
+    tipo: "melhoria",
+    titulo: "Gestão: pesquisar listas, Produtos em NRs e Outros e quadros grandes sem erro",
+    texto:
+      "O menu lateral da Gestão ganhou uma barra para pesquisar as listas pelo nome da lista, da pasta ou do espaço. " +
+      "Campos de múltipla escolha com muitas opções, como Produtos, ficam separados em NRs e Outros, com busca, e o que " +
+      "estiver marcado aparece mesmo que a opção tenha saído da lista. Quadros com muitas tarefas carregam anexos e " +
+      "tempos em lotes, sem o erro de carregamento. A janela de Automações ficou quadrada e não muda de tamanho ao " +
+      "trocar de aba, e o Esc fecha só a lista aberta, não a janela inteira.",
+    onde: "Gestão JCN Consultoria",
+    versoes: ["0.3.190"],
+  },
+  {
+    id: "lote-painel-quimicos-assinatura-usuarios",
+    data: "2026-11-02",
+    tipo: "melhoria",
+    titulo: "Químicos, assinatura, Usuários e Dimensionamento: ajustes",
+    texto:
+      "Análise de Químicos: a FISPQ com acento \"solto\" volta a puxar nome, forma física e concentração, e a análise " +
+      "ganhou o botão Laudo / PDF no topo. Assinar PDF e Assinar com imagem mostram só o seu nome para quem assina " +
+      "apenas por si, e avisam antes se falta o certificado. Em Usuários, o acesso à Gestão fica dentro de Acesso aos " +
+      "módulos (unidades e setores continuam em Gestão › Membros e acessos). No Dimensionamento, a linha do gráfico de " +
+      "prazos passa a ser a equipe que continua, sem quem saiu no mês.",
+    onde: "Análise de Químicos, assinaturas de documentos, Usuários e Dimensionamento",
+    versoes: ["0.3.190"],
+  },
+  {
     id: "inspecao-copia-data-de-hoje",
     data: "2026-10-30",
     tipo: "correcao",

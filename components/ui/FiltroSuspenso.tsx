@@ -41,13 +41,8 @@ export default function FiltroSuspenso({
     const fora = (e: MouseEvent) => {
       if (raiz.current && !raiz.current.contains(e.target as Node)) setAberto(false);
     };
-    const esc = (e: KeyboardEvent) => e.key === "Escape" && setAberto(false);
     document.addEventListener("mousedown", fora);
-    document.addEventListener("keydown", esc);
-    return () => {
-      document.removeEventListener("mousedown", fora);
-      document.removeEventListener("keydown", esc);
-    };
+    return () => document.removeEventListener("mousedown", fora);
   }, [aberto]);
 
   const marcadas = opcoes.filter((o) => value.includes(o.value));
@@ -56,7 +51,17 @@ export default function FiltroSuspenso({
   const alternar = (v: string) => onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v]);
 
   return (
-    <div ref={raiz} className="relative">
+    <div
+      ref={raiz}
+      className="relative"
+      // Esc fecha só a lista. O preventDefault avisa o Modal (components/ui/Modal) para não fechar junto.
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && aberto) {
+          e.preventDefault();
+          setAberto(false);
+        }
+      }}
+    >
       <button
         type="button"
         aria-haspopup="listbox"
