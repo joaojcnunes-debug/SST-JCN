@@ -131,7 +131,15 @@ Alias de import: `@/*` → raiz.
 ### 1.7 Convenções
 
 - **IDs** gerados no cliente: `gerarId("EMP")` → `EMP-XXXXXXXX` (8 hex). Essencial para a fila offline ser idempotente.
-- Tema: nomes de cor legados — `verde-primary` hoje é azul `#0ea5e9`; topbar dos módulos em gradiente verde `#006B54 → #00795e`; modo escuro por CSS vars.
+- **Tema (0.3.194, Etapa 0.1 do `docs/plano-skin-viva-jcn.md`):** as cores da marca são os tokens `--color-marca-*`:
+  - primary `#0ea5e9`, accent `#0284c7`, dark `#0369a1`;
+  - light `#e0f2fe`, border `#bae6fd`, deep `#0b1e33`.
+- Os nomes antigos `verde-*` são só apelidos de `marca-*`. Saem na troca de nome (0.final).
+- O menu lateral (SidebarShell e Gestão) usa o degradê `#0369a1 → #0b1e33 → #071526`.
+- A topbar dos módulos usa `#0369a1 → #0284c7`. O manifest usa `theme_color` `#0369a1`.
+- Verde só onde é **significado** (concluído, em dia, risco baixo, sucesso).
+- Impressão e PDF ficam como estão até a Etapa 0b: a capa do relatório de inspeção mantém o verde claro antigo no `print:`.
+- Modo escuro por CSS vars.
 - Mensagens e comentários do código em português; regras em `lib/` têm testes.
 
 ---

@@ -597,7 +597,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                 Saúde e Segurança do Trabalho
               </p>
 
-              <div className="mt-8 rounded-lg border-2 border-verde-border bg-verde-light/50 p-5">
+              <div className="mt-8 rounded-lg border-2 border-verde-border bg-verde-light/50 p-5 print:border-[#c8e6c9] print:bg-[#e8f5e9]/50">
                 <p className="text-sm font-bold uppercase tracking-wide text-verde-dark">
                   {empresa?.nome_empresa ?? "—"}
                 </p>
@@ -806,7 +806,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                   {Object.entries(ctx.porTipo).map(([tipo, count]) => (
                     <span
                       key={tipo}
-                      className="inline-flex items-center gap-1 rounded-full border border-verde-border bg-verde-light px-2 py-0.5 text-xs font-medium text-verde-dark"
+                      className="inline-flex items-center gap-1 rounded-full border border-verde-border bg-verde-light px-2 py-0.5 text-xs font-medium text-verde-dark print:border-[#c8e6c9] print:bg-[#e8f5e9]"
                     >
                       <span>{iconeDe(tipo)}</span>
                       {tipo}: <strong>{count}</strong>

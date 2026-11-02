@@ -71,7 +71,7 @@ const CARDS: HubCardCfg[] = [
     title: "Inspeções",
     description: "Inspeções, riscos, ações 5W2H, treinamentos e relatórios",
     icon: <Shield className="size-12" />,
-    accent: "#00835A",
+    accent: "#0284C7",
     categoria: "seguranca",
   },
   {
@@ -260,7 +260,7 @@ const CATEGORIES: { id: Categoria; label: string; icon: React.ReactNode }[] = [
 const CATEGORY_CONFIG: Record<Categoria, { descricao: string; accent: string; icon: React.ReactNode }> = {
   seguranca: {
     descricao: "Inspeções, conformidade NR, laudos NR-12, ergonomia e análise de agentes químicos",
-    accent: "#00835A",
+    accent: "#0284C7",
     icon: <Shield className="size-12" />,
   },
   psicossocial: {
@@ -383,7 +383,7 @@ function InicioContent() {
         className="min-h-screen"
         style={{
           background:
-            "linear-gradient(135deg, #1e4d28 0%, #006B54 60%, #00835A 100%)",
+            "linear-gradient(135deg, #0b1e33 0%, #0369a1 60%, #0284c7 100%)",
         }}
       />
     );
@@ -409,7 +409,7 @@ function InicioContent() {
       className="min-h-screen flex flex-col"
       style={{
         background:
-          "linear-gradient(135deg, #1e4d28 0%, #006B54 60%, #00835A 100%)",
+          "linear-gradient(135deg, #0b1e33 0%, #0369a1 60%, #0284c7 100%)",
       }}
     >
       <header className="flex items-center justify-between px-6 py-4">
@@ -468,7 +468,7 @@ function InicioContent() {
                   className="relative z-40 flex items-center rounded-md bg-white/10 px-3 py-2 text-white transition-colors hover:bg-white/20">
                   <Bell className="size-4" />
                   {naoLidas > 0 && (
-                    <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[#006B54]">
+                    <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[#0369a1]">
                       {naoLidas > 99 ? "99+" : naoLidas}
                     </span>
                   )}
@@ -654,7 +654,7 @@ export default function InicioPage() {
           className="min-h-screen"
           style={{
             background:
-              "linear-gradient(135deg, #1e4d28 0%, #006B54 60%, #00835A 100%)",
+              "linear-gradient(135deg, #0b1e33 0%, #0369a1 60%, #0284c7 100%)",
           }}
         />
       }
@@ -783,7 +783,7 @@ function ComercialDirectCard() {
 }
 
 function GestaoGerencialDirectCard() {
-  const accent = "#00432F";
+  const accent = "#0B1E33"; // marinho da marca (Etapa 0 do plano-skin-viva); antes, verde #00432F
   return (
     <Link
       href="/gestao-gerencial"
@@ -858,10 +858,9 @@ function PdfDirectCard() {
 }
 
 function GestaoChabraDirectCard() {
-  // Verde do quadro, mas NÃO o #1A3D26 do cabeçalho da /gestao: aquele tom some
-  // dentro do card no modo noturno (medido na prévia) e ainda se confunde com o
-  // #00432F da Gestão Gerencial, que fica no card ao lado.
-  const accent = "#15803D";
+  // Azul da marca (Etapa 0 do plano-skin-viva). Um tom mais escuro que o do card
+  // de Inspeções para os dois não se confundirem lado a lado.
+  const accent = "#0369A1";
   return (
     <Link
       href="/gestao"

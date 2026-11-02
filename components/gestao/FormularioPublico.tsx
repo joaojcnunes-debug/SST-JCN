@@ -271,7 +271,7 @@ export default function FormularioPublico({ token }: { token: string }) {
     <div className="force-light min-h-screen bg-[#f0f7f0] px-4 py-10">
       <div className="mx-auto max-w-lg">
         <div className="mb-5 text-center">
-          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#1e4d28] to-[#0ea5e9] text-2xl">🛡️</div>
+          <div className="mx-auto flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#0b1e33] to-[#0ea5e9] text-2xl">🛡️</div>
           <p className="mt-2 text-sm font-semibold text-[#00432F]">JCN Consultoria · Gestão</p>
         </div>
 

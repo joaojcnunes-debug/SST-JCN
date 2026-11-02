@@ -530,7 +530,7 @@ export default function GestaoChabraPage() {
         onClick={() => setMenuAberto(true)}
         aria-label="Abrir listas"
         className="fixed left-3 top-3 z-30 flex size-10 items-center justify-center rounded-md text-white shadow md:hidden print:hidden"
-        style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)" }}
+        style={{ background: "linear-gradient(180deg, #0369a1 0%, #0b1e33 60%, #071526 100%)" }}
       >
         <MenuIcon className="size-5" />
       </button>
@@ -540,7 +540,7 @@ export default function GestaoChabraPage() {
           entre os dois números a /gestao ficava sem navegação nenhuma. */}
       {/* Largura em --sidebar-w (a mesma do resto do painel, arrastável pela alça).
           Classes próprias, não as da SidebarShell: a Gestão não recolhe (mini). */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-w)] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)" }}>
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-w)] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #0b1e33 60%, #071526 100%)" }}>
         {menuLateral(() => {})}
         <SidebarAlca />
       </aside>
@@ -550,7 +550,7 @@ export default function GestaoChabraPage() {
         <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setMenuAberto(false)}>
           <aside
             className="absolute inset-y-0 left-0 flex w-[248px] flex-col shadow-2xl"
-            style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)" }}
+            style={{ background: "linear-gradient(180deg, #0369a1 0%, #0b1e33 60%, #071526 100%)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <button

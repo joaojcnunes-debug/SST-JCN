@@ -167,7 +167,7 @@ function LoginInner() {
         className="min-h-screen flex items-center justify-center p-4"
         style={{
           background:
-            "linear-gradient(135deg, #1e4d28 0%, #0ea5e9 60%, #0284c7 100%)",
+            "linear-gradient(135deg, #0b1e33 0%, #0369a1 55%, #0ea5e9 100%)",
         }}
       >
         <div className="flex flex-col items-center gap-4 text-white/80">
