@@ -929,8 +929,8 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
             {...reordenar.propsItem(setor.id)}
             className={cn(
               "group/setor relative rounded-xl border border-gray-200 bg-white shadow-sm transition",
-              reordenar.arrastandoId === setor.id && "border-dashed border-emerald-400 opacity-40",
-              reordenar.recemMovidoId === setor.id && "ring-2 ring-emerald-400",
+              reordenar.arrastandoId === setor.id && "border-dashed border-sky-400 opacity-40",
+              reordenar.recemMovidoId === setor.id && "ring-2 ring-sky-400",
             )}
           >
             {marca && <MarcaDrop lado={marca} posicao={reordenar.posicaoDaMarca(setor.id)} />}

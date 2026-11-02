@@ -61,7 +61,7 @@ function AlterarInspecao({
             className={cn(
               "rounded-lg border px-3 py-2 text-left text-sm",
               vinculo === v
-                ? "border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500"
+                ? "border-sky-500 bg-sky-50 text-sky-800 ring-1 ring-sky-500"
                 : "border-gray-300 hover:bg-gray-50"
             )}
           >
@@ -78,7 +78,7 @@ function AlterarInspecao({
           <select
             value={idInspecao}
             onChange={(e) => setIdInspecao(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
           >
             <option value="">Selecione a inspeção...</option>
             {ativas.map((i) => {
@@ -120,7 +120,7 @@ function AlterarInspecao({
               { onSuccess: onFechar }
             )
           }
-          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="rounded-lg bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50"
         >
           {alterar.isPending ? "Salvando..." : "Salvar"}
         </button>

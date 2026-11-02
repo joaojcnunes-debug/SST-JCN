@@ -10,7 +10,7 @@ import type { StatusAEP } from "@/lib/supabase/types";
 import { cn } from "@/lib/utils";
 
 const campo =
-  "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500";
+  "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500";
 const rotulo = "text-[11px] font-medium text-gray-500";
 
 export default function FiltrosListaAep({
@@ -113,7 +113,7 @@ export default function FiltrosListaAep({
           <button
             type="button"
             onClick={() => onChange(FILTROS_LISTA_VAZIOS)}
-            className="inline-flex items-center gap-1 font-semibold text-emerald-700 hover:underline"
+            className="inline-flex items-center gap-1 font-semibold text-sky-700 hover:underline"
           >
             <FilterX className="size-3.5" /> Limpar filtros ({ativos})
           </button>

@@ -472,10 +472,10 @@ function CondicoesColetaCampos({
   const inibicao = c.sinais_inibicao ?? [];
   const faltamSugeridos = SINAIS_SUGERIDOS_INIBICAO.filter((k) => !sinaisAssedio.includes(k));
   const inputCls =
-    "w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50";
+    "w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50";
   return (
-    <div className="space-y-2 border-t border-emerald-100 pt-3">
-      <p className="text-xs font-semibold text-emerald-800">Condições da coleta</p>
+    <div className="space-y-2 border-t border-sky-100 pt-3">
+      <p className="text-xs font-semibold text-sky-800">Condições da coleta</p>
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">Trabalhadores abordados</label>
@@ -502,7 +502,7 @@ function CondicoesColetaCampos({
       <label className="flex items-center gap-2 text-xs text-gray-700">
         <input type="checkbox" disabled={disabled} checked={c.lideranca_presente === true}
           onChange={(e) => set({ lideranca_presente: e.target.checked })}
-          className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+          className="rounded border-gray-300 text-sky-600 focus:ring-sky-500" />
         Liderança presente durante a coleta
       </label>
       <div>
@@ -716,7 +716,7 @@ function MultiSelectCriavel({
         }}
         className={cn(
           "flex min-h-[30px] flex-wrap items-center gap-1 rounded border bg-white px-1.5 py-1",
-          aberto ? "border-emerald-500 ring-1 ring-emerald-200" : "border-gray-200",
+          aberto ? "border-sky-500 ring-1 ring-sky-200" : "border-gray-200",
           disabled ? "bg-gray-50" : "cursor-text",
         )}
       >
@@ -1529,7 +1529,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
             <button
               type="button"
               onClick={addSetor}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 hover:bg-sky-100"
             >
               <Plus className="size-4" /> Adicionar setor
             </button>
@@ -1537,7 +1537,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
               type="button"
               onClick={handleSalvar}
               disabled={salvando}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:opacity-50"
             >
               {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               Salvar
@@ -1552,7 +1552,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
           {canEdit && (
             <button
               onClick={addSetor}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white"
             >
               <Plus className="size-4" /> Adicionar setor
             </button>
@@ -1577,8 +1577,8 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
             {...reordenar.propsItem(setor.id)}
             className={cn(
               "group/setor relative rounded-xl border border-gray-200 bg-white shadow-sm transition",
-              reordenar.arrastandoId === setor.id && "border-dashed border-emerald-400 opacity-40",
-              reordenar.recemMovidoId === setor.id && "ring-2 ring-emerald-400",
+              reordenar.arrastandoId === setor.id && "border-dashed border-sky-400 opacity-40",
+              reordenar.recemMovidoId === setor.id && "ring-2 ring-sky-400",
             )}
           >
             {marca && <MarcaDrop lado={marca} posicao={reordenar.posicaoDaMarca(setor.id)} />}
@@ -1633,7 +1633,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
 
                 {/* ── Identificação ─────────────────────────────────── */}
                 <section>
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-sky-700">
                     Identificação
                   </h3>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1652,7 +1652,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                           value={(setor as unknown as Record<string, unknown>)[key] as string ?? ""}
                           onChange={(e) => updateSetor(setor.id, { [key]: e.target.value })}
                           placeholder={placeholder}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                         />
                       </div>
                     ))}
@@ -1665,7 +1665,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                         value={setor.qtd_expostos || ""}
                         onChange={(e) => updateSetor(setor.id, { qtd_expostos: Number(e.target.value) })}
                         placeholder="0"
-                        className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                        className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                       />
                     </div>
                   </div>
@@ -1678,7 +1678,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                         <button
                           type="button"
                           onClick={() => addCargo(setor.id)}
-                          className="inline-flex items-center gap-1 rounded border border-emerald-300 bg-white px-2 py-0.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50"
+                          className="inline-flex items-center gap-1 rounded border border-sky-300 bg-white px-2 py-0.5 text-xs font-semibold text-sky-700 hover:bg-sky-50"
                         >
                           <Plus className="size-3" /> Cargo
                         </button>
@@ -1735,7 +1735,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                               value={c.cargo}
                               onChange={(e) => updateCargo(setor.id, c.id, { cargo: e.target.value })}
                               placeholder="Cargo"
-                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                             />
                             <input
                               type="text"
@@ -1743,7 +1743,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                               value={c.descricao}
                               onChange={(e) => updateCargo(setor.id, c.id, { descricao: e.target.value })}
                               placeholder="Descrição da atividade do cargo"
-                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                             />
                             <input
                               type="number"
@@ -1753,7 +1753,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                               onChange={(e) => updateCargo(setor.id, c.id, { quantidade: Number(e.target.value) })}
                               placeholder="Qtd"
                               title="Quantidade de pessoas neste cargo"
-                              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-center focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-center focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                             />
                             {canEdit && (
                               <button
@@ -1771,8 +1771,8 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                   </div>
 
                   {/* Participação dos trabalhadores (NR-1 / Fundacentro) */}
-                  <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3 space-y-3">
-                    <p className="text-xs font-semibold text-emerald-800">
+                  <div className="mt-3 rounded-lg border border-sky-100 bg-sky-50/50 p-3 space-y-3">
+                    <p className="text-xs font-semibold text-sky-800">
                       Participação dos trabalhadores — NR-1
                     </p>
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -1794,7 +1794,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                           value={setor.trabalhadores_consultados}
                           onChange={(e) => updateSetor(setor.id, { trabalhadores_consultados: e.target.value })}
                           placeholder="Ex: 3 operadores, 1 supervisor"
-                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                          className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                         />
                       </div>
                     </div>
@@ -1819,7 +1819,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
 
                 {/* ── Triagem Ergonômica ────────────────────────────── */}
                 <section>
-                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-sky-700">
                     Triagem Ergonômica
                   </h3>
                   <p className="mb-2 text-[11px] text-gray-500">
@@ -2028,7 +2028,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                           onChange={(e) => updateSetor(setor.id, { [campo]: e.target.value })}
                           rows={4}
                           placeholder={placeholder}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
                         />
                       </div>
                     );
@@ -2077,7 +2077,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
             type="button"
             onClick={handleSalvar}
             disabled={salvando}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:opacity-50"
           >
             {salvando ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Salvar tudo
@@ -2119,7 +2119,7 @@ function MetodoColetaSelect({ value, disabled, onChange }: { value: string; disa
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen((o) => !o)}
-        className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-left focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+        className="w-full flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-left focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
       >
         <span className={selecionados.length === 0 ? "text-gray-400 truncate" : "text-gray-800 truncate"}>
           {selecionados.length === 0 ? "Selecione…" : selecionados.join(", ")}
@@ -2129,12 +2129,12 @@ function MetodoColetaSelect({ value, disabled, onChange }: { value: string; disa
       {open && (
         <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg">
           {METODOS_COLETA.map((metodo) => (
-            <label key={metodo} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-emerald-50 first:rounded-t-lg last:rounded-b-lg">
+            <label key={metodo} className="flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-sky-50 first:rounded-t-lg last:rounded-b-lg">
               <input
                 type="checkbox"
                 checked={selecionados.includes(metodo)}
                 onChange={() => toggle(metodo)}
-                className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                className="rounded border-gray-300 text-sky-600 focus:ring-sky-500"
               />
               {metodo}
             </label>

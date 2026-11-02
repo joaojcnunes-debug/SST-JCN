@@ -119,7 +119,7 @@ export default function AepNovoPage() {
                 setEndereco(e.target.value);
               }}
               placeholder="Rua, nº, bairro — cidade/UF"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             />
             {empresa && !enderecoCadastro ? (
               <p className="mt-1 text-[11px] text-amber-700">
@@ -154,7 +154,7 @@ export default function AepNovoPage() {
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               placeholder="Ex: Eng. de Segurança"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             />
           </div>
           <div>
@@ -164,7 +164,7 @@ export default function AepNovoPage() {
               value={registro}
               onChange={(e) => setRegistro(e.target.value)}
               placeholder="CREA / CRQ / CFT"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
             />
           </div>
         </div>
@@ -175,7 +175,7 @@ export default function AepNovoPage() {
             type="date"
             value={data}
             onChange={(e) => setData(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
           />
         </div>
 
@@ -197,7 +197,7 @@ export default function AepNovoPage() {
                   className={cn(
                     "rounded-lg border px-3 py-2 text-left text-sm",
                     vinculo === v
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-800 ring-1 ring-emerald-500"
+                      ? "border-sky-500 bg-sky-50 text-sky-800 ring-1 ring-sky-500"
                       : "border-gray-300 text-gray-700 hover:bg-gray-50"
                   )}
                 >
@@ -217,7 +217,7 @@ export default function AepNovoPage() {
                   <select
                     value={idInspecao}
                     onChange={(e) => setIdInspecao(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
                   >
                     <option value="">Selecione a inspeção...</option>
                     {inspecoesAtivas.map((i) => {
@@ -256,7 +256,7 @@ export default function AepNovoPage() {
           disabled={
             !empresaId || !responsavel.trim() || (vinculo === "existente" && !idInspecao) || criar.isPending
           }
-          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Save className="size-4" />
           {criar.isPending ? "Criando..." : "Criar e continuar"}

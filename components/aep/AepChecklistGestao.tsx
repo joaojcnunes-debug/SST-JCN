@@ -109,7 +109,7 @@ export default function AepChecklistGestao({ idRelatorio }: { idRelatorio: strin
               type="button"
               onClick={handleSalvar}
               disabled={salvar.isPending || !sujo}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:opacity-50"
             >
               {salvar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
               Salvar
@@ -129,7 +129,7 @@ export default function AepChecklistGestao({ idRelatorio }: { idRelatorio: strin
             setSujo(true);
           }}
           placeholder="Ex.: Supervisora de RH e gerente de produção"
-          className="w-full max-w-xl rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50"
+          className="w-full max-w-xl rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 disabled:bg-gray-50"
         />
       </div>
 
@@ -170,7 +170,7 @@ export default function AepChecklistGestao({ idRelatorio }: { idRelatorio: strin
                     disabled={!canEdit}
                     value={r.origem ?? ""}
                     onChange={(e) => setItem(item.codigo, { origem: e.target.value as OrigemGestao | "" })}
-                    className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+                    className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-sky-500 focus:outline-none disabled:bg-gray-50"
                   >
                     <option value="">Origem…</option>
                     {ORIGENS_GESTAO.map((o) => (
@@ -185,7 +185,7 @@ export default function AepChecklistGestao({ idRelatorio }: { idRelatorio: strin
                     value={r.evidencia ?? ""}
                     onChange={(e) => setItem(item.codigo, { evidencia: e.target.value })}
                     placeholder="Evidência: nome do documento, data, responsável…"
-                    className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none disabled:bg-gray-50"
+                    className="rounded border border-gray-200 bg-white px-2 py-1 text-xs focus:border-sky-500 focus:outline-none disabled:bg-gray-50"
                   />
                 </div>
               )}

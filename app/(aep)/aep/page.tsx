@@ -49,7 +49,7 @@ export default function AepListaPage() {
         {canCreate && (
           <button
             onClick={() => router.push("/aep/novo")}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700"
+            className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700"
           >
             <Plus className="size-4" /> Nova Análise
           </button>
@@ -83,7 +83,7 @@ export default function AepListaPage() {
           {canCreate && (
             <button
               onClick={() => router.push("/aep/novo")}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700"
             >
               <Plus className="size-4" /> Nova Análise
             </button>
@@ -102,7 +102,7 @@ export default function AepListaPage() {
           return (
             <div
               key={rel.id_relatorio}
-              className="group relative flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md card-hover"
+              className="group relative flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-sky-300 hover:shadow-md card-hover"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
@@ -149,7 +149,7 @@ export default function AepListaPage() {
               <div className="flex gap-2 mt-auto pt-2 border-t border-gray-100">
                 <button
                   onClick={() => router.push(`/aep/${rel.id_relatorio}/setores`)}
-                  className="flex-1 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
+                  className="flex-1 rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100"
                 >
                   Editar
                 </button>
