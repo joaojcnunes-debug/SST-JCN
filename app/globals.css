@@ -9,11 +9,19 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-verde-primary: #0ea5e9;
-  --color-verde-accent: #0284c7;
-  --color-verde-dark: #0369a1;
-  --color-verde-light: #e8f5e9;
-  --color-verde-border: #c8e6c9;
+  /* Marca JCN (azul). Etapa 0 do plano-skin-viva: "verde-*" virou apelido de "marca-*"
+     e sai quando a troca de nome terminar (0.final). */
+  --color-marca-primary: #0ea5e9;
+  --color-marca-accent: #0284c7;
+  --color-marca-dark: #0369a1;
+  --color-marca-light: #e0f2fe;
+  --color-marca-border: #bae6fd;
+  --color-marca-deep: #0b1e33;
+  --color-verde-primary: var(--color-marca-primary);
+  --color-verde-accent: var(--color-marca-accent);
+  --color-verde-dark: var(--color-marca-dark);
+  --color-verde-light: var(--color-marca-light);
+  --color-verde-border: var(--color-marca-border);
   --color-red-alert: #D32F2F;
   --color-amber-warning: #d97706;
   --color-app-bg: #f4f6f5;
@@ -304,7 +312,7 @@
    também ficam iguais.
    ─────────────────────────────────────────────────────────────────────────── */
 :root {
-  --grafico-cursor: #f0fdf4;   /* realce da barra sob o cursor */
+  --grafico-cursor: #f0f9ff;   /* realce da barra sob o cursor */
   --grafico-grade:  #f5f5f5;   /* linhas de grade do CartesianGrid */
   --card-slate-bg:  #f1f5f9;   /* cards numéricos do relatório */
   --card-slate-cor: #475569;
@@ -335,7 +343,7 @@
   --qui-parc-bg: #3b3815;  --qui-parc-tx: #ecda96;  --qui-parc-bd: #695d1e;
 }
 .force-light {
-  --grafico-cursor: #f0fdf4;
+  --grafico-cursor: #f0f9ff;
   --grafico-grade:  #f5f5f5;
   --card-slate-bg:  #f1f5f9;
   --card-slate-cor: #475569;
@@ -799,7 +807,7 @@ select:focus {
     z-index: 50;
     white-space: nowrap;
     border-radius: 6px;
-    background: #0d2016;
+    background: #0b1e33;
     padding: 4px 8px;
     font-size: 12px;
     font-weight: 500;

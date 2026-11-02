@@ -416,7 +416,7 @@ export default function SidebarShell({
 
       {/* Sidebar desktop — view-transition-name fixo: o shell não cruza entre páginas,
           só a área de conteúdo transiciona (ver globals.css). */}
-      <aside className="sidebar-shell fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)", viewTransitionName: "sidebar" }}>
+      <aside className="sidebar-shell fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col md:flex print:hidden" style={{ background: "linear-gradient(180deg, #0369a1 0%, #0b1e33 60%, #071526 100%)", viewTransitionName: "sidebar" }}>
         {/* A largura (w-[220px]) vem de --sidebar-w no CSS: a SidebarAlca na borda deixa arrastar. */}
         {Content}
         <SidebarAlca />
@@ -429,7 +429,7 @@ export default function SidebarShell({
           onClick={() => setMobileOpen(false)}
         >
           <aside
-            className="absolute inset-y-0 left-0 flex w-[240px] flex-col shadow-2xl" style={{ background: "linear-gradient(180deg, #0369a1 0%, #112a1a 60%, #0d2016 100%)" }}
+            className="absolute inset-y-0 left-0 flex w-[240px] flex-col shadow-2xl" style={{ background: "linear-gradient(180deg, #0369a1 0%, #0b1e33 60%, #071526 100%)" }}
             onClick={(e) => e.stopPropagation()}
           >
             <button

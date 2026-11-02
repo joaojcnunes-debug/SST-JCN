@@ -133,7 +133,7 @@ function BotaoSigla({ avisos, onClick, nome, email, initials }: { avisos: number
       {/* Foto da conta Google (de quem conectou o Google na Gestão, v302); senão as iniciais, como antes. */}
       <AvatarFoto nome={nome} email={email} initials={initials} />
       {avisos > 0 && (
-        <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[#006B54]">
+        <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-[#0369a1]">
           {avisos > 99 ? "99+" : avisos}
         </span>
       )}
@@ -161,7 +161,7 @@ export default function ModuleTopbar({ recolher = true, avisos = 0, onAvisos }: 
   return (
     <header
       className="sticky top-0 z-20 flex h-[54px] items-center justify-between border-b border-black/[0.12] px-4 md:px-6 text-white shadow-md print:hidden"
-      style={{ background: "linear-gradient(90deg, #006B54 0%, #00795e 100%)", viewTransitionName: "topbar" }}
+      style={{ background: "linear-gradient(90deg, #0369a1 0%, #0284c7 100%)", viewTransitionName: "topbar" }}
     >
       {/* ── Esquerda: minimizador + breadcrumb ────────── */}
       <div className="ml-12 flex min-w-0 items-center gap-2 md:ml-0">
