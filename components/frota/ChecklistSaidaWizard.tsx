@@ -823,7 +823,7 @@ export default function ChecklistSaidaWizard({ veiculo, checklist }: Props) {
                   endereco_uf: end.uf, endereco_cep: end.cep,
                 })!}
                 target="_blank" rel="noopener noreferrer"
-                className="flex w-full items-center justify-center gap-1.5 rounded-md border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100">
+                className="flex w-full items-center justify-center gap-1.5 rounded-md border border-sky-300 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-800 hover:bg-sky-100">
                 <MapPin className="size-4" />
                 Conferir rota no Google Maps
               </a>
@@ -888,7 +888,7 @@ export default function ChecklistSaidaWizard({ veiculo, checklist }: Props) {
               Voltar
             </button>
             <button type="button" onClick={finalizarSaida} disabled={ocupado}
-              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-4 py-3 text-base font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-sky-600 px-4 py-3 text-base font-semibold text-white hover:bg-sky-700 disabled:opacity-60">
               {ocupado ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
               {corrigindo ? "Salvar correção" : "Finalizar saída"}
             </button>
