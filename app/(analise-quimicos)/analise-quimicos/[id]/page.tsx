@@ -10,6 +10,7 @@ import {
   Trash2,
   FlaskConical,  FileText,
   Pencil,
+  Printer,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
@@ -81,6 +82,14 @@ export default function AnaliseDetalhePage({
           <ArrowLeft className="size-3.5" /> Voltar ao histórico
         </Link>
         <div className="flex items-center gap-2">
+          {/* Os botões de PDF (gerar, assinar, baixar) moram na tela do laudo */}
+          <Link
+            href={`/analise-quimicos/${id}/laudo`}
+            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+            title="Abrir o laudo para gerar, assinar ou baixar o PDF"
+          >
+            <Printer className="size-4" /> Laudo / PDF
+          </Link>
           {canDelete && (
             <button
               type="button"

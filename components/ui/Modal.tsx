@@ -10,7 +10,7 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "quadrado";
   footer?: ReactNode;
   closeOnBackdrop?: boolean;
 }
@@ -20,6 +20,8 @@ const SIZE: Record<NonNullable<ModalProps["size"]>, string> = {
   md: "max-w-lg",
   lg: "max-w-2xl",
   xl: "max-w-4xl",
+  // altura fixa e largura igual à altura (até 64rem): não estica e não muda de tamanho ao trocar de aba
+  quadrado: "h-[90vh] max-w-[min(90vh,64rem)]",
 };
 
 const FOCUSABLE =

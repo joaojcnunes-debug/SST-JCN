@@ -95,6 +95,40 @@ function primeiroMatch(
   return undefined;
 }
 
+// Acento solto -> acento combinante (o NFC no fim junta com a letra).
+const ACENTO_COMBINANTE: Record<string, string> = {
+  "´": "́",
+  "ˆ": "̂",
+  "˜": "̃",
+  "¨": "̈",
+};
+
+/**
+ * FISPQs geradas em LaTeX (ex.: FUCHS) gravam o acento como glifo SEPARADO
+ * da letra, e o pdfjs devolve "petr´ oleo", "hidrogˆ enio", "identifica¸ c˜ ao",
+ * "f´ ısico" e, em maiúsculas, "QU ´ IMICOS" / "INFORMAC ¸  ˜ OES". Sem juntar,
+ * nenhum padrão com acento casa ("Líquido" vira "L´ ıquido" e a forma física
+ * caía no "Pressão de vapor" da seção 9) e o nome vai torto pro laudo.
+ * Exige espaço entre acento e letra — é como o pdfjs entrega esse caso e
+ * evita mexer em apóstrofo ("D´Água").
+ */
+export function juntarAcentosSoltos(texto: string): string {
+  return texto
+    // Cedilha: antes da letra na minúscula ("¸ c"), depois na maiúscula ("C ¸")
+    .replace(/¸[ \t]+([cC])/g, (_, c: string) => (c === "c" ? "ç" : "Ç"))
+    .replace(/C[ \t]+¸(?:[ \t]+(?=[A-Z]))?/g, "Ç")
+    // Em palavra MAIÚSCULA o acento vem com espaço dos dois lados
+    .replace(/([A-ZÇ])[ \t]+([´ˆ˜¨])(?=[ \t]+[A-Z])/g, "$1$2")
+    .replace(/([´ˆ˜¨])[ \t]+([aeiouAEIOUnNı])/g, (_, a: string, l: string) =>
+      (l === "ı" ? "i" : l) + ACENTO_COMBINANTE[a]
+    )
+    // Crase solta: "` a pele" -> "à pele", "` as seções" -> "às seções"
+    .replace(/(^|[ \t])`[ \t]+([aA])(?=[sS]?(?![A-Za-z]))/gm, (_, p: string, l: string) =>
+      p + (l === "a" ? "à" : "À")
+    )
+    .normalize("NFC");
+}
+
 // Rótulos de campos de FISPQ — usados pra strippar quando pdfjs junta
 // label+valor numa linha só (layout em colunas/tabela).
 const LABEL_PRODUTO_PATTERNS = [
@@ -322,6 +356,17 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
   if (!secao3) return [];
 
   const linhas = secao3.split(/\n/).map((l) => l.trim());
+  // Faixa quebrada em linhas ("...: 60,0" / "- 90,0%"): devolve a 2ª
+  // metade pra linha do número, senão a concentração vira só "90,0%".
+  for (let i = 0; i < linhas.length; i++) {
+    if (!/\d$/.test(linhas[i])) continue;
+    let j = i + 1;
+    while (j < linhas.length && !linhas[j]) j++;
+    if (j < linhas.length && /^[-–]\s*\d{1,3}(?:[,.]\d+)?\s*%/.test(linhas[j])) {
+      linhas[i] = `${linhas[i]} ${linhas[j]}`;
+      linhas[j] = "";
+    }
+  }
   const componentes: ComponenteQuimico[] = [];
 
   // Padrões de linhas que NÃO podem ser nome de químico
@@ -370,7 +415,8 @@ function extrairComponentesDeSecao3(secao3: string | undefined): ComponenteQuimi
         /^(?:\d+\)\s*|\d+\.\s+|\d+:\s+|\d+\s+[-–]\s+|\*+\s*|•+\s*|[-–]\s+)/,
         ""
       )
-      .replace(/(número\s+cas|cas\s*n[°º]?|cas\s*[:#])\s*$/i, "")
+      // "...hidrogênio (CAS 64742-52-5)" deixava "(CAS" grudado no nome
+      .replace(/[(\[]?\s*(número\s+cas|cas\s*n[°º]?|cas\s*[:#]|cas)\s*$/i, "")
       .replace(/[:#]\s*$/, "")
       .trim();
     // Strippa rótulos no INÍCIO do prefixo (ex.: "Nome químico 2-Butanone" → "2-Butanone")
@@ -542,6 +588,10 @@ export function parseFispq(texto: string): FispqExtracted {
   // Também tenta achar o nome em formato "Nome do produto\nValor" (com
   // o valor na linha de baixo).
   result.nome_produto = primeiroMatch(texto, [
+    // "Nome do produto (nome comercial): X" e "Nome da substância ou mistura
+    // (nome comercial): X" — o rótulo costuma quebrar em linhas ("(nome" /
+    // "comercial):") e o valor vir na linha de baixo
+    /(?:^|\n)[^\n]{0,60}?\(\s*nome\s+comercial\s*\)\s*[:\-]?\s*([^\n]+)/i,
     // Formato "Nome: X" na mesma linha
     /(?:^|\n)\s*(?:Nome\s+(?:do\s+|comercial\s+do\s+)?produto)\s*[:\-]\s*([^\n]+)/i,
     /(?:^|\n)\s*(?:Identificador\s+do\s+produto)\s*[:\-]\s*([^\n]+)/i,
@@ -599,7 +649,8 @@ export function parseFispq(texto: string): FispqExtracted {
   // descarta se sobrar só header.
   if (result.nome_produto) {
     const limpo = stripLabel(result.nome_produto, LABEL_PRODUTO_PATTERNS);
-    if (limpo && !ehSoRotulo(limpo) && !ehHeaderFispq(limpo)) {
+    // "(nome" = pedaço de rótulo partido, não nome de produto
+    if (limpo && !ehSoRotulo(limpo) && !ehHeaderFispq(limpo) && !/^\([^)]*$/.test(limpo)) {
       result.nome_produto = limpo;
     } else {
       result.nome_produto = undefined;
@@ -718,14 +769,18 @@ export function parseFispq(texto: string): FispqExtracted {
   }
 
   // ----- Concentração / Pureza -----
-  result.concentracao = primeiroMatch(
-    texto,
-    [
-      /(?:Concentração)\s*(?:\(%\))?\s*[:\-]\s*([^\n]+?)(?:\n|$)/i,
-      /(?:Pureza)\s*[:\-]\s*([^\n]+?)(?:\n|$)/i,
-    ],
-    80
-  );
+  // Só quando a seção 3 não trouxe — antes sobrescrevia com vazio a
+  // concentração do componente em FISPQ sem rótulo "Concentração:".
+  if (!result.concentracao) {
+    result.concentracao = primeiroMatch(
+      texto,
+      [
+        /(?:Concentração)\s*(?:\(%\))?\s*[:\-]\s*([^\n]+?)(?:\n|$)/i,
+        /(?:Pureza)\s*[:\-]\s*([^\n]+?)(?:\n|$)/i,
+      ],
+      80
+    );
+  }
 
   // ----- Snippets das seções relevantes pra NR-15 -----
   // (variavel `secoes` ja' foi calculada acima pra extrair componentes)

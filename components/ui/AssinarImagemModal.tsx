@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { BadgeCheck, FileImage, Loader2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import StorageImg from "@/components/ui/StorageImg";
+import { perfilPodeAssinarPorOutro } from "@/lib/auth/assinatura-por-outro";
 import { useUserStore } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -57,6 +58,9 @@ export default function AssinarImagemModal({
   const [emailSelecionado, setEmailSelecionado] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Mesma regra do /api/sign-image. Sem ela a lista oferecia qualquer
+  // profissional e quem não pode assinar por outro só descobria no 403.
+  const podePorOutro = perfilPodeAssinarPorOutro(user?.perfil);
 
   useEffect(() => {
     if (!open) return;
@@ -71,6 +75,12 @@ export default function AssinarImagemModal({
       .then(({ data }) => {
         const lista = (data ?? []) as Signatario[];
         setSignatarios(lista);
+        const logado = lista.find((s) => s.email === user?.email);
+        if (!podePorOutro) {
+          setEmailSelecionado(logado?.email ?? "");
+          setCarregado(true);
+          return;
+        }
         const porEmail = defaultSignatoryEmail
           ? lista.find((s) => s.email === defaultSignatoryEmail)
           : null;
@@ -78,7 +88,6 @@ export default function AssinarImagemModal({
           !porEmail && defaultSignatoryName?.trim()
             ? lista.find((s) => nameMatches(s.nome, defaultSignatoryName))
             : null;
-        const logado = lista.find((s) => s.email === user?.email);
         // Sem fallback para o 1º da lista: quem não tem imagem cadastrada
         // (nem o responsável do documento) abria o modal com OUTRA pessoa já
         // selecionada e o botão verde — e este caminho não pede senha. Fica
@@ -86,9 +95,14 @@ export default function AssinarImagemModal({
         setEmailSelecionado(porEmail?.email ?? porNome?.email ?? logado?.email ?? "");
         setCarregado(true);
       });
-  }, [open, user?.email, defaultSignatoryName, defaultSignatoryEmail]);
+  }, [open, user?.email, defaultSignatoryName, defaultSignatoryEmail, podePorOutro]);
 
-  const atual = signatarios.find((s) => s.email === emailSelecionado);
+  // A lista completa continua em `signatarios` para os avisos (o responsável
+  // tem imagem?); o seletor só oferece o que o servidor vai aceitar.
+  const opcoes = podePorOutro
+    ? signatarios
+    : signatarios.filter((s) => s.email === user?.email);
+  const atual = opcoes.find((s) => s.email === emailSelecionado);
 
   // Avisos: só depois da lista chegar (antes, "ninguém tem imagem" seria mentira).
   const logadoSemImagem =
@@ -128,7 +142,7 @@ export default function AssinarImagemModal({
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
             Nenhum profissional com imagem de assinatura cadastrada no perfil.
           </div>
-        ) : (
+        ) : opcoes.length === 0 ? null : (
           <div>
             <label className="mb-1 block font-medium text-gray-700">
               Profissional signatário
@@ -136,17 +150,22 @@ export default function AssinarImagemModal({
             <select
               value={emailSelecionado}
               onChange={(e) => setEmailSelecionado(e.target.value)}
-              disabled={loading}
+              disabled={loading || !podePorOutro}
               className="w-full rounded-md border border-verde-primary/30 bg-verde-primary/5 px-3 py-2 text-sm font-medium text-gray-800 focus:border-verde-primary focus:outline-none disabled:opacity-60"
             >
-              <option value="">Selecione o profissional...</option>
-              {signatarios.map((s) => (
+              {podePorOutro && <option value="">Selecione o profissional...</option>}
+              {opcoes.map((s) => (
                 <option key={s.id_usuario} value={s.email}>
                   {s.nome}
                   {s.cargo ? ` · ${s.cargo}` : ""}
                 </option>
               ))}
             </select>
+            {!podePorOutro && (
+              <p className="mt-1.5 text-[11px] text-gray-500">
+                Seu perfil assina só em seu próprio nome.
+              </p>
+            )}
             {assinandoPorOutro && (
               <p className="mt-1.5 text-[11px] font-medium text-amber-700">
                 Você está assinando em nome de <strong>{atual!.nome}</strong> — a imagem

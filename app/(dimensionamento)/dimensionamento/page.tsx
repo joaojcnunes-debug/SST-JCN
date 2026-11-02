@@ -467,12 +467,16 @@ function GraficoPrazos({ hc, prazo }: { hc: ResultadoHeadcount | null; prazo: nu
     tecnico: Number(c.areas?.tecnico?.pessoas ?? 0),
     administrativo: Number(c.areas?.administrativo?.pessoas ?? 0),
   }));
+  // A linha é a mesma equipe que o déficit desconta: quem saiu no mês fica de fora.
+  const fica = Number(hc?.quadroFica ?? hc?.quadroAtual ?? 0);
+  const saiuAlguem = Math.abs(fica - Number(hc?.quadroAtual ?? 0)) > 0.05;
   return (
     <section className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-black/5">
       <h2 className="font-semibold text-slate-900">Quadro necessário em cada prazo</h2>
       <p className="mb-3 mt-1 text-sm text-slate-600">
-        A linha é a equipe de hoje ({nf(hc?.quadroAtual, 1)} em tempo integral). O prazo escolhido
-        aparece em cor cheia.
+        A linha é a equipe que continua ({nf(fica, 1)} em tempo integral
+        {saiuAlguem ? `; ${nf(hc?.quadroAtual, 1)} no mês, contando quem saiu` : ""}). O prazo
+        escolhido aparece em cor cheia.
       </p>
       <ResponsiveContainer width="100%" height={260}>
         <BarChart data={dados} margin={{ top: 4, right: 8, left: -20, bottom: 4 }}>
@@ -492,10 +496,10 @@ function GraficoPrazos({ hc, prazo }: { hc: ResultadoHeadcount | null; prazo: nu
             ))}
           </Bar>
           <ReferenceLine
-            y={Number(hc?.quadroAtual ?? 0)}
+            y={fica}
             stroke="#334155"
             strokeDasharray="4 4"
-            label={{ value: "equipe de hoje", position: "insideTopRight", fontSize: 11, fill: "#334155" }}
+            label={{ value: "equipe que continua", position: "insideTopRight", fontSize: 11, fill: "#334155" }}
           />
         </BarChart>
       </ResponsiveContainer>

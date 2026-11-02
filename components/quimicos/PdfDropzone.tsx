@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Upload, FileText, X, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { parseFispq, type FispqExtracted } from "@/lib/fispq/parser";
+import { juntarAcentosSoltos, parseFispq, type FispqExtracted } from "@/lib/fispq/parser";
 
 export interface PdfArquivo {
   nome: string;
@@ -99,7 +99,7 @@ export default function PdfDropzone({
         return;
       }
 
-      const textoLimpo = texto.trim();
+      const textoLimpo = juntarAcentosSoltos(texto.trim());
       const parsed = parseFispq(textoLimpo);
       onChange({ nome: f.name, texto: textoLimpo, parsed });
       toast.success(

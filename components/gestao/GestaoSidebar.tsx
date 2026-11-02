@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users, ShieldCheck } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Pencil, Trash2, Folder, List, Layers, Lock, UserSquare, Users, ShieldCheck, Search, X } from "lucide-react";
 import {
   useSalvarEspaco, useExcluirEspaco, useSalvarPasta, useExcluirPasta,
   useCriarQuadro, useRenomearQuadro, useExcluirQuadro,
   type GestaoEspaco, type GestaoPasta, type GestaoQuadro,
 } from "@/lib/hooks/useGestao";
 import { confirmar } from "@/components/ui/confirm";
+import { normalizarTexto, tokenizar } from "@/lib/busca/texto";
 
 const inputDark = "min-w-0 flex-1 rounded border border-white/40 bg-white/10 px-1 py-0.5 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-verde-accent";
 
@@ -50,9 +51,23 @@ export default function GestaoSidebar({
 
   const [fechados, setFechados] = useState<Set<string>>(new Set());
   const [editando, setEditando] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
+
+  // Busca nas listas: cada palavra precisa aparecer no nome da lista, da pasta ou do espaço (sem acento).
+  // Buscando, tudo que tem resultado fica aberto e o resto some.
+  const termos = tokenizar(busca);
+  const buscando = termos.length > 0;
+  const nomePasta = new Map(pastas.map((p) => [p.id, p.nome]));
+  const nomeEspaco = new Map(espacos.map((e) => [e.id, e.nome]));
+  const casa = (q: GestaoQuadro) => {
+    if (!buscando) return true;
+    const alvo = normalizarTexto(`${(q.id_espaco && nomeEspaco.get(q.id_espaco)) || ""} ${q.id_pasta ? nomePasta.get(q.id_pasta) ?? "" : ""} ${q.nome}`);
+    return termos.every((t) => alvo.includes(t));
+  };
+  const quadrosVisiveis = buscando ? quadros.filter(casa) : quadros;
 
   const toggle = (id: string) => setFechados((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const aberto = (id: string) => !fechados.has(id);
+  const aberto = (id: string) => buscando || !fechados.has(id);
 
   async function novaLista(id_espaco: string, id_pasta: string | null) {
     const id = await criarQuadro.mutateAsync({ nome: "Nova lista", id_espaco, id_pasta });
@@ -102,10 +117,28 @@ export default function GestaoSidebar({
           <ShieldCheck className="size-4" /> Membros e acessos
         </button>
       )}
+      <div className="relative mb-1">
+        <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-white/40" />
+        <input
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Escape") setBusca(""); }}
+          placeholder="Pesquisar listas…"
+          aria-label="Pesquisar listas"
+          className="w-full rounded-md border border-white/15 bg-white/10 py-1 pl-7 pr-7 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-verde-accent"
+        />
+        {busca && (
+          <button type="button" title="Limpar" onClick={() => setBusca("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-white/40 hover:text-white">
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
       <div className="mb-1 border-t border-white/[0.07]" />
+      {buscando && quadrosVisiveis.length === 0 && <p className="px-1.5 py-1 text-xs text-white/40">Nenhuma lista encontrada.</p>}
       {espacos.map((esp) => {
-        const pastasDoEspaco = pastas.filter((p) => p.id_espaco === esp.id);
-        const listasSoltas = quadros.filter((q) => q.id_espaco === esp.id && !q.id_pasta);
+        const pastasDoEspaco = pastas.filter((p) => p.id_espaco === esp.id && (!buscando || quadrosVisiveis.some((q) => q.id_pasta === p.id)));
+        const listasSoltas = quadrosVisiveis.filter((q) => q.id_espaco === esp.id && !q.id_pasta);
+        if (buscando && pastasDoEspaco.length === 0 && listasSoltas.length === 0) return null;
         return (
           <div key={esp.id}>
             <div className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent" onClick={() => toggle(`e:${esp.id}`)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(`e:${esp.id}`); } }} role="button" tabIndex={0}>
@@ -129,7 +162,7 @@ export default function GestaoSidebar({
                     onSelect={onSelect} podeEditar={podeEditar} onRenomearStart={() => setEditando(`q:${q.id_quadro}`)}
                     onRenomear={(v) => { renomearQuadro.mutate({ id_quadro: q.id_quadro, nome: v }); setEditando(null); }} onExcluir={async () => { if (await confirmar({ title: `Excluir lista "${q.nome}"?` })) excluirQuadro.mutate(q.id_quadro); }} />
                 ))}
-                {podeEditar && (
+                {podeEditar && !buscando && (
                   <button type="button" onClick={() => novaLista(esp.id, null)} className="flex w-full items-center gap-1 rounded px-1.5 py-0.5 text-xs text-white/45 hover:bg-white/10 hover:text-white">
                     <Plus className="size-3" /> Lista
                   </button>
@@ -137,7 +170,7 @@ export default function GestaoSidebar({
 
                 {/* Pastas */}
                 {pastasDoEspaco.map((pa) => {
-                  const listas = quadros.filter((q) => q.id_pasta === pa.id);
+                  const listas = quadrosVisiveis.filter((q) => q.id_pasta === pa.id);
                   return (
                     <div key={pa.id}>
                       <div className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent" onClick={() => toggle(`p:${pa.id}`)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(`p:${pa.id}`); } }} role="button" tabIndex={0}>
@@ -171,7 +204,7 @@ export default function GestaoSidebar({
         );
       })}
 
-      {podeEditar && (
+      {podeEditar && !buscando && (
         <button type="button" onClick={() => salvarEspaco.mutate({ nome: "Novo espaço" })} className="mt-2 flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-white/50 hover:bg-white/10 hover:text-white">
           <Plus className="size-3.5" /> Novo espaço
         </button>

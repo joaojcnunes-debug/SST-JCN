@@ -37,6 +37,14 @@ interface Props {
   };
 }
 
+/**
+ * Treinamentos que não são NR. O técnico digitava à mão e cada um escrevia de
+ * um jeito: em 29/10/2026 havia 116 "direção defensiva" com o campo NR como
+ * "00", "NR-11", "'" ou "." — o campo é obrigatório e não oferecia a opção.
+ * Na lista, quem escolhe sai com o mesmo texto no NR e no Título.
+ */
+const TREINAMENTOS_SEM_NR = ["Direção Defensiva"];
+
 /** Lista de NRs comuns pra autocompletar no campo. */
 const NRS_COMUNS = [
   "NR-01 — Disposições Gerais e GRO",
@@ -60,6 +68,7 @@ const NRS_COMUNS = [
   "NR-33 — Espaços Confinados",
   "NR-35 — Trabalho em Altura",
   "NR-36 — Frigoríficos",
+  ...TREINAMENTOS_SEM_NR,
 ];
 
 const PERIODICIDADES = [
@@ -99,8 +108,25 @@ export default function TreinamentoForm({
   const [idsCargos, setIdsCargos] = useState<string[]>([]);
   const [idsRiscos, setIdsRiscos] = useState<string[]>([]);
 
+  // `vinculados` chega como objeto literal, NOVO a cada render do pai. Guardado
+  // em ref para o zeramento abaixo depender só de `open` e `editing`.
+  const vinculadosRef = useRef(vinculados);
+  useEffect(() => {
+    vinculadosRef.current = vinculados;
+  });
+
+  /**
+   * Preenche o formulário ao ABRIR — e só ao abrir.
+   *
+   * 🐛 Enquanto dependia de `vinculados`, qualquer render do pai zerava todos os
+   * campos no meio da digitação. E o pai re-renderiza sempre que a inspeção
+   * recarrega: o sinal volta em campo (o React Query refaz a consulta), outra
+   * aba salva algo, a fila do aparelho sincroniza. Os técnicos relataram
+   * (29/10/2026) que "não conseguiam escrever" no campo — o texto sumia.
+   */
   useEffect(() => {
     if (!open) return;
+    const vinculados = vinculadosRef.current;
     setNr(editing?.nr ?? "");
     setTitulo(editing?.titulo ?? "");
     setCargaHoraria(editing?.carga_horaria ?? "");
@@ -111,7 +137,7 @@ export default function TreinamentoForm({
     setIdsSetores(vinculados.setores);
     setIdsCargos(vinculados.cargos);
     setIdsRiscos(vinculados.riscos);
-  }, [open, editing, vinculados]);
+  }, [open, editing]);
 
   // Rascunho contra queda de luz — só ao criar; nada volta sem clique.
   const rascunhoValor = useMemo(
@@ -328,9 +354,9 @@ export default function TreinamentoForm({
           />
         )}
         {/* Linha 1: NR + Título */}
-        <div className="grid gap-3 md:grid-cols-[200px_1fr]">
+        <div className="grid gap-3 md:grid-cols-[260px_1fr]">
           <div>
-            <label className="text-sm font-medium text-gray-700">NR *</label>
+            <label className="text-sm font-medium text-gray-700">NR ou tipo *</label>
             <input
               type="text"
               list="nrs-comuns"
@@ -352,12 +378,23 @@ export default function TreinamentoForm({
                   }
                 } else {
                   setNr(valor);
+                  if (
+                    TREINAMENTOS_SEM_NR.includes(valor) &&
+                    (titulo === "" || titulo === ultimoAutofillRef.current)
+                  ) {
+                    setTitulo(valor);
+                    ultimoAutofillRef.current = valor;
+                  }
                 }
               }}
               required
-              placeholder="Ex: NR-06"
+              placeholder="Ex: NR-06 ou Direção Defensiva"
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
             />
+            {/* A setinha da lista faz o campo parecer só de escolher. */}
+            <p className="mt-1 text-[11px] text-gray-500">
+              Escolha na lista ou digite livremente.
+            </p>
             <datalist id="nrs-comuns">
               {NRS_COMUNS.map((s) => (
                 <option key={s} value={s} />

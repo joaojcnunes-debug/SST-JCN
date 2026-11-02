@@ -73,7 +73,7 @@ export function useFilaAtribuida(f: FiltrosFila) {
       if (f.ordem === "prioridade") q = q.order("prioridade_ord", { ascending: false }).order("dias_espera", { ascending: false, nullsFirst: false });
       else if (f.ordem === "espera") q = q.order("dias_espera", { ascending: false, nullsFirst: false });
       else if (f.ordem === "prazo") q = q.order("prazo", { ascending: true, nullsFirst: false }).order("prioridade_ord", { ascending: false });
-      else q = q.order("created_at", { ascending: false });
+      else q = q.order("data_inspecao", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false });
       const { data, error } = await q.limit(500);
       if (error) throw error;
       return (data ?? []) as unknown as Inspecao[];

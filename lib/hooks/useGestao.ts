@@ -989,6 +989,23 @@ export function useTempoTarefa(idTarefa: string | null | undefined) {
   });
 }
 
+/**
+ * 29/10: `.in("id_tarefa", ids)` com o quadro inteiro (Teresópolis tem 1.093 tarefas) vira um
+ * endereço grande demais e o servidor responde 431. Divide em lotes e junta as linhas.
+ */
+const LOTE_IDS = 150;
+async function emLotes<T>(ids: string[], buscar: (lote: string[]) => PromiseLike<{ data: unknown; error: unknown }>): Promise<T[]> {
+  const lotes: string[][] = [];
+  for (let i = 0; i < ids.length; i += LOTE_IDS) lotes.push(ids.slice(i, i + LOTE_IDS));
+  const res = await Promise.all(lotes.map((l) => buscar(l)));
+  const out: T[] = [];
+  for (const r of res) {
+    if (r.error) throw r.error;
+    out.push(...((r.data ?? []) as T[]));
+  }
+  return out;
+}
+
 /** Apontamentos de tempo de todas as tarefas de um quadro (para chip no card + relatório). */
 export function useTempoQuadro(idQuadro: string | null | undefined, taskIds: string[]) {
   return useQuery({
@@ -996,9 +1013,7 @@ export function useTempoQuadro(idQuadro: string | null | undefined, taskIds: str
     enabled: !!idQuadro && taskIds.length > 0,
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb.from("gestao_tempo").select("*").in("id_tarefa", taskIds);
-      if (error) throw error;
-      return (data ?? []) as unknown as GestaoTempo[];
+      return emLotes<GestaoTempo>(taskIds, (lote) => sb.from("gestao_tempo").select("*").in("id_tarefa", lote));
     },
   });
 }
@@ -1656,17 +1671,16 @@ export function useAnexos(idTarefa: string | null | undefined) {
   });
 }
 
-/** Contagem de anexos por tarefa (para os cards de um quadro), numa única consulta. */
+/** Contagem de anexos por tarefa (para os cards de um quadro), em lotes de ids. */
 export function useAnexosCountQuadro(idQuadro: string | null | undefined, ids: string[]) {
   return useQuery({
     queryKey: ["gestao-anexos-count", idQuadro, ids.length],
     enabled: !!idQuadro && ids.length > 0,
     queryFn: async () => {
       const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb.from("gestao_anexos").select("id_tarefa").in("id_tarefa", ids);
-      if (error) throw error;
+      const linhas = await emLotes<{ id_tarefa: string }>(ids, (lote) => sb.from("gestao_anexos").select("id_tarefa").in("id_tarefa", lote));
       const m = new Map<string, number>();
-      for (const r of (data ?? []) as { id_tarefa: string }[]) m.set(r.id_tarefa, (m.get(r.id_tarefa) ?? 0) + 1);
+      for (const r of linhas) m.set(r.id_tarefa, (m.get(r.id_tarefa) ?? 0) + 1);
       return m;
     },
   });

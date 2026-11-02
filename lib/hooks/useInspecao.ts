@@ -430,8 +430,10 @@ export function useInspecoesPaginadas({
       const sel = separarSelecao(filtros);
       if (sel.status.length > 0) q = q.in("status", sel.status);
       if (sel.associacao.length === 1) q = q.is("tem_associado", sel.associacao[0] === "ASSOCIADOS");
-      if (ordem === "recentes") q = q.order("created_at", { ascending: false });
-      else if (ordem === "antigas") q = q.order("created_at", { ascending: true });
+      // 30/10: pela data da visita (a coluna DATA), não pela data do cadastro — a
+      // inspeção lançada depois embaralhava a lista. Cadastro só desempata.
+      if (ordem === "recentes") q = q.order("data_inspecao", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false });
+      else if (ordem === "antigas") q = q.order("data_inspecao", { ascending: true, nullsFirst: false }).order("created_at", { ascending: true });
       // v306: pelas colunas calculadas — mais urgente / esperando há mais tempo / prazo mais perto
       else if (ordem === "prioridade") q = q.order("prioridade_ord", { ascending: false }).order("dias_espera", { ascending: false, nullsFirst: false });
       else if (ordem === "espera") q = q.order("dias_espera", { ascending: false, nullsFirst: false }).order("created_at", { ascending: true });

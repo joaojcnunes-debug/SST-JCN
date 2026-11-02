@@ -110,7 +110,7 @@ export default function AutomacoesManagerModal({
   const setAcoes = (a: GestaoAutomacao, acoes: AcaoAutomacao[]) => salvar.mutate({ id: a.id, id_quadro: idQuadro, acoes });
 
   return (
-    <Modal open={open} onClose={onClose} title="Automações" size="lg">
+    <Modal open={open} onClose={onClose} title="Automações" size="quadrado">
       <div className="mb-3 flex gap-1 border-b border-gray-100">
         {([["regras", "Regras", Workflow], ["historico", "Histórico", History]] as const).map(([k, rot, Icone]) => (
           <button key={k} type="button" onClick={() => setAba(k)}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { BadgeCheck, Eye, EyeOff, FileText, Loader2 } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import { perfilPodeAssinarPorOutro } from "@/lib/auth/assinatura-por-outro";
 import { useUserStore } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
@@ -58,10 +59,16 @@ export default function AssinarPdfModal({
 
   const [signatarios, setSignatarios] = useState<Signatario[]>([]);
   const [emailSelecionado, setEmailSelecionado] = useState("");
+  const [carregado, setCarregado] = useState(false);
+  // Mesma regra do /api/sign-pdf. Sem ela a lista oferecia qualquer
+  // profissional (e já abria no 1º da lista) e quem não pode assinar por
+  // outro só descobria no 403, depois de digitar a senha.
+  const podePorOutro = perfilPodeAssinarPorOutro(user?.perfil);
 
   // Carrega profissionais com certificado A1 e pfx cadastrado
   useEffect(() => {
     if (!open) return;
+    setCarregado(false);
     createSupabaseBrowserClient()
       .from("usuarios")
       .select("id_usuario, nome, email, cargo")
@@ -72,6 +79,11 @@ export default function AssinarPdfModal({
       .then(({ data }) => {
         const lista = (data ?? []) as Signatario[];
         setSignatarios(lista);
+        setCarregado(true);
+        if (!podePorOutro) {
+          setEmailSelecionado(lista.find((s) => s.email === user?.email)?.email ?? "");
+          return;
+        }
         // Casamento de nomes tolerante (mesma lógica de AssinaturaRelatorio):
         // ignora caixa/acentos/ordem para achar o técnico cadastrado no documento.
         const norm = (s: string) =>
@@ -110,9 +122,12 @@ export default function AssinarPdfModal({
             ""
         );
       });
-  }, [open, user?.email, defaultSignatoryEmail, defaultSignatoryName]);
+  }, [open, user?.email, defaultSignatoryEmail, defaultSignatoryName, podePorOutro]);
 
-  const signatarioAtual = signatarios.find((s) => s.email === emailSelecionado);
+  const opcoes = podePorOutro
+    ? signatarios
+    : signatarios.filter((s) => s.email === user?.email);
+  const signatarioAtual = opcoes.find((s) => s.email === emailSelecionado);
 
   function reset() {
     setPassword("");
@@ -191,9 +206,16 @@ export default function AssinarPdfModal({
     <Modal open={open} onClose={handleClose} title="Assinar PDF com Certificado A1">
       <div className="space-y-4 text-sm">
         {/* Seleção do signatário */}
-        {signatarios.length === 0 ? (
+        {!carregado ? null : signatarios.length === 0 ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 text-xs">
             Nenhum profissional com Certificado A1 e arquivo .pfx cadastrado encontrado.
+          </div>
+        ) : opcoes.length === 0 ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 text-xs">
+            <strong>Você não tem Certificado A1 cadastrado</strong> no seu perfil, e seu
+            perfil assina só em seu próprio nome. Peça a um administrador para
+            cadastrar o certificado em <em>Usuários</em>, ou peça ao responsável
+            do documento que assine.
           </div>
         ) : (
           <div>
@@ -203,15 +225,20 @@ export default function AssinarPdfModal({
             <select
               value={emailSelecionado}
               onChange={(e) => setEmailSelecionado(e.target.value)}
-              disabled={loading}
+              disabled={loading || !podePorOutro}
               className="w-full rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800 font-medium focus:border-blue-400 focus:outline-none disabled:opacity-60"
             >
-              {signatarios.map((s) => (
+              {opcoes.map((s) => (
                 <option key={s.id_usuario} value={s.email}>
                   {s.nome}{s.cargo ? ` · ${s.cargo}` : ""}
                 </option>
               ))}
             </select>
+            {!podePorOutro && (
+              <p className="mt-1.5 text-[11px] text-gray-500">
+                Seu perfil assina só em seu próprio nome.
+              </p>
+            )}
             {signatarioAtual && (
               <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-blue-600">
                 <BadgeCheck className="size-3.5 shrink-0" />
