@@ -170,7 +170,7 @@ export default function AssinaturaRelatorio({
           <button
             type="button"
             onClick={handleBaixarPdf}
-            className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700"
+            className="inline-flex items-center gap-1.5 rounded-md border border-sky-500 bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700"
           >
             <Download className="size-4" />
             Baixar PDF Assinado

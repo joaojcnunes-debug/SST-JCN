@@ -101,7 +101,7 @@ export default function TempoDocumentosPage() {
                   <span className="min-w-0 truncate">
                     <b className="text-gray-800">{s.nome}</b> · {docPorId.get(s.id_inspecao)?.empresa ?? s.id_inspecao}
                   </span>
-                  <Link href={`/inspecoes/${s.id_inspecao}/relatorio`} className="shrink-0 text-xs font-medium text-emerald-700 hover:underline">
+                  <Link href={`/inspecoes/${s.id_inspecao}/relatorio`} className="shrink-0 text-xs font-medium text-sky-700 hover:underline">
                     há {fmtDuracao(agora - new Date(s.inicio).getTime())}
                   </Link>
                 </li>

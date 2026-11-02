@@ -262,7 +262,7 @@ export function AlcaReordenar({
   // Sem permissão de editar, volta a ser o crachá de sempre — nem botão é.
   if (desabilitado) {
     return (
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-sky-100 text-xs font-bold text-sky-700">
         {numero}
       </span>
     );
@@ -282,7 +282,7 @@ export function AlcaReordenar({
       }}
       title="Arraste para reordenar (ou use ↑ ↓)"
       aria-label={`Reordenar ${nome || "setor"}: posição ${numero} de ${total}. Use as setas para cima e para baixo para mover.`}
-      className="group/alca grid size-6 shrink-0 cursor-grab place-items-center rounded-full bg-emerald-100 text-emerald-700 transition hover:bg-emerald-200 focus:outline-none focus-visible:bg-emerald-200 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 active:cursor-grabbing"
+      className="group/alca grid size-6 shrink-0 cursor-grab place-items-center rounded-full bg-sky-100 text-sky-700 transition hover:bg-sky-200 focus:outline-none focus-visible:bg-sky-200 focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1 active:cursor-grabbing"
     >
       <span className="col-start-1 row-start-1 text-xs font-bold transition-opacity group-hover/setor:opacity-0 group-focus-visible/alca:opacity-0">
         {numero}
@@ -299,12 +299,12 @@ export function MarcaDrop({ lado, posicao }: { lado: LadoDrop; posicao: number |
     <span
       aria-hidden
       className={cn(
-        "pointer-events-none absolute inset-x-0 z-10 h-0.5 rounded-full bg-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]",
+        "pointer-events-none absolute inset-x-0 z-10 h-0.5 rounded-full bg-sky-500 shadow-[0_0_0_3px_rgba(14,165,233,0.18)]",
         lado === "antes" ? "-top-2.5" : "-bottom-2.5",
       )}
     >
       {posicao !== null && (
-        <span className="absolute left-2 top-1/2 grid h-4 min-w-4 -translate-y-1/2 place-items-center rounded-full bg-emerald-600 px-1 text-[10px] font-bold leading-none text-white">
+        <span className="absolute left-2 top-1/2 grid h-4 min-w-4 -translate-y-1/2 place-items-center rounded-full bg-sky-600 px-1 text-[10px] font-bold leading-none text-white">
           {posicao}
         </span>
       )}

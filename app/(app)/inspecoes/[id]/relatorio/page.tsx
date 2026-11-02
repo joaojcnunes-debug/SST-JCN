@@ -393,7 +393,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                 Assinado em {new Date(pdfAssinado.assinado_em).toLocaleDateString("pt-BR")}
               </div>
               <button type="button" onClick={handleBaixarPdf} disabled={baixando}
-                className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                className="inline-flex items-center gap-1.5 rounded-md border border-sky-500 bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60">
                 {baixando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                 Baixar PDF Assinado
               </button>
@@ -475,7 +475,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                         { onSuccess: () => toast.success("Documento concluído — enviado ao cliente") },
                       );
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50"
                   >
                     <BadgeCheck className="size-4" /> Concluir (emitido e enviado)
                   </button>
