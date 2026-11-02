@@ -81,7 +81,7 @@ export default function GestaoQpsPage({ params }: { params: Promise<{ id: string
                 type="button"
                 onClick={handleBaixarPdf}
                 disabled={baixando}
-                className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-md border border-verde-accent bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
               >
                 {baixando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                 Baixar PDF Assinado

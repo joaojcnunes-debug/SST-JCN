@@ -267,7 +267,7 @@ function Registro({
           onClick={() => rodar("pgr", () => listaPgr(validadasMapa))}
           disabled={!!gerando || validadasMapa.size === 0}
           title={validadasMapa.size === 0 ? "Registre a validação de ao menos uma empresa" : "Só as empresas validadas entram na lista"}
-          className="inline-flex items-center gap-1 rounded-md border border-verde-primary px-2 py-0.5 text-xs font-medium text-verde-primary hover:bg-green-50 disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-md border border-verde-primary px-2 py-0.5 text-xs font-medium text-verde-primary hover:bg-verde-light disabled:opacity-50"
         >
           {gerando === "pgr" ? <Loader2 className="size-3.5 animate-spin" /> : <FileSpreadsheet className="size-3.5" />} Lista para o PGR ({validadasMapa.size})
         </button>
