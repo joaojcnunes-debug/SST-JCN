@@ -47,10 +47,10 @@ export const CATALOGO: Novidade[] = [
     titulo: "Visual: o sistema fica todo no azul da JCN",
     texto:
       "O menu lateral, a barra do topo dos módulos, a tela de Módulos, o login e os fundos claros de destaque deixaram " +
-      "o verde antigo e passaram para o azul e o marinho da JCN. O verde continua só onde tem significado, como " +
+      "o verde antigo e passaram para o azul e o marinho da JCN. Nos Questionários e no DRPS, os botões e as seleções também ficaram azuis. O verde continua só onde tem significado, como " +
       "concluído, em dia ou risco baixo. Impressões e PDFs não mudaram.",
     onde: "Todo o sistema",
-    versoes: ["0.3.194"],
+    versoes: ["0.3.194", "0.3.195"],
   },
   {
     id: "lote-painel-historico-documento",

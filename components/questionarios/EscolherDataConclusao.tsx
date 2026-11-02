@@ -45,7 +45,7 @@ export default function EscolherDataConclusao({
         <button
           type="button"
           onClick={() => dataAnterior && onEscolher(dataAnterior)}
-          className="rounded-xl border border-verde-primary bg-white px-4 py-2 text-sm font-semibold text-verde-primary hover:bg-green-50"
+          className="rounded-xl border border-verde-primary bg-white px-4 py-2 text-sm font-semibold text-verde-primary hover:bg-verde-light"
         >
           Manter {dataAnterior ? dataBR(dataAnterior) : ""}
         </button>

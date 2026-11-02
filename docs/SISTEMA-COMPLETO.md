@@ -137,7 +137,7 @@ Alias de import: `@/*` → raiz.
 - Os nomes antigos `verde-*` são só apelidos de `marca-*`. Saem na troca de nome (0.final).
 - O menu lateral (SidebarShell e Gestão) usa o degradê `#0369a1 → #0b1e33 → #071526`.
 - A topbar dos módulos usa `#0369a1 → #0284c7`. O manifest usa `theme_color` `#0369a1`.
-- Verde só onde é **significado** (concluído, em dia, risco baixo, sucesso).
+- Verde só onde é **significado** (concluído, em dia, risco baixo, sucesso, assinado, confirmar ✓). O verde do Excel fica nos botões de planilha. A varredura por módulo segue o plano: a 0.2 (0.3.195) cobriu Questionários e DRPS.
 - Impressão e PDF ficam como estão até a Etapa 0b: a capa do relatório de inspeção mantém o verde claro antigo no `print:`.
 - Modo escuro por CSS vars.
 - Mensagens e comentários do código em português; regras em `lib/` têm testes.

@@ -184,7 +184,7 @@ export default function ResponsavelSelect({
                       valor atual · fora do time de psicossocial
                     </span>
                   </span>
-                  <Check className="size-4 shrink-0 text-green-600" />
+                  <Check className="size-4 shrink-0 text-verde-primary" />
                 </div>
               )}
 
@@ -222,7 +222,7 @@ export default function ResponsavelSelect({
                     onClick={() => escolher(u)}
                     className={cn(
                       "flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm transition-colors",
-                      marcado ? "bg-green-50/60" : "hover:bg-gray-50",
+                      marcado ? "bg-verde-light/60" : "hover:bg-gray-50",
                     )}
                   >
                     <span
@@ -239,7 +239,7 @@ export default function ResponsavelSelect({
                         </span>
                       )}
                     </span>
-                    {marcado && <Check className="size-4 shrink-0 text-green-600" />}
+                    {marcado && <Check className="size-4 shrink-0 text-verde-primary" />}
                   </button>
                 );
               })}
