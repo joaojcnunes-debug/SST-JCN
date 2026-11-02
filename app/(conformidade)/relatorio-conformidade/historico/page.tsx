@@ -56,14 +56,14 @@ export default function HistoricoConformidadePage() {
       <div className="flex items-center justify-between">
         <Link
           href="/relatorio-conformidade"
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-verde-primary"
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-marca-primary"
         >
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
         {canCreate && (
           <Link
             href="/relatorio-conformidade/novo"
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
           >
             <Plus className="size-4" /> Novo relatório
           </Link>
@@ -89,13 +89,13 @@ export default function HistoricoConformidadePage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por NR, empresa, setor ou responsável..."
-            className="w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary"
+            className="w-full rounded-md border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary"
           />
         </div>
         <select
           value={nrFilter}
           onChange={(e) => setNrFilter(e.target.value)}
-          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary"
+          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary"
         >
           <option value="todas">Todas as NRs</option>
           <option value={NR_LIVRE}>Sem NR</option>
@@ -108,7 +108,7 @@ export default function HistoricoConformidadePage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary"
+          className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary"
         >
           <option value="todos">Todos os status</option>
           <option value="RASCUNHO">Rascunho</option>

@@ -131,7 +131,7 @@ export default function EpiEntregasTab({
       {canEdit && (
         <div className="h-fit rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-            <ClipboardCheck className="size-4 text-verde-primary" />
+            <ClipboardCheck className="size-4 text-marca-primary" />
             Registrar entrega
           </h3>
 
@@ -239,7 +239,7 @@ export default function EpiEntregasTab({
                 <button
                   type="button"
                   onClick={addLinha}
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-verde-primary hover:text-verde-accent"
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-marca-primary hover:text-marca-accent"
                 >
                   <Plus className="size-3.5" /> Adicionar item
                 </button>
@@ -258,7 +258,7 @@ export default function EpiEntregasTab({
                 type="button"
                 onClick={submit}
                 disabled={registrar.isPending || !podeEnviar}
-                className="w-full rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                className="w-full rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
               >
                 {registrar.isPending ? "Registrando…" : "Registrar entrega"}
               </button>
@@ -315,7 +315,7 @@ export default function EpiEntregasTab({
                     <button
                       type="button"
                       onClick={() => setAssinandoId(e.id)}
-                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-sky-300 bg-white px-2.5 py-1.5 text-xs font-medium text-verde-accent hover:bg-sky-50"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-sky-300 bg-white px-2.5 py-1.5 text-xs font-medium text-marca-accent hover:bg-sky-50"
                     >
                       <PenLine className="size-3.5" /> Assinar
                     </button>

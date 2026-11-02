@@ -10,7 +10,7 @@ import {
 import { confirmar } from "@/components/ui/confirm";
 import { normalizarTexto, tokenizar } from "@/lib/busca/texto";
 
-const inputDark = "min-w-0 flex-1 rounded border border-white/40 bg-white/10 px-1 py-0.5 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-verde-accent";
+const inputDark = "min-w-0 flex-1 rounded border border-white/40 bg-white/10 px-1 py-0.5 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-marca-accent";
 
 export default function GestaoSidebar({
   espacos,
@@ -99,21 +99,21 @@ export default function GestaoSidebar({
           (useMinhasTarefas, já RLS-gated). É o CONTAINER que a UX-C(2) vai completar
           com o quadro pessoal (a lista própria onde ele cria tarefas) — quando esse
           pacote chegar, o quadro entra logo abaixo desta entrada. */}
-      <button type="button" onClick={onMeuEspaco} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${meuEspacoAtivo ? "bg-white/[0.16] text-white" : "text-white/90 hover:bg-white/10 hover:text-white"}`}>
-        {meuEspacoAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}
+      <button type="button" onClick={onMeuEspaco} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent ${meuEspacoAtivo ? "bg-white/[0.16] text-white" : "text-white/90 hover:bg-white/10 hover:text-white"}`}>
+        {meuEspacoAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-marca-accent" />}
         <UserSquare className="size-4" /> Meu Espaço
       </button>
       <div className="mb-1 border-t border-white/[0.07]" />
       {mostrarColab && onColab && (
-        <button type="button" onClick={onColab} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${colabAtivo ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
-          {colabAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}
+        <button type="button" onClick={onColab} className={`relative mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent ${colabAtivo ? "bg-white/[0.16] text-white" : "text-white/80 hover:bg-white/10 hover:text-white"}`}>
+          {colabAtivo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-marca-accent" />}
           <Users className="size-4" /> Colaboradores
         </button>
       )}
       {/* 28/10: "Membros e acessos" saiu da barra da lista e veio para cá, ao lado de Colaboradores.
           Só gestor (como o botão antigo); abre o mesmo modal. */}
       {onAcessos && (
-        <button type="button" onClick={onAcessos} title="Membros e acessos da Gestão — quem vê cada quadro" className="mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent">
+        <button type="button" onClick={onAcessos} title="Membros e acessos da Gestão — quem vê cada quadro" className="mb-1 flex w-full items-center gap-2 rounded-md px-1.5 py-1.5 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent">
           <ShieldCheck className="size-4" /> Membros e acessos
         </button>
       )}
@@ -125,7 +125,7 @@ export default function GestaoSidebar({
           onKeyDown={(e) => { if (e.key === "Escape") setBusca(""); }}
           placeholder="Pesquisar listas…"
           aria-label="Pesquisar listas"
-          className="w-full rounded-md border border-white/15 bg-white/10 py-1 pl-7 pr-7 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-verde-accent"
+          className="w-full rounded-md border border-white/15 bg-white/10 py-1 pl-7 pr-7 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-1 focus:ring-marca-accent"
         />
         {busca && (
           <button type="button" title="Limpar" onClick={() => setBusca("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-white/40 hover:text-white">
@@ -141,7 +141,7 @@ export default function GestaoSidebar({
         if (buscando && pastasDoEspaco.length === 0 && listasSoltas.length === 0) return null;
         return (
           <div key={esp.id}>
-            <div className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent" onClick={() => toggle(`e:${esp.id}`)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(`e:${esp.id}`); } }} role="button" tabIndex={0}>
+            <div className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent" onClick={() => toggle(`e:${esp.id}`)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(`e:${esp.id}`); } }} role="button" tabIndex={0}>
               {aberto(`e:${esp.id}`) ? <ChevronDown className="size-3.5 shrink-0 text-white/40" /> : <ChevronRight className="size-3.5 shrink-0 text-white/40" />}
               <Layers className="size-4 shrink-0" style={{ color: esp.cor }} />
               <Nome chave={`e:${esp.id}`} nome={esp.nome} onSalvar={(v) => salvarEspaco.mutate({ id: esp.id, nome: v })} className="font-semibold text-white/90" />
@@ -173,7 +173,7 @@ export default function GestaoSidebar({
                   const listas = quadrosVisiveis.filter((q) => q.id_pasta === pa.id);
                   return (
                     <div key={pa.id}>
-                      <div className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent" onClick={() => toggle(`p:${pa.id}`)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(`p:${pa.id}`); } }} role="button" tabIndex={0}>
+                      <div className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent" onClick={() => toggle(`p:${pa.id}`)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(`p:${pa.id}`); } }} role="button" tabIndex={0}>
                         {aberto(`p:${pa.id}`) ? <ChevronDown className="size-3.5 shrink-0 text-white/40" /> : <ChevronRight className="size-3.5 shrink-0 text-white/40" />}
                         <Folder className="size-4 shrink-0 text-white/45" />
                         <Nome chave={`p:${pa.id}`} nome={pa.nome} onSalvar={(v) => salvarPasta.mutate({ id: pa.id, nome: v })} className="font-medium text-white/80" />
@@ -224,8 +224,8 @@ function ItemLista({ q, ativo, editando, onSelect, podeEditar, onRenomearStart, 
   onExcluir: () => void;
 }) {
   return (
-    <div className={`group relative flex items-center gap-1.5 rounded-md px-1.5 py-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-verde-accent ${ativo ? "bg-white/[0.16] text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}`} onClick={() => onSelect(q.id_quadro)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelect(q.id_quadro); } }} role="button" tabIndex={0}>
-      {ativo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-verde-accent" />}
+    <div className={`group relative flex items-center gap-1.5 rounded-md px-1.5 py-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent ${ativo ? "bg-white/[0.16] text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}`} onClick={() => onSelect(q.id_quadro)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelect(q.id_quadro); } }} role="button" tabIndex={0}>
+      {ativo && <span className="absolute left-0 top-[15%] h-[70%] w-[3px] rounded-r-full bg-marca-accent" />}
       <List className="size-3.5 shrink-0" />
       {editando ? (
         <input autoFocus defaultValue={q.nome} onClick={(e) => e.stopPropagation()}

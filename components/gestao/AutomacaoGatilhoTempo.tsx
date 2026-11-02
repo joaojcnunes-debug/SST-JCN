@@ -8,7 +8,7 @@ import { PRIORIDADES, type CondicaoAutomacao, type GestaoEtiqueta, type ModeloTa
 // parada/SLA e data de início — e o modelo de tarefa usado quando a agenda CRIA uma tarefa (o mesmo
 // modelo serve aos gatilhos do SST, v300).
 
-const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none";
+const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none";
 const DIAS = [["1", "Seg"], ["2", "Ter"], ["3", "Qua"], ["4", "Qui"], ["5", "Sex"], ["6", "Sáb"], ["7", "Dom"]] as const;
 
 export function AgendaEditor({
@@ -38,7 +38,7 @@ export function AgendaEditor({
             return (
               <button key={v} type="button" disabled={disabled}
                 onClick={() => setAg({ dias_semana: on ? dias.filter((d) => d !== n) : [...dias, n].sort() })}
-                className={`rounded-md px-2 py-0.5 text-xs font-medium ${on ? "bg-verde-primary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                className={`rounded-md px-2 py-0.5 text-xs font-medium ${on ? "bg-marca-primary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                 {r}
               </button>
             );
@@ -89,7 +89,7 @@ export function ModeloTarefaEditor({
         <span className="text-gray-400">prazo: hoje +</span>
         <input type="number" defaultValue={modelo.prazo_dias ?? ""} disabled={disabled} onBlur={(e) => set({ prazo_dias: e.target.value.trim() || undefined })} placeholder="dias" className={`${sel} w-20`} />
         <label className="inline-flex items-center gap-1 text-xs text-gray-500">
-          <input type="checkbox" disabled={disabled} checked={modelo.prazo_uteis === "true"} onChange={(e) => set({ prazo_uteis: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-verde-primary" /> úteis
+          <input type="checkbox" disabled={disabled} checked={modelo.prazo_uteis === "true"} onChange={(e) => set({ prazo_uteis: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" /> úteis
         </label>
         <input list="modelo-etiquetas" disabled={disabled} placeholder="+ etiqueta" className={`${sel} w-32`}
           onKeyDown={(e) => {
@@ -106,7 +106,7 @@ export function ModeloTarefaEditor({
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-[11px] font-semibold uppercase text-gray-400">Responsáveis</span>
         {resp.map((em) => (
-          <span key={em} className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2 py-0.5 text-xs font-medium text-verde-primary">
+          <span key={em} className="inline-flex items-center gap-1 rounded-full bg-marca-light px-2 py-0.5 text-xs font-medium text-marca-primary">
             {em}{!disabled && <button type="button" onClick={() => set({ responsaveis: resp.filter((x) => x !== em) })}><X className="size-3" /></button>}
           </span>
         ))}

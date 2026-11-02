@@ -56,13 +56,13 @@ export default function CamposManagerModal({
                 defaultValue={c.nome}
                 disabled={!podeEditar}
                 onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== c.nome) salvar.mutate({ id: c.id, id_quadro: idQuadro, nome: v }); }}
-                className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none"
+                className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none"
               />
               <select
                 value={c.tipo}
                 disabled={!podeEditar}
                 onChange={(e) => salvar.mutate({ id: c.id, id_quadro: idQuadro, tipo: e.target.value as TipoCampo })}
-                className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 focus:border-verde-primary focus:outline-none"
+                className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-600 focus:border-marca-primary focus:outline-none"
               >
                 {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
@@ -81,13 +81,13 @@ export default function CamposManagerModal({
               </div>
             )}
             <label className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-gray-500">
-              <input type="checkbox" disabled={!podeEditar} checked={c.visivel_cliente} onChange={(e) => salvar.mutate({ id: c.id, id_quadro: idQuadro, visivel_cliente: e.target.checked })} className="size-3.5 rounded accent-verde-primary" />
+              <input type="checkbox" disabled={!podeEditar} checked={c.visivel_cliente} onChange={(e) => salvar.mutate({ id: c.id, id_quadro: idQuadro, visivel_cliente: e.target.checked })} className="size-3.5 rounded accent-marca-primary" />
               Visível ao cliente (Portal)
             </label>
           </div>
         ))}
         {podeEditar && (
-          <button type="button" onClick={adicionar} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-verde-primary ring-1 ring-dashed ring-verde-primary/40 hover:bg-verde-light/40">
+          <button type="button" onClick={adicionar} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-marca-primary ring-1 ring-dashed ring-marca-primary/40 hover:bg-marca-light/40">
             <Plus className="size-4" /> Adicionar campo
           </button>
         )}

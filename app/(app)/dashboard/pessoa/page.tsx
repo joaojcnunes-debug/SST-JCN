@@ -155,11 +155,11 @@ function Conteudo() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href={VOLTAR[fonte]} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
+          <Link href={VOLTAR[fonte]} className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-marca-primary">
             <ArrowLeft className="size-4" /> Voltar ao gráfico
           </Link>
           <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-            <UserRound className="size-5 text-verde-primary" />
+            <UserRound className="size-5 text-marca-primary" />
             {nome || "Pessoa"}
           </h1>
           <p className="text-sm text-gray-500">
@@ -230,7 +230,7 @@ function Conteudo() {
                     <Fragment key={k}>
                       <tr className="border-b border-gray-50">
                         <td className="py-2 pr-3">
-                          <button type="button" onClick={() => setAberta(ok ? null : k)} className="flex items-center gap-1 text-left text-gray-800 hover:text-verde-primary">
+                          <button type="button" onClick={() => setAberta(ok ? null : k)} className="flex items-center gap-1 text-left text-gray-800 hover:text-marca-primary">
                             {ok ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
                             <Building2 className="size-3.5 text-gray-400" /> {g.empresa}
                           </button>

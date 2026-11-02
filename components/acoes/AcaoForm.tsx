@@ -311,9 +311,9 @@ export default function AcaoForm({ open, onClose, editing }: Props) {
         </section>
 
         {/* 5W2H */}
-        <section className="space-y-3 rounded-lg border-l-4 border-verde-primary bg-verde-light/30 p-3">
+        <section className="space-y-3 rounded-lg border-l-4 border-marca-primary bg-marca-light/30 p-3">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-bold uppercase tracking-wider text-verde-primary">
+            <p className="text-xs font-bold uppercase tracking-wider text-marca-primary">
               5W2H — Plano de Ação
             </p>
             {isAdmin && (
@@ -501,7 +501,7 @@ export default function AcaoForm({ open, onClose, editing }: Props) {
           <button
             type="submit"
             disabled={save.isPending}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {save.isPending ? "Salvando..." : editing ? "Salvar" : "Criar"}
           </button>
@@ -512,7 +512,7 @@ export default function AcaoForm({ open, onClose, editing }: Props) {
 }
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:bg-gray-100 disabled:text-gray-500";
+  "mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30 disabled:bg-gray-100 disabled:text-gray-500";
 
 function Field({
   label,

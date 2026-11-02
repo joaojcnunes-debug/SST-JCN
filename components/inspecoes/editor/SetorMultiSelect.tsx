@@ -52,7 +52,7 @@ export default function SetorMultiSelect({
         disabled={disabled}
         className={cn(
           "flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm",
-          "focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30",
+          "focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30",
           disabled && "opacity-60 cursor-not-allowed"
         )}
       >
@@ -63,7 +63,7 @@ export default function SetorMultiSelect({
             selectedSetores.map((s) => (
               <span
                 key={s.id_setor}
-                className="rounded bg-verde-light px-1.5 py-0.5 text-xs font-medium text-verde-primary"
+                className="rounded bg-marca-light px-1.5 py-0.5 text-xs font-medium text-marca-primary"
               >
                 {s.setor_ghe}
                 <span
@@ -73,7 +73,7 @@ export default function SetorMultiSelect({
                     e.stopPropagation();
                     toggle(s.id_setor);
                   }}
-                  className="ml-1 inline-block cursor-pointer text-verde-primary/70 hover:text-verde-primary"
+                  className="ml-1 inline-block cursor-pointer text-marca-primary/70 hover:text-marca-primary"
                 >
                   <X className="inline size-3" />
                 </span>
@@ -109,15 +109,15 @@ export default function SetorMultiSelect({
                       type="button"
                       onClick={() => toggle(s.id_setor)}
                       className={cn(
-                        "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-verde-light",
-                        checked && "bg-verde-light"
+                        "flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-marca-light",
+                        checked && "bg-marca-light"
                       )}
                     >
                       <span
                         className={cn(
                           "flex size-4 shrink-0 items-center justify-center rounded border",
                           checked
-                            ? "border-verde-primary bg-verde-primary text-white"
+                            ? "border-marca-primary bg-marca-primary text-white"
                             : "border-gray-300 bg-white"
                         )}
                       >

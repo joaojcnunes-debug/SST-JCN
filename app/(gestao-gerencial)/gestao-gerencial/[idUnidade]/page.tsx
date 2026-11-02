@@ -50,7 +50,7 @@ export default function UnidadeEscalasPage() {
               onClick={() => setAba(a.id)}
               className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
                 ativo
-                  ? "border-verde-primary text-verde-primary"
+                  ? "border-marca-primary text-marca-primary"
                   : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-800"
               }`}
             >

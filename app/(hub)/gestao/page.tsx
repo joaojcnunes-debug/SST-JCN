@@ -493,7 +493,7 @@ export default function GestaoChabraPage() {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={configs.logo_url} alt="Logo JCN Consultoria" className="force-light h-8 w-auto max-w-[36px] shrink-0 rounded-md bg-white object-contain p-0.5 shadow" referrerPolicy="no-referrer" onError={(e) => { const img = e.currentTarget as HTMLImageElement; if (!img.src.endsWith("/logo-jcn.svg")) img.src = "/logo-jcn.svg"; }} />
         ) : (
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-verde-primary text-white shadow"><KanbanSquare className="size-4" /></span>
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-marca-primary text-white shadow"><KanbanSquare className="size-4" /></span>
         )}
         <div className="min-w-0 leading-tight">
           <p className="truncate text-[13px] font-bold tracking-tight text-white">Gestão JCN Consultoria</p>
@@ -584,7 +584,7 @@ export default function GestaoChabraPage() {
         {inboxView ? (
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary"><Bell className="size-6" /></span>
+              <span className="flex size-11 items-center justify-center rounded-xl bg-marca-light text-marca-primary"><Bell className="size-6" /></span>
               <div className="min-w-0 flex-1">
                 <h1 className="text-2xl font-bold text-gray-900">Notificações</h1>
                 <p className="text-sm text-gray-500">Avisos, aprovações e tarefas que precisam de você</p>
@@ -630,7 +630,7 @@ export default function GestaoChabraPage() {
         ) : colabView ? (
           <div>
             <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary"><Users className="size-6" /></span>
+              <span className="flex size-11 items-center justify-center rounded-xl bg-marca-light text-marca-primary"><Users className="size-6" /></span>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Colaboradores</h1>
                 <p className="text-sm text-gray-500">Acompanhe o Meu Quadro de cada colaborador — {colaboradores.length} visíve{colaboradores.length === 1 ? "l" : "is"}</p>
@@ -641,7 +641,7 @@ export default function GestaoChabraPage() {
         ) : meuEspacoView ? (
           <div>
             <div className="flex items-center gap-3">
-              <span className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary"><UserSquare className="size-6" /></span>
+              <span className="flex size-11 items-center justify-center rounded-xl bg-marca-light text-marca-primary"><UserSquare className="size-6" /></span>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Meu Espaço</h1>
                 <p className="text-sm text-gray-500">Tarefas em que sou responsável ou seguidor — {minhas.length} em todos os quadros</p>
@@ -658,7 +658,7 @@ export default function GestaoChabraPage() {
         ) : (
         <>
         <div className="flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary">
+          <span className="flex size-11 items-center justify-center rounded-xl bg-marca-light text-marca-primary">
             <KanbanSquare className="size-6" />
           </span>
           <div>
@@ -677,18 +677,18 @@ export default function GestaoChabraPage() {
         {/* Barra de ferramentas: busca + filtros + ações, tudo agrupado */}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {podeEditar && (
-            <button type="button" onClick={() => novaTarefa(statusInicialSlug)} className="inline-flex items-center gap-2 rounded-lg bg-verde-primary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95">
+            <button type="button" onClick={() => novaTarefa(statusInicialSlug)} className="inline-flex items-center gap-2 rounded-lg bg-marca-primary px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-marca-accent active:scale-95">
               <Plus className="size-4" /> Nova tarefa
             </button>
           )}
           <NotificacoesSino onAbrir={abrirNotif} />
           <div className="relative w-full sm:w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar tarefa…" className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-verde-primary focus:outline-none" />
+            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar tarefa…" className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-marca-primary focus:outline-none" />
           </div>
           <FiltrosPanel filtros={filtros} onChange={setFiltros} statuses={statuses} etiquetas={etiquetasCat} usuarios={usuarios} idQuadro={quadro?.id_quadro ?? ""} />
           {user?.nome && (
-            <button type="button" onClick={() => setSoMinhas((v) => !v)} className={`rounded-lg px-3 py-2 text-sm font-medium transition ${soMinhas ? "bg-verde-primary text-white" : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+            <button type="button" onClick={() => setSoMinhas((v) => !v)} className={`rounded-lg px-3 py-2 text-sm font-medium transition ${soMinhas ? "bg-marca-primary text-white" : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
               Minhas
             </button>
           )}
@@ -731,7 +731,7 @@ export default function GestaoChabraPage() {
             </div>
           )}
           {podeEditar && vista === "quadro" && (
-            <button type="button" onClick={() => { if (selecaoModo) limparSel(); else setSelecaoModo(true); }} className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 text-sm font-medium ${selecaoModo ? "border-verde-primary bg-verde-light/60 text-verde-primary" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+            <button type="button" onClick={() => { if (selecaoModo) limparSel(); else setSelecaoModo(true); }} className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 text-sm font-medium ${selecaoModo ? "border-marca-primary bg-marca-light/60 text-marca-primary" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
               <CheckSquare className="size-4" /> {selecaoModo ? "Cancelar" : "Selecionar"}
             </button>
           )}
@@ -743,7 +743,7 @@ export default function GestaoChabraPage() {
             {VISTAS.map((v) => {
               const Icon = v.icon;
               return (
-                <button key={v.value} type="button" onClick={() => mudarVista(v.value)} className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${vista === v.value ? "bg-verde-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}>
+                <button key={v.value} type="button" onClick={() => mudarVista(v.value)} className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${vista === v.value ? "bg-marca-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}>
                   <Icon className="size-4" /> {v.label}
                 </button>
               );
@@ -801,7 +801,7 @@ export default function GestaoChabraPage() {
                      colunas param no rodapé. Sem a medida (1º paint), cai no
                      `min-h` e na altura da coluna mais alta, como antes. */
                   style={alturaColuna ? { height: alturaColuna } : undefined}
-                  className={`flex min-h-[220px] w-72 shrink-0 flex-col rounded-xl border bg-gray-50/60 p-2.5 transition ${colHover === col.slug ? "border-verde-primary ring-2 ring-verde-primary/20" : "border-gray-200"}`}
+                  className={`flex min-h-[220px] w-72 shrink-0 flex-col rounded-xl border bg-gray-50/60 p-2.5 transition ${colHover === col.slug ? "border-marca-primary ring-2 ring-marca-primary/20" : "border-gray-200"}`}
                 >
                   <div className="mb-2 flex items-center justify-between px-1">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -822,7 +822,7 @@ export default function GestaoChabraPage() {
                     {(mostrar === "tarefas" ? lista : lista.slice(0, limiteCol[col.slug] ?? LIMITE_COL)).map((t) => (
                       <div key={t.id_tarefa}>
                         {quadroAgrupar === "status" && dropAlvo?.col === col.slug && dropAlvo.beforeId === t.id_tarefa && dragId !== t.id_tarefa && (
-                          <div className="mb-2 h-1 rounded-full bg-verde-primary/70" />
+                          <div className="mb-2 h-1 rounded-full bg-marca-primary/70" />
                         )}
                         <TarefaCard
                           t={t}
@@ -845,11 +845,11 @@ export default function GestaoChabraPage() {
                       </div>
                     ))}
                     {quadroAgrupar === "status" && dropAlvo?.col === col.slug && dropAlvo.beforeId === null && dragId && (
-                      <div className="h-1 rounded-full bg-verde-primary/70" />
+                      <div className="h-1 rounded-full bg-marca-primary/70" />
                     )}
                     {mostrar !== "tarefas" && lista.length > (limiteCol[col.slug] ?? LIMITE_COL) && (
                       <button type="button" onClick={() => setLimiteCol((m) => ({ ...m, [col.slug]: (m[col.slug] ?? LIMITE_COL) + LIMITE_COL }))}
-                        className="w-full rounded-lg border border-dashed border-gray-300 py-1.5 text-xs font-medium text-gray-500 hover:border-verde-primary hover:text-verde-primary">
+                        className="w-full rounded-lg border border-dashed border-gray-300 py-1.5 text-xs font-medium text-gray-500 hover:border-marca-primary hover:text-marca-primary">
                         Mostrar mais ({lista.length - (limiteCol[col.slug] ?? LIMITE_COL)} restantes)
                       </button>
                     )}

@@ -94,7 +94,7 @@ export default function ConsolidacaoPorEmpresaPage() {
               value={edicao.nome}
               onChange={(e) => setEdicao({ ...edicao, nome: e.target.value })}
               placeholder="Ex.: Obras Serra 2026"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             />
           </label>
           <div>
@@ -106,7 +106,7 @@ export default function ConsolidacaoPorEmpresaPage() {
               type="button"
               onClick={gravar}
               disabled={salvar.isPending || !edicao.nome.trim() || edicao.empresas.length === 0}
-              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
               {salvar.isPending && <Loader2 className="size-4 animate-spin" />} Salvar
             </button>
@@ -141,7 +141,7 @@ export default function ConsolidacaoPorEmpresaPage() {
             <button
               type="button"
               onClick={() => setEdicao({ id: null, nome: "", empresas: [] })}
-              className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary px-3 py-2 text-sm font-medium text-verde-primary hover:bg-verde-light"
+              className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary px-3 py-2 text-sm font-medium text-marca-primary hover:bg-marca-light"
             >
               <Plus className="size-4" /> Nova consolidação
             </button>

@@ -89,7 +89,7 @@ export default function NovoAetPage() {
     <div className="mx-auto max-w-xl space-y-6">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-semibold text-gray-900">
-          <ClipboardCheck className="size-5 text-verde-primary" />
+          <ClipboardCheck className="size-5 text-marca-primary" />
           Novo Laudo AET
         </h1>
         <p className="text-sm text-gray-500">
@@ -128,7 +128,7 @@ export default function NovoAetPage() {
                   handleChange("endereco_empresa", e.target.value);
                 }}
                 placeholder="Rua, nº, Bairro, Cidade – UF"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary"
               />
               {empresa && !enderecoCadastro ? (
                 <p className="mt-1 text-[11px] text-amber-700">
@@ -167,7 +167,7 @@ export default function NovoAetPage() {
                   value={form.titulo_profissional}
                   onChange={(e) => handleChange("titulo_profissional", e.target.value)}
                   placeholder="Médico do Trabalho"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary"
                 />
               </div>
               <div>
@@ -179,7 +179,7 @@ export default function NovoAetPage() {
                   value={form.registro_profissional}
                   onChange={(e) => handleChange("registro_profissional", e.target.value)}
                   placeholder="277120-RJ"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary"
                 />
               </div>
             </div>
@@ -192,7 +192,7 @@ export default function NovoAetPage() {
                 type="date"
                 value={form.data_elaboracao}
                 onChange={(e) => handleChange("data_elaboracao", e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary"
               />
             </div>
           </>
@@ -201,7 +201,7 @@ export default function NovoAetPage() {
         <button
           type="submit"
           disabled={criar.isPending || !empresaId}
-          className="flex w-full items-center justify-center gap-2 rounded-md bg-verde-primary py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-marca-primary py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {criar.isPending ? (
             <Loader2 className="size-4 animate-spin" />

@@ -49,13 +49,13 @@ export default function UnidadesTab() {
           onChange={(e) => setNovo(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
           placeholder="Nome da unidade (ex: Matriz, Filial Teresópolis, Carteira A)…"
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
         />
         <button
           type="button"
           onClick={add}
           disabled={criar.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
         >
           <Plus className="size-4" /> Adicionar
         </button>
@@ -111,7 +111,7 @@ function LinhaUnidade({
         type="text"
         value={nome}
         onChange={(e) => setNome(e.target.value)}
-        className="flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-verde-primary focus:bg-white focus:outline-none"
+        className="flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-marca-primary focus:bg-white focus:outline-none"
       />
       {dirty && (
         <button
@@ -120,7 +120,7 @@ function LinhaUnidade({
             renomear.mutate({ id_unidade: unidade.id_unidade, nome })
           }
           disabled={renomear.isPending}
-          className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2.5 py-1 text-xs font-medium text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {renomear.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
           Salvar

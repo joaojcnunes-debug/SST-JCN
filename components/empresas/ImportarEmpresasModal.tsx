@@ -181,9 +181,9 @@ export default function ImportarEmpresasModal({
           </button>
 
           <label
-            className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-12 text-center transition hover:border-verde-primary hover:bg-verde-light/30"
+            className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-6 py-12 text-center transition hover:border-marca-primary hover:bg-marca-light/30"
           >
-            <UploadCloud className="size-9 text-verde-primary" />
+            <UploadCloud className="size-9 text-marca-primary" />
             <span className="text-sm font-semibold text-gray-800">Clique para escolher a planilha</span>
             <span className="text-xs text-gray-400">CSV ou XLSX · colunas reconhecidas: Nome, CNPJ, Razão Social, Grau de Risco, Unidade, Município, UF, CEP, Telefone, E-mail…</span>
             <input
@@ -204,7 +204,7 @@ export default function ImportarEmpresasModal({
       {etapa === "previa" && (
         <div className="space-y-4">
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <FileSpreadsheet className="size-4 text-verde-primary" />
+            <FileSpreadsheet className="size-4 text-marca-primary" />
             <span className="font-medium text-gray-700">{arquivo}</span>
           </div>
 
@@ -270,7 +270,7 @@ export default function ImportarEmpresasModal({
                   type="checkbox"
                   checked={enriquecer}
                   onChange={(e) => setEnriquecer(e.target.checked)}
-                  className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary"
+                  className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary"
                 />
                 Completar dados pela Receita Federal (consulta cada CNPJ — mais lento)
               </label>
@@ -296,7 +296,7 @@ export default function ImportarEmpresasModal({
               type="button"
               disabled={contagem.valida === 0 || ocupado}
               onClick={executarImportacao}
-              className="inline-flex items-center gap-2 rounded-xl bg-verde-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-marca-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               {ocupado ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
               Importar {contagem.valida} empresa(s)
@@ -330,7 +330,7 @@ export default function ImportarEmpresasModal({
             <button
               type="button"
               onClick={fechar}
-              className="rounded-xl bg-verde-primary px-5 py-2 text-sm font-semibold text-white transition hover:bg-verde-accent"
+              className="rounded-xl bg-marca-primary px-5 py-2 text-sm font-semibold text-white transition hover:bg-marca-accent"
             >
               Concluir
             </button>

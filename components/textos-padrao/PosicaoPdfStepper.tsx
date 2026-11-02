@@ -83,7 +83,7 @@ export default function PosicaoPdfStepper({
                     "mt-3.5 h-0.5 flex-1 transition-colors",
                     ativo ||
                       lista.findIndex((x) => x.valor === valorEfetivo) > idx - 1
-                      ? "bg-verde-primary/40"
+                      ? "bg-marca-primary/40"
                       : "bg-gray-200"
                   )}
                 />
@@ -103,8 +103,8 @@ export default function PosicaoPdfStepper({
                   className={cn(
                     "relative flex size-7 items-center justify-center rounded-full border-2 text-xs font-bold transition-all",
                     ativo
-                      ? "border-verde-primary bg-verde-primary text-white shadow-sm"
-                      : "border-gray-300 bg-white text-gray-500 group-hover:border-verde-primary/60"
+                      ? "border-marca-primary bg-marca-primary text-white shadow-sm"
+                      : "border-gray-300 bg-white text-gray-500 group-hover:border-marca-primary/60"
                   )}
                 >
                   {idx + 1}
@@ -113,7 +113,7 @@ export default function PosicaoPdfStepper({
                       className={cn(
                         "absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold",
                         ativo
-                          ? "bg-white text-verde-primary"
+                          ? "bg-white text-marca-primary"
                           : "bg-gray-700 text-white"
                       )}
                       title={`${count} capítulo${count !== 1 ? "s" : ""} nesta posição`}
@@ -125,7 +125,7 @@ export default function PosicaoPdfStepper({
                 <span
                   className={cn(
                     "max-w-[72px] text-center text-[10px] font-semibold leading-tight",
-                    ativo ? "text-verde-primary" : "text-gray-500"
+                    ativo ? "text-marca-primary" : "text-gray-500"
                   )}
                 >
                   {p.curto}
@@ -137,8 +137,8 @@ export default function PosicaoPdfStepper({
       </div>
 
       {/* Descrição da posição selecionada */}
-      <div className="rounded-md border border-verde-primary/20 bg-verde-primary/5 px-3 py-1.5 text-xs">
-        <span className="font-semibold text-verde-primary">
+      <div className="rounded-md border border-marca-primary/20 bg-marca-primary/5 px-3 py-1.5 text-xs">
+        <span className="font-semibold text-marca-primary">
           Selecionado:
         </span>{" "}
         <span className="text-gray-700">{selecionado.longo}</span>

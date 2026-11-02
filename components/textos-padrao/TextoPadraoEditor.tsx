@@ -222,7 +222,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
               type="button"
               onClick={seedTemplate}
               disabled={criar.isPending}
-              className="inline-flex items-center gap-2 rounded-md border border-verde-primary bg-white px-3 py-2 text-sm font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-md border border-marca-primary bg-white px-3 py-2 text-sm font-semibold text-marca-primary hover:bg-marca-light disabled:opacity-50"
             >
               <BookOpen className="size-4" /> Carregar modelo inicial
             </button>
@@ -231,7 +231,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
             type="button"
             onClick={novoCapitulo}
             disabled={criar.isPending}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent disabled:opacity-50"
           >
             <Plus className="size-4" /> Novo Capítulo
           </button>
@@ -284,7 +284,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar capítulo por título..."
-            className="w-full rounded-md border border-gray-300 bg-white py-2 pl-8 pr-3 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+            className="w-full rounded-md border border-gray-300 bg-white py-2 pl-8 pr-3 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
           />
           {busca && (
             <button
@@ -333,7 +333,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
               fixas nas pontas (não aparecem aqui). */}
           {unificado ? (
             <>
-              <div className="rounded-md bg-verde-light/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-verde-primary">
+              <div className="rounded-md bg-marca-light/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-marca-primary">
                 Ordem do laudo — arraste/reordene livremente (capa e assinatura são fixas)
               </div>
               {aplicaBusca(
@@ -368,7 +368,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
           {/* 1) Editáveis posicionados no INÍCIO (antes do corpo do laudo) */}
           {editavelInicio.length > 0 && (
             <>
-              <div className="rounded-md bg-verde-light/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-verde-primary">
+              <div className="rounded-md bg-marca-light/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-marca-primary">
                 Texto editável — início (sai antes do laudo)
               </div>
               {editavelInicio.map((cap, idx) =>
@@ -407,7 +407,7 @@ export default function TextoPadraoEditor({ modulo }: Props) {
           {/* 3) Editáveis posicionados no FIM (depois do corpo do laudo) */}
           {editavelFim.length > 0 && (
             <>
-              <div className="rounded-md bg-verde-light/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-verde-primary">
+              <div className="rounded-md bg-marca-light/60 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-marca-primary">
                 Texto editável — fim (sai depois do laudo)
               </div>
               {editavelFim.map((cap, idx) =>
@@ -748,7 +748,7 @@ function CapituloCard({
             <ChevronDown className="size-4" />
           </button>
         </div>
-        <span className="inline-flex shrink-0 items-center rounded bg-verde-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-verde-primary mt-2">
+        <span className="inline-flex shrink-0 items-center rounded bg-marca-light px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-marca-primary mt-2">
           Editável
         </span>
         {capitulo.bloqueado && (
@@ -771,7 +771,7 @@ function CapituloCard({
           }}
           placeholder="Título do capítulo"
           className={cn(
-            "flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30",
+            "flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30",
             travado && "bg-gray-50 text-gray-500",
           )}
         />
@@ -832,7 +832,7 @@ function CapituloCard({
             })
           }
           disabled={!dirty || salvando || !titulo.trim() || travado}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {salvando ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
           Salvar
@@ -880,7 +880,7 @@ function CapituloCard({
               disabled={salvando}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
                 capitulo.orientacao === "retrato"
-                  ? "bg-verde-primary text-white"
+                  ? "bg-marca-primary text-white"
                   : "bg-white text-gray-600 hover:bg-gray-50"
               } disabled:opacity-50`}
             >
@@ -895,7 +895,7 @@ function CapituloCard({
               disabled={salvando}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
                 capitulo.orientacao === "paisagem"
-                  ? "bg-verde-primary text-white"
+                  ? "bg-marca-primary text-white"
                   : "bg-white text-gray-600 hover:bg-gray-50"
               } disabled:opacity-50`}
             >
@@ -923,7 +923,7 @@ function CapituloCard({
               }
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
                 capitulo.quebra_pagina === "nova" || capitulo.bg_imagem_url
-                  ? "bg-verde-primary text-white"
+                  ? "bg-marca-primary text-white"
                   : "bg-white text-gray-600 hover:bg-gray-50"
               } disabled:opacity-50`}
             >
@@ -945,7 +945,7 @@ function CapituloCard({
               }
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold transition-colors ${
                 capitulo.quebra_pagina === "continua" && !capitulo.bg_imagem_url
-                  ? "bg-verde-primary text-white"
+                  ? "bg-marca-primary text-white"
                   : "bg-white text-gray-600 hover:bg-gray-50"
               } disabled:opacity-50`}
             >
@@ -1027,7 +1027,7 @@ function CapituloCard({
             type="button"
             onClick={() => bgInputRef.current?.click()}
             disabled={enviandoBg || salvando}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-2 py-1 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:opacity-50"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-marca-primary bg-white px-2 py-1 text-xs font-semibold text-marca-primary hover:bg-marca-light disabled:opacity-50"
           >
             {enviandoBg ? (
               <Loader2 className="size-3.5 animate-spin" />

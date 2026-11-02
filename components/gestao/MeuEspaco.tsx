@@ -133,17 +133,17 @@ export default function MeuEspaco({
       <h2 className="mt-6 text-base font-semibold text-gray-800">Tarefas em que estou vinculado <span className="text-sm font-normal text-gray-400">— {tarefas.length} em outros quadros</span></h2>
       <div className="mt-2 flex flex-wrap items-center gap-3">
         <div className="inline-flex rounded-lg border border-gray-200 bg-white p-0.5 text-sm font-medium">
-          <button type="button" onClick={() => setVista("kanban")} className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${vista === "kanban" ? "bg-verde-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}>
+          <button type="button" onClick={() => setVista("kanban")} className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${vista === "kanban" ? "bg-marca-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}>
             <KanbanSquare className="size-4" /> Por urgência
           </button>
-          <button type="button" onClick={() => setVista("lista")} className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${vista === "lista" ? "bg-verde-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}>
+          <button type="button" onClick={() => setVista("lista")} className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${vista === "lista" ? "bg-marca-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}>
             <LayoutList className="size-4" /> Por quadro
           </button>
-          <button type="button" onClick={() => setVista("agenda")} className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${vista === "agenda" ? "bg-verde-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}>
+          <button type="button" onClick={() => setVista("agenda")} className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 ${vista === "agenda" ? "bg-marca-primary text-white" : "text-gray-500 hover:bg-gray-100"}`}>
             <CalendarDays className="size-4" /> Agenda
           </button>
         </div>
-        <button type="button" onClick={() => setMostrarConcluidas((v) => !v)} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${mostrarConcluidas ? "border-verde-primary bg-verde-light/60 text-verde-primary" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+        <button type="button" onClick={() => setMostrarConcluidas((v) => !v)} className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${mostrarConcluidas ? "border-marca-primary bg-marca-light/60 text-marca-primary" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
           {mostrarConcluidas ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
           {mostrarConcluidas ? "Ocultar concluídas" : `Mostrar concluídas${ocultas > 0 ? ` (${ocultas})` : ""}`}
         </button>
@@ -177,7 +177,7 @@ export default function MeuEspaco({
                 onDrop={() => soltar(fila.value)}
                 /* Mesma régua do Quadro: a fila ocupa a altura livre da tela e rola por dentro.
                    12rem ≈ cabeçalho (título + barra de vistas) + rodapé da página. */
-                className={`flex h-[max(320px,calc(100vh-12rem))] w-72 shrink-0 flex-col rounded-xl border bg-gray-50/60 p-2.5 transition ${filaHover === fila.value ? "border-verde-primary ring-2 ring-verde-primary/20" : "border-gray-200"}`}
+                className={`flex h-[max(320px,calc(100vh-12rem))] w-72 shrink-0 flex-col rounded-xl border bg-gray-50/60 p-2.5 transition ${filaHover === fila.value ? "border-marca-primary ring-2 ring-marca-primary/20" : "border-gray-200"}`}
                 style={{ borderTopColor: fila.cor, borderTopWidth: 3 }}
               >
                 <div className="mb-2 flex flex-wrap items-center gap-1.5 px-1">
@@ -215,7 +215,7 @@ export default function MeuEspaco({
                         </p>
                         {subs.length > 0 && (
                           <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-gray-100">
-                            <div className="h-1 rounded-full bg-verde-primary transition-all" style={{ width: `${Math.round((subFeitas / subs.length) * 100)}%` }} />
+                            <div className="h-1 rounded-full bg-marca-primary transition-all" style={{ width: `${Math.round((subFeitas / subs.length) * 100)}%` }} />
                           </div>
                         )}
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">

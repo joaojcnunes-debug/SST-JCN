@@ -127,7 +127,7 @@ export default function EpiColaboradoresTab({
           <button
             type="button"
             onClick={novo}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
           >
             <Plus className="size-4" /> Novo colaborador
           </button>
@@ -183,7 +183,7 @@ export default function EpiColaboradoresTab({
                           type="button"
                           onClick={() => editar(c)}
                           aria-label="Editar"
-                          className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-verde-primary"
+                          className="rounded p-1.5 text-gray-400 hover:bg-gray-100 hover:text-marca-primary"
                         >
                           <Pencil className="size-4" />
                         </button>
@@ -266,7 +266,7 @@ export default function EpiColaboradoresTab({
             <div className="col-span-2 rounded-lg border border-gray-200 p-3">
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-xs font-semibold text-gray-600">
-                  <Fingerprint className="size-4 text-verde-primary" /> Biometria
+                  <Fingerprint className="size-4 text-marca-primary" /> Biometria
                   (digital)
                 </span>
                 {form.biometria_template ? (
@@ -296,7 +296,7 @@ export default function EpiColaboradoresTab({
                   type="button"
                   onClick={cadastrarBiometria}
                   disabled={enrolling || !bioConsent || agenteOk === false}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-white px-3 py-1.5 text-xs font-semibold text-verde-accent hover:bg-sky-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-white px-3 py-1.5 text-xs font-semibold text-marca-accent hover:bg-sky-50 disabled:opacity-50"
                 >
                   {enrolling ? (
                     <>
@@ -330,7 +330,7 @@ export default function EpiColaboradoresTab({
                     <span
                       key={i}
                       className={`h-1.5 flex-1 rounded-full ${
-                        i < progresso ? "bg-verde-primary" : "bg-gray-200"
+                        i < progresso ? "bg-marca-primary" : "bg-gray-200"
                       }`}
                     />
                   ))}
@@ -365,7 +365,7 @@ export default function EpiColaboradoresTab({
               type="button"
               onClick={submit}
               disabled={salvar.isPending || !form.nome?.trim()}
-              className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+              className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
             >
               {salvar.isPending ? "Salvando…" : "Salvar"}
             </button>

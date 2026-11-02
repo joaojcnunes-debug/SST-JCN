@@ -95,7 +95,7 @@ export default function EmpresaCard({
                 href={`/empresas/${empresa.id_empresa}`}
                 data-card-link
                 title="Abrir a ficha da empresa"
-                className="before:absolute before:inset-0 before:rounded-2xl before:content-[''] focus-visible:outline-none group-hover:text-verde-primary"
+                className="before:absolute before:inset-0 before:rounded-2xl before:content-[''] focus-visible:outline-none group-hover:text-marca-primary"
               >
                 {empresa.nome_empresa}
               </Link>
@@ -138,15 +138,15 @@ export default function EmpresaCard({
 
       {/* ── Contadores ────────────────────────────── */}
       <div className="mx-4 flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2 text-xs text-gray-600">
-        <ClipboardList className="size-3.5 shrink-0 text-verde-primary" />
+        <ClipboardList className="size-3.5 shrink-0 text-marca-primary" />
         <span>
           <span className="font-semibold text-gray-800">{count ?? "—"}</span>
           {" "}
           {count === 1 ? "inspeção" : "inspeções"}
         </span>
         {!inativa && (
-          <span className="ml-auto flex items-center gap-1 text-verde-primary">
-            <span className="size-1.5 rounded-full bg-verde-accent" />
+          <span className="ml-auto flex items-center gap-1 text-marca-primary">
+            <span className="size-1.5 rounded-full bg-marca-accent" />
             Ativa
           </span>
         )}
@@ -159,7 +159,7 @@ export default function EmpresaCard({
         <Link
           title="Todos os documentos desta empresa"
           href={`/empresas/${empresa.id_empresa}?aba=documentos`}
-          className="relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-verde-primary px-3 py-2 text-xs font-semibold text-white transition hover:bg-verde-accent active:scale-95"
+          className="relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-marca-primary px-3 py-2 text-xs font-semibold text-white transition hover:bg-marca-accent active:scale-95"
         >
           <FolderOpen className="size-3.5" />
           Documentos

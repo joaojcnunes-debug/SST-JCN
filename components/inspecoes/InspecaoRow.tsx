@@ -23,7 +23,7 @@ const PILULA_DOC: Record<ChaveDocumento, { label: string; classe: string }> = {
 
 /** Coluna Ações fixa à direita — o cabeçalho (app/(app)/inspecoes/page.tsx) usa a mesma, com o fundo dele. */
 export const ACOES_FIXAS = "sticky right-0 z-[1] px-3 py-3 shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.15)]";
-/** Fundo opaco da célula; no hover, o verde da linha (verde-light 25%) por cima do branco. */
+/** Fundo opaco da célula; no hover, o verde da linha (marca-light 25%) por cima do branco. */
 const FUNDO_ACOES =
   "bg-white group-hover:bg-[linear-gradient(rgb(232_245_233/0.25),rgb(232_245_233/0.25))] dark:group-hover:bg-none";
 
@@ -60,7 +60,7 @@ export default function InspecaoRow({
   showEmpresa?: boolean;
 }) {
   return (
-    <tr className="group border-b border-gray-50 transition-colors hover:bg-verde-light/25 last:border-b-0">
+    <tr className="group border-b border-gray-50 transition-colors hover:bg-marca-light/25 last:border-b-0">
       <td className="px-3 py-3 font-mono text-xs text-gray-400">
         {insp.id_inspecao}
       </td>
@@ -108,7 +108,7 @@ export default function InspecaoRow({
             <button
               type="button"
               onClick={() => onEditResponsavel(insp)}
-              className="flex size-6 items-center justify-center rounded-md text-gray-300 transition hover:bg-verde-light hover:text-verde-primary"
+              className="flex size-6 items-center justify-center rounded-md text-gray-300 transition hover:bg-marca-light hover:text-marca-primary"
               title="Editar responsável (Admin)"
             >
               <Pencil className="size-3" />
@@ -179,7 +179,7 @@ export default function InspecaoRow({
               <button
                 type="button"
                 onClick={() => onEditAssociados(insp)}
-                className="flex size-6 items-center justify-center rounded-md text-gray-300 transition hover:bg-verde-light hover:text-verde-primary"
+                className="flex size-6 items-center justify-center rounded-md text-gray-300 transition hover:bg-marca-light hover:text-marca-primary"
                 title="Editar associados"
               >
                 <Pencil className="size-3" />
@@ -224,7 +224,7 @@ export default function InspecaoRow({
           <div className="flex items-center justify-end gap-1">
             <Link
               href={`/inspecoes/${insp.id_inspecao}`}
-              className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-verde-light hover:text-verde-primary"
+              className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-marca-light hover:text-marca-primary"
               title="Editar inspeção"
             >
               <Pencil className="size-3.5" />

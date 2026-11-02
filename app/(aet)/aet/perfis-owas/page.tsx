@@ -54,7 +54,7 @@ export default function PerfisOwasPage() {
           type="button"
           onClick={novoPerfil}
           disabled={criar.isPending}
-          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent disabled:opacity-50"
         >
           {criar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
           Novo Perfil
@@ -169,13 +169,13 @@ function PerfilCard({
           value={nome}
           onChange={(e) => setNome(e.target.value)}
           placeholder="Nome do perfil"
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
         />
         <button
           type="button"
           onClick={handleSave}
           disabled={salvar.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
           Salvar
@@ -233,7 +233,7 @@ function OwasGroupPerfil({
                 type="checkbox"
                 checked={selected.includes(opt.value)}
                 onChange={() => onToggle(opt.value)}
-                className="size-3.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary"
+                className="size-3.5 rounded border-gray-300 text-marca-primary focus:ring-marca-primary"
               />
               {opt.label}
             </label>

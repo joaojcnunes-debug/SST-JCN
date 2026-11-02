@@ -49,7 +49,7 @@ export default function PrioridadeCalculada({ insp, podeEditarPrazo, compacto }:
           onClick={() => setAbrirPrazo(true)}
           className={cn(
             "inline-flex items-center gap-1 text-[11px] disabled:cursor-default",
-            insp.prazo ? (vencido ? "font-medium text-red-600" : "text-gray-500") : "text-gray-300 hover:text-verde-primary",
+            insp.prazo ? (vencido ? "font-medium text-red-600" : "text-gray-500") : "text-gray-300 hover:text-marca-primary",
           )}
           title={podeEditarPrazo ? "Definir o prazo" : undefined}
         >
@@ -93,7 +93,7 @@ function ModalPrazo({ insp, onClose }: { insp: Inspecao; onClose: () => void }) 
           </button>
           <span className="flex gap-2">
             <button type="button" onClick={onClose} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">Cancelar</button>
-            <button type="button" disabled={salvar.isPending || !prazo} onClick={() => salvar.mutate(prazo)} className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50">
+            <button type="button" disabled={salvar.isPending || !prazo} onClick={() => salvar.mutate(prazo)} className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
               {salvar.isPending && <Loader2 className="size-3.5 animate-spin" />} Salvar
             </button>
           </span>

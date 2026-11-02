@@ -67,13 +67,13 @@ export default function EscalaTab({ idUnidade }: { idUnidade: string }) {
         <select
           value={turnoSel}
           onChange={(e) => setIdTurno(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
         >
           {turnosAtivos.map((t) => (
             <option key={t.id} value={t.id}>{t.nome}</option>
           ))}
         </select>
-        {ciclo.isPending && <Loader2 className="size-4 animate-spin text-verde-primary" />}
+        {ciclo.isPending && <Loader2 className="size-4 animate-spin text-marca-primary" />}
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-gray-200">
@@ -92,7 +92,7 @@ export default function EscalaTab({ idUnidade }: { idUnidade: string }) {
           </thead>
           <tbody>
             {equipeAtiva.map((v) => (
-              <tr key={v.id} className="hover:bg-verde-primary/[0.03]">
+              <tr key={v.id} className="hover:bg-marca-primary/[0.03]">
                 <td className="sticky left-0 z-10 border-r border-gray-200 bg-white px-3 py-1.5">
                   <div className="font-medium text-gray-900">{v.profissional?.nome}</div>
                   {v.categoria?.nome && <div className="text-xs text-gray-400">{v.categoria.nome}</div>}
@@ -101,9 +101,9 @@ export default function EscalaTab({ idUnidade }: { idUnidade: string }) {
                   const cel = marcados.get(`${v.id_profissional}|${d.n}|${turnoSel}`);
                   const tipo = cel?.tipo ?? null;
                   const cls =
-                    tipo === "trabalha" ? "border-verde-primary bg-verde-primary text-white"
+                    tipo === "trabalha" ? "border-marca-primary bg-marca-primary text-white"
                     : tipo === "disponivel" ? "border-blue-500 bg-blue-500 text-white"
-                    : "border-gray-300 bg-white text-transparent hover:border-verde-primary/50 hover:bg-verde-primary/5";
+                    : "border-gray-300 bg-white text-transparent hover:border-marca-primary/50 hover:bg-marca-primary/5";
                   const titulo =
                     tipo === "trabalha" ? "Atua neste dia — clique para tornar Disponível p/ substituir"
                     : tipo === "disponivel" ? "Disponível p/ substituir — clique para limpar"
@@ -128,7 +128,7 @@ export default function EscalaTab({ idUnidade }: { idUnidade: string }) {
         </table>
       </div>
       <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
-        <span className="inline-flex items-center gap-1.5"><span className="inline-flex size-4 items-center justify-center rounded border border-verde-primary bg-verde-primary text-[10px] font-bold text-white">✓</span> Atua</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-flex size-4 items-center justify-center rounded border border-marca-primary bg-marca-primary text-[10px] font-bold text-white">✓</span> Atua</span>
         <span className="inline-flex items-center gap-1.5"><span className="inline-flex size-4 items-center justify-center rounded border border-blue-500 bg-blue-500 text-[10px] font-bold text-white">D</span> Disponível p/ substituir</span>
         <span className="text-gray-400">Clique cicla: vazio → Atua → Disponível → vazio.</span>
       </div>

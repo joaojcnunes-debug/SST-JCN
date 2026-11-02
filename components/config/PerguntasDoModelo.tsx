@@ -59,7 +59,7 @@ export default function PerguntasDoModelo({
             setEditing(null);
             setModalOpen(true);
           }}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-verde-accent"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-marca-accent"
         >
           <Plus className="size-3.5" /> Nova Pergunta
         </button>
@@ -128,7 +128,7 @@ export default function PerguntasDoModelo({
                       setEditing(p);
                       setModalOpen(true);
                     }}
-                    className="rounded p-1 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                    className="rounded p-1 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
                   >
                     <Pencil className="size-3.5" />
                   </button>
@@ -300,7 +300,7 @@ function PerguntaModeloModal({
                 })
               }
               placeholder={editing ? "" : "Deixe vazio para gerar do texto"}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               disabled={!!editing}
             />
           </div>
@@ -314,7 +314,7 @@ function PerguntaModeloModal({
                   input_type: e.target.value as typeof form.input_type,
                 })
               }
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             >
               <option value="select">Seleção (dropdown)</option>
               <option value="text">Texto curto</option>
@@ -332,7 +332,7 @@ function PerguntaModeloModal({
             value={form.texto}
             onChange={(e) => setForm({ ...form, texto: e.target.value })}
             placeholder="Como vai aparecer pro usuário"
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             required
           />
         </div>
@@ -349,7 +349,7 @@ function PerguntaModeloModal({
                     type="text"
                     value={opt}
                     onChange={(e) => setOpcao(i, e.target.value)}
-                    className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                    className="flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                   />
                   <button
                     type="button"
@@ -379,7 +379,7 @@ function PerguntaModeloModal({
               onChange={(e) =>
                 setForm({ ...form, obrigatoria: e.target.checked })
               }
-              className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+              className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
             />
             Obrigatória
           </label>
@@ -407,7 +407,7 @@ function PerguntaModeloModal({
           <button
             type="submit"
             disabled={save.isPending}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {save.isPending ? "Salvando..." : editing ? "Salvar" : "Criar"}
           </button>

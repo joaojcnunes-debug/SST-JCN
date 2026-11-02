@@ -27,7 +27,7 @@ import { useGruposEmpresas } from "@/lib/hooks/useGruposEmpresas";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
 const selectCls =
-  "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
+  "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
 
 const SITUACAO: Record<SituacaoOportunidade, { rotulo: string; cls: string; dica: string }> = {
   aberta: { rotulo: "Oportunidade aberta", cls: "border-amber-300 bg-amber-50 text-amber-900", dica: "Indicada e a empresa ainda não tem" },
@@ -46,7 +46,7 @@ function Contador({ rotulo, valor, cor, ativo, onClick }: { rotulo: string; valo
       type="button"
       disabled={!onClick}
       onClick={onClick}
-      className={cn("rounded-xl border p-3 text-left transition", cor, onClick && "hover:shadow-sm", ativo && "ring-2 ring-verde-primary ring-offset-1")}
+      className={cn("rounded-xl border p-3 text-left transition", cor, onClick && "hover:shadow-sm", ativo && "ring-2 ring-marca-primary ring-offset-1")}
     >
       <div className="text-2xl font-bold">{valor}</div>
       <div className="text-xs font-medium">{rotulo}</div>
@@ -227,7 +227,7 @@ export default function ComercialPage() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar empresa, CNPJ, unidade ou município..."
-            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pl-8 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pl-8 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
           />
         </div>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -287,7 +287,7 @@ export default function ComercialPage() {
             {filtradas.reduce((n, c) => n + c.oportunidades.length, 0)} oportunidade(s)
           </span>
           {nAtivos > 0 && (
-            <button type="button" onClick={limpar} className="inline-flex items-center gap-1 font-semibold text-verde-primary hover:underline">
+            <button type="button" onClick={limpar} className="inline-flex items-center gap-1 font-semibold text-marca-primary hover:underline">
               <FilterX className="size-3.5" /> Voltar ao padrão (a vender)
             </button>
           )}
@@ -334,12 +334,12 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
               {regiao && <span className="text-gray-400">· {regiao}</span>}
             </span>
             {c.telefone && (
-              <a href={`tel:${c.telefone}`} className="inline-flex items-center gap-1 hover:text-verde-primary">
+              <a href={`tel:${c.telefone}`} className="inline-flex items-center gap-1 hover:text-marca-primary">
                 <Phone className="size-3" /> {c.telefone}
               </a>
             )}
             {c.email && (
-              <a href={`mailto:${c.email}`} className="inline-flex items-center gap-1 hover:text-verde-primary">
+              <a href={`mailto:${c.email}`} className="inline-flex items-center gap-1 hover:text-marca-primary">
                 <Mail className="size-3" /> {c.email}
               </a>
             )}

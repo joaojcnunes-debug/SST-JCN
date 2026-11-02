@@ -493,7 +493,7 @@ export default function DetalheApreciacaoPage() {
       <div className="mx-auto max-w-2xl space-y-4">
         <Link
           href="/apreciacao-maquinas"
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-verde-primary"
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-marca-primary"
         >
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
@@ -524,7 +524,7 @@ export default function DetalheApreciacaoPage() {
       <div className="flex items-center justify-between print:hidden">
         <Link
           href="/apreciacao-maquinas"
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-verde-primary"
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-marca-primary"
         >
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>

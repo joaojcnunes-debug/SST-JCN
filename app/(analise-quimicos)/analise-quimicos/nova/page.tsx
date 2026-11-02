@@ -15,7 +15,7 @@ export default function NovaAnalisePage() {
     <div className="mx-auto max-w-3xl space-y-4">
       <Link
         href="/analise-quimicos"
-        className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-verde-primary"
+        className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-marca-primary"
       >
         <ArrowLeft className="size-3.5" /> Voltar
       </Link>

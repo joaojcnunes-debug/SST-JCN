@@ -156,7 +156,7 @@ function PresencaConteudo() {
               className={cn(
                 "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                 dia === p.d
-                  ? "border-verde-primary bg-verde-primary/10 text-verde-primary"
+                  ? "border-marca-primary bg-marca-primary/10 text-marca-primary"
                   : "border-gray-200 text-gray-600 hover:bg-gray-50",
               )}
             >
@@ -193,7 +193,7 @@ function PresencaConteudo() {
               className={cn(
                 "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                 filtro === c.valor
-                  ? "border-verde-primary bg-verde-primary/10 text-verde-primary"
+                  ? "border-marca-primary bg-marca-primary/10 text-marca-primary"
                   : "border-gray-200 text-gray-600 hover:bg-gray-50",
               )}
             >
@@ -300,7 +300,7 @@ function TabelaPessoas({
               onClick={() => onSelecionar(p.usuario_email)}
               className={cn(
                 "cursor-pointer hover:bg-gray-50/70",
-                selecionada === p.usuario_email && "bg-verde-primary/5",
+                selecionada === p.usuario_email && "bg-marca-primary/5",
               )}
             >
               <td className="px-4 py-2">

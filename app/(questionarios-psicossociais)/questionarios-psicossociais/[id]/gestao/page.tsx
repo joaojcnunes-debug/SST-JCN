@@ -81,7 +81,7 @@ export default function GestaoQpsPage({ params }: { params: Promise<{ id: string
                 type="button"
                 onClick={handleBaixarPdf}
                 disabled={baixando}
-                className="inline-flex items-center gap-1.5 rounded-md border border-verde-accent bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-md border border-marca-accent bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
               >
                 {baixando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                 Baixar PDF Assinado
@@ -114,7 +114,7 @@ export default function GestaoQpsPage({ params }: { params: Promise<{ id: string
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div className="flex items-center gap-2">
-                <TrendingUp className="size-4 text-verde-primary" />
+                <TrendingUp className="size-4 text-marca-primary" />
                 <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">Saúde da Gestão</h2>
               </div>
               <p className="mt-0.5 text-xs text-gray-500">
@@ -211,7 +211,7 @@ function CardFrente({
   return (
     <div className="flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 text-verde-primary">
+        <div className="flex items-center gap-2 text-marca-primary">
           {icone}
           <div>
             <h3 className="text-sm font-semibold text-gray-900">{titulo}</h3>
@@ -231,14 +231,14 @@ function CardFrente({
         {metricas.map((m) => (
           <li key={m.label} className="flex items-baseline justify-between gap-2 border-b border-gray-50 pb-1 last:border-0">
             <span className="text-gray-600">{m.label}</span>
-            <span className={m.destacar ? "font-bold text-verde-primary" : "font-semibold text-gray-800"}>{m.valor}</span>
+            <span className={m.destacar ? "font-bold text-marca-primary" : "font-semibold text-gray-800"}>{m.valor}</span>
           </li>
         ))}
       </ul>
 
       <Link
         href={href}
-        className="mt-3 inline-flex items-center justify-center gap-1 rounded-md border border-verde-primary/30 bg-verde-primary/5 px-3 py-1.5 text-xs font-semibold text-verde-primary hover:bg-verde-primary/10"
+        className="mt-3 inline-flex items-center justify-center gap-1 rounded-md border border-marca-primary/30 bg-marca-primary/5 px-3 py-1.5 text-xs font-semibold text-marca-primary hover:bg-marca-primary/10"
       >
         Abrir frente <ArrowRight className="size-3" />
       </Link>

@@ -226,7 +226,7 @@ export default function PgrPage({ params }: Props) {
           <BotaoGerarPdf
             tabelaNome="inspecoes_pgr"
             docId={id}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
+            className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent"
           />
         </div>
       </div>
@@ -253,7 +253,7 @@ export default function PgrPage({ params }: Props) {
 
       <article className="space-y-5 rounded-xl border border-gray-200 bg-white p-6 print:border-0 print:p-0 print:shadow-none">
         {/* HEADER PGR */}
-        <header className="flex items-start justify-between gap-3 border-b-2 border-verde-primary pb-3">
+        <header className="flex items-start justify-between gap-3 border-b-2 border-marca-primary pb-3">
           <div className="flex items-start gap-3">
             {configs?.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -264,12 +264,12 @@ export default function PgrPage({ params }: Props) {
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="flex size-14 items-center justify-center rounded-xl bg-verde-primary text-white">
+              <div className="flex size-14 items-center justify-center rounded-xl bg-marca-primary text-white">
                 <Shield className="size-7" />
               </div>
             )}
             <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-verde-primary">
+              <p className="text-xs font-bold uppercase tracking-wider text-marca-primary">
                 PGR — Programa de Gerenciamento de Riscos
               </p>
               <p className="text-xs text-gray-500">
@@ -360,7 +360,7 @@ export default function PgrPage({ params }: Props) {
           ) : (
             <div className="overflow-x-auto rounded-lg border border-gray-300">
               <table className="pgr-table w-full text-xs">
-                <thead className="bg-verde-primary text-white">
+                <thead className="bg-marca-primary text-white">
                   <tr>
                     <Th>Setor / GHE</Th>
                     <Th>Cargo / Função</Th>

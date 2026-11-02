@@ -64,7 +64,7 @@ export default function TopProgressBar() {
     >
       {visible && (
         <div
-          className="h-full rounded-r-full bg-verde-accent shadow-[0_0_8px_#0284c7]"
+          className="h-full rounded-r-full bg-marca-accent shadow-[0_0_8px_#0284c7]"
           style={{
             width: `${progress}%`,
             opacity: progress >= 100 ? 0 : 1,

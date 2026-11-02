@@ -142,7 +142,7 @@ export default function RiscosTab({
             className={cn(
               "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
               viewMode === "lista"
-                ? "bg-verde-primary text-white shadow-sm"
+                ? "bg-marca-primary text-white shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
             )}
           >
@@ -154,7 +154,7 @@ export default function RiscosTab({
             className={cn(
               "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
               viewMode === "quadro"
-                ? "bg-verde-primary text-white shadow-sm"
+                ? "bg-marca-primary text-white shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
             )}
           >
@@ -182,7 +182,7 @@ export default function RiscosTab({
             <button
               type="button"
               onClick={() => { setEditing(null); setFormOpen(true); }}
-              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+              className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
             >
               <Plus className="size-4" /> Adicionar Risco
             </button>
@@ -419,7 +419,7 @@ function QuadroRiscoSetor({
                               <button
                                 type="button"
                                 onClick={() => onEdit?.(r)}
-                                className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                                className="rounded p-1.5 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
                                 title="Editar"
                               >
                                 <Pencil className="size-4" />
@@ -489,7 +489,7 @@ function QuadroRiscoSetor({
                           <button
                             type="button"
                             onClick={() => onEdit?.(r)}
-                            className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                            className="rounded p-1.5 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
                             title="Editar"
                           >
                             <Pencil className="size-4" />

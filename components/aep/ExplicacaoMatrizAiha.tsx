@@ -59,7 +59,7 @@ export default function ExplicacaoMatrizAiha({
         className={cn("flex w-full items-center gap-3 px-5 py-4 text-left", fixo && "cursor-default")}
         aria-expanded={aberto}
       >
-        <BookOpen className="size-5 shrink-0 text-verde-primary" />
+        <BookOpen className="size-5 shrink-0 text-marca-primary" />
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-gray-900">Entenda a matriz de risco AIHA na Ergonomia Organizacional</div>
           <div className="text-xs text-gray-500">

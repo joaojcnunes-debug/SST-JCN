@@ -108,7 +108,7 @@ export default function RelatorioUso({
               onClick={() => setModo(m)}
               className={cn(
                 "rounded-full px-3 py-1 font-medium transition-colors",
-                modo === m ? "bg-verde-primary/10 text-verde-primary" : "text-gray-600 hover:bg-gray-50",
+                modo === m ? "bg-marca-primary/10 text-marca-primary" : "text-gray-600 hover:bg-gray-50",
               )}
             >
               {m === "dia" ? "Por dia" : "Por semana"}
@@ -122,7 +122,7 @@ export default function RelatorioUso({
             <strong className="font-semibold text-gray-800">{equipe ? "Toda a equipe" : nome ?? email}</strong>
           </span>
           {!equipe && (
-            <button type="button" onClick={onVerEquipe} className="font-medium text-verde-primary hover:underline">
+            <button type="button" onClick={onVerEquipe} className="font-medium text-marca-primary hover:underline">
               ver equipe
             </button>
           )}

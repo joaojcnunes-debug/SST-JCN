@@ -74,7 +74,7 @@ export default function MembrosModal({
               onClick={() => setAba(a.id)}
               className={cn(
                 "-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-sm font-medium",
-                aba === a.id ? "border-verde-primary text-verde-primary" : "border-transparent text-gray-500 hover:text-gray-700",
+                aba === a.id ? "border-marca-primary text-marca-primary" : "border-transparent text-gray-500 hover:text-gray-700",
               )}
             >
               <a.icon className="size-4" /> {a.label}

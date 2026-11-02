@@ -41,14 +41,14 @@ export default function MultiChipInput({
           {value.map((v) => (
             <span
               key={v}
-              className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2.5 py-0.5 text-xs font-medium text-verde-primary"
+              className="inline-flex items-center gap-1 rounded-full bg-marca-light px-2.5 py-0.5 text-xs font-medium text-marca-primary"
             >
               {v}
               {!ro && (
                 <button
                   type="button"
                   onClick={() => onChange(value.filter((x) => x !== v))}
-                  className="text-verde-primary/60 transition hover:text-red-600"
+                  className="text-marca-primary/60 transition hover:text-red-600"
                   aria-label={`Remover ${v}`}
                 >
                   <X className="size-3" />
@@ -72,7 +72,7 @@ export default function MultiChipInput({
               }
             }}
             placeholder={placeholder}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
           />
           <datalist id={listId}>
             {disponiveis.map((s) => (

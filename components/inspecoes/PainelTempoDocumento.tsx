@@ -317,7 +317,7 @@ export default function PainelTempoDocumento({
             <PictureInPicture2 className="size-3.5 text-gray-400" />
             Tempo do documento no canto da tela · {titulo.toLowerCase()} · trabalhado {fmtDuracao(r.trabalhadoMs)}
           </span>
-          <button type="button" onClick={() => mudarModo("painel")} className="font-medium text-verde-primary hover:underline">
+          <button type="button" onClick={() => mudarModo("painel")} className="font-medium text-marca-primary hover:underline">
             Mostrar aqui
           </button>
         </div>
@@ -386,7 +386,7 @@ export default function PainelTempoDocumento({
             <button
               type="button"
               onClick={alternarDetalhes}
-              className="flex items-center gap-1 border-l border-gray-100 px-3 text-[11px] font-medium text-gray-500 hover:bg-gray-50 hover:text-verde-primary"
+              className="flex items-center gap-1 border-l border-gray-100 px-3 text-[11px] font-medium text-gray-500 hover:bg-gray-50 hover:text-marca-primary"
               title="Linha do tempo, tempo por pessoa e sessões"
             >
               {detalhes ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />} Detalhes

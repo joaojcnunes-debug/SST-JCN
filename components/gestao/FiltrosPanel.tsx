@@ -54,8 +54,8 @@ export default function FiltrosPanel({
 
   return (
     <div className="relative">
-      <button type="button" onClick={() => setAberto((v) => !v)} className={`relative z-40 inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 text-sm font-medium ${n > 0 ? "border-verde-primary bg-verde-light/60 text-verde-primary" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
-        <Filter className="size-4" /> Filtros{n > 0 && <span className="ml-0.5 rounded-full bg-verde-primary px-1.5 text-[11px] font-bold text-white">{n}</span>}
+      <button type="button" onClick={() => setAberto((v) => !v)} className={`relative z-40 inline-flex items-center gap-1 rounded-lg border px-2.5 py-2 text-sm font-medium ${n > 0 ? "border-marca-primary bg-marca-light/60 text-marca-primary" : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"}`}>
+        <Filter className="size-4" /> Filtros{n > 0 && <span className="ml-0.5 rounded-full bg-marca-primary px-1.5 text-[11px] font-bold text-white">{n}</span>}
         <ChevronDown className="size-3.5 text-gray-400" />
       </button>
 
@@ -71,7 +71,7 @@ export default function FiltrosPanel({
                 busca={usuarios.length > 8} placeholderBusca="Buscar pessoa…"
                 opcoes={[{ value: "", label: "Todos" }, ...usuarios.map((u) => ({ value: u, label: u }))]} />
               <label className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-gray-600">
-                <input type="checkbox" checked={filtros.semResponsavel} onChange={(e) => set({ semResponsavel: e.target.checked, responsavel: e.target.checked ? "" : filtros.responsavel })} className="size-3.5 rounded accent-verde-primary" /> Sem responsável
+                <input type="checkbox" checked={filtros.semResponsavel} onChange={(e) => set({ semResponsavel: e.target.checked, responsavel: e.target.checked ? "" : filtros.responsavel })} className="size-3.5 rounded accent-marca-primary" /> Sem responsável
               </label>
             </div>
 
@@ -120,7 +120,7 @@ export default function FiltrosPanel({
                 {salvos.map((f) => (
                   <div key={f.id} className="group flex items-center gap-2">
                     <button type="button" onClick={() => { onChange(f.criterios); setAberto(false); }} className="flex min-w-0 flex-1 items-center gap-1.5 rounded px-1.5 py-1 text-sm text-gray-700 hover:bg-gray-50">
-                      <Bookmark className="size-3.5 text-verde-primary" /> <span className="truncate">{f.nome}</span>
+                      <Bookmark className="size-3.5 text-marca-primary" /> <span className="truncate">{f.nome}</span>
                     </button>
                     <button type="button" onClick={() => excluirFiltro.mutate(f.id)} className="text-gray-300 opacity-0 transition group-hover:opacity-100 hover:text-red-600"><Trash2 className="size-3.5" /></button>
                   </div>
@@ -129,8 +129,8 @@ export default function FiltrosPanel({
               </div>
               {n > 0 && (
                 <div className="mt-2 flex items-center gap-1.5">
-                  <input value={nomeNovo} onChange={(e) => setNomeNovo(e.target.value)} placeholder="Nome do filtro…" className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none" />
-                  <button type="button" disabled={!nomeNovo.trim()} onClick={() => { salvarFiltro.mutate({ id_quadro: idQuadro, nome: nomeNovo.trim(), criterios: filtros }); setNomeNovo(""); }} className="rounded-md bg-verde-primary px-2.5 py-1 text-sm font-medium text-white disabled:opacity-50">Salvar</button>
+                  <input value={nomeNovo} onChange={(e) => setNomeNovo(e.target.value)} placeholder="Nome do filtro…" className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none" />
+                  <button type="button" disabled={!nomeNovo.trim()} onClick={() => { salvarFiltro.mutate({ id_quadro: idQuadro, nome: nomeNovo.trim(), criterios: filtros }); setNomeNovo(""); }} className="rounded-md bg-marca-primary px-2.5 py-1 text-sm font-medium text-white disabled:opacity-50">Salvar</button>
                 </div>
               )}
             </div>

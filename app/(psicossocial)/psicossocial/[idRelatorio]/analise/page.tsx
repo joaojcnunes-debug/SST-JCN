@@ -588,7 +588,7 @@ export default function AnalisePage({
               disabled={!canEdit}
               onChange={(e) => { setMetaCnpj(e.target.value); setMetaDirty(true); }}
               placeholder="00.000.000/0000-00"
-              className="w-36 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+              className="w-36 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
             />
           </div>
 
@@ -601,7 +601,7 @@ export default function AnalisePage({
               value={metaStatus}
               disabled={!canEdit}
               onChange={(e) => { setMetaStatus(e.target.value as StatusRelatorio); setMetaDirty(true); }}
-              className={`rounded-full border-0 px-2 py-0.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:cursor-default ${metaStatusAtual?.cls ?? ""}`}
+              className={`rounded-full border-0 px-2 py-0.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-marca-primary/30 disabled:cursor-default ${metaStatusAtual?.cls ?? ""}`}
             >
               {STATUS_OPCOES.map((s) => (
                 <option key={s.v} value={s.v}>{s.label}</option>
@@ -619,7 +619,7 @@ export default function AnalisePage({
               value={metaData}
               disabled={!canEdit}
               onChange={(e) => { setMetaData(e.target.value); setMetaDirty(true); }}
-              className="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+              className="rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
             />
           </div>
 
@@ -656,7 +656,7 @@ export default function AnalisePage({
               disabled={!canEdit}
               onChange={(e) => { setMetaCrp(e.target.value); setMetaDirty(true); }}
               placeholder="00/00000"
-              className="w-24 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
+              className="w-24 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-700 placeholder-gray-300 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-transparent disabled:border-transparent disabled:cursor-default"
             />
           </div>
 
@@ -666,7 +666,7 @@ export default function AnalisePage({
               type="button"
               onClick={handleSalvarMeta}
               disabled={salvar.isPending || salvarEmpresa.isPending}
-              className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50 shrink-0"
+              className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-marca-accent disabled:opacity-50 shrink-0"
             >
               {(salvar.isPending || salvarEmpresa.isPending)
                 ? <Loader2 className="size-3 animate-spin" />
@@ -719,7 +719,7 @@ export default function AnalisePage({
                   Alterações não salvas
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2 py-0.5 text-[10px] font-medium text-verde-primary">
+                <span className="inline-flex items-center gap-1 rounded-full bg-marca-light px-2 py-0.5 text-[10px] font-medium text-marca-primary">
                   <CheckCircle2 className="size-3" />
                   Salvo
                 </span>
@@ -738,7 +738,7 @@ export default function AnalisePage({
                 </button>
               )}
               {relatorio && (relatorio.status === "CONCLUIDO" || relatorio.status === "ENVIADO_CLIENTE") ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-verde-light px-3 py-1.5 text-xs font-semibold text-verde-primary">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-marca-light px-3 py-1.5 text-xs font-semibold text-marca-primary">
                   <CheckCircle2 className="size-3.5" />
                   {relatorio.status === "ENVIADO_CLIENTE" ? "Enviado p/ cliente" : "Concluído"}
                 </span>
@@ -747,7 +747,7 @@ export default function AnalisePage({
                   type="button"
                   onClick={() => salvarCampos({ status: "CONCLUIDO" })}
                   disabled={!canEdit || salvar.isPending || !relatorio}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-white px-3 py-1.5 text-xs font-semibold text-verde-primary hover:bg-verde-light disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary bg-white px-3 py-1.5 text-xs font-semibold text-marca-primary hover:bg-marca-light disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <CheckCircle2 className="size-3.5" />
                   Concluir Análise
@@ -1494,7 +1494,7 @@ function BlocoSetor({
                     !canEdit || gerandoIA || relatorio.topicos.length === 0
                   }
                   title="Gerar conclusão técnica com IA a partir dos tópicos avaliados, agravos e medidas recomendadas"
-                  className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2 py-1 text-[10px] font-semibold normal-case tracking-normal text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50 print:hidden"
+                  className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2 py-1 text-[10px] font-semibold normal-case tracking-normal text-white shadow-sm hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-50 print:hidden"
                 >
                   {gerandoIA ? (
                     <Loader2 className="size-3 animate-spin" />

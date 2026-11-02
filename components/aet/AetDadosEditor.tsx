@@ -223,7 +223,7 @@ function CaracterizacaoCard({
             type="button"
             onClick={() => { onSalvar(form); setDirty(false); }}
             disabled={!dirty || salvando}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
           >
             {salvando ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
             Salvar
@@ -296,7 +296,7 @@ function CaracterizacaoCard({
               value={form.data_elaboracao}
               disabled={!canEdit}
               onChange={(e) => set("data_elaboracao", e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-100"
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none disabled:bg-gray-100"
             />
           </div>
           <div>
@@ -308,7 +308,7 @@ function CaracterizacaoCard({
               value={form.data_validade}
               disabled={!canEdit}
               onChange={(e) => set("data_validade", e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-100"
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none disabled:bg-gray-100"
             />
           </div>
           <div>
@@ -319,7 +319,7 @@ function CaracterizacaoCard({
               value={form.status}
               disabled={!canEdit}
               onChange={(e) => set("status", e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-100"
+              className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none disabled:bg-gray-100"
             >
               <option value="RASCUNHO">Rascunho</option>
               <option value="CONCLUIDO">Concluído</option>
@@ -434,7 +434,7 @@ function SecaoCard({
             type="button"
             onClick={() => { onSalvar(html); setDirty(false); }}
             disabled={!dirty || salvando}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
           >
             {salvando ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
             Salvar
@@ -484,7 +484,7 @@ function InputField({
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-100"
+        className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none disabled:bg-gray-100"
       />
     </div>
   );

@@ -202,7 +202,7 @@ export default function SetorForm({
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {mutation.isPending ? "Salvando..." : isEdit ? "Salvar" : "Adicionar"}
           </button>
@@ -213,7 +213,7 @@ export default function SetorForm({
 }
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
+  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30";
 
 function Field({
   label,

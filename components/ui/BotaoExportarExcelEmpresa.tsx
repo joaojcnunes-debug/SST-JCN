@@ -34,7 +34,7 @@ export default function BotaoExportarExcelEmpresa({
       type="button"
       onClick={exportar}
       disabled={disabled || gerando}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
     >
       {gerando ? <Loader2 className="size-4 animate-spin" /> : <FileSpreadsheet className="size-4" />}
       {gerando ? "Gerando…" : "Exportar Excel"}

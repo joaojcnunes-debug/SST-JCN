@@ -96,7 +96,7 @@ export default function EpisTab({
             <select
               value={filtroValido ? setorFiltro : ""}
               onChange={(e) => setSetorFiltro(e.target.value)}
-              className="rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             >
               <option value="">Todos ({epis.length})</option>
               {setorGrupos.map((g) => (
@@ -116,7 +116,7 @@ export default function EpisTab({
               setEditing(null);
               setFormOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
           >
             <Plus className="size-4" /> Adicionar EPI/EPC
           </button>
@@ -233,7 +233,7 @@ export default function EpisTab({
                                       setEditing(e);
                                       setFormOpen(true);
                                     }}
-                                    className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                                    className="rounded p-1.5 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
                                     title="Editar"
                                   >
                                     <Pencil className="size-4" />

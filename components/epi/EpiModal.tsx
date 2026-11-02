@@ -42,6 +42,6 @@ export default function EpiModal({
 }
 
 export const inputCls =
-  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30";
+  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30";
 export const labelCls =
   "mb-1 block text-xs font-medium text-gray-600";

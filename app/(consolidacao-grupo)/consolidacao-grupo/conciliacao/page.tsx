@@ -167,7 +167,7 @@ export default function ConciliacaoPage() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar empresa, CNPJ ou município"
-            className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-3 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+            className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-3 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
           />
         </div>
         {(

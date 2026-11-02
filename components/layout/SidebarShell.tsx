@@ -209,7 +209,7 @@ function NavItemView({
       )}
     >
       {active && (
-        <span className="absolute left-0 top-[12%] h-[76%] w-[3px] rounded-r-full bg-verde-accent shadow-[0_0_6px_#0284c799]" />
+        <span className="absolute left-0 top-[12%] h-[76%] w-[3px] rounded-r-full bg-marca-accent shadow-[0_0_6px_#0284c799]" />
       )}
       <Icon
         className={cn(
@@ -318,7 +318,7 @@ export default function SidebarShell({
             }}
           />
         ) : (
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-verde-primary text-white shadow">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-marca-primary text-white shadow">
             <Shield className="size-4" />
           </div>
         )}
@@ -408,7 +408,7 @@ export default function SidebarShell({
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        className="fixed left-3 top-3 z-40 flex size-10 items-center justify-center rounded-md bg-verde-dark text-white shadow md:hidden print:hidden"
+        className="fixed left-3 top-3 z-40 flex size-10 items-center justify-center rounded-md bg-marca-dark text-white shadow md:hidden print:hidden"
         aria-label="Abrir menu"
       >
         <Menu className="size-5" />

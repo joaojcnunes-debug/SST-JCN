@@ -47,13 +47,13 @@ export default function BuscaUnica({
 
   if (value && escolhida) {
     return (
-      <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-md border border-verde-primary/40 bg-verde-light/40 px-2.5 py-1.5">
+      <div className="flex min-w-[260px] flex-1 items-center gap-2 rounded-md border border-marca-primary/40 bg-marca-light/40 px-2.5 py-1.5">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-gray-800">{escolhida.titulo}</p>
           {escolhida.sub && <p className="truncate text-[11px] text-gray-500">{escolhida.sub}</p>}
         </div>
         {escolhida.marca && <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium", escolhida.marcaCls)}>{escolhida.marca}</span>}
-        <button type="button" onClick={() => onChange("")} className="inline-flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-verde-primary hover:bg-white">
+        <button type="button" onClick={() => onChange("")} className="inline-flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-marca-primary hover:bg-white">
           <X className="size-3" /> Trocar
         </button>
       </div>
@@ -73,7 +73,7 @@ export default function BuscaUnica({
               if (e.key === "Enter" && lista.length > 0) escolher(lista[0].id);
             }}
             placeholder={placeholder}
-            className="w-full rounded-md border border-gray-200 py-1.5 pl-7 pr-2 text-sm focus:border-verde-primary focus:outline-none"
+            className="w-full rounded-md border border-gray-200 py-1.5 pl-7 pr-2 text-sm focus:border-marca-primary focus:outline-none"
           />
         </div>
         {filtros}

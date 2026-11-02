@@ -298,7 +298,7 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
         <button
           type="button"
           onClick={() => setModeloModal({ tipo: "novo", id_triagem: idTriagem })}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-verde-accent"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-marca-accent"
         >
           <Plus className="size-3.5" /> Novo Modelo nesta Triagem
         </button>
@@ -565,7 +565,7 @@ function ModeloCard({
           <button
             type="button"
             onClick={onEditar}
-            className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+            className="rounded p-1.5 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
             title="Editar agente / fonte / ordem"
           >
             <Pencil className="size-4" />
@@ -605,8 +605,8 @@ function ModeloCard({
             />
           ))}
 
-          <div className="space-y-2 rounded-lg border border-verde-primary/30 bg-verde-light/30 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-verde-primary">
+          <div className="space-y-2 rounded-lg border border-marca-primary/30 bg-marca-light/30 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-marca-primary">
               Perguntas Customizadas deste Modelo
             </p>
             <PerguntasDoModelo idModelo={modelo.id_modelo} />
@@ -767,7 +767,7 @@ function CategoriaListaModelo({
                       (e.target as HTMLInputElement).blur();
                     }
                   }}
-                  className="flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-verde-primary focus:bg-white focus:outline-none"
+                  className="flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-marca-primary focus:bg-white focus:outline-none"
                 />
                 <button
                   type="button"
@@ -827,7 +827,7 @@ function CategoriaListaModelo({
           onChange={(e) => setNovo(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && adicionar()}
           placeholder={`Adicionar ${titulo.toLowerCase()}...`}
-          className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+          className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
         />
         <button
           type="button"
@@ -990,7 +990,7 @@ function CategoriaListaTipo({
                       (e.target as HTMLInputElement).blur();
                     }
                   }}
-                  className="flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-verde-primary focus:bg-white focus:outline-none"
+                  className="flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-marca-primary focus:bg-white focus:outline-none"
                 />
                 <button
                   type="button"
@@ -1050,7 +1050,7 @@ function CategoriaListaTipo({
           onChange={(e) => setNovo(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && adicionar()}
           placeholder={`Adicionar ${titulo.toLowerCase()}...`}
-          className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+          className="flex-1 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
         />
         <button
           type="button"
@@ -1149,7 +1149,7 @@ function ModeloModal({
             type="text"
             value={agente}
             onChange={(e) => setAgente(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             placeholder="Ex: Ruído contínuo"
             required
           />
@@ -1182,7 +1182,7 @@ function ModeloModal({
           <button
             type="submit"
             disabled={save.isPending}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {save.isPending ? "Salvando..." : editing ? "Salvar" : "Criar"}
           </button>

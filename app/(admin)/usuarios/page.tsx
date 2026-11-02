@@ -133,7 +133,7 @@ export default function UsuariosPage() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar por nome, e-mail ou cargo..."
-            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
           />
         </div>
         <button
@@ -142,7 +142,7 @@ export default function UsuariosPage() {
             setEditing(null);
             setFormOpen(true);
           }}
-          className="inline-flex items-center gap-2 rounded-xl bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95"
+          className="inline-flex items-center gap-2 rounded-xl bg-marca-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marca-accent active:scale-95"
         >
           <Plus className="size-4" />
           Novo Usuário
@@ -156,8 +156,8 @@ export default function UsuariosPage() {
           </div>
         ) : filtrados.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-14 text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-light">
-              <Users className="size-7 text-verde-primary" />
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-marca-light">
+              <Users className="size-7 text-marca-primary" />
             </div>
             <p className="mt-4 text-sm font-semibold text-gray-800">
               {usuarios.length === 0 ? "Nenhum usuário cadastrado" : "Nenhum usuário encontrado"}
@@ -182,7 +182,7 @@ export default function UsuariosPage() {
               </thead>
               <tbody>
                 {pag.pageItems.map((u) => (
-                  <tr key={u.id_usuario} className="border-b border-gray-50 transition-colors hover:bg-verde-light/25 last:border-b-0">
+                  <tr key={u.id_usuario} className="border-b border-gray-50 transition-colors hover:bg-marca-light/25 last:border-b-0">
                     <td className="px-4 py-2.5 font-medium text-gray-900">
                       {u.nome}
                     </td>
@@ -206,7 +206,7 @@ export default function UsuariosPage() {
                             setEditing(u);
                             setFormOpen(true);
                           }}
-                          className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-verde-light hover:text-verde-primary"
+                          className="flex size-7 items-center justify-center rounded-lg text-gray-400 transition hover:bg-marca-light hover:text-marca-primary"
                           title="Editar"
                         >
                           <Pencil className="size-4" />
@@ -935,7 +935,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                   setForm({ ...form, pode_criar: e.target.checked })
                 }
                 disabled={form.perfil === "Admin"}
-                className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary disabled:opacity-50"
+                className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary disabled:opacity-50"
               />
               <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
                 Pode <strong>criar</strong>
@@ -949,7 +949,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                   setForm({ ...form, pode_editar: e.target.checked })
                 }
                 disabled={form.perfil === "Admin"}
-                className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary disabled:opacity-50"
+                className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary disabled:opacity-50"
               />
               <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
                 Pode <strong>editar</strong>
@@ -963,7 +963,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                   setForm({ ...form, pode_excluir: e.target.checked })
                 }
                 disabled={form.perfil === "Admin"}
-                className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary disabled:opacity-50"
+                className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary disabled:opacity-50"
               />
               <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
                 Pode <strong>excluir</strong>
@@ -985,7 +985,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               value={buscaEmpresa}
               onChange={(e) => setBuscaEmpresa(e.target.value)}
               placeholder="Buscar empresa…"
-              className="mb-2 w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-verde-primary/40"
+              className="mb-2 w-full rounded-md border border-gray-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-marca-primary/40"
             />
             <div className="max-h-48 overflow-auto rounded-md border border-gray-200 bg-white p-2">
               {empresas.length === 0 ? (
@@ -1008,7 +1008,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                         name="empresa_cliente"
                         checked={form.empresas_vinculadas[0] === e.id_empresa}
                         onChange={() => setForm({ ...form, empresas_vinculadas: [e.id_empresa] })}
-                        className="border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                        className="border-gray-300 text-marca-primary focus:ring-marca-primary/30"
                       />
                       <span className="text-sm text-gray-700">{e.nome_empresa}</span>
                     </label>
@@ -1021,7 +1021,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                         type="checkbox"
                         checked={form.empresas_vinculadas.includes(e.id_empresa)}
                         onChange={() => toggleEmpresa(e.id_empresa)}
-                        className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                        className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
                       />
                       <span className="text-sm text-gray-700">{e.nome_empresa}</span>
                     </label>
@@ -1061,7 +1061,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                       type="checkbox"
                       checked={form.unidades.includes(u.id_unidade)}
                       onChange={() => toggleUnidade(u.id_unidade)}
-                      className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                      className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
                     />
                     <span className="text-sm text-gray-700">{u.nome}</span>
                   </label>
@@ -1084,7 +1084,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                 <button
                   type="button"
                   onClick={() => marcarModulos(TODOS_MODULOS, !todosMarcados)}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary/40 bg-verde-light px-3 py-1.5 text-xs font-medium text-verde-primary hover:bg-verde-primary hover:text-white"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary/40 bg-marca-light px-3 py-1.5 text-xs font-medium text-marca-primary hover:bg-marca-primary hover:text-white"
                 >
                   {todosMarcados ? "Desmarcar todos os módulos" : "Marcar todos os módulos"}
                 </button>
@@ -1105,7 +1105,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                     <button
                       type="button"
                       onClick={() => marcarModulos(cat.modulos, !cheia)}
-                      className="text-[11px] font-medium text-verde-primary hover:underline"
+                      className="text-[11px] font-medium text-marca-primary hover:underline"
                     >
                       {cheia ? "desmarcar categoria" : "marcar categoria"}
                     </button>
@@ -1120,7 +1120,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                           type="checkbox"
                           checked={form.modulos_permitidos.includes(m)}
                           onChange={() => toggleModulo(m)}
-                          className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                          className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
                         />
                         <span className="text-sm text-gray-700">
                           {ROTULO_MODULO[m]}
@@ -1147,9 +1147,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                     checked={form.perfil === "Admin" ? true : acessoGestao}
                     disabled={form.perfil === "Admin"}
                     onChange={(e) => setAcessoGestao(e.target.checked)}
-                    className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                    className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
                   />
-                  <LayoutGrid className="size-4 text-verde-primary" />
+                  <LayoutGrid className="size-4 text-marca-primary" />
                   <span className="text-sm text-gray-700">
                     Acesso ao módulo Gestão (quadros/kanban)
                   </span>
@@ -1202,7 +1202,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <label
               className={cn(
-                "inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-verde-accent",
+                "inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-marca-accent",
                 uploadingAssinatura && "opacity-50 pointer-events-none"
               )}
             >
@@ -1235,7 +1235,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               />
               <div className={cn(
                 "h-5 w-9 rounded-full transition-colors",
-                form.mostrar_assinatura_imagem ? "bg-verde-primary" : "bg-gray-300"
+                form.mostrar_assinatura_imagem ? "bg-marca-primary" : "bg-gray-300"
               )} />
               <div className={cn(
                 "absolute top-0.5 size-4 rounded-full bg-white shadow transition-transform",
@@ -1262,7 +1262,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             {(["A1", "A3", null] as const).map((tipo) => (
               <label
                 key={String(tipo)}
-                className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm hover:border-verde-primary"
+                className="flex cursor-pointer items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm hover:border-marca-primary"
               >
                 <input
                   type="radio"
@@ -1271,7 +1271,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                   onChange={() =>
                     setForm((f) => ({ ...f, tipo_certificado: tipo }))
                   }
-                  className="text-verde-primary focus:ring-verde-primary/30"
+                  className="text-marca-primary focus:ring-marca-primary/30"
                 />
                 {tipo === null ? (
                   <span className="text-gray-500">Nenhum</span>
@@ -1395,9 +1395,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             onChange={(e) =>
               setForm({ ...form, ativo_sistema: e.target.checked })
             }
-            className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+            className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
           />
-          <ShieldCheck className="size-4 text-verde-primary" />
+          <ShieldCheck className="size-4 text-marca-primary" />
           Usuário ativo no sistema
         </label>
 
@@ -1412,7 +1412,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="rounded-xl bg-verde-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-xl bg-marca-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-marca-accent disabled:opacity-60"
           >
             {mutation.isPending ? "Salvando..." : isEdit ? "Salvar" : "Criar"}
           </button>
@@ -1423,7 +1423,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
 }
 
 const inputCls =
-  "mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
+  "mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
 
 function Field({
   label,

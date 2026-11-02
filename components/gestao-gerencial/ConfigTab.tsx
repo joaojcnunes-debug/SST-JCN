@@ -28,7 +28,7 @@ export default function ConfigTab({ idUnidade }: { idUnidade: string }) {
       <ListaConfig
         titulo="Categorias"
         descricao="Funções da equipe desta unidade (ex.: Médico, Técnico, Fonoaudiólogo)."
-        icone={<Layers className="size-4 text-verde-primary" />}
+        icone={<Layers className="size-4 text-marca-primary" />}
         idUnidade={idUnidade}
         itens={cats.data ?? []}
         carregando={cats.isLoading}
@@ -37,7 +37,7 @@ export default function ConfigTab({ idUnidade }: { idUnidade: string }) {
       <ListaConfig
         titulo="Turnos"
         descricao="Períodos de trabalho desta unidade (ex.: Manhã, Tarde)."
-        icone={<Clock className="size-4 text-verde-primary" />}
+        icone={<Clock className="size-4 text-marca-primary" />}
         idUnidade={idUnidade}
         itens={turnos.data ?? []}
         carregando={turnos.isLoading}
@@ -89,13 +89,13 @@ function ListaConfig({
             onChange={(e) => setNovo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && add()}
             placeholder={`Novo item de ${titulo.toLowerCase()}…`}
-            className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+            className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
           />
           <button
             type="button"
             onClick={add}
             disabled={crud.criar.isPending}
-            className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             <Plus className="size-4" /> Add
           </button>
@@ -159,14 +159,14 @@ function LinhaItem({
         value={nome}
         onChange={(e) => setNome(e.target.value)}
         disabled={!podeEditar}
-        className={`flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm ${item.ativo ? "text-gray-900" : "text-gray-400 line-through"} hover:border-gray-200 focus:border-verde-primary focus:bg-white focus:outline-none disabled:cursor-default`}
+        className={`flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm ${item.ativo ? "text-gray-900" : "text-gray-400 line-through"} hover:border-gray-200 focus:border-marca-primary focus:bg-white focus:outline-none disabled:cursor-default`}
       />
       {podeEditar && dirty && (
         <button
           type="button"
           onClick={() => crud.atualizar.mutate({ id: item.id, id_unidade: idUnidade, nome })}
           disabled={crud.atualizar.isPending}
-          className="inline-flex items-center gap-1 rounded bg-verde-primary px-2 py-0.5 text-xs font-medium text-white hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded bg-marca-primary px-2 py-0.5 text-xs font-medium text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {crud.atualizar.isPending ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
         </button>

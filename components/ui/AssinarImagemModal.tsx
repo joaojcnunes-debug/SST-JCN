@@ -151,7 +151,7 @@ export default function AssinarImagemModal({
               value={emailSelecionado}
               onChange={(e) => setEmailSelecionado(e.target.value)}
               disabled={loading || !podePorOutro}
-              className="w-full rounded-md border border-verde-primary/30 bg-verde-primary/5 px-3 py-2 text-sm font-medium text-gray-800 focus:border-verde-primary focus:outline-none disabled:opacity-60"
+              className="w-full rounded-md border border-marca-primary/30 bg-marca-primary/5 px-3 py-2 text-sm font-medium text-gray-800 focus:border-marca-primary focus:outline-none disabled:opacity-60"
             >
               {podePorOutro && <option value="">Selecione o profissional...</option>}
               {opcoes.map((s) => (
@@ -235,7 +235,7 @@ export default function AssinarImagemModal({
             type="button"
             onClick={handleConfirm}
             disabled={loading || !emailSelecionado}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
           >
             {loading ? (
               <>

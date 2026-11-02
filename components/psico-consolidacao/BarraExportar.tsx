@@ -87,7 +87,7 @@ export default function BarraExportar({
         Apresentação (PowerPoint)
       </button>
       {idGrupo && (
-        <button type="button" onClick={pdf} className={`${botao} border-verde-primary text-verde-primary`}>
+        <button type="button" onClick={pdf} className={`${botao} border-marca-primary text-marca-primary`}>
           <FileDown className="size-3.5" /> Relatório ao cliente (PDF)
         </button>
       )}

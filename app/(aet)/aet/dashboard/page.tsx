@@ -72,7 +72,7 @@ function LaudoCard({ rel }: { rel: AetRelatorio }) {
   return (
     <Link
       href={`/aet/${rel.id_relatorio}/setores`}
-      className="group flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:border-verde-primary/30 hover:shadow-md"
+      className="group flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all hover:border-marca-primary/30 hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-2">
         <p className="font-semibold text-gray-900 leading-snug">
@@ -117,7 +117,7 @@ function LaudoCard({ rel }: { rel: AetRelatorio }) {
           )}
           {dataFmt && <p className="text-gray-400">{dataFmt}</p>}
         </div>
-        <span className="flex shrink-0 items-center gap-0.5 text-verde-primary opacity-0 transition-opacity group-hover:opacity-100">
+        <span className="flex shrink-0 items-center gap-0.5 text-marca-primary opacity-0 transition-opacity group-hover:opacity-100">
           Ver análise <ChevronRight className="size-3" />
         </span>
       </div>
@@ -159,7 +159,7 @@ export default function AetDashboardPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       {/* Header analítico */}
-      <div className="rounded-2xl bg-gradient-to-br from-verde-dark via-verde-primary to-verde-accent p-6 text-white shadow-xl">
+      <div className="rounded-2xl bg-gradient-to-br from-marca-dark via-marca-primary to-marca-accent p-6 text-white shadow-xl">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -237,7 +237,7 @@ export default function AetDashboardPage() {
           {canCreate && !empresaId && (
             <Link
               href="/aet/novo"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent"
             >
               <Plus className="size-4" /> Criar primeiro laudo
             </Link>

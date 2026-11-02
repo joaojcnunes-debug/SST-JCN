@@ -101,7 +101,7 @@ export default function ValidadesPage() {
         </Link>
 
         <div className="flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-xl bg-verde-light text-verde-primary">
+          <span className="flex size-11 items-center justify-center rounded-xl bg-marca-light text-marca-primary">
             <FileClock className="size-6" />
           </span>
           <div>
@@ -121,13 +121,13 @@ export default function ValidadesPage() {
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               placeholder="Buscar empresa…"
-              className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-verde-primary focus:outline-none"
+              className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-marca-primary focus:outline-none"
             />
           </div>
           <select
             value={tipo}
             onChange={(e) => setTipo(e.target.value as TipoLaudo | "")}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-verde-primary focus:outline-none"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-marca-primary focus:outline-none"
           >
             <option value="">Todos os tipos</option>
             {tipos.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -135,7 +135,7 @@ export default function ValidadesPage() {
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as FiltroStatus)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-verde-primary focus:outline-none"
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-marca-primary focus:outline-none"
           >
             <option value="todos">Todos os status</option>
             <option value="sem">Sem validade</option>
@@ -188,7 +188,7 @@ export default function ValidadesPage() {
               <button
                 type="button"
                 onClick={() => setVisiveis((v) => v + LOTE)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-verde-primary hover:text-verde-primary"
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-marca-primary hover:text-marca-primary"
               >
                 Mostrar mais {Math.min(LOTE, faltam)}
               </button>
@@ -229,7 +229,7 @@ function LinhaValidade({
   return (
     <tr className="hover:bg-gray-50/60">
       <td className="max-w-[260px] truncate px-4 py-2">
-        <Link href={item.href} className="font-medium text-gray-800 hover:text-verde-primary" title={item.empresaNome ?? ""}>
+        <Link href={item.href} className="font-medium text-gray-800 hover:text-marca-primary" title={item.empresaNome ?? ""}>
           {item.empresaNome ?? "Sem empresa"}
         </Link>
       </td>
@@ -244,7 +244,7 @@ function LinhaValidade({
           onBlur={() => {
             if ((item.data_validade ?? "") !== val) onSalvar(val || null);
           }}
-          className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none disabled:bg-gray-100"
+          className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none disabled:bg-gray-100"
         />
       </td>
       <td className="whitespace-nowrap px-4 py-2">

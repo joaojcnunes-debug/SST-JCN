@@ -218,7 +218,7 @@ export default function MonitoramentoPage({
                           onChange={(e) =>
                             atualizar(t.idx, "data_intervencao", e.target.value)
                           }
-                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
                         />
                       </td>
                       <td className="px-2 py-1.5">
@@ -230,7 +230,7 @@ export default function MonitoramentoPage({
                             atualizar(t.idx, "responsavel", e.target.value)
                           }
                           placeholder="—"
-                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
                         />
                       </td>
                       <td className="px-2 py-1.5">
@@ -240,7 +240,7 @@ export default function MonitoramentoPage({
                           onChange={(e) =>
                             atualizar(t.idx, "status", e.target.value)
                           }
-                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
                         >
                           {STATUS.map((s) => (
                             <option key={s} value={s}>
@@ -261,7 +261,7 @@ export default function MonitoramentoPage({
                               e.target.value
                             )
                           }
-                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
+                          className="w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-50"
                         />
                       </td>
                     </tr>

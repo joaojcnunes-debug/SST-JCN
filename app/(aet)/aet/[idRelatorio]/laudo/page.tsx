@@ -437,7 +437,7 @@ export default function AetLaudoPage({
     <div className="space-y-0">
 
       {/* ═══ HEADER DASHBOARD (print:hidden) ═══ */}
-      <div className="print:hidden rounded-2xl bg-gradient-to-br from-verde-dark via-verde-primary to-verde-accent p-6 shadow-xl mb-5">
+      <div className="print:hidden rounded-2xl bg-gradient-to-br from-marca-dark via-marca-primary to-marca-accent p-6 shadow-xl mb-5">
         {/* Topo: empresa + status + botão */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -559,8 +559,8 @@ export default function AetLaudoPage({
       {canEdit && (
         <div className="print:hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm mb-5">
           <div className="mb-4 flex items-center gap-3">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-verde-light">
-              <FileText className="size-4 text-verde-primary" />
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-marca-light">
+              <FileText className="size-4 text-marca-primary" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-gray-900">Dados do Laudo</h2>
@@ -589,7 +589,7 @@ export default function AetLaudoPage({
                 type="text"
                 value={tituloProfissional}
                 onChange={(e) => setTituloProfissional(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
                 placeholder="Ex: Ergonomista, Engenheiro de Segurança..."
               />
             </div>
@@ -599,7 +599,7 @@ export default function AetLaudoPage({
                 type="text"
                 value={registroProfissional}
                 onChange={(e) => setRegistroProfissional(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
                 placeholder={detectRegistroTipo(tituloProfissional).placeholder}
               />
             </div>
@@ -609,7 +609,7 @@ export default function AetLaudoPage({
                 type="date"
                 value={dataElaboracao}
                 onChange={(e) => setDataElaboracao(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
               />
             </div>
             <div>
@@ -619,7 +619,7 @@ export default function AetLaudoPage({
                 value={dataValidade}
                 onChange={(e) => setDataValidade(e.target.value)}
                 min={dataElaboracao || undefined}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
               />
               <p className="mt-1 text-[10px] text-gray-500">
                 Sai no bloco &ldquo;Identificação da Empresa&rdquo; do laudo. Em branco, imprime &ldquo;—&rdquo;.
@@ -635,7 +635,7 @@ export default function AetLaudoPage({
                   <button
                     type="button"
                     onClick={() => setEnderecoEmpresa(enderecoCadastro)}
-                    className="text-[11px] font-medium text-verde-primary hover:underline"
+                    className="text-[11px] font-medium text-marca-primary hover:underline"
                   >
                     Puxar do cadastro
                   </button>
@@ -645,7 +645,7 @@ export default function AetLaudoPage({
                 type="text"
                 value={enderecoEmpresa}
                 onChange={(e) => setEnderecoEmpresa(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
                 placeholder="Rua, nº, bairro, cidade - UF"
               />
             </div>
@@ -655,7 +655,7 @@ export default function AetLaudoPage({
               type="button"
               onClick={handleSaveDados}
               disabled={salvar.isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-4 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-4 py-2 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
             >
               {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
               Salvar Dados
@@ -2126,7 +2126,7 @@ function PlanoAcaoSection({
         <thead>
           <tr>
             {heads.map((h) => (
-              <th key={h} className="border-b-2 border-verde-primary border-r border-r-gray-200 bg-emerald-50 px-1.5 py-1 text-left text-[7.5px] font-bold uppercase tracking-wide text-verde-primary">
+              <th key={h} className="border-b-2 border-marca-primary border-r border-r-gray-200 bg-emerald-50 px-1.5 py-1 text-left text-[7.5px] font-bold uppercase tracking-wide text-marca-primary">
                 {h}
               </th>
             ))}

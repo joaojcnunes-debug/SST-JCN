@@ -71,7 +71,7 @@ export default function TriagensDoTipo({
             setEditing(null);
             setModalOpen(true);
           }}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-verde-accent"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-marca-accent"
         >
           <Plus className="size-3.5" /> Nova Triagem
         </button>
@@ -235,7 +235,7 @@ function TriagemCard({
           <button
             type="button"
             onClick={onEditar}
-            className="rounded p-1 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+            className="rounded p-1 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
             title="Editar pergunta"
           >
             <Pencil className="size-4" />
@@ -305,7 +305,7 @@ function ModelosLinker({
                 className={cn(
                   "flex items-center gap-2 rounded border bg-white px-2 py-1.5",
                   isOn
-                    ? "border-verde-primary bg-verde-light/30"
+                    ? "border-marca-primary bg-marca-light/30"
                     : "border-gray-200"
                 )}
               >
@@ -320,7 +320,7 @@ function ModelosLinker({
                       ordem: associados.length,
                     })
                   }
-                  className="size-4 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                  className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
                 />
                 <div className="flex-1 min-w-0">
                   <p className="truncate text-sm font-medium text-gray-900">
@@ -407,7 +407,7 @@ function TriagemModal({
             type="text"
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             placeholder="Ex: Há desconforto térmico, acústico ou visual?"
             required
           />
@@ -441,7 +441,7 @@ function TriagemModal({
           <button
             type="submit"
             disabled={save.isPending}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {save.isPending ? "Salvando..." : editing ? "Salvar" : "Criar"}
           </button>

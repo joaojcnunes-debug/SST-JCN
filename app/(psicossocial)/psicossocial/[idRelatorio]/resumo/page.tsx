@@ -181,7 +181,7 @@ export default function ResumoPage({
                         color: "white",
                         fontWeight: 600,
                       }}
-                      className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <option
                         value={1}
@@ -228,7 +228,7 @@ export default function ResumoPage({
                               topico_idx: t.idx,
                             })
                           }
-                          className="mt-1 text-[10px] font-medium text-verde-primary underline decoration-dotted hover:text-verde-dark disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
+                          className="mt-1 text-[10px] font-medium text-marca-primary underline decoration-dotted hover:text-marca-dark disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
                           title="Descarta o valor próprio desta unidade e volta a usar o valor do setor"
                         >
                           próprio · voltar a herdar

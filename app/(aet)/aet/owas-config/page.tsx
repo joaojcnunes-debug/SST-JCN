@@ -213,7 +213,7 @@ export default function OwasConfigPage() {
                     <button
                       type="button"
                       onClick={() => setAddingSecao(secao)}
-                      className="mt-1 inline-flex items-center gap-1 text-xs text-verde-primary hover:underline"
+                      className="mt-1 inline-flex items-center gap-1 text-xs text-marca-primary hover:underline"
                     >
                       <Plus className="size-3.5" /> Adicionar pergunta
                     </button>
@@ -324,13 +324,13 @@ function CategoriaCard({
           onChange={(e) => setTitulo(e.target.value)}
           disabled={disabled}
           placeholder="Título da categoria"
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:bg-gray-50 disabled:text-gray-500"
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30 disabled:bg-gray-50 disabled:text-gray-500"
         />
         <button
           type="button"
           onClick={handleSave}
           disabled={disabled || salvar.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
           Salvar
@@ -374,7 +374,7 @@ function CategoriaCard({
               <button
                 type="button"
                 onClick={addOpcao}
-                className="mt-1 inline-flex items-center gap-1 text-xs text-verde-primary hover:underline"
+                className="mt-1 inline-flex items-center gap-1 text-xs text-marca-primary hover:underline"
               >
                 <Plus className="size-3.5" /> Adicionar opção
               </button>
@@ -472,13 +472,13 @@ function SelectCampoCard({ campo }: { campo: AetOwasSelectCampo }) {
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="Rótulo do campo"
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
         />
         <button
           type="button"
           onClick={handleSave}
           disabled={salvar.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
           Salvar
@@ -508,7 +508,7 @@ function SelectCampoCard({ campo }: { campo: AetOwasSelectCampo }) {
         <button
           type="button"
           onClick={addOpcao}
-          className="mt-1 inline-flex items-center gap-1 text-xs text-verde-primary hover:underline"
+          className="mt-1 inline-flex items-center gap-1 text-xs text-marca-primary hover:underline"
         >
           <Plus className="size-3.5" /> Adicionar opção
         </button>
@@ -586,14 +586,14 @@ function PerguntaCard({
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             rows={3}
-            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 resize-none"
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30 resize-none"
           />
         ) : (
           <input
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           />
         )}
         <div className="flex shrink-0 items-center gap-2 pt-1">
@@ -603,7 +603,7 @@ function PerguntaCard({
             type="button"
             onClick={handleSave}
             disabled={salvar.isPending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
           >
             {salvar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
             Salvar
@@ -614,7 +614,7 @@ function PerguntaCard({
               type="button"
               onClick={() => alternarOculta(false)}
               disabled={ocultar.isPending}
-              className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary/40 px-3 py-2 text-xs font-semibold text-verde-primary hover:bg-verde-primary/5 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary/40 px-3 py-2 text-xs font-semibold text-marca-primary hover:bg-marca-primary/5 disabled:opacity-50"
             >
               {ocultar.isPending ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
               Reativar
@@ -638,7 +638,7 @@ function PerguntaCard({
               disabled={semEdicao}
               className={
                 ehPadrao
-                  ? "rounded-md border border-gray-200 p-2 text-gray-400 hover:border-verde-primary/30 hover:bg-verde-primary/5 hover:text-verde-primary disabled:cursor-not-allowed disabled:opacity-40"
+                  ? "rounded-md border border-gray-200 p-2 text-gray-400 hover:border-marca-primary/30 hover:bg-marca-primary/5 hover:text-marca-primary disabled:cursor-not-allowed disabled:opacity-40"
                   : "rounded-md border border-gray-200 p-2 text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-500"
               }
               title={
@@ -679,7 +679,7 @@ function NovaPerguntaInline({ secao, onCancel }: { secao: string; onCancel: () =
   }
 
   return (
-    <div className="rounded-xl border border-verde-primary/30 bg-verde-primary/5 px-4 py-3">
+    <div className="rounded-xl border border-marca-primary/30 bg-marca-primary/5 px-4 py-3">
       <input
         type="text"
         value={label}
@@ -687,14 +687,14 @@ function NovaPerguntaInline({ secao, onCancel }: { secao: string; onCancel: () =
         onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") onCancel(); }}
         placeholder="Texto da nova pergunta..."
         autoFocus
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
       />
       <div className="mt-2 flex gap-2">
         <button
           type="button"
           onClick={handleSave}
           disabled={!label.trim() || salvar.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {salvar.isPending ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />}
           Salvar

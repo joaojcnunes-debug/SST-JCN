@@ -135,7 +135,7 @@ export default function AbaPessoas({
     await executar([passo], motivo, "Acesso removido");
   }
 
-  const inputCls = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none";
+  const inputCls = "rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none";
 
   return (
     <div className="space-y-4">
@@ -144,7 +144,7 @@ export default function AbaPessoas({
           <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
             {modoCopia ? <Copy className="size-3.5" /> : <UserPlus className="size-3.5" />} {modoCopia ? "Copiar acessos de outra pessoa" : "Dar acesso"}
           </p>
-          <button type="button" onClick={() => setModoCopia((v) => !v)} className="text-[11px] font-medium text-verde-primary hover:underline">
+          <button type="button" onClick={() => setModoCopia((v) => !v)} className="text-[11px] font-medium text-marca-primary hover:underline">
             {modoCopia ? "Voltar para dar acesso" : "Copiar acessos de outra pessoa"}
           </button>
         </div>
@@ -198,12 +198,12 @@ export default function AbaPessoas({
           {!modoCopia && <SeletorNivel value={nivel} onChange={setNivel} className={inputCls} />}
           {modoCopia ? (
             <button type="button" onClick={copiar} disabled={!origemCopia || !pessoas.length || (!plano.length && !entradasEquipe.length) || gravando}
-              className="rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50">
+              className="rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
               Copiar {plano.length + entradasEquipe.length ? `(${plano.length + entradasEquipe.length})` : ""}
             </button>
           ) : (
             <button type="button" onClick={conceder} disabled={!pessoas.length || !recursos.size || !nivel || gravando}
-              className="rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50">
+              className="rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50">
               Conceder acesso
             </button>
           )}
@@ -215,7 +215,7 @@ export default function AbaPessoas({
           <p className="text-xs font-semibold text-gray-700">Regras de acesso ({grupos.reduce((s, g) => s + g.itens.length, 0)})</p>
           <div className="relative w-64 max-w-full">
             <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
-            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Filtrar por pessoa, equipe ou lista…" className="w-full rounded-md border border-gray-200 py-1 pl-7 pr-2 text-xs focus:border-verde-primary focus:outline-none" />
+            <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Filtrar por pessoa, equipe ou lista…" className="w-full rounded-md border border-gray-200 py-1 pl-7 pr-2 text-xs focus:border-marca-primary focus:outline-none" />
           </div>
         </div>
         <div className="max-h-[22rem] space-y-2 overflow-auto">
@@ -225,7 +225,7 @@ export default function AbaPessoas({
             return (
               <div key={`${g.tipo}:${g.id}`} className="rounded-lg border border-gray-100">
                 <div className="flex items-center gap-1.5 border-b border-gray-100 bg-gray-50/70 px-3 py-1.5">
-                  <Icone className="size-3.5 text-verde-primary" />
+                  <Icone className="size-3.5 text-marca-primary" />
                   <span className="text-sm font-semibold text-gray-700">{g.caminho}</span>
                   <span className="text-[10px] text-gray-400">{ROTULO_TIPO[g.tipo]}{g.tipo !== "list" ? " · vale para as listas dentro" : ""}</span>
                 </div>
@@ -235,7 +235,7 @@ export default function AbaPessoas({
                     return (
                       <div key={a.id} className="flex items-center gap-2 rounded-md px-1 py-1">
                         {a.id_equipe ? (
-                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-verde-light text-verde-primary"><Users className="size-4" /></span>
+                          <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-marca-light text-marca-primary"><Users className="size-4" /></span>
                         ) : (
                           <AvatarPessoa nome={nome} className="size-7 text-[10px]" />
                         )}

@@ -116,9 +116,9 @@ export default function PdfDropzone({
 
   if (file) {
     return (
-      <div className="rounded-lg border-2 border-verde-border bg-verde-light/30 p-4">
+      <div className="rounded-lg border-2 border-marca-border bg-marca-light/30 p-4">
         <div className="flex items-center gap-3">
-          <FileText className="size-8 shrink-0 text-verde-primary" />
+          <FileText className="size-8 shrink-0 text-marca-primary" />
           <div className="flex-1 min-w-0">
             <p className="truncate text-sm font-semibold text-gray-900">
               {file.nome}
@@ -146,7 +146,7 @@ export default function PdfDropzone({
     <label
       className={`flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-8 transition-colors ${
         dragging
-          ? "border-verde-primary bg-verde-light/30"
+          ? "border-marca-primary bg-marca-light/30"
           : "border-gray-300 bg-gray-50 hover:bg-gray-100"
       } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
       onDragOver={(e) => {
@@ -176,7 +176,7 @@ export default function PdfDropzone({
       />
       {extraindo ? (
         <>
-          <Loader2 className="size-10 animate-spin text-verde-primary" />
+          <Loader2 className="size-10 animate-spin text-marca-primary" />
           <p className="text-sm text-gray-600">Extraindo texto do PDF...</p>
         </>
       ) : (

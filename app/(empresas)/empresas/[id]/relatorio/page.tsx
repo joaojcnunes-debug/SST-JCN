@@ -129,7 +129,7 @@ export default function RelatorioConsolidadoPage({ params }: Props) {
           <BotaoGerarPdf
             tabelaNome="empresas_relatorio"
             docId={id}
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
+            className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent"
           />
         </div>
       </div>
@@ -143,7 +143,7 @@ export default function RelatorioConsolidadoPage({ params }: Props) {
 
         {/* Header */}
         <header className="flex items-start gap-3 border-b border-gray-200 pb-4">
-          <div className="flex size-12 items-center justify-center rounded-xl bg-verde-primary text-white">
+          <div className="flex size-12 items-center justify-center rounded-xl bg-marca-primary text-white">
             <Building2 className="size-6" />
           </div>
           <div>
@@ -270,7 +270,7 @@ export default function RelatorioConsolidadoPage({ params }: Props) {
                           </span>
                           <Link
                             href={`/inspecoes/${insp.id_inspecao}/relatorio`}
-                            className="no-print text-xs font-medium text-verde-primary hover:underline"
+                            className="no-print text-xs font-medium text-marca-primary hover:underline"
                           >
                             Ver completo →
                           </Link>

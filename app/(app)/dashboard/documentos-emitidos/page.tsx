@@ -74,11 +74,11 @@ export default function DocumentosEmitidosDashboard() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary">
+          <Link href="/dashboard" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-marca-primary">
             <ArrowLeft className="size-4" /> Voltar ao dashboard
           </Link>
           <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-            <FileSignature className="size-5 text-verde-primary" />
+            <FileSignature className="size-5 text-marca-primary" />
             Documentos Concluídos (ADM)
           </h1>
           <p className="text-sm text-gray-500">
@@ -93,7 +93,7 @@ export default function DocumentosEmitidosDashboard() {
       <div className="reveal-up card-hover rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <TrendingUp className="size-4 text-verde-primary" />
+            <TrendingUp className="size-4 text-marca-primary" />
             <h2 className="text-sm font-semibold text-gray-800">Por mês (últimos 12 meses)</h2>
           </div>
           <p className="text-xs text-gray-400">Clique num mês para filtrar abaixo</p>
@@ -129,7 +129,7 @@ export default function DocumentosEmitidosDashboard() {
       <div className="reveal-up card-hover rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Users className="size-4 text-verde-primary" />
+            <Users className="size-4 text-marca-primary" />
             <div>
               <h2 className="text-sm font-semibold text-gray-800">
                 Por ADM {mesSelLabel ? `— ${mesSelLabel}` : "— acumulado de todos os meses"}

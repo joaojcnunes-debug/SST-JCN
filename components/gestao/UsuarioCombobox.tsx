@@ -98,7 +98,7 @@ export default function UsuarioCombobox({
 
   const inputCls =
     className ??
-    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30 disabled:bg-gray-50";
+    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50";
 
   return (
     <div ref={wrapRef} className="relative">
@@ -143,7 +143,7 @@ export default function UsuarioCombobox({
                 aria-selected={sel}
                 onMouseDown={(e) => { e.preventDefault(); selecionar(u.email); }}
                 onMouseEnter={() => setHi(i)}
-                className={`cursor-pointer px-3 py-1.5 text-sm ${i === hi ? "bg-verde-light/60" : ""} ${sel ? "font-semibold text-verde-primary" : "text-gray-700"} ${!u.email ? "italic text-gray-400" : ""}`}
+                className={`cursor-pointer px-3 py-1.5 text-sm ${i === hi ? "bg-marca-light/60" : ""} ${sel ? "font-semibold text-marca-primary" : "text-gray-700"} ${!u.email ? "italic text-gray-400" : ""}`}
               >
                 {u.nome}
               </li>

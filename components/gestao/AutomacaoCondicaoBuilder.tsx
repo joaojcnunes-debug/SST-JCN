@@ -39,7 +39,7 @@ const PRAZO_ESTADOS = [
   { value: "futuro", label: "No futuro" },
 ];
 
-const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none";
+const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none";
 
 function clausulaVazia(sst = false): ClausulaCondicao {
   return { campo: sst ? "empresa" : "status", op: sst ? "contains" : "=", valor: "" };
@@ -192,7 +192,7 @@ export default function AutomacaoCondicaoBuilder({
           ))}
           {clausulas.length === 0 && <p className="text-[11px] text-gray-400">Nenhuma cláusula.</p>}
           {!disabled && (
-            <button type="button" onClick={() => adicionar(grupo)} className="inline-flex items-center gap-1 text-[11px] font-medium text-verde-primary hover:underline">
+            <button type="button" onClick={() => adicionar(grupo)} className="inline-flex items-center gap-1 text-[11px] font-medium text-marca-primary hover:underline">
               <Plus className="size-3.5" /> Adicionar cláusula
             </button>
           )}
@@ -207,7 +207,7 @@ export default function AutomacaoCondicaoBuilder({
       {grupoUI("any", any, "QUALQUER (OU)", "ao menos uma precisa casar")}
       {!disabled && (
         <div className="flex items-center gap-2">
-          <button type="button" onClick={aplicar} disabled={!sujo} className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-verde-dark disabled:opacity-50">
+          <button type="button" onClick={aplicar} disabled={!sujo} className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-marca-dark disabled:opacity-50">
             <Check className="size-3.5" /> Aplicar condição
           </button>
           {sujo && <span className="text-[11px] text-amber-600">alterações não aplicadas</span>}

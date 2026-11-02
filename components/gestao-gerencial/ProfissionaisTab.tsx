@@ -120,14 +120,14 @@ function AddProfissional({
         <button
           type="button"
           onClick={() => setModo("novo")}
-          className={`inline-flex items-center gap-1 rounded px-2.5 py-1 font-medium ${modo === "novo" ? "bg-verde-primary text-white" : "text-gray-600 hover:bg-gray-100"}`}
+          className={`inline-flex items-center gap-1 rounded px-2.5 py-1 font-medium ${modo === "novo" ? "bg-marca-primary text-white" : "text-gray-600 hover:bg-gray-100"}`}
         >
           <UserPlus className="size-3.5" /> Novo
         </button>
         <button
           type="button"
           onClick={() => setModo("existente")}
-          className={`inline-flex items-center gap-1 rounded px-2.5 py-1 font-medium ${modo === "existente" ? "bg-verde-primary text-white" : "text-gray-600 hover:bg-gray-100"}`}
+          className={`inline-flex items-center gap-1 rounded px-2.5 py-1 font-medium ${modo === "existente" ? "bg-marca-primary text-white" : "text-gray-600 hover:bg-gray-100"}`}
         >
           <Link2 className="size-3.5" /> Vincular existente
         </button>
@@ -141,13 +141,13 @@ function AddProfissional({
             onChange={(e) => setNome(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && salvar()}
             placeholder="Nome do profissional…"
-            className="min-w-[200px] flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+            className="min-w-[200px] flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
           />
         ) : (
           <select
             value={idExistente}
             onChange={(e) => setIdExistente(e.target.value)}
-            className="min-w-[200px] flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+            className="min-w-[200px] flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
           >
             <option value="">Selecione um profissional…</option>
             {disponiveis.map((p) => (
@@ -159,7 +159,7 @@ function AddProfissional({
         <select
           value={idCategoria}
           onChange={(e) => setIdCategoria(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
         >
           <option value="">Categoria…</option>
           {categorias.map((c) => (
@@ -171,7 +171,7 @@ function AddProfissional({
           type="button"
           onClick={salvar}
           disabled={pending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
         >
           {pending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />} Adicionar
         </button>
@@ -205,14 +205,14 @@ function LinhaProfissional({
         value={nome}
         onChange={(e) => setNome(e.target.value)}
         disabled={!podeEditar}
-        className={`min-w-[160px] flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm ${ativo ? "text-gray-900" : "text-gray-400 line-through"} hover:border-gray-200 focus:border-verde-primary focus:bg-white focus:outline-none disabled:cursor-default`}
+        className={`min-w-[160px] flex-1 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm ${ativo ? "text-gray-900" : "text-gray-400 line-through"} hover:border-gray-200 focus:border-marca-primary focus:bg-white focus:outline-none disabled:cursor-default`}
       />
 
       <select
         value={vinculo.id_categoria ?? ""}
         disabled={!podeEditar}
         onChange={(e) => mut.setCategoria.mutate({ id_vinculo: vinculo.id, id_unidade: idUnidade, id_categoria: e.target.value })}
-        className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 focus:border-verde-primary focus:outline-none disabled:cursor-default disabled:opacity-70"
+        className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 focus:border-marca-primary focus:outline-none disabled:cursor-default disabled:opacity-70"
       >
         <option value="">Sem categoria</option>
         {categorias.map((c) => (
@@ -225,7 +225,7 @@ function LinhaProfissional({
           type="button"
           onClick={() => mut.atualizarProf.mutate({ id: vinculo.id_profissional, id_unidade: idUnidade, nome })}
           disabled={mut.atualizarProf.isPending}
-          className="inline-flex items-center gap-1 rounded bg-verde-primary px-2 py-1 text-xs font-medium text-white hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded bg-marca-primary px-2 py-1 text-xs font-medium text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {mut.atualizarProf.isPending ? <Loader2 className="size-3 animate-spin" /> : <Save className="size-3" />} Salvar
         </button>

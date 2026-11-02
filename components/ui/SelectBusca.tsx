@@ -182,7 +182,7 @@ export default function SelectBusca({
       <div
         className={cn(
           "flex w-full items-center gap-1 border bg-white text-sm",
-          "focus-within:border-verde-primary focus-within:ring-2 focus-within:ring-verde-primary/30",
+          "focus-within:border-marca-primary focus-within:ring-2 focus-within:ring-marca-primary/30",
           campoClassName ?? "rounded-md border-gray-300 px-3 py-2",
           disabled && "cursor-not-allowed opacity-60",
         )}
@@ -255,7 +255,7 @@ export default function SelectBusca({
                   onClick={() => escolher(o.value)}
                   className={cn(
                     "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm",
-                    i === ativo && "bg-verde-light",
+                    i === ativo && "bg-marca-light",
                     value === o.value && "font-semibold",
                     o.fixa && "text-gray-600",
                   )}
@@ -281,8 +281,8 @@ export default function SelectBusca({
                   onClick={criar}
                   disabled={criando}
                   className={cn(
-                    "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-verde-primary disabled:opacity-60",
-                    ativo === itens.length && "bg-verde-light",
+                    "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-marca-primary disabled:opacity-60",
+                    ativo === itens.length && "bg-marca-light",
                   )}
                 >
                   <Plus className="size-4 shrink-0" />

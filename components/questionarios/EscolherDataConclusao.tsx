@@ -45,14 +45,14 @@ export default function EscolherDataConclusao({
         <button
           type="button"
           onClick={() => dataAnterior && onEscolher(dataAnterior)}
-          className="rounded-xl border border-verde-primary bg-white px-4 py-2 text-sm font-semibold text-verde-primary hover:bg-verde-light"
+          className="rounded-xl border border-marca-primary bg-white px-4 py-2 text-sm font-semibold text-marca-primary hover:bg-marca-light"
         >
           Manter {dataAnterior ? dataBR(dataAnterior) : ""}
         </button>
         <button
           type="button"
           onClick={() => onEscolher(hoje)}
-          className="rounded-xl bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent"
+          className="rounded-xl bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent"
         >
           Usar hoje ({dataBR(hoje)})
         </button>

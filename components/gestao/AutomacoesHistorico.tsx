@@ -33,7 +33,7 @@ export default function AutomacoesHistorico({ idQuadro }: { idQuadro: string }) 
       <div className="flex flex-wrap items-center gap-2 text-xs">
         {(["", "ok", "skip", "erro"] as const).map((k) => (
           <button key={k || "todos"} type="button" onClick={() => setFiltro(k)}
-            className={`rounded-full px-2.5 py-1 font-medium ${filtro === k ? "bg-verde-primary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+            className={`rounded-full px-2.5 py-1 font-medium ${filtro === k ? "bg-marca-primary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
             {k ? `${ROTULO_RES[k]} (${data.filter((l) => l.resultado === k).length})` : `Todas (${data.length})`}
           </button>
         ))}

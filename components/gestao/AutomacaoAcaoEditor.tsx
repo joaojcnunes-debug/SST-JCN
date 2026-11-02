@@ -37,7 +37,7 @@ const GRUPOS = [...new Set(ACOES.map((a) => a.grupo))];
 /** Destino '@unidade' (v302 = painel v313): a tarefa nova vai para o quadro da unidade dela (etiqueta da cidade). */
 export const QUADRO_DA_UNIDADE = "@unidade";
 
-const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none";
+const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none";
 
 /** Etapa no quadro destino. Os quadros de unidade têm as mesmas etapas: '@unidade' lista as do primeiro. */
 function EtapaDestino({ idQuadro, value, onChange, disabled }: {
@@ -76,10 +76,10 @@ export default function AutomacaoAcaoEditor({
       {emails.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {emails.map((em) => (
-            <span key={em} className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2.5 py-0.5 text-xs font-medium text-verde-primary">
+            <span key={em} className="inline-flex items-center gap-1 rounded-full bg-marca-light px-2.5 py-0.5 text-xs font-medium text-marca-primary">
               {em}
               {!disabled && (
-                <button type="button" onClick={() => onChange({ emails: emails.filter((x) => x !== em) })} className="text-verde-primary/60 hover:text-red-600" aria-label={`Remover ${em}`}>
+                <button type="button" onClick={() => onChange({ emails: emails.filter((x) => x !== em) })} className="text-marca-primary/60 hover:text-red-600" aria-label={`Remover ${em}`}>
                   <X className="size-3" />
                 </button>
               )}
@@ -145,7 +145,7 @@ export default function AutomacaoAcaoEditor({
             <span className="text-gray-400">+</span>
             <input type="number" defaultValue={acao.dias ?? ""} disabled={disabled} onBlur={(e) => onChange({ dias: e.target.value.trim() })} placeholder="dias" className={`${sel} w-20`} />
             <label className="inline-flex items-center gap-1 text-xs text-gray-500">
-              <input type="checkbox" disabled={disabled} checked={acao.uteis === "true"} onChange={(e) => onChange({ uteis: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-verde-primary" />
+              <input type="checkbox" disabled={disabled} checked={acao.uteis === "true"} onChange={(e) => onChange({ uteis: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" />
               dias úteis
             </label>
           </>
@@ -230,7 +230,7 @@ export default function AutomacaoAcaoEditor({
           <>
             <input defaultValue={acao.titulo_template ?? ""} disabled={disabled} onBlur={(e) => onChange({ titulo_template: e.target.value.trim() || undefined })} placeholder="título (use {titulo})" className={`${sel} min-w-[10rem]`} />
             <label className="inline-flex items-center gap-1 text-xs text-gray-500">
-              <input type="checkbox" disabled={disabled} checked={acao.copiar_campos === "true"} onChange={(e) => onChange({ copiar_campos: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-verde-primary" /> copiar campos
+              <input type="checkbox" disabled={disabled} checked={acao.copiar_campos === "true"} onChange={(e) => onChange({ copiar_campos: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" /> copiar campos
             </label>
           </>
         )}
@@ -288,7 +288,7 @@ export default function AutomacaoAcaoEditor({
               <option value="menor_carga">quem tem menos tarefas abertas</option>
             </select>
             <label className="inline-flex items-center gap-1 text-xs text-gray-500">
-              <input type="checkbox" disabled={disabled} checked={acao.substituir === "true"} onChange={(e) => onChange({ substituir: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-verde-primary" />
+              <input type="checkbox" disabled={disabled} checked={acao.substituir === "true"} onChange={(e) => onChange({ substituir: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" />
               substituir os responsáveis atuais
             </label>
           </div>

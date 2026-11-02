@@ -74,7 +74,7 @@ export default function SidebarAlca() {
       onKeyDown={onKeyDown}
       className="sidebar-alca group absolute inset-y-0 -right-1 z-10 w-2 cursor-col-resize touch-none outline-none"
     >
-      <span className="mx-auto block h-full w-[3px] bg-transparent transition-colors group-hover:bg-verde-accent/70 group-focus-visible:bg-verde-accent/70 group-active:bg-verde-accent" />
+      <span className="mx-auto block h-full w-[3px] bg-transparent transition-colors group-hover:bg-marca-accent/70 group-focus-visible:bg-marca-accent/70 group-active:bg-marca-accent" />
     </div>
   );
 }

@@ -136,7 +136,7 @@ export default function EmpresasPsicossocialPage() {
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar empresa, CNPJ, cidade ou título da aplicação…"
             aria-label="Buscar empresa"
-            className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-8 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="w-full rounded-lg border border-gray-300 py-2 pl-8 pr-8 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           />
           {busca && (
             <button
@@ -358,7 +358,7 @@ function DocumentosDoPsicossocial({ idEmpresa }: { idEmpresa: string }) {
                   href={(p.pdf_assinado_url || p.pdf_url)!}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-verde-primary hover:underline"
+                  className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-marca-primary hover:underline"
                 >
                   <Download className="size-3.5" /> Abrir
                 </a>

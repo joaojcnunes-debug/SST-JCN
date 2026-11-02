@@ -389,7 +389,7 @@ export default function TreinamentoForm({
               }}
               required
               placeholder="Ex: NR-06 ou Direção Defensiva"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             />
             {/* A setinha da lista faz o campo parecer só de escolher. */}
             <p className="mt-1 text-[11px] text-gray-500">
@@ -409,7 +409,7 @@ export default function TreinamentoForm({
               onChange={(e) => setTitulo(e.target.value)}
               required
               placeholder="Ex: Treinamento inicial em EPI"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             />
           </div>
         </div>
@@ -423,7 +423,7 @@ export default function TreinamentoForm({
               value={cargaHoraria}
               onChange={(e) => setCargaHoraria(e.target.value)}
               placeholder="Ex: 8h, 20h"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             />
           </div>
           <div>
@@ -434,7 +434,7 @@ export default function TreinamentoForm({
               value={periodicidade}
               onChange={(e) => setPeriodicidade(e.target.value)}
               placeholder="Ex: Reciclagem anual"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             />
             <datalist id="periodicidades">
               {PERIODICIDADES.map((p) => (
@@ -461,7 +461,7 @@ export default function TreinamentoForm({
             onChange={(e) => setDescricao(e.target.value)}
             rows={2}
             placeholder="Detalhes do treinamento (opcional)"
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           />
         </div>
 
@@ -526,7 +526,7 @@ export default function TreinamentoForm({
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
             rows={2}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           />
         </div>
 
@@ -541,7 +541,7 @@ export default function TreinamentoForm({
           <button
             type="submit"
             disabled={save.isPending}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {save.isPending ? "Salvando..." : editing ? "Salvar" : "Criar"}
           </button>
@@ -596,7 +596,7 @@ function CheckPills({
             key={it.id}
             className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs ${
               checked
-                ? "border-verde-primary bg-verde-light text-verde-primary"
+                ? "border-marca-primary bg-marca-light text-marca-primary"
                 : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
             }`}
           >
@@ -604,7 +604,7 @@ function CheckPills({
               type="checkbox"
               checked={checked}
               onChange={() => onToggle(it.id)}
-              className="rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+              className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
             />
             {it.label}
           </label>

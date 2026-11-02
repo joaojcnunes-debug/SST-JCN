@@ -218,7 +218,7 @@ function LoginInner() {
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
                 autoFocus
-                className="mt-1.5 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+                className="mt-1.5 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm shadow-sm transition focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
                 placeholder="seuemail@jcnconsultoria.com.br"
               />
             </div>
@@ -234,7 +234,7 @@ function LoginInner() {
                   value={senha}
                   onChange={(e) => setSenha(e.target.value)}
                   autoComplete="current-password"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 pr-10 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 pr-10 text-sm shadow-sm transition focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
                   placeholder="••••••••"
                 />
                 <button
@@ -254,7 +254,7 @@ function LoginInner() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="size-4 accent-verde-primary"
+                  className="size-4 accent-marca-primary"
                 />
                 <span className="text-sm text-gray-600">Manter conectado</span>
               </label>

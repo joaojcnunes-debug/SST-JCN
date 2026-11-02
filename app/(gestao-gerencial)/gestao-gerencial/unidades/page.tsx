@@ -50,13 +50,13 @@ export default function GestaoGerencialUnidadesPage() {
           onChange={(e) => setNovo(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && add()}
           placeholder="Cadastrar nova unidade (ex.: Teresópolis, Guapimirim)…"
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
         />
         <button
           type="button"
           onClick={add}
           disabled={criar.isPending}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
         >
           <Plus className="size-4" /> Adicionar
         </button>
@@ -75,9 +75,9 @@ export default function GestaoGerencialUnidadesPage() {
             <li key={u.id_unidade}>
               <Link
                 href={`/gestao-gerencial/${u.id_unidade}`}
-                className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-verde-primary hover:shadow-sm"
+                className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 transition hover:border-marca-primary hover:shadow-sm"
               >
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-verde-light text-verde-primary">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-marca-light text-marca-primary">
                   <Building2 className="size-5" />
                 </span>
                 <div className="min-w-0 flex-1">

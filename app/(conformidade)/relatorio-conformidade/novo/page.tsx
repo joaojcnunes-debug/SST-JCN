@@ -92,14 +92,14 @@ function NovoConformidadeInner() {
   const lblCls =
     "text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1 block";
   const inputCls =
-    "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary";
+    "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary";
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div>
         <Link
           href="/relatorio-conformidade"
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-verde-primary"
+          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-marca-primary"
         >
           <ArrowLeft className="size-3.5" /> Voltar
         </Link>
@@ -266,7 +266,7 @@ function NovoConformidadeInner() {
             disabled={
               criar.isPending || !idEmpresa || (semNR && !titulo.trim())
             }
-            className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent disabled:opacity-50"
           >
             {criar.isPending ? (
               <>

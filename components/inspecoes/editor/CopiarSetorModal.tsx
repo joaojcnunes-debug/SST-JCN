@@ -330,7 +330,7 @@ export default function CopiarSetorModal({
               Setor de origem
             </p>
             <div className="mt-1 flex items-center gap-2">
-              <Layers className="size-4 text-verde-primary" />
+              <Layers className="size-4 text-marca-primary" />
               <span className="font-medium text-gray-900">
                 {setor.setor_ghe}
               </span>
@@ -350,11 +350,11 @@ export default function CopiarSetorModal({
               className={cn(
                 "rounded-lg border-2 p-3 text-left transition-colors",
                 modo === "mesma_inspecao"
-                  ? "border-verde-primary bg-verde-light"
+                  ? "border-marca-primary bg-marca-light"
                   : "border-gray-200 bg-white hover:border-gray-300"
               )}
             >
-              <Copy className="size-5 text-verde-primary" />
+              <Copy className="size-5 text-marca-primary" />
               <p className="mt-1 text-sm font-semibold text-gray-900">
                 Duplicar aqui
               </p>
@@ -369,11 +369,11 @@ export default function CopiarSetorModal({
               className={cn(
                 "rounded-lg border-2 p-3 text-left transition-colors",
                 modo === "outra_inspecao"
-                  ? "border-verde-primary bg-verde-light"
+                  ? "border-marca-primary bg-marca-light"
                   : "border-gray-200 bg-white hover:border-gray-300"
               )}
             >
-              <ArrowRightLeft className="size-5 text-verde-primary" />
+              <ArrowRightLeft className="size-5 text-marca-primary" />
               <p className="mt-1 text-sm font-semibold text-gray-900">
                 Mesma empresa
               </p>
@@ -390,11 +390,11 @@ export default function CopiarSetorModal({
               className={cn(
                 "rounded-lg border-2 p-3 text-left transition-colors",
                 modo === "outra_empresa"
-                  ? "border-verde-primary bg-verde-light"
+                  ? "border-marca-primary bg-marca-light"
                   : "border-gray-200 bg-white hover:border-gray-300"
               )}
             >
-              <Building2 className="size-5 text-verde-primary" />
+              <Building2 className="size-5 text-marca-primary" />
               <p className="mt-1 text-sm font-semibold text-gray-900">
                 Outra empresa
               </p>
@@ -411,7 +411,7 @@ export default function CopiarSetorModal({
               value={nomeNovo}
               onChange={(e) => setNomeNovo(e.target.value)}
               placeholder="Ex.: Portaria noturna"
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             />
             {nomeRepetido && (
               <p className="mt-1 text-xs text-amber-warning">
@@ -450,7 +450,7 @@ export default function CopiarSetorModal({
               <select
                 value={idInspecaoDestino ?? ""}
                 onChange={(e) => setIdInspecaoDestino(e.target.value || null)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               >
                 <option value="">Selecione...</option>
                 {inspecoesParaSelect.map((i) => (
@@ -479,7 +479,7 @@ export default function CopiarSetorModal({
                 type="checkbox"
                 checked={copiarCargos}
                 onChange={(e) => setCopiarCargos(e.target.checked)}
-                className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                className="mt-0.5 rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
               />
               <span className="text-sm">
                 <span className="font-medium text-gray-900">
@@ -495,7 +495,7 @@ export default function CopiarSetorModal({
                 type="checkbox"
                 checked={copiarTreinamentos}
                 onChange={(e) => setCopiarTreinamentos(e.target.checked)}
-                className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                className="mt-0.5 rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
               />
               <span className="text-sm">
                 <span className="font-medium text-gray-900">
@@ -514,7 +514,7 @@ export default function CopiarSetorModal({
                   setCopiarRiscos(e.target.checked);
                   if (!e.target.checked) setCopiarEpis(false);
                 }}
-                className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                className="mt-0.5 rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
               />
               <span className="text-sm">
                 <span className="font-medium text-gray-900">
@@ -539,7 +539,7 @@ export default function CopiarSetorModal({
                 checked={copiarEpis}
                 onChange={(e) => setCopiarEpis(e.target.checked)}
                 disabled={!copiarRiscos}
-                className="mt-0.5 rounded border-gray-300 text-verde-primary focus:ring-verde-primary/30"
+                className="mt-0.5 rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
               />
               <span className="text-sm">
                 <span className="font-medium text-gray-900">
@@ -565,7 +565,7 @@ export default function CopiarSetorModal({
               type="button"
               onClick={() => copiar.mutate()}
               disabled={!podeConfirmar || copiar.isPending}
-              className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
             >
               <Copy className="size-4" />
               {copiar.isPending

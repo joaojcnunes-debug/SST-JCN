@@ -14,7 +14,7 @@ import {
   PRIORIDADES, type GestaoFormulario, type PerguntaFormulario, type TipoPergunta, type GestaoStatus, type GestaoEtiqueta,
 } from "@/lib/hooks/useGestao";
 
-const inputCls = "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none";
+const inputCls = "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none";
 
 // F1 (GESTAO-KANBAN-03): tipos de pergunta e o destino (onde a resposta é gravada na tarefa).
 const TIPOS: { value: TipoPergunta; label: string }[] = [
@@ -180,9 +180,9 @@ export default function FormulariosManagerModal({
                     {(draft.titulo_composicao ?? []).map((t, k) => {
                       const rotulo = t === "form_title" ? "Título do formulário" : (draft.perguntas.find((q) => q.id === t.slice(2))?.label || "(pergunta removida)");
                       return (
-                        <span key={k} className="inline-flex items-center gap-1 rounded-full bg-verde-light px-2 py-0.5 text-xs text-verde-primary">
+                        <span key={k} className="inline-flex items-center gap-1 rounded-full bg-marca-light px-2 py-0.5 text-xs text-marca-primary">
                           {rotulo}
-                          <button type="button" onClick={() => up({ titulo_composicao: (draft.titulo_composicao ?? []).filter((_, j) => j !== k) })} className="text-verde-primary/60 hover:text-red-600"><X className="size-3" /></button>
+                          <button type="button" onClick={() => up({ titulo_composicao: (draft.titulo_composicao ?? []).filter((_, j) => j !== k) })} className="text-marca-primary/60 hover:text-red-600"><X className="size-3" /></button>
                         </span>
                       );
                     })}
@@ -205,7 +205,7 @@ export default function FormulariosManagerModal({
                       return (
                         <div key={i} className="space-y-1.5 rounded-md border border-gray-100 bg-gray-50/50 p-2">
                           <div className="flex items-center gap-2">
-                            <input value={p.label} onChange={(e) => upP({ label: e.target.value })} placeholder="Rótulo da pergunta" className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none" />
+                            <input value={p.label} onChange={(e) => upP({ label: e.target.value })} placeholder="Rótulo da pergunta" className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none" />
                             <label className="flex items-center gap-1 text-xs text-gray-500"><input type="checkbox" checked={p.obrigatorio} onChange={(e) => upP({ obrigatorio: e.target.checked })} /> obrig.</label>
                             <button type="button" onClick={() => up({ perguntas: draft.perguntas.filter((_, j) => j !== i) })} className="text-gray-300 hover:text-red-600"><X className="size-4" /></button>
                           </div>
@@ -228,7 +228,7 @@ export default function FormulariosManagerModal({
                             <MultiChipInput value={p.opcoes ?? []} onChange={(v) => upP({ opcoes: v })} sugestoes={campoDest?.opcoes ?? []} placeholder="Opções da pergunta…" />
                           )}
                           {/* F1.5: texto de ajuda + pergunta condicional (origem = outra pergunta de seleção deste form) */}
-                          <input value={p.ajuda ?? ""} onChange={(e) => upP({ ajuda: e.target.value || undefined })} placeholder="Texto de ajuda (opcional)" className="w-full rounded-md border border-gray-200 px-2 py-1 text-xs focus:border-verde-primary focus:outline-none" />
+                          <input value={p.ajuda ?? ""} onChange={(e) => upP({ ajuda: e.target.value || undefined })} placeholder="Texto de ajuda (opcional)" className="w-full rounded-md border border-gray-200 px-2 py-1 text-xs focus:border-marca-primary focus:outline-none" />
                           {(() => {
                             // Origem não pode ser a própria pergunta nem quem depende dela (evita ciclo A↔B).
                             const dependentes = p.id ? dependentesDe(p.id, draft.perguntas) : new Set<string>();
@@ -257,7 +257,7 @@ export default function FormulariosManagerModal({
                         </div>
                       );
                     })}
-                    <button type="button" onClick={() => up({ perguntas: [...draft.perguntas, { id: novoIdPergunta(), label: "", obrigatorio: false, tipo: "texto", destino: "descricao" } as PerguntaFormulario] })} className="inline-flex items-center gap-1 text-xs font-medium text-verde-primary hover:underline">
+                    <button type="button" onClick={() => up({ perguntas: [...draft.perguntas, { id: novoIdPergunta(), label: "", obrigatorio: false, tipo: "texto", destino: "descricao" } as PerguntaFormulario] })} className="inline-flex items-center gap-1 text-xs font-medium text-marca-primary hover:underline">
                       <Plus className="size-3.5" /> Adicionar pergunta
                     </button>
                   </div>
@@ -265,7 +265,7 @@ export default function FormulariosManagerModal({
 
                 <div className="flex justify-end gap-2 pt-1">
                   <button type="button" onClick={() => { setEditId(null); setDraft(null); }} className="rounded-md px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100">Cancelar</button>
-                  <button type="button" onClick={salvarEdicao} disabled={salvar.isPending} className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-dark disabled:opacity-60">
+                  <button type="button" onClick={salvarEdicao} disabled={salvar.isPending} className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-dark disabled:opacity-60">
                     <Check className="size-4" /> Salvar
                   </button>
                 </div>
@@ -293,7 +293,7 @@ export default function FormulariosManagerModal({
         {forms.length === 0 && <p className="text-sm text-gray-400">Nenhum formulário ainda.</p>}
 
         {podeEditar && (
-          <button type="button" onClick={novo} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-verde-primary ring-1 ring-dashed ring-verde-primary/40 hover:bg-verde-light/40">
+          <button type="button" onClick={novo} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-marca-primary ring-1 ring-dashed ring-marca-primary/40 hover:bg-marca-light/40">
             <Plus className="size-4" /> Novo formulário
           </button>
         )}

@@ -63,7 +63,7 @@ export default function TiposRiscoTab() {
             setEditing(null);
             setModalOpen(true);
           }}
-          className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent"
+          className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
         >
           <Plus className="size-4" /> Novo Tipo
         </button>
@@ -98,7 +98,7 @@ export default function TiposRiscoTab() {
             <button
               type="button"
               onClick={() => setCatalogoDe(t)}
-              className="inline-flex items-center gap-1.5 rounded-md border border-verde-primary bg-verde-light px-2.5 py-1 text-xs font-semibold text-verde-primary hover:bg-verde-primary hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-md border border-marca-primary bg-marca-light px-2.5 py-1 text-xs font-semibold text-marca-primary hover:bg-marca-primary hover:text-white"
               title="Editar catálogo de agentes, EPIs e medidas"
             >
               <ClipboardList className="size-3.5" />
@@ -143,7 +143,7 @@ export default function TiposRiscoTab() {
                   setEditing(t);
                   setModalOpen(true);
                 }}
-                className="rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                className="rounded p-1.5 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
                 title="Editar nome / ícone / ordem"
               >
                 <Pencil className="size-4" />
@@ -273,7 +273,7 @@ function TipoModal({
             type="text"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             placeholder="Ex: Radiação Solar"
             required
           />
@@ -288,7 +288,7 @@ function TipoModal({
             value={icone}
             onChange={(e) => setIcone(e.target.value)}
             maxLength={4}
-            className="mt-1 w-24 rounded-md border border-gray-300 px-3 py-2 text-center text-2xl focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-24 rounded-md border border-gray-300 px-3 py-2 text-center text-2xl focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             placeholder="🌡️"
           />
           <div className="mt-2 flex flex-wrap gap-1.5">
@@ -300,7 +300,7 @@ function TipoModal({
                 className={cn(
                   "rounded-md border p-1.5 text-xl hover:bg-gray-50",
                   icone === emoji
-                    ? "border-verde-primary bg-verde-light"
+                    ? "border-marca-primary bg-marca-light"
                     : "border-gray-200 bg-white"
                 )}
               >
@@ -318,7 +318,7 @@ function TipoModal({
             type="number"
             value={ordem}
             onChange={(e) => setOrdem(Number(e.target.value) || 0)}
-            className="mt-1 w-32 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-32 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           />
         </div>
 
@@ -337,7 +337,7 @@ function TipoModal({
           <button
             type="submit"
             disabled={save.isPending}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {save.isPending ? "Salvando..." : isEdit ? "Salvar" : "Criar"}
           </button>

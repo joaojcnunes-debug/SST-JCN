@@ -949,7 +949,7 @@ export default function RiscoForm({
               }
 
               return (
-                <p className="mt-1 text-[11px] text-verde-primary">
+                <p className="mt-1 text-[11px] text-marca-primary">
                   ✓ Modelo &ldquo;{modeloSelecionado.agente}&rdquo;{" "}
                   {isEdit ? "vinculado" : "aplicado"}:{" "}
                   {nEpiUti + nEpiRec} EPI(s), {nEpcUti + nEpcRec} EPC(s),{" "}
@@ -1084,7 +1084,7 @@ export default function RiscoForm({
                         ] ?? f.severidade,
                   }));
                 }}
-                className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
               >
                 <option value="">
                   Padrão (ativa: {matrizAtiva?.nome ?? "—"})
@@ -1140,10 +1140,10 @@ export default function RiscoForm({
         {/* Perguntas Customizadas (V3) — definidas pelo Admin em /config */}
         {perguntasCombinadas.length > 0 && (
           <section>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-verde-primary">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-marca-primary">
               Perguntas — {form.tipo_risco}
             </p>
-            <div className="space-y-2 rounded-lg border border-verde-primary/30 bg-verde-light/30 p-3">
+            <div className="space-y-2 rounded-lg border border-marca-primary/30 bg-marca-light/30 p-3">
               {perguntasCombinadas.map((p) => {
                 const valor = form.respostas_custom[p.chave] ?? "";
                 const setVal = (v: string) =>
@@ -1173,7 +1173,7 @@ export default function RiscoForm({
                       <select
                         value={valor}
                         onChange={(e) => setVal(e.target.value)}
-                        className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                        className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                       >
                         <option value="">—</option>
                         {p.opcoes.map((o) => (
@@ -1187,14 +1187,14 @@ export default function RiscoForm({
                         value={valor}
                         onChange={(e) => setVal(e.target.value)}
                         rows={2}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                       />
                     ) : (
                       <input
                         type="text"
                         value={valor}
                         onChange={(e) => setVal(e.target.value)}
-                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                        className="w-full rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                       />
                     )}
                   </div>
@@ -1346,7 +1346,7 @@ export default function RiscoForm({
                       onChange={(e) =>
                         setForm({ ...form, [q.id]: e.target.value })
                       }
-                      className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                      className="rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                     >
                       <option value="">—</option>
                       <option value="Sim">Sim</option>
@@ -1494,7 +1494,7 @@ export default function RiscoForm({
               setForm({ ...form, observacoes_risco: e.target.value })
             }
             rows={2}
-            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           />
         </section>
 
@@ -1509,7 +1509,7 @@ export default function RiscoForm({
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {mutation.isPending
               ? "Salvando..."
@@ -2140,7 +2140,7 @@ function EpiBloco({
                             type="button"
                             onClick={() => salvarEdit(e.key, e.localIdx)}
                             disabled={updateServer.isPending}
-                            className="rounded p-1 text-verde-primary hover:bg-verde-light disabled:opacity-50"
+                            className="rounded p-1 text-marca-primary hover:bg-marca-light disabled:opacity-50"
                             title="Salvar"
                           >
                             <Check className="size-3.5" />
@@ -2184,7 +2184,7 @@ function EpiBloco({
                                 ca: e.ca,
                               })
                             }
-                            className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                            className="rounded p-1 text-gray-400 hover:bg-marca-light hover:text-marca-primary"
                             title="Editar"
                           >
                             <Pencil className="size-3.5" />
@@ -2223,7 +2223,7 @@ function EpiBloco({
                       ? `Selecione do catálogo (${disponiveis.length}) ou digite manualmente`
                       : `Descrição do ${tipoFixo}`
                   }
-                  className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                   onKeyDown={(ev) => {
                     if (ev.key === "Enter") {
                       ev.preventDefault();
@@ -2243,13 +2243,13 @@ function EpiBloco({
                   value={novo.ca}
                   onChange={(ev) => setNovo({ ...novo, ca: ev.target.value })}
                   placeholder="CA"
-                  className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                 />
                 <button
                   type="button"
                   onClick={handleAdd}
                   disabled={addServer.isPending}
-                  className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent disabled:opacity-50"
+                  className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-marca-accent disabled:opacity-50"
                 >
                   <Plus className="size-3.5" /> Adicionar
                 </button>
@@ -2359,7 +2359,7 @@ function FonteBlocoLista({
                       <button
                         type="button"
                         onClick={() => salvarEdit(idx)}
-                        className="rounded p-1 text-verde-primary hover:bg-verde-light"
+                        className="rounded p-1 text-marca-primary hover:bg-marca-light"
                         title="Salvar"
                       >
                         <Check className="size-3.5" />
@@ -2388,7 +2388,7 @@ function FonteBlocoLista({
                       <button
                         type="button"
                         onClick={() => abrirEdit(idx, it)}
-                        className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                        className="rounded p-1 text-gray-400 hover:bg-marca-light hover:text-marca-primary"
                         title="Editar"
                       >
                         <Pencil className="size-3.5" />
@@ -2425,7 +2425,7 @@ function FonteBlocoLista({
                   ? `Selecione do catálogo (${disponiveis.length}) ou digite manualmente`
                   : "Ex: Compressor industrial em operação"
               }
-              className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+              className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
               onKeyDown={(ev) => {
                 if (ev.key === "Enter") {
                   ev.preventDefault();
@@ -2443,7 +2443,7 @@ function FonteBlocoLista({
             <button
               type="button"
               onClick={handleAdd}
-              className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
+              className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-marca-accent"
             >
               <Plus className="size-3.5" /> Adicionar
             </button>
@@ -2629,7 +2629,7 @@ function MedidaBloco({
                           <button
                             type="button"
                             onClick={() => salvarEdit(idx)}
-                            className="rounded p-1 text-verde-primary hover:bg-verde-light"
+                            className="rounded p-1 text-marca-primary hover:bg-marca-light"
                             title="Salvar"
                           >
                             <Check className="size-3.5" />
@@ -2660,7 +2660,7 @@ function MedidaBloco({
                           <button
                             type="button"
                             onClick={() => abrirEdit(idx, it)}
-                            className="rounded p-1 text-gray-400 hover:bg-verde-light hover:text-verde-primary"
+                            className="rounded p-1 text-gray-400 hover:bg-marca-light hover:text-marca-primary"
                             title="Editar"
                           >
                             <Pencil className="size-3.5" />
@@ -2699,7 +2699,7 @@ function MedidaBloco({
                       ? `Selecione do catálogo (${disponiveis.length}) ou digite manualmente`
                       : placeholder
                   }
-                  className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+                  className="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm shadow-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
                   onKeyDown={(ev) => {
                     if (ev.key === "Enter") {
                       ev.preventDefault();
@@ -2717,7 +2717,7 @@ function MedidaBloco({
                 <button
                   type="button"
                   onClick={handleAdd}
-                  className="inline-flex items-center gap-1 rounded-md bg-verde-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-verde-accent"
+                  className="inline-flex items-center gap-1 rounded-md bg-marca-primary px-2.5 py-1.5 text-xs font-medium text-white hover:bg-marca-accent"
                 >
                   <Plus className="size-3.5" /> Adicionar
                 </button>
@@ -2926,7 +2926,7 @@ async function semearItensModelo(
 // =============================================================
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
+  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30";
 const lblCls = "text-sm font-medium text-gray-700";
 
 function Field({

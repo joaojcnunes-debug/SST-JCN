@@ -186,7 +186,7 @@ function GraficoMes({
         {link && (
           <Link
             href={link}
-            className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-verde-light px-2.5 py-1.5 text-xs font-semibold text-verde-primary transition-colors hover:bg-verde-primary hover:text-white"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-marca-light px-2.5 py-1.5 text-xs font-semibold text-marca-primary transition-colors hover:bg-marca-primary hover:text-white"
             title={linkTitle}
           >
             <TrendingUp className="size-3.5" />
@@ -267,7 +267,7 @@ function GraficoInspecoesMes({
         </div>
         <Link
           href="/dashboard/inspecoes-concluidas"
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-verde-light px-2.5 py-1.5 text-xs font-semibold text-verde-primary transition-colors hover:bg-verde-primary hover:text-white"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-marca-light px-2.5 py-1.5 text-xs font-semibold text-marca-primary transition-colors hover:bg-marca-primary hover:text-white"
           title="Abrir o detalhe por mês e por pessoa"
         >
           <TrendingUp className="size-3.5" />
@@ -336,8 +336,8 @@ function GraficoDonut({
           <h2 className="text-sm font-semibold text-gray-800">{titulo}</h2>
           <p className="mt-0.5 text-xs text-gray-400">{sub}</p>
         </div>
-        <div className="flex size-8 items-center justify-center rounded-lg bg-verde-light">
-          <Target className="size-4 text-verde-primary" />
+        <div className="flex size-8 items-center justify-center rounded-lg bg-marca-light">
+          <Target className="size-4 text-marca-primary" />
         </div>
       </div>
 
@@ -671,7 +671,7 @@ export default function DashboardPage() {
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
-              <Users className="size-4 text-verde-primary" /> Situação por colaborador
+              <Users className="size-4 text-marca-primary" /> Situação por colaborador
             </h2>
             <p className="mt-0.5 text-xs text-gray-400">
               O que está com cada pessoa agora e o que ela entregou no mês. Campo pela aba Responsáveis (sem ninguém, quem abriu);
@@ -681,11 +681,11 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3">
             {/* v0.3.183: horas apontadas nos documentos (sessões da v311) — só supervisão. */}
             {supervisor && (
-              <Link href="/dashboard/tempo-documentos" className="flex items-center gap-1 text-xs font-medium text-verde-primary transition hover:underline">
+              <Link href="/dashboard/tempo-documentos" className="flex items-center gap-1 text-xs font-medium text-marca-primary transition hover:underline">
                 Tempo nos documentos <ArrowRight className="size-3" />
               </Link>
             )}
-            <Link href="/inspecoes/minhas" className="flex items-center gap-1 text-xs font-medium text-verde-primary transition hover:underline">
+            <Link href="/inspecoes/minhas" className="flex items-center gap-1 text-xs font-medium text-marca-primary transition hover:underline">
               Minhas inspeções <ArrowRight className="size-3" />
             </Link>
           </div>
@@ -716,10 +716,10 @@ export default function DashboardPage() {
                   {colaboradores.map((c, idx) => {
                     const id = idPorNome.get(chaveNome(c.pessoa));
                     return (
-                      <tr key={c.pessoa} className={cn("transition-colors hover:bg-verde-light/30", idx < colaboradores.length - 1 && "border-b border-gray-50")}>
+                      <tr key={c.pessoa} className={cn("transition-colors hover:bg-marca-light/30", idx < colaboradores.length - 1 && "border-b border-gray-50")}>
                         <td className="px-4 py-2.5">
                           {supervisor && id ? (
-                            <Link href={`/inspecoes/minhas?pessoa=${id}`} className="font-medium text-gray-900 hover:text-verde-primary hover:underline" title="Abrir a fila desta pessoa">
+                            <Link href={`/inspecoes/minhas?pessoa=${id}`} className="font-medium text-gray-900 hover:text-marca-primary hover:underline" title="Abrir a fila desta pessoa">
                               {c.pessoa}
                             </Link>
                           ) : (
@@ -752,7 +752,7 @@ export default function DashboardPage() {
           </div>
           <Link
             href={naLista()}
-            className="flex items-center gap-1 text-xs font-medium text-verde-primary transition hover:underline"
+            className="flex items-center gap-1 text-xs font-medium text-marca-primary transition hover:underline"
           >
             Ver todas <ArrowRight className="size-3" />
           </Link>
@@ -766,7 +766,7 @@ export default function DashboardPage() {
           ) : recentes.length === 0 ? (
             <div className="p-10 text-center text-sm text-gray-500">
               Nenhuma inspeção registrada{unidade.nomeUnidade ? " nesta unidade" : ""}.{" "}
-              <Link href="/inspecoes/nova" className="font-medium text-verde-primary hover:underline">
+              <Link href="/inspecoes/nova" className="font-medium text-marca-primary hover:underline">
                 Crie a primeira →
               </Link>
             </div>
@@ -805,7 +805,7 @@ export default function DashboardPage() {
                       <tr
                         key={i.id_inspecao}
                         className={cn(
-                          "transition-colors hover:bg-verde-light/30",
+                          "transition-colors hover:bg-marca-light/30",
                           idx < recentes.length - 1 && "border-b border-gray-50"
                         )}
                       >
@@ -829,7 +829,7 @@ export default function DashboardPage() {
                         <td className="px-4 py-3 text-right">
                           <Link
                             href={`/inspecoes/${i.id_inspecao}`}
-                            className="inline-flex items-center gap-1 rounded-lg bg-verde-light px-2.5 py-1 text-xs font-medium text-verde-primary transition hover:bg-verde-border"
+                            className="inline-flex items-center gap-1 rounded-lg bg-marca-light px-2.5 py-1 text-xs font-medium text-marca-primary transition hover:bg-marca-border"
                           >
                             Abrir <ArrowRight className="size-3" />
                           </Link>

@@ -60,7 +60,7 @@ export default function ComplexidadeCelula({
         aria-label="Complexidade da inspeção"
         title="Complexidade desta inspeção"
         className={cn(
-          "cursor-pointer rounded-full border px-2 py-0.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:opacity-60",
+          "cursor-pointer rounded-full border px-2 py-0.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-marca-primary/30 disabled:opacity-60",
           atual ? COMPLEXIDADE_INFO[atual].classe : "border-dashed border-gray-300 bg-white text-gray-400",
         )}
       >

@@ -74,7 +74,7 @@ export default function AnexosManager({ modulo, idReferencia }: Props) {
     <div className="print:hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Paperclip className="size-4 text-verde-primary" />
+          <Paperclip className="size-4 text-marca-primary" />
           <h3 className="text-sm font-semibold text-gray-900">Anexos</h3>
           {anexos.length > 0 && (
             <span className="text-xs text-gray-500">
@@ -86,7 +86,7 @@ export default function AnexosManager({ modulo, idReferencia }: Props) {
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={enviar.isPending}
-          className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-3 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
         >
           {enviar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
           Enviar anexo
@@ -136,7 +136,7 @@ export default function AnexosManager({ modulo, idReferencia }: Props) {
                       atualizar.mutate({ id_anexo: a.id_anexo, descricao: v });
                     }
                   }}
-                  className="mt-0.5 w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-gray-600 hover:border-gray-200 focus:border-verde-primary focus:bg-white focus:outline-none"
+                  className="mt-0.5 w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-gray-600 hover:border-gray-200 focus:border-marca-primary focus:bg-white focus:outline-none"
                 />
               </div>
               <span className="shrink-0 text-[10px] text-gray-400">{tamanhoLegivel(a.tamanho_bytes)}</span>
@@ -181,7 +181,7 @@ export default function AnexosManager({ modulo, idReferencia }: Props) {
                   onChange={(e) =>
                     atualizar.mutate({ id_anexo: a.id_anexo, vinculo_tipo: e.target.value || null })
                   }
-                  className="rounded border border-gray-300 bg-white px-1 py-0.5 text-[11px] text-gray-700 focus:border-verde-primary focus:outline-none"
+                  className="rounded border border-gray-300 bg-white px-1 py-0.5 text-[11px] text-gray-700 focus:border-marca-primary focus:outline-none"
                 >
                   <option value="">—</option>
                   {VINCULOS_ANEXO.map((v) => (
@@ -197,7 +197,7 @@ export default function AnexosManager({ modulo, idReferencia }: Props) {
                   onChange={(e) =>
                     atualizar.mutate({ id_anexo: a.id_anexo, validade: e.target.value || null })
                   }
-                  className="rounded border border-gray-300 bg-white px-1 py-0.5 text-[11px] text-gray-700 focus:border-verde-primary focus:outline-none"
+                  className="rounded border border-gray-300 bg-white px-1 py-0.5 text-[11px] text-gray-700 focus:border-marca-primary focus:outline-none"
                 />
               </label>
               <button

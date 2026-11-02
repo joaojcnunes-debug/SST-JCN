@@ -501,7 +501,7 @@ export default function EmpresaForm({
               className={cn(
                 "flex cursor-pointer gap-3 rounded-lg border-2 p-3 transition-colors",
                 form.tipo_estabelecimento === v
-                  ? "border-verde-primary bg-verde-light"
+                  ? "border-marca-primary bg-marca-light"
                   : "border-gray-200 bg-white hover:border-gray-300",
               )}
             >
@@ -510,7 +510,7 @@ export default function EmpresaForm({
                 name="tipo-estabelecimento"
                 checked={form.tipo_estabelecimento === v}
                 onChange={() => setForm({ ...form, tipo_estabelecimento: v })}
-                className="mt-0.5 text-verde-primary focus:ring-verde-primary/30"
+                className="mt-0.5 text-marca-primary focus:ring-marca-primary/30"
               />
               <span>
                 <span className="block text-sm font-semibold text-gray-900">
@@ -532,7 +532,7 @@ export default function EmpresaForm({
               onChange={(e) =>
                 setForm({ ...form, id_empresa_contratante: e.target.value })
               }
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             >
               <option value="" disabled>
                 Selecione a empresa contratante…
@@ -556,7 +556,7 @@ export default function EmpresaForm({
             type="text"
             value={form.nome_empresa}
             onChange={(e) => setForm({ ...form, nome_empresa: e.target.value })}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             required
           />
         </div>
@@ -577,14 +577,14 @@ export default function EmpresaForm({
                 inputMode="numeric"
                 maxLength={18}
                 placeholder="00.000.000/0000-00"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
               <button
                 type="button"
                 onClick={buscarCnpj}
                 disabled={buscandoCnpj}
                 title="Buscar dados da empresa na Receita Federal pelo CNPJ"
-                className="shrink-0 rounded-md bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+                className="shrink-0 rounded-md bg-marca-primary px-3 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
               >
                 {buscandoCnpj ? "Buscando…" : "Buscar"}
               </button>
@@ -596,7 +596,7 @@ export default function EmpresaForm({
               type="text"
               value={form.razao_social}
               onChange={(e) => setForm({ ...form, razao_social: e.target.value })}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             />
           </div>
           <div>
@@ -607,7 +607,7 @@ export default function EmpresaForm({
               type="text"
               value={form.nome_fantasia}
               onChange={(e) => setForm({ ...form, nome_fantasia: e.target.value })}
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             />
           </div>
         </div>
@@ -634,7 +634,7 @@ export default function EmpresaForm({
                 value={form.cpf}
                 onChange={(e) => setForm({ ...form, cpf: e.target.value })}
                 placeholder="000.000.000-00"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div>
@@ -644,7 +644,7 @@ export default function EmpresaForm({
                 value={form.cei}
                 onChange={(e) => setForm({ ...form, cei: e.target.value })}
                 placeholder="00.000.00000/00"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div>
@@ -654,7 +654,7 @@ export default function EmpresaForm({
                 value={form.caepf}
                 onChange={(e) => setForm({ ...form, caepf: e.target.value })}
                 placeholder="000.000.000/000-00"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div>
@@ -664,7 +664,7 @@ export default function EmpresaForm({
                 value={form.cno}
                 onChange={(e) => setForm({ ...form, cno: e.target.value })}
                 placeholder="00.000.00000/00"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
           </div>
@@ -678,7 +678,7 @@ export default function EmpresaForm({
           <select
             value={form.id_unidade}
             onChange={(e) => setForm({ ...form, id_unidade: e.target.value })}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           >
             <option value="" disabled>
               Selecione a unidade…
@@ -751,7 +751,7 @@ export default function EmpresaForm({
                 type="text"
                 value={form.logradouro}
                 onChange={(e) => setForm({ ...form, logradouro: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div>
@@ -760,7 +760,7 @@ export default function EmpresaForm({
                 type="text"
                 value={form.numero}
                 onChange={(e) => setForm({ ...form, numero: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div>
@@ -770,7 +770,7 @@ export default function EmpresaForm({
                 value={form.cep}
                 onChange={(e) => setForm({ ...form, cep: e.target.value })}
                 placeholder="00000-000"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div className="md:col-span-2">
@@ -779,7 +779,7 @@ export default function EmpresaForm({
                 type="text"
                 value={form.complemento}
                 onChange={(e) => setForm({ ...form, complemento: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div className="md:col-span-2">
@@ -788,7 +788,7 @@ export default function EmpresaForm({
                 type="text"
                 value={form.bairro}
                 onChange={(e) => setForm({ ...form, bairro: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div className="md:col-span-1">
@@ -797,7 +797,7 @@ export default function EmpresaForm({
                 type="text"
                 value={form.municipio}
                 onChange={(e) => setForm({ ...form, municipio: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div className="md:col-span-1">
@@ -807,7 +807,7 @@ export default function EmpresaForm({
                 maxLength={2}
                 value={form.uf}
                 onChange={(e) => setForm({ ...form, uf: e.target.value.toUpperCase() })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm uppercase focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm uppercase focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div className="md:col-span-3">
@@ -816,7 +816,7 @@ export default function EmpresaForm({
                 type="text"
                 value={form.telefone}
                 onChange={(e) => setForm({ ...form, telefone: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div className="md:col-span-3">
@@ -825,7 +825,7 @@ export default function EmpresaForm({
                 type="text"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
           </div>
@@ -843,7 +843,7 @@ export default function EmpresaForm({
                 type="text"
                 value={form.cnae_principal}
                 onChange={(e) => setForm({ ...form, cnae_principal: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div className="md:col-span-5">
@@ -852,7 +852,7 @@ export default function EmpresaForm({
                 type="text"
                 value={form.cnae_descricao}
                 onChange={(e) => setForm({ ...form, cnae_descricao: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div className="md:col-span-3">
@@ -861,7 +861,7 @@ export default function EmpresaForm({
                 type="text"
                 value={form.situacao_cadastral}
                 onChange={(e) => setForm({ ...form, situacao_cadastral: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div className="md:col-span-3">
@@ -870,7 +870,7 @@ export default function EmpresaForm({
                 type="text"
                 value={form.porte}
                 onChange={(e) => setForm({ ...form, porte: e.target.value })}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
           </div>
@@ -892,7 +892,7 @@ export default function EmpresaForm({
                 value={form.referencia}
                 onChange={(e) => setForm({ ...form, referencia: e.target.value })}
                 placeholder="Como chegar ao local"
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
               />
             </div>
             <div className="grid gap-3 md:grid-cols-2">
@@ -907,7 +907,7 @@ export default function EmpresaForm({
                   }
                   rows={4}
                   placeholder="Hospital, UPA ou ambulatório mais próximo e telefones"
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
                 />
               </div>
               <div>
@@ -920,7 +920,7 @@ export default function EmpresaForm({
                     setForm({ ...form, dados_adicionais: e.target.value })
                   }
                   rows={4}
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
                 />
               </div>
             </div>
@@ -935,7 +935,7 @@ export default function EmpresaForm({
           <select
             value={form.grau_risco}
             onChange={(e) => setForm({ ...form, grau_risco: e.target.value })}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           >
             <option value="" disabled={!ehTerceiros}>
               {ehTerceiros ? "Não informado" : "Selecione o grau de risco…"}
@@ -972,14 +972,14 @@ export default function EmpresaForm({
 
           {/* Lacuna: cadastro sem grau, e a norma sabe qual é. */}
           {lacunaPreenchivel && (
-            <div className="mt-2 rounded-lg border border-verde-primary/40 bg-verde-light p-3">
+            <div className="mt-2 rounded-lg border border-marca-primary/40 bg-marca-light p-3">
               <p className="text-xs text-gray-800">
                 A NR-4 indica <strong>grau {grauNorma}</strong> para este CNAE.
               </p>
               <button
                 type="button"
                 onClick={usarGrauDaNorma}
-                className="mt-2 rounded-md bg-verde-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent"
+                className="mt-2 rounded-md bg-marca-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-marca-accent"
               >
                 Preencher com o grau {grauNorma}
               </button>
@@ -1008,7 +1008,7 @@ export default function EmpresaForm({
             onChange={(e) =>
               setForm({ ...form, status: e.target.value as "Ativo" | "Inativa" })
             }
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           >
             <option value="Ativo">Ativo</option>
             <option value="Inativa">Inativa</option>
@@ -1020,7 +1020,7 @@ export default function EmpresaForm({
             value={form.observacao}
             onChange={(e) => setForm({ ...form, observacao: e.target.value })}
             rows={3}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           />
         </div>
 
@@ -1039,7 +1039,7 @@ export default function EmpresaForm({
               trocaBloqueada ||
               (!isEdit && duplicatas.mesmoCodigo.length > 0 && !cadastrarMesmoAssim)
             }
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {mutation.isPending
               ? "Salvando..."

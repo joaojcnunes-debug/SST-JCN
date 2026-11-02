@@ -31,7 +31,7 @@ export default function ColaboradoresView({ onAbrirQuadro }: { onAbrirQuadro: (i
     <div className="mt-4">
       <div className="relative w-full sm:w-80">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
-        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar colaborador (nome, e-mail, equipe)…" className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-verde-primary focus:outline-none" />
+        <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar colaborador (nome, e-mail, equipe)…" className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm shadow-sm focus:border-marca-primary focus:outline-none" />
       </div>
       {isLoading ? (
         <p className="mt-4 flex items-center gap-2 text-sm text-gray-400"><Loader2 className="size-4 animate-spin" /> Carregando…</p>
@@ -42,13 +42,13 @@ export default function ColaboradoresView({ onAbrirQuadro }: { onAbrirQuadro: (i
           {lista.map((c) => {
             const nome = c.nome ?? c.usuario_email;
             return (
-              <button key={c.usuario_email} type="button" disabled={abrindo === c.usuario_email} onClick={() => abrirDe(c.usuario_email, nome)} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left shadow-sm transition hover:border-verde-primary/50 hover:shadow-md disabled:opacity-60">
+              <button key={c.usuario_email} type="button" disabled={abrindo === c.usuario_email} onClick={() => abrirDe(c.usuario_email, nome)} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3 text-left shadow-sm transition hover:border-marca-primary/50 hover:shadow-md disabled:opacity-60">
                 <AvatarPessoa nome={nome} className="size-9 text-xs" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-gray-800">{nome}</span>
                   <span className="block truncate text-[11px] text-gray-400">{c.usuario_email}</span>
                   {c.equipes.length > 0 && (
-                    <span className="mt-1 flex flex-wrap gap-1">{c.equipes.map((e) => <span key={e} className="inline-flex items-center gap-1 rounded-full bg-verde-light px-1.5 py-0.5 text-[10px] font-medium text-verde-primary"><Users className="size-2.5" />{e}</span>)}</span>
+                    <span className="mt-1 flex flex-wrap gap-1">{c.equipes.map((e) => <span key={e} className="inline-flex items-center gap-1 rounded-full bg-marca-light px-1.5 py-0.5 text-[10px] font-medium text-marca-primary"><Users className="size-2.5" />{e}</span>)}</span>
                   )}
                 </span>
                 {abrindo === c.usuario_email ? <Loader2 className="size-4 animate-spin text-gray-400" /> : <KanbanSquare className="size-4 shrink-0 text-gray-300" />}

@@ -27,7 +27,7 @@ export default function GrupoDaEmpresaResumo({ idEmpresa }: { idEmpresa: string 
           <Link
             key={m.id_empresa}
             href={`/empresas/${m.id_empresa}`}
-            className="rounded-full border border-gray-200 px-2 py-0.5 hover:border-verde-primary hover:text-verde-primary"
+            className="rounded-full border border-gray-200 px-2 py-0.5 hover:border-marca-primary hover:text-marca-primary"
           >
             {m.nome_empresa} <span className="text-gray-400">· {ROTULO_PAPEL[m.papel_grupo]}</span>
           </Link>

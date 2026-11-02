@@ -59,7 +59,7 @@ export function ControleSessao({
       type="button"
       disabled={iniciar.isPending}
       onClick={() => iniciar.mutate(idInspecao, { onSuccess: () => onIniciou?.() })}
-      className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-verde-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+      className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-marca-primary px-2.5 py-1 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
       title="Começa a contar o seu tempo neste documento"
     >
       {iniciar.isPending ? <Loader2 className="size-3 animate-spin" /> : <Play className="size-3" />}
@@ -153,7 +153,7 @@ export function ListaSessoes({
   const ordem = [...sessoes].sort((a, b) => b.inicio.localeCompare(a.inicio));
   return (
     <div className="mt-2">
-      <button type="button" onClick={() => setAberta((v) => !v)} className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-verde-primary">
+      <button type="button" onClick={() => setAberta((v) => !v)} className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-marca-primary">
         {aberta ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />} Sessões de trabalho ({sessoes.length})
       </button>
       {aberta && (
@@ -193,7 +193,7 @@ export function ListaSessoes({
                     </td>
                     {podeCorrigir && (
                       <td className="py-1 text-right">
-                        <button type="button" onClick={() => setCorrigindo(s)} className="text-[11px] text-gray-400 hover:text-verde-primary hover:underline">
+                        <button type="button" onClick={() => setCorrigindo(s)} className="text-[11px] text-gray-400 hover:text-marca-primary hover:underline">
                           Corrigir
                         </button>
                       </td>
@@ -226,7 +226,7 @@ function CorrigirSessaoModal({ sessao, agora, onClose }: { sessao: SessaoDocumen
         : justificativa.trim().length < 5
           ? "Escreva a justificativa (5 letras ou mais)."
           : null;
-  const campo = "mt-1 w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20";
+  const campo = "mt-1 w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
   return (
     <Modal
       open
@@ -243,7 +243,7 @@ function CorrigirSessaoModal({ sessao, agora, onClose }: { sessao: SessaoDocumen
               type="button"
               disabled={!!erro || corrigir.isPending}
               onClick={() => corrigir.mutate({ idSessao: sessao.id_sessao, inicio: iniIso, fim: fimIso, justificativa: justificativa.trim() }, { onSuccess: onClose })}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-verde-accent disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-marca-accent disabled:opacity-50"
             >
               {corrigir.isPending && <Loader2 className="size-3.5 animate-spin" />} Salvar correção
             </button>

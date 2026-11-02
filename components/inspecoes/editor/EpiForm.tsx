@@ -412,13 +412,13 @@ export default function EpiForm({
                       className={
                         "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors " +
                         (ativo
-                          ? "border-verde-primary bg-verde-light text-verde-primary"
+                          ? "border-marca-primary bg-marca-light text-marca-primary"
                           : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50")
                       }
                     >
                       {g.nome}
                       {marcados > 0 && (
-                        <span className="ml-1 rounded-full bg-verde-primary px-1.5 text-[10px] text-white">
+                        <span className="ml-1 rounded-full bg-marca-primary px-1.5 text-[10px] text-white">
                           {marcados}
                         </span>
                       )}
@@ -454,7 +454,7 @@ export default function EpiForm({
                           type="checkbox"
                           checked={riscosSel.includes(r.id_risco)}
                           onChange={() => alternarRisco(r.id_risco)}
-                          className="size-4 accent-verde-primary"
+                          className="size-4 accent-marca-primary"
                         />
                         <span>
                           {iconeDe(r.tipo_risco)} {r.tipo_risco} — {r.agente ?? r.id_risco}
@@ -468,7 +468,7 @@ export default function EpiForm({
                 <button
                   type="button"
                   onClick={() => setRiscosSel((v) => [...v, ...gemeosPendentes])}
-                  className="mt-1 text-xs font-medium text-verde-primary hover:underline"
+                  className="mt-1 text-xs font-medium text-marca-primary hover:underline"
                 >
                   + Marcar o mesmo risco nos outros setores ({gemeosPendentes.length})
                 </button>
@@ -659,7 +659,7 @@ export default function EpiForm({
           <button
             type="submit"
             disabled={mutation.isPending}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {mutation.isPending
               ? "Salvando..."
@@ -680,5 +680,5 @@ const chaveRisco = (r: Risco) =>
   `${r.tipo_risco}|${(r.agente ?? "").trim().toLowerCase()}`;
 
 const inputCls =
-  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
+  "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30";
 const lblCls = "text-sm font-medium text-gray-700";

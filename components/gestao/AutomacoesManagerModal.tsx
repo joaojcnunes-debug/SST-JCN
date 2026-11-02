@@ -67,7 +67,7 @@ const VARIAVEIS: Partial<Record<GatilhoAutomacao | "sempre", string[]>> = {
   sst_vencimento: ["{empresa}", "{unidade}", "{item}", "{validade}", "{dias_para_vencer}", "{id_inspecao}"],
 };
 
-const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-verde-primary focus:outline-none";
+const sel = "rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none";
 const EMPTY_USUARIOS: { nome: string; email: string }[] = [];
 
 const novoId = () => crypto.randomUUID().slice(0, 8);
@@ -139,7 +139,7 @@ export default function AutomacoesManagerModal({
       <div className="mb-3 flex gap-1 border-b border-gray-100">
         {([["regras", "Regras", Workflow], ["produtos", "Funcionários por produto", UserCog], ["historico", "Histórico", History]] as const).map(([k, rot, Icone]) => (
           <button key={k} type="button" onClick={() => setAba(k)}
-            className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-sm font-medium ${aba === k ? "border-verde-primary text-verde-primary" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+            className={`inline-flex items-center gap-1.5 border-b-2 px-3 py-1.5 text-sm font-medium ${aba === k ? "border-marca-primary text-marca-primary" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
             <Icone className="size-4" /> {rot}
           </button>
         ))}
@@ -192,9 +192,9 @@ export default function AutomacoesManagerModal({
             ))}
             <div className="flex items-center gap-2">
               <input defaultValue={a.nome} disabled={!podeEditar} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== a.nome) setCampo(a, { nome: v }); }}
-                className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm font-medium focus:border-verde-primary focus:outline-none" />
+                className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm font-medium focus:border-marca-primary focus:outline-none" />
               <label className="inline-flex items-center gap-1 text-xs text-gray-500" title={completa ? undefined : "Complete as ações para poder ativar"}>
-                <input type="checkbox" disabled={!podeEditar || !completa} checked={a.ativo && completa} onChange={(e) => setCampo(a, { ativo: e.target.checked })} className="size-3.5 rounded accent-verde-primary" /> Ativa
+                <input type="checkbox" disabled={!podeEditar || !completa} checked={a.ativo && completa} onChange={(e) => setCampo(a, { ativo: e.target.checked })} className="size-3.5 rounded accent-marca-primary" /> Ativa
               </label>
               {podeEditar && <button type="button" onClick={async () => { if (await confirmar({ title: `Excluir automação "${a.nome}"?` })) excluir.mutate(a.id); }} className="rounded p-1 text-gray-300 hover:text-red-600"><Trash2 className="size-4" /></button>}
             </div>
@@ -273,7 +273,7 @@ export default function AutomacoesManagerModal({
             {(!criaTarefa || ehSst) && <div className="space-y-2">
               <label className="inline-flex items-center gap-1.5 text-xs text-gray-500">
                 <input type="checkbox" disabled={!podeEditar} checked={usaEou}
-                  onChange={(e) => setCondFull(a, e.target.checked ? { all: [] } : {})} className="size-3.5 rounded accent-verde-primary" />
+                  onChange={(e) => setCondFull(a, e.target.checked ? { all: [] } : {})} className="size-3.5 rounded accent-marca-primary" />
                 Só rodar se… (condição E/OU)
               </label>
               {usaEou && (
@@ -291,7 +291,7 @@ export default function AutomacoesManagerModal({
                 return (
                   <div key={x.id ?? i} className="rounded-md border border-gray-100 bg-white p-2">
                     <div className="flex items-start gap-2">
-                      <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-verde-light text-[11px] font-bold text-verde-primary">{i + 1}</span>
+                      <span className="mt-1 inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-marca-light text-[11px] font-bold text-marca-primary">{i + 1}</span>
                       <div className="min-w-0 flex-1">
                         <AutomacaoAcaoEditor
                           acao={x}
@@ -304,7 +304,7 @@ export default function AutomacoesManagerModal({
                       {podeEditar && (
                         <div className="flex shrink-0 items-center gap-0.5">
                           <button type="button" title="Só executar esta ação se…" onClick={() => setCondAberta(condAberta === chave ? null : chave)}
-                            className={`rounded p-1 ${temCond ? "text-verde-primary" : "text-gray-300 hover:text-gray-600"}`}><Filter className="size-3.5" /></button>
+                            className={`rounded p-1 ${temCond ? "text-marca-primary" : "text-gray-300 hover:text-gray-600"}`}><Filter className="size-3.5" /></button>
                           <button type="button" title="Subir" disabled={i === 0} onClick={() => mover(i, -1)} className="rounded p-1 text-gray-300 hover:text-gray-600 disabled:opacity-30"><ArrowUp className="size-3.5" /></button>
                           <button type="button" title="Descer" disabled={i === acoes.length - 1} onClick={() => mover(i, 1)} className="rounded p-1 text-gray-300 hover:text-gray-600 disabled:opacity-30"><ArrowDown className="size-3.5" /></button>
                           <button type="button" title="Remover ação" onClick={() => setAcoes(a, acoes.filter((_, j) => j !== i))} className="rounded p-1 text-gray-300 hover:text-red-600"><X className="size-3.5" /></button>
@@ -312,7 +312,7 @@ export default function AutomacoesManagerModal({
                       )}
                     </div>
                     {temCond && condAberta !== chave && (
-                      <p className="mt-1 pl-7 text-[11px] text-verde-primary">Só executa se a condição da ação casar.</p>
+                      <p className="mt-1 pl-7 text-[11px] text-marca-primary">Só executa se a condição da ação casar.</p>
                     )}
                     {condAberta === chave && (
                       <div className="mt-2 space-y-1 pl-7">
@@ -327,7 +327,7 @@ export default function AutomacoesManagerModal({
               })}
               {podeEditar && (
                 <button type="button" onClick={() => setAcoes(a, [...acoes, { id: novoId() }])}
-                  className="inline-flex items-center gap-1 text-xs font-medium text-verde-primary hover:underline">
+                  className="inline-flex items-center gap-1 text-xs font-medium text-marca-primary hover:underline">
                   <Plus className="size-3.5" /> Adicionar ação
                 </button>
               )}
@@ -345,7 +345,7 @@ export default function AutomacoesManagerModal({
         );})}
         {podeEditar && (
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => salvar.mutate({ id_quadro: idQuadro, nome: "Nova automação", gatilho: "status_muda", ordem: automacoes.length, ativo: false, acoes: [{ id: novoId() }] })} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-verde-primary ring-1 ring-dashed ring-verde-primary/40 hover:bg-verde-light/40">
+            <button type="button" onClick={() => salvar.mutate({ id_quadro: idQuadro, nome: "Nova automação", gatilho: "status_muda", ordem: automacoes.length, ativo: false, acoes: [{ id: novoId() }] })} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-marca-primary ring-1 ring-dashed ring-marca-primary/40 hover:bg-marca-light/40">
               <Plus className="size-4" /> Nova automação
             </button>
             <button type="button" onClick={() => setReceitasAbertas((v) => !v)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50">
@@ -363,7 +363,7 @@ export default function AutomacoesManagerModal({
                     salvar.mutate({ id_quadro: idQuadro, nome: r.titulo, gatilho: r.gatilho, condicao: r.condicao, acoes: r.acoes, ordem: automacoes.length, ativo: false });
                     setReceitasAbertas(false);
                   }}
-                  className="h-full w-full rounded-lg border border-gray-200 bg-white p-2.5 text-left hover:border-verde-primary/50 hover:bg-verde-light/20">
+                  className="h-full w-full rounded-lg border border-gray-200 bg-white p-2.5 text-left hover:border-marca-primary/50 hover:bg-marca-light/20">
                   <p className="text-sm font-semibold text-gray-800">{r.titulo}</p>
                   <p className="mt-0.5 text-xs text-gray-500">{r.descricao}</p>
                 </button>

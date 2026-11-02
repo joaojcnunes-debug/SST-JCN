@@ -9,19 +9,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  /* Marca JCN (azul). Etapa 0 do plano-skin-viva: "verde-*" virou apelido de "marca-*"
-     e sai quando a troca de nome terminar (0.final). */
+  /* Marca JCN (azul). Os antigos "verde-*" viraram "marca-*" (Etapa 0 do plano-skin-viva). */
   --color-marca-primary: #0ea5e9;
   --color-marca-accent: #0284c7;
   --color-marca-dark: #0369a1;
   --color-marca-light: #e0f2fe;
   --color-marca-border: #bae6fd;
   --color-marca-deep: #0b1e33;
-  --color-verde-primary: var(--color-marca-primary);
-  --color-verde-accent: var(--color-marca-accent);
-  --color-verde-dark: var(--color-marca-dark);
-  --color-verde-light: var(--color-marca-light);
-  --color-verde-border: var(--color-marca-border);
   --color-red-alert: #D32F2F;
   --color-amber-warning: #d97706;
   --color-app-bg: #f4f6f5;
@@ -161,7 +155,7 @@
 .dark .bg-fuchsia-50, .dark .bg-fuchsia-100 { background-color: color-mix(in srgb, #d946ef 14%, var(--surface)); }
 .dark .bg-pink-50, .dark .bg-pink-100 { background-color: color-mix(in srgb, #ec4899 14%, var(--surface)); }
 .dark .bg-rose-50, .dark .bg-rose-100 { background-color: color-mix(in srgb, #f43f5e 14%, var(--surface)); }
-.dark .bg-verde-light { background-color: color-mix(in srgb, #0284c7 16%, var(--surface)); }
+.dark .bg-marca-light { background-color: color-mix(in srgb, #0284c7 16%, var(--surface)); }
 
 /* Fundos brancos com OPACIDADE alta (cartões/toolbars translúcidas). Os de
    opacidade baixa (≤/60, brilhos sobre o verde) são deixados de propósito. */
@@ -194,7 +188,7 @@
 .dark .border-purple-100, .dark .border-purple-200 { border-color: color-mix(in srgb, #a855f7 34%, var(--border-app)); }
 .dark .border-pink-100, .dark .border-pink-200 { border-color: color-mix(in srgb, #ec4899 34%, var(--border-app)); }
 .dark .border-rose-100, .dark .border-rose-200 { border-color: color-mix(in srgb, #f43f5e 34%, var(--border-app)); }
-.dark .border-verde-border { border-color: color-mix(in srgb, #0284c7 34%, var(--border-app)); }
+.dark .border-marca-border { border-color: color-mix(in srgb, #0284c7 34%, var(--border-app)); }
 
 /* Textos coloridos MUITO escuros (700/800/900) → clareiam no escuro e voltam
    ao tom escuro dentro de .force-light (âncora = var(--text-strong)). */
@@ -215,7 +209,7 @@
 .dark .text-pink-700, .dark .text-pink-800 { color: color-mix(in srgb, #ec4899 62%, var(--text-strong)); }
 .dark .text-rose-700, .dark .text-rose-800 { color: color-mix(in srgb, #f43f5e 62%, var(--text-strong)); }
 /* Verde da marca no texto → clareia no escuro (fica legível), volta ao escuro no force-light. */
-.dark .text-verde-primary, .dark .text-verde-accent, .dark .text-verde-dark { color: color-mix(in srgb, #38bdf8 58%, var(--text-strong)); }
+.dark .text-marca-primary, .dark .text-marca-accent, .dark .text-marca-dark { color: color-mix(in srgb, #38bdf8 58%, var(--text-strong)); }
 
 /* ── Varredura 2026-07-27: os 4 buracos que sobraram no shim ──────────────
    Mesma regra de sempre: color-mix ancorado nas variáveis do tema, então o
@@ -257,7 +251,7 @@
 .dark [class^="bg-indigo-50/"], .dark [class*=" bg-indigo-50/"] { background-color: color-mix(in srgb, #6366f1 9%, var(--surface)); }
 .dark [class^="bg-purple-50/"], .dark [class*=" bg-purple-50/"] { background-color: color-mix(in srgb, #a855f7 9%, var(--surface)); }
 .dark [class^="bg-pink-50/"], .dark [class*=" bg-pink-50/"] { background-color: color-mix(in srgb, #ec4899 9%, var(--surface)); }
-.dark [class^="bg-verde-light/"], .dark [class*=" bg-verde-light/"] { background-color: color-mix(in srgb, #0284c7 11%, var(--surface)); }
+.dark [class^="bg-marca-light/"], .dark [class*=" bg-marca-light/"] { background-color: color-mix(in srgb, #0284c7 11%, var(--surface)); }
 
 /* (b) CINZAS 200/300 — só 50/100 estavam cobertos. São trilhos de barra de
    progresso, skeletons, chips e estados desabilitados: no escuro ficavam

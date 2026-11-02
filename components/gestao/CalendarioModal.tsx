@@ -34,7 +34,7 @@ export default function CalendarioModal({
         </p>
 
         {!token ? (
-          <button type="button" disabled={!podeEditar || definir.isPending} onClick={() => definir.mutate({ id_quadro: quadro.id_quadro })} className="inline-flex items-center gap-2 rounded-lg bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-dark disabled:opacity-60">
+          <button type="button" disabled={!podeEditar || definir.isPending} onClick={() => definir.mutate({ id_quadro: quadro.id_quadro })} className="inline-flex items-center gap-2 rounded-lg bg-marca-primary px-3 py-2 text-sm font-semibold text-white hover:bg-marca-dark disabled:opacity-60">
             <CalendarDays className="size-4" /> Gerar link do calendário
           </button>
         ) : (

@@ -136,7 +136,7 @@ export default function EpiEstoqueTab({
                 disabled={
                   registrar.isPending || !idCatalogo || !(Number(quantidade) > 0)
                 }
-                className="w-full rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+                className="w-full rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
               >
                 {registrar.isPending ? "Registrando…" : "Registrar"}
               </button>

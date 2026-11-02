@@ -69,7 +69,7 @@ export default function SlotSubstitutos({
                 type="button"
                 disabled={!podeEditar || pending}
                 onClick={() => assign(s.id)}
-                className={`inline-flex items-center gap-1 rounded-md border border-verde-primary/30 bg-verde-primary/5 px-2 py-0.5 text-xs font-medium text-verde-primary transition-colors ${podeEditar ? "hover:border-verde-primary hover:bg-verde-primary/10 cursor-pointer" : "cursor-default"} disabled:opacity-60`}
+                className={`inline-flex items-center gap-1 rounded-md border border-marca-primary/30 bg-marca-primary/5 px-2 py-0.5 text-xs font-medium text-marca-primary transition-colors ${podeEditar ? "hover:border-marca-primary hover:bg-marca-primary/10 cursor-pointer" : "cursor-default"} disabled:opacity-60`}
                 title={podeEditar ? "Definir como substituto deste dia" : undefined}
               >
                 <UserCheck className="size-3.5" /> {s.nome}
@@ -78,7 +78,7 @@ export default function SlotSubstitutos({
           })}
 
           {podeEditar && <BotaoAdicionar open={addOpen} setOpen={setAddOpen} opcoes={opcoesCadastro} onPick={assign} />}
-          {pending && <Loader2 className="size-3.5 animate-spin text-verde-primary" />}
+          {pending && <Loader2 className="size-3.5 animate-spin text-marca-primary" />}
         </div>
       )}
     </div>
@@ -87,7 +87,7 @@ export default function SlotSubstitutos({
 
 function ChipEscolhido({ nome, onClear, podeEditar, pending }: { nome: string; onClear: () => void; podeEditar: boolean; pending: boolean }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-verde-primary bg-verde-primary px-2 py-0.5 text-xs font-semibold text-white">
+    <span className="inline-flex items-center gap-1 rounded-md border border-marca-primary bg-marca-primary px-2 py-0.5 text-xs font-semibold text-white">
       <Check className="size-3.5" /> {nome}
       {podeEditar && (
         <button type="button" onClick={onClear} disabled={pending} className="ml-0.5 rounded hover:bg-white/20" title="Remover substituto escolhido">
@@ -111,7 +111,7 @@ function BotaoAdicionar({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 rounded-md border border-dashed border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-500 hover:border-verde-primary hover:text-verde-primary"
+        className="inline-flex items-center gap-1 rounded-md border border-dashed border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-500 hover:border-marca-primary hover:text-marca-primary"
       >
         <Plus className="size-3.5" /> Adicionar do cadastro
       </button>
@@ -123,7 +123,7 @@ function BotaoAdicionar({
       defaultValue=""
       onChange={(e) => e.target.value && onPick(e.target.value)}
       onBlur={() => setOpen(false)}
-      className="rounded-md border border-gray-300 px-2 py-0.5 text-xs focus:border-verde-primary focus:outline-none"
+      className="rounded-md border border-gray-300 px-2 py-0.5 text-xs focus:border-marca-primary focus:outline-none"
     >
       <option value="">Selecione um profissional…</option>
       {opcoes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}

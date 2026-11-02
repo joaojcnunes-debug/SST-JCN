@@ -45,7 +45,7 @@ export default function NotificacoesSino({ onAbrir, alinhar = "direita", gatilho
             <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
               <span className="text-sm font-semibold text-gray-700">Notificações</span>
               {naoLidas > 0 && (
-                <button type="button" onClick={() => marcar.mutate({ todas: true })} className="inline-flex items-center gap-1 text-xs text-verde-primary hover:underline">
+                <button type="button" onClick={() => marcar.mutate({ todas: true })} className="inline-flex items-center gap-1 text-xs text-marca-primary hover:underline">
                   <CheckCheck className="size-3.5" /> Marcar todas
                 </button>
               )}
@@ -54,13 +54,13 @@ export default function NotificacoesSino({ onAbrir, alinhar = "direita", gatilho
               {notifs.length === 0 && <p className="px-3 py-6 text-center text-sm text-gray-400">Sem notificações.</p>}
               {notifs.map((n) => (
                 <button key={n.id} type="button" onClick={() => { marcar.mutate({ id: n.id }); setAberto(false); onAbrir(n); }}
-                  className={`flex w-full items-start gap-2 border-b border-gray-50 px-3 py-2 text-left hover:bg-gray-50 ${n.lida ? "" : "bg-verde-light/30"}`}>
+                  className={`flex w-full items-start gap-2 border-b border-gray-50 px-3 py-2 text-left hover:bg-gray-50 ${n.lida ? "" : "bg-marca-light/30"}`}>
                   <span className="text-sm">{ICONE_TIPO[n.tipo] ?? "•"}</span>
                   <div className="min-w-0 flex-1">
                     <p className={`text-sm ${n.lida ? "text-gray-600" : "font-medium text-gray-800"}`}>{n.titulo}</p>
                     <p className="text-[11px] text-gray-400">{formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: ptBR })}</p>
                   </div>
-                  {!n.lida && <span className="mt-1 size-2 shrink-0 rounded-full bg-verde-primary" />}
+                  {!n.lida && <span className="mt-1 size-2 shrink-0 rounded-full bg-marca-primary" />}
                 </button>
               ))}
             </div>

@@ -107,7 +107,7 @@ function GruposInner() {
     <div className="space-y-4">
       <div>
         <h1 className="flex items-center gap-2 text-lg font-bold text-gray-900">
-          <Network className="size-5 text-verde-primary" /> Grupos de empresas
+          <Network className="size-5 text-marca-primary" /> Grupos de empresas
         </h1>
         <p className="mt-0.5 text-sm text-gray-500">
           Empresas com mais de um CNPJ ficam juntas num grupo: a <strong>matriz</strong> é a principal e as demais são{" "}
@@ -123,14 +123,14 @@ function GruposInner() {
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar grupo, empresa ou CNPJ..."
-            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/20"
+            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-sm shadow-sm transition focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
           />
         </div>
         {podeEditar && (
           <button
             type="button"
             onClick={() => setFormGrupo({ grupo: null })}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-verde-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-verde-accent active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-marca-primary px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-marca-accent active:scale-95"
           >
             <Plus className="size-4" /> Novo grupo
           </button>
@@ -178,8 +178,8 @@ function GruposInner() {
 
       {!isLoading && !error && filtrados.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white p-14 text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-verde-light">
-            <Network className="size-7 text-verde-primary" />
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-marca-light">
+            <Network className="size-7 text-marca-primary" />
           </div>
           <p className="mt-4 text-sm font-semibold text-gray-800">
             {busca ? "Nenhum grupo encontrado" : "Nenhum grupo cadastrado"}
@@ -352,7 +352,7 @@ function LinhaMembro({ membro: m, podeEditar }: { membro: MembroGrupo; podeEdita
         </span>
         <div className="min-w-0">
           {m.visivel ? (
-            <Link href={`/empresas/${m.id_empresa}`} className="block truncate text-sm font-medium text-gray-900 hover:text-verde-primary hover:underline">
+            <Link href={`/empresas/${m.id_empresa}`} className="block truncate text-sm font-medium text-gray-900 hover:text-marca-primary hover:underline">
               {m.nome_empresa}
             </Link>
           ) : (
@@ -462,10 +462,10 @@ function AdicionarEmpresa({ grupo, membros }: { grupo: EmpresaGrupo; membros: Me
               key={p}
               className={cn(
                 "flex cursor-pointer items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 text-sm",
-                papel === p ? "border-verde-primary bg-verde-light" : "border-gray-200 bg-white",
+                papel === p ? "border-marca-primary bg-marca-light" : "border-gray-200 bg-white",
               )}
             >
-              <input type="radio" checked={papel === p} onChange={() => setPapel(p)} className="text-verde-primary" />
+              <input type="radio" checked={papel === p} onChange={() => setPapel(p)} className="text-marca-primary" />
               {ROTULO_PAPEL[p]}
             </label>
           ))}
@@ -473,7 +473,7 @@ function AdicionarEmpresa({ grupo, membros }: { grupo: EmpresaGrupo; membros: Me
             type="button"
             onClick={adicionar}
             disabled={!idEmpresa || gravar.isPending || jaEmOutro?.id_grupo === grupo.id_grupo}
-            className="rounded-lg bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-lg bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             Adicionar
           </button>
@@ -636,7 +636,7 @@ function FormGrupo({
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             placeholder="Ex.: Grupo Mad Brew"
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           />
         </div>
         <div>
@@ -646,7 +646,7 @@ function FormGrupo({
             onChange={(e) => setDescricao(e.target.value)}
             rows={3}
             placeholder="Opcional"
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           />
         </div>
         <div className="flex justify-end gap-2">
@@ -660,7 +660,7 @@ function FormGrupo({
           <button
             type="submit"
             disabled={salvando}
-            className="rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-60"
+            className="rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
           >
             {salvando ? "Salvando…" : grupo ? "Salvar" : "Criar grupo"}
           </button>

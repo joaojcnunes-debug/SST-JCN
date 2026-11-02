@@ -105,9 +105,9 @@ export default function ProjecaoMensal({ idUnidade }: { idUnidade: string }) {
           type="month"
           value={mes}
           onChange={(e) => { setMes(e.target.value); setSelDia(null); }}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
         />
-        {q.isFetching && <Loader2 className="size-4 animate-spin text-verde-primary" />}
+        {q.isFetching && <Loader2 className="size-4 animate-spin text-marca-primary" />}
       </div>
 
       {/* 1) RESUMO */}
@@ -161,7 +161,7 @@ export default function ProjecaoMensal({ idUnidade }: { idUnidade: string }) {
                   type="button"
                   onClick={() => st && setSelDia(sel ? null : iso)}
                   disabled={!st}
-                  className={`relative flex h-11 flex-col items-center justify-center rounded-md border text-sm transition-colors ${cls} ${sel ? "ring-2 ring-verde-primary" : ""} ${st ? "cursor-pointer" : "cursor-default"}`}
+                  className={`relative flex h-11 flex-col items-center justify-center rounded-md border text-sm transition-colors ${cls} ${sel ? "ring-2 ring-marca-primary" : ""} ${st ? "cursor-pointer" : "cursor-default"}`}
                   title={st === "sem" ? "Há slot sem substituto" : st === "coberto" ? "Coberto por substituto" : "Sem pendência"}
                 >
                   {d}
@@ -175,7 +175,7 @@ export default function ProjecaoMensal({ idUnidade }: { idUnidade: string }) {
           <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-gray-500">
             <span className="inline-flex items-center gap-1"><span className="size-2.5 rounded-sm border border-red-300 bg-red-50" /> sem substituto</span>
             <span className="inline-flex items-center gap-1"><span className="size-2.5 rounded-sm border border-amber-300 bg-amber-50" /> coberto</span>
-            {selDia && <button type="button" onClick={() => setSelDia(null)} className="ml-auto text-verde-primary hover:underline">ver todos os dias</button>}
+            {selDia && <button type="button" onClick={() => setSelDia(null)} className="ml-auto text-marca-primary hover:underline">ver todos os dias</button>}
           </div>
         </div>
       )}

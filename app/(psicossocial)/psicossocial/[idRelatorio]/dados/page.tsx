@@ -181,7 +181,7 @@ export default function DadosPage({
               ? "Cole aqui o conteúdo copiado do Google Sheets (incluindo a linha de cabeçalho)..."
               : "Você não tem permissão para importar dados."
           }
-          className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-xs focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30 disabled:cursor-not-allowed disabled:bg-gray-50"
+          className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-xs focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30 disabled:cursor-not-allowed disabled:bg-gray-50"
         />
 
         {previa && (
@@ -305,7 +305,7 @@ export default function DadosPage({
               !previa ||
               previa.linhas.length === 0
             }
-            className="inline-flex items-center gap-1.5 rounded-md bg-verde-primary px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-verde-accent disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-marca-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ClipboardPaste className="size-3.5" />
             {importar.isPending
@@ -377,7 +377,7 @@ export default function DadosPage({
                       <button
                         type="button"
                         onClick={() => setVendoRespondente(r)}
-                        className="inline-flex items-center gap-1 rounded p-1.5 text-gray-500 hover:bg-verde-light hover:text-verde-primary"
+                        className="inline-flex items-center gap-1 rounded p-1.5 text-gray-500 hover:bg-marca-light hover:text-marca-primary"
                         title="Ver respostas"
                       >
                         <Eye className="size-4" />

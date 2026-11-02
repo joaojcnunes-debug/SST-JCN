@@ -51,7 +51,7 @@ export function useMotivo() {
               if (e.key === "Enter" && ok) fechar(texto.trim());
             }}
             placeholder="Ex.: supervisor das unidades da Região Serrana"
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30"
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           />
         </label>
         <div className="flex flex-wrap gap-1.5">
@@ -70,7 +70,7 @@ export function useMotivo() {
             type="button"
             disabled={!ok}
             onClick={() => fechar(texto.trim())}
-            className="rounded-md bg-verde-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+            className="rounded-md bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
           >
             Confirmar
           </button>

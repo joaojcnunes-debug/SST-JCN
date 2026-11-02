@@ -52,7 +52,7 @@ export default function MedidasRecomendadasPage() {
       <div className="glass rounded-2xl p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-verde-light text-verde-primary">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-marca-light text-marca-primary">
               <ClipboardList className="size-5" />
             </div>
             <div>
@@ -92,7 +92,7 @@ export default function MedidasRecomendadasPage() {
               type="button"
               onClick={handleCriar}
               disabled={criar.isPending || !novo.trim()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-verde-primary px-3 py-2 text-sm font-semibold text-white hover:bg-verde-accent disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-3 py-2 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
             >
               {criar.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
               Adicionar
@@ -129,9 +129,9 @@ export default function MedidasRecomendadasPage() {
                         if (e.key === "Enter") salvarEdicao();
                         if (e.key === "Escape") setEditId(null);
                       }}
-                      className="flex-1 rounded-lg border border-verde-primary/40 px-2.5 py-1.5 text-sm"
+                      className="flex-1 rounded-lg border border-marca-primary/40 px-2.5 py-1.5 text-sm"
                     />
-                    <button type="button" onClick={salvarEdicao} disabled={atualizar.isPending} className="rounded-md p-1.5 text-verde-primary hover:bg-verde-light" title="Salvar">
+                    <button type="button" onClick={salvarEdicao} disabled={atualizar.isPending} className="rounded-md p-1.5 text-marca-primary hover:bg-marca-light" title="Salvar">
                       <Check className="size-4" />
                     </button>
                     <button type="button" onClick={() => setEditId(null)} className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100" title="Cancelar">

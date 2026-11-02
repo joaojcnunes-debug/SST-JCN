@@ -117,12 +117,12 @@ export default function RiscosEmpresaPage() {
         <div>
           <Link
             href="/riscos-psicossociais"
-            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-verde-primary"
+            className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-marca-primary"
           >
             <ArrowLeft className="size-4" /> Voltar às empresas
           </Link>
           <h1 className="mt-1 flex items-center gap-2 text-xl font-bold text-gray-900">
-            <Building2 className="size-5 text-verde-primary" />
+            <Building2 className="size-5 text-marca-primary" />
             {cadastro?.nome_empresa ?? riscos?.nome ?? "Empresa"}
           </h1>
           <p className="text-sm text-gray-500">Riscos psicossociais por setor — resultado final de cada risco.</p>
@@ -208,7 +208,7 @@ export default function RiscosEmpresaPage() {
                   <div key={s.setor} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <h3 className="flex items-center gap-2 font-semibold text-gray-900">
-                        <Layers className="size-4 text-verde-primary" /> {s.setor}
+                        <Layers className="size-4 text-marca-primary" /> {s.setor}
                       </h3>
                       <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                         <Users className="size-3.5" /> {s.respondentes} respondente{s.respondentes !== 1 ? "s" : ""}

@@ -47,7 +47,7 @@ export default function MeuQuadro({ onAbrirCompleto }: { onAbrirCompleto: (idQua
     <section className="mt-4">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-base font-semibold text-gray-800">Meu Quadro <span className="text-sm font-normal text-gray-400">— {abertas} aberta{abertas === 1 ? "" : "s"}</span></h2>
-        <button type="button" onClick={() => { setEditando(null); setStatusNovo(colunas[0]?.slug ?? "A_FAZER"); setModalOpen(true); }} className="inline-flex items-center gap-1 rounded-lg bg-verde-primary px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-verde-accent"><Plus className="size-3.5" /> Nova tarefa</button>
+        <button type="button" onClick={() => { setEditando(null); setStatusNovo(colunas[0]?.slug ?? "A_FAZER"); setModalOpen(true); }} className="inline-flex items-center gap-1 rounded-lg bg-marca-primary px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-marca-accent"><Plus className="size-3.5" /> Nova tarefa</button>
         <button type="button" onClick={() => onAbrirCompleto(idQuadro)} className="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50" title="Abrir como quadro completo (lista, calendário, timeline)"><ExternalLink className="size-3.5" /> Abrir completo</button>
       </div>
       <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
@@ -58,7 +58,7 @@ export default function MeuQuadro({ onAbrirCompleto }: { onAbrirCompleto: (idQua
               onDragOver={(e) => { if (dragId) { e.preventDefault(); setColHover(col.slug); } }}
               onDragLeave={(e) => { if (dragId && !e.currentTarget.contains(e.relatedTarget as Node)) setColHover((c) => (c === col.slug ? null : c)); }}
               onDrop={() => { const t = tarefas.find((x) => x.id_tarefa === dragId); setColHover(null); setDragId(null); if (t && t.status !== col.slug) mover.mutate({ id_tarefa: t.id_tarefa, status: col.slug }); }}
-              className={`flex h-[max(280px,calc(50vh-6rem))] w-72 shrink-0 flex-col rounded-xl border bg-gray-50/60 p-2.5 transition ${colHover === col.slug ? "border-verde-primary ring-2 ring-verde-primary/20" : "border-gray-200"}`}>
+              className={`flex h-[max(280px,calc(50vh-6rem))] w-72 shrink-0 flex-col rounded-xl border bg-gray-50/60 p-2.5 transition ${colHover === col.slug ? "border-marca-primary ring-2 ring-marca-primary/20" : "border-gray-200"}`}>
               <div className="mb-2 flex items-center justify-between px-1">
                 <div className="flex items-center gap-1.5">
                   <span className="size-2.5 rounded-full" style={{ background: col.cor }} />

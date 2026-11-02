@@ -28,7 +28,7 @@ export default function TextosPadraoTab() {
           SISTEMA
         </span>{" "}
         são gerados automaticamente; capítulos{" "}
-        <span className="rounded bg-verde-light px-1.5 py-0.5 text-[11px] font-bold text-verde-primary">
+        <span className="rounded bg-marca-light px-1.5 py-0.5 text-[11px] font-bold text-marca-primary">
           EDITÁVEL
         </span>{" "}
         contêm texto livre com variáveis substituíveis.
@@ -44,7 +44,7 @@ export default function TextosPadraoTab() {
             className={cn(
               "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
               modulo === m.key
-                ? "bg-verde-primary text-white shadow-sm"
+                ? "bg-marca-primary text-white shadow-sm"
                 : "text-gray-600 hover:bg-gray-100"
             )}
           >

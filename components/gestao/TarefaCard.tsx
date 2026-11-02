@@ -90,11 +90,11 @@ export default function TarefaCard({
       onDrop={onDrop}
       onClick={selecionavel ? onToggleSel : onAbrir}
       style={{ borderLeftColor: corPrioridade(t.prioridade) }}
-      className={`cursor-pointer rounded-lg border border-l-4 border-gray-200 bg-white p-3 shadow-sm transition-all duration-150 hover:border-gray-300 hover:shadow-md ${selecionavel ? "" : "hover:-translate-y-0.5"} ${selecionado ? "ring-2 ring-verde-primary" : ""} ${arrastando ? "rotate-1 opacity-40" : ""}`}
+      className={`cursor-pointer rounded-lg border border-l-4 border-gray-200 bg-white p-3 shadow-sm transition-all duration-150 hover:border-gray-300 hover:shadow-md ${selecionavel ? "" : "hover:-translate-y-0.5"} ${selecionado ? "ring-2 ring-marca-primary" : ""} ${arrastando ? "rotate-1 opacity-40" : ""}`}
     >
       <div className="flex items-start gap-2">
         {selecionavel && (
-          <span className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border ${selecionado ? "border-verde-primary bg-verde-primary text-white" : "border-gray-300 bg-white"}`}>
+          <span className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border ${selecionado ? "border-marca-primary bg-marca-primary text-white" : "border-gray-300 bg-white"}`}>
             {selecionado && <Check className="size-3" />}
           </span>
         )}
@@ -119,7 +119,7 @@ export default function TarefaCard({
       {chipsCampos.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">
           {chipsCampos.map(({ c, v }) => (
-            <span key={c.id} className="rounded bg-verde-light/60 px-1.5 py-0.5 text-[10px] font-medium text-verde-primary" title={c.nome}>
+            <span key={c.id} className="rounded bg-marca-light/60 px-1.5 py-0.5 text-[10px] font-medium text-marca-primary" title={c.nome}>
               {c.tipo === "checkbox" ? c.nome : formatarCampoValor(c, v)}
             </span>
           ))}
@@ -128,7 +128,7 @@ export default function TarefaCard({
 
       {subs.length > 0 && (
         <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-gray-100">
-          <div className="h-1 rounded-full bg-verde-primary transition-all" style={{ width: `${Math.round((subFeitas / subs.length) * 100)}%` }} />
+          <div className="h-1 rounded-full bg-marca-primary transition-all" style={{ width: `${Math.round((subFeitas / subs.length) * 100)}%` }} />
         </div>
       )}
 
@@ -179,7 +179,7 @@ export default function TarefaCard({
               <AvatarPessoa
                 key={p.key}
                 nome={p.nome}
-                className={`size-6 text-[10px] ring-2 ${p.tipo === "responsavel" ? "ring-verde-primary" : "ring-white"}`}
+                className={`size-6 text-[10px] ring-2 ${p.tipo === "responsavel" ? "ring-marca-primary" : "ring-white"}`}
                 title={`${p.tipo === "responsavel" ? "Responsável" : "Seguidor"}: ${p.nome}`}
                 ariaLabel={`${p.tipo === "responsavel" ? "Responsável" : "Seguidor"}: ${p.nome}`}
               />

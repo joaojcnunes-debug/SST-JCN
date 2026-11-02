@@ -132,7 +132,7 @@ export default function ProdutoResponsaveisAba({
                 : `${opcoes.length} pessoa(s) desta base em Membros e acessos`}
               {" · "}
               {!membros.isError && temAcesso.size > 0 && (
-                <button type="button" onClick={() => setTodos((v) => !v)} className="font-medium text-verde-primary hover:underline">
+                <button type="button" onClick={() => setTodos((v) => !v)} className="font-medium text-marca-primary hover:underline">
                   {todos ? "só quem tem acesso ao quadro" : "mostrar todos"}
                 </button>
               )}
@@ -211,7 +211,7 @@ function ProdutosPicker({
       >
         {value.length === 0 && <span className="text-gray-400">Produtos…</span>}
         {value.map((p) => (
-          <span key={p} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", repetidos.has(p) ? "bg-amber-100 text-amber-800" : "bg-verde-light text-gray-800")}>
+          <span key={p} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]", repetidos.has(p) ? "bg-amber-100 text-amber-800" : "bg-marca-light text-gray-800")}>
             {p}
             {!disabled && (
               <span
@@ -234,12 +234,12 @@ function ProdutosPicker({
         <div className="absolute left-0 z-30 mt-1 w-full min-w-[16rem] rounded-md border border-gray-200 bg-white p-1 shadow-lg">
           <div className="relative mb-1">
             <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-gray-400" />
-            <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar produto…" className="w-full rounded border border-gray-200 py-1 pl-7 pr-2 text-sm focus:border-verde-primary focus:outline-none" />
+            <input autoFocus value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar produto…" className="w-full rounded border border-gray-200 py-1 pl-7 pr-2 text-sm focus:border-marca-primary focus:outline-none" />
           </div>
           <div className="max-h-56 overflow-auto">
             {lista.map((p) => (
               <label key={p} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-sm text-gray-700 hover:bg-gray-50">
-                <input type="checkbox" checked={value.includes(p)} onChange={() => alternar(p)} className="size-4 rounded border-gray-300 text-verde-primary" />
+                <input type="checkbox" checked={value.includes(p)} onChange={() => alternar(p)} className="size-4 rounded border-gray-300 text-marca-primary" />
                 <span className="flex-1">{p}</span>
               </label>
             ))}

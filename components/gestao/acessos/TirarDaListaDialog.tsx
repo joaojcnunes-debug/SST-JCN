@@ -111,7 +111,7 @@ export default function TirarDaListaDialog({
             <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">De onde vem o acesso — marque o que tirar</p>
             {opcoes.map((o) => (
               <label key={o.chave} className="flex cursor-pointer items-start gap-2 rounded-md border border-gray-200 px-2 py-1.5 text-sm hover:bg-gray-50">
-                <input type="checkbox" checked={marcadas.has(o.chave)} onChange={() => alternar(o.chave)} className="mt-0.5 size-3.5 rounded border-gray-300 text-verde-primary" />
+                <input type="checkbox" checked={marcadas.has(o.chave)} onChange={() => alternar(o.chave)} className="mt-0.5 size-3.5 rounded border-gray-300 text-marca-primary" />
                 <span className="min-w-0 flex-1">
                   <span className="text-gray-800">{o.rotulo}</span>
                   {o.detalhe && <span className="block text-[11px] text-amber-700">{o.detalhe}</span>}

@@ -41,14 +41,14 @@ export default function RecursoPicker({
         key={`${tipo}:${id}`}
         className={cn(
           "flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-gray-50",
-          marcado && "bg-verde-light/60",
+          marcado && "bg-marca-light/60",
           coberto && !marcado && "opacity-50",
         )}
         style={{ paddingLeft: `${0.375 + nivel * 1.1}rem` }}
         title={coberto && !marcado ? "Já incluída pelo espaço ou pasta marcado acima" : undefined}
       >
-        <input type="checkbox" checked={marcado} onChange={() => alternar(tipo, id)} className="size-3.5 rounded border-gray-300 text-verde-primary" />
-        <Icone className={cn("size-3.5 shrink-0", tipo === "list" ? "text-gray-400" : "text-verde-primary")} />
+        <input type="checkbox" checked={marcado} onChange={() => alternar(tipo, id)} className="size-3.5 rounded border-gray-300 text-marca-primary" />
+        <Icone className={cn("size-3.5 shrink-0", tipo === "list" ? "text-gray-400" : "text-marca-primary")} />
         <span className={cn("truncate", tipo !== "list" && "font-medium text-gray-800")}>{nome}</span>
         {tipo !== "list" && <span className="shrink-0 text-[10px] text-gray-400">{tipo === "space" ? "espaço inteiro" : "pasta inteira"}</span>}
         {coberto && !marcado && <span className="shrink-0 text-[10px] text-gray-400">incluída</span>}
@@ -64,7 +64,7 @@ export default function RecursoPicker({
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           placeholder="Buscar espaço, pasta ou lista…"
-          className="w-full rounded-md border border-gray-200 py-1 pl-7 pr-2 text-sm focus:border-verde-primary focus:outline-none"
+          className="w-full rounded-md border border-gray-200 py-1 pl-7 pr-2 text-sm focus:border-marca-primary focus:outline-none"
         />
       </div>
       <div className={cn("overflow-auto rounded-md border border-gray-200 bg-white p-1", altura)}>

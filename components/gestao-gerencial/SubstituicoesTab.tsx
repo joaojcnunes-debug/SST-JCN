@@ -54,14 +54,14 @@ export default function SubstituicoesTab({ idUnidade }: { idUnidade: string }) {
         <button
           type="button"
           onClick={() => setModo("dia")}
-          className={`inline-flex items-center gap-1 rounded px-2.5 py-1 font-medium ${modo === "dia" ? "bg-verde-primary text-white" : "text-gray-600 hover:bg-gray-100"}`}
+          className={`inline-flex items-center gap-1 rounded px-2.5 py-1 font-medium ${modo === "dia" ? "bg-marca-primary text-white" : "text-gray-600 hover:bg-gray-100"}`}
         >
           <CalendarDays className="size-3.5" /> Por dia
         </button>
         <button
           type="button"
           onClick={() => setModo("mes")}
-          className={`inline-flex items-center gap-1 rounded px-2.5 py-1 font-medium ${modo === "mes" ? "bg-verde-primary text-white" : "text-gray-600 hover:bg-gray-100"}`}
+          className={`inline-flex items-center gap-1 rounded px-2.5 py-1 font-medium ${modo === "mes" ? "bg-marca-primary text-white" : "text-gray-600 hover:bg-gray-100"}`}
         >
           <CalendarClock className="size-3.5" /> Projeção mensal
         </button>
@@ -95,10 +95,10 @@ function VisaoDiaria({ idUnidade }: { idUnidade: string }) {
           type="date"
           value={data}
           onChange={(e) => setData(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-1 focus:ring-verde-primary/30"
+          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30"
         />
         {data && <span className="text-sm capitalize text-gray-500">{fmtLongo(data)}</span>}
-        {q.isFetching && <Loader2 className="size-4 animate-spin text-verde-primary" />}
+        {q.isFetching && <Loader2 className="size-4 animate-spin text-marca-primary" />}
       </div>
 
       {q.isLoading ? (

@@ -155,7 +155,7 @@ function MinhasInner() {
     (t, s) => t + Math.max(0, fimEfetivo(s, agora) - Math.max(new Date(s.inicio).getTime(), inicioDoDia)),
     0,
   );
-  const sel ="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-verde-primary focus:outline-none focus:ring-2 focus:ring-verde-primary/30";
+  const sel ="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30";
   const rot = "mb-1 block text-[11px] font-medium uppercase tracking-wider text-gray-500";
 
   return (
@@ -163,7 +163,7 @@ function MinhasInner() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-            <ClipboardList className="size-5 text-verde-primary" /> Minhas inspeções
+            <ClipboardList className="size-5 text-marca-primary" /> Minhas inspeções
           </h1>
           <p className="mt-0.5 text-sm text-gray-500">
             {idUsuario ? <>Fila de <strong>{nomePessoa}</strong></> : "O que foi atribuído a você"} — o mais urgente primeiro.
@@ -190,7 +190,7 @@ function MinhasInner() {
           {canCreate && (
             <Link
               href="/inspecoes/nova"
-              className="inline-flex items-center gap-2 rounded-md bg-verde-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-verde-accent"
+              className="inline-flex items-center gap-2 rounded-md bg-marca-primary px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-marca-accent"
             >
               <Plus className="size-4" />
               Nova Inspeção
@@ -201,7 +201,7 @@ function MinhasInner() {
 
       <div className="flex gap-1 border-b border-gray-200">
         {(["tecnico", "associado"] as const).map((p) => (
-          <button key={p} type="button" onClick={() => setPapel(p)} className={cn("-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium", papel === p ? "border-verde-primary text-verde-primary" : "border-transparent text-gray-500 hover:text-gray-700")}>
+          <button key={p} type="button" onClick={() => setPapel(p)} className={cn("-mb-px inline-flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm font-medium", papel === p ? "border-marca-primary text-marca-primary" : "border-transparent text-gray-500 hover:text-gray-700")}>
             {p === "tecnico" ? <ClipboardList className="size-4" /> : <FileText className="size-4" />}
             {p === "tecnico" ? "Como técnico (campo)" : "Como associado (documento)"}
             <span className="rounded-full bg-gray-100 px-1.5 text-[11px] text-gray-600">{abertasPapel(p)}</span>
@@ -217,7 +217,7 @@ function MinhasInner() {
           { k: "paradas", rot: "Esperando +15 dias", v: kpis.paradas, icone: CalendarClock, cor: "text-orange-700", acao: () => { limparCartao(); setEspera(15); setOrdem("espera"); } },
           { k: "mes", rot: papel === "tecnico" ? "Concluídas no mês" : "Entregues no mês", v: kpis.noMes, icone: CheckCircle2, cor: "text-emerald-700", acao: () => { limparCartao(); if (papel === "tecnico") setStatus(["CONCLUIDA"]); setPeriodo("mes"); setOrdem("recentes"); } },
         ].map((c) => (
-          <button key={c.k} type="button" onClick={c.acao} className="rounded-xl border border-gray-100 bg-white p-3 text-left shadow-sm transition hover:border-verde-primary/40 hover:shadow">
+          <button key={c.k} type="button" onClick={c.acao} className="rounded-xl border border-gray-100 bg-white p-3 text-left shadow-sm transition hover:border-marca-primary/40 hover:shadow">
             <p className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-gray-500"><c.icone className="size-3.5" /> {c.rot}</p>
             <p className={cn("mt-1 text-2xl font-bold", c.cor)}>{resumo ? c.v : "…"}</p>
           </button>
@@ -265,7 +265,7 @@ function MinhasInner() {
         <div className="relative min-w-[200px] flex-1 max-w-xs">
           <label className={rot}>Empresa</label>
           <Search className="pointer-events-none absolute left-2.5 top-[31px] size-3.5 text-gray-400" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome da empresa…" className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-sm focus:border-verde-primary focus:outline-none" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nome da empresa…" className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-3 text-sm focus:border-marca-primary focus:outline-none" />
         </div>
         <div className="ml-auto">
           <label className={rot}>Ordenar</label>
@@ -306,7 +306,7 @@ function MinhasInner() {
                   const doc = i.situacao_documento ? DOC_ROTULO[i.situacao_documento] : null;
                   const espera = textoEspera(i.status, i.dias_espera);
                   return (
-                    <tr key={i.id_inspecao} className="align-top hover:bg-verde-light/20">
+                    <tr key={i.id_inspecao} className="align-top hover:bg-marca-light/20">
                       <td className="px-4 py-3">
                         {/* a marcada (quem edita troca aqui) + a calculada, quando passa, e o prazo */}
                         <PrioridadeCelula id={i.id_inspecao} valor={i.prioridade} podeEditar={canEdit} />
@@ -368,7 +368,7 @@ function MinhasInner() {
                           !!minhaSessaoAberta(sessoesPorDoc.get(i.id_inspecao) ?? [], eu?.id_usuario, agora)) && (
                           <Link
                             href={papel === "associado" ? `/inspecoes/${i.id_inspecao}/relatorio` : `/inspecoes/${i.id_inspecao}`}
-                            className="inline-block whitespace-nowrap rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:border-verde-primary hover:text-verde-primary"
+                            className="inline-block whitespace-nowrap rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:border-marca-primary hover:text-marca-primary"
                           >
                             {papel === "associado" ? "Abrir documento" : "Abrir inspeção"}
                           </Link>
