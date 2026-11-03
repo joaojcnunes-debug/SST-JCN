@@ -957,8 +957,8 @@ select:focus {
    Casca inset (Etapa 2 do docs/plano-skin-viva-jcn.md).
    .casca        → raiz do layout: fundo marinho, o mesmo do fim do degradê do menu,
                    para o menu "continuar" em volta do conteúdo.
-   .casca-folha  → a "folha" do conteúdo: 8px de respiro em cima e à direita, cantos
-                   de 18px, sombra suave. Sai do padding-left (o dos módulos) para
+   .casca-folha  → a "folha" do conteúdo: encostada no topo e à direita, sem
+                   cantos (0.3.209), sombra suave junto ao menu. Sai do padding-left (o dos módulos) para
                    margin-left, acompanhando a largura do menu (--sidebar-w), também
                    recolhido (--sidebar-w-mini) — a Gestão não recolhe, por isso a regra
                    de "mini" só vale para quem usa md:pl-[220px].
@@ -971,11 +971,13 @@ select:focus {
   html .casca-folha,
   html .casca-folha.md\:pl-\[220px\] {
     padding-left: 0;
-    margin: 8px 8px 0 var(--sidebar-w);
-    min-height: calc(100vh - 8px);
-    border-radius: 18px 18px 0 0;
+    /* 0.3.209: sem a faixa marinho em cima e à direita (o João não gostou da moldura preta);
+       a folha encosta no topo e na borda, sem canto arredondado (ele deixava ver o fundo escuro). */
+    margin: 0 0 0 var(--sidebar-w);
+    min-height: 100vh;
+    border-radius: 0;
     background-color: var(--color-app-bg);
-    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.04), 0 12px 32px rgb(0 0 0 / 0.28);
+    box-shadow: -6px 0 18px rgb(0 0 0 / 0.18);
     overflow: clip;
     transition: margin-left 180ms cubic-bezier(.2, .7, .3, 1);
   }

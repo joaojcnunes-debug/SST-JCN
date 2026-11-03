@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "casca-sem-moldura",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Sem a faixa escura em volta da tela",
+    texto:
+      "A área de conteúdo voltou a encostar no topo e na borda direita da janela: saiu a faixa azul-marinho que " +
+      "aparecia em cima e à direita, como uma moldura preta. O menu lateral continua no azul-marinho.",
+    onde: "Todas as telas",
+    versoes: ["0.3.209"],
+  },
+  {
     id: "encantamento",
     data: "2026-11-03",
     tipo: "melhoria",
