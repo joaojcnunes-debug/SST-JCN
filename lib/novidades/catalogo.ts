@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "visao-geral-pulso",
+    data: "2026-11-03",
+    tipo: "novidade",
+    titulo: "Pulso de segurança na Visão geral",
+    texto:
+      "A Visão geral ganhou uma nota de 0 a 100 com uma linha de batimento: 70% vem dos documentos com validade em dia " +
+      "(em dia ou a vencer) e 30% das ações 5W2H abertas dentro do prazo. De 85 para cima é Em dia, de 60 a 84 Atenção e " +
+      "abaixo de 60 Crítico. Passe o mouse no título para ver de onde a nota vem. Documentos sem validade informada não " +
+      "entram na conta.",
+    onde: "Visão geral",
+    versoes: ["0.3.206"],
+  },
+  {
     id: "visao-geral-bento",
     data: "2026-11-03",
     tipo: "melhoria",

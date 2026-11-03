@@ -147,6 +147,15 @@ Alias de import: `@/*` → raiz.
   - Os PDFs já emitidos não mudam.
 - Modo escuro por CSS vars.
 - Mensagens e comentários do código em português; regras em `lib/` têm testes.
+- **Pulso de segurança (0.3.206, Etapa 4 do plano-skin-viva):** nota de 0 a 100 no cabeçalho da Visão geral, só para a equipe e não no portal do cliente.
+  - **Fórmula** (`lib/visao-geral/pulso.ts`, testada): 70% × (documentos válidos ÷ documentos com validade) + 30% × (ações 5W2H abertas no prazo ÷ abertas).
+    - Válidos são os em dia mais os a vencer. Os documentos sem validade ficam fora da conta.
+    - Sem ação aberta, a parte das ações vale 100. Sem documento com validade, não há nota ("—").
+    - Ação fechada é a que tem status começando por "conclu" ou "cancel".
+  - **Faixas:** 85 ou mais Em dia, de 60 a 84 Atenção, abaixo de 60 Crítico.
+  - **Composição:** aparece no título, numa Dica.
+  - **Linha de batimento:** SVG com `.pulso-onda`, parado com `prefers-reduced-motion`.
+  - **Dados:** a saúde dos documentos (a mesma do anel) e `useAcoesPulso` (status e prazo das ações, sob a RLS).
 - **Visão geral em blocos (0.3.205, Etapa 3 do plano-skin-viva):** `VisaoGeralView`, usada por `/visao-geral` e `/inicio`.
   - **"O que exige ação agora":** os vencidos, dos mais atrasados para os menos, e os que vencem em até 30 dias. Mostra no máximo 6, cada um com Resolver, que leva ao `href` do vencimento.
   - **Saúde dos documentos:** o anel.

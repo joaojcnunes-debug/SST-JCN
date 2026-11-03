@@ -33,6 +33,8 @@ import AnimatedNumber from "./AnimatedNumber";
 import { diasSemAcidente } from "@/lib/visao-geral/diasSemAcidente";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import SaudeAnel, { type SaudeDocumentos } from "./SaudeAnel";
+import PulsoSeguranca from "./PulsoSeguranca";
+import type { Pulso } from "@/lib/visao-geral/pulso";
 import GraficosVisaoGeral, { type FatiaTipo, type PontoMes, type FatiaStatus } from "./GraficosVisaoGeral";
 import { cn } from "@/lib/utils";
 import { useUnidadeAtiva, useTema } from "@/lib/store";
@@ -76,6 +78,9 @@ export interface VisaoGeralViewProps {
   /** Data do último acidente COM afastamento (null = nenhum registrado). */
   ultimoAcidenteAfastamento?: string | null;
   acidenteLoading?: boolean;
+  /** Pulso de segurança (Etapa 4): nota 0–100 de documentos válidos e ações 5W2H no prazo. */
+  pulso?: Pulso;
+  pulsoLoading?: boolean;
   onLogout: () => void;
   /** Sino de notificações da Gestão, ao lado da saudação (só para quem usa a Gestão). */
   sinoNotificacoes?: React.ReactNode;
@@ -107,6 +112,8 @@ export default function VisaoGeralView({
   inspecoesPorStatus,
   ultimoAcidenteAfastamento,
   acidenteLoading,
+  pulso,
+  pulsoLoading,
   onLogout,
   sinoNotificacoes,
   gestaoNaoLidas = 0,
@@ -305,6 +312,7 @@ export default function VisaoGeralView({
                   : "Acesso total"}
               </p>
             </div>
+            <PulsoSeguranca pulso={pulso} loading={pulsoLoading} />
           </div>
 
           {hasError ? (

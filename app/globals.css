@@ -495,6 +495,17 @@ select:focus {
 }
 .pulse-alerta { animation: pulse-alerta 1.9s ease-in-out infinite; }
 
+/* Pulso de segurança (Etapa 4): um trecho claro percorre a linha de batimento. Parado para
+   quem pediu menos movimento (a linha aparece inteira). */
+.pulso-onda { stroke-dasharray: 46 420; animation: pulso-onda 2.6s linear infinite; }
+@keyframes pulso-onda {
+  from { stroke-dashoffset: 466; }
+  to   { stroke-dashoffset: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulso-onda { animation: none; stroke-dasharray: none; }
+}
+
 /* Acessibilidade: respeita redução de movimento */
 /* Abertura de menu suspenso (dropdown). Mesma curva do reveal-up, bem mais
    curta: menu que demora parece travado. `transform-origin` no topo para o
