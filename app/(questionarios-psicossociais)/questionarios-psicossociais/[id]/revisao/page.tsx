@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_DRPS_REVISAO } from "@/lib/dicas/drps";
 import { useEffect, useState, use } from "react";
 import { Save } from "lucide-react";
 import { useQpsAplicacao } from "@/lib/hooks/useQuestionarios";
@@ -72,7 +74,7 @@ export default function RevisaoQpsPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Ações obrigatórias de revisão</h2>
+        <h2 className="mb-3 text-sm font-semibold text-gray-900"><Dica texto={DICAS_DRPS_REVISAO.acoes}>Ações obrigatórias de revisão</Dica></h2>
         <div className="space-y-2">
           {acoes.map((a) => (
             <label
@@ -93,7 +95,7 @@ export default function RevisaoQpsPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Equipe multidisciplinar envolvida</h2>
+        <h2 className="mb-3 text-sm font-semibold text-gray-900"><Dica texto={DICAS_DRPS_REVISAO.equipe}>Equipe multidisciplinar envolvida</Dica></h2>
         <div className="grid gap-2 sm:grid-cols-2">
           {EQUIPE_REVISAO.map((m) => (
             <label
@@ -114,7 +116,7 @@ export default function RevisaoQpsPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-2 text-sm font-semibold text-gray-900">Anotações</h2>
+        <h2 className="mb-2 text-sm font-semibold text-gray-900"><Dica texto={DICAS_DRPS_REVISAO.anotacoes}>Anotações</Dica></h2>
         <textarea
           value={anotacoes}
           onChange={(e) => {

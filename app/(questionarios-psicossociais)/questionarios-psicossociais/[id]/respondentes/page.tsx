@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_QPS_RESPONDENTES } from "@/lib/dicas/qps";
 import { use, useState, useMemo, useRef } from "react";
 import {
   ListChecks,
@@ -315,7 +317,7 @@ function ImportacaoCsvCard({
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-sm font-semibold text-gray-900">
-            Importar via CSV / Google Forms
+            <Dica texto={DICAS_QPS_RESPONDENTES.importar}>Importar via CSV / Google Forms</Dica>
           </h2>
           <p className="mt-0.5 text-xs text-gray-500">
             Estrutura esperada:{" "}
@@ -612,16 +614,16 @@ function AdicionarRespondente({
       <form id="form-resp" onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-4 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Setor *</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_QPS_RESPONDENTES.setor}>Setor</Dica> *</label>
             <input list="setores-resp" value={setor} onChange={(e) => setSetor(e.target.value)} required placeholder="Nome do setor" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
             <datalist id="setores-resp">{setoresExistentes.map((s) => <option key={s} value={s} />)}</datalist>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Cargo</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_QPS_RESPONDENTES.cargo}>Cargo</Dica></label>
             <input value={cargo} onChange={(e) => setCargo(e.target.value)} placeholder="Opcional" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Lote</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_QPS_RESPONDENTES.lote}>Lote</Dica></label>
             <input value={lote} onChange={(e) => setLote(e.target.value)} placeholder="Ex: Turno A" className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
         </div>

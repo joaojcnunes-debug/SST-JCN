@@ -153,6 +153,19 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Dicas no QPS, lote 7.7 (0.3.217):** `lib/dicas/qps.ts`, com cerca de 40 campos.
+  - **Telas cobertas:** Nova aplicação, Aplicação (o `InfoCard` aceita `dica`), Análise, Monitoramento, 5W2H (o `Campo` aceita `dica`), Respondentes e Tipos. Plano anual e Revisão usam os textos do DRPS.
+  - **5W2H:** a dica avisa que só sai no laudo se o capítulo for ligado no Texto Padrão (desligado na v243).
+  - **Achados para o PR de correções DRPS/QPS:**
+    - Respondentes e Resultados sem controle de permissão;
+    - a tela Resultados grava em `qps_probabilidades`, a mesma que o laudo usa, e contradiz o texto da Análise;
+    - `observacoes_dimensoes` nunca é lido;
+    - a Nova aplicação não tem `useRequireCreate`;
+    - a permissão é diferente entre as telas da aplicação;
+    - o texto do 5W2H diz que vai para o laudo;
+    - a pendência "Fontes geradoras" aponta para Tipos;
+    - o placeholder de Instruções fala em "respondente";
+    - a IA da conclusão recebe `crp: null`.
 - **Dicas no DRPS, lote 7.6 (0.3.216):** `lib/dicas/drps.ts`, com cerca de 35 campos.
   - **Telas cobertas:** Novo, Metadados (o `Field` aceita `dica`), barra do Dashboard e da Análise, Análise (Fontes e Conclusão do setor), Dados, Conclusão geral, Plano anual, 5W2H (o `Campo` aceita `dica`), Monitoramento, Revisão e Capa (`DICAS_CAPA`).
   - **Neutras de propósito:** as dicas de Status e Registro, porque a data de conclusão e a sigla do registro no PDF entram no PR de correções do DRPS/QPS.

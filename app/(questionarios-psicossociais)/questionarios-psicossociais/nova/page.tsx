@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_QPS_APLICACAO } from "@/lib/dicas/qps";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, Loader2, ChevronLeft, Building2 } from "lucide-react";
@@ -107,7 +109,7 @@ export default function NovaAplicacaoPage() {
           {/* Empresa */}
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Empresa <span className="text-red-500">*</span>
+              <Dica texto={DICAS_QPS_APLICACAO.empresa}>Empresa</Dica> <span className="text-red-500">*</span>
             </label>
             {loadingEmpresas ? (
               <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -136,7 +138,7 @@ export default function NovaAplicacaoPage() {
           {/* Tipo de questionário */}
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Tipo de Questionário <span className="text-red-500">*</span>
+              <Dica texto={DICAS_QPS_APLICACAO.tipo}>Tipo de Questionário</Dica> <span className="text-red-500">*</span>
             </label>
             {loadingTipos ? (
               <div className="flex items-center gap-2 text-sm text-gray-400">
@@ -177,7 +179,7 @@ export default function NovaAplicacaoPage() {
           {/* Título */}
           <div className="sm:col-span-2">
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Título da Aplicação <span className="text-red-500">*</span>
+              <Dica texto={DICAS_QPS_APLICACAO.titulo}>Título da Aplicação</Dica> <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -192,7 +194,7 @@ export default function NovaAplicacaoPage() {
           {/* Responsável */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Responsável
+              <Dica texto={DICAS_QPS_APLICACAO.responsavel}>Responsável</Dica>
             </label>
             <ResponsavelSelect
               value={form.responsavel}
@@ -220,7 +222,7 @@ export default function NovaAplicacaoPage() {
           {/* Período inicio */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Início do Período
+              <Dica texto={DICAS_QPS_APLICACAO.inicio}>Início do Período</Dica>
             </label>
             <input
               type="date"
@@ -233,7 +235,7 @@ export default function NovaAplicacaoPage() {
           {/* Período fim */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-700">
-              Fim do Período
+              <Dica texto={DICAS_QPS_APLICACAO.fim}>Fim do Período</Dica>
             </label>
             <input
               type="date"

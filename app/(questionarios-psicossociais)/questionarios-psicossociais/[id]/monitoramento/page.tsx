@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_QPS_MONITORAMENTO } from "@/lib/dicas/qps";
 import { useMemo, useState, use } from "react";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
@@ -131,10 +133,10 @@ export default function MonitoramentoQpsPage({ params }: { params: Promise<{ id:
                 <tr>
                   <th className="px-2 py-2 text-left font-medium">Categoria</th>
                   <th className="px-2 py-2 text-center font-medium w-24">Risco Atual</th>
-                  <th className="px-2 py-2 text-left font-medium w-32">Data Intervenção</th>
-                  <th className="px-2 py-2 text-left font-medium w-40">Responsável</th>
-                  <th className="px-2 py-2 text-left font-medium w-36">Status</th>
-                  <th className="px-2 py-2 text-left font-medium w-32">Próxima Avaliação</th>
+                  <th className="px-2 py-2 text-left font-medium w-32"><Dica texto={DICAS_QPS_MONITORAMENTO.data_intervencao}>Data Intervenção</Dica></th>
+                  <th className="px-2 py-2 text-left font-medium w-40"><Dica texto={DICAS_QPS_MONITORAMENTO.responsavel}>Responsável</Dica></th>
+                  <th className="px-2 py-2 text-left font-medium w-36"><Dica texto={DICAS_QPS_MONITORAMENTO.status}>Status</Dica></th>
+                  <th className="px-2 py-2 text-left font-medium w-32"><Dica texto={DICAS_QPS_MONITORAMENTO.proxima}>Próxima Avaliação</Dica></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">

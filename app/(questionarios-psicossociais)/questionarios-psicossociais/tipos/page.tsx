@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_QPS_TIPO } from "@/lib/dicas/qps";
 import { useState, useRef } from "react";
 import {
   Settings2,
@@ -166,7 +168,7 @@ function NovoTipoForm({ onClose }: { onClose: () => void }) {
       <h2 className="mb-4 text-sm font-bold text-indigo-800">Novo Tipo de Questionário</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-gray-700">Nome *</label>
+          <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_QPS_TIPO.nome}>Nome</Dica> *</label>
           <input
             value={nome}
             onChange={(e) => setNome(e.target.value)}
@@ -176,7 +178,7 @@ function NovoTipoForm({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-gray-700">Descrição</label>
+          <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_QPS_TIPO.descricao}>Descrição</Dica></label>
           <input
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
@@ -185,7 +187,7 @@ function NovoTipoForm({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="mb-1 block text-xs font-medium text-gray-700">Instruções</label>
+          <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_QPS_TIPO.instrucoes}>Instruções</Dica></label>
           <textarea
             value={instrucoes}
             onChange={(e) => setInstrucoes(e.target.value)}
@@ -195,7 +197,7 @@ function NovoTipoForm({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-700">Escala Mínima *</label>
+          <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_QPS_TIPO.escala_min}>Escala Mínima</Dica> *</label>
           <input
             type="number"
             value={escalaMin}
@@ -206,7 +208,7 @@ function NovoTipoForm({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-700">Escala Máxima *</label>
+          <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_QPS_TIPO.escala_max}>Escala Máxima</Dica> *</label>
           <input
             type="number"
             value={escalaMax}
@@ -432,7 +434,7 @@ function TipoCard({
           {/* Categorias */}
           <div className="mb-3 flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-              Categorias / Dimensões
+              <Dica texto={DICAS_QPS_TIPO.categorias}>Categorias / Dimensões</Dica>
             </p>
             <button
               onClick={() => setShowNovaCategoria(true)}
@@ -729,7 +731,7 @@ function CategoriaItem({
         <div className="border-t border-gray-100 px-3 pb-3 pt-2">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-              Perguntas
+              <Dica texto={DICAS_QPS_TIPO.perguntas}>Perguntas</Dica>
             </p>
             <button
               onClick={() => setShowNovaPergunta(true)}

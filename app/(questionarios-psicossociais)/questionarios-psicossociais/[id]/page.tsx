@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_QPS_APLICACAO } from "@/lib/dicas/qps";
 import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { use, useState } from "react";
 import Link from "next/link";
@@ -360,7 +362,7 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
         <InfoCard label="Tipo de Questionário" destaque>
           {tipoNome}
         </InfoCard>
-        <InfoCard label="Responsável">
+        <InfoCard label="Responsável" dica={DICAS_QPS_APLICACAO.responsavel}>
           {editandoResponsavel ? (
             <div className="flex min-w-0 items-center gap-1">
               <ResponsavelSelect
@@ -400,7 +402,7 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
             </div>
           )}
         </InfoCard>
-        <InfoCard label="Unidade / Filial do cliente">
+        <InfoCard label="Unidade / Filial do cliente" dica={DICAS_QPS_APLICACAO.unidade}>
           {editandoUnidade ? (
             <div className="flex min-w-0 items-center gap-1">
               <input
@@ -427,7 +429,7 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
             </div>
           )}
         </InfoCard>
-        <InfoCard label="Trabalhadores previstos">
+        <InfoCard label="Trabalhadores previstos" dica={DICAS_QPS_APLICACAO.previstos}>
           {editandoPrevistos ? (
             <div className="flex min-w-0 items-center gap-1">
               <input
@@ -459,13 +461,13 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
         {/* v263 — editáveis depois de criada: é o período que a Metodologia do
             laudo imprime ("no período de … à …"). Em branco, o laudo usa a 1ª e a
             última data de resposta — só existe em importação feita a partir de 29/09. */}
-        <InfoCard label="Período Início (laudo)">
+        <InfoCard label="Período Início (laudo)" dica={DICAS_QPS_APLICACAO.inicio}>
           <CampoDataEditavel podeEditar={canEdit}
             valor={ap.periodo_inicio}
             onSalvar={(v) => salvarData({ periodo_inicio: v }, "Período início atualizado")}
           />
         </InfoCard>
-        <InfoCard label="Período Fim (laudo)">
+        <InfoCard label="Período Fim (laudo)" dica={DICAS_QPS_APLICACAO.fim}>
           <CampoDataEditavel podeEditar={canEdit}
             valor={ap.periodo_fim}
             min={ap.periodo_inicio ?? undefined}
@@ -502,7 +504,7 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
             </div>
           )}
         </InfoCard>
-        <InfoCard label="Data de elaboração (laudo)">
+        <InfoCard label="Data de elaboração (laudo)" dica={DICAS_QPS_APLICACAO.data_elaboracao}>
           {editandoElab ? (
             <div className="flex min-w-0 items-center gap-1">
               <input
@@ -529,7 +531,7 @@ export default function QpsDetalhe({ params }: { params: Promise<{ id: string }>
             </div>
           )}
         </InfoCard>
-        <InfoCard label="Data da conclusão (capa do laudo)">
+        <InfoCard label="Data da conclusão (capa do laudo)" dica={DICAS_QPS_APLICACAO.data_conclusao}>
           <CampoDataEditavel podeEditar={canEdit}
             valor={ap.data_conclusao}
             vazio="— (carimbada ao concluir)"
@@ -618,10 +620,13 @@ function CampoDataEditavel({
 
 function InfoCard({
   label,
+  dica,
   destaque,
   children,
 }: {
   label: string;
+  /** Dica de preenchimento (lib/dicas/qps.ts). */
+  dica?: string;
   destaque?: boolean;
   children: React.ReactNode;
 }) {
@@ -644,7 +649,7 @@ function InfoCard({
           destaque ? "text-indigo-400" : "text-gray-400"
         )}
       >
-        {label}
+        {dica ? <Dica texto={dica}>{label}</Dica> : label}
       </p>
       <div
         className={cn(

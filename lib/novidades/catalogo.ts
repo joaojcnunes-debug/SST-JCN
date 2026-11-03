@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-qps",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Dicas de preenchimento no Questionário psicossocial",
+    texto:
+      "Nova aplicação, os dados da aplicação, Análise, Plano anual, Monitoramento, Revisão, Plano de ação 5W2H, " +
+      "Respondentes e Tipos de questionário ganharam a dica de como preencher cada campo, dizendo o que sai no " +
+      "laudo e onde cada coisa é gravada.",
+    onde: "Questionários psicossociais",
+    versoes: ["0.3.217"],
+  },
+  {
     id: "dicas-drps",
     data: "2026-11-03",
     tipo: "melhoria",
