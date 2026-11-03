@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-riscos-inspecao",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Dicas de preenchimento no Risco e na Nova inspeção",
+    texto:
+      "Os campos do formulário de Risco (tipo, setores, agente, fonte geradora, matriz, probabilidade, severidade, " +
+      "medições, dados de químicos e os demais) e da tela Nova inspeção ganharam a dica de como preencher: passe o " +
+      "mouse (ou chegue com Tab) no nome sublinhado com pontinhos.",
+    onde: "Inspeções",
+    versoes: ["0.3.210"],
+  },
+  {
     id: "casca-sem-moldura",
     data: "2026-11-03",
     tipo: "melhoria",

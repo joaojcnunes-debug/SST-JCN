@@ -6,6 +6,8 @@ import toast from "react-hot-toast";
 import { Plus, Trash2, Upload, Pencil, Check, X } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import AvisoRascunho from "@/components/ui/AvisoRascunho";
+import Dica, { CampoLabel } from "@/components/ui/Dica";
+import { DICAS_RISCO } from "@/lib/dicas/riscos";
 import StorageImg from "@/components/ui/StorageImg";
 import NivelBadge from "@/components/riscos/NivelBadge";
 import { useRascunho } from "@/lib/hooks/useRascunho";
@@ -777,9 +779,13 @@ export default function RiscoForm({
             const cfgTipo = SUBGRID_CORES[corTipo];
             return (
               <div className={`rounded-lg border-l-4 p-2 ${cfgTipo.border} ${cfgTipo.bg}`}>
-                <label className={`${lblCls} ${cfgTipo.text}`}>
-                  Tipo de Risco * <span className="text-[10px] font-normal opacity-70">(cor NR-09)</span>
-                </label>
+                <CampoLabel
+                  className={`${lblCls} ${cfgTipo.text}`}
+                  dica={DICAS_RISCO.tipo_risco}
+                  extra={<> * <span className="text-[10px] font-normal opacity-70">(cor NR-09)</span></>}
+                >
+                  Tipo de Risco
+                </CampoLabel>
                 <select
                   value={form.tipo_risco}
                   onChange={(e) =>
@@ -805,7 +811,7 @@ export default function RiscoForm({
             );
           })()}
           <div>
-            <label className={lblCls}>Setor(es) / GHE</label>
+            <CampoLabel className={lblCls} dica={DICAS_RISCO.setores}>Setor(es) / GHE</CampoLabel>
             <SetorMultiSelect
               setores={setores}
               value={form.ids_setores}
@@ -880,7 +886,7 @@ export default function RiscoForm({
         {/* Linha 2: Agente (full width) — fonte virou bloco lista abaixo */}
         <div>
           <div>
-            <label className={lblCls}>Agente / Risco *</label>
+            <CampoLabel className={lblCls} dica={DICAS_RISCO.agente} extra=" *">Agente / Risco</CampoLabel>
             <input
               list="catalogo-agente"
               type="text"
@@ -977,7 +983,7 @@ export default function RiscoForm({
         {/* Cargo (opcional, baseado no 1º setor) */}
         {cargosDoSetor.length > 0 && (
           <div>
-            <label className={lblCls}>Cargo (opcional)</label>
+            <CampoLabel className={lblCls} dica={DICAS_RISCO.cargo}>Cargo (opcional)</CampoLabel>
             <select
               value={form.id_cargo}
               onChange={(e) => setForm({ ...form, id_cargo: e.target.value })}
@@ -995,7 +1001,7 @@ export default function RiscoForm({
 
         {/* Caracterização da exposição */}
         <SubGrid title="Caracterização da Exposição" cor="stone">
-          <Field label="Meio de Propagação">
+          <Field label="Meio de Propagação" dica={DICAS_RISCO.meio_propagacao}>
             <MeiosPropagacaoMultiSelect
               options={MEIOS_PROPAGACAO_DEFAULT}
               value={form.meio_propagacao}
@@ -1004,7 +1010,7 @@ export default function RiscoForm({
               }
             />
           </Field>
-          <Field label="Situação">
+          <Field label="Situação" dica={DICAS_RISCO.situacao}>
             <select
               value={form.situacao}
               onChange={(e) => setForm({ ...form, situacao: e.target.value })}
@@ -1018,7 +1024,7 @@ export default function RiscoForm({
               ))}
             </select>
           </Field>
-          <Field label="Tempo de Exposição">
+          <Field label="Tempo de Exposição" dica={DICAS_RISCO.tempo_exposicao}>
             <select
               value={form.tempo_exposicao}
               onChange={(e) =>
@@ -1034,7 +1040,7 @@ export default function RiscoForm({
               ))}
             </select>
           </Field>
-          <Field label="Técnica Utilizada">
+          <Field label="Técnica Utilizada" dica={DICAS_RISCO.tecnica}>
             <select
               value={form.tecnica_utilizada}
               onChange={(e) =>
@@ -1059,9 +1065,9 @@ export default function RiscoForm({
               Avaliação (Matriz de Risco)
             </p>
             <div className="flex items-center gap-2">
-              <label className="text-[11px] font-medium text-gray-600">
-                Matriz:
-              </label>
+              <CampoLabel className="text-[11px] font-medium text-gray-600" dica={DICAS_RISCO.matriz} extra=":">
+                Matriz
+              </CampoLabel>
               <select
                 value={form.id_matriz}
                 onChange={(e) => {
@@ -1099,7 +1105,7 @@ export default function RiscoForm({
             </div>
           </div>
           <div className="grid gap-3 md:grid-cols-3 md:items-end">
-            <Field label="Probabilidade">
+            <Field label="Probabilidade" dica={DICAS_RISCO.probabilidade}>
               <select
                 value={form.probabilidade}
                 onChange={(e) =>
@@ -1114,7 +1120,7 @@ export default function RiscoForm({
                 ))}
               </select>
             </Field>
-            <Field label="Severidade">
+            <Field label="Severidade" dica={DICAS_RISCO.severidade}>
               <select
                 value={form.severidade}
                 onChange={(e) =>
@@ -1129,7 +1135,7 @@ export default function RiscoForm({
                 ))}
               </select>
             </Field>
-            <Field label="Nível Calculado">
+            <Field label="Nível Calculado" dica={DICAS_RISCO.nivel}>
               <div className="mt-1 flex h-[38px] items-center">
                 <NivelBadge nivel={nivel} />
               </div>
@@ -1207,7 +1213,7 @@ export default function RiscoForm({
         {/* Específico FÍSICO */}
         {isFisico && (
           <SubGrid title="Detalhes — Físico" cor="green">
-            <Field label="Necessita medição?">
+            <Field label="Necessita medição?" dica={DICAS_RISCO.necessita_medicao}>
               <select
                 value={form.fisico_necessita_medicao}
                 onChange={(e) =>
@@ -1224,7 +1230,7 @@ export default function RiscoForm({
                 <option value="N/A">N/A</option>
               </select>
             </Field>
-            <Field label="Qual medição">
+            <Field label="Qual medição" dica={DICAS_RISCO.qual_medicao}>
               <input
                 value={form.fisico_qual_medicao}
                 onChange={(e) =>
@@ -1233,7 +1239,7 @@ export default function RiscoForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="Motivo">
+            <Field label="Motivo" dica={DICAS_RISCO.motivo_medicao}>
               <input
                 value={form.fisico_motivo_medicao}
                 onChange={(e) =>
@@ -1242,7 +1248,7 @@ export default function RiscoForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="Concentração / Nível medido">
+            <Field label="Concentração / Nível medido" dica={DICAS_RISCO.nivel_medido}>
               <input
                 value={form.concentracao_exposicao}
                 onChange={(e) =>
@@ -1254,7 +1260,7 @@ export default function RiscoForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="Limite de Tolerância (LT)">
+            <Field label="Limite de Tolerância (LT)" dica={DICAS_RISCO.limite_tolerancia}>
               <input
                 value={form.limite_tolerancia}
                 onChange={(e) =>
@@ -1263,7 +1269,7 @@ export default function RiscoForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="Insalubridade (NR-15)">
+            <Field label="Insalubridade (NR-15)" dica={DICAS_RISCO.insalubridade}>
               <input
                 value={form.insalubridade}
                 onChange={(e) =>
@@ -1280,7 +1286,7 @@ export default function RiscoForm({
         {isQuimico && (
           <>
             <SubGrid title="Detalhes — Químico" cor="red">
-              <Field label="Número CAS">
+              <Field label="Número CAS" dica={DICAS_RISCO.numero_cas}>
                 <input
                   value={form.numero_cas}
                   onChange={(e) =>
@@ -1289,7 +1295,7 @@ export default function RiscoForm({
                   className={inputCls}
                 />
               </Field>
-              <Field label="Via de absorção">
+              <Field label="Via de absorção" dica={DICAS_RISCO.via_absorcao}>
                 <input
                   value={form.via_absorcao}
                   onChange={(e) =>
@@ -1298,7 +1304,7 @@ export default function RiscoForm({
                   className={inputCls}
                 />
               </Field>
-              <Field label="Concentração / Exposição">
+              <Field label="Concentração / Exposição" dica={DICAS_RISCO.concentracao_quimico}>
                 <input
                   value={form.concentracao_exposicao}
                   onChange={(e) =>
@@ -1310,7 +1316,7 @@ export default function RiscoForm({
                   className={inputCls}
                 />
               </Field>
-              <Field label="Uso / Processo">
+              <Field label="Uso / Processo" dica={DICAS_RISCO.uso_processo}>
                 <input
                   value={form.uso_processo}
                   onChange={(e) =>
@@ -1319,7 +1325,7 @@ export default function RiscoForm({
                   className={inputCls}
                 />
               </Field>
-              <Field label="Periculosidade (NR-16)">
+              <Field label="Periculosidade (NR-16)" dica={DICAS_RISCO.periculosidade}>
                 <input
                   value={form.periculosidade}
                   onChange={(e) =>
@@ -1374,7 +1380,7 @@ export default function RiscoForm({
         {/* Específico BIOLÓGICO */}
         {isBiologico && (
           <SubGrid title="Detalhes — Biológico" cor="amber">
-            <Field label="Tipo de agente biológico">
+            <Field label="Tipo de agente biológico" dica={DICAS_RISCO.agente_biologico}>
               <input
                 value={form.tipo_agente_biologico}
                 onChange={(e) =>
@@ -1390,7 +1396,7 @@ export default function RiscoForm({
         {/* Específico ERGONÔMICO */}
         {isErgo && (
           <SubGrid title="Detalhes — Ergonômico" cor="yellow">
-            <Field label="Fator ergonômico">
+            <Field label="Fator ergonômico" dica={DICAS_RISCO.fator_ergonomico}>
               <input
                 list="fatores-ergo"
                 value={form.fator_ergonomico}
@@ -1411,7 +1417,7 @@ export default function RiscoForm({
         {/* Específico PSICOSSOCIAL */}
         {isPsico && (
           <SubGrid title="Detalhes — Psicossocial" cor="purple">
-            <Field label="Fator psicossocial">
+            <Field label="Fator psicossocial" dica={DICAS_RISCO.fator_psicossocial}>
               <input
                 list="fatores-psico"
                 value={form.fator_psicossocial}
@@ -1432,7 +1438,7 @@ export default function RiscoForm({
         {/* IAPAT */}
         {isIapat && (
           <SubGrid title="Detalhes — IAPAT" cor="slate">
-            <Field label="Pontuação IAPAT">
+            <Field label="Pontuação IAPAT" dica={DICAS_RISCO.pontuacao_iapat}>
               <input
                 value={form.pontuacao_iapat}
                 onChange={(e) =>
@@ -1485,9 +1491,9 @@ export default function RiscoForm({
         />
 
         <section className="rounded-lg border border-slate-200 bg-slate-50/40 p-3">
-          <label className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+          <CampoLabel className="text-xs font-semibold uppercase tracking-wider text-slate-700" dica={DICAS_RISCO.observacoes}>
             Observações
-          </label>
+          </CampoLabel>
           <textarea
             value={form.observacoes_risco}
             onChange={(e) =>
@@ -1575,7 +1581,7 @@ function FotoQuimUpload({
 
   return (
     <div>
-      <label className={lblCls}>Foto da FDS / Rótulo (opcional)</label>
+      <CampoLabel className={lblCls} dica={DICAS_RISCO.foto_fds}>Foto da FDS / Rótulo (opcional)</CampoLabel>
       <div className="mt-1 flex items-center gap-3">
         {value && (
           <StorageImg stored={value} alt="FDS" className="size-16 rounded-md border border-gray-200 object-cover" />
@@ -2316,7 +2322,7 @@ function FonteBlocoLista({
       <div className="mb-2 flex items-baseline justify-between gap-2">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-sky-800">
-            Fonte Geradora
+            <Dica texto={DICAS_RISCO.fonte_geradora}>Fonte Geradora</Dica>
           </p>
           <p className="text-[11px] text-gray-600">
             Origens do agente neste risco (uma ou mais).
@@ -2931,14 +2937,17 @@ const lblCls = "text-sm font-medium text-gray-700";
 
 function Field({
   label,
+  dica,
   children,
 }: {
   label: string;
+  /** Dica de preenchimento (lib/dicas/riscos.ts), aberta ao passar o mouse no nome. */
+  dica?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className={lblCls}>{label}</label>
+      <CampoLabel className={lblCls} dica={dica}>{label}</CampoLabel>
       {children}
     </div>
   );
