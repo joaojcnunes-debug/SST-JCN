@@ -22,6 +22,8 @@ import AlertaEmpresaDuplicada from "@/components/empresas/AlertaEmpresaDuplicada
 import { quemPerdeAcesso, type UsuarioAcesso } from "@/lib/empresas/perda-de-acesso";
 import CampoGrupoEmpresa, { type ValorGrupo } from "@/components/empresas/CampoGrupoEmpresa";
 import { CHAVE_GRUPOS } from "@/lib/hooks/useGruposEmpresas";
+import Dica, { CampoLabel } from "@/components/ui/Dica";
+import { DICAS_EMPRESA } from "@/lib/dicas/empresas";
 
 // Toda empresa é habilitada em todos os quadros (filtro por módulo removido).
 const TODOS_MODULOS: ModuloEmpresa[] = MODULOS_EMPRESA.map((m) => m.value);
@@ -481,7 +483,7 @@ export default function EmpresaForm({
             terceiros onde se trabalha. Primeiro campo porque muda o que o
             resto do formulário exige. */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-gray-700">Tipo de cadastro</p>
+          <p className="text-sm font-medium text-gray-700"><Dica texto={DICAS_EMPRESA.tipo_cadastro}>Tipo de cadastro</Dica></p>
           {(
             [
               [
@@ -524,9 +526,9 @@ export default function EmpresaForm({
 
         {ehTerceiros && (
           <div>
-            <label className="text-sm font-medium text-gray-700">
-              Empresa contratante <span className="text-red-500">*</span>
-            </label>
+            <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_EMPRESA.empresa_contratante} extra={<span className="text-red-500"> *</span>}>
+              Empresa contratante
+            </CampoLabel>
             <select
               value={form.id_empresa_contratante}
               onChange={(e) =>
@@ -551,7 +553,7 @@ export default function EmpresaForm({
         )}
 
         <div>
-          <label className="text-sm font-medium text-gray-700">Nome *</label>
+          <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_EMPRESA.nome} extra=" *">Nome</CampoLabel>
           <input
             type="text"
             value={form.nome_empresa}
@@ -562,7 +564,7 @@ export default function EmpresaForm({
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="text-sm font-medium text-gray-700">CNPJ</label>
+            <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_EMPRESA.cnpj}>CNPJ</CampoLabel>
             <div className="mt-1 flex gap-2">
               <input
                 type="text"
@@ -591,7 +593,7 @@ export default function EmpresaForm({
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">Razão Social</label>
+            <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_EMPRESA.razao_social}>Razão Social</CampoLabel>
             <input
               type="text"
               value={form.razao_social}
@@ -600,9 +602,9 @@ export default function EmpresaForm({
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">
+            <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_EMPRESA.nome_fantasia}>
               Nome Fantasia
-            </label>
+            </CampoLabel>
             <input
               type="text"
               value={form.nome_fantasia}
@@ -628,7 +630,7 @@ export default function EmpresaForm({
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <label className="text-xs font-medium text-gray-700">CPF</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.cpf}>CPF</CampoLabel>
               <input
                 type="text"
                 value={form.cpf}
@@ -638,7 +640,7 @@ export default function EmpresaForm({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700">CEI</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.cei}>CEI</CampoLabel>
               <input
                 type="text"
                 value={form.cei}
@@ -648,7 +650,7 @@ export default function EmpresaForm({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700">CAEPF</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.caepf}>CAEPF</CampoLabel>
               <input
                 type="text"
                 value={form.caepf}
@@ -658,7 +660,7 @@ export default function EmpresaForm({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700">CNO</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.cno}>CNO</CampoLabel>
               <input
                 type="text"
                 value={form.cno}
@@ -672,9 +674,9 @@ export default function EmpresaForm({
 
         {/* Unidade — controla quais usuários enxergam esta empresa (obrigatória) */}
         <div>
-          <label className="text-sm font-medium text-gray-700">
-            Unidade <span className="text-red-500">*</span>
-          </label>
+          <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_EMPRESA.unidade} extra={<span className="text-red-500"> *</span>}>
+            Unidade
+          </CampoLabel>
           <select
             value={form.id_unidade}
             onChange={(e) => setForm({ ...form, id_unidade: e.target.value })}
@@ -746,7 +748,7 @@ export default function EmpresaForm({
           </p>
           <div className="grid gap-3 md:grid-cols-6">
             <div className="md:col-span-4">
-              <label className="text-xs font-medium text-gray-700">Logradouro</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.endereco}>Logradouro</CampoLabel>
               <input
                 type="text"
                 value={form.logradouro}
@@ -755,7 +757,7 @@ export default function EmpresaForm({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700">Número</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.endereco}>Número</CampoLabel>
               <input
                 type="text"
                 value={form.numero}
@@ -764,7 +766,7 @@ export default function EmpresaForm({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700">CEP</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.cep}>CEP</CampoLabel>
               <input
                 type="text"
                 value={form.cep}
@@ -774,7 +776,7 @@ export default function EmpresaForm({
               />
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs font-medium text-gray-700">Complemento</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.endereco}>Complemento</CampoLabel>
               <input
                 type="text"
                 value={form.complemento}
@@ -783,7 +785,7 @@ export default function EmpresaForm({
               />
             </div>
             <div className="md:col-span-2">
-              <label className="text-xs font-medium text-gray-700">Bairro</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.endereco}>Bairro</CampoLabel>
               <input
                 type="text"
                 value={form.bairro}
@@ -792,7 +794,7 @@ export default function EmpresaForm({
               />
             </div>
             <div className="md:col-span-1">
-              <label className="text-xs font-medium text-gray-700">Município</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.endereco}>Município</CampoLabel>
               <input
                 type="text"
                 value={form.municipio}
@@ -801,7 +803,7 @@ export default function EmpresaForm({
               />
             </div>
             <div className="md:col-span-1">
-              <label className="text-xs font-medium text-gray-700">UF</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.uf}>UF</CampoLabel>
               <input
                 type="text"
                 maxLength={2}
@@ -811,7 +813,7 @@ export default function EmpresaForm({
               />
             </div>
             <div className="md:col-span-3">
-              <label className="text-xs font-medium text-gray-700">Telefone</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.contato}>Telefone</CampoLabel>
               <input
                 type="text"
                 value={form.telefone}
@@ -820,7 +822,7 @@ export default function EmpresaForm({
               />
             </div>
             <div className="md:col-span-3">
-              <label className="text-xs font-medium text-gray-700">E-mail</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.contato}>E-mail</CampoLabel>
               <input
                 type="text"
                 value={form.email}
@@ -838,7 +840,7 @@ export default function EmpresaForm({
           </p>
           <div className="grid gap-3 md:grid-cols-6">
             <div className="md:col-span-1">
-              <label className="text-xs font-medium text-gray-700">CNAE</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.cnae}>CNAE</CampoLabel>
               <input
                 type="text"
                 value={form.cnae_principal}
@@ -847,7 +849,7 @@ export default function EmpresaForm({
               />
             </div>
             <div className="md:col-span-5">
-              <label className="text-xs font-medium text-gray-700">Atividade principal</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.atividade_principal}>Atividade principal</CampoLabel>
               <input
                 type="text"
                 value={form.cnae_descricao}
@@ -856,7 +858,7 @@ export default function EmpresaForm({
               />
             </div>
             <div className="md:col-span-3">
-              <label className="text-xs font-medium text-gray-700">Situação cadastral</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.situacao_cadastral}>Situação cadastral</CampoLabel>
               <input
                 type="text"
                 value={form.situacao_cadastral}
@@ -865,7 +867,7 @@ export default function EmpresaForm({
               />
             </div>
             <div className="md:col-span-3">
-              <label className="text-xs font-medium text-gray-700">Porte</label>
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.porte}>Porte</CampoLabel>
               <input
                 type="text"
                 value={form.porte}
@@ -884,9 +886,9 @@ export default function EmpresaForm({
           </p>
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-gray-700">
+              <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.ponto_referencia}>
                 Ponto de referência
-              </label>
+              </CampoLabel>
               <input
                 type="text"
                 value={form.referencia}
@@ -897,9 +899,9 @@ export default function EmpresaForm({
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <label className="text-xs font-medium text-gray-700">
+                <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.locais_emergencia}>
                   Locais de atendimento a emergências
-                </label>
+                </CampoLabel>
                 <textarea
                   value={form.locais_emergencia}
                   onChange={(e) =>
@@ -911,9 +913,9 @@ export default function EmpresaForm({
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-700">
+                <CampoLabel className="text-xs font-medium text-gray-700" dica={DICAS_EMPRESA.dados_adicionais}>
                   Dados adicionais
-                </label>
+                </CampoLabel>
                 <textarea
                   value={form.dados_adicionais}
                   onChange={(e) =>
@@ -928,10 +930,13 @@ export default function EmpresaForm({
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-700">
-            Grau de risco (NR-4){" "}
-            {!ehTerceiros && <span className="text-red-500">*</span>}
-          </label>
+          <CampoLabel
+            className="text-sm font-medium text-gray-700"
+            dica={DICAS_EMPRESA.grau_risco}
+            extra={!ehTerceiros && <span className="text-red-500"> *</span>}
+          >
+            Grau de risco (NR-4)
+          </CampoLabel>
           <select
             value={form.grau_risco}
             onChange={(e) => setForm({ ...form, grau_risco: e.target.value })}
@@ -1002,7 +1007,7 @@ export default function EmpresaForm({
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-700">Status</label>
+          <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_EMPRESA.status}>Status</CampoLabel>
           <select
             value={form.status}
             onChange={(e) =>
@@ -1015,7 +1020,7 @@ export default function EmpresaForm({
           </select>
         </div>
         <div>
-          <label className="text-sm font-medium text-gray-700">Observação</label>
+          <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_EMPRESA.observacao}>Observação</CampoLabel>
           <textarea
             value={form.observacao}
             onChange={(e) => setForm({ ...form, observacao: e.target.value })}

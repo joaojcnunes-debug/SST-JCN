@@ -113,7 +113,7 @@ Ordem sugerida: Empresas → Inspeções/Riscos → EPI → AET/AEP → Psicosso
 |---|---|---|---|
 | 0 Azul total | concluída | 0.3.201 | 0.1 feita (0.3.194); 0.2 Questionários + DRPS (0.3.195); 0.3 AEP + AET (0.3.196); 0.4 Conformidade + NC (0.3.197); 0.5 Inspeções + componentes (0.3.198); 0.6 Máquinas + Químicos + Equipamentos (0.3.199); 0.7 Frota, EPI e o resto (0.3.200); 0.final troca de nome verde-* → marca-* (0.3.201). Porte ao Painel: traduzir marca-* → verde-* nos MDs |
 | 0b PDFs | concluída | 0.3.202 | títulos/faixas/rótulos em azul-marinho #0c4a6e (tela e PDF); verde só de significado; travas de print da 0.1/0.2 removidas |
-| 1 Dicas (piloto) | pendente | | |
+| 1 Dicas (piloto) | concluída | 0.3.203 | `components/ui/Dica.tsx` + `CampoLabel`; textos em `lib/dicas/empresas.ts` (28 campos do EmpresaForm) |
 | 2 Casca inset | pendente | | |
 | 3 Bento | pendente | | |
 | 4 Pulso | aguardando fórmula | | |

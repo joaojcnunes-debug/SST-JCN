@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-campos-empresas",
+    data: "2026-11-03",
+    tipo: "novidade",
+    titulo: "Dicas de preenchimento no cadastro de Empresas",
+    texto:
+      "No cadastro de Empresas, os nomes dos campos com um sublinhado pontilhado têm dica. Passe o mouse, chegue com Tab " +
+      "ou toque no nome do campo para ver, em uma ou duas linhas, como preencher. Esc fecha a dica. As dicas vão chegar " +
+      "aos outros módulos aos poucos.",
+    onde: "Empresas › Nova / Editar Empresa",
+    versoes: ["0.3.203"],
+  },
+  {
     id: "skin-azul-documentos",
     data: "2026-11-03",
     tipo: "atencao",
