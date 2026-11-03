@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_AET_QPS, DICAS_AET_FATORES } from "@/lib/dicas/aet";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { useState, useEffect } from "react";
@@ -386,7 +388,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">N.º de Respondentes</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.respondentes}>N.º de Respondentes</Dica></label>
             <input
               type="number" min={0}
               value={meta.n_respondentes ?? ""}
@@ -397,7 +399,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Total Elegível</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.elegiveis}>Total Elegível</Dica></label>
             <input
               type="number" min={0}
               value={meta.total_elegivel ?? ""}
@@ -408,7 +410,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">% Adesão</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.adesao}>% Adesão</Dica></label>
             <div className={cn(
               "flex h-[38px] items-center rounded-lg border px-3 text-sm font-semibold",
               adesaoPct !== null
@@ -422,7 +424,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Período — Início</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.inicio}>Período — Início</Dica></label>
             <input
               type="date"
               value={meta.periodo_inicio ?? ""}
@@ -432,7 +434,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Período — Fim</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.fim}>Período — Fim</Dica></label>
             <input
               type="date"
               value={meta.periodo_fim ?? ""}
@@ -442,7 +444,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Forma de Coleta</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.forma}>Forma de Coleta</Dica></label>
             <select
               value={meta.modo_aplicacao ?? ""}
               onChange={(e) => setMeta((m) => ({ ...m, modo_aplicacao: e.target.value || null }))}
@@ -454,7 +456,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
           </div>
 
           <div className="sm:col-span-2 lg:col-span-3">
-            <label className="mb-1 block text-xs font-medium text-gray-600">Técnico Aplicador</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.tecnico}>Técnico Aplicador</Dica></label>
             <input
               type="text"
               value={meta.tecnico_aplicador ?? ""}
@@ -466,7 +468,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
         </div>
 
         <div className="mt-4">
-          <label className="mb-1 block text-xs font-medium text-gray-600">Observação Geral</label>
+          <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.observacao}>Observação Geral</Dica></label>
           <textarea
             rows={2}
             value={meta.observacao_geral ?? ""}
@@ -616,7 +618,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
                                 {isF13 ? (
                                   <div>
                                     <label className="mb-1 block text-xs font-medium text-gray-600">
-                                      Classificação (baseada no PGR)
+                                      <Dica texto={DICAS_AET_FATORES.classificacao_f13}>Classificação (baseada no PGR)</Dica>
                                     </label>
                                     <select
                                       value={zonasManuais[fatorKey] ?? ""}
@@ -731,7 +733,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
                                   <div>
                                     <div className="mb-1 flex items-center justify-between gap-2">
                                       <label className="text-xs font-medium text-gray-600">
-                                        Observação / Análise
+                                        <Dica texto={DICAS_AET_FATORES.observacao}>Observação / Análise</Dica>
                                       </label>
                                       {!isF13 && (
                                         <button

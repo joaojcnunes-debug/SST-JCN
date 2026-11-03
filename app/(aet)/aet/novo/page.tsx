@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_AET_IDENTIFICACAO } from "@/lib/dicas/aet";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ClipboardCheck, Loader2 } from "lucide-react";
@@ -101,7 +103,7 @@ export default function NovoAetPage() {
         {/* Empresa */}
         <div>
           <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500">
-            Empresa *
+            <Dica texto={DICAS_AET_IDENTIFICACAO.empresa}>Empresa</Dica> *
           </label>
           <EmpresaSelect value={empresaId} onChange={handleEmpresaChange} modulo="sst" />
         </div>
@@ -145,7 +147,7 @@ export default function NovoAetPage() {
             {/* Responsável */}
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">
-                Responsável pela Elaboração *
+                <Dica texto={DICAS_AET_IDENTIFICACAO.responsavel}>Responsável pela Elaboração</Dica> *
               </label>
               <ProfissionalSelect
                 value={form.responsavel_elaboracao}
@@ -160,7 +162,7 @@ export default function NovoAetPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Título Profissional
+                  <Dica texto={DICAS_AET_IDENTIFICACAO.titulo}>Título Profissional</Dica>
                 </label>
                 <input
                   type="text"
@@ -172,7 +174,7 @@ export default function NovoAetPage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">
-                  Registro Profissional
+                  <Dica texto={DICAS_AET_IDENTIFICACAO.registro}>Registro Profissional</Dica>
                 </label>
                 <input
                   type="text"
@@ -186,7 +188,7 @@ export default function NovoAetPage() {
 
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">
-                Data de Elaboração
+                <Dica texto={DICAS_AET_IDENTIFICACAO.data_elaboracao}>Data de Elaboração</Dica>
               </label>
               <input
                 type="date"

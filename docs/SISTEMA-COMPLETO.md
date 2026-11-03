@@ -153,6 +153,14 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Dicas na AET, lote 7.4 (0.3.213):** `lib/dicas/aet.ts`, com cerca de 50 campos, cobre Novo laudo, Dados, QPS (Setores e Psicossocial), Setores, Fatores, Análise e Plano de Ação.
+  - **Helpers que aceitam `dica`:** `InputField` (Dados), `TextInput`/`TagInput` (Setores) e `Campo` (PlanoAcaoTable). As colunas da tabela de riscos e os títulos "Fotos do Setor" e "Considerações Finais" também têm dica.
+  - **Problemas achados na auditoria, a corrigir em PR à parte (decisão do João, 03/11):**
+    - As Seções 2–12 da aba Dados gravam em `textos_secoes`, mas nada lê esse campo: o laudo e o PDF usam os capítulos de Texto padrão.
+    - Um Visualizador consegue editar na tela Psicossocial (sem `useCanEdit`) e, na tela Setores, no bloco QPS, no F13 e nos "Salvar Fxx".
+    - O "Gerar Laudo" não considera a validade alterada e não salva (o `dirty` do laudo não compara `dataValidade`).
+    - As prioridades do Plano de Ação estão sem acento ("Media", "Critica").
+    - Setores e Análise gravam o jsonb `setores` inteiro: a última tela a salvar sobrescreve a outra.
 - **Dicas no módulo EPI, lote 7.3 (0.3.212):** `lib/dicas/epi.ts`, com 28 campos de Catálogo, Estoque, Entregas, Colaboradores, Transferências e Assinatura.
   - **Achados registrados (sem mudança de regra):**
     - O "Ajuste" do estoque soma ao saldo como a Entrada, porque a `v_epi_saldo` o conta positivo e a quantidade não aceita negativo. Para tirar do saldo, use Saída.

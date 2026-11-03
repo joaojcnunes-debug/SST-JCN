@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_AET_IDENTIFICACAO } from "@/lib/dicas/aet";
 import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
@@ -247,7 +249,7 @@ function CaracterizacaoCard({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-              Responsável pela Elaboração
+              <Dica texto={DICAS_AET_IDENTIFICACAO.responsavel}>Responsável pela Elaboração</Dica>
             </label>
             <ProfissionalSelect
               value={form.responsavel_elaboracao}
@@ -277,19 +279,21 @@ function CaracterizacaoCard({
           </div>
           <InputField
             label="Título Profissional"
+            dica={DICAS_AET_IDENTIFICACAO.titulo}
             value={form.titulo_profissional}
             disabled={!canEdit}
             onChange={(v) => set("titulo_profissional", v)}
           />
           <InputField
             label="Registro Profissional"
+            dica={DICAS_AET_IDENTIFICACAO.registro}
             value={form.registro_profissional}
             disabled={!canEdit}
             onChange={(v) => set("registro_profissional", v)}
           />
           <div>
             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-              Data de Elaboração
+              <Dica texto={DICAS_AET_IDENTIFICACAO.data_elaboracao}>Data de Elaboração</Dica>
             </label>
             <input
               type="date"
@@ -301,7 +305,7 @@ function CaracterizacaoCard({
           </div>
           <div>
             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-              Validade do Documento
+              <Dica texto={DICAS_AET_IDENTIFICACAO.validade}>Validade do Documento</Dica>
             </label>
             <input
               type="date"
@@ -313,7 +317,7 @@ function CaracterizacaoCard({
           </div>
           <div>
             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-              Status
+              <Dica texto={DICAS_AET_IDENTIFICACAO.status}>Status</Dica>
             </label>
             <select
               value={form.status}
@@ -465,11 +469,14 @@ function ReadRow({ label, value }: { label: string; value: string }) {
 
 function InputField({
   label,
+  dica,
   value,
   disabled,
   onChange,
 }: {
   label: string;
+  /** Dica de preenchimento (lib/dicas/aet.ts). */
+  dica?: string;
   value: string;
   disabled: boolean;
   onChange: (v: string) => void;
@@ -477,7 +484,7 @@ function InputField({
   return (
     <div>
       <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-        {label}
+        {dica ? <Dica texto={dica}>{label}</Dica> : label}
       </label>
       <input
         type="text"
