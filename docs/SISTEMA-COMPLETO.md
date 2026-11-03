@@ -153,6 +153,17 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Dicas na AEP, lote 7.5 (0.3.214):** `lib/dicas/aep.ts`, com cerca de 40 campos, cobre Nova análise, Dados, Checklist de gestão e Setores.
+  - O Inventário de risco acha a dica pelo rótulo da linha (`DICA_INVENTARIO`, a partir de `ROTULO_TOPICO`).
+  - Origem e Evidência do checklist de gestão não têm rótulo na tela, por isso ficaram sem dica.
+  - **Problemas achados, para o PR de correção junto com os da AET (decisão do João, 03/11):**
+    - Arrastar um setor grava o array inteiro, com edições não salvas, e pula a trava do N/I e a auditoria da origem da evidência.
+    - A Identificação do PDF usa o endereço do cadastro, e não o `endereco_empresa` editado na AEP.
+    - "Respondido com" não é lido em lugar nenhum; Origem e Evidência vão só para a auditoria.
+    - "Setor *" não é validado e a aba Dados salva sem responsável.
+    - Trocar o responsável pode manter o registro do anterior.
+    - A tela diz que a observação "aparece ao marcar Sim", mas ela aparece sempre.
+    - Excluir setor não pede confirmação.
 - **Dicas na AET, lote 7.4 (0.3.213):** `lib/dicas/aet.ts`, com cerca de 50 campos, cobre Novo laudo, Dados, QPS (Setores e Psicossocial), Setores, Fatores, Análise e Plano de Ação.
   - **Helpers que aceitam `dica`:** `InputField` (Dados), `TextInput`/`TagInput` (Setores) e `Campo` (PlanoAcaoTable). As colunas da tabela de riscos e os títulos "Fotos do Setor" e "Considerações Finais" também têm dica.
   - **Problemas achados na auditoria, a corrigir em PR à parte (decisão do João, 03/11):**

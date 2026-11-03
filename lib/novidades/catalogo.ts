@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-aep",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Dicas de preenchimento na AEP",
+    texto:
+      "Nova análise, Dados, Checklist de gestão e a aba Setores (coleta, sinais, matriz, motivo do N/I, origem da " +
+      "evidência, Inventário de risco, parecer e recomendações) ganharam a dica de como preencher cada campo, " +
+      "dizendo o que sai no laudo e o que vai só para a planilha ou para a IA.",
+    onde: "AEP",
+    versoes: ["0.3.214"],
+  },
+  {
     id: "dicas-aet",
     data: "2026-11-03",
     tipo: "melhoria",

@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_AEP_IDENTIFICACAO } from "@/lib/dicas/aep";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Save } from "lucide-react";
@@ -98,7 +100,7 @@ export default function AepNovoPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm reveal-up">
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Empresa *</label>
+          <label className="mb-1 block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.empresa}>Empresa</Dica> *</label>
           <EmpresaSelect
             value={empresaId}
             onChange={handleEmpresaChange}
@@ -110,7 +112,7 @@ export default function AepNovoPage() {
 
         {empresaId && (
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Endereço da empresa</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.endereco}>Endereço da empresa</Dica></label>
             <input
               type="text"
               value={endereco}
@@ -135,7 +137,7 @@ export default function AepNovoPage() {
         )}
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Responsável pela elaboração *</label>
+          <label className="mb-1 block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.responsavel}>Responsável pela elaboração</Dica> *</label>
           <ProfissionalSelect
             value={responsavel}
             onChange={(nome, cargo, _cert, regValue) => {
@@ -148,7 +150,7 @@ export default function AepNovoPage() {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Título profissional</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.titulo}>Título profissional</Dica></label>
             <input
               type="text"
               value={titulo}
@@ -158,7 +160,7 @@ export default function AepNovoPage() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Registro profissional</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.registro}>Registro profissional</Dica></label>
             <input
               type="text"
               value={registro}
@@ -170,7 +172,7 @@ export default function AepNovoPage() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Data de elaboração</label>
+          <label className="mb-1 block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.data_elaboracao}>Data de elaboração</Dica></label>
           <input
             type="date"
             value={data}

@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_AEP_SETOR, DICAS_AEP_COLETA, DICAS_AEP_FATOR, DICAS_AEP_INVENTARIO } from "@/lib/dicas/aep";
 import { recomendaQuestionario, recomendaQuestionarioSetor, totalAlertasOrganizacionais } from "@/lib/aep/sinalizacao";
 import {
   DRPS_POR_RECEIO,
@@ -109,6 +111,11 @@ import type {
   RespostaChecklistAep,
 } from "@/lib/supabase/types";
 
+// Dica de cada linha do Inventário de risco, pelo rótulo que a tabela mostra (lib/dicas/aep.ts).
+const DICA_INVENTARIO = new Map<string, string>(
+  Object.entries(DICAS_AEP_INVENTARIO).map(([k, t]) => [(ROTULO_TOPICO as Record<string, string>)[k], t]),
+);
+
 // ─── Catálogo das respostas ───────────────────────────────────────────────────
 // Itens, respostas e legendas vivem em lib/aep/checklist-itens.ts — fonte única
 // com o Formulário em Branco. Aqui fica só o que é da tela: a cor de cada botão.
@@ -213,7 +220,7 @@ function SinaisDoFator({
     <div className="rounded-md border border-red-200 bg-red-50/60 p-2">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-red-800">
-          Sinais observados
+          <Dica texto={DICAS_AEP_FATOR.sinais}>Sinais observados</Dica>
         </span>
         <span className="text-[10px] text-red-700">
           {marcados.length} de {sinais.length}
@@ -312,7 +319,7 @@ function AihaDoFator({
       <div className="grid gap-2 md:grid-cols-2">
         <label className="block space-y-0.5">
           <span className="flex items-center justify-between text-[10px] text-gray-500">
-            Probabilidade
+            <Dica texto={DICAS_AEP_FATOR.probabilidade}>Probabilidade</Dica>
             {valor.prob_manual ? (
               !disabled && (
                 <button type="button" className="text-sky-600 hover:underline" onClick={() => onChange({ prob_manual: false })}>
@@ -336,7 +343,7 @@ function AihaDoFator({
         </label>
         <label className="block space-y-0.5">
           <span className="flex items-center justify-between text-[10px] text-gray-500">
-            Severidade
+            <Dica texto={DICAS_AEP_FATOR.severidade}>Severidade</Dica>
             {valor.sev_manual ? (
               !disabled && (
                 <button type="button" className="text-sky-600 hover:underline" onClick={() => onChange({ sev_manual: false })}>
@@ -381,7 +388,7 @@ function MotivoNiCampo({
   return (
     <div className="rounded-md border border-amber-200 bg-amber-50/70 p-2 space-y-1">
       <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-        Motivo do N/I <span className="text-red-600">*</span>
+        <Dica texto={DICAS_AEP_FATOR.motivo_ni}>Motivo do N/I</Dica> <span className="text-red-600">*</span>
       </span>
       <select
         disabled={disabled}
@@ -478,12 +485,12 @@ function CondicoesColetaCampos({
       <p className="text-xs font-semibold text-sky-800">Condições da coleta</p>
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Trabalhadores abordados</label>
+          <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AEP_COLETA.abordados}>Trabalhadores abordados</Dica></label>
           <input type="number" min={0} disabled={disabled} value={c.trab_abordados ?? ""}
             onChange={(e) => set({ trab_abordados: numero(e.target.value) })} className={inputCls} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Participaram</label>
+          <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AEP_COLETA.participaram}>Participaram</Dica></label>
           <input type="number" min={0} disabled={disabled} value={c.trab_participantes ?? ""}
             onChange={(e) => set({ trab_participantes: numero(e.target.value) })}
             className={cn(inputCls, participantesExcedem(c) && "border-red-300")} />
@@ -493,7 +500,7 @@ function CondicoesColetaCampos({
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">
-            Recusas / respostas evasivas <span className="font-normal text-gray-400">(só o número)</span>
+            <Dica texto={DICAS_AEP_COLETA.recusas}>Recusas / respostas evasivas</Dica> <span className="font-normal text-gray-400">(só o número)</span>
           </label>
           <input type="number" min={0} disabled={disabled} value={c.recusas_evasivas ?? ""}
             onChange={(e) => set({ recusas_evasivas: numero(e.target.value) })} className={inputCls} />
@@ -503,10 +510,10 @@ function CondicoesColetaCampos({
         <input type="checkbox" disabled={disabled} checked={c.lideranca_presente === true}
           onChange={(e) => set({ lideranca_presente: e.target.checked })}
           className="rounded border-gray-300 text-sky-600 focus:ring-sky-500" />
-        Liderança presente durante a coleta
+        <Dica texto={DICAS_AEP_COLETA.lideranca}>Liderança presente durante a coleta</Dica>
       </label>
       <div>
-        <p className="mb-1 text-xs font-medium text-gray-600">Sinais de inibição observados</p>
+        <p className="mb-1 text-xs font-medium text-gray-600"><Dica texto={DICAS_AEP_COLETA.inibicao}>Sinais de inibição observados</Dica></p>
         <div className="grid gap-1 sm:grid-cols-2">
           {SINAIS_INIBICAO.map((s) => (
             <label key={s.key} className="flex items-start gap-1.5 text-[11px] leading-snug text-gray-700">
@@ -593,7 +600,7 @@ function EvidenciaDoFator({
   return (
     <div className="rounded-md border border-sky-200 bg-sky-50/50 p-2 space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-sky-800">Origem da evidência</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-sky-800"><Dica texto={DICAS_AEP_FATOR.origem_evidencia}>Origem da evidência</Dica></span>
         {conf ? (
           <span
             className="rounded px-1.5 py-px text-[10px] font-bold"
@@ -1025,7 +1032,9 @@ function InventarioDoFator({
         <tbody>
           {linhas.map(([rotulo, valor]) => (
             <tr key={rotulo} className="border-b border-gray-100 last:border-0 align-top">
-              <th className="w-52 bg-gray-50 px-2 py-1 text-left font-bold text-gray-900">{rotulo}</th>
+              <th className="w-52 bg-gray-50 px-2 py-1 text-left font-bold text-gray-900">
+                {DICA_INVENTARIO.has(rotulo) ? <Dica texto={DICA_INVENTARIO.get(rotulo)!}>{rotulo}</Dica> : rotulo}
+              </th>
               <td className="space-y-0.5 px-2 py-1">{valor}</td>
             </tr>
           ))}
@@ -1644,7 +1653,9 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                       { key: "jornada",    label: "Jornada",  placeholder: "Ex: 8h/dia, 44h/semana" },
                     ].map(({ key, label, placeholder }) => (
                       <div key={key}>
-                        <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
+                        <label className="mb-1 block text-xs font-medium text-gray-600">
+                          <Dica texto={DICAS_AEP_SETOR[key as keyof typeof DICAS_AEP_SETOR]}>{label}</Dica>
+                        </label>
                         <input
                           type="text"
                           disabled={!canEdit}
@@ -1657,7 +1668,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                       </div>
                     ))}
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-gray-600">Qtd. expostos</label>
+                      <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AEP_SETOR.qtd_expostos}>Qtd. expostos</Dica></label>
                       <input
                         type="number"
                         min={0}
@@ -1673,7 +1684,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                   {/* ── Cargos do setor ──────────────────────────── */}
                   <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50/50 p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-semibold text-gray-700">Cargos do setor</label>
+                      <label className="text-xs font-semibold text-gray-700"><Dica texto={DICAS_AEP_SETOR.cargos}>Cargos do setor</Dica></label>
                       {canEdit && (
                         <button
                           type="button"
@@ -1777,7 +1788,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                     </p>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-gray-600">Método de coleta</label>
+                        <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AEP_SETOR.metodo_coleta}>Método de coleta</Dica></label>
                         <MetodoColetaSelect
                           value={setor.metodo_coleta}
                           disabled={!canEdit}
@@ -1786,7 +1797,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                       </div>
                       <div>
                         <label className="mb-1 block text-xs font-medium text-gray-600">
-                          Trabalhadores consultados <span className="text-gray-400 font-normal">(auto)</span>
+                          <Dica texto={DICAS_AEP_SETOR.consultados}>Trabalhadores consultados</Dica> <span className="text-gray-400 font-normal">(auto)</span>
                         </label>
                         <input
                           type="text"
@@ -2007,7 +2018,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                     return (
                       <div key={campo}>
                         <div className="mb-1 flex items-center justify-between gap-2">
-                          <label className="text-xs font-semibold text-gray-700">{label}</label>
+                          <label className="text-xs font-semibold text-gray-700"><Dica texto={DICAS_AEP_SETOR[campo]}>{label}</Dica></label>
                           {canEdit && (
                             <button
                               type="button"
