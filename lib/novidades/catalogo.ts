@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-epi",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Dicas de preenchimento no módulo EPI",
+    texto:
+      "Catálogo, Estoque, Entregas, Colaboradores, Transferências e Assinatura ganharam a dica de como preencher cada " +
+      "campo: passe o mouse (ou chegue com Tab) no nome sublinhado com pontinhos.",
+    onde: "EPI",
+    versoes: ["0.3.212"],
+  },
+  {
     id: "dicas-editor-inspecao",
     data: "2026-11-03",
     tipo: "melhoria",

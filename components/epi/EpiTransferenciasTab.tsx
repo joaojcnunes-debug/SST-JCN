@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_EPI_TRANSFERENCIA } from "@/lib/dicas/epi";
 import { useMemo, useState } from "react";
 import { Plus, Trash2, ArrowLeftRight, Building2 } from "lucide-react";
 import { inputCls, labelCls } from "./EpiModal";
@@ -135,7 +137,7 @@ export default function EpiTransferenciasTab({
         ) : (
           <div className="space-y-3">
             <div>
-              <label className={labelCls}>Empresa de destino</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_TRANSFERENCIA.destino}>Empresa de destino</Dica></label>
               <EmpresaSelect
                 value={destino}
                 onChange={setDestino}
@@ -150,7 +152,7 @@ export default function EpiTransferenciasTab({
             </div>
 
             <div>
-              <label className={labelCls}>Itens a transferir</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_TRANSFERENCIA.itens}>Itens a transferir</Dica></label>
               <div className="space-y-2">
                 {linhas.map((l, i) => {
                   const saldo = l.id_catalogo_origem
@@ -256,7 +258,7 @@ export default function EpiTransferenciasTab({
             </div>
 
             <div>
-              <label className={labelCls}>Observação</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_TRANSFERENCIA.observacao}>Observação</Dica></label>
               <input
                 className={inputCls}
                 value={observacao}

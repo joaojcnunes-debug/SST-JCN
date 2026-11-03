@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_EPI_CATALOGO } from "@/lib/dicas/epi";
 import { useState } from "react";
 import { Plus, Pencil, Trash2, HardHat, AlertTriangle } from "lucide-react";
 import EpiModal, { inputCls, labelCls } from "./EpiModal";
@@ -186,7 +188,7 @@ export default function EpiCatalogoTab({
         >
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className={labelCls}>Nome / descrição do EPI *</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_CATALOGO.nome}>Nome / descrição do EPI</Dica> *</label>
               <input
                 className={inputCls}
                 value={form.nome ?? ""}
@@ -195,7 +197,7 @@ export default function EpiCatalogoTab({
               />
             </div>
             <div>
-              <label className={labelCls}>Tipo</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_CATALOGO.tipo}>Tipo</Dica></label>
               <select
                 className={inputCls}
                 value={form.tipo ?? "EPI"}
@@ -208,7 +210,7 @@ export default function EpiCatalogoTab({
               </select>
             </div>
             <div>
-              <label className={labelCls}>Fabricante</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_CATALOGO.fabricante}>Fabricante</Dica></label>
               <input
                 className={inputCls}
                 value={form.fabricante ?? ""}
@@ -218,7 +220,7 @@ export default function EpiCatalogoTab({
               />
             </div>
             <div>
-              <label className={labelCls}>Nº do CA</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_CATALOGO.ca}>Nº do CA</Dica></label>
               <input
                 className={inputCls}
                 value={form.ca_numero ?? ""}
@@ -226,7 +228,7 @@ export default function EpiCatalogoTab({
               />
             </div>
             <div>
-              <label className={labelCls}>Validade do CA</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_CATALOGO.ca_validade}>Validade do CA</Dica></label>
               <input
                 type="date"
                 className={inputCls}
@@ -237,7 +239,7 @@ export default function EpiCatalogoTab({
               />
             </div>
             <div>
-              <label className={labelCls}>Unidade</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_CATALOGO.unidade}>Unidade</Dica></label>
               <input
                 className={inputCls}
                 value={form.unidade ?? "un"}
@@ -245,7 +247,7 @@ export default function EpiCatalogoTab({
               />
             </div>
             <div>
-              <label className={labelCls}>Estoque mínimo</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_CATALOGO.estoque_minimo}>Estoque mínimo</Dica></label>
               <input
                 type="number"
                 min={0}
@@ -257,7 +259,7 @@ export default function EpiCatalogoTab({
               />
             </div>
             <div className="col-span-2">
-              <label className={labelCls}>Observações</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_CATALOGO.observacoes}>Observações</Dica></label>
               <textarea
                 className={inputCls}
                 rows={2}

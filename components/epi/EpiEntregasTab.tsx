@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_EPI_ENTREGA } from "@/lib/dicas/epi";
 import { useMemo, useState } from "react";
 import {
   Plus,
@@ -146,7 +148,7 @@ export default function EpiEntregasTab({
           ) : (
             <div className="space-y-3">
               <div>
-                <label className={labelCls}>Colaborador</label>
+                <label className={labelCls}><Dica texto={DICAS_EPI_ENTREGA.colaborador}>Colaborador</Dica></label>
                 <select
                   className={inputCls}
                   value={idColaborador}
@@ -163,7 +165,7 @@ export default function EpiEntregasTab({
               </div>
 
               <div>
-                <label className={labelCls}>Data da entrega</label>
+                <label className={labelCls}><Dica texto={DICAS_EPI_ENTREGA.data}>Data da entrega</Dica></label>
                 <input
                   type="date"
                   className={inputCls}
@@ -174,7 +176,7 @@ export default function EpiEntregasTab({
 
               {/* Itens */}
               <div>
-                <label className={labelCls}>Itens entregues</label>
+                <label className={labelCls}><Dica texto={DICAS_EPI_ENTREGA.itens}>Itens entregues</Dica></label>
                 <div className="space-y-2">
                   {linhas.map((l, i) => {
                     const saldo = l.id_catalogo
@@ -246,7 +248,7 @@ export default function EpiEntregasTab({
               </div>
 
               <div>
-                <label className={labelCls}>Observação</label>
+                <label className={labelCls}><Dica texto={DICAS_EPI_ENTREGA.observacao}>Observação</Dica></label>
                 <input
                   className={inputCls}
                   value={observacao}

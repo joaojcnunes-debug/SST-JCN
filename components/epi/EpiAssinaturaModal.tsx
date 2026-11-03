@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_EPI_ASSINATURA } from "@/lib/dicas/epi";
 import { useEffect, useRef, useState } from "react";
 import {
   Loader2,
@@ -290,7 +292,7 @@ export default function EpiAssinaturaModal({
         )}
 
         <div>
-          <label className={labelCls}>Nome de quem assina</label>
+          <label className={labelCls}><Dica texto={DICAS_EPI_ASSINATURA.nome}>Nome de quem assina</Dica></label>
           <input
             className={inputCls}
             value={nome}
@@ -362,7 +364,7 @@ export default function EpiAssinaturaModal({
         {/* Método DESENHO */}
         {metodo === "canvas" && (
           <div>
-            <label className={labelCls}>Assinatura</label>
+            <label className={labelCls}><Dica texto={DICAS_EPI_ASSINATURA.desenho}>Assinatura</Dica></label>
             <SignatureCanvas ref={sigRef} onChange={setVazio} />
           </div>
         )}

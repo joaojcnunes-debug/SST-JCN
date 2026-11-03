@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_EPI_ESTOQUE } from "@/lib/dicas/epi";
 import { useMemo, useState } from "react";
 import { ArrowDownCircle, ArrowUpCircle, Boxes } from "lucide-react";
 import { inputCls, labelCls } from "./EpiModal";
@@ -73,7 +75,7 @@ export default function EpiEstoqueTab({
           ) : (
             <div className="space-y-3">
               <div>
-                <label className={labelCls}>EPI</label>
+                <label className={labelCls}><Dica texto={DICAS_EPI_ESTOQUE.epi}>EPI</Dica></label>
                 <select
                   className={inputCls}
                   value={idCatalogo}
@@ -89,7 +91,7 @@ export default function EpiEstoqueTab({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelCls}>Tipo</label>
+                  <label className={labelCls}><Dica texto={DICAS_EPI_ESTOQUE.tipo}>Tipo</Dica></label>
                   <select
                     className={inputCls}
                     value={tipo}
@@ -103,7 +105,7 @@ export default function EpiEstoqueTab({
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>Quantidade</label>
+                  <label className={labelCls}><Dica texto={DICAS_EPI_ESTOQUE.quantidade}>Quantidade</Dica></label>
                   <input
                     type="number"
                     min={0.01}
@@ -115,7 +117,7 @@ export default function EpiEstoqueTab({
                 </div>
               </div>
               <div>
-                <label className={labelCls}>Responsável</label>
+                <label className={labelCls}><Dica texto={DICAS_EPI_ESTOQUE.responsavel}>Responsável</Dica></label>
                 <input
                   className={inputCls}
                   value={responsavel}
@@ -123,7 +125,7 @@ export default function EpiEstoqueTab({
                 />
               </div>
               <div>
-                <label className={labelCls}>Motivo / observação</label>
+                <label className={labelCls}><Dica texto={DICAS_EPI_ESTOQUE.motivo}>Motivo / observação</Dica></label>
                 <input
                   className={inputCls}
                   value={motivo}
