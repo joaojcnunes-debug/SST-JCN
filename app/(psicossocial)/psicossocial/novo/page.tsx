@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_DRPS_IDENTIFICACAO } from "@/lib/dicas/drps";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Sparkles, Loader2 } from "lucide-react";
@@ -86,7 +88,7 @@ function Inner() {
         <div className="mt-6 space-y-4">
           <div>
             <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Empresa <span className="text-red-alert">*</span>
+              <Dica texto={DICAS_DRPS_IDENTIFICACAO.empresa}>Empresa</Dica> <span className="text-red-alert">*</span>
             </label>
             <EmpresaSelect value={idEmpresa} onChange={setIdEmpresa} modulo="psicossocial" />
           </div>
@@ -101,7 +103,7 @@ function Inner() {
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <label className="text-xs font-medium text-gray-700">
-                Data da elaboração
+                <Dica texto={DICAS_DRPS_IDENTIFICACAO.data_elaboracao}>Data da elaboração</Dica>
               </label>
               <input
                 type="date"
@@ -115,7 +117,7 @@ function Inner() {
           <div className="grid gap-3 md:grid-cols-2">
             <div>
               <label className="text-xs font-medium text-gray-700">
-                Responsável Técnico
+                <Dica texto={DICAS_DRPS_IDENTIFICACAO.responsavel}>Responsável Técnico</Dica>
               </label>
               <ProfissionalSelect
                 value={responsavel}
@@ -128,7 +130,7 @@ function Inner() {
             </div>
             <div>
               <label className="text-xs font-medium text-gray-700">
-                {detectRegistroTipo(cargoResponsavel).label}
+                <Dica texto={DICAS_DRPS_IDENTIFICACAO.registro}>{detectRegistroTipo(cargoResponsavel).label}</Dica>
               </label>
               <input
                 type="text"

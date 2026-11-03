@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_DRPS_IDENTIFICACAO, DICAS_DRPS_ANALISE } from "@/lib/dicas/drps";
 import { useEffect, useMemo, useState, use } from "react";
 import {
   Save,
@@ -581,7 +583,7 @@ export default function AnalisePage({
 
           {/* CNPJ */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">CNPJ</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400"><Dica texto={DICAS_DRPS_IDENTIFICACAO.cnpj}>CNPJ</Dica></span>
             <input
               type="text"
               value={metaCnpj}
@@ -596,7 +598,7 @@ export default function AnalisePage({
 
           {/* Status */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Status</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400"><Dica texto={DICAS_DRPS_IDENTIFICACAO.status}>Status</Dica></span>
             <select
               value={metaStatus}
               disabled={!canEdit}
@@ -613,7 +615,7 @@ export default function AnalisePage({
 
           {/* Data */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Data</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0"><Dica texto={DICAS_DRPS_IDENTIFICACAO.data_elaboracao}>Data</Dica></span>
             <input
               type="date"
               value={metaData}
@@ -627,7 +629,7 @@ export default function AnalisePage({
 
           {/* Responsável */}
           <div className="flex flex-1 items-center gap-1.5 min-w-[200px]">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Responsável</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0"><Dica texto={DICAS_DRPS_IDENTIFICACAO.responsavel}>Responsável</Dica></span>
             <ProfissionalSelect
               value={metaResponsavel}
               onChange={(nome, cargo, _cert, registro) => {
@@ -648,7 +650,7 @@ export default function AnalisePage({
           {/* Registro profissional — label dinâmico pelo cargo */}
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-              {detectRegistroTipo(metaCargoResponsavel).label}
+              <Dica texto={DICAS_DRPS_IDENTIFICACAO.registro}>{detectRegistroTipo(metaCargoResponsavel).label}</Dica>
             </span>
             <input
               type="text"
@@ -1316,7 +1318,7 @@ function BlocoSetor({
               className="drps-label"
               style={{ width: "35%", textAlign: "left" }}
             >
-              Fontes Geradoras do Risco
+              <Dica texto={DICAS_DRPS_ANALISE.fontes}>Fontes Geradoras do Risco</Dica>
             </th>
             <th className="drps-label" style={{ width: "11%" }}>
               Gravidade
@@ -1486,7 +1488,7 @@ function BlocoSetor({
           <tr>
             <td className="drps-header-section">
               <div className="flex items-center justify-between gap-2">
-                <span>Conclusão</span>
+                <span><Dica texto={DICAS_DRPS_ANALISE.conclusao_setor}>Conclusão</Dica></span>
                 <button
                   type="button"
                   onClick={gerarConclusaoIA}

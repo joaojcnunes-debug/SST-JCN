@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_CAPA } from "@/lib/dicas/drps";
 import {
   useCallback,
   useEffect,
@@ -345,7 +347,7 @@ function PainelEdicao({
           <span className="mx-0.5 h-5 w-px bg-gray-300" />
 
           <label className="inline-flex items-center gap-1 rounded p-1">
-            <span className="text-[10px] text-gray-600">Tam</span>
+            <span className="text-[10px] text-gray-600"><Dica texto={DICAS_CAPA.tamanho}>Tam</Dica></span>
             <input
               type="number"
               min={8}
@@ -359,7 +361,7 @@ function PainelEdicao({
           </label>
 
           <label className="inline-flex items-center gap-1 rounded p-1">
-            <span className="text-[10px] text-gray-600">Larg %</span>
+            <span className="text-[10px] text-gray-600"><Dica texto={DICAS_CAPA.largura}>Larg %</Dica></span>
             <input
               type="number"
               min={5}
@@ -373,7 +375,7 @@ function PainelEdicao({
           </label>
 
           <label className="inline-flex items-center gap-1 rounded p-1">
-            <span className="text-[10px] text-gray-600">Cor</span>
+            <span className="text-[10px] text-gray-600"><Dica texto={DICAS_CAPA.cor}>Cor</Dica></span>
             <input
               type="color"
               value={caixa.color ?? "#ffffff"}

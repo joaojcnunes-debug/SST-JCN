@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_DRPS_MONITORAMENTO } from "@/lib/dicas/drps";
 import { useMemo, use } from "react";
 import DrpsFiltro from "@/components/drps/DrpsFiltro";
 import { useDrpsStore } from "@/lib/drps/store";
@@ -180,16 +182,16 @@ export default function MonitoramentoPage({
                     Risco Atual
                   </th>
                   <th className="px-2 py-2 text-left font-medium w-32">
-                    Data Intervenção
+                    <Dica texto={DICAS_DRPS_MONITORAMENTO.data_intervencao}>Data Intervenção</Dica>
                   </th>
                   <th className="px-2 py-2 text-left font-medium w-40">
-                    Responsável
+                    <Dica texto={DICAS_DRPS_MONITORAMENTO.responsavel}>Responsável</Dica>
                   </th>
                   <th className="px-2 py-2 text-left font-medium w-36">
-                    Status
+                    <Dica texto={DICAS_DRPS_MONITORAMENTO.status}>Status</Dica>
                   </th>
                   <th className="px-2 py-2 text-left font-medium w-32">
-                    Próxima Avaliação
+                    <Dica texto={DICAS_DRPS_MONITORAMENTO.proxima}>Próxima Avaliação</Dica>
                   </th>
                 </tr>
               </thead>

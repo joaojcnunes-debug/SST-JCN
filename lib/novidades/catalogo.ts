@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-drps",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Dicas de preenchimento no DRPS",
+    texto:
+      "Novo relatório, Metadados, a barra do Dashboard e da Análise, Fontes geradoras, Conclusões, Dados, Plano anual, " +
+      "Plano de ação 5W2H, Monitoramento, Revisão e o editor de Capa ganharam a dica de como preencher cada campo, " +
+      "dizendo o que sai no laudo e onde cada coisa é gravada.",
+    onde: "DRPS",
+    versoes: ["0.3.216"],
+  },
+  {
     id: "correcoes-aet-aep",
     data: "2026-11-03",
     tipo: "correcao",

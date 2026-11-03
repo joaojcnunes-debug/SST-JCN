@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_DRPS_PLANO_ANUAL } from "@/lib/dicas/drps";
 import { useEffect, useMemo, useState, use } from "react";
 import { Save, Check } from "lucide-react";
 import {
@@ -100,7 +102,7 @@ export default function MedidasPage({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
         <div className="flex items-center gap-3">
           <label className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Ano:
+            <Dica texto={DICAS_DRPS_PLANO_ANUAL.ano}>Ano</Dica>:
           </label>
           <select
             value={ano}
@@ -141,11 +143,11 @@ export default function MedidasPage({
                     key={m}
                     className="px-1 py-2 text-center font-medium w-10"
                   >
-                    {m}
+                    <Dica texto={DICAS_DRPS_PLANO_ANUAL.mes}>{m}</Dica>
                   </th>
                 ))}
                 <th className="px-2 py-2 text-left font-medium w-40">
-                  Responsável
+                  <Dica texto={DICAS_DRPS_PLANO_ANUAL.responsavel}>Responsável</Dica>
                 </th>
               </tr>
             </thead>
