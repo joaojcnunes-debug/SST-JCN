@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_DRPS_ANALISE } from "@/lib/dicas/drps";
 import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { useMemo, useRef, useState, use } from "react";
 import {
@@ -148,7 +150,7 @@ export default function DadosPage({
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">
-            Colar dados do Google Sheets / CSV
+            <Dica texto={DICAS_DRPS_ANALISE.colar_dados}>Colar dados do Google Sheets / CSV</Dica>
           </h2>
           <div className="flex gap-2">
             <input

@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_DRPS_ANALISE } from "@/lib/dicas/drps";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { use, useMemo, useState } from "react";
@@ -250,7 +252,7 @@ export default function ConclusaoGeralPage({
       <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-bold uppercase tracking-wider text-gray-700">
-            Texto da conclusão
+            <Dica texto={DICAS_DRPS_ANALISE.conclusao_geral}>Texto da conclusão</Dica>
           </h2>
           {canEdit && (
             <button

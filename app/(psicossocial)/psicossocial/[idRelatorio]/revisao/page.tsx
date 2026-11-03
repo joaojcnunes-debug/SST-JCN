@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_DRPS_REVISAO } from "@/lib/dicas/drps";
 import { useEffect, useState, use } from "react";
 import { Save } from "lucide-react";
 import {
@@ -86,7 +88,7 @@ export default function RevisaoPage({
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">
-          Ações obrigatórias de revisão
+          <Dica texto={DICAS_DRPS_REVISAO.acoes}>Ações obrigatórias de revisão</Dica>
         </h2>
         <div className="space-y-2">
           {ACOES_OBRIGATORIAS.map((a) => (
@@ -109,7 +111,7 @@ export default function RevisaoPage({
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="mb-3 text-sm font-semibold text-gray-900">
-          Equipe multidisciplinar envolvida
+          <Dica texto={DICAS_DRPS_REVISAO.equipe}>Equipe multidisciplinar envolvida</Dica>
         </h2>
         <div className="grid gap-2 sm:grid-cols-2">
           {EQUIPE_REVISAO.map((m) => (
@@ -131,7 +133,7 @@ export default function RevisaoPage({
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-2 text-sm font-semibold text-gray-900">Anotações</h2>
+        <h2 className="mb-2 text-sm font-semibold text-gray-900"><Dica texto={DICAS_DRPS_REVISAO.anotacoes}>Anotações</Dica></h2>
         <textarea
           value={anotacoes}
           onChange={(e) => {

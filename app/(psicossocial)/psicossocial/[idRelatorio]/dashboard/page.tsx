@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_DRPS_IDENTIFICACAO } from "@/lib/dicas/drps";
 import { useMemo, use, useEffect, useState } from "react";
 import {
   Bar,
@@ -197,7 +199,7 @@ export default function DashboardPage({
 
           {/* CNPJ */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">CNPJ</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400"><Dica texto={DICAS_DRPS_IDENTIFICACAO.cnpj}>CNPJ</Dica></span>
             <input
               type="text"
               value={cnpj}
@@ -212,7 +214,7 @@ export default function DashboardPage({
 
           {/* Status */}
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Status</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400"><Dica texto={DICAS_DRPS_IDENTIFICACAO.status}>Status</Dica></span>
             <select
               value={status}
               disabled={!canEdit}
@@ -229,7 +231,7 @@ export default function DashboardPage({
 
           {/* Data */}
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Data</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0"><Dica texto={DICAS_DRPS_IDENTIFICACAO.data_elaboracao}>Data</Dica></span>
             <input
               type="date"
               value={data}
@@ -243,7 +245,7 @@ export default function DashboardPage({
 
           {/* Responsável */}
           <div className="flex flex-1 items-center gap-1.5 min-w-[200px]">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0">Responsável</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 shrink-0"><Dica texto={DICAS_DRPS_IDENTIFICACAO.responsavel}>Responsável</Dica></span>
             <ProfissionalSelect
               value={responsavel}
               onChange={(nome, cargo, _cert, registro) => {
@@ -264,7 +266,7 @@ export default function DashboardPage({
           {/* Registro profissional — label dinâmico pelo cargo */}
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-              {detectRegistroTipo(cargoResponsavel).label}
+              <Dica texto={DICAS_DRPS_IDENTIFICACAO.registro}>{detectRegistroTipo(cargoResponsavel).label}</Dica>
             </span>
             <input
               type="text"

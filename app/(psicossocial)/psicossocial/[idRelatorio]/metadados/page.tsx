@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_DRPS_IDENTIFICACAO } from "@/lib/dicas/drps";
 import { useEffect, useState, use } from "react";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { detectRegistroTipo } from "@/lib/registro-profissional";
@@ -89,7 +91,7 @@ export default function MetadadosPage({
       <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <Section titulo="Status do Relatório">
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Status">
+            <Field label="Status" dica={DICAS_DRPS_IDENTIFICACAO.status}>
               <select
                 value={form.status}
                 onChange={(e) =>
@@ -108,7 +110,7 @@ export default function MetadadosPage({
                 ))}
               </select>
             </Field>
-            <Field label="Data da elaboração">
+            <Field label="Data da elaboração" dica={DICAS_DRPS_IDENTIFICACAO.data_elaboracao}>
               <input
                 type="date"
                 value={form.data_elaboracao}
@@ -119,7 +121,7 @@ export default function MetadadosPage({
                 className={inputCls}
               />
             </Field>
-            <Field label="Validade do documento">
+            <Field label="Validade do documento" dica={DICAS_DRPS_IDENTIFICACAO.validade}>
               <input
                 type="date"
                 value={form.data_validade}
@@ -135,7 +137,7 @@ export default function MetadadosPage({
 
         <Section titulo="Responsável Técnico">
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Nome do responsável técnico">
+            <Field label="Nome do responsável técnico" dica={DICAS_DRPS_IDENTIFICACAO.responsavel}>
               <ProfissionalSelect
                 value={form.responsavel_tecnico}
                 onChange={(nome, cargo, _cert, registro) => setForm({
@@ -152,7 +154,7 @@ export default function MetadadosPage({
                 className={!canEdit ? "pointer-events-none opacity-60" : ""}
               />
             </Field>
-            <Field label={detectRegistroTipo(form.cargo_responsavel).label}>
+            <Field label={detectRegistroTipo(form.cargo_responsavel).label} dica={DICAS_DRPS_IDENTIFICACAO.registro}>
               <input
                 type="text"
                 value={form.crp}
@@ -200,14 +202,17 @@ function Section({
 
 function Field({
   label,
+  dica,
   children,
 }: {
   label: string;
+  /** Dica de preenchimento (lib/dicas/drps.ts). */
+  dica?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="text-xs font-medium text-gray-700">{label}</label>
+      <label className="text-xs font-medium text-gray-700">{dica ? <Dica texto={dica}>{label}</Dica> : label}</label>
       {children}
     </div>
   );

@@ -153,6 +153,21 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Dicas no DRPS, lote 7.6 (0.3.216):** `lib/dicas/drps.ts`, com cerca de 35 campos.
+  - **Telas cobertas:** Novo, Metadados (o `Field` aceita `dica`), barra do Dashboard e da Análise, Análise (Fontes e Conclusão do setor), Dados, Conclusão geral, Plano anual, 5W2H (o `Campo` aceita `dica`), Monitoramento, Revisão e Capa (`DICAS_CAPA`).
+  - **Neutras de propósito:** as dicas de Status e Registro, porque a data de conclusão e a sigla do registro no PDF entram no PR de correções do DRPS/QPS.
+  - **Achados para esse PR:**
+    - concluir pelo menu de status não grava a data da capa (os 2 DRPS concluídos do JCN estão sem data);
+    - na Análise, gravar a conclusão ou o alinhamento recarrega e perde edições não salvas;
+    - o Responsável do Monitoramento usa `defaultValue` e `key={t.idx}` e grava no setor errado;
+    - agravos e medidas do catálogo voltam como texto livre;
+    - o PDF imprime sempre "CRP";
+    - "Concluido" sem acento;
+    - trocar o ano do plano descarta o que não foi salvo;
+    - a capa do QPS usa as variáveis do DRPS;
+    - o texto do Novo DRPS contradiz o código;
+    - a impressão da Análise mostra tags HTML;
+    - a capa travada ainda aceita arrastar as caixas.
 - **Correções AET/AEP (0.3.215), achadas nas auditorias das dicas:**
   - **AET, Setores × Análise:** as duas gravam o jsonb `setores`. Agora, ao salvar, a tela busca a versão do banco (`setoresAtuaisDoBanco`) e aplica só o que ELA mudou desde que carregou (`lib/aet/mesclar-setores.ts`, testado). Campo mudado na tela vale o da tela, e o resto vem do banco. Setores criados ou apagados respeitam as duas telas. A ordem é a da tela. Sem rede, grava o local, como antes. O auto-save do arrasto da AET usa a mesma mescla.
   - **AET, permissão:** o Visualizador não edita a tela Psicossocial nem, na tela Setores, o bloco QPS, o F13, a escala e os "Salvar Fxx". Esses blocos ficam num `<fieldset disabled>` e o editor de texto usa `readOnly`.

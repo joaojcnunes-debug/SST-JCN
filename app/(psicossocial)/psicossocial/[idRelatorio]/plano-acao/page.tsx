@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_DRPS_5W2H } from "@/lib/dicas/drps";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { use, useState, useEffect, useRef } from "react";
@@ -255,7 +257,7 @@ function LinhaCard({
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Campo label="O quê (ação)" full>
+        <Campo label="O quê (ação)" dica={DICAS_DRPS_5W2H.oque} full>
           {!canEdit ? (
             <p className="py-1.5 text-sm text-gray-700">{form.acao || "—"}</p>
           ) : (
@@ -275,7 +277,7 @@ function LinhaCard({
             </>
           )}
         </Campo>
-        <Campo label="Por quê (justificativa)" full>
+        <Campo label="Por quê (justificativa)" dica={DICAS_DRPS_5W2H.porque} full>
           <textarea
             value={form.justificativa}
             onChange={(e) => set("justificativa", e.target.value)}
@@ -285,7 +287,7 @@ function LinhaCard({
             placeholder="Objetivo / motivo da ação"
           />
         </Campo>
-        <Campo label="Onde (setores — pode escolher vários)">
+        <Campo label="Onde (setores — pode escolher vários)" dica={DICAS_DRPS_5W2H.onde}>
           {!canEdit ? (
             <p className="py-1.5 text-sm text-gray-700">
               {selecionadosOnde.size ? Array.from(selecionadosOnde).join(", ") : "—"}
@@ -298,7 +300,7 @@ function LinhaCard({
             />
           )}
         </Campo>
-        <Campo label="Quando (meses — pode marcar vários)">
+        <Campo label="Quando (meses — pode marcar vários)" dica={DICAS_DRPS_5W2H.quando}>
           {!canEdit ? (
             <p className="py-1.5 text-sm text-gray-700">
               {selecionadosQuando.size ? ordenarMeses(selecionadosQuando) : "—"}
@@ -311,13 +313,13 @@ function LinhaCard({
             />
           )}
         </Campo>
-        <Campo label="Quem (responsável)">
+        <Campo label="Quem (responsável)" dica={DICAS_DRPS_5W2H.quem}>
           <input value={form.responsavel} onChange={(e) => set("responsavel", e.target.value)} readOnly={!canEdit} className={inputCls} placeholder="Responsável" />
         </Campo>
-        <Campo label="Quanto custa">
+        <Campo label="Quanto custa" dica={DICAS_DRPS_5W2H.quanto}>
           <input value={form.quanto_custa} onChange={(e) => set("quanto_custa", e.target.value)} readOnly={!canEdit} className={inputCls} placeholder="Custo estimado" />
         </Campo>
-        <Campo label="Como (formas de execução — uma ou mais)" full>
+        <Campo label="Como (formas de execução — uma ou mais)" dica={DICAS_DRPS_5W2H.como} full>
           {!canEdit ? (
             <p className="py-1.5 text-sm text-gray-700">
               {[...comoSelecionados, ...comoExtras].join(", ") || "—"}
@@ -343,7 +345,7 @@ function LinhaCard({
       {canEdit && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
           <label className="flex items-center gap-2 text-xs text-gray-600">
-            Status:
+            <Dica texto={DICAS_DRPS_5W2H.status}>Status</Dica>:
             <select
               value={form.status}
               onChange={(e) => set("status", e.target.value as StatusPlanoAcao)}
@@ -445,11 +447,11 @@ function MultiSelectSetores({
   );
 }
 
-function Campo({ label, full, children }: { label: string; full?: boolean; children: React.ReactNode }) {
+function Campo({ label, dica, full, children }: { label: string; dica?: string; full?: boolean; children: React.ReactNode }) {
   return (
     <div className={full ? "sm:col-span-2" : ""}>
       <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-        {label}
+        {dica ? <Dica texto={dica}>{label}</Dica> : label}
       </label>
       {children}
     </div>
