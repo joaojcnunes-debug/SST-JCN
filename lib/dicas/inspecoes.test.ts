@@ -6,6 +6,7 @@ import { DICAS_NOVA_INSPECAO } from "./inspecoes";
 import * as EDITOR from "./inspecao-editor";
 import * as EPI from "./epi";
 import * as AET from "./aet";
+import * as AEP from "./aep";
 
 for (const [nome, dicas] of [
   ["Risco", DICAS_RISCO],
@@ -13,6 +14,7 @@ for (const [nome, dicas] of [
   ...Object.entries(EDITOR),
   ...Object.entries(EPI),
   ...Object.entries(AET),
+  ...Object.entries(AEP),
 ] as const) {
   test(`dicas de ${nome}: todas preenchidas, curtas e terminando em ponto`, () => {
     for (const [campo, texto] of Object.entries(dicas)) {

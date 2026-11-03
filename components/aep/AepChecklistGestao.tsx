@@ -7,6 +7,8 @@
 // existente. Não muda a matriz AIHA. Regras em lib/aep/checklist-gestao.ts.
 // Usado na rota /aep/[id]/gestao e na aba AEP da inspeção.
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_AEP_GESTAO } from "@/lib/dicas/aep";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { useAepRelatorio, useSalvarAep } from "@/lib/hooks/useAep";
@@ -119,7 +121,7 @@ export default function AepChecklistGestao({ idRelatorio }: { idRelatorio: strin
       </div>
 
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">Respondido com (gestor, RH…)</label>
+        <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AEP_GESTAO.respondido_com}>Respondido com (gestor, RH…)</Dica></label>
         <input
           type="text"
           disabled={!canEdit}

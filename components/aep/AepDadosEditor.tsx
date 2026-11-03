@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_AEP_IDENTIFICACAO } from "@/lib/dicas/aep";
 import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
@@ -145,7 +147,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
 
         {/* Responsável */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Responsável pela elaboração</label>
+          <label className="mb-1 block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.responsavel}>Responsável pela elaboração</Dica></label>
           <ProfissionalSelect
             value={responsavel}
             onChange={(nome, cargo, _cert, regValue) => {
@@ -173,7 +175,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
         {/* Título + Registro */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Título profissional</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.titulo}>Título profissional</Dica></label>
             <input
               type="text"
               value={titulo}
@@ -184,7 +186,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">{detectRegistroTipo(titulo).label}</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.registro}>{detectRegistroTipo(titulo).label}</Dica></label>
             <input
               type="text"
               value={registro}
@@ -198,7 +200,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
 
         {/* Data */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Data de elaboração</label>
+          <label className="mb-1 block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.data_elaboracao}>Data de elaboração</Dica></label>
           <input
             type="date"
             value={data}
@@ -210,7 +212,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
 
         {/* Validade do documento */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Validade do documento</label>
+          <label className="mb-1 block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.validade}>Validade do documento</Dica></label>
           <input
             type="date"
             value={validade}
@@ -223,7 +225,7 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
         {/* Endereço */}
         <div>
           <div className="mb-1 flex items-center justify-between gap-2">
-            <label className="block text-sm font-medium text-gray-700">Endereço da empresa</label>
+            <label className="block text-sm font-medium text-gray-700"><Dica texto={DICAS_AEP_IDENTIFICACAO.endereco}>Endereço da empresa</Dica></label>
             {canEdit && enderecoCadastro && endereco !== enderecoCadastro && (
               <button
                 type="button"
