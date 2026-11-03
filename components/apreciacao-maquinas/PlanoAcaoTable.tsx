@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_APR_PLANO } from "@/lib/dicas/apreciacao";
 import { useMemo, useState } from "react";
 import {
   ChevronRight,
@@ -389,7 +391,7 @@ function AcaoRow({
       {/* Linha expandida — full 5W2H form */}
       {expandida && (
         <div className="space-y-2 border-t border-gray-100 bg-gray-50/40 px-3 py-3 print:hidden">
-          <Campo label="O quê (ação)">
+          <Campo label="O quê (ação)" dica={DICAS_APR_PLANO.oque}>
             <input
               type="text"
               value={whatAcao}
@@ -400,7 +402,7 @@ function AcaoRow({
             />
           </Campo>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Campo label="Por quê (justificativa)">
+            <Campo label="Por quê (justificativa)" dica={DICAS_APR_PLANO.porque}>
               <textarea
                 rows={2}
                 value={whyJust}
@@ -410,7 +412,7 @@ function AcaoRow({
                 className={inputClass}
               />
             </Campo>
-            <Campo label="Como (método)">
+            <Campo label="Como (método)" dica={DICAS_APR_PLANO.como}>
               <textarea
                 rows={2}
                 value={howMetodo}
@@ -422,7 +424,7 @@ function AcaoRow({
             </Campo>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
-            <Campo label="Onde">
+            <Campo label="Onde" dica={DICAS_APR_PLANO.onde}>
               <input
                 type="text"
                 value={whereLocal}
@@ -432,7 +434,7 @@ function AcaoRow({
                 className={inputClass}
               />
             </Campo>
-            <Campo label="Quem (responsável)">
+            <Campo label="Quem (responsável)" dica={DICAS_APR_PLANO.quem}>
               <input
                 type="text"
                 value={whoResp}
@@ -442,7 +444,7 @@ function AcaoRow({
                 className={inputClass}
               />
             </Campo>
-            <Campo label="Quando (prazo)">
+            <Campo label="Quando (prazo)" dica={DICAS_APR_PLANO.quando}>
               <input
                 type="date"
                 value={whenPrazo}
@@ -452,7 +454,7 @@ function AcaoRow({
                 className={inputClass}
               />
             </Campo>
-            <Campo label="Quanto (custo)">
+            <Campo label="Quanto (custo)" dica={DICAS_APR_PLANO.quanto}>
               <input
                 type="text"
                 value={howMuch}
@@ -465,7 +467,7 @@ function AcaoRow({
             </Campo>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <Campo label="Prioridade">
+            <Campo label="Prioridade" dica={DICAS_APR_PLANO.prioridade}>
               <select
                 value={acao.prioridade}
                 onChange={(e) =>
@@ -539,15 +541,18 @@ const inputClass =
 
 function Campo({
   label,
+  dica,
   children,
 }: {
   label: string;
+  /** Dica de preenchimento (lib/dicas/apreciacao.ts). */
+  dica?: string;
   children: React.ReactNode;
 }) {
   return (
     <label className="block">
       <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-        {label}
+        {dica ? <Dica texto={dica}>{label}</Dica> : label}
       </span>
       {children}
     </label>

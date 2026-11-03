@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_APR_DADOS, DICAS_APR_MAQUINA, DICAS_APR_LIVRE, DICAS_APR_CONCLUSAO } from "@/lib/dicas/apreciacao";
 import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
@@ -724,14 +726,14 @@ export default function DetalheApreciacaoPage() {
           </div>
         )}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Campo label="Responsável técnico (JCN Consultoria)" htmlFor="resp">
+          <Campo label="Responsável técnico (JCN Consultoria)" htmlFor="resp" dica={DICAS_APR_DADOS.responsavel}>
             <ProfissionalSelect
               value={responsavel}
               onChange={(nome) => setResponsavel(nome)}
               className={readOnly ? "pointer-events-none opacity-60" : ""}
             />
           </Campo>
-          <Campo label="Responsável da empresa" htmlFor="respe">
+          <Campo label="Responsável da empresa" htmlFor="respe" dica={DICAS_APR_DADOS.responsavel_empresa}>
             <input
               id="respe"
               type="text"
@@ -741,7 +743,7 @@ export default function DetalheApreciacaoPage() {
               className={inputClass}
             />
           </Campo>
-          <Campo label="Data da apreciação" htmlFor="data">
+          <Campo label="Data da apreciação" htmlFor="data" dica={DICAS_APR_DADOS.data}>
             <input
               id="data"
               type="date"
@@ -751,7 +753,7 @@ export default function DetalheApreciacaoPage() {
               className={inputClass}
             />
           </Campo>
-          <Campo label="Validade do documento" htmlFor="validade">
+          <Campo label="Validade do documento" htmlFor="validade" dica={DICAS_APR_DADOS.validade}>
             <input
               id="validade"
               type="date"
@@ -761,7 +763,7 @@ export default function DetalheApreciacaoPage() {
               className={inputClass}
             />
           </Campo>
-          <Campo label="Notificação SIT/MTE (opcional)" htmlFor="notif">
+          <Campo label="Notificação SIT/MTE (opcional)" htmlFor="notif" dica={DICAS_APR_DADOS.notificacao}>
             <input
               id="notif"
               type="text"
@@ -773,7 +775,7 @@ export default function DetalheApreciacaoPage() {
             />
           </Campo>
         </div>
-        <Campo label="Observações gerais" htmlFor="obs">
+        <Campo label="Observações gerais" htmlFor="obs" dica={DICAS_APR_DADOS.observacoes}>
           <textarea
             id="obs"
             rows={2}
@@ -793,7 +795,7 @@ export default function DetalheApreciacaoPage() {
             disabled={readOnly}
             className="accent-orange-600"
           />
-          Imprimir o checklist NR-12 no PDF (além da ficha de risco por máquina)
+          <Dica texto={DICAS_APR_DADOS.imprimir_checklist}>Imprimir o checklist NR-12 no PDF (além da ficha de risco por máquina)</Dica>
         </label>
 
         {!readOnly && (
@@ -841,7 +843,7 @@ export default function DetalheApreciacaoPage() {
         {/* Operadores / Responsáveis (por máquina) */}
         <div>
           <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-            Operadores / Responsáveis
+            <Dica texto={DICAS_APR_MAQUINA.operadores}>Operadores / Responsáveis</Dica>
           </span>
           <div className="space-y-1.5">
             {operadores.map((op, i) => (
@@ -898,7 +900,7 @@ export default function DetalheApreciacaoPage() {
         {fichaAtiva && (
           <div>
             <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-              Registro fotográfico da máquina
+              <Dica texto={DICAS_APR_MAQUINA.fotos}>Registro fotográfico da máquina</Dica>
             </span>
             <div className="flex flex-wrap gap-2">
               {(fichaAtiva.foto_urls ?? []).map((url, i) => (
@@ -971,13 +973,13 @@ export default function DetalheApreciacaoPage() {
           <p className="mb-2 text-xs font-bold uppercase tracking-wider text-gray-600">Limites</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {([
-              ["limiteUso", limiteUso, setLimiteUso, "De Uso", "Ex: Alimentos, panificação"],
-              ["limiteEspaco", limiteEspaco, setLimiteEspaco, "De Espaço", "Ex: Interior da padaria, 2º andar"],
-              ["limiteTempo", limiteTempo, setLimiteTempo, "De Tempo", "Ex: Vida útil 15 anos"],
-              ["limiteProdutividade", limiteProdutividade, setLimiteProdutividade, "De Produtividade", "Ex: 80 kg/h"],
-            ] as [string, string, (v: string) => void, string, string][]).map(([, val, setter, label, placeholder]) => (
+              ["limiteUso", limiteUso, setLimiteUso, "De Uso", "Ex: Alimentos, panificação", DICAS_APR_MAQUINA.limite_uso],
+              ["limiteEspaco", limiteEspaco, setLimiteEspaco, "De Espaço", "Ex: Interior da padaria, 2º andar", DICAS_APR_MAQUINA.limite_espaco],
+              ["limiteTempo", limiteTempo, setLimiteTempo, "De Tempo", "Ex: Vida útil 15 anos", DICAS_APR_MAQUINA.limite_tempo],
+              ["limiteProdutividade", limiteProdutividade, setLimiteProdutividade, "De Produtividade", "Ex: 80 kg/h", DICAS_APR_MAQUINA.limite_produtividade],
+            ] as [string, string, (v: string) => void, string, string, string][]).map(([, val, setter, label, placeholder, dica]) => (
               <label key={label} className="block">
-                <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">{label}</span>
+                <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600"><Dica texto={dica}>{label}</Dica></span>
                 <input type="text" value={val} onChange={(e) => setter(e.target.value)} disabled={readOnly}
                   placeholder={placeholder}
                   className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500"
@@ -989,7 +991,7 @@ export default function DetalheApreciacaoPage() {
         {/* NPE padrão */}
         <div className="w-full sm:w-1/2">
           <label className="block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">NPE — Número de Pessoas Expostas</span>
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600"><Dica texto={DICAS_APR_MAQUINA.npe}>NPE — Número de Pessoas Expostas</Dica></span>
             <select value={npe} onChange={(e) => setNpe(e.target.value as NpeHrn | "")} disabled={readOnly}
               className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-500">
               <option value="">— Não informado —</option>
@@ -1009,8 +1011,8 @@ export default function DetalheApreciacaoPage() {
               <thead>
                 <tr className="bg-gray-100 text-gray-700">
                   <th className="border border-gray-200 px-2 py-1 text-left font-semibold">Sistema</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-semibold w-24">Sistema Atual</th>
-                  <th className="border border-gray-200 px-2 py-1 text-center font-semibold w-28">Sistema Necessário</th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-semibold w-24"><Dica texto={DICAS_APR_MAQUINA.sistema_atual}>Sistema Atual</Dica></th>
+                  <th className="border border-gray-200 px-2 py-1 text-center font-semibold w-28"><Dica texto={DICAS_APR_MAQUINA.sistema_necessario}>Sistema Necessário</Dica></th>
                 </tr>
               </thead>
               <tbody>
@@ -1043,7 +1045,7 @@ export default function DetalheApreciacaoPage() {
         {/* Constatações da inspeção + parecer técnico (por máquina). Mantido no
             painel — o SST-JCN não edita esses campos. */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Campo label="Constatações da inspeção" htmlFor="constat">
+          <Campo label="Constatações da inspeção" htmlFor="constat" dica={DICAS_APR_MAQUINA.constatacoes}>
             <textarea
               id="constat"
               rows={3}
@@ -1053,7 +1055,7 @@ export default function DetalheApreciacaoPage() {
               className={inputClass}
             />
           </Campo>
-          <Campo label="Parecer técnico da máquina" htmlFor="parecer">
+          <Campo label="Parecer técnico da máquina" htmlFor="parecer" dica={DICAS_APR_MAQUINA.parecer}>
             <textarea
               id="parecer"
               rows={3}
@@ -1151,7 +1153,7 @@ export default function DetalheApreciacaoPage() {
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <label className="block sm:col-span-1">
                     <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-                      Categoria
+                      <Dica texto={DICAS_APR_LIVRE.categoria}>Categoria</Dica>
                     </span>
                     <select
                       value={livreCategoria}
@@ -1169,7 +1171,7 @@ export default function DetalheApreciacaoPage() {
                   </label>
                   <label className="block sm:col-span-2">
                     <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-                      Título *
+                      <Dica texto={DICAS_APR_LIVRE.titulo}>Título</Dica> *
                     </span>
                     <input
                       type="text"
@@ -1182,7 +1184,7 @@ export default function DetalheApreciacaoPage() {
                 </div>
                 <label className="block">
                   <span className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-                    Descrição (opcional)
+                    <Dica texto={DICAS_APR_LIVRE.descricao}>Descrição (opcional)</Dica>
                   </span>
                   <textarea
                     rows={2}
@@ -1260,7 +1262,7 @@ export default function DetalheApreciacaoPage() {
             a responsabilidade técnica é do auditor.
           </p>
         )}
-        <Campo label="Parecer técnico" htmlFor="conclusao">
+        <Campo label="Parecer técnico" htmlFor="conclusao" dica={DICAS_APR_CONCLUSAO.parecer}>
           <textarea
             id="conclusao"
             rows={4}
@@ -1271,7 +1273,7 @@ export default function DetalheApreciacaoPage() {
             className={inputClass}
           />
         </Campo>
-        <Campo label="Recomendações finais" htmlFor="rec">
+        <Campo label="Recomendações finais" htmlFor="rec" dica={DICAS_APR_CONCLUSAO.recomendacoes}>
           <textarea
             id="rec"
             rows={3}
@@ -1282,7 +1284,7 @@ export default function DetalheApreciacaoPage() {
             className={inputClass}
           />
         </Campo>
-        <Campo label="Risco residual" htmlFor="risco">
+        <Campo label="Risco residual" htmlFor="risco" dica={DICAS_APR_CONCLUSAO.risco_residual}>
           <div className="flex gap-2">
             <select
               id="risco"
@@ -1455,16 +1457,19 @@ const inputClass =
 function Campo({
   label,
   htmlFor,
+  dica,
   children,
 }: {
   label: string;
   htmlFor: string;
+  /** Dica de preenchimento (lib/dicas/apreciacao.ts). */
+  dica?: string;
   children: React.ReactNode;
 }) {
   return (
     <label htmlFor={htmlFor} className="block">
       <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-600">
-        {label}
+        {dica ? <Dica texto={dica}>{label}</Dica> : label}
       </span>
       {children}
     </label>

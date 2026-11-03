@@ -153,6 +153,20 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Dicas na Apreciação de Máquinas, lote 7.8 (0.3.219):** `lib/dicas/apreciacao.ts`, com cerca de 60 campos.
+  - **Helpers que aceitam `dica`:** o `Campo` (Nova, editor e PlanoAcaoTable). Os Limites e a ficha da máquina (`CAMPOS_FICHA`) recebem a dica pela própria lista.
+  - **Neutras de propósito:** Notificação SIT, Limites, NPE, Sistemas, NPE do risco e Nível das ações. Hoje são gravados e não saem no PDF; o PR de correções decide.
+  - **Achados para o PR de correções:**
+    - a máquina selecionada fica num store global e passa de um laudo para outro (o risco novo pode ir para a máquina errada);
+    - salvar ou enviar foto da máquina apaga a identificação não salva;
+    - o item livre é criado sem `id_ficha`;
+    - gerar ações, o parecer da IA e o Sugerir risco residual usam só a máquina aberta;
+    - num risco já lançado, mudar POD, FEP ou GPD sobrescreve a classificação gravada;
+    - `{{risco_residual}}` sai cru;
+    - textos sem acento;
+    - a Nova grava título, setor e cidade nulos;
+    - o texto das medidas antigas contradiz o PDF;
+    - `notificacao_sit` nunca é impressa.
 - **Correções DRPS/QPS (0.3.218, banco v317), achadas nas auditorias das dicas:**
   - **DRPS, data de conclusão:** o gatilho `trg_drps_stamp_data_conclusao` (v317) grava a data na 1ª vez que o relatório vira CONCLUIDO, por qualquer caminho.
     - Os 2 concluídos sem data foram acertados: DRPS-225D2095 com 25/09/2026, a data do histórico; DRPS-A45EFF4D com 09/06/2026, a data de elaboração, por decisão do João.

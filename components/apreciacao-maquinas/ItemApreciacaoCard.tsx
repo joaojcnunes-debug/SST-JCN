@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_APR_ITEM } from "@/lib/dicas/apreciacao";
 import { useState, useRef, useEffect } from "react";
 import {
   CheckCircle2,
@@ -403,7 +405,7 @@ export default function ItemApreciacaoCard({
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <label className="block">
               <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wider text-gray-600">
-                Probabilidade
+                <Dica texto={DICAS_APR_ITEM.probabilidade}>Probabilidade</Dica>
               </span>
               <select
                 value={item.probabilidade ?? ""}
@@ -427,7 +429,7 @@ export default function ItemApreciacaoCard({
             </label>
             <label className="block">
               <span className="mb-0.5 block text-[9px] font-semibold uppercase tracking-wider text-gray-600">
-                Severidade
+                <Dica texto={DICAS_APR_ITEM.severidade}>Severidade</Dica>
               </span>
               <select
                 value={item.severidade ?? ""}
@@ -472,7 +474,7 @@ export default function ItemApreciacaoCard({
       <div>
         <div className="mb-1 flex items-center justify-between">
           <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Evidência fotográfica ({item.foto_urls.length}/
+            <Dica texto={DICAS_APR_ITEM.fotos}>Evidência fotográfica</Dica> ({item.foto_urls.length}/
             {MAX_FOTOS_POR_ITEM_APR})
           </label>
           {!disabled && item.foto_urls.length < MAX_FOTOS_POR_ITEM_APR && (
@@ -546,7 +548,7 @@ export default function ItemApreciacaoCard({
       <div>
         <div className="mb-1 flex items-center justify-between">
           <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Observação técnica
+            <Dica texto={DICAS_APR_ITEM.observacao}>Observação técnica</Dica>
           </label>
           {!disabled && item.foto_urls.length > 0 && (
             <button
@@ -579,7 +581,7 @@ export default function ItemApreciacaoCard({
       {(item.situacao === "NAO_CONFORME" || recomendacao) && (
         <div>
           <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-red-600">
-            Recomendação / ação corretiva
+            <Dica texto={DICAS_APR_ITEM.recomendacao}>Recomendação / ação corretiva</Dica>
           </label>
           <textarea
             rows={2}

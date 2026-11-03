@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_APR_DADOS } from "@/lib/dicas/apreciacao";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -106,7 +108,7 @@ export default function NovaApreciacaoPage() {
           )}
         </Campo>
 
-        <Campo label="Notificação SIT/MTE (opcional)" htmlFor="notif">
+        <Campo label="Notificação SIT/MTE (opcional)" htmlFor="notif" dica={DICAS_APR_DADOS.notificacao}>
           <input
             id="notif"
             type="text"
@@ -118,13 +120,13 @@ export default function NovaApreciacaoPage() {
         </Campo>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Campo label="Responsável técnico (JCN Consultoria)" htmlFor="resp">
+          <Campo label="Responsável técnico (JCN Consultoria)" htmlFor="resp" dica={DICAS_APR_DADOS.responsavel}>
             <ProfissionalSelect
               value={responsavel}
               onChange={(nome) => setResponsavel(nome)}
             />
           </Campo>
-          <Campo label="Responsável da empresa" htmlFor="respe">
+          <Campo label="Responsável da empresa" htmlFor="respe" dica={DICAS_APR_DADOS.responsavel_empresa}>
             <input
               id="respe"
               type="text"
@@ -133,7 +135,7 @@ export default function NovaApreciacaoPage() {
               className={inputClass}
             />
           </Campo>
-          <Campo label="Data da apreciação" htmlFor="data">
+          <Campo label="Data da apreciação" htmlFor="data" dica={DICAS_APR_DADOS.data}>
             <input
               id="data"
               type="date"
@@ -165,16 +167,19 @@ const inputClass =
 function Campo({
   label,
   htmlFor,
+  dica,
   children,
 }: {
   label: string;
   htmlFor: string;
+  /** Dica de preenchimento (lib/dicas/apreciacao.ts). */
+  dica?: string;
   children: React.ReactNode;
 }) {
   return (
     <label htmlFor={htmlFor} className="block">
       <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-gray-600">
-        {label}
+        {dica ? <Dica texto={dica}>{label}</Dica> : label}
       </span>
       {children}
     </label>

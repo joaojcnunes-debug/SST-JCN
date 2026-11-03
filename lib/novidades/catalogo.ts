@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-apreciacao-maquinas",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Dicas de preenchimento na Apreciação de Máquinas",
+    texto:
+      "Nova apreciação, Dados gerais, Identificação da máquina, a ficha de cada máquina, Item livre, a tabela de " +
+      "riscos HRN, os itens do checklist, a Conclusão e o Plano de Adequação ganharam a dica de como preencher cada " +
+      "campo, dizendo o que sai no PDF e quando cada coisa é gravada.",
+    onde: "Apreciação de Máquinas",
+    versoes: ["0.3.219"],
+  },
+  {
     id: "correcoes-drps-qps",
     data: "2026-11-03",
     tipo: "correcao",
