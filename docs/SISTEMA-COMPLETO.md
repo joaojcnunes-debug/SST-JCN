@@ -153,6 +153,10 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Dicas no módulo EPI, lote 7.3 (0.3.212):** `lib/dicas/epi.ts`, com 28 campos de Catálogo, Estoque, Entregas, Colaboradores, Transferências e Assinatura.
+  - **Achados registrados (sem mudança de regra):**
+    - O "Ajuste" do estoque soma ao saldo como a Entrada, porque a `v_epi_saldo` o conta positivo e a quantidade não aceita negativo. Para tirar do saldo, use Saída.
+    - "Colaborador ativo" só muda a etiqueta: o inativo continua na lista da entrega.
 - **Encantamento (0.3.208, Etapa 6 do plano-skin-viva):**
   - **Comemoração** (`components/ui/Comemoracao.tsx`): `comemorar()` dispara um evento, e o `<Comemoracao />`, montado em `lib/providers.tsx` ao lado do Toaster, desenha 14 peças de confete perto do aviso de sucesso, por cerca de 1,2 s.
     - **Chamada em:** Inspeção concluída, Documento concluído (emitido), Apreciação finalizada, Relatório de Conformidade finalizado, Relatório de Não Conformidade finalizado, e as duas formas de assinar PDF (`AssinarPdfModal`, `BotaoAssinarPdf`).

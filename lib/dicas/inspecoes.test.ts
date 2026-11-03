@@ -4,11 +4,13 @@ import { DICA_MAX_CARACTERES } from "./empresas";
 import { DICAS_RISCO } from "./riscos";
 import { DICAS_NOVA_INSPECAO } from "./inspecoes";
 import * as EDITOR from "./inspecao-editor";
+import * as EPI from "./epi";
 
 for (const [nome, dicas] of [
   ["Risco", DICAS_RISCO],
   ["Nova inspeção", DICAS_NOVA_INSPECAO],
   ...Object.entries(EDITOR),
+  ...Object.entries(EPI),
 ] as const) {
   test(`dicas de ${nome}: todas preenchidas, curtas e terminando em ponto`, () => {
     for (const [campo, texto] of Object.entries(dicas)) {

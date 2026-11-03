@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_EPI_COLABORADOR } from "@/lib/dicas/epi";
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Users, Fingerprint, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -213,7 +215,7 @@ export default function EpiColaboradoresTab({
         >
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className={labelCls}>Nome *</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_COLABORADOR.nome}>Nome</Dica> *</label>
               <input
                 className={inputCls}
                 value={form.nome ?? ""}
@@ -222,7 +224,7 @@ export default function EpiColaboradoresTab({
               />
             </div>
             <div>
-              <label className={labelCls}>CPF</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_COLABORADOR.cpf}>CPF</Dica></label>
               <input
                 className={inputCls}
                 value={form.cpf ?? ""}
@@ -230,7 +232,7 @@ export default function EpiColaboradoresTab({
               />
             </div>
             <div>
-              <label className={labelCls}>Matrícula</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_COLABORADOR.matricula}>Matrícula</Dica></label>
               <input
                 className={inputCls}
                 value={form.matricula ?? ""}
@@ -238,7 +240,7 @@ export default function EpiColaboradoresTab({
               />
             </div>
             <div>
-              <label className={labelCls}>Cargo</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_COLABORADOR.cargo}>Cargo</Dica></label>
               <input
                 className={inputCls}
                 value={form.cargo ?? ""}
@@ -246,7 +248,7 @@ export default function EpiColaboradoresTab({
               />
             </div>
             <div>
-              <label className={labelCls}>Setor</label>
+              <label className={labelCls}><Dica texto={DICAS_EPI_COLABORADOR.setor}>Setor</Dica></label>
               <input
                 className={inputCls}
                 value={form.setor ?? ""}
@@ -259,7 +261,7 @@ export default function EpiColaboradoresTab({
                 checked={form.ativo ?? true}
                 onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
               />
-              Colaborador ativo
+              <Dica texto={DICAS_EPI_COLABORADOR.ativo}>Colaborador ativo</Dica>
             </label>
 
             {/* Biometria (Fase 4D) — cadastro do template p/ verificação 1:1 */}
