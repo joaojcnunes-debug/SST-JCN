@@ -25,6 +25,7 @@ import {
   SEMAFORO_DEFAULT,
 } from "@/lib/hooks/useAet";
 import { cn } from "@/lib/utils";
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 import { mediaFator } from "@/lib/aet/consolidar-psi";
 import RichTextEditor from "@/components/drps/RichTextEditor";
 import { htmlParaTexto, htmlVazio, textoParaHtml } from "@/lib/texto-rico";
@@ -135,6 +136,8 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
   const salvarMeta = useAetSalvarQpsMeta();
   const salvarFator = useAetSalvarFatorPsi();
   const salvarRespostas = useAetSalvarRespostasFator();
+  // Visualizador só lê: os campos e os botões de salvar/IA ficam travados (fieldset disabled).
+  const canEdit = useCanEdit();
 
   // ─── State ────────────────────────────────────────────────────────────────
 
@@ -386,6 +389,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
           Dados da Aplicação QPS
         </h2>
 
+        <fieldset disabled={!canEdit} className="contents">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.respondentes}>N.º de Respondentes</Dica></label>
@@ -489,6 +493,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
             Salvar Dados QPS
           </button>
         </div>
+        </fieldset>
       </section>
 
       {/* ─── B2: Setores em acordeão ──────────────────────────────────────────── */}
@@ -612,7 +617,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
 
                             {/* Body do fator */}
                             {aberto && (
-                              <div className="border-t border-gray-100 px-5 py-5 space-y-5">
+                              <fieldset disabled={!canEdit} className="min-w-0 border-t border-gray-100 px-5 py-5 space-y-5">
                                 <p className="text-xs text-gray-500 leading-relaxed">{fator.descricao}</p>
 
                                 {isF13 ? (
@@ -754,6 +759,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
                                       onChange={(html) =>
                                         setObservacoes((prev) => ({ ...prev, [fatorKey]: html }))
                                       }
+                                      readOnly={!canEdit}
                                       uploadPathPrefix="aet-psicossocial"
                                       placeholder="Análise, contexto e achados relevantes…"
                                     />
@@ -773,7 +779,7 @@ export default function PsicossocialPage({ idRelatorio }: { idRelatorio: string 
                                     </button>
                                   </div>
                                 </div>
-                              </div>
+                              </fieldset>
                             )}
                           </div>
                         );

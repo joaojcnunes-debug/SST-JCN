@@ -269,6 +269,8 @@ export default function AetLaudoPage({
     || tituloProfissional !== (rel.titulo_profissional ?? "")
     || registroProfissional !== (rel.registro_profissional ?? "")
     || dataElaboracao !== (rel.data_elaboracao ?? "")
+    // A validade também é editada aqui e o PDF lê do banco: sem isto, dava para gerar com a antiga.
+    || dataValidade !== (rel.data_validade ?? "")
     || enderecoEmpresa !== (rel.endereco_empresa ?? "");
   const empresa = rel.empresas;
   // Mesmo formatador do PDF e do EmpresaInfoPanel — o botão "Puxar do

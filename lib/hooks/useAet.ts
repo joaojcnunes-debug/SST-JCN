@@ -166,6 +166,23 @@ export function useCriarAet() {
   });
 }
 
+/**
+ * Setores do laudo como estão no banco AGORA, normalizados como na tela. Usado antes de gravar
+ * o jsonb `setores` para mesclar com o que outra tela (Setores × Análise) gravou nesse meio
+ * tempo — ver lib/aet/mesclar-setores.ts. Sem rede devolve null e a tela grava o que tem.
+ */
+export async function setoresAtuaisDoBanco(id: string): Promise<AetSetor[] | null> {
+  try {
+    const supabase = createSupabaseBrowserClient();
+    const { data, error } = await supabase.from("aet_relatorios").select("setores").eq("id_relatorio", id).single();
+    if (error) throw error;
+    const bruto = (data as { setores?: unknown } | null)?.setores;
+    return Array.isArray(bruto) ? bruto.map(normalizarSetor) : [];
+  } catch {
+    return null;
+  }
+}
+
 export function useSalvarAet() {
   const qc = useQueryClient();
 

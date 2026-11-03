@@ -1087,6 +1087,8 @@ export default function AepTemplate({
                 dataElaboracao: valoresVars["data_elaboracao"],
                 dataValidade: valoresVars["data_validade"],
               }}
+              // O endereço editado na análise vale aqui também (antes só ia para os textos padrão).
+              enderecoDocumento={rel.endereco_empresa}
             />
           );
           break;

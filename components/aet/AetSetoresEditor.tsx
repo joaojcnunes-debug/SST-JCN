@@ -1,5 +1,6 @@
 "use client";
 
+import { mesclarSetores } from "@/lib/aet/mesclar-setores";
 import Dica from "@/components/ui/Dica";
 import { DICAS_AET_QPS, DICAS_AET_SETOR, DICAS_AET_FATORES } from "@/lib/dicas/aet";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
@@ -35,6 +36,7 @@ import {
   zonaFromMedia,
   nivelPgrFromZona,
   SEMAFORO_DEFAULT,
+  setoresAtuaisDoBanco,
 } from "@/lib/hooks/useAet";
 import {
   apenasSetoresExistentes,
@@ -242,9 +244,13 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
   // objeto novo vindo do cache — com o auto-save da ordem, cada arrasto
   // remontaria a lista e fecharia o setor que estivesse aberto.
   const carregado = useRef<string | null>(null);
+  // O que estava no banco quando esta tela carregou (ou gravou pela última vez): é a base da
+  // mescla com o que a tela Análise gravar enquanto esta está aberta.
+  const baseSetores = useRef<AetSetor[]>([]);
   useEffect(() => {
     if (!rel || carregado.current === idRelatorio) return;
     carregado.current = idRelatorio;
+    baseSetores.current = rel.setores ?? [];
     setSetores(rel.setores ?? []);
     if (rel.setores?.length) setAbertos(new Set([rel.setores[0].id]));
     setConsideracoes(rel.consideracoes_finais ?? "");
@@ -344,20 +350,29 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
   const [statusOrdem, setStatusOrdem] = useState<StatusOrdemSalva>("parado");
   const limparStatus = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /** O que gravar: o local por cima da versão atual do banco (sem rede, só o local). */
+  async function setoresParaGravar(local: AetSetor[]): Promise<AetSetor[]> {
+    const atual = await setoresAtuaisDoBanco(idRelatorio);
+    return atual ? mesclarSetores(baseSetores.current, local, atual) : local;
+  }
+
   async function salvarOrdem(novos: AetSetor[]) {
     if (limparStatus.current) clearTimeout(limparStatus.current);
     setStatusOrdem("salvando");
     try {
+      const alvo = await setoresParaGravar(novos);
       // As fotos pendentes vão junto: o auto-save grava o jsonb, e o jsonb já
       // carrega a URL delas. Gravar a ordem sem levar os arquivos publicaria
       // no laudo uma foto apontando para o nada até o salvamento seguinte.
       await salvar.mutateAsync({
         id: idRelatorio,
-        patch: { setores: novos },
+        patch: { setores: alvo },
         silencioso: true,
         imagens: fotosPendentes,
       });
       setFotosPendentes([]);
+      baseSetores.current = alvo;
+      setSetores(alvo);
       setStatusOrdem("salvo");
       limparStatus.current = setTimeout(() => setStatusOrdem("parado"), 2500);
     } catch {
@@ -536,15 +551,21 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
     }
   }
 
-  function handleSave() {
+  async function handleSave() {
+    const alvo = await setoresParaGravar(setores);
     salvar.mutate(
-      { id: idRelatorio, patch: { setores }, imagens: fotosPendentes },
+      { id: idRelatorio, patch: { setores: alvo }, imagens: fotosPendentes },
       {
         // O aviso de sucesso sai do próprio hook, que sabe se foi para o
         // servidor ou para o aparelho. A lista de pendentes só é limpa aqui, e
         // só no sucesso: se a gravação falhar, as fotos continuam esperando o
         // próximo salvamento em vez de sumirem em silêncio.
-        onSuccess: () => setFotosPendentes([]),
+        onSuccess: () => {
+          setFotosPendentes([]);
+          // A tela passa a mostrar também o que a Análise gravou.
+          baseSetores.current = alvo;
+          setSetores(alvo);
+        },
         onError: (e: Error) => toast.error(mensagemErro(e)),
       }
     );
@@ -816,7 +837,8 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
         </button>
 
         {metaAberta && (
-          <div className="border-t border-gray-100 px-5 pb-6 pt-4">
+          // Visualizador só lê: o fieldset trava campos e o Salvar Dados QPS.
+          <fieldset disabled={!canEdit} className="min-w-0 border-t border-gray-100 px-5 pb-6 pt-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.respondentes}>N.º de Respondentes</Dica></label>
@@ -910,7 +932,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 Salvar Dados QPS
               </button>
             </div>
-          </div>
+          </fieldset>
         )}
       </div>
 
@@ -1321,7 +1343,8 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                             </button>
 
                             {aberto && (
-                              <div className="border-t border-gray-100 px-4 pb-4 pt-3 space-y-5">
+                              // Visualizador só lê: o fieldset trava a escala, o F13, a IA e o Salvar Fxx.
+                              <fieldset disabled={!canEdit} className="min-w-0 border-t border-gray-100 px-4 pb-4 pt-3 space-y-5">
                                 <p className="text-xs text-gray-500 leading-relaxed">{fator.descricao}</p>
 
                                 {isF13 ? (
@@ -1416,7 +1439,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                                     </button>
                                   </div>
                                 </div>
-                              </div>
+                              </fieldset>
                             )}
                           </div>
                         );
