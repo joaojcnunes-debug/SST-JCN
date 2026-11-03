@@ -147,6 +147,15 @@ Alias de import: `@/*` → raiz.
   - Os PDFs já emitidos não mudam.
 - Modo escuro por CSS vars.
 - Mensagens e comentários do código em português; regras em `lib/` têm testes.
+- **Encantamento (0.3.208, Etapa 6 do plano-skin-viva):**
+  - **Comemoração** (`components/ui/Comemoracao.tsx`): `comemorar()` dispara um evento, e o `<Comemoracao />`, montado em `lib/providers.tsx` ao lado do Toaster, desenha 14 peças de confete perto do aviso de sucesso, por cerca de 1,2 s.
+    - **Chamada em:** Inspeção concluída, Documento concluído (emitido), Apreciação finalizada, Relatório de Conformidade finalizado, Relatório de Não Conformidade finalizado, e as duas formas de assinar PDF (`AssinarPdfModal`, `BotaoAssinarPdf`).
+    - **Restrições:** não desenha com `prefers-reduced-motion` e fica fora da impressão.
+  - **Profundidade** (`.tilt-3d`): inclinação de cerca de 1,5°, só com mouse (`hover: hover` e `pointer: fine`). Está nos cartões da Visão geral (totais, saúde, dias sem acidente, pulso e radar), além do hub de Módulos, Relatórios, Dashboard e Químicos.
+    - O `.reveal-up` passou de `both` para `backwards`; o `both` prendia o `transform` e anulava o hover.
+  - **Modo escuro:** bloco "(e)" no `globals.css` com hovers pastel, divisórias (`divide-*`), bordas slate e 300, anéis (`ring-*`) e `text-gray-200/300`. A receita é `color-mix` ancorado no tema, que o `.force-light` desfaz.
+  - **Reduzir movimento:** uma rede de segurança global para animações e transições, exceto `animate-spin`.
+  - **Sobras de verde:** contorno de foco dos campos, sombras de `.card`, `.glass` e `.tilt-3d`, esqueleto, `.text-gradient` e `.glass-dark`. Tudo passou para azul, marinho ou neutro.
 - **Partes vivas da Visão geral (0.3.207, Etapa 5 do plano-skin-viva):** três blocos novos na `VisaoGeralView`, fora da impressão.
   - **Radar de vencimentos** (`components/visao-geral/RadarVencimentos.tsx`): SVG com anéis por urgência, com os vencidos no centro, depois até 30 dias e 31 a 60 dias.
     - Cada documento é um ponto que leva ao `href` do vencimento; o texto aparece ao passar o mouse.

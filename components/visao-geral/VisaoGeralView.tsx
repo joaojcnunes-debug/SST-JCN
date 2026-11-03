@@ -331,7 +331,7 @@ export default function VisaoGeralView({
                   loading={vencimentosLoading}
                 />
                 <div
-                  className="reveal-up rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+                  className="tilt-3d reveal-up rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
                   style={{ animationDelay: "90ms" }}
                 >
                   <div className="mb-3 flex items-center justify-between gap-4">
@@ -480,7 +480,7 @@ function ResumoCard({
 }) {
   return (
     <div
-      className="reveal-up rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+      className="tilt-3d reveal-up rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex items-center gap-1.5 text-gray-400">
@@ -566,7 +566,7 @@ function ContadorAcidente({ ultimoComAfastamento, loading }: { ultimoComAfastame
   const dias = diasSemAcidente(ultimoComAfastamento, hojeSP());
   return (
     <div
-      className="reveal-up flex flex-col justify-center rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+      className="tilt-3d reveal-up flex flex-col justify-center rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
       style={{ animationDelay: "60ms" }}
     >
       <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">

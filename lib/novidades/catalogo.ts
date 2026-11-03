@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "encantamento",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Pequenos toques: comemoração ao concluir, cartões com profundidade e modo escuro revisado",
+    texto:
+      "Ao concluir uma inspeção ou um documento, finalizar um relatório de Conformidade ou de Não Conformidade, " +
+      "finalizar uma Apreciação de máquinas ou assinar um documento, um confete discreto sai de perto do aviso de " +
+      "sucesso. Os cartões da Visão geral ganham uma leve profundidade ao passar o mouse. No modo escuro, botões e " +
+      "linhas de lista não clareiam mais de repente, e o contorno dos campos em foco ficou azul. Com \"reduzir " +
+      "movimento\" ligado no sistema, o app para todas as animações (só o ícone de carregando continua girando).",
+    onde: "Todo o sistema",
+    versoes: ["0.3.208"],
+  },
+  {
     id: "visao-geral-vivo",
     data: "2026-11-03",
     tipo: "novidade",

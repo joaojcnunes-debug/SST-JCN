@@ -6,6 +6,7 @@ import { Toaster } from "react-hot-toast";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import ThemeManager from "@/components/ThemeManager";
+import Comemoracao from "@/components/ui/Comemoracao";
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -66,6 +67,7 @@ export default function Providers({ children }: { children: ReactNode }) {
           },
         }}
       />
+      <Comemoracao />
     </QueryClientProvider>
   );
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BadgeCheck, Loader2, PenLine } from "lucide-react";
 import toast from "react-hot-toast";
+import { comemorar } from "@/components/ui/Comemoracao";
 import AssinarPdfModal from "@/components/ui/AssinarPdfModal";
 import AssinarImagemModal from "@/components/ui/AssinarImagemModal";
 
@@ -106,6 +107,7 @@ export default function BotaoAssinarPdf({
 
     onAssinado?.();
     toast.success("Documento assinado com a imagem de assinatura!");
+    comemorar();
   }
 
   async function handleClick() {
