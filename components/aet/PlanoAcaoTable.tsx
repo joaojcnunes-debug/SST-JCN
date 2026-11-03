@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_AET_PLANO } from "@/lib/dicas/aet";
 import { useMemo, useState } from "react";
 import { ChevronRight, Loader2, Plus, Send, Sparkles, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -540,7 +542,7 @@ function AcaoRow({
         <div className="space-y-2 border-t border-gray-100 bg-gray-50/40 px-3 py-3">
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-0 flex-1">
-              <Campo label="O quê (ação)">
+              <Campo label="O quê (ação)" dica={DICAS_AET_PLANO.oque}>
                 <input
                   type="text"
                   value={whatAcao}
@@ -565,7 +567,7 @@ function AcaoRow({
             )}
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <Campo label="Por quê (justificativa)">
+            <Campo label="Por quê (justificativa)" dica={DICAS_AET_PLANO.porque}>
               <textarea
                 rows={2}
                 value={whyJust}
@@ -575,7 +577,7 @@ function AcaoRow({
                 className={inputClass}
               />
             </Campo>
-            <Campo label="Como (método)">
+            <Campo label="Como (método)" dica={DICAS_AET_PLANO.como}>
               <textarea
                 rows={2}
                 value={howMetodo}
@@ -587,7 +589,7 @@ function AcaoRow({
             </Campo>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
-            <Campo label="Onde">
+            <Campo label="Onde" dica={DICAS_AET_PLANO.onde}>
               <input
                 type="text"
                 value={whereLocal}
@@ -597,7 +599,7 @@ function AcaoRow({
                 className={inputClass}
               />
             </Campo>
-            <Campo label="Quem (responsável)">
+            <Campo label="Quem (responsável)" dica={DICAS_AET_PLANO.quem}>
               <input
                 type="text"
                 value={whoResp}
@@ -607,7 +609,7 @@ function AcaoRow({
                 className={inputClass}
               />
             </Campo>
-            <Campo label="Quando (prazo)">
+            <Campo label="Quando (prazo)" dica={DICAS_AET_PLANO.quando}>
               <textarea
                 rows={2}
                 value={whenPrazo}
@@ -618,7 +620,7 @@ function AcaoRow({
                 placeholder="Ex.: 30 dias após a entrega das cadeiras"
               />
             </Campo>
-            <Campo label="Quanto (custo)">
+            <Campo label="Quanto (custo)" dica={DICAS_AET_PLANO.quanto}>
               <input
                 type="text"
                 value={howMuch}
@@ -632,7 +634,7 @@ function AcaoRow({
           </div>
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div className="flex flex-wrap items-end gap-2">
-              <Campo label="Prioridade">
+              <Campo label="Prioridade" dica={DICAS_AET_PLANO.prioridade}>
                 <select
                   value={acao.prioridade}
                   onChange={(e) => salvarStatusOuPrioridade("prioridade", e.target.value)}
@@ -644,7 +646,7 @@ function AcaoRow({
                   ))}
                 </select>
               </Campo>
-              <Campo label="Setor">
+              <Campo label="Setor" dica={DICAS_AET_PLANO.setor}>
                 <select
                   value={setorSumiu ? "" : (acao.id_setor ?? "")}
                   onChange={(e) => moverParaSetor(e.target.value)}
@@ -691,10 +693,12 @@ function AcaoRow({
 const inputClass =
   "w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:bg-gray-50";
 
-function Campo({ label, children }: { label: string; children: React.ReactNode }) {
+function Campo({ label, dica, children }: { label: string; dica?: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">{label}</span>
+      <span className="mb-0.5 block text-[10px] font-semibold uppercase tracking-wider text-gray-600">
+        {dica ? <Dica texto={dica}>{label}</Dica> : label}
+      </span>
       {children}
     </label>
   );

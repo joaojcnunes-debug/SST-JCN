@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_AET_QPS, DICAS_AET_SETOR, DICAS_AET_FATORES } from "@/lib/dicas/aet";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { useEffect, useRef, useState} from "react";
@@ -817,7 +819,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
           <div className="border-t border-gray-100 px-5 pb-6 pt-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">N.º de Respondentes</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.respondentes}>N.º de Respondentes</Dica></label>
                 <input
                   type="number" min={0}
                   value={meta.n_respondentes ?? ""}
@@ -827,7 +829,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Total Elegível</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.elegiveis}>Total Elegível</Dica></label>
                 <input
                   type="number" min={0}
                   value={meta.total_elegivel ?? ""}
@@ -837,7 +839,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">% Adesão</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.adesao}>% Adesão</Dica></label>
                 <div className={cn(
                   "flex h-[38px] items-center rounded-md border px-3 text-sm font-semibold",
                   adesaoPct !== null
@@ -848,7 +850,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Período — Início</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.inicio}>Período — Início</Dica></label>
                 <input
                   type="date"
                   value={meta.periodo_inicio ?? ""}
@@ -857,7 +859,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Período — Fim</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.fim}>Período — Fim</Dica></label>
                 <input
                   type="date"
                   value={meta.periodo_fim ?? ""}
@@ -866,7 +868,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Forma de Coleta</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.forma}>Forma de Coleta</Dica></label>
                 <select
                   value={meta.modo_aplicacao ?? ""}
                   onChange={(e) => setMeta((m) => ({ ...m, modo_aplicacao: e.target.value || null }))}
@@ -877,7 +879,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 </select>
               </div>
               <div className="sm:col-span-2 lg:col-span-3">
-                <label className="mb-1 block text-xs font-medium text-gray-600">Técnico Aplicador</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.tecnico}>Técnico Aplicador</Dica></label>
                 <input
                   type="text"
                   value={meta.tecnico_aplicador ?? ""}
@@ -888,7 +890,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
               </div>
             </div>
             <div className="mt-4">
-              <label className="mb-1 block text-xs font-medium text-gray-600">Observação Geral</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_QPS.observacao}>Observação Geral</Dica></label>
               <textarea
                 rows={2}
                 value={meta.observacao_geral ?? ""}
@@ -987,7 +989,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
 
                 {/* ── Dados do setor ── */}
                 <div className="space-y-3">
-                  <TextInput label="Nome do Setor" value={setor.nome_setor} disabled={!canEdit} onChange={(v) => updateSetor(setor.id, { nome_setor: v })} />
+                  <TextInput label="Nome do Setor" dica={DICAS_AET_SETOR.nome} value={setor.nome_setor} disabled={!canEdit} onChange={(v) => updateSetor(setor.id, { nome_setor: v })} />
                   <CargoList cargos={setor.cargos} disabled={!canEdit} onChange={(v) => updateSetor(setor.id, { cargos: v, funcao: v.map((c) => c.nome).filter(Boolean).join(", ") })} />
                   <div>
                     <label className="mb-1 block text-xs font-medium text-gray-600">Função <span className="text-gray-400 font-normal">(preenchida automaticamente pelos cargos)</span></label>
@@ -999,9 +1001,9 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                       className="w-full rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-sm text-gray-700 cursor-default"
                     />
                   </div>
-                  <TagInput label="Máquinas e Equipamentos" value={setor.maquinas_equipamentos} disabled={!canEdit} onChange={(v) => updateSetor(setor.id, { maquinas_equipamentos: v })} />
+                  <TagInput label="Máquinas e Equipamentos" dica={DICAS_AET_SETOR.maquinas} value={setor.maquinas_equipamentos} disabled={!canEdit} onChange={(v) => updateSetor(setor.id, { maquinas_equipamentos: v })} />
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Descrição Geral da Atividade</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_SETOR.atividade}>Descrição Geral da Atividade</Dica></label>
                     <textarea
                       value={setor.descricao_atividade}
                       disabled={!canEdit}
@@ -1030,13 +1032,13 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                       <table className="w-full text-xs">
                         <thead className="bg-gray-50 text-gray-500">
                           <tr>
-                            <th className="px-3 py-2 text-left font-medium">Tipo</th>
-                            <th className="px-3 py-2 text-left font-medium">Risco</th>
-                            <th className="px-3 py-2 text-left font-medium">Intensidade</th>
-                            <th className="px-3 py-2 text-left font-medium">Técnica</th>
-                            <th className="px-3 py-2 text-left font-medium">EPI CA</th>
-                            <th className="px-3 py-2 text-left font-medium">EPI Eficaz</th>
-                            <th className="px-3 py-2 text-center font-medium">Classificação</th>
+                            <th className="px-3 py-2 text-left font-medium"><Dica texto={DICAS_AET_SETOR.risco_tipo}>Tipo</Dica></th>
+                            <th className="px-3 py-2 text-left font-medium"><Dica texto={DICAS_AET_SETOR.risco_nome}>Risco</Dica></th>
+                            <th className="px-3 py-2 text-left font-medium"><Dica texto={DICAS_AET_SETOR.risco_intensidade}>Intensidade</Dica></th>
+                            <th className="px-3 py-2 text-left font-medium"><Dica texto={DICAS_AET_SETOR.risco_tecnica}>Técnica</Dica></th>
+                            <th className="px-3 py-2 text-left font-medium"><Dica texto={DICAS_AET_SETOR.risco_epi_ca}>EPI CA</Dica></th>
+                            <th className="px-3 py-2 text-left font-medium"><Dica texto={DICAS_AET_SETOR.risco_epi_eficaz}>EPI Eficaz</Dica></th>
+                            <th className="px-3 py-2 text-center font-medium"><Dica texto={DICAS_AET_SETOR.risco_classificacao}>Classificação</Dica></th>
                             {canEdit && <th className="px-3 py-2" />}
                           </tr>
                         </thead>
@@ -1100,7 +1102,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                 {/* ── Fotos do Setor ── */}
                 <div>
                   <div className="mb-2 flex items-center justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">Fotos do Setor (máx. 6)</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500"><Dica texto={DICAS_AET_SETOR.fotos}>Fotos do Setor (máx. 6)</Dica></h3>
                     {canEdit && (setor.fotos ?? []).length < 6 && (
                       <label
                         className={cn(
@@ -1246,7 +1248,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                     return (
                       <div key={campo}>
                         <div className="mb-1 flex items-center justify-between gap-2">
-                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500">{label}</label>
+                          <label className="text-xs font-bold uppercase tracking-wider text-gray-500"><Dica texto={DICAS_AET_SETOR[campo]}>{label}</Dica></label>
                           {canEdit && (
                             <button type="button" onClick={() => gerarTextoIA(setor.id, campo)} disabled={!!gerandoIA}
                               className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 px-2 py-1 text-[11px] font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 disabled:cursor-not-allowed disabled:opacity-50">
@@ -1324,7 +1326,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
 
                                 {isF13 ? (
                                   <div>
-                                    <label className="mb-1 block text-xs font-medium text-gray-600">Classificação (baseada no PGR)</label>
+                                    <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_FATORES.classificacao_f13}>Classificação (baseada no PGR)</Dica></label>
                                     <select
                                       value={zonasManuais[fatorKey] ?? ""}
                                       onChange={(e) => setZonasManuais((prev) => ({ ...prev, [fatorKey]: (e.target.value as ZonaPsi) || null }))}
@@ -1389,7 +1391,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
                                 <div className="space-y-3 border-t border-gray-100 pt-4">
                                   <div>
                                     <div className="mb-1 flex items-center justify-between gap-2">
-                                      <label className="text-xs font-medium text-gray-600">Observação / Análise</label>
+                                      <label className="text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_FATORES.observacao}>Observação / Análise</Dica></label>
                                       {!isF13 && (
                                         <button type="button" onClick={() => gerarObsIA(setor.id, fator.codigo)} disabled={gerandoObsIA === fatorKey}
                                           className="inline-flex items-center gap-1.5 rounded-md border border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 px-2.5 py-1 text-xs font-semibold text-purple-700 hover:from-purple-100 hover:to-pink-100 disabled:cursor-not-allowed disabled:opacity-50">
@@ -1487,7 +1489,7 @@ export default function AetSetoresPage({ idRelatorio }: { idRelatorio: string })
       {/* ── Considerações Finais (sempre o último) ── */}
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
-          <h3 className="text-sm font-semibold text-gray-900">Considerações Finais</h3>
+          <h3 className="text-sm font-semibold text-gray-900"><Dica texto={DICAS_AET_FATORES.consideracoes}>Considerações Finais</Dica></h3>
           <div className="flex items-center gap-2">
             {canEdit && (
               <button
@@ -1609,10 +1611,10 @@ function TriStateRow({
 
 // ─── TextInput ────────────────────────────────────────────────────────────────
 
-function TextInput({ label, value, disabled, onChange }: { label: string; value: string; disabled: boolean; onChange: (v: string) => void }) {
+function TextInput({ label, dica, value, disabled, onChange }: { label: string; dica?: string; value: string; disabled: boolean; onChange: (v: string) => void }) {
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
+      <label className="mb-1 block text-xs font-medium text-gray-600">{dica ? <Dica texto={dica}>{label}</Dica> : label}</label>
       <input type="text" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none disabled:bg-gray-50" />
     </div>
@@ -1629,7 +1631,7 @@ function CargoList({ cargos, disabled, onChange }: { cargos: AetCargo[]; disable
   return (
     <div className="sm:col-span-2">
       <div className="mb-1.5 flex items-center justify-between">
-        <label className="text-xs font-medium text-gray-600">Cargo(s)</label>
+        <label className="text-xs font-medium text-gray-600"><Dica texto={DICAS_AET_SETOR.cargos}>Cargo(s)</Dica></label>
         {!disabled && (
           <button type="button" onClick={addCargo}
             className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
@@ -1671,7 +1673,7 @@ function CargoList({ cargos, disabled, onChange }: { cargos: AetCargo[]; disable
 
 // ─── TagInput ─────────────────────────────────────────────────────────────────
 
-function TagInput({ label, value, disabled, onChange }: { label: string; value: string; disabled: boolean; onChange: (v: string) => void }) {
+function TagInput({ label, dica, value, disabled, onChange }: { label: string; dica?: string; value: string; disabled: boolean; onChange: (v: string) => void }) {
   const items = value ? value.split("\n").filter((s) => s.trim().length > 0) : [];
   const [input, setInput] = useState("");
 
@@ -1691,7 +1693,7 @@ function TagInput({ label, value, disabled, onChange }: { label: string; value: 
 
   return (
     <div>
-      <label className="mb-1 block text-xs font-medium text-gray-600">{label}</label>
+      <label className="mb-1 block text-xs font-medium text-gray-600">{dica ? <Dica texto={dica}>{label}</Dica> : label}</label>
       <div className={cn("flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-md border border-gray-300 px-2 py-1.5 focus-within:border-marca-primary focus-within:ring-2 focus-within:ring-marca-primary/20", disabled && "bg-gray-50")}>
         {items.map((item, idx) => (
           <span key={idx} className="inline-flex items-center gap-1 rounded-full bg-marca-light px-2.5 py-0.5 text-xs font-medium text-marca-primary">

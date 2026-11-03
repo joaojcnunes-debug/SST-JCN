@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-aet",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Dicas de preenchimento na AET",
+    texto:
+      "Novo laudo, Dados, Setores, QPS, Fatores psicossociais, Análise e Plano de Ação ganharam a dica de como preencher " +
+      "cada campo, inclusive o que sai no laudo e quais blocos têm botão de salvar próprio: passe o mouse (ou chegue " +
+      "com Tab) no nome sublinhado com pontinhos.",
+    onde: "AET",
+    versoes: ["0.3.213"],
+  },
+  {
     id: "dicas-epi",
     data: "2026-11-03",
     tipo: "melhoria",

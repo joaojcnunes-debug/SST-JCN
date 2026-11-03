@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_AET_SETOR } from "@/lib/dicas/aet";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
 import { useEffect, useState} from "react";
@@ -319,7 +321,7 @@ export default function AetAnalisePage({ idRelatorio }: { idRelatorio: string })
               <div className="space-y-4">
                 <div>
                   <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Parecer Técnico
+                    <Dica texto={DICAS_AET_SETOR.parecer_tecnico}>Parecer Técnico</Dica>
                   </label>
                   <RichTextEditor
                     value={setor.parecer_tecnico}
@@ -332,7 +334,7 @@ export default function AetAnalisePage({ idRelatorio }: { idRelatorio: string })
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Recomendações
+                    <Dica texto={DICAS_AET_SETOR.recomendacoes}>Recomendações</Dica>
                   </label>
                   <RichTextEditor
                     value={setor.recomendacoes}
@@ -345,7 +347,7 @@ export default function AetAnalisePage({ idRelatorio }: { idRelatorio: string })
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Demais Condições Avaliadas
+                    <Dica texto={DICAS_AET_SETOR.demais_condicoes}>Demais Condições Avaliadas</Dica>
                   </label>
                   <RichTextEditor
                     value={setor.demais_condicoes}
