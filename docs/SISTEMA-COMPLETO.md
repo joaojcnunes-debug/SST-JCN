@@ -147,6 +147,19 @@ Alias de import: `@/*` → raiz.
   - Os PDFs já emitidos não mudam.
 - Modo escuro por CSS vars.
 - Mensagens e comentários do código em português; regras em `lib/` têm testes.
+- **Partes vivas da Visão geral (0.3.207, Etapa 5 do plano-skin-viva):** três blocos novos na `VisaoGeralView`, fora da impressão.
+  - **Radar de vencimentos** (`components/visao-geral/RadarVencimentos.tsx`): SVG com anéis por urgência, com os vencidos no centro, depois até 30 dias e 31 a 60 dias.
+    - Cada documento é um ponto que leva ao `href` do vencimento; o texto aparece ao passar o mouse.
+    - Os vencidos pulsam (`.radar-pulsa`).
+    - Ao lado fica o contador de riscos altos (`useRiscosAltos`: `riscos` com nível Alto ou Muito Alto em inspeções não deletadas, sob a RLS), que leva a `/inspecoes`.
+  - **Empresas por situação** (`PainelEmpresas.tsx`): fica no lugar do mapa até haver mais empresas.
+    - Um ponto por empresa, agrupado por "município/UF", na cor da pior situação: vencido, vence em até 60 dias, em dia ou sem documento com validade.
+    - A conta está em `lib/visao-geral/empresasSituacao.ts`, testada. As cidades com pior situação vêm primeiro.
+  - **Acontecendo agora** (`AcontecendoAgora.tsx` + `useFeedVisaoGeral`): substitui a "Atividade recente".
+    - Mostra os 15 últimos eventos de `auditoria_eventos` ligados a um documento (`doc_id`), sob a RLS, e busca de novo a cada 30 s.
+    - O texto vem de `descreverEvento`/`quemGravou`; o link vai ao documento.
+    - O que chega depois da 1ª carga entra com `.feed-novo`.
+  - **Movimento:** `.feed-novo`, `.ponto-ao-vivo` e `.radar-pulsa` no `globals.css`, todos parados com `prefers-reduced-motion`.
 - **Pulso de segurança (0.3.206, Etapa 4 do plano-skin-viva):** nota de 0 a 100 no cabeçalho da Visão geral, só para a equipe e não no portal do cliente.
   - **Fórmula** (`lib/visao-geral/pulso.ts`, testada): 70% × (documentos válidos ÷ documentos com validade) + 30% × (ações 5W2H abertas no prazo ÷ abertas).
     - Válidos são os em dia mais os a vencer. Os documentos sem validade ficam fora da conta.

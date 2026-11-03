@@ -506,6 +506,28 @@ select:focus {
   .pulso-onda { animation: none; stroke-dasharray: none; }
 }
 
+/* Partes vivas (Etapa 5): item novo do feed entra deslizando; ponto "ao vivo" e empresa com
+   vencido pulsam; ponto vencido do radar respira. Tudo parado com "reduzir movimento". */
+@keyframes feed-novo {
+  from { opacity: 0; transform: translateY(-6px); background-color: rgb(14 165 233 / 0.10); }
+  to   { opacity: 1; transform: none; background-color: transparent; }
+}
+.feed-novo { animation: feed-novo 900ms cubic-bezier(.2, .7, .3, 1); }
+@keyframes ponto-ao-vivo {
+  0%   { transform: scale(1); opacity: 0.7; }
+  80%, 100% { transform: scale(2.2); opacity: 0; }
+}
+.ponto-ao-vivo { animation: ponto-ao-vivo 1.8s cubic-bezier(0, 0, .2, 1) infinite; }
+@keyframes radar-pulsa {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+.radar-pulsa { animation: radar-pulsa 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .feed-novo, .ponto-ao-vivo, .radar-pulsa { animation: none; }
+  .ponto-ao-vivo { display: none; }
+}
+
 /* Acessibilidade: respeita redução de movimento */
 /* Abertura de menu suspenso (dropdown). Mesma curva do reveal-up, bem mais
    curta: menu que demora parece travado. `transform-origin` no topo para o

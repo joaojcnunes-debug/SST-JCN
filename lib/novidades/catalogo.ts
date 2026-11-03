@@ -41,6 +41,21 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "visao-geral-vivo",
+    data: "2026-11-03",
+    tipo: "novidade",
+    titulo: "Visão geral viva: radar de vencimentos, empresas por situação e \"Acontecendo agora\"",
+    texto:
+      "A Visão geral ganhou três partes que se mexem. O radar de vencimentos mostra cada documento como um ponto: os " +
+      "vencidos no centro, depois os que vencem em até 30 dias e em 31 a 60 dias; passe o mouse para ver qual é e clique " +
+      "para abrir. Ao lado fica o contador de riscos altos das inspeções. O painel de empresas mostra um ponto por empresa, " +
+      "agrupado por cidade, na cor da pior situação dos documentos dela. E \"Acontecendo agora\" lista o que a equipe " +
+      "acabou de fazer nos documentos, atualizando sozinho a cada 30 segundos. Com \"reduzir movimento\" ligado no " +
+      "sistema, nada pisca.",
+    onde: "Visão geral",
+    versoes: ["0.3.207"],
+  },
+  {
     id: "visao-geral-pulso",
     data: "2026-11-03",
     tipo: "novidade",
