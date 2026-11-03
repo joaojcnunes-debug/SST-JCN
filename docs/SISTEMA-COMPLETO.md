@@ -150,7 +150,9 @@ Alias de import: `@/*` → raiz.
 - **Dicas em Inspeções, lote 7.1 (0.3.210, Etapa 7 do plano-skin-viva):** `lib/dicas/riscos.ts` (30 campos do `RiscoForm`) e `lib/dicas/inspecoes.ts` (5 campos da Nova inspeção), testadas em `lib/dicas/inspecoes.test.ts`.
   - O `Field` do RiscoForm aceita `dica`. Os rótulos soltos usam `CampoLabel`, com `extra` para o asterisco e o "(cor NR-09)", e o título "Fonte Geradora" usa `Dica`.
   - A triagem e as perguntas personalizadas ficam sem dica, porque já têm explicação na tela.
-  - Lote 7.2 (Setor, Cargo, EPI, Extintor, Treinamento, Máquinas e Responsáveis) pendente.
+  - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
+    - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
+    - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
 - **Encantamento (0.3.208, Etapa 6 do plano-skin-viva):**
   - **Comemoração** (`components/ui/Comemoracao.tsx`): `comemorar()` dispara um evento, e o `<Comemoracao />`, montado em `lib/providers.tsx` ao lado do Toaster, desenha 14 peças de confete perto do aviso de sucesso, por cerca de 1,2 s.
     - **Chamada em:** Inspeção concluída, Documento concluído (emitido), Apreciação finalizada, Relatório de Conformidade finalizado, Relatório de Não Conformidade finalizado, e as duas formas de assinar PDF (`AssinarPdfModal`, `BotaoAssinarPdf`).

@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_FOTO } from "@/lib/dicas/inspecao-editor";
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -179,7 +181,7 @@ export default function FotoForm({
           </div>
         )}
         <div>
-          <label className={lblCls}>Categoria</label>
+          <label className={lblCls}><Dica texto={DICAS_FOTO.categoria}>Categoria</Dica></label>
           <select
             value={categoria}
             onChange={(e) => setCategoria(e.target.value as CategoriaFoto)}
@@ -193,7 +195,7 @@ export default function FotoForm({
           </select>
         </div>
         <div>
-          <label className={lblCls}>Setor de destino</label>
+          <label className={lblCls}><Dica texto={DICAS_FOTO.setor}>Setor de destino</Dica></label>
           <select
             value={idSetor}
             onChange={(e) => setIdSetor(e.target.value)}
@@ -214,7 +216,7 @@ export default function FotoForm({
           )}
         </div>
         <div>
-          <label className={lblCls}>Legenda</label>
+          <label className={lblCls}><Dica texto={DICAS_FOTO.legenda}>Legenda</Dica></label>
           <input
             type="text"
             value={legenda}

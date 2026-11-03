@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_EPI } from "@/lib/dicas/inspecao-editor";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -390,7 +392,7 @@ export default function EpiForm({
             {/* 1. Setores — filtram a lista de riscos abaixo (nenhum = todos) */}
             <div>
               <label className={lblCls}>
-                Setores
+                <Dica texto={DICAS_EPI.setores}>Setores</Dica>
                 <span className="ml-1 text-xs font-normal text-gray-500">
                   (marque um ou vários; nenhum = todos)
                 </span>
@@ -431,7 +433,7 @@ export default function EpiForm({
             {/* 2. Riscos — agrupados por setor; cada marcado recebe os equipamentos */}
             <div>
               <label className={lblCls}>
-                Riscos vinculados *
+                <Dica texto={DICAS_EPI.riscos}>Riscos vinculados</Dica> *
                 {riscosSel.length > 0 && (
                   <span className="ml-1 text-xs font-normal text-gray-500">
                     ({riscosSel.length} marcado{riscosSel.length !== 1 ? "s" : ""} em{" "}
@@ -479,7 +481,7 @@ export default function EpiForm({
           <>
         {/* 1. Setor — filtra os riscos abaixo */}
         <div>
-          <label className={lblCls}>Setor</label>
+          <label className={lblCls}><Dica texto={DICAS_EPI.setor}>Setor</Dica></label>
           <select
             value={idSetorFiltro}
             onChange={(e) => handleSetorChange(e.target.value)}
@@ -502,7 +504,7 @@ export default function EpiForm({
         {/* 2. Risco vinculado — filtrado pelo setor */}
         <div>
           <label className={lblCls}>
-            Risco vinculado *
+            <Dica texto={DICAS_EPI.risco}>Risco vinculado</Dica> *
             {idSetorFiltro && riscosFiltrados.length > 0 && (
               <span className="ml-1 text-xs font-normal text-gray-500">
                 ({riscosFiltrados.length} risco{riscosFiltrados.length !== 1 ? "s" : ""} neste setor)
@@ -530,7 +532,7 @@ export default function EpiForm({
         {/* 3. Tipo + Recomendado */}
         <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <label className={lblCls}>Tipo</label>
+            <label className={lblCls}><Dica texto={DICAS_EPI.tipo}>Tipo</Dica></label>
             <select
               value={form.tipo}
               onChange={(e) =>
@@ -543,7 +545,7 @@ export default function EpiForm({
             </select>
           </div>
           <div>
-            <label className={lblCls}>Recomendado</label>
+            <label className={lblCls}><Dica texto={DICAS_EPI.recomendado}>Recomendado</Dica></label>
             <select
               value={form.recomendado}
               onChange={(e) =>
@@ -563,7 +565,7 @@ export default function EpiForm({
         {/* 4. Equipamento(s) — lista ao adicionar, campo único ao editar */}
         <div>
           <label className={lblCls}>
-            {isEdit ? "Descrição *" : "Equipamentos *"}
+            {isEdit ? <><Dica texto={DICAS_EPI.descricao}>Descrição</Dica> *</> : "Equipamentos *"}
             {!isEdit && (
               <span className="ml-1 text-xs font-normal text-gray-500">
                 (escolha da lista ou digite um novo)
@@ -625,7 +627,7 @@ export default function EpiForm({
         )}
         {!varios && (
           <div>
-            <label className={lblCls}>Certificado de Aprovação (CA)</label>
+            <label className={lblCls}><Dica texto={DICAS_EPI.ca}>Certificado de Aprovação (CA)</Dica></label>
             <input
               type="text"
               value={form.ca}

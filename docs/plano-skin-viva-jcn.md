@@ -105,9 +105,9 @@ revisão completa do modo escuro e do reduced-motion.
 
 **Ajustes da conferência visual (v0.3.207, 03/11)** — entram nesta etapa, um por vez, com aprovação:
 1. **Pulso honesto:** com 17 de 20 laudos sem validade (só 15% com validade) o Pulso mostra 100 "Em dia".
-   Propor ao João: contar "sem validade" como pendência na parte de documentos (`lib/visao-geral/pulso.ts`)
-   ou, no mínimo, avisar ao lado da nota quantos laudos estão sem validade. A fórmula 70/30 foi aprovada —
-   qualquer mudança nela precisa de novo "ok".
+   **Decidido pelo João (03/11):** "sem validade" **conta como pendência** na parte de documentos
+   (`lib/visao-geral/pulso.ts`): documentos = válidos ÷ (com validade + sem validade). Pesos 70/30 e faixas
+   85/60 continuam. Atualizar o texto da composição (hover) e os testes; mostrar na tela quantos estão sem validade.
 2. **Unidades da Chabra no menu da Visão geral:** aparecem Campos, Guapimirim, Nova Friburgo, Petrópolis,
    Piabetá (0) e Teresópolis (2). Investigar a origem (tabela `unidades` do JCN) e propor: esconder unidades
    sem nenhum registro ou limpar o cadastro. Não apagar dado sem aprovação.
@@ -116,7 +116,8 @@ revisão completa do modo escuro e do reduced-motion.
 4. **Dica cobrindo o campo de cima:** a dica do CNPJ abre por cima do campo "Nome". Ajustar o posicionamento
    em `components/ui/Dica.tsx` (abrir ao lado ou deslocar) para não cobrir campo.
 5. **Nome do produto:** login e menu de Inspeções dizem "Painel SST"; Visão geral e Módulos dizem
-   "JCN Consultoria". Perguntar ao João qual nome usar e padronizar.
+   "JCN Consultoria". Perguntar ao João qual nome usar e padronizar (só no SST-JCN; o Painel SST da
+   Chabra não é alterado).
 6. **Modo escuro ainda não conferido** nas telas novas — conferir junto com a revisão do item acima.
 
 ### Etapa 7 — Dicas em todos os módulos
@@ -135,4 +136,4 @@ Ordem sugerida: Empresas → Inspeções/Riscos → EPI → AET/AEP → Psicosso
 | 4 Pulso | concluída | 0.3.206 | fórmula aprovada: 70% documentos válidos + 30% ações 5W2H no prazo; faixas 85/60; só na Visão geral; `lib/visao-geral/pulso.ts` |
 | 5 Vivo | concluída | 0.3.207 | radar de vencimentos (vencido/30/60) + contador de riscos altos; painel de empresas por cidade no lugar do mapa (mapa depois); "Acontecendo agora" da trilha de auditoria a cada 30 s no lugar da Atividade recente |
 | 6 Encantamento | concluída | 0.3.208 | confete discreto em 7 momentos de conclusão/assinatura (`Comemoracao.tsx`); tilt-3d suave só com mouse, também na Visão geral (reveal-up `backwards`); ~72 classes claras sem regra no escuro cobertas; rede global de reduced-motion (menos animate-spin); sobras de verde no foco/sombras/esqueleto |
-| 7 Dicas em tudo | em andamento | 0.3.210 | 7.1 Risco + Nova inspeção (`lib/dicas/riscos.ts`, `inspecoes.ts`); próximo 7.2 Setor/Cargo/EPI/Extintor/Treinamento/Máquinas/Responsáveis |
+| 7 Dicas em tudo | em andamento | 0.3.211 | 7.1 Risco + Nova inspeção (0.3.210); 7.2 abas do editor de inspeção (0.3.211, `lib/dicas/inspecao-editor.ts`) — Inspeções completo; próximo: EPI (módulo) → AET/AEP → Psicossocial → Máquinas → Gestão → Config |

@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_SETOR } from "@/lib/dicas/inspecao-editor";
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -156,7 +158,7 @@ export default function SetorForm({
             onDescartar={rascunho.descartar}
           />
         )}
-        <Field label="Nome do Setor / GHE *">
+        <Field label="Nome do Setor / GHE *" dica={DICAS_SETOR.nome}>
           <input
             type="text"
             value={form.setor_ghe}
@@ -165,7 +167,7 @@ export default function SetorForm({
             required
           />
         </Field>
-        <Field label="Descrição">
+        <Field label="Descrição" dica={DICAS_SETOR.descricao}>
           <textarea
             value={form.descricao}
             onChange={(e) => setForm({ ...form, descricao: e.target.value })}
@@ -173,7 +175,7 @@ export default function SetorForm({
             className={inputCls}
           />
         </Field>
-        <Field label="Conformidade">
+        <Field label="Conformidade" dica={DICAS_SETOR.conformidade}>
           <textarea
             value={form.conformidade}
             onChange={(e) => setForm({ ...form, conformidade: e.target.value })}
@@ -181,7 +183,7 @@ export default function SetorForm({
             className={inputCls}
           />
         </Field>
-        <Field label="Não Conformidade">
+        <Field label="Não Conformidade" dica={DICAS_SETOR.nao_conformidade}>
           <textarea
             value={form.nao_conformidade}
             onChange={(e) =>
@@ -217,14 +219,19 @@ const inputCls =
 
 function Field({
   label,
+  dica,
   children,
 }: {
   label: string;
+  /** Dica de preenchimento (lib/dicas/inspecao-editor.ts). */
+  dica?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="text-sm font-medium text-gray-700">{label}</label>
+      <label className="text-sm font-medium text-gray-700">
+        {dica ? <Dica texto={dica}>{label}</Dica> : label}
+      </label>
       {children}
     </div>
   );

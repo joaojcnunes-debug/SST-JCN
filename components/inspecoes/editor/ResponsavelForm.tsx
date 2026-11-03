@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_RESPONSAVEL } from "@/lib/dicas/inspecao-editor";
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useUsuariosParaAssociar } from "@/lib/hooks/useInspecaoAssociados";
@@ -215,7 +217,7 @@ export default function ResponsavelForm({
           />
         )}
         <div>
-          <label className={lblCls}>Técnico SST</label>
+          <label className={lblCls}><Dica texto={DICAS_RESPONSAVEL.tecnico}>Técnico SST</Dica></label>
           {temLista ? (
             <UsuarioCombobox
               usuarios={contas}
@@ -258,7 +260,7 @@ export default function ResponsavelForm({
           </p>
         </div>
         <div>
-          <label className={lblCls}>Recepcionado por</label>
+          <label className={lblCls}><Dica texto={DICAS_RESPONSAVEL.recepcionado_por}>Recepcionado por</Dica></label>
           <input
             type="text"
             value={form.recepcionado_por}
@@ -269,7 +271,7 @@ export default function ResponsavelForm({
           />
         </div>
         <div>
-          <label className={lblCls}>Cargo</label>
+          <label className={lblCls}><Dica texto={DICAS_RESPONSAVEL.cargo}>Cargo</Dica></label>
           <input
             type="text"
             value={form.cargo}
@@ -278,7 +280,7 @@ export default function ResponsavelForm({
           />
         </div>
         <div>
-          <label className={lblCls}>Data/Hora</label>
+          <label className={lblCls}><Dica texto={DICAS_RESPONSAVEL.data_hora}>Data/Hora</Dica></label>
           <input
             type="datetime-local"
             value={form.data_hora}

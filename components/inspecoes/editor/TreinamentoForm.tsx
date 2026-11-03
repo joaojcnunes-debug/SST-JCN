@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_TREINAMENTO } from "@/lib/dicas/inspecao-editor";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -356,7 +358,7 @@ export default function TreinamentoForm({
         {/* Linha 1: NR + Título */}
         <div className="grid gap-3 md:grid-cols-[260px_1fr]">
           <div>
-            <label className="text-sm font-medium text-gray-700">NR ou tipo *</label>
+            <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_TREINAMENTO.nr}>NR ou tipo</Dica> *</label>
             <input
               type="text"
               list="nrs-comuns"
@@ -402,7 +404,7 @@ export default function TreinamentoForm({
             </datalist>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">Título *</label>
+            <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_TREINAMENTO.titulo}>Título</Dica> *</label>
             <input
               type="text"
               value={titulo}
@@ -417,7 +419,7 @@ export default function TreinamentoForm({
         {/* Linha 2: Carga Horária + Periodicidade + Ordem */}
         <div className="grid gap-3 md:grid-cols-[160px_1fr_100px]">
           <div>
-            <label className="text-sm font-medium text-gray-700">Carga horária</label>
+            <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_TREINAMENTO.carga_horaria}>Carga horária</Dica></label>
             <input
               type="text"
               value={cargaHoraria}
@@ -427,7 +429,7 @@ export default function TreinamentoForm({
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">Periodicidade</label>
+            <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_TREINAMENTO.periodicidade}>Periodicidade</Dica></label>
             <input
               type="text"
               list="periodicidades"
@@ -443,7 +445,7 @@ export default function TreinamentoForm({
             </datalist>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">Ordem</label>
+            <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_TREINAMENTO.ordem}>Ordem</Dica></label>
             <input
               type="number"
               value={ordem}
@@ -455,7 +457,7 @@ export default function TreinamentoForm({
 
         {/* Descrição */}
         <div>
-          <label className="text-sm font-medium text-gray-700">Descrição</label>
+          <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_TREINAMENTO.descricao}>Descrição</Dica></label>
           <textarea
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
@@ -521,7 +523,7 @@ export default function TreinamentoForm({
 
         {/* Observações */}
         <div>
-          <label className="text-sm font-medium text-gray-700">Observações</label>
+          <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_TREINAMENTO.observacoes}>Observações</Dica></label>
           <textarea
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
