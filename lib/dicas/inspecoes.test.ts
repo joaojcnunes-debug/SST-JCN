@@ -1,0 +1,18 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { DICA_MAX_CARACTERES } from "./empresas";
+import { DICAS_RISCO } from "./riscos";
+import { DICAS_NOVA_INSPECAO } from "./inspecoes";
+
+for (const [nome, dicas] of [
+  ["Risco", DICAS_RISCO],
+  ["Nova inspeção", DICAS_NOVA_INSPECAO],
+] as const) {
+  test(`dicas de ${nome}: todas preenchidas, curtas e terminando em ponto`, () => {
+    for (const [campo, texto] of Object.entries(dicas)) {
+      assert.ok(texto.trim().length > 10, `${campo}: texto curto demais`);
+      assert.ok(texto.length <= DICA_MAX_CARACTERES, `${campo}: ${texto.length} caracteres (máx. ${DICA_MAX_CARACTERES})`);
+      assert.match(texto, /[.!?]$/, `${campo}: termine a frase com ponto`);
+    }
+  });
+}

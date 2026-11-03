@@ -16,6 +16,8 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
+import { CampoLabel } from "@/components/ui/Dica";
+import { DICAS_NOVA_INSPECAO } from "@/lib/dicas/inspecoes";
 import {
   useInspecao,
   useInspecoesByEmpresa,
@@ -395,9 +397,9 @@ function NovaInspecaoInner() {
             {tipo === "COPIA_EMPRESA" && (
               <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">
+                  <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_NOVA_INSPECAO.empresa_origem}>
                     Empresa de origem
-                  </label>
+                  </CampoLabel>
                   <EmpresaSelect
                     value={empresaOrigemId}
                     onChange={(id) => {
@@ -456,9 +458,12 @@ function NovaInspecaoInner() {
               )}
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">
+              <CampoLabel
+                className="text-sm font-medium text-gray-700"
+                dica={tipo === "RENOVACAO" ? undefined : DICAS_NOVA_INSPECAO.data_inspecao}
+              >
                 {tipo === "RENOVACAO" ? "Data do documento" : "Data da inspeção"}
-              </label>
+              </CampoLabel>
               <input
                 type="date"
                 value={dataInsp}
@@ -468,9 +473,9 @@ function NovaInspecaoInner() {
             </div>
             {tipo !== "RENOVACAO" && (
             <div>
-              <label className="text-sm font-medium text-gray-700">
+              <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_NOVA_INSPECAO.tecnicos}>
                 Quem vai a campo?
-              </label>
+              </CampoLabel>
               <div className="mt-1 space-y-2">
                 {tecnicos.map((t, i) => (
                   <div key={i} className="flex gap-2">
@@ -518,9 +523,9 @@ function NovaInspecaoInner() {
             )}
 
             <div>
-              <label className="text-sm font-medium text-gray-700">
+              <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_NOVA_INSPECAO.observacoes}>
                 Observações iniciais
-              </label>
+              </CampoLabel>
               <textarea
                 value={obs}
                 onChange={(e) => setObs(e.target.value)}
@@ -642,9 +647,9 @@ function SelectInspecaoBase({
 }) {
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-gray-700">
+      <CampoLabel className="text-sm font-medium text-gray-700" dica={DICAS_NOVA_INSPECAO.inspecao_base}>
         Inspeção base
-      </label>
+      </CampoLabel>
       <select
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value || null)}

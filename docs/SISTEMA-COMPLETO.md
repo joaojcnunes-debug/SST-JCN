@@ -147,6 +147,10 @@ Alias de import: `@/*` → raiz.
   - Os PDFs já emitidos não mudam.
 - Modo escuro por CSS vars.
 - Mensagens e comentários do código em português; regras em `lib/` têm testes.
+- **Dicas em Inspeções, lote 7.1 (0.3.210, Etapa 7 do plano-skin-viva):** `lib/dicas/riscos.ts` (30 campos do `RiscoForm`) e `lib/dicas/inspecoes.ts` (5 campos da Nova inspeção), testadas em `lib/dicas/inspecoes.test.ts`.
+  - O `Field` do RiscoForm aceita `dica`. Os rótulos soltos usam `CampoLabel`, com `extra` para o asterisco e o "(cor NR-09)", e o título "Fonte Geradora" usa `Dica`.
+  - A triagem e as perguntas personalizadas ficam sem dica, porque já têm explicação na tela.
+  - Lote 7.2 (Setor, Cargo, EPI, Extintor, Treinamento, Máquinas e Responsáveis) pendente.
 - **Encantamento (0.3.208, Etapa 6 do plano-skin-viva):**
   - **Comemoração** (`components/ui/Comemoracao.tsx`): `comemorar()` dispara um evento, e o `<Comemoracao />`, montado em `lib/providers.tsx` ao lado do Toaster, desenha 14 peças de confete perto do aviso de sucesso, por cerca de 1,2 s.
     - **Chamada em:** Inspeção concluída, Documento concluído (emitido), Apreciação finalizada, Relatório de Conformidade finalizado, Relatório de Não Conformidade finalizado, e as duas formas de assinar PDF (`AssinarPdfModal`, `BotaoAssinarPdf`).
