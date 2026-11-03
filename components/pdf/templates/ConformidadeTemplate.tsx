@@ -44,7 +44,7 @@ const STYLE_BLOCK = `
 .textos-padrao-capitulo--nova-pagina { page-break-before: always; }
 .textos-padrao-capitulo--continua { page-break-before: auto; }
 .tp-cap { margin-bottom: 16pt; }
-.tp-cap h2 { font-size: 13pt; font-weight: 700; color: #0f766e; border-bottom: 2px solid #0f766e; padding-bottom: 3px; margin: 0 0 8pt; }
+.tp-cap h2 { font-size: 13pt; font-weight: 700; color: #0c4a6e; border-bottom: 2px solid #0ea5e9; padding-bottom: 3px; margin: 0 0 8pt; }
 .tp-cap .corpo { font-size: 11pt; color: #1f2937; line-height: 1.5; text-align: justify; }
 .tp-cap .corpo p { margin: 0 0 8pt; }
 .tp-cap .corpo table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 10pt; }
@@ -52,7 +52,7 @@ const STYLE_BLOCK = `
 .tp-capa { page: capa; position: relative; width: 210mm; height: 297mm; overflow: hidden; page-break-after: always; }
 .tp-capa img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; z-index: 0; }
 .tp-capa .caixa { position: absolute; z-index: 1; white-space: pre-wrap; line-height: 1.3; }
-.sec-titulo { font-size: 13pt; font-weight: 700; color: #0f766e; border-bottom: 2px solid #0f766e; padding-bottom: 3px; margin: 0 0 8pt; }
+.sec-titulo { font-size: 13pt; font-weight: 700; color: #0c4a6e; border-bottom: 2px solid #0ea5e9; padding-bottom: 3px; margin: 0 0 8pt; }
 .item { border: 1px solid #d1d5db; border-radius: 6px; padding: 8px; margin-bottom: 8px; page-break-inside: avoid; }
 .item .cab { display: flex; align-items: flex-start; gap: 8px; }
 .badge { font-family: monospace; font-size: 10px; font-weight: 700; border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
@@ -88,7 +88,7 @@ function ResumoCards({ itens }: { itens: ConformidadeItemLocal[] }) {
       {card("Conformes", String(conformes), "#ecfdf5", "#047857")}
       {card("Não aplicáveis", String(na), "#f9fafb", "#374151")}
       {card("Pendentes", String(pend), "#fffbeb", "#b45309")}
-      {card("Avaliação", `${pct}%`, "#f0fdfa", "#0f766e")}
+      {card("Avaliação", `${pct}%`, "#f0f9ff", "#0c4a6e")}
     </div>
   );
 }
@@ -102,7 +102,7 @@ function ItensSection({ itens, obsGerais, titulo }: { itens: ConformidadeItemLoc
         return (
           <div key={item.id_item} className="item">
             <div className="cab">
-              <span className="badge" style={{ background: "#ccfbf1", color: "#115e59" }}>{item.item_codigo}</span>
+              <span className="badge" style={{ background: "#e0f2fe", color: "#0c4a6e" }}>{item.item_codigo}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#111827" }}>
                   {item.item_titulo}

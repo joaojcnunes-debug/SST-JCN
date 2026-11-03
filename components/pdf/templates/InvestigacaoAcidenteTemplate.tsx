@@ -107,7 +107,7 @@ function PlanoAcaoSection({ acoes }: { acoes: InvestigacaoAcao[] }) {
   const TH: React.CSSProperties = {
     borderBottom: `1.5px solid ${VERDE}`, borderRight: "1px solid #e5e7eb", padding: "4px 5px",
     textAlign: "left", color: VERDE, fontSize: 7.5, fontWeight: 700, textTransform: "uppercase",
-    letterSpacing: ".02em", background: "#f0fdf4",
+    letterSpacing: ".02em", background: "#f0f9ff",
   };
   const TD: React.CSSProperties = {
     borderBottom: "1px solid #eef0f2", borderRight: "1px solid #f3f4f6", padding: "4px 5px",

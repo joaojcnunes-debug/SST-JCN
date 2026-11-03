@@ -165,8 +165,8 @@ export default function FichaInspecaoPage({ params }: Props) {
           vertical-align: top;
         }
         .ficha-tabela th {
-          background: #f0f9f4;
-          color: #1e4d28;
+          background: #f0f9ff;
+          color: #0c4a6e;
           font-weight: 700;
           text-align: left;
           font-size: 9.5px;
@@ -293,7 +293,7 @@ export default function FichaInspecaoPage({ params }: Props) {
       </div>
 
       {/* A ficha é uma folha imprimível com CSS próprio (.ficha-tabela usa
-          #f0f9f4, #94a3b8… fixos). Como os laudos, vira ilha clara: o papel
+          #f0f9ff, #94a3b8… fixos). Como os laudos, vira ilha clara: o papel
           continua papel no escuro. A barra de ações acima segue o tema. */}
       <div className="ficha-print force-light rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <RelatorioPrintHeader

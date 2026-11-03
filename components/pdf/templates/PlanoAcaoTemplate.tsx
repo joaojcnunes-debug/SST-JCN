@@ -113,7 +113,7 @@ function ResumoCards({ acoes }: { acoes: PlanoAcaoItemLocal[] }) {
       {card("Pendentes", String(conta("Pendente")), "#fffbeb", "#b45309")}
       {card("Em andamento", String(conta("Em Andamento")), "#eff6ff", "#1d4ed8")}
       {card("Concluídas", String(concluidas), "#ecfdf5", "#047857")}
-      {card("Execução", `${pct}%`, "#f0fdfa", VERDE)}
+      {card("Execução", `${pct}%`, "#f0f9ff", VERDE)}
     </div>
   );
 }
@@ -137,7 +137,7 @@ function TabelaSection({
     fontWeight: 700,
     textTransform: "uppercase",
     letterSpacing: ".02em",
-    background: "#f0fdf4",
+    background: "#f0f9ff",
   };
   const TD: React.CSSProperties = {
     borderBottom: "1px solid #eef0f2",

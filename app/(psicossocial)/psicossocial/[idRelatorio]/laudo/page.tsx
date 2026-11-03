@@ -209,7 +209,7 @@ export default function PsicossocialLaudoPage({
     <section className="drps-conclusao-geral-print">
       <style>{`
         .drps-conclusao-geral-print { page-break-before: always; font-family: 'Times New Roman', Times, serif; }
-        .drps-conclusao-geral-print h2 { font-size: 16pt; font-weight: 700; color: #1e4d28; border-bottom: 2px solid #0ea5e9; padding-bottom: 6px; margin: 0 0 14pt 0; text-transform: uppercase; letter-spacing: 0.05em; }
+        .drps-conclusao-geral-print h2 { font-size: 16pt; font-weight: 700; color: #0c4a6e; border-bottom: 2px solid #0ea5e9; padding-bottom: 6px; margin: 0 0 14pt 0; text-transform: uppercase; letter-spacing: 0.05em; }
         .drps-conclusao-geral-print p { font-size: 12pt; line-height: 1.6; text-align: justify; color: #1f2937; margin: 0 0 12pt 0; text-indent: 1.25cm; }
         .drps-conclusao-geral-print ul, .drps-conclusao-geral-print ol { margin: 0 0 12pt 1.5em; font-size: 12pt; line-height: 1.6; }
       `}</style>
@@ -225,7 +225,7 @@ export default function PsicossocialLaudoPage({
   );
   const caracterizacaoScreenNode = relatoriosPorSetor.length > 0 ? (
     <section className="mb-6 break-inside-avoid">
-      <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+      <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
         {numLabel(numPorSlug["drps_caracterizacao"], "Caracterização dos Trabalhadores")}
       </h2>
       <p className="mb-2 text-xs text-gray-600">
@@ -274,7 +274,7 @@ export default function PsicossocialLaudoPage({
 
   const identificacaoScreenNode = (
     <section className="mb-6 break-inside-avoid">
-      <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+      <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
         {numLabel(numPorSlug["identificacao_empresa"], "Identificação da Empresa")}
       </h2>
       <EmpresaInfoPanel empresa={empresa ?? null} />
@@ -283,13 +283,13 @@ export default function PsicossocialLaudoPage({
 
   const sumarioListaScreenNode = sumarioTitulos.length > 0 ? (
     <section className="mb-6 break-inside-avoid">
-      <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+      <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
         Sumário
       </h2>
       <ol className="space-y-1 text-xs text-gray-700">
         {sumarioTitulos.map((t, i) => (
           <li key={i} className="flex gap-2 border-b border-dotted border-gray-300 py-0.5">
-            <span className="min-w-5 font-bold text-emerald-700">{i + 1}.</span>
+            <span className="min-w-5 font-bold text-sky-700">{i + 1}.</span>
             <span>{t}</span>
           </li>
         ))}
@@ -315,7 +315,7 @@ export default function PsicossocialLaudoPage({
       case "drps_analise_setor": return (
         <>
           <section className="mb-3 break-inside-avoid">
-            <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+            <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
               {numLabel(numPorSlug["drps_analise_setor"], "Análise por Setor")}
             </h2>
           </section>
@@ -359,7 +359,7 @@ export default function PsicossocialLaudoPage({
     }
     return (
       <div className="mb-6 break-inside-avoid">
-        <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+        <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
           {numLabel(numPorId[c.id_capitulo], substituirVariaveisTexto(c.titulo, valoresVars))}
         </h2>
         <HtmlConteudoAssinado

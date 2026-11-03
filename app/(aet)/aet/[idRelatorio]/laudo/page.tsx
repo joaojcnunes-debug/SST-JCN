@@ -471,7 +471,7 @@ export default function AetLaudoPage({
                   Assinado em {new Date(pdfAssinado.assinado_em).toLocaleDateString("pt-BR")}
                 </div>
                 <button type="button" onClick={handleBaixarPdf} disabled={baixando}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/80 px-3 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-emerald-500 disabled:opacity-60">
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-sky-500/80 px-3 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-sky-500 disabled:opacity-60">
                   {baixando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                   Baixar PDF Assinado
                 </button>
@@ -755,7 +755,7 @@ export default function AetLaudoPage({
             .aet-sumario-titulo {
               font-size: 16pt;
               font-weight: 700;
-              color: #1e4d28;
+              color: #0c4a6e;
               border-bottom: 2px solid #0ea5e9;
               padding-bottom: 6px;
               margin-bottom: 16pt;
@@ -854,7 +854,7 @@ export default function AetLaudoPage({
                   case "identificacao_empresa":
                     content = (
                       <div className="mb-6 break-inside-avoid">
-                        <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+                        <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
                           {numLabel(numPorSlug["identificacao_empresa"], cap.titulo?.trim() || "Identificação da Empresa")}
                         </h2>
                         <EmpresaInfoPanel empresa={empresaFull ?? null} />
@@ -898,13 +898,13 @@ export default function AetLaudoPage({
                   case "sumario":
                     content = sumarioItems.length > 0 ? (
                       <div className="mb-6 break-inside-avoid">
-                        <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+                        <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
                           Sumário
                         </h2>
                         <ol className="space-y-1">
                           {sumarioItems.map((item, i) => (
                             <li key={i} className="flex items-baseline gap-2 border-b border-dotted border-gray-300 py-0.5 text-xs text-gray-700">
-                              <span className="min-w-5 font-bold text-emerald-800">{i + 1}.</span>
+                              <span className="min-w-5 font-bold text-sky-800">{i + 1}.</span>
                               <span>{item.titulo}</span>
                             </li>
                           ))}
@@ -1211,7 +1211,7 @@ function Section({ num, title, children }: { num: string; title: string; childre
 function SubSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mb-6">
-      <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-emerald-900">{title}</h3>
+      <h3 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-sky-900">{title}</h3>
       <div>{children}</div>
     </div>
   );
@@ -2126,7 +2126,7 @@ function PlanoAcaoSection({
         <thead>
           <tr>
             {heads.map((h) => (
-              <th key={h} className="border-b-2 border-marca-primary border-r border-r-gray-200 bg-emerald-50 px-1.5 py-1 text-left text-[7.5px] font-bold uppercase tracking-wide text-marca-primary">
+              <th key={h} className="border-b-2 border-marca-primary border-r border-r-gray-200 bg-sky-50 px-1.5 py-1 text-left text-[7.5px] font-bold uppercase tracking-wide text-marca-primary">
                 {h}
               </th>
             ))}

@@ -150,7 +150,7 @@ export default function LaudoAnaliseQuimicoPage({
       case "identificacao_empresa":
         return (
           <div className="mb-6 break-inside-avoid">
-            <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+            <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
               {numLabelQ(numPorSlugQ["identificacao_empresa"], "Identificação da Empresa")}
             </h2>
             <EmpresaInfoPanel empresa={empresa ?? null} />
@@ -159,13 +159,13 @@ export default function LaudoAnaliseQuimicoPage({
       case "sumario":
         return (
           <div className="mb-6 break-inside-avoid">
-            <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+            <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
               Sumário
             </h2>
             <ol className="space-y-1">
               {sumarioTitulos.map((t, i) => (
                 <li key={i} className="flex items-baseline gap-2 border-b border-dotted border-gray-300 py-0.5 text-xs text-gray-700">
-                  <span className="min-w-5 font-bold text-emerald-800">{i + 1}.</span>
+                  <span className="min-w-5 font-bold text-sky-800">{i + 1}.</span>
                   <span>{t}</span>
                 </li>
               ))}
@@ -175,7 +175,7 @@ export default function LaudoAnaliseQuimicoPage({
       case "quimicos_analise":
         return (
           <div className="mb-6">
-            <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+            <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
               {numLabelQ(numPorSlugQ["quimicos_analise"], tituloPorSlugQ["quimicos_analise"] ?? "Análise Técnica")}
             </h2>
             {analiseBodyScreenNode}

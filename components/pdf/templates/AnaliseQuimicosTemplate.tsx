@@ -297,7 +297,7 @@ export default function AnaliseQuimicosTemplate({
       <Secao titulo="8. Medidas de Controle Indicadas">
         <CardLista titulo="EPIs Necessários" texto={c.epi_necessarios} cor="#0284c7" />
         <CardLista titulo="EPCs Necessários" texto={c.epc_necessarios} cor="#0284c7" />
-        <CardLista titulo="Medidas de Controle (administrativas e de engenharia)" texto={c.medidas_controle} cor="#047857" />
+        <CardLista titulo="Medidas de Controle (administrativas e de engenharia)" texto={c.medidas_controle} cor="#0c4a6e" />
       </Secao>
 
       <Secao titulo="9. Procedimentos de Emergência e Primeiros Socorros">

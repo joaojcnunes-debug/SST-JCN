@@ -88,8 +88,8 @@ const STYLE_BLOCK = `
 * { box-sizing: border-box; }
 .drps-tabela { border-collapse: collapse; width: 100%; font-size: 11px; margin-bottom: 0; }
 .drps-tabela td, .drps-tabela th { border: 1px solid #cbd5e1; padding: 6px 9px; vertical-align: top; }
-.drps-label { background: #f0f9f4; font-weight: 600; color: #1e4d28; font-size: 10.5px; width: 30%; }
-.drps-header-section { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: center; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; padding: 7px 9px; }
+.drps-label { background: #f0f9ff; font-weight: 600; color: #0c4a6e; font-size: 10.5px; width: 30%; }
+.drps-header-section { background: #e0f2fe; color: #0c4a6e; font-weight: 700; text-align: center; font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; padding: 7px 9px; }
 .drps-title { background: #0ea5e9; color: white; font-weight: 700; font-size: 13px; text-align: center; letter-spacing: 0.06em; text-transform: uppercase; padding: 9px 11px; }
 .drps-setor-bloco { margin-bottom: 22px; page-break-before: always; page-break-inside: auto; }
 .drps-setor-bloco:first-of-type { page-break-before: auto; }
@@ -101,7 +101,7 @@ td.drps-paragrafos p { font-size: 11px; line-height: 1.5; text-align: inherit; c
 td.drps-paragrafos p:last-child { margin-bottom: 0; }
 .drps-conc table { border-collapse: collapse; width: 100%; margin: 6px 0; font-size: 10px; table-layout: fixed; }
 .drps-conc th, .drps-conc td { border: 1px solid #999; padding: 4px 6px; vertical-align: top; text-align: left; word-wrap: break-word; }
-.drps-conc th { background: #d4edda; color: #1e4d28; font-weight: 700; }
+.drps-conc th { background: #e0f2fe; color: #0c4a6e; font-weight: 700; }
 .drps-quadro { margin-top: 8px; border: 1px solid #cbd5e1; }
 .drps-quadro-corpo { padding: 6px 9px; }
 /* Tabela larga colada na conclusão vai para a folha deitada (marcarTabelasLargas),
@@ -112,26 +112,26 @@ div.qps-tabela-paisagem th, div.qps-tabela-paisagem td { padding: 3pt 4pt; }
 div.qps-tabela-paisagem td p, div.qps-tabela-paisagem th p { font-size: 9pt; }
 .drps-conc ul { margin: 0; padding-left: 1.1em; }
 .drps-conc li { margin: 1px 0; }
-.drps-unidade-cabecalho { font-size: 12px; font-weight: 700; color: #1e4d28; background: #e8f5e9; border-left: 4px solid #0ea5e9; padding: 6px 8px; margin-bottom: 8px; page-break-after: avoid; }
+.drps-unidade-cabecalho { font-size: 12px; font-weight: 700; color: #0c4a6e; background: #e0f2fe; border-left: 4px solid #0ea5e9; padding: 6px 8px; margin-bottom: 8px; page-break-after: avoid; }
 .textos-padrao-capitulo--nova-pagina { page-break-before: always; }
 .textos-padrao-capitulo--continua { page-break-before: auto; }
 .tp-cap { margin-bottom: 16pt; }
-.tp-cap h2 { font-size: 13pt; font-weight: 700; color: #1e4d28; border-bottom: 2px solid #0ea5e9; padding-bottom: 3px; margin: 0 0 8pt; }
+.tp-cap h2 { font-size: 13pt; font-weight: 700; color: #0c4a6e; border-bottom: 2px solid #0ea5e9; padding-bottom: 3px; margin: 0 0 8pt; }
 .tp-cap .corpo { font-size: 11pt; color: #1f2937; line-height: 1.5; text-align: justify; }
 .tp-cap .corpo p { margin: 0 0 8pt; }
 .tp-cap .corpo table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 10pt; }
 .tp-cap .corpo th, .tp-cap .corpo td { border: 1px solid #999; padding: 4px 6px; }
-.tp-cap .corpo th { background: #d4edda; color: #1e4d28; }
+.tp-cap .corpo th { background: #e0f2fe; color: #0c4a6e; }
 .tp-capa { page: capa; position: relative; width: 210mm; height: 297mm; overflow: hidden; page-break-after: always; }
 .tp-capa img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; z-index: 0; }
 .tp-capa .caixa { position: absolute; z-index: 1; white-space: pre-wrap; line-height: 1.3; }
 .drps-sec { font-family: 'Times New Roman', Times, serif; }
-.drps-sec h2 { font-size: 16pt; font-weight: 700; color: #1e4d28; border-bottom: 2px solid #0ea5e9; padding-bottom: 6px; margin: 0 0 14pt; text-transform: uppercase; letter-spacing: .05em; }
-.drps-sec h3 { font-size: 13pt; font-weight: 700; color: #1e4d28; margin: 14pt 0 6pt; }
+.drps-sec h2 { font-size: 16pt; font-weight: 700; color: #0c4a6e; border-bottom: 2px solid #0ea5e9; padding-bottom: 6px; margin: 0 0 14pt; text-transform: uppercase; letter-spacing: .05em; }
+.drps-sec h3 { font-size: 13pt; font-weight: 700; color: #0c4a6e; margin: 14pt 0 6pt; }
 .drps-sec p { font-size: 12pt; line-height: 1.6; text-align: justify; color: #1f2937; margin: 0 0 12pt; }
 .drps-ex-table { width: 100%; border-collapse: collapse; font-size: 10pt; margin: 8pt 0 14pt; }
 .drps-ex-table th, .drps-ex-table td { border: 1px solid #b5b5b5; padding: 4pt 6pt; vertical-align: top; }
-.drps-ex-table th { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: left; }
+.drps-ex-table th { background: #e0f2fe; color: #0c4a6e; font-weight: 700; text-align: left; }
 .drps-ex-table td.mes { text-align: center; font-weight: 700; color: #0ea5e9; }
 .drps-ex-table tr { break-inside: avoid; page-break-inside: avoid; }
 .drps-ex-table thead { display: table-header-group; }
@@ -143,7 +143,7 @@ div.qps-tabela-paisagem td p, div.qps-tabela-paisagem th p { font-size: 9pt; }
    tabelas saíam sem bordas/largura no PDF (texto "vazando"). */
 .drps-conc-geral table { border-collapse: collapse; width: 100%; table-layout: fixed; margin: 10pt 0; font-size: 10pt; }
 .drps-conc-geral th, .drps-conc-geral td { border: 1px solid #999; padding: 4px 6px; vertical-align: top; text-align: left; word-wrap: break-word; overflow-wrap: anywhere; }
-.drps-conc-geral th { background: #d4edda; color: #1e4d28; font-weight: 700; }
+.drps-conc-geral th { background: #e0f2fe; color: #0c4a6e; font-weight: 700; }
 /* O TipTap embrulha o conteúdo da célula em <p>; sem isto eles herdam o
    justify + text-indent 1.25cm da Conclusão (texto com buracos e recuado). */
 .drps-conc-geral td p, .drps-conc-geral th p { text-indent: 0; text-align: left; margin: 0 0 3pt; line-height: 1.35; }

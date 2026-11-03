@@ -189,7 +189,7 @@ export default function AssinaturaRelatorio({
       {/* ── Bloco final de assinatura — nova página no print quando não há espaço ── */}
       <div className="assinatura-bloco-final mt-8 border-t border-gray-200 pt-8 print:mt-12">
         {numero ? (
-          <h2 className="mb-4 border-b-2 border-emerald-700 pb-1 text-sm font-bold uppercase text-emerald-900">
+          <h2 className="mb-4 border-b-2 border-sky-700 pb-1 text-sm font-bold uppercase text-sky-900">
             {numero}. Folha de Assinaturas
           </h2>
         ) : (

@@ -76,7 +76,7 @@ export interface FolhaAssinaturasProps {
 // ── Paleta ───────────────────────────────────────────────────────────────────
 
 const VERDE = "#0ea5e9";
-const VERDE_CLARO = "#E6F2EF";
+const VERDE_CLARO = "#E0F2FE"; // azul-claro da marca desde a 0b do plano-skin-viva (o nome ficou)
 const CINZA_TEXTO = "#374151";
 const CINZA_LEVE = "#6B7280";
 
@@ -450,7 +450,7 @@ export default function FolhaAssinaturas({
                 letterSpacing: "0.05em",
                 fontSize: 16,
                 fontWeight: 700,
-                color: "#1e4d28",
+                color: "#0c4a6e",
                 marginBottom: 14,
                 borderBottom: `2px solid ${VERDE}`,
                 paddingBottom: 6,

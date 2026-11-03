@@ -96,7 +96,7 @@ function LinhaTristate({ label }: { label: string }) {
 function LinhaSubsecao({ titulo }: { titulo: string }) {
   return (
     <tr>
-      <td colSpan={RESPOSTAS_CHECKLIST.length + 1} style={{ background: "#eef7f2", color: "#1e4d28", fontWeight: 700, fontSize: "8.5px", textTransform: "uppercase", letterSpacing: ".04em" }}>
+      <td colSpan={RESPOSTAS_CHECKLIST.length + 1} style={{ background: "#f0f9ff", color: "#0c4a6e", fontWeight: 700, fontSize: "8.5px", textTransform: "uppercase", letterSpacing: ".04em" }}>
         {titulo}
       </td>
     </tr>

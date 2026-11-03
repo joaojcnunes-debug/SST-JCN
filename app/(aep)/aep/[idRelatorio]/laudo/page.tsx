@@ -36,7 +36,7 @@ import { mensagemErro } from "@/lib/errors";
 function Section({ num, titulo, children }: { num?: string; titulo: string; children: React.ReactNode }) {
   return (
     <div className="mb-6 print:mb-4">
-      <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold uppercase tracking-wide text-emerald-800">
+      <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold uppercase tracking-wide text-sky-800">
         {num ? `${num} – ` : ""}{titulo}
       </h2>
       {children}
@@ -117,11 +117,11 @@ function SetorBlock({
 
   return (
     <div className="mb-8 print:mb-6 break-inside-avoid">
-      <div className="mb-3 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 border border-emerald-200">
-        <span className="flex size-6 items-center justify-center rounded-full bg-emerald-700 text-xs font-bold text-white">{idx + 1}</span>
+      <div className="mb-3 flex items-center gap-2 rounded-lg bg-sky-50 px-3 py-2 border border-sky-200">
+        <span className="flex size-6 items-center justify-center rounded-full bg-sky-700 text-xs font-bold text-white">{idx + 1}</span>
         <div className="flex-1">
-          <p className="font-bold text-emerald-900">{setor.nome_setor || "—"}</p>
-          <p className="text-xs text-emerald-700">
+          <p className="font-bold text-sky-900">{setor.nome_setor || "—"}</p>
+          <p className="text-xs text-sky-700">
             {[setor.unidade, setor.ghe].filter(Boolean).join(" · ")}
           </p>
         </div>
@@ -559,7 +559,7 @@ export default function AepLaudoPage({
                 type="button"
                 onClick={handleBaixarPdf}
                 disabled={baixando}
-                className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-md border border-sky-500 bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
               >
                 {baixando ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
                 Baixar PDF Assinado
@@ -603,7 +603,7 @@ export default function AepLaudoPage({
             tabelaNome="aep_relatorios"
             docId={idRelatorio}
             apiPdfUrl={`/api/pdf/aep/${idRelatorio}`}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700"
+            className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700"
             registrarPdf={{
               modulo: "aep",
               tipoDocumento: "Análise Ergonômica Preliminar",
@@ -658,7 +658,7 @@ export default function AepLaudoPage({
               if (c.slug_fixo === "identificacao_empresa") {
                 return (
                   <div key={c.id_capitulo} className="mb-6 break-inside-avoid">
-                    <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+                    <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
                       {numLabel(numPorSlug["identificacao_empresa"], "Identificação da Empresa")}
                     </h2>
                     <EmpresaInfoPanel empresa={empresaFull ?? null} />
@@ -693,13 +693,13 @@ export default function AepLaudoPage({
               if (c.slug_fixo === "sumario") {
                 return (
                   <div key={c.id_capitulo} className="mb-6 break-inside-avoid">
-                    <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+                    <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
                       Sumário
                     </h2>
                     <ol className="space-y-1">
                       {sumarioTitulos.map((t, i) => (
                         <li key={i} className="flex items-baseline gap-2 border-b border-dotted border-gray-300 py-0.5 text-xs text-gray-700">
-                          <span className="min-w-5 font-bold text-emerald-800">{i + 1}.</span>
+                          <span className="min-w-5 font-bold text-sky-800">{i + 1}.</span>
                           <span>{t}</span>
                         </li>
                       ))}
@@ -777,7 +777,7 @@ export default function AepLaudoPage({
             }
             return (
               <div key={c.id_capitulo} className="mb-6 break-inside-avoid">
-                <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+                <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
                   {numLabel(numPorId[c.id_capitulo], substituirVariaveisTexto(c.titulo, valoresVars))}
                 </h2>
                 <HtmlConteudoAssinado

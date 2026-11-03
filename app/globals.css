@@ -49,7 +49,7 @@
   --text-body: #374151;     /* text-gray-700 */
   --text-muted: #6b7280;    /* text-gray-500 */
   --border-app: #e5e7eb;    /* border-gray-200 */
-  --tiptap-heading: #1e4d28;
+  --tiptap-heading: #0c4a6e;
   --tiptap-link: #0ea5e9;
 }
 
@@ -65,7 +65,7 @@
   --text-body: #c7ccd2;
   --text-muted: #939ba2;
   --border-app: #262930;
-  --tiptap-heading: #6ee7a8;
+  --tiptap-heading: #7dd3fc;
   --tiptap-link: #38bdf8;
   /* Vira os 2 tokens neutros do @theme → fundo do app + bordas mudam de graça. */
   --color-app-bg: #0d1215;
@@ -87,7 +87,7 @@
   --text-body: #374151;
   --text-muted: #6b7280;
   --border-app: #e5e7eb;
-  --tiptap-heading: #1e4d28;
+  --tiptap-heading: #0c4a6e;
   --tiptap-link: #0ea5e9;
   --color-app-bg: #f4f6f5;
   --color-card-border: #e5e7eb;
@@ -310,9 +310,9 @@
   --grafico-grade:  #f5f5f5;   /* linhas de grade do CartesianGrid */
   --card-slate-bg:  #f1f5f9;   /* cards numéricos do relatório */
   --card-slate-cor: #475569;
-  --psi-faixa-bg:  #d4edda;   /* faixas de seção do psicossocial */
-  --psi-label-bg:  #f0f9f4;   /* célula de rótulo das tabelas */
-  --psi-verde: #1e4d28;
+  --psi-faixa-bg:  #e0f2fe;   /* faixas de seção do psicossocial */
+  --psi-label-bg:  #f0f9ff;   /* célula de rótulo das tabelas */
+  --psi-verde: #0c4a6e;
   --esteira-fade:   #f6f5f2;   /* degradê nas pontas do kanban */
   /* avisos e badges — o valor claro e o hexadecimal exato de hoje */
   --toast-ok-bg: #e8f5e9;  --toast-ok-tx: #1e4d28;  --toast-ok-bd: #c8e6c9;
@@ -326,9 +326,9 @@
   --grafico-grade:  #252930;
   --card-slate-bg:  #232c30;
   --card-slate-cor: #aebfc7;
-  --psi-faixa-bg:  #1a3327;
-  --psi-label-bg:  #16281f;
-  --psi-verde: #8fd0ae;
+  --psi-faixa-bg:  #13293b;
+  --psi-label-bg:  #0f2130;
+  --psi-verde: #8cc7ea;
   --esteira-fade:   #0d1215;
   --toast-ok-bg: #112b21;  --toast-ok-tx: #7cbda8;  --toast-ok-bd: #194c3a;
   --toast-erro-bg: #33221e;  --toast-erro-tx: #ef9897;  --toast-erro-bd: #6a3732;
@@ -341,9 +341,9 @@
   --grafico-grade:  #f5f5f5;
   --card-slate-bg:  #f1f5f9;
   --card-slate-cor: #475569;
-  --psi-faixa-bg:  #d4edda;
-  --psi-label-bg:  #f0f9f4;
-  --psi-verde: #1e4d28;
+  --psi-faixa-bg:  #e0f2fe;
+  --psi-label-bg:  #f0f9ff;
+  --psi-verde: #0c4a6e;
   --esteira-fade:   #f6f5f2;
   --toast-ok-bg: #e8f5e9;  --toast-ok-tx: #1e4d28;  --toast-ok-bd: #c8e6c9;
   --toast-erro-bg: #fee2e2;  --toast-erro-tx: #7f1d1d;  --toast-erro-bd: #fca5a5;
@@ -638,7 +638,7 @@ select:focus {
   min-width: 60px;
 }
 .tiptap-conteudo th {
-  background: #d4edda;
+  background: #e0f2fe;
   color: var(--tiptap-heading);
   font-weight: 700;
 }
