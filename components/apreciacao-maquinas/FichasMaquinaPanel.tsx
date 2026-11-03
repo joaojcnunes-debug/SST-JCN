@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_APR_FICHA } from "@/lib/dicas/apreciacao";
 import { useState } from "react";
 import {
   Plus,
@@ -84,7 +86,7 @@ function FormEdicaoFicha({
         {CAMPOS_FICHA.map((c) => (
           <label key={String(c.key)} className="block">
             <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">
-              {c.label}
+              <Dica texto={DICAS_APR_FICHA[c.key as keyof typeof DICAS_APR_FICHA]}>{c.label}</Dica>
             </span>
             <input
               type="text"

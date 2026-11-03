@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_APR_RISCO } from "@/lib/dicas/apreciacao";
 import { useState } from "react";
 import { Plus, Trash2, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
@@ -103,18 +105,18 @@ function CamposFichaV146({
     <>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Medidas de Engenharia</span>
+          <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.engenharia}>Medidas de Engenharia</Dica></span>
           <textarea rows={2} value={valores.medidas_engenharia ?? ""} onChange={(e) => set("medidas_engenharia", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Proteção móvel, intertravamento, frenagem..." />
         </label>
         <label className="block">
-          <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Medidas Administrativas</span>
+          <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.administrativas}>Medidas Administrativas</Dica></span>
           <textarea rows={2} value={valores.medidas_administrativas ?? ""} onChange={(e) => set("medidas_administrativas", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Capacitação, procedimento, EPI..." />
         </label>
       </div>
 
       <label className="block max-w-[220px]">
         <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">
-          Categoria de segurança (NBR 14153)
+          <Dica texto={DICAS_APR_RISCO.categoria_seguranca}>Categoria de segurança (NBR 14153)</Dica>
         </span>
         <select
           value={valores.categoria_seguranca ?? ""}
@@ -143,21 +145,21 @@ function CamposFichaV146({
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <label className="block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">POD residual</span>
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.pod_residual}>POD residual</Dica></span>
             <select value={podR ?? ""} onChange={(e) => set("pod_residual", (e.target.value as PodHrn) || null as never)} disabled={disabled} className={inputClass}>
               <option value="">—</option>
               {(Object.entries(POD_HRN_LABELS) as [PodHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">FEP residual</span>
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.fep_residual}>FEP residual</Dica></span>
             <select value={fepR ?? ""} onChange={(e) => set("fep_residual", (e.target.value as FepHrn) || null as never)} disabled={disabled} className={inputClass}>
               <option value="">—</option>
               {(Object.entries(FEP_HRN_LABELS) as [FepHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </select>
           </label>
           <label className="block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">GPD residual</span>
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.gpd_residual}>GPD residual</Dica></span>
             <select value={gpdR ?? ""} onChange={(e) => set("gpd_residual", (e.target.value as GpdHrn) || null as never)} disabled={disabled} className={inputClass}>
               <option value="">—</option>
               {(Object.entries(GPD_HRN_LABELS) as [GpdHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -165,7 +167,7 @@ function CamposFichaV146({
           </label>
           <label className="block">
             <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">
-              Classificação
+              <Dica texto={DICAS_APR_RISCO.classificacao_residual}>Classificação</Dica>
               {sugeridaResidual && sugeridaResidual !== classeResidual && !disabled && (
                 <button type="button" onClick={() => set("classificacao_residual", sugeridaResidual)} className="ml-1 text-orange-600 underline hover:text-orange-800">
                   usar {CLASSIFICACAO_HRN_LABELS[sugeridaResidual]}
@@ -287,21 +289,21 @@ function RiscoRow({
         <div className="border-t border-gray-100 px-3 pb-3 pt-2 space-y-2">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Tipo do Perigo *</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.perigo}>Tipo do Perigo</Dica> *</span>
               <input type="text" value={actual.tipo_perigo} onChange={(e) => setF("tipo_perigo", e.target.value)} disabled={disabled} className={inputClass} placeholder="Ex: Aprisionamento por Esteira" />
             </label>
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Origem</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.origem}>Origem</Dica></span>
               <input type="text" value={actual.origem ?? ""} onChange={(e) => setF("origem", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Ex: Desgaste de peças" />
             </label>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <label className="block sm:col-span-2">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Potenciais Consequências</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.consequencias}>Potenciais Consequências</Dica></span>
               <input type="text" value={actual.potenciais_consequencias ?? ""} onChange={(e) => setF("potenciais_consequencias", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Ex: Laceração, Amputação" />
             </label>
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Itens NR-12</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.itens_nr12}>Itens NR-12</Dica></span>
               <input
                 type="text"
                 value={itensParaTexto(actual.itens_nr12, actual.item_nr12)}
@@ -315,28 +317,28 @@ function RiscoRow({
           {/* Matriz HRN */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">POD</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.pod}>POD</Dica></span>
               <select value={actual.pod ?? ""} onChange={(e) => setF("pod", (e.target.value as PodHrn) || null as never)} disabled={disabled} className={inputClass}>
                 <option value="">—</option>
                 {(Object.entries(POD_HRN_LABELS) as [PodHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </label>
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">FEP</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.fep}>FEP</Dica></span>
               <select value={actual.fep ?? ""} onChange={(e) => setF("fep", (e.target.value as FepHrn) || null as never)} disabled={disabled} className={inputClass}>
                 <option value="">—</option>
                 {(Object.entries(FEP_HRN_LABELS) as [FepHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </label>
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">GPD</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.gpd}>GPD</Dica></span>
               <select value={actual.gpd ?? ""} onChange={(e) => setF("gpd", (e.target.value as GpdHrn) || null as never)} disabled={disabled} className={inputClass}>
                 <option value="">—</option>
                 {(Object.entries(GPD_HRN_LABELS) as [GpdHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </label>
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">NPE</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.npe}>NPE</Dica></span>
               <select value={actual.npe_item ?? ""} onChange={(e) => setF("npe_item", (e.target.value as NpeHrn) || null as never)} disabled={disabled} className={inputClass}>
                 <option value="">—</option>
                 {(Object.entries(NPE_HRN_LABELS) as [NpeHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -345,7 +347,7 @@ function RiscoRow({
           </div>
           <label className="block">
             <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">
-              Classificação do Risco
+              <Dica texto={DICAS_APR_RISCO.classificacao}>Classificação do Risco</Dica>
               {sugerida && (
                 <button type="button" onClick={() => setF("classificacao_risco", sugerida)} className="ml-2 text-orange-600 underline hover:text-orange-800">
                   usar sugerida ({CLASSIFICACAO_HRN_LABELS[sugerida]})
@@ -358,7 +360,7 @@ function RiscoRow({
             </select>
           </label>
           <label className="block">
-            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Nível das Ações Preventivas</span>
+            <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.nivel_acoes}>Nível das Ações Preventivas</Dica></span>
             <input type="text" value={actual.nivel_acoes ?? ""} onChange={(e) => setF("nivel_acoes", e.target.value || null)} disabled={disabled} className={inputClass} placeholder="Ex: Imediato, Curto prazo, Monitorar" />
           </label>
           <CamposFichaV146 valores={actual} set={setF} disabled={disabled} />
@@ -539,21 +541,21 @@ export default function RiscoHrnTable({
           )}
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Tipo do Perigo *</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.perigo}>Tipo do Perigo</Dica> *</span>
               <input type="text" value={novoForm.tipo_perigo} onChange={(e) => setNF("tipo_perigo", e.target.value)} className={inputClass} placeholder="Ex: Aprisionamento por Esteira" />
             </label>
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Origem</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.origem}>Origem</Dica></span>
               <input type="text" value={novoForm.origem ?? ""} onChange={(e) => setNF("origem", e.target.value || null)} className={inputClass} placeholder="Ex: Desgaste de peças" />
             </label>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <label className="block sm:col-span-2">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Potenciais Consequências</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.consequencias}>Potenciais Consequências</Dica></span>
               <input type="text" value={novoForm.potenciais_consequencias ?? ""} onChange={(e) => setNF("potenciais_consequencias", e.target.value || null)} className={inputClass} placeholder="Ex: Laceração, Amputação" />
             </label>
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Itens NR-12</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.itens_nr12}>Itens NR-12</Dica></span>
               <input
                 type="text"
                 value={itensParaTexto(novoForm.itens_nr12, novoForm.item_nr12)}
@@ -565,28 +567,28 @@ export default function RiscoHrnTable({
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">POD</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.pod}>POD</Dica></span>
               <select value={novoForm.pod ?? ""} onChange={(e) => setNF("pod", (e.target.value as PodHrn) || null as never)} className={inputClass}>
                 <option value="">—</option>
                 {(Object.entries(POD_HRN_LABELS) as [PodHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </label>
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">FEP</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.fep}>FEP</Dica></span>
               <select value={novoForm.fep ?? ""} onChange={(e) => setNF("fep", (e.target.value as FepHrn) || null as never)} className={inputClass}>
                 <option value="">—</option>
                 {(Object.entries(FEP_HRN_LABELS) as [FepHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </label>
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">GPD</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.gpd}>GPD</Dica></span>
               <select value={novoForm.gpd ?? ""} onChange={(e) => setNF("gpd", (e.target.value as GpdHrn) || null as never)} className={inputClass}>
                 <option value="">—</option>
                 {(Object.entries(GPD_HRN_LABELS) as [GpdHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </label>
             <label className="block">
-              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">NPE</span>
+              <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500"><Dica texto={DICAS_APR_RISCO.npe}>NPE</Dica></span>
               <select value={novoForm.npe_item ?? ""} onChange={(e) => setNF("npe_item", (e.target.value as NpeHrn) || null as never)} className={inputClass}>
                 <option value="">—</option>
                 {(Object.entries(NPE_HRN_LABELS) as [NpeHrn, string][]).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -595,7 +597,7 @@ export default function RiscoHrnTable({
           </div>
           <label className="block">
             <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">
-              Classificação do Risco
+              <Dica texto={DICAS_APR_RISCO.classificacao}>Classificação do Risco</Dica>
               {sugeridaNovo && (
                 <button type="button" onClick={() => setNF("classificacao_risco", sugeridaNovo)} className="ml-2 text-orange-600 underline hover:text-orange-800">
                   usar sugerida ({CLASSIFICACAO_HRN_LABELS[sugeridaNovo]})
