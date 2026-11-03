@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_MAQUINA } from "@/lib/dicas/inspecao-editor";
 import { useState, useMemo, useRef } from "react";
 import {
   Plus,
@@ -975,7 +977,7 @@ export default function MaquinasTab({
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-700">
-                    Setor(es) da máquina <span className="text-red-500">*</span>
+                    <Dica texto={DICAS_MAQUINA.setores}>Setor(es) da máquina</Dica> <span className="text-red-500">*</span>
                   </label>
                   {/* v160: a mesma máquina pode ser usada em mais de um setor */}
                   <SetorMultiSelect
@@ -1007,7 +1009,7 @@ export default function MaquinasTab({
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
                 <div className="sm:col-span-2 md:col-span-3">
                   <label className="mb-1 block text-xs font-medium text-gray-700">
-                    Nome / Descrição <span className="text-red-500">*</span>
+                    <Dica texto={DICAS_MAQUINA.nome}>Nome / Descrição</Dica> <span className="text-red-500">*</span>
                   </label>
                   <input
                     value={form.nome}
@@ -1027,7 +1029,9 @@ export default function MaquinasTab({
                   ] as const
                 ).map(({ k, label }) => (
                   <div key={k}>
-                    <label className="mb-1 block text-xs font-medium text-gray-700">{label}</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-700">
+                      <Dica texto={DICAS_MAQUINA[k]}>{label}</Dica>
+                    </label>
                     <input
                       value={form[k] as string}
                       onChange={(e) => f(k, e.target.value)}
@@ -1045,7 +1049,7 @@ export default function MaquinasTab({
               </p>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Potência</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_MAQUINA.potencia}>Potência</Dica></label>
                   <input
                     value={form.potencia}
                     onChange={(e) => f("potencia", e.target.value)}
@@ -1054,7 +1058,7 @@ export default function MaquinasTab({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-700">Tensão</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_MAQUINA.tensao}>Tensão</Dica></label>
                   <input
                     value={form.tensao}
                     onChange={(e) => f("tensao", e.target.value)}
@@ -1089,7 +1093,7 @@ export default function MaquinasTab({
                 </div>
               </div>
               <div className="mt-2">
-                <label className="mb-1 block text-xs font-medium text-gray-700">Grau de Risco</label>
+                <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_MAQUINA.grau_risco}>Grau de Risco</Dica></label>
                 <select
                   value={form.grau_risco}
                   onChange={(e) => f("grau_risco", e.target.value)}
@@ -1105,7 +1109,7 @@ export default function MaquinasTab({
 
             {/* observações */}
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Observações técnicas</label>
+              <label className="mb-1 block text-xs font-medium text-gray-700"><Dica texto={DICAS_MAQUINA.observacoes}>Observações técnicas</Dica></label>
               <textarea
                 value={form.observacoes}
                 onChange={(e) => f("observacoes", e.target.value)}

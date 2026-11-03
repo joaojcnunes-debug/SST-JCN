@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_COMPLEMENTO } from "@/lib/dicas/inspecao-editor";
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -168,7 +170,7 @@ export default function ComplementoForm({
         )}
         <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <label className={lblCls}>Tipo</label>
+            <label className={lblCls}><Dica texto={DICAS_COMPLEMENTO.tipo}>Tipo</Dica></label>
             <select
               value={form.tipo}
               onChange={(e) => setForm({ ...form, tipo: e.target.value })}
@@ -183,7 +185,7 @@ export default function ComplementoForm({
             </select>
           </div>
           <div>
-            <label className={lblCls}>Setor (opcional)</label>
+            <label className={lblCls}><Dica texto={DICAS_COMPLEMENTO.setor}>Setor (opcional)</Dica></label>
             <select
               value={form.id_setor}
               onChange={(e) => setForm({ ...form, id_setor: e.target.value })}
@@ -200,7 +202,7 @@ export default function ComplementoForm({
         </div>
 
         <div>
-          <label className={lblCls}>Título *</label>
+          <label className={lblCls}><Dica texto={DICAS_COMPLEMENTO.titulo}>Título</Dica> *</label>
           <input
             type="text"
             value={form.titulo}
@@ -210,7 +212,7 @@ export default function ComplementoForm({
           />
         </div>
         <div>
-          <label className={lblCls}>Descrição</label>
+          <label className={lblCls}><Dica texto={DICAS_COMPLEMENTO.descricao}>Descrição</Dica></label>
           <textarea
             value={form.descricao}
             onChange={(e) => setForm({ ...form, descricao: e.target.value })}
@@ -219,7 +221,7 @@ export default function ComplementoForm({
           />
         </div>
         <div>
-          <label className={lblCls}>Dados adicionais (texto livre)</label>
+          <label className={lblCls}><Dica texto={DICAS_COMPLEMENTO.dados}>Dados adicionais (texto livre)</Dica></label>
           <textarea
             value={form.dados}
             onChange={(e) => setForm({ ...form, dados: e.target.value })}

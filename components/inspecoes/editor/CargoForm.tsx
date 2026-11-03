@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_CARGO } from "@/lib/dicas/inspecao-editor";
 import { useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -161,7 +163,7 @@ export default function CargoForm({
         )}
         {setores.length > 0 && (
           <div>
-            <label className="text-sm font-medium text-gray-700">Setor</label>
+            <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_CARGO.setor}>Setor</Dica></label>
             <select
               value={form.id_setor}
               onChange={(e) => setForm({ ...form, id_setor: e.target.value })}
@@ -176,7 +178,7 @@ export default function CargoForm({
           </div>
         )}
         <div>
-          <label className="text-sm font-medium text-gray-700">Cargo *</label>
+          <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_CARGO.cargo}>Cargo</Dica> *</label>
           <input
             type="text"
             value={form.cargo}
@@ -186,7 +188,7 @@ export default function CargoForm({
           />
         </div>
         <div>
-          <label className="text-sm font-medium text-gray-700">Descrição</label>
+          <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_CARGO.descricao}>Descrição</Dica></label>
           <textarea
             value={form.descricao}
             onChange={(e) => setForm({ ...form, descricao: e.target.value })}

@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-editor-inspecao",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Dicas de preenchimento em todas as abas da inspeção",
+    texto:
+      "Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto ganharam a dica de " +
+      "como preencher cada campo: passe o mouse (ou chegue com Tab) no nome sublinhado com pontinhos.",
+    onde: "Inspeções",
+    versoes: ["0.3.211"],
+  },
+  {
     id: "dicas-riscos-inspecao",
     data: "2026-11-03",
     tipo: "melhoria",

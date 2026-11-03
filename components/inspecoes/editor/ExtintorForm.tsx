@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_EXTINTOR } from "@/lib/dicas/inspecao-editor";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -266,7 +268,7 @@ export default function ExtintorForm({
         )}
         {/* Setor */}
         <div>
-          <label className={lblCls}>Setor</label>
+          <label className={lblCls}><Dica texto={DICAS_EXTINTOR.setor}>Setor</Dica></label>
           <select
             value={idSetor}
             onChange={(e) => setIdSetor(e.target.value)}
@@ -284,7 +286,7 @@ export default function ExtintorForm({
         {/* Tipo + Capacidade */}
         <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <label className={lblCls}>Tipo de agente extintor *</label>
+            <label className={lblCls}><Dica texto={DICAS_EXTINTOR.tipo_agente}>Tipo de agente extintor</Dica> *</label>
             <input
               type="text"
               list="tipos-agente"
@@ -299,7 +301,7 @@ export default function ExtintorForm({
             </datalist>
           </div>
           <div>
-            <label className={lblCls}>Capacidade</label>
+            <label className={lblCls}><Dica texto={DICAS_EXTINTOR.capacidade}>Capacidade</Dica></label>
             <input
               type="text"
               list="capacidades"
@@ -317,7 +319,7 @@ export default function ExtintorForm({
         {/* Nº identificação + Localização */}
         <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <label className={lblCls}>Nº de identificação / Patrimônio</label>
+            <label className={lblCls}><Dica texto={DICAS_EXTINTOR.identificacao}>Nº de identificação / Patrimônio</Dica></label>
             <input
               type="text"
               value={numeroIdentificacao}
@@ -327,7 +329,7 @@ export default function ExtintorForm({
             />
           </div>
           <div>
-            <label className={lblCls}>Localização no setor</label>
+            <label className={lblCls}><Dica texto={DICAS_EXTINTOR.localizacao}>Localização no setor</Dica></label>
             <input
               type="text"
               value={localizacao}
@@ -341,7 +343,7 @@ export default function ExtintorForm({
         {/* Validade + Status + Ordem */}
         <div className="grid gap-3 md:grid-cols-[160px_1fr_100px]">
           <div>
-            <label className={lblCls}>Validade do agente</label>
+            <label className={lblCls}><Dica texto={DICAS_EXTINTOR.validade}>Validade do agente</Dica></label>
             <input
               type="date"
               value={dataValidade}
@@ -350,7 +352,7 @@ export default function ExtintorForm({
             />
           </div>
           <div>
-            <label className={lblCls}>Situação</label>
+            <label className={lblCls}><Dica texto={DICAS_EXTINTOR.situacao}>Situação</Dica></label>
             <div className="mt-1 flex flex-wrap gap-1.5">
               {(
                 [
@@ -386,7 +388,7 @@ export default function ExtintorForm({
             </div>
           </div>
           <div>
-            <label className={lblCls}>Ordem</label>
+            <label className={lblCls}><Dica texto={DICAS_EXTINTOR.ordem}>Ordem</Dica></label>
             <input
               type="number"
               value={ordem}
@@ -447,7 +449,7 @@ export default function ExtintorForm({
               ))}
 
             <div className="mt-2">
-              <label className={lblCls}>Outra não conformidade</label>
+              <label className={lblCls}><Dica texto={DICAS_EXTINTOR.outra_nc}>Outra não conformidade</Dica></label>
               <input
                 type="text"
                 value={outraCausa}
@@ -468,7 +470,7 @@ export default function ExtintorForm({
 
         {/* Observações */}
         <div>
-          <label className={lblCls}>Observações</label>
+          <label className={lblCls}><Dica texto={DICAS_EXTINTOR.observacoes}>Observações</Dica></label>
           <textarea
             value={observacoes}
             onChange={(e) => setObservacoes(e.target.value)}
