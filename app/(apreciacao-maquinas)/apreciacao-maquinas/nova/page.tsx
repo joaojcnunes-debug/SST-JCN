@@ -16,6 +16,13 @@ import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { formatCNPJ } from "@/lib/utils";
 import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 
+const TITULO_PADRAO = "Apreciação de Máquinas NR-12";
+
+function cidadeDaEmpresa(e: { municipio?: string | null; uf?: string | null } | null): string | null {
+  const partes = [e?.municipio?.trim(), e?.uf?.trim()].filter(Boolean);
+  return partes.length ? partes.join("/") : null;
+}
+
 export default function NovaApreciacaoPage() {
   useRequireCreate("/apreciacao-maquinas");
   const router = useRouter();
@@ -46,11 +53,13 @@ export default function NovaApreciacaoPage() {
         id_empresa: idEmpresa,
         id_maquina: null,
         maquina_descricao: null,
-        titulo: null,
+        // Título padrão e cidade/UF do cadastro da empresa (antes ia nulo e os textos padrão
+        // saíam com {{titulo}} e {{cidade}} vazios). O setor é de cada máquina.
+        titulo: TITULO_PADRAO,
         setor: null,
         responsavel: responsavel.trim() || null,
         responsavel_empresa: responsavelEmpresa.trim() || null,
-        cidade: null,
+        cidade: cidadeDaEmpresa(empresaSelecionada),
         data_apreciacao: dataApreciacao || null,
         notificacao_sit: notificacaoSit.trim() || null,
       });
@@ -89,9 +98,9 @@ export default function NovaApreciacaoPage() {
         <p className="text-sm text-gray-600">
           Selecione a empresa. As <strong>máquinas cadastradas na inspeção</strong>{" "}
           são importadas automaticamente, <strong>agrupadas por setor</strong>, com
-          operadores, fotos e checklist NR-12 — prontas para avaliação. Setor e
-          cidade vêm da identificação da empresa; o título é sempre “Apreciação de
-          Máquinas NR-12”.
+          operadores, fotos e checklist NR-12 — prontas para avaliação. A cidade vem do
+          cadastro da empresa e o título é sempre “Apreciação de Máquinas NR-12”; o setor é
+          o de cada máquina.
         </p>
       </div>
 

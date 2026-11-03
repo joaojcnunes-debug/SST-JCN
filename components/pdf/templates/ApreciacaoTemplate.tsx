@@ -7,6 +7,7 @@ import {
   FEP_HRN_LABELS,
   GPD_HRN_LABELS,
   CLASSIFICACAO_HRN_LABELS,
+  NPE_HRN_LABELS,
   calcularIndiceHrn,
   type PodHrn,
   type FepHrn,
@@ -96,6 +97,14 @@ export interface FichaMaquinaLocal {
   fotos: string[];
 }
 
+// Prioridade e status da ação ficam gravados sem acento; no PDF saem com acento (0.3.220).
+const ROTULO_ACAO: Record<string, string> = {
+  Media: "Média",
+  Critica: "Crítica",
+  Concluida: "Concluída",
+  "Em Andamento": "Em andamento",
+};
+
 /** Uma máquina do laudo, com o que ela imprime. */
 export interface FichaPdfLocal {
   id_ficha: string;
@@ -113,6 +122,15 @@ export interface FichaPdfLocal {
   parecer_tecnico: string | null;
   fotos: string[];
   riscos: RiscoFichaLocal[];
+  /** 0.3.220: identificação NR-12 que a tela pedia e o PDF não mostrava (opcionais). */
+  componentes?: string[] | null;
+  limite_uso?: string | null;
+  limite_espaco?: string | null;
+  limite_tempo?: string | null;
+  limite_produtividade?: string | null;
+  npe?: string | null;
+  sistemas_atual?: string[] | null;
+  sistemas_necessario?: string[] | null;
 }
 
 /**
@@ -947,6 +965,65 @@ function MaquinasSection({ fichas, titulo }: { fichas: FichaPdfLocal[]; titulo: 
   );
 }
 
+/**
+ * Componentes, Limites, NPE e Sistemas de segurança da máquina (0.3.220). A tela pedia e o PDF
+ * não mostrava; agora entram na ficha, cada um só quando preenchido.
+ */
+function IdentificacaoNr12Pdf({ ficha }: { ficha: FichaPdfLocal }) {
+  const limites: [string, string | null | undefined][] = [
+    ["De uso", ficha.limite_uso],
+    ["De espaço", ficha.limite_espaco],
+    ["De tempo", ficha.limite_tempo],
+    ["De produtividade", ficha.limite_produtividade],
+  ];
+  const limitesCheios = limites.filter(([, v]) => (v ?? "").trim());
+  const componentes = (ficha.componentes ?? []).filter(Boolean);
+  const atual = new Set(ficha.sistemas_atual ?? []);
+  const necessario = new Set(ficha.sistemas_necessario ?? []);
+  const sistemas = [...new Set([...atual, ...necessario])];
+  const npe = ficha.npe ? (NPE_HRN_LABELS as Record<string, string>)[ficha.npe] ?? ficha.npe : null;
+  if (!componentes.length && !limitesCheios.length && !npe && !sistemas.length) return null;
+  return (
+    <div className="oper-bloco">
+      {componentes.length > 0 && (
+        <p className="ficha-linha"><span className="rot">Componentes: </span>{componentes.join("; ")}</p>
+      )}
+      {limitesCheios.length > 0 && (
+        <p className="ficha-linha">
+          <span className="rot">Limites: </span>
+          {limitesCheios.map(([k, v]) => `${k}: ${(v ?? "").trim()}`).join(" · ")}
+        </p>
+      )}
+      {npe && (
+        <p className="ficha-linha"><span className="rot">NPE — pessoas expostas: </span>{npe}</p>
+      )}
+      {sistemas.length > 0 && (
+        <>
+          <p className="ficha-rot">Sistemas de segurança analisados</p>
+          <table className="oper-tab">
+            <thead>
+              <tr>
+                <th style={{ width: "70%" }}>Sistema</th>
+                <th style={{ width: "15%" }}>Atual</th>
+                <th style={{ width: "15%" }}>Necessário</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sistemas.map((sis) => (
+                <tr key={sis}>
+                  <td>{sis}</td>
+                  <td>{atual.has(sis) ? "Sim" : "—"}</td>
+                  <td>{necessario.has(sis) ? "Sim" : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </div>
+  );
+}
+
 function FichaMaquinaPdf({ ficha, seq }: { ficha: FichaPdfLocal; seq: number }) {
   const campos: [string, string | null][] = [
     ["Tipo", ficha.tipo],
@@ -1016,6 +1093,8 @@ function FichaMaquinaPdf({ ficha, seq }: { ficha: FichaPdfLocal; seq: number }) 
           </table>
         </div>
       )}
+
+      <IdentificacaoNr12Pdf ficha={ficha} />
 
       {ficha.constatacoes_inspecao && (
         <p className="ficha-linha">
@@ -1195,9 +1274,9 @@ function PlanoAcaoSection({ acoes, titulo }: { acoes: ApreciacaoAcaoLocal[]; tit
         return (
           <div key={a.id_acao} className="acao">
             <div className="top">
-              <span className="prio" style={{ background: cp.bg, color: cp.fg }}>{a.prioridade}</span>
+              <span className="prio" style={{ background: cp.bg, color: cp.fg }}>{ROTULO_ACAO[a.prioridade] ?? a.prioridade}</span>
               <span className="what" style={{ flex: 1 }}>{a.what_acao}</span>
-              <span className="stat" style={{ background: cst.bg, color: cst.fg, borderColor: cst.bd }}>{a.status}</span>
+              <span className="stat" style={{ background: cst.bg, color: cst.fg, borderColor: cst.bd }}>{ROTULO_ACAO[a.status] ?? a.status}</span>
             </div>
             {a.origem_label && <p className="meta">Origem: {a.origem_label}</p>}
             {detalhes.length > 0 && <p className="meta">{detalhes.join(" · ")}</p>}
@@ -1217,6 +1296,7 @@ export default function ApreciacaoTemplate({
   riscos,
   maquina,
   fichas,
+  notificacaoSit,
   incluirChecklist,
   capitulos,
   valores,
@@ -1347,6 +1427,13 @@ export default function ApreciacaoTemplate({
       recomendacoes={apreciacao.recomendacoes}
     />
   ) : null;
+  // Notificação da fiscalização (SIT/MTE), quando houver: era gravada e nunca saía no PDF.
+  const notificacaoNode = (notificacaoSit ?? "").trim() ? (
+    <div className="campo" style={{ marginBottom: 8 }}>
+      <p className="rot">Notificação SIT/MTE</p>
+      <p className="val">{(notificacaoSit ?? "").trim()}</p>
+    </div>
+  ) : null;
   const planoNode = acoesComConteudo.length > 0 ? (
     <PlanoAcaoSection
       acoes={acoesComConteudo}
@@ -1358,7 +1445,13 @@ export default function ApreciacaoTemplate({
   // a folha de assinatura entra na posição do capítulo "apreciacao_assinatura").
   function renderSecaoApreciacao(slug: string): React.ReactNode {
     switch (slug) {
-      case "identificacao_empresa": return <SecaoIdentificacaoEmpresa empresa={empresa} numero={numPorSlug["identificacao_empresa"]} />;
+      case "identificacao_empresa":
+        return (
+          <>
+            <SecaoIdentificacaoEmpresa empresa={empresa} numero={numPorSlug["identificacao_empresa"]} />
+            {notificacaoNode}
+          </>
+        );
       case "sumario":               return <SecaoSumario titulos={sumarioTitulos} />;
       case "apreciacao_metodo":     return metodoNode;
       case "apreciacao_checklist":  return incluirChecklist ? (<>{maquinasNode}{checklistNode}</>) : maquinasNode;
@@ -1379,6 +1472,7 @@ export default function ApreciacaoTemplate({
     : (
       <>
         {renderEditaveis(capitulos, valores, "inicio")}
+        {notificacaoNode}
         {metodoNode}
         {relacaoNode}
         {maquinasNode}

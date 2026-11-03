@@ -43,6 +43,15 @@ const PRIORIDADE_OPCOES: PrioridadeAcaoApreciacao[] = [
   "Critica",
 ];
 
+// Prioridade e status ficam gravados sem acento (banco e Plano de Ação central); na tela, com.
+const ROTULO: Record<string, string> = {
+  Media: "Média",
+  Critica: "Crítica",
+  Concluida: "Concluída",
+  "Em Andamento": "Em andamento",
+};
+const rotulo = (v: string) => ROTULO[v] ?? v;
+
 const STATUS_CORES: Record<StatusAcaoApreciacao, string> = {
   Pendente: "bg-amber-100 text-amber-700 border-amber-200",
   "Em Andamento": "bg-blue-100 text-blue-700 border-blue-200",
@@ -166,7 +175,7 @@ export default function PlanoAcaoTable({
             ) : (
               <ListTodo className="size-3.5" />
             )}
-            Gerar a partir dos NAO_CONFORME
+            Gerar a partir dos não conformes
           </button>
           <button
             type="button"
@@ -207,7 +216,7 @@ export default function PlanoAcaoTable({
       ) : acoes.length === 0 ? (
         <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-6 text-center text-xs text-gray-500">
           Nenhuma ação cadastrada. Use{" "}
-          <strong>Gerar a partir dos NAO_CONFORME</strong> ou adicione
+          <strong>Gerar a partir dos não conformes</strong> ou adicione
           manualmente.
         </div>
       ) : (
@@ -323,7 +332,7 @@ function AcaoRow({
             PRIORIDADE_CORES[acao.prioridade]
           )}
         >
-          {acao.prioridade}
+          {rotulo(acao.prioridade)}
         </span>
         <div className="min-w-0 flex-1">
           <p
@@ -357,7 +366,7 @@ function AcaoRow({
               STATUS_CORES[acao.status]
             )}
           >
-            {acao.status}
+            {rotulo(acao.status)}
           </span>
         ) : (
           <select
@@ -372,7 +381,7 @@ function AcaoRow({
           >
             {STATUS_OPCOES.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {rotulo(s)}
               </option>
             ))}
           </select>
@@ -384,7 +393,7 @@ function AcaoRow({
             STATUS_CORES[acao.status]
           )}
         >
-          {acao.status}
+          {rotulo(acao.status)}
         </span>
       </div>
 
@@ -478,7 +487,7 @@ function AcaoRow({
               >
                 {PRIORIDADE_OPCOES.map((p) => (
                   <option key={p} value={p}>
-                    {p}
+                    {rotulo(p)}
                   </option>
                 ))}
               </select>
