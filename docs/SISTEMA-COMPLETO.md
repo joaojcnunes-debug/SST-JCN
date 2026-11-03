@@ -139,7 +139,12 @@ Alias de import: `@/*` → raiz.
 - O menu lateral (SidebarShell e Gestão) usa o degradê `#0369a1 → #0b1e33 → #071526`.
 - A topbar dos módulos usa `#0369a1 → #0284c7`. O manifest usa `theme_color` `#0369a1`.
 - Verde só onde é **significado** (concluído, em dia, risco baixo, sucesso, assinado, confirmar ✓). O verde do Excel fica nos botões de planilha. A varredura por módulo segue o plano: a 0.2 (0.3.195) cobriu Questionários e DRPS; a 0.3 (0.3.196) a AEP e a AET; a 0.4 (0.3.197) Conformidade e Não conformidade (lá o verde de "conforme/encerrada/baixa" fica); a 0.5 (0.3.198) Inspeções e os componentes de tela (`ListaReordenavel`, `AssinaturaRelatorio`); a 0.6 (0.3.199) Apreciação de Máquinas, Químicos e Equipamentos; a 0.7 (0.3.200) Frota, EPI, Escala, Gestão e o resto (botão de atualização do app inclusive); com o verde de marca trocado por `sky-*` (o mesmo azul de `marca-primary`).
-- Impressão e PDF ficam como estão até a Etapa 0b: a capa do relatório de inspeção mantém o verde claro antigo no `print:`.
+- **Documentos (0.3.202, Etapa 0b):** títulos de capítulo e seção em azul-marinho `#0c4a6e` com sublinhado `#0ea5e9`.
+  - Faixas de cabeçalho de tabela em `#e0f2fe` e células de rótulo em `#f0f9ff`.
+  - Valem para os templates de PDF (`components/pdf/templates/*`, inclusive `TP_STYLE`), os componentes `*Print` e os laudos na tela (`sky-700/800/900`).
+  - Variáveis: `--tiptap-heading` e `--psi-*` (claro e escuro).
+  - Verde só de significado: Conforme, Baixo, Concluída, Trivial e as zonas da AET.
+  - Os PDFs já emitidos não mudam.
 - Modo escuro por CSS vars.
 - Mensagens e comentários do código em português; regras em `lib/` têm testes.
 

@@ -31,7 +31,7 @@ export default function GestaoResumoPrint({
         .drps-gestao-resumo-print h2 {
           font-size: 16pt;
           font-weight: 700;
-          color: #1e4d28;
+          color: #0c4a6e;
           border-bottom: 2px solid #0ea5e9;
           padding-bottom: 6px;
           margin: 0 0 14pt 0;
@@ -56,7 +56,7 @@ export default function GestaoResumoPrint({
         .drps-gestao-saude-label {
           font-size: 11pt;
           font-weight: 700;
-          color: #1e4d28;
+          color: #0c4a6e;
           margin: 0;
           text-transform: uppercase;
           letter-spacing: 0.04em;
@@ -91,8 +91,8 @@ export default function GestaoResumoPrint({
           vertical-align: top;
         }
         .drps-gestao-table th {
-          background: #d4edda;
-          color: #1e4d28;
+          background: #e0f2fe;
+          color: #0c4a6e;
           font-weight: 700;
           text-align: left;
           width: 28%;

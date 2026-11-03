@@ -164,7 +164,7 @@ export default function DrpsSumarioPrint({
         .drps-sumario-titulo {
           font-size: 16pt;
           font-weight: 700;
-          color: #1e4d28;
+          color: #0c4a6e;
           border-bottom: 2px solid #0ea5e9;
           padding-bottom: 6px;
           margin-bottom: 16pt;

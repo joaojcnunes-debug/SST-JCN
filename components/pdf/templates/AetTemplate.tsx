@@ -185,7 +185,7 @@ tr { page-break-inside: avoid; break-inside: avoid; }
 .tp-capa img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; z-index: 0; }
 .tp-capa .caixa { position: absolute; z-index: 1; white-space: pre-wrap; line-height: 1.3; }
 .textos-padrao-capitulo-titulo {
-  font-size: 14pt; font-weight: 700; color: #1e4d28;
+  font-size: 14pt; font-weight: 700; color: #0c4a6e;
   border-bottom: 2px solid #0ea5e9; padding-bottom: 4px; margin-bottom: 12pt;
   /* Faltava — a secao do sistema (.aet-sec-titulo) ja tinha, esta nao. Ajuda,
      mas o Chromium honra mal break-after em titulo: nao e garantia. */
@@ -197,18 +197,18 @@ tr { page-break-inside: avoid; break-inside: avoid; }
 .textos-padrao-capitulo-conteudo h1,
 .textos-padrao-capitulo-conteudo h2,
 .textos-padrao-capitulo-conteudo h3 { page-break-after: avoid; break-after: avoid; }
-.textos-padrao-capitulo-conteudo h1 { font-size: 14pt; font-weight: 700; color: #1e4d28; margin: 18pt 0 6pt; }
-.textos-padrao-capitulo-conteudo h2 { font-size: 13pt; font-weight: 700; color: #1e4d28; margin: 14pt 0 6pt; }
-.textos-padrao-capitulo-conteudo h3 { font-size: 12pt; font-weight: 700; color: #1e4d28; margin: 12pt 0 4pt; }
+.textos-padrao-capitulo-conteudo h1 { font-size: 14pt; font-weight: 700; color: #0c4a6e; margin: 18pt 0 6pt; }
+.textos-padrao-capitulo-conteudo h2 { font-size: 13pt; font-weight: 700; color: #0c4a6e; margin: 14pt 0 6pt; }
+.textos-padrao-capitulo-conteudo h3 { font-size: 12pt; font-weight: 700; color: #0c4a6e; margin: 12pt 0 4pt; }
 .textos-padrao-capitulo-conteudo ul, .textos-padrao-capitulo-conteudo ol { margin: 0 0 12pt 1.25cm; padding: 0; }
 .textos-padrao-capitulo-conteudo li { margin: 2pt 0; }
 .textos-padrao-capitulo-conteudo img { max-width: 100%; height: auto; border-radius: 4px; margin: 8pt 0; }
 .textos-padrao-capitulo-conteudo table { border-collapse: collapse; width: 100%; margin: 12pt 0; font-size: 10pt; }
 .textos-padrao-capitulo-conteudo th, .textos-padrao-capitulo-conteudo td { border: 1px solid #999; padding: 5px 7px; vertical-align: top; }
-.textos-padrao-capitulo-conteudo th { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: left; }
+.textos-padrao-capitulo-conteudo th { background: #e0f2fe; color: #0c4a6e; font-weight: 700; text-align: left; }
 /* Seções AET */
-.aet-sec-titulo { font-size: 14pt; font-weight: 700; color: #1e4d28; border-bottom: 2px solid #0ea5e9; padding-bottom: 4px; margin: 0 0 12pt; page-break-after: avoid; break-after: avoid; }
-.aet-sub { font-size: 12pt; font-weight: 700; color: #1e4d28; margin: 14pt 0 6pt; page-break-after: avoid; break-after: avoid; }
+.aet-sec-titulo { font-size: 14pt; font-weight: 700; color: #0c4a6e; border-bottom: 2px solid #0ea5e9; padding-bottom: 4px; margin: 0 0 12pt; page-break-after: avoid; break-after: avoid; }
+.aet-sub { font-size: 12pt; font-weight: 700; color: #0c4a6e; margin: 14pt 0 6pt; page-break-after: avoid; break-after: avoid; }
 .aet-fixo { page-break-before: always; }
 .aet-fixo--continua { page-break-before: auto; }
 .aet-conc p { font-size: 12pt; line-height: 1.6; text-align: justify; color: #1f2937; margin: 0 0 12pt; white-space: pre-line; }

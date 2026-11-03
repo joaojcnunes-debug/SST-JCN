@@ -292,7 +292,7 @@ const CSS = `
 }
 .fb-secao-numero { display: inline-block; min-width: 18px; opacity: .8; }
 .fb-sub {
-  background: #eef7f2; color: #1e4d28; font-weight: 700; font-size: 9.5px;
+  background: #f0f9ff; color: #0c4a6e; font-weight: 700; font-size: 9.5px;
   text-transform: uppercase; letter-spacing: .04em; padding: 4px 8px;
   border: 1px solid #94a3b8; border-bottom: 0; margin-top: 6px;
 }
@@ -322,7 +322,7 @@ const CSS = `
 .fb-tabela { border-collapse: collapse; width: 100%; font-size: 9.8px; }
 .fb-tabela th, .fb-tabela td { border: 1px solid #94a3b8; padding: 3px 6px; vertical-align: top; }
 .fb-tabela th {
-  background: #f0f9f4; color: #1e4d28; font-weight: 700; text-align: left;
+  background: #f0f9ff; color: #0c4a6e; font-weight: 700; text-align: left;
   font-size: 8.5px; letter-spacing: .04em; text-transform: uppercase;
 }
 .fb-tabela th.fb-check, .fb-tabela td.fb-check { text-align: center; width: 34px; padding-left: 2px; padding-right: 2px; }

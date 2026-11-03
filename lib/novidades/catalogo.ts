@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "skin-azul-documentos",
+    data: "2026-11-03",
+    tipo: "atencao",
+    titulo: "Laudos e relatórios impressos agora saem em azul",
+    texto:
+      "Os títulos de capítulo e de seção, as faixas de cabeçalho das tabelas e os rótulos dos laudos (DRPS, QPS, AEP, " +
+      "AET, Conformidade, Não conformidade, Máquinas, Químicos, relatório e Versão PGR da inspeção) passaram do verde " +
+      "para o azul-marinho da JCN, na tela e no PDF. O verde continua onde tem significado: conforme, risco baixo, " +
+      "concluído e a zona verde da AET. Os PDFs já emitidos e assinados não mudam; só os gerados a partir de agora.",
+    onde: "Laudos, relatórios impressos e PDFs",
+    versoes: ["0.3.202"],
+  },
+  {
     id: "skin-azul-base",
     data: "2026-11-02",
     tipo: "melhoria",

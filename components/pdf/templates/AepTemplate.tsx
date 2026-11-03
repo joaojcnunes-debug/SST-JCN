@@ -276,7 +276,7 @@ body {
 .textos-padrao-capitulo-titulo {
   font-size: 14pt;
   font-weight: 700;
-  color: #1e4d28;
+  color: #0c4a6e;
   border-bottom: 2px solid #0ea5e9;
   padding-bottom: 4px;
   margin-bottom: 12pt;
@@ -288,9 +288,9 @@ body {
   text-align: justify;
 }
 .textos-padrao-capitulo-conteudo p       { margin: 0 0 12pt; text-indent: 1.25cm; text-align: justify; }
-.textos-padrao-capitulo-conteudo h1      { font-size: 14pt; font-weight: 700; color: #1e4d28; margin: 18pt 0 6pt; }
-.textos-padrao-capitulo-conteudo h2      { font-size: 13pt; font-weight: 700; color: #1e4d28; margin: 14pt 0 6pt; }
-.textos-padrao-capitulo-conteudo h3      { font-size: 12pt; font-weight: 700; color: #1e4d28; margin: 12pt 0 4pt; }
+.textos-padrao-capitulo-conteudo h1      { font-size: 14pt; font-weight: 700; color: #0c4a6e; margin: 18pt 0 6pt; }
+.textos-padrao-capitulo-conteudo h2      { font-size: 13pt; font-weight: 700; color: #0c4a6e; margin: 14pt 0 6pt; }
+.textos-padrao-capitulo-conteudo h3      { font-size: 12pt; font-weight: 700; color: #0c4a6e; margin: 12pt 0 4pt; }
 .textos-padrao-capitulo-conteudo ul,
 .textos-padrao-capitulo-conteudo ol      { margin: 0 0 12pt 1.25cm; padding: 0; }
 .textos-padrao-capitulo-conteudo li      { margin: 2pt 0; }
@@ -299,7 +299,7 @@ body {
 .textos-padrao-capitulo-conteudo table   { border-collapse: collapse; width: 100%; margin: 12pt 0; font-size: 10pt; }
 .textos-padrao-capitulo-conteudo th,
 .textos-padrao-capitulo-conteudo td      { border: 1px solid #999; padding: 5px 7px; vertical-align: top; }
-.textos-padrao-capitulo-conteudo th      { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: left; }
+.textos-padrao-capitulo-conteudo th      { background: #e0f2fe; color: #0c4a6e; font-weight: 700; text-align: left; }
 /* Break rules para o laudo */
 /* Cada setor abre em folha própria. O 1º não força quebra: ele segue o título
    do capítulo de triagem, que ficaria sozinho numa página em branco. */
@@ -356,13 +356,13 @@ function SectionTitulo({
       style={{
         marginBottom: 8,
         marginTop: 0,
-        borderBottom: "2px solid #047857",
+        borderBottom: "2px solid #0ea5e9",
         paddingBottom: 4,
         fontSize: 14,
         fontWeight: 700,
         textTransform: "uppercase",
         letterSpacing: "0.05em",
-        color: "#065f46",
+        color: "#0c4a6e",
       }}
     >
       {num ? `${num} – ` : ""}
@@ -395,9 +395,9 @@ function SetorBlock({
           alignItems: "center",
           gap: 8,
           borderRadius: 8,
-          backgroundColor: "#ecfdf5",
+          backgroundColor: "#f0f9ff",
           padding: "8px 12px",
-          border: "1px solid #a7f3d0",
+          border: "1px solid #bae6fd",
         }}
       >
         <span
@@ -408,7 +408,7 @@ function SetorBlock({
             alignItems: "center",
             justifyContent: "center",
             borderRadius: "50%",
-            backgroundColor: "#047857",
+            backgroundColor: "#0369a1",
             fontSize: 11,
             fontWeight: 700,
             color: "#fff",
@@ -418,10 +418,10 @@ function SetorBlock({
           {idx + 1}
         </span>
         <div style={{ flex: 1 }}>
-          <p style={{ margin: 0, fontWeight: 700, color: "#064e3b", fontSize: 13 }}>
+          <p style={{ margin: 0, fontWeight: 700, color: "#0c4a6e", fontSize: 13 }}>
             {setor.nome_setor || "—"}
           </p>
-          <p style={{ margin: 0, fontSize: 10, color: "#047857" }}>
+          <p style={{ margin: 0, fontSize: 10, color: "#0369a1" }}>
             {[setor.unidade, setor.ghe].filter(Boolean).join(" · ")}
           </p>
         </div>

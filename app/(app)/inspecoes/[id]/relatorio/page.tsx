@@ -322,7 +322,7 @@ export default function RelatorioChabraPage({ params }: Props) {
       if (c.slug_fixo === "identificacao_empresa") {
         return (
           <div key={c.id_capitulo} className={`mb-6 break-inside-avoid ${classeQuebra}`}>
-            <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+            <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
               Identificação da Empresa
             </h2>
             <EmpresaInfoPanel empresa={empresa ?? null} />
@@ -332,13 +332,13 @@ export default function RelatorioChabraPage({ params }: Props) {
       if (c.slug_fixo === "sumario") {
         return (
           <div key={c.id_capitulo} className={`mb-6 break-inside-avoid ${classeQuebra}`}>
-            <h2 className="mb-2 border-b-2 border-emerald-700 pb-1 text-sm font-bold text-emerald-900">
+            <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
               Sumário
             </h2>
             <ol className="space-y-1">
               {sumarioTitulosSst.map((t, i) => (
                 <li key={i} className="flex items-baseline gap-2 border-b border-dotted border-gray-300 py-0.5 text-xs text-gray-700">
-                  <span className="min-w-5 font-bold text-emerald-800">{i + 1}.</span>
+                  <span className="min-w-5 font-bold text-sky-800">{i + 1}.</span>
                   <span>{t}</span>
                 </li>
               ))}
@@ -597,7 +597,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                 Saúde e Segurança do Trabalho
               </p>
 
-              <div className="mt-8 rounded-lg border-2 border-marca-border bg-marca-light/50 p-5 print:border-[#c8e6c9] print:bg-[#e8f5e9]/50">
+              <div className="mt-8 rounded-lg border-2 border-marca-border bg-marca-light/50 p-5">
                 <p className="text-sm font-bold uppercase tracking-wide text-marca-dark">
                   {empresa?.nome_empresa ?? "—"}
                 </p>
@@ -806,7 +806,7 @@ export default function RelatorioChabraPage({ params }: Props) {
                   {Object.entries(ctx.porTipo).map(([tipo, count]) => (
                     <span
                       key={tipo}
-                      className="inline-flex items-center gap-1 rounded-full border border-marca-border bg-marca-light px-2 py-0.5 text-xs font-medium text-marca-dark print:border-[#c8e6c9] print:bg-[#e8f5e9]"
+                      className="inline-flex items-center gap-1 rounded-full border border-marca-border bg-marca-light px-2 py-0.5 text-xs font-medium text-marca-dark"
                     >
                       <span>{iconeDe(tipo)}</span>
                       {tipo}: <strong>{count}</strong>

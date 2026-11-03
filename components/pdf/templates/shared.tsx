@@ -15,19 +15,19 @@ import {
 /** Bloco de estilos para capítulos editáveis de Texto Padrão. */
 export const TP_STYLE = `
 .tp-cap { margin-bottom: 16pt; page-break-inside: auto; }
-.tp-cap h2 { font-size: 13pt; font-weight: 700; color: #0f766e; border-bottom: 2px solid #0f766e; padding-bottom: 3px; margin: 0 0 8pt; }
+.tp-cap h2 { font-size: 13pt; font-weight: 700; color: #0c4a6e; border-bottom: 2px solid #0ea5e9; padding-bottom: 3px; margin: 0 0 8pt; }
 .tp-cap .corpo { font-size: 11pt; color: #1f2937; line-height: 1.5; text-align: justify; }
 .tp-cap .corpo p { margin: 0 0 8pt; }
-.tp-cap .corpo h1 { font-size: 14pt; font-weight: 700; color: #1e4d28; margin: 14pt 0 6pt; }
-.tp-cap .corpo h2 { font-size: 13pt; font-weight: 700; color: #1e4d28; margin: 12pt 0 6pt; }
-.tp-cap .corpo h3 { font-size: 12pt; font-weight: 700; color: #1e4d28; margin: 10pt 0 4pt; }
+.tp-cap .corpo h1 { font-size: 14pt; font-weight: 700; color: #0c4a6e; margin: 14pt 0 6pt; }
+.tp-cap .corpo h2 { font-size: 13pt; font-weight: 700; color: #0c4a6e; margin: 12pt 0 6pt; }
+.tp-cap .corpo h3 { font-size: 12pt; font-weight: 700; color: #0c4a6e; margin: 10pt 0 4pt; }
 .tp-cap .corpo ul, .tp-cap .corpo ol { margin: 0 0 8pt 1.25cm; padding: 0; }
 .tp-cap .corpo li { margin: 2pt 0; }
 .tp-cap .corpo a { color: #0ea5e9; text-decoration: underline; }
 .tp-cap .corpo img { max-width: 100%; height: auto; border-radius: 4px; margin: 6pt 0; }
 .tp-cap .corpo table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 10pt; }
 .tp-cap .corpo th, .tp-cap .corpo td { border: 1px solid #999; padding: 4px 6px; vertical-align: top; }
-.tp-cap .corpo th { background: #d4edda; color: #1e4d28; font-weight: 700; text-align: left; }
+.tp-cap .corpo th { background: #e0f2fe; color: #0c4a6e; font-weight: 700; text-align: left; }
 .tp-capa { page: capa; position: relative; width: 210mm; height: 297mm; overflow: hidden; page-break-after: always; }
 .tp-capa img.bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; z-index: 0; }
 .tp-capa .caixa { position: absolute; z-index: 1; white-space: pre-wrap; line-height: 1.3; }

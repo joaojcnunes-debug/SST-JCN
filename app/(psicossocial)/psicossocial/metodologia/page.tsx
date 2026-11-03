@@ -313,7 +313,7 @@ export default function MetodologiaPage() {
         <ol className="space-y-3">
           {FLUXO.map((etapa, i) => (
             <li key={i} className="flex items-start gap-3">
-              <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-marca-primary text-xs font-bold text-white print:bg-emerald-600">
+              <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-marca-primary text-xs font-bold text-white">
                 {i + 1}
               </span>
               <div>
@@ -375,7 +375,7 @@ function Section({ titulo, children }: { titulo: string; children: React.ReactNo
 function LegalCard({ sigla, titulo, texto }: { sigla: string; titulo: string; texto: string }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <span className="mb-1 inline-block rounded bg-marca-light px-2 py-0.5 text-xs font-bold text-marca-dark print:bg-emerald-100 print:text-emerald-700">
+      <span className="mb-1 inline-block rounded bg-marca-light px-2 py-0.5 text-xs font-bold text-marca-dark">
         {sigla}
       </span>
       <p className="mb-1 text-sm font-semibold text-gray-900">{titulo}</p>
@@ -406,7 +406,7 @@ function ProbCard({ num, titulo, itens }: { num: string; titulo: string; itens: 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="mb-2 flex items-center gap-2">
-        <span className="flex size-5 items-center justify-center rounded-full bg-marca-primary text-xs font-bold text-white print:bg-emerald-600">
+        <span className="flex size-5 items-center justify-center rounded-full bg-marca-primary text-xs font-bold text-white">
           {num}
         </span>
         <p className="text-sm font-semibold text-gray-900">{titulo}</p>
