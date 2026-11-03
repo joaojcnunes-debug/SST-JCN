@@ -10,6 +10,9 @@ import { useHomeStats } from "@/lib/hooks/useHomeStats";
 import { useAtividadeContexto } from "@/lib/hooks/useAtividadeContexto";
 import { useVencimentos } from "@/lib/hooks/useVencimentos";
 import { useUltimoAcidenteAfastamento } from "@/lib/hooks/useUltimoAcidenteAfastamento";
+import { useAcoesPulso } from "@/lib/hooks/useAcoesPulso";
+import { calcularPulso, contarAcoes } from "@/lib/visao-geral/pulso";
+import { hojeSP } from "@/lib/inspecoes/prioridade";
 import { useLaudosValidade } from "@/lib/hooks/useLaudosValidade";
 import { useInspecoesStatus } from "@/lib/hooks/useInspecoesStatus";
 import { useInspecoesPorMes } from "@/lib/hooks/useInspecoesPorMes";
@@ -29,6 +32,7 @@ export default function VisaoGeralPage() {
   const { data: ctx, isLoading: ctxLoading } = useAtividadeContexto();
   const { data: vencimentos, isLoading: vencLoading } = useVencimentos();
   const ultimoAcidente = useUltimoAcidenteAfastamento();
+  const acoesPulso = useAcoesPulso();
   const { data: laudosVal = [], isLoading: laudosLoading } = useLaudosValidade();
   const { data: inspecoesPorStatus = [] } = useInspecoesStatus();
   const { data: serieInspecoes = [] } = useInspecoesPorMes();
@@ -58,6 +62,12 @@ export default function VisaoGeralPage() {
     }
     return s;
   }, [laudosVal, laudosLoading]);
+
+  // Pulso de segurança (Etapa 4): documentos válidos (70%) + ações 5W2H no prazo (30%).
+  const pulso = useMemo(() => {
+    if (!saude || laudosLoading || !acoesPulso.data) return undefined;
+    return calcularPulso(saude, contarAcoes(acoesPulso.data, hojeSP()));
+  }, [saude, laudosLoading, acoesPulso.data]);
 
   // Laudos por tipo (donut) — exclui inspeções.
   const laudosPorTipo = useMemo(() => {
@@ -137,6 +147,8 @@ export default function VisaoGeralPage() {
       inspecoesPorStatus={inspecoesPorStatus}
       ultimoAcidenteAfastamento={ultimoAcidente.data}
       acidenteLoading={ultimoAcidente.isLoading}
+      pulso={pulso}
+      pulsoLoading={laudosLoading || acoesPulso.isLoading}
       onLogout={handleLogout}
       gestaoNaoLidas={gestaoNaoLidas}
       sinoNotificacoes={
