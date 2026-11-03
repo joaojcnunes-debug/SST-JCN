@@ -522,7 +522,7 @@ export default function GestaoChabraPage() {
   );
 
   return (
-    <div className="min-h-screen bg-app-bg">
+    <div className="casca min-h-screen bg-app-bg">
       {/* Hambúrguer (celular): abaixo de 768px a árvore some, e sem ele
           Espaços, pastas e Inbox ficavam inalcançáveis. */}
       <button
@@ -567,7 +567,7 @@ export default function GestaoChabraPage() {
       )}
 
       {/* Conteúdo: desloca pela sidebar e ocupa toda a largura restante */}
-      <div className="md:pl-[var(--sidebar-w)] print:pl-0">
+      <div className="casca-folha md:pl-[var(--sidebar-w)] print:pl-0">
         {/* Barra superior igual à dos outros módulos (nome/perfil de quem está logado, tema, unidade).
             No celular o hambúrguer fixo fica por cima dela, no espaço que ela já reserva (ml-12). */}
         <ModuleTopbar recolher={false} avisos={inboxCount} onAvisos={() => { setInboxView(true); setMeuEspacoView(false); setColabView(false); }} />

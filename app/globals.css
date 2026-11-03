@@ -18,7 +18,7 @@
   --color-marca-deep: #0b1e33;
   --color-red-alert: #D32F2F;
   --color-amber-warning: #d97706;
-  --color-app-bg: #f4f6f5;
+  --color-app-bg: #f3f6f9;
   --color-card-border: #e5e7eb;
 
   --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto,
@@ -89,7 +89,7 @@
   --border-app: #e5e7eb;
   --tiptap-heading: #0c4a6e;
   --tiptap-link: #0ea5e9;
-  --color-app-bg: #f4f6f5;
+  --color-app-bg: #f3f6f9;
   --color-card-border: #e5e7eb;
 }
 
@@ -418,11 +418,11 @@ select:focus {
   100% { background-position: 0% 50%, 100% 50%, 50% 0%; }
 }
 .app-aurora {
-  background-color: #eef3f1;
+  background-color: #eef3f8;
   background-image:
-    radial-gradient(55rem 55rem at 6% -12%, rgba(0,131,90,0.16), transparent 60%),
-    radial-gradient(48rem 48rem at 112% 8%, rgba(0,107,84,0.13), transparent 55%),
-    radial-gradient(42rem 42rem at 50% 118%, rgba(26,61,38,0.10), transparent 60%);
+    radial-gradient(55rem 55rem at 6% -12%, rgba(14,165,233,0.14), transparent 60%),
+    radial-gradient(48rem 48rem at 112% 8%, rgba(2,132,199,0.11), transparent 55%),
+    radial-gradient(42rem 42rem at 50% 118%, rgba(11,30,51,0.08), transparent 60%);
   background-size: 200% 200%, 200% 200%, 200% 200%;
   animation: aurora-shift 30s ease-in-out infinite;
 }
@@ -813,6 +813,39 @@ select:focus {
 
 @media (prefers-reduced-motion: reduce) {
   .sidebar-shell, .md\:pl-\[220px\] { transition: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Casca inset (Etapa 2 do docs/plano-skin-viva-jcn.md).
+   .casca        → raiz do layout: fundo marinho, o mesmo do fim do degradê do menu,
+                   para o menu "continuar" em volta do conteúdo.
+   .casca-folha  → a "folha" do conteúdo: 8px de respiro em cima e à direita, cantos
+                   de 18px, sombra suave. Sai do padding-left (o dos módulos) para
+                   margin-left, acompanhando a largura do menu (--sidebar-w), também
+                   recolhido (--sidebar-w-mini) — a Gestão não recolhe, por isso a regra
+                   de "mini" só vale para quem usa md:pl-[220px].
+   overflow: clip (e não hidden) corta os cantos sem virar área de rolagem: a topbar
+   sticky continua grudada no topo. Celular e impressão ficam como antes.
+   ════════════════════════════════════════════════════════════════════════ */
+@media screen and (min-width: 768px) {
+  /* flow-root: a margem de cima da folha fica DENTRO da casca (sem colapsar com ela). */
+  html .casca { background-color: #071526; display: flow-root; }
+  html .casca-folha,
+  html .casca-folha.md\:pl-\[220px\] {
+    padding-left: 0;
+    margin: 8px 8px 0 var(--sidebar-w);
+    min-height: calc(100vh - 8px);
+    border-radius: 18px 18px 0 0;
+    background-color: var(--color-app-bg);
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.04), 0 12px 32px rgb(0 0 0 / 0.28);
+    overflow: clip;
+    transition: margin-left 180ms cubic-bezier(.2, .7, .3, 1);
+  }
+  html[data-sidebar="mini"] .casca-folha.md\:pl-\[220px\] { margin-left: var(--sidebar-w-mini); }
+  html[data-sidebar-arrastando] .casca-folha { transition: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html .casca-folha { transition: none; }
 }
 /* Scrollbar discreta */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

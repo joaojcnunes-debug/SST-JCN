@@ -147,6 +147,11 @@ Alias de import: `@/*` → raiz.
   - Os PDFs já emitidos não mudam.
 - Modo escuro por CSS vars.
 - Mensagens e comentários do código em português; regras em `lib/` têm testes.
+- **Casca inset (0.3.204, Etapa 2 do plano-skin-viva):** em tela md+, a raiz dos layouts (`.casca`) é marinho `#071526`.
+  - **Folha:** o `div` do conteúdo (`.casca-folha`) vira uma folha com margem de 8px em cima e à direita, cantos de 18px, sombra e `overflow: clip`, que mantém a topbar sticky.
+  - **Largura:** a folha usa `margin-left: var(--sidebar-w)` no lugar do `padding-left` e acompanha o menu recolhido (`--sidebar-w-mini`). A Gestão não recolhe.
+  - **Onde vale:** em 21 layouts de módulo e na Gestão. Celular e impressão ficam iguais, porque as regras valem só em `@media screen` md+.
+  - **Fundo:** `.app-aurora` claro e `--color-app-bg` deixaram o verde (`#eef3f8` / `#f3f6f9`).
 - **Dicas nos campos (0.3.203, Etapa 1 do plano-skin-viva):** `components/ui/Dica.tsx`.
   - **Rótulo:** `<CampoLabel dica={...}>Nome</CampoLabel>` deixa o nome com sublinhado pontilhado. Passar o mouse ou chegar com Tab abre a caixa depois de cerca de 300 ms; o toque abre na hora.
   - **Caixa:** fica acima do rótulo, ou abaixo se faltar espaço. Vai para o `<body>` (portal), fecha com Esc (sem fechar a janela), usa `role="tooltip"`, não sai na impressão e não anima com `motion-reduce`.

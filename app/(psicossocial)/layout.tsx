@@ -192,14 +192,14 @@ export default function PsicossocialLayout({
   );
 
   return (
-    <div className="min-h-screen">
+    <div className="casca min-h-screen">
       <SidebarShell
         title="Psicossocial"
         subtitle="JCN Consultoria"
         logoHref="/psicossocial"
         sections={sections}
       />
-      <div className="md:pl-[220px] print:pl-0">
+      <div className="casca-folha md:pl-[220px] print:pl-0">
         <ModuleTopbar />
         <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>{children}</main>
       </div>

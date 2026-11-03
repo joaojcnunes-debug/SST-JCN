@@ -19,9 +19,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   const larga = TELA_LARGA.test(usePathname() ?? "");
 
   return (
-    <div className="app-aurora min-h-screen print:bg-white">
+    <div className="casca min-h-screen print:bg-white">
       <Sidebar />
-      <div className="md:pl-[220px] print:pl-0">
+      <div className="casca-folha app-aurora md:pl-[220px] print:pl-0">
         <Topbar />
         <main
           className={cn("mx-auto px-4 py-6 md:px-6 print:p-0", larga ? "max-w-none" : "max-w-[1400px]")}
