@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_QPS_ANALISE } from "@/lib/dicas/qps";
 import FonteGeradoraCampo from "@/components/psicossocial/FonteGeradoraCampo";
 import { useAdicionarFontesCatalogo, useCatalogoFontes } from "@/lib/hooks/useFontesGeradoras";
 import { fontesEscolhidas, textoFontes } from "@/lib/psicossocial/fontes";
@@ -557,7 +559,7 @@ function BlocoSetor({
         <thead>
           <tr>
             <th className="drps-label" style={{ width: "27%", textAlign: "left" }}>Fatores de Risco</th>
-            <th className="drps-label" style={{ width: "35%", textAlign: "left" }}>Fontes Geradoras do Risco</th>
+            <th className="drps-label" style={{ width: "35%", textAlign: "left" }}><Dica texto={DICAS_QPS_ANALISE.fontes}>Fontes Geradoras do Risco</Dica></th>
             <th className="drps-label" style={{ width: "11%" }}>
               Gravidade<br /><span className="text-[9px] font-normal italic">(Severidade)</span>
             </th>
@@ -770,7 +772,7 @@ function BlocoSetor({
           <tr>
             <td className="drps-header-section">
               <div className="flex items-center justify-between gap-2">
-                <span>Conclusão</span>
+                <span><Dica texto={DICAS_QPS_ANALISE.conclusao}>Conclusão</Dica></span>
                 <button
                   type="button"
                   onClick={gerarConclusaoIA}
