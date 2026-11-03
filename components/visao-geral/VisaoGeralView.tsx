@@ -24,8 +24,6 @@ import {
   CheckCircle2,
   ShieldCheck,
 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import type { VisaoGeralData } from "@/lib/hooks/useVisaoGeralUnidades";
 import type { AtividadeItem } from "@/lib/hooks/useHomeStats";
 import type { VencimentosData, VencimentoItem } from "@/lib/hooks/useVencimentos";
@@ -34,6 +32,9 @@ import { diasSemAcidente } from "@/lib/visao-geral/diasSemAcidente";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import SaudeAnel, { type SaudeDocumentos } from "./SaudeAnel";
 import PulsoSeguranca from "./PulsoSeguranca";
+import AcontecendoAgora from "./AcontecendoAgora";
+import RadarVencimentos from "./RadarVencimentos";
+import PainelEmpresas from "./PainelEmpresas";
 import type { Pulso } from "@/lib/visao-geral/pulso";
 import GraficosVisaoGeral, { type FatiaTipo, type PontoMes, type FatiaStatus } from "./GraficosVisaoGeral";
 import { cn } from "@/lib/utils";
@@ -101,7 +102,6 @@ export default function VisaoGeralView({
   data,
   isLoading,
   hasError,
-  atividade,
   pendencias,
   statsLoading,
   vencimentos,
@@ -359,6 +359,14 @@ export default function VisaoGeralView({
                 </div>
               </div>
 
+              {/* Partes vivas (Etapa 5): radar de vencimentos + empresas por situação */}
+              <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <RadarVencimentos vencidos={vencidos} vencendo={vencendo} />
+                <div className="lg:col-span-2">
+                  <PainelEmpresas />
+                </div>
+              </div>
+
               {/* Gráficos — inspeções por mês/status + laudos por tipo */}
               {(laudosPorTipo?.length || inspecoesPorMes?.length) ? (
                 <GraficosVisaoGeral
@@ -368,48 +376,11 @@ export default function VisaoGeralView({
                 />
               ) : null}
 
-              {/* Atividade recente + Pendências */}
+              {/* Acontecendo agora + Pendências */}
               <div className="mt-9 grid grid-cols-1 gap-5 lg:grid-cols-3">
-                <section className="lg:col-span-2">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    Atividade recente
-                  </p>
-                  <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                    {statsLoading ? (
-                      <div className="flex items-center gap-2 p-4 text-sm text-gray-400">
-                        <Loader2 className="size-4 animate-spin" /> Carregando…
-                      </div>
-                    ) : (atividade ?? []).length === 0 ? (
-                      <p className="p-4 text-sm text-gray-400">Nenhuma atividade recente.</p>
-                    ) : (
-                      (atividade ?? []).map((a, i) => {
-                        const secundario = [a.titulo, a.tecnicoVinculado ? `téc.: ${a.tecnicoVinculado}` : null]
-                          .filter(Boolean)
-                          .join(" · ");
-                        return (
-                          <Link
-                            key={`${a.href}-${i}`}
-                            href={a.href}
-                            className="flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50"
-                          >
-                            <span className="mt-1.5 size-2 shrink-0 rounded-full" style={{ background: moduloAccent(a.modulo) }} />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium text-gray-800">
-                                {a.empresaNome ?? "Sem empresa"}
-                                {a.responsavel ? (
-                                  <span className="font-normal text-gray-500"> · resp.: {a.responsavel}</span>
-                                ) : null}
-                              </p>
-                              <p className="truncate text-xs text-gray-400">{secundario}</p>
-                            </div>
-                            {a.status && <StatusPill status={a.status} />}
-                            <span className="mt-0.5 shrink-0 text-xs text-gray-400">{tempoRelativo(a.data)}</span>
-                          </Link>
-                        );
-                      })
-                    )}
-                  </div>
-                </section>
+                <div className="lg:col-span-2">
+                  <AcontecendoAgora />
+                </div>
 
                 <section>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
@@ -617,45 +588,6 @@ function ContadorAcidente({ ultimoComAfastamento, loading }: { ultimoComAfastame
         </>
       )}
     </div>
-  );
-}
-
-const MODULO_ACCENT: Record<string, string> = {
-  painel: "#0284c7",
-  conformidade: "#0D9488",
-  nao_conformidade: "#dc2626",
-  psicossocial: "#7c3aed",
-  analise_quimicos: "#d97706",
-  apreciacao_maquinas: "#0ea5e9",
-  aet: "#16a34a",
-  aep: "#0891b2",
-};
-
-function moduloAccent(m: string): string {
-  return MODULO_ACCENT[m] ?? "#9ca3af";
-}
-
-function tempoRelativo(iso: string): string {
-  try {
-    return formatDistanceToNow(new Date(iso), { addSuffix: true, locale: ptBR });
-  } catch {
-    return "";
-  }
-}
-
-const STATUS_PENDENTE = ["RASCUNHO", "EM_ANDAMENTO", "ABERTA", "EM_TRATAMENTO", "PENDENTE"];
-
-function StatusPill({ status }: { status: string }) {
-  const pend = STATUS_PENDENTE.includes(status.toUpperCase());
-  return (
-    <span
-      className={cn(
-        "hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold sm:inline-block",
-        pend ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700",
-      )}
-    >
-      {status.replace(/_/g, " ").toLowerCase()}
-    </span>
   );
 }
 

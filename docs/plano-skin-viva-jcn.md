@@ -117,6 +117,6 @@ Ordem sugerida: Empresas → Inspeções/Riscos → EPI → AET/AEP → Psicosso
 | 2 Casca inset | concluída | 0.3.204 | `.casca`/`.casca-folha` no globals.css + 22 layouts (21 módulos e Gestão); fundo `app-aurora`/`app-bg` sem verde |
 | 3 Bento | concluída | 0.3.205 | bloco "O que exige ação agora" (vencidos + 30 dias, Resolver), saúde, contador de dias sem acidente com afastamento (sem registro = mensagem), totais animados; cartão/lista de Unidades saíram; menu da Visão geral em marinho |
 | 4 Pulso | concluída | 0.3.206 | fórmula aprovada: 70% documentos válidos + 30% ações 5W2H no prazo; faixas 85/60; só na Visão geral; `lib/visao-geral/pulso.ts` |
-| 5 Vivo | pendente | | |
+| 5 Vivo | concluída | 0.3.207 | radar de vencimentos (vencido/30/60) + contador de riscos altos; painel de empresas por cidade no lugar do mapa (mapa depois); "Acontecendo agora" da trilha de auditoria a cada 30 s no lugar da Atividade recente |
 | 6 Encantamento | pendente | | |
 | 7 Dicas em tudo | pendente | | |
