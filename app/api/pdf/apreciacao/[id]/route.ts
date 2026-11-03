@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { RISCO_RESIDUAL_LABELS, type RiscoResidual } from "@/lib/supabase/types";
 import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "@/lib/supabase/client";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
@@ -171,6 +172,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
             : null,
           constatacoes_inspecao: (f.constatacoes_inspecao as string) ?? null,
           parecer_tecnico: (f.parecer_tecnico as string) ?? null,
+          componentes: Array.isArray(f.componentes_maquina) ? (f.componentes_maquina as string[]) : null,
+          limite_uso: (f.limite_uso as string) ?? null,
+          limite_espaco: (f.limite_espaco as string) ?? null,
+          limite_tempo: (f.limite_tempo as string) ?? null,
+          limite_produtividade: (f.limite_produtividade as string) ?? null,
+          npe: (f.npe as string) ?? null,
+          sistemas_atual: Array.isArray(f.sistemas_atual) ? (f.sistemas_atual as string[]) : null,
+          sistemas_necessario: Array.isArray(f.sistemas_necessario) ? (f.sistemas_necessario as string[]) : null,
           // Máx. 3 no PDF: a ficha tem que caber numa página.
           fotos: await otimizarFotosPdf(
             (await assinarMidiaPdf(supabase, urls.slice(0, 3), "fotos")).filter(Boolean),
@@ -237,7 +246,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       data_apreciacao: formatarDataBR(ap.data_apreciacao as string | null),
       total_itens: String(itens.length),
       total_nao_conforme: String(itens.filter((i) => i.situacao === "NAO_CONFORME").length),
-      risco_residual: (ap.risco_residual as string) ?? "",
+      // Com rótulo e acento ("Médio", "Crítico"), não o código gravado.
+      risco_residual: ap.risco_residual ? (RISCO_RESIDUAL_LABELS[ap.risco_residual as RiscoResidual] ?? String(ap.risco_residual)) : "",
       carimbo: (ap.responsavel as string) ?? "",
       importado: formatarDataBR(ap.created_at as string | null),
     };

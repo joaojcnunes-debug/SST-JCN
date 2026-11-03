@@ -153,6 +153,24 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Correções da Apreciação de Máquinas (0.3.220, banco v318), achadas na auditoria das dicas:**
+  - **Máquina ativa:** o editor só aceita um `fichaAtivaId` que seja do laudo aberto; sem seleção válida, abre na 1ª máquina. O store é global e guardava a máquina do laudo anterior.
+  - **Identificação da máquina:** só recarrega quando muda a máquina. Foto enviada/removida e salvar no painel apagavam o que não estava salvo.
+  - **Item livre:** nasce na máquina aberta (`id_ficha`), e o LIVRE-N é contado no laudo todo.
+  - **Laudo todo:** gerar ações, o parecer da IA, o Sugerir risco residual e os totais dos textos padrão usam todas as máquinas.
+  - **Risco HRN:** num risco já lançado, mudar POD, FEP ou GPD não sobrescreve a classificação gravada; o "usar sugerida" continua.
+  - **Textos e acentos:**
+    - o texto das medidas antigas foi corrigido;
+    - prioridade e status do Plano de Adequação aparecem com acento na tela e no PDF;
+    - "não conformes" no lugar de NAO_CONFORME.
+  - **PDF:**
+    - a ficha de cada máquina mostra Componentes, Limites, NPE e Sistemas de segurança (atual × necessário), cada um só quando preenchido;
+    - a Notificação SIT/MTE sai junto da Identificação da empresa;
+    - `{{risco_residual}}` sai com rótulo.
+  - **Nova:** grava o título "Apreciação de Máquinas NR-12" e a cidade/UF do cadastro da empresa.
+  - **Ficaram de fora:**
+    - NPE do risco e Nível das ações continuam só gravados;
+    - Observações gerais podem sair antes da capa (não confirmado no PDF gerado).
 - **Dicas na Apreciação de Máquinas, lote 7.8 (0.3.219):** `lib/dicas/apreciacao.ts`, com cerca de 60 campos.
   - **Helpers que aceitam `dica`:** o `Campo` (Nova, editor e PlanoAcaoTable). Os Limites e a ficha da máquina (`CAMPOS_FICHA`) recebem a dica pela própria lista.
   - **Neutras de propósito:** Notificação SIT, Limites, NPE, Sistemas, NPE do risco e Nível das ações. Hoje são gravados e não saem no PDF; o PR de correções decide.

@@ -3,16 +3,16 @@
  * docs/plano-skin-viva-jcn.md): Nova, Dados gerais, Identificação da máquina, Ficha, Item livre,
  * Risco HRN, Item do checklist, Conclusão e Plano de Adequação. Mesmas regras de
  * lib/dicas/empresas.ts; cada afirmação conferida no PDF. Revisadas pelo João em 03/11/2026.
- * Neutras de propósito (só dizem como preencher): Notificação SIT, Limites, NPE, Sistemas,
- * NPE do risco e Nível das ações — hoje são gravados e não saem no PDF; o PR de correções decide.
+ * 0.3.220: Notificação SIT, Limites, Componentes, NPE e Sistemas passaram a sair no PDF.
+ * Continuam neutras (gravadas, sem PDF): NPE do risco e Nível das ações.
  */
-const GRAVE_IDENT = "Grave em Salvar identificação.";
+const GRAVE_IDENT = "Grave em Salvar identificação; sai na ficha da máquina no PDF.";
 
 export const DICAS_APR_DADOS = {
   responsavel: "Escolha o profissional da lista; já vem com o seu nome. Sai na folha de assinaturas do PDF.",
   responsavel_empresa: "Contato do cliente que acompanha a apreciação. Vira o Quem das ações geradas no Plano de Adequação.",
   data: "Data da avaliação; já vem com hoje. Entra nos textos padrão do PDF e na tela de Validades.",
-  notificacao: "Número da notificação da fiscalização e os itens citados, se houver.",
+  notificacao: "Número da notificação da fiscalização e os itens citados, se houver. Sai no PDF junto da identificação.",
   validade: "Até quando o documento vale. Não sai no PDF: alimenta a tela de Validades e os avisos de vencimento.",
   observacoes: "Grave em Salvar dados gerais. Sai no PDF como Observações gerais.",
   imprimir_checklist: "Já vem marcado em laudo novo. Grave em Salvar dados gerais para valer no PDF.",
@@ -22,7 +22,7 @@ export const DICAS_APR_MAQUINA = {
   operadores: "Nome e cargo de quem opera a máquina. Grave em Salvar identificação; saem numa tabela na ficha do PDF.",
   fotos: "Até 6 fotos, que gravam na hora. Só as 3 primeiras saem na ficha da máquina no PDF.",
   limite_uso: `Para que a máquina é usada (ex.: panificação). ${GRAVE_IDENT}`,
-  limite_espaco: `Onde a máquina fica e o espaço em volta (ex.: interior da padaria, 2º andar). ${GRAVE_IDENT}`,
+  limite_espaco: `Onde a máquina fica e o espaço em volta (ex.: 2º andar). ${GRAVE_IDENT}`,
   limite_tempo: `Vida útil ou período de uso previsto (ex.: 15 anos). ${GRAVE_IDENT}`,
   limite_produtividade: `Capacidade de produção (ex.: 80 kg/h). ${GRAVE_IDENT}`,
   npe: `Faixa de pessoas expostas à máquina. ${GRAVE_IDENT}`,
@@ -80,7 +80,7 @@ export const DICAS_APR_ITEM = {
 export const DICAS_APR_CONCLUSAO = {
   parecer: "Conclusão geral do laudo. Grave em Salvar conclusão (Finalizar também grava); sai na Conclusão Geral do PDF.",
   recomendacoes: "Ações prioritárias do laudo todo. Grave em Salvar conclusão; sai na Conclusão Geral do PDF.",
-  risco_residual: "Grau final do laudo. Sugerir usa o maior nível dos itens não conformes da máquina aberta. Grave em Salvar conclusão.",
+  risco_residual: "Grau final do laudo. Sugerir usa o maior nível dos itens não conformes de todas as máquinas.",
 } as const;
 
 export const DICAS_APR_PLANO = {

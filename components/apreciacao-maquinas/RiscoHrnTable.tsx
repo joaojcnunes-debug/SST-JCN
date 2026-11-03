@@ -208,7 +208,7 @@ function RiscoRow({
 
   function setF<K extends keyof RiscoHrnInput>(key: K, val: RiscoHrnInput[K]) {
     const next: Partial<RiscoHrnInput> = { ...form, [key]: val };
-    if ((key === "pod" || key === "fep" || key === "gpd") && !next.classificacao_risco) {
+    if ((key === "pod" || key === "fep" || key === "gpd") && !{ ...actual, ...next }.classificacao_risco) {
       const sug = calcularClassificacaoHrn(
         key === "pod" ? val as string : (next.pod ?? null),
         key === "fep" ? val as string : (next.fep ?? null),
@@ -372,7 +372,7 @@ function RiscoRow({
               <span className="mb-0.5 block text-[10px] font-semibold uppercase text-gray-500">Medidas preventivas (campo antigo)</span>
               <textarea rows={2} value={actual.medidas_preventivas ?? ""} onChange={(e) => setF("medidas_preventivas", e.target.value || null)} disabled={disabled} className={inputClass} />
               <span className="mt-0.5 block text-[9px] text-gray-400">
-                Não sai na ficha do laudo — reescreva o conteúdo em Engenharia / Administrativas.
+                Só sai na ficha quando Engenharia e Administrativas estão vazias — prefira reescrever lá.
               </span>
             </label>
           )}

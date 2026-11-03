@@ -41,6 +41,21 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "correcoes-apreciacao",
+    data: "2026-11-03",
+    tipo: "correcao",
+    titulo: "Apreciação de Máquinas: correções e mais dados no PDF",
+    texto:
+      "Abrir outro laudo não mantém mais a máquina do laudo anterior (o risco novo podia ir para a máquina errada); " +
+      "enviar foto ou salvar no painel não apaga a identificação ainda não salva; o item livre nasce na máquina " +
+      "aberta; gerar ações, o parecer da IA e o Sugerir risco residual usam todas as máquinas; mudar POD, FEP ou GPD " +
+      "não troca a classificação já gravada. No PDF entram Componentes, Limites, NPE, Sistemas de segurança e a " +
+      "Notificação SIT/MTE, quando preenchidos, e o risco residual com rótulo. Prioridade e status com acento. A nova " +
+      "apreciação já grava o título padrão e a cidade da empresa.",
+    onde: "Apreciação de Máquinas",
+    versoes: ["0.3.220"],
+  },
+  {
     id: "dicas-apreciacao-maquinas",
     data: "2026-11-03",
     tipo: "melhoria",

@@ -589,6 +589,11 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
+- **v318 — Apreciação de Máquinas: título padrão nos laudos sem título (03/11/2026).**
+  - **O que fez:** os 5 laudos existentes ficaram com `titulo` = 'Apreciação de Máquinas NR-12'.
+  - **O que não fez:** a cidade não foi preenchida. Quatro laudos são de empresas sem município no cadastro, e o quinto já tinha cidade.
+  - **Daqui em diante:** a tela Nova grava o título e a cidade.
+  - Rollback: `scripts/sql/v318_apreciacao_titulo_padrao_rollback.sql`.
 - **v317 — DRPS: data de conclusão por qualquer caminho (03/11/2026).**
   - **Gatilho:** `drps_stamp_data_conclusao()` (BEFORE UPDATE em `drps_relatorios`) grava `data_conclusao = now()` na 1ª transição para CONCLUIDO, se ainda estiver vazia. É o mesmo de `supabase/fila/v122_drps_data_conclusao_fix.sql`, nunca aplicado no JCN.
   - **Acerto dos antigos:** os 2 concluídos sem data ganharam data. DRPS-225D2095 ficou com 25/09/2026 12:00 -03, a do histórico. DRPS-A45EFF4D ficou com 09/06/2026 12:00 -03, a da elaboração.

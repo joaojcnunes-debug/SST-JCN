@@ -5,7 +5,7 @@ import { DICAS_APR_DADOS, DICAS_APR_MAQUINA, DICAS_APR_LIVRE, DICAS_APR_CONCLUSA
 import BotaoHistoricoDocumento from "@/components/auditoria/BotaoHistoricoDocumento";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -109,9 +109,17 @@ export default function DetalheApreciacaoPage() {
   const apreciacao = data?.apreciacao;
 
   // ── Multi-máquina (v148): o editor gira em torno da MÁQUINA ativa ─────────
-  const fichaAtivaId = useApreciacaoMaquinasStore((s) => s.fichaAtivaId);
+  const fichaAtivaIdStore = useApreciacaoMaquinasStore((s) => s.fichaAtivaId);
+  const setFichaAtiva = useApreciacaoMaquinasStore((s) => s.setFichaAtiva);
   const { data: fichas = [] } = useFichasMaquina(id);
-  const fichaAtiva = fichas.find((f) => f.id_ficha === fichaAtivaId) ?? null;
+  const fichaAtiva = fichas.find((f) => f.id_ficha === fichaAtivaIdStore) ?? null;
+  // A seleção vive num store global (sem reset): ao abrir outro laudo pelo app ficava a máquina
+  // do anterior — checklist vazio e risco novo gravado na máquina errada. Só vale o id que é
+  // DESTE laudo; sem seleção válida, abre na 1ª máquina (0.3.220).
+  const fichaAtivaId = fichaAtiva?.id_ficha ?? null;
+  useEffect(() => {
+    if (fichas.length > 0 && !fichaAtiva) setFichaAtiva(fichas[0].id_ficha);
+  }, [fichas, fichaAtiva, setFichaAtiva]);
   const atualizarFicha = useAtualizarFicha(id ?? "");
   const uploadFotoFicha = useUploadFotoFicha(id ?? "");
   const removerFotoFicha = useRemoverFotoFicha(id ?? "");
@@ -180,8 +188,13 @@ export default function DetalheApreciacaoPage() {
   }, [apreciacao]);
 
   // Identificação (componentes/limites/NPE/sistemas/operadores/constatações/parecer)
-  // é POR MÁQUINA (ficha ativa). A auto-seleção da 1ª ficha fica no FichasMaquinaPanel.
+  // é POR MÁQUINA (ficha ativa). Recarrega só quando a máquina muda: foto enviada/removida e
+  // salvar no painel devolvem um objeto novo da mesma máquina e apagavam o que não foi salvo.
+  const identCarregadaDe = useRef<string | null>(null);
   useEffect(() => {
+    const idAtual = fichaAtiva?.id_ficha ?? null;
+    if (idAtual === identCarregadaDe.current) return;
+    identCarregadaDe.current = idAtual;
     setComponentes(fichaAtiva?.componentes_maquina ?? []);
     setLimiteUso(fichaAtiva?.limite_uso ?? "");
     setLimiteEspaco(fichaAtiva?.limite_espaco ?? "");
@@ -347,11 +360,16 @@ export default function DetalheApreciacaoPage() {
     }
   }
 
-  // Próximo índice pra `LIVRE-{N}` — conta itens livres existentes e pega +1
-  const proximoIndiceLivre = useMemo(
-    () => itens.filter((i) => i.item_origem === "LIVRE").length + 1,
-    [itens]
-  );
+  // Próximo índice pra `LIVRE-{N}` — conta os livres do LAUDO todo (contar só a máquina
+  // aberta repetia códigos) e pega o maior + 1.
+  const proximoIndiceLivre = useMemo(() => {
+    let maior = 0;
+    for (const i of todosItens) {
+      const n = /^LIVRE-(\d+)$/.exec(i.item_codigo ?? "")?.[1];
+      if (n) maior = Math.max(maior, Number(n));
+    }
+    return maior + 1;
+  }, [todosItens]);
 
   async function handleAdicionarLivre() {
     if (!id) return;
@@ -362,6 +380,8 @@ export default function DetalheApreciacaoPage() {
     try {
       await adicionarLivre.mutateAsync({
         id_apreciacao: id,
+        // Na máquina aberta: sem isso o item nascia sem máquina e sumia da tela.
+        id_ficha: fichaAtivaId,
         categoria: livreCategoria,
         titulo: livreTitulo.trim(),
         descricao: livreDescricao.trim() || null,
@@ -381,7 +401,8 @@ export default function DetalheApreciacaoPage() {
   async function handleGerarParecerIA() {
     if (!apreciacao) return;
     // Bloqueio: precisa ter pelo menos 1 item avaliado (não-PENDENTE)
-    const itensAvaliados = itens.filter((i) => i.situacao !== "PENDENTE");
+    // O parecer é do laudo todo: todas as máquinas, não só a aberta.
+    const itensAvaliados = todosItens.filter((i) => i.situacao !== "PENDENTE");
     if (itensAvaliados.length === 0) {
       toast.error("Avalie ao menos 1 item antes de gerar o parecer");
       return;
@@ -455,14 +476,14 @@ export default function DetalheApreciacaoPage() {
     toast.success("Parecer aplicado — revise e clique em Salvar conclusão");
   }
 
-  /** Sugere risco_residual baseado no MAX nível dos itens NAO_CONFORME. */
+  /** Sugere o risco residual pelo maior nível dos itens não conformes do laudo todo. */
   function handleSugerirRiscoResidual() {
-    const niveis = itens
+    const niveis = todosItens
       .filter((i) => i.situacao === "NAO_CONFORME" && i.nivel_risco_calculado)
       .map((i) => i.nivel_risco_calculado as NivelRisco);
     if (niveis.length === 0) {
       toast.error(
-        "Avalie probabilidade × severidade nos itens NAO_CONFORME antes de sugerir"
+        "Avalie probabilidade × severidade nos itens não conformes antes de sugerir"
       );
       return;
     }
@@ -474,7 +495,7 @@ export default function DetalheApreciacaoPage() {
     const sugerido = NIVEL_PARA_RISCO_RESIDUAL[ORDEM_NIVEL[maxIdx]];
     setRiscoResidual(sugerido);
     toast.success(
-      `Risco residual sugerido: ${RISCO_RESIDUAL_LABELS[sugerido]} (max nível: ${ORDEM_NIVEL[maxIdx]})`
+      `Risco residual sugerido: ${RISCO_RESIDUAL_LABELS[sugerido]} (maior nível: ${ORDEM_NIVEL[maxIdx]})`
     );
   }
 
@@ -674,11 +695,12 @@ export default function DetalheApreciacaoPage() {
           cidade: apreciacao.cidade ?? "",
           data_apreciacao: formatarDataBR(apreciacao.data_apreciacao),
           data_atual: new Date().toLocaleDateString("pt-BR"),
-          total_itens: String(itens.length),
+          // Mesmos totais do PDF: o laudo todo.
+          total_itens: String(todosItens.length),
           total_nao_conforme: String(
-            itens.filter((i) => i.situacao === "NAO_CONFORME").length
+            todosItens.filter((i) => i.situacao === "NAO_CONFORME").length
           ),
-          risco_residual: apreciacao.risco_residual ?? "",
+          risco_residual: apreciacao.risco_residual ? RISCO_RESIDUAL_LABELS[apreciacao.risco_residual] : "",
           carimbo: apreciacao.responsavel ?? "",
           importado: formatarDataBR(apreciacao.created_at),
         }}
@@ -1308,7 +1330,7 @@ export default function DetalheApreciacaoPage() {
               <button
                 type="button"
                 onClick={handleSugerirRiscoResidual}
-                title="Sugerir baseado no MAX nível dos itens NAO_CONFORME"
+                title="Sugerir pelo maior nível dos itens não conformes do laudo"
                 className="inline-flex shrink-0 items-center gap-1 rounded-md border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100 print:hidden"
               >
                 <Wand2 className="size-3.5" /> Sugerir
@@ -1351,7 +1373,7 @@ export default function DetalheApreciacaoPage() {
         <PlanoAcaoTable
           idApreciacao={apreciacao.id_apreciacao}
           apreciacao={apreciacao}
-          itens={itens}
+          itens={todosItens}
           readOnly={readOnly}
         />
       </section>
@@ -1369,11 +1391,12 @@ export default function DetalheApreciacaoPage() {
           cidade: apreciacao.cidade ?? "",
           data_apreciacao: formatarDataBR(apreciacao.data_apreciacao),
           data_atual: new Date().toLocaleDateString("pt-BR"),
-          total_itens: String(itens.length),
+          // Mesmos totais do PDF: o laudo todo.
+          total_itens: String(todosItens.length),
           total_nao_conforme: String(
-            itens.filter((i) => i.situacao === "NAO_CONFORME").length
+            todosItens.filter((i) => i.situacao === "NAO_CONFORME").length
           ),
-          risco_residual: apreciacao.risco_residual ?? "",
+          risco_residual: apreciacao.risco_residual ? RISCO_RESIDUAL_LABELS[apreciacao.risco_residual] : "",
           carimbo: apreciacao.responsavel ?? "",
           importado: formatarDataBR(apreciacao.created_at),
         }}
