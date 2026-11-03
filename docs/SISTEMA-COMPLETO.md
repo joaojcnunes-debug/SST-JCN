@@ -147,6 +147,11 @@ Alias de import: `@/*` → raiz.
   - Os PDFs já emitidos não mudam.
 - Modo escuro por CSS vars.
 - Mensagens e comentários do código em português; regras em `lib/` têm testes.
+- **Dicas nos campos (0.3.203, Etapa 1 do plano-skin-viva):** `components/ui/Dica.tsx`.
+  - **Rótulo:** `<CampoLabel dica={...}>Nome</CampoLabel>` deixa o nome com sublinhado pontilhado. Passar o mouse ou chegar com Tab abre a caixa depois de cerca de 300 ms; o toque abre na hora.
+  - **Caixa:** fica acima do rótulo, ou abaixo se faltar espaço. Vai para o `<body>` (portal), fecha com Esc (sem fechar a janela), usa `role="tooltip"`, não sai na impressão e não anima com `motion-reduce`.
+  - **Textos:** centralizados em `lib/dicas/<modulo>.ts`. O teste limita cada um a 140 caracteres e exige frase terminada.
+  - **Piloto:** cadastro de Empresas, com 28 campos.
 
 ---
 
