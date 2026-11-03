@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
+import { comemorar } from "@/components/ui/Comemoracao";
 import { useInspecao, type InspecaoFull } from "@/lib/hooks/useInspecao";
 import { useAguardandoInicio } from "@/components/inspecoes/AguardandoInicio";
 import { gravar } from "@/lib/offline/gravar";
@@ -166,6 +167,7 @@ export default function InspecaoEditorPage({ params }: Props) {
         qc.invalidateQueries({ queryKey: ["inspecao", id] });
         qc.invalidateQueries({ queryKey: ["dashboard-stats"] });
         toast.success(novoStatus === "CONCLUIDA" ? "Inspeção concluída" : "Inspeção reaberta");
+        if (novoStatus === "CONCLUIDA") comemorar();
         return;
       }
       // Sem rede não há o que revalidar: o status muda na tela à mão, senão o

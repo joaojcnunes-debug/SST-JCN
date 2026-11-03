@@ -27,6 +27,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { comemorar } from "@/components/ui/Comemoracao";
 import { mensagemErro } from "@/lib/errors";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import RelatorioPrintHeader from "@/components/layout/RelatorioPrintHeader";
@@ -160,7 +161,10 @@ export default function DetalheConformidadePage({
     const doFinalizar = () => atualizarRelatorio.mutate(
       { id_relatorio: id, status: "FINALIZADO" },
       {
-        onSuccess: () => toast.success("Relatório finalizado"),
+        onSuccess: () => {
+          toast.success("Relatório finalizado");
+          comemorar();
+        },
         onError: (e: Error) => toast.error(mensagemErro(e, "Falha")),
       }
     );

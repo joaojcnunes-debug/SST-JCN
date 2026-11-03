@@ -7,6 +7,7 @@ import { perfilPodeAssinarPorOutro } from "@/lib/auth/assinatura-por-outro";
 import { useUserStore } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import toast from "react-hot-toast";
+import { comemorar } from "@/components/ui/Comemoracao";
 
 interface Props {
   open: boolean;
@@ -178,6 +179,7 @@ export default function AssinarPdfModal({
       if (salvarNoServidor) {
         // Novo comportamento: PDF salvo no servidor, sem download automático
         toast.success("Documento assinado com sucesso!");
+        comemorar();
         onAssinado?.();
         handleClose();
       } else {

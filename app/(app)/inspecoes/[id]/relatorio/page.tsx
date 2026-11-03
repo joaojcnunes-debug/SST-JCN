@@ -23,6 +23,7 @@ import {
   Undo2,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { comemorar } from "@/components/ui/Comemoracao";
 import { usePdfAssinado } from "@/lib/hooks/usePdfsGerados";
 import BotaoAssinarPdf from "@/components/ui/BotaoAssinarPdf";
 import AssinaturaRelatorio from "@/components/ui/AssinaturaRelatorio";
@@ -472,7 +473,12 @@ export default function RelatorioChabraPage({ params }: Props) {
                       if (!ok) return;
                       salvarElab.mutate(
                         { elaboracao_status: "CONCLUIDO", elaboracao_concluida_em: new Date().toISOString() },
-                        { onSuccess: () => toast.success("Documento concluído — enviado ao cliente") },
+                        {
+                          onSuccess: () => {
+                            toast.success("Documento concluído — enviado ao cliente");
+                            comemorar();
+                          },
+                        },
                       );
                     }}
                     className="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-50"

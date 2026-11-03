@@ -26,6 +26,7 @@ import {
   X as IconX,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { comemorar } from "@/components/ui/Comemoracao";
 import { mensagemErro } from "@/lib/errors";
 import {
   useApreciacaoMaquina,
@@ -326,6 +327,7 @@ export default function DetalheApreciacaoPage() {
         status: "FINALIZADO",
       });
       toast.success("Apreciação finalizada");
+      comemorar();
     } catch (err) {
       console.error(err);
       toast.error("Falha ao finalizar");

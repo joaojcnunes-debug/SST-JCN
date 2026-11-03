@@ -24,7 +24,7 @@ export default function PulsoSeguranca({ pulso, loading }: { pulso?: Pulso; load
   const cor = pulso?.faixa ? COR[pulso.faixa] : null;
   return (
     <div
-      className="reveal-up w-full rounded-2xl border border-gray-200 bg-white p-5 shadow-sm print:hidden lg:w-[320px]"
+      className="tilt-3d reveal-up w-full rounded-2xl border border-gray-200 bg-white p-5 shadow-sm print:hidden lg:w-[320px]"
       style={{ animationDelay: "90ms" }}
     >
       <div className="flex items-center justify-between gap-3">

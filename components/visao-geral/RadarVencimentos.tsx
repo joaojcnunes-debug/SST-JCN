@@ -48,7 +48,7 @@ export default function RadarVencimentos({ vencidos, vencendo }: { vencidos: Ven
     });
 
   return (
-    <section className="reveal-up rounded-2xl border border-gray-200 bg-white p-5 shadow-sm print:hidden">
+    <section className="tilt-3d reveal-up rounded-2xl border border-gray-200 bg-white p-5 shadow-sm print:hidden">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">Radar de vencimentos</p>
       <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row lg:flex-col xl:flex-row">
         <svg viewBox={`0 0 ${TAM} ${TAM}`} className="size-[200px] shrink-0" role="img" aria-label="Radar de vencimentos por urgência">
