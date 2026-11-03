@@ -96,14 +96,14 @@ export default function DimensionamentoLayout({ children }: { children: ReactNod
   if (user && (!perm.acesso || rotaProibida)) return null;
 
   return (
-    <div className="min-h-screen">
+    <div className="casca min-h-screen">
       <SidebarShell
         title="Dimensionamento"
         subtitle="JCN Consultoria"
         logoHref={perm.verHeadcount ? "/dimensionamento" : "/dimensionamento/unidades"}
         sections={sections}
       />
-      <div className="md:pl-[220px] print:pl-0">
+      <div className="casca-folha md:pl-[220px] print:pl-0">
         <ModuleTopbar />
         <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>
           {children}

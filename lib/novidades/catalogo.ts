@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "skin-casca-inset",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Visual: o conteúdo agora fica numa folha ao lado do menu",
+    texto:
+      "No computador, o menu marinho continua em volta da tela e o conteúdo de cada módulo fica numa folha clara com " +
+      "cantos arredondados, com a barra azul no topo. A folha acompanha o menu aberto, recolhido ou com a largura " +
+      "ajustada. O fundo das telas também deixou o tom esverdeado. No celular e na impressão nada muda.",
+    onde: "Todos os módulos e a Gestão",
+    versoes: ["0.3.204"],
+  },
+  {
     id: "dicas-campos-empresas",
     data: "2026-11-03",
     tipo: "novidade",

@@ -29,14 +29,14 @@ export default function EmpresasLayout({ children }: { children: ReactNode }) {
   ], []);
 
   return (
-    <div className="min-h-screen">
+    <div className="casca min-h-screen">
       <SidebarShell
         title="Empresas"
         subtitle="JCN Consultoria"
         logoHref="/empresas"
         sections={sections}
       />
-      <div className="md:pl-[220px] print:pl-0">
+      <div className="casca-folha md:pl-[220px] print:pl-0">
         <ModuleTopbar />
         {/* view-transition-name: content → só esta área faz o fade entre páginas. */}
         <main className="mx-auto max-w-[1400px] px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>{children}</main>
