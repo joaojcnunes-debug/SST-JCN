@@ -9,6 +9,7 @@ import { useVisaoGeralUnidades } from "@/lib/hooks/useVisaoGeralUnidades";
 import { useHomeStats } from "@/lib/hooks/useHomeStats";
 import { useAtividadeContexto } from "@/lib/hooks/useAtividadeContexto";
 import { useVencimentos } from "@/lib/hooks/useVencimentos";
+import { useUltimoAcidenteAfastamento } from "@/lib/hooks/useUltimoAcidenteAfastamento";
 import { useLaudosValidade } from "@/lib/hooks/useLaudosValidade";
 import { useInspecoesStatus } from "@/lib/hooks/useInspecoesStatus";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -23,6 +24,7 @@ export default function VisaoGeralPage() {
   const stats = useHomeStats();
   const { data: ctx, isLoading: ctxLoading } = useAtividadeContexto();
   const { data: vencimentos, isLoading: vencLoading } = useVencimentos();
+  const ultimoAcidente = useUltimoAcidenteAfastamento();
   const { data: laudosVal = [] } = useLaudosValidade();
   const { data: inspecoesPorStatus = [] } = useInspecoesStatus();
 
@@ -130,6 +132,8 @@ export default function VisaoGeralPage() {
       laudosPorTipo={laudosPorTipo}
       inspecoesPorMes={inspecoesPorMes}
       inspecoesPorStatus={inspecoesPorStatus}
+      ultimoAcidenteAfastamento={ultimoAcidente.data}
+      acidenteLoading={ultimoAcidente.isLoading}
       onLogout={handleLogout}
     />
   );

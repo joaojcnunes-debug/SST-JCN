@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "visao-geral-bento",
+    data: "2026-11-03",
+    tipo: "melhoria",
+    titulo: "Visão geral reorganizada: o que exige ação agora vem primeiro",
+    texto:
+      "A Visão geral abre com o bloco \"O que exige ação agora\": os documentos vencidos (os mais atrasados no topo) e " +
+      "os que vencem em até 30 dias, cada um com o atalho Resolver. Ao lado ficam a saúde dos documentos, o contador de " +
+      "dias sem acidente com afastamento (das empresas que você vê) e os totais de empresas, inspeções e laudos. O menu " +
+      "desta tela também ficou no azul-marinho da JCN.",
+    onde: "Visão geral (página inicial)",
+    versoes: ["0.3.205"],
+  },
+  {
     id: "skin-casca-inset",
     data: "2026-11-03",
     tipo: "melhoria",
