@@ -21,19 +21,24 @@ import {
   Sun,
   Menu as MenuIcon,
   X,
+  CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import type { UnidadeResumo, VisaoGeralData } from "@/lib/hooks/useVisaoGeralUnidades";
+import type { VisaoGeralData } from "@/lib/hooks/useVisaoGeralUnidades";
 import type { AtividadeItem } from "@/lib/hooks/useHomeStats";
 import type { VencimentosData, VencimentoItem } from "@/lib/hooks/useVencimentos";
 import AnimatedNumber from "./AnimatedNumber";
+import { diasSemAcidente } from "@/lib/visao-geral/diasSemAcidente";
+import { hojeSP } from "@/lib/inspecoes/prioridade";
 import SaudeAnel, { type SaudeDocumentos } from "./SaudeAnel";
 import GraficosVisaoGeral, { type FatiaTipo, type PontoMes, type FatiaStatus } from "./GraficosVisaoGeral";
 import { cn } from "@/lib/utils";
 import { useUnidadeAtiva, useTema } from "@/lib/store";
 
-const VERDE_SIDEBAR = "#0f3d28";
+// Marinho da marca (o verde #0f3d28 desta tela tinha escapado da Etapa 0).
+const MARINHO_SIDEBAR = "#0b1e33";
 
 /** Item de pendência (módulo com registros não finalizados). */
 export interface PendenciaItem {
@@ -68,6 +73,9 @@ export interface VisaoGeralViewProps {
   inspecoesPorMes?: PontoMes[];
   /** Inspeções por status (donut). */
   inspecoesPorStatus?: FatiaStatus[];
+  /** Data do último acidente COM afastamento (null = nenhum registrado). */
+  ultimoAcidenteAfastamento?: string | null;
+  acidenteLoading?: boolean;
   onLogout: () => void;
   /** Sino de notificações da Gestão, ao lado da saudação (só para quem usa a Gestão). */
   sinoNotificacoes?: React.ReactNode;
@@ -97,6 +105,8 @@ export default function VisaoGeralView({
   laudosPorTipo,
   inspecoesPorMes,
   inspecoesPorStatus,
+  ultimoAcidenteAfastamento,
+  acidenteLoading,
   onLogout,
   sinoNotificacoes,
   gestaoNaoLidas = 0,
@@ -230,7 +240,7 @@ export default function VisaoGeralView({
         onClick={() => setMenuAberto(true)}
         aria-label="Abrir menu"
         className="fixed left-3 top-3 z-40 flex size-10 items-center justify-center rounded-md text-white shadow md:hidden print:hidden"
-        style={{ backgroundColor: VERDE_SIDEBAR }}
+        style={{ backgroundColor: MARINHO_SIDEBAR }}
       >
         <MenuIcon className="size-5" />
       </button>
@@ -240,7 +250,7 @@ export default function VisaoGeralView({
           deixava 1.554px de coluna verde vazia na tela. */}
       <aside
         className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col px-4 py-5 text-white md:flex print:hidden"
-        style={{ backgroundColor: VERDE_SIDEBAR }}
+        style={{ backgroundColor: MARINHO_SIDEBAR }}
       >
         {menuLateral(() => {})}
       </aside>
@@ -250,7 +260,7 @@ export default function VisaoGeralView({
         <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={() => setMenuAberto(false)}>
           <aside
             className="absolute inset-y-0 left-0 flex w-[248px] flex-col px-4 py-5 text-white shadow-2xl"
-            style={{ backgroundColor: VERDE_SIDEBAR }}
+            style={{ backgroundColor: MARINHO_SIDEBAR }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -286,31 +296,15 @@ export default function VisaoGeralView({
                 {sinoNotificacoes}
               </div>
               <p className="mt-1 text-sm text-gray-500">
-                Visão geral por unidade{dataExtenso ? ` · ${dataExtenso}` : ""}
+                Visão geral{dataExtenso ? ` · ${dataExtenso}` : ""}
               </p>
               <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs text-gray-500 shadow-sm">
                 <span className="size-1.5 rounded-full bg-marca-primary" />
                 {escopoRestrito
                   ? `${vinculadasCount} empresa(s) vinculada(s)`
-                  : `Acesso total · ${totais?.unidades ?? 0} unidades`}
+                  : "Acesso total"}
               </p>
             </div>
-            {saude && (
-              <div
-                className="reveal-up w-full rounded-2xl border border-gray-200 bg-white p-5 shadow-sm lg:w-auto"
-                style={{ animationDelay: "90ms" }}
-              >
-                <div className="mb-3 flex items-center justify-between gap-8">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                    Saúde dos documentos
-                  </p>
-                  <Link href="/validades" className="text-xs font-semibold text-marca-primary hover:underline">
-                    Gerenciar →
-                  </Link>
-                </div>
-                <SaudeAnel saude={saude} />
-              </div>
-            )}
           </div>
 
           {hasError ? (
@@ -319,36 +313,43 @@ export default function VisaoGeralView({
             </div>
           ) : (
             <>
-              <p className="mb-2 mt-8 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Resumo
-              </p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <ResumoCard label="Unidades" valor={totais?.unidades} icon={<MapPin className="size-4" />} loading={isLoading} delay={0} />
-                <ResumoCard label="Empresas" valor={totais?.empresas} icon={<Building2 className="size-4" />} loading={isLoading} delay={60} />
-                <ResumoCard label="Inspeções" valor={totais?.inspecoes} icon={<ClipboardList className="size-4" />} loading={isLoading} delay={120} />
-                <ResumoCard label="Laudos" valor={totais?.laudos} icon={<FileText className="size-4" />} loading={isLoading} delay={180} />
+              {/* Bento (Etapa 3 do plano-skin-viva): o que pede ação primeiro e maior; depois a
+                  saúde dos documentos, o contador de dias sem acidente e os números. */}
+              <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <AcaoAgora
+                  className="lg:col-span-2"
+                  vencidos={vencidos}
+                  vencendo={vencendo}
+                  loading={vencimentosLoading}
+                />
+                <div
+                  className="reveal-up rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+                  style={{ animationDelay: "90ms" }}
+                >
+                  <div className="mb-3 flex items-center justify-between gap-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                      Saúde dos documentos
+                    </p>
+                    <Link href="/validades" className="text-xs font-semibold text-marca-primary hover:underline">
+                      Gerenciar →
+                    </Link>
+                  </div>
+                  {saude ? (
+                    <SaudeAnel saude={saude} />
+                  ) : (
+                    <div className="skeleton-shimmer h-[120px]" />
+                  )}
+                </div>
+                <ContadorAcidente
+                  ultimoComAfastamento={ultimoAcidenteAfastamento}
+                  loading={acidenteLoading}
+                />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:col-span-2">
+                  <ResumoCard label="Empresas" valor={totais?.empresas} icon={<Building2 className="size-4" />} loading={isLoading} delay={120} />
+                  <ResumoCard label="Inspeções" valor={totais?.inspecoes} icon={<ClipboardList className="size-4" />} loading={isLoading} delay={180} />
+                  <ResumoCard label="Laudos" valor={totais?.laudos} icon={<FileText className="size-4" />} loading={isLoading} delay={240} />
+                </div>
               </div>
-
-              <p className="mb-2 mt-9 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                Unidades
-              </p>
-              {isLoading ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="skeleton-shimmer h-[92px]" />
-                  ))}
-                </div>
-              ) : unidades.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-gray-300 bg-white py-10 text-center text-sm text-gray-500">
-                  Nenhuma unidade cadastrada. Crie unidades ou vincule empresas a uma unidade.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {unidades.map((u, i) => (
-                    <UnidadeCard key={u.id_unidade ?? "sem"} u={u} delay={i * 45} />
-                  ))}
-                </div>
-              )}
 
               {/* Gráficos — inspeções por mês/status + laudos por tipo */}
               {(laudosPorTipo?.length || inspecoesPorMes?.length) ? (
@@ -358,46 +359,6 @@ export default function VisaoGeralView({
                   inspecoesPorStatus={inspecoesPorStatus ?? []}
                 />
               ) : null}
-
-              {/* Vencimentos */}
-              <div className="mt-9 flex items-center justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Vencimentos</p>
-                <div className="flex items-center gap-3">
-                  {!vencimentosLoading && (
-                    <p className="flex items-center gap-2 text-xs text-gray-500">
-                      {vencidos.length > 0 && (
-                        <span className="pulse-alerta inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-600">
-                          <span className="size-1.5 rounded-full bg-red-500" />
-                          {vencidos.length} vencido(s)
-                        </span>
-                      )}
-                      <span>
-                        <span className="font-semibold text-amber-600">{vencendo.length}</span> a vencer (60 dias)
-                      </span>
-                    </p>
-                  )}
-                  <Link href="/validades" className="text-xs font-semibold text-marca-primary hover:underline">
-                    Gerenciar →
-                  </Link>
-                </div>
-              </div>
-              <div className="mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-                {vencimentosLoading ? (
-                  <div className="flex items-center gap-2 p-4 text-sm text-gray-400">
-                    <Loader2 className="size-4 animate-spin" /> Carregando…
-                  </div>
-                ) : vencidos.length === 0 && vencendo.length === 0 ? (
-                  <p className="p-4 text-sm text-gray-400">
-                    Nenhum laudo vencido ou a vencer. Informe a validade nos editores dos laudos.
-                  </p>
-                ) : (
-                  <div className="divide-y divide-gray-100">
-                    {[...vencidos, ...vencendo].slice(0, 8).map((v, i) => (
-                      <VencimentoRow key={`${v.href}-${i}`} v={v} />
-                    ))}
-                  </div>
-                )}
-              </div>
 
               {/* Atividade recente + Pendências */}
               <div className="mt-9 grid grid-cols-1 gap-5 lg:grid-cols-3">
@@ -558,50 +519,96 @@ function ResumoCard({
   );
 }
 
-function UnidadeCard({ u, delay = 0 }: { u: UnidadeResumo; delay?: number }) {
-  const semUnidade = u.id_unidade === null;
-  const setUnidadeAtiva = useUnidadeAtiva((s) => s.setUnidade);
-  // Unidade real → ativa o escopo e vai pro hub de módulos. "Sem unidade" mantém
-  // o atalho para as empresas sem unidade (não há escopo de unidade real).
-  const href = semUnidade ? "/empresas?unidade=__sem__" : "/modulos";
-  const onPick = semUnidade ? undefined : () => setUnidadeAtiva(u.id_unidade!, u.nome);
+/** "O que exige ação agora": vencidos (mais atrasados no topo) e os que vencem em até 30 dias. */
+function AcaoAgora({
+  vencidos,
+  vencendo,
+  loading,
+  className,
+}: {
+  vencidos: VencimentoItem[];
+  vencendo: VencimentoItem[];
+  loading?: boolean;
+  className?: string;
+}) {
+  const atrasados = [...vencidos].sort((a, b) => a.dias - b.dias);
+  const em30 = vencendo.filter((v) => v.dias <= 30).sort((a, b) => a.dias - b.dias);
+  const lista = [...atrasados, ...em30];
   return (
-    <Link
-      href={href}
-      onClick={onPick}
-      style={{ animationDelay: `${delay}ms` }}
-      className="reveal-up group flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-marca-primary hover:shadow-md"
+    <section
+      className={cn("reveal-up flex flex-col rounded-2xl border border-gray-200 bg-white p-5 shadow-sm", className)}
+      aria-labelledby="acao-agora"
     >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn(
-              "flex size-8 items-center justify-center rounded-lg",
-              semUnidade ? "bg-gray-100 text-gray-400" : "bg-marca-light text-marca-primary",
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="acao-agora" className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+          O que exige ação agora
+        </h2>
+        {!loading && (
+          <p className="flex items-center gap-2 text-xs text-gray-500">
+            {atrasados.length > 0 && (
+              <span className="pulse-alerta inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 font-semibold text-red-600">
+                <span className="size-1.5 rounded-full bg-red-500" />
+                {atrasados.length} vencido(s)
+              </span>
             )}
-          >
-            <MapPin className="size-4" />
-          </span>
-          <span className="font-semibold text-gray-900">{u.nome}</span>
-        </div>
-        <ArrowRight className="size-4 text-gray-300 transition-colors group-hover:text-marca-primary" />
+            <span>
+              <span className="font-semibold text-amber-600">{em30.length}</span> vence(m) em 30 dias
+            </span>
+          </p>
+        )}
       </div>
-      <div className="mt-3 flex items-center gap-4 text-sm">
-        <Metric label="empresas" valor={u.empresas} />
-        <span className="text-gray-200">·</span>
-        <Metric label="inspeções" valor={u.inspecoes} />
-        <span className="text-gray-200">·</span>
-        <Metric label="laudos" valor={u.laudos} />
+      <div className="mt-3 flex-1">
+        {loading ? (
+          <div className="flex items-center gap-2 py-4 text-sm text-gray-400">
+            <Loader2 className="size-4 animate-spin" /> Carregando…
+          </div>
+        ) : lista.length === 0 ? (
+          <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
+            <CheckCircle2 className="size-5 shrink-0 text-emerald-600" />
+            Nada vencido nem vencendo nos próximos 30 dias.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-100">
+            {lista.slice(0, 6).map((v, i) => (
+              <VencimentoRow key={`${v.href}-${i}`} v={v} resolver />
+            ))}
+          </div>
+        )}
       </div>
-    </Link>
+      <Link href="/validades" className="mt-3 self-start text-xs font-semibold text-marca-primary hover:underline">
+        {lista.length > 6 ? `Ver todos os ${lista.length} →` : "Ver todos os vencimentos →"}
+      </Link>
+    </section>
   );
 }
 
-function Metric({ label, valor }: { label: string; valor: number }) {
+/** "Dias sem acidente com afastamento" — sem nenhum registrado, diz isso (não inventa início). */
+function ContadorAcidente({ ultimoComAfastamento, loading }: { ultimoComAfastamento?: string | null; loading?: boolean }) {
+  const dias = diasSemAcidente(ultimoComAfastamento, hojeSP());
   return (
-    <span className="text-gray-600">
-      <span className="font-bold text-gray-900">{valor}</span> {label}
-    </span>
+    <div
+      className="reveal-up flex flex-col justify-center rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+      style={{ animationDelay: "60ms" }}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+        Dias sem acidente com afastamento
+      </p>
+      {loading ? (
+        <span className="skeleton-shimmer mt-3 inline-block h-10 w-24" />
+      ) : dias === null ? (
+        <p className="mt-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+          <ShieldCheck className="size-5 shrink-0 text-emerald-600" />
+          Nenhum acidente com afastamento registrado.
+        </p>
+      ) : (
+        <>
+          <p className="mt-1 text-5xl font-bold tabular-nums text-gray-900">
+            <AnimatedNumber value={dias} />
+          </p>
+          <p className="mt-1 text-xs text-gray-500">desde o último afastamento, em {fmtData(ultimoComAfastamento!.slice(0, 10))}</p>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -649,7 +656,7 @@ function fmtData(iso: string): string {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
 }
 
-function VencimentoRow({ v }: { v: VencimentoItem }) {
+function VencimentoRow({ v, resolver }: { v: VencimentoItem; resolver?: boolean }) {
   const vencido = v.dias < 0;
   return (
     <Link href={v.href} className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50">
@@ -665,6 +672,11 @@ function VencimentoRow({ v }: { v: VencimentoItem }) {
       >
         {vencido ? `vencido há ${Math.abs(v.dias)}d` : v.dias === 0 ? "vence hoje" : `faltam ${v.dias}d`}
       </span>
+      {resolver && (
+        <span className="hidden shrink-0 items-center gap-0.5 text-xs font-semibold text-marca-primary sm:inline-flex">
+          Resolver <ArrowRight className="size-3.5" />
+        </span>
+      )}
     </Link>
   );
 }

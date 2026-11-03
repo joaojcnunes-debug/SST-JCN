@@ -115,7 +115,7 @@ Ordem sugerida: Empresas → Inspeções/Riscos → EPI → AET/AEP → Psicosso
 | 0b PDFs | concluída | 0.3.202 | títulos/faixas/rótulos em azul-marinho #0c4a6e (tela e PDF); verde só de significado; travas de print da 0.1/0.2 removidas |
 | 1 Dicas (piloto) | concluída | 0.3.203 | `components/ui/Dica.tsx` + `CampoLabel`; textos em `lib/dicas/empresas.ts` (28 campos do EmpresaForm) |
 | 2 Casca inset | concluída | 0.3.204 | `.casca`/`.casca-folha` no globals.css + 22 layouts (21 módulos e Gestão); fundo `app-aurora`/`app-bg` sem verde |
-| 3 Bento | pendente | | |
+| 3 Bento | concluída | 0.3.205 | bloco "O que exige ação agora" (vencidos + 30 dias, Resolver), saúde, contador de dias sem acidente com afastamento (sem registro = mensagem), totais animados; cartão/lista de Unidades saíram; menu da Visão geral em marinho |
 | 4 Pulso | aguardando fórmula | | |
 | 5 Vivo | pendente | | |
 | 6 Encantamento | pendente | | |

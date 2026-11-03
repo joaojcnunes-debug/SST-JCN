@@ -147,6 +147,12 @@ Alias de import: `@/*` → raiz.
   - Os PDFs já emitidos não mudam.
 - Modo escuro por CSS vars.
 - Mensagens e comentários do código em português; regras em `lib/` têm testes.
+- **Visão geral em blocos (0.3.205, Etapa 3 do plano-skin-viva):** `VisaoGeralView`, usada por `/visao-geral` e `/inicio`.
+  - **"O que exige ação agora":** os vencidos, dos mais atrasados para os menos, e os que vencem em até 30 dias. Mostra no máximo 6, cada um com Resolver, que leva ao `href` do vencimento.
+  - **Saúde dos documentos:** o anel.
+  - **Dias sem acidente com afastamento:** `lib/visao-geral/diasSemAcidente.ts`, testado. A data vem de `useUltimoAcidenteAfastamento`: último `investigacoes_acidente` com `houve_afastamento`, sob a RLS e com o vínculo do técnico. Sem registro, mostra "Nenhum acidente com afastamento registrado".
+  - **Totais:** Empresas, Inspeções e Laudos, com `AnimatedNumber`.
+  - **Mudanças de 03/11:** o cartão e a lista por Unidade saíram, porque o JCN tem 1 unidade. O menu desta tela passou do verde `#0f3d28` para o marinho `#0b1e33`.
 - **Casca inset (0.3.204, Etapa 2 do plano-skin-viva):** em tela md+, a raiz dos layouts (`.casca`) é marinho `#071526`.
   - **Folha:** o `div` do conteúdo (`.casca-folha`) vira uma folha com margem de 8px em cima e à direita, cantos de 18px, sombra e `overflow: clip`, que mantém a topbar sticky.
   - **Largura:** a folha usa `margin-left: var(--sidebar-w)` no lugar do `padding-left` e acompanha o menu recolhido (`--sidebar-w-mini`). A Gestão não recolhe.
