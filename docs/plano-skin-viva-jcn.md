@@ -103,6 +103,22 @@ ao passar o mouse (a nota tem que ser explicável).
 Cards com leve profundidade 3D no hover, comemoração discreta ao concluir inspeção/laudo,
 revisão completa do modo escuro e do reduced-motion.
 
+**Ajustes da conferência visual (v0.3.207, 03/11)** — entram nesta etapa, um por vez, com aprovação:
+1. **Pulso honesto:** com 17 de 20 laudos sem validade (só 15% com validade) o Pulso mostra 100 "Em dia".
+   Propor ao João: contar "sem validade" como pendência na parte de documentos (`lib/visao-geral/pulso.ts`)
+   ou, no mínimo, avisar ao lado da nota quantos laudos estão sem validade. A fórmula 70/30 foi aprovada —
+   qualquer mudança nela precisa de novo "ok".
+2. **Unidades da Chabra no menu da Visão geral:** aparecem Campos, Guapimirim, Nova Friburgo, Petrópolis,
+   Piabetá (0) e Teresópolis (2). Investigar a origem (tabela `unidades` do JCN) e propor: esconder unidades
+   sem nenhum registro ou limpar o cadastro. Não apagar dado sem aprovação.
+3. **Visão geral e Validades fora da casca:** não têm a folha arredondada nem a barra azul do topo; Validades
+   nem tem menu lateral. Levar a casca inset para as telas do hub, para o visual não "pular" entre telas.
+4. **Dica cobrindo o campo de cima:** a dica do CNPJ abre por cima do campo "Nome". Ajustar o posicionamento
+   em `components/ui/Dica.tsx` (abrir ao lado ou deslocar) para não cobrir campo.
+5. **Nome do produto:** login e menu de Inspeções dizem "Painel SST"; Visão geral e Módulos dizem
+   "JCN Consultoria". Perguntar ao João qual nome usar e padronizar.
+6. **Modo escuro ainda não conferido** nas telas novas — conferir junto com a revisão do item acima.
+
 ### Etapa 7 — Dicas em todos os módulos
 Rolar o padrão da Etapa 1 módulo por módulo (~186 arquivos com campos). Cada módulo = um lote revisado pelo João.
 Ordem sugerida: Empresas → Inspeções/Riscos → EPI → AET/AEP → Psicossocial → Máquinas → Gestão → Config.
@@ -114,7 +130,7 @@ Ordem sugerida: Empresas → Inspeções/Riscos → EPI → AET/AEP → Psicosso
 | 0 Azul total | concluída | 0.3.201 | 0.1 feita (0.3.194); 0.2 Questionários + DRPS (0.3.195); 0.3 AEP + AET (0.3.196); 0.4 Conformidade + NC (0.3.197); 0.5 Inspeções + componentes (0.3.198); 0.6 Máquinas + Químicos + Equipamentos (0.3.199); 0.7 Frota, EPI e o resto (0.3.200); 0.final troca de nome verde-* → marca-* (0.3.201). Porte ao Painel: traduzir marca-* → verde-* nos MDs |
 | 0b PDFs | concluída | 0.3.202 | títulos/faixas/rótulos em azul-marinho #0c4a6e (tela e PDF); verde só de significado; travas de print da 0.1/0.2 removidas |
 | 1 Dicas (piloto) | concluída | 0.3.203 | `components/ui/Dica.tsx` + `CampoLabel`; textos em `lib/dicas/empresas.ts` (28 campos do EmpresaForm) |
-| 2 Casca inset | concluída | 0.3.204 | `.casca`/`.casca-folha` no globals.css + 22 layouts (21 módulos e Gestão); fundo `app-aurora`/`app-bg` sem verde |
+| 2 Casca inset | concluída (ajuste 0.3.209: sem moldura marinho em cima/à direita nem cantos) | 0.3.204 | `.casca`/`.casca-folha` no globals.css + 22 layouts (21 módulos e Gestão); fundo `app-aurora`/`app-bg` sem verde |
 | 3 Bento | concluída | 0.3.205 | bloco "O que exige ação agora" (vencidos + 30 dias, Resolver), saúde, contador de dias sem acidente com afastamento (sem registro = mensagem), totais animados; cartão/lista de Unidades saíram; menu da Visão geral em marinho |
 | 4 Pulso | concluída | 0.3.206 | fórmula aprovada: 70% documentos válidos + 30% ações 5W2H no prazo; faixas 85/60; só na Visão geral; `lib/visao-geral/pulso.ts` |
 | 5 Vivo | concluída | 0.3.207 | radar de vencimentos (vencido/30/60) + contador de riscos altos; painel de empresas por cidade no lugar do mapa (mapa depois); "Acontecendo agora" da trilha de auditoria a cada 30 s no lugar da Atividade recente |
