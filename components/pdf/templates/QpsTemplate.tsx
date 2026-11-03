@@ -578,7 +578,7 @@ export default function QpsTemplate({
                       )}
                     </td>
                     <td>{mon?.responsavel || "—"}</td>
-                    <td>{mon?.status || "Pendente"}</td>
+                    <td>{mon?.status === "Concluido" ? "Concluído" : mon?.status || "Pendente"}</td>
                     <td>{fmtData(mon?.data_intervencao ?? null)}</td>
                     <td>{fmtData(mon?.proxima_avaliacao ?? null)}</td>
                   </tr>

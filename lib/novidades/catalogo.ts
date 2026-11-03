@@ -41,6 +41,22 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "correcoes-drps-qps",
+    data: "2026-11-03",
+    tipo: "correcao",
+    titulo: "DRPS e Questionário psicossocial: correções achadas na revisão das telas",
+    texto:
+      "DRPS: concluir por qualquer caminho agora grava a data da capa (os 2 relatórios concluídos sem data foram " +
+      "acertados); a Análise não perde mais agravos, medidas e fontes ainda não salvos; o Responsável do Monitoramento " +
+      "fica no setor certo; itens do catálogo não voltam como texto livre; a impressão da Análise não mostra mais " +
+      "código na Conclusão Geral. Nos dois módulos: trocar o ano do Plano anual avisa antes de descartar, e " +
+      "\"Concluído\" aparece com acento. Questionário: Respondentes só para quem pode editar; a tela Resultados só " +
+      "mostra (o ajuste da probabilidade fica na Análise); a capa ganhou as variáveis do questionário; a IA da " +
+      "conclusão recebe o CRP.",
+    onde: "DRPS e Questionários psicossociais",
+    versoes: ["0.3.218"],
+  },
+  {
     id: "dicas-qps",
     data: "2026-11-03",
     tipo: "melhoria",

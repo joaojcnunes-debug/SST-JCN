@@ -2,7 +2,7 @@
 
 import Dica from "@/components/ui/Dica";
 import { DICAS_DRPS_IDENTIFICACAO, DICAS_DRPS_ANALISE } from "@/lib/dicas/drps";
-import { useEffect, useMemo, useState, use } from "react";
+import { useEffect, useMemo, useRef, useState, use } from "react";
 import {
   Save,
   CheckCircle2,
@@ -45,11 +45,7 @@ import {
   alinhamentoDoBloco,
 } from "@/lib/drps/blocos";
 import type { SetorRelatorio } from "@/lib/drps/blocos";
-import { AGRAVOS_OPCOES } from "@/lib/drps/topicos";
-import {
-  useMedidasRecomendadasOpcoes,
-  MEDIDAS_RECOMENDADAS_BASE,
-} from "@/lib/hooks/useMedidasRecomendadas";
+import { useMedidasRecomendadasOpcoes } from "@/lib/hooks/useMedidasRecomendadas";
 import { useAgravosOpcoes } from "@/lib/hooks/useAgravos";
 import {
   montarValoresVariaveis,
@@ -152,9 +148,13 @@ export default function AnalisePage({
   const [metaStatus,      setMetaStatus]      = useState<StatusRelatorio>("EM_ANDAMENTO");
   const [metaCnpj,        setMetaCnpj]        = useState("");
   const [metaDirty,       setMetaDirty]       = useState(false);
+  // Gravar a conclusão ou o alinhamento recarrega o relatório: com a barra alterada e ainda não
+  // salva, ela não volta para o valor do banco (antes perdia a edição sem aviso).
+  const metaDirtyRef = useRef(false);
+  useEffect(() => { metaDirtyRef.current = metaDirty; }, [metaDirty]);
 
   useEffect(() => {
-    if (!relatorio) return;
+    if (!relatorio || metaDirtyRef.current) return;
     setMetaResponsavel(relatorio.responsavel_tecnico ?? "");
     setMetaCrp(relatorio.crp ?? "");
     setMetaData(relatorio.data_elaboracao ?? "");
@@ -228,16 +228,33 @@ export default function AnalisePage({
   const [editores, setEditores] = useState<Record<string, SetorEditor>>({});
   const [dirty, setDirty] = useState(false);
 
+  // Catálogo de agravos e medidas (as mesmas opções que a tela oferece). Comparar com a lista
+  // fixa fazia o item que só existe no catálogo voltar como texto livre e duplicar. Chave em
+  // texto porque os hooks devolvem um array novo a cada render.
+  const agravosCatChave = useAgravosOpcoes().join("\u0001");
+  const medidasCatChave = useMedidasRecomendadasOpcoes().join("\u0001");
+  // Gravar a conclusão ou o alinhamento recarrega o relatório. Com agravos, medidas ou fontes
+  // ainda não salvos, os editores não são remontados (antes perdia tudo sem aviso); remonta só
+  // quando muda a unidade, os respondentes ou o catálogo.
+  const dirtyRef = useRef(false);
+  useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
+  const montadoPara = useRef("");
+
   useEffect(() => {
     if (!relatorio) return;
+    const chave = `${unidadeAtiva ?? ""}|${respondentes.length}|${agravosCatChave}|${medidasCatChave}`;
+    if (dirtyRef.current && montadoPara.current === chave) return;
+    montadoPara.current = chave;
+    const agravosCat = agravosCatChave.split("\u0001");
+    const medidasCat = medidasCatChave.split("\u0001");
     // Base = mapas por setor (o padrão herdado por TODAS as unidades).
     const baseAgravos = relatorio.agravos_por_setor ?? {};
     const baseMedidas = relatorio.medidas_por_setor ?? {};
     const novos: Record<string, SetorEditor> = {};
 
     const montar = (s: string, aRaw: string | null, mRaw: string | null) => {
-      const a = parseMultiSelect(aRaw, AGRAVOS_OPCOES);
-      const m = parseMultiSelect(mRaw, MEDIDAS_RECOMENDADAS_BASE);
+      const a = parseMultiSelect(aRaw, agravosCat);
+      const m = parseMultiSelect(mRaw, medidasCat);
       novos[s] = {
         agravosSel: a.selecionados,
         agravosExtras: a.extras,
@@ -271,7 +288,7 @@ export default function AnalisePage({
     }
     setEditores(novos);
     setDirty(false);
-  }, [relatorio, respondentes, unidadeAtiva]);
+  }, [relatorio, respondentes, unidadeAtiva, agravosCatChave, medidasCatChave]);
 
   function getEditor(s: string): SetorEditor {
     return editores[s] ?? editorVazio;
@@ -949,7 +966,7 @@ export default function AnalisePage({
                   }
                 `}</style>
                 <h2>Conclusão Geral</h2>
-                <p>{relatorio.conclusao_geral}</p>
+                <HtmlConteudoAssinado html={relatorio.conclusao_geral} />
               </section>
             )}
 

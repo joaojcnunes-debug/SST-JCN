@@ -1,18 +1,14 @@
 "use client";
 
-import { use, useMemo, useState } from "react";
-import { BarChart2, ChevronLeft, Loader2, Info, Building2, Save } from "lucide-react";
+import { use, useMemo } from "react";
+import { BarChart2, ChevronLeft, Loader2, Info } from "lucide-react";
 import Link from "next/link";
-import toast from "react-hot-toast";
-import { mensagemErro } from "@/lib/errors";
 import {
   useQpsAplicacao,
   useQpsRespondentes,
   useQpsCategorias,
   useQpsAllPerguntas,
   useQpsProbabilidades,
-  useUpsertQpsProbabilidade,
-  useUpdateQpsAplicacao,
 } from "@/lib/hooks/useQuestionarios";
 import { useQpsTipos } from "@/lib/hooks/useQuestionarios";
 import type { QpsCategoria } from "@/lib/supabase/types";
@@ -28,13 +24,15 @@ import {
   type NivelRisco,
 } from "@/lib/qps/matriz";
 
+// 03/11/2026 (0.3.218): esta tela passou a SÓ MOSTRAR. O clique numa célula gravava a
+// probabilidade em `qps_probabilidades` — a mesma tabela que a Análise e o laudo usam —, apesar
+// de a Análise dizer o contrário; e a "Análise das Dimensões Críticas" gravava um texto que nada
+// lia. O ajuste da probabilidade fica só na Análise; o texto técnico, na Conclusão de lá.
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export default function ResultadosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [celulaEditando, setCelulaEditando] = useState<string | null>(null);
-  const [obsLocal, setObsLocal] = useState<Record<string, string>>({});
-  const [obsInicializado, setObsInicializado] = useState(false);
 
   const { data: ap } = useQpsAplicacao(id);
   const { data: tipos = [] } = useQpsTipos();
@@ -42,30 +40,8 @@ export default function ResultadosPage({ params }: { params: Promise<{ id: strin
   const { data: todasPerguntas = [] } = useQpsAllPerguntas(ap?.id_tipo ?? null);
   const { data: respondentes = [], isLoading: loadingResp } = useQpsRespondentes(id);
   const { data: probabilidades = [] } = useQpsProbabilidades(id);
-  const upsertProb = useUpsertQpsProbabilidade();
-  const updateAp = useUpdateQpsAplicacao();
 
   const tipo = tipos.find((t) => t.id_tipo === ap?.id_tipo);
-
-  // Inicializa obsLocal com dados já salvos no banco (roda só uma vez quando ap carrega)
-  if (ap && !obsInicializado) {
-    setObsInicializado(true);
-    if (ap.observacoes_dimensoes) setObsLocal(ap.observacoes_dimensoes);
-  }
-
-  async function salvarObservacoes() {
-    if (!ap) return;
-    try {
-      await updateAp.mutateAsync({
-        id: ap.id_aplicacao,
-        idEmpresa: ap.id_empresa,
-        input: { observacoes_dimensoes: obsLocal },
-      });
-      toast.success("Análise salva");
-    } catch (e) {
-      toast.error(mensagemErro(e, "Erro ao salvar análise"));
-    }
-  }
 
   const setores = useMemo(
     () => [...new Set(respondentes.map((r) => r.setor))].sort(),
@@ -84,27 +60,6 @@ export default function ResultadosPage({ params }: { params: Promise<{ id: strin
       tipo.escala_max
     );
   }, [tipo, setores, categorias, todasPerguntas, respondentes, probabilidades]);
-
-  async function handleOverride(
-    setor: string,
-    idCategoria: string,
-    idAplicacao: string,
-    prob: 1 | 2 | 3
-  ) {
-    try {
-      await upsertProb.mutateAsync({
-        id_aplicacao: idAplicacao,
-        setor,
-        id_categoria: idCategoria,
-        probabilidade: prob,
-        atualizado_em: new Date().toISOString(),
-      });
-      toast.success("Probabilidade ajustada");
-      setCelulaEditando(null);
-    } catch (e) {
-      toast.error(mensagemErro(e, "Erro ao salvar ajuste"));
-    }
-  }
 
   // Resumo de risco (contagem por nível)
   const resumo = useMemo(() => {
@@ -175,100 +130,17 @@ export default function ResultadosPage({ params }: { params: Promise<{ id: strin
             <Info className="mt-0.5 size-4 shrink-0" />
             <span>
               Probabilidade calculada automaticamente a partir das médias normalizadas (0–33% = Baixa,
-              34–66% = Média, 67–100% = Alta). Severidade fixada em 3 (NR-01). Clique em uma célula
-              para ajustar manualmente a probabilidade.
+              34–66% = Média, 67–100% = Alta). Severidade fixada em 3 (NR-01). Para ajustar a
+              probabilidade, use a{" "}
+              <Link href={`/questionarios-psicossociais/${id}/analise`} className="font-semibold underline">
+                Análise
+              </Link>
+              {" "}— é ela que vale no laudo.
             </span>
           </div>
 
           {/* Matriz */}
-          <MatrizRisco
-            setores={setores}
-            categorias={categorias}
-            matriz={matriz}
-            idAplicacao={id}
-            celulaEditando={celulaEditando}
-            onSelectCelula={setCelulaEditando}
-            onOverride={handleOverride}
-            salvando={upsertProb.isPending}
-          />
-
-          {/* Análise qualitativa por dimensão — NR-1 / Fundacentro 2026 */}
-          {(() => {
-            const dimensoesCriticas = categorias.filter((cat) =>
-              matriz.some(
-                (c) =>
-                  c.categoria.id_categoria === cat.id_categoria &&
-                  (c.risco === "MODERADO" || c.risco === "ALTO")
-              )
-            );
-            if (dimensoesCriticas.length === 0) return null;
-            return (
-              <div className="rounded-xl border border-indigo-200 bg-white shadow-sm">
-                <div className="flex items-center justify-between gap-3 border-b border-indigo-100 px-5 py-4">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="size-4 text-indigo-600" />
-                    <h2 className="text-sm font-bold text-gray-900">
-                      Análise das Dimensões Críticas
-                    </h2>
-                  </div>
-                  <button
-                    onClick={salvarObservacoes}
-                    disabled={updateAp.isPending}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-                  >
-                    {updateAp.isPending
-                      ? <Loader2 className="size-3.5 animate-spin" />
-                      : <Save className="size-3.5" />}
-                    Salvar análise
-                  </button>
-                </div>
-                <div className="px-5 py-3 text-xs text-indigo-700 bg-indigo-50 border-b border-indigo-100">
-                  Para cada dimensão com risco Moderado ou Alto, descreva quais
-                  <strong> condições de trabalho, práticas de gestão ou fatores organizacionais</strong> observados
-                  explicam o resultado. Foque nas condições — não em características individuais.
-                </div>
-                <div className="divide-y divide-gray-100">
-                  {dimensoesCriticas.map((cat) => {
-                    const celulas = matriz.filter(
-                      (c) => c.categoria.id_categoria === cat.id_categoria
-                    );
-                    const temAlto = celulas.some((c) => c.risco === "ALTO");
-                    return (
-                      <div key={cat.id_categoria} className="px-5 py-4 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "rounded-full px-2 py-0.5 text-[10px] font-bold",
-                              temAlto
-                                ? "bg-red-100 text-red-700"
-                                : "bg-yellow-100 text-yellow-700"
-                            )}
-                          >
-                            {temAlto ? "ALTO" : "MODERADO"}
-                          </span>
-                          <span className="text-sm font-semibold text-gray-800">
-                            {cat.nome}
-                          </span>
-                        </div>
-                        <textarea
-                          rows={3}
-                          value={obsLocal[cat.id_categoria] ?? ""}
-                          onChange={(e) =>
-                            setObsLocal((prev) => ({
-                              ...prev,
-                              [cat.id_categoria]: e.target.value,
-                            }))
-                          }
-                          placeholder={`O que na organização do trabalho explica o resultado desta dimensão? Ex: metas agressivas sem participação dos trabalhadores na definição, jornadas prolongadas por déficit de equipe, falta de autonomia nas decisões operacionais…`}
-                          className="w-full resize-y rounded-lg border border-gray-200 px-3 py-2 text-sm leading-relaxed focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })()}
+          <MatrizRisco setores={setores} categorias={categorias} matriz={matriz} />
         </>
       )}
     </div>
@@ -281,20 +153,10 @@ function MatrizRisco({
   setores,
   categorias,
   matriz,
-  idAplicacao,
-  celulaEditando,
-  onSelectCelula,
-  onOverride,
-  salvando,
 }: {
   setores: string[];
   categorias: QpsCategoria[];
   matriz: CelulaMatriz[];
-  idAplicacao: string;
-  celulaEditando: string | null;
-  onSelectCelula: (key: string | null) => void;
-  onOverride: (setor: string, idCategoria: string, idAplicacao: string, prob: 1 | 2 | 3) => void;
-  salvando: boolean;
 }) {
   function celula(setor: string, cat: QpsCategoria) {
     return matriz.find((c) => c.setor === setor && c.categoria.id_categoria === cat.id_categoria);
@@ -324,62 +186,25 @@ function MatrizRisco({
               <td className="px-4 py-3 font-medium text-gray-800 text-xs">{cat.nome}</td>
               {setores.map((setor) => {
                 const c = celula(setor, cat);
-                const chave = `${setor}|${cat.id_categoria}`;
-                const editando = celulaEditando === chave;
                 if (!c) return <td key={setor} className="px-3 py-3 text-center text-gray-300">—</td>;
-
                 return (
                   <td key={setor} className="px-3 py-2 text-center">
-                    {editando ? (
-                      <div className="flex flex-col items-center gap-1">
-                        <p className="text-[10px] font-semibold text-gray-500 mb-1">Ajustar:</p>
-                        <div className="flex gap-1">
-                          {([1, 2, 3] as const).map((p) => (
-                            <button
-                              key={p}
-                              onClick={() => onOverride(setor, cat.id_categoria, idAplicacao, p)}
-                              disabled={salvando}
-                              className={cn(
-                                "rounded px-2 py-0.5 text-xs font-bold border",
-                                p === 1 && "border-green-300 bg-green-50 text-green-700 hover:bg-green-100",
-                                p === 2 && "border-yellow-300 bg-yellow-50 text-yellow-700 hover:bg-yellow-100",
-                                p === 3 && "border-red-300 bg-red-50 text-red-700 hover:bg-red-100",
-                                c.probEfetiva === p && "ring-2 ring-offset-1",
-                                p === 1 && c.probEfetiva === p && "ring-green-500",
-                                p === 2 && c.probEfetiva === p && "ring-yellow-500",
-                                p === 3 && c.probEfetiva === p && "ring-red-500"
-                              )}
-                            >
-                              {PROB_LABEL[p]}
-                            </button>
-                          ))}
-                        </div>
-                        <button
-                          onClick={() => onSelectCelula(null)}
-                          className="mt-1 text-[10px] text-gray-400 hover:text-gray-600"
-                        >
-                          Fechar
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => onSelectCelula(chave)}
-                        className={cn(
-                          "inline-flex flex-col items-center gap-0.5 rounded-lg border px-3 py-2 w-full transition-all hover:shadow-sm",
-                          RISCO_COR[c.risco]
-                        )}
-                        title={`${c.scorePerc}% · ${c.nRespondentes} respondentes · Clique para ajustar`}
-                      >
-                        <span className="flex items-center gap-1 text-xs font-bold">
-                          <span className={cn("size-2 rounded-full", RISCO_PONTO[c.risco])} />
-                          {PROB_LABEL[c.probEfetiva]}
-                        </span>
-                        <span className="text-[10px] opacity-70">{c.scorePerc}%</span>
-                        {c.override && (
-                          <span className="text-[9px] font-semibold opacity-60">ajustado</span>
-                        )}
-                      </button>
-                    )}
+                    <div
+                      className={cn(
+                        "inline-flex w-full flex-col items-center gap-0.5 rounded-lg border px-3 py-2",
+                        RISCO_COR[c.risco]
+                      )}
+                      title={`${c.scorePerc}% · ${c.nRespondentes} respondentes`}
+                    >
+                      <span className="flex items-center gap-1 text-xs font-bold">
+                        <span className={cn("size-2 rounded-full", RISCO_PONTO[c.risco])} />
+                        {PROB_LABEL[c.probEfetiva]}
+                      </span>
+                      <span className="text-[10px] opacity-70">{c.scorePerc}%</span>
+                      {c.override && (
+                        <span className="text-[9px] font-semibold opacity-60">ajustado na Análise</span>
+                      )}
+                    </div>
                   </td>
                 );
               })}
@@ -398,7 +223,6 @@ function MatrizRisco({
             })
           </span>
         ))}
-        <span className="ml-auto italic">Clique em qualquer célula para ajustar a probabilidade</span>
       </div>
     </div>
   );

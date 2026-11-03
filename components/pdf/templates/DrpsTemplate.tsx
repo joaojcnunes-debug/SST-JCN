@@ -564,7 +564,7 @@ export default function DrpsTemplate({
                     <td>{t.nome.replace(/^Tópico \d+ - /, "")}</td>
                     <td><span className="drps-badge" style={{ backgroundColor: corMatriz(t.matriz) }}>{t.matriz}</span></td>
                     <td>{mon?.responsavel || "—"}</td>
-                    <td>{mon?.status || "Pendente"}</td>
+                    <td>{mon?.status === "Concluido" ? "Concluído" : mon?.status || "Pendente"}</td>
                     <td>{fmtData(mon?.data_intervencao ?? null)}</td>
                     <td>{fmtData(mon?.proxima_avaliacao ?? null)}</td>
                   </tr>

@@ -1,5 +1,6 @@
 "use client";
 
+import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import Dica from "@/components/ui/Dica";
 import { DICAS_DRPS_PLANO_ANUAL } from "@/lib/dicas/drps";
 import { useEffect, useMemo, useState, use } from "react";
@@ -78,6 +79,7 @@ export default function MedidasQpsPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="space-y-4">
+      <ConfirmHost />
       <div>
         <h1 className="text-xl font-semibold text-gray-900">Medidas de Controle — Plano Anual</h1>
         <p className="text-sm text-gray-600">
@@ -90,7 +92,19 @@ export default function MedidasQpsPage({ params }: { params: Promise<{ id: strin
           <label className="text-xs font-semibold uppercase tracking-wider text-gray-500"><Dica texto={DICAS_DRPS_PLANO_ANUAL.ano}>Ano</Dica>:</label>
           <select
             value={ano}
-            onChange={(e) => setAno(Number(e.target.value))}
+            onChange={async (e) => {
+              const novo = Number(e.target.value);
+              // Cada ano é um plano: trocar recarrega e descartava o que não foi salvo sem aviso.
+              if (dirty) {
+                const ok = await confirmar({
+                  title: "Descartar as alterações deste ano?",
+                  description: "Há marcações ainda não salvas. Para guardá-las, cancele e clique em Salvar Plano.",
+                  confirmLabel: "Descartar e trocar",
+                });
+                if (!ok) return;
+              }
+              setAno(novo);
+            }}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
           >
             {[anoAtual - 1, anoAtual, anoAtual + 1, anoAtual + 2].map((a) => (

@@ -589,6 +589,11 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
+- **v317 — DRPS: data de conclusão por qualquer caminho (03/11/2026).**
+  - **Gatilho:** `drps_stamp_data_conclusao()` (BEFORE UPDATE em `drps_relatorios`) grava `data_conclusao = now()` na 1ª transição para CONCLUIDO, se ainda estiver vazia. É o mesmo de `supabase/fila/v122_drps_data_conclusao_fix.sql`, nunca aplicado no JCN.
+  - **Acerto dos antigos:** os 2 concluídos sem data ganharam data. DRPS-225D2095 ficou com 25/09/2026 12:00 -03, a do histórico. DRPS-A45EFF4D ficou com 09/06/2026 12:00 -03, a da elaboração.
+  - **O que não foi aplicado:** o acerto em lote da v122 da fila era de empresas do Painel.
+  - Rollback: `scripts/sql/v317_drps_data_conclusao_rollback.sql`.
 - **v316 — auditoria: Histórico por documento (02/11/2026).** É a v259 do Painel SST, aplicada igual. Antes de aplicar, conferimos aqui: as 80 regras apontam para colunas que existem, `auditoria_registrar()` tinha o mesmo corpo do "antes" do Painel e a policy era a mesma.
   - **`auditoria_eventos.doc_tabela/doc_id`:** guardam o documento dono, com índice parcial.
   - **`auditoria_doc_regras`:** diz de que documento é cada tabela (filho direto, neto via tabela intermediária ou `anexos` pelo `modulo`).

@@ -29,6 +29,9 @@ const STATUS: StatusMonitoramento[] = [
   "Cancelado",
 ];
 
+// O valor gravado é "Concluido" (banco); na tela e no PDF aparece com acento.
+const rotuloStatus = (s: string) => (s === "Concluido" ? "Concluído" : s);
+
 const RECOMENDACOES: Record<NivelMatriz, { titulo: string; texto: string }> = {
   Baixo: {
     titulo: "🟢 Risco Baixo",
@@ -225,6 +228,9 @@ export default function MonitoramentoPage({
                       </td>
                       <td className="px-2 py-1.5">
                         <input
+                          // A key leva o setor: o campo não é controlado, e sem isso, ao trocar
+                          // de setor, mostrava (e gravava no setor novo) o texto do anterior.
+                          key={`${setor}-${t.idx}-${m?.responsavel ?? ""}`}
                           type="text"
                           defaultValue={m?.responsavel ?? ""}
                           disabled={!podeEditar}
@@ -246,7 +252,7 @@ export default function MonitoramentoPage({
                         >
                           {STATUS.map((s) => (
                             <option key={s} value={s}>
-                              {s}
+                              {rotuloStatus(s)}
                             </option>
                           ))}
                         </select>
