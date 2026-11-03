@@ -153,6 +153,31 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Correções DRPS/QPS (0.3.218, banco v317), achadas nas auditorias das dicas:**
+  - **DRPS, data de conclusão:** o gatilho `trg_drps_stamp_data_conclusao` (v317) grava a data na 1ª vez que o relatório vira CONCLUIDO, por qualquer caminho.
+    - Os 2 concluídos sem data foram acertados: DRPS-225D2095 com 25/09/2026, a data do histórico; DRPS-A45EFF4D com 09/06/2026, a data de elaboração, por decisão do João.
+  - **DRPS, Análise:** com edições não salvas, os editores dos setores e a barra de metadados não remontam quando o relatório recarrega (gravar a conclusão ou o alinhamento recarregava e apagava tudo).
+    - Agravos e medidas comparam com o catálogo, não com a lista fixa, e não duplicam mais.
+    - A impressão mostra a Conclusão Geral como HTML (`HtmlConteudoAssinado`), e não as tags.
+  - **DRPS, Monitoramento:** o campo Responsável tem `key` com o setor e não grava mais no setor errado.
+  - **DRPS e QPS:**
+    - "Concluído" aparece com acento nas telas e nos PDFs; o valor gravado continua "Concluido".
+    - Trocar o ano do Plano anual com alterações não salvas pede confirmação.
+    - A capa (`CapaEditor`) recebe as variáveis do módulo (`VARIAVEIS_POR_MODULO`), então a do QPS mostra as do QPS.
+  - **QPS, Respondentes:** importar, adicionar e remover só aparecem para quem pode editar (`useCanEdit`).
+  - **QPS, Resultados:** a tela passou a SÓ MOSTRAR.
+    - O clique gravava em `qps_probabilidades`, a mesma tabela da Análise e do laudo; o ajuste agora fica só na Análise.
+    - A "Análise das Dimensões Críticas" saiu: gravava `observacoes_dimensoes`, que nada lia, e nunca foi preenchida. A coluna ficou no banco.
+  - **QPS, outros:**
+    - a IA da conclusão recebe o CRP;
+    - a pendência "Fontes geradoras" aponta para a Análise;
+    - corrigidos os textos do Plano de ação, das Instruções e do Novo DRPS.
+  - **Ficaram de fora (menores):**
+    - o PDF do DRPS ainda imprime "CRP" fixo;
+    - a Nova aplicação do QPS não tem `useRequireCreate`;
+    - a permissão é diferente entre as telas da aplicação;
+    - o aviso do Resumo do DRPS;
+    - a capa travada ainda aceita arrastar as caixas.
 - **Dicas no QPS, lote 7.7 (0.3.217):** `lib/dicas/qps.ts`, com cerca de 40 campos.
   - **Telas cobertas:** Nova aplicação, Aplicação (o `InfoCard` aceita `dica`), Análise, Monitoramento, 5W2H (o `Campo` aceita `dica`), Respondentes e Tipos. Plano anual e Revisão usam os textos do DRPS.
   - **5W2H:** a dica avisa que só sai no laudo se o capítulo for ligado no Texto Padrão (desligado na v243).

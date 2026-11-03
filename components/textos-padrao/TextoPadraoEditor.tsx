@@ -1041,6 +1041,8 @@ function CapituloCard({
 
       {capitulo.bg_imagem_url ? (
         <CapaEditor
+          // As variáveis do módulo desta capa (antes ficava sempre a lista do DRPS, também no QPS).
+          variaveis={VARIAVEIS_POR_MODULO[modulo]}
           bgImagemUrl={capitulo.bg_imagem_url}
           caixas={caixas}
           onChange={(novas) => {

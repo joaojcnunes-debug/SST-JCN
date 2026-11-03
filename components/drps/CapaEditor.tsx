@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useSignedUrl } from "@/lib/hooks/useSignedUrl";
 import { VARIAVEIS } from "@/lib/drps/variaveis";
+import type { VariavelDef } from "@/lib/textos-padrao/variaveis";
 import type { CaixaTexto } from "@/lib/drps/types";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,8 @@ interface Props {
   bgImagemUrl: string;
   caixas: CaixaTexto[];
   onChange: (caixas: CaixaTexto[]) => void;
+  /** Variáveis do módulo da capa (o mesmo editor serve DRPS e QPS). Sem elas, as do DRPS. */
+  variaveis?: VariavelDef[];
 }
 
 /**
@@ -35,7 +38,7 @@ interface Props {
  * largura disponivel, com caixas de texto sobrepostas que podem ser
  * arrastadas com o mouse. Posicoes salvas em % para escalar igual ao PDF.
  */
-export default function CapaEditor({ bgImagemUrl, caixas, onChange }: Props) {
+export default function CapaEditor({ bgImagemUrl, caixas, onChange, variaveis = VARIAVEIS }: Props) {
   const [selecionadaId, setSelecionadaId] = useState<string | null>(null);
 
   const selecionada = caixas.find((c) => c.id === selecionadaId) ?? null;
@@ -100,6 +103,7 @@ export default function CapaEditor({ bgImagemUrl, caixas, onChange }: Props) {
           caixa={selecionada}
           onChange={(patch) => atualizar(selecionada.id, patch)}
           onRemover={() => remover(selecionada.id)}
+          variaveis={variaveis}
         />
       )}
     </div>
@@ -249,10 +253,12 @@ function PainelEdicao({
   caixa,
   onChange,
   onRemover,
+  variaveis,
 }: {
   caixa: CaixaTexto;
   onChange: (patch: Partial<CaixaTexto>) => void;
   onRemover: () => void;
+  variaveis: VariavelDef[];
 }) {
   const [varOpen, setVarOpen] = useState(false);
   const varRef = useRef<HTMLDivElement>(null);
@@ -400,7 +406,7 @@ function PainelEdicao({
             {varOpen && (
               <div className="absolute right-0 top-full z-30 mt-1 w-64 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
                 <ul className="max-h-60 overflow-auto py-1">
-                  {VARIAVEIS.map((v) => (
+                  {variaveis.map((v) => (
                     <li key={v.chave}>
                       <button
                         type="button"
@@ -437,7 +443,7 @@ function PainelEdicao({
         value={caixa.conteudo}
         onChange={(e) => onChange({ conteudo: e.target.value })}
         rows={3}
-        placeholder="Texto da caixa (use {{variavel}} para campos dinâmicos)"
+        placeholder="Texto da caixa (use {{variável}} para campos dinâmicos)"
         className="w-full resize-none rounded-md border border-gray-300 px-2 py-1.5 text-xs focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
       />
 

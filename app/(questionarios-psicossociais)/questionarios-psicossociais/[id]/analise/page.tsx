@@ -351,7 +351,8 @@ export default function AnaliseQpsPage({ params }: { params: Promise<{ id: strin
         setor, só para ele. A matriz 3×3 é a do DRPS (Baixo / Médio / Alto / Crítico). Em
         &ldquo;Todos os setores&rdquo; a página mostra o consolidado e, abaixo dele, um bloco por
         setor — cada um com seus agravos, medidas e conclusão. A tela &ldquo;Resultados /
-        Matriz&rdquo; continua com a régua antiga (resposta → probabilidade em %).
+        Matriz&rdquo; só mostra a régua antiga (resposta → probabilidade em %); o ajuste que vale no
+        laudo é o desta tela.
       </div>
 
       {carregandoResp ? (
@@ -465,7 +466,7 @@ function BlocoSetor({
           setor: { nome: setor, funcoes: null, totalRespondentes },
           ehConsolidado,
           responsavelTecnico: responsavel || null,
-          crp: null,
+          crp,
           topicos: comBase.map((c) => ({
             nome: c.nome,
             fonteGeradora: textoFontes(fontesDaCategoria(c)),

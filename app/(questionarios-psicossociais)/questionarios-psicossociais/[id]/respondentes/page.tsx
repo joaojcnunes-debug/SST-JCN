@@ -1,5 +1,6 @@
 "use client";
 
+import { useCanEdit } from "@/lib/hooks/useUsuario";
 import Dica from "@/components/ui/Dica";
 import { DICAS_QPS_RESPONDENTES } from "@/lib/dicas/qps";
 import { use, useState, useMemo, useRef } from "react";
@@ -53,6 +54,8 @@ export default function RespondentesPage({ params }: { params: Promise<{ id: str
   const { data: respondentes = [], isLoading } = useQpsRespondentes(id);
   const deletar = useDeleteQpsRespondente();
   const limpar = useLimparQpsRespondentes();
+  // Visualizador só consulta: importar, adicionar e remover ficam escondidos (antes nada checava).
+  const canEdit = useCanEdit();
 
   const tipo = tipos.find((t) => t.id_tipo === ap?.id_tipo);
 
@@ -115,14 +118,16 @@ export default function RespondentesPage({ params }: { params: Promise<{ id: str
             {ap?.titulo} · {respondentes.length} respondente{respondentes.length !== 1 ? "s" : ""}
           </p>
         </div>
-        <button
-          onClick={() => setModalManual(true)}
-          disabled={semPerguntas}
-          title={semPerguntas ? "Cadastre perguntas no tipo primeiro" : undefined}
-          className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Plus className="size-4" /> Adicionar manualmente
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => setModalManual(true)}
+            disabled={semPerguntas}
+            title={semPerguntas ? "Cadastre perguntas no tipo primeiro" : undefined}
+            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="size-4" /> Adicionar manualmente
+          </button>
+        )}
       </div>
 
       {semPerguntas && (
@@ -135,7 +140,7 @@ export default function RespondentesPage({ params }: { params: Promise<{ id: str
       )}
 
       {/* ─── Seção de importação CSV ─── */}
-      {!semPerguntas && tipo && (
+      {canEdit && !semPerguntas && tipo && (
         <ImportacaoCsvCard
           idAplicacao={id}
           perguntasOrdenadas={perguntasOrdenadas}
@@ -179,12 +184,14 @@ export default function RespondentesPage({ params }: { params: Promise<{ id: str
               <p className="text-sm font-semibold text-gray-700">
                 {respondentes.length} respondente{respondentes.length !== 1 ? "s" : ""}
               </p>
-              <button
-                onClick={() => setConfirmLimpar(true)}
-                className="flex items-center gap-1.5 rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="size-3.5" /> Remover tudo
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => setConfirmLimpar(true)}
+                  className="flex items-center gap-1.5 rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="size-3.5" /> Remover tudo
+                </button>
+              )}
             </div>
             <table className="min-w-full divide-y divide-gray-100 text-sm">
               <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
@@ -206,12 +213,14 @@ export default function RespondentesPage({ params }: { params: Promise<{ id: str
                       {Object.keys(r.respostas).length} / {perguntasOrdenadas.length}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleDeletar(r)}
-                        className="rounded p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600"
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={() => handleDeletar(r)}
+                          className="rounded p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -222,7 +231,7 @@ export default function RespondentesPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Modal adição manual */}
-      {modalManual && ap && tipo && (
+      {canEdit && modalManual && ap && tipo && (
         <AdicionarRespondente
           idAplicacao={id}
           categorias={categorias}

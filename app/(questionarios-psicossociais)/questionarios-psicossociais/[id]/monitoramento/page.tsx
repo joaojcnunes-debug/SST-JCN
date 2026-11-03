@@ -30,6 +30,9 @@ import type { StatusQpsMonitoramento } from "@/lib/supabase/types";
 
 const STATUS: StatusQpsMonitoramento[] = ["Pendente", "Em Andamento", "Concluido", "Cancelado"];
 
+// O valor gravado é "Concluido" (banco); na tela e no PDF aparece com acento.
+const rotuloStatus = (s: string) => (s === "Concluido" ? "Concluído" : s);
+
 export default function MonitoramentoQpsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const canEdit = useCanEdit();
@@ -99,7 +102,7 @@ export default function MonitoramentoQpsPage({ params }: { params: Promise<{ id:
           >
             {[TODOS_OS_SETORES, ...setores].map((s) => (
               <option key={s} value={s}>
-                {s}
+                {rotuloStatus(s)}
               </option>
             ))}
           </select>
@@ -191,7 +194,7 @@ export default function MonitoramentoQpsPage({ params }: { params: Promise<{ id:
                         >
                           {STATUS.map((s) => (
                             <option key={s} value={s}>
-                              {s}
+                              {rotuloStatus(s)}
                             </option>
                           ))}
                         </select>

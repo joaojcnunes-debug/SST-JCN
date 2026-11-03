@@ -192,7 +192,7 @@ function NovoTipoForm({ onClose }: { onClose: () => void }) {
             value={instrucoes}
             onChange={(e) => setInstrucoes(e.target.value)}
             rows={2}
-            placeholder="Instruções exibidas ao respondente"
+            placeholder="Orientação ao respondente (vai no Guia Forms, no modelo Excel e no Word)"
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>

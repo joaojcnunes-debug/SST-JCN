@@ -91,8 +91,8 @@ export default function PlanoAcaoQpsPage({ params }: { params: Promise<{ id: str
         </h1>
         <p className="text-sm text-gray-600">
           {ap.titulo} · ações de gerenciamento dos riscos psicossociais no formato 5W2H
-          (O quê, Por quê, Onde, Quando, Quem, Como, Quanto custa). Compõe um capítulo
-          próprio do laudo do {INSTRUMENTO_QPS.sigla}.
+          (O quê, Por quê, Onde, Quando, Quem, Como, Quanto custa). Só sai no laudo do{" "}
+          {INSTRUMENTO_QPS.sigla} se o capítulo Plano de Ação 5W2H estiver ligado no Texto Padrão.
         </p>
       </div>
 

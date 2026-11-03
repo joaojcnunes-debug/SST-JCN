@@ -143,9 +143,8 @@ function Inner() {
           </div>
 
           <p className="text-xs text-gray-500">
-            Você pode preencher mais metadados (funções, qtd. trabalhadores,
-            agravos, medidas recomendadas) depois, na aba <strong>Metadados</strong>{" "}
-            do relatório.
+            Depois de criar, importe os respondentes na aba <strong>Dados</strong>; agravos,
+            medidas recomendadas e fontes geradoras ficam na <strong>Análise</strong>.
           </p>
 
           <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
