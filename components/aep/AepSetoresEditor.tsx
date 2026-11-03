@@ -1,5 +1,7 @@
 "use client";
 
+import { reordenarComo } from "@/lib/aet/mesclar-setores";
+import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import Dica from "@/components/ui/Dica";
 import { DICAS_AEP_SETOR, DICAS_AEP_COLETA, DICAS_AEP_FATOR, DICAS_AEP_INVENTARIO } from "@/lib/dicas/aep";
 import { recomendaQuestionario, recomendaQuestionarioSetor, totalAlertasOrganizacionais } from "@/lib/aep/sinalizacao";
@@ -1273,7 +1275,11 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
     if (limparStatus.current) clearTimeout(limparStatus.current);
     setStatusOrdem("salvando");
     try {
-      await salvar.mutateAsync({ id: idRelatorio, setores: novos, silencioso: true });
+      // Só a ORDEM vai sozinha: grava a versão salva (o cache tem o último Salvar) na ordem
+      // nova. As edições ainda não salvas esperam o botão Salvar, com a trava do N/I e a
+      // auditoria da origem da evidência (0.3.215).
+      const salvos = rel?.setores ?? [];
+      await salvar.mutateAsync({ id: idRelatorio, setores: reordenarComo(salvos, novos.map((x) => x.id)), silencioso: true });
       setStatusOrdem("salvo");
       limparStatus.current = setTimeout(() => setStatusOrdem("parado"), 2500);
     } catch {
@@ -1336,7 +1342,14 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
     setAbertos((prev) => new Set([...prev, novo.id]));
   }
 
-  function removeSetor(id: string) {
+  async function removeSetor(id: string) {
+    const nome = setores.find((x) => x.id === id)?.nome_setor?.trim();
+    const ok = await confirmar({
+      title: `Excluir o setor${nome ? ` "${nome}"` : ""}?`,
+      description: "Some da lista agora e sai do laudo quando você clicar em Salvar.",
+      confirmLabel: "Excluir",
+    });
+    if (!ok) return;
     setSetores((s) => s.filter((x) => x.id !== id));
   }
 
@@ -1462,6 +1475,12 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
   }
 
   async function handleSalvar() {
+    // "Setor *": sem nome o laudo sai com "—" no título do setor (0.3.215).
+    const semNome = setores.filter((s) => !s.nome_setor?.trim()).length;
+    if (semNome > 0) {
+      toast.error(semNome === 1 ? "Dê um nome ao setor antes de salvar." : `Dê um nome aos ${semNome} setores sem nome antes de salvar.`);
+      return;
+    }
     // N/I exige motivo (2026-10-06): sem ele o laudo não explica a lacuna.
     const pendentes = setores.flatMap((s) =>
       niSemMotivo(s).map(
@@ -1508,6 +1527,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
 
   return (
     <div className="space-y-5" {...reordenar.propsContainer()}>
+      <ConfirmHost />
       <SituacaoSinalizacaoAep idRelatorio={idRelatorio} />
       {/* Sugestões do campo Setor: setores que a empresa já tem no sistema. */}
       <datalist id="aep-setores-empresa">
@@ -1834,7 +1854,7 @@ export default function AepSetoresPage({ idRelatorio }: { idRelatorio: string })
                     Triagem Ergonômica
                   </h3>
                   <p className="mb-2 text-[11px] text-gray-500">
-                    Ao marcar <strong>Sim</strong>, um campo de observação aparece para registrar o que foi observado.
+                    Use o campo de observação de cada item para registrar o que foi observado.
                   </p>
                   {/* Um bloco embaixo do outro, cada um na largura toda, com os
                       itens em colunas (2026-10-06): lado a lado, a Organizacional

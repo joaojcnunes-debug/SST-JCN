@@ -143,7 +143,8 @@ export default function AepNovoPage() {
             onChange={(nome, cargo, _cert, regValue) => {
               setResponsavel(nome);
               setTitulo(cargo ?? "");
-              if (regValue) setRegistro(regValue);
+              // Sem registro no cadastro do novo profissional, o do anterior não pode ficar.
+              setRegistro(regValue ?? "");
             }}
           />
         </div>

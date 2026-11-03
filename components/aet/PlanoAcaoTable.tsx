@@ -43,6 +43,19 @@ import type {
 
 const STATUS_OPCOES: StatusAcaoApreciacao[] = ["Pendente", "Em Andamento", "Concluida", "Cancelada"];
 const PRIORIDADE_OPCOES: PrioridadeAcaoApreciacao[] = ["Baixa", "Media", "Alta", "Critica"];
+// O valor gravado fica sem acento (é o do banco e do PGR); na tela aparece com acento.
+const ROTULO_PRIORIDADE: Record<PrioridadeAcaoApreciacao, string> = {
+  Baixa: "Baixa",
+  Media: "Média",
+  Alta: "Alta",
+  Critica: "Crítica",
+};
+const ROTULO_STATUS: Record<StatusAcaoApreciacao, string> = {
+  Pendente: "Pendente",
+  "Em Andamento": "Em andamento",
+  Concluida: "Concluída",
+  Cancelada: "Cancelada",
+};
 
 const STATUS_CORES: Record<StatusAcaoApreciacao, string> = {
   Pendente: "bg-amber-100 text-amber-700 border-amber-200",
@@ -492,7 +505,7 @@ function AcaoRow({
           <ChevronRight className={cn("size-3.5 transition-transform", expandida && "rotate-90")} />
         </button>
         <span className={cn("shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold", PRIORIDADE_CORES[acao.prioridade])}>
-          {acao.prioridade}
+          {ROTULO_PRIORIDADE[acao.prioridade] ?? acao.prioridade}
         </span>
         {noCentral && (
           <span
@@ -520,7 +533,7 @@ function AcaoRow({
         </div>
         {readOnly ? (
           <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold", STATUS_CORES[acao.status])}>
-            {acao.status}
+            {ROTULO_STATUS[acao.status] ?? acao.status}
           </span>
         ) : (
           <select
@@ -532,7 +545,7 @@ function AcaoRow({
             )}
           >
             {STATUS_OPCOES.map((s) => (
-              <option key={s} value={s}>{s}</option>
+              <option key={s} value={s}>{ROTULO_STATUS[s]}</option>
             ))}
           </select>
         )}
@@ -642,7 +655,7 @@ function AcaoRow({
                   className={cn(inputClass, "w-auto")}
                 >
                   {PRIORIDADE_OPCOES.map((p) => (
-                    <option key={p} value={p}>{p}</option>
+                    <option key={p} value={p}>{ROTULO_PRIORIDADE[p]}</option>
                   ))}
                 </select>
               </Campo>

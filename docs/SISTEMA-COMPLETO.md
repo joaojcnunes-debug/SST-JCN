@@ -153,10 +153,21 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Correções AET/AEP (0.3.215), achadas nas auditorias das dicas:**
+  - **AET, Setores × Análise:** as duas gravam o jsonb `setores`. Agora, ao salvar, a tela busca a versão do banco (`setoresAtuaisDoBanco`) e aplica só o que ELA mudou desde que carregou (`lib/aet/mesclar-setores.ts`, testado). Campo mudado na tela vale o da tela, e o resto vem do banco. Setores criados ou apagados respeitam as duas telas. A ordem é a da tela. Sem rede, grava o local, como antes. O auto-save do arrasto da AET usa a mesma mescla.
+  - **AET, permissão:** o Visualizador não edita a tela Psicossocial nem, na tela Setores, o bloco QPS, o F13, a escala e os "Salvar Fxx". Esses blocos ficam num `<fieldset disabled>` e o editor de texto usa `readOnly`.
+  - **AET, laudo:** o `dirty` passa a comparar a validade, então o Gerar Laudo pede para salvar quando ela mudou.
+  - **AET, Plano de Ação:** prioridade e status aparecem com acento (Média, Crítica, Concluída). O valor gravado não muda.
+  - **AET, aba Dados:** as Seções 2–12 saíram, porque `textos_secoes` não era lido por nada. No lugar fica um aviso com link para `/aet/texto-padrao`. Não havia laudo de AET gravado.
+  - **AEP, arrasto:** grava só a ORDEM, sobre a versão salva (`reordenarComo`, testado). Edições não salvas esperam o Salvar, com a trava do N/I e a auditoria da origem da evidência.
+  - **AEP, validações:** setor sem nome não salva, e a aba Dados não salva sem responsável.
+  - **AEP, troca de responsável:** trocar o profissional zera o registro quando o novo não tem um, na Nova análise e na aba Dados.
+  - **AEP, exclusão e texto:** excluir setor pede confirmação. O texto "a observação aparece ao marcar Sim" foi corrigido, porque ela aparece sempre.
+  - **AEP, endereço:** o `endereco_empresa` editado na análise sai na Identificação, tanto no PDF (`SecaoIdentificacaoEmpresa`, prop `enderecoDocumento`) quanto na prévia (`EmpresaInfoPanel`). Vazio, vale o do cadastro. Os outros laudos não passam a prop e continuam iguais.
 - **Dicas na AEP, lote 7.5 (0.3.214):** `lib/dicas/aep.ts`, com cerca de 40 campos, cobre Nova análise, Dados, Checklist de gestão e Setores.
   - O Inventário de risco acha a dica pelo rótulo da linha (`DICA_INVENTARIO`, a partir de `ROTULO_TOPICO`).
   - Origem e Evidência do checklist de gestão não têm rótulo na tela, por isso ficaram sem dica.
-  - **Problemas achados, para o PR de correção junto com os da AET (decisão do João, 03/11):**
+  - **Problemas achados, corrigidos na 0.3.215, exceto "Respondido com" (fica como registro interno, por decisão do João):**
     - Arrastar um setor grava o array inteiro, com edições não salvas, e pula a trava do N/I e a auditoria da origem da evidência.
     - A Identificação do PDF usa o endereço do cadastro, e não o `endereco_empresa` editado na AEP.
     - "Respondido com" não é lido em lugar nenhum; Origem e Evidência vão só para a auditoria.
@@ -166,7 +177,7 @@ Alias de import: `@/*` → raiz.
     - Excluir setor não pede confirmação.
 - **Dicas na AET, lote 7.4 (0.3.213):** `lib/dicas/aet.ts`, com cerca de 50 campos, cobre Novo laudo, Dados, QPS (Setores e Psicossocial), Setores, Fatores, Análise e Plano de Ação.
   - **Helpers que aceitam `dica`:** `InputField` (Dados), `TextInput`/`TagInput` (Setores) e `Campo` (PlanoAcaoTable). As colunas da tabela de riscos e os títulos "Fotos do Setor" e "Considerações Finais" também têm dica.
-  - **Problemas achados na auditoria, a corrigir em PR à parte (decisão do João, 03/11):**
+  - **Problemas achados na auditoria, todos corrigidos na 0.3.215** (veja "Correções AET/AEP" abaixo):
     - As Seções 2–12 da aba Dados gravam em `textos_secoes`, mas nada lê esse campo: o laudo e o PDF usam os capítulos de Texto padrão.
     - Um Visualizador consegue editar na tela Psicossocial (sem `useCanEdit`) e, na tela Setores, no bloco QPS, no F13 e nos "Salvar Fxx".
     - O "Gerar Laudo" não considera a validade alterada e não salva (o `dirty` do laudo não compara `dataValidade`).

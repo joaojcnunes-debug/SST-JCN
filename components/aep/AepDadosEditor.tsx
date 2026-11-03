@@ -8,6 +8,7 @@ import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
+import toast from "react-hot-toast";
 import { useAepRelatorio, useSalvarAep } from "@/lib/hooks/useAep";
 import ProfissionalSelect from "@/components/ui/ProfissionalSelect";
 import { LevarParaCampo } from "@/components/ui/LevarParaCampo";
@@ -50,6 +51,11 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
 
   async function handleSalvar(e: React.FormEvent) {
     e.preventDefault();
+    // Na criação ele já é obrigatório; aqui também, senão a assinatura do laudo sai vazia (0.3.215).
+    if (!responsavel.trim()) {
+      toast.error("Escolha o responsável pela elaboração antes de salvar.");
+      return;
+    }
     try {
       await salvar.mutateAsync({
         id: idRelatorio,
@@ -153,7 +159,8 @@ export default function AepDadosPage({ idRelatorio, embutido = false }: { idRela
             onChange={(nome, cargo, _cert, regValue) => {
               setResponsavel(nome);
               setTitulo(cargo ?? "");
-              if (regValue) setRegistro(regValue);
+              // Sem registro no cadastro do novo profissional, o do anterior não pode ficar.
+              setRegistro(regValue ?? "");
             }}
             // Análise ANTIGA: nasceu antes do preenchimento automático e ficou
             // sem registro. Aqui a gente só SUGERE — em campo vazio, nunca

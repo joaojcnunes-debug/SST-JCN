@@ -1,10 +1,11 @@
 "use client";
 
+import { mesclarSetores } from "@/lib/aet/mesclar-setores";
 import Dica from "@/components/ui/Dica";
 import { DICAS_AET_SETOR } from "@/lib/dicas/aet";
 import { EditorSkeleton } from "@/components/ui/PageSkeletons";
 
-import { useEffect, useState} from "react";
+import { useEffect, useRef, useState} from "react";
 import { Save, Loader2, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
@@ -19,6 +20,7 @@ import {
   SLUG_TO_DEFAULT_IMAGE,
   SLUG_TO_OWAS_FIELD,
   CHECKLIST_PERGUNTAS_PADRAO,
+  setoresAtuaisDoBanco,
 } from "@/lib/hooks/useAet";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
 import RichTextEditor from "@/components/drps/RichTextEditor";
@@ -62,9 +64,12 @@ export default function AetAnalisePage({ idRelatorio }: { idRelatorio: string })
 
   const [setores, setSetores] = useState<AetSetor[]>([]);
   const [abertos, setAbertos] = useState<Set<string>>(new Set());
+  // Base da mescla com o que a tela Setores gravar enquanto esta está aberta.
+  const baseSetores = useRef<AetSetor[]>([]);
 
   useEffect(() => {
     if (rel) {
+      baseSetores.current = rel.setores ?? [];
       setSetores(rel.setores ?? []);
       if (rel.setores?.length) setAbertos(new Set([rel.setores[0].id]));
     }
@@ -121,9 +126,12 @@ export default function AetAnalisePage({ idRelatorio }: { idRelatorio: string })
     });
   }
 
-  function handleSave() {
+  async function handleSave() {
+    // Grava só o que esta tela mudou, por cima da versão atual do banco (sem rede, o local).
+    const atual = await setoresAtuaisDoBanco(idRelatorio);
+    const alvo = atual ? mesclarSetores(baseSetores.current, setores, atual) : setores;
     salvar.mutate(
-      { id: idRelatorio, patch: { setores } },
+      { id: idRelatorio, patch: { setores: alvo } },
       {
         onSuccess: () => toast.success("Análise salva"),
         onError: (e: Error) => toast.error(mensagemErro(e)),

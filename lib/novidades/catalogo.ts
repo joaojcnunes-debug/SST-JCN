@@ -41,6 +41,21 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "correcoes-aet-aep",
+    data: "2026-11-03",
+    tipo: "correcao",
+    titulo: "AET e AEP: correções achadas na revisão das telas",
+    texto:
+      "AET: as telas Setores e Análise não apagam mais o que a outra gravou; o Visualizador não edita a tela " +
+      "Psicossocial nem o bloco QPS; o Gerar Laudo pede para salvar quando a validade mudou; prioridade e status do " +
+      "Plano de Ação aparecem com acento; e as Seções 2 a 12 saíram da aba Dados (o texto do laudo é editado em " +
+      "Texto padrão da AET). AEP: arrastar um setor grava só a nova ordem; setor sem nome e análise sem responsável " +
+      "não salvam; trocar o responsável não deixa o registro do anterior; excluir setor pede confirmação; e o endereço " +
+      "editado na análise passa a sair na Identificação do laudo.",
+    onde: "AET e AEP",
+    versoes: ["0.3.215"],
+  },
+  {
     id: "dicas-aep",
     data: "2026-11-03",
     tipo: "melhoria",

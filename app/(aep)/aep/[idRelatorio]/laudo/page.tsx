@@ -661,7 +661,7 @@ export default function AepLaudoPage({
                     <h2 className="mb-2 border-b-2 border-sky-700 pb-1 text-sm font-bold text-sky-900">
                       {numLabel(numPorSlug["identificacao_empresa"], "Identificação da Empresa")}
                     </h2>
-                    <EmpresaInfoPanel empresa={empresaFull ?? null} />
+                    <EmpresaInfoPanel empresa={empresaFull ?? null} enderecoDocumento={rel?.endereco_empresa} />
                     {/* Espelho do BlocoDatasDocumento do PDF (SecoesComuns).
                         A prévia usa EmpresaInfoPanel e o PDF usa
                         SecaoIdentificacaoEmpresa — são dois componentes, então o

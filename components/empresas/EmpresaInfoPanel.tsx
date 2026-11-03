@@ -31,6 +31,8 @@ interface Props {
   variante?: "completo" | "compacto";
   responsaveis?: ResponsaveisEmpresa;
   className?: string;
+  /** Endereço editado no próprio documento (prévia da AEP). Preenchido, vale no lugar do cadastro. */
+  enderecoDocumento?: string | null;
 }
 
 const VAZIO = "Não informado";
@@ -76,6 +78,7 @@ export default function EmpresaInfoPanel({
   variante = "completo",
   responsaveis,
   className,
+  enderecoDocumento,
 }: Props) {
   if (!empresa) {
     return (
@@ -86,7 +89,7 @@ export default function EmpresaInfoPanel({
   }
 
   const cnae = [empresa.cnae_principal, empresa.cnae_descricao].filter(Boolean).join(" — ");
-  const endereco = montarEnderecoEmpresa(empresa);
+  const endereco = enderecoDocumento?.trim() || montarEnderecoEmpresa(empresa);
 
   if (variante === "compacto") {
     const ident = identificadores(empresa)[0];

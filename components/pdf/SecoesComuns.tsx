@@ -108,11 +108,14 @@ export function SecaoIdentificacaoEmpresa({
   empresa,
   numero,
   datasDocumento,
+  enderecoDocumento,
 }: {
   empresa: Partial<Empresa> | null | undefined;
   numero?: number;
   /** Opcional: só os laudos que passam é que ganham o bloco de datas. */
   datasDocumento?: DatasDocumento | null;
+  /** Endereço editado no próprio documento (AEP, 0.3.215). Preenchido, vale no lugar do cadastro. */
+  enderecoDocumento?: string | null;
 }) {
   const titulo = numero ? `${numero}. Identificação da Empresa` : "Identificação da Empresa";
   if (!empresa) {
@@ -128,7 +131,7 @@ export function SecaoIdentificacaoEmpresa({
 
   const ident = identificadorPrincipal(empresa);
   const cnae = [empresa.cnae_principal, empresa.cnae_descricao].filter(Boolean).join(" — ");
-  const endereco = montarEnderecoEmpresa(empresa as Empresa);
+  const endereco = enderecoDocumento?.trim() || montarEnderecoEmpresa(empresa as Empresa);
   const municipioUf = [empresa.municipio, empresa.uf].filter(Boolean).join(" / ");
 
   return (

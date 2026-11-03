@@ -15,78 +15,7 @@ import { mesmoNome } from "@/lib/registro-profissional";
 import { LevarParaCampo } from "@/components/ui/LevarParaCampo";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
-import RichTextEditor from "@/components/drps/RichTextEditor";
-
-// ─── Seções com texto padrão ──────────────────────────────────────────────────
-
-const SECOES: { key: string; titulo: string; defaultHtml: string }[] = [
-  {
-    key: "sec_2",
-    titulo: "2 – Introdução Geral",
-    defaultHtml:
-      "<p>A ergonomia estuda a adaptação do trabalho ao homem. Envolve tanto o ambiente físico como os aspectos organizacionais e cognitivos. A ergonomia abrange atividades de planejamento e projeto, que ocorre antes do trabalho ser realizado, e aqueles de controle e avaliação, que ocorrem durante e após o trabalho.</p>" +
-      "<p>A mesma pode ser ainda caracterizada como a ocupação de pessoas qualificadas em grupos de pesquisa e formação que atuam em equipes de projeto e consultoria para responder às demandas acerca da atividade de trabalho na sociedade mediante metodologias de análises e projeto de bases científicas e devidamente inseridas num universo normativo e contratual.</p>",
-  },
-  {
-    key: "sec_3",
-    titulo: "3 – Objetivo",
-    defaultHtml:
-      "<p>Este estudo tem como objetivo avaliar os postos de trabalho da empresa especificada, promovendo análise ergonômica das atividades e funções, sendo adotados métodos de análise aplicados para fins ergonômicos.</p>" +
-      "<p><strong>BASE LEGAL:</strong> Portaria 3.214/78 do Ministério do Trabalho – NR-17</p>",
-  },
-  {
-    key: "sec_4",
-    titulo: "4 – Metodologia",
-    defaultHtml:
-      "<p>Durante o trabalho realizado, foram avaliadas todas as funções conforme sugerido pela Metodologia da AET, excluindo-se a metodologia por amostragem, uma vez que cada função de trabalho caracteriza um desenvolvimento laboral de forma diferenciada.</p>" +
-      "<p>A AET tem por finalidade transformar as condições de trabalho e adaptar às características psicofisiológicas dos trabalhadores, buscando conciliar dois universos: saúde e produtividade.</p>" +
-      "<p>A metodologia da AET utiliza-se de observações da situação de trabalho, análise da tarefa, entrevistas e verbalizações com os diferentes níveis hierárquicos, buscando compreender em detalhes as atividades nas suas diferentes dimensões (física, cognitiva, mental e social).</p>",
-  },
-  {
-    key: "sec_5",
-    titulo: "5 – Levantamento, Transporte e Descarga Individual de Materiais",
-    defaultHtml:
-      "<p>Deverão ser executados de forma que o esforço físico realizado pelo trabalhador seja compatível com sua capacidade de força e não comprometa a sua saúde ou sua segurança.</p>" +
-      "<p>Para manipulações ocasionais, não repetitivas, o limite de 25 quilos para homens e 15 quilos para mulheres é sugerido por vários autores, desde que observadas boas práticas para a manipulação.</p>",
-  },
-  {
-    key: "sec_6",
-    titulo: "6 – Mobiliário dos Postos de Trabalho",
-    defaultHtml:
-      "<p>A análise ergonômica do trabalho leva em consideração que:</p>" +
-      "<ul><li>Sempre que possível o trabalho deve ser executado na posição sentada;</li>" +
-      "<li>O mobiliário deve prover condições para que o trabalho seja executado dentro da zona de conforto dos segmentos corporais;</li>" +
-      "<li>Os comandos sejam de fácil acionamento;</li>" +
-      "<li>Os assentos sejam adequados.</li></ul>",
-  },
-  {
-    key: "sec_7",
-    titulo: "7 – Equipamentos dos Postos de Trabalho",
-    defaultHtml:
-      "<p>A análise ergonômica do trabalho leva em consideração que o mobiliário/equipamentos devem prover condições para que o trabalho seja executado dentro da zona de conforto dos segmentos corporais, em boa condição postural e livre de reflexos.</p>",
-  },
-  {
-    key: "sec_8",
-    titulo: "8 – Condições Ambientais de Trabalho",
-    defaultHtml:
-      "<p>O estudo da exposição ocupacional dos trabalhadores aos agentes ambientais está contemplado no Programa de Gerenciamento de Riscos – PGR da empresa.</p>",
-  },
-  {
-    key: "sec_11",
-    titulo: "11 – Organização do Trabalho",
-    defaultHtml:
-      "<p>Na análise foram levados em consideração os seguintes aspectos:</p>" +
-      "<ul><li>As normas de produção;</li><li>O modo operatório;</li><li>A exigência de tempo;</li>" +
-      "<li>A determinação do conteúdo de tempo;</li><li>O ritmo de trabalho;</li>" +
-      "<li>O conteúdo das tarefas;</li><li>Horário de trabalho.</li></ul>",
-  },
-  {
-    key: "sec_12",
-    titulo: "12 – Ferramentas Biomecânicas Aplicadas",
-    defaultHtml:
-      "<p>Método OWAS: O Método OWAS (Ovako Working Posture Analysing System) foi desenvolvido na Finlândia por Karhu, Kansi e Kuorinka, entre 1974 e 1978, juntamente com o Instituto Finlandês de Saúde Ocupacional, objetivando gerar informações para melhorar os métodos de trabalho pela identificação de posturas corporais prejudiciais durante a realização das atividades.</p>",
-  },
-];
+import Link from "next/link";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -97,17 +26,6 @@ export default function AetDadosPage({ idRelatorio }: { idRelatorio: string }) {
   const canEdit = useCanEdit();
 
   if (isLoading) return <EditorSkeleton />;
-
-  function salvarSecao(key: string, html: string) {
-    const textos_secoes = { ...(rel?.textos_secoes ?? {}), [key]: html };
-    salvar.mutate(
-      { id: idRelatorio, patch: { textos_secoes } },
-      {
-        onSuccess: () => toast.success("Texto salvo"),
-        onError: (e: Error) => toast.error(mensagemErro(e)),
-      }
-    );
-  }
 
   function salvarCaracterizacao(patch: {
     responsavel_elaboracao: string;
@@ -149,17 +67,16 @@ export default function AetDadosPage({ idRelatorio }: { idRelatorio: string }) {
         onSalvar={salvarCaracterizacao}
       />
 
-      {/* Seções 2–12 editáveis */}
-      {SECOES.map((s) => (
-        <SecaoCard
-          key={s.key}
-          titulo={s.titulo}
-          valor={rel?.textos_secoes?.[s.key] ?? s.defaultHtml}
-          canEdit={canEdit}
-          salvando={salvar.isPending}
-          onSalvar={(html) => salvarSecao(s.key, html)}
-        />
-      ))}
+      {/* As Seções 2–12 ficavam aqui, mas o laudo e o PDF montam esses capítulos a partir do
+          Texto padrão da AET: o que se editava aqui nunca chegava ao documento (removido em 0.3.215). */}
+      <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+        Os textos das demais seções do laudo (introdução, objetivo, metodologia e as outras) são
+        editados em{" "}
+        <Link href="/aet/texto-padrao" className="font-semibold underline">
+          Texto padrão da AET
+        </Link>
+        {" "}e valem para todos os laudos.
+      </div>
     </div>
   );
 }
@@ -400,58 +317,6 @@ function CaracterizacaoCard({
 
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── Card Seção editável ──────────────────────────────────────────────────────
-
-function SecaoCard({
-  titulo,
-  valor,
-  canEdit,
-  salvando,
-  onSalvar,
-}: {
-  titulo: string;
-  valor: string;
-  canEdit: boolean;
-  salvando: boolean;
-  onSalvar: (html: string) => void;
-}) {
-  const [html, setHtml] = useState(valor);
-  const [dirty, setDirty] = useState(false);
-
-  useEffect(() => {
-    setHtml(valor);
-    setDirty(false);
-  }, [valor]);
-
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-gray-700">
-          {titulo}
-        </h2>
-        {canEdit && (
-          <button
-            type="button"
-            onClick={() => { onSalvar(html); setDirty(false); }}
-            disabled={!dirty || salvando}
-            className="inline-flex items-center gap-1.5 rounded-md bg-marca-primary px-3 py-2 text-xs font-semibold text-white hover:bg-marca-accent disabled:opacity-50"
-          >
-            {salvando ? <Loader2 className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
-            Salvar
-          </button>
-        )}
-      </div>
-      <RichTextEditor
-        value={html}
-        onChange={(v) => { setHtml(v); setDirty(true); }}
-        readOnly={!canEdit}
-        uploadPathPrefix="aet-textos"
-        placeholder="Conteúdo da seção..."
-      />
     </div>
   );
 }
