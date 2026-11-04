@@ -7,7 +7,7 @@ const FERIADO_GERAL = "Feriado nacional ou estadual não entra na conta.";
 
 export const DICAS_ESCALA_UNIDADE = {
   municipio: "Liga o feriado municipal à unidade. Escreva igual ao do feriado: maiúsculas e espaços nas pontas não importam.",
-  na_escala: "Desmarcada, a unidade some da grade, do padrão semanal, das regras e dos relatórios. Continua no cadastro do painel.",
+  na_escala: "Desmarcada, a unidade não pode mais ser escolhida nem entra nos relatórios. Os dias já gravados nela aparecem como “(inativa)”.",
 } as const;
 
 export const DICAS_ESCALA_SUPERVISOR = {
@@ -25,7 +25,7 @@ export const DICAS_ESCALA_REGRA = {
   tipo: "O que a conferência verifica. Trocar o tipo zera os parâmetros; depois de criada, a regra não muda de tipo.",
   descricao: "Só o nome mostrado na conferência. Mudar este texto não muda o que a regra verifica.",
   minimo: `Quantos supervisores cada dia com expediente precisa ter. ${FERIADO_GERAL}`,
-  contar: "A primeira opção conta qualquer dia preenchido, até folga, férias e atestado. A segunda só quem está em unidade.",
+  contar: "A primeira opção conta qualquer dia preenchido, até folga, férias, atestado e feriado municipal. A segunda só quem está em unidade.",
   supervisor: "Quem precisa estar em unidade nos dias marcados. A lista mostra só supervisores ativos.",
   dias_juntos: "Mínimo de dias com expediente em que os dois ficam na mesma unidade. Feriado nacional ou estadual não conta.",
 } as const;

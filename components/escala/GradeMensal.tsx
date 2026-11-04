@@ -57,6 +57,9 @@ export default function GradeMensal() {
 
   const { data: todosSupervisores = [], isLoading: carSup } = useEscalaSupervisores(false);
   const { data: unidades = [] } = useUnidadesDaEscala(true);
+  // Todas, inclusive as tiradas da escala: dia já gravado numa unidade desativada mostra o
+  // nome dela marcado "(inativa)", em vez de "removida" (0.3.231).
+  const { data: todasUnidades = [] } = useUnidadesDaEscala(false);
   const { data: padroes = [] } = useEscalaPadrao({ todas: true });
   const { data: feriados = [] } = useEscalaFeriados(ano);
   const { data: dias = [], isLoading: carDias } = useEscalaDias(ano, mes);
@@ -69,8 +72,8 @@ export default function GradeMensal() {
   const [emEdicao, setEmEdicao] = useState<DiaEmEdicao | null>(null);
 
   const porUnidade = useMemo(
-    () => new Map(unidades.map((u) => [u.id_unidade, u])),
-    [unidades]
+    () => new Map(todasUnidades.map((u) => [u.id_unidade, u])),
+    [todasUnidades]
   );
   /**
    * As colunas do mês: os ativos, MAIS quem tem dia gravado neste mês.
@@ -350,7 +353,7 @@ export default function GradeMensal() {
                                     className="inline-block size-2 shrink-0 rounded-full"
                                     style={{ backgroundColor: u?.cor_hex ?? "#0ea5e9" }}
                                   />
-                                  {u?.nome ?? "removida"}
+                                  {u ? (u.ativo ? u.nome : `${u.nome} (inativa)`) : "removida"}
                                 </span>
                               );
                             })

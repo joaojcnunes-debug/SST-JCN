@@ -58,8 +58,11 @@ export default function AgravosPage() {
             <div>
               <h1 className="text-lg font-bold text-gray-900">Possíveis Agravos à Saúde Mental</h1>
               <p className="text-xs text-gray-500">
-                Catálogo base do campo “Possíveis Agravos à Saúde Mental” na aba Análise e Avaliação.
+                Catálogo base do campo “Possíveis Agravos à Saúde Mental” na Análise e Avaliação do DRPS e na Análise do QPS.
                 {agravos.length > 0 ? ` ${agravos.length} cadastrado(s).` : ""}
+                {agravos.length > 0 && agravos.every((a) => !a.ativo)
+                  ? " Todos estão desativados: a Análise fica sem opções da lista."
+                  : ""}
               </p>
             </div>
           </div>
@@ -107,7 +110,8 @@ export default function AgravosPage() {
           <LinhasSkeleton bare linhas={5} />
         ) : agravos.length === 0 ? (
           <div className="p-10 text-center text-sm text-gray-500">
-            Nenhum agravo cadastrado.{canEdit ? " Use “Restaurar base” ou adicione acima." : ""}
+            Nenhum agravo cadastrado. Enquanto a lista estiver vazia, a Análise usa a base inicial.
+            {canEdit ? " Use “Restaurar base” ou adicione acima." : ""}
           </div>
         ) : (
           <ul className="divide-y divide-gray-100">

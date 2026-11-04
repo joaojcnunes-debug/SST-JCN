@@ -245,8 +245,9 @@ export default function AnalisePage({
     const chave = `${unidadeAtiva ?? ""}|${respondentes.length}|${agravosCatChave}|${medidasCatChave}`;
     if (dirtyRef.current && montadoPara.current === chave) return;
     montadoPara.current = chave;
-    const agravosCat = agravosCatChave.split("\u0001");
-    const medidasCat = medidasCatChave.split("\u0001");
+    // Catálogo vazio (tudo desativado) vira lista vazia, não [""].
+    const agravosCat = agravosCatChave ? agravosCatChave.split("\u0001") : [];
+    const medidasCat = medidasCatChave ? medidasCatChave.split("\u0001") : [];
     // Base = mapas por setor (o padrão herdado por TODAS as unidades).
     const baseAgravos = relatorio.agravos_por_setor ?? {};
     const baseMedidas = relatorio.medidas_por_setor ?? {};

@@ -58,8 +58,11 @@ export default function MedidasRecomendadasPage() {
             <div>
               <h1 className="text-lg font-bold text-gray-900">Medidas de Controle Recomendadas</h1>
               <p className="text-xs text-gray-500">
-                Catálogo base do campo “Medidas de controle recomendadas” na aba Análise e Avaliação.
+                Catálogo base do campo “Medidas de controle recomendadas” na Análise e Avaliação do DRPS e na Análise do QPS.
                 {medidas.length > 0 ? ` ${medidas.length} cadastrada(s).` : ""}
+                {medidas.length > 0 && medidas.every((m) => !m.ativo)
+                  ? " Todas estão desativadas: a Análise fica sem opções da lista."
+                  : ""}
               </p>
             </div>
           </div>
@@ -107,7 +110,8 @@ export default function MedidasRecomendadasPage() {
           <LinhasSkeleton bare linhas={5} />
         ) : medidas.length === 0 ? (
           <div className="p-10 text-center text-sm text-gray-500">
-            Nenhuma medida cadastrada.{canEdit ? " Use “Restaurar base” ou adicione acima." : ""}
+            Nenhuma medida cadastrada. Enquanto a lista estiver vazia, a Análise usa a base inicial.
+            {canEdit ? " Use “Restaurar base” ou adicione acima." : ""}
           </div>
         ) : (
           <ul className="divide-y divide-gray-100">

@@ -64,6 +64,9 @@ export default function PadraoSemanal() {
 
   const { data: supervisores = [], isLoading: carregandoSup } = useEscalaSupervisores(true);
   const { data: unidades = [] } = useUnidadesDaEscala(true);
+  // Para os nomes: padrão gravado numa unidade tirada da escala mostra o nome com
+  // "(inativa)", não "unidade removida" (0.3.231). O editor continua só com as ativas.
+  const { data: todasUnidades = [] } = useUnidadesDaEscala(false);
   const { data: padroes = [], isLoading: carregandoPad } = useEscalaPadrao({ emData });
   const salvar = useSalvarPadrao();
   const encerrar = useEncerrarPadrao();
@@ -72,8 +75,8 @@ export default function PadraoSemanal() {
   const [aberta, setAberta] = useState<CelulaAberta | null>(null);
 
   const porUnidade = useMemo(
-    () => new Map(unidades.map((u) => [u.id_unidade, u])),
-    [unidades]
+    () => new Map(todasUnidades.map((u) => [u.id_unidade, u])),
+    [todasUnidades]
   );
   const indice = useMemo(() => indexarPadrao(padroes), [padroes]);
 
@@ -222,7 +225,7 @@ export default function PadraoSemanal() {
                                     className="inline-block size-2 shrink-0 rounded-full"
                                     style={{ backgroundColor: u?.cor_hex ?? "#0ea5e9" }}
                                   />
-                                  {u?.nome ?? "unidade removida"}
+                                  {u ? (u.ativo ? u.nome : `${u.nome} (inativa)`) : "unidade removida"}
                                 </span>
                               );
                             })
@@ -278,6 +281,7 @@ export default function PadraoSemanal() {
       {aberta && (
         <EditorCelula
           celula={aberta}
+          emData={emData}
           unidades={unidades}
           salvando={salvar.isPending || encerrar.isPending}
           onFechar={() => setAberta(null)}
@@ -295,10 +299,10 @@ export default function PadraoSemanal() {
               // foi escolhido, para a pessoa tentar de novo.
             }
           }}
-          onLimpar={async () => {
+          onLimpar={async (aPartirDe) => {
             if (!aberta.idPadrao) return;
             try {
-              await encerrar.mutateAsync({ id_padrao: aberta.idPadrao });
+              await encerrar.mutateAsync({ id_padrao: aberta.idPadrao, aPartirDe });
               setAberta(null);
             } catch {
               // idem
@@ -314,15 +318,19 @@ export default function PadraoSemanal() {
 
 interface EditorProps {
   celula: CelulaAberta;
+  /** A data de "Padrão vigente em": é o padrão dela que a célula mostra. */
+  emData: string;
   unidades: UnidadeDaEscala[];
   salvando: boolean;
   onFechar: () => void;
   onSalvar: (a: Alocacao, vigencia_inicio: string) => void;
-  onLimpar: () => void;
+  /** Deixa o dia vazio a partir da data (o padrão termina na véspera). */
+  onLimpar: (aPartirDe: string) => void;
 }
 
 function EditorCelula({
   celula,
+  emData,
   unidades,
   salvando,
   onFechar,
@@ -339,7 +347,9 @@ function EditorCelula({
   const [situacao, setSituacao] = useState<SituacaoEscala>(
     inicial?.tipo === "situacao" ? inicial.situacao : "Home office"
   );
-  const [vigencia, setVigencia] = useState(hojeIso);
+  // Começa na data que a tela está mostrando ("Padrão vigente em"), não sempre em hoje:
+  // salvar e limpar usam esta mesma data (0.3.231).
+  const [vigencia, setVigencia] = useState(emData);
 
   const dia = DIAS_UTEIS.find((d) => d.valor === celula.dia);
   const valido = modo === "unidades" ? escolhidas.length > 0 : true;
@@ -360,8 +370,9 @@ function EditorCelula({
           {celula.idPadrao ? (
             <button
               type="button"
-              onClick={onLimpar}
+              onClick={() => onLimpar(vigencia)}
               disabled={salvando}
+              title="Deixa o dia vazio a partir da data em “Passa a valer em”"
               className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-60"
             >
               <Trash2 className="size-4" />
@@ -489,7 +500,8 @@ function EditorCelula({
           />
           <p className="mt-1 text-[11px] text-gray-500">
             O padrão que valia antes é encerrado na véspera desta data, não apagado. Mês já
-            montado continua explicável pelo padrão da época.
+            montado continua explicável pelo padrão da época. “Limpar o dia” usa a mesma
+            data: o dia fica vazio a partir dela.
           </p>
         </div>
       </div>
