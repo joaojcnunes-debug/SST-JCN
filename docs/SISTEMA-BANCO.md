@@ -225,6 +225,8 @@ id_unidade text NN, nome text NN, created_at timestamp with time zone NN, update
 
 ### `usuarios`
 
+Escrita só Admin (v320); a própria conta troca nome e cargo pela RPC `usuario_atualizar_meu_perfil`.
+
 id_usuario text NN, nome text NN, email text NN, cargo text, perfil text, ativo_sistema boolean, empresas_vinculadas ARRAY, senha_hash text, created_at timestamp with time zone, modulos_permitidos ARRAY NN, pode_criar boolean NN, pode_editar boolean NN, pode_excluir boolean NN, assinatura_url text, tipo_certificado text, certificado_pfx_path text, mostrar_assinatura_imagem boolean NN, crp character varying, crm character varying, registro_mte character varying, certificado_titular text, certificado_validade timestamp with time zone, unidades ARRAY NN, crea text, art text, pode_escrever_quimicos boolean NN, concedido_por text, concedido_em timestamp with time zone, funcao text, nivel text, pode_enviar_sgg boolean NN, pode_enviar_sgg_concedido_por text, pode_enviar_sgg_concedido_em timestamp with time zone, cpf text
 
 ## Certificados de treinamento
@@ -589,7 +591,12 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
-- **v319 — Gestão: quem edita a lista atribui outros membros (04/11/2026).** PENDENTE DE APLICAR: o Supabase estava fora do ar. Aplicar antes do merge do PR da 0.3.223.
+- **v320 — `usuarios`: escrita só para Admin (04/11/2026).** PENDENTE DE APLICAR (o João aplica no SQL Editor antes do merge da 0.3.228).
+  - **Brecha:** a policy `auth write usuarios` (ALL, authenticated, `true`/`true`) deixava qualquer conta logada alterar ou apagar qualquer usuário, inclusive se dar perfil Admin. A v320 apaga essa policy; fica a `admin write usuarios` (`caller_eh_admin()`) e a leitura `auth read usuarios`.
+  - **`usuario_atualizar_meu_perfil(p_nome, p_cargo)`** (security definer): a própria conta ativa troca só nome e cargo. É o que o Portal do cliente › Meu perfil usa.
+  - As rotas do servidor (criar, credenciais, certificado) usam service_role e não mudam. A `funcoes_painel` já estava certa (escrita só `caller_eh_admin()`).
+  - Rollback: `scripts/sql/v320_usuarios_fecha_escrita_rollback.sql` (reabre a brecha).
+- **v319 — Gestão: quem edita a lista atribui outros membros (04/11/2026).** Aplicada pelo João em 04/11/2026, depois de conferir que as duas funções tinham o corpo da v195 (0.3.227).
   - **`gestao_vincular`:** depois do piso `gestao_pode_editar_q`, quem não é gestor vincula a si mesmo ou qualquer membro da Gestão (`gestao_papel_de(alvo)` não nulo). O gestor continua vinculando qualquer e-mail.
   - **`gestao_desvincular`:** basta o piso `gestao_pode_editar_q`.
   - **Antes de aplicar:** conferir que o corpo atual no banco é o da v195.

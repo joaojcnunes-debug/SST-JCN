@@ -7,6 +7,7 @@ import PortalClienteLayout from "@/components/portal-cliente/PortalClienteLayout
 import { useCurrentUser } from "@/lib/hooks/useUsuario";
 import { useUserStore } from "@/lib/store";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { mensagemErro } from "@/lib/errors";
 
 function PerfilCliente() {
   const user = useCurrentUser();
@@ -21,15 +22,17 @@ function PerfilCliente() {
     setSalvando(true);
     try {
       const sb = createSupabaseBrowserClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error } = await (sb.from("usuarios") as any)
-        .update({ nome: nome.trim(), cargo: cargo.trim() || null })
-        .eq("id_usuario", user.id_usuario);
+      // v320: a tabela usuarios só aceita escrita de Admin; a própria conta troca nome e cargo
+      // por esta RPC, que não mexe em mais nada.
+      const { error } = await sb.rpc("usuario_atualizar_meu_perfil" as never, {
+        p_nome: nome.trim(),
+        p_cargo: cargo.trim() || null,
+      } as never);
       if (error) throw error;
       setUser({ ...user, nome: nome.trim(), cargo: cargo.trim() || null });
       toast.success("Perfil atualizado.");
-    } catch {
-      toast.error("Erro ao salvar perfil.");
+    } catch (e) {
+      toast.error(mensagemErro(e, "Erro ao salvar perfil."));
     } finally {
       setSalvando(false);
     }
