@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_13FATORES_CONFIG } from "@/lib/dicas/config";
 import { useState } from "react";
 import {
   Brain,
@@ -146,22 +148,22 @@ function AbaFatores() {
           {abertos.has(f.codigo) && (
             <div className="grid gap-4 border-t border-gray-100 px-4 pb-4 pt-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-gray-600">Nome do fator</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_13FATORES_CONFIG.nome}>Nome do fator</Dica></label>
                 <input value={f.nome} onChange={(e) => setF(f.codigo, "nome", e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/40" />
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-gray-600">Descrição</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_13FATORES_CONFIG.descricao}>Descrição</Dica></label>
                 <textarea rows={2} value={f.descricao ?? ""} onChange={(e) => setF(f.codigo, "descricao", e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/40" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Perigos típicos</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_13FATORES_CONFIG.perigos}>Perigos típicos</Dica></label>
                 <textarea rows={3} value={f.perigos_tipicos ?? ""} onChange={(e) => setF(f.codigo, "perigos_tipicos", e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/40" />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Possíveis danos à saúde</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_13FATORES_CONFIG.danos}>Possíveis danos à saúde</Dica></label>
                 <textarea rows={3} value={f.possiveis_danos ?? ""} onChange={(e) => setF(f.codigo, "possiveis_danos", e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#0ea5e9]/40" />
               </div>
@@ -236,9 +238,9 @@ function AbaPerguntas() {
           <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
             <tr>
               <th className="w-8 px-3 py-2.5 text-center">#</th>
-              <th className="px-3 py-2.5 text-left">Categoria</th>
-              <th className="px-3 py-2.5 text-left">Pergunta</th>
-              <th className="w-28 px-3 py-2.5 text-left">Lógica</th>
+              <th className="px-3 py-2.5 text-left"><Dica texto={DICAS_13FATORES_CONFIG.categoria}>Categoria</Dica></th>
+              <th className="px-3 py-2.5 text-left"><Dica texto={DICAS_13FATORES_CONFIG.pergunta}>Pergunta</Dica></th>
+              <th className="w-28 px-3 py-2.5 text-left"><Dica texto={DICAS_13FATORES_CONFIG.logica}>Lógica</Dica></th>
               <th className="w-8 px-3 py-2.5" />
             </tr>
           </thead>
@@ -312,10 +314,10 @@ function AbaPlano() {
           <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500">
             <tr>
               <th className="w-16 px-3 py-2.5 text-left">Cód.</th>
-              <th className="px-3 py-2.5 text-left">Foco</th>
-              <th className="px-3 py-2.5 text-left">Ação proposta</th>
-              <th className="w-40 px-3 py-2.5 text-left">Responsável</th>
-              <th className="w-36 px-3 py-2.5 text-left">Prazo padrão</th>
+              <th className="px-3 py-2.5 text-left"><Dica texto={DICAS_13FATORES_CONFIG.plano}>Foco</Dica></th>
+              <th className="px-3 py-2.5 text-left"><Dica texto={DICAS_13FATORES_CONFIG.plano}>Ação proposta</Dica></th>
+              <th className="w-40 px-3 py-2.5 text-left"><Dica texto={DICAS_13FATORES_CONFIG.plano}>Responsável</Dica></th>
+              <th className="w-36 px-3 py-2.5 text-left"><Dica texto={DICAS_13FATORES_CONFIG.plano}>Prazo padrão</Dica></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -401,22 +403,22 @@ function AbaSemaforo() {
             <p className="mb-3 text-sm font-bold text-gray-800">{r.label}</p>
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
-                <label className="mb-1 block font-medium text-gray-600">Mín. (≥)</label>
+                <label className="mb-1 block font-medium text-gray-600"><Dica texto={DICAS_13FATORES_CONFIG.minimo}>Mín. (≥)</Dica></label>
                 <input type="number" step="0.1" value={r.min_score ?? ""} onChange={(e) => setR(r.id, "min_score", e.target.value ? parseFloat(e.target.value) : null)}
                   className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]" />
               </div>
               <div>
-                <label className="mb-1 block font-medium text-gray-600">Máx. (&lt;)</label>
+                <label className="mb-1 block font-medium text-gray-600"><Dica texto={DICAS_13FATORES_CONFIG.maximo}>Máx. (&lt;)</Dica></label>
                 <input type="number" step="0.1" value={r.max_score ?? ""} onChange={(e) => setR(r.id, "max_score", e.target.value ? parseFloat(e.target.value) : null)}
                   className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]" />
               </div>
               <div>
-                <label className="mb-1 block font-medium text-gray-600">Nível PGR</label>
+                <label className="mb-1 block font-medium text-gray-600"><Dica texto={DICAS_13FATORES_CONFIG.nivel_pgr}>Nível PGR</Dica></label>
                 <input value={r.nivel_pgr} onChange={(e) => setR(r.id, "nivel_pgr", e.target.value)}
                   className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]" />
               </div>
               <div>
-                <label className="mb-1 block font-medium text-gray-600">Prazo padrão</label>
+                <label className="mb-1 block font-medium text-gray-600"><Dica texto={DICAS_13FATORES_CONFIG.prazo}>Prazo padrão</Dica></label>
                 <input value={r.prazo_texto} onChange={(e) => setR(r.id, "prazo_texto", e.target.value)}
                   className="w-full rounded border border-gray-300 px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#0ea5e9]" />
               </div>

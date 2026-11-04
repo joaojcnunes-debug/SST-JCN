@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_ESCALA_FERIADO } from "@/lib/dicas/escala";
 import { useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -363,7 +365,7 @@ export default function FeriadosTab() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600">Tipo</label>
+                <label className="mb-1 block text-xs font-semibold text-gray-600"><Dica texto={DICAS_ESCALA_FERIADO.tipo}>Tipo</Dica></label>
                 <select
                   value={editando.tipo ?? "feriado"}
                   onChange={(e) =>
@@ -381,7 +383,7 @@ export default function FeriadosTab() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-gray-600">Descrição</label>
+              <label className="mb-1 block text-xs font-semibold text-gray-600"><Dica texto={DICAS_ESCALA_FERIADO.descricao}>Descrição</Dica></label>
               <input
                 type="text"
                 value={editando.descricao}
@@ -393,7 +395,7 @@ export default function FeriadosTab() {
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-semibold text-gray-600">Abrangência</label>
+              <label className="mb-1 block text-xs font-semibold text-gray-600"><Dica texto={DICAS_ESCALA_FERIADO.abrangencia}>Abrangência</Dica></label>
               <select
                 value={editando.abrangencia}
                 onChange={(e) => {

@@ -7,6 +7,8 @@
 // SUGEREM (ficam pendentes). "Padrão" = a opção já vem marcada no inventário.
 // Lida pelo editor da AEP, laudo, PDF, planilha e IA (lib/aep/biblioteca.ts).
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_BIBLIOTECA_AEP } from "@/lib/dicas/config";
 import { useMemo, useState } from "react";
 import { BookMarked, Check, ChevronDown, Inbox, Loader2, Plus, Trash2, X } from "lucide-react";
 import {
@@ -78,7 +80,7 @@ function LinhaItem({ item, isAdmin, mostrarPadrao }: { item: ItemBiblioteca; isA
             onChange={(e) => atualizar.mutate({ id: item.id_item, patch: { padrao: e.target.checked } })}
             className="size-3 accent-sky-600"
           />
-          padrão
+          <Dica texto={DICAS_BIBLIOTECA_AEP.padrao}>padrão</Dica>
         </label>
       )}
       {isAdmin && (
@@ -164,7 +166,7 @@ function PadroesComuns({ b, isAdmin }: { b: Biblioteca; isAdmin: boolean }) {
             <th className="px-3 py-2">Fator</th>
             {TOPICOS_COMUNS.map((t) => (
               <th key={t} className="px-3 py-2">
-                {ROTULO_TOPICO[t]} (padrão)
+                <Dica texto={DICAS_BIBLIOTECA_AEP.padrao_fator}>{ROTULO_TOPICO[t]} (padrão)</Dica>
               </th>
             ))}
           </tr>
