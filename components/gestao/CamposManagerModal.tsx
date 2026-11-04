@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_LISTA } from "@/lib/dicas/gestao";
 import { Plus, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import MultiChipInput from "@/components/ui/MultiChipInput";
@@ -76,7 +78,7 @@ export default function CamposManagerModal({
             </div>
             {(c.tipo === "selecao" || c.tipo === "multi") && (
               <div className="mt-2">
-                <label className="mb-1 block text-[11px] font-medium text-gray-500">Opções</label>
+                <label className="mb-1 block text-[11px] font-medium text-gray-500"><Dica texto={DICAS_GESTAO_LISTA.campo_opcoes}>Opções</Dica></label>
                 <MultiChipInput value={c.opcoes} onChange={(v) => salvar.mutate({ id: c.id, id_quadro: idQuadro, opcoes: v })} placeholder="Adicionar opção…" ro={!podeEditar} />
               </div>
             )}

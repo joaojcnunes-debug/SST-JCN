@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-gestao-tarefa",
+    data: "2026-11-04",
+    tipo: "melhoria",
+    titulo: "Dicas de preenchimento na tarefa e nos formulários da Gestão",
+    texto:
+      "A janela da tarefa (datas e horas, prioridade, status, responsáveis, seguidores, recorrência, etiquetas, " +
+      "subtarefas), a configuração e o formulário público, os modelos de checklist e as opções dos campos ganharam a " +
+      "dica de como preencher, dizendo quem é avisado e o que vai para a Google Agenda.",
+    onde: "Gestão",
+    versoes: ["0.3.221"],
+  },
+  {
     id: "correcoes-apreciacao",
     data: "2026-11-03",
     tipo: "correcao",
