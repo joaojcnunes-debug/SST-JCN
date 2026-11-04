@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "usuarios-escrita-so-admin",
+    data: "2026-11-04",
+    tipo: "correcao",
+    titulo: "Cadastro de usuários protegido no banco",
+    texto:
+      "Só administradores alteram contas de usuário, também direto no banco. No portal do cliente, a pessoa " +
+      "continua trocando o próprio nome e cargo em Meu perfil.",
+    onde: "Sistema e Portal do cliente",
+    versoes: ["0.3.228"],
+  },
+  {
     id: "correcoes-gestao",
     data: "2026-11-04",
     tipo: "correcao",
