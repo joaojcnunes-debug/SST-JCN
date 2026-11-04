@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_LISTA } from "@/lib/dicas/gestao";
 import { useState } from "react";
 import { Plus, Trash2, Pencil, Check, X, ListChecks } from "lucide-react";
 import toast from "react-hot-toast";
@@ -85,17 +87,17 @@ export default function ModelosManagerModal({
               <div className="space-y-3 border-t border-gray-100 p-3">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Título do modelo</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_LISTA.modelo_titulo}>Título do modelo</Dica></label>
                     <input value={draft.titulo} onChange={(e) => up({ titulo: e.target.value })} className={inputCls} />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Identificador (slug)</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_LISTA.modelo_slug}>Identificador (slug)</Dica></label>
                     <input value={draft.slug} onChange={(e) => up({ slug: e.target.value })} placeholder="ex.: pgr" className={`${inputCls} font-mono`} />
                   </div>
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">Itens do checklist</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_LISTA.modelo_itens}>Itens do checklist</Dica></label>
                   <div className="space-y-1.5">
                     {draft.itens.map((it, i) => (
                       <div key={i} className="flex items-center gap-2">

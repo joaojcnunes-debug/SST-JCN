@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_TAREFA } from "@/lib/dicas/gestao";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -429,12 +431,12 @@ export default function TarefaModal({
           </p>
         )}
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Título *</label>
+          <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.titulo}>Título</Dica> *</label>
           <input value={titulo} disabled={ro} onChange={(e) => setTitulo(e.target.value)} placeholder="O que precisa ser feito?" className={inputCls} />
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <label className="block text-xs font-medium text-gray-600">Descrição</label>
+            <label className="block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.descricao}>Descrição</Dica></label>
             {!ro && (
               <button type="button" onClick={iaDescricao} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">
                 {iaLoad === "desc" ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />} Redigir com IA
@@ -446,44 +448,44 @@ export default function TarefaModal({
         {/* Datas lado a lado, horas logo abaixo; responsável desce para junto dos seguidores. */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Data de início</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.inicio}>Data de início</Dica></label>
             <input type="date" value={dataInicio} disabled={ro} max={prazo || undefined} onChange={(e) => setDataInicio(e.target.value)} className={inputCls} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Data de término</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.termino}>Data de término</Dica></label>
             <input type="date" value={prazo} disabled={ro} min={dataInicio || undefined} onChange={(e) => setPrazo(e.target.value)} className={inputCls} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Hora de início</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.hora_inicio}>Hora de início</Dica></label>
             <input type="time" value={horaInicio} disabled={ro} onChange={(e) => setHoraInicio(e.target.value)} className={inputCls} />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Hora fim</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.hora_fim}>Hora fim</Dica></label>
             <input type="time" value={horaFim} disabled={ro} onChange={(e) => setHoraFim(e.target.value)} className={inputCls} />
           </div>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Prioridade</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.prioridade}>Prioridade</Dica></label>
             <select value={prioridade} disabled={ro} onChange={(e) => setPrioridade(e.target.value as PrioridadeTarefa)} className={inputCls}>
               {PRIORIDADES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Status</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.status}>Status</Dica></label>
             <select value={status} disabled={ro} onChange={(e) => setStatus(e.target.value)} className={inputCls}>
               {statuses.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Pontos (esforço)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.pontos}>Pontos (esforço)</Dica></label>
             <input type="number" min="0" value={pontos} disabled={ro} onChange={(e) => setPontos(e.target.value)} placeholder="—" className={inputCls} />
           </div>
         </div>
 
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-600">
-            {responsaveisEmails.length > 1 ? `Responsáveis (${responsaveisEmails.length})` : "Responsável"}
+            <Dica texto={DICAS_GESTAO_TAREFA.responsaveis}>{responsaveisEmails.length > 1 ? `Responsáveis (${responsaveisEmails.length})` : "Responsável"}</Dica>
           </label>
           {/* Campo de busca menor, com os selecionados ao lado. */}
           <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start">
@@ -524,7 +526,7 @@ export default function TarefaModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Seguidores</label>
+          <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.seguidores}>Seguidores</Dica></label>
           {seguidoresEmails.length > 0 && (
             <div className="mb-1.5 flex flex-wrap gap-1.5">
               {seguidoresEmails.map((em) => {
@@ -555,7 +557,7 @@ export default function TarefaModal({
 
         {!ehSub && (
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Recorrência</label>
+          <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.recorrencia}>Recorrência</Dica></label>
           <div className="flex flex-wrap items-center gap-2">
             <select value={recTipo} disabled={ro} onChange={(e) => setRecTipo(e.target.value as "" | "diaria" | "semanal" | "mensal")} className={`${inputCls} max-w-[10rem]`}>
               <option value="">Não repete</option>
@@ -575,7 +577,7 @@ export default function TarefaModal({
         )}
 
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-600">Etiquetas</label>
+          <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_TAREFA.etiquetas}>Etiquetas</Dica></label>
           <MultiChipInput value={etiquetas} onChange={setEtiquetas} sugestoes={etiquetasSugeridas} placeholder="Adicionar etiqueta…" ro={ro} />
         </div>
 
@@ -583,7 +585,7 @@ export default function TarefaModal({
         <div>
           <div className="mb-1 flex items-center justify-between">
             <label className="block text-xs font-medium text-gray-600">
-              Subtarefas {subtarefas.length > 0 && <span className="text-gray-400">({feitas}/{subtarefas.length})</span>}
+              <Dica texto={DICAS_GESTAO_TAREFA.subtarefas}>Subtarefas</Dica> {subtarefas.length > 0 && <span className="text-gray-400">({feitas}/{subtarefas.length})</span>}
             </label>
             {!ro && (
               <button type="button" onClick={iaSubtarefas} disabled={iaLoad !== null} className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-marca-primary hover:bg-marca-light/50 disabled:opacity-50">

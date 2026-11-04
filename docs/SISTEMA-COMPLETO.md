@@ -153,6 +153,25 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Dicas na Gestão, lote 7.9a (0.3.221):** `lib/dicas/gestao.ts` cobre a janela da tarefa, a configuração e o formulário público, os modelos de checklist e as opções de campo.
+  - O 7.9b (automações e acessos) usa o mesmo arquivo.
+  - Campos só com placeholder ficam sem dica (comentário, motivo da aprovação, responsável da subtarefa, texto/opções/ajuda da pergunta).
+  - **Achados para o PR de correções da Gestão:**
+    - o nível "ver e comentar" não comenta;
+    - "Definir responsável" (automação, lista e massa) grava só o texto;
+    - aprovação sem aprovador aparece a quem não pode decidir;
+    - salvar a tarefa sobrescreve campos mudados por automação;
+    - o status pela lista pula dependências e histórico;
+    - erros do banco sem acento;
+    - "Notificar (sino)" também manda e-mail;
+    - `visivel_cliente` nunca é lido;
+    - os números da automação voltam enquanto se digita;
+    - trocar o slug do modelo quebra automações;
+    - renomear espaço/pasta perde o texto;
+    - renomear etiqueta desliga as tarefas antigas;
+    - `responsavel_padrao` antigo do formulário;
+    - a etiqueta do modelo só entra com Enter;
+    - a equipe aceita nome vazio.
 - **Correções da Apreciação de Máquinas (0.3.220, banco v318), achadas na auditoria das dicas:**
   - **Máquina ativa:** o editor só aceita um `fichaAtivaId` que seja do laudo aberto; sem seleção válida, abre na 1ª máquina. O store é global e guardava a máquina do laudo anterior.
   - **Identificação da máquina:** só recarrega quando muda a máquina. Foto enviada/removida e salvar no painel apagavam o que não estava salvo.

@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_FORMULARIO } from "@/lib/dicas/gestao";
 import { useState } from "react";
 import { Plus, Trash2, Pencil, Link2, Check, X } from "lucide-react";
 import toast from "react-hot-toast";
@@ -126,36 +128,36 @@ export default function FormulariosManagerModal({
             {editId === f.id && draft && (
               <div className="space-y-3 border-t border-gray-100 p-3">
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">Título do formulário</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_FORMULARIO.titulo}>Título do formulário</Dica></label>
                   <input value={draft.titulo} onChange={(e) => up({ titulo: e.target.value })} className={inputCls} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">Texto de introdução (opcional)</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_FORMULARIO.introducao}>Texto de introdução (opcional)</Dica></label>
                   <textarea value={draft.descricao ?? ""} onChange={(e) => up({ descricao: e.target.value || null })} rows={2} className={inputCls} />
                 </div>
 
                 <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={draft.mostra_descricao} onChange={(e) => up({ mostra_descricao: e.target.checked })} /> Campo de detalhes</label>
-                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={draft.mostra_prazo} onChange={(e) => up({ mostra_prazo: e.target.checked })} /> Pedir prazo</label>
-                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={draft.mostra_prioridade} onChange={(e) => up({ mostra_prioridade: e.target.checked })} /> Pedir prioridade</label>
+                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={draft.mostra_descricao} onChange={(e) => up({ mostra_descricao: e.target.checked })} /> <Dica texto={DICAS_GESTAO_FORMULARIO.detalhes}>Campo de detalhes</Dica></label>
+                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={draft.mostra_prazo} onChange={(e) => up({ mostra_prazo: e.target.checked })} /> <Dica texto={DICAS_GESTAO_FORMULARIO.prazo}>Pedir prazo</Dica></label>
+                  <label className="flex items-center gap-1.5"><input type="checkbox" checked={draft.mostra_prioridade} onChange={(e) => up({ mostra_prioridade: e.target.checked })} /> <Dica texto={DICAS_GESTAO_FORMULARIO.prioridade}>Pedir prioridade</Dica></label>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Status inicial</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_FORMULARIO.status_inicial}>Status inicial</Dica></label>
                     <select value={draft.status_inicial ?? ""} onChange={(e) => up({ status_inicial: e.target.value || null })} className={inputCls}>
                       <option value="">1º da lista</option>
                       {statusesEd.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Prioridade padrão</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_FORMULARIO.prioridade_padrao}>Prioridade padrão</Dica></label>
                     <select value={draft.prioridade_padrao} onChange={(e) => up({ prioridade_padrao: e.target.value })} className={inputCls}>
                       {PRIORIDADES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Responsável padrão</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_FORMULARIO.responsavel_padrao}>Responsável padrão</Dica></label>
                     <UsuarioCombobox
                       usuarios={usuariosFull}
                       value={draft.responsavel_email ?? ""}
@@ -169,7 +171,7 @@ export default function FormulariosManagerModal({
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">Etiquetas padrão</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_FORMULARIO.etiquetas_padrao}>Etiquetas padrão</Dica></label>
                   <MultiChipInput value={draft.etiquetas_padrao} onChange={(v) => up({ etiquetas_padrao: v })} sugestoes={etiquetasEd.map((e) => e.nome)} placeholder="Adicionar…" />
                 </div>
 
@@ -196,7 +198,7 @@ export default function FormulariosManagerModal({
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">Perguntas extras</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_FORMULARIO.perguntas}>Perguntas extras</Dica></label>
                   <div className="space-y-2">
                     {draft.perguntas.map((p, i) => {
                       const tipo = p.tipo ?? "texto";
@@ -206,14 +208,14 @@ export default function FormulariosManagerModal({
                         <div key={i} className="space-y-1.5 rounded-md border border-gray-100 bg-gray-50/50 p-2">
                           <div className="flex items-center gap-2">
                             <input value={p.label} onChange={(e) => upP({ label: e.target.value })} placeholder="Rótulo da pergunta" className="flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm focus:border-marca-primary focus:outline-none" />
-                            <label className="flex items-center gap-1 text-xs text-gray-500"><input type="checkbox" checked={p.obrigatorio} onChange={(e) => upP({ obrigatorio: e.target.checked })} /> obrig.</label>
+                            <label className="flex items-center gap-1 text-xs text-gray-500"><input type="checkbox" checked={p.obrigatorio} onChange={(e) => upP({ obrigatorio: e.target.checked })} /> <Dica texto={DICAS_GESTAO_FORMULARIO.obrigatoria}>obrig.</Dica></label>
                             <button type="button" onClick={() => up({ perguntas: draft.perguntas.filter((_, j) => j !== i) })} className="text-gray-300 hover:text-red-600"><X className="size-4" /></button>
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5 text-xs">
                             <select value={tipo} onChange={(e) => upP({ tipo: e.target.value as TipoPergunta })} className="rounded-md border border-gray-200 px-1.5 py-1 text-xs focus:outline-none">
                               {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                             </select>
-                            <span className="text-gray-400">grava em</span>
+                            <span className="text-gray-400"><Dica texto={DICAS_GESTAO_FORMULARIO.grava_em}>grava em</Dica></span>
                             <select value={p.destino ?? "descricao"} onChange={(e) => upP({ destino: e.target.value })} className="rounded-md border border-gray-200 px-1.5 py-1 text-xs focus:outline-none">
                               <option value="descricao">Descrição</option>
                               <option value="etiquetas">Etiquetas (tag)</option>
@@ -237,7 +239,7 @@ export default function FormulariosManagerModal({
                             const origem = origens.find((q) => q.id === p.condicao?.pergunta);
                             return (
                               <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                                <span className="text-gray-400">mostrar só se</span>
+                                <span className="text-gray-400"><Dica texto={DICAS_GESTAO_FORMULARIO.mostrar_se}>mostrar só se</Dica></span>
                                 <select value={p.condicao?.pergunta ?? ""} onChange={(e) => upP({ condicao: e.target.value ? { pergunta: e.target.value, opcao: "" } : null })} className="rounded-md border border-gray-200 px-1.5 py-1 text-xs focus:outline-none">
                                   <option value="">(sempre)</option>
                                   {origens.map((q) => <option key={q.id} value={q.id}>{q.label}</option>)}

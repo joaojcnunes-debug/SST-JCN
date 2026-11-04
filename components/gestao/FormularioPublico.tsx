@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_FORM_PUBLICO } from "@/lib/dicas/gestao";
 import { useEffect, useRef, useState } from "react";
 import { Loader2, CheckCircle2, Send, Paperclip, Upload, X, ChevronDown, Check } from "lucide-react";
 import { normalizarTexto } from "@/lib/busca/texto";
@@ -300,14 +302,14 @@ export default function FormularioPublico({ token }: { token: string }) {
 
               {!def.titulo_composto && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">Título / Assunto *</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_FORM_PUBLICO.titulo}>Título / Assunto</Dica> *</label>
                   <input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Resuma sua solicitação" className={inputCls} />
                 </div>
               )}
 
               {def.mostra_descricao && (
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-gray-600">Detalhes</label>
+                  <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_FORM_PUBLICO.detalhes}>Detalhes</Dica></label>
                   <textarea value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} className={inputCls} />
                 </div>
               )}
@@ -354,13 +356,13 @@ export default function FormularioPublico({ token }: { token: string }) {
               <div className="grid grid-cols-2 gap-3">
                 {def.mostra_prazo && (
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Prazo desejado</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_FORM_PUBLICO.prazo}>Prazo desejado</Dica></label>
                     <input type="date" value={prazo} onChange={(e) => setPrazo(e.target.value)} className={inputCls} />
                   </div>
                 )}
                 {def.mostra_prioridade && (
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-gray-600">Prioridade</label>
+                    <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_GESTAO_FORM_PUBLICO.prioridade}>Prioridade</Dica></label>
                     <select value={prioridade} onChange={(e) => setPrioridade(e.target.value)} className={inputCls}>
                       {PRIORIDADES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                     </select>
