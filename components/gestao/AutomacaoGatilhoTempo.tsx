@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_AUTOMACAO } from "@/lib/dicas/gestao";
 import { X } from "lucide-react";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
 import { PRIORIDADES, type CondicaoAutomacao, type GestaoEtiqueta, type ModeloTarefa } from "@/lib/hooks/useGestao";
@@ -52,7 +54,7 @@ export function AgendaEditor({
           <option value="ultimo">último dia</option>
         </select>
       )}
-      <span className="text-gray-400">a partir das</span>
+      <span className="text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.a_partir_das}>a partir das</Dica></span>
       <input type="time" value={ag.hora ?? ""} disabled={disabled} onChange={(e) => setAg({ hora: e.target.value || undefined })} className={sel} />
       <select value={condicao.modo ?? "cada_tarefa"} disabled={disabled} onChange={(e) => onChange({ modo: e.target.value as CondicaoAutomacao["modo"] })} className={sel}>
         <option value="cada_tarefa">agir em cada tarefa do quadro (que casar a condição)</option>
@@ -86,10 +88,10 @@ export function ModeloTarefaEditor({
         <select value={modelo.prioridade ?? "Media"} disabled={disabled} onChange={(e) => set({ prioridade: e.target.value })} className={sel}>
           {PRIORIDADES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
-        <span className="text-gray-400">prazo: hoje +</span>
+        <span className="text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.prazo_hoje_mais}>prazo: hoje +</Dica></span>
         <input type="number" defaultValue={modelo.prazo_dias ?? ""} disabled={disabled} onBlur={(e) => set({ prazo_dias: e.target.value.trim() || undefined })} placeholder="dias" className={`${sel} w-20`} />
         <label className="inline-flex items-center gap-1 text-xs text-gray-500">
-          <input type="checkbox" disabled={disabled} checked={modelo.prazo_uteis === "true"} onChange={(e) => set({ prazo_uteis: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" /> úteis
+          <input type="checkbox" disabled={disabled} checked={modelo.prazo_uteis === "true"} onChange={(e) => set({ prazo_uteis: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" /> <Dica texto={DICAS_GESTAO_AUTOMACAO.prazo_uteis}>úteis</Dica>
         </label>
         <input list="modelo-etiquetas" disabled={disabled} placeholder="+ etiqueta" className={`${sel} w-32`}
           onKeyDown={(e) => {
@@ -104,7 +106,7 @@ export function ModeloTarefaEditor({
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] font-semibold uppercase text-gray-400">Responsáveis</span>
+        <span className="text-[11px] font-semibold uppercase text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.resp_agenda}>Responsáveis</Dica></span>
         {resp.map((em) => (
           <span key={em} className="inline-flex items-center gap-1 rounded-full bg-marca-light px-2 py-0.5 text-xs font-medium text-marca-primary">
             {em}{!disabled && <button type="button" onClick={() => set({ responsaveis: resp.filter((x) => x !== em) })}><X className="size-3" /></button>}
@@ -133,7 +135,7 @@ export function ParadaEditor({
   const setP = (x: Partial<NonNullable<CondicaoAutomacao["parada"]>>) => onChange({ parada: { ...p, ...x } });
   return (
     <span className="inline-flex flex-wrap items-center gap-2">
-      <span className="text-gray-400">há</span>
+      <span className="text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.sla_ha}>há</Dica></span>
       <input type="number" min={1} defaultValue={p.quantidade ?? ""} disabled={disabled} onBlur={(e) => setP({ quantidade: e.target.value.trim() || undefined })} className={`${sel} w-20`} />
       <select value={p.unidade ?? "dias"} disabled={disabled} onChange={(e) => setP({ unidade: e.target.value as "horas" | "dias" })} className={sel}>
         <option value="dias">dias</option>

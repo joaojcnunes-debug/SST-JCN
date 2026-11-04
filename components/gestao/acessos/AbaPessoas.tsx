@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_ACESSOS } from "@/lib/dicas/gestao";
 import { useMemo, useState } from "react";
 import { Copy, Folder, LayoutGrid, List, Search, ShieldAlert, Trash2, UserPlus, Users } from "lucide-react";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
@@ -151,12 +153,12 @@ export default function AbaPessoas({
 
         <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500">{modoCopia ? "Para quem" : "Quem"}</p>
+            <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500"><Dica texto={DICAS_GESTAO_ACESSOS.quem}>{modoCopia ? "Para quem" : "Quem"}</Dica></p>
             <PessoasPicker pessoas={opcoesPessoas} value={pessoas} onChange={setPessoas} />
           </div>
           {modoCopia ? (
             <div className="space-y-2">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">Copiar de</p>
+              <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500"><Dica texto={DICAS_GESTAO_ACESSOS.copiar_de}>Copiar de</Dica></p>
               <select value={origemCopia} onChange={(e) => setOrigemCopia(e.target.value)} className={`${inputCls} w-full`}>
                 <option value="">Escolha a pessoa modelo…</option>
                 {opcoesPessoas.map((p) => (
@@ -177,7 +179,7 @@ export default function AbaPessoas({
                   {equipesDaOrigem.length > 0 && (
                     <label className="mt-2 flex items-center gap-1.5">
                       <input type="checkbox" checked={copiarEquipes} onChange={(e) => setCopiarEquipes(e.target.checked)} className="size-3.5" />
-                      Pôr também nas mesmas equipes ({equipesDaOrigem.map((m) => d.nomeEquipe.get(m.id_equipe) ?? "?").join(", ")})
+                      <Dica texto={DICAS_GESTAO_ACESSOS.mesmas_equipes}>Pôr também nas mesmas equipes</Dica> ({equipesDaOrigem.map((m) => d.nomeEquipe.get(m.id_equipe) ?? "?").join(", ")})
                     </label>
                   )}
                   <p className="mt-2 text-[11px] text-gray-500">
@@ -188,7 +190,7 @@ export default function AbaPessoas({
             </div>
           ) : (
             <div>
-              <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500">Onde ({recursos.size})</p>
+              <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500"><Dica texto={DICAS_GESTAO_ACESSOS.onde}>Onde</Dica> ({recursos.size})</p>
               <RecursoPicker arvore={d.arvore} value={recursos} onChange={setRecursos} />
             </div>
           )}

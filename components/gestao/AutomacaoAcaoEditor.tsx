@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_AUTOMACAO } from "@/lib/dicas/gestao";
 import { X } from "lucide-react";
 import UsuarioCombobox from "@/components/gestao/UsuarioCombobox";
 import {
@@ -146,7 +148,7 @@ export default function AutomacaoAcaoEditor({
             <input type="number" defaultValue={acao.dias ?? ""} disabled={disabled} onBlur={(e) => onChange({ dias: e.target.value.trim() })} placeholder="dias" className={`${sel} w-20`} />
             <label className="inline-flex items-center gap-1 text-xs text-gray-500">
               <input type="checkbox" disabled={disabled} checked={acao.uteis === "true"} onChange={(e) => onChange({ uteis: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" />
-              dias úteis
+              <Dica texto={DICAS_GESTAO_AUTOMACAO.dias_uteis}>dias úteis</Dica>
             </label>
           </>
         )}
@@ -230,7 +232,7 @@ export default function AutomacaoAcaoEditor({
           <>
             <input defaultValue={acao.titulo_template ?? ""} disabled={disabled} onBlur={(e) => onChange({ titulo_template: e.target.value.trim() || undefined })} placeholder="título (use {titulo})" className={`${sel} min-w-[10rem]`} />
             <label className="inline-flex items-center gap-1 text-xs text-gray-500">
-              <input type="checkbox" disabled={disabled} checked={acao.copiar_campos === "true"} onChange={(e) => onChange({ copiar_campos: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" /> copiar campos
+              <input type="checkbox" disabled={disabled} checked={acao.copiar_campos === "true"} onChange={(e) => onChange({ copiar_campos: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" /> <Dica texto={DICAS_GESTAO_AUTOMACAO.copiar_campos}>copiar campos</Dica>
             </label>
           </>
         )}
@@ -275,7 +277,7 @@ export default function AutomacaoAcaoEditor({
           <input defaultValue={acao.assunto ?? ""} disabled={disabled} onBlur={(e) => onChange({ assunto: e.target.value.trim() })} placeholder="Assunto — ex.: Revisar {titulo}" className={`${sel} w-full`} />
           <textarea defaultValue={acao.mensagem ?? ""} disabled={disabled} onBlur={(e) => onChange({ mensagem: e.target.value })} rows={3}
             placeholder="Mensagem (opcional) — o e-mail já leva a tarefa, o quadro, o prazo e o botão para abrir." className={`${sel} w-full`} />
-          <p className="text-[11px] font-semibold uppercase text-gray-400">Também enviar para</p>
+          <p className="text-[11px] font-semibold uppercase text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.tambem_enviar}>Também enviar para</Dica></p>
           {chipsEmails}
         </div>
       )}
@@ -289,17 +291,17 @@ export default function AutomacaoAcaoEditor({
             </select>
             <label className="inline-flex items-center gap-1 text-xs text-gray-500">
               <input type="checkbox" disabled={disabled} checked={acao.substituir === "true"} onChange={(e) => onChange({ substituir: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" />
-              substituir os responsáveis atuais
+              <Dica texto={DICAS_GESTAO_AUTOMACAO.substituir}>substituir os responsáveis atuais</Dica>
             </label>
           </div>
-          <p className="text-[11px] font-semibold uppercase text-gray-400">Pessoas (na ordem do rodízio)</p>
+          <p className="text-[11px] font-semibold uppercase text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.rodizio}>Pessoas (na ordem do rodízio)</Dica></p>
           {chipsEmails}
         </div>
       )}
 
       {acao.tipo === "criar_tarefa_quadro" && (
         <div className="space-y-1.5 rounded-md border border-gray-100 bg-gray-50/60 p-2 text-sm">
-          <span className="text-[11px] font-semibold uppercase text-gray-400">Responsáveis da tarefa nova (opcional)</span>
+          <span className="text-[11px] font-semibold uppercase text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.resp_tarefa_nova}>Responsáveis da tarefa nova (opcional)</Dica></span>
           {chipsEmails}
         </div>
       )}
@@ -307,7 +309,7 @@ export default function AutomacaoAcaoEditor({
       {acao.tipo === "adicionar_vinculados" && (
         <div className="space-y-1.5 rounded-md border border-gray-100 bg-gray-50/60 p-2 text-sm">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold uppercase text-gray-400">Vincular como</span>
+            <span className="text-[11px] font-semibold uppercase text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.vincular_como}>Vincular como</Dica></span>
             <select value={acao.vinculo_tipo ?? "seguidor"} disabled={disabled} onChange={(e) => onChange({ vinculo_tipo: e.target.value })} className={sel}>
               <option value="seguidor">Seguidor</option>
               <option value="responsavel">Responsável</option>

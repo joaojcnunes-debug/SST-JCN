@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-gestao-automacoes",
+    data: "2026-11-04",
+    tipo: "melhoria",
+    titulo: "Dicas de preenchimento nas automações e nos acessos da Gestão",
+    texto:
+      "As automações (quando roda cada gatilho, filtros, condição, ações, agenda e SLA) e as telas de acesso (dar " +
+      "acesso, copiar de outra pessoa, motivo, equipes) ganharam a dica de como preencher cada campo.",
+    onde: "Gestão",
+    versoes: ["0.3.222"],
+  },
+  {
     id: "dicas-gestao-tarefa",
     data: "2026-11-04",
     tipo: "melhoria",

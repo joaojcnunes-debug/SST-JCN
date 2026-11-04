@@ -46,6 +46,40 @@ export const DICAS_GESTAO_FORM_PUBLICO = {
   prioridade: "Diga a urgência do pedido. Já vem com a prioridade padrão do formulário.",
 } as const;
 
+// ── 7.9b ────────────────────────────────────────────────────────────────────
+export const DICAS_GESTAO_AUTOMACAO = {
+  ativa: "Liga a regra. Só dá para marcar com todas as ações completas; desligada, ela não roda.",
+  quando: "O evento que dispara a regra. Os da tarefa rodam na hora; os de prazo, às 7h; agenda e SLA, a cada 10 minutos.",
+  de: "Status de onde a tarefa sai. Qualquer vale para todos.",
+  para: "Status para onde a tarefa vai. Qualquer vale para todos.",
+  vence_em: "Quantos dias antes da validade a regra cria a tarefa. Verificado a partir das 7h, uma vez por documento ou extintor.",
+  dias_antes_prazo: "Quantos dias antes do prazo a regra roda (começa com 3). Verificada todo dia às 7h.",
+  condicao: "Filtro da regra inteira. Monte as cláusulas e clique em Aplicar condição; sem clicar, nada é gravado.",
+  acoes: "As ações rodam de cima para baixo. O funil de cada ação faz um só se; para um senão, crie outra ação com o oposto.",
+  dias_uteis: "Conta só dias úteis ao somar os dias do novo prazo.",
+  copiar_campos: "Leva para a tarefa nova a descrição, a prioridade, as etiquetas e os campos da original.",
+  tambem_enviar: "Pessoas que recebem o e-mail além das escolhidas acima.",
+  substituir: "Marcado, tira os outros responsáveis da tarefa. Desmarcado, a pessoa escolhida entra junto com eles.",
+  rodizio: "Quem entra no sorteio. No rodízio vai um de cada vez nesta ordem; em menor carga, quem tem menos tarefas abertas.",
+  resp_tarefa_nova: "Viram responsáveis da tarefa criada em outro quadro e recebem o aviso de atribuição.",
+  vincular_como: "Seguidor acompanha e recebe avisos; Responsável também recebe o aviso de prazo. Começa como Seguidor.",
+  a_partir_das: "Hora em que a regra pode rodar no dia. O servidor confere a cada 10 minutos, então pode atrasar um pouco.",
+  prazo_hoje_mais: "Dias somados a hoje para o prazo da tarefa criada. Em branco, ela nasce sem prazo.",
+  prazo_uteis: "Conta só dias úteis ao somar o prazo da tarefa criada.",
+  resp_agenda: "Viram responsáveis da tarefa criada e recebem o aviso de atribuição.",
+  sla_ha: "Tempo parada que dispara a regra: sem nenhuma atividade ou no mesmo status. Conferido a cada 10 minutos.",
+} as const;
+
+export const DICAS_GESTAO_ACESSOS = {
+  quem: "Uma ou mais pessoas. Quem ainda não usa a Gestão ganha a entrada junto com o acesso.",
+  copiar_de: "Pessoa modelo: os acessos diretos dela são copiados para quem você marcou. O que já é igual é pulado.",
+  mesmas_equipes: "Põe as pessoas nas mesmas equipes da pessoa modelo, com o mesmo papel; elas herdam os acessos das equipes.",
+  onde: "Espaços, pastas ou listas. Acesso num espaço ou numa pasta vale para todas as listas de dentro.",
+  motivo: "Mínimo de 5 letras. O último motivo já vem preenchido nas alterações seguintes.",
+  equipe_pessoas: "Quem entra herda os acessos da equipe e já entra na Gestão. Escolha Membro ou Supervisor ao lado.",
+  equipe_acesso: "Onde a equipe tem acesso. Vale para todos os membros, inclusive os que entrarem depois.",
+} as const;
+
 export const DICAS_GESTAO_LISTA = {
   modelo_titulo: "Nome do checklist. É o que aparece para escolher na ação Criar subtarefas a partir de modelo.",
   modelo_slug: "Código que a automação usa para achar o modelo. Se trocar depois, as automações com o código antigo param.",
