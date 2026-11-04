@@ -30,6 +30,10 @@ export default function AcoesPlanoPage() {
   const [novoOque, setNovoOque] = useState("");
   const [alvo, setAlvo] = useState<Alvo>(null);
 
+  // Excluir um O Quê apaga os Como dele junto (cascata no banco), mas a Lixeira guarda só o
+  // O Quê: os Como não voltam ao restaurar. O aviso diz quantos vão junto.
+  const comosDoAlvo = alvo?.tipo === "oque" ? comos.filter((c) => c.id_oque === alvo.id).length : 0;
+
   function handleCriarOque() {
     const t = novoOque.trim();
     if (!t) return;
@@ -104,7 +108,9 @@ export default function AcoesPlanoPage() {
         description={
           alvo
             ? alvo.tipo === "oque"
-              ? `"${alvo.titulo}" e todos os "Como" vinculados serão removidos (recuperável na Lixeira). Não afeta planos já preenchidos.`
+              ? comosDoAlvo > 0
+                ? `"${alvo.titulo}" será removido (recuperável na Lixeira) e ${comosDoAlvo === 1 ? "o 1 “Como” dele vai junto" : `os ${comosDoAlvo} “Como” dele vão junto`}. ${comosDoAlvo === 1 ? "Esse “Como” não volta" : "Esses “Como” não voltam"} pela Lixeira: ao restaurar, a ação volta sem eles. Não afeta planos já preenchidos.`
+                : `"${alvo.titulo}" será removido (recuperável na Lixeira). Não afeta planos já preenchidos.`
               : `"${alvo.titulo}" será removido (recuperável na Lixeira).`
             : ""
         }

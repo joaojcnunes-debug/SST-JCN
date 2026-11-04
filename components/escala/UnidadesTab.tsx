@@ -305,7 +305,7 @@ export default function UnidadesTab() {
       </div>
 
       <p className="text-xs text-gray-500">
-        A cor padrão é <span className="font-mono">{COR_PADRAO}</span>, o verde da marca.
+        A cor padrão é <span className="font-mono">{COR_PADRAO}</span>, um azul-claro.
       </p>
     </div>
   );

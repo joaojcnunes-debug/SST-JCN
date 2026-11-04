@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "correcoes-config-psicossocial-escala",
+    data: "2026-11-04",
+    tipo: "correcao",
+    titulo: "Psicossocial e Escala: correções nas configurações",
+    texto:
+      "Desativar todos os agravos ou todas as medidas recomendadas deixa a lista da Análise vazia, em vez de trazer a " +
+      "base inteira de volta. Excluir uma ação do plano avisa quantos \"Como\" vão junto e que eles não voltam pela " +
+      "Lixeira. Na Escala, o dia gravado numa unidade desativada mostra o nome dela marcado (inativa), e \"Limpar o " +
+      "dia\" do padrão semanal usa a data escolhida na tela, não mais a de hoje. Textos de ajuda corrigidos nos " +
+      "supervisores, nas unidades e nas regras.",
+    onde: "Psicossocial › Configurações e Escala › Configuração",
+    versoes: ["0.3.231"],
+  },
+  {
     id: "config-aet-aep-correcoes",
     data: "2026-11-04",
     tipo: "correcao",

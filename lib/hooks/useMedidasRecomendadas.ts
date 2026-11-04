@@ -1,11 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { MEDIDAS_EXISTENTES_OPCOES, MEDIDAS_CONTROLE } from "@/lib/drps/topicos";
+import { opcoesDoCatalogo } from "@/lib/drps/catalogo-opcoes";
 
 /**
  * Catálogo de "Medidas de controle recomendadas" (DRPS) — base do multi-select
@@ -45,13 +47,12 @@ export function useMedidasRecomendadas() {
 
 /**
  * Lista de títulos (string[]) para o MultiSelectInline — só as ativas.
- * Se o catálogo estiver vazio, cai na base estática (não quebra a Análise).
+ * Tabela sem nenhuma linha (nunca configurada) cai na base estática; todas desativadas
+ * dá lista vazia (0.3.231 — antes trazia a base inteira de volta).
  */
 export function useMedidasRecomendadasOpcoes(): string[] {
   const { data } = useMedidasRecomendadas();
-  if (!data || data.length === 0) return MEDIDAS_RECOMENDADAS_BASE;
-  const ativas = data.filter((m) => m.ativo).map((m) => m.titulo);
-  return ativas.length > 0 ? ativas : MEDIDAS_RECOMENDADAS_BASE;
+  return useMemo(() => opcoesDoCatalogo(data, MEDIDAS_RECOMENDADAS_BASE), [data]);
 }
 
 export function useCriarMedidaRecomendada() {

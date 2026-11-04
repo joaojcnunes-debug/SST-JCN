@@ -13,7 +13,9 @@ import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId } from "@/lib/utils";
-import { dataPura, paraDataLocal } from "@/lib/escala/datas";
+import { dataPura } from "@/lib/escala/datas";
+import { fimAoLimpar, vespera } from "@/lib/escala/vigencia";
+import { erroParaUsuario } from "@/lib/frota/erro";
 import {
   alocacaoParaColunas,
   type Alocacao,
@@ -50,13 +52,6 @@ export function useEscalaPadrao(opts: { emData?: string; todas?: boolean } = {})
 
 function hojeIso(): string {
   const d = new Date();
-  return dataPura(d.getFullYear(), d.getMonth() + 1, d.getDate());
-}
-
-/** A véspera de uma data pura, sem passar por fuso. */
-function vespera(iso: string): string {
-  const d = paraDataLocal(iso);
-  d.setDate(d.getDate() - 1);
   return dataPura(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
 
@@ -139,15 +134,31 @@ export function useSalvarPadrao() {
   });
 }
 
-/** Encerra o padrão numa data, sem colocar outro no lugar. */
+/**
+ * "Limpar o dia": o dia fica vazio a partir de `aPartirDe` (default: hoje), sem colocar outro
+ * padrão no lugar. Mesma régua de salvar — o padrão termina na véspera dessa data (0.3.231;
+ * antes encerrava sempre com a data de hoje, qualquer que fosse a data escolhida na tela).
+ */
 export function useEncerrarPadrao() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id_padrao, em }: { id_padrao: string; em?: string }) => {
+    mutationFn: async ({ id_padrao, aPartirDe }: { id_padrao: string; aPartirDe?: string }) => {
       const supabase = createSupabaseBrowserClient();
+      const { data: atual, error: erroLer } = await supabase
+        .from("escala_padrao_semanal")
+        .select("vigencia_inicio, vigencia_fim")
+        .eq("id_padrao", id_padrao)
+        .maybeSingle();
+      if (erroLer) throw erroLer;
+      if (!atual) throw erroParaUsuario("Este padrão não existe mais. Recarregue a tela.");
+      const r = fimAoLimpar(
+        atual as unknown as Pick<EscalaPadraoSemanal, "vigencia_inicio" | "vigencia_fim">,
+        aPartirDe ?? hojeIso(),
+      );
+      if (!r.ok) throw erroParaUsuario(r.motivo);
       const { error } = await supabase
         .from("escala_padrao_semanal")
-        .update({ vigencia_fim: em ?? hojeIso(), updated_at: new Date().toISOString() } as never)
+        .update({ vigencia_fim: r.vigencia_fim, updated_at: new Date().toISOString() } as never)
         .eq("id_padrao", id_padrao);
       if (error) throw error;
     },

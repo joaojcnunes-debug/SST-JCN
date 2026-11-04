@@ -1,11 +1,13 @@
 "use client";
 
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { mensagemErro } from "@/lib/errors";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { AGRAVOS_OPCOES } from "@/lib/drps/topicos";
+import { opcoesDoCatalogo } from "@/lib/drps/catalogo-opcoes";
 
 /**
  * Catálogo de "Possíveis Agravos à Saúde Mental" (DRPS) — base do multi-select
@@ -43,13 +45,12 @@ export function useAgravos() {
 
 /**
  * Lista de títulos (string[]) para o MultiSelectInline — só os ativos.
- * Se o catálogo estiver vazio, cai na base estática (não quebra a Análise).
+ * Tabela sem nenhuma linha (nunca configurada) cai na base estática; todos desativados
+ * dá lista vazia (0.3.231 — antes trazia a base inteira de volta).
  */
 export function useAgravosOpcoes(): string[] {
   const { data } = useAgravos();
-  if (!data || data.length === 0) return AGRAVOS_BASE;
-  const ativos = data.filter((a) => a.ativo).map((a) => a.titulo);
-  return ativos.length > 0 ? ativos : AGRAVOS_BASE;
+  return useMemo(() => opcoesDoCatalogo(data, AGRAVOS_BASE), [data]);
 }
 
 export function useCriarAgravo() {

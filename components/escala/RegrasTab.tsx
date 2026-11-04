@@ -331,7 +331,14 @@ function ParametrosDaRegra({
 
   switch (codigo) {
     case "nenhum_dia_sem_supervisor":
-      return <p className="text-xs text-gray-500">Esta regra não tem parâmetro.</p>;
+      return (
+        <p className="text-xs text-gray-500">
+          Esta regra não tem parâmetro. Ela acusa só o dia com expediente que ficou sem
+          nada preenchido: um dia em que todos estão de folga, férias ou atestado passa
+          como OK. Para cobrar presença, use “Mínimo de supervisores por dia” contando só
+          quem está em unidade.
+        </p>
+      );
 
     case "min_supervisores_dia":
       return (
@@ -357,7 +364,10 @@ function ParametrosDaRegra({
               <option value="em_unidade">só quem está em unidade</option>
             </select>
             <p className="mt-1 text-[11px] text-gray-500">
-              A planilha contava home office junto — é a primeira opção.
+              “Quem tem o dia definido” conta qualquer dia preenchido: unidade, visita ao
+              cliente, home office, treinamento e também folga, férias, atestado e feriado
+              municipal. A planilha contava assim. Para contar só presença, use a segunda
+              opção.
             </p>
           </div>
         </div>

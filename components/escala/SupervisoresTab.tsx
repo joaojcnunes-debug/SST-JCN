@@ -308,8 +308,9 @@ export default function SupervisoresTab() {
                 ))}
               </select>
               <p className="mt-1 text-[11px] text-gray-500">
-                Quem já está na escala não aparece na lista. O nome e a função vêm da
-                conta — mudou lá, muda aqui.
+                Quem já está na escala não aparece na lista. O nome e a função são
+                copiados da conta ao salvar — se mudarem na conta depois, escolha a conta
+                de novo aqui e salve para atualizar.
               </p>
             </div>
 
