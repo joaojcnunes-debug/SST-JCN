@@ -234,23 +234,25 @@ export default function AutomacoesManagerModal({
                     <option value="extintor">extintor</option>
                   </select>
                   <span className="text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.vence_em}>vence em até</Dica></span>
-                  <input type="number" min={0} max={365} value={a.condicao?.dias_antes ?? ""} disabled={!podeEditar}
-                    onChange={(e) => setCond(a, { dias_antes: e.target.value || undefined })} placeholder="30" className={`${sel} w-20`} />
+                  {/* Dias: grava ao sair do campo (como o nome). Gravando a cada tecla sem estado
+                      otimista, o valor voltava ao do servidor enquanto a pessoa digitava. */}
+                  <input type="number" min={0} max={365} defaultValue={a.condicao?.dias_antes ?? ""} disabled={!podeEditar}
+                    onBlur={(e) => { const v = e.target.value.trim() || undefined; if (v !== a.condicao?.dias_antes) setCond(a, { dias_antes: v }); }} placeholder="30" className={`${sel} w-20`} />
                   <span className="text-gray-400">dias</span>
                 </>
               )}
               {a.gatilho === "tarefa_parada" && <ParadaEditor condicao={a.condicao ?? {}} onChange={(p) => setCond(a, p)} disabled={!podeEditar} />}
               {a.gatilho === "data_inicio_chega" && (
                 <>
-                  <input type="number" min={0} max={90} value={a.condicao?.dias_antes ?? "0"} disabled={!podeEditar}
-                    onChange={(e) => setCond(a, { dias_antes: e.target.value || undefined })} className={`${sel} w-16`} />
+                  <input type="number" min={0} max={90} defaultValue={a.condicao?.dias_antes ?? "0"} disabled={!podeEditar}
+                    onBlur={(e) => { const v = e.target.value.trim() || undefined; if (v !== a.condicao?.dias_antes) setCond(a, { dias_antes: v }); }} className={`${sel} w-16`} />
                   <span className="text-gray-400">dia(s) antes (0 = no dia)</span>
                 </>
               )}
               {a.gatilho === "prazo_proximo" && (
                 <>
-                  <input type="number" min={0} max={90} value={a.condicao?.dias_antes ?? "3"} disabled={!podeEditar}
-                    onChange={(e) => setCond(a, { dias_antes: e.target.value || undefined })} className={`${sel} w-16`} />
+                  <input type="number" min={0} max={90} defaultValue={a.condicao?.dias_antes ?? "3"} disabled={!podeEditar}
+                    onBlur={(e) => { const v = e.target.value.trim() || undefined; if (v !== a.condicao?.dias_antes) setCond(a, { dias_antes: v }); }} className={`${sel} w-16`} />
                   <span className="text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.dias_antes_prazo}>dia(s) antes do prazo</Dica></span>
                 </>
               )}

@@ -32,6 +32,7 @@ import { confirmar } from "@/components/ui/confirm";
 import AvatarPessoa from "@/components/gestao/AvatarPessoa";
 import { proximaGeracao } from "@/lib/gestao/recorrencia";
 import { useMeuQuadro } from "@/lib/hooks/useGestaoAcesso";
+import { pendenciasParaConcluir, mensagemPendencias, eventosAlteracao, type EventoAtividade } from "@/lib/gestao/alteracao-tarefa";
 
 /** Valor de um campo do cartão de origem (v315 = Painel v325): lista vira etiquetas; o resto, texto. */
 function ValorOrigem({ valor }: { valor: unknown }) {
@@ -91,6 +92,7 @@ export default function TarefaModal({
   campos,
   tarefasQuadro,
   podeEditar,
+  podeComentar,
   etiquetasSugeridas = [],
 }: {
   open: boolean;
@@ -102,6 +104,8 @@ export default function TarefaModal({
   campos: GestaoCampo[];
   tarefasQuadro: GestaoTarefa[];
   podeEditar: boolean;
+  /** Nível "ver e comentar" (comment/comment_all): comenta sem editar. Omitido = igual a podeEditar. */
+  podeComentar?: boolean;
   etiquetasSugeridas?: string[];
 }) {
   const salvar = useSalvarTarefa();
@@ -162,6 +166,9 @@ export default function TarefaModal({
   const [subtarefas, setSubtarefas] = useState<(Subtarefa & { id?: string })[]>([]);
   const [novaSub, setNovaSub] = useState("");
   const [valoresCampos, setValoresCampos] = useState<Record<string, unknown>>({});
+  // Campos como vieram na abertura: ao salvar, só vai o que a pessoa mudou (diff contra isto),
+  // para não regravar por cima do que uma automação escreveu enquanto a janela estava aberta.
+  const camposCarregados = useRef<Record<string, unknown>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -181,6 +188,7 @@ export default function TarefaModal({
     setSubtarefas(tarefa?.subtarefas ?? []);
     setNovaSub("");
     setValoresCampos((tarefa?.campos as Record<string, unknown>) ?? {});
+    camposCarregados.current = (tarefa?.campos as Record<string, unknown>) ?? {};
   }, [open, tarefa, statusInicial]);
 
   // Pré-popula responsável + seguidores a partir dos vínculos existentes (v187/F1.2).
@@ -237,6 +245,9 @@ export default function TarefaModal({
   }, [open, tarefa, subtarefasTabela]);
 
   const ro = !podeEditar;
+  // Comentar não exige editar: o banco aceita o INSERT de quem tem nível >= comment (policy
+  // gestao_coment_ins_comment, v197). Excluir comentário continua só para quem edita.
+  const podeComentarEf = podeEditar || !!podeComentar;
 
   const [iaLoad, setIaLoad] = useState<"sub" | "desc" | null>(null);
   async function iaDescricao() {
@@ -288,13 +299,11 @@ export default function TarefaModal({
       toast.error("A hora fim não pode ser antes da hora de início no mesmo dia.");
       return;
     }
-    // Guarda de conclusão: bloqueia concluir se há dependências não concluídas.
+    // Guarda de conclusão: bloqueia concluir se há dependências não concluídas (mesma regra da Lista).
     if (statusMap.get(status)?.tipo === "concluido" && deps?.dependeDe.length) {
-      const pendentes = deps.dependeDe
-        .map((d) => tarefaMap.get(d.tarefa))
-        .filter((t): t is GestaoTarefa => !!t && statusMap.get(t.status)?.tipo !== "concluido");
+      const pendentes = pendenciasParaConcluir(deps.dependeDe.map((d) => d.tarefa), tarefaMap, (s) => statusMap.get(s)?.tipo);
       if (pendentes.length > 0) {
-        toast.error(`Conclua antes: ${pendentes.map((t) => t.titulo).join(", ")}`);
+        toast.error(mensagemPendencias(pendentes));
         return;
       }
     }
@@ -307,6 +316,15 @@ export default function TarefaModal({
     const subPend = novaSub.trim();
     const subsFinal = (subPend ? [...subtarefas, { texto: subPend, feito: false, responsavel_email: null }] : subtarefas)
       .filter((s) => s.texto.trim());
+    // Campos personalizados: na edição, só as chaves que mudaram nesta janela (o hook mescla com o
+    // valor atual do banco). Campo limpo vai como null — undefined sumiria do JSON e não limparia.
+    const camposAlterados: Record<string, unknown> = {};
+    if (tarefa?.id_tarefa) {
+      const orig = camposCarregados.current;
+      for (const k of new Set([...Object.keys(orig), ...Object.keys(valoresCampos)])) {
+        if (JSON.stringify(valoresCampos[k] ?? null) !== JSON.stringify(orig[k] ?? null)) camposAlterados[k] = valoresCampos[k] ?? null;
+      }
+    }
     const idSalvo = await salvar.mutateAsync({
       id_tarefa: tarefa?.id_tarefa,
       id_quadro: idQuadro,
@@ -322,7 +340,7 @@ export default function TarefaModal({
       etiquetas,
       pontos: pontos.trim() === "" ? null : Math.max(0, parseInt(pontos, 10) || 0),
       // subtarefas NAO vai mais no payload da tarefa (F2.1/v199): persiste na tabela abaixo.
-      campos: valoresCampos,
+      ...(tarefa?.id_tarefa ? { camposAlterados } : { campos: valoresCampos }),
       recorrencia: recTipo
         ? {
             tipo: recTipo,
@@ -355,16 +373,9 @@ export default function TarefaModal({
 
     // Histórico de atividades
     const nomeStatus = (slug: string) => statuses.find((s) => s.slug === slug)?.nome ?? slug;
-    const eventos: { acao: string; payload?: Record<string, unknown> }[] = [];
-    if (!tarefa) {
-      eventos.push({ acao: "criada" });
-    } else {
-      if (status !== tarefa.status) eventos.push({ acao: "status", payload: { de: nomeStatus(tarefa.status), para: nomeStatus(status) } });
-      if (respNome !== (tarefa.responsavel ?? null)) eventos.push({ acao: "responsavel", payload: { de: tarefa.responsavel ?? "—", para: respNome ?? "—" } });
-      if ((prazo || null) !== (tarefa.prazo ?? null)) eventos.push({ acao: "prazo", payload: { de: tarefa.prazo ?? "—", para: prazo || "—" } });
-      if (prioridade !== tarefa.prioridade) eventos.push({ acao: "prioridade", payload: { de: tarefa.prioridade, para: prioridade } });
-      if (titulo.trim() !== tarefa.titulo) eventos.push({ acao: "titulo", payload: { de: tarefa.titulo, para: titulo.trim() } });
-    }
+    const eventos: EventoAtividade[] = !tarefa
+      ? [{ acao: "criada" }]
+      : eventosAlteracao(tarefa, { status, responsavel: respNome, prazo: prazo || null, prioridade, titulo: titulo.trim() }, nomeStatus);
     if (eventos.length) registrarAtiv.mutate({ id_tarefa: idSalvo, ator: userNome, eventos });
 
     // Automações rodam no servidor (v120: trigger em gestao_tarefas + gestao_automacao_prazos).
@@ -757,6 +768,7 @@ export default function TarefaModal({
           <TarefaSidebar
             idTarefa={tarefa.id_tarefa}
             ro={ro}
+            podeComentar={podeComentarEf}
             statuses={statuses}
             novoComentario={novoComentario}
             setNovoComentario={setNovoComentario}
@@ -782,6 +794,7 @@ export default function TarefaModal({
           campos={campos}
           tarefasQuadro={tarefasQuadro}
           podeEditar={podeEditar}
+          podeComentar={podeComentar}
           etiquetasSugeridas={etiquetasSugeridas}
         />
       )}

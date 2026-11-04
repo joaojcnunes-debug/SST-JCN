@@ -9,6 +9,7 @@ import { useUserStore, useTema } from "@/lib/store";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
 import {
   useQuadros, useTarefas, useSubtarefasDoQuadro, useAbrirSubtarefa, useUsuarios, useReordenar, useUsuariosLista, useSalvarTarefa, useAcaoMassa,
+  useSalvarVinculados, useRegistrarAtividade,
   useMinhasTarefas, useMinhasTarefasAgenda, buscarTarefa, useTodosStatus, useNotificacoes, useMarcarLida, useLimparNotificacoes,
   usePreferenciaVisao, useSalvarPreferenciaVisao,
   useStatusQuadro, statusPadrao, useCamposQuadro, useEtiquetasQuadro,
@@ -34,11 +35,12 @@ import FormulariosManagerModal from "@/components/gestao/FormulariosManagerModal
 import ModelosManagerModal from "@/components/gestao/ModelosManagerModal";
 import CalendarioModal from "@/components/gestao/CalendarioModal";
 import MembrosModal from "@/components/gestao/MembrosModal";
-import { useMeuPapelGestao, useMeuNivel, nivelPodeEditar, useColaboradores } from "@/lib/hooks/useGestaoAcesso";
+import { useMeuPapelGestao, useMeuNivel, nivelPodeEditar, nivelPodeComentar, useColaboradores } from "@/lib/hooks/useGestaoAcesso";
 import ColaboradoresView from "@/components/gestao/ColaboradoresView";
 import TarefaCard from "@/components/gestao/TarefaCard";
 import FiltrosPanel from "@/components/gestao/FiltrosPanel";
-import { nomesResponsaveis, temResponsavel } from "@/lib/gestao/responsaveis";
+import { nomesResponsaveis, temResponsavel, emailsDosNomes } from "@/lib/gestao/responsaveis";
+import { eventosAlteracao } from "@/lib/gestao/alteracao-tarefa";
 import MeuEspaco from "@/components/gestao/MeuEspaco";
 import CaixaEntrada from "@/components/gestao/CaixaEntrada";
 import PainelGestao from "@/components/gestao/PainelGestao";
@@ -97,6 +99,8 @@ export default function GestaoChabraPage() {
   // para Admin/gestor server-side).
   const { data: meuNivel } = useMeuNivel("list", quadro?.id_quadro);
   const podeEditar = !!quadro && nivelPodeEditar(meuNivel);
+  // "Ver e comentar" (comment/comment_all): comenta na janela da tarefa sem poder editá-la.
+  const podeComentar = !!quadro && nivelPodeComentar(meuNivel);
   // Menu Configurar — itens sensíveis (Compartilhar, Assinar calendário, Automações) exigem
   // gestor do roster OU nível `full`; os demais itens seguem em podeEditar (decisão 5 da rubrica).
   const podeConfigurarAvancado = souGestor || meuNivel === "full";
@@ -113,6 +117,8 @@ export default function GestaoChabraPage() {
   useAutomacaoTick();  // fallback de agendamento sem pg_cron (.107): scan de prazos 1x/dia
   useSyncGoogleAgenda();  // F3.A: tarefas com prazo → Agenda Google (ao abrir e após cada gravação)
   const salvar = useSalvarTarefa();
+  const salvarVinc = useSalvarVinculados();
+  const registrarAtiv = useRegistrarAtividade();
   const acaoMassa = useAcaoMassa();
   const { data: tempoEntries = [] } = useTempoQuadro(quadro?.id_quadro, tarefas.map((t) => t.id_tarefa));
   const { data: anexosCount = new Map<string, number>() } = useAnexosCountQuadro(quadro?.id_quadro, tarefas.map((t) => t.id_tarefa));
@@ -464,6 +470,23 @@ export default function GestaoChabraPage() {
   const limparSel = () => { setSelecionados(new Set()); setSelecaoModo(false); };
   const toggleSel = (id: string) => setSelecionados((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const aplicarMassa = (patch: Partial<GestaoTarefa>) => acaoMassa.mutate({ ids: [...selecionados], patch }, { onSuccess: limparSel });
+  // Responsável em massa: grava o VÍNCULO (gestao_vincular, como a janela da tarefa), não só o texto —
+  // é o vínculo que avisa a pessoa e põe a tarefa na agenda; o texto `responsavel` o banco espelha.
+  // Substitui os responsáveis e mantém os seguidores de cada tarefa. Uma por vez: na 1ª falha
+  // (ex.: sem permissão de vincular outra pessoa) o hook avisa e o resto não é tentado.
+  async function responsavelMassa(nome: string | null) {
+    const email = nome ? emailsDosNomes(nome, usuariosEmail).emails[0] : null;
+    if (nome && !email) { toast.error(`"${nome}" não tem e-mail cadastrado — não dá para vincular.`); return; }
+    const alvo = items.filter((t) => selecionados.has(t.id_tarefa) && !t.sub_linha);
+    try {
+      for (const t of alvo) {
+        await salvarVinc.mutateAsync({ id_tarefa: t.id_tarefa, responsaveisEmails: email ? [email] : [], seguidoresEmails: [], manterSeguidoresAtuais: true });
+        const ev = eventosAlteracao(t, { responsavel: nome }, (s) => statusMap.get(s)?.nome ?? s);
+        if (ev.length) registrarAtiv.mutate({ id_tarefa: t.id_tarefa, ator: user?.nome ?? null, eventos: ev });
+      }
+      limparSel();
+    } catch { /* o hook já mostrou o erro */ }
+  }
   function aplicarEtiquetaMassa(nome: string) {
     const alvo = items.filter((t) => selecionados.has(t.id_tarefa));
     Promise.all(alvo.map((t) => salvar.mutateAsync({ id_tarefa: t.id_tarefa, id_quadro: t.id_quadro, etiquetas: [...new Set([...(t.etiquetas ?? []), nome])] }))).then(limparSel).catch(() => {});
@@ -618,6 +641,7 @@ export default function GestaoChabraPage() {
               </div>
             </div>
             <CaixaEntrada
+              souGestor={souGestor}
               notificacoes={notificacoes}
               tarefas={minhas}
               quadros={quadros}
@@ -866,6 +890,7 @@ export default function GestaoChabraPage() {
         ) : vista === "lista" ? (
           <VistaLista
             tarefas={items.filter(passaFiltro)}
+            tarefasQuadro={items}
             statuses={statuses}
             campos={campos}
             agruparPor={agruparPor}
@@ -918,6 +943,7 @@ export default function GestaoChabraPage() {
           campos={campos}
           tarefasQuadro={items}
           podeEditar={podeEditar}
+          podeComentar={podeComentar}
           etiquetasSugeridas={etiquetasSugeridas}
         />
       )}
@@ -1007,7 +1033,7 @@ export default function GestaoChabraPage() {
           usuarios={usuarios}
           etiquetas={etiquetasCat}
           onStatus={(slug) => aplicarMassa({ status: slug })}
-          onResponsavel={(nome) => aplicarMassa({ responsavel: nome })}
+          onResponsavel={responsavelMassa}
           onPrioridade={(p) => aplicarMassa({ prioridade: p as PrioridadeTarefa })}
           onEtiqueta={aplicarEtiquetaMassa}
           onExcluir={excluirMassa}

@@ -18,6 +18,25 @@ const POR_CODIGO: Record<string, string> = {
   "401": "Sua sessão expirou. Faça login novamente.",
 };
 
+// Mensagens de RAISE EXCEPTION da Gestão gravadas sem acento no banco (gestao_decidir_aprovacao v315,
+// gestao_vincular/desvincular v195, dependências). Casadas pelo INÍCIO, em minúsculas, porque algumas
+// terminam com o valor recebido ("decisao invalida: xyz"). Corrigir no banco é outra versão de SQL.
+const RAISE_SEM_ACENTO: [string, string][] = [
+  ["voce nao pode decidir esta aprovacao", "Você não pode decidir esta aprovação."],
+  ["aprovacao ja decidida", "Esta aprovação já foi decidida."],
+  ["decisao invalida", "Decisão inválida."],
+  ["aprovacao inexistente", "Esta aprovação não existe mais."],
+  ["nao autenticado", "Sua sessão expirou. Faça login novamente."],
+  ["sem edicao neste quadro", "Você não tem permissão para editar esta lista."],
+  ["voce so pode vincular a si mesmo", "Você só pode incluir a si mesmo. Para vincular outra pessoa, peça a um gestor."],
+  ["voce so pode desvincular a si mesmo", "Você só pode tirar a si mesmo. Para desvincular outra pessoa, peça a um gestor."],
+  // v319: quem edita a lista vincula outras pessoas, desde que sejam membros da Gestão.
+  ["so membros da Gestao podem ser vinculados", "Só membros da Gestão podem ser responsáveis ou seguidores."],
+  ["e-mail do vinculo obrigatorio", "Informe o e-mail da pessoa."],
+  ["tarefa inexistente", "Esta tarefa não existe mais."],
+  ["dependencia circular nao permitida", "Dependência circular não é permitida."],
+];
+
 type ErroLike = {
   code?: string | number;
   message?: string;
@@ -69,6 +88,10 @@ export function mensagemErro(
   if (low.includes("row-level security") || low.includes("permission denied")) {
     return POR_CODIGO["42501"];
   }
+
+  // RAISE dos RPCs da Gestão escritos sem acento (v195/v315): traduz antes de repassar o texto cru.
+  const traduzida = RAISE_SEM_ACENTO.find(([prefixo]) => low.startsWith(prefixo));
+  if (traduzida) return traduzida[1];
 
   // P0001 = RAISE EXCEPTION dos nossos RPCs: a mensagem já é escrita para o usuário.
   if (code === "P0001" && raw) return raw;

@@ -41,6 +41,21 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "correcoes-gestao",
+    data: "2026-11-04",
+    tipo: "correcao",
+    titulo: "Gestão: correções achadas na revisão das telas",
+    texto:
+      "Quem tem o nível ver e comentar já consegue comentar. Pôr responsável pela lista ou pela ação em massa agora " +
+      "cria o responsável de verdade (a pessoa é avisada e a tarefa entra na agenda dela), e quem edita a lista pode " +
+      "atribuir outros membros. A Caixa de entrada mostra a aprovação sem aprovador só a quem pode decidir. Salvar a " +
+      "tarefa não apaga mais o que uma automação mudou, e mudar o status pela lista respeita as dependências. Mensagens " +
+      "de erro com acento, números da automação que não voltam ao digitar, aviso ao trocar o código de um modelo e " +
+      "renomear espaço ou pasta sem perder o texto.",
+    onde: "Gestão",
+    versoes: ["0.3.227"],
+  },
+  {
     id: "dicas-configuracoes-modulos",
     data: "2026-11-04",
     tipo: "melhoria",

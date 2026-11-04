@@ -7,7 +7,7 @@ import { Plus, Trash2, Pencil, Check, X, ListChecks } from "lucide-react";
 import toast from "react-hot-toast";
 import Modal from "@/components/ui/Modal";
 import {
-  useModelos, useSalvarModelo, useExcluirModelo,
+  useModelos, useSalvarModelo, useExcluirModelo, useAutomacoes,
   type GestaoSubtarefaModelo, type ItemModelo,
 } from "@/lib/hooks/useGestao";
 import { confirmar } from "@/components/ui/confirm";
@@ -29,6 +29,7 @@ export default function ModelosManagerModal({
   podeEditar: boolean;
 }) {
   const { data: modelos = [] } = useModelos(idQuadro);
+  const { data: automacoes = [] } = useAutomacoes(open ? idQuadro : null);
   const salvar = useSalvarModelo();
   const excluir = useExcluirModelo();
   const [editId, setEditId] = useState<string | null>(null);
@@ -46,10 +47,33 @@ export default function ModelosManagerModal({
     setDraft(draftDe(m));
   }
 
-  function salvarEdicao() {
+  // Automações DESTA lista que criam subtarefas com o modelo do slug (o motor procura o modelo por
+  // quadro + slug — v315 gestao_automacao_aplicar). Regra antiga sem `acoes` vale pela `acao`.
+  function automacoesQueUsam(slug: string): number {
+    return automacoes.filter((a) => {
+      const acoes = a.acoes?.length ? a.acoes : a.acao ? [a.acao] : [];
+      return acoes.some((x) => x?.tipo === "criar_subtarefas_modelo" && x.modelo_slug === slug);
+    }).length;
+  }
+
+  async function salvarEdicao() {
     if (!editId || !draft) return;
     const slug = draft.slug.trim();
     if (!slug) { toast.error("Informe um identificador (slug)."); return; }
+    // Trocar o slug quebra em silêncio as automações que apontam para o antigo (viram "modelo
+    // inexistente" no histórico) — pede confirmação dizendo quantas são.
+    const antigo = modelos.find((m) => m.id === editId)?.slug;
+    if (antigo && antigo !== slug) {
+      const n = automacoesQueUsam(antigo);
+      const ok = await confirmar({
+        title: "Trocar o identificador do modelo?",
+        description: n > 0
+          ? `${n === 1 ? "1 automação desta lista usa" : `${n} automações desta lista usam`} o código "${antigo}" e ${n === 1 ? "vai parar" : "vão parar"} de criar subtarefas até você escolher o modelo de novo nelas.`
+          : `Automações que usam o código antigo "${antigo}" vão parar de criar subtarefas. Nenhuma automação desta lista usa esse código agora.`,
+        confirmLabel: "Trocar mesmo assim",
+      });
+      if (!ok) return;
+    }
     salvar.mutate(
       { id: editId, id_quadro: idQuadro, slug, titulo: draft.titulo.trim() || "Modelo", itens: draft.itens },
       { onSuccess: () => { toast.success("Modelo salvo"); setEditId(null); setDraft(null); } },

@@ -55,7 +55,8 @@ export function AgendaEditor({
         </select>
       )}
       <span className="text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.a_partir_das}>a partir das</Dica></span>
-      <input type="time" value={ag.hora ?? ""} disabled={disabled} onChange={(e) => setAg({ hora: e.target.value || undefined })} className={sel} />
+      {/* Hora: grava ao sair do campo. A cada tecla (sem estado otimista) o valor voltava ao do servidor. */}
+      <input type="time" defaultValue={ag.hora ?? ""} disabled={disabled} onBlur={(e) => { const v = e.target.value || undefined; if (v !== ag.hora) setAg({ hora: v }); }} className={sel} />
       <select value={condicao.modo ?? "cada_tarefa"} disabled={disabled} onChange={(e) => onChange({ modo: e.target.value as CondicaoAutomacao["modo"] })} className={sel}>
         <option value="cada_tarefa">agir em cada tarefa do quadro (que casar a condição)</option>
         <option value="criar_tarefa">criar uma tarefa do modelo</option>
@@ -77,6 +78,13 @@ export function ModeloTarefaEditor({
   const set = (p: Partial<ModeloTarefa>) => onChange({ ...modelo, ...p });
   const resp = modelo.responsaveis ?? [];
   const etq = modelo.etiquetas ?? [];
+  // Etiqueta entra com Enter OU ao sair do campo (antes, só Enter: o que ficava digitado se perdia).
+  const addEtiqueta = (el: HTMLInputElement) => {
+    const v = el.value.trim();
+    if (!v) return;
+    if (!etq.includes(v)) set({ etiquetas: [...etq, v] });
+    el.value = "";
+  };
   return (
     <div className="space-y-1.5 rounded-md border border-sky-100 bg-sky-50/40 p-2 text-sm">
       <p className="text-[11px] font-semibold uppercase text-sky-700">Tarefa que será criada</p>
@@ -94,10 +102,8 @@ export function ModeloTarefaEditor({
           <input type="checkbox" disabled={disabled} checked={modelo.prazo_uteis === "true"} onChange={(e) => set({ prazo_uteis: e.target.checked ? "true" : undefined })} className="size-3.5 rounded accent-marca-primary" /> <Dica texto={DICAS_GESTAO_AUTOMACAO.prazo_uteis}>úteis</Dica>
         </label>
         <input list="modelo-etiquetas" disabled={disabled} placeholder="+ etiqueta" className={`${sel} w-32`}
-          onKeyDown={(e) => {
-            const v = (e.target as HTMLInputElement).value.trim();
-            if (e.key === "Enter" && v) { e.preventDefault(); if (!etq.includes(v)) set({ etiquetas: [...etq, v] }); (e.target as HTMLInputElement).value = ""; }
-          }} />
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addEtiqueta(e.currentTarget); } }}
+          onBlur={(e) => addEtiqueta(e.currentTarget)} />
         <datalist id="modelo-etiquetas">{etiquetas.map((x) => <option key={x.id} value={x.nome} />)}</datalist>
         {etq.map((x) => (
           <span key={x} className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs">

@@ -1,6 +1,16 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { nomesResponsaveis, temResponsavel } from "./responsaveis";
+import { emailsDosNomes, nomesResponsaveis, temResponsavel } from "./responsaveis";
+
+describe("emailsDosNomes", () => {
+  const usuarios = [{ nome: "Ana Souza", email: "Ana@x.com" }, { nome: "João Lima", email: "joao@x.com" }];
+  test("resolve nomes (sem caixa) e separa os desconhecidos", () => {
+    assert.deepEqual(emailsDosNomes("ana souza, João Lima, Fulano", usuarios), { emails: ["ana@x.com", "joao@x.com"], desconhecidos: ["Fulano"] });
+  });
+  test("vazio = nenhum responsável", () => {
+    assert.deepEqual(emailsDosNomes("", usuarios), { emails: [], desconhecidos: [] });
+  });
+});
 
 describe("responsáveis espelhados", () => {
   test("separa por vírgula e tira espaços", () => {

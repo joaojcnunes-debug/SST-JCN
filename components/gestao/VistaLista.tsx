@@ -2,8 +2,14 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, ArrowUpDown } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import { mensagemErro } from "@/lib/errors";
+import { useUserStore } from "@/lib/store";
+import { pendenciasParaConcluir, mensagemPendencias, eventosAlteracao } from "@/lib/gestao/alteracao-tarefa";
+import { emailsDosNomes } from "@/lib/gestao/responsaveis";
 import {
-  useSalvarTarefa, useUsuariosLista,
+  useSalvarTarefa, useUsuariosLista, useUsuarios, useSalvarVinculados, useRegistrarAtividade, lerDependencias,
   corAvatar,
   PRIORIDADES,
   type GestaoTarefa, type AgruparPor, type PrioridadeTarefa, type GestaoStatus, type GestaoCampo,
@@ -33,6 +39,7 @@ const AGRUPAMENTOS: { value: AgruparPor | ""; label: string }[] = [
 
 export default function VistaLista({
   tarefas,
+  tarefasQuadro,
   statuses,
   campos,
   agruparPor,
@@ -42,6 +49,8 @@ export default function VistaLista({
   onAbrir,
 }: {
   tarefas: GestaoTarefa[];
+  /** Todas as tarefas do quadro (sem filtro) — base da trava de dependências. Omitido = `tarefas`. */
+  tarefasQuadro?: GestaoTarefa[];
   statuses: GestaoStatus[];
   campos: GestaoCampo[];
   agruparPor: AgruparPor | null;
@@ -53,8 +62,14 @@ export default function VistaLista({
 }) {
   const totalCols = 6 + campos.length;
   const salvar = useSalvarTarefa();
+  const salvarVinc = useSalvarVinculados();
+  const registrarAtiv = useRegistrarAtividade();
+  const qc = useQueryClient();
+  const userNome = useUserStore((s) => s.user?.nome ?? null);
   const { data: usuarios = [] } = useUsuariosLista();
+  const { data: usuariosEmail = [] } = useUsuarios();
   const statusMap = useMemo(() => new Map(statuses.map((s) => [s.slug, s])), [statuses]);
+  const tarefaMap = useMemo(() => new Map((tarefasQuadro ?? tarefas).map((t) => [t.id_tarefa, t])), [tarefasQuadro, tarefas]);
   const ordemStatus = useCallback((slug: string) => { const i = statuses.findIndex((s) => s.slug === slug); return i < 0 ? 999 : i; }, [statuses]);
   const [sortBy, setSortBy] = useState<Coluna>("prazo");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -66,8 +81,57 @@ export default function VistaLista({
     else { setSortBy(col); setSortDir("asc"); }
   }
 
+  const nomeStatus = (slug: string) => statusMap.get(slug)?.nome ?? slug;
+  // Histórico igual ao da janela da tarefa (gestao_atividades): antes a Lista gravava sem registrar.
+  const registrar = (t: GestaoTarefa, depois: Parameters<typeof eventosAlteracao>[1]) => {
+    const eventos = eventosAlteracao(t, depois, nomeStatus);
+    if (eventos.length) registrarAtiv.mutate({ id_tarefa: t.id_tarefa, ator: userNome, eventos });
+  };
+
   function patch(t: GestaoTarefa, campo: Partial<GestaoTarefa>) {
-    salvar.mutate({ id_tarefa: t.id_tarefa, id_quadro: t.id_quadro, ...campo });
+    salvar.mutate({ id_tarefa: t.id_tarefa, id_quadro: t.id_quadro, ...campo }, {
+      onSuccess: () => registrar(t, { status: campo.status, prioridade: campo.prioridade, prazo: campo.prazo }),
+    });
+  }
+
+  // Status pela Lista: mesma trava de conclusão da janela (pré-requisitos não concluídos seguram).
+  // As dependências são lidas na hora (mesmo cache do useDependencias); `tarefasQuadro` traz a
+  // lista inteira, não só as filtradas, para a trava não deixar passar pré-requisito escondido.
+  async function mudarStatus(t: GestaoTarefa, novo: string) {
+    if (novo === t.status) return;
+    if (statusMap.get(novo)?.tipo === "concluido") {
+      try {
+        const deps = await qc.fetchQuery({ queryKey: ["gestao-dependencias", t.id_tarefa], queryFn: () => lerDependencias(t.id_tarefa) });
+        const pendentes = pendenciasParaConcluir(deps.dependeDe.map((d) => d.tarefa), tarefaMap, (s) => statusMap.get(s)?.tipo);
+        if (pendentes.length > 0) { toast.error(mensagemPendencias(pendentes)); return; }
+      } catch (e) {
+        toast.error(mensagemErro(e, "Não foi possível conferir as dependências da tarefa."));
+        return;
+      }
+    }
+    patch(t, { status: novo });
+  }
+
+  // Responsável pela Lista: grava o VÍNCULO (o mesmo caminho da janela — gestao_vincular), não só o
+  // texto: é o vínculo que avisa a pessoa e põe a tarefa na agenda; o texto o banco espelha. Troca
+  // os responsáveis e mantém os seguidores. Nome sem usuário cadastrado é recusado.
+  function mudarResponsavel(t: GestaoTarefa, input: HTMLInputElement) {
+    const v = input.value.trim();
+    if (v === (t.responsavel ?? "")) return;
+    const { emails, desconhecidos } = emailsDosNomes(v, usuariosEmail);
+    if (desconhecidos.length) {
+      toast.error(`Escolha um usuário da lista (sem cadastro: ${desconhecidos.join(", ")}).`);
+      input.value = t.responsavel ?? "";
+      return;
+    }
+    const novoTexto = emails.map((e) => usuariosEmail.find((u) => u.email.toLowerCase() === e)?.nome ?? e).join(", ") || null;
+    salvarVinc.mutate(
+      { id_tarefa: t.id_tarefa, responsaveisEmails: emails, seguidoresEmails: [], manterSeguidoresAtuais: true },
+      {
+        onSuccess: () => registrar(t, { responsavel: novoTexto }),
+        onError: () => { input.value = t.responsavel ?? ""; },
+      },
+    );
   }
 
   const ordenadas = useMemo(() => {
@@ -173,7 +237,7 @@ export default function VistaLista({
                         </td>
                         <td className="px-3 py-2">
                           {editavel ? (
-                            <select value={t.status} onChange={(e) => patch(t, { status: e.target.value })}
+                            <select value={t.status} onChange={(e) => { void mudarStatus(t, e.target.value); }}
                               className="rounded-md border border-transparent bg-transparent px-1 py-0.5 text-xs font-medium hover:border-gray-200 focus:border-marca-primary focus:outline-none" style={{ color: st?.cor }}>
                               {/* No escuro o color-scheme deixa o menu nativo escuro; #374151 fixo
                                   ficava texto escuro sobre fundo escuro. */}
@@ -191,7 +255,7 @@ export default function VistaLista({
                         </td>
                         <td className="px-3 py-2">
                           {editavel ? (
-                            <input list="gestao-lista-usuarios" defaultValue={t.responsavel ?? ""} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (t.responsavel ?? "")) patch(t, { responsavel: v || null }); }}
+                            <input list="gestao-lista-usuarios" defaultValue={t.responsavel ?? ""} onBlur={(e) => mudarResponsavel(t, e.currentTarget)}
                               placeholder="—" className="w-32 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm hover:border-gray-200 focus:border-marca-primary focus:outline-none" />
                           ) : (
                             <span className="inline-flex items-center gap-1.5 text-sm text-gray-600">

@@ -21,6 +21,12 @@ describe("mensagemErro", () => {
     assert.equal(mensagemErro({ code: "P0001", message: "Já existe laudo no período." }, "fb"), "Já existe laudo no período.");
   });
 
+  test("RAISE sem acento da Gestão (v315) sai em português correto", () => {
+    assert.equal(mensagemErro({ code: "P0001", message: "voce nao pode decidir esta aprovacao" }, "fb"), "Você não pode decidir esta aprovação.");
+    assert.equal(mensagemErro({ code: "P0001", message: "aprovacao ja decidida" }, "fb"), "Esta aprovação já foi decidida.");
+    assert.equal(mensagemErro({ code: "P0001", message: "decisao invalida: talvez" }, "fb"), "Decisão inválida.");
+  });
+
   test("erro desconhecido NÃO vaza a mensagem crua — cai no fallback", () => {
     assert.equal(
       mensagemErro({ message: 'relation "qps_aplicacoes" does not exist' }, "Não foi possível salvar."),
