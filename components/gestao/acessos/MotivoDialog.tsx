@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_ACESSOS } from "@/lib/dicas/gestao";
 import { useCallback, useRef, useState } from "react";
 import Modal from "@/components/ui/Modal";
 
@@ -42,7 +44,7 @@ export function useMotivo() {
       <div className="space-y-3">
         {pedido?.resumo && <p className="text-sm text-gray-600">{pedido.resumo}</p>}
         <label className="block">
-          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-gray-500">Motivo da alteração *</span>
+          <span className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-gray-500"><Dica texto={DICAS_GESTAO_ACESSOS.motivo}>Motivo da alteração</Dica> *</span>
           <input
             autoFocus
             value={texto}

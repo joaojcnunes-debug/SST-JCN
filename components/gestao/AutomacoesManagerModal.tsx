@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_AUTOMACAO } from "@/lib/dicas/gestao";
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { AlertTriangle, ArrowDown, ArrowUp, BookOpen, Filter, History, Plus, Trash2, UserCog, Workflow, X } from "lucide-react";
@@ -194,14 +196,14 @@ export default function AutomacoesManagerModal({
               <input defaultValue={a.nome} disabled={!podeEditar} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== a.nome) setCampo(a, { nome: v }); }}
                 className="min-w-0 flex-1 rounded-md border border-gray-200 px-2 py-1 text-sm font-medium focus:border-marca-primary focus:outline-none" />
               <label className="inline-flex items-center gap-1 text-xs text-gray-500" title={completa ? undefined : "Complete as ações para poder ativar"}>
-                <input type="checkbox" disabled={!podeEditar || !completa} checked={a.ativo && completa} onChange={(e) => setCampo(a, { ativo: e.target.checked })} className="size-3.5 rounded accent-marca-primary" /> Ativa
+                <input type="checkbox" disabled={!podeEditar || !completa} checked={a.ativo && completa} onChange={(e) => setCampo(a, { ativo: e.target.checked })} className="size-3.5 rounded accent-marca-primary" /> <Dica texto={DICAS_GESTAO_AUTOMACAO.ativa}>Ativa</Dica>
               </label>
               {podeEditar && <button type="button" onClick={async () => { if (await confirmar({ title: `Excluir automação "${a.nome}"?` })) excluir.mutate(a.id); }} className="rounded p-1 text-gray-300 hover:text-red-600"><Trash2 className="size-4" /></button>}
             </div>
 
             {/* QUANDO — gatilho */}
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-xs font-semibold uppercase text-gray-400">Quando</span>
+              <span className="text-xs font-semibold uppercase text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.quando}>Quando</Dica></span>
               <select value={a.gatilho} disabled={!podeEditar} onChange={(e) => setCampo(a, { gatilho: e.target.value as GatilhoAutomacao })} className={sel}>
                 {GRUPOS_GATILHO.map((g) => (
                   <optgroup key={g} label={g}>
@@ -212,12 +214,12 @@ export default function AutomacoesManagerModal({
               {/* condição PLANA legada (status_muda) — só no modo simples */}
               {a.gatilho === "status_muda" && !usaEou && (
                 <>
-                  <span className="text-gray-400">de</span>
+                  <span className="text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.de}>de</Dica></span>
                   <select value={a.condicao?.de ?? ""} disabled={!podeEditar} onChange={(e) => setCond(a, { de: e.target.value || undefined })} className={sel}>
                     <option value="">qualquer</option>
                     {statuses.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
                   </select>
-                  <span className="text-gray-400">para</span>
+                  <span className="text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.para}>para</Dica></span>
                   <select value={a.condicao?.para ?? ""} disabled={!podeEditar} onChange={(e) => setCond(a, { para: e.target.value || undefined })} className={sel}>
                     <option value="">qualquer</option>
                     {statuses.map((s) => <option key={s.slug} value={s.slug}>{s.nome}</option>)}
@@ -231,7 +233,7 @@ export default function AutomacoesManagerModal({
                     <option value="documento">documento (validade da inspeção)</option>
                     <option value="extintor">extintor</option>
                   </select>
-                  <span className="text-gray-400">vence em até</span>
+                  <span className="text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.vence_em}>vence em até</Dica></span>
                   <input type="number" min={0} max={365} value={a.condicao?.dias_antes ?? ""} disabled={!podeEditar}
                     onChange={(e) => setCond(a, { dias_antes: e.target.value || undefined })} placeholder="30" className={`${sel} w-20`} />
                   <span className="text-gray-400">dias</span>
@@ -249,7 +251,7 @@ export default function AutomacoesManagerModal({
                 <>
                   <input type="number" min={0} max={90} value={a.condicao?.dias_antes ?? "3"} disabled={!podeEditar}
                     onChange={(e) => setCond(a, { dias_antes: e.target.value || undefined })} className={`${sel} w-16`} />
-                  <span className="text-gray-400">dia(s) antes do prazo</span>
+                  <span className="text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.dias_antes_prazo}>dia(s) antes do prazo</Dica></span>
                 </>
               )}
             </div>
@@ -274,7 +276,7 @@ export default function AutomacoesManagerModal({
               <label className="inline-flex items-center gap-1.5 text-xs text-gray-500">
                 <input type="checkbox" disabled={!podeEditar} checked={usaEou}
                   onChange={(e) => setCondFull(a, e.target.checked ? { all: [] } : {})} className="size-3.5 rounded accent-marca-primary" />
-                Só rodar se… (condição E/OU)
+                <Dica texto={DICAS_GESTAO_AUTOMACAO.condicao}>Só rodar se… (condição E/OU)</Dica>
               </label>
               {usaEou && (
                 <AutomacaoCondicaoBuilder key={a.id} condicao={a.condicao} statuses={statuses} campos={campos} quadros={quadros}
@@ -284,7 +286,7 @@ export default function AutomacoesManagerModal({
 
             {/* ENTÃO — ações, em ordem */}
             <div className="space-y-2">
-              <span className="text-xs font-semibold uppercase text-gray-400">{criaTarefa ? "Depois, na tarefa criada (opcional)" : "Então, em ordem"}</span>
+              <span className="text-xs font-semibold uppercase text-gray-400"><Dica texto={DICAS_GESTAO_AUTOMACAO.acoes}>{criaTarefa ? "Depois, na tarefa criada (opcional)" : "Então, em ordem"}</Dica></span>
               {acoes.map((x, i) => {
                 const chave = `${a.id}:${x.id ?? i}`;
                 const temCond = !!(x.condicao?.all || x.condicao?.any);

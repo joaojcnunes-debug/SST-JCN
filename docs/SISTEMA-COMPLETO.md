@@ -153,6 +153,8 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Dicas na Gestão, lote 7.9b (0.3.222):** `DICAS_GESTAO_AUTOMACAO` e `DICAS_GESTAO_ACESSOS` em `lib/dicas/gestao.ts` cobrem as automações (Ativa, Quando, de/para, prazos, condição, ações, agenda, SLA, rodízio, vínculos) e os acessos (quem, copiar de, mesmas equipes, onde, motivo, equipes).
+  - Os campos de ação que só têm placeholder ficam sem dica (responsável, mensagem, aprovador, título, assunto).
 - **Dicas na Gestão, lote 7.9a (0.3.221):** `lib/dicas/gestao.ts` cobre a janela da tarefa, a configuração e o formulário público, os modelos de checklist e as opções de campo.
   - O 7.9b (automações e acessos) usa o mesmo arquivo.
   - Campos só com placeholder ficam sem dica (comentário, motivo da aprovação, responsável da subtarefa, texto/opções/ajuda da pergunta).

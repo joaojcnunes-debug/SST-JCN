@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_GESTAO_ACESSOS } from "@/lib/dicas/gestao";
 import { useMemo, useState } from "react";
 import { Check, Folder, LayoutGrid, List, Pencil, Plus, ShieldCheck, Trash2, Users, X } from "lucide-react";
 import { confirmar } from "@/components/ui/confirm";
@@ -164,7 +166,7 @@ export default function EquipesTab({
                 );
               })}
               <div className="mt-1 space-y-1.5 rounded-md border border-dashed border-gray-300 p-2">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">Adicionar pessoas</p>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500"><Dica texto={DICAS_GESTAO_ACESSOS.equipe_pessoas}>Adicionar pessoas</Dica></p>
                 <PessoasPicker pessoas={opcoesPessoas} value={novas} onChange={setNovas} excluir={jaNaEquipe} />
                 <div className="flex items-center justify-end gap-2">
                   <select value={novoPapel} onChange={(e) => setNovoPapel(e.target.value as PapelEquipe)} className={inputCls}>
@@ -198,7 +200,7 @@ export default function EquipesTab({
                 );
               })}
               <div className="mt-1 space-y-1.5 rounded-md border border-dashed border-gray-300 p-2">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500">Dar acesso ({recursos.size})</p>
+                <p className="text-[11px] font-medium uppercase tracking-wider text-gray-500"><Dica texto={DICAS_GESTAO_ACESSOS.equipe_acesso}>Dar acesso</Dica> ({recursos.size})</p>
                 <RecursoPicker arvore={d.arvore} value={recursos} onChange={setRecursos} altura="max-h-44" />
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   <SeletorNivel value={novoNivel} onChange={setNovoNivel} className={inputCls} />
