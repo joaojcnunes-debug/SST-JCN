@@ -26,6 +26,8 @@ import { cn } from "@/lib/utils";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import StorageImg from "@/components/ui/StorageImg";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { ConfirmHost, confirmar } from "@/components/ui/confirm";
+import { valoresRepetidos } from "@/lib/aet/owas-opcoes";
 import type { AetChecklistPergunta, AetOwasCategoria, AetOwasOpcao, AetOwasSelectCampo } from "@/lib/supabase/types";
 
 type ItemOrdem = { tipo: "pergunta" | "select"; slug: string };
@@ -82,6 +84,17 @@ export default function OwasConfigPage() {
   const deletar = useAetDeletarChecklistPergunta();
 
   async function handleRestaurarChecklist() {
+    // Grava na hora e desfaz as edições de todas as perguntas padrão — pede
+    // confirmação. As perguntas CRIADAS aqui ficam (04/11/2026): antes o
+    // restaurar apagava a tabela inteira e levava junto o texto delas, e as
+    // respostas já gravadas nos laudos saíam no PDF com o código no lugar.
+    const ok = await confirmar({
+      title: "Restaurar os padrões do checklist?",
+      description: "As perguntas padrão e o campo \"trabalho predominante\" voltam ao texto original, e as padrão excluídas voltam a aparecer. As perguntas que você criou continuam.",
+      confirmLabel: "Restaurar",
+      variant: "primary",
+    });
+    if (!ok) return;
     setRestaurando(true);
     try {
       await inicializarSelects.mutateAsync(undefined);
@@ -199,11 +212,20 @@ export default function OwasConfigPage() {
                     <PerguntaCard
                       key={p.slug}
                       pergunta={p}
-                      onDelete={() =>
+                      onDelete={async () => {
+                        // Apagar a linha leva o TEXTO da pergunta: os laudos que
+                        // já a responderam guardam só o código (respostas_extras)
+                        // e passam a imprimir o código no lugar do texto.
+                        const ok = await confirmar({
+                          title: "Excluir esta pergunta?",
+                          description: "Ela sai do checklist. Laudos que já a responderam vão mostrar o código interno no lugar do texto, na tela e no PDF.",
+                          confirmLabel: "Excluir",
+                        });
+                        if (!ok) return;
                         deletar.mutate(p.slug, {
                           onSuccess: () => toast.success("Pergunta excluída"),
-                        })
-                      }
+                        });
+                      }}
                     />
                   ))}
 
@@ -243,12 +265,13 @@ export default function OwasConfigPage() {
             >
               <span className="flex-1 text-sm font-medium text-gray-600">{label}</span>
               <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] text-gray-400">
-                Rich text — livre por setor
+                Texto livre, escrito em cada setor
               </span>
             </div>
           ))}
         </div>
       </div>
+      <ConfirmHost />
     </div>
   );
 }
@@ -309,7 +332,15 @@ function CategoriaCard({
     setOpcoes((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  // O setor grava só o NÚMERO da opção: dois rótulos com o mesmo número
+  // ficariam indistinguíveis nos laudos — o segundo nunca seria lido.
+  const repetidos = valoresRepetidos(opcoes);
+
   function handleSave() {
+    if (repetidos.length > 0) {
+      toast.error(`Número repetido nas opções: ${repetidos.join(", ")}. Cada opção precisa de um número só dela.`);
+      return;
+    }
     salvar.mutate(
       { id: categoria.id, titulo: titulo.trim() || categoria.titulo, opcoes },
       { onSuccess: () => toast.success("Categoria salva") }
@@ -351,7 +382,11 @@ function CategoriaCard({
                   value={opt.value}
                   onChange={(e) => updateOpcao(idx, { value: Number(e.target.value) })}
                   disabled={disabled}
-                  className="w-14 rounded border border-gray-300 px-2 py-1 text-center text-xs disabled:bg-gray-50"
+                  aria-invalid={repetidos.includes(opt.value)}
+                  className={cn(
+                    "w-14 rounded border px-2 py-1 text-center text-xs disabled:bg-gray-50",
+                    repetidos.includes(opt.value) ? "border-red-400 bg-red-50 text-red-700" : "border-gray-300",
+                  )}
                 />
                 <input
                   type="text"
@@ -372,6 +407,11 @@ function CategoriaCard({
                 )}
               </div>
             ))}
+            {repetidos.length > 0 && (
+              <p className="text-xs text-red-600">
+                Número repetido: {repetidos.join(", ")}. Troque antes de salvar.
+              </p>
+            )}
             {!disabled && (
               <button
                 type="button"

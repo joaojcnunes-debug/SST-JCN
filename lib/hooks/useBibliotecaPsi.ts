@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useUserStore } from "@/lib/store";
 import { mensagemErro } from "@/lib/errors";
-import { montarBiblioteca, type ItemBiblioteca, type TopicoBib } from "@/lib/aep/biblioteca";
+import { COLUNA_PADRAO_COMUM, montarBiblioteca, type ItemBiblioteca, type TopicoBib } from "@/lib/aep/biblioteca";
 
 const KEY = ["psi-biblioteca"] as const;
 
@@ -81,7 +81,17 @@ export function useAtualizarItemBiblioteca() {
   const qc = useQueryClient();
   const user = useUserStore((s) => s.user);
   return useMutation({
-    mutationFn: async (a: { id: string; patch: Partial<Pick<ItemBiblioteca, "texto" | "codigo" | "padrao" | "ordem" | "status">> }) => {
+    mutationFn: async (a: {
+      id: string;
+      patch: Partial<Pick<ItemBiblioteca, "texto" | "codigo" | "padrao" | "ordem" | "status">>;
+      /**
+       * Renomear opção de lista COMUM (meio/situação/tempo): os fatores cujo
+       * padrão era o texto antigo (`fatoresComPadrao`) — o padrão deles vai
+       * junto para o texto novo. Sem isto o padrão, que casa por texto, se
+       * desfazia em silêncio (04/11/2026).
+       */
+      padraoDosFatores?: { topico: "meio" | "situacao" | "tempo"; fatores: string[] };
+    }) => {
       const patch: Record<string, unknown> = { ...a.patch };
       if (a.patch.status) {
         patch.revisado_por = user?.nome ?? user?.email ?? null;
@@ -94,10 +104,21 @@ export function useAtualizarItemBiblioteca() {
       }
       // RLS barra sem erro (0 linhas) quem não é Admin.
       if (!data?.length) throw new Error("Só o perfil Admin pode alterar a biblioteca.");
+      // Depois do item, não antes: se o rename falhar (texto repetido), o
+      // padrão dos fatores não pode ficar apontando para um texto que não existe.
+      const pf = a.padraoDosFatores;
+      if (pf && pf.fatores.length > 0 && typeof a.patch.texto === "string") {
+        const { error: errF } = await db()
+          .from("psi_biblioteca_fatores")
+          .update({ [COLUNA_PADRAO_COMUM[pf.topico]]: a.patch.texto, atualizado_em: new Date().toISOString(), atualizado_por: user?.nome ?? user?.email ?? null })
+          .in("fator", pf.fatores);
+        if (errF) throw new Error("A opção foi renomeada, mas o padrão dos fatores não foi atualizado. Escolha o padrão de novo na tabela abaixo.");
+      }
       return a.patch.status;
     },
+    // Recarrega também no erro: o rename pode ter gravado e só o padrão falhado.
+    onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
     onSuccess: (status) => {
-      qc.invalidateQueries({ queryKey: KEY });
       if (status === "ativo") toast.success("Sugestão aprovada");
       else if (status === "recusado") toast.success("Sugestão recusada");
     },

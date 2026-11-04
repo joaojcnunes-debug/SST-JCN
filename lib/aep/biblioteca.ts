@@ -168,6 +168,29 @@ export function idsPadrao(b: Biblioteca | null | undefined, fator: string, topic
   return opcoes.filter((i) => i.padrao).map((i) => i.id_item);
 }
 
+/** Coluna de `psi_biblioteca_fatores` que guarda o padrão de cada tópico comum. */
+export const COLUNA_PADRAO_COMUM = {
+  meio: "meio_propagacao",
+  situacao: "situacao_padrao",
+  tempo: "tempo_exposicao_padrao",
+} as const;
+
+/**
+ * Fatores cujo padrão (meio/situação/tempo) é ESTE texto.
+ *
+ * O padrão do fator é guardado como TEXTO e casa com a opção da lista comum
+ * pelo texto (`idsPadrao`, acima). Renomear a opção sem levar junto o padrão
+ * desfazia o casamento em silêncio: o fator ficava sem nada marcado por
+ * padrão (04/11/2026). Mesma comparação de `idsPadrao` — sem caixa, sem espaço
+ * nas pontas.
+ */
+export function fatoresComPadrao(b: Biblioteca | null | undefined, topico: TopicoBib, texto: string): string[] {
+  if (!ehComum(topico)) return [];
+  const alvo = texto.trim().toLowerCase();
+  if (!alvo) return [];
+  return Object.keys(b?.fatores ?? {}).filter((f) => padraoComum(b, f, topico).trim().toLowerCase() === alvo);
+}
+
 /** "1.3 — texto" quando a opção tem código (fontes geradoras). */
 export const rotuloItem = (i: Pick<ItemBiblioteca, "codigo" | "texto">) => (i.codigo ? `${i.codigo} — ${i.texto}` : i.texto);
 

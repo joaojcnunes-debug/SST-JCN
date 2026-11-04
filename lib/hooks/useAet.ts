@@ -7,7 +7,8 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { excluirComLixeiraPorId } from "@/lib/hooks/useLixeira";
 import { useUserStore } from "@/lib/store";
 import { PERGUNTAS_DEFAULT } from "@/lib/aet/perguntas-default";
-import { CHECKLIST_PERGUNTAS_PADRAO, mesclarChecklist, paraOBanco, type ChecklistLinhaBanco } from "@/lib/aet/checklist";
+import { CHECKLIST_PERGUNTAS_PADRAO, OWAS_SELECTS_PADRAO, SLUGS_CHECKLIST_PADRAO, mesclarChecklist, paraOBanco, type ChecklistLinhaBanco } from "@/lib/aet/checklist";
+import { ordensParaSalvar } from "@/lib/aet/ordem-perguntas";
 import type { Aet13FatorConfig, Aet13FatorPergunta, Aet13FatorSemaforo, AetCargo, AetChecklist, AetChecklistPergunta, AetLaudoFatorPsi, AetLaudoQpsMeta, AetLaudoQpsResposta, AetOwas, AetOwasCategoria, AetOwasSelectCampo, AetPerfilOwas, AetRelatorio, AetSetor, RespostaChecklist, StatusAET, ZonaPsi } from "@/lib/supabase/types";
 import { gravar, type ImagemPendente } from "@/lib/offline/gravar";
 import { guardarDocumentoCache, lerDocumentoCache } from "@/lib/offline/operacoes";
@@ -380,13 +381,9 @@ export function useAetInicializarOwasConfig() {
 
 // ─── Config OWAS — Campos de Seleção ─────────────────────────────────────────
 
-export const OWAS_SELECTS_PADRAO: AetOwasSelectCampo[] = [
-  {
-    slug: "trabalho_predominante",
-    label: "O trabalho executado durante aos chamados decorrentes do dia-dia, são realizados preponderantemente de qual forma?",
-    opcoes: ["Em pé", "Sentado", "Alternando entre postura em pé e sentado"],
-  },
-];
+// O padrão mora em lib/aet/checklist (arquivo puro) desde 04/11/2026: o PDF
+// também precisa dele. Reexportado daqui para as telas não mudarem de import.
+export { OWAS_SELECTS_PADRAO };
 
 export function useAetOwasSelects() {
   return useQuery({
@@ -428,10 +425,12 @@ export function useAetInicializarOwasSelects() {
   return useMutation({
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
-      await supabase.from("aet_owas_select_campos").delete().neq("slug", "");
+      // Upsert dos padrões, sem apagar antes. Antes era delete-tudo + insert, e
+      // o delete não conferia erro: se ele falhasse (RLS), o insert batia na
+      // chave e a tela dizia "erro" com a tabela num estado qualquer.
       const { error } = await supabase
         .from("aet_owas_select_campos")
-        .insert(OWAS_SELECTS_PADRAO as never);
+        .upsert(OWAS_SELECTS_PADRAO as never, { onConflict: "slug" });
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-owas-selects"] }),
@@ -536,10 +535,14 @@ export function useAetInicializarChecklistPerguntas() {
       // Antes isto apagava tudo e reinseria as 10 perguntas padrão — e o
       // insert falhava no `tipo`, deixando a tabela vazia e um erro na tela.
       // Era por isso que a tabela nunca tinha sido populada.
+      //
+      // ⚠️ Só as linhas das perguntas PADRÃO (04/11/2026). Até aqui era
+      // `.neq("slug", "")` — apagava também as perguntas CRIADAS na tela, e as
+      // respostas delas nos laudos ficavam sem texto no PDF.
       const { error } = await supabase
         .from("aet_checklist_perguntas")
         .delete()
-        .neq("slug", "");
+        .in("slug", SLUGS_CHECKLIST_PADRAO);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["aet-checklist-perguntas"] }),
@@ -777,7 +780,19 @@ export function useAet13FatoresSalvarPerguntas() {
   return useMutation({
     mutationFn: async (perguntas: Omit<Aet13FatorPergunta, "updated_at">[]) => {
       const sb = createSupabaseBrowserClient();
-      const rows = perguntas.map(({ id: _id, ...p }, i) => ({ ...p, ordem: i + 1 }));
+      // A `ordem` é a CHAVE que liga cada resposta à pergunta — nunca muda ao
+      // salvar (ver lib/aet/ordem-perguntas.ts). Antes era `ordem: i + 1`, e
+      // excluir uma pergunta deslocava as respostas de todos os laudos.
+      // A maior ordem já respondida entra na conta para pergunta nova não
+      // herdar respostas de uma apagada.
+      const { data: maiorResp, error: errMaior } = await sb
+        .from("aet_laudo_qps_respostas")
+        .select("pergunta_ordem")
+        .order("pergunta_ordem", { ascending: false })
+        .limit(1);
+      if (errMaior) throw errMaior;
+      const maiorUsada = Number((maiorResp?.[0] as { pergunta_ordem?: number } | undefined)?.pergunta_ordem ?? 0);
+      const rows = ordensParaSalvar(perguntas, maiorUsada).map(({ id: _id, ...p }) => p);
       // RPC executa delete+insert em uma única transação — evita perda de dados se o insert falhar
       const { error } = await sb.rpc("salvar_aet13fatores_perguntas" as never, { p_rows: rows } as never);
       if (error) throw error;

@@ -153,6 +153,15 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Correções das configurações da AET e da Biblioteca da AEP (0.3.230, sem banco), achadas na auditoria das dicas 7.10b:**
+  - **QPS da AET:** a `ordem` de cada pergunta é a chave das respostas (`pergunta_ordem`) e não muda mais ao salvar. Pergunta nova recebe a maior ordem conhecida + 1, contando a maior já respondida em `aet_laudo_qps_respostas`; excluir deixa buraco (`lib/aet/ordem-perguntas.ts`, testado). Antes era `ordem: i + 1`.
+  - **Checklist OWAS:** "Restaurar padrões" pede confirmação, apaga só as linhas das perguntas padrão (`SLUGS_CHECKLIST_PADRAO`) e faz upsert do campo de seleção; as perguntas criadas ficam. Excluir pergunta criada avisa que os laudos que a responderam passam a mostrar o código.
+  - **Trabalho predominante:** a prévia do laudo e o PDF leem o rótulo de `aet_owas_select_campos` (`rotuloSelectOwas` em `lib/aet/checklist.ts`), com o padrão do código como reserva. `OWAS_SELECTS_PADRAO` mudou para esse arquivo puro.
+  - **Config. OWAS:** número repetido nas opções de uma categoria impede salvar e fica marcado em vermelho (`lib/aet/owas-opcoes.ts`). "Rich text" virou "Texto livre, escrito em cada setor". Saiu o código morto `SLUG_TO_FIELD` dos Perfis OWAS.
+  - **Config. 13 Fatores:** Perigos típicos, Possíveis danos, as quatro colunas do Plano e Mín./Máx./Nível PGR do Semáforo ficaram só leitura, com aviso; o Prazo padrão do Semáforo segue editável. A aba Plano perdeu o Salvar.
+    - "Restaurar padrão" de Categorias e QPS pede confirmação. As quatro abas ficam montadas, então trocar de aba não perde o que não foi salvo. O hover dos botões azuis é o `marca-accent`.
+  - **Biblioteca psicossocial da AEP:** editar o texto de uma opção mostra aviso e pede confirmação (o texto muda em todo setor e laudo que a marcou). Renomear opção das listas comuns leva junto o padrão dos fatores que usavam o texto antigo (`fatoresComPadrao`, testado). Excluir usa o `confirmar` do projeto.
+  - **Fora:** trocar a categoria ou a lógica de uma pergunta QPS já respondida continua mudando os laudos antigos; os valores antigos de Mín./Máx. no banco não foram regravados.
 - **Correções da Gestão (0.3.227 + banco v319, aplicada em 04/11/2026), achadas na auditoria das dicas:**
   - **Comentário:** o nível "ver e comentar" comenta (`nivelPodeComentar`). Excluir comentário continua só para quem edita.
   - **Responsável pela lista e em massa:** cria o vínculo (`useSalvarVinculados` com `manterSeguidoresAtuais`); o texto `responsavel` segue espelhado pelo trigger. Nome sem usuário é recusado.
@@ -173,7 +182,7 @@ Alias de import: `@/*` → raiz.
 - **Dicas nas configurações dos módulos, lotes 7.10b e 7.10c (0.3.226):** `lib/dicas/config.ts` ganhou Config. OWAS, Config. 13 Fatores e Biblioteca psicossocial da AEP; `lib/dicas/escala.ts` cobre a Configuração da Escala (Unidades, Supervisores, Feriados, Regras) e o Padrão semanal.
   - Nos 13 Fatores, as dicas dizem quando o valor só fica na tela: Perigos típicos, Possíveis danos e as colunas do Plano são gravados e nada os lê; Mín., Máx. e Nível PGR do Semáforo só saem no formulário em branco (a zona usa faixas fixas).
   - Ficam sem dica Perfis OWAS e os catálogos do Psicossocial (Agravos, Medidas, Ações do plano): só caixas com placeholder.
-  - Achados para o PR de correções: salvar as perguntas QPS da AET renumera todas (as respostas são ligadas ao número); "Restaurar padrões" do checklist OWAS apaga as perguntas criadas na tela; o trabalho predominante editado na Config. OWAS não chega ao laudo nem ao PDF.
+  - Achados para o PR de correções: salvar as perguntas QPS da AET renumera todas (as respostas são ligadas ao número); "Restaurar padrões" do checklist OWAS apaga as perguntas criadas na tela; o trabalho predominante editado na Config. OWAS não chega ao laudo nem ao PDF. Corrigidos na 0.3.230.
 - **Dicas nas Configurações, lote 7.10a (0.3.225):** `lib/dicas/config.ts` cobre Usuários, Funções, Tipos de risco, Catálogo e Triagem, Perguntas customizadas, Matrizes, Portal SST e o editor de capítulo do Texto padrão (orientação, início, posição e imagem de capa).
   - O `Field` de Usuários aceita `dica` e deixa o asterisco fora do sublinhado. Ficam sem dica os campos já explicados na tela (senha, função, perfil, unidades, assinatura, certificado, Listas, Logo) e os que só têm placeholder.
   - Os lotes 7.10b (configurações da AET e Biblioteca da AEP) e 7.10c (catálogos do Psicossocial e Escala) vêm depois.

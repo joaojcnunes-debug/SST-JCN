@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "config-aet-aep-correcoes",
+    data: "2026-11-04",
+    tipo: "correcao",
+    titulo: "Configurações da AET e da Biblioteca da AEP mais seguras",
+    texto:
+      "Salvar as perguntas QPS não muda mais o número das outras, então as respostas dos laudos ficam no lugar. " +
+      "Restaurar o checklist OWAS mantém as perguntas criadas, e o trabalho predominante editado sai no laudo e no PDF. " +
+      "Nos 13 Fatores, os campos que o laudo não usa ficaram só leitura, e restaurar pede confirmação. " +
+      "Na Biblioteca psicossocial, mudar o texto de uma opção avisa antes e leva junto o padrão dos fatores.",
+    onde: "AET › Config. OWAS e Config. 13 Fatores; AEP › Biblioteca psicossocial",
+    versoes: ["0.3.230"],
+  },
+  {
     id: "correcoes-configuracoes-sistema",
     data: "2026-11-04",
     tipo: "correcao",

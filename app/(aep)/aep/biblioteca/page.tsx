@@ -25,6 +25,7 @@ import {
   ROTULO_TOPICO,
   TOPICOS_COMUNS,
   TOPICOS_DO_FATOR,
+  fatoresComPadrao,
   itensDe,
   padraoComum,
   type Biblioteca,
@@ -32,19 +33,50 @@ import {
   type TopicoBib,
 } from "@/lib/aep/biblioteca";
 import { cn, fmtData } from "@/lib/utils";
+import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 
 const rotuloFator = (k: string | null) => (k ? ITENS_ORGANIZACIONAL.find((i) => i.key === k)?.label ?? k : "Comum a todos");
 
 /** Uma opção: texto (e código) editáveis pelo Admin, padrão e excluir. */
-function LinhaItem({ item, isAdmin, mostrarPadrao }: { item: ItemBiblioteca; isAdmin: boolean; mostrarPadrao: boolean }) {
+function LinhaItem({ b, item, isAdmin, mostrarPadrao }: { b: Biblioteca; item: ItemBiblioteca; isAdmin: boolean; mostrarPadrao: boolean }) {
   const atualizar = useAtualizarItemBiblioteca();
   const excluir = useExcluirItemBiblioteca();
   const [texto, setTexto] = useState(item.texto);
   const [codigo, setCodigo] = useState(item.codigo ?? "");
-  const salvarTexto = () => {
+  const editando = texto.trim() !== item.texto;
+  // O setor guarda o ID da opção, e o texto é buscado na hora de mostrar:
+  // editar aqui muda o texto em TODO setor e laudo que marcou a opção,
+  // inclusive os concluídos. Contar quantos exigiria varrer o JSON de todas
+  // as AEPs — o aviso é fixo, e o Salvar pede confirmação (04/11/2026).
+  const salvarTexto = async () => {
     const t = texto.trim();
     if (!t || t === item.texto) return setTexto(item.texto);
-    atualizar.mutate({ id: item.id_item, patch: { texto: t } }, { onError: () => setTexto(item.texto) });
+    // Lista comum: os fatores cujo padrão era o texto antigo vão junto.
+    const fatores = item.fator === null ? fatoresComPadrao(b, item.topico, item.texto) : [];
+    const ok = await confirmar({
+      title: "Mudar o texto desta opção?",
+      description:
+        "O texto novo aparece em todos os setores e laudos que já marcaram esta opção, inclusive os concluídos e o PDF." +
+        (fatores.length > 0 ? ` O padrão de ${fatores.length} fator(es) que usava o texto antigo passa para o novo.` : ""),
+      confirmLabel: "Mudar texto",
+      variant: "primary",
+    });
+    if (!ok) return setTexto(item.texto);
+    atualizar.mutate(
+      {
+        id: item.id_item,
+        patch: { texto: t },
+        ...(fatores.length > 0 ? { padraoDosFatores: { topico: item.topico as "meio" | "situacao" | "tempo", fatores } } : {}),
+      },
+      { onError: () => setTexto(item.texto) },
+    );
+  };
+  const pedirExclusao = async () => {
+    const ok = await confirmar({
+      title: "Excluir esta opção?",
+      description: `"${item.texto.slice(0, 80)}" sai da biblioteca. Quem já marcou esta opção perde a marcação.`,
+    });
+    if (ok) excluir.mutate(item.id_item);
   };
   return (
     <div className="flex items-start gap-2 py-1">
@@ -61,13 +93,23 @@ function LinhaItem({ item, isAdmin, mostrarPadrao }: { item: ItemBiblioteca; isA
           <span className="w-14 shrink-0 pt-1 font-mono text-[11px] text-gray-500">{item.codigo}</span>
         ))}
       {isAdmin ? (
-        <textarea
-          rows={item.texto.length > 110 ? 3 : 1}
-          value={texto}
-          onChange={(e) => setTexto(e.target.value)}
-          onBlur={salvarTexto}
-          className="min-w-0 flex-1 resize-y rounded border border-gray-200 px-2 py-1 text-sm focus:border-sky-500 focus:outline-none"
-        />
+        <div className="min-w-0 flex-1">
+          <textarea
+            rows={item.texto.length > 110 ? 3 : 1}
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            onBlur={salvarTexto}
+            className={cn(
+              "w-full resize-y rounded border px-2 py-1 text-sm focus:border-sky-500 focus:outline-none",
+              editando ? "border-amber-300 bg-amber-50/40" : "border-gray-200",
+            )}
+          />
+          {editando && (
+            <p className="mt-0.5 text-[11px] text-amber-800">
+              O texto novo vale para todos os setores e laudos que já marcaram esta opção, inclusive os concluídos.
+            </p>
+          )}
+        </div>
       ) : (
         <p className="min-w-0 flex-1 py-1 text-sm text-gray-800">{item.texto}</p>
       )}
@@ -86,7 +128,7 @@ function LinhaItem({ item, isAdmin, mostrarPadrao }: { item: ItemBiblioteca; isA
       {isAdmin && (
         <button
           type="button"
-          onClick={() => window.confirm(`Excluir "${item.texto.slice(0, 80)}"? Quem já marcou esta opção perde a marcação.`) && excluir.mutate(item.id_item)}
+          onClick={pedirExclusao}
           className="shrink-0 rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
           title="Excluir"
         >
@@ -127,7 +169,7 @@ function ListaTopico({
       </p>
       <div className="divide-y divide-gray-100">
         {itens.map((i) => (
-          <LinhaItem key={i.id_item} item={i} isAdmin={isAdmin} mostrarPadrao={!comum} />
+          <LinhaItem key={i.id_item} b={b} item={i} isAdmin={isAdmin} mostrarPadrao={!comum} />
         ))}
         {itens.length === 0 && <p className="py-1 text-sm text-gray-400">Nenhuma opção ainda.</p>}
       </div>
@@ -351,6 +393,7 @@ export default function BibliotecaPsiPage() {
           })}
         </>
       )}
+      <ConfirmHost />
     </div>
   );
 }

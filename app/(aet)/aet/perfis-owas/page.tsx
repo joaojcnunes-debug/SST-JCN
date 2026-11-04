@@ -109,13 +109,6 @@ export default function PerfisOwasPage() {
 
 // ─── PerfilCard ───────────────────────────────────────────────────────────────
 
-const SLUG_TO_FIELD: Record<string, keyof Omit<AetPerfilOwas, "id" | "nome" | "created_at">> = {
-  costas: "posturas_costas",
-  bracos: "posturas_bracos",
-  pernas: "posturas_pernas",
-  esforco: "esforco",
-};
-
 function PerfilCard({
   perfil,
   categorias,
@@ -252,6 +245,3 @@ function OwasGroupPerfil({
     </div>
   );
 }
-
-// Keep SLUG_TO_FIELD in scope (referenced by PerfilCard)
-void SLUG_TO_FIELD;
