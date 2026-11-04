@@ -85,6 +85,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       .from("aet_checklist_perguntas").select("slug, secao, label, oculta");
     const checklistPerguntas = ((rawChecklist ?? []) as { slug: string; secao: string | null; label: string; oculta?: boolean | null }[]);
 
+    // Campos de seleção do checklist ("trabalho predominante"): o rótulo
+    // editado em Config. OWAS mora AQUI, não em aet_checklist_perguntas.
+    // Erro ou vazio → o template usa o padrão do código (rotuloSelectOwas).
+    const { data: rawSelects } = await supabase
+      .from("aet_owas_select_campos").select("slug, label");
+    const owasSelects = ((rawSelects ?? []) as { slug: string; label: string }[]);
+
     // 13 fatores + QPS (por relatório). Configs são globais; respostas/psi/meta por id.
     const [{ data: rawFCfg }, { data: rawFPerg }, { data: rawQResp }, { data: rawFPsi }, { data: rawQMeta }] =
       await Promise.all([
@@ -189,6 +196,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         capitulos,
         owasConfig,
         checklistPerguntas,
+        owasSelects,
         fatoresConfig,
         fatoresPerguntas,
         qpsRespostas,

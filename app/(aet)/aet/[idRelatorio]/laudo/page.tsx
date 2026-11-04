@@ -35,6 +35,7 @@ import {
   useAetRelatorio,
   useSalvarAet,
   useAetChecklistPerguntas,
+  useAetOwasSelects,
   useAetOwasConfig,
   useAet13FatoresConfig,
   useAet13FatoresSemaforo,
@@ -49,7 +50,7 @@ import {
   SLUG_TO_DEFAULT_IMAGE,
   SLUG_TO_OWAS_FIELD,
 } from "@/lib/hooks/useAet";
-import { algumaVisivel, perguntaOculta } from "@/lib/aet/checklist";
+import { algumaVisivel, perguntaOculta, rotuloSelectOwas } from "@/lib/aet/checklist";
 import {
   apenasSetoresExistentes,
   consolidarPiorCaso,
@@ -82,6 +83,7 @@ import type {
   AetSetor,
   AetChecklistPergunta,
   AetOwasCategoria,
+  AetOwasSelectCampo,
   ClassificacaoRiscoAET,
   Aet13FatorConfig,
   Aet13FatorPergunta,
@@ -198,6 +200,9 @@ export default function AetLaudoPage({
   // editor passou a gravar em textos_padrao, então o laudo tem que ler de lá.
   const { data: capitulos = [] } = useTextosPadrao("aet");
   const { data: checklistPerguntas = [] } = useAetChecklistPerguntas();
+  // Rótulo do "trabalho predominante" editado em Config. OWAS — o PDF lê a
+  // MESMA tabela (aet_owas_select_campos) desde 04/11/2026.
+  const { data: owasSelects = [] } = useAetOwasSelects();
   const { data: owasConfig = [] } = useAetOwasConfig();
   const { data: fatoresConfig = [] } = useAet13FatoresConfig();
   const { data: semaforo = SEMAFORO_DEFAULT } = useAet13FatoresSemaforo();
@@ -947,6 +952,7 @@ export default function AetLaudoPage({
                                   idx={idx}
                                   hideHeader
                                   checklistPerguntas={checklistPerguntas}
+                                  owasSelects={owasSelects}
                                   owasConfig={owasConfig}
                                   fatoresConfig={fatoresConfig}
                                   fatoresPerguntas={fatoresPerguntas}
@@ -1112,6 +1118,7 @@ export default function AetLaudoPage({
                     idx={idx}
                     hideHeader
                     checklistPerguntas={checklistPerguntas}
+                    owasSelects={owasSelects}
                     owasConfig={owasConfig}
                     fatoresConfig={fatoresConfig}
                     fatoresPerguntas={fatoresPerguntas}
@@ -1361,6 +1368,7 @@ function SetorAnaliseBlock({
   idx,
   hideHeader,
   checklistPerguntas,
+  owasSelects,
   owasConfig,
   fatoresConfig,
   fatoresPerguntas,
@@ -1372,6 +1380,7 @@ function SetorAnaliseBlock({
   idx: number;
   hideHeader?: boolean;
   checklistPerguntas: AetChecklistPergunta[];
+  owasSelects: AetOwasSelectCampo[];
   owasConfig: AetOwasCategoria[];
   fatoresConfig: Aet13FatorConfig[];
   fatoresPerguntas: Aet13FatorPergunta[];
@@ -1537,7 +1546,7 @@ function SetorAnaliseBlock({
             {/* Postura */}
             <CheckSep title="Postura" />
             {!oculta("levantamento_acima_limite") && <CheckRow label={pergunta("levantamento_acima_limite")} value={checklist.levantamento_acima_limite} />}
-            <CheckSelect label={pergunta("trabalho_predominante")} value={checklist.trabalho_predominante} />
+            <CheckSelect label={rotuloSelectOwas(owasSelects, "trabalho_predominante")} value={checklist.trabalho_predominante} />
             {!oculta("pausas_descanso") && <CheckRow label={pergunta("pausas_descanso")} value={checklist.pausas_descanso} />}
             {!oculta("uso_cadeira") && <CheckRow label={pergunta("uso_cadeira")} value={checklist.uso_cadeira} />}
             {!oculta("cadeira_adequada") && <CheckRow label={pergunta("cadeira_adequada")} value={checklist.cadeira_adequada} />}

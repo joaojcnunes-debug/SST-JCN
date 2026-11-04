@@ -89,15 +89,15 @@ export const DICAS_OWAS_CONFIG = {
 export const DICAS_13FATORES_CONFIG = {
   nome: "Sai nas telas de preenchimento, no formulário em branco e nos quadros de fatores do laudo e do PDF.",
   descricao: "Aparece sob o fator nas telas de preenchimento e vai para a IA da observação. Não sai no laudo nem no PDF.",
-  perigos: "Hoje fica só nesta tela: não sai no laudo, no PDF, na IA nem no plano de ação.",
-  danos: "Hoje fica só nesta tela: não sai no laudo, no PDF, na IA nem no plano de ação.",
+  perigos: "Só leitura: não sai no laudo, no PDF, na IA nem no plano de ação.",
+  danos: "Só leitura: não sai no laudo, no PDF, na IA nem no plano de ação.",
   categoria: "Fator a que a pergunta pertence. A média do fator é feita só com as perguntas dele.",
   pergunta: "Texto lido nas telas de preenchimento e no formulário em branco. Não sai no laudo nem no PDF.",
   logica: "Direta: a conta usa 6 − nota, pois concordar é ruim. Invertida: a nota entra como está. Média alta é condição boa.",
-  plano: "Hoje fica só nesta tela: o plano de ação do laudo não usa este valor.",
-  minimo: "Só aparece na legenda do formulário em branco. A zona no laudo usa faixas fixas: 4,0, 3,0 e 2,0.",
-  maximo: "Só aparece na legenda do formulário em branco, lá com ≤. A zona no laudo usa faixas fixas: 4,0, 3,0 e 2,0.",
-  nivel_pgr: "Só aparece no formulário em branco. No laudo e no PDF o nível vem fixo da zona: Crítico, Alto, Moderado ou Trivial.",
+  plano: "Só leitura: o plano de ação do laudo é feito no próprio laudo e não usa este valor.",
+  minimo: "Só leitura. Aparece na legenda do formulário em branco. A zona no laudo usa faixas fixas: 4,0, 3,0 e 2,0.",
+  maximo: "Só leitura. Aparece na legenda do formulário em branco, lá com ≤. A zona no laudo usa faixas fixas: 4,0, 3,0 e 2,0.",
+  nivel_pgr: "Só leitura. No laudo e no PDF o nível vem fixo da zona: Crítico, Alto, Moderado ou Trivial.",
   prazo: "Prazo mostrado ao lado da zona nas telas de preenchimento e no formulário em branco. Não sai no laudo nem no PDF.",
 } as const;
 

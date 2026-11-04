@@ -5,6 +5,9 @@ import {
   mesclarChecklist,
   paraOBanco,
   perguntaOculta,
+  rotuloSelectOwas,
+  OWAS_SELECTS_PADRAO,
+  SLUGS_CHECKLIST_PADRAO,
   textoEhOPadrao,
   type ChecklistPerguntaLike,
 } from "./checklist";
@@ -153,5 +156,35 @@ describe("mesclarChecklist carrega a exclusão", () => {
     ]);
     assert.equal(r[1].oculta, true);
     assert.equal(r[1].tipo, "tristate");
+  });
+});
+
+describe("rotuloSelectOwas (trabalho predominante, 04/11/2026)", () => {
+  const PADRAO_LABEL = OWAS_SELECTS_PADRAO[0].label;
+
+  test("o rótulo configurado em aet_owas_select_campos vence o padrão", () => {
+    // Era o defeito: laudo e PDF liam aet_checklist_perguntas, onde este campo
+    // nunca é gravado, e saíam sempre com o texto do código.
+    const r = rotuloSelectOwas([{ slug: "trabalho_predominante", label: "Postura predominante?" }], "trabalho_predominante");
+    assert.equal(r, "Postura predominante?");
+  });
+
+  test("sem linha no banco, ou com rótulo vazio, vale o padrão do código", () => {
+    assert.equal(rotuloSelectOwas([], "trabalho_predominante"), PADRAO_LABEL);
+    assert.equal(rotuloSelectOwas(null, "trabalho_predominante"), PADRAO_LABEL);
+    assert.equal(rotuloSelectOwas([{ slug: "trabalho_predominante", label: "  " }], "trabalho_predominante"), PADRAO_LABEL);
+  });
+
+  test("slug desconhecido cai no próprio slug", () => {
+    assert.equal(rotuloSelectOwas([], "outro_campo"), "outro_campo");
+  });
+});
+
+describe("SLUGS_CHECKLIST_PADRAO", () => {
+  test("são só as perguntas padrão — o Restaurar não pode alcançar as criadas na tela", () => {
+    assert.ok(SLUGS_CHECKLIST_PADRAO.includes("uso_cadeira"));
+    // Pergunta criada na tela tem slug `<secao>_<timestamp>` (NovaPerguntaInline).
+    assert.ok(!SLUGS_CHECKLIST_PADRAO.some((s) => /_\d{10,}$/.test(s)));
+    assert.equal(new Set(SLUGS_CHECKLIST_PADRAO).size, SLUGS_CHECKLIST_PADRAO.length);
   });
 });

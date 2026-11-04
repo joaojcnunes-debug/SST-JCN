@@ -1,4 +1,4 @@
-import type { AetChecklistPergunta } from "@/lib/supabase/types";
+import type { AetChecklistPergunta, AetOwasSelectCampo } from "@/lib/supabase/types";
 
 /**
  * Checklist ergonômico do AET — como a configuração do banco se junta ao padrão.
@@ -151,3 +151,36 @@ export const CHECKLIST_PERGUNTAS_PADRAO: AetChecklistPergunta[] = [
   { slug: "pausas_formais", secao: "Adoção de Rodízios - Ergonômico", tipo: "tristate", label: "Há pausas formais durante o ciclo de trabalho?" },
   { slug: "rodizios_sistematizados", secao: "Adoção de Rodízios - Ergonômico", tipo: "tristate", label: "Há rodízios sistematizados entre os postos de trabalho?" },
 ];
+
+/** Slugs das perguntas padrão — as únicas que "Restaurar padrões" mexe. */
+export const SLUGS_CHECKLIST_PADRAO: string[] = CHECKLIST_PERGUNTAS_PADRAO.map((p) => p.slug);
+
+/**
+ * Campos de seleção do checklist (hoje só "trabalho predominante").
+ *
+ * Morava em useAet.ts ("use client"), que o gerador de PDF não pode importar —
+ * e por isso o template tinha o rótulo copiado e lia a tabela ERRADA
+ * (`aet_checklist_perguntas`): o texto editado em Config. OWAS, que grava em
+ * `aet_owas_select_campos`, só valia na tela de preenchimento (04/11/2026).
+ */
+export const OWAS_SELECTS_PADRAO: AetOwasSelectCampo[] = [
+  {
+    slug: "trabalho_predominante",
+    label: "O trabalho executado durante aos chamados decorrentes do dia-dia, são realizados preponderantemente de qual forma?",
+    opcoes: ["Em pé", "Sentado", "Alternando entre postura em pé e sentado"],
+  },
+];
+
+/**
+ * Rótulo de um campo de seleção: o configurado em `aet_owas_select_campos`
+ * vence; sem ele (ou vazio), o padrão do código; sem padrão, o próprio slug.
+ * Usado pela prévia do laudo e pelo PDF — a mesma régua dos dois lados.
+ */
+export function rotuloSelectOwas(
+  selects: Pick<AetOwasSelectCampo, "slug" | "label">[] | null | undefined,
+  slug: string,
+): string {
+  const doBanco = (selects ?? []).find((s) => s.slug === slug)?.label?.trim();
+  if (doBanco) return doBanco;
+  return OWAS_SELECTS_PADRAO.find((s) => s.slug === slug)?.label ?? slug;
+}

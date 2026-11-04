@@ -13,7 +13,7 @@ import FolhaAssinaturas from "@/components/pdf/FolhaAssinaturas";
 import type { Signatario } from "@/components/pdf/FolhaAssinaturas";
 import { SecaoIdentificacaoEmpresa, SecaoSumario } from "@/components/pdf/SecoesComuns";
 import { classeQuebraFixoNova, numerarCapitulos, numLabel } from "@/components/pdf/templates/shared";
-import { CHECKLIST_PERGUNTAS_PADRAO, algumaVisivel, perguntaOculta } from "@/lib/aet/checklist";
+import { CHECKLIST_PERGUNTAS_PADRAO, algumaVisivel, perguntaOculta, rotuloSelectOwas } from "@/lib/aet/checklist";
 import {
   apenasSetoresExistentes,
   consolidarPiorCaso,
@@ -88,15 +88,12 @@ export interface AetChecklistPerguntaLike { slug: string; secao?: string | null;
 // Labels padrão do checklist (fallback quando não há custom no banco). A lista
 // é a MESMA da tela (lib/aet/checklist) desde 30/09/2026 — antes era uma cópia
 // daqui, e três textos divergiam do que a tela mostrava.
-const CHECKLIST_PADRAO: AetChecklistPerguntaLike[] = [
-  ...CHECKLIST_PERGUNTAS_PADRAO,
-  // Estava FALTANDO aqui: `pergunta()` cai no slug quando nao acha o rotulo, e
-  // "trabalho_predominante" saia CRU no laudo, 1x por setor (17x no da
-  // NOVAPARECIDA). O rotulo e o mesmo de OWAS_SELECTS_PADRAO (useAet.ts) — este
-  // campo e um select do OWAS, nao uma pergunta do checklist, e por isso passou
-  // batido. E ele que a pergunta seguinte chama de "a resposta anterior".
-  { slug: "trabalho_predominante", secao: "Postura", label: "O trabalho executado durante aos chamados decorrentes do dia-dia, são realizados preponderantemente de qual forma?" },
-];
+//
+// "trabalho_predominante" NÃO entra aqui (04/11/2026): é um campo de seleção
+// do OWAS, configurado em `aet_owas_select_campos`. A cópia do rótulo que
+// morava aqui fazia o PDF ignorar o texto editado em Config. OWAS — agora sai
+// de `rotuloSelectOwas`, com o padrão do código como reserva.
+const CHECKLIST_PADRAO: AetChecklistPerguntaLike[] = CHECKLIST_PERGUNTAS_PADRAO;
 
 const SLUGS_PADRAO = new Set([
   "levantamento_acima_limite", "trabalho_predominante", "pausas_descanso",
@@ -145,6 +142,8 @@ export interface AetTemplateProps {
   capitulos: TextoPadraoCapitulo[];
   owasConfig: AetOwasCfg[];
   checklistPerguntas: AetChecklistPerguntaLike[];
+  /** Campos de seleção do checklist (aet_owas_select_campos). Vazio → padrão do código. */
+  owasSelects?: { slug: string; label: string }[];
   fatoresConfig: AetFatorConfigLike[];
   fatoresPerguntas: AetFatorPerguntaLike[];
   qpsRespostas: AetQpsRespostaLike[];
@@ -445,7 +444,7 @@ function BlocoOwas({ setor, owasConfig }: { setor: AetSetorLike; owasConfig: Aet
 }
 
 /** Checklist ergonômico de um setor (Postura, Tempo, Ritmo, Rodízios, Organização). */
-function BlocoChecklist({ setor, perguntas }: { setor: AetSetorLike; perguntas: AetChecklistPerguntaLike[] }) {
+function BlocoChecklist({ setor, perguntas, selects }: { setor: AetSetorLike; perguntas: AetChecklistPerguntaLike[]; selects: { slug: string; label: string }[] }) {
   const checklist = setor.checklist ?? {};
   const pergunta = (slug: string) =>
     perguntas.find((p) => p.slug === slug)?.label ?? CHECKLIST_PADRAO.find((p) => p.slug === slug)?.label ?? slug;
@@ -469,7 +468,7 @@ function BlocoChecklist({ setor, perguntas }: { setor: AetSetorLike; perguntas: 
         <p className="aet-chk-tit">Checklist Ergonômico</p>
         <CheckSep title="Postura" />
         {!oculta("levantamento_acima_limite") && <CheckRow label={pergunta("levantamento_acima_limite")} value={checklist.levantamento_acima_limite ?? ""} />}
-        <CheckSelect label={pergunta("trabalho_predominante")} value={checklist.trabalho_predominante ?? ""} />
+        <CheckSelect label={rotuloSelectOwas(selects, "trabalho_predominante")} value={checklist.trabalho_predominante ?? ""} />
         {!oculta("pausas_descanso") && <CheckRow label={pergunta("pausas_descanso")} value={checklist.pausas_descanso ?? ""} />}
         {!oculta("uso_cadeira") && <CheckRow label={pergunta("uso_cadeira")} value={checklist.uso_cadeira ?? ""} />}
         {!oculta("cadeira_adequada") && <CheckRow label={pergunta("cadeira_adequada")} value={checklist.cadeira_adequada ?? ""} />}
@@ -679,6 +678,7 @@ export default function AetTemplate({
   capitulos,
   owasConfig,
   checklistPerguntas,
+  owasSelects = [],
   fatoresConfig,
   fatoresPerguntas,
   qpsRespostas,
@@ -801,7 +801,7 @@ export default function AetTemplate({
             {comAnalise && (
               <div className="aet-analise" style={{ marginTop: 8 }}>
                 <BlocoOwas setor={s} owasConfig={owasConfig} />
-                <BlocoChecklist setor={s} perguntas={checklistPerguntas} />
+                <BlocoChecklist setor={s} perguntas={checklistPerguntas} selects={owasSelects} />
                 {/* Mesma ordem da prévia: checklist → fotos → parecer. */}
                 <BlocoFotos setor={s} />
                 <BlocoParecerRecom setor={s} />
