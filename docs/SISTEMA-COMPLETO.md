@@ -153,6 +153,23 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Correções da Gestão (0.3.227 + banco v319, aplicada em 04/11/2026), achadas na auditoria das dicas:**
+  - **Comentário:** o nível "ver e comentar" comenta (`nivelPodeComentar`). Excluir comentário continua só para quem edita.
+  - **Responsável pela lista e em massa:** cria o vínculo (`useSalvarVinculados` com `manterSeguidoresAtuais`); o texto `responsavel` segue espelhado pelo trigger. Nome sem usuário é recusado.
+    - **v319:** quem edita a lista vincula ou desvincula qualquer membro da Gestão (Admin ou `gestao_membros` ativo). Antes só o gestor vinculava outra pessoa.
+  - **Caixa de entrada:** a aprovação sem aprovador só aparece para gestor ou quem edita aquela lista, a mesma regra da v315.
+  - **Salvar a tarefa:** envia só os campos personalizados que mudaram, mesclados com o `campos` atual do banco.
+  - **Status pela lista:** usa a trava de dependências e grava o histórico, como a janela. O helper fica em `lib/gestao/alteracao-tarefa.ts`, testado.
+  - **Erros do banco:** os RAISE sem acento são traduzidos em `lib/errors.ts`.
+  - **Automações:** o rótulo virou "Notificar todos os vinculados (sino e e-mail)". Os números gravam ao sair do campo.
+  - **Modelos:** trocar o slug mostra quantas automações usam o código antigo.
+  - **Telas menores:**
+    - "Visível ao cliente" saiu da tela de campos;
+    - `Nome`/`AcoesBtn` do GestaoSidebar saíram do render;
+    - a etiqueta do modelo de tarefa entra também ao sair do campo;
+    - o nome da equipe exige 2 letras;
+    - o formulário sem responsável por e-mail grava `responsavel_padrao` nulo e a rota não usa nome antigo.
+  - **Fora:** arrastar um cartão no quadro agrupado por responsável ainda grava só o texto.
 - **Dicas nas configurações dos módulos, lotes 7.10b e 7.10c (0.3.226):** `lib/dicas/config.ts` ganhou Config. OWAS, Config. 13 Fatores e Biblioteca psicossocial da AEP; `lib/dicas/escala.ts` cobre a Configuração da Escala (Unidades, Supervisores, Feriados, Regras) e o Padrão semanal.
   - Nos 13 Fatores, as dicas dizem quando o valor só fica na tela: Perigos típicos, Possíveis danos e as colunas do Plano são gravados e nada os lê; Mín., Máx. e Nível PGR do Semáforo só saem no formulário em branco (a zona usa faixas fixas).
   - Ficam sem dica Perfis OWAS e os catálogos do Psicossocial (Agravos, Medidas, Ações do plano): só caixas com placeholder.

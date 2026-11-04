@@ -131,7 +131,8 @@ export default function EquipesTab({
             {editNome !== null ? (
               <>
                 <input autoFocus value={editNome} onChange={(e) => setEditNome(e.target.value)} className={`${inputCls} flex-1`} />
-                <button type="button" onClick={async () => { await salvar.mutateAsync({ id: equipe.id, nome: editNome, descricao: equipe.descricao, ativo: equipe.ativo }); setEditNome(null); }} className="rounded-md p-1 text-marca-primary hover:bg-marca-light"><Check className="size-4" /></button>
+                {/* Mesma regra de criar (mínimo 2 caracteres): renomear para vazio deixava a equipe sem nome. */}
+                <button type="button" disabled={editNome.trim().length < 2 || pendente} onClick={async () => { const nome = editNome.trim(); if (nome.length < 2) return; await salvar.mutateAsync({ id: equipe.id, nome, descricao: equipe.descricao, ativo: equipe.ativo }); setEditNome(null); }} title={editNome.trim().length < 2 ? "O nome precisa de pelo menos 2 caracteres" : "Salvar nome"} className="rounded-md p-1 text-marca-primary hover:bg-marca-light disabled:opacity-40"><Check className="size-4" /></button>
                 <button type="button" onClick={() => setEditNome(null)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100"><X className="size-4" /></button>
               </>
             ) : (

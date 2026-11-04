@@ -589,6 +589,11 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
+- **v319 — Gestão: quem edita a lista atribui outros membros (04/11/2026).** PENDENTE DE APLICAR: o Supabase estava fora do ar. Aplicar antes do merge do PR da 0.3.223.
+  - **`gestao_vincular`:** depois do piso `gestao_pode_editar_q`, quem não é gestor vincula a si mesmo ou qualquer membro da Gestão (`gestao_papel_de(alvo)` não nulo). O gestor continua vinculando qualquer e-mail.
+  - **`gestao_desvincular`:** basta o piso `gestao_pode_editar_q`.
+  - **Antes de aplicar:** conferir que o corpo atual no banco é o da v195.
+  - Rollback: `scripts/sql/v319_gestao_editor_atribui_outros_rollback.sql`, com os corpos da v195.
 - **v318 — Apreciação de Máquinas: título padrão nos laudos sem título (03/11/2026).**
   - **O que fez:** os 5 laudos existentes ficaram com `titulo` = 'Apreciação de Máquinas NR-12'.
   - **O que não fez:** a cidade não foi preenchida. Quatro laudos são de empresas sem município no cadastro, e o quinto já tinha cidade.

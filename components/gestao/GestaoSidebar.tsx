@@ -75,22 +75,6 @@ export default function GestaoSidebar({
     setEditando(`q:${id}`);
   }
 
-  const Nome = ({ chave, nome, onSalvar, className }: { chave: string; nome: string; onSalvar: (v: string) => void; className?: string }) =>
-    editando === chave ? (
-      <input
-        autoFocus
-        defaultValue={nome}
-        onBlur={(e) => { onSalvar(e.target.value); setEditando(null); }}
-        onKeyDown={(e) => { if (e.key === "Enter") { onSalvar((e.target as HTMLInputElement).value); setEditando(null); } if (e.key === "Escape") setEditando(null); }}
-        onClick={(e) => e.stopPropagation()}
-        className={inputDark}
-      />
-    ) : <span className={`min-w-0 flex-1 truncate ${className ?? ""}`}>{nome}</span>;
-
-  const AcoesBtn = ({ children }: { children: React.ReactNode }) => (
-    <div className="ml-auto flex shrink-0 items-center opacity-0 transition group-hover:opacity-100">{children}</div>
-  );
-
   return (
     <nav className="space-y-1 text-sm">
       {/* Meu Espaço — o espaço PESSOAL do usuário (UX-C1). Consolidou a antiga aba
@@ -144,7 +128,7 @@ export default function GestaoSidebar({
             <div className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent" onClick={() => toggle(`e:${esp.id}`)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(`e:${esp.id}`); } }} role="button" tabIndex={0}>
               {aberto(`e:${esp.id}`) ? <ChevronDown className="size-3.5 shrink-0 text-white/40" /> : <ChevronRight className="size-3.5 shrink-0 text-white/40" />}
               <Layers className="size-4 shrink-0" style={{ color: esp.cor }} />
-              <Nome chave={`e:${esp.id}`} nome={esp.nome} onSalvar={(v) => salvarEspaco.mutate({ id: esp.id, nome: v })} className="font-semibold text-white/90" />
+              <Nome editando={editando === `e:${esp.id}`} onFim={() => setEditando(null)} nome={esp.nome} onSalvar={(v) => salvarEspaco.mutate({ id: esp.id, nome: v })} className="font-semibold text-white/90" />
               {podeEditar && (
                 <AcoesBtn>
                   <button type="button" title="Nova pasta" onClick={(e) => { e.stopPropagation(); salvarPasta.mutate({ id_espaco: esp.id, nome: "Nova pasta" }); }} className="rounded p-0.5 text-white/40 hover:text-white"><Plus className="size-3.5" /></button>
@@ -176,7 +160,7 @@ export default function GestaoSidebar({
                       <div className="group flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-marca-accent" onClick={() => toggle(`p:${pa.id}`)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(`p:${pa.id}`); } }} role="button" tabIndex={0}>
                         {aberto(`p:${pa.id}`) ? <ChevronDown className="size-3.5 shrink-0 text-white/40" /> : <ChevronRight className="size-3.5 shrink-0 text-white/40" />}
                         <Folder className="size-4 shrink-0 text-white/45" />
-                        <Nome chave={`p:${pa.id}`} nome={pa.nome} onSalvar={(v) => salvarPasta.mutate({ id: pa.id, nome: v })} className="font-medium text-white/80" />
+                        <Nome editando={editando === `p:${pa.id}`} onFim={() => setEditando(null)} nome={pa.nome} onSalvar={(v) => salvarPasta.mutate({ id: pa.id, nome: v })} className="font-medium text-white/80" />
                         {podeEditar && (
                           <AcoesBtn>
                             <button type="button" title="Nova lista" onClick={(e) => { e.stopPropagation(); novaLista(esp.id, pa.id); }} className="rounded p-0.5 text-white/40 hover:text-white"><Plus className="size-3.5" /></button>
@@ -211,6 +195,27 @@ export default function GestaoSidebar({
       )}
     </nav>
   );
+}
+
+// Nome de espaço/pasta (texto ou campo de renomear). No nível do módulo de propósito: declarado
+// dentro do render, virava um componente NOVO a cada render — o input remontava (ex.: quando a
+// lista de espaços recarregava) e o que a pessoa estava digitando se perdia.
+function Nome({ editando, nome, onSalvar, onFim, className }: { editando: boolean; nome: string; onSalvar: (v: string) => void; onFim: () => void; className?: string }) {
+  return editando ? (
+    <input
+      autoFocus
+      defaultValue={nome}
+      onBlur={(e) => { onSalvar(e.target.value); onFim(); }}
+      onKeyDown={(e) => { if (e.key === "Enter") { onSalvar((e.target as HTMLInputElement).value); onFim(); } if (e.key === "Escape") onFim(); }}
+      onClick={(e) => e.stopPropagation()}
+      className={inputDark}
+    />
+  ) : <span className={`min-w-0 flex-1 truncate ${className ?? ""}`}>{nome}</span>;
+}
+
+// Mesmo motivo do Nome: fora do render para os botões não remontarem a cada render.
+function AcoesBtn({ children }: { children: React.ReactNode }) {
+  return <div className="ml-auto flex shrink-0 items-center opacity-0 transition group-hover:opacity-100">{children}</div>;
 }
 
 function ItemLista({ q, ativo, editando, onSelect, podeEditar, onRenomearStart, onRenomear, onExcluir }: {

@@ -605,24 +605,28 @@ export interface DepRef {
   tarefa: string;   // id da outra tarefa
 }
 
+/** Lê as dependências de uma tarefa (a mesma leitura do useDependencias). Exportada para a Lista
+ *  checar a trava de conclusão na hora de mudar o status, via queryClient.fetchQuery. */
+export async function lerDependencias(idTarefa: string): Promise<{ dependeDe: DepRef[]; bloqueia: DepRef[] }> {
+  const sb = createSupabaseBrowserClient();
+  const { data, error } = await sb
+    .from("gestao_dependencias")
+    .select("id,id_tarefa,depende_de")
+    .or(`id_tarefa.eq.${idTarefa},depende_de.eq.${idTarefa}`);
+  if (error) throw error;
+  const rows = (data ?? []) as unknown as GestaoDependencia[];
+  return {
+    dependeDe: rows.filter((r) => r.id_tarefa === idTarefa).map((r) => ({ id: r.id, tarefa: r.depende_de })),
+    bloqueia: rows.filter((r) => r.depende_de === idTarefa).map((r) => ({ id: r.id, tarefa: r.id_tarefa })),
+  };
+}
+
 /** Dependências de uma tarefa: "depende de" (pré-requisitos) e "bloqueia" (inverso). */
 export function useDependencias(idTarefa: string | null | undefined) {
   return useQuery({
     queryKey: ["gestao-dependencias", idTarefa],
     enabled: !!idTarefa,
-    queryFn: async (): Promise<{ dependeDe: DepRef[]; bloqueia: DepRef[] }> => {
-      const sb = createSupabaseBrowserClient();
-      const { data, error } = await sb
-        .from("gestao_dependencias")
-        .select("id,id_tarefa,depende_de")
-        .or(`id_tarefa.eq.${idTarefa},depende_de.eq.${idTarefa}`);
-      if (error) throw error;
-      const rows = (data ?? []) as unknown as GestaoDependencia[];
-      return {
-        dependeDe: rows.filter((r) => r.id_tarefa === idTarefa).map((r) => ({ id: r.id, tarefa: r.depende_de })),
-        bloqueia: rows.filter((r) => r.depende_de === idTarefa).map((r) => ({ id: r.id, tarefa: r.id_tarefa })),
-      };
-    },
+    queryFn: () => lerDependencias(idTarefa!),
   });
 }
 
@@ -651,7 +655,8 @@ export function useAddDependencia() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["gestao-dependencias"] }); qc.invalidateQueries({ queryKey: ["gestao-dependencias-todas"] }); },
     onError: (e) => {
       const err = e as { message?: string; code?: string };
-      toast.error(err.code === "23505" ? "Essa dependência já existe." : err.message || "Não foi possível adicionar a dependência.");
+      // mensagemErro traduz o RAISE sem acento da dependência circular (lib/errors.ts).
+      toast.error(err.code === "23505" ? "Essa dependência já existe." : mensagemErro(e, err.message || "Não foi possível adicionar a dependência."));
     },
   });
 }
@@ -780,7 +785,9 @@ export function useSalvarVinculados() {
     // v295: N responsáveis (antes 1). Quem é responsável não entra também como seguidor.
     // manterResponsaveisAtuais: com a lista de responsáveis VAZIA, preserva os que já estão no banco
     // (tarefa recém-criada no Meu Quadro nasce com o dono como responsável — v294 JCN).
-    mutationFn: async (p: { id_tarefa: string; responsaveisEmails: string[]; seguidoresEmails: string[]; manterResponsaveisAtuais?: boolean }) => {
+    // manterSeguidoresAtuais: quem só troca o responsável (lista e ação em massa) não conhece os
+    // seguidores da tarefa — preserva os do banco (menos quem virou responsável) em vez de apagá-los.
+    mutationFn: async (p: { id_tarefa: string; responsaveisEmails: string[]; seguidoresEmails: string[]; manterResponsaveisAtuais?: boolean; manterSeguidoresAtuais?: boolean }) => {
       const sb = createSupabaseBrowserClient();
       const rpc = (sb as unknown as {
         rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
@@ -805,6 +812,9 @@ export function useSalvarVinculados() {
       }
       if (p.manterResponsaveisAtuais && resps.length === 0) {
         for (const [k, v] of atual) if (v.tipo === "responsavel") desejado.set(k, v);
+      }
+      if (p.manterSeguidoresAtuais) {
+        for (const [k, v] of atual) if (v.tipo === "seguidor" && !resps.includes(v.email.toLowerCase())) desejado.set(k, v);
       }
 
       // Delta: remover (atuais − desejados), depois adicionar (desejados − atuais).
@@ -1504,7 +1514,11 @@ export function useSalvarTarefa() {
   const qc = useQueryClient();
   const email = useUserStore((s) => s.user?.email ?? null);
   return useMutation({
-    mutationFn: async (t: Partial<GestaoTarefa> & { id_quadro: string }) => {
+    // camposAlterados (edição): só as chaves de campo personalizado que a pessoa mudou. São mescladas
+    // sobre o `campos` ATUAL do banco — regravar o objeto inteiro carregado na abertura apagava o que
+    // uma automação escreveu nesse meio-tempo. Sem chaves alteradas, `campos` nem vai no update.
+    mutationFn: async (entrada: Partial<GestaoTarefa> & { id_quadro: string; camposAlterados?: Record<string, unknown> }) => {
+      const { camposAlterados, ...t } = entrada;
       const sb = createSupabaseBrowserClient();
       const now = new Date().toISOString();
       if (!t.id_tarefa) {
@@ -1540,6 +1554,12 @@ export function useSalvarTarefa() {
       // fonte de verdade e o trigger-espelho mantem o jsonb. Remove do patch p/ nao
       // sobrescrever o espelho com o estado (possivelmente defasado) carregado no cliente.
       delete (patch as Partial<GestaoTarefa>).subtarefas;
+      if (camposAlterados && Object.keys(camposAlterados).length > 0) {
+        const { data: atual, error: selErr } = await sb.from("gestao_tarefas").select("campos").eq("id_tarefa", id_tarefa).maybeSingle();
+        if (selErr) throw selErr;
+        const base = ((atual as { campos?: Record<string, unknown> | null } | null)?.campos ?? {}) as Record<string, unknown>;
+        patch.campos = { ...base, ...camposAlterados };
+      }
       const { error } = await sb
         .from("gestao_tarefas")
         .update({ ...patch, updated_at: now } as never)
@@ -2386,6 +2406,9 @@ export interface GestaoAprovacao {
   motivo: string | null;
   decidido_em: string | null;
   created_at: string;
+  /** Lista (quadro) da tarefa — null se a RLS não deixa ver a tarefa. Decide quem vê a aprovação SEM
+   *  aprovador na Caixa de entrada (o banco só deixa decidir gestor ou quem edita a lista — v315). */
+  id_quadro: string | null;
 }
 
 /** Aprovações PENDENTES visíveis ao usuário (RLS já limita: vê a tarefa OU é o aprovador).
@@ -2400,11 +2423,12 @@ export function useAprovacoesPendentes() {
       const sb = createSupabaseBrowserClient();
       const { data, error } = await sb
         .from("gestao_aprovacoes")
-        .select("id,id_tarefa,solicitado_por,aprovador_email,status,motivo,decidido_em,created_at")
+        .select("id,id_tarefa,solicitado_por,aprovador_email,status,motivo,decidido_em,created_at,tarefa:gestao_tarefas(id_quadro)")
         .eq("status", "pendente")
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as unknown as GestaoAprovacao[];
+      return ((data ?? []) as unknown as (Omit<GestaoAprovacao, "id_quadro"> & { tarefa: { id_quadro: string } | null })[])
+        .map(({ tarefa, ...a }) => ({ ...a, id_quadro: tarefa?.id_quadro ?? null }));
     },
   });
 }

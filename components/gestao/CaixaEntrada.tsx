@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Bell, UserPlus, ArrowRightLeft, MessageSquare, AtSign, Check, CheckCheck, CalendarClock, AlertTriangle, ShieldQuestion, X, ChevronDown, ChevronRight } from "lucide-react";
 import { PRIORIDADES, useAprovacoesPendentes, useDecidirAprovacao, type GestaoAprovacao, type GestaoNotificacao, type GestaoTarefa, type GestaoStatus, type GestaoQuadro } from "@/lib/hooks/useGestao";
 import { useUserStore } from "@/lib/store";
+import { useMeusNiveisQuadros, nivelPodeEditar } from "@/lib/hooks/useGestaoAcesso";
 
 function quando(iso: string): string {
   const d = new Date(iso);
@@ -33,7 +34,10 @@ export default function CaixaEntrada({
   onAbrirNotif,
   onMarcarLida,
   onAbrirTarefa,
+  souGestor,
 }: {
+  /** Owner/admin da Gestão: decide qualquer aprovação (inclusive as sem aprovador). */
+  souGestor: boolean;
   notificacoes: GestaoNotificacao[];
   tarefas: GestaoTarefa[];
   quadros: GestaoQuadro[];
@@ -52,12 +56,21 @@ export default function CaixaEntrada({
   const meuEmail = useUserStore((s) => s.user?.email ?? null);
   const { data: aprovacoes = [] } = useAprovacoesPendentes();
   const tituloTarefa = useMemo(() => new Map(tarefas.map((t) => [t.id_tarefa, t.titulo])), [tarefas]);
-  // Mostra as pendências que ESTE usuário decide: designadas a ele ou sem aprovador fixo
-  // (gestor decide as sem dono). As demais visíveis (só por ver a tarefa) não poluem a caixa.
+  // Mostra as pendências que ESTE usuário decide: designadas a ele, ou sem aprovador fixo quando ele
+  // PODE decidir — a mesma regra do gestao_decidir_aprovacao (v315): gestor (owner/admin) ou quem
+  // edita a lista da tarefa. Antes as sem aprovador apareciam para todos e o banco recusava a decisão.
+  const idsQuadrosSemAprovador = useMemo(
+    () => [...new Set(aprovacoes.filter((a) => !a.aprovador_email && a.id_quadro).map((a) => a.id_quadro!))].sort(),
+    [aprovacoes],
+  );
+  const niveis = useMeusNiveisQuadros(idsQuadrosSemAprovador, !souGestor);
   const pendencias = useMemo(() => {
     const e = (meuEmail ?? "").toLowerCase();
-    return aprovacoes.filter((a) => !a.aprovador_email || a.aprovador_email.toLowerCase() === e);
-  }, [aprovacoes, meuEmail]);
+    return aprovacoes.filter((a) => {
+      if (a.aprovador_email) return a.aprovador_email.toLowerCase() === e;
+      return souGestor || (!!a.id_quadro && nivelPodeEditar(niveis.get(a.id_quadro)));
+    });
+  }, [aprovacoes, meuEmail, souGestor, niveis]);
 
   const atencao = useMemo(() => {
     return tarefas

@@ -200,8 +200,10 @@ export async function POST(req: NextRequest) {
     descricao,
     status,
     prioridade,
-    // Resolvido: deixa `responsavel` ao trigger-espelho (a partir do vínculo). Fallback: nome-espelho.
-    responsavel: responsavelEmailResolvido ? null : f.responsavel_padrao,
+    // Sempre null: com e-mail resolvido, o trigger-espelho preenche a partir do vínculo; sem e-mail
+    // (ou usuário inativo), o nome antigo `responsavel_padrao` virava um responsável só de texto, sem
+    // vínculo — ninguém era avisado nem via na agenda. Melhor a tarefa entrar sem responsável.
+    responsavel: null,
     prazo,
     data_inicio: null,
     ordem: 0,

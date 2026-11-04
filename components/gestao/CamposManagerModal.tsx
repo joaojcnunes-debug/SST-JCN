@@ -82,10 +82,8 @@ export default function CamposManagerModal({
                 <MultiChipInput value={c.opcoes} onChange={(v) => salvar.mutate({ id: c.id, id_quadro: idQuadro, opcoes: v })} placeholder="Adicionar opção…" ro={!podeEditar} />
               </div>
             )}
-            <label className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-gray-500">
-              <input type="checkbox" disabled={!podeEditar} checked={c.visivel_cliente} onChange={(e) => salvar.mutate({ id: c.id, id_quadro: idQuadro, visivel_cliente: e.target.checked })} className="size-3.5 rounded accent-marca-primary" />
-              Visível ao cliente (Portal)
-            </label>
+            {/* "Visível ao cliente (Portal)" saiu da tela: o Portal não lê esses campos, então a caixinha
+                prometia algo que não acontecia. A coluna visivel_cliente continua no banco. */}
           </div>
         ))}
         {podeEditar && (

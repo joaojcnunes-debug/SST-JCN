@@ -92,7 +92,10 @@ export default function FormulariosManagerModal({
 
   function salvarEdicao() {
     if (!editId || !draft) return;
-    salvar.mutate({ id: editId, id_quadro: quadroEdicao, ...draft }, {
+    // Sem responsável por e-mail, o nome antigo (responsavel_padrao) sai: a rota pública o gravava como
+    // texto na tarefa, um "responsável" sem vínculo — ninguém era avisado nem via na agenda.
+    const responsavel_padrao = draft.responsavel_email ? draft.responsavel_padrao : null;
+    salvar.mutate({ id: editId, id_quadro: quadroEdicao, ...draft, responsavel_padrao }, {
       onSuccess: () => { toast.success("Formulário salvo"); setEditId(null); setDraft(null); },
     });
   }

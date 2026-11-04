@@ -24,6 +24,7 @@ function quando(iso: string): string {
 export default function TarefaSidebar({
   idTarefa,
   ro,
+  podeComentar = !ro,
   statuses,
   novoComentario,
   setNovoComentario,
@@ -33,6 +34,8 @@ export default function TarefaSidebar({
 }: {
   idTarefa: string;
   ro: boolean;
+  /** Caixa de comentário: também para o nível "ver e comentar", que não edita (ro). Excluir segue em !ro. */
+  podeComentar?: boolean;
   statuses: GestaoStatus[];
   novoComentario: string;
   setNovoComentario: (v: string) => void;
@@ -119,7 +122,7 @@ export default function TarefaSidebar({
           })}
         </div>
 
-        {!ro && (
+        {podeComentar && (
           <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2">
             <input
               value={novoComentario}

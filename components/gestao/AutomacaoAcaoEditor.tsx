@@ -25,7 +25,7 @@ export const ACOES: { value: string; label: string; grupo: string }[] = [
   { value: "adicionar_vinculados", label: "Adicionar vinculados (responsável/seguidor)", grupo: "Pessoas" },
   { value: "atribuir_rodizio", label: "Atribuir em rodízio / menor carga", grupo: "Pessoas" },
   { value: "solicitar_aprovacao", label: "Solicitar aprovação", grupo: "Pessoas" },
-  { value: "notificar", label: "Notificar todos os vinculados (sino)", grupo: "Comunicação" },
+  { value: "notificar", label: "Notificar todos os vinculados (sino e e-mail)", grupo: "Comunicação" },
   { value: "enviar_email", label: "Enviar e-mail", grupo: "Comunicação" },
   { value: "comentar", label: "Comentar na tarefa", grupo: "Comunicação" },
   { value: "mover_tarefa_quadro", label: "Mover tarefa para outro quadro", grupo: "Outros quadros" },
