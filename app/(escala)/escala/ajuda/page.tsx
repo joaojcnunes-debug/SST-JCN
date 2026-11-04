@@ -59,7 +59,8 @@ function ConteudoAjudaEscalaPage() {
               </li>
               <li>
                 <strong>Configuração → Supervisores</strong>: escolha a conta do
-                painel de cada um.
+                painel de cada um. Também dá pelo botão{" "}
+                <strong>Adicionar supervisor</strong> do Padrão Semanal.
               </li>
               <li>
                 <strong>Configuração → Feriados</strong>: os do ano, incluindo os

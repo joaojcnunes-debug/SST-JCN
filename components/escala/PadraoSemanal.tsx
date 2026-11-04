@@ -4,13 +4,15 @@ import Dica from "@/components/ui/Dica";
 import { DICAS_ESCALA_PADRAO } from "@/lib/dicas/escala";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarRange, Loader2, Trash2, Users } from "lucide-react";
+import { CalendarRange, Loader2, Trash2, UserPlus, Users } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import SupervisorModal, { novoSupervisor } from "./SupervisorModal";
 import { cn } from "@/lib/utils";
 import {
   usePodeEditarEscala,
   useEscalaSupervisores,
   useUnidadesDaEscala,
+  type SupervisorForm,
 } from "@/lib/hooks/useEscalaCadastro";
 import {
   indexarPadrao,
@@ -63,6 +65,10 @@ export default function PadraoSemanal() {
   const [emData, setEmData] = useState(hojeIso);
 
   const { data: supervisores = [], isLoading: carregandoSup } = useEscalaSupervisores(true);
+  // Todos (com inativos): o modal de "Adicionar supervisor" precisa deles para tirar da
+  // lista as contas já usadas, continuar a ordem e oferecer "Trazer de volta" (0.3.232).
+  const { data: todosSupervisores = [] } = useEscalaSupervisores(false);
+  const [novo, setNovo] = useState<SupervisorForm | null>(null);
   const { data: unidades = [] } = useUnidadesDaEscala(true);
   // Para os nomes: padrão gravado numa unidade tirada da escala mostra o nome com
   // "(inativa)", não "unidade removida" (0.3.231). O editor continua só com as ativas.
@@ -137,13 +143,31 @@ export default function PadraoSemanal() {
         <Users className="mx-auto mb-2 size-7 text-gray-300" />
         <p className="font-medium text-gray-700">Nenhum supervisor ativo</p>
         <p className="mx-auto mt-1 max-w-md text-sm text-gray-500">
-          O padrão semanal se monta sobre a equipe. Cadastre os supervisores primeiro — é a
+          O padrão semanal se monta sobre a equipe. Adicione os supervisores aqui ou na
           aba Supervisores da{" "}
           <Link href="/escala/configuracao" className="font-medium text-[#0E7490] underline">
             Configuração
           </Link>
           .
         </p>
+        <div className="mt-4 flex justify-center">
+          {podeEditar && (
+            <button
+              type="button"
+              onClick={() => setNovo(novoSupervisor(todosSupervisores))}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#0891B2] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#0E7490]"
+            >
+              <UserPlus className="size-4" />
+              Adicionar supervisor
+            </button>
+          )}
+        </div>
+        <SupervisorModal
+          editando={novo}
+          onMudar={setNovo}
+          supervisores={todosSupervisores}
+          oferecerReativar
+        />
       </div>
     );
   }
@@ -155,15 +179,27 @@ export default function PadraoSemanal() {
           Onde cada supervisor fica em cada dia útil. É daqui que a grade mensal se monta.
           {podeEditar && " Clique numa célula para definir."}
         </p>
-        <label className="flex items-center gap-2 text-xs text-gray-600">
-          Padrão vigente em
-          <input
-            type="date"
-            value={emData}
-            onChange={(e) => setEmData(e.target.value || hojeIso())}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
-          />
-        </label>
+        <div className="flex flex-wrap items-center gap-3">
+          {podeEditar && (
+            <button
+              type="button"
+              onClick={() => setNovo(novoSupervisor(todosSupervisores))}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#0891B2] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[#0E7490]"
+            >
+              <UserPlus className="size-4" />
+              Adicionar supervisor
+            </button>
+          )}
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            Padrão vigente em
+            <input
+              type="date"
+              value={emData}
+              onChange={(e) => setEmData(e.target.value || hojeIso())}
+              className="rounded border border-gray-300 px-2 py-1 text-sm"
+            />
+          </label>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
@@ -277,6 +313,13 @@ export default function PadraoSemanal() {
         Salvar não reescreve o passado: o padrão anterior é encerrado na véspera da nova
         vigência, e os meses já montados continuam explicáveis pelo padrão que valia neles.
       </p>
+
+      <SupervisorModal
+        editando={novo}
+        onMudar={setNovo}
+        supervisores={todosSupervisores}
+        oferecerReativar
+      />
 
       {aberta && (
         <EditorCelula
