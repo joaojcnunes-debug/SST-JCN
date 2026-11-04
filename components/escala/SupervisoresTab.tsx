@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_ESCALA_SUPERVISOR } from "@/lib/dicas/escala";
 import { useMemo, useState } from "react";
 import { Loader2, Pencil, Plus, ToggleLeft, ToggleRight, Users } from "lucide-react";
 import Badge from "@/components/ui/Badge";
@@ -334,7 +336,7 @@ export default function SupervisoresTab() {
                   htmlFor="escala-ordem-supervisor"
                   className="mb-1 block text-xs font-semibold text-gray-600"
                 >
-                  Ordem na grade
+                  <Dica texto={DICAS_ESCALA_SUPERVISOR.ordem}>Ordem na grade</Dica>
                 </label>
                 <input
                   id="escala-ordem-supervisor"
@@ -353,7 +355,7 @@ export default function SupervisoresTab() {
                   onChange={(e) => setEditando({ ...editando, ativo: e.target.checked })}
                   className="size-4 accent-[#0891B2]"
                 />
-                Ativo na escala
+                <Dica texto={DICAS_ESCALA_SUPERVISOR.ativo}>Ativo na escala</Dica>
               </label>
             </div>
 

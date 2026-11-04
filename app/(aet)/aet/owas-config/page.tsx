@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_OWAS_CONFIG } from "@/lib/dicas/config";
 import { useEffect, useRef, useState } from "react";
 import { Image as ImageIcon, Loader2, Plus, RefreshCw, RotateCcw, Save, Trash2, X } from "lucide-react";
 import toast from "react-hot-toast";
@@ -340,7 +342,7 @@ function CategoriaCard({
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         {/* Opções */}
         <div>
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">Opções</p>
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500"><Dica texto={DICAS_OWAS_CONFIG.opcoes}>Opções</Dica></p>
           <div className="space-y-1.5">
             {opcoes.map((opt, idx) => (
               <div key={idx} className="flex items-center gap-2">
@@ -385,7 +387,7 @@ function CategoriaCard({
         {/* Imagem */}
         <div>
           <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">
-            Imagem de Referência
+            <Dica texto={DICAS_OWAS_CONFIG.imagem}>Imagem de Referência</Dica>
           </p>
           <div className="space-y-2">
             <StorageImg
@@ -485,7 +487,7 @@ function SelectCampoCard({ campo }: { campo: AetOwasSelectCampo }) {
         </button>
       </div>
 
-      <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500">Opções</p>
+      <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-gray-500"><Dica texto={DICAS_OWAS_CONFIG.opcoes_lista}>Opções</Dica></p>
       <div className="space-y-1.5">
         {opcoes.map((opt, idx) => (
           <div key={idx} className="flex items-center gap-2">

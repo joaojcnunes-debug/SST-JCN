@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-configuracoes-modulos",
+    data: "2026-11-04",
+    tipo: "melhoria",
+    titulo: "Dicas nas configurações da AET, na Biblioteca da AEP e na Escala",
+    texto:
+      "Config. OWAS, Config. 13 Fatores, a Biblioteca psicossocial da AEP e a Configuração da Escala (unidades, " +
+      "supervisores, feriados e regras) ganharam a dica de como preencher cada campo.",
+    onde: "AET, AEP e Escala",
+    versoes: ["0.3.226"],
+  },
+  {
     id: "dicas-configuracoes-sistema",
     data: "2026-11-04",
     tipo: "melhoria",

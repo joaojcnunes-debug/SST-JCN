@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_ESCALA_REGRA } from "@/lib/dicas/escala";
 import { useState } from "react";
 import { Loader2, Pencil, Plus, ToggleLeft, ToggleRight } from "lucide-react";
 import Badge from "@/components/ui/Badge";
@@ -236,7 +238,7 @@ export default function RegrasTab() {
         {editando && (
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-gray-600">Tipo</label>
+              <label className="mb-1 block text-xs font-semibold text-gray-600"><Dica texto={DICAS_ESCALA_REGRA.tipo}>Tipo</Dica></label>
               <select
                 value={editando.codigo}
                 onChange={(e) => {
@@ -269,7 +271,7 @@ export default function RegrasTab() {
 
             <div>
               <label className="mb-1 block text-xs font-semibold text-gray-600">
-                Como aparece na conferência
+                <Dica texto={DICAS_ESCALA_REGRA.descricao}>Como aparece na conferência</Dica>
               </label>
               <input
                 type="text"
@@ -335,7 +337,7 @@ function ParametrosDaRegra({
       return (
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={rotulo}>Mínimo por dia</label>
+            <label className={rotulo}><Dica texto={DICAS_ESCALA_REGRA.minimo}>Mínimo por dia</Dica></label>
             <input
               type="number"
               min={1}
@@ -345,7 +347,7 @@ function ParametrosDaRegra({
             />
           </div>
           <div>
-            <label className={rotulo}>Contar</label>
+            <label className={rotulo}><Dica texto={DICAS_ESCALA_REGRA.contar}>Contar</Dica></label>
             <select
               value={typeof p.considerar === "string" ? p.considerar : "qualquer"}
               onChange={(e) => onMudar({ ...p, considerar: e.target.value })}
@@ -389,7 +391,7 @@ function ParametrosDaRegra({
       return (
         <div className="space-y-2">
           <div>
-            <label className={rotulo}>Supervisor</label>
+            <label className={rotulo}><Dica texto={DICAS_ESCALA_REGRA.supervisor}>Supervisor</Dica></label>
             <select
               value={typeof p.id_supervisor === "string" ? p.id_supervisor : ""}
               onChange={(e) => onMudar({ ...p, id_supervisor: e.target.value || null })}
@@ -467,7 +469,7 @@ function ParametrosDaRegra({
             ))}
           </div>
           <div>
-            <label className={rotulo}>Em pelo menos quantos dias do mês</label>
+            <label className={rotulo}><Dica texto={DICAS_ESCALA_REGRA.dias_juntos}>Em pelo menos quantos dias do mês</Dica></label>
             <input
               type="number"
               min={1}

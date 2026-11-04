@@ -153,6 +153,10 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Dicas nas configurações dos módulos, lotes 7.10b e 7.10c (0.3.226):** `lib/dicas/config.ts` ganhou Config. OWAS, Config. 13 Fatores e Biblioteca psicossocial da AEP; `lib/dicas/escala.ts` cobre a Configuração da Escala (Unidades, Supervisores, Feriados, Regras) e o Padrão semanal.
+  - Nos 13 Fatores, as dicas dizem quando o valor só fica na tela: Perigos típicos, Possíveis danos e as colunas do Plano são gravados e nada os lê; Mín., Máx. e Nível PGR do Semáforo só saem no formulário em branco (a zona usa faixas fixas).
+  - Ficam sem dica Perfis OWAS e os catálogos do Psicossocial (Agravos, Medidas, Ações do plano): só caixas com placeholder.
+  - Achados para o PR de correções: salvar as perguntas QPS da AET renumera todas (as respostas são ligadas ao número); "Restaurar padrões" do checklist OWAS apaga as perguntas criadas na tela; o trabalho predominante editado na Config. OWAS não chega ao laudo nem ao PDF.
 - **Dicas nas Configurações, lote 7.10a (0.3.225):** `lib/dicas/config.ts` cobre Usuários, Funções, Tipos de risco, Catálogo e Triagem, Perguntas customizadas, Matrizes, Portal SST e o editor de capítulo do Texto padrão (orientação, início, posição e imagem de capa).
   - O `Field` de Usuários aceita `dica` e deixa o asterisco fora do sublinhado. Ficam sem dica os campos já explicados na tela (senha, função, perfil, unidades, assinatura, certificado, Listas, Logo) e os que só têm placeholder.
   - Os lotes 7.10b (configurações da AET e Biblioteca da AEP) e 7.10c (catálogos do Psicossocial e Escala) vêm depois.

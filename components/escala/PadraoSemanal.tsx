@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_ESCALA_PADRAO } from "@/lib/dicas/escala";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarRange, Loader2, Trash2, Users } from "lucide-react";
@@ -459,7 +461,7 @@ function EditorCelula({
           </div>
         ) : (
           <div>
-            <label className="mb-1 block text-xs font-semibold text-gray-600">Situação</label>
+            <label className="mb-1 block text-xs font-semibold text-gray-600"><Dica texto={DICAS_ESCALA_PADRAO.situacao}>Situação</Dica></label>
             <select
               value={situacao}
               onChange={(e) => setSituacao(e.target.value as SituacaoEscala)}

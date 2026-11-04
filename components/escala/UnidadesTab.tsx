@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_ESCALA_UNIDADE } from "@/lib/dicas/escala";
 import { useState } from "react";
 import { AlertTriangle, Building2, Check, Loader2, RotateCcw } from "lucide-react";
 import Badge from "@/components/ui/Badge";
@@ -168,8 +170,8 @@ export default function UnidadesTab() {
               <th className="px-3 py-2">Unidade</th>
               <th className="w-28 px-3 py-2">Cor</th>
               <th className="w-24 px-3 py-2">Ordem</th>
-              <th className="px-3 py-2">Município</th>
-              <th className="w-24 px-3 py-2">Na escala</th>
+              <th className="px-3 py-2"><Dica texto={DICAS_ESCALA_UNIDADE.municipio}>Município</Dica></th>
+              <th className="w-24 px-3 py-2"><Dica texto={DICAS_ESCALA_UNIDADE.na_escala}>Na escala</Dica></th>
               <th className="w-32 px-3 py-2" />
             </tr>
           </thead>
