@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "trava-config-por-endereco",
+    data: "2026-11-04",
+    tipo: "correcao",
+    titulo: "Telas de configuração fechadas também pelo endereço",
+    texto:
+      "As telas de configuração da AET, da AEP, dos Químicos e do QPS, que o menu já escondia de quem não " +
+      "supervisiona, agora não abrem nem digitando o endereço. A área Sistema só mostra a tela depois de confirmar " +
+      "o acesso.",
+    onde: "AET, AEP, Químicos, QPS e Sistema",
+    versoes: ["0.3.224"],
+  },
+  {
     id: "dicas-gestao-automacoes",
     data: "2026-11-04",
     tipo: "melhoria",

@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useUserStore } from "@/lib/store";
 import { vePresencaAuditoria } from "@/lib/hooks/useUsuario";
+import { AcessoVerificando } from "@/components/layout/TravaRota";
 
 const sections: NavSection[] = [
   {
@@ -45,6 +46,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const isAdmin = user?.perfil === "Admin";
   const gerencia = !isAdmin && vePresencaAuditoria(user);
   const rotaDeGerencia = ROTAS_GERENCIA.some((r) => pathname === r || pathname.startsWith(r + "/"));
+  const liberado = isAdmin || (gerencia && rotaDeGerencia);
 
   useEffect(() => {
     if (!user) return; // ainda carregando
@@ -67,7 +69,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       />
       <div className="casca-folha md:pl-[220px] print:pl-0">
         <ModuleTopbar />
-        <main className="px-4 py-6 md:px-6" style={{ viewTransitionName: "content" }}>{children}</main>
+        <main className="px-4 py-6 md:px-6" style={{ viewTransitionName: "content" }}>
+          {/* Antes o efeito redirecionava, mas a tela era desenhada assim mesmo
+              até o redirecionamento (e as consultas dela já disparavam). */}
+          {liberado ? children : <AcessoVerificando />}
+        </main>
       </div>
     </div>
   );

@@ -25,6 +25,8 @@ import { useRequireModule } from "@/lib/hooks/useRequireModule";
 import { useUserStore } from "@/lib/store";
 import { usePathname } from "next/navigation";
 import { ehSupervisor } from "@/lib/hooks/useUsuario";
+import TravaRota from "@/components/layout/TravaRota";
+import { ROTAS_CONFIG_QPS } from "@/lib/acesso/rotas-protegidas";
 
 export default function QuestionariosLayout({ children }: { children: ReactNode }) {
   useAuth();
@@ -167,7 +169,11 @@ export default function QuestionariosLayout({ children }: { children: ReactNode 
       />
       <div className="casca-folha md:pl-[220px] print:pl-0">
         <ModuleTopbar />
-        <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>{children}</main>
+        <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>
+          <TravaRota rotas={ROTAS_CONFIG_QPS} permitido={isAdmin} destino="/questionarios-psicossociais">
+            {children}
+          </TravaRota>
+        </main>
       </div>
     </div>
   );
