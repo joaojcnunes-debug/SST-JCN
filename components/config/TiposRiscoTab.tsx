@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_TIPO_RISCO } from "@/lib/dicas/config";
 import { useState } from "react";
 import {
   Plus,
@@ -268,7 +270,7 @@ function TipoModal({
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
-          <label className="text-sm font-medium text-gray-700">Nome *</label>
+          <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_TIPO_RISCO.nome}>Nome</Dica> *</label>
           <input
             type="text"
             value={nome}
@@ -281,7 +283,7 @@ function TipoModal({
 
         <div>
           <label className="text-sm font-medium text-gray-700">
-            Ícone (emoji)
+            <Dica texto={DICAS_TIPO_RISCO.icone}>Ícone (emoji)</Dica>
           </label>
           <input
             type="text"
@@ -312,7 +314,7 @@ function TipoModal({
 
         <div>
           <label className="text-sm font-medium text-gray-700">
-            Ordem (menor = primeiro)
+            <Dica texto={DICAS_TIPO_RISCO.ordem}>Ordem (menor = primeiro)</Dica>
           </label>
           <input
             type="number"

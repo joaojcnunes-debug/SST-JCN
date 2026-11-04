@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_PERGUNTA } from "@/lib/dicas/config";
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import toast from "react-hot-toast";
@@ -311,7 +313,7 @@ function PerguntaModal({
             </p>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">Tipo</label>
+            <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_PERGUNTA.tipo}>Tipo</Dica></label>
             <select
               value={form.input_type}
               onChange={(e) =>
@@ -331,7 +333,7 @@ function PerguntaModal({
 
         <div>
           <label className="text-sm font-medium text-gray-700">
-            Texto da pergunta *
+            <Dica texto={DICAS_PERGUNTA.texto_tipo}>Texto da pergunta</Dica> *
           </label>
           <input
             type="text"
@@ -346,7 +348,7 @@ function PerguntaModal({
         {form.input_type === "select" && (
           <div>
             <label className="text-sm font-medium text-gray-700">
-              Opções do dropdown
+              <Dica texto={DICAS_PERGUNTA.opcoes}>Opções do dropdown</Dica>
             </label>
             <div className="mt-1 space-y-1.5">
               {form.opcoes.map((opt, i) => (
@@ -387,10 +389,10 @@ function PerguntaModal({
               }
               className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
             />
-            Obrigatória
+            <Dica texto={DICAS_PERGUNTA.obrigatoria}>Obrigatória</Dica>
           </label>
           <div>
-            <label className="text-xs font-medium text-gray-700">Ordem</label>
+            <label className="text-xs font-medium text-gray-700"><Dica texto={DICAS_PERGUNTA.ordem_tipo}>Ordem</Dica></label>
             <input
               type="number"
               value={form.ordem}

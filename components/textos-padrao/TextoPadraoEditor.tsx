@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_CAPITULO } from "@/lib/dicas/config";
 import { useEffect, useRef, useState } from "react";
 import {
   Plus,
@@ -868,7 +870,7 @@ function CapituloCard({
       <div className="mb-2 flex flex-wrap items-center gap-3 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Orientação:
+            <Dica texto={DICAS_CAPITULO.orientacao}>Orientação:</Dica>
           </span>
           <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
             <button
@@ -906,7 +908,7 @@ function CapituloCard({
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-            Início:
+            <Dica texto={DICAS_CAPITULO.inicio}>Início:</Dica>
           </span>
           <div className="inline-flex overflow-hidden rounded-md border border-gray-300 bg-white">
             <button
@@ -968,7 +970,7 @@ function CapituloCard({
         {!ocultarPosicao && (
           <div className="w-full">
             <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-600">
-              📍 Posição no Relatório
+              📍 <Dica texto={DICAS_CAPITULO.posicao}>Posição no Relatório</Dica>
             </p>
             <PosicaoPdfStepper
               valor={(capitulo.posicao_pdf ?? "inicio") as PosicaoPdf}
@@ -985,7 +987,7 @@ function CapituloCard({
 
       <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-2">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
-          Imagem de fundo (capa):
+          <Dica texto={DICAS_CAPITULO.imagem}>Imagem de fundo (capa):</Dica>
         </span>
         {capitulo.bg_imagem_url ? (
           <>

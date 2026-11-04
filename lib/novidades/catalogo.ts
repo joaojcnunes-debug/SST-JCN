@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "dicas-configuracoes-sistema",
+    data: "2026-11-04",
+    tipo: "melhoria",
+    titulo: "Dicas de preenchimento nas Configurações do Sistema",
+    texto:
+      "Usuários, Funções, Tipos de risco, Catálogo, Perguntas, Matrizes, Portal SST e o editor de capítulo do " +
+      "Texto padrão ganharam a dica de como preencher cada campo: passe o mouse ou toque no nome do campo.",
+    onde: "Sistema",
+    versoes: ["0.3.225"],
+  },
+  {
     id: "trava-config-por-endereco",
     data: "2026-11-04",
     tipo: "correcao",

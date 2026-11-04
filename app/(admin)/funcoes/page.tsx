@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_FUNCAO } from "@/lib/dicas/config";
 import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -624,35 +626,35 @@ function EditarFuncaoModal({ funcao, proximaOrdem, onClose, onSaved }: {
       <form id="form-funcao" onSubmit={onSubmit} className="space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700">Nome</span>
+            <span className="mb-1 block font-medium text-gray-700"><Dica texto={DICAS_FUNCAO.nome}>Nome</Dica></span>
             <input value={form.funcao} onChange={(e) => setForm({ ...form, funcao: e.target.value })} disabled={!nova} className={cn(input, !nova && "bg-gray-50 text-gray-500")} placeholder="ex.: Técnico de campo" />
             {!nova && <span className="mt-1 block text-[11px] text-gray-500">O nome é a chave das contas; para renomear, crie outra função e mova as contas.</span>}
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700">Ordem na lista</span>
+            <span className="mb-1 block font-medium text-gray-700"><Dica texto={DICAS_FUNCAO.ordem}>Ordem na lista</Dica></span>
             <input type="number" value={form.ordem} onChange={(e) => setForm({ ...form, ordem: Number(e.target.value) })} className={input} />
           </label>
         </div>
         <label className="block text-sm">
-          <span className="mb-1 block font-medium text-gray-700">O que essa função faz</span>
+          <span className="mb-1 block font-medium text-gray-700"><Dica texto={DICAS_FUNCAO.descricao}>O que essa função faz</Dica></span>
           <input value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} className={input} placeholder="uma frase, para quem cria a conta entender" />
         </label>
         <div className="grid gap-3 md:grid-cols-3">
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700">Nível</span>
+            <span className="mb-1 block font-medium text-gray-700"><Dica texto={DICAS_FUNCAO.nivel}>Nível</Dica></span>
             <select value={form.nivel} onChange={(e) => setNivel(e.target.value as NivelUsuario)} className={input}>
               {NIVEIS.map((n) => <option key={n.value} value={n.value}>{n.label}</option>)}
             </select>
             <span className="mt-1 block text-[11px] text-gray-500">{NIVEIS.find((n) => n.value === form.nivel)?.ajuda}</span>
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700">Perfil (o que o banco aceita)</span>
+            <span className="mb-1 block font-medium text-gray-700"><Dica texto={DICAS_FUNCAO.perfil}>Perfil (o que o banco aceita)</Dica></span>
             <select value={form.perfil_padrao} onChange={(e) => setForm({ ...form, perfil_padrao: e.target.value as PerfilUsuario })} className={input}>
               {PERFIS.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700">Unidades da conta nova</span>
+            <span className="mb-1 block font-medium text-gray-700"><Dica texto={DICAS_FUNCAO.unidades}>Unidades da conta nova</Dica></span>
             <select value={form.unidades_padrao} onChange={(e) => setForm({ ...form, unidades_padrao: e.target.value as FuncaoPainel["unidades_padrao"] })} className={input}>
               <option value="da_base">as da base (escolhe em Usuários)</option>
               <option value="todas">todas as unidades</option>
@@ -661,20 +663,20 @@ function EditarFuncaoModal({ funcao, proximaOrdem, onClose, onSaved }: {
         </div>
         <label className="inline-flex items-center gap-2 text-sm">
           <input type="checkbox" checked={form.ve_presenca_auditoria === true} onChange={(e) => setForm({ ...form, ve_presenca_auditoria: e.target.checked })} className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30" />
-          <span className="text-gray-700">vê Sistema › Presença e Auditoria (só leitura; Admin sempre vê)</span>
+          <span className="text-gray-700"><Dica texto={DICAS_FUNCAO.presenca}>vê Sistema › Presença e Auditoria</Dica> (só leitura; Admin sempre vê)</span>
         </label>
         {form.perfil_padrao !== "Admin" && (
           <div className="flex flex-wrap gap-4 text-sm">
             {([["pode_criar_padrao", "pode criar"], ["pode_editar_padrao", "pode editar"], ["pode_excluir_padrao", "pode excluir laudo inteiro"]] as const).map(([k, rot]) => (
               <label key={k} className="inline-flex items-center gap-2">
                 <input type="checkbox" checked={form[k] === true} onChange={(e) => setForm({ ...form, [k]: e.target.checked })} className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30" />
-                <span className="text-gray-700">{rot}</span>
+                <span className="text-gray-700"><Dica texto={DICAS_FUNCAO.marcas}>{rot}</Dica></span>
               </label>
             ))}
           </div>
         )}
         <div>
-          <p className="mb-2 text-sm font-medium text-gray-700">Módulos do padrão ({form.modulos_padrao.length})</p>
+          <p className="mb-2 text-sm font-medium text-gray-700"><Dica texto={DICAS_FUNCAO.modulos}>Módulos do padrão</Dica> ({form.modulos_padrao.length})</p>
           <div className="grid gap-1.5 sm:grid-cols-2">
             {TODOS_MODULOS.map((m) => (
               <label key={m} className="inline-flex items-center gap-2">

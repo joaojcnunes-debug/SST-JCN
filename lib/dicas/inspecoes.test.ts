@@ -11,6 +11,7 @@ import * as DRPS from "./drps";
 import * as QPS from "./qps";
 import * as APR from "./apreciacao";
 import * as GESTAO from "./gestao";
+import * as CONFIG from "./config";
 
 for (const [nome, dicas] of [
   ["Risco", DICAS_RISCO],
@@ -23,6 +24,7 @@ for (const [nome, dicas] of [
   ...Object.entries(QPS),
   ...Object.entries(APR),
   ...Object.entries(GESTAO),
+  ...Object.entries(CONFIG),
 ] as const) {
   test(`dicas de ${nome}: todas preenchidas, curtas e terminando em ponto`, () => {
     for (const [campo, texto] of Object.entries(dicas)) {
