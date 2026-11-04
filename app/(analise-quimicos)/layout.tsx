@@ -20,6 +20,8 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import { useRequireModule } from "@/lib/hooks/useRequireModule";
 import { useUserStore } from "@/lib/store";
 import { ehSupervisor } from "@/lib/hooks/useUsuario";
+import TravaRota from "@/components/layout/TravaRota";
+import { ROTAS_CONFIG_QUIMICOS } from "@/lib/acesso/rotas-protegidas";
 
 const RESERVADAS = new Set(["nova", "historico", "texto-padrao", "ajuda", "base", "laudo"]);
 
@@ -84,7 +86,11 @@ export default function AnaliseQuimicosLayout({ children }: { children: ReactNod
       />
       <div className="casca-folha md:pl-[220px] print:pl-0">
         <ModuleTopbar />
-        <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>{children}</main>
+        <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>
+          <TravaRota rotas={ROTAS_CONFIG_QUIMICOS} permitido={ehSupervisor(user)} destino="/analise-quimicos">
+            {children}
+          </TravaRota>
+        </main>
       </div>
     </div>
   );

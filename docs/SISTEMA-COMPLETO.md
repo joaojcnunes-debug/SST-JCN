@@ -433,6 +433,9 @@ A **Gestão (kanban)** não é um módulo de `modulos_permitidos`: o acesso vem 
 ## 4. Área administrativa (Sistema)
 
 Menu: Usuários, Funções, Configurações, PDFs Gerados, Lixeira, Auditoria, Presença. Admin vê tudo; quem tem `ve_presenca_auditoria` vê só Presença e Auditoria.
+- **Trava por endereço (0.3.224):** o layout só desenha a tela para Admin (ou para a gerência em Presença e Auditoria). Enquanto o usuário carrega, e para quem não tem acesso, aparece "Verificando acesso" até o redirecionamento. Antes, a tela era desenhada e as consultas dela disparavam até o redirecionamento.
+- **Configuração dos módulos (0.3.224):** `components/layout/TravaRota.tsx` com as listas de `lib/acesso/rotas-protegidas.ts` fecha por endereço, para quem não supervisiona, as telas que o menu já escondia: AET (Texto padrão, Config. OWAS, Perfis OWAS, Config. 13 Fatores), AEP (Texto padrão), Químicos (Base de referência) e QPS (Tipos e Perguntas, Metodologia, Texto padrão). Quem abre pelo endereço recebe o aviso e volta à raiz do módulo.
+  - Ficaram como estão as telas de configuração que o menu mostra a todos (Texto padrão de Químicos, Psicossocial, Conformidade, Não Conformidade e Apreciação; catálogos do Psicossocial).
 
 ### 4.1 Usuários (`/usuarios`)
 
