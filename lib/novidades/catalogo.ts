@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "escala-adicionar-supervisor-no-padrao",
+    data: "2026-11-04",
+    tipo: "melhoria",
+    titulo: "Adicionar supervisor direto no Padrão Semanal",
+    texto:
+      "O Padrão Semanal ganhou o botão \"Adicionar supervisor\". Ele abre o mesmo cadastro da Configuração: você " +
+      "escolhe a conta do painel e a pessoa entra como nova linha do quadro. No mesmo botão dá para trazer de volta " +
+      "quem tinha sido inativado.",
+    onde: "Escala › Padrão semanal",
+    impacto: "Quem já está no quadro continua igual.",
+    versoes: ["0.3.232"],
+  },
+  {
     id: "correcoes-config-psicossocial-escala",
     data: "2026-11-04",
     tipo: "correcao",
