@@ -1,5 +1,7 @@
 "use client";
 
+import { mensagemErro } from "@/lib/errors";
+import { ROTULO_PERFIL } from "@/lib/supabase/types";
 import Dica from "@/components/ui/Dica";
 import { DICAS_FUNCAO } from "@/lib/dicas/config";
 import { useMemo, useState, type FormEvent } from "react";
@@ -31,15 +33,15 @@ import {
  * função — é o botão para "mudança repentina": trocou a função, aplica, pronto.
  *
  * O que esta tela NÃO faz de propósito: mexer nos módulos de uma conta
- * individualmente (isso continua em Usuários) e mudar quem é Admin de sistema
- * (perfil Admin só pela tela de Usuários, com senha de Admin).
+ * individualmente (isso continua em Usuários). Atenção: uma função com perfil padrão Admin
+ * dá perfil Admin às contas ao aplicar o padrão (e o perfil Admin abre a área Sistema).
  */
 
 const NIVEIS: { value: NivelUsuario; label: string; ajuda: string }[] = [
   { value: "Consulta", label: "Consulta", ajuda: "lê; elabora documento no SGG" },
   { value: "Operacao", label: "Operação", ajuda: "cria e edita no módulo" },
   { value: "Aprovacao", label: "Aprovação", ajuda: "+ reabre elaboração de outro, troca responsável, configura o módulo, assina" },
-  { value: "Admin", label: "Admin", ajuda: "+ administra o sistema (usuários, configurações, auditoria)" },
+  { value: "Admin", label: "Admin", ajuda: "+ tudo nos módulos; a área Sistema (usuários, configurações) exige também o perfil Admin" },
 ];
 
 const PERFIS: PerfilUsuario[] = ["Visualizador", "Tecnico", "Admin"];
@@ -170,7 +172,7 @@ function useContasComFuncao() {
 }
 
 /** O que "aplicar padrão" grava numa conta. Unidades: só quando o padrão é "todas" e a conta não é Admin. */
-function padraoParaConta(f: FuncaoPainel, u: UsuarioFuncao, todasUnidades: string[]) {
+function padraoParaConta(f: FuncaoPainel, todasUnidades: string[]) {
   const perfil = f.perfil_padrao;
   const patch: Record<string, unknown> = {
     funcao: f.funcao,
@@ -214,15 +216,22 @@ export default function FuncoesPage() {
 
   const aplicarPadrao = useMutation({
     mutationFn: async ({ funcao, alvo }: { funcao: FuncaoPainel; alvo: UsuarioFuncao[] }) => {
+      // Um UPDATE só para todas as contas (0.3.229): conta por conta, uma falha no meio
+      // deixava parte das contas já alterada. O padrão é o mesmo para todas, então cabe
+      // numa instrução — ou grava tudo, ou nada.
+      if (alvo.length === 0) return 0;
       const supabase = createSupabaseBrowserClient();
-      for (const u of alvo) {
-        const { error } = await supabase
-          .from("usuarios")
-          .update(padraoParaConta(funcao, u, todasUnidades) as never)
-          .eq("id_usuario", u.id_usuario);
-        if (error) throw new Error(`${u.nome}: ${error.message}`);
+      const { data, error } = await supabase
+        .from("usuarios")
+        .update(padraoParaConta(funcao, todasUnidades) as never)
+        .in("id_usuario", alvo.map((u) => u.id_usuario))
+        .select("id_usuario");
+      if (error) throw new Error(mensagemErro(error, "Não foi possível aplicar o padrão."));
+      const gravadas = (data ?? []).length;
+      if (gravadas !== alvo.length) {
+        throw new Error(`O padrão foi aplicado a ${gravadas} de ${alvo.length} contas. Confira a lista e tente de novo.`);
       }
-      return alvo.length;
+      return gravadas;
     },
     onSuccess: (n) => { invalidar(); setAplicar(null); toast.success(n === 1 ? "Padrão aplicado à conta" : `Padrão aplicado a ${n} contas`); },
     onError: (e: Error) => toast.error(e.message),
@@ -529,7 +538,7 @@ function LinhaConta({ conta, funcoes, padrao, onMover, onAplicar }: {
         <span className={cn("font-medium text-gray-900", !conta.ativo_sistema && "line-through opacity-60")}>{conta.nome}</span>
         <span className="ml-2 text-xs text-gray-500">{conta.cargo ?? "—"}</span>
         <div className="mt-0.5 flex flex-wrap gap-1 text-[11px]">
-          <span className={cn("rounded px-1.5 py-0.5", divergePerfil ? "bg-amber-50 text-amber-800" : "bg-gray-100 text-gray-600")}>{conta.perfil}</span>
+          <span className={cn("rounded px-1.5 py-0.5", divergePerfil ? "bg-amber-50 text-amber-800" : "bg-gray-100 text-gray-600")}>{ROTULO_PERFIL[conta.perfil] ?? conta.perfil}</span>
           <span className={cn("rounded px-1.5 py-0.5", divergeNivel ? "bg-amber-50 text-amber-800" : "bg-gray-100 text-gray-600")}>{conta.nivel ?? "sem nível"}</span>
           <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600">{mods.length} módulos</span>
           {foraDoPadrao.length > 0 && <span className="rounded bg-blue-50 px-1.5 py-0.5 text-blue-700" title={foraDoPadrao.join(", ")}>+{foraDoPadrao.length} além do padrão</span>}
@@ -650,7 +659,7 @@ function EditarFuncaoModal({ funcao, proximaOrdem, onClose, onSaved }: {
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-gray-700"><Dica texto={DICAS_FUNCAO.perfil}>Perfil (o que o banco aceita)</Dica></span>
             <select value={form.perfil_padrao} onChange={(e) => setForm({ ...form, perfil_padrao: e.target.value as PerfilUsuario })} className={input}>
-              {PERFIS.map((p) => <option key={p} value={p}>{p}</option>)}
+              {PERFIS.map((p) => <option key={p} value={p}>{ROTULO_PERFIL[p]}</option>)}
             </select>
           </label>
           <label className="block text-sm">

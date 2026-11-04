@@ -231,7 +231,7 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
         </p>
         {lista.length === 0 ? (
           <p className="rounded border border-dashed border-gray-300 bg-white px-2 py-1.5 text-[11px] text-gray-500">
-            Nenhum modelo vinculado ainda. Use o botão abaixo pra criar um.
+            Nenhum modelo vinculado ainda. Use o botão abaixo para criar um.
           </p>
         ) : (
           <ul className="space-y-1.5">
@@ -318,7 +318,7 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
           </h3>
           <p className="text-[11px] text-gray-600">
             Cada triagem é uma pergunta. Os riscos/modelos vinculados aparecem
-            dentro dela (expanda pra ver). No formulário do risco, escolher
+            dentro dela (abra para ver). No formulário do risco, escolher
             uma triagem mostra esses modelos como checkboxes.
           </p>
         </div>
@@ -437,7 +437,7 @@ export default function CatalogoTipoPanel({ idTipo }: { idTipo: string }) {
       <ConfirmDialog
         open={!!confirmExclusao}
         title="Remover modelo?"
-        description={`"${confirmExclusao?.agente}" e todos os seus itens/perguntas serão removidos permanentemente. Riscos antigos que apontam pra esse modelo perdem a referência (mas não são apagados).`}
+        description={`"${confirmExclusao?.agente}" e todos os seus itens/perguntas serão removidos permanentemente. Riscos antigos que apontam para esse modelo perdem a referência (mas não são apagados).`}
         variant="danger"
         loading={del.isPending}
         onConfirm={() =>

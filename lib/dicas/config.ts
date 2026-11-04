@@ -33,7 +33,7 @@ export const DICAS_FUNCAO = {
 } as const;
 
 export const DICAS_TIPO_RISCO = {
-  nome: "Nome do tipo no formulário de risco. O risco grava o nome: renomear tira os riscos antigos do grupo deste tipo.",
+  nome: "Nome do tipo no formulário de risco. Ao renomear, os riscos já gravados passam para o nome novo.",
   icone: "Emoji mostrado antes do nome no formulário de risco e nos grupos da aba Riscos. Clique num sugerido ou cole outro.",
   ordem: "Posição na lista de tipos do formulário de risco e na ordem dos grupos da aba Riscos.",
 } as const;
@@ -60,8 +60,8 @@ export const DICAS_MATRIZ = {
   nivel: "Nível dado às células cujo score cai nesta faixa. Score fora de todas as faixas vira Baixo.",
   score_min: "Menor score da faixa, incluído. Score da célula = peso da probabilidade × peso da severidade.",
   score_max: "Maior score da faixa, incluído. Evite faixas que se sobrepõem: vale a primeira da lista.",
-  editor: "Dá para trocar uma célula à mão, mas reabrir a matriz recalcula tudo pelos pesos e o ajuste se perde.",
-  nomes: "Clique nos nomes para renomear. Eles viram as opções de probabilidade e severidade no formulário de risco.",
+  editor: "Dá para trocar uma célula à mão. Mudar um peso ou uma faixa recalcula a matriz e o ajuste manual se perde.",
+  nomes: "Clique para renomear. Viram as opções do risco; ao salvar, os riscos já gravados passam para o nome novo.",
   peso: "Peso usado no score das células. Mudar o peso recalcula a matriz inteira na hora.",
 } as const;
 

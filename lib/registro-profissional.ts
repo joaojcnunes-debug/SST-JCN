@@ -53,6 +53,29 @@ export function formatarRegistro(
 }
 
 /**
+ * Linha do registro na folha de assinaturas. Mesma prioridade de sempre (Reg. MTE, depois CRP,
+ * depois CRM), com uma correção (0.3.229): cargo fora das três áreas grava o número no campo
+ * `crp` (ver detectRegistroTipo) e a folha imprimia "CRP" para, por exemplo, um engenheiro.
+ * Agora o `crp` só sai como "CRP" quando o cargo é de psicologia; nos outros casos sai "Reg.".
+ */
+export function linhaRegistroAssinatura(dados: {
+  cargo?: string | null;
+  registro_mte?: string | null;
+  crp?: string | null;
+  crm?: string | null;
+} | null | undefined): string | null {
+  if (!dados) return null;
+  if (dados.registro_mte) return `Reg. MTE ${dados.registro_mte}`;
+  if (dados.crp) {
+    const c = norm(dados.cargo ?? "");
+    const outraArea = !/psicol/.test(c) && !/medic/.test(c) && !/segur|tec.*seg/.test(c);
+    return `${outraArea ? "Reg." : "CRP"} ${dados.crp}`;
+  }
+  if (dados.crm) return `CRM ${dados.crm}`;
+  return null;
+}
+
+/**
  * Compara dois nomes ignorando acento, caixa e espaço repetido.
  *
  * Usado como trava do preenchimento retroativo (`onMatchFound`): o match do

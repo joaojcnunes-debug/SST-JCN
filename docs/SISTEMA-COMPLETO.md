@@ -457,6 +457,17 @@ A **Gestão (kanban)** não é um módulo de `modulos_permitidos`: o acesso vem 
 ## 4. Área administrativa (Sistema)
 
 Menu: Usuários, Funções, Configurações, PDFs Gerados, Lixeira, Auditoria, Presença. Admin vê tudo; quem tem `ve_presenca_auditoria` vê só Presença e Auditoria.
+- **Correções das Configurações do Sistema (0.3.229)**, achadas na auditoria das dicas, com as decisões do João de 04/11:
+  - **Listas auxiliares:** o formulário de risco passa a usar as listas da aba (`lib/riscos/listas.ts`, testado); lista vazia volta às fixas e o valor já gravado no risco continua como opção. Renomear item não perde mais o foco.
+  - **/config:** saiu a trava própria da página, que expulsava o Admin enquanto o usuário carregava (o layout já trava desde a 0.3.224).
+  - **Certificado A1:** o .pfx antigo só sai do armazenamento depois do Salvar (`DELETE /api/cert/upload`, que não apaga arquivo ainda usado por alguma conta). Trocar ou remover o arquivo limpa validade e titular; "Verificar validade" pede para salvar antes quando o arquivo é novo.
+  - **Registro na folha de assinaturas:** cargo de outra área sai como "Reg.", não mais "CRP" (`linhaRegistroAssinatura`, testado).
+  - **Funções:** "Aplicar padrão" grava todas as contas numa instrução só (tudo ou nada) e confere quantas mudaram. Ajuda do nível Admin corrigida: a área Sistema exige o perfil Admin.
+  - **Tipos de risco e Triagens:** os modais reiniciam a cada abertura. Renomear um tipo leva o nome novo para `riscos.tipo_risco`; tipo do sistema não muda de nome.
+  - **Matrizes:** reabrir usa o lookup salvo (o ajuste manual de célula não se perde mais). Renomear probabilidade/severidade leva o nome novo para os riscos (da matriz, ou sem matriz quando ela é a ativa) e para os itens da Apreciação da matriz (`lib/riscos/renomear.ts`, testado; troca entre linhas não é levada e avisa).
+  - **Perguntas customizadas:** o PGR imprime o texto da pergunta, não a chave (`usePerguntasTexto`). Chave nova não repete a de nenhuma pergunta, do tipo ou do modelo.
+  - **Portal SST:** link no menu da área Sistema; prazo em dd/mm/aaaa aqui e no portal do cliente.
+  - **Textos:** perfis com acento ("Técnico"), permissões do Visualizador e certificado de acordo com o código, sem jargão (hardcoded, dropdown, RiscoForm, lib/utils.ts, "pra").
 - **Banco (0.3.228, v320):** a tabela `usuarios` só aceita escrita de Admin. Antes, uma policy aberta deixava qualquer conta logada alterar qualquer usuário. O Portal do cliente › Meu perfil troca nome e cargo pela RPC `usuario_atualizar_meu_perfil`. A `funcoes_painel` já era só Admin.
 - **Trava por endereço (0.3.224):** o layout só desenha a tela para Admin (ou para a gerência em Presença e Auditoria). Enquanto o usuário carrega, e para quem não tem acesso, aparece "Verificando acesso" até o redirecionamento. Antes, a tela era desenhada e as consultas dela disparavam até o redirecionamento.
 - **Configuração dos módulos (0.3.224):** `components/layout/TravaRota.tsx` com as listas de `lib/acesso/rotas-protegidas.ts` fecha por endereço, para quem não supervisiona, as telas que o menu já escondia: AET (Texto padrão, Config. OWAS, Perfis OWAS, Config. 13 Fatores), AEP (Texto padrão), Químicos (Base de referência) e QPS (Tipos e Perguntas, Metodologia, Texto padrão). Quem abre pelo endereço recebe o aviso e volta à raiz do módulo.

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePerguntasTexto } from "@/lib/hooks/usePerguntasTexto";
 import Dica from "@/components/ui/Dica";
 import { DICAS_PERGUNTA } from "@/lib/dicas/config";
 import { useEffect, useState } from "react";
@@ -156,7 +157,7 @@ export default function PerguntasDoTipo({ idTipo }: { idTipo: string }) {
       <ConfirmDialog
         open={!!confirm}
         title="Remover pergunta?"
-        description={`"${confirm?.texto}" será removida. Respostas antigas continuam no banco mas deixarão de aparecer no form.`}
+        description={`"${confirm?.texto}" será removida. Respostas antigas continuam gravadas, mas a pergunta deixa de aparecer no formulário de risco.`}
         variant="danger"
         loading={del.isPending}
         onConfirm={() => confirm && del.mutate(confirm.id_pergunta)}
@@ -202,6 +203,9 @@ function PerguntaModal({
 }) {
   const save = useSavePergunta();
   const { data: existentes = [] } = useTodasPerguntas(idTipo);
+  // Chaves de todas as perguntas (tipo e modelo): a resposta do risco é gravada pela chave,
+  // então repetir a chave entre tipo e modelo fazia uma resposta apagar a outra (0.3.229).
+  const { data: todasChaves } = usePerguntasTexto();
   const [form, setForm] = useState({
     chave: "",
     texto: "",
@@ -238,7 +242,7 @@ function PerguntaModal({
       if (!chaveFinal) {
         chaveFinal = slugify(form.texto);
       }
-      const usadas = existentes.map((p) => p.chave);
+      const usadas = [...existentes.map((p) => p.chave), ...(todasChaves?.keys() ?? [])];
       chaveFinal = uniqueSlug(chaveFinal, usadas);
     }
 
@@ -308,8 +312,8 @@ function PerguntaModal({
             />
             <p className="mt-1 text-xs text-gray-500">
               {editing
-                ? "Identificador interno (não muda após criação)."
-                : "Se vazio, gera automaticamente a partir do texto."}
+                ? "Código da resposta no risco; não muda depois de criada. Os documentos mostram o texto da pergunta."
+                : "Se vazio, é gerada a partir do texto. Não repete a de outra pergunta, do tipo ou do modelo."}
             </p>
           </div>
           <div>
@@ -324,7 +328,7 @@ function PerguntaModal({
               }
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             >
-              <option value="select">Seleção (dropdown)</option>
+              <option value="select">Lista de opções</option>
               <option value="text">Texto curto</option>
               <option value="textarea">Texto longo</option>
             </select>
@@ -339,7 +343,7 @@ function PerguntaModal({
             type="text"
             value={form.texto}
             onChange={(e) => setForm({ ...form, texto: e.target.value })}
-            placeholder="Como vai aparecer pro usuário"
+            placeholder="Como vai aparecer para quem preenche o risco"
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             required
           />
@@ -348,7 +352,7 @@ function PerguntaModal({
         {form.input_type === "select" && (
           <div>
             <label className="text-sm font-medium text-gray-700">
-              <Dica texto={DICAS_PERGUNTA.opcoes}>Opções do dropdown</Dica>
+              <Dica texto={DICAS_PERGUNTA.opcoes}>Opções da lista</Dica>
             </label>
             <div className="mt-1 space-y-1.5">
               {form.opcoes.map((opt, i) => (

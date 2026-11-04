@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtData } from "@/lib/utils";
 import Dica from "@/components/ui/Dica";
 import { DICAS_PORTAL_SST } from "@/lib/dicas/config";
 import { useState } from "react";
@@ -178,7 +179,7 @@ function AbaPendencias() {
                 <span className="font-semibold text-gray-900 text-sm">{p.titulo}</span>
                 <StatusPendBadge status={p.status} />
                 <PrioridadeBadge prioridade={p.prioridade} />
-                {p.prazo && <span className="text-xs text-gray-400">Prazo: {p.prazo}</span>}
+                {p.prazo && <span className="text-xs text-gray-400">Prazo: {fmtData(p.prazo)}</span>}
               </div>
             </div>
             <select
