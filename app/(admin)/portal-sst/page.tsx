@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_PORTAL_SST } from "@/lib/dicas/config";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, MessageSquarePlus, ClipboardList, FileText, Plus } from "lucide-react";
@@ -112,11 +114,11 @@ function AbaPendencias() {
         <form onSubmit={submitNova} className="rounded-xl bg-white p-5 ring-1 ring-black/5 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Empresa *</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_PORTAL_SST.empresa}>Empresa</Dica> *</label>
               <EmpresaSelect allowAll value={form.empresa_id || null} onChange={(id) => setForm((f) => ({ ...f, empresa_id: id ?? "" }))} placeholder="Selecione…" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-600">Prioridade</label>
+              <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_PORTAL_SST.prioridade}>Prioridade</Dica></label>
               <select
                 value={form.prioridade}
                 onChange={(e) => setForm((f) => ({ ...f, prioridade: e.target.value as PrioridadePortal }))}
@@ -129,7 +131,7 @@ function AbaPendencias() {
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Título *</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_PORTAL_SST.titulo}>Título</Dica> *</label>
             <input
               required
               value={form.titulo}
@@ -138,7 +140,7 @@ function AbaPendencias() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Descrição</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_PORTAL_SST.descricao}>Descrição</Dica></label>
             <textarea
               rows={2}
               value={form.descricao}
@@ -147,7 +149,7 @@ function AbaPendencias() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-600">Prazo</label>
+            <label className="mb-1 block text-xs font-medium text-gray-600"><Dica texto={DICAS_PORTAL_SST.prazo}>Prazo</Dica></label>
             <input
               type="date"
               value={form.prazo}

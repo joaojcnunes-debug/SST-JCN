@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_CATALOGO } from "@/lib/dicas/config";
 import { useEffect, useState } from "react";
 import {
   ArrowDown,
@@ -1143,7 +1145,7 @@ function ModeloModal({
       <form onSubmit={onSubmit} className="space-y-4">
         <div>
           <label className="text-sm font-medium text-gray-700">
-            Agente / Risco *
+            <Dica texto={DICAS_CATALOGO.agente}>Agente / Risco</Dica> *
           </label>
           <input
             type="text"
@@ -1161,7 +1163,7 @@ function ModeloModal({
         </div>
         <div>
           <label className="text-sm font-medium text-gray-700">
-            Ordem (menor = primeiro)
+            <Dica texto={DICAS_CATALOGO.ordem}>Ordem (menor = primeiro)</Dica>
           </label>
           <input
             type="number"

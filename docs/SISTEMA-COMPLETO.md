@@ -153,6 +153,9 @@ Alias de import: `@/*` → raiz.
   - **Lote 7.2 (0.3.211):** `lib/dicas/inspecao-editor.ts`, com cerca de 55 campos, cobre Setor, Cargo, EPI/EPC, Extintor, Treinamento, Máquinas, Responsáveis, Complemento e Foto.
     - Os rótulos ficam no `<label>` de sempre, com o nome dentro de `<Dica>`; o `Field` do SetorForm aceita `dica`.
     - Ficam sem dica os campos já explicados na tela (setores, cargos e riscos aplicáveis do Treinamento; a lista de equipamentos do EPI), "Fotos"/"Arquivo" e os botões Sim/Não da NR-12.
+- **Dicas nas Configurações, lote 7.10a (0.3.225):** `lib/dicas/config.ts` cobre Usuários, Funções, Tipos de risco, Catálogo e Triagem, Perguntas customizadas, Matrizes, Portal SST e o editor de capítulo do Texto padrão (orientação, início, posição e imagem de capa).
+  - O `Field` de Usuários aceita `dica` e deixa o asterisco fora do sublinhado. Ficam sem dica os campos já explicados na tela (senha, função, perfil, unidades, assinatura, certificado, Listas, Logo) e os que só têm placeholder.
+  - Os lotes 7.10b (configurações da AET e Biblioteca da AEP) e 7.10c (catálogos do Psicossocial e Escala) vêm depois.
 - **Dicas na Gestão, lote 7.9b (0.3.222):** `DICAS_GESTAO_AUTOMACAO` e `DICAS_GESTAO_ACESSOS` em `lib/dicas/gestao.ts` cobrem as automações (Ativa, Quando, de/para, prazos, condição, ações, agenda, SLA, rodízio, vínculos) e os acessos (quem, copiar de, mesmas equipes, onde, motivo, equipes).
   - Os campos de ação que só têm placeholder ficam sem dica (responsável, mensagem, aprovador, título, assunto).
 - **Dicas na Gestão, lote 7.9a (0.3.221):** `lib/dicas/gestao.ts` cobre a janela da tarefa, a configuração e o formulário público, os modelos de checklist e as opções de campo.

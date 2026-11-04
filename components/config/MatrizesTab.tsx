@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_MATRIZ } from "@/lib/dicas/config";
 import { useEffect, useState } from "react";
 import {
   Plus,
@@ -413,7 +415,7 @@ function MatrizEditorModal({
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
           <div>
-            <label className="text-sm font-medium text-gray-700">Nome *</label>
+            <label className="text-sm font-medium text-gray-700"><Dica texto={DICAS_MATRIZ.nome}>Nome</Dica> *</label>
             <input
               type="text"
               value={nome}
@@ -425,7 +427,7 @@ function MatrizEditorModal({
           </div>
           <div>
             <label className="text-sm font-medium text-gray-700">
-              Descrição
+              <Dica texto={DICAS_MATRIZ.descricao}>Descrição</Dica>
             </label>
             <input
               type="text"
@@ -458,9 +460,9 @@ function MatrizEditorModal({
           <table className="w-full text-xs">
             <thead className="text-gray-500">
               <tr>
-                <th className="px-2 py-1 text-left font-medium">Nível</th>
-                <th className="px-2 py-1 text-left font-medium">Score min</th>
-                <th className="px-2 py-1 text-left font-medium">Score max</th>
+                <th className="px-2 py-1 text-left font-medium"><Dica texto={DICAS_MATRIZ.nivel}>Nível</Dica></th>
+                <th className="px-2 py-1 text-left font-medium"><Dica texto={DICAS_MATRIZ.score_min}>Score min</Dica></th>
+                <th className="px-2 py-1 text-left font-medium"><Dica texto={DICAS_MATRIZ.score_max}>Score max</Dica></th>
                 <th />
               </tr>
             </thead>
@@ -529,7 +531,7 @@ function MatrizEditorModal({
         <div className="rounded-lg border border-gray-200 bg-white p-3">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Editor da Matriz {probs.length}×{sevs.length}
+              <Dica texto={DICAS_MATRIZ.editor}>Editor da Matriz {probs.length}×{sevs.length}</Dica>
             </p>
             <div className="flex items-center gap-1">
               <span className="text-xs text-gray-500">Preencher tudo com:</span>
@@ -556,7 +558,7 @@ function MatrizEditorModal({
               <thead>
                 <tr>
                   <th className="bg-gray-100 p-1.5 text-[10px] font-semibold uppercase text-gray-500">
-                    P↓ / S→
+                    <Dica texto={DICAS_MATRIZ.nomes}>P↓ / S→</Dica>
                   </th>
                   {sevs.map((s, j) => (
                     <th
@@ -571,7 +573,7 @@ function MatrizEditorModal({
                         className="w-full rounded border-0 bg-transparent px-1 py-0.5 text-center text-xs font-medium hover:bg-white focus:bg-white focus:outline focus:outline-1 focus:outline-marca-primary"
                       />
                       <div className="mt-0.5 flex items-center justify-center gap-1">
-                        <span className="text-[9px] text-gray-500">peso</span>
+                        <span className="text-[9px] text-gray-500"><Dica texto={DICAS_MATRIZ.peso}>peso</Dica></span>
                         <input
                           type="number"
                           step="0.5"

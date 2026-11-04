@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_USUARIO } from "@/lib/dicas/config";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
@@ -783,7 +785,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     >
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Nome *">
+          <Field label="Nome *" dica={DICAS_USUARIO.nome}>
             <input
               type="text"
               value={form.nome}
@@ -792,7 +794,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
               required
             />
           </Field>
-          <Field label="E-mail *">
+          <Field label="E-mail *" dica={DICAS_USUARIO.email}>
             <input
               type="email"
               value={form.email}
@@ -859,7 +861,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         </Field>
 
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Cargo">
+          <Field label="Cargo" dica={DICAS_USUARIO.cargo}>
             <select
               value={form.cargo}
               onChange={(e) => setForm({ ...form, cargo: e.target.value })}
@@ -881,7 +883,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             const reg = detectRegistroTipo(form.cargo);
             const valor = form[reg.campo] ?? "";
             return (
-              <Field label={reg.label}>
+              <Field label={reg.label} dica={DICAS_USUARIO.registro}>
                 <input
                   type="text"
                   value={valor}
@@ -938,7 +940,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                 className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary disabled:opacity-50"
               />
               <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
-                Pode <strong>criar</strong>
+                Pode <Dica texto={DICAS_USUARIO.pode_criar}><strong>criar</strong></Dica>
               </span>
             </label>
             <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -952,7 +954,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                 className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary disabled:opacity-50"
               />
               <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
-                Pode <strong>editar</strong>
+                Pode <Dica texto={DICAS_USUARIO.pode_editar}><strong>editar</strong></Dica>
               </span>
             </label>
             <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -966,7 +968,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                 className="size-4 rounded border-gray-300 text-marca-primary focus:ring-marca-primary disabled:opacity-50"
               />
               <span className={form.perfil === "Admin" ? "text-gray-500" : ""}>
-                Pode <strong>excluir</strong>
+                Pode <Dica texto={DICAS_USUARIO.pode_excluir}><strong>excluir</strong></Dica>
               </span>
             </label>
           </div>
@@ -979,6 +981,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                 ? `Empresa do cliente — ${form.empresas_vinculadas.length === 0 ? "nenhuma selecionada" : form.empresas_vinculadas[0]}`
                 : `Empresas vinculadas (vazio = todas) — ${form.empresas_vinculadas.length} selecionadas`
             }
+            dica={DICAS_USUARIO.empresas}
           >
             <input
               type="text"
@@ -1076,6 +1079,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
           // "inventario_maquinas" no array (módulo retirado em 2026-09-14) e
           // sem este filtro leriam "18 de 17".
           label={`Acesso aos módulos — ${form.modulos_permitidos.filter((m) => TODOS_MODULOS.includes(m)).length} de ${TODOS_MODULOS.length}`}
+          dica={DICAS_USUARIO.modulos}
         >
           <div className="space-y-3 rounded-md border border-gray-200 bg-white p-3">
             {(() => {
@@ -1398,7 +1402,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             className="rounded border-gray-300 text-marca-primary focus:ring-marca-primary/30"
           />
           <ShieldCheck className="size-4 text-marca-primary" />
-          Usuário ativo no sistema
+          <Dica texto={DICAS_USUARIO.ativo}>Usuário ativo no sistema</Dica>
         </label>
 
         <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
@@ -1427,14 +1431,22 @@ const inputCls =
 
 function Field({
   label,
+  dica,
   children,
 }: {
   label: string;
+  dica?: string;
   children: React.ReactNode;
 }) {
+  // O asterisco de obrigatório fica fora do sublinhado da dica.
+  const obrigatorio = label.endsWith(" *");
+  const nome = obrigatorio ? label.slice(0, -2) : label;
   return (
     <div>
-      <label className="text-sm font-medium text-gray-700">{label}</label>
+      <label className="text-sm font-medium text-gray-700">
+        {dica ? <Dica texto={dica}>{nome}</Dica> : nome}
+        {obrigatorio && " *"}
+      </label>
       {children}
     </div>
   );

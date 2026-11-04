@@ -1,5 +1,7 @@
 "use client";
 
+import Dica from "@/components/ui/Dica";
+import { DICAS_CATALOGO } from "@/lib/dicas/config";
 import { useState } from "react";
 import {
   ArrowDown,
@@ -418,7 +420,7 @@ function TriagemModal({
         </div>
         <div>
           <label className="text-sm font-medium text-gray-700">
-            Ordem (menor = primeiro)
+            <Dica texto={DICAS_CATALOGO.triagem_ordem}>Ordem (menor = primeiro)</Dica>
           </label>
           <input
             type="number"
