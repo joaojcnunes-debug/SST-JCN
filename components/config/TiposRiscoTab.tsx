@@ -2,7 +2,9 @@
 
 import Dica from "@/components/ui/Dica";
 import { DICAS_TIPO_RISCO } from "@/lib/dicas/config";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { levarNomeDoTipo } from "@/lib/riscos/levar-nome";
+import { mensagemErro } from "@/lib/errors";
 import {
   Plus,
   Pencil,
@@ -216,21 +218,17 @@ function TipoModal({
   const [icone, setIcone] = useState("");
   const [ordem, setOrdem] = useState(99);
 
-  // Reseta ao abrir.
-  useState(() => {
-    if (open) {
-      setNome(editing?.nome ?? "");
-      setIcone(editing?.icone ?? "");
-      setOrdem(editing?.ordem ?? 99);
-    }
-    return null;
-  });
-  // useEffect alternativo via key change abaixo.
-  if (open && editing && nome === "" && editing.nome !== "") {
-    setNome(editing.nome);
-    setIcone(editing.icone ?? "");
-    setOrdem(editing.ordem);
-  }
+  // Reinicia a cada abertura (0.3.229). Antes o estado só era lido uma vez: um tipo novo
+  // herdava a ordem do último editado, e apagar o nome no meio da edição trazia tudo de volta.
+  useEffect(() => {
+    if (!open) return;
+    setNome(editing?.nome ?? "");
+    setIcone(editing?.icone ?? "");
+    setOrdem(editing?.ordem ?? 99);
+  }, [open, editing]);
+
+  // Tipo do sistema não muda de nome: o formulário de risco reconhece estes tipos pelo nome.
+  const nomeTravado = !!editing?.sistema;
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -238,6 +236,7 @@ function TipoModal({
       toast.error("Informe o nome");
       return;
     }
+    const nomeAntigo = editing && !editing.sistema && editing.nome !== nome.trim() ? editing.nome : null;
     save.mutate(
       {
         id_tipo: editing?.id_tipo ?? gerarId("tipo").toLowerCase(),
@@ -248,10 +247,16 @@ function TipoModal({
         sistema: editing?.sistema ?? false,
       },
       {
-        onSuccess: () => {
-          setNome("");
-          setIcone("");
-          setOrdem(99);
+        onSuccess: async () => {
+          // Renomear leva o nome novo para os riscos já gravados (decisão do João, 04/11).
+          if (nomeAntigo) {
+            try {
+              const n = await levarNomeDoTipo(nomeAntigo, nome.trim());
+              if (n > 0) toast.success(`${n} risco(s) passaram para o nome novo.`);
+            } catch (e) {
+              toast.error(mensagemErro(e, "O tipo foi salvo, mas não deu para atualizar os riscos antigos."));
+            }
+          }
           onClose();
         },
       }
@@ -261,11 +266,7 @@ function TipoModal({
   return (
     <Modal
       open={open}
-      onClose={() => {
-        setNome("");
-        setIcone("");
-        onClose();
-      }}
+      onClose={onClose}
       title={isEdit ? "Editar Tipo de Risco" : "Novo Tipo de Risco"}
     >
       <form onSubmit={onSubmit} className="space-y-4">
@@ -275,10 +276,19 @@ function TipoModal({
             type="text"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
+            disabled={nomeTravado}
+            className={cn(
+              "mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30",
+              nomeTravado && "bg-gray-50 text-gray-500",
+            )}
             placeholder="Ex: Radiação Solar"
             required
           />
+          {nomeTravado && (
+            <p className="mt-1 text-[11px] text-gray-500">
+              Tipo do sistema: o nome não muda, porque o formulário de risco reconhece o tipo por ele.
+            </p>
+          )}
         </div>
 
         <div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { Users, Settings, FileClock, Trash2, ScrollText, Radio, BadgeCheck } from "lucide-react";
+import { Users, Settings, FileClock, Trash2, ScrollText, Radio, BadgeCheck, Globe } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { usePathname, useRouter } from "next/navigation";
@@ -18,6 +18,8 @@ const sections: NavSection[] = [
       { href: "/usuarios", label: "Usuários", icon: Users },
       { href: "/funcoes", label: "Funções", icon: BadgeCheck },
       { href: "/config", label: "Configurações", icon: Settings },
+      // 0.3.229: a tela existia, mas nenhum link levava a ela.
+      { href: "/portal-sst", label: "Portal SST", icon: Globe },
       { href: "/pdfs-gerados", label: "PDFs Gerados", icon: FileClock },
       { href: "/lixeira", label: "Lixeira", icon: Trash2 },
       { href: "/auditoria", label: "Auditoria", icon: ScrollText },

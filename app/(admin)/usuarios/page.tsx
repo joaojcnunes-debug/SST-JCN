@@ -1,5 +1,6 @@
 "use client";
 
+import { ROTULO_PERFIL } from "@/lib/supabase/types";
 import Dica from "@/components/ui/Dica";
 import { DICAS_USUARIO } from "@/lib/dicas/config";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -193,7 +194,7 @@ export default function UsuariosPage() {
                       {u.cargo ?? "—"}
                     </td>
                     <td className="px-4 py-2.5">
-                      <Badge variant={perfilVariant(u.perfil)}>{u.perfil}</Badge>
+                      <Badge variant={perfilVariant(u.perfil)}>{ROTULO_PERFIL[u.perfil] ?? u.perfil}</Badge>
                     </td>
                     <td className="px-4 py-2.5">
                       <Badge variant={u.ativo_sistema ? "success" : "muted"}>
@@ -504,6 +505,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     }));
   }
 
+  // Arquivo do certificado trocado ou removido no formulário e ainda não salvo.
+  const pfxMudou = !!usuario && (form.certificado_pfx_path ?? null) !== (usuario.certificado_pfx_path ?? null);
+
   const mutation = useMutation({
     mutationFn: async () => {
       const supabase = createSupabaseBrowserClient();
@@ -574,12 +578,24 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             mostrar_assinatura_imagem: form.mostrar_assinatura_imagem,
             tipo_certificado: form.tipo_certificado,
             certificado_pfx_path: form.certificado_pfx_path,
+            ...(pfxMudou
+              ? { certificado_validade: null, certificado_titular: null }
+              : {}),
             crp: form.crp || null,
             crm: form.crm || null,
             registro_mte: form.registro_mte || null,
           } as never)
           .eq("id_usuario", usuario.id_usuario);
         if (error) throw error;
+        // O arquivo antigo só sai do armazenamento depois de salvar: trocar ou remover e
+        // depois Cancelar não deixa mais a conta sem certificado. Falha aqui não desfaz o save.
+        if (pfxMudou && usuario.certificado_pfx_path) {
+          await fetch("/api/cert/upload", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path: usuario.certificado_pfx_path }),
+          }).catch(() => undefined);
+        }
         return;
       }
 
@@ -707,13 +723,18 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
     try {
       // Upload pelo servidor (bucket privado `certificados` via service_role). O upload
       // direto do navegador dava 403 no self-host (cred do browser só escreve em `fotos`).
+      // O arquivo antigo continua no armazenamento até o Salvar (ver a mutação).
       const fd = new FormData();
       fd.append("file", file);
-      if (form.certificado_pfx_path) fd.append("oldPath", form.certificado_pfx_path);
       const res = await fetch("/api/cert/upload", { method: "POST", body: fd });
       const data = (await res.json().catch(() => ({}))) as { path?: string; error?: string };
       if (!res.ok || !data.path) throw new Error(data.error || "Erro ao enviar certificado");
-      setForm((f) => ({ ...f, certificado_pfx_path: data.path! }));
+      setForm((f) => ({
+        ...f,
+        certificado_pfx_path: data.path!,
+        certificado_validade: null,
+        certificado_titular: null,
+      }));
       toast.success("Certificado A1 enviado");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao enviar certificado");
@@ -812,7 +833,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
 
         <Field
           label={
-            isEdit ? "Nova senha (deixe vazio pra manter a atual)" : "Senha inicial *"
+            isEdit ? "Nova senha (deixe vazio para manter a atual)" : "Senha inicial *"
           }
         >
           <div className="relative">
@@ -912,7 +933,7 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
             >
               {PERFIS.map((p) => (
                 <option key={p} value={p}>
-                  {p}
+                  {ROTULO_PERFIL[p]}
                 </option>
               ))}
             </select>
@@ -925,8 +946,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         {/* Permissões granulares (V45+). Oculto para perfil Cliente. */}
         {form.perfil !== "Cliente" && <Field label="Permissões">
           <p className="mt-0.5 text-[11px] text-gray-500">
-            O perfil define defaults. Admin contorna estes flags. Visualizador
-            só pode criar/editar/excluir o que estiver marcado aqui.
+            A função define o padrão. Admin pode tudo, com ou sem as marcas.
+            Visualizador não cria documentos mesmo marcado: o banco só aceita
+            criação de Admin e Técnico.
           </p>
           <div className="mt-1 grid grid-cols-1 gap-2 rounded-md border border-gray-200 bg-gray-50 p-3 sm:grid-cols-3">
             <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -1258,9 +1280,9 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
         {/* Certificado digital */}
         <Field label="Certificado Digital">
           <p className="mt-0.5 text-[11px] text-gray-500">
-            Selecione o tipo de certificado ICP-Brasil do técnico. A seleção
-            aparece como selo de identificação nos relatórios — não é necessário
-            enviar nenhum arquivo aqui.
+            Tipo de certificado ICP-Brasil do técnico. O tipo aparece como selo
+            de identificação nos relatórios; para assinar com o A1, envie também
+            o arquivo .pfx abaixo.
           </p>
           <div className="mt-2 flex flex-wrap gap-3">
             {(["A1", "A3", null] as const).map((tipo) => (
@@ -1354,11 +1376,17 @@ function UsuarioFormModal({ open, onClose, usuario }: UsuarioFormProps) {
                     <button
                       type="button"
                       onClick={verificarValidade}
-                      disabled={verificandoCert}
+                      disabled={verificandoCert || pfxMudou}
+                      title={pfxMudou ? "Salve o usuário antes de verificar o arquivo novo" : undefined}
                       className="inline-flex items-center gap-1.5 rounded-md border border-blue-300 bg-white px-3 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
                     >
                       {verificandoCert ? "Verificando…" : "Verificar validade"}
                     </button>
+                    {pfxMudou && (
+                      <span className="text-[11px] text-blue-600">
+                        Salve o usuário para verificar o arquivo novo.
+                      </span>
+                    )}
                   </div>
                 </>
               ) : (

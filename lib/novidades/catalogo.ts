@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "correcoes-configuracoes-sistema",
+    data: "2026-11-04",
+    tipo: "correcao",
+    titulo: "Configurações do Sistema: correções achadas na revisão das telas",
+    texto:
+      "As Listas auxiliares passam a valer no formulário de risco. Renomear tipo de risco, probabilidade ou " +
+      "severidade leva o nome novo para os riscos já gravados, e a matriz não perde mais o ajuste manual. O PGR " +
+      "mostra o texto das perguntas customizadas. Trocar o certificado A1 só apaga o antigo depois de salvar, " +
+      "\"Aplicar padrão\" em Funções grava tudo ou nada, o Portal SST ganhou link no menu e o prazo sai com data.",
+    onde: "Sistema",
+    versoes: ["0.3.229"],
+  },
+  {
     id: "usuarios-escrita-so-admin",
     data: "2026-11-04",
     tipo: "correcao",

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePerguntasTexto } from "@/lib/hooks/usePerguntasTexto";
 import Dica from "@/components/ui/Dica";
 import { DICAS_PERGUNTA } from "@/lib/dicas/config";
 import { useEffect, useState } from "react";
@@ -203,6 +204,8 @@ function PerguntaModeloModal({
 }) {
   const save = useSavePerguntaModelo();
   const { data: existentes = [] } = usePerguntasDoModelo(idModelo);
+  // Chaves de todas as perguntas (tipo e modelo): ver PerguntasDoTipo (0.3.229).
+  const { data: todasChaves } = usePerguntasTexto();
   const [form, setForm] = useState({
     chave: "",
     texto: "",
@@ -237,7 +240,7 @@ function PerguntaModeloModal({
     let chaveFinal = form.chave.trim();
     if (!editing) {
       if (!chaveFinal) chaveFinal = slugify(form.texto);
-      const usadas = existentes.map((p) => p.chave);
+      const usadas = [...existentes.map((p) => p.chave), ...(todasChaves?.keys() ?? [])];
       chaveFinal = uniqueSlug(chaveFinal, usadas);
     }
 
@@ -318,7 +321,7 @@ function PerguntaModeloModal({
               }
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             >
-              <option value="select">Seleção (dropdown)</option>
+              <option value="select">Lista de opções</option>
               <option value="text">Texto curto</option>
               <option value="textarea">Texto longo</option>
             </select>
@@ -333,7 +336,7 @@ function PerguntaModeloModal({
             type="text"
             value={form.texto}
             onChange={(e) => setForm({ ...form, texto: e.target.value })}
-            placeholder="Como vai aparecer pro usuário"
+            placeholder="Como vai aparecer para quem preenche o risco"
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/30"
             required
           />
@@ -342,7 +345,7 @@ function PerguntaModeloModal({
         {form.input_type === "select" && (
           <div>
             <label className="text-sm font-medium text-gray-700">
-              <Dica texto={DICAS_PERGUNTA.opcoes}>Opções do dropdown</Dica>
+              <Dica texto={DICAS_PERGUNTA.opcoes}>Opções da lista</Dica>
             </label>
             <div className="mt-1 space-y-1.5">
               {form.opcoes.map((opt, i) => (

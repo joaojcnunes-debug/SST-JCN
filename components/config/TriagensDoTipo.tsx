@@ -2,7 +2,7 @@
 
 import Dica from "@/components/ui/Dica";
 import { DICAS_CATALOGO } from "@/lib/dicas/config";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -81,9 +81,9 @@ export default function TriagensDoTipo({
 
       {triagens.length === 0 ? (
         <div className="rounded-md border border-dashed border-gray-300 bg-white p-3 text-center text-xs text-gray-500">
-          Nenhuma triagem cadastrada. Use triagens pra perguntar coisas como
+          Nenhuma triagem cadastrada. Use triagens para perguntar coisas como
           &ldquo;Há desconforto térmico, acústico ou visual?&rdquo; — cada
-          opção marcada pode pré-preencher um modelo no RiscoForm.
+          opção marcada pode preencher um modelo no formulário de risco.
         </div>
       ) : (
         <ul className="space-y-1.5">
@@ -291,7 +291,7 @@ function ModelosLinker({
   return (
     <div className="space-y-1.5">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-        Modelos associados (aparecem como checkboxes no form)
+        Modelos associados (aparecem como opções para marcar no formulário de risco)
       </p>
       {modelos.length === 0 ? (
         <p className="rounded border border-dashed border-gray-300 bg-white px-2 py-1.5 text-[11px] text-gray-500">
@@ -360,11 +360,13 @@ function TriagemModal({
   const [texto, setTexto] = useState("");
   const [ordem, setOrdem] = useState(99);
 
-  // Reset on open
-  if (open && editing && texto === "" && editing.texto !== "") {
-    setTexto(editing.texto);
-    setOrdem(editing.ordem);
-  }
+  // Reinicia a cada abertura (0.3.229): antes uma triagem nova herdava a ordem da última
+  // editada, e apagar o texto no meio da edição trazia o texto antigo de volta.
+  useEffect(() => {
+    if (!open) return;
+    setTexto(editing?.texto ?? "");
+    setOrdem(editing?.ordem ?? 99);
+  }, [open, editing]);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -380,23 +382,14 @@ function TriagemModal({
         ordem,
         ativo: editing?.ativo ?? true,
       },
-      {
-        onSuccess: () => {
-          setTexto("");
-          setOrdem(99);
-          onClose();
-        },
-      }
+      { onSuccess: onClose }
     );
   }
 
   return (
     <Modal
       open={open}
-      onClose={() => {
-        setTexto("");
-        onClose();
-      }}
+      onClose={onClose}
       title={editing ? "Editar Triagem" : "Nova Triagem"}
       size="md"
     >
@@ -414,8 +407,8 @@ function TriagemModal({
             required
           />
           <p className="mt-1 text-[11px] text-gray-500">
-            Aparece no RiscoForm acima do agente. Após criar, expanda o card
-            pra adicionar as opções multi-selecionáveis.
+            Aparece no formulário de risco, acima do agente. Depois de criar,
+            abra o cartão para adicionar as opções que podem ser marcadas.
           </p>
         </div>
         <div>

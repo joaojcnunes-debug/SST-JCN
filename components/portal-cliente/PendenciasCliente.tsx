@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtData } from "@/lib/utils";
 import { useState } from "react";
 import { MessageSquare, ChevronDown, ChevronUp, Loader2, Send } from "lucide-react";
 import { format } from "date-fns";
@@ -160,7 +161,7 @@ export default function PendenciasCliente() {
                     </div>
                     <div className="mt-0.5 flex gap-3 text-xs text-gray-500">
                       <span>{format(new Date(p.criado_em), "dd/MM/yyyy", { locale: ptBR })}</span>
-                      {p.prazo && <span>Prazo: {p.prazo}</span>}
+                      {p.prazo && <span>Prazo: {fmtData(p.prazo)}</span>}
                     </div>
                   </div>
                   {isAberto ? (

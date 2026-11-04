@@ -10,6 +10,7 @@ import { usePdfAssinado } from "@/lib/hooks/usePdfsGerados";
 import BotaoAssinarPdf from "@/components/ui/BotaoAssinarPdf";
 import StorageImg from "@/components/ui/StorageImg";
 import toast from "react-hot-toast";
+import { linhaRegistroAssinatura } from "@/lib/registro-profissional";
 
 export default function AssinaturaRelatorio({
   nomeResponsavel,
@@ -123,14 +124,9 @@ export default function AssinaturaRelatorio({
   const certificado = sigData?.tipo_certificado ?? null;
   const assinaturaEmpresaUrl = configs?.assinatura_empresa_url ?? null;
 
-  // Registro profissional (Reg. MTE para técnicos, CRP para psicólogos, CRM para médicos).
-  const registro = sigData?.registro_mte
-    ? `Reg. MTE ${sigData.registro_mte}`
-    : sigData?.crp
-      ? `CRP ${sigData.crp}`
-      : sigData?.crm
-        ? `CRM ${sigData.crm}`
-        : null;
+  // Registro profissional (Reg. MTE para técnicos, CRP para psicólogos, CRM para médicos;
+  // cargo de outra área sai como "Reg.", não mais como "CRP").
+  const registro = linhaRegistroAssinatura(sigData ? { ...sigData, cargo: sigData.cargo ?? cargo } : null);
   // Assinatura por IMAGEM (carimbo da imagem cadastrada) → mostra só a imagem,
   // sem o quadro "Assinado digitalmente".
   const assinaturaPorImagem =

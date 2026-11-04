@@ -39,6 +39,8 @@ import {
   TEMPOS_EXPOSICAO_DEFAULT,
   TECNICAS_DEFAULT,
 } from "@/lib/constants";
+import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
+import { opcoesDaLista } from "@/lib/riscos/listas";
 import type {
   CategoriaCatalogo,
   ItemCatalogoTipo,
@@ -185,6 +187,8 @@ export default function RiscoForm({
   const qc = useQueryClient();
   const isEdit = !!risco;
   const [form, setForm] = useState<FormState>(emptyForm);
+  // Listas da aba Configurações › Listas auxiliares (0.3.229); vazias, valem as fixas.
+  const { data: configs } = useConfiguracoes();
 
   /**
    * O arquivo da foto da FDS, esperando para subir junto do risco.
@@ -1003,7 +1007,7 @@ export default function RiscoForm({
         <SubGrid title="Caracterização da Exposição" cor="stone">
           <Field label="Meio de Propagação" dica={DICAS_RISCO.meio_propagacao}>
             <MeiosPropagacaoMultiSelect
-              options={MEIOS_PROPAGACAO_DEFAULT}
+              options={opcoesDaLista(configs?.meios_propagacao, MEIOS_PROPAGACAO_DEFAULT, form.meio_propagacao)}
               value={form.meio_propagacao}
               onChange={(meios) =>
                 setForm({ ...form, meio_propagacao: meios })
@@ -1017,7 +1021,7 @@ export default function RiscoForm({
               className={inputCls}
             >
               <option value="">—</option>
-              {SITUACOES_DEFAULT.map((s) => (
+              {opcoesDaLista(configs?.situacoes, SITUACOES_DEFAULT, form.situacao).map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
@@ -1033,7 +1037,7 @@ export default function RiscoForm({
               className={inputCls}
             >
               <option value="">—</option>
-              {TEMPOS_EXPOSICAO_DEFAULT.map((t) => (
+              {opcoesDaLista(configs?.tempos_exposicao, TEMPOS_EXPOSICAO_DEFAULT, form.tempo_exposicao).map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>
@@ -1049,7 +1053,7 @@ export default function RiscoForm({
               className={inputCls}
             >
               <option value="">—</option>
-              {TECNICAS_DEFAULT.map((t) => (
+              {opcoesDaLista(configs?.tecnicas, TECNICAS_DEFAULT, form.tecnica_utilizada).map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>

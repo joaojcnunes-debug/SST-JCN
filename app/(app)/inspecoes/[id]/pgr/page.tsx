@@ -16,6 +16,7 @@ import { useInspecao } from "@/lib/hooks/useInspecao";
 import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import EmpresaInfoPanel from "@/components/empresas/EmpresaInfoPanel";
 import { useConfiguracoes } from "@/lib/hooks/useConfiguracoes";
+import { usePerguntasTexto } from "@/lib/hooks/usePerguntasTexto";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import AguardandoInicio, { useAguardandoInicio } from "@/components/inspecoes/AguardandoInicio";
 import StorageImg from "@/components/ui/StorageImg";
@@ -42,6 +43,7 @@ export default function PgrPage({ params }: Props) {
   const { data, isLoading } = useInspecao(id);
   const { data: empresa } = useEmpresa(data?.inspecao?.id_empresa);
   const { data: configs } = useConfiguracoes();
+  const { data: perguntasTexto } = usePerguntasTexto();
 
   const setorMap = useMemo(
     () => new Map((data?.setores ?? []).map((s) => [s.id_setor, s])),
@@ -490,10 +492,11 @@ export default function PgrPage({ params }: Props) {
                 if (r.tipo_risco.startsWith("IAPAT") && r.pontuacao_iapat)
                   detalhes.push(["Pontuação IAPAT", r.pontuacao_iapat]);
 
-                // V3: respostas customizadas (perguntas configuráveis pelo Admin)
+                // V3: respostas customizadas (perguntas configuráveis pelo Admin).
+                // Rótulo = texto da pergunta (0.3.229; antes saía a chave interna).
                 const customs = r.respostas_custom ?? {};
                 for (const [k, v] of Object.entries(customs)) {
-                  if (v) detalhes.push([k, String(v)]);
+                  if (v) detalhes.push([perguntasTexto?.get(k) ?? k, String(v)]);
                 }
 
                 if (

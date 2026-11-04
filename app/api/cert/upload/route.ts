@@ -40,7 +40,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Requisição inválida" }, { status: 400 });
   }
   const file = form.get("file");
-  const oldPath = (form.get("oldPath") as string | null) || null;
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Arquivo ausente" }, { status: 400 });
@@ -55,11 +54,9 @@ export async function POST(req: NextRequest) {
 
   const service = createSupabaseServiceClient({ email: user.email, origem: "cert/upload" });
 
-  // Remove o certificado anterior, se houver (também no servidor — o cliente daria 403).
-  if (oldPath) {
-    await service.storage.from("certificados").remove([oldPath]);
-  }
-
+  // O arquivo anterior NÃO sai aqui (0.3.229): apagar antes do Salvar deixava a conta
+  // apontando para um arquivo inexistente se a pessoa cancelasse. A tela chama o DELETE
+  // abaixo depois de gravar o caminho novo.
   const path = `pfx_${Date.now()}_${Math.random().toString(36).slice(2)}.pfx`;
   const buffer = Buffer.from(await file.arrayBuffer());
   const { error } = await service.storage
@@ -73,4 +70,44 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ ok: true, path });
+}
+
+/**
+ * Apaga um .pfx antigo do bucket `certificados` depois que a conta já foi salva com outro
+ * caminho (ou sem certificado). Só Admin; e só se nenhuma conta ainda apontar para o arquivo.
+ */
+export async function DELETE(req: NextRequest) {
+  const cookieStore = await cookies();
+  const supabase = createSupabaseServerClient(cookieStore);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+  const { data: rawPerfil } = await supabase
+    .from("usuarios")
+    .select("perfil")
+    .eq("email", user.email)
+    .single();
+  if ((rawPerfil as { perfil: string } | null)?.perfil !== "Admin") {
+    return NextResponse.json({ error: "Sem permissão." }, { status: 403 });
+  }
+
+  const body = (await req.json().catch(() => null)) as { path?: unknown } | null;
+  const path = typeof body?.path === "string" ? body.path : "";
+  if (!/^pfx_[\w.-]+\.pfx$/.test(path)) {
+    return NextResponse.json({ error: "Caminho inválido" }, { status: 400 });
+  }
+
+  const service = createSupabaseServiceClient({ email: user.email, origem: "cert/upload" });
+  const { count } = await service
+    .from("usuarios")
+    .select("id_usuario", { count: "exact", head: true })
+    .eq("certificado_pfx_path", path);
+  if ((count ?? 0) > 0) {
+    return NextResponse.json({ ok: true, mantido: true });
+  }
+  await service.storage.from("certificados").remove([path]);
+  return NextResponse.json({ ok: true });
 }

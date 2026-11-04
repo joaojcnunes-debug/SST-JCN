@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Grid3x3,
   Activity,
@@ -32,7 +31,6 @@ import toast from "react-hot-toast";
 import MatrizRisco from "@/components/riscos/MatrizRisco";
 import { PROBABILIDADES, SEVERIDADES } from "@/lib/utils";
 import { NIVEIS_RISCO, NIVEL_CONFIG } from "@/lib/constants";
-import { useIsAdmin } from "@/lib/hooks/useUsuario";
 import { useConfiguracoes, useSaveConfig, type Configs } from "@/lib/hooks/useConfiguracoes";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { gerarId, cn } from "@/lib/utils";
@@ -53,20 +51,11 @@ type TabKey =
   | "atualizacao";
 
 export default function ConfigPage() {
-  const router = useRouter();
-  const isAdmin = useIsAdmin();
+  // Quem não é Admin nem chega aqui: o layout da área Sistema só desenha a tela depois de
+  // confirmar o acesso (0.3.224). A trava própria que havia aqui rodava antes de o usuário
+  // carregar e chegava a expulsar o próprio Admin.
   const [tab, setTab] = useState<TabKey>("matrizes");
   const { data: configs, isLoading } = useConfiguracoes();
-
-  useEffect(() => {
-    if (!isAdmin) {
-      const t = setTimeout(() => {
-        toast.error("Apenas administradores podem acessar Configurações");
-        router.replace("/dashboard");
-      }, 200);
-      return () => clearTimeout(t);
-    }
-  }, [isAdmin, router]);
 
   const TABS = [
     { key: "matrizes" as TabKey, label: "Matrizes de Risco", icon: Layers },
@@ -119,7 +108,7 @@ export default function ConfigPage() {
             <section className="space-y-3">
               <p className="text-sm text-gray-600">
                 Visualização da matriz SGG padrão (calculada pela fórmula
-                hardcoded). Para criar matrizes customizadas, use a aba{" "}
+                fixa do sistema). Para criar matrizes customizadas, use a aba{" "}
                 <strong>Matrizes de Risco</strong>.
               </p>
               <MatrizRisco />
@@ -158,32 +147,33 @@ function ListasAuxiliares({ configs }: { configs: Configs }) {
     {
       key: "meios_propagacao",
       titulo: "Meios de Propagação",
-      desc: "Aparece no select 'Meio de Propagação' do form de risco.",
+      desc: "Opções do campo Meio de Propagação no formulário de risco.",
     },
     {
       key: "situacoes",
       titulo: "Situações",
-      desc: "Aparece no select 'Situação' do form de risco.",
+      desc: "Opções do campo Situação no formulário de risco.",
     },
     {
       key: "tempos_exposicao",
       titulo: "Tempos de Exposição",
-      desc: "Aparece no select 'Tempo de Exposição' do form de risco.",
+      desc: "Opções do campo Tempo de Exposição no formulário de risco.",
     },
     {
       key: "tecnicas",
       titulo: "Técnicas Utilizadas",
-      desc: "Aparece no select 'Técnica Utilizada' do form de risco.",
+      desc: "Opções do campo Técnica Utilizada no formulário de risco.",
     },
   ];
   return (
     <div className="space-y-6">
       <p className="text-sm text-gray-600">
-        Edite as listas usadas nos selects do formulário de risco. Use as
-        setas para reordenar e o botão de lixeira para remover.{" "}
+        Edite as opções das listas do formulário de risco. Use as setas para
+        reordenar e a lixeira para remover. Lista vazia volta a usar as opções
+        padrão do sistema.{" "}
         <strong>
-          Atenção: alterar/remover valores que já estão sendo usados em riscos
-          existentes pode deixar registros antigos com valor inconsistente.
+          Riscos já gravados guardam o texto escolhido: tirar ou renomear uma
+          opção não muda esses riscos.
         </strong>
       </p>
       {LISTAS.map((l) => (
@@ -268,7 +258,7 @@ function ListaEditor({
       <ul className="mt-2 space-y-1">
         {local.map((item, i) => (
           <li
-            key={`${item}-${i}`}
+            key={i}
             className="flex items-center gap-1 rounded border border-gray-100 bg-gray-50 px-2 py-1"
           >
             <span className="w-6 text-center text-xs font-mono text-gray-400">
@@ -339,11 +329,9 @@ function ProbSevView() {
   return (
     <div className="space-y-4">
       <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-        ℹ️ Probabilidades e Severidades são parte da fórmula{" "}
-        <code className="rounded bg-white px-1">calcularNivelRisco</code> em{" "}
-        <code className="rounded bg-white px-1">lib/utils.ts</code>. Renomear
-        afeta os labels mas pode quebrar avaliações antigas; alterar a
-        quantidade quebra a fórmula. Para alterar, edite o código fonte.
+        ℹ️ Estas são as probabilidades e severidades da matriz padrão do
+        sistema, fixas no programa. Para usar outros nomes ou pesos, crie uma
+        matriz na aba <strong>Matrizes de Risco</strong>.
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

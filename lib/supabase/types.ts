@@ -9,6 +9,13 @@ export type StatusInspecao =
 export type TipoCriacao = "BRANCO" | "REVISAO" | "COPIA_EMPRESA" | "RENOVACAO";
 export type StatusEmpresa = "Ativo" | "Inativa";
 export type PerfilUsuario = "Admin" | "Tecnico" | "Visualizador" | "Cliente";
+/** Nome do perfil na tela: o valor gravado é sem acento ("Tecnico"); o texto mostrado, com. */
+export const ROTULO_PERFIL: Record<PerfilUsuario, string> = {
+  Admin: "Admin",
+  Tecnico: "Técnico",
+  Visualizador: "Visualizador",
+  Cliente: "Cliente",
+};
 /**
  * Nível dentro da função (v229). Consulta = lê; Operação = escreve no módulo;
  * Aprovação = + supervisiona (reabre elaboração de outro, troca responsável,

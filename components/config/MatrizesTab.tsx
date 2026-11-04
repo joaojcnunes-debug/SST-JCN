@@ -1,5 +1,8 @@
 "use client";
 
+import { mensagemErro } from "@/lib/errors";
+import { paresRenomeados } from "@/lib/riscos/renomear";
+import { levarNomeDaMatriz } from "@/lib/riscos/levar-nome";
 import Dica from "@/components/ui/Dica";
 import { DICAS_MATRIZ } from "@/lib/dicas/config";
 import { useEffect, useState } from "react";
@@ -73,8 +76,8 @@ export default function MatrizesTab() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
           Crie matrizes NxM customizadas. Apenas <strong>uma matriz</strong>{" "}
-          fica ativa por vez — é ela que o sistema usa em todos os cálculos de
-          nível de risco.
+          fica ativa por vez: é a que já vem escolhida no risco e a que a AEP e a
+          Apreciação NR-12 usam. No risco, dá para escolher outra matriz.
         </p>
         <button
           type="button"
@@ -205,6 +208,10 @@ function MatrizEditorModal({
   const [pesosProb, setPesosProb] = useState<number[]>([]);
   const [pesosSev, setPesosSev] = useState<number[]>([]);
   const [faixas, setFaixas] = useState<FaixaRisco[]>([]);
+  // Nome que cada linha tinha ao abrir (null = linha nova): é o que permite levar o nome
+  // novo para os riscos já gravados ao salvar (0.3.229).
+  const [origProbs, setOrigProbs] = useState<(string | null)[]>([]);
+  const [origSevs, setOrigSevs] = useState<(string | null)[]>([]);
 
   useEffect(() => {
     if (open && matriz) {
@@ -212,6 +219,8 @@ function MatrizEditorModal({
       setDescricao(matriz.descricao ?? "");
       setProbs([...matriz.probabilidades]);
       setSevs([...matriz.severidades]);
+      setOrigProbs([...matriz.probabilidades]);
+      setOrigSevs([...matriz.severidades]);
 
       // Pesos: se não houver, gera sequência 0..N-1 como sugestão.
       const novosPesosProb =
@@ -233,11 +242,15 @@ function MatrizEditorModal({
       setPesosSev(novosPesosSev);
       setFaixas(novasFaixas);
 
-      // Recalcula o lookup baseado nos pesos+faixas pra garantir
-      // coerência (caso o lookup salvo esteja defasado por células
-      // editadas antes da mudança pra cálculo automático).
-      // Fallback no lookup salvo se algo estiver inconsistente.
-      if (
+      // Abre com o lookup SALVO quando ele tem o tamanho da matriz (0.3.229): recalcular
+      // sempre pelos pesos apagava o ajuste manual de célula a cada vez que se reabria.
+      // Só recalcula quando o salvo não serve (tamanho diferente ou vazio).
+      const salvoServe =
+        matriz.lookup.length === matriz.probabilidades.length &&
+        matriz.lookup.every((row) => row.length === matriz.severidades.length);
+      if (salvoServe) {
+        setLookup(matriz.lookup.map((row) => [...row]));
+      } else if (
         novosPesosProb.length === matriz.probabilidades.length &&
         novosPesosSev.length === matriz.severidades.length &&
         novasFaixas.length > 0
@@ -256,6 +269,7 @@ function MatrizEditorModal({
     const novosPesos = [...pesosProb, pesosProb.length]; // peso default = índice
     setProbs(novo);
     setPesosProb(novosPesos);
+    setOrigProbs([...origProbs, null]);
     if (faixas.length > 0 && pesosSev.length === sevs.length) {
       setLookup(calcularLookupPorPesos(novosPesos, pesosSev, faixas));
     } else {
@@ -268,6 +282,7 @@ function MatrizEditorModal({
     const novosPesos = pesosProb.filter((_, i) => i !== idx);
     setProbs(novo);
     setPesosProb(novosPesos);
+    setOrigProbs(origProbs.filter((_, i) => i !== idx));
     if (faixas.length > 0 && pesosSev.length === sevs.length) {
       setLookup(calcularLookupPorPesos(novosPesos, pesosSev, faixas));
     } else {
@@ -287,6 +302,7 @@ function MatrizEditorModal({
     const novosPesos = [...pesosSev, pesosSev.length];
     setSevs(novo);
     setPesosSev(novosPesos);
+    setOrigSevs([...origSevs, null]);
     if (faixas.length > 0 && pesosProb.length === probs.length) {
       setLookup(calcularLookupPorPesos(pesosProb, novosPesos, faixas));
     } else {
@@ -299,6 +315,7 @@ function MatrizEditorModal({
     const novosPesos = pesosSev.filter((_, i) => i !== idx);
     setSevs(novo);
     setPesosSev(novosPesos);
+    setOrigSevs(origSevs.filter((_, i) => i !== idx));
     if (faixas.length > 0 && pesosProb.length === probs.length) {
       setLookup(calcularLookupPorPesos(pesosProb, novosPesos, faixas));
     } else {
@@ -385,7 +402,7 @@ function MatrizEditorModal({
       return;
     }
     if (probs.some((p) => !p.trim()) || sevs.some((s) => !s.trim())) {
-      toast.error("Todos os labels precisam estar preenchidos");
+      toast.error("Preencha o nome de todas as probabilidades e severidades");
       return;
     }
     save.mutate(
@@ -401,7 +418,30 @@ function MatrizEditorModal({
         faixas: faixas.length > 0 ? faixas : null,
         ativa: matriz?.ativa ?? false,
       },
-      { onSuccess: onClose }
+      {
+        onSuccess: async () => {
+          // Leva os nomes novos para os riscos e itens da Apreciação já gravados.
+          const p = paresRenomeados(origProbs, probs);
+          const s = paresRenomeados(origSevs, sevs);
+          if (p.conflito || s.conflito) {
+            toast.error(
+              "A matriz foi salva, mas os registros antigos não foram atualizados: um nome novo repete um nome que já existia. Renomeie uma linha por vez.",
+              { duration: 8000 },
+            );
+          } else if (matriz && (p.pares.length > 0 || s.pares.length > 0)) {
+            try {
+              const ativa = matriz.ativa ?? false;
+              const n =
+                (await levarNomeDaMatriz(matriz.id_matriz, ativa, "probabilidade", p.pares)) +
+                (await levarNomeDaMatriz(matriz.id_matriz, ativa, "severidade", s.pares));
+              if (n > 0) toast.success(`${n} registro(s) atualizado(s) com o nome novo.`);
+            } catch (e) {
+              toast.error(mensagemErro(e, "A matriz foi salva, mas não deu para atualizar os registros antigos."));
+            }
+          }
+          onClose();
+        },
+      }
     );
   }
 
