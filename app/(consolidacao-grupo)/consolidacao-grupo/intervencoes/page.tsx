@@ -47,7 +47,7 @@ export default function IntervencoesPage() {
   async function remover(i: IntervencaoCatalogo) {
     const ok = await confirmar({
       title: "Excluir esta intervenção?",
-      description: `${i.nome} sai do catálogo. As empresas em que ela já foi indicada continuam com o nome gravado.`,
+      description: `${i.nome} sai do catálogo. Os riscos em que ela já foi indicada continuam com o nome gravado.`,
       confirmLabel: "Excluir",
       variant: "danger",
     });
@@ -64,7 +64,7 @@ export default function IntervencoesPage() {
           <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
             <HeartHandshake className="size-5 text-marca-primary" /> Intervenções
           </h1>
-          <p className="max-w-3xl text-sm text-gray-500">O que pode ser indicado às empresas em Liberar para o Comercial, com as modalidades de cada uma.</p>
+          <p className="max-w-3xl text-sm text-gray-500">O que pode ser indicado aos riscos em Liberar para o Comercial, com as modalidades de cada uma.</p>
         </div>
         <button
           type="button"

@@ -591,6 +591,11 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
+- **v322 — Intervenções por risco (05/11/2026).** Aplicada em 05/11/2026 pelo MCP, com o ok do João, antes do merge da 0.3.235.
+  - Sai a fila por serviço da v321: `comercial_liberacoes`, `comercial_decidir`, `comercial_desfazer_decisao`, `comercial_corte_fila`, `comercial_intervencao_indicar`. As linhas apagadas eram só do teste na empresa Teste.
+  - `comercial_atendimento_intervencoes` refeita: várias por risco (`setor_chave` + `id_fator`), com `nome`, `modalidade`, `responsavel` e `prazo_dias`. Grava por `comercial_intervencao_salvar` e `comercial_intervencao_retirar`, que exigem a sessão ativa.
+  - `comercial_dados()`: sai `liberacoes` e `corte`; entra `conciliacoes` (a última fechada de cada empresa).
+  - Rollback: `scripts/sql/v322_comercial_intervencoes_por_risco_rollback.sql`, seguido da v321.
 - **v321 — Liberar para o Comercial (05/11/2026).** Aplicada em 05/11/2026 pelo MCP, com o ok do João, antes do merge da 0.3.233.
   - `comercial_pode_liberar()`: Admin, ou Técnico ativo com `consolidacao_psicossocial`. É a regra de leitura de todas as tabelas abaixo.
   - `comercial_atendimentos` (um por empresa: status, parecer, conclusão) e `comercial_atendimento_eventos` (conclusões e reaberturas, com motivo e parecer).

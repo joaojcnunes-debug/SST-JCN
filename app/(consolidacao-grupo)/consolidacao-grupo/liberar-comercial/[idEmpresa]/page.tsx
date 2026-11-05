@@ -1,13 +1,14 @@
 "use client";
 
-// Consolidação › Liberar para o Comercial › atendimento de uma empresa (0.3.233, banco v321).
-// Iniciar conta o tempo (o mesmo painel da inspeção) e libera a edição; concluir manda ao vendedor;
-// reabrir tira do vendedor até concluir de novo. As funções do banco conferem a sessão aberta.
+// Consolidação › Liberar para o Comercial › atendimento de uma empresa (0.3.233, refeita na 0.3.235,
+// banco v322). Iniciar conta o tempo (o mesmo painel da inspeção) e libera a edição; concluir manda ao
+// vendedor; reabrir tira do vendedor até concluir de novo. As funções do banco conferem a sessão.
 
-import { useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle2, ClipboardCheck, Hand, Loader2, Plus, RotateCcw, Sparkles, Trash2, Undo2 } from "lucide-react";
+import toast from "react-hot-toast";
+import { ArrowLeft, CheckCircle2, Loader2, Plus, RotateCcw, Search, Sparkles, Trash2 } from "lucide-react";
 import Dica from "@/components/ui/Dica";
 import Modal from "@/components/ui/Modal";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
@@ -17,60 +18,47 @@ import { DICAS_COMERCIAL_LIBERAR } from "@/lib/dicas/comercial";
 import {
   useCatalogoIntervencoes,
   useConcluirAtendimento,
-  useDecidirServico,
-  useDesfazerDecisao,
   useEventosAtendimento,
-  useIndicarIntervencao,
   useLiberacaoServicos,
   usePodeLiberarServicos,
   useReabrirAtendimento,
   useRetirarIntervencao,
+  useSalvarIntervencaoIndicada,
   useSalvarParecerComercial,
+  type IntervencaoCatalogo,
 } from "@/lib/hooks/useComercial";
 import { useAgora, useAtividadeSessao, useSessoesComercial } from "@/lib/hooks/useDocumentoSessoes";
-import { useEmpresa } from "@/lib/hooks/useEmpresas";
 import { useUserStore } from "@/lib/store";
 import {
   MODALIDADES,
-  PRODUTOS_COM_MODALIDADE,
+  chaveRisco,
   faltaParaConcluir,
+  intervencoesDoRisco,
+  riscosComIntervencoes,
+  riscosDoFechamento,
   type IntervencaoIndicada,
-  type ServicoNaFila,
-  type StatusDecisao,
+  type RiscoConciliado,
 } from "@/lib/comercial/liberacao";
-import { NOME_PRODUTO } from "@/lib/comercial/oportunidades";
 import { minhaSessaoAberta } from "@/lib/inspecoes/sessoes";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { mensagemErro } from "@/lib/errors";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
-import toast from "react-hot-toast";
 
 const inputCls =
   "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20";
+const campoCls =
+  "w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-1 focus:ring-marca-primary/30 disabled:border-transparent disabled:bg-transparent disabled:text-gray-700";
 const btnPrimario =
   "inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60";
 const btnNeutro =
   "inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60";
 
-const ROTULO_ESTADO = { pendente: "Na fila", liberado: "Liberado", segurado: "Segurado", legado: "Liberado antes da fila" } as const;
-const COR_ESTADO = {
-  pendente: "border-amber-300 bg-amber-50 text-amber-900",
-  liberado: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  segurado: "border-gray-300 bg-gray-100 text-gray-700",
-  legado: "border-sky-200 bg-sky-50 text-sky-900",
-} as const;
-
-interface JanelaDecisao {
-  servicos: ServicoNaFila[];
-  status: StatusDecisao;
-}
-
 export default function AtendimentoComercialPage() {
   const { idEmpresa } = useParams<{ idEmpresa: string }>();
   const { data, isLoading, error } = useLiberacaoServicos();
   const { data: sessoes = [] } = useSessoesComercial(idEmpresa);
-  const { data: empresa } = useEmpresa(idEmpresa);
   const { data: eventos = [] } = useEventosAtendimento(idEmpresa);
+  const { data: catalogo = [] } = useCatalogoIntervencoes();
   const podeLiberar = usePodeLiberarServicos();
   const user = useUserStore((s) => s.user);
   const agora = useAgora(30_000);
@@ -78,16 +66,19 @@ export default function AtendimentoComercialPage() {
   const minha = minhaSessaoAberta(sessoes, user?.id_usuario, agora);
   useAtividadeSessao(idEmpresa, !!minha, "comercial");
 
-  const desfazer = useDesfazerDecisao();
-  const retirar = useRetirarIntervencao();
   const salvarParecer = useSalvarParecerComercial();
   const concluir = useConcluirAtendimento();
 
-  const [janela, setJanela] = useState<JanelaDecisao | null>(null);
-  const [indicando, setIndicando] = useState(false);
   const [reabrindo, setReabrindo] = useState(false);
   const [rascunho, setRascunho] = useState<string | null>(null);
   const [gerando, setGerando] = useState(false);
+
+  const conciliacao = data?.conciliacoes.find((c) => c.id_empresa === idEmpresa);
+  const indicadas = useMemo(() => (data?.indicadas ?? []).filter((i) => i.id_empresa === idEmpresa), [data, idEmpresa]);
+  const riscos = useMemo(
+    () => riscosComIntervencoes(riscosDoFechamento(conciliacao?.itens ?? []), indicadas),
+    [conciliacao, indicadas],
+  );
 
   if (isLoading) return <LoadingSkeleton rows={6} />;
   if (error) {
@@ -101,19 +92,29 @@ export default function AtendimentoComercialPage() {
     );
   }
 
-  const servicos = (data?.fila ?? []).filter((s) => s.empresa.empresa.idEmpresa === idEmpresa);
-  const indicadas = (data?.indicadas ?? []).filter((i) => i.id_empresa === idEmpresa);
   const atendimento = (data?.atendimentos ?? []).find((a) => a.id_empresa === idEmpresa) ?? null;
   const concluido = atendimento?.status === "CONCLUIDO";
   const podeAlterar = !concluido && !!minha;
-  const pendentes = servicos.filter((s) => s.estado === "pendente");
   const parecer = rascunho ?? atendimento?.parecer ?? "";
-  const falta = faltaParaConcluir(pendentes.length, parecer);
+  const falta = faltaParaConcluir(parecer);
+  const cadastro = conciliacao?.empresas ?? atendimento?.empresas;
+  const nome = cadastro?.nome_empresa ?? "Empresa";
 
-  const cadastro = servicos[0]?.empresa.empresa;
-  const nome = cadastro?.nome ?? atendimento?.empresas?.nome_empresa ?? empresa?.nome_empresa ?? "Empresa";
-  const cnpj = cadastro?.cnpj ?? atendimento?.empresas?.cnpj ?? empresa?.cnpj ?? null;
-  const municipio = cadastro?.municipio ?? atendimento?.empresas?.municipio ?? empresa?.municipio ?? null;
+  if (!conciliacao && !atendimento) {
+    return (
+      <div className="space-y-3">
+        <Link href="/consolidacao-grupo/liberar-comercial" className="inline-flex items-center gap-1 text-xs font-medium text-marca-primary hover:underline">
+          <ArrowLeft className="size-3.5" /> Todos os atendimentos
+        </Link>
+        <p className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-10 text-center text-sm text-gray-600">
+          Esta empresa ainda não tem conciliação fechada. Feche em Conciliação DRPS/QPS × AEP.
+        </p>
+      </div>
+    );
+  }
+
+  const conciliacaoNova =
+    concluido && !!atendimento?.concluido_em && !!conciliacao && new Date(conciliacao.fechado_em).getTime() > new Date(atendimento.concluido_em).getTime();
 
   async function sugerirParecer() {
     if (parecer.trim()) {
@@ -130,19 +131,17 @@ export default function AtendimentoComercialPage() {
       const { data: r, error: e } = await createSupabaseBrowserClient().functions.invoke("gerar-parecer-comercial-ia", {
         body: {
           empresa_nome: nome,
-          municipio,
+          municipio: cadastro?.municipio ?? null,
           rascunho: parecer,
-          servicos: servicos.map((s) => ({
-            nome: NOME_PRODUTO[s.oportunidade.produto],
-            // Para a IA, só o que importa ao vendedor: "fila" e "antes da fila" são termos internos.
-            estado: s.estado === "segurado" ? "Segurado" : s.estado === "pendente" ? "Aguardando decisão" : "Liberado",
-            origens: s.oportunidade.origens,
-            detalhes: s.oportunidade.detalhes,
-            modalidades: s.decisao?.modalidades,
-            orientacao: s.decisao?.orientacao,
-            motivo: s.decisao?.motivo,
+          riscos: riscos.filter((x) => !x.foraDaConciliacao).map((x) => ({ setor: x.setor, fator: x.fator, aet: x.aet })),
+          intervencoes: indicadas.map((i) => ({
+            setor: i.setor_nome,
+            fator: i.fator_nome,
+            nome: i.nome,
+            modalidade: i.modalidade,
+            responsavel: i.responsavel,
+            prazo_dias: i.prazo_dias,
           })),
-          intervencoes: indicadas.map((i) => ({ nome: i.nome, modalidades: i.modalidades, orientacao: i.orientacao })),
         },
       });
       if (e) throw e;
@@ -157,28 +156,16 @@ export default function AtendimentoComercialPage() {
   }
 
   async function concluirAtendimento() {
+    const semItem = riscos.filter((r) => !indicadas.some((i) => chaveRisco(i.setor_chave, i.id_fator) === r.chave)).length;
     const ok = await confirmar({
       title: "Concluir o atendimento?",
-      description: "O vendedor passa a ver os serviços liberados, as intervenções e o parecer. O tempo para de contar.",
+      description: `${
+        semItem > 0 ? `${semItem === 1 ? "1 risco está" : `${semItem} riscos estão`} sem intervenção. ` : ""
+      }O vendedor passa a ver as intervenções, os riscos que pediram AET e o parecer. O tempo para de contar.`,
       confirmLabel: "Concluir",
       variant: "primary",
     });
     if (ok) concluir.mutate({ idEmpresa, parecer }, { onSuccess: () => setRascunho(null) });
-  }
-
-  async function desfazerDecisao(s: ServicoNaFila) {
-    const ok = await confirmar({
-      title: "Desfazer a decisão?",
-      description: `A decisão sobre ${NOME_PRODUTO[s.oportunidade.produto]} é apagada, e o serviço volta a como estava antes dela.`,
-      confirmLabel: "Desfazer",
-      variant: "primary",
-    });
-    if (ok) desfazer.mutate({ idEmpresa, produto: s.oportunidade.produto });
-  }
-
-  async function retirarIntervencao(i: IntervencaoIndicada) {
-    const ok = await confirmar({ title: "Retirar esta intervenção?", description: i.nome, confirmLabel: "Retirar", variant: "danger" });
-    if (ok) retirar.mutate({ idEmpresa, idIntervencao: i.id_intervencao });
   }
 
   return (
@@ -192,22 +179,28 @@ export default function AtendimentoComercialPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">{nome}</h1>
           <p className="text-sm text-gray-500">
-            {cnpj ? formatCNPJ(cnpj) : "—"}
-            {municipio ? ` · ${municipio}` : ""}
+            {cadastro?.cnpj ? formatCNPJ(cadastro.cnpj) : "—"}
+            {cadastro?.municipio ? ` · ${cadastro.municipio}` : ""}
+            {conciliacao ? ` · conciliação fechada em ${fmtData(conciliacao.fechado_em)}` : ""}
           </p>
         </div>
-        {concluido && (
-          <button type="button" onClick={() => setReabrindo(true)} className={btnNeutro}>
-            <RotateCcw className="size-4" /> Reabrir
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/consolidacao-grupo/conciliacao/${idEmpresa}`} className={btnNeutro}>
+            <Search className="size-4" /> Ver a conciliação
+          </Link>
+          {concluido && (
+            <button type="button" onClick={() => setReabrindo(true)} className={btnNeutro}>
+              <RotateCcw className="size-4" /> Reabrir
+            </button>
+          )}
+        </div>
       </div>
 
       {concluido && (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
           Concluído{atendimento?.concluido_em ? ` em ${fmtData(atendimento.concluido_em)}` : ""}
-          {atendimento?.concluido_por ? ` por ${atendimento.concluido_por}` : ""}. O vendedor já vê os serviços liberados.
-          {pendentes.length > 0 && " Chegou serviço novo: reabra para decidir."}
+          {atendimento?.concluido_por ? ` por ${atendimento.concluido_por}` : ""}. O vendedor já vê as intervenções e o parecer.
+          {conciliacaoNova && " A conciliação foi fechada de novo depois disso: reabra para conferir."}
         </p>
       )}
 
@@ -224,100 +217,58 @@ export default function AtendimentoComercialPage() {
 
       {!concluido && !minha && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Clique em <strong>{sessoes.length > 0 ? "Retomar" : "Iniciar"}</strong> para decidir os serviços, indicar intervenções e escrever o parecer.
+          Clique em <strong>{sessoes.length > 0 ? "Retomar" : "Iniciar"}</strong> para indicar as intervenções e escrever o parecer.
         </p>
       )}
 
-      {/* Serviços indicados */}
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-bold text-gray-900">Serviços indicados</h2>
-          {podeAlterar && pendentes.length > 1 && (
-            <button type="button" onClick={() => setJanela({ servicos: pendentes, status: "LIBERADO" })} className={btnPrimario}>
-              <CheckCircle2 className="size-4" /> Liberar os {pendentes.length} da fila
-            </button>
-          )}
+        <div>
+          <h2 className="text-sm font-bold text-gray-900">Riscos e intervenções</h2>
+          <p className="text-xs text-gray-500">
+            Riscos confirmados na conciliação fechada. As opções vêm do{" "}
+            <Link href="/consolidacao-grupo/intervencoes" className="font-medium text-marca-primary underline">
+              catálogo de intervenções
+            </Link>
+            , e cada alteração é gravada na hora.
+          </p>
         </div>
-        {servicos.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">Nenhum serviço a decidir. Envie uma inspeção concluída ou uma AEP entregue, ou indique uma intervenção abaixo.</p>
+        {riscos.length === 0 ? (
+          <p className="mt-3 text-sm text-gray-500">A última conciliação fechada não tem risco confirmado.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-gray-100">
-            {servicos.map((s) => (
-              <li key={s.oportunidade.produto} className="flex flex-wrap items-start gap-3 py-3">
-                <LinhaServico s={s} />
-                {podeAlterar && (
-                  <div className="flex shrink-0 flex-wrap gap-2">
-                    {s.estado !== "liberado" && s.estado !== "legado" && (
-                      <button type="button" onClick={() => setJanela({ servicos: [s], status: "LIBERADO" })} className={btnPrimario}>
-                        <CheckCircle2 className="size-4" /> Liberar
-                      </button>
-                    )}
-                    {s.estado === "liberado" && (
-                      <button type="button" onClick={() => setJanela({ servicos: [s], status: "LIBERADO" })} className={btnNeutro}>
-                        Editar
-                      </button>
-                    )}
-                    {s.estado !== "segurado" && (
-                      <button type="button" onClick={() => setJanela({ servicos: [s], status: "SEGURADO" })} className={btnNeutro}>
-                        <Hand className="size-4" /> Segurar
-                      </button>
-                    )}
-                    {(s.estado === "liberado" || s.estado === "segurado") && (
-                      <button type="button" onClick={() => desfazerDecisao(s)} disabled={desfazer.isPending} className={btnNeutro}>
-                        <Undo2 className="size-4" /> Desfazer decisão
-                      </button>
-                    )}
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Intervenções */}
-      <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-sm font-bold text-gray-900">Intervenções psicossociais</h2>
-            <p className="text-xs text-gray-500">
-              As opções vêm do{" "}
-              <Link href="/consolidacao-grupo/intervencoes" className="font-medium text-marca-primary underline">
-                catálogo de intervenções
-              </Link>
-              .
-            </p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[56rem] text-sm">
+              <thead className="border-b border-gray-200 text-left text-xs font-semibold text-gray-600">
+                <tr>
+                  <th className="w-56 py-2 pr-3">Risco</th>
+                  <th className="py-2 pr-2">Intervenção</th>
+                  <th className="w-32 py-2 pr-2">Modalidade</th>
+                  <th className="w-72 py-2 pr-2">Responsável</th>
+                  <th className="w-24 py-2 pr-2">Prazo (dias)</th>
+                  <th className="w-10 py-2" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {riscos.map((r) => (
+                  <LinhasDoRisco
+                    key={r.chave}
+                    risco={r}
+                    idEmpresa={idEmpresa}
+                    itens={intervencoesDoRisco(indicadas, r.chave)}
+                    catalogo={catalogo}
+                    podeAlterar={podeAlterar}
+                  />
+                ))}
+              </tbody>
+            </table>
+            <datalist id="comercial-responsaveis">
+              {[...new Set(catalogo.map((c) => c.responsavel).filter(Boolean))].map((v) => (
+                <option key={v} value={v as string} />
+              ))}
+            </datalist>
           </div>
-          {podeAlterar && (
-            <button type="button" onClick={() => setIndicando(true)} className={btnNeutro}>
-              <Plus className="size-4" /> Indicar intervenção
-            </button>
-          )}
-        </div>
-        {indicadas.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-500">Nenhuma intervenção indicada.</p>
-        ) : (
-          <ul className="mt-2 divide-y divide-gray-100">
-            {indicadas.map((i) => (
-              <li key={i.id_intervencao} className="flex flex-wrap items-start justify-between gap-3 py-2.5 text-sm">
-                <div className="min-w-[16rem] flex-1">
-                  <p className="font-medium text-gray-900">{i.nome}</p>
-                  <p className="text-xs text-gray-500">
-                    {[i.modalidades.join(", ") || "Sem modalidade", i.responsavel, i.orientacao].filter(Boolean).join(" · ")}
-                  </p>
-                </div>
-                {podeAlterar && (
-                  <button type="button" onClick={() => retirarIntervencao(i)} disabled={retirar.isPending} className={btnNeutro} aria-label={`Retirar ${i.nome}`}>
-                    <Trash2 className="size-4" /> Retirar
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
         )}
       </section>
 
-      {/* Parecer */}
       <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <label htmlFor="comercial-parecer" className="text-sm font-bold text-gray-900">
@@ -371,232 +322,219 @@ export default function AtendimentoComercialPage() {
         </section>
       )}
 
-      {janela && <JanelaDecidir key={`${janela.status}-${janela.servicos.length}`} janela={janela} idEmpresa={idEmpresa} onFechar={() => setJanela(null)} />}
-      {indicando && <JanelaIndicar idEmpresa={idEmpresa} jaIndicadas={indicadas} onFechar={() => setIndicando(false)} />}
       {reabrindo && <JanelaReabrir idEmpresa={idEmpresa} onFechar={() => setReabrindo(false)} />}
     </div>
   );
 }
 
-function LinhaServico({ s }: { s: ServicoNaFila }) {
-  const { oportunidade: o, decisao, estado, empresa: c } = s;
-  const detalhes = o.produto === "AET" ? o.setores.map((st) => `${st.nome}${st.expostos ? ` (${st.expostos})` : ""}`) : o.detalhes;
-  return (
-    <div className="min-w-[16rem] flex-1 text-sm">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-semibold text-gray-900">{NOME_PRODUTO[o.produto]}</span>
-        <span className={cn("rounded-full border px-2 py-0.5 text-[11px] font-semibold", COR_ESTADO[estado])}>{ROTULO_ESTADO[estado]}</span>
-        {o.situacao === "revisao" && (
-          <span className="rounded-full border border-orange-300 bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-900">Revisão</span>
+/** As linhas de um risco: uma por intervenção, a de adicionar e, sem nenhuma, o aviso. */
+function LinhasDoRisco({
+  risco,
+  idEmpresa,
+  itens,
+  catalogo,
+  podeAlterar,
+}: {
+  risco: RiscoConciliado;
+  idEmpresa: string;
+  itens: IntervencaoIndicada[];
+  catalogo: IntervencaoCatalogo[];
+  podeAlterar: boolean;
+}) {
+  const [adicionando, setAdicionando] = useState(false);
+  const mostrarNova = podeAlterar && (adicionando || itens.length === 0);
+  const linhas = itens.length + (mostrarNova ? 1 : 0) || 1;
+
+  const celulaRisco = (
+    <td rowSpan={linhas} className="py-2 pr-3 align-top">
+      <span className="font-medium text-gray-900">{risco.setor}</span>
+      <span className="block text-gray-700">{risco.fator}</span>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {risco.aet && (
+          <span className="rounded-full border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">Aprofundar com AET</span>
         )}
-        {s.reenviado && (
-          <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-900">Documento reenviado</span>
+        {risco.foraDaConciliacao && (
+          <span className="rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">Fora da última conciliação</span>
         )}
       </div>
-      <p className="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-gray-500">
-        <ClipboardCheck className="size-3.5" /> Indicado por {o.origens.join(" + ")}
-        {s.enviadoEm ? ` · enviado em ${fmtData(s.enviadoEm)}` : ""}
-        {o.produto === "AET" && c.expostosAet > 0 ? ` · ${c.expostosAet} trabalhadores expostos` : ""}
-      </p>
-      {detalhes.length > 0 && (
-        <p className="mt-1 text-xs text-gray-700">
-          {detalhes.slice(0, 6).join(" · ")}
-          {detalhes.length > 6 ? ` · + ${detalhes.length - 6}` : ""}
-        </p>
+      {podeAlterar && itens.length > 0 && !adicionando && (
+        <button type="button" onClick={() => setAdicionando(true)} className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-marca-primary hover:underline">
+          <Plus className="size-3.5" /> Adicionar intervenção
+        </button>
       )}
-      {estado === "liberado" && decisao && (
-        <p className="mt-1 text-xs text-emerald-800">
-          Em {fmtData(decisao.decidido_em)}
-          {decisao.decidido_por ? ` por ${decisao.decidido_por}` : ""}
-          {decisao.modalidades?.length ? ` · ${decisao.modalidades.join(", ")}` : ""}
-          {decisao.orientacao ? ` · ${decisao.orientacao}` : ""}
-        </p>
-      )}
-      {estado === "segurado" && decisao && (
-        <p className="mt-1 text-xs text-gray-600">
-          Em {fmtData(decisao.decidido_em)}
-          {decisao.decidido_por ? ` por ${decisao.decidido_por}` : ""}: {decisao.motivo}
-        </p>
-      )}
-    </div>
+    </td>
   );
-}
 
-function CaixasModalidade({ opcoes, valor, onChange }: { opcoes: readonly string[]; valor: string[]; onChange: (v: string[]) => void }) {
   return (
-    <div className="flex flex-wrap gap-3">
-      {opcoes.map((m) => (
-        <label key={m} className="inline-flex cursor-pointer items-center gap-1.5 text-gray-700">
-          <input
-            type="checkbox"
-            checked={valor.includes(m)}
-            onChange={(e) => onChange(e.target.checked ? [...valor, m] : valor.filter((x) => x !== m))}
-            className="size-4 accent-marca-primary"
-          />
-          {m}
-        </label>
+    <Fragment>
+      {itens.map((i, n) => (
+        <LinhaIntervencao key={i.id_item} risco={risco} idEmpresa={idEmpresa} item={i} catalogo={catalogo} podeAlterar={podeAlterar} celulaRisco={n === 0 ? celulaRisco : null} />
       ))}
-    </div>
+      {mostrarNova && (
+        <LinhaIntervencao
+          risco={risco}
+          idEmpresa={idEmpresa}
+          item={null}
+          catalogo={catalogo}
+          podeAlterar
+          celulaRisco={itens.length === 0 ? celulaRisco : null}
+          onCriada={() => setAdicionando(false)}
+          onCancelar={itens.length > 0 ? () => setAdicionando(false) : undefined}
+        />
+      )}
+      {itens.length === 0 && !mostrarNova && (
+        <tr>
+          {celulaRisco}
+          <td colSpan={5} className="py-2 pr-2 text-xs text-gray-400">
+            Nenhuma intervenção indicada.
+          </td>
+        </tr>
+      )}
+    </Fragment>
   );
 }
 
-function JanelaDecidir({ janela, idEmpresa, onFechar }: { janela: JanelaDecisao; idEmpresa: string; onFechar: () => void }) {
-  const decidir = useDecidirServico();
-  const liberar = janela.status === "LIBERADO";
-  // Um serviço só: começa com a decisão anterior, para reenvio e edição não perderem o que foi escrito.
-  const anterior = janela.servicos.length === 1 ? janela.servicos[0].decisao : null;
-  const [modalidades, setModalidades] = useState<string[]>(anterior?.modalidades ?? []);
-  const [orientacao, setOrientacao] = useState(anterior?.orientacao ?? "");
-  const [motivo, setMotivo] = useState(anterior?.motivo ?? "");
-  // Em lote, a modalidade valeria para todos: só aparece se todos forem vendidos em formatos.
-  const comModalidade = janela.servicos.every((s) => PRODUTOS_COM_MODALIDADE.includes(s.oportunidade.produto));
-  const podeGravar = liberar || motivo.trim().length > 0;
+function LinhaIntervencao({
+  risco,
+  idEmpresa,
+  item,
+  catalogo,
+  podeAlterar,
+  celulaRisco,
+  onCriada,
+  onCancelar,
+}: {
+  risco: RiscoConciliado;
+  idEmpresa: string;
+  item: IntervencaoIndicada | null;
+  catalogo: IntervencaoCatalogo[];
+  podeAlterar: boolean;
+  celulaRisco: ReactNode;
+  onCriada?: () => void;
+  onCancelar?: () => void;
+}) {
+  const salvar = useSalvarIntervencaoIndicada();
+  const retirar = useRetirarIntervencao();
+  const [responsavel, setResponsavel] = useState(item?.responsavel ?? "");
+  const [prazo, setPrazo] = useState(item?.prazo_dias ? String(item.prazo_dias) : "");
 
-  const gravar = () =>
-    decidir.mutate(
+  const noCatalogo = catalogo.find((c) => c.id_intervencao === item?.id_intervencao);
+  const opcoesIntervencao = catalogo.filter((c) => c.ativo || c.id_intervencao === item?.id_intervencao);
+  const bloqueado = !podeAlterar || salvar.isPending;
+
+  const gravar = (mudanca: { idIntervencao?: string | null; nome?: string; modalidade?: string | null; responsavel?: string | null; prazoDias?: number | null }) =>
+    salvar.mutate(
       {
+        idItem: item?.id_item ?? null,
         idEmpresa,
-        produtos: janela.servicos.map((s) => s.oportunidade.produto),
-        status: janela.status,
-        modalidades: comModalidade ? modalidades : [],
-        orientacao: orientacao.trim() || null,
-        motivo: motivo.trim() || null,
+        setorChave: risco.setorChave,
+        setorNome: risco.setor,
+        idFator: risco.idFator,
+        fatorNome: risco.fator,
+        idIntervencao: item?.id_intervencao ?? null,
+        nome: item?.nome ?? "",
+        modalidade: item?.modalidade ?? null,
+        responsavel: item?.responsavel ?? null,
+        prazoDias: item?.prazo_dias ?? null,
+        ...mudanca,
       },
-      { onSuccess: onFechar },
+      { onSuccess: () => onCriada?.() },
     );
 
+  function escolherIntervencao(id: string) {
+    const c = catalogo.find((x) => x.id_intervencao === id);
+    if (!c) return;
+    // Trocar a intervenção traz a modalidade e o responsável dela; depois dá para mudar.
+    setResponsavel(c.responsavel ?? "");
+    gravar({ idIntervencao: c.id_intervencao, nome: c.nome, modalidade: c.modalidades[0] ?? null, responsavel: c.responsavel ?? null });
+  }
+
+  function gravarPrazo() {
+    const dias = prazo.trim() ? Math.max(1, Math.floor(Number(prazo))) : null;
+    if (dias !== null && !Number.isFinite(dias)) return;
+    if (dias === (item?.prazo_dias ?? null)) return;
+    setPrazo(dias ? String(dias) : "");
+    gravar({ prazoDias: dias });
+  }
+
+  async function remover() {
+    if (!item) return;
+    const ok = await confirmar({ title: "Retirar esta intervenção?", description: `${item.nome} sai de ${risco.setor} · ${risco.fator}.`, confirmLabel: "Retirar", variant: "danger" });
+    if (ok) retirar.mutate({ idEmpresa, idItem: item.id_item });
+  }
+
   return (
-    <Modal
-      open
-      onClose={onFechar}
-      title={liberar ? "Liberar para o vendedor" : "Segurar serviço"}
-      footer={
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onFechar} className={btnNeutro}>
-            Cancelar
-          </button>
-          <button type="button" onClick={gravar} disabled={!podeGravar || decidir.isPending} className={btnPrimario}>
-            {decidir.isPending && <Loader2 className="size-4 animate-spin" />}
-            {liberar ? "Liberar" : "Segurar"}
-          </button>
-        </div>
-      }
-    >
-      <div className="space-y-4 text-sm">
-        <ul className="text-xs text-gray-600">
-          {janela.servicos.map((s) => (
-            <li key={s.oportunidade.produto}>{NOME_PRODUTO[s.oportunidade.produto]}</li>
+    <tr className="align-top">
+      {celulaRisco}
+      <td className="py-2 pr-2">
+        <select
+          value={item?.id_intervencao ?? ""}
+          disabled={bloqueado}
+          onChange={(e) => escolherIntervencao(e.target.value)}
+          aria-label={`Intervenção para ${risco.setor}, ${risco.fator}`}
+          className={campoCls}
+        >
+          {!item && <option value="">Escolha a intervenção...</option>}
+          {item && !noCatalogo && <option value={item.id_intervencao ?? ""}>{item.nome}</option>}
+          {opcoesIntervencao.map((c) => (
+            <option key={c.id_intervencao} value={c.id_intervencao}>
+              {c.nome}
+            </option>
           ))}
-        </ul>
-        {liberar ? (
-          <>
-            {comModalidade && (
-              <fieldset>
-                <legend className="mb-1 text-xs font-semibold text-gray-600">
-                  <Dica texto={DICAS_COMERCIAL_LIBERAR.modalidades}>Modalidades possíveis</Dica>
-                </legend>
-                <CaixasModalidade opcoes={MODALIDADES} valor={modalidades} onChange={setModalidades} />
-              </fieldset>
-            )}
-            <div>
-              <label htmlFor="comercial-orientacao" className="mb-1 block text-xs font-semibold text-gray-600">
-                <Dica texto={DICAS_COMERCIAL_LIBERAR.orientacao}>Orientação para o vendedor (opcional)</Dica>
-              </label>
-              <textarea id="comercial-orientacao" rows={3} value={orientacao} onChange={(e) => setOrientacao(e.target.value)} className={inputCls} />
-            </div>
-          </>
-        ) : (
-          <div>
-            <label htmlFor="comercial-motivo" className="mb-1 block text-xs font-semibold text-gray-600">
-              <Dica texto={DICAS_COMERCIAL_LIBERAR.motivo}>Motivo</Dica> <span className="text-red-600">*</span>
-            </label>
-            <textarea id="comercial-motivo" rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} className={inputCls} />
-          </div>
+        </select>
+      </td>
+      <td className="py-2 pr-2">
+        <select
+          value={item?.modalidade ?? ""}
+          disabled={bloqueado || !item}
+          onChange={(e) => gravar({ modalidade: e.target.value || null })}
+          aria-label="Modalidade"
+          className={campoCls}
+        >
+          <option value="">—</option>
+          {MODALIDADES.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td className="py-2 pr-2">
+        <input
+          list="comercial-responsaveis"
+          value={responsavel}
+          disabled={bloqueado || !item}
+          onChange={(e) => setResponsavel(e.target.value)}
+          onBlur={() => responsavel.trim() !== (item?.responsavel ?? "") && item && gravar({ responsavel: responsavel.trim() || null })}
+          aria-label="Responsável"
+          className={campoCls}
+        />
+      </td>
+      <td className="py-2 pr-2">
+        <input
+          type="number"
+          min={1}
+          value={prazo}
+          disabled={bloqueado || !item}
+          onChange={(e) => setPrazo(e.target.value)}
+          onBlur={() => item && gravarPrazo()}
+          aria-label="Prazo em dias"
+          className={cn(campoCls, "tabular-nums")}
+        />
+      </td>
+      <td className="py-2 text-right">
+        {podeAlterar && item && (
+          <button type="button" onClick={remover} disabled={retirar.isPending} aria-label={`Retirar ${item.nome}`} className="rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-700 disabled:opacity-60">
+            <Trash2 className="size-4" />
+          </button>
         )}
-      </div>
-    </Modal>
-  );
-}
-
-function JanelaIndicar({ idEmpresa, jaIndicadas, onFechar }: { idEmpresa: string; jaIndicadas: IntervencaoIndicada[]; onFechar: () => void }) {
-  const { data: catalogo = [], isLoading } = useCatalogoIntervencoes();
-  const indicar = useIndicarIntervencao();
-  const [id, setId] = useState("");
-  const [modalidades, setModalidades] = useState<string[]>([]);
-  const [orientacao, setOrientacao] = useState("");
-
-  const ja = new Set(jaIndicadas.map((i) => i.id_intervencao));
-  const opcoes = catalogo.filter((c) => c.ativo && !ja.has(c.id_intervencao));
-  const escolhida = catalogo.find((c) => c.id_intervencao === id);
-
-  return (
-    <Modal
-      open
-      onClose={onFechar}
-      title="Indicar intervenção"
-      footer={
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onFechar} className={btnNeutro}>
+        {!item && onCancelar && (
+          <button type="button" onClick={onCancelar} className="text-xs text-gray-500 hover:underline">
             Cancelar
           </button>
-          <button
-            type="button"
-            disabled={!id || indicar.isPending}
-            onClick={() => indicar.mutate({ idEmpresa, idIntervencao: id, modalidades, orientacao: orientacao.trim() || null }, { onSuccess: onFechar })}
-            className={btnPrimario}
-          >
-            {indicar.isPending && <Loader2 className="size-4 animate-spin" />} Indicar
-          </button>
-        </div>
-      }
-    >
-      <div className="space-y-4 text-sm">
-        <div>
-          <label htmlFor="comercial-intervencao" className="mb-1 block text-xs font-semibold text-gray-600">
-            Intervenção
-          </label>
-          <select
-            id="comercial-intervencao"
-            value={id}
-            disabled={isLoading}
-            onChange={(e) => {
-              const c = catalogo.find((x) => x.id_intervencao === e.target.value);
-              setId(e.target.value);
-              setModalidades(c?.modalidades ?? []);
-            }}
-            className={inputCls}
-          >
-            <option value="">{isLoading ? "Carregando..." : "Escolha..."}</option>
-            {opcoes.map((c) => (
-              <option key={c.id_intervencao} value={c.id_intervencao}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
-        </div>
-        {escolhida && (
-          <>
-            {escolhida.modalidades.length > 0 && (
-              <fieldset>
-                <legend className="mb-1 text-xs font-semibold text-gray-600">
-                  <Dica texto={DICAS_COMERCIAL_LIBERAR.modalidades}>Modalidades possíveis</Dica>
-                </legend>
-                <CaixasModalidade opcoes={escolhida.modalidades} valor={modalidades} onChange={setModalidades} />
-              </fieldset>
-            )}
-            {(escolhida.observacao || escolhida.responsavel) && (
-              <p className="text-xs text-gray-500">{[escolhida.observacao, escolhida.responsavel && `Responsável: ${escolhida.responsavel}`].filter(Boolean).join(" ")}</p>
-            )}
-            <div>
-              <label htmlFor="comercial-orientacao-int" className="mb-1 block text-xs font-semibold text-gray-600">
-                <Dica texto={DICAS_COMERCIAL_LIBERAR.orientacao}>Orientação para o vendedor (opcional)</Dica>
-              </label>
-              <textarea id="comercial-orientacao-int" rows={2} value={orientacao} onChange={(e) => setOrientacao(e.target.value)} className={inputCls} />
-            </div>
-          </>
         )}
-      </div>
-    </Modal>
+      </td>
+    </tr>
   );
 }
 
@@ -625,7 +563,7 @@ function JanelaReabrir({ idEmpresa, onFechar }: { idEmpresa: string; onFechar: (
       }
     >
       <div className="space-y-2 text-sm">
-        <p className="text-gray-700">O vendedor deixa de ver os serviços liberados e as intervenções até você concluir de novo.</p>
+        <p className="text-gray-700">O vendedor deixa de ver as intervenções, os riscos que pediram AET e o parecer até você concluir de novo.</p>
         <label htmlFor="comercial-reabrir" className="block text-xs font-semibold text-gray-600">
           Motivo <span className="text-red-600">*</span>
         </label>

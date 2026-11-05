@@ -143,7 +143,8 @@ export default function ComercialPage() {
             <Handshake className="size-5 text-amber-700" /> Oportunidades comerciais
           </h1>
           <p className="max-w-3xl text-sm text-gray-500">
-            Só entram os serviços <strong>liberados</strong> pela equipe. Serviços que a JCN já
+            Só entram inspeções e AEPs <strong>liberadas para o Comercial</strong> pela equipe, e as intervenções que a
+            Conciliação indicou. Serviços que a JCN já
             identificou no cliente e que a empresa ainda não contratou: pela{" "}
             <strong>AEP entregue</strong> (AET e DRPS/Questionário) e pela <strong>última inspeção concluída</strong>{" "}
             (Apreciação NR-12, medição quantitativa, Análise de Químicos, DRPS/Questionário e treinamentos NR).
@@ -369,7 +370,7 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
               <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-70">
                 Indicada por: {o.origens.join(" + ")}
               </div>
-              {o.produto === "AET" ? (
+              {o.produto === "AET" && o.setores.length > 0 ? (
                 <div className="mt-1 text-xs">
                   <div>
                     <strong>{o.setores.length}</strong> setor{o.setores.length !== 1 ? "es" : ""} indicado{o.setores.length !== 1 ? "s" : ""} ·{" "}
@@ -378,6 +379,14 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
                   <div className="mt-0.5 opacity-80">
                     {o.setores.map((st) => `${st.nome}${st.expostos ? ` (${st.expostos})` : ""}`).join(" · ")}
                   </div>
+                  {/* Os riscos que a Conciliação mandou aprofundar somam-se aos setores da AEP. */}
+                  {o.detalhes
+                    .filter((d) => d.includes("(Conciliação:"))
+                    .map((d) => (
+                      <div key={d} className="mt-0.5">
+                        {d}
+                      </div>
+                    ))}
                 </div>
               ) : (
                 <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs">
@@ -386,20 +395,6 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
                   ))}
                   {o.detalhes.length > 6 && <li className="list-none opacity-70">+ {o.detalhes.length - 6} item(ns)</li>}
                 </ul>
-              )}
-              {o.liberacao && (o.liberacao.modalidades.length > 0 || o.liberacao.orientacao) && (
-                <div className="mt-2 space-y-0.5 border-t border-current/10 pt-1.5 text-xs">
-                  {o.liberacao.modalidades.length > 0 && (
-                    <div>
-                      <strong>Modalidades:</strong> {o.liberacao.modalidades.join(", ")}
-                    </div>
-                  )}
-                  {o.liberacao.orientacao && (
-                    <div>
-                      <strong>Orientação da equipe:</strong> {o.liberacao.orientacao}
-                    </div>
-                  )}
-                </div>
               )}
             </div>
           );
@@ -432,13 +427,13 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
         )}
         {c.inspecao?.liberadoEm && (
           <span>
-            Inspeção enviada ao Comercial em {fmtData(c.inspecao.liberadoEm)}
+            Inspeção liberada para o Comercial em {fmtData(c.inspecao.liberadoEm)}
             {c.inspecao.liberadoPor ? ` por ${c.inspecao.liberadoPor}` : ""}
           </span>
         )}
         {c.temAep && c.aepLiberadaEm && (
           <span>
-            AEP enviada ao Comercial em {fmtData(c.aepLiberadaEm)}
+            AEP liberada em {fmtData(c.aepLiberadaEm)}
             {c.aepLiberadaPor ? ` por ${c.aepLiberadaPor}` : ""}
           </span>
         )}

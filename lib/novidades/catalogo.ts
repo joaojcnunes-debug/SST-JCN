@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-liberar-servicos",
+    data: "2026-11-05",
+    tipo: "novidade",
+    titulo: "Liberar para o Comercial: as intervenções saem da Conciliação",
+    texto:
+      "A Consolidação ganhou a tela Liberar para o Comercial, com as empresas de conciliação fechada. Em cada empresa " +
+      "você aperta Iniciar e o tempo conta como na inspeção. Para cada risco confirmado, escolhe uma ou mais intervenções " +
+      "do novo catálogo, com modalidade, responsável e prazo, escreve o parecer com ajuda da IA e conclui. O vendedor só " +
+      "vê depois de concluído, e dá para reabrir informando o motivo.",
+    onde: "Consolidação › Liberar para o Comercial e Consolidação › Intervenções",
+    impacto: "A liberação da inspeção e da AEP continua igual.",
+    versoes: ["0.3.233", "0.3.235"],
+  },
+  {
     id: "ia-modelos-groq",
     data: "2026-11-05",
     tipo: "correcao",
@@ -51,20 +65,6 @@ export const CATALOGO: Novidade[] = [
       "modelos que continuam disponíveis e ganham uma terceira opção de reserva.",
     onde: "Apreciação de Máquinas, Inspeções › Máquinas e os botões de IA dos laudos",
     versoes: ["0.3.234"],
-  },
-  {
-    id: "comercial-liberar-servicos",
-    data: "2026-11-05",
-    tipo: "novidade",
-    titulo: "Liberar para o Comercial: um atendimento por empresa",
-    texto:
-      "A Consolidação ganhou a tela Liberar para o Comercial. Em cada empresa você aperta Iniciar e o tempo conta como " +
-      "na inspeção; decide os serviços indicados, escolhe intervenções do novo catálogo, escreve o parecer com ajuda da " +
-      "IA e conclui. O vendedor só vê depois de concluído, e dá para reabrir informando o motivo. O botão da inspeção e " +
-      "da AEP agora se chama Enviar para o Comercial e põe os serviços nessa fila.",
-    onde: "Consolidação › Liberar para o Comercial e Consolidação › Intervenções",
-    impacto: "O que já estava liberado continua aparecendo para o vendedor.",
-    versoes: ["0.3.233"],
   },
   {
     id: "escala-adicionar-supervisor-no-padrao",

@@ -3,7 +3,7 @@
 // Dados do módulo Comercial (2026-10-05). Vêm da RPC `comercial_dados` (v267),
 // que devolve as AEPs entregues ao cliente, a última inspeção concluída (v268)
 // e a situação dos documentos de cada empresa — o comercial não precisa ter os módulos AEP/AET/DRPS liberados.
-// Desde a v321 também traz os atendimentos, as decisões e as intervenções de
+// Desde a v321/v322 também traz as conciliações fechadas, os atendimentos e as intervenções de
 // Consolidação › Liberar para o Comercial, que lê daqui e grava pelas funções do banco.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -20,15 +20,12 @@ import {
   type DocEmpresa,
   type EmpresaComercial,
   type InspecaoComercial,
-  type Produto,
 } from "@/lib/comercial/oportunidades";
 import {
-  montarFila,
   visaoDoVendedor,
   type AtendimentoComercial,
-  type DecisaoServico,
+  type ConciliacaoFechada,
   type IntervencaoIndicada,
-  type StatusDecisao,
 } from "@/lib/comercial/liberacao";
 
 const CHAVE = "comercial-dados";
@@ -39,8 +36,7 @@ const sb = () => createSupabaseBrowserClient() as any;
 
 interface DadosComercial {
   lista: EmpresaComercial[];
-  decisoes: DecisaoServico[];
-  corte: string | null;
+  conciliacoes: ConciliacaoFechada[];
   atendimentos: AtendimentoComercial[];
   indicadas: IntervencaoIndicada[];
 }
@@ -56,10 +52,9 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
         docs?: DocEmpresa[];
         inspecoes?: InspecaoComercial[];
         certificados?: CertificadoEmpresa[];
-        liberacoes?: DecisaoServico[];
+        conciliacoes?: ConciliacaoFechada[];
         atendimentos?: AtendimentoComercial[];
         intervencoes?: IntervencaoIndicada[];
-        corte?: string | null;
       };
       const aeps = (r.aeps ?? []).map((a) => {
         const x = a as { entregue_em?: string | null; enviado_por?: string | null };
@@ -68,8 +63,7 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
       });
       return {
         lista: montarComercial(aeps, r.docs ?? [], r.inspecoes ?? [], r.certificados ?? []),
-        decisoes: r.liberacoes ?? [],
-        corte: r.corte ?? null,
+        conciliacoes: r.conciliacoes ?? [],
         atendimentos: r.atendimentos ?? [],
         indicadas: r.intervencoes ?? [],
       };
@@ -78,15 +72,15 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
   });
 }
 
-/** O que o vendedor vê: só os serviços liberados (e os de antes da fila). */
+/** O que o vendedor vê: inspeção e AEP liberadas, mais o que saiu de atendimento concluído. */
 export function useComercial() {
-  return useDadosComercial<EmpresaComercial[]>((d) => visaoDoVendedor(d.lista, d.decisoes, d.corte, d.atendimentos, d.indicadas));
+  return useDadosComercial<EmpresaComercial[]>((d) => visaoDoVendedor(d.lista, d.atendimentos, d.indicadas, d.conciliacoes));
 }
 
-/** Tudo o que a liberação precisa: a fila com o estado de cada serviço e os atendimentos. */
+/** Tudo o que a liberação precisa: conciliações fechadas, atendimentos e intervenções. */
 export function useLiberacaoServicos() {
   return useDadosComercial((d) => ({
-    fila: montarFila(d.lista, d.decisoes, d.corte),
+    conciliacoes: d.conciliacoes,
     atendimentos: d.atendimentos,
     indicadas: d.indicadas,
   }));
@@ -102,7 +96,7 @@ export function usePodeLiberarServicos(): boolean {
   return podeEditar && perfilEscreveNaRls(user?.perfil);
 }
 
-function useGravar<V>(rpc: string, params: (v: V) => object, sucesso: (v: V) => string, falha: string) {
+function useGravar<V>(rpc: string, params: (v: V) => object, sucesso: ((v: V) => string) | null, falha: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (v: V) => {
@@ -112,62 +106,52 @@ function useGravar<V>(rpc: string, params: (v: V) => object, sucesso: (v: V) => 
     onSuccess: (_: unknown, v: V) => {
       // Concluir e reabrir mudam também as sessões e o histórico.
       for (const k of [CHAVE, "documento-sessoes", "comercial-eventos"]) qc.invalidateQueries({ queryKey: [k] });
-      toast.success(sucesso(v));
+      if (sucesso) toast.success(sucesso(v));
     },
     onError: (e: Error) => toast.error(mensagemErro(e, falha)),
   });
 }
 
-export interface NovaDecisao {
+export interface LinhaIntervencao {
+  idItem: string | null;
   idEmpresa: string;
-  produtos: Produto[];
-  status: StatusDecisao;
-  modalidades?: string[];
-  orientacao?: string | null;
-  motivo?: string | null;
+  setorChave: string;
+  setorNome: string;
+  idFator: string;
+  fatorNome: string;
+  idIntervencao: string | null;
+  nome: string;
+  modalidade: string | null;
+  responsavel: string | null;
+  prazoDias: number | null;
 }
 
-export function useDecidirServico() {
-  return useGravar<NovaDecisao>(
-    "comercial_decidir",
+/** Grava uma linha da tabela a cada campo alterado, sem aviso: a linha já mostra o que foi salvo. */
+export function useSalvarIntervencaoIndicada() {
+  return useGravar<LinhaIntervencao>(
+    "comercial_intervencao_salvar",
     (d) => ({
+      p_id_item: d.idItem,
       p_id_empresa: d.idEmpresa,
-      p_produtos: d.produtos,
-      p_status: d.status,
-      p_modalidades: d.modalidades ?? [],
-      p_orientacao: d.orientacao ?? null,
-      p_motivo: d.motivo ?? null,
+      p_setor_chave: d.setorChave,
+      p_setor_nome: d.setorNome,
+      p_id_fator: d.idFator,
+      p_fator_nome: d.fatorNome,
+      p_id_intervencao: d.idIntervencao,
+      p_nome: d.nome,
+      p_modalidade: d.modalidade,
+      p_responsavel: d.responsavel,
+      p_prazo_dias: d.prazoDias,
     }),
-    (d) => {
-      const verbo = d.status === "LIBERADO" ? "liberado" : "segurado";
-      return d.produtos.length === 1 ? `Serviço ${verbo}` : `${d.produtos.length} serviços ${verbo}s`;
-    },
-    "Falha ao gravar a decisão",
-  );
-}
-
-export function useDesfazerDecisao() {
-  return useGravar<{ idEmpresa: string; produto: Produto }>(
-    "comercial_desfazer_decisao",
-    (d) => ({ p_id_empresa: d.idEmpresa, p_produto: d.produto }),
-    () => "Decisão desfeita",
-    "Falha ao desfazer a decisão",
-  );
-}
-
-export function useIndicarIntervencao() {
-  return useGravar<{ idEmpresa: string; idIntervencao: string; modalidades: string[]; orientacao: string | null }>(
-    "comercial_intervencao_indicar",
-    (d) => ({ p_id_empresa: d.idEmpresa, p_id_intervencao: d.idIntervencao, p_modalidades: d.modalidades, p_orientacao: d.orientacao }),
-    () => "Intervenção indicada",
-    "Falha ao indicar a intervenção",
+    null,
+    "Falha ao salvar a intervenção",
   );
 }
 
 export function useRetirarIntervencao() {
-  return useGravar<{ idEmpresa: string; idIntervencao: string }>(
+  return useGravar<{ idEmpresa: string; idItem: string }>(
     "comercial_intervencao_retirar",
-    (d) => ({ p_id_empresa: d.idEmpresa, p_id_intervencao: d.idIntervencao }),
+    (d) => ({ p_id_empresa: d.idEmpresa, p_id_item: d.idItem }),
     () => "Intervenção retirada",
     "Falha ao retirar a intervenção",
   );
