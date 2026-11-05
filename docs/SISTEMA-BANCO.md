@@ -591,7 +591,7 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
-- **v321 — Liberar para o Comercial (05/11/2026).** PENDENTE de aplicar.
+- **v321 — Liberar para o Comercial (05/11/2026).** Aplicada em 05/11/2026 pelo MCP, com o ok do João, antes do merge da 0.3.233.
   - `comercial_pode_liberar()`: Admin, ou Técnico ativo com `consolidacao_psicossocial`. É a regra de leitura de todas as tabelas abaixo.
   - `comercial_atendimentos` (um por empresa: status, parecer, conclusão) e `comercial_atendimento_eventos` (conclusões e reaberturas, com motivo e parecer).
   - `comercial_sessoes`: mesmo desenho de `documento_sessoes`, por empresa; uma sessão aberta por pessoa; sem pg_cron.
