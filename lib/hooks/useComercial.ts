@@ -150,7 +150,7 @@ export function useDesfazerDecisao() {
   return useGravar<{ idEmpresa: string; produto: Produto }>(
     "comercial_desfazer_decisao",
     (d) => ({ p_id_empresa: d.idEmpresa, p_produto: d.produto }),
-    () => "Serviço de volta à fila",
+    () => "Decisão desfeita",
     "Falha ao desfazer a decisão",
   );
 }

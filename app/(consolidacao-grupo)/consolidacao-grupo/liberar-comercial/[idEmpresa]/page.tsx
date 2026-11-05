@@ -134,7 +134,8 @@ export default function AtendimentoComercialPage() {
           rascunho: parecer,
           servicos: servicos.map((s) => ({
             nome: NOME_PRODUTO[s.oportunidade.produto],
-            estado: ROTULO_ESTADO[s.estado],
+            // Para a IA, só o que importa ao vendedor: "fila" e "antes da fila" são termos internos.
+            estado: s.estado === "segurado" ? "Segurado" : s.estado === "pendente" ? "Aguardando decisão" : "Liberado",
             origens: s.oportunidade.origens,
             detalhes: s.oportunidade.detalhes,
             modalidades: s.decisao?.modalidades,
@@ -165,11 +166,11 @@ export default function AtendimentoComercialPage() {
     if (ok) concluir.mutate({ idEmpresa, parecer }, { onSuccess: () => setRascunho(null) });
   }
 
-  async function voltarParaFila(s: ServicoNaFila) {
+  async function desfazerDecisao(s: ServicoNaFila) {
     const ok = await confirmar({
-      title: "Voltar para a fila?",
-      description: `${NOME_PRODUTO[s.oportunidade.produto]} volta a esperar decisão. A decisão atual é apagada.`,
-      confirmLabel: "Voltar para a fila",
+      title: "Desfazer a decisão?",
+      description: `A decisão sobre ${NOME_PRODUTO[s.oportunidade.produto]} é apagada, e o serviço volta a como estava antes dela.`,
+      confirmLabel: "Desfazer",
       variant: "primary",
     });
     if (ok) desfazer.mutate({ idEmpresa, produto: s.oportunidade.produto });
@@ -223,7 +224,7 @@ export default function AtendimentoComercialPage() {
 
       {!concluido && !minha && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          Clique em <strong>Iniciar</strong> para decidir os serviços, indicar intervenções e escrever o parecer.
+          Clique em <strong>{sessoes.length > 0 ? "Retomar" : "Iniciar"}</strong> para decidir os serviços, indicar intervenções e escrever o parecer.
         </p>
       )}
 
@@ -262,8 +263,8 @@ export default function AtendimentoComercialPage() {
                       </button>
                     )}
                     {(s.estado === "liberado" || s.estado === "segurado") && (
-                      <button type="button" onClick={() => voltarParaFila(s)} disabled={desfazer.isPending} className={btnNeutro}>
-                        <Undo2 className="size-4" /> Voltar para a fila
+                      <button type="button" onClick={() => desfazerDecisao(s)} disabled={desfazer.isPending} className={btnNeutro}>
+                        <Undo2 className="size-4" /> Desfazer decisão
                       </button>
                     )}
                   </div>
@@ -447,7 +448,8 @@ function JanelaDecidir({ janela, idEmpresa, onFechar }: { janela: JanelaDecisao;
   const [modalidades, setModalidades] = useState<string[]>(anterior?.modalidades ?? []);
   const [orientacao, setOrientacao] = useState(anterior?.orientacao ?? "");
   const [motivo, setMotivo] = useState(anterior?.motivo ?? "");
-  const comModalidade = janela.servicos.some((s) => PRODUTOS_COM_MODALIDADE.includes(s.oportunidade.produto));
+  // Em lote, a modalidade valeria para todos: só aparece se todos forem vendidos em formatos.
+  const comModalidade = janela.servicos.every((s) => PRODUTOS_COM_MODALIDADE.includes(s.oportunidade.produto));
   const podeGravar = liberar || motivo.trim().length > 0;
 
   const gravar = () =>

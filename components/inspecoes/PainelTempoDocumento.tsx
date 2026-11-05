@@ -92,6 +92,12 @@ const gravar = (k: string, v: string) => {
   }
 };
 
+/** No atendimento do Comercial, os motivos falam de atendimento, não de documento. */
+const rotuloMotivo = (motivo: keyof typeof ROTULO_MOTIVO, fonte: FonteSessao) =>
+  fonte === "comercial"
+    ? ROTULO_MOTIVO[motivo].replace("Documento", "Atendimento").replace("documento", "atendimento")
+    : ROTULO_MOTIVO[motivo];
+
 const ms = (iso: string) => new Date(iso).getTime();
 const hora = (t: number) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const diaHora = (t: number) =>
@@ -232,7 +238,7 @@ export default function PainelTempoDocumento({
     titulo = "Pausado";
     grande = fmtDuracao(r.trabalhadoMs);
     sub = ultima?.fim
-      ? `Última atividade em ${diaHora(ms(ultima.fim))}${ultima.motivo_fim ? ` · ${ROTULO_MOTIVO[ultima.motivo_fim]}` : ""}`
+      ? `Última atividade em ${diaHora(ms(ultima.fim))}${ultima.motivo_fim ? ` · ${rotuloMotivo(ultima.motivo_fim, fonte)}` : ""}`
       : "Sem sessão aberta";
     Icone = PauseCircle;
   } else if (estado === "novo") {
