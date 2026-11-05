@@ -30,12 +30,10 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 // llama-3.1-8b-instant sumiu em 2026-10 e a função passou a dar 502): se um
 // modelo não existir mais, tenta o próximo.
 const MODELOS = [
-  "llama-3.3-70b-versatile",
+  // Conferidos no /models do Groq em 05/11/2026; os demais da lista antiga saíram do ar.
   "openai/gpt-oss-20b",
   "openai/gpt-oss-120b",
-  "meta-llama/llama-4-scout-17b-16e-instruct",
-  "qwen/qwen3-32b",
-  "moonshotai/kimi-k2-instruct",
+  "qwen/qwen3.8-27b",
 ];
 
 // Arquitetura otimizada: IA responde APENAS o bloco CONCLUSAO_RAPIDA
@@ -441,7 +439,7 @@ Deno.serve(async (req: Request) => {
           temperature: 0.2,
           max_tokens: MAX_OUTPUT_TOKENS,
           // gpt-oss: raciocínio curto, sobra orçamento pro JSON
-          ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
+          ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : { reasoning_effort: "none" }),
         }),
       });
       if (groqRes.ok) break;

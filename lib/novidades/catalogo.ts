@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "ia-modelos-groq",
+    data: "2026-11-05",
+    tipo: "correcao",
+    titulo: "IA: leitura de foto de máquina volta a funcionar",
+    texto:
+      "O fornecedor da IA retirou do ar os modelos que o sistema usava. A leitura de foto da Apreciação de Máquinas e " +
+      "da aba Máquinas da inspeção estava sem modelo e voltou a funcionar. As demais sugestões de IA ficam com os " +
+      "modelos que continuam disponíveis e ganham uma terceira opção de reserva.",
+    onde: "Apreciação de Máquinas, Inspeções › Máquinas e os botões de IA dos laudos",
+    versoes: ["0.3.234"],
+  },
+  {
     id: "comercial-liberar-servicos",
     data: "2026-11-05",
     tipo: "novidade",

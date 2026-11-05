@@ -14,7 +14,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL = "meta-llama/llama-4-scout-17b-16e-instruct";
+// O llama-4-scout saiu do Groq; o qwen3.8-27b é o único com visão no /models em 05/11/2026.
+const MODEL = "qwen/qwen3.8-27b";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -158,6 +159,8 @@ Deno.serve(async (req: Request) => {
         response_format: { type: "json_object" },
         temperature: 0.3,
         max_tokens: 900,
+        // Com raciocínio ligado, ele gasta os tokens pensando e o modo JSON devolve erro.
+        reasoning_effort: "none",
       }),
     });
 
