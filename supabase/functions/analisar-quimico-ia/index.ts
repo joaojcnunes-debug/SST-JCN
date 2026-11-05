@@ -439,7 +439,7 @@ Deno.serve(async (req: Request) => {
           temperature: 0.2,
           max_tokens: MAX_OUTPUT_TOKENS,
           // gpt-oss: raciocínio curto, sobra orçamento pro JSON
-          ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
+          ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : { reasoning_effort: "none" }),
         }),
       });
       if (groqRes.ok) break;
