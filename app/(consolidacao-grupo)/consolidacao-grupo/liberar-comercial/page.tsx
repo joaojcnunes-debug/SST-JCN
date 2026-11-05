@@ -1,14 +1,12 @@
 "use client";
 
-// Consolidação › Liberar para o Comercial (0.3.233, banco v321). Uma linha por empresa: as que têm
-// serviço esperando decisão, as em atendimento e as concluídas. O atendimento fica em [idEmpresa].
+// Consolidação › Liberar para o Comercial (0.3.233, refeita na 0.3.235, banco v322). Uma linha por
+// empresa com conciliação fechada e ao menos um risco. O atendimento fica em [idEmpresa].
 // A regra está em lib/comercial/liberacao.ts. Quem libera não precisa do módulo Comercial.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AlertTriangle, ChevronRight, Handshake, Search, Timer } from "lucide-react";
-import EmpresaSelect from "@/components/empresas/EmpresaSelect";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { useLiberacaoServicos, usePodeLiberarServicos } from "@/lib/hooks/useComercial";
 import { useAgora, useTempoComercial } from "@/lib/hooks/useDocumentoSessoes";
@@ -24,7 +22,6 @@ const ABAS: { key: SituacaoEmpresa; rotulo: string; vazio: string }[] = [
 ];
 
 export default function LiberarComercialPage() {
-  const router = useRouter();
   const { data, isLoading, error } = useLiberacaoServicos();
   const { data: sessoes = [] } = useTempoComercial();
   const podeLiberar = usePodeLiberarServicos();
@@ -33,7 +30,7 @@ export default function LiberarComercialPage() {
   const [aba, setAba] = useState<SituacaoEmpresa>("fila");
   const [busca, setBusca] = useState("");
 
-  const empresas = useMemo(() => (data ? resumirEmpresas(data.fila, data.atendimentos) : []), [data]);
+  const empresas = useMemo(() => (data ? resumirEmpresas(data.conciliacoes, data.atendimentos, data.indicadas) : []), [data]);
   const contagem = useMemo(() => {
     const n: Record<SituacaoEmpresa, number> = { fila: 0, andamento: 0, concluida: 0 };
     for (const e of empresas) n[e.situacao]++;
@@ -63,20 +60,14 @@ export default function LiberarComercialPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-            <Handshake className="size-5 text-marca-primary" /> Liberar para o Comercial
-          </h1>
-          <p className="max-w-3xl text-sm text-gray-500">
-            Os serviços chegam aqui quando alguém envia uma inspeção concluída ou uma AEP entregue. Em cada empresa, decida os serviços,
-            indique as intervenções, escreva o parecer e conclua. O vendedor só vê depois de concluído.
-          </p>
-        </div>
-        <div className="w-full max-w-xs">
-          <label className="mb-1 block text-xs font-semibold text-gray-600">Abrir outra empresa</label>
-          <EmpresaSelect value={null} allowAll onChange={(id) => id && router.push(`/consolidacao-grupo/liberar-comercial/${id}`)} />
-        </div>
+      <div>
+        <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+          <Handshake className="size-5 text-marca-primary" /> Liberar para o Comercial
+        </h1>
+        <p className="max-w-3xl text-sm text-gray-500">
+          As empresas chegam aqui quando a <strong>Conciliação DRPS/QPS × AEP é fechada</strong>. Para cada risco confirmado, indique as
+          intervenções, escreva o parecer e conclua. O vendedor só vê depois de concluído.
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-1 border-b border-gray-200">
@@ -116,6 +107,7 @@ export default function LiberarComercialPage() {
             <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
               <tr>
                 <th className="px-3 py-2">Empresa</th>
+                <th className="w-36 px-3 py-2">Conciliação fechada</th>
                 <th className="px-3 py-2">Situação</th>
                 <th className="w-28 px-3 py-2">Tempo</th>
                 <th className="w-8 px-3 py-2" />
@@ -133,6 +125,7 @@ export default function LiberarComercialPage() {
                       {e.municipio ? ` · ${e.municipio}${e.uf ? `/${e.uf}` : ""}` : ""}
                     </span>
                   </td>
+                  <td className="px-3 py-2.5 text-xs text-gray-600">{fmtData(e.fechadoEm)}</td>
                   <td className="px-3 py-2.5 text-xs text-gray-700">
                     <TextoSituacao e={e} />
                   </td>
@@ -157,22 +150,26 @@ export default function LiberarComercialPage() {
 }
 
 function TextoSituacao({ e }: { e: ResumoEmpresa }) {
-  if (e.chegouServico) {
+  if (e.conciliacaoNova) {
     return (
       <span className="inline-flex items-center gap-1 font-medium text-amber-800">
-        <AlertTriangle className="size-3.5" /> Concluído, mas chegou serviço novo: reabra para decidir
+        <AlertTriangle className="size-3.5" /> Conciliação fechada de novo: reabra para conferir
       </span>
     );
   }
-  if (e.situacao === "fila") return <>{e.pendentes === 1 ? "1 serviço esperando decisão" : `${e.pendentes} serviços esperando decisão`}</>;
-  if (e.situacao === "andamento") {
-    return <>{e.pendentes > 0 ? `Em andamento · falta decidir ${e.pendentes}` : "Em andamento · serviços decididos"}</>;
+  const riscos = e.riscos === 1 ? "1 risco" : `${e.riscos} riscos`;
+  if (e.situacao === "concluida") {
+    return (
+      <>
+        {riscos} · concluído{e.atendimento?.concluido_em ? ` em ${fmtData(e.atendimento.concluido_em)}` : ""}
+        {e.atendimento?.concluido_por ? ` por ${e.atendimento.concluido_por}` : ""}
+      </>
+    );
   }
-  if (e.soAntesDaFila) return <>Liberado antes da fila, sem atendimento</>;
   return (
     <>
-      Concluído{e.atendimento?.concluido_em ? ` em ${fmtData(e.atendimento.concluido_em)}` : ""}
-      {e.atendimento?.concluido_por ? ` por ${e.atendimento.concluido_por}` : ""}
+      {riscos}
+      {e.semIntervencao > 0 ? ` · ${e.semIntervencao} sem intervenção` : " · todos com intervenção"}
     </>
   );
 }
