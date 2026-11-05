@@ -3,12 +3,13 @@
 // Conciliação DRPS/QPS × AEP — fechar a conciliação (foto imutável para o histórico do
 // PGR, NR-01) e as conciliações já fechadas da empresa (v0.3.176, banco v310).
 // v0.3.178: cada fechamento tem o seu PDF (/api/pdf/conciliacao/[idEmpresa]?fechamento=).
+// v0.3.237 (banco v324): reabrir a última, com motivo. A foto e o PDF não mudam.
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, FileDown, Loader2, Lock } from "lucide-react";
+import { ChevronDown, ChevronRight, FileDown, Loader2, Lock, LockOpen } from "lucide-react";
 import Modal from "@/components/ui/Modal";
 import { SeloClasse } from "@/components/psico-consolidacao/ConciliacaoSelos";
-import { useFecharConciliacao } from "@/lib/hooks/useConciliacaoParecer";
+import { useFecharConciliacao, useReabrirConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import { ROTULO_DECISAO, type ContagemPareceres, type ItemFechamento } from "@/lib/psico-consolidacao/conciliacao";
 import type { FechamentoConciliacao } from "@/lib/psico-consolidacao/carregar-conciliacao";
 import { fmtData } from "@/lib/utils";
@@ -31,6 +32,11 @@ export default function FechamentosConciliacao({
   montar: () => { documentos: Record<string, { id: string; titulo: string; data: string | null }>; resumo: Record<string, unknown>; itens: ItemFechamento[] };
 }) {
   const fechar = useFecharConciliacao();
+  const reabrir = useReabrirConciliacao();
+  const [reabrindo, setReabrindo] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const ultima = historico[0];
+  const podeReabrir = podeEditar && !!ultima && !ultima.reabertura;
   const [aberto, setAberto] = useState(false);
   const [obs, setObs] = useState("");
   const [visto, setVisto] = useState<string | null>(null);
@@ -46,6 +52,15 @@ export default function FechamentosConciliacao({
             o PGR. O PDF de cada fechamento serve de anexo.
           </p>
         </div>
+        {podeReabrir && (
+          <button
+            type="button"
+            onClick={() => setReabrindo(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <LockOpen className="size-3.5" /> Reabrir
+          </button>
+        )}
         {podeEditar && podeFechar && (
           <button
             type="button"
@@ -75,6 +90,9 @@ export default function FechamentosConciliacao({
                     {aberta ? <ChevronDown className="size-4 text-gray-400" /> : <ChevronRight className="size-4 text-gray-400" />}
                     <span className="font-medium">{fmtData(f.fechado_em)}</span>
                     <span className="text-xs text-gray-500">por {f.fechado_por}</span>
+                    {f.reabertura && (
+                      <span className="rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">Reaberta</span>
+                    )}
                     <span className="ml-auto text-xs text-gray-500">
                       {f.itens?.length ?? 0} cruzamento(s){p ? ` · ${p.semAcao} sem ação` : ""}
                     </span>
@@ -89,6 +107,11 @@ export default function FechamentosConciliacao({
                     <FileDown className="size-3.5" /> PDF
                   </a>
                 </div>
+                {f.reabertura && (
+                  <p className="mt-1 pl-6 text-xs text-amber-800">
+                    Reaberta em {fmtData(f.reabertura.reaberto_em)} por {f.reabertura.reaberto_por}: {f.reabertura.motivo}
+                  </p>
+                )}
                 {aberta && (
                   <div className="mt-2 space-y-2 pl-6">
                     <p className="text-xs text-gray-500">
@@ -137,6 +160,52 @@ export default function FechamentosConciliacao({
             );
           })}
         </ul>
+      )}
+
+      {reabrindo && ultima && (
+        <Modal
+          open
+          onClose={() => setReabrindo(false)}
+          title="Reabrir a conciliação"
+          footer={
+            <div className="flex w-full justify-end gap-2">
+              <button type="button" onClick={() => setReabrindo(false)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50">
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={!motivo.trim() || reabrir.isPending}
+                onClick={() =>
+                  reabrir.mutate(
+                    { idFechamento: ultima.id_fechamento, idEmpresa, motivo },
+                    { onSuccess: () => { setReabrindo(false); setMotivo(""); } },
+                  )
+                }
+                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {reabrir.isPending && <Loader2 className="size-3.5 animate-spin" />} Reabrir
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-3 text-sm">
+            <p className="text-gray-600">
+              O fechamento de {fmtData(ultima.fechado_em)} e o PDF dele continuam guardados como estão. Até fechar de novo, a empresa sai de
+              Liberar para o Comercial, e o vendedor deixa de ver as intervenções, os riscos que pediram AET e o parecer.
+            </p>
+            <label className="block">
+              <span className="text-xs font-semibold text-gray-600">
+                Motivo <span className="text-red-600">*</span>
+              </span>
+              <textarea
+                value={motivo}
+                onChange={(e) => setMotivo(e.target.value)}
+                rows={3}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-2.5 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </label>
+          </div>
+        </Modal>
       )}
 
       {aberto && (
