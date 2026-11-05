@@ -22,10 +22,12 @@ import {
   type InspecaoComercial,
 } from "@/lib/comercial/oportunidades";
 import {
+  aplicarVendas,
   visaoDoVendedor,
   type AtendimentoComercial,
   type ConciliacaoFechada,
   type IntervencaoIndicada,
+  type VendaRegistrada,
 } from "@/lib/comercial/liberacao";
 
 const CHAVE = "comercial-dados";
@@ -39,6 +41,7 @@ interface DadosComercial {
   conciliacoes: ConciliacaoFechada[];
   atendimentos: AtendimentoComercial[];
   indicadas: IntervencaoIndicada[];
+  vendas: VendaRegistrada[];
 }
 
 function useDadosComercial<T>(select: (d: DadosComercial) => T) {
@@ -55,6 +58,7 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
         conciliacoes?: ConciliacaoFechada[];
         atendimentos?: AtendimentoComercial[];
         intervencoes?: IntervencaoIndicada[];
+        vendas?: VendaRegistrada[];
       };
       const aeps = (r.aeps ?? []).map((a) => {
         const x = a as { entregue_em?: string | null; enviado_por?: string | null };
@@ -66,6 +70,7 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
         conciliacoes: r.conciliacoes ?? [],
         atendimentos: r.atendimentos ?? [],
         indicadas: r.intervencoes ?? [],
+        vendas: r.vendas ?? [],
       };
     },
     select,
@@ -74,7 +79,32 @@ function useDadosComercial<T>(select: (d: DadosComercial) => T) {
 
 /** O que o vendedor vê: inspeção e AEP liberadas, mais o que saiu de atendimento concluído. */
 export function useComercial() {
-  return useDadosComercial<EmpresaComercial[]>((d) => visaoDoVendedor(d.lista, d.atendimentos, d.indicadas, d.conciliacoes));
+  return useDadosComercial<EmpresaComercial[]>((d) =>
+    aplicarVendas(visaoDoVendedor(d.lista, d.atendimentos, d.indicadas, d.conciliacoes), d.vendas),
+  );
+}
+
+/** Consolidação › Vendas: a mais recente primeiro. */
+export function useVendasComercial() {
+  return useDadosComercial<VendaRegistrada[]>((d) => [...d.vendas].sort((a, b) => b.vendido_em.localeCompare(a.vendido_em)));
+}
+
+export function useRegistrarVenda() {
+  return useGravar<{ idEmpresa: string; produto: string; observacao: string | null }>(
+    "comercial_venda_registrar",
+    (d) => ({ p_id_empresa: d.idEmpresa, p_produto: d.produto, p_observacao: d.observacao }),
+    () => "Venda registrada",
+    "Falha ao registrar a venda",
+  );
+}
+
+export function useDesfazerVenda() {
+  return useGravar<{ idEmpresa: string; produto: string }>(
+    "comercial_venda_desfazer",
+    (d) => ({ p_id_empresa: d.idEmpresa, p_produto: d.produto }),
+    () => "Venda desfeita",
+    "Falha ao desfazer a venda",
+  );
 }
 
 /** Tudo o que a liberação precisa: conciliações fechadas, atendimentos e intervenções. */

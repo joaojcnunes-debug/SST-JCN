@@ -7,8 +7,11 @@
 // justifica cada uma e o contato da empresa. Regra em lib/comercial/oportunidades.ts.
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Building2, ClipboardCheck, Download, FilterX, Handshake, Mail, MapPin, Phone, Search } from "lucide-react";
-import { useComercial } from "@/lib/hooks/useComercial";
+import { BadgeCheck, Building2, ClipboardCheck, Download, FilterX, Handshake, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
+import { useComercial, useDesfazerVenda, useRegistrarVenda } from "@/lib/hooks/useComercial";
+import Modal from "@/components/ui/Modal";
+import { ConfirmHost, confirmar } from "@/components/ui/confirm";
+import { useUserStore } from "@/lib/store";
 import { useUnidades } from "@/lib/hooks/useUnidades";
 import {
   A_VENDER,
@@ -16,6 +19,7 @@ import {
   NOME_PRODUTO,
   PRODUTOS,
   type EmpresaComercial,
+  type Oportunidade,
   type Produto,
   type SituacaoOportunidade,
 } from "@/lib/comercial/oportunidades";
@@ -38,6 +42,7 @@ const SITUACAO: Record<SituacaoOportunidade, { rotulo: string; cls: string; dica
   },
   andamento: { rotulo: "Em andamento", cls: "border-sky-200 bg-sky-50 text-sky-900", dica: "Já existe um documento em elaboração" },
   realizada: { rotulo: "Realizada", cls: "border-emerald-200 bg-emerald-50 text-emerald-900", dica: "Já existe um documento concluído" },
+  vendida: { rotulo: "Vendida", cls: "border-violet-200 bg-violet-50 text-violet-900", dica: "O Comercial marcou como vendido; o documento ainda não começou" },
 };
 
 function Contador({ rotulo, valor, cor, ativo, onClick }: { rotulo: string; valor: ReactNode; cor: string; ativo?: boolean; onClick?: () => void }) {
@@ -137,6 +142,7 @@ export default function ComercialPage() {
 
   return (
     <div className="space-y-5">
+      <ConfirmHost />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
@@ -255,6 +261,7 @@ export default function ComercialPage() {
               <option value="aberta">Oportunidade aberta</option>
               <option value="revisao">Revisão recomendada</option>
               <option value="andamento">Em andamento</option>
+              <option value="vendida">Vendida</option>
               <option value="realizada">Realizada</option>
             </select>
           </label>
@@ -396,6 +403,7 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
                   {o.detalhes.length > 6 && <li className="list-none opacity-70">+ {o.detalhes.length - 6} item(ns)</li>}
                 </ul>
               )}
+              <VendaDoServico idEmpresa={e.idEmpresa} oportunidade={o} />
             </div>
           );
         })}
@@ -439,5 +447,94 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
         )}
       </div>
     </li>
+  );
+}
+
+/** "Marcar como vendido" no cartão; depois da venda, quem vendeu e o desfazer (v323). */
+function VendaDoServico({ idEmpresa, oportunidade: o }: { idEmpresa: string; oportunidade: Oportunidade }) {
+  const registrar = useRegistrarVenda();
+  const desfazer = useDesfazerVenda();
+  const user = useUserStore((s) => s.user);
+  const [aberta, setAberta] = useState(false);
+  const [observacao, setObservacao] = useState("");
+
+  if (o.venda) {
+    const podeDesfazer = user?.perfil === "Admin" || user?.email?.toLowerCase() === o.venda.porEmail;
+    return (
+      <div className="mt-2 border-t border-current/10 pt-1.5 text-xs">
+        <p className="flex items-center gap-1 font-semibold">
+          <BadgeCheck className="size-3.5" /> Vendido em {fmtData(o.venda.em)} por {o.venda.por}
+        </p>
+        {o.venda.observacao && <p className="mt-0.5">{o.venda.observacao}</p>}
+        {podeDesfazer && (
+          <button
+            type="button"
+            disabled={desfazer.isPending}
+            onClick={async () => {
+              const ok = await confirmar({
+                title: "Desfazer a venda?",
+                description: `${NOME_PRODUTO[o.produto]} volta a ficar a vender, e a venda sai da lista da Consolidação.`,
+                confirmLabel: "Desfazer",
+                variant: "danger",
+              });
+              if (ok) desfazer.mutate({ idEmpresa, produto: o.produto });
+            }}
+            className="mt-1 inline-flex items-center gap-1 font-medium underline disabled:opacity-60"
+          >
+            <Undo2 className="size-3" /> Desfazer
+          </button>
+        )}
+      </div>
+    );
+  }
+  if (!A_VENDER.includes(o.situacao)) return null;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setAberta(true)}
+        className="mt-2 inline-flex items-center gap-1 rounded-md border border-current/30 bg-white/70 px-2 py-1 text-xs font-semibold hover:bg-white"
+      >
+        <BadgeCheck className="size-3.5" /> Marcar como vendido
+      </button>
+      {aberta && (
+        <Modal
+          open
+          onClose={() => setAberta(false)}
+          title="Marcar como vendido"
+          footer={
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setAberta(false)} className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={registrar.isPending}
+                onClick={() => registrar.mutate({ idEmpresa, produto: o.produto, observacao: observacao.trim() || null }, { onSuccess: () => setAberta(false) })}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
+              >
+                {registrar.isPending && <Loader2 className="size-4 animate-spin" />} Registrar venda
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-2 text-sm">
+            <p className="text-gray-700">
+              <strong>{NOME_PRODUTO[o.produto]}</strong> sai do &quot;a vender&quot; e aparece para a equipe técnica em Consolidação › Vendas.
+            </p>
+            <label htmlFor="comercial-venda-obs" className="block text-xs font-semibold text-gray-600">
+              Observação para a equipe (opcional)
+            </label>
+            <textarea
+              id="comercial-venda-obs"
+              rows={3}
+              value={observacao}
+              onChange={(ev) => setObservacao(ev.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-900 focus:border-marca-primary focus:outline-none focus:ring-2 focus:ring-marca-primary/20"
+            />
+          </div>
+        </Modal>
+      )}
+    </>
   );
 }

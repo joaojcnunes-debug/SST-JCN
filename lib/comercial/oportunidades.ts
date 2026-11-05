@@ -29,7 +29,7 @@
 
 import { montarSinalizacao, type AepEntregue, type EmpresaSinalizada } from "@/lib/aep/sinalizacao";
 
-export type SituacaoOportunidade = "aberta" | "revisao" | "andamento" | "realizada";
+export type SituacaoOportunidade = "aberta" | "revisao" | "andamento" | "realizada" | "vendida";
 
 /** Situações que o comercial ainda pode vender. */
 export const A_VENDER: SituacaoOportunidade[] = ["aberta", "revisao"];
@@ -110,6 +110,8 @@ export interface Oportunidade {
   detalhes: string[];
   /** Para AET: setores indicados (com expostos). */
   setores: SetorAet[];
+  /** v323: o vendedor marcou como vendido. Ainda sem documento, a situação vira "vendida". */
+  venda?: { por: string; porEmail: string; em: string; observacao: string | null };
 }
 
 export interface InfoInspecao {
@@ -424,6 +426,7 @@ export function linhasCsv(lista: EmpresaComercial[], nomeUnidade: (id: string | 
     revisao: "Revisão recomendada",
     andamento: "Em andamento",
     realizada: "Realizada",
+    vendida: "Vendida",
   };
   const linhas = lista.flatMap((c) =>
     c.oportunidades.map((o) => [

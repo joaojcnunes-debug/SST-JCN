@@ -189,6 +189,7 @@ function NavItemView({
       !(href === "/consolidacao-grupo" && pathname.startsWith("/consolidacao-grupo/conciliacao")) &&
       !(href === "/consolidacao-grupo" && pathname.startsWith("/consolidacao-grupo/liberar-comercial")) &&
       !(href === "/consolidacao-grupo" && pathname.startsWith("/consolidacao-grupo/intervencoes")) &&
+      !(href === "/consolidacao-grupo" && pathname.startsWith("/consolidacao-grupo/vendas")) &&
       // /inspecoes/minhas tem item próprio no menu do Painel.
       !(href === "/inspecoes" && pathname.startsWith("/inspecoes/minhas"))) ||
     (href === "/inspecoes" &&
