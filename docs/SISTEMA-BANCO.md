@@ -591,6 +591,12 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
+- **v321 — `comercial_liberacoes`: liberação por serviço (05/11/2026).** PENDENTE de aplicar.
+  - Tabela com a decisão vigente por empresa × produto (`LIBERADO` com `modalidades`/`orientacao`, `SEGURADO` com `motivo` obrigatório, quem e quando). Leitura para quem edita; escrita só pelas RPCs.
+  - RPCs `comercial_decidir` e `comercial_desfazer_decisao` (SECURITY DEFINER, conferem `caller_pode_editar()`).
+  - `comercial_corte_fila()`: guarda o instante em que a migração rodou. Reaplicar o script não muda o corte.
+  - `comercial_dados()` ganha as chaves `liberacoes` e `corte`; o resto não muda.
+  - Rollback: `scripts/sql/v321_comercial_liberacoes_rollback.sql` (apaga as decisões).
 - **v320 — `usuarios`: escrita só para Admin (04/11/2026).** Aplicada pelo João no SQL Editor em 04/11/2026, antes do merge da 0.3.228.
   - **Brecha:** a policy `auth write usuarios` (ALL, authenticated, `true`/`true`) deixava qualquer conta logada alterar ou apagar qualquer usuário, inclusive se dar perfil Admin. A v320 apaga essa policy; fica a `admin write usuarios` (`caller_eh_admin()`) e a leitura `auth read usuarios`.
   - **`usuario_atualizar_meu_perfil(p_nome, p_cargo)`** (security definer): a própria conta ativa troca só nome e cargo. É o que o Portal do cliente › Meu perfil usa.

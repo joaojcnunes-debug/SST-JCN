@@ -143,7 +143,7 @@ export default function ComercialPage() {
             <Handshake className="size-5 text-amber-700" /> Oportunidades comerciais
           </h1>
           <p className="max-w-3xl text-sm text-gray-500">
-            Só entram inspeções e AEPs <strong>liberadas para o Comercial</strong> pela equipe. Serviços que a JCN já
+            Só entram os serviços <strong>liberados</strong> pela equipe. Serviços que a JCN já
             identificou no cliente e que a empresa ainda não contratou: pela{" "}
             <strong>AEP entregue</strong> (AET e DRPS/Questionário) e pela <strong>última inspeção concluída</strong>{" "}
             (Apreciação NR-12, medição quantitativa, Análise de Químicos, DRPS/Questionário e treinamentos NR).
@@ -387,6 +387,20 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
                   {o.detalhes.length > 6 && <li className="list-none opacity-70">+ {o.detalhes.length - 6} item(ns)</li>}
                 </ul>
               )}
+              {o.liberacao && (o.liberacao.modalidades.length > 0 || o.liberacao.orientacao) && (
+                <div className="mt-2 space-y-0.5 border-t border-current/10 pt-1.5 text-xs">
+                  {o.liberacao.modalidades.length > 0 && (
+                    <div>
+                      <strong>Modalidades:</strong> {o.liberacao.modalidades.join(", ")}
+                    </div>
+                  )}
+                  {o.liberacao.orientacao && (
+                    <div>
+                      <strong>Orientação da equipe:</strong> {o.liberacao.orientacao}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -412,13 +426,13 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
         )}
         {c.inspecao?.liberadoEm && (
           <span>
-            Inspeção liberada para o Comercial em {fmtData(c.inspecao.liberadoEm)}
+            Inspeção enviada ao Comercial em {fmtData(c.inspecao.liberadoEm)}
             {c.inspecao.liberadoPor ? ` por ${c.inspecao.liberadoPor}` : ""}
           </span>
         )}
         {c.temAep && c.aepLiberadaEm && (
           <span>
-            AEP liberada em {fmtData(c.aepLiberadaEm)}
+            AEP enviada ao Comercial em {fmtData(c.aepLiberadaEm)}
             {c.aepLiberadaPor ? ` por ${c.aepLiberadaPor}` : ""}
           </span>
         )}

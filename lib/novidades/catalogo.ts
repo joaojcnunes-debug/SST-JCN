@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-liberar-servicos",
+    data: "2026-11-05",
+    tipo: "novidade",
+    titulo: "Comercial: a equipe libera serviço por serviço",
+    texto:
+      "A nova tela Liberar serviços reúne o que as inspeções e AEPs enviadas indicam. Para cada serviço você libera " +
+      "para o vendedor, com orientação e modalidades (EAD, Presencial, Ao vivo, nos treinamentos), ou segura, com o " +
+      "motivo. O botão da inspeção e da AEP agora se chama Enviar para o Comercial e põe os serviços nessa fila.",
+    onde: "Comercial › Liberar serviços",
+    impacto: "O que já estava liberado continua aparecendo para o vendedor.",
+    versoes: ["0.3.233"],
+  },
+  {
     id: "escala-adicionar-supervisor-no-padrao",
     data: "2026-11-04",
     tipo: "melhoria",

@@ -107,6 +107,13 @@ export interface Oportunidade {
   detalhes: string[];
   /** Para AET: setores indicados (com expostos). */
   setores: SetorAet[];
+  /** Decisão de Comercial › Liberar serviços (v321), quando houver. */
+  liberacao?: {
+    modalidades: string[];
+    orientacao: string | null;
+    por: string | null;
+    em: string;
+  };
 }
 
 export interface InfoInspecao {
@@ -412,7 +419,7 @@ export function linhasCsv(lista: EmpresaComercial[], nomeUnidade: (id: string | 
   const cab = [
     "Empresa", "CNPJ", "Unidade", "Município/UF", "Telefone", "E-mail", "Produto", "Situação", "Origem",
     "Detalhes", "Trabalhadores expostos (AET)", "Nível AIHA", "AEP realizada por", "AEP enviada por", "AEP entregue em",
-    "Inspeção", "Inspeção concluída em",
+    "Inspeção", "Inspeção concluída em", "Modalidades", "Orientação da equipe",
   ];
   const rot: Record<SituacaoOportunidade, string> = {
     aberta: "Aberta",
@@ -439,6 +446,8 @@ export function linhasCsv(lista: EmpresaComercial[], nomeUnidade: (id: string | 
       c.temAep && c.empresa.ultimaData ? c.empresa.ultimaData.slice(0, 10) : "",
       c.inspecao?.idInspecao ?? "",
       c.inspecao?.concluidaEm ? c.inspecao.concluidaEm.slice(0, 10) : "",
+      o.liberacao?.modalidades.join(", ") ?? "",
+      o.liberacao?.orientacao ?? "",
     ]),
   );
   return [cab, ...linhas];
