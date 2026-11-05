@@ -12,7 +12,12 @@ const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 // Em ordem de preferência. O Groq retira modelos do ar sem aviso: se um modelo não existir mais,
 // tenta o próximo. Conferidos no /models em 05/11/2026.
-const MODELOS = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"];
+const MODELOS = [
+  // Conferidos no /models do Groq em 05/11/2026; os demais da lista antiga saíram do ar.
+  "openai/gpt-oss-20b",
+  "openai/gpt-oss-120b",
+  "qwen/qwen3.8-27b",
+];
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",

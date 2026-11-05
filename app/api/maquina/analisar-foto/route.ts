@@ -9,11 +9,8 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 // pensando e o JSON mode devolve 400 json_validate_failed (medido 14/09).
 // v0.3.148 (painel v0.3.662): o painel trocou para o qwen3.8-27b. Na conta Groq do JCN o
 // qwen3.6 dá 404 (ver a edge function analisar-maquina-ia), então vira lista com fallback.
-const VISION_MODELS = [
-  "qwen/qwen3.8-27b",
-  "meta-llama/llama-4-maverick-17b-128e-instruct",
-  "qwen/qwen3.6-27b",
-];
+// 05/11/2026: é o único modelo com visão no /models do Groq.
+const VISION_MODELS = ["qwen/qwen3.8-27b"];
 // Era 4. Cada foto custa ~1.870 tokens de entrada num plano de 8.000/min:
 // 4 fotos encostam no teto, 3 cabem com folga.
 const MAX_FOTOS = 3;
