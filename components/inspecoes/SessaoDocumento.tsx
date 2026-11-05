@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Clock, Loader2, Pause, Play } from "lucide-react";
 import Modal from "@/components/ui/Modal";
-import { useCorrecoesSessoes, useCorrigirSessao, useIniciarSessao, usePausarSessao } from "@/lib/hooks/useDocumentoSessoes";
+import { useCorrecoesSessoes, useCorrigirSessao, useIniciarSessao, usePausarSessao, type FonteSessao } from "@/lib/hooks/useDocumentoSessoes";
 import {
   MOTIVOS_PAUSA,
   ROTULO_MOTIVO,
@@ -69,8 +69,16 @@ export function ControleSessao({
 }
 
 /** `variante`: "lista" (Minhas inspeções), "faixa" (painel do documento) ou "mini" (janelinha flutuante). */
-export function BotaoPausar({ idInspecao, variante = "lista" }: { idInspecao: string; variante?: "lista" | "faixa" | "mini" }) {
-  const pausar = usePausarSessao();
+export function BotaoPausar({
+  idInspecao,
+  variante = "lista",
+  fonte = "documento",
+}: {
+  idInspecao: string;
+  variante?: "lista" | "faixa" | "mini";
+  fonte?: FonteSessao;
+}) {
+  const pausar = usePausarSessao(fonte);
   const [aberto, setAberto] = useState(false);
   const raiz = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -148,7 +156,8 @@ export function ListaSessoes({
 }) {
   const [aberta, setAberta] = useState(false);
   const [corrigindo, setCorrigindo] = useState<SessaoDocumento | null>(null);
-  const correcoes = useCorrecoesSessoes(idInspecao, aberta);
+  // O atendimento do Comercial não tem correção de sessão (podeCorrigir = false).
+  const correcoes = useCorrecoesSessoes(idInspecao, aberta && podeCorrigir);
   if (sessoes.length === 0) return null;
   const ordem = [...sessoes].sort((a, b) => b.inicio.localeCompare(a.inicio));
   return (

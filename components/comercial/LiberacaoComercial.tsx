@@ -4,8 +4,8 @@
 // indicam só vira oportunidade no Comercial depois que a equipe valida:
 //   • "Enviar para o Comercial"   → grava liberado_comercial_em/_por;
 //   • "Retirar do Comercial"      → limpa (para ajustar algo e enviar de novo).
-// Desde a v321 (0.3.233) o envio põe os serviços na fila de Comercial › Liberar
-// serviços; o vendedor só vê o que for liberado lá.
+// Desde a v321 (0.3.233) o envio põe os serviços na fila de Consolidação › Liberar
+// para o Comercial; o vendedor só vê o que for liberado e concluído lá.
 // Reabrir a inspeção (ou voltar a AEP sem inspeção para rascunho) retira
 // sozinho — trigger fn_retira_do_comercial. Quem pode: quem edita o documento.
 
@@ -77,7 +77,7 @@ export default function LiberacaoComercial({
             "inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 font-semibold text-amber-800",
             compacto ? "text-[11px]" : "text-xs"
           )}
-          title="Os serviços que este documento indica estão em Comercial › Liberar serviços"
+          title="Os serviços que este documento indica estão em Consolidação › Liberar para o Comercial"
         >
           <Handshake className="size-3.5" />
           Enviado ao Comercial em {fmtData(liberadoEm)}
@@ -116,7 +116,7 @@ export default function LiberacaoComercial({
         onClick={async () => {
           const ok = await confirmar({
             title: "Enviar para o Comercial?",
-            description: `Os serviços que esta ${nome} indica vão para a fila de Comercial › Liberar serviços. O vendedor só vê o que for liberado lá. Confira o preenchimento antes.`,
+            description: `Os serviços que esta ${nome} indica vão para a fila de Consolidação › Liberar para o Comercial. O vendedor só vê o que for liberado lá. Confira o preenchimento antes.`,
             confirmLabel: "Enviar",
             variant: "primary",
           });

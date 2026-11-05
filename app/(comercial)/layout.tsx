@@ -5,12 +5,11 @@
 // os dados vêm da RPC `comercial_dados`, que confere a mesma permissão.
 
 import { type ReactNode } from "react";
-import { Grid3x3, Handshake, Home, ListChecks } from "lucide-react";
+import { Grid3x3, Handshake, Home } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRequireModule } from "@/lib/hooks/useRequireModule";
-import { usePodeLiberarServicos } from "@/lib/hooks/useComercial";
 
 const SECTIONS: NavSection[] = [
   {
@@ -29,16 +28,6 @@ const SECTIONS: NavSection[] = [
 export default function ComercialLayout({ children }: { children: ReactNode }) {
   useAuth();
   useRequireModule("comercial");
-  const podeLiberar = usePodeLiberarServicos();
-  // "Liberar serviços" só aparece para quem pode decidir (0.3.233).
-  const sections: NavSection[] = SECTIONS.map((s) =>
-    s.label === "Comercial" && podeLiberar
-      ? {
-          ...s,
-          items: [s.items[0], { href: "/comercial-liberar", label: "Liberar serviços", icon: ListChecks }, ...s.items.slice(1)],
-        }
-      : s,
-  );
 
   return (
     <div className="casca min-h-screen">
@@ -46,7 +35,7 @@ export default function ComercialLayout({ children }: { children: ReactNode }) {
         title="Comercial"
         subtitle="Oportunidades"
         logoHref="/comercial"
-        sections={sections}
+        sections={SECTIONS}
         backHref="/modulos"
       />
       <div className="casca-folha md:pl-[220px] print:pl-0">

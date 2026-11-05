@@ -1,6 +1,7 @@
--- Rollback da v321: tira a fila de liberação por serviço. O comercial_dados volta a ser o da v270,
--- sem `liberacoes` nem `corte`, e o vendedor volta a ver tudo o que os documentos liberaram.
--- APAGA as decisões gravadas. Se reverter, reverta também o código da 0.3.233.
+-- Rollback da v321: tira o atendimento e a fila de liberação. O comercial_dados volta a ser o da
+-- v270 e o vendedor volta a ver tudo o que os documentos liberaram.
+-- APAGA atendimentos, sessões, decisões, pareceres e o catálogo de intervenções.
+-- Se reverter, reverta também o código da 0.3.233.
 begin;
 
 create or replace function public.comercial_dados()
@@ -104,9 +105,26 @@ begin
   );
 end $$;
 
+drop function if exists public.comercial_reabrir(text, text);
+drop function if exists public.comercial_concluir(text, text);
+drop function if exists public.comercial_salvar_parecer(text, text);
+drop function if exists public.comercial_intervencao_retirar(text, text);
+drop function if exists public.comercial_intervencao_indicar(text, text, text[], text);
 drop function if exists public.comercial_desfazer_decisao(text, text);
 drop function if exists public.comercial_decidir(text, text[], text, text[], text, text);
+drop function if exists public.comercial_exige_sessao(text);
+drop function if exists public.comercial_sessao_atividade(text);
+drop function if exists public.comercial_sessao_pausar(text, text);
+drop function if exists public.comercial_sessao_iniciar(text);
+drop function if exists public.comercial_sessoes_fechar_inativas();
+drop function if exists public.comercial_quem();
 drop function if exists public.comercial_corte_fila();
+drop table if exists public.comercial_atendimento_intervencoes;
+drop table if exists public.comercial_intervencoes;
 drop table if exists public.comercial_liberacoes;
+drop table if exists public.comercial_sessoes;
+drop table if exists public.comercial_atendimento_eventos;
+drop table if exists public.comercial_atendimentos;
+drop function if exists public.comercial_pode_liberar();
 
 commit;

@@ -1,12 +1,23 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { avaliarServico, enviosDoServico, montarFila, visaoDoVendedor, type DecisaoServico } from "./liberacao";
+import {
+  avaliarServico,
+  enviosDoServico,
+  faltaParaConcluir,
+  montarFila,
+  resumirEmpresas,
+  visaoDoVendedor,
+  type AtendimentoComercial,
+  type DecisaoServico,
+  type IntervencaoIndicada,
+} from "./liberacao";
 import type { EmpresaComercial, Oportunidade, Produto, SituacaoOportunidade } from "./oportunidades";
 
 const CORTE = "2026-11-05T12:00:00.000Z";
 const ANTES = "2026-10-01T12:00:00.000Z";
 const DEPOIS = "2026-11-10T12:00:00.000Z";
+const NOVA = "2026-11-20T12:00:00.000Z";
 
 const op = (produto: Produto, situacao: SituacaoOportunidade = "aberta", origens: Oportunidade["origens"] = ["Inspeção"]): Oportunidade => ({
   produto,
@@ -18,7 +29,7 @@ const op = (produto: Produto, situacao: SituacaoOportunidade = "aberta", origens
 
 const empresa = (oportunidades: Oportunidade[], envio: { insp?: string | null; aep?: string | null } = { insp: DEPOIS }, id = "E1") =>
   ({
-    empresa: { idEmpresa: id, nome: id },
+    empresa: { idEmpresa: id, nome: id, cnpj: null, municipio: null, uf: null },
     oportunidades,
     aepLiberadaEm: envio.aep ?? null,
     aepLiberadaPor: null,
@@ -37,7 +48,27 @@ const decisao = (produto: Produto, status: DecisaoServico["status"], em: string,
   ...extra,
 });
 
-const NOVA = "2026-11-20T12:00:00.000Z";
+const atendimento = (status: AtendimentoComercial["status"], extra: Partial<AtendimentoComercial> = {}, id = "E1"): AtendimentoComercial => ({
+  id_empresa: id,
+  status,
+  parecer: null,
+  concluido_em: null,
+  concluido_por: null,
+  empresas: { nome_empresa: "Empresa nova", cnpj: "1", municipio: "Teresópolis", uf: "RJ", telefone: " 21 ", email: null },
+  ...extra,
+});
+
+const indicada = (nome: string, extra: Partial<IntervencaoIndicada> = {}): IntervencaoIndicada => ({
+  id_empresa: "E1",
+  id_intervencao: nome,
+  nome,
+  responsavel: null,
+  modalidades: ["EAD"],
+  orientacao: null,
+  decidido_por: "Ana",
+  decidido_em: NOVA,
+  ...extra,
+});
 
 test("envio depois do corte e sem decisão fica pendente", () => {
   const o = op("AET");
@@ -100,19 +131,32 @@ test("decisão de outra empresa não vale aqui", () => {
   assert.equal(montarFila([c], [decisao("AET", "SEGURADO", NOVA)], CORTE)[0].estado, "pendente");
 });
 
-test("o vendedor vê liberado e legado, com modalidades e orientação", () => {
+test("o vendedor vê o liberado de atendimento concluído, com modalidades e orientação", () => {
   const liberada = empresa([op("Treinamentos NR")]);
   const antiga = empresa([op("AET")], { insp: ANTES }, "E2");
   const d = decisao("Treinamentos NR", "LIBERADO", NOVA, { modalidades: ["EAD", "Ao vivo"], orientacao: "Falar com o RH" });
-  const [a, b] = visaoDoVendedor([liberada, antiga], [d], CORTE);
+  const [a, b] = visaoDoVendedor([liberada, antiga], [d], CORTE, [atendimento("CONCLUIDO", { parecer: "Empresa pronta" })]);
   assert.deepEqual(a.oportunidades[0].liberacao, { modalidades: ["EAD", "Ao vivo"], orientacao: "Falar com o RH", por: "Ana", em: NOVA });
+  assert.equal(a.parecerEquipe, "Empresa pronta");
   assert.equal(b.oportunidades[0].liberacao, undefined);
+});
+
+test("reabrir tira o liberado do vendedor até concluir de novo", () => {
+  const c = empresa([op("AET")]);
+  const d = decisao("AET", "LIBERADO", NOVA);
+  assert.deepEqual(visaoDoVendedor([c], [d], CORTE, [atendimento("EM_ANDAMENTO")]), []);
+  assert.equal(visaoDoVendedor([c], [d], CORTE, [atendimento("CONCLUIDO")]).length, 1);
+});
+
+test("reabrir não tira o que já estava liberado antes da fila", () => {
+  const c = empresa([op("AET")], { insp: ANTES });
+  assert.equal(visaoDoVendedor([c], [], CORTE, [atendimento("EM_ANDAMENTO")]).length, 1);
 });
 
 test("o vendedor não vê pendente nem segurado, e a empresa vazia sai da lista", () => {
   const c = empresa([op("AET"), op("Apreciação NR-12")]);
   assert.deepEqual(visaoDoVendedor([c], [], CORTE), []);
-  const uma = visaoDoVendedor([c], [decisao("AET", "LIBERADO", NOVA), decisao("Apreciação NR-12", "SEGURADO", NOVA)], CORTE);
+  const uma = visaoDoVendedor([c], [decisao("AET", "LIBERADO", NOVA), decisao("Apreciação NR-12", "SEGURADO", NOVA)], CORTE, [atendimento("CONCLUIDO")]);
   assert.deepEqual(uma[0].oportunidades.map((x) => x.produto), ["AET"]);
 });
 
@@ -123,8 +167,58 @@ test("em andamento e realizado seguem visíveis sem decisão, mas segurado não"
   assert.deepEqual(segurada[0].oportunidades.map((x) => x.produto), ["Análise de Químicos"]);
 });
 
+test("as intervenções viram uma oportunidade só, depois de concluído", () => {
+  const c = empresa([op("AET")]);
+  const d = decisao("AET", "LIBERADO", NOVA);
+  const lista = [indicada("Saúde Mental"), indicada("Burnout", { modalidades: [], orientacao: "Começar pela liderança" })];
+  assert.deepEqual(visaoDoVendedor([c], [d], CORTE, [atendimento("EM_ANDAMENTO")], lista), []);
+  const [v] = visaoDoVendedor([c], [d], CORTE, [atendimento("CONCLUIDO")], lista);
+  const o = v.oportunidades[1];
+  assert.equal(o.produto, "Intervenção psicossocial");
+  assert.deepEqual(o.origens, ["Psicossocial"]);
+  assert.deepEqual(o.detalhes, ["Saúde Mental · EAD", "Burnout · Começar pela liderança"]);
+});
+
+test("empresa só com intervenção aparece para o vendedor, com o cadastro do atendimento", () => {
+  const [v] = visaoDoVendedor([], [], CORTE, [atendimento("CONCLUIDO")], [indicada("Saúde Mental")]);
+  assert.equal(v.empresa.nome, "Empresa nova");
+  assert.equal(v.empresa.municipio, "Teresópolis");
+  assert.equal(v.telefone, "21");
+  assert.equal(v.oportunidades.length, 1);
+});
+
+test("atendimento concluído sem nada para vender não cria empresa", () => {
+  assert.deepEqual(visaoDoVendedor([], [], CORTE, [atendimento("CONCLUIDO", { parecer: "Nada a oferecer" })]), []);
+});
+
 test("visaoDoVendedor não altera a lista recebida", () => {
   const c = empresa([op("AET")]);
-  visaoDoVendedor([c], [decisao("AET", "LIBERADO", NOVA)], CORTE);
+  visaoDoVendedor([c], [decisao("AET", "LIBERADO", NOVA)], CORTE, [atendimento("CONCLUIDO", { parecer: "x" })]);
   assert.equal(c.oportunidades[0].liberacao, undefined);
+  assert.equal(c.parecerEquipe, undefined);
+});
+
+test("resumo: fila, andamento, concluída e serviço novo depois de concluir", () => {
+  const fila = montarFila(
+    [empresa([op("AET")], { insp: DEPOIS }, "E1"), empresa([op("AET")], { insp: DEPOIS }, "E2"), empresa([op("AET")], { insp: ANTES }, "E3")],
+    [],
+    CORTE,
+  );
+  const r = resumirEmpresas(fila, [atendimento("EM_ANDAMENTO", {}, "E2"), atendimento("CONCLUIDO", {}, "E4"), atendimento("CONCLUIDO", {}, "E1")]);
+  const de = (id: string) => r.find((x) => x.idEmpresa === id)!;
+  assert.equal(de("E1").situacao, "fila");
+  assert.equal(de("E1").chegouServico, true);
+  assert.equal(de("E2").situacao, "andamento");
+  assert.equal(de("E3").situacao, "concluida");
+  assert.equal(de("E3").soAntesDaFila, true);
+  assert.equal(de("E4").situacao, "concluida");
+  assert.equal(de("E4").nome, "Empresa nova");
+  assert.equal(de("E4").soAntesDaFila, false);
+});
+
+test("concluir pede as decisões e o parecer", () => {
+  assert.equal(faltaParaConcluir(1, "ok"), "Decida o serviço que está na fila.");
+  assert.equal(faltaParaConcluir(3, "ok"), "Decida os 3 serviços que estão na fila.");
+  assert.equal(faltaParaConcluir(0, "  "), "Escreva o parecer.");
+  assert.equal(faltaParaConcluir(0, "ok"), null);
 });

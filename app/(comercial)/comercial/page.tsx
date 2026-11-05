@@ -406,6 +406,12 @@ function CartaoEmpresa({ c, unidade }: { c: EmpresaComercial; unidade: string })
         })}
       </div>
 
+      {c.parecerEquipe && (
+        <p className="mt-3 whitespace-pre-line rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+          <strong>Parecer da equipe:</strong> {c.parecerEquipe}
+        </p>
+      )}
+
       <div className="mt-2 flex flex-wrap gap-x-4 text-[11px] text-gray-500">
         {c.temAep && (
           <span>

@@ -39,8 +39,9 @@ export type Produto =
   | "Apreciação NR-12"
   | "Medição quantitativa"
   | "Análise de Químicos"
-  | "Treinamentos NR";
-export type Origem = "AEP" | "Inspeção";
+  | "Treinamentos NR"
+  | "Intervenção psicossocial";
+export type Origem = "AEP" | "Inspeção" | "Psicossocial";
 
 /** Ordem de exibição dos produtos. A AEP não é produto do Comercial (2026-10-05):
  * ela só INDICA serviços (AET, DRPS/Questionário). */
@@ -51,6 +52,7 @@ export const PRODUTOS: Produto[] = [
   "Medição quantitativa",
   "Análise de Químicos",
   "Treinamentos NR",
+  "Intervenção psicossocial",
 ];
 
 export const NOME_PRODUTO: Record<Produto, string> = {
@@ -60,6 +62,7 @@ export const NOME_PRODUTO: Record<Produto, string> = {
   "Medição quantitativa": "Avaliação quantitativa (medição)",
   "Análise de Químicos": "Análise de Químicos",
   "Treinamentos NR": "Treinamentos NR",
+  "Intervenção psicossocial": "Intervenções psicossociais",
 };
 
 export interface DocEmpresa {
@@ -138,6 +141,8 @@ export interface EmpresaComercial {
   /** v270: liberação da AEP para o Comercial. */
   aepLiberadaEm: string | null;
   aepLiberadaPor: string | null;
+  /** Parecer do atendimento concluído em Consolidação › Liberar para o Comercial (v321). */
+  parecerEquipe?: string | null;
 }
 
 const FASE: Record<string, "realizada" | "andamento"> = {
@@ -205,7 +210,7 @@ export function numeroNr(nr: string | null | undefined): string {
   return m ? String(Number(m[0])) : (nr ?? "").trim().toLowerCase();
 }
 
-type Cad = {
+export type Cad = {
   nome_empresa?: string;
   cnpj?: string | null;
   id_unidade?: string | null;
@@ -215,7 +220,7 @@ type Cad = {
   email?: string | null;
 };
 
-function empresaBase(id: string, cad: Cad): EmpresaSinalizada {
+export function empresaBase(id: string, cad: Cad): EmpresaSinalizada {
   return {
     idEmpresa: id,
     nome: cad.nome_empresa ?? "Empresa sem cadastro",

@@ -34,7 +34,7 @@ import {
   Users,
 } from "lucide-react";
 import { BotaoPausar, ListaSessoes } from "@/components/inspecoes/SessaoDocumento";
-import { useAgora, useIniciarSessao } from "@/lib/hooks/useDocumentoSessoes";
+import { useAgora, useIniciarSessao, type FonteSessao } from "@/lib/hooks/useDocumentoSessoes";
 import { corAvatar } from "@/lib/hooks/useGestao";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import {
@@ -105,7 +105,9 @@ export default function PainelTempoDocumento({
   podeCorrigir,
   concluidaEm,
   entregue,
+  fonte = "documento",
 }: {
+  /** No atendimento do Comercial, o id da empresa. */
   idInspecao: string;
   sessoes: readonly SessaoDocumento[];
   idUsuario: string | null | undefined;
@@ -114,11 +116,14 @@ export default function PainelTempoDocumento({
   podeCorrigir: boolean;
   concluidaEm: string | null | undefined;
   entregue: boolean;
+  /** v321: o mesmo painel conta o tempo do atendimento de Liberar para o Comercial. */
+  fonte?: FonteSessao;
 }) {
+  const item = fonte === "comercial" ? "atendimento" : "documento";
   // O cronômetro anda de segundo em segundo só enquanto há alguém trabalhando.
   const algumAberto = sessoes.some((s) => !s.fim);
   const agora = useAgora(algumAberto ? 1000 : 30_000);
-  const iniciar = useIniciarSessao();
+  const iniciar = useIniciarSessao(fonte);
 
   // Painel no card ou janelinha no canto; "Detalhes" aberto ou não (guardados no navegador).
   const [modo, setModo] = useState<Modo>("painel");
@@ -236,7 +241,7 @@ export default function PainelTempoDocumento({
     sub = podeApontar ? "Aperte Iniciar para começar a contar o seu tempo" : "Nenhuma sessão de trabalho ainda";
     Icone = CalendarClock;
   } else {
-    titulo = "Documento entregue";
+    titulo = fonte === "comercial" ? "Atendimento concluído" : "Documento entregue";
     grande = fmtDuracao(r.trabalhadoMs);
     sub = `${concluidaEm ? `Concluído em ${diaHora(ms(concluidaEm))}` : "Concluído"} · tempo trabalhado no total`;
     Icone = CheckCircle2;
@@ -291,14 +296,14 @@ export default function PainelTempoDocumento({
           <p className="font-mono text-sm font-bold tabular-nums">{grande}</p>
         </div>
       </div>
-      {podeApontar && (minha ? <BotaoPausar idInspecao={idInspecao} variante="mini" /> : botaoIniciar(true))}
+      {podeApontar && (minha ? <BotaoPausar idInspecao={idInspecao} variante="mini" fonte={fonte} /> : botaoIniciar(true))}
       <button
         type="button"
         onClick={() => {
           mudarModo("painel");
           setTimeout(() => raiz.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
         }}
-        title="Mostrar o painel de tempo no documento"
+        title={`Mostrar o painel de tempo no ${item}`}
         className="flex size-7 items-center justify-center rounded-full text-white/90 hover:bg-white/20"
       >
         <Maximize2 className="size-3.5" />
@@ -315,7 +320,7 @@ export default function PainelTempoDocumento({
         >
           <span className="inline-flex items-center gap-1.5">
             <PictureInPicture2 className="size-3.5 text-gray-400" />
-            Tempo do documento no canto da tela · {titulo.toLowerCase()} · trabalhado {fmtDuracao(r.trabalhadoMs)}
+            Tempo do {item} no canto da tela · {titulo.toLowerCase()} · trabalhado {fmtDuracao(r.trabalhadoMs)}
           </span>
           <button type="button" onClick={() => mudarModo("painel")} className="font-medium text-marca-primary hover:underline">
             Mostrar aqui
@@ -354,12 +359,12 @@ export default function PainelTempoDocumento({
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              {podeApontar && (minha ? <BotaoPausar idInspecao={idInspecao} variante="faixa" /> : botaoIniciar(false))}
+              {podeApontar && (minha ? <BotaoPausar idInspecao={idInspecao} variante="faixa" fonte={fonte} /> : botaoIniciar(false))}
               {temOQueMostrar && (
                 <button
                   type="button"
                   onClick={() => mudarModo("canto")}
-                  title="Levar para o canto da tela (janelinha que não cobre o documento)"
+                  title={`Levar para o canto da tela (janelinha que não cobre o ${item})`}
                   className="flex size-8 items-center justify-center rounded-lg text-white/90 hover:bg-white/20"
                 >
                   <PictureInPicture2 className="size-4" />
