@@ -187,6 +187,8 @@ function NavItemView({
       // /consolidacao-grupo/por-empresa e /conciliacao têm item próprio no menu da Consolidação.
       !(href === "/consolidacao-grupo" && pathname.startsWith("/consolidacao-grupo/por-empresa")) &&
       !(href === "/consolidacao-grupo" && pathname.startsWith("/consolidacao-grupo/conciliacao")) &&
+      !(href === "/consolidacao-grupo" && pathname.startsWith("/consolidacao-grupo/liberar-comercial")) &&
+      !(href === "/consolidacao-grupo" && pathname.startsWith("/consolidacao-grupo/intervencoes")) &&
       // /inspecoes/minhas tem item próprio no menu do Painel.
       !(href === "/inspecoes" && pathname.startsWith("/inspecoes/minhas"))) ||
     (href === "/inspecoes" &&

@@ -15,6 +15,18 @@ import { fetchAllRows } from "@/lib/supabase/fetchAllRows";
 const CAMPOS = "id_sessao, id_inspecao, id_usuario, nome, inicio, ultima_atividade, fim, motivo_fim, fechada_auto, corrigida";
 export const CHAVE_SESSOES = "documento-sessoes";
 
+/**
+ * De onde vêm as sessões: o documento da inspeção (v311) ou o atendimento de Consolidação ›
+ * Liberar para o Comercial (v321, por empresa). As contas e a tela são as mesmas.
+ */
+export type FonteSessao = "documento" | "comercial";
+const RPC_SESSAO: Record<FonteSessao, { iniciar: string; pausar: string; atividade: string; param: string }> = {
+  documento: { iniciar: "documento_sessao_iniciar", pausar: "documento_sessao_pausar", atividade: "documento_sessao_atividade", param: "p_id_inspecao" },
+  comercial: { iniciar: "comercial_sessao_iniciar", pausar: "comercial_sessao_pausar", atividade: "comercial_sessao_atividade", param: "p_id_empresa" },
+};
+// `id_inspecao` é o nome do campo em SessaoDocumento; no atendimento ele guarda a empresa.
+const CAMPOS_COMERCIAL = "id_sessao, id_inspecao:id_empresa, id_usuario, nome, inicio, ultima_atividade, fim, motivo_fim, fechada_auto";
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const sb = () => createSupabaseBrowserClient() as any;
 
@@ -38,6 +50,29 @@ export function useSessoesDocumentos(ids: readonly string[]) {
       }
       return out;
     },
+  });
+}
+
+/** Sessões do atendimento de uma empresa em Liberar para o Comercial. */
+export function useSessoesComercial(idEmpresa: string) {
+  return useQuery({
+    queryKey: [CHAVE_SESSOES, "comercial", idEmpresa],
+    enabled: !!idEmpresa,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { data, error } = await sb().from("comercial_sessoes").select(CAMPOS_COMERCIAL).eq("id_empresa", idEmpresa).order("inicio");
+      if (error) throw error;
+      return (data ?? []) as SessaoDocumento[];
+    },
+  });
+}
+
+/** Todas as sessões de atendimento, para a coluna Tempo da lista. */
+export function useTempoComercial() {
+  return useQuery({
+    queryKey: [CHAVE_SESSOES, "comercial-todas"],
+    queryFn: () =>
+      fetchAllRows<SessaoDocumento>((de, ate) => sb().from("comercial_sessoes").select(CAMPOS_COMERCIAL).order("inicio").range(de, ate)),
   });
 }
 
@@ -94,17 +129,18 @@ export function useMinhasSessoesHoje(idUsuario: string | null | undefined) {
 function useInvalidar() {
   const qc = useQueryClient();
   return () => {
-    for (const k of [CHAVE_SESSOES, "inspecao", "inspecoes-atribuidas", "inspecoes-lista", "inspecoes-counts"]) {
+    for (const k of [CHAVE_SESSOES, "inspecao", "inspecoes-atribuidas", "inspecoes-lista", "inspecoes-counts", "comercial-dados"]) {
       qc.invalidateQueries({ queryKey: [k] });
     }
   };
 }
 
-export function useIniciarSessao() {
+export function useIniciarSessao(fonte: FonteSessao = "documento") {
   const invalidar = useInvalidar();
+  const rpc = RPC_SESSAO[fonte];
   return useMutation({
     mutationFn: async (idInspecao: string) => {
-      const { data, error } = await sb().rpc("documento_sessao_iniciar", { p_id_inspecao: idInspecao });
+      const { data, error } = await sb().rpc(rpc.iniciar, { [rpc.param]: idInspecao });
       if (error) throw error;
       return data as string;
     },
@@ -113,11 +149,12 @@ export function useIniciarSessao() {
   });
 }
 
-export function usePausarSessao() {
+export function usePausarSessao(fonte: FonteSessao = "documento") {
   const invalidar = useInvalidar();
+  const rpc = RPC_SESSAO[fonte];
   return useMutation({
     mutationFn: async ({ idInspecao, motivo }: { idInspecao: string; motivo: MotivoPausa }) => {
-      const { error } = await sb().rpc("documento_sessao_pausar", { p_id_inspecao: idInspecao, p_motivo: motivo });
+      const { error } = await sb().rpc(rpc.pausar, { [rpc.param]: idInspecao, p_motivo: motivo });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -192,7 +229,7 @@ export function useCorrigirSessao() {
  * teclado, rolagem, toque) avisa o banco — no máximo a cada 2 min. Sem isso a sessão pausa
  * sozinha depois de 30 min. Se o banco disser que já não há sessão, recarrega as sessões.
  */
-export function useAtividadeSessao(idInspecao: string, ativa: boolean) {
+export function useAtividadeSessao(idInspecao: string, ativa: boolean, fonte: FonteSessao = "documento") {
   const invalidar = useInvalidar();
   const ultimo = useRef(0);
   const invalidarRef = useRef(invalidar);
@@ -204,7 +241,7 @@ export function useAtividadeSessao(idInspecao: string, ativa: boolean) {
       if (agora - ultimo.current < 120_000) return;
       ultimo.current = agora;
       sb()
-        .rpc("documento_sessao_atividade", { p_id_inspecao: idInspecao })
+        .rpc(RPC_SESSAO[fonte].atividade, { [RPC_SESSAO[fonte].param]: idInspecao })
         .then(({ data, error }: { data: boolean | null; error: unknown }) => {
           if (!error && data === false) invalidarRef.current();
         });
@@ -215,7 +252,7 @@ export function useAtividadeSessao(idInspecao: string, ativa: boolean) {
     return () => {
       for (const e of eventos) window.removeEventListener(e, avisar);
     };
-  }, [idInspecao, ativa]);
+  }, [idInspecao, ativa, fonte]);
 }
 
 /** Relógio da tela (o cronômetro anda sem recarregar). */

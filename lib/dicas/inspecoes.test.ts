@@ -13,6 +13,7 @@ import * as APR from "./apreciacao";
 import * as GESTAO from "./gestao";
 import * as CONFIG from "./config";
 import * as ESCALA from "./escala";
+import * as COMERCIAL from "./comercial";
 
 for (const [nome, dicas] of [
   ["Risco", DICAS_RISCO],
@@ -27,6 +28,7 @@ for (const [nome, dicas] of [
   ...Object.entries(GESTAO),
   ...Object.entries(CONFIG),
   ...Object.entries(ESCALA),
+  ...Object.entries(COMERCIAL),
 ] as const) {
   test(`dicas de ${nome}: todas preenchidas, curtas e terminando em ponto`, () => {
     for (const [campo, texto] of Object.entries(dicas)) {

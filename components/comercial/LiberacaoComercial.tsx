@@ -2,8 +2,10 @@
 
 // Liberação para o Comercial (2026-10-05, v270). O que a inspeção e a AEP
 // indicam só vira oportunidade no Comercial depois que a equipe valida:
-//   • "Liberar para o Comercial"  → grava liberado_comercial_em/_por;
-//   • "Retirar do Comercial"      → limpa (para ajustar algo e liberar de novo).
+//   • "Enviar para o Comercial"   → grava liberado_comercial_em/_por;
+//   • "Retirar do Comercial"      → limpa (para ajustar algo e enviar de novo).
+// Desde a v321 (0.3.233) o envio põe os serviços na fila de Consolidação › Liberar
+// para o Comercial; o vendedor só vê o que for liberado e concluído lá.
 // Reabrir a inspeção (ou voltar a AEP sem inspeção para rascunho) retira
 // sozinho — trigger fn_retira_do_comercial. Quem pode: quem edita o documento.
 
@@ -36,7 +38,7 @@ export function useLiberacaoComercial(alvo: Alvo, invalidar: unknown[][] = []) {
     onSuccess: (liberar) => {
       for (const k of invalidar) qc.invalidateQueries({ queryKey: k });
       qc.invalidateQueries({ queryKey: ["comercial-dados"] });
-      toast.success(liberar ? "Liberado para o Comercial" : "Retirado do Comercial");
+      toast.success(liberar ? "Enviado para a fila do Comercial" : "Retirado do Comercial");
     },
     onError: (e: Error) => toast.error(mensagemErro(e, "Falha ao alterar a liberação para o Comercial")),
   });
@@ -75,10 +77,10 @@ export default function LiberacaoComercial({
             "inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 font-semibold text-amber-800",
             compacto ? "text-[11px]" : "text-xs"
           )}
-          title="O que esta indicação aponta já aparece no módulo Comercial"
+          title="Os serviços que este documento indica estão em Consolidação › Liberar para o Comercial"
         >
           <Handshake className="size-3.5" />
-          No Comercial desde {fmtData(liberadoEm)}
+          Enviado ao Comercial em {fmtData(liberadoEm)}
           {liberadoPor ? ` · ${liberadoPor}` : ""}
         </span>
         {podeEditar && (
@@ -88,7 +90,7 @@ export default function LiberacaoComercial({
             onClick={async () => {
               const ok = await confirmar({
                 title: "Retirar do Comercial?",
-                description: `As oportunidades desta ${nome} deixam de aparecer para o time comercial até ela ser liberada de novo.`,
+                description: `Os serviços desta ${nome} saem da fila e do time comercial até ela ser enviada de novo.`,
                 confirmLabel: "Retirar",
                 variant: "danger",
               });
@@ -113,18 +115,18 @@ export default function LiberacaoComercial({
         disabled={mut.isPending}
         onClick={async () => {
           const ok = await confirmar({
-            title: "Liberar para o Comercial?",
-            description: `Os serviços que esta ${nome} indica passam a aparecer como oportunidades no módulo Comercial. Confira o preenchimento antes.`,
-            confirmLabel: "Liberar",
+            title: "Enviar para o Comercial?",
+            description: `Os serviços que esta ${nome} indica vão para a fila de Consolidação › Liberar para o Comercial. O vendedor só vê o que for liberado lá. Confira o preenchimento antes.`,
+            confirmLabel: "Enviar",
             variant: "primary",
           });
           if (ok) mut.mutate(true);
         }}
         className="inline-flex items-center gap-1.5 rounded-md border border-amber-500 bg-amber-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
-        title="Validar e mandar as oportunidades desta análise para o time comercial"
+        title="Mandar os serviços desta análise para a fila de liberação do Comercial"
       >
         {mut.isPending ? <Loader2 className="size-4 animate-spin" /> : <Handshake className="size-4" />}
-        Liberar para o Comercial
+        Enviar para o Comercial
       </button>
     </>
   );

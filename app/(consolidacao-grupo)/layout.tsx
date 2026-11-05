@@ -10,11 +10,12 @@
  */
 
 import type { ReactNode } from "react";
-import { Building2, GitCompareArrows, Network } from "lucide-react";
+import { Building2, GitCompareArrows, Handshake, HeartHandshake, Network } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useRequireModule } from "@/lib/hooks/useRequireModule";
+import { usePodeLiberarServicos } from "@/lib/hooks/useComercial";
 
 const SECTIONS: NavSection[] = [
   {
@@ -31,9 +32,21 @@ const SECTIONS: NavSection[] = [
 export default function ConsolidacaoGrupoLayout({ children }: { children: ReactNode }) {
   useAuth();
   useRequireModule("consolidacao_psicossocial");
+  const podeLiberar = usePodeLiberarServicos();
+  // 05/11: quem libera para o Comercial trabalha daqui, sem precisar do módulo Comercial.
+  const sections: NavSection[] = podeLiberar
+    ? SECTIONS.map((s) => ({
+        ...s,
+        items: [
+          ...s.items,
+          { href: "/consolidacao-grupo/liberar-comercial", label: "Liberar para o Comercial", icon: Handshake },
+          { href: "/consolidacao-grupo/intervencoes", label: "Intervenções", icon: HeartHandshake },
+        ],
+      }))
+    : SECTIONS;
   return (
     <div className="casca min-h-screen">
-      <SidebarShell title="Consolidação" subtitle="Segurança do Trabalho" logoHref="/consolidacao-grupo" sections={SECTIONS} backHref="/modulos" />
+      <SidebarShell title="Consolidação" subtitle="Segurança do Trabalho" logoHref="/consolidacao-grupo" sections={sections} backHref="/modulos" />
       <div className="casca-folha md:pl-[220px] print:pl-0">
         <ModuleTopbar />
         <main className="px-4 py-6 md:px-6 print:p-0" style={{ viewTransitionName: "content" }}>
