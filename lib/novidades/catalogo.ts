@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-registro-venda",
+    data: "2026-11-05",
+    tipo: "novidade",
+    titulo: "Comercial: marcar serviço como vendido",
+    texto:
+      "Em Oportunidades, cada serviço a vender ganhou o botão Marcar como vendido, com observação para a equipe. Ele " +
+      "sai do \"a vender\" e aparece em Consolidação › Vendas, com empresa, serviço, quem vendeu e quando. Quem registrou " +
+      "ou um Admin pode desfazer.",
+    onde: "Comercial › Oportunidades e Consolidação › Vendas",
+    versoes: ["0.3.236"],
+  },
+  {
     id: "comercial-liberar-servicos",
     data: "2026-11-05",
     tipo: "novidade",

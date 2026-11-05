@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  aplicarVendas,
   chaveRisco,
   faltaParaConcluir,
   intervencoesDoRisco,
@@ -180,6 +181,29 @@ test("empresa só da Conciliação aparece com o cadastro do atendimento", () =>
 
 test("concluído sem nada a vender não cria empresa", () => {
   assert.deepEqual(visaoDoVendedor([], [atendimento("A", "CONCLUIDO", { parecer: "Nada" })], [], [fechada("A", [item("RH", "Assédio", "CONFIRMAR")])]), []);
+});
+
+test("venda marca a oportunidade como vendida e tira do a vender", () => {
+  const c = empresa("A", [op("AET"), op("Treinamentos NR")]);
+  const v = { id_empresa: "A", produto: "AET" as const, observacao: "Fechado", vendido_por: "Ana", vendido_por_email: "ana@x", vendido_em: "2026-11-05T12:00:00Z" };
+  const [r] = aplicarVendas([c], [v]);
+  assert.equal(r.oportunidades[0].situacao, "vendida");
+  assert.deepEqual(r.oportunidades[0].venda, { por: "Ana", porEmail: "ana@x", em: "2026-11-05T12:00:00Z", observacao: "Fechado" });
+  assert.equal(r.oportunidades[1].situacao, "aberta");
+  assert.equal(c.oportunidades[0].situacao, "aberta");
+});
+
+test("documento em andamento ou feito continua valendo depois da venda", () => {
+  const c = empresa("A", [{ ...op("AET"), situacao: "andamento" }, { ...op("Treinamentos NR"), situacao: "realizada" }]);
+  const venda = (produto: Oportunidade["produto"]) => ({ id_empresa: "A", produto, observacao: null, vendido_por: "Ana", vendido_por_email: "ana@x", vendido_em: "2026-11-05T12:00:00Z" });
+  const [r] = aplicarVendas([c], [venda("AET"), venda("Treinamentos NR")]);
+  assert.deepEqual(r.oportunidades.map((o) => o.situacao), ["andamento", "realizada"]);
+  assert.equal(r.oportunidades[0].venda?.por, "Ana");
+});
+
+test("venda de outra empresa não vale aqui", () => {
+  const [r] = aplicarVendas([empresa("B", [op("AET")])], [{ id_empresa: "A", produto: "AET", observacao: null, vendido_por: "Ana", vendido_por_email: "ana@x", vendido_em: "2026-11-05T12:00:00Z" }]);
+  assert.equal(r.oportunidades[0].situacao, "aberta");
 });
 
 test("não altera a lista recebida", () => {

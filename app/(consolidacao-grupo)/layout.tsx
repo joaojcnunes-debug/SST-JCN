@@ -10,7 +10,7 @@
  */
 
 import type { ReactNode } from "react";
-import { Building2, GitCompareArrows, Handshake, HeartHandshake, Network } from "lucide-react";
+import { BadgeCheck, Building2, GitCompareArrows, Handshake, HeartHandshake, Network } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -25,6 +25,8 @@ const SECTIONS: NavSection[] = [
       { href: "/consolidacao-grupo/por-empresa", label: "Por empresa", icon: Building2 },
       // 29/10: questionários (DRPS/QPS) × AEP, empresa a empresa — não precisa de grupo.
       { href: "/consolidacao-grupo/conciliacao", label: "Conciliação DRPS/QPS × AEP", icon: GitCompareArrows },
+      // v323: o que o Comercial vendeu; só leitura, para quem está na Consolidação.
+      { href: "/consolidacao-grupo/vendas", label: "Vendas", icon: BadgeCheck },
     ],
   },
 ];

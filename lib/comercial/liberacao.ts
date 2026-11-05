@@ -10,7 +10,7 @@
 // indo direto às Oportunidades.
 
 import type { DecisaoParecer, Questionario } from "@/lib/psico-consolidacao/conciliacao";
-import { empresaBase, type Cad, type EmpresaComercial, type Oportunidade } from "@/lib/comercial/oportunidades";
+import { A_VENDER, empresaBase, type Cad, type EmpresaComercial, type Oportunidade, type Produto } from "@/lib/comercial/oportunidades";
 
 export const MODALIDADES = ["EAD", "Presencial", "Ao vivo"] as const;
 
@@ -195,6 +195,40 @@ export function faltaParaConcluir(parecer: string | null | undefined): string | 
 export function textoIntervencao(i: IntervencaoIndicada): string {
   const partes = [i.nome, i.modalidade, i.responsavel, i.prazo_dias ? `${i.prazo_dias} ${i.prazo_dias === 1 ? "dia" : "dias"}` : null];
   return `${i.setor_nome} · ${i.fator_nome}: ${partes.filter(Boolean).join(" · ")}`;
+}
+
+/** Venda registrada pelo vendedor (v323), como vem do comercial_dados. */
+export interface VendaRegistrada {
+  id_empresa: string;
+  produto: Produto;
+  observacao: string | null;
+  vendido_por: string;
+  vendido_por_email: string;
+  vendido_em: string;
+  nome_empresa?: string | null;
+  cnpj?: string | null;
+  municipio?: string | null;
+  uf?: string | null;
+}
+
+/**
+ * Marca as oportunidades vendidas. Com o documento já em andamento ou feito, a situação dele continua
+ * valendo, porque diz mais do que a venda; a informação da venda segue junto.
+ */
+export function aplicarVendas(lista: readonly EmpresaComercial[], vendas: readonly VendaRegistrada[]): EmpresaComercial[] {
+  const porChave = new Map(vendas.map((v) => [`${v.id_empresa}|${v.produto}`, v]));
+  return lista.map((c) => ({
+    ...c,
+    oportunidades: c.oportunidades.map((o) => {
+      const v = porChave.get(`${c.empresa.idEmpresa}|${o.produto}`);
+      if (!v) return o;
+      return {
+        ...o,
+        situacao: A_VENDER.includes(o.situacao) ? ("vendida" as const) : o.situacao,
+        venda: { por: v.vendido_por, porEmail: v.vendido_por_email, em: v.vendido_em, observacao: v.observacao },
+      };
+    }),
+  }));
 }
 
 /**
