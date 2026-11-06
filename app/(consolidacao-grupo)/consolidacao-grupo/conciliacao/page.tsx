@@ -12,6 +12,7 @@
 // v0.3.176 (banco v310): as ligações de setor entram no cálculo; colunas Pareceres (o que
 // falta resolver) e Fechada em (a última conciliação guardada); filtro "Falta parecer".
 // v0.3.178: coluna Revisão (documento antigo, datas distantes, fechar de novo) e o filtro.
+// v0.3.239: empresa com um documento só segue sem comparação, e o filtro "Sem comparação" a mostra.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -186,7 +187,7 @@ export default function ConciliacaoPage() {
         <p className="mt-0.5 max-w-3xl text-sm text-gray-500">
           O que os questionários (percepção de quem trabalha) apontam contra o que a AEP (observação do técnico) viu, setor
           por setor e fator por fator. Usa a AEP concluída e o DRPS/QPS concluído ou enviado ao cliente mais recentes de cada
-          empresa. Clique na empresa para ver as divergências.
+          empresa. Clique na empresa para ver as divergências. Empresa com um documento só segue o mesmo caminho, sem comparação.
         </p>
       </div>
 
@@ -205,7 +206,7 @@ export default function ConciliacaoPage() {
             ["todas", "Todas"],
             ["divergencia", "Com divergência"],
             ["parecer", "Falta parecer ou ação"],
-            ["falta", "Não dá para conciliar"],
+            ["falta", "Sem comparação"],
             ["revisao", "Precisa revisar"],
             ["liberar", "Para liberar"],
             ["liberado", "Liberadas"],
@@ -272,7 +273,19 @@ export default function ConciliacaoPage() {
                       </td>
                     );
                   })}
-                  {r.falta.length > 0 || r.semSetorEmComum ? (
+                  {r.fonteUnica ? (
+                    <>
+                      <td className="px-3 py-2.5 text-right text-xs text-gray-300">—</td>
+                      <td className="px-3 py-2.5">
+                        <span title={EXPLICACAO_CLASSE["Fonte única"]} className={cn("whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset", COR_CLASSE["Fonte única"])}>
+                          Só {r.fontes.join(" e ")}: {r.porClasse["Fonte única"]} apontado(s)
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-xs">
+                        <SituacaoPareceres r={r} />
+                      </td>
+                    </>
+                  ) : r.falta.length > 0 || r.semSetorEmComum ? (
                     <td colSpan={3} className="px-3 py-2.5">
                       <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 ring-1 ring-inset ring-amber-200">
                         {r.falta.length > 0
@@ -348,7 +361,7 @@ function faltaResolver(r: ResumoEmpresa): boolean {
 
 function SituacaoPareceres({ r }: { r: ResumoEmpresa }) {
   const p = r.pareceres;
-  if (r.divergencias === 0 && p.comParecer === 0) return <span className="text-gray-400">—</span>;
+  if (r.divergencias + r.porClasse["Fonte única"] === 0 && p.comParecer === 0) return <span className="text-gray-400">—</span>;
   if (!faltaResolver(r)) return <span className="font-medium text-emerald-700">Em dia</span>;
   return (
     <div className="space-y-0.5 text-amber-700">

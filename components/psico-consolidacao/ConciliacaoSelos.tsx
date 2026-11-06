@@ -11,6 +11,7 @@ export const COR_CLASSE: Record<ClasseConciliacao, string> = {
   "Só AEP": "bg-violet-50 text-violet-700 ring-violet-200",
   "Sem indicação": "bg-gray-50 text-gray-500 ring-gray-200",
   "Sem par": "bg-white text-gray-400 ring-gray-200",
+  "Fonte única": "bg-sky-50 text-sky-700 ring-sky-200",
 };
 
 export const EXPLICACAO_CLASSE: Record<ClasseConciliacao, string> = {
@@ -20,6 +21,7 @@ export const EXPLICACAO_CLASSE: Record<ClasseConciliacao, string> = {
   "Só AEP": "O técnico viu o fator (Moderado ou mais) e o questionário não aponta",
   "Sem indicação": "Nenhum dos dois aponta o fator",
   "Sem par": "O setor não aparece numa das fontes — não dá para conciliar",
+  "Fonte única": "A empresa só tem este documento: ele aponta o fator (Médio ou Moderado para cima) e não há com o que comparar",
 };
 
 export function SeloClasse({ classe, className }: { classe: ClasseConciliacao | null; className?: string }) {

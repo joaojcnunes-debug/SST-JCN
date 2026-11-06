@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-documento-unico",
+    data: "2026-11-06",
+    tipo: "melhoria",
+    titulo: "Empresa com um documento só também chega ao Comercial",
+    texto:
+      "A empresa que só tem AEP, só DRPS ou só QPS não fica mais parada na Conciliação. O que o documento aponta aparece " +
+      "como Fonte única e pede parecer. Depois é o caminho de sempre: fechar, indicar as intervenções e liberar. Esse " +
+      "fechamento não tem PDF, porque não houve comparação.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP",
+    impacto: "Na lista, o filtro Não dá para conciliar passou a se chamar Sem comparação.",
+    versoes: ["0.3.239"],
+  },
+  {
     id: "liberar-dentro-da-conciliacao",
     data: "2026-11-06",
     tipo: "melhoria",
