@@ -114,6 +114,8 @@ export interface FechamentoConciliacao {
   documentos: Record<string, { id: string; titulo: string; data: string | null }>;
   regua: Record<string, unknown>;
   resumo: {
+    /** Empresa com um documento só: não houve comparação (v0.3.239). */
+    fonte_unica?: boolean;
     totais?: Record<string, Record<string, number>>;
     pareceres?: { pendentes: number; semAcao: number; desatualizados: number; comParecer: number };
   };

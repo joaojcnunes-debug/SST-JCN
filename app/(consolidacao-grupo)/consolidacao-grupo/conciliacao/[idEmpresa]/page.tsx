@@ -11,6 +11,7 @@
 // v0.3.178: alertas de revisão no topo e o PDF de cada fechamento (anexo do PGR).
 // v0.3.238: a liberação para o Comercial virou etapa desta tela. Comparar › Fechar › Intervenções ›
 // Liberar, com um só painel de tempo: nada se altera sem Iniciar, e depois de liberado é só leitura.
+// v0.3.239 (banco v326): empresa com um documento só segue o mesmo caminho, sem comparação.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -41,6 +42,8 @@ import { useCanEdit } from "@/lib/hooks/useUsuario";
 import {
   ADESAO_MINIMA,
   CLASSES,
+  CLASSES_COMPARACAO,
+  CLASSES_FONTE_UNICA,
   MESES_DISTANCIA,
   MESES_REVISAO,
   alertasRevisao,
@@ -53,6 +56,7 @@ import {
   documentosDaEmpresa,
   indexarPareceres,
   itensDoFechamento,
+  ladoQuestionario,
   situacaoParecer,
   type CelulaConciliacao,
   type ClasseConciliacao,
@@ -188,6 +192,7 @@ export default function ConciliacaoEmpresaPage() {
       fator: nomeFator.get(c.idFator) ?? c.idFator,
       expostos: s?.expostos ?? null,
       necessitaAet: s?.necessitaAet ?? false,
+      fonteUnica: resultado?.fonteUnica ?? false,
       documentos: Object.fromEntries(Object.entries(escolhidos).map(([o, d]) => [o, d!.id])),
       atual: pareceres.get(chaveParecer(c.chaveSetor, c.idFator, q)),
     });
@@ -220,7 +225,12 @@ export default function ConciliacaoEmpresaPage() {
     documentos: Object.fromEntries(
       Object.entries(escolhidos).map(([o, d]) => [o, { id: d!.id, titulo: d!.titulo, data: d!.data }]),
     ),
-    resumo: { totais: resultado?.totais ?? {}, pareceres: contagem, questionarios: resultado?.questionarios ?? [] },
+    resumo: {
+      totais: resultado?.totais ?? {},
+      pareceres: contagem,
+      questionarios: resultado?.questionarios ?? [],
+      ...(resultado?.fonteUnica ? { fonte_unica: true } : {}),
+    },
     itens: resultado ? itensDoFechamento(resultado, pareceres, (id) => nomeFator.get(id) ?? id) : [],
   });
 
@@ -238,7 +248,11 @@ export default function ConciliacaoEmpresaPage() {
     );
   }
 
-  const podeConciliar = resultado.temAep && resultado.questionarios.length > 0;
+  // Basta um documento em uso: com um lado só não há comparação, mas o caminho é o mesmo (0.3.239).
+  const podeConciliar = resultado.questionarios.length > 0;
+  const { fonteUnica } = resultado;
+  const tituloEtapa1 = fonteUnica ? "Avaliar" : "Comparar";
+  const classesTela = fonteUnica ? CLASSES_FONTE_UNICA : CLASSES_COMPARACAO;
   const riscosFeitos = riscos.length > 0 && riscos.every((r) => indicadas.some((i) => chaveRisco(i.setor_chave, i.id_fator) === r.chave));
 
   return (
@@ -260,12 +274,19 @@ export default function ConciliacaoEmpresaPage() {
         <EtapasConciliacao
           situacao={ROTULO_SITUACAO_COMERCIAL[situacao]}
           etapas={[
-            { id: "etapa-comparar", titulo: "Comparar", feita: contagem.pendentes + contagem.desatualizados === 0 },
+            { id: "etapa-comparar", titulo: tituloEtapa1, feita: contagem.pendentes + contagem.desatualizados === 0 },
             { id: "etapa-fechar", titulo: "Fechar", feita: fechada },
             { id: "etapa-intervencoes", titulo: "Intervenções", feita: fechada && riscosFeitos },
             { id: "etapa-liberar", titulo: "Liberar para o Comercial", feita: liberado && fechada },
           ]}
         />
+      )}
+
+      {fonteUnica && (
+        <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
+          Só {resultado.temAep ? "a AEP" : `o ${resultado.questionarios.join(" e o ")}`} em uso: não há {resultado.temAep ? "questionário" : "AEP"} para comparar.
+          {!fechada && "Dê parecer no que o documento aponta, feche e indique as intervenções."}
+        </p>
       )}
 
       {podeConciliar && podeLiberar && (
@@ -300,7 +321,7 @@ export default function ConciliacaoEmpresaPage() {
         </div>
       )}
 
-      {podeConciliar && <div id="etapa-comparar" className="scroll-mt-20"><TituloEtapa numero={1} titulo="Comparar" /></div>}
+      {podeConciliar && <div id="etapa-comparar" className="scroll-mt-20"><TituloEtapa numero={1} titulo={tituloEtapa1} /></div>}
 
       {/* ── Documentos usados ─────────────────────────────────────────── */}
       <div className="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-3">
@@ -333,8 +354,7 @@ export default function ConciliacaoEmpresaPage() {
 
       {!podeConciliar ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          Para conciliar é preciso uma AEP e pelo menos um questionário (DRPS ou QPS). Falta{" "}
-          {!resultado.temAep ? "a AEP" : "o questionário"}.
+          Nenhum documento em uso. Escolha pelo menos um (AEP, DRPS ou QPS).
         </p>
       ) : (
         <>
@@ -342,9 +362,9 @@ export default function ConciliacaoEmpresaPage() {
           <div className="grid gap-3 md:grid-cols-3">
             {resultado.questionarios.map((q) => (
               <div key={q} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <p className="mb-2 text-sm font-semibold text-gray-800">{q} × AEP</p>
+                <p className="mb-2 text-sm font-semibold text-gray-800">{fonteUnica ? q : `${q} × AEP`}</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {CLASSES.map((c) => (
+                  {classesTela.map((c) => (
                     <button
                       key={c}
                       type="button"
@@ -368,7 +388,7 @@ export default function ConciliacaoEmpresaPage() {
               </p>
               <ul className="space-y-1 text-xs text-gray-600">
                 <li>
-                  <b className={contagem.pendentes > 0 ? "text-amber-700" : "text-emerald-700"}>{contagem.pendentes}</b> divergência(s) sem parecer
+                  <b className={contagem.pendentes > 0 ? "text-amber-700" : "text-emerald-700"}>{contagem.pendentes}</b> {fonteUnica ? "apontado(s)" : "divergência(s)"} sem parecer
                 </li>
                 <li>
                   <b className={contagem.semAcao > 0 ? "text-amber-700" : "text-gray-700"}>{contagem.semAcao}</b> risco(s) apontado(s) sem ação no plano
@@ -398,7 +418,7 @@ export default function ConciliacaoEmpresaPage() {
               <option value="setor">Por setor</option>
             </select>
             <button type="button" onClick={() => { setSoPendentes(false); setClasses(new Set(DIVERGENCIAS)); }} className="rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs text-gray-600 hover:bg-gray-50">
-              Só divergências
+              {fonteUnica ? "Só o que foi apontado" : "Só divergências"}
             </button>
             <button
               type="button"
@@ -422,7 +442,7 @@ export default function ConciliacaoEmpresaPage() {
           <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
             {visiveis.length === 0 ? (
               <p className="p-10 text-center text-sm text-gray-500">
-                {soPendentes ? "Nada a resolver: toda divergência tem parecer e ação." : "Nenhum cruzamento nas classes marcadas."}
+                {soPendentes ? `Nada a resolver: ${fonteUnica ? "todo item apontado" : "toda divergência"} tem parecer e ação.` : "Nenhum cruzamento nas classes marcadas."}
               </p>
             ) : (
               <table className="w-full text-sm">
@@ -430,9 +450,9 @@ export default function ConciliacaoEmpresaPage() {
                   <tr className="border-b border-gray-100 bg-gray-50/70 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                     <th className="px-4 py-3">Setor</th>
                     <th className="px-3 py-3">Fator</th>
-                    <th className="px-3 py-3">AEP (técnico)</th>
+                    {resultado.temAep && <th className="px-3 py-3">AEP (técnico)</th>}
                     {resultado.questionarios.map((q) => (
-                      <Colunas key={q} q={q} />
+                      <Colunas key={q} q={q} fonteUnica={fonteUnica} />
                     ))}
                   </tr>
                 </thead>
@@ -447,7 +467,7 @@ export default function ConciliacaoEmpresaPage() {
                           {s?.necessitaAet && <p className="text-[11px] font-medium text-indigo-700">AEP indica AET</p>}
                         </td>
                         <td className="px-3 py-2.5 text-gray-700">{nomeFator.get(c.idFator) ?? c.idFator}</td>
-                        <td className="px-3 py-2.5"><CelulaAep c={c} /></td>
+                        {resultado.temAep && <td className="px-3 py-2.5"><CelulaAep c={c} /></td>}
                         {resultado.questionarios.map((q) => (
                           <CelulasQuestionario
                             key={q}
@@ -470,7 +490,7 @@ export default function ConciliacaoEmpresaPage() {
       )}
 
       {/* ── Setores sem par e ligação ────────────────────────────────────── */}
-      {podeConciliar && (
+      {podeConciliar && !fonteUnica && (
         <LigacaoSetores idEmpresa={idEmpresa} setores={resultado.setores} ligacoes={ligacoes} podeEditar={podeTrabalhar} />
       )}
 
@@ -490,7 +510,7 @@ export default function ConciliacaoEmpresaPage() {
             contagem={contagem}
             podeEditar={podeTrabalhar}
             podeReabrirConciliacao={podeEditar && podeLiberar}
-            podeFechar={resultado.setoresEmComum > 0 && !fechada}
+            podeFechar={(fonteUnica || resultado.setoresEmComum > 0) && !fechada}
             montar={montarFechamento}
           />
         </section>
@@ -544,11 +564,11 @@ function Voltar() {
   );
 }
 
-function Colunas({ q }: { q: Questionario }) {
+function Colunas({ q, fonteUnica }: { q: Questionario; fonteUnica: boolean }) {
   return (
     <>
-      <th className="px-3 py-3">{q} (questionário)</th>
-      <th className="px-3 py-3">{q} × AEP</th>
+      {q !== "AEP" && <th className="px-3 py-3">{q} (questionário)</th>}
+      <th className="px-3 py-3">{fonteUnica ? (q === "AEP" ? "Resultado" : `${q}: resultado`) : `${q} × AEP`}</th>
       <th className="px-3 py-3">Parecer {q}</th>
     </>
   );
@@ -586,13 +606,13 @@ function CelulasQuestionario({
   podeEditar: boolean;
   onParecer: () => void;
 }) {
-  const lado = q === "DRPS" ? c.drps : c.qps;
+  const lado = ladoQuestionario(c, q);
   const classe = c.classe[q];
   const situacao = situacaoParecer(classe, parecer);
   const expostos = setor?.expostos ?? null;
   return (
     <>
-      <td className="px-3 py-2.5">
+      {q !== "AEP" && <td className="px-3 py-2.5">
         {lado ? (
           <div>
             <TextoNivel texto={lado.nivel} degrau={lado.degrau} />
@@ -607,7 +627,7 @@ function CelulasQuestionario({
         ) : (
           <span className="text-xs text-gray-300">—</span>
         )}
-      </td>
+      </td>}
       <td className="px-3 py-2.5">
         <SeloClasse classe={classe} />
         {c.sugereAet[q] && (
@@ -687,6 +707,11 @@ function ComoComparamos() {
           <b>Parecer</b> (qualquer pessoa que edita a empresa): Confirmar no inventário do PGR, Aprofundar com AET ou Descartar
           com justificativa. Confirmar e AET podem criar a ação 5W2H no Plano de Ação. <b>Fechar a conciliação</b> guarda uma foto
           que não muda mais (NR-01: histórico da avaliação). Cada fechamento tem o seu PDF, para anexar ao PGR.
+        </p>
+        <p>
+          <b>Um documento só:</b> a empresa só com AEP ou só com questionário não tem comparação. O que o documento aponta
+          aparece como <b>Fonte única</b> e pede parecer; depois, o caminho é o mesmo: fechar, indicar as intervenções e liberar.
+          Esse fechamento não gera o PDF, porque o PDF descreve a comparação com a AEP.
         </p>
         <p>
           <b>Revisão:</b> a página avisa quando um documento usado tem {MESES_REVISAO / 12} anos ou mais (NR-01, 1.5.4.4.6:

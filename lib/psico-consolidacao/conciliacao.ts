@@ -27,13 +27,17 @@
 //  • parecer por cruzamento (Confirmar no PGR, AET, Descartar) e o que ainda falta;
 //  • alertas de revisão (v0.3.178): documento antigo, fontes distantes, fechamento desatualizado.
 //
+// Documento único (v0.3.239, banco v326): a empresa só com AEP ou só com questionário não tem o que
+// comparar, mas segue o mesmo caminho: o que o documento aponta vira "Fonte única" e pede parecer.
+//
 // Função pura, testada em conciliacao.test.ts.
 
 import { resolverFator, type OrigemFonte, type PsicoFator, type PsicoFatorDepara } from "./fatores";
 import { documentosPadrao, type DocumentoFonte, type LinhaFonte, type PendenciaFonte } from "./fontes";
 import { chaveSetor, sugerirSetorCanonico } from "./setores";
 
-export type Questionario = "DRPS" | "QPS";
+/** Coluna de parecer. "AEP" só existe na empresa que tem apenas a AEP (v0.3.239). */
+export type Questionario = "DRPS" | "QPS" | "AEP";
 export const QUESTIONARIOS: Questionario[] = ["DRPS", "QPS"];
 
 export type ClasseConciliacao =
@@ -42,7 +46,8 @@ export type ClasseConciliacao =
   | "Só questionário"
   | "Só AEP"
   | "Sem indicação"
-  | "Sem par";
+  | "Sem par"
+  | "Fonte única";
 
 export const CLASSES: ClasseConciliacao[] = [
   "Nível divergente",
@@ -51,10 +56,14 @@ export const CLASSES: ClasseConciliacao[] = [
   "Convergente",
   "Sem indicação",
   "Sem par",
+  "Fonte única",
 ];
 
+export const CLASSES_COMPARACAO = CLASSES.filter((c) => c !== "Fonte única");
+export const CLASSES_FONTE_UNICA: ClasseConciliacao[] = ["Fonte única", "Sem indicação", "Sem par"];
+
 /** As classes que pedem revisão de alguém. */
-export const DIVERGENCIAS: ReadonlySet<ClasseConciliacao> = new Set(["Nível divergente", "Só questionário", "Só AEP"]);
+export const DIVERGENCIAS: ReadonlySet<ClasseConciliacao> = new Set(["Nível divergente", "Só questionário", "Só AEP", "Fonte única"]);
 
 /** Diferença de degraus a partir da qual o nível não bate. */
 export const DEGRAUS_DIVERGENCIA = 2;
@@ -132,9 +141,11 @@ export interface SetorConciliacao {
 export interface ResultadoConciliacao {
   setores: SetorConciliacao[];
   celulas: CelulaConciliacao[];
-  /** Questionários presentes na empresa. */
+  /** Colunas de parecer: os questionários presentes ou, só com a AEP, ["AEP"]. */
   questionarios: Questionario[];
   temAep: boolean;
+  /** Só um lado (AEP ou questionário): não há comparação, só o que o documento aponta. */
+  fonteUnica: boolean;
   /** Setores avaliados pela AEP E por algum questionário — sem nenhum, nada se concilia. */
   setoresEmComum: number;
   totais: Record<Questionario, Record<ClasseConciliacao, number>>;
@@ -233,6 +244,17 @@ export function classificar(aep: LadoAep | null, q: LadoQuestionario | null, aep
   return "Sem indicação";
 }
 
+/** Empresa com um lado só: o documento aponta ou não; setor fora dele continua sem par. */
+export function classificarFonteUnica(aponta: boolean, avaliou: boolean): ClasseConciliacao {
+  if (!avaliou) return "Sem par";
+  return aponta ? "Fonte única" : "Sem indicação";
+}
+
+/** O nível do questionário numa coluna de parecer; a coluna AEP não tem. */
+export function ladoQuestionario(c: Pick<CelulaConciliacao, "drps" | "qps">, q: Questionario): LadoQuestionario | null {
+  return q === "DRPS" ? c.drps : q === "QPS" ? c.qps : null;
+}
+
 /** O questionário do setor representa o setor? `expostos` nulo = só o mínimo de respondentes. */
 export function baixaRepresentatividade(respondentes: number | null | undefined, expostos: number | null | undefined): boolean {
   if (respondentes == null) return false;
@@ -250,6 +272,7 @@ const PESO_CLASSE: Record<ClasseConciliacao, number> = {
   "Nível divergente": 3,
   "Só questionário": 3,
   "Só AEP": 2,
+  "Fonte única": 2,
   Convergente: 1,
   "Sem indicação": 0,
   "Sem par": 0,
@@ -280,6 +303,7 @@ const zeroTotais = (): Record<ClasseConciliacao, number> => ({
   "Só AEP": 0,
   "Sem indicação": 0,
   "Sem par": 0,
+  "Fonte única": 0,
 });
 
 /**
@@ -350,7 +374,7 @@ export function conciliarEmpresa(p: {
   }
 
   const aep = new Map<string, LadoAep>();
-  const quest: Record<Questionario, Map<string, LadoQuestionario>> = { DRPS: new Map(), QPS: new Map() };
+  const quest: Record<"DRPS" | "QPS", Map<string, LadoQuestionario>> = { DRPS: new Map(), QPS: new Map() };
   const questionarios = new Set<Questionario>();
   let temAep = p.setoresAep.some((s) => p.documentos.has(s.idDocumento));
   let linhasSemFator = 0;
@@ -394,24 +418,32 @@ export function conciliarEmpresa(p: {
   }
 
   const listaSetores = [...setores.entries()].sort((a, b) => a[1].setor.localeCompare(b[1].setor, "pt-BR"));
-  const totais = { DRPS: zeroTotais(), QPS: zeroTotais() };
+  const fonteUnica = temAep !== questionarios.size > 0;
+  const colunas: Questionario[] = temAep && questionarios.size === 0 ? ["AEP"] : QUESTIONARIOS.filter((q) => questionarios.has(q));
+  // A chave AEP só existe na coluna AEP: o PDF lista as chaves de totais como "q × AEP".
+  const porColuna = <T,>(valor: () => T) =>
+    ({ DRPS: valor(), QPS: valor(), ...(colunas.includes("AEP") ? { AEP: valor() } : {}) }) as Record<Questionario, T>;
+  const totais = porColuna(zeroTotais);
   const celulas: CelulaConciliacao[] = [];
   for (const [ks, s] of listaSetores) {
     for (const f of ativos) {
       const k = `${ks}\u0001${f.id_fator}`;
       const ladoAep = aep.get(k) ?? null;
-      const classe: Record<Questionario, ClasseConciliacao | null> = { DRPS: null, QPS: null };
-      const prioridade: Record<Questionario, number> = { DRPS: 0, QPS: 0 };
-      const aet: Record<Questionario, boolean> = { DRPS: false, QPS: false };
-      const baixaRep: Record<Questionario, boolean> = { DRPS: false, QPS: false };
-      for (const q of QUESTIONARIOS) {
-        if (!questionarios.has(q)) continue;
-        const ladoQ = quest[q].get(k) ?? null;
-        const c = classificar(ladoAep, ladoQ, s.avaliadoPor.includes("AEP"), s.avaliadoPor.includes(q));
+      const classe = porColuna<ClasseConciliacao | null>(() => null);
+      const prioridade = porColuna(() => 0);
+      const aet = porColuna(() => false);
+      const baixaRep = porColuna(() => false);
+      for (const q of colunas) {
+        const ladoQ = q === "AEP" ? null : quest[q].get(k) ?? null;
+        const aepAponta = !!ladoAep && (ladoAep.degrau === null || ladoAep.degrau >= APONTA);
+        const c = fonteUnica
+          ? classificarFonteUnica(q === "AEP" ? aepAponta : !!ladoQ && ladoQ.degrau >= APONTA, s.avaliadoPor.includes(q))
+          : classificar(ladoAep, ladoQ, s.avaliadoPor.includes("AEP"), s.avaliadoPor.includes(q));
         classe[q] = c;
         totais[q][c]++;
         baixaRep[q] = c !== "Sem par" && baixaRepresentatividade(s.respondentes[q], s.expostos);
-        aet[q] = sugereAet(c, ladoQ);
+        // Só com a AEP, a sugestão de AET é a que ela mesma marcou no setor.
+        aet[q] = sugereAet(c, ladoQ) || (q === "AEP" && c === "Fonte única" && s.necessitaAet);
         prioridade[q] = prioridadeDe(c, ladoAep, ladoQ, s.expostos, baixaRep[q]);
       }
       celulas.push({
@@ -433,8 +465,9 @@ export function conciliarEmpresa(p: {
   return {
     setores: listaSetores.map(([, s]) => s),
     celulas,
-    questionarios: QUESTIONARIOS.filter((q) => questionarios.has(q)),
+    questionarios: colunas,
     temAep,
+    fonteUnica,
     setoresEmComum: listaSetores.filter(([, s]) => s.avaliadoPor.includes("AEP") && s.avaliadoPor.some((o) => o !== "AEP")).length,
     totais,
     linhasSemFator,
@@ -569,6 +602,10 @@ export interface ResumoEmpresa {
   documentos: Partial<Record<OrigemFonte, DocumentoFonte>>;
   /** Faltam documentos para conciliar. */
   falta: Array<"AEP" | "Questionário">;
+  /** Um lado só: segue sem comparação, com parecer no que o documento aponta. */
+  fonteUnica: boolean;
+  /** As colunas de parecer, para dizer "Só DRPS". */
+  fontes: Questionario[];
   /** Tem os dois documentos, mas nenhum setor bate pelo nome. */
   semSetorEmComum: boolean;
   convergentes: number;
@@ -602,6 +639,8 @@ export function resumirEmpresa(
     idEmpresa,
     documentos: docs,
     falta,
+    fonteUnica: r.fonteUnica,
+    fontes: r.questionarios,
     semSetorEmComum: falta.length === 0 && r.setoresEmComum === 0,
     convergentes: porClasse.Convergente,
     divergencias: porClasse["Nível divergente"] + porClasse["Só questionário"] + porClasse["Só AEP"],
@@ -642,7 +681,7 @@ export function itensDoFechamento(
       if (!classe || classe === "Sem par") continue;
       const p = pareceres.get(chaveParecer(c.chaveSetor, c.idFator, q));
       if (!DIVERGENCIAS.has(classe) && !p) continue;
-      const lado = q === "DRPS" ? c.drps : c.qps;
+      const lado = ladoQuestionario(c, q);
       out.push({
         setor: c.setor,
         setor_chave: c.chaveSetor,

@@ -13,6 +13,7 @@ import { SeloClasse } from "@/components/psico-consolidacao/ConciliacaoSelos";
 import { useExcluirParecer, useSalvarParecer } from "@/lib/hooks/useConciliacaoParecer";
 import {
   ROTULO_DECISAO,
+  ladoQuestionario,
   type CelulaConciliacao,
   type DecisaoParecer,
   type ParecerConciliacao,
@@ -34,6 +35,8 @@ export interface ContextoParecer {
   fator: string;
   expostos: number | null;
   necessitaAet: boolean;
+  /** A empresa só tem um lado: não há comparação (v0.3.239). */
+  fonteUnica: boolean;
   documentos: Partial<Record<OrigemFonte, string>>;
   atual: ParecerConciliacao | undefined;
 }
@@ -53,9 +56,9 @@ export default function ParecerModal({
   podeEditar: boolean;
   onClose: () => void;
 }) {
-  const { celula: c, questionario: q, atual } = ctx;
+  const { celula: c, questionario: q, atual, fonteUnica } = ctx;
   const classe = c.classe[q]!;
-  const lado = q === "DRPS" ? c.drps : c.qps;
+  const lado = ladoQuestionario(c, q);
   const [decisao, setDecisao] = useState<DecisaoParecer>(atual?.decisao ?? decisaoSugerida(c, q));
   const [justificativa, setJustificativa] = useState(atual?.justificativa ?? "");
   const [gerarAcao, setGerarAcao] = useState(!atual?.id_acao);
@@ -86,7 +89,7 @@ export default function ParecerModal({
                 setor: c.setor,
                 fator: ctx.fator,
                 classe,
-                retrato: `AEP ${textoAep} × ${q} ${textoQ}`,
+                retrato: !fonteUnica ? `AEP ${textoAep} × ${q} ${textoQ}` : q === "AEP" ? `AEP ${textoAep}` : `${q} ${textoQ}`,
                 maiorDegrau: Math.max(c.aep?.degrau ?? 0, lado?.degrau ?? 0),
               }
             : null,
@@ -110,7 +113,7 @@ export default function ParecerModal({
       open
       onClose={onClose}
       size="lg"
-      title={`Parecer — ${c.setor} · ${ctx.fator} (${q} × AEP)`}
+      title={`Parecer — ${c.setor} · ${ctx.fator} (${fonteUnica ? q : `${q} × AEP`})`}
       footer={
         <div className="flex w-full items-center gap-2">
           {atual && podeEditar && (
@@ -136,16 +139,20 @@ export default function ParecerModal({
     >
       <div className="space-y-4 text-sm">
         <div className="grid gap-2 rounded-lg bg-gray-50 p-3 sm:grid-cols-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase text-gray-400">AEP (técnico)</p>
-            <p className="font-medium text-gray-800">{textoAep}</p>
-            {c.aep && c.aep.sinais.length > 0 && <p className="text-[11px] text-gray-500">{c.aep.sinais.join("; ")}</p>}
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold uppercase text-gray-400">{q} (trabalhadores)</p>
-            <p className="font-medium text-gray-800">{textoQ}</p>
-            {ctx.expostos != null && <p className="text-[11px] text-gray-500">{ctx.expostos} expostos no setor (AEP)</p>}
-          </div>
+          {(!fonteUnica || q === "AEP") && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase text-gray-400">AEP (técnico)</p>
+              <p className="font-medium text-gray-800">{textoAep}</p>
+              {c.aep && c.aep.sinais.length > 0 && <p className="text-[11px] text-gray-500">{c.aep.sinais.join("; ")}</p>}
+            </div>
+          )}
+          {q !== "AEP" && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase text-gray-400">{q} (trabalhadores)</p>
+              <p className="font-medium text-gray-800">{textoQ}</p>
+              {ctx.expostos != null && <p className="text-[11px] text-gray-500">{ctx.expostos} expostos no setor (AEP)</p>}
+            </div>
+          )}
           <div>
             <p className="text-[11px] font-semibold uppercase text-gray-400">Resultado</p>
             <SeloClasse classe={classe} />
@@ -156,7 +163,7 @@ export default function ParecerModal({
           <p className="flex gap-2 rounded-lg border border-indigo-200 bg-indigo-50 p-2.5 text-xs text-indigo-800">
             <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
             <span>
-              {c.sugereAet[q] && "A percepção dos trabalhadores e a AEP divergem neste fator: a NR-17 (17.3.2) pede avaliação mais aprofundada (AET). "}
+              {c.sugereAet[q] && !fonteUnica && "A percepção dos trabalhadores e a AEP divergem neste fator: a NR-17 (17.3.2) pede avaliação mais aprofundada (AET). "}
               {ctx.necessitaAet && "A AEP já marcou que este setor necessita de AET."}
             </span>
           </p>
@@ -186,7 +193,9 @@ export default function ParecerModal({
               <input type="radio" name="decisao" checked={decisao === d} onChange={() => setDecisao(d)} className="mt-0.5" />
               <span>
                 <span className="font-medium text-gray-800">{ROTULO_DECISAO[d]}</span>
-                <span className="block text-xs text-gray-500">{EXPLICACAO_DECISAO[d]}</span>
+                <span className="block text-xs text-gray-500">
+                  {d === "AET" && fonteUnica ? "O fator pede avaliação mais aprofundada: Análise Ergonômica do Trabalho do setor (NR-17, 17.3.2)." : EXPLICACAO_DECISAO[d]}
+                </span>
               </span>
             </label>
           ))}

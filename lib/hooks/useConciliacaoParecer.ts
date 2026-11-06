@@ -103,7 +103,7 @@ const PRIORIDADE_POR_DEGRAU: Record<number, AcaoPrioridade> = { 4: "Critica", 3:
 export function acaoDoParecer(idEmpresa: string, decisao: DecisaoParecer, d: DadosAcaoParecer, criadoPor: string | null): Acao5W2H {
   const what =
     decisao === "AET"
-      ? `Realizar AET (NR-17) do fator psicossocial "${d.fator}" no setor ${d.setor} — a percepção dos trabalhadores e a AEP divergem.`
+      ? `Realizar AET (NR-17) do fator psicossocial "${d.fator}" no setor ${d.setor}${d.classe === "Fonte única" ? "." : " — a percepção dos trabalhadores e a AEP divergem."}`
       : `Definir medida de controle para o fator psicossocial "${d.fator}" no setor ${d.setor}.`;
   return {
     id_acao: gerarId("ACA"),

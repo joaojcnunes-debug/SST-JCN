@@ -116,7 +116,74 @@ test("resumo: documentos padrão, o que falta e a contagem de divergências", ()
   const s = resumirEmpresa("E1", docs, r);
   assert.deepEqual(s.falta, ["AEP"]);
   assert.equal(s.divergencias, 0);
-  assert.equal(s.porClasse["Sem par"], 2);
+  assert.equal(s.fonteUnica, true);
+  assert.deepEqual(s.fontes, ["DRPS"]);
+  assert.equal(s.porClasse["Fonte única"], 1);
+  assert.equal(s.porClasse["Sem indicação"], 1);
+});
+
+test("documento único: só questionário; o que aponta pede parecer e entra no fechamento", () => {
+  const r = conciliarEmpresa({
+    ...base,
+    setoresAep: [],
+    linhas: [linha({ nivel: "Alto" }), linha({ fatorOriginal: "Sobrecarga", nivel: "Baixo" })],
+  });
+  assert.equal(r.temAep, false);
+  assert.equal(r.fonteUnica, true);
+  assert.deepEqual(r.questionarios, ["DRPS"]);
+  const f = (id: string) => r.celulas.find((c) => c.idFator === id)!;
+  assert.equal(f("assedio").classe.DRPS, "Fonte única");
+  assert.equal(f("sobrecarga").classe.DRPS, "Sem indicação");
+  assert.equal(f("assedio").sugereAet.DRPS, false);
+  assert.deepEqual(Object.keys(r.totais), ["DRPS", "QPS"], "o PDF lista estas chaves");
+  assert.equal(contarPareceres(r, new Map()).pendentes, 1);
+  const itens = itensDoFechamento(r, new Map(), (id) => id);
+  assert.equal(itens.length, 1);
+  assert.equal(itens[0].classe, "Fonte única");
+  assert.equal(itens[0].nivel_questionario, "Alto");
+  assert.equal(itens[0].aep, null);
+});
+
+test("documento único: só AEP; a coluna de parecer é a própria AEP", () => {
+  const r = conciliarEmpresa({
+    ...base,
+    setoresAep: [{ idDocumento: "AEP-1", setorOriginal: "Produção", necessitaAet: true }, { idDocumento: "AEP-1", setorOriginal: "Expedição" }],
+    linhas: [aep({ setorOriginal: "Produção", nivelAiha: "Alto" }), aep({ setorOriginal: "Expedição", nivelAiha: "Baixo" })],
+  });
+  assert.equal(r.fonteUnica, true);
+  assert.deepEqual(r.questionarios, ["AEP"]);
+  const c = (setor: string) => r.celulas.find((x) => x.setor === setor && x.idFator === "assedio")!;
+  assert.equal(c("Produção").classe.AEP, "Fonte única");
+  assert.equal(c("Produção").sugereAet.AEP, true, "a AEP marcou necessita AET");
+  assert.equal(c("Expedição").classe.AEP, "Sem indicação", "Baixo não aponta");
+  const [item] = itensDoFechamento(r, new Map(), (id) => id);
+  assert.equal(item.questionario, "AEP");
+  assert.equal(item.aep, "Alto");
+  assert.equal(item.nivel_questionario, null);
+});
+
+test("documento único: DRPS e QPS sem AEP; setor de um só fica sem par no outro", () => {
+  const r = conciliarEmpresa({
+    ...base,
+    setoresAep: [],
+    linhas: [linha({ nivel: "Alto" }), linha({ origem: "QPS", idDocumento: "QPS-1", setorOriginal: "Expedição", nivel: "Médio" })],
+  });
+  assert.equal(r.fonteUnica, true);
+  assert.deepEqual(r.questionarios, ["DRPS", "QPS"]);
+  const c = (setor: string) => r.celulas.find((x) => x.setor === setor && x.idFator === "assedio")!;
+  assert.deepEqual(c("Produção").classe, { DRPS: "Fonte única", QPS: "Sem par" });
+  assert.deepEqual(c("Expedição").classe, { DRPS: "Sem par", QPS: "Fonte única" });
+});
+
+test("com AEP e questionário nada muda: não é documento único", () => {
+  const r = conciliarEmpresa({
+    ...base,
+    setoresAep: [{ idDocumento: "AEP-1", setorOriginal: "Produção" }],
+    linhas: [aep({ setorOriginal: "Produção", nivelAiha: "Alto" }), linha({ nivel: "Alto" })],
+  });
+  assert.equal(r.fonteUnica, false);
+  assert.equal(r.celulas.find((x) => x.idFator === "assedio")!.classe.DRPS, "Convergente");
+  assert.equal(r.totais.DRPS["Fonte única"], 0);
 });
 
 test("nome do setor: caixa de título com o acento do documento; sem setor em comum é avisado", () => {

@@ -30,7 +30,7 @@ export default function FechamentosConciliacao({
   podeEditar: boolean;
   /** Reabrir é a saída de quem está travado: não depende de Iniciar. */
   podeReabrirConciliacao: boolean;
-  /** Há o que conciliar (AEP + questionário com setor em comum). */
+  /** Há o que fechar: AEP + questionário com setor em comum, ou um documento só. */
   podeFechar: boolean;
   /** Monta a foto na hora de fechar (documentos, totais, itens). */
   montar: () => { documentos: Record<string, { id: string; titulo: string; data: string | null }>; resumo: Record<string, unknown>; itens: ItemFechamento[] };
@@ -83,6 +83,7 @@ export default function FechamentosConciliacao({
           {historico.map((f) => {
             const p = f.resumo?.pareceres;
             const aberta = visto === f.id_fechamento;
+            const fonteUnica = !!f.resumo?.fonte_unica;
             return (
               <li key={f.id_fechamento} className="py-2">
                 <div className="flex items-center gap-2">
@@ -101,15 +102,18 @@ export default function FechamentosConciliacao({
                       {f.itens?.length ?? 0} cruzamento(s){p ? ` · ${p.semAcao} sem ação` : ""}
                     </span>
                   </button>
-                  <a
-                    href={`/api/pdf/conciliacao/${encodeURIComponent(idEmpresa)}?fechamento=${encodeURIComponent(f.id_fechamento)}`}
-                    target="_blank"
-                    rel="noopener"
-                    title="PDF desta conciliação fechada, para anexar ao PGR"
-                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-300 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
-                  >
-                    <FileDown className="size-3.5" /> PDF
-                  </a>
+                  {/* O PDF descreve uma comparação com a AEP: não vale para documento único. */}
+                  {!fonteUnica && (
+                    <a
+                      href={`/api/pdf/conciliacao/${encodeURIComponent(idEmpresa)}?fechamento=${encodeURIComponent(f.id_fechamento)}`}
+                      target="_blank"
+                      rel="noopener"
+                      title="PDF desta conciliação fechada, para anexar ao PGR"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-300 px-2 py-0.5 text-xs text-gray-700 hover:bg-gray-50"
+                    >
+                      <FileDown className="size-3.5" /> PDF
+                    </a>
+                  )}
                 </div>
                 {f.reabertura && (
                   <p className="mt-1 pl-6 text-xs text-amber-800">
@@ -142,9 +146,9 @@ export default function FechamentosConciliacao({
                             <tr key={`${i.setor_chave}|${i.id_fator}|${i.questionario}`} className="border-t border-gray-50 align-top">
                               <td className="py-1 pr-2">{i.setor}</td>
                               <td className="py-1 pr-2">{i.fator}</td>
-                              <td className="py-1 pr-2">{i.aep ?? "Não"}</td>
+                              <td className="py-1 pr-2">{i.aep ?? (fonteUnica ? "—" : "Não")}</td>
                               <td className="py-1 pr-2">
-                                {i.questionario} {i.nivel_questionario ?? "—"}
+                                {i.questionario === "AEP" ? "—" : `${i.questionario} ${i.nivel_questionario ?? "—"}`}
                                 {i.respondentes != null && ` · ${i.respondentes}${i.expostos ? `/${i.expostos}` : ""} resp.`}
                               </td>
                               <td className="py-1 pr-2"><SeloClasse classe={i.classe} /></td>
@@ -239,7 +243,7 @@ export default function FechamentosConciliacao({
           <div className="space-y-3 text-sm">
             {faltam > 0 ? (
               <p className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 text-xs text-amber-800">
-                Antes de fechar, dê parecer em todas as divergências: faltam <b>{contagem.pendentes}</b> sem parecer
+                Antes de fechar, dê parecer em tudo o que foi apontado: faltam <b>{contagem.pendentes}</b> sem parecer
                 {contagem.desatualizados > 0 && (
                   <>
                     {" "}e <b>{contagem.desatualizados}</b> com parecer de outra situação (os documentos mudaram)
