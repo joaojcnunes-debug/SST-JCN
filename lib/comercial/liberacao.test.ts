@@ -206,6 +206,17 @@ test("venda de outra empresa não vale aqui", () => {
   assert.equal(r.oportunidades[0].situacao, "aberta");
 });
 
+test("conciliação reaberta tira a intervenção e o parecer do vendedor", () => {
+  const [v] = visaoDoVendedor(
+    [empresa("A", [op("Apreciação NR-12")])],
+    [atendimento("A", "CONCLUIDO", { parecer: "x" })],
+    [indicada("A", "RH", "Assédio")],
+    [],
+  );
+  assert.deepEqual(v.oportunidades.map((o) => o.produto), ["Apreciação NR-12"]);
+  assert.equal(v.parecerEquipe, undefined);
+});
+
 test("não altera a lista recebida", () => {
   const c = empresa("A", [op("AET")]);
   visaoDoVendedor([c], [atendimento("A", "CONCLUIDO", { parecer: "x" })], [indicada("A", "RH", "Assédio")], [fechada("A", [item("RH", "Assédio", "AET")])]);

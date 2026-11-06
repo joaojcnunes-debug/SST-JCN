@@ -247,6 +247,8 @@ export function visaoDoVendedor(
   for (const a of atendimentos) {
     if (a.status !== "CONCLUIDO") continue;
     const id = a.id_empresa;
+    // Conciliação reaberta: sai do vendedor até fechar de novo (v324; o banco já filtra para ele).
+    if (!fechadas.has(id)) continue;
     const dela = indicadas.filter((i) => i.id_empresa === id);
     const aet = riscosDoFechamento(fechadas.get(id)?.itens ?? []).filter((r) => r.aet);
     if (dela.length === 0 && aet.length === 0 && !resultado.has(id)) continue;

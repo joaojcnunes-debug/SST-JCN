@@ -102,7 +102,8 @@ export default function ConciliacaoPage() {
       return {
         empresa: e,
         resumo: resumirEmpresa(e.idEmpresa, docs, r, indexarPareceres(pareceres.get(e.idEmpresa) ?? [])),
-        fechadaEm: fechamento?.fechado_em ?? null,
+        // Reaberta não conta como fechada (v324).
+        fechadaEm: fechamento && !fechamento.reabertura ? fechamento.fechado_em : null,
         alertas: alertasRevisao({ documentos: docs, ultimoFechamento: fechamento, hoje }),
       };
     });

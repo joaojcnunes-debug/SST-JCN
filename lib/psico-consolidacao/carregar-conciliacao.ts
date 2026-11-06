@@ -97,6 +97,14 @@ export async function carregarFontesConciliacao(sb: Sb, idEmpresa?: string): Pro
   return out;
 }
 
+/** Reabertura de uma conciliação fechada (psico_conciliacao_reaberturas, v324). */
+export interface ReaberturaConciliacao {
+  id_fechamento: string;
+  motivo: string;
+  reaberto_por: string;
+  reaberto_em: string;
+}
+
 /** Conciliação fechada (psico_conciliacao_fechamentos, v310). */
 export interface FechamentoConciliacao {
   id_fechamento: string;
@@ -110,6 +118,8 @@ export interface FechamentoConciliacao {
     pareceres?: { pendentes: number; semAcao: number; desatualizados: number; comParecer: number };
   };
   itens: ItemFechamento[];
+  /** v324: a conciliação foi reaberta depois deste fechamento. A foto não muda. */
+  reabertura?: ReaberturaConciliacao | null;
   observacao: string | null;
 }
 
@@ -131,7 +141,7 @@ export async function carregarRegistrosConciliacao(sb: Sb, idEmpresa?: string): 
       if (idEmpresa) q = q.eq("id_empresa", idEmpresa);
       return q.order(ordem).range(de, ate);
     });
-  const [ligacoes, pareceres, fechamentos] = await Promise.all([
+  const [ligacoes, pareceres, fechamentos, reaberturas] = await Promise.all([
     filtro<LigacaoSetor>("psico_conciliacao_setor_depara", "*", "id_depara"),
     filtro<ParecerConciliacao>("psico_conciliacao_pareceres", "*", "id_parecer"),
     filtro<FechamentoConciliacao>(
@@ -139,7 +149,10 @@ export async function carregarRegistrosConciliacao(sb: Sb, idEmpresa?: string): 
       idEmpresa ? "*" : "id_fechamento, id_empresa, fechado_por, fechado_em, resumo, documentos",
       "fechado_em",
     ),
+    filtro<ReaberturaConciliacao>("psico_conciliacao_reaberturas", "id_fechamento, motivo, reaberto_por, reaberto_em", "id_reabertura"),
   ]);
+  const porFechamento = new Map(reaberturas.map((r) => [r.id_fechamento, r]));
+  for (const f of fechamentos) f.reabertura = porFechamento.get(f.id_fechamento) ?? null;
   fechamentos.sort((a, b) => b.fechado_em.localeCompare(a.fechado_em));
   return { ligacoes, pareceres, fechamentos };
 }

@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-reabrir",
+    data: "2026-11-05",
+    tipo: "novidade",
+    titulo: "Conciliação: reabrir depois de fechar",
+    texto:
+      "A Conciliação DRPS/QPS × AEP ganhou o botão Reabrir, com motivo. O fechamento e o PDF continuam guardados como " +
+      "estão. Até fechar de novo, a empresa sai de Liberar para o Comercial e o vendedor deixa de ver as intervenções, " +
+      "os riscos que pediram AET e o parecer.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP › Conciliações fechadas",
+    versoes: ["0.3.237"],
+  },
+  {
     id: "comercial-registro-venda",
     data: "2026-11-05",
     tipo: "novidade",

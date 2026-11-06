@@ -591,6 +591,11 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
+- **v324 — Reabrir a conciliação; filtro do vendedor (05/11/2026).** Aplicada em 05/11/2026, antes do merge da 0.3.237.
+  - `psico_conciliacao_reaberturas`: uma por fechamento, só inserção (`psico_somente_insercao`), com motivo, quem e quando. RLS igual à do fechamento.
+  - `comercial_conciliacao_fechada(id_empresa)`: a última conciliação existe e não foi reaberta.
+  - `comercial_dados()`: quem não passa em `comercial_pode_liberar()` só recebe atendimentos, intervenções e conciliações de atendimento concluído com conciliação fechada. `conciliacoes.itens` vai só com riscos Confirmar/AET e os campos usados.
+  - Rollback: `scripts/sql/v324_conciliacao_reabrir_comercial_filtro_rollback.sql` (reabre a exposição).
 - **v323 — `comercial_vendas` (05/11/2026).** Aplicada em 05/11/2026, antes do merge da 0.3.236.
   - Um registro por empresa × serviço, com observação, quem e quando. Sem leitura nem escrita direta: lê pelo `comercial_dados()`, chave `vendas`; grava por `comercial_venda_registrar` (Admin ou módulo comercial) e `comercial_venda_desfazer` (quem registrou ou Admin).
   - Rollback: `scripts/sql/v323_comercial_vendas_rollback.sql`.

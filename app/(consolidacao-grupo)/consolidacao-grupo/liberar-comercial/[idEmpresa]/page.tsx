@@ -76,7 +76,10 @@ export default function AtendimentoComercialPage() {
   const conciliacao = data?.conciliacoes.find((c) => c.id_empresa === idEmpresa);
   const indicadas = useMemo(() => (data?.indicadas ?? []).filter((i) => i.id_empresa === idEmpresa), [data, idEmpresa]);
   const riscos = useMemo(
-    () => riscosComIntervencoes(riscosDoFechamento(conciliacao?.itens ?? []), indicadas),
+    () =>
+      riscosComIntervencoes(riscosDoFechamento(conciliacao?.itens ?? []), indicadas)
+        // Conciliação reaberta: não há "última fechada" para comparar; o aviso do topo explica.
+        .map((r) => (conciliacao ? r : { ...r, foraDaConciliacao: false })),
     [conciliacao, indicadas],
   );
 
@@ -94,7 +97,7 @@ export default function AtendimentoComercialPage() {
 
   const atendimento = (data?.atendimentos ?? []).find((a) => a.id_empresa === idEmpresa) ?? null;
   const concluido = atendimento?.status === "CONCLUIDO";
-  const podeAlterar = !concluido && !!minha;
+  const podeAlterar = !concluido && !!minha && !!conciliacao;
   const parecer = rascunho ?? atendimento?.parecer ?? "";
   const falta = faltaParaConcluir(parecer);
   const cadastro = conciliacao?.empresas ?? atendimento?.empresas;
@@ -188,7 +191,7 @@ export default function AtendimentoComercialPage() {
           <Link href={`/consolidacao-grupo/conciliacao/${idEmpresa}`} className={btnNeutro}>
             <Search className="size-4" /> Ver a conciliação
           </Link>
-          {concluido && (
+          {concluido && conciliacao && (
             <button type="button" onClick={() => setReabrindo(true)} className={btnNeutro}>
               <RotateCcw className="size-4" /> Reabrir
             </button>
@@ -199,7 +202,7 @@ export default function AtendimentoComercialPage() {
       {concluido && (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
           Concluído{atendimento?.concluido_em ? ` em ${fmtData(atendimento.concluido_em)}` : ""}
-          {atendimento?.concluido_por ? ` por ${atendimento.concluido_por}` : ""}. O vendedor já vê as intervenções e o parecer.
+          {atendimento?.concluido_por ? ` por ${atendimento.concluido_por}` : ""}.{conciliacao ? " O vendedor já vê as intervenções e o parecer." : ""}
           {conciliacaoNova && " A conciliação foi fechada de novo depois disso: reabra para conferir."}
         </p>
       )}
@@ -209,13 +212,19 @@ export default function AtendimentoComercialPage() {
         idInspecao={idEmpresa}
         sessoes={sessoes}
         idUsuario={user?.id_usuario}
-        podeApontar={!concluido}
+        podeApontar={!concluido && !!conciliacao}
         podeCorrigir={false}
         concluidaEm={atendimento?.concluido_em}
         entregue={concluido}
       />
 
-      {!concluido && !minha && (
+      {!conciliacao && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          A conciliação desta empresa foi reaberta. O vendedor não vê este atendimento até ela ser fechada de novo.
+        </p>
+      )}
+
+      {conciliacao && !concluido && !minha && (
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           Clique em <strong>{sessoes.length > 0 ? "Retomar" : "Iniciar"}</strong> para indicar as intervenções e escrever o parecer.
         </p>
