@@ -591,6 +591,8 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
+- **v327 — Catálogo de intervenções com listas abertas (06/11/2026).** `comercial_intervencoes.modalidades` e `comercial_atendimento_intervencoes.modalidade` deixam de ter a regra que limitava a EAD, Presencial e Ao vivo. `comercial_intervencoes` ganha `responsaveis text[]`, preenchida com o `responsavel` de cada item; o primeiro é o padrão. A coluna antiga `responsavel` continua, acompanhando o primeiro da lista, só para a versão anterior da tela seguir funcionando durante o deploy: pode sair numa próxima migração.
+  - Rollback: `scripts/sql/v327_intervencoes_listas_abertas_rollback.sql` (recusa se já houver modalidade fora das 3).
 - **v326 — Parecer da Conciliação na própria AEP (06/11/2026).** `psico_conciliacao_pareceres.questionario` passa a aceitar `AEP`, para a empresa que só tem a AEP (0.3.239). Nenhum dado mudou. A foto do fechamento (`itens`, `resumo`) é jsonb e ganha `resumo.fonte_unica`, sem mudança de estrutura. Corrige também a v324: `psico_conciliacao_reaberturas.id_empresa` perde a chave em cascata, que com o gatilho de só inserção impedia apagar a empresa com reabertura; fica como `psico_conciliacao_fechamentos`, sem chave.
   - Rollback: `scripts/sql/v326_conciliacao_parecer_aep_rollback.sql` (recusa se já houver parecer com `AEP`).
 - **v325 — Reabrir pela função (06/11/2026).** Aplicada em 06/11/2026, antes do merge da 0.3.238.

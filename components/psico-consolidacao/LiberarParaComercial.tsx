@@ -3,8 +3,10 @@
 // Etapas 3 e 4 da Conciliação DRPS/QPS × AEP (0.3.238): as intervenções por risco e a liberação
 // para o Comercial. Antes eram a tela própria /consolidacao-grupo/liberar-comercial. A regra está em
 // lib/comercial/liberacao.ts; as funções do banco conferem a sessão de quem grava (v321/v322).
+// 0.3.240 (banco v327): Intervenção, Modalidade e Responsável aceitam valor novo, que entra no
+// catálogo, e nenhum campo espera a intervenção ser escolhida.
 
-import { Fragment, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { CheckCircle2, Handshake, Loader2, Plus, Sparkles, Trash2, Undo2 } from "lucide-react";
@@ -13,8 +15,10 @@ import Modal from "@/components/ui/Modal";
 import { confirmar } from "@/components/ui/confirm";
 import { DICAS_COMERCIAL_LIBERAR } from "@/lib/dicas/comercial";
 import {
+  useAtualizarListasDoCatalogo,
   useCatalogoIntervencoes,
   useConcluirAtendimento,
+  useCriarIntervencaoNoCatalogo,
   useEventosAtendimento,
   useReabrirAtendimento,
   useRetirarIntervencao,
@@ -23,10 +27,14 @@ import {
   type IntervencaoCatalogo,
 } from "@/lib/hooks/useComercial";
 import {
-  MODALIDADES,
+  acharIntervencao,
+  acharNaLista,
   chaveRisco,
+  comOpcao,
   faltaParaConcluir,
   intervencoesDoRisco,
+  normalizarOpcao,
+  opcoesDoCatalogo,
   type AtendimentoComercial,
   type IntervencaoIndicada,
   type RiscoConciliado,
@@ -89,7 +97,7 @@ export default function LiberarParaComercial({
   const liberado = atendimento?.status === "CONCLUIDO";
   const parecer = rascunho ?? atendimento?.parecer ?? "";
   const falta = faltaParaConcluir(parecer);
-  const responsaveis = useMemo(() => [...new Set(catalogo.map((c) => c.responsavel).filter(Boolean))] as string[], [catalogo]);
+  const opcoes = useMemo(() => opcoesDoCatalogo(catalogo), [catalogo]);
 
   async function sugerirParecer() {
     if (parecer.trim()) {
@@ -159,7 +167,7 @@ export default function LiberarParaComercial({
                 <Link href="/consolidacao-grupo/intervencoes" className="font-medium text-indigo-700 underline">
                   catálogo de intervenções
                 </Link>
-                , e cada alteração é gravada na hora.
+                , e cada alteração é gravada na hora. O que você inserir em &quot;+ Inserir novo&quot; também entra no catálogo.
               </p>
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full min-w-[56rem] text-sm">
@@ -181,16 +189,12 @@ export default function LiberarParaComercial({
                         idEmpresa={idEmpresa}
                         itens={intervencoesDoRisco(indicadas, r.chave)}
                         catalogo={catalogo}
+                        opcoes={opcoes}
                         podeAlterar={podeAlterar}
                       />
                     ))}
                   </tbody>
                 </table>
-                <datalist id="comercial-responsaveis">
-                  {responsaveis.map((v) => (
-                    <option key={v} value={v} />
-                  ))}
-                </datalist>
               </div>
             </>
           )}
@@ -283,12 +287,14 @@ function LinhasDoRisco({
   idEmpresa,
   itens,
   catalogo,
+  opcoes,
   podeAlterar,
 }: {
   risco: RiscoConciliado;
   idEmpresa: string;
   itens: IntervencaoIndicada[];
   catalogo: IntervencaoCatalogo[];
+  opcoes: OpcoesCatalogo;
   podeAlterar: boolean;
 }) {
   const [adicionando, setAdicionando] = useState(false);
@@ -318,7 +324,7 @@ function LinhasDoRisco({
   return (
     <Fragment>
       {itens.map((i, n) => (
-        <LinhaIntervencao key={i.id_item} risco={risco} idEmpresa={idEmpresa} item={i} catalogo={catalogo} podeAlterar={podeAlterar} celulaRisco={n === 0 ? celulaRisco : null} />
+        <LinhaIntervencao key={i.id_item} risco={risco} idEmpresa={idEmpresa} item={i} catalogo={catalogo} opcoes={opcoes} podeAlterar={podeAlterar} celulaRisco={n === 0 ? celulaRisco : null} />
       ))}
       {mostrarNova && (
         <LinhaIntervencao
@@ -326,6 +332,7 @@ function LinhasDoRisco({
           idEmpresa={idEmpresa}
           item={null}
           catalogo={catalogo}
+          opcoes={opcoes}
           podeAlterar
           celulaRisco={itens.length === 0 ? celulaRisco : null}
           onCriada={() => setAdicionando(false)}
@@ -344,11 +351,101 @@ function LinhasDoRisco({
   );
 }
 
+type OpcoesCatalogo = ReturnType<typeof opcoesDoCatalogo>;
+
+const INSERIR_NOVO = "__inserir_novo__";
+
+/**
+ * Lista com tudo o que já existe e, no fim, "+ Inserir novo", que troca o campo por um de digitar.
+ * Enter ou sair do campo grava; Esc desiste. É uma lista do navegador, e não um menu próprio, porque a
+ * tabela rola na horizontal e cortaria um menu aberto.
+ */
+function CampoOpcoes({
+  valor,
+  opcoes,
+  vazio,
+  rotuloNovo,
+  textoInicial = "",
+  disabled,
+  ariaLabel,
+  onEscolher,
+  onNovo,
+}: {
+  valor: string;
+  opcoes: { valor: string; rotulo: string }[];
+  /** O rótulo da opção sem valor; sem ele, a opção não aparece. */
+  vazio?: string;
+  rotuloNovo: string;
+  textoInicial?: string;
+  disabled: boolean;
+  ariaLabel: string;
+  onEscolher: (valor: string) => void;
+  onNovo: (texto: string) => void;
+}) {
+  const [digitando, setDigitando] = useState(false);
+  const [texto, setTexto] = useState("");
+  const terminou = useRef(false);
+
+  function terminar(gravar: boolean) {
+    if (terminou.current) return;
+    terminou.current = true;
+    setDigitando(false);
+    const t = normalizarOpcao(texto);
+    if (gravar && t && t !== textoInicial) onNovo(t);
+  }
+
+  if (digitando) {
+    return (
+      <input
+        autoFocus
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        onBlur={() => terminar(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") terminar(true);
+          if (e.key === "Escape") terminar(false);
+        }}
+        placeholder={rotuloNovo}
+        aria-label={ariaLabel}
+        className={campoCls}
+      />
+    );
+  }
+  return (
+    <select
+      value={valor}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      onChange={(e) => {
+        if (e.target.value !== INSERIR_NOVO) return onEscolher(e.target.value);
+        terminou.current = false;
+        setTexto(textoInicial);
+        setDigitando(true);
+      }}
+      className={campoCls}
+    >
+      {vazio !== undefined && <option value="">{vazio}</option>}
+      {opcoes.map((o) => (
+        <option key={o.valor} value={o.valor}>
+          {o.rotulo}
+        </option>
+      ))}
+      <option value={INSERIR_NOVO}>+ Inserir novo...</option>
+    </select>
+  );
+}
+
+/** A intervenção gravada sem ligação com o catálogo: aparece na lista só nesta linha. */
+const ITEM_FORA_DO_CATALOGO = "__fora_do_catalogo__";
+
+const paraOpcoes = (lista: readonly string[]) => lista.map((v) => ({ valor: v, rotulo: v }));
+
 function LinhaIntervencao({
   risco,
   idEmpresa,
   item,
   catalogo,
+  opcoes,
   podeAlterar,
   celulaRisco,
   onCriada,
@@ -358,6 +455,7 @@ function LinhaIntervencao({
   idEmpresa: string;
   item: IntervencaoIndicada | null;
   catalogo: IntervencaoCatalogo[];
+  opcoes: OpcoesCatalogo;
   podeAlterar: boolean;
   celulaRisco: ReactNode;
   onCriada?: () => void;
@@ -365,12 +463,23 @@ function LinhaIntervencao({
 }) {
   const salvar = useSalvarIntervencaoIndicada();
   const retirar = useRetirarIntervencao();
-  const [responsavel, setResponsavel] = useState(item?.responsavel ?? "");
+  const criarNoCatalogo = useCriarIntervencaoNoCatalogo();
+  const atualizarCatalogo = useAtualizarListasDoCatalogo();
+  // Na linha nova, o que foi preenchido antes de escolher a intervenção espera aqui, e vai junto.
+  const [rascunhoModalidade, setRascunhoModalidade] = useState<string | null>(null);
+  const [rascunhoResponsavel, setRascunhoResponsavel] = useState<string | null>(null);
   const [prazo, setPrazo] = useState(item?.prazo_dias ? String(item.prazo_dias) : "");
 
+  const modalidade = item ? item.modalidade : rascunhoModalidade;
+  const responsavel = item ? item.responsavel : rascunhoResponsavel;
   const noCatalogo = catalogo.find((c) => c.id_intervencao === item?.id_intervencao);
   const opcoesIntervencao = catalogo.filter((c) => c.ativo || c.id_intervencao === item?.id_intervencao);
-  const bloqueado = !podeAlterar || salvar.isPending;
+  const bloqueado = !podeAlterar || salvar.isPending || criarNoCatalogo.isPending;
+
+  const diasDoPrazo = () => {
+    const dias = prazo.trim() ? Math.max(1, Math.floor(Number(prazo))) : null;
+    return dias !== null && !Number.isFinite(dias) ? null : dias;
+  };
 
   const gravar = (mudanca: { idIntervencao?: string | null; nome?: string; modalidade?: string | null; responsavel?: string | null; prazoDias?: number | null }) =>
     salvar.mutate(
@@ -383,25 +492,85 @@ function LinhaIntervencao({
         fatorNome: risco.fator,
         idIntervencao: item?.id_intervencao ?? null,
         nome: item?.nome ?? "",
-        modalidade: item?.modalidade ?? null,
-        responsavel: item?.responsavel ?? null,
-        prazoDias: item?.prazo_dias ?? null,
+        modalidade,
+        responsavel,
+        prazoDias: item ? item.prazo_dias : diasDoPrazo(),
         ...mudanca,
       },
       { onSuccess: () => onCriada?.() },
     );
 
+  function aplicarIntervencao(c: IntervencaoCatalogo) {
+    // Trocar a intervenção traz a modalidade e o responsável dela; o que já foi preenchido na linha nova vale mais.
+    const mod = (item ? null : rascunhoModalidade) ?? c.modalidades[0] ?? null;
+    const resp = (item ? null : rascunhoResponsavel) ?? c.responsaveis[0] ?? null;
+    // O que foi digitado antes de escolher a intervenção entra no catálogo agora.
+    const modNova = !item && mod && !acharNaLista(opcoes.modalidades, mod);
+    const respNovo = !item && resp && !acharNaLista(opcoes.responsaveis, resp);
+    if (modNova || respNovo) {
+      atualizarCatalogo.mutate({
+        idIntervencao: c.id_intervencao,
+        modalidades: modNova ? comOpcao(c.modalidades, mod) : c.modalidades,
+        responsaveis: respNovo ? comOpcao(c.responsaveis, resp) : c.responsaveis,
+      });
+    }
+    gravar({ idIntervencao: c.id_intervencao, nome: c.nome, modalidade: mod, responsavel: resp });
+  }
+
   function escolherIntervencao(id: string) {
     const c = catalogo.find((x) => x.id_intervencao === id);
-    if (!c) return;
-    // Trocar a intervenção traz a modalidade e o responsável dela; depois dá para mudar.
-    setResponsavel(c.responsavel ?? "");
-    gravar({ idIntervencao: c.id_intervencao, nome: c.nome, modalidade: c.modalidades[0] ?? null, responsavel: c.responsavel ?? null });
+    if (c) aplicarIntervencao(c);
+  }
+
+  async function novaIntervencao(nome: string) {
+    const existente = acharIntervencao(catalogo, nome);
+    if (existente) return aplicarIntervencao(existente);
+    try {
+      const c = await criarNoCatalogo.mutateAsync({
+        nome,
+        modalidades: modalidade ? [modalidade] : [],
+        responsaveis: responsavel ? [responsavel] : [],
+        ordem: catalogo.reduce((m, i) => Math.max(m, i.ordem), 0) + 1,
+      });
+      gravar({ idIntervencao: c.id_intervencao, nome: c.nome });
+    } catch {
+      // O aviso já saiu no hook, e a linha continua como estava.
+    }
+  }
+
+  function escolherModalidade(v: string | null) {
+    if (item) gravar({ modalidade: v });
+    else setRascunhoModalidade(v);
+  }
+
+  function escolherResponsavel(v: string | null) {
+    if (item) gravar({ responsavel: v });
+    else setRascunhoResponsavel(v);
+  }
+
+  /** Valor digitado com a intervenção já escolhida: vai para a linha e para a lista dela no catálogo. */
+  function registrarNaIntervencao(mudanca: { modalidade?: string; responsavel?: string }) {
+    if (!noCatalogo) return;
+    const modalidades = mudanca.modalidade ? comOpcao(noCatalogo.modalidades, mudanca.modalidade) : noCatalogo.modalidades;
+    const responsaveis = mudanca.responsavel ? comOpcao(noCatalogo.responsaveis, mudanca.responsavel) : noCatalogo.responsaveis;
+    if (modalidades.length === noCatalogo.modalidades.length && responsaveis.length === noCatalogo.responsaveis.length) return;
+    atualizarCatalogo.mutate({ idIntervencao: noCatalogo.id_intervencao, modalidades, responsaveis });
+  }
+
+  function novaModalidade(texto: string) {
+    const v = acharNaLista(opcoes.modalidades, texto) ?? texto;
+    escolherModalidade(v);
+    registrarNaIntervencao({ modalidade: v });
+  }
+
+  function novoResponsavel(texto: string) {
+    const v = acharNaLista(opcoes.responsaveis, texto) ?? texto;
+    escolherResponsavel(v);
+    registrarNaIntervencao({ responsavel: v });
   }
 
   function gravarPrazo() {
-    const dias = prazo.trim() ? Math.max(1, Math.floor(Number(prazo))) : null;
-    if (dias !== null && !Number.isFinite(dias)) return;
+    const dias = diasDoPrazo();
     if (dias === (item?.prazo_dias ?? null)) return;
     setPrazo(dias ? String(dias) : "");
     gravar({ prazoDias: dias });
@@ -417,47 +586,43 @@ function LinhaIntervencao({
     <tr className="align-top">
       {celulaRisco}
       <td className="py-2 pr-2">
-        <select
-          value={item?.id_intervencao ?? ""}
+        <CampoOpcoes
+          valor={item ? (item.id_intervencao ?? ITEM_FORA_DO_CATALOGO) : ""}
+          vazio={item ? undefined : "Escolha a intervenção..."}
+          opcoes={[
+            ...(item && !noCatalogo ? [{ valor: item.id_intervencao ?? ITEM_FORA_DO_CATALOGO, rotulo: item.nome }] : []),
+            ...opcoesIntervencao.map((c) => ({ valor: c.id_intervencao, rotulo: c.nome })),
+          ]}
+          rotuloNovo="Nome da nova intervenção"
           disabled={bloqueado}
-          onChange={(e) => escolherIntervencao(e.target.value)}
-          aria-label={`Intervenção para ${risco.setor}, ${risco.fator}`}
-          className={campoCls}
-        >
-          {!item && <option value="">Escolha a intervenção...</option>}
-          {item && !noCatalogo && <option value={item.id_intervencao ?? ""}>{item.nome}</option>}
-          {opcoesIntervencao.map((c) => (
-            <option key={c.id_intervencao} value={c.id_intervencao}>
-              {c.nome}
-            </option>
-          ))}
-        </select>
+          ariaLabel={`Intervenção para ${risco.setor}, ${risco.fator}`}
+          onEscolher={escolherIntervencao}
+          onNovo={novaIntervencao}
+        />
       </td>
       <td className="py-2 pr-2">
-        <select
-          value={item?.modalidade ?? ""}
-          disabled={bloqueado || !item}
-          onChange={(e) => gravar({ modalidade: e.target.value || null })}
-          aria-label="Modalidade"
-          className={campoCls}
-        >
-          <option value="">—</option>
-          {MODALIDADES.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
+        <CampoOpcoes
+          valor={modalidade ?? ""}
+          vazio="—"
+          opcoes={paraOpcoes(modalidade ? comOpcao(opcoes.modalidades, modalidade) : opcoes.modalidades)}
+          rotuloNovo="Nova modalidade"
+          disabled={bloqueado}
+          ariaLabel="Modalidade"
+          onEscolher={(v) => escolherModalidade(v || null)}
+          onNovo={novaModalidade}
+        />
       </td>
       <td className="py-2 pr-2">
-        <input
-          list="comercial-responsaveis"
-          value={responsavel}
-          disabled={bloqueado || !item}
-          onChange={(e) => setResponsavel(e.target.value)}
-          onBlur={() => responsavel.trim() !== (item?.responsavel ?? "") && item && gravar({ responsavel: responsavel.trim() || null })}
-          aria-label="Responsável"
-          className={campoCls}
+        <CampoOpcoes
+          valor={responsavel ?? ""}
+          vazio="—"
+          opcoes={paraOpcoes(responsavel ? comOpcao(opcoes.responsaveis, responsavel) : opcoes.responsaveis)}
+          rotuloNovo="Novo responsável"
+          textoInicial={responsavel ?? ""}
+          disabled={bloqueado}
+          ariaLabel="Responsável"
+          onEscolher={(v) => escolherResponsavel(v || null)}
+          onNovo={novoResponsavel}
         />
       </td>
       <td className="py-2 pr-2">
@@ -465,7 +630,7 @@ function LinhaIntervencao({
           type="number"
           min={1}
           value={prazo}
-          disabled={bloqueado || !item}
+          disabled={bloqueado}
           onChange={(e) => setPrazo(e.target.value)}
           onBlur={() => item && gravarPrazo()}
           aria-label="Prazo em dias"

@@ -246,7 +246,8 @@ export interface IntervencaoCatalogo {
   nome: string;
   modalidades: string[];
   observacao: string | null;
-  responsavel: string | null;
+  /** O primeiro é o que a intervenção traz ao ser escolhida (v327). */
+  responsaveis: string[];
   ativo: boolean;
   ordem: number;
 }
@@ -259,7 +260,7 @@ export function useCatalogoIntervencoes() {
     queryFn: async () => {
       const { data, error } = await sb()
         .from("comercial_intervencoes")
-        .select("id_intervencao, nome, modalidades, observacao, responsavel, ativo, ordem")
+        .select("id_intervencao, nome, modalidades, observacao, responsaveis, ativo, ordem")
         .order("ordem")
         .order("nome");
       if (error) throw error;
@@ -272,7 +273,8 @@ export function useSalvarIntervencao() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (f: Omit<IntervencaoCatalogo, "id_intervencao"> & { id_intervencao?: string }) => {
-      const { id_intervencao, ...campos } = f;
+      const { id_intervencao, ...resto } = f;
+      const campos = camposCatalogo(resto);
       const q = id_intervencao
         ? sb().from("comercial_intervencoes").update(campos).eq("id_intervencao", id_intervencao)
         : sb().from("comercial_intervencoes").insert(campos);
@@ -285,6 +287,51 @@ export function useSalvarIntervencao() {
     },
     onError: (e: Error & { code?: string }) =>
       toast.error(e.code === "23505" ? "Já existe uma intervenção com este nome." : mensagemErro(e, "Falha ao salvar a intervenção")),
+  });
+}
+
+/** A coluna antiga `responsavel` acompanha o primeiro da lista, até sair do banco. */
+function camposCatalogo<T extends { responsaveis: string[] }>(f: T) {
+  return { ...f, responsavel: f.responsaveis[0] ?? null };
+}
+
+/** Intervenção digitada na etapa da Conciliação: entra no catálogo e já volta com o id. */
+export function useCriarIntervencaoNoCatalogo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (f: { nome: string; modalidades: string[]; responsaveis: string[]; ordem: number }) => {
+      const { data, error } = await sb()
+        .from("comercial_intervencoes")
+        .insert(camposCatalogo({ ...f, ativo: true, observacao: null }))
+        .select("id_intervencao, nome, modalidades, observacao, responsaveis, ativo, ordem")
+        .single();
+      if (error) throw error;
+      return data as IntervencaoCatalogo;
+    },
+    onSuccess: (c) => {
+      qc.invalidateQueries({ queryKey: [CHAVE_CATALOGO] });
+      toast.success(`${c.nome} entrou no catálogo de Intervenções`);
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e, "Falha ao registrar no catálogo")),
+  });
+}
+
+/** Modalidade ou responsável digitado na etapa da Conciliação: entra na lista da intervenção. */
+export function useAtualizarListasDoCatalogo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (f: { idIntervencao: string; modalidades: string[]; responsaveis: string[] }) => {
+      const { error } = await sb()
+        .from("comercial_intervencoes")
+        .update(camposCatalogo({ modalidades: f.modalidades, responsaveis: f.responsaveis }))
+        .eq("id_intervencao", f.idIntervencao);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [CHAVE_CATALOGO] });
+      toast.success("Registrado no catálogo de Intervenções");
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e, "Falha ao registrar no catálogo")),
   });
 }
 

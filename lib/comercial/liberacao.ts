@@ -12,7 +12,37 @@
 import type { DecisaoParecer, Questionario } from "@/lib/psico-consolidacao/conciliacao";
 import { A_VENDER, empresaBase, type Cad, type EmpresaComercial, type Oportunidade, type Produto } from "@/lib/comercial/oportunidades";
 
+/** As modalidades de partida. Desde a 0.3.240 a equipe pode inserir outras, que ficam no catálogo. */
 export const MODALIDADES = ["EAD", "Presencial", "Ao vivo"] as const;
+
+/** O que foi digitado, sem espaços sobrando. */
+export const normalizarOpcao = (s: string) => s.trim().replace(/\s+/g, " ");
+
+const mesmaOpcao = (a: string, b: string) => normalizarOpcao(a).toLocaleLowerCase("pt-BR") === normalizarOpcao(b).toLocaleLowerCase("pt-BR");
+
+/** A grafia que já existe na lista, para "ead" não virar outra modalidade além de "EAD". */
+export function acharNaLista(lista: readonly string[], valor: string): string | undefined {
+  return lista.find((x) => mesmaOpcao(x, valor));
+}
+
+/** A lista com o valor no fim, se ainda não estiver lá. */
+export function comOpcao(lista: readonly string[], valor: string): string[] {
+  return acharNaLista(lista, valor) ? [...lista] : [...lista, normalizarOpcao(valor)];
+}
+
+/** A intervenção do catálogo com esse nome, sem olhar maiúsculas: o banco não aceita nome repetido. */
+export function acharIntervencao<T extends { nome: string }>(catalogo: readonly T[], nome: string): T | undefined {
+  return catalogo.find((c) => mesmaOpcao(c.nome, nome));
+}
+
+/** O que os campos Modalidade e Responsável oferecem: tudo o que já está no catálogo. */
+export function opcoesDoCatalogo(catalogo: readonly { modalidades: readonly string[]; responsaveis: readonly string[] }[]) {
+  const juntar = (base: readonly string[], listas: (readonly string[])[]) => listas.flat().reduce<string[]>((acc, v) => comOpcao(acc, v), [...base]);
+  return {
+    modalidades: juntar(MODALIDADES, catalogo.map((c) => c.modalidades)),
+    responsaveis: juntar([], catalogo.map((c) => c.responsaveis)),
+  };
+}
 
 export type StatusAtendimento = "EM_ANDAMENTO" | "CONCLUIDO";
 
