@@ -2,6 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  acharIntervencao,
+  acharNaLista,
+  comOpcao,
+  normalizarOpcao,
+  opcoesDoCatalogo,
   aplicarVendas,
   chaveRisco,
   faltaParaConcluir,
@@ -64,6 +69,29 @@ const indicada = (id: string, setor: string, fator: string, extra: Partial<Inter
 const empresa = (id: string, oportunidades: Oportunidade[]) =>
   ({ empresa: { idEmpresa: id, nome: id }, oportunidades }) as unknown as EmpresaComercial;
 const op = (produto: Oportunidade["produto"]): Oportunidade => ({ produto, situacao: "aberta", origens: ["Inspeção"], detalhes: ["x"], setores: [] });
+
+test("opção digitada: sem espaços sobrando e sem repetir com outra grafia", () => {
+  assert.equal(normalizarOpcao("  Ana   Lima "), "Ana Lima");
+  assert.equal(acharNaLista(["EAD", "Presencial"], " ead "), "EAD");
+  assert.equal(acharNaLista(["EAD"], "Híbrido"), undefined);
+  assert.deepEqual(comOpcao(["EAD"], "ead"), ["EAD"]);
+  assert.deepEqual(comOpcao(["EAD"], " Híbrido "), ["EAD", "Híbrido"]);
+});
+
+test("intervenção digitada acha a do catálogo sem olhar maiúsculas", () => {
+  const catalogo = [{ nome: "Treinamento Saúde Mental" }];
+  assert.equal(acharIntervencao(catalogo, "treinamento saúde  mental"), catalogo[0]);
+  assert.equal(acharIntervencao(catalogo, "Outra"), undefined);
+});
+
+test("as opções juntam as modalidades de partida e o que está no catálogo", () => {
+  const o = opcoesDoCatalogo([
+    { modalidades: ["EAD", "Híbrido"], responsaveis: ["Ana"] },
+    { modalidades: ["híbrido"], responsaveis: ["Ana", "Bia"] },
+  ]);
+  assert.deepEqual(o.modalidades, ["EAD", "Presencial", "Ao vivo", "Híbrido"]);
+  assert.deepEqual(o.responsaveis, ["Ana", "Bia"]);
+});
 
 test("só Confirmar e AET viram risco; descartado e sem parecer ficam de fora", () => {
   const r = riscosDoFechamento([

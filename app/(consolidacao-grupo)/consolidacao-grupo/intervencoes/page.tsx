@@ -2,6 +2,8 @@
 
 // Consolidação › Intervenções (0.3.233, banco v321): o catálogo da etapa Intervenções da Conciliação.
 // Nasceu da planilha do setor Psicossocial. Quem libera altera, insere e exclui.
+// 0.3.240 (banco v327): modalidades e responsáveis são listas abertas. O que for inserido na etapa
+// Intervenções da Conciliação também aparece aqui.
 
 import { useState } from "react";
 import { HeartHandshake, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
@@ -11,7 +13,7 @@ import Modal from "@/components/ui/Modal";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import { DICAS_COMERCIAL_INTERVENCAO } from "@/lib/dicas/comercial";
-import { MODALIDADES } from "@/lib/comercial/liberacao";
+import { comOpcao, normalizarOpcao, opcoesDoCatalogo } from "@/lib/comercial/liberacao";
 import {
   useCatalogoIntervencoes,
   useExcluirIntervencao,
@@ -64,11 +66,14 @@ export default function IntervencoesPage() {
           <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
             <HeartHandshake className="size-5 text-marca-primary" /> Intervenções
           </h1>
-          <p className="max-w-3xl text-sm text-gray-500">O que pode ser indicado aos riscos na Conciliação DRPS/QPS × AEP, com as modalidades de cada uma.</p>
+          <p className="max-w-3xl text-sm text-gray-500">
+            O que pode ser indicado aos riscos na Conciliação DRPS/QPS × AEP, com as modalidades e os responsáveis de cada uma. O que for inserido na
+            Conciliação também aparece aqui.
+          </p>
         </div>
         <button
           type="button"
-          onClick={() => setForma({ nome: "", modalidades: [], observacao: "", responsavel: "", ativo: true, ordem: proximaOrdem })}
+          onClick={() => setForma({ nome: "", modalidades: [], observacao: "", responsaveis: [], ativo: true, ordem: proximaOrdem })}
           className="inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent"
         >
           <Plus className="size-4" /> Nova intervenção
@@ -98,12 +103,12 @@ export default function IntervencoesPage() {
                   {i.observacao && <span className="block text-xs text-gray-500">{i.observacao}</span>}
                 </td>
                 <td className="px-3 py-2 text-gray-700">{i.modalidades.join(", ") || "—"}</td>
-                <td className="px-3 py-2 text-gray-700">{i.responsavel || "—"}</td>
+                <td className="px-3 py-2 text-gray-700">{i.responsaveis.join(", ") || "—"}</td>
                 <td className="px-3 py-2">
                   <div className="flex gap-1">
                     <button
                       type="button"
-                      onClick={() => setForma({ ...i, observacao: i.observacao ?? "", responsavel: i.responsavel ?? "" })}
+                      onClick={() => setForma({ ...i, observacao: i.observacao ?? "" })}
                       className="inline-flex items-center gap-1 rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
                     >
                       <Pencil className="size-3.5" /> Editar
@@ -131,18 +136,74 @@ export default function IntervencoesPage() {
         </table>
       </div>
 
-      {forma && <JanelaIntervencao inicial={forma} onFechar={() => setForma(null)} />}
+      {forma && <JanelaIntervencao inicial={forma} catalogo={catalogo} onFechar={() => setForma(null)} />}
     </div>
   );
 }
 
-function JanelaIntervencao({ inicial, onFechar }: { inicial: Forma; onFechar: () => void }) {
+/** Marcar as que valem aqui, entre tudo o que já existe, ou inserir outra. */
+function ListaAberta({
+  opcoes,
+  marcadas,
+  rotuloNovo,
+  onMudar,
+}: {
+  opcoes: string[];
+  marcadas: string[];
+  rotuloNovo: string;
+  onMudar: (lista: string[]) => void;
+}) {
+  const [novo, setNovo] = useState("");
+  const inserir = () => {
+    const v = normalizarOpcao(novo);
+    if (v) onMudar(comOpcao(marcadas, v));
+    setNovo("");
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-3">
+        {marcadas.reduce((acc, v) => comOpcao(acc, v), opcoes).map((m) => (
+          <label key={m} className="inline-flex cursor-pointer items-center gap-1.5 text-gray-700">
+            <input
+              type="checkbox"
+              checked={marcadas.includes(m)}
+              onChange={(e) => onMudar(e.target.checked ? [...marcadas, m] : marcadas.filter((x) => x !== m))}
+              className="size-4 accent-marca-primary"
+            />
+            {m}
+          </label>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          value={novo}
+          onChange={(e) => setNovo(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              inserir();
+            }
+          }}
+          placeholder={rotuloNovo}
+          aria-label={rotuloNovo}
+          className={inputCls}
+        />
+        <button type="button" onClick={inserir} disabled={!novo.trim()} className="shrink-0 rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+          Inserir
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function JanelaIntervencao({ inicial, catalogo, onFechar }: { inicial: Forma; catalogo: IntervencaoCatalogo[]; onFechar: () => void }) {
   const salvar = useSalvarIntervencao();
   const [f, setF] = useState(inicial);
+  const opcoes = opcoesDoCatalogo(catalogo);
 
   const gravar = () =>
     salvar.mutate(
-      { ...f, nome: f.nome.trim(), observacao: f.observacao?.trim() || null, responsavel: f.responsavel?.trim() || null },
+      { ...f, nome: f.nome.trim(), observacao: f.observacao?.trim() || null },
       { onSuccess: onFechar },
     );
 
@@ -178,19 +239,7 @@ function JanelaIntervencao({ inicial, onFechar }: { inicial: Forma; onFechar: ()
           <legend className="mb-1 text-xs font-semibold text-gray-600">
             <Dica texto={DICAS_COMERCIAL_INTERVENCAO.modalidades}>Modalidades</Dica>
           </legend>
-          <div className="flex flex-wrap gap-3">
-            {MODALIDADES.map((m) => (
-              <label key={m} className="inline-flex cursor-pointer items-center gap-1.5 text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={f.modalidades.includes(m)}
-                  onChange={(e) => setF({ ...f, modalidades: e.target.checked ? [...f.modalidades, m] : f.modalidades.filter((x) => x !== m) })}
-                  className="size-4 accent-marca-primary"
-                />
-                {m}
-              </label>
-            ))}
-          </div>
+          <ListaAberta opcoes={opcoes.modalidades} marcadas={f.modalidades} rotuloNovo="Nova modalidade" onMudar={(modalidades) => setF({ ...f, modalidades })} />
         </fieldset>
         <div>
           <label htmlFor="intervencao-obs" className="mb-1 block text-xs font-semibold text-gray-600">
@@ -198,12 +247,10 @@ function JanelaIntervencao({ inicial, onFechar }: { inicial: Forma; onFechar: ()
           </label>
           <textarea id="intervencao-obs" rows={2} value={f.observacao ?? ""} onChange={(e) => setF({ ...f, observacao: e.target.value })} className={inputCls} />
         </div>
-        <div>
-          <label htmlFor="intervencao-resp" className="mb-1 block text-xs font-semibold text-gray-600">
-            Responsável
-          </label>
-          <input id="intervencao-resp" value={f.responsavel ?? ""} onChange={(e) => setF({ ...f, responsavel: e.target.value })} className={inputCls} />
-        </div>
+        <fieldset>
+          <legend className="mb-1 text-xs font-semibold text-gray-600">Responsáveis (o primeiro marcado vem preenchido na Conciliação)</legend>
+          <ListaAberta opcoes={opcoes.responsaveis} marcadas={f.responsaveis} rotuloNovo="Novo responsável" onMudar={(responsaveis) => setF({ ...f, responsaveis })} />
+        </fieldset>
         <label className="inline-flex cursor-pointer items-center gap-2 text-gray-700">
           <input type="checkbox" checked={f.ativo} onChange={(e) => setF({ ...f, ativo: e.target.checked })} className="size-4 accent-marca-primary" />
           <Dica texto={DICAS_COMERCIAL_INTERVENCAO.ativo}>Ativa</Dica>

@@ -41,6 +41,18 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "intervencoes-campos-livres",
+    data: "2026-11-06",
+    tipo: "melhoria",
+    titulo: "Intervenções: insira o que não está na lista, direto na Conciliação",
+    texto:
+      "Na etapa Intervenções da Conciliação, Intervenção, Modalidade e Responsável ganharam a opção + Inserir novo. O que " +
+      "você inserir fica gravado na linha e entra sozinho na página Intervenções, na coluna certa. O Responsável e o Prazo " +
+      "também podem ser preenchidos antes de escolher a intervenção, e cada intervenção agora aceita mais de um responsável.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP e Consolidação › Intervenções",
+    versoes: ["0.3.240"],
+  },
+  {
     id: "conciliacao-documento-unico",
     data: "2026-11-06",
     tipo: "melhoria",
