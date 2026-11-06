@@ -1,7 +1,7 @@
-// Consolidação › Liberar para o Comercial (0.3.233, refeita na 0.3.235, banco v322). Puro (sem tela,
-// sem banco) para testar.
+// Liberar para o Comercial, etapa da Conciliação DRPS/QPS × AEP (0.3.238; banco v321 a v325). Puro
+// (sem tela, sem banco) para testar.
 //
-// A página mostra SÓ o que a Conciliação identificou (pedido do João em 05/11/2026): os pareceres
+// Só vai o que a Conciliação identificou (pedido do João em 05/11/2026): os pareceres
 // Confirmar e Aprofundar com AET da última conciliação FECHADA de cada empresa, um risco por
 // setor × fator. Em cada risco, uma ou mais intervenções com Modalidade, Responsável e Prazo.
 //
@@ -15,7 +15,6 @@ import { A_VENDER, empresaBase, type Cad, type EmpresaComercial, type Oportunida
 export const MODALIDADES = ["EAD", "Presencial", "Ao vivo"] as const;
 
 export type StatusAtendimento = "EM_ANDAMENTO" | "CONCLUIDO";
-export type SituacaoEmpresa = "fila" | "andamento" | "concluida";
 
 export interface AtendimentoComercial {
   id_empresa: string;
@@ -139,56 +138,39 @@ export function intervencoesDoRisco(indicadas: readonly IntervencaoIndicada[], c
     .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR") || a.id_item.localeCompare(b.id_item));
 }
 
-export interface ResumoEmpresa {
-  idEmpresa: string;
-  nome: string;
-  cnpj: string | null;
-  municipio: string | null;
-  uf: string | null;
-  situacao: SituacaoEmpresa;
-  fechadoEm: string;
-  riscos: number;
-  semIntervencao: number;
-  atendimento: AtendimentoComercial | null;
-  /** Concluído, mas a conciliação foi fechada de novo depois: precisa reabrir. */
-  conciliacaoNova: boolean;
-}
+export type SituacaoComercial = "falta-fechar" | "reaberta" | "sem-risco" | "para-liberar" | "em-andamento" | "liberado" | "fechada-de-novo";
 
-/** Uma linha por empresa com conciliação fechada que tenha ao menos um risco. */
-export function resumirEmpresas(
-  conciliacoes: readonly ConciliacaoFechada[],
-  atendimentos: readonly AtendimentoComercial[],
-  indicadas: readonly IntervencaoIndicada[],
-): ResumoEmpresa[] {
-  const atend = new Map(atendimentos.map((a) => [a.id_empresa, a]));
-  const linhas: ResumoEmpresa[] = [];
-  for (const c of conciliacoes) {
-    const riscos = riscosDoFechamento(c.itens ?? []);
-    if (riscos.length === 0) continue;
-    const a = atend.get(c.id_empresa) ?? null;
-    const comItem = new Set(indicadas.filter((i) => i.id_empresa === c.id_empresa).map((i) => chaveRisco(i.setor_chave, i.id_fator)));
-    const conciliacaoNova =
-      a?.status === "CONCLUIDO" && !!a.concluido_em && new Date(c.fechado_em).getTime() > new Date(a.concluido_em).getTime();
-    linhas.push({
-      idEmpresa: c.id_empresa,
-      nome: c.empresas?.nome_empresa ?? "Empresa sem cadastro",
-      cnpj: c.empresas?.cnpj ?? null,
-      municipio: c.empresas?.municipio ?? null,
-      uf: c.empresas?.uf ?? null,
-      situacao: a?.status === "EM_ANDAMENTO" ? "andamento" : a?.status === "CONCLUIDO" && !conciliacaoNova ? "concluida" : "fila",
-      fechadoEm: c.fechado_em,
-      riscos: riscos.length,
-      semIntervencao: riscos.filter((r) => !comItem.has(r.chave)).length,
-      atendimento: a,
-      conciliacaoNova,
-    });
+export const ROTULO_SITUACAO_COMERCIAL: Record<SituacaoComercial, string> = {
+  "falta-fechar": "Falta fechar",
+  reaberta: "Reaberta",
+  "sem-risco": "Sem risco confirmado",
+  "para-liberar": "Para liberar",
+  "em-andamento": "Em andamento",
+  liberado: "Liberado",
+  "fechada-de-novo": "Fechada de novo",
+};
+
+/** Em que ponto a empresa está no caminho até o Comercial. Coluna da lista e faixa de etapas. */
+export function situacaoComercial(p: {
+  ultimoFechamento: { fechado_em: string; reaberta: boolean } | null;
+  atendimento: Pick<AtendimentoComercial, "status" | "parecer" | "concluido_em"> | null;
+  riscos: number;
+  intervencoes: number;
+}): SituacaoComercial {
+  const { ultimoFechamento: f, atendimento: a } = p;
+  if (!f) return "falta-fechar";
+  if (f.reaberta) return "reaberta";
+  if (a?.status === "CONCLUIDO") {
+    // Registros de antes da 0.3.238: dava para fechar de novo com o atendimento concluído.
+    return a.concluido_em && new Date(f.fechado_em).getTime() > new Date(a.concluido_em).getTime() ? "fechada-de-novo" : "liberado";
   }
-  return linhas.sort((x, y) => new Date(y.fechadoEm).getTime() - new Date(x.fechadoEm).getTime() || x.nome.localeCompare(y.nome, "pt-BR"));
+  if (p.riscos === 0) return "sem-risco";
+  return p.intervencoes > 0 || !!a?.parecer?.trim() ? "em-andamento" : "para-liberar";
 }
 
 /** O que falta para concluir o atendimento; null quando pode. */
 export function faltaParaConcluir(parecer: string | null | undefined): string | null {
-  return parecer?.trim() ? null : "Escreva o parecer.";
+  return parecer?.trim() ? null : "Escreva o parecer para liberar.";
 }
 
 /** "Padaria · Sobrecarga: Treinamento X · EAD · Equipe EAD · 30 dias". */

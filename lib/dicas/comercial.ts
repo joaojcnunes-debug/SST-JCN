@@ -1,9 +1,9 @@
 /**
- * Dicas de Consolidação › Liberar para o Comercial e Intervenções (0.3.233). Mesmas regras de
+ * Dicas da etapa Liberar para o Comercial, na Conciliação, e do catálogo de Intervenções (0.3.233). Mesmas regras de
  * lib/dicas/empresas.ts; cada afirmação conferida em lib/comercial/liberacao.ts e na v322.
  */
 export const DICAS_COMERCIAL_LIBERAR = {
-  parecer: "O que o vendedor precisa saber sobre a empresa. Ele vê este texto depois que o atendimento for concluído.",
+  parecer: "O que o vendedor precisa saber sobre a empresa. Ele vê este texto depois de liberado.",
 } as const;
 
 export const DICAS_COMERCIAL_INTERVENCAO = {

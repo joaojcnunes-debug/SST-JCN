@@ -9,17 +9,32 @@
 // Descartar) com ação 5W2H, ligação de setores escritos de outro jeito, representatividade
 // do questionário, sugestão de AET e o fechamento (foto imutável) com histórico.
 // v0.3.178: alertas de revisão no topo e o PDF de cada fechamento (anexo do PGR).
+// v0.3.238: a liberação para o Comercial virou etapa desta tela. Comparar › Fechar › Intervenções ›
+// Liberar, com um só painel de tempo: nada se altera sem Iniciar, e depois de liberado é só leitura.
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertTriangle, ArrowLeft, CalendarClock, CheckCircle2, ClipboardCheck, GitCompareArrows, Microscope } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarClock, CheckCircle2, ChevronRight, ClipboardCheck, GitCompareArrows, Microscope } from "lucide-react";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { ConfirmHost } from "@/components/ui/confirm";
 import { SeloClasse, TextoNivel, COR_CLASSE, EXPLICACAO_CLASSE } from "@/components/psico-consolidacao/ConciliacaoSelos";
 import ParecerModal, { type ContextoParecer } from "@/components/psico-consolidacao/ParecerModal";
 import LigacaoSetores from "@/components/psico-consolidacao/LigacaoSetores";
 import FechamentosConciliacao from "@/components/psico-consolidacao/FechamentosConciliacao";
+import LiberarParaComercial, { TituloEtapa } from "@/components/psico-consolidacao/LiberarParaComercial";
+import PainelTempoDocumento from "@/components/inspecoes/PainelTempoDocumento";
+import { useLiberacaoServicos, usePodeLiberarServicos } from "@/lib/hooks/useComercial";
+import { useAgora, useAtividadeSessao, useSessoesComercial } from "@/lib/hooks/useDocumentoSessoes";
+import { useUserStore } from "@/lib/store";
+import {
+  ROTULO_SITUACAO_COMERCIAL,
+  chaveRisco,
+  riscosComIntervencoes,
+  riscosDoFechamento,
+  situacaoComercial,
+} from "@/lib/comercial/liberacao";
+import { minhaSessaoAberta } from "@/lib/inspecoes/sessoes";
 import { useFontesConciliacao, usePsicoCatalogo } from "@/lib/hooks/usePsicoConsolidacao";
 import { useRegistrosConciliacao } from "@/lib/hooks/useConciliacaoParecer";
 import { useCanEdit } from "@/lib/hooks/useUsuario";
@@ -63,6 +78,13 @@ export default function ConciliacaoEmpresaPage() {
   const catalogo = usePsicoCatalogo();
   const registros = useRegistrosConciliacao(idEmpresa);
   const podeEditar = useCanEdit();
+  const podeLiberar = usePodeLiberarServicos();
+  const comercial = useLiberacaoServicos();
+  const { data: sessoes = [] } = useSessoesComercial(idEmpresa);
+  const user = useUserStore((s) => s.user);
+  const agora = useAgora(30_000);
+  const minha = minhaSessaoAberta(sessoes, user?.id_usuario, agora);
+  useAtividadeSessao(idEmpresa, !!minha, "comercial");
 
   // Documento escolhido por origem; ausente = o padrão (o mais recente). "" = não usar.
   const [escolha, setEscolha] = useState<Partial<Record<OrigemFonte, string>>>({});
@@ -171,6 +193,29 @@ export default function ConciliacaoEmpresaPage() {
     });
   };
 
+  // ── Caminho até o Comercial ──
+  const ultimoFechamento = registros.data?.fechamentos[0] ?? null;
+  const fechada = !!ultimoFechamento && !ultimoFechamento.reabertura;
+  const atendimento = comercial.data?.atendimentos.find((a) => a.id_empresa === idEmpresa) ?? null;
+  const conciliacaoFechada = comercial.data?.conciliacoes.find((c) => c.id_empresa === idEmpresa);
+  const indicadas = useMemo(() => (comercial.data?.indicadas ?? []).filter((i) => i.id_empresa === idEmpresa), [comercial.data, idEmpresa]);
+  const riscos = useMemo(
+    () =>
+      riscosComIntervencoes(riscosDoFechamento(conciliacaoFechada?.itens ?? []), indicadas)
+        // Conciliação reaberta: não há "última fechada" para comparar.
+        .map((r) => (conciliacaoFechada ? r : { ...r, foraDaConciliacao: false })),
+    [conciliacaoFechada, indicadas],
+  );
+  const liberado = atendimento?.status === "CONCLUIDO";
+  const situacao = situacaoComercial({
+    ultimoFechamento: ultimoFechamento ? { fechado_em: ultimoFechamento.fechado_em, reaberta: !!ultimoFechamento.reabertura } : null,
+    atendimento,
+    riscos: riscos.length,
+    intervencoes: indicadas.length,
+  });
+  // O trabalho inteiro passa pelo tempo: sem a sessão própria aberta, ou depois de liberado, só leitura.
+  const podeTrabalhar = podeEditar && podeLiberar && !!minha && !liberado;
+
   const montarFechamento = () => ({
     documentos: Object.fromEntries(
       Object.entries(escolhidos).map(([o, d]) => [o, { id: d!.id, titulo: d!.titulo, data: d!.data }]),
@@ -194,6 +239,7 @@ export default function ConciliacaoEmpresaPage() {
   }
 
   const podeConciliar = resultado.temAep && resultado.questionarios.length > 0;
+  const riscosFeitos = riscos.length > 0 && riscos.every((r) => indicadas.some((i) => chaveRisco(i.setor_chave, i.id_fator) === r.chave));
 
   return (
     <div className="space-y-4">
@@ -210,6 +256,37 @@ export default function ConciliacaoEmpresaPage() {
         </p>
       </div>
 
+      {podeConciliar && (
+        <EtapasConciliacao
+          situacao={ROTULO_SITUACAO_COMERCIAL[situacao]}
+          etapas={[
+            { id: "etapa-comparar", titulo: "Comparar", feita: contagem.pendentes + contagem.desatualizados === 0 },
+            { id: "etapa-fechar", titulo: "Fechar", feita: fechada },
+            { id: "etapa-intervencoes", titulo: "Intervenções", feita: fechada && riscosFeitos },
+            { id: "etapa-liberar", titulo: "Liberar para o Comercial", feita: liberado && fechada },
+          ]}
+        />
+      )}
+
+      {podeConciliar && podeLiberar && (
+        <PainelTempoDocumento
+          fonte="comercial"
+          idInspecao={idEmpresa}
+          sessoes={sessoes}
+          idUsuario={user?.id_usuario}
+          podeApontar={podeEditar && !liberado}
+          podeCorrigir={false}
+          concluidaEm={atendimento?.concluido_em}
+          entregue={liberado}
+        />
+      )}
+
+      {podeConciliar && podeEditar && podeLiberar && !liberado && !minha && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Clique em <strong>{sessoes.length > 0 ? "Retomar" : "Iniciar"}</strong> para dar pareceres, fechar, indicar as intervenções e liberar.
+        </p>
+      )}
+
       {alertas.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
           <p className="mb-1 flex items-center gap-1.5 font-semibold">
@@ -222,6 +299,8 @@ export default function ConciliacaoEmpresaPage() {
           </ul>
         </div>
       )}
+
+      {podeConciliar && <div id="etapa-comparar" className="scroll-mt-20"><TituloEtapa numero={1} titulo="Comparar" /></div>}
 
       {/* ── Documentos usados ─────────────────────────────────────────── */}
       <div className="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-3">
@@ -376,7 +455,7 @@ export default function ConciliacaoEmpresaPage() {
                             q={q}
                             setor={s}
                             parecer={pareceres.get(chaveParecer(c.chaveSetor, c.idFator, q))}
-                            podeEditar={podeEditar}
+                            podeEditar={podeTrabalhar}
                             onParecer={() => abrirParecer(c, q)}
                           />
                         ))}
@@ -392,7 +471,7 @@ export default function ConciliacaoEmpresaPage() {
 
       {/* ── Setores sem par e ligação ────────────────────────────────────── */}
       {podeConciliar && (
-        <LigacaoSetores idEmpresa={idEmpresa} setores={resultado.setores} ligacoes={ligacoes} podeEditar={podeEditar} />
+        <LigacaoSetores idEmpresa={idEmpresa} setores={resultado.setores} ligacoes={ligacoes} podeEditar={podeTrabalhar} />
       )}
 
       {resultado.linhasSemFator > 0 && (
@@ -403,21 +482,57 @@ export default function ConciliacaoEmpresaPage() {
       )}
 
       {podeConciliar && (
-        <FechamentosConciliacao
+        <section id="etapa-fechar" className="scroll-mt-20">
+          <TituloEtapa numero={2} titulo="Fechar" />
+          <FechamentosConciliacao
+            idEmpresa={idEmpresa}
+            historico={registros.data?.fechamentos ?? []}
+            contagem={contagem}
+            podeEditar={podeTrabalhar}
+            podeReabrirConciliacao={podeEditar && podeLiberar}
+            podeFechar={resultado.setoresEmComum > 0 && !fechada}
+            montar={montarFechamento}
+          />
+        </section>
+      )}
+
+      {podeConciliar && podeLiberar && (
+        <LiberarParaComercial
           idEmpresa={idEmpresa}
-          historico={registros.data?.fechamentos ?? []}
-          contagem={contagem}
-          podeEditar={podeEditar}
-          podeFechar={resultado.setoresEmComum > 0}
-          montar={montarFechamento}
+          nomeEmpresa={empresa.nome}
+          municipio={empresa.municipio ?? null}
+          fechada={fechada}
+          riscos={riscos}
+          indicadas={indicadas}
+          atendimento={atendimento}
+          podeAlterar={podeTrabalhar && fechada}
+          podeRetirar={podeEditar && fechada}
         />
       )}
 
       <ComoComparamos />
 
       <ConfirmHost />
-      {parecerAberto && <ParecerModal ctx={parecerAberto} podeEditar={podeEditar} onClose={() => setParecerAberto(null)} />}
+      {parecerAberto && <ParecerModal ctx={parecerAberto} podeEditar={podeTrabalhar} onClose={() => setParecerAberto(null)} />}
     </div>
+  );
+}
+
+/** A faixa do topo: em que etapa a empresa está, com atalho para cada uma. */
+function EtapasConciliacao({ situacao, etapas }: { situacao: string; etapas: { id: string; titulo: string; feita: boolean }[] }) {
+  return (
+    <nav aria-label="Etapas da conciliação" className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm shadow-sm">
+      {etapas.map((e, i) => (
+        <span key={e.id} className="inline-flex items-center gap-2">
+          {i > 0 && <ChevronRight className="size-3.5 text-gray-300" />}
+          <a href={`#${e.id}`} className={cn("inline-flex items-center gap-1.5 hover:underline", e.feita ? "font-medium text-emerald-700" : "text-gray-700")}>
+            {e.feita ? <CheckCircle2 className="size-4" /> : <span className="flex size-4 items-center justify-center rounded-full border border-gray-300 text-[10px] text-gray-500">{i + 1}</span>}
+            {e.titulo}
+          </a>
+        </span>
+      ))}
+      <span className="ml-auto rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-800">{situacao}</span>
+    </nav>
   );
 }
 

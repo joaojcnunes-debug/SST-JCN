@@ -6,9 +6,9 @@ import {
   chaveRisco,
   faltaParaConcluir,
   intervencoesDoRisco,
-  resumirEmpresas,
   riscosComIntervencoes,
   riscosDoFechamento,
+  situacaoComercial,
   textoIntervencao,
   visaoDoVendedor,
   type AtendimentoComercial,
@@ -100,35 +100,30 @@ test("as intervenções do risco ficam em ordem fixa, seja qual for a do banco",
   assert.deepEqual(intervencoesDoRisco([a, b], chaveRisco("RH".toUpperCase(), "assédio")).map((i) => i.nome), ["Assédio", "Burnout"]);
 });
 
-test("resumo: empresa sem risco não entra; situação e riscos sem intervenção", () => {
-  const r = resumirEmpresas(
-    [
-      fechada("A", [item("Padaria", "Sobrecarga", "CONFIRMAR"), item("RH", "Assédio", "AET")]),
-      fechada("B", [item("RH", "Assédio", "DESCARTAR")]),
-      fechada("C", [item("RH", "Assédio", "AET")]),
-      fechada("D", [item("RH", "Assédio", "AET")]),
-    ],
-    [atendimento("C", "EM_ANDAMENTO"), atendimento("D", "CONCLUIDO")],
-    [indicada("A", "Padaria", "Sobrecarga")],
-  );
-  const de = (id: string) => r.find((x) => x.idEmpresa === id);
-  assert.equal(de("B"), undefined);
-  assert.equal(de("A")?.situacao, "fila");
-  assert.equal(de("A")?.riscos, 2);
-  assert.equal(de("A")?.semIntervencao, 1);
-  assert.equal(de("C")?.situacao, "andamento");
-  assert.equal(de("D")?.situacao, "concluida");
+test("situação: falta fechar, reaberta e sem risco", () => {
+  const f = { fechado_em: "2026-11-01T12:00:00Z", reaberta: false };
+  assert.equal(situacaoComercial({ ultimoFechamento: null, atendimento: null, riscos: 0, intervencoes: 0 }), "falta-fechar");
+  assert.equal(situacaoComercial({ ultimoFechamento: { ...f, reaberta: true }, atendimento: atendimento("A", "CONCLUIDO"), riscos: 2, intervencoes: 1 }), "reaberta");
+  assert.equal(situacaoComercial({ ultimoFechamento: f, atendimento: null, riscos: 0, intervencoes: 0 }), "sem-risco");
 });
 
-test("conciliação fechada de novo depois de concluir volta a pedir atendimento", () => {
-  const [r] = resumirEmpresas([fechada("A", [item("RH", "Assédio", "AET")], "2026-11-04T12:00:00Z")], [atendimento("A", "CONCLUIDO")], []);
-  assert.equal(r.situacao, "fila");
-  assert.equal(r.conciliacaoNova, true);
+test("situação: para liberar, em andamento e liberado", () => {
+  const f = { fechado_em: "2026-11-01T12:00:00Z", reaberta: false };
+  assert.equal(situacaoComercial({ ultimoFechamento: f, atendimento: null, riscos: 2, intervencoes: 0 }), "para-liberar");
+  assert.equal(situacaoComercial({ ultimoFechamento: f, atendimento: atendimento("A", "EM_ANDAMENTO"), riscos: 2, intervencoes: 0 }), "para-liberar");
+  assert.equal(situacaoComercial({ ultimoFechamento: f, atendimento: atendimento("A", "EM_ANDAMENTO"), riscos: 2, intervencoes: 1 }), "em-andamento");
+  assert.equal(situacaoComercial({ ultimoFechamento: f, atendimento: atendimento("A", "EM_ANDAMENTO", { parecer: "x" }), riscos: 2, intervencoes: 0 }), "em-andamento");
+  assert.equal(situacaoComercial({ ultimoFechamento: f, atendimento: atendimento("A", "CONCLUIDO"), riscos: 2, intervencoes: 1 }), "liberado");
+});
+
+test("situação: conciliação fechada de novo depois de liberar", () => {
+  const f = { fechado_em: "2026-11-04T12:00:00Z", reaberta: false };
+  assert.equal(situacaoComercial({ ultimoFechamento: f, atendimento: atendimento("A", "CONCLUIDO"), riscos: 2, intervencoes: 1 }), "fechada-de-novo");
 });
 
 test("concluir só pede o parecer", () => {
-  assert.equal(faltaParaConcluir("  "), "Escreva o parecer.");
-  assert.equal(faltaParaConcluir(null), "Escreva o parecer.");
+  assert.equal(faltaParaConcluir("  "), "Escreva o parecer para liberar.");
+  assert.equal(faltaParaConcluir(null), "Escreva o parecer para liberar.");
   assert.equal(faltaParaConcluir("ok"), null);
 });
 

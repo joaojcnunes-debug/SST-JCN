@@ -19,13 +19,17 @@ export default function FechamentosConciliacao({
   historico,
   contagem,
   podeEditar,
+  podeReabrirConciliacao,
   podeFechar,
   montar,
 }: {
   idEmpresa: string;
   historico: FechamentoConciliacao[];
   contagem: ContagemPareceres;
+  /** Sessão aberta e ainda não liberada: pode fechar. */
   podeEditar: boolean;
+  /** Reabrir é a saída de quem está travado: não depende de Iniciar. */
+  podeReabrirConciliacao: boolean;
   /** Há o que conciliar (AEP + questionário com setor em comum). */
   podeFechar: boolean;
   /** Monta a foto na hora de fechar (documentos, totais, itens). */
@@ -36,7 +40,7 @@ export default function FechamentosConciliacao({
   const [reabrindo, setReabrindo] = useState(false);
   const [motivo, setMotivo] = useState("");
   const ultima = historico[0];
-  const podeReabrir = podeEditar && !!ultima && !ultima.reabertura;
+  const podeReabrir = podeReabrirConciliacao && !!ultima && !ultima.reabertura;
   const [aberto, setAberto] = useState(false);
   const [obs, setObs] = useState("");
   const [visto, setVisto] = useState<string | null>(null);
@@ -58,7 +62,7 @@ export default function FechamentosConciliacao({
             onClick={() => setReabrindo(true)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            <LockOpen className="size-3.5" /> Reabrir
+            <LockOpen className="size-3.5" /> Reabrir conciliação
           </button>
         )}
         {podeEditar && podeFechar && (
@@ -190,8 +194,9 @@ export default function FechamentosConciliacao({
         >
           <div className="space-y-3 text-sm">
             <p className="text-gray-600">
-              O fechamento de {fmtData(ultima.fechado_em)} e o PDF dele continuam guardados como estão. Até fechar de novo, a empresa sai de
-              Liberar para o Comercial, e o vendedor deixa de ver as intervenções, os riscos que pediram AET e o parecer.
+              Para quando a análise muda. O fechamento de {fmtData(ultima.fechado_em)} e o PDF dele continuam guardados como estão. Se já
+              estava liberada, sai do Comercial: até fechar e liberar de novo, o vendedor não vê as intervenções, os riscos que pediram AET
+              e o parecer. Para só ajustar intervenção ou parecer, use Retirar do Comercial.
             </p>
             <label className="block">
               <span className="text-xs font-semibold text-gray-600">

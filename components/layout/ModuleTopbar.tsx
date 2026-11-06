@@ -41,7 +41,6 @@ const ROUTE_LABELS: Record<string, string> = {
   conferencia:           "Conferência",
   calendario:            "Calendário",
   comercial:             "Oportunidades",
-  "liberar-comercial":   "Liberar para o Comercial",
   intervencoes:          "Intervenções",
   vendas:                "Vendas",
   gestao:                "Gestão JCN Consultoria",
