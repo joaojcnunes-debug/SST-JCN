@@ -200,19 +200,23 @@ export function useExcluirParecer() {
   });
 }
 
-/** Reabre a última conciliação (v324): registro à parte, com motivo; a foto e o PDF não mudam. */
+/**
+ * Reabre a última conciliação (v324/v325): registro à parte, com motivo; a foto e o PDF não mudam.
+ * Se estava liberada, o atendimento reabre junto, numa operação só.
+ */
 export function useReabrirConciliacao() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (p: { idFechamento: string; idEmpresa: string; motivo: string }) => {
-      const { error } = await sb()
-        .from("psico_conciliacao_reaberturas" as never)
-        .insert({ id_reabertura: gerarId("PCR"), id_fechamento: p.idFechamento, id_empresa: p.idEmpresa, motivo: p.motivo.trim() } as never);
+      const { error } = await sb().rpc(
+        "comercial_reabrir_conciliacao" as never,
+        { p_id_empresa: p.idEmpresa, p_id_fechamento: p.idFechamento, p_motivo: p.motivo } as never,
+      );
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Conciliação reaberta.");
-      for (const k of [CHAVE, "comercial-dados"]) qc.invalidateQueries({ queryKey: [k] });
+      for (const k of [CHAVE, "comercial-dados", "comercial-eventos", "documento-sessoes"]) qc.invalidateQueries({ queryKey: [k] });
     },
     onError: (e: { message?: string; code?: string }) => toast.error(mensagemErro(e)),
   });

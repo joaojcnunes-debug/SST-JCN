@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "liberar-dentro-da-conciliacao",
+    data: "2026-11-06",
+    tipo: "melhoria",
+    titulo: "Liberar para o Comercial agora é etapa da Conciliação",
+    texto:
+      "Tudo acontece na tela da empresa, em quatro etapas: Comparar, Fechar, Intervenções e Liberar. O tempo cobre o " +
+      "trabalho inteiro, então é preciso Iniciar para dar parecer, fechar e indicar. Depois de liberado, a tela fica só " +
+      "leitura. Retirar do Comercial serve para ajustar intervenção ou parecer; Reabrir conciliação, para quando a " +
+      "análise muda. A lista ganhou a coluna Comercial e os filtros Para liberar e Liberadas.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP",
+    impacto: "O item Liberar para o Comercial saiu do menu; os links antigos levam à Conciliação.",
+    versoes: ["0.3.238"],
+  },
+  {
     id: "conciliacao-reabrir",
     data: "2026-11-05",
     tipo: "novidade",

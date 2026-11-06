@@ -591,6 +591,10 @@ id_veiculo text NN, id_unidade text NN, placa text NN, modelo text NN, marca tex
   - **`inspecoes_primeira_conclusao_trg`:** aceita limpar a primeira elaboração só com a flag de transação `jcn.desfazer_conclusao = on`, que só essa função liga.
   - A automação da Gestão "documento concluído" não repete (chave `doc:<id>`).
   - Rollback: `scripts/sql/v314_documento_desfazer_conclusao_rollback.sql`.
+- **v325 — Reabrir pela função (06/11/2026).** Aplicada em 06/11/2026, antes do merge da 0.3.238.
+  - `comercial_reabrir_conciliacao(id_empresa, id_fechamento, motivo)`: só a última, e reabre o atendimento liberado junto, com evento. A escrita direta em `psico_conciliacao_reaberturas` saiu.
+  - `comercial_concluir` recusa conciliação que não está fechada.
+  - Rollback: `scripts/sql/v325_conciliacao_reabrir_rpc_rollback.sql`.
 - **v324 — Reabrir a conciliação; filtro do vendedor (05/11/2026).** Aplicada em 05/11/2026, antes do merge da 0.3.237.
   - `psico_conciliacao_reaberturas`: uma por fechamento, só inserção (`psico_somente_insercao`), com motivo, quem e quando. RLS igual à do fechamento.
   - `comercial_conciliacao_fechada(id_empresa)`: a última conciliação existe e não foi reaberta.

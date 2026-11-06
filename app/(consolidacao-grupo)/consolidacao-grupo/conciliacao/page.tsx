@@ -35,17 +35,30 @@ import {
 } from "@/lib/psico-consolidacao/conciliacao";
 import type { EmpresaFonte } from "@/lib/psico-consolidacao/carregar-grupo";
 import type { FechamentoConciliacao } from "@/lib/psico-consolidacao/carregar-conciliacao";
+import { useLiberacaoServicos } from "@/lib/hooks/useComercial";
+import { ROTULO_SITUACAO_COMERCIAL, riscosDoFechamento, situacaoComercial, type SituacaoComercial } from "@/lib/comercial/liberacao";
 import { hojeSP } from "@/lib/inspecoes/prioridade";
 import type { OrigemFonte } from "@/lib/psico-consolidacao/fatores";
 import { cn, fmtData, formatCNPJ } from "@/lib/utils";
 
-type Filtro = "todas" | "divergencia" | "parecer" | "falta" | "revisao";
+type Filtro = "todas" | "divergencia" | "parecer" | "falta" | "revisao" | "liberar" | "liberado";
+
+const COR_COMERCIAL: Record<SituacaoComercial, string> = {
+  "falta-fechar": "text-gray-500",
+  reaberta: "font-medium text-amber-700",
+  "sem-risco": "text-gray-500",
+  "para-liberar": "font-medium text-indigo-700",
+  "em-andamento": "font-medium text-sky-700",
+  liberado: "font-medium text-emerald-700",
+  "fechada-de-novo": "font-medium text-amber-700",
+};
 
 interface Linha {
   empresa: EmpresaFonte;
   resumo: ResumoEmpresa;
   fechadaEm: string | null;
   alertas: AlertaRevisao[];
+  comercial: SituacaoComercial;
 }
 
 const ORIGENS: { origem: OrigemFonte; rotulo: string }[] = [
@@ -54,10 +67,14 @@ const ORIGENS: { origem: OrigemFonte; rotulo: string }[] = [
   { origem: "QPS", rotulo: "QPS" },
 ];
 
+/** O que espera a equipe: fechada, com risco, ainda não liberada. */
+const PARA_LIBERAR: SituacaoComercial[] = ["para-liberar", "em-andamento", "fechada-de-novo"];
+
 export default function ConciliacaoPage() {
   const fontes = useFontesConciliacao();
   const catalogo = usePsicoCatalogo();
   const registros = useRegistrosConciliacao();
+  const comercial = useLiberacaoServicos();
   const [busca, setBusca] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todas");
 
@@ -105,9 +122,15 @@ export default function ConciliacaoPage() {
         // Reaberta não conta como fechada (v324).
         fechadaEm: fechamento && !fechamento.reabertura ? fechamento.fechado_em : null,
         alertas: alertasRevisao({ documentos: docs, ultimoFechamento: fechamento, hoje }),
+        comercial: situacaoComercial({
+          ultimoFechamento: fechamento ? { fechado_em: fechamento.fechado_em, reaberta: !!fechamento.reabertura } : null,
+          atendimento: comercial.data?.atendimentos.find((a) => a.id_empresa === e.idEmpresa) ?? null,
+          riscos: riscosDoFechamento(comercial.data?.conciliacoes.find((c) => c.id_empresa === e.idEmpresa)?.itens ?? []).length,
+          intervencoes: (comercial.data?.indicadas ?? []).filter((i) => i.id_empresa === e.idEmpresa).length,
+        }),
       };
     });
-  }, [fontes.data, catalogo.data, registros.data]);
+  }, [fontes.data, catalogo.data, registros.data, comercial.data]);
 
   const contagem = useMemo(
     () => ({
@@ -116,6 +139,8 @@ export default function ConciliacaoPage() {
       parecer: linhas.filter((l) => faltaResolver(l.resumo)).length,
       falta: linhas.filter((l) => l.resumo.falta.length > 0 || l.resumo.semSetorEmComum).length,
       revisao: linhas.filter((l) => l.alertas.length > 0).length,
+      liberar: linhas.filter((l) => PARA_LIBERAR.includes(l.comercial)).length,
+      liberado: linhas.filter((l) => l.comercial === "liberado").length,
     }),
     [linhas],
   );
@@ -130,7 +155,11 @@ export default function ConciliacaoPage() {
             ? l.resumo.falta.length > 0 || l.resumo.semSetorEmComum
             : filtro === "revisao"
               ? l.alertas.length > 0
-              : true,
+              : filtro === "liberar"
+                ? PARA_LIBERAR.includes(l.comercial)
+                : filtro === "liberado"
+                  ? l.comercial === "liberado"
+                  : true,
     );
     const achadas = busca.trim()
       ? buscar(base, busca, (l) => [l.empresa.nome, l.empresa.cnpj ?? "", l.empresa.municipio ?? ""]).itens
@@ -178,6 +207,8 @@ export default function ConciliacaoPage() {
             ["parecer", "Falta parecer ou ação"],
             ["falta", "Não dá para conciliar"],
             ["revisao", "Precisa revisar"],
+            ["liberar", "Para liberar"],
+            ["liberado", "Liberadas"],
           ] as const
         ).map(([k, rotulo]) => (
           <button
@@ -218,11 +249,12 @@ export default function ConciliacaoPage() {
                 <th className="px-3 py-3">Pareceres</th>
                 <th className="px-3 py-3">Fechada em</th>
                 <th className="px-3 py-3">Revisão</th>
+                <th className="px-3 py-3">Comercial</th>
                 <th className="px-3 py-3" />
               </tr>
             </thead>
             <tbody>
-              {visiveis.map(({ empresa: e, resumo: r, fechadaEm, alertas }) => (
+              {visiveis.map(({ empresa: e, resumo: r, fechadaEm, alertas, comercial: situacaoCom }) => (
                 <tr key={e.idEmpresa} className="border-b border-gray-50 last:border-0 hover:bg-indigo-50/30">
                   <td className="px-4 py-2.5">
                     <Link href={`/consolidacao-grupo/conciliacao/${e.idEmpresa}`} className="font-medium text-gray-900 hover:text-indigo-700 hover:underline">
@@ -287,6 +319,7 @@ export default function ConciliacaoPage() {
                       </span>
                     )}
                   </td>
+                  <td className={cn("whitespace-nowrap px-3 py-2.5 text-xs", COR_COMERCIAL[situacaoCom])}>{ROTULO_SITUACAO_COMERCIAL[situacaoCom]}</td>
                   <td className="px-3 py-2.5 text-right">
                     <Link href={`/consolidacao-grupo/conciliacao/${e.idEmpresa}`} className="inline-flex items-center text-xs font-medium text-indigo-700 hover:underline">
                       Abrir <ChevronRight className="size-3.5" />

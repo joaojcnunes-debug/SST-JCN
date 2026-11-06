@@ -200,8 +200,8 @@ export function useConcluirAtendimento() {
   return useGravar<{ idEmpresa: string; parecer: string }>(
     "comercial_concluir",
     (d) => ({ p_id_empresa: d.idEmpresa, p_parecer: d.parecer }),
-    () => "Atendimento concluído",
-    "Falha ao concluir",
+    () => "Liberado para o Comercial",
+    "Falha ao liberar",
   );
 }
 
@@ -209,8 +209,8 @@ export function useReabrirAtendimento() {
   return useGravar<{ idEmpresa: string; motivo: string }>(
     "comercial_reabrir",
     (d) => ({ p_id_empresa: d.idEmpresa, p_motivo: d.motivo }),
-    () => "Atendimento reaberto",
-    "Falha ao reabrir",
+    () => "Retirado do Comercial",
+    "Falha ao retirar",
   );
 }
 

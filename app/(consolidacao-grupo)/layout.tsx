@@ -10,7 +10,7 @@
  */
 
 import type { ReactNode } from "react";
-import { BadgeCheck, Building2, GitCompareArrows, Handshake, HeartHandshake, Network } from "lucide-react";
+import { BadgeCheck, Building2, GitCompareArrows, HeartHandshake, Network } from "lucide-react";
 import SidebarShell, { type NavSection } from "@/components/layout/SidebarShell";
 import ModuleTopbar from "@/components/layout/ModuleTopbar";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -35,13 +35,12 @@ export default function ConsolidacaoGrupoLayout({ children }: { children: ReactN
   useAuth();
   useRequireModule("consolidacao_psicossocial");
   const podeLiberar = usePodeLiberarServicos();
-  // 05/11: quem libera para o Comercial trabalha daqui, sem precisar do módulo Comercial.
+  // 06/11: a liberação para o Comercial é etapa da Conciliação; aqui fica só o catálogo dela.
   const sections: NavSection[] = podeLiberar
     ? SECTIONS.map((s) => ({
         ...s,
         items: [
           ...s.items,
-          { href: "/consolidacao-grupo/liberar-comercial", label: "Liberar para o Comercial", icon: Handshake },
           { href: "/consolidacao-grupo/intervencoes", label: "Intervenções", icon: HeartHandshake },
         ],
       }))

@@ -1,6 +1,6 @@
 "use client";
 
-// Consolidação › Intervenções (0.3.233, banco v321): o catálogo que o Liberar para o Comercial usa.
+// Consolidação › Intervenções (0.3.233, banco v321): o catálogo da etapa Intervenções da Conciliação.
 // Nasceu da planilha do setor Psicossocial. Quem libera altera, insere e exclui.
 
 import { useState } from "react";
@@ -64,7 +64,7 @@ export default function IntervencoesPage() {
           <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
             <HeartHandshake className="size-5 text-marca-primary" /> Intervenções
           </h1>
-          <p className="max-w-3xl text-sm text-gray-500">O que pode ser indicado aos riscos em Liberar para o Comercial, com as modalidades de cada uma.</p>
+          <p className="max-w-3xl text-sm text-gray-500">O que pode ser indicado aos riscos na Conciliação DRPS/QPS × AEP, com as modalidades de cada uma.</p>
         </div>
         <button
           type="button"
