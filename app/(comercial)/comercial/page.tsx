@@ -637,6 +637,16 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
       <p className="border-b border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-900">
         Intervenções psicossociais
       </p>
+      {o.venda && (
+        // Venda do serviço inteiro, de antes da venda por intervenção (0.3.247). O desfazer fica aqui desde a
+        // 0.3.249, porque a linha do serviço saiu da tabela de cima.
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 border-b border-violet-200 bg-violet-50 px-3 py-2">
+          <p className="text-xs text-violet-900">
+            <strong>Vendida como serviço inteiro.</strong> A venda cobre todas as intervenções abaixo. Para vender uma a uma, desfaça-a.
+          </p>
+          <Venda idEmpresa={idEmpresa} produto={o.produto} nome="O serviço Intervenção psicossocial" venda={o.venda} podeVender={false} />
+        </div>
+      )}
       <table className="w-full min-w-[72rem] text-sm [&_td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
         <thead className={CLS_THEAD}>
           <FaixaGrupos indicacao="Indicado na Conciliação" colunas={6} />
@@ -682,7 +692,7 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
                 </td>
                 <td className={cn("px-3 py-2", CLS_COL_COMERCIAL)}>
                   {!l.venda && o.venda ? (
-                    <span className="text-xs text-violet-900">Vendida com o serviço inteiro</span>
+                    <span className="text-xs text-violet-900">Coberta pela venda do serviço inteiro (acima)</span>
                   ) : (
                     <Venda idEmpresa={idEmpresa} produto={o.produto} idItem={l.idItem} nome={l.intervencao} venda={l.venda} podeVender />
                   )}
