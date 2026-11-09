@@ -101,14 +101,26 @@ export interface SetorAet {
   cargos: number;
 }
 
+/** Venda registrada pelo vendedor (v323; por intervenção desde a v329). */
+export interface VendaFeita {
+  por: string;
+  porEmail: string;
+  em: string;
+  observacao: string | null;
+}
+
 /** Uma intervenção indicada na Conciliação, em campos separados para a tabela do vendedor (0.3.246). */
 export interface LinhaIntervencaoOferta {
+  /** comercial_atendimento_intervencoes.id_item: chave da venda por intervenção (0.3.247). */
+  idItem: string;
   setor: string;
   risco: string;
   intervencao: string;
   modalidade: string | null;
   responsavel: string | null;
   prazoDias: number | null;
+  /** 0.3.247: esta intervenção foi vendida sozinha. */
+  venda?: VendaFeita;
 }
 
 export interface Oportunidade {
@@ -123,7 +135,7 @@ export interface Oportunidade {
   /** Intervenções psicossociais: uma linha por intervenção indicada na Conciliação (0.3.246). */
   intervencoes?: LinhaIntervencaoOferta[];
   /** v323: o vendedor marcou como vendido. Ainda sem documento, a situação vira "vendida". */
-  venda?: { por: string; porEmail: string; em: string; observacao: string | null };
+  venda?: VendaFeita;
 }
 
 export interface InfoInspecao {

@@ -27,7 +27,7 @@ export default function VendasPage() {
     });
 
   const linhas = useMemo(
-    () => (busca.trim() ? buscar(vendas, busca, (v) => [v.nome_empresa, v.cnpj, v.municipio, v.vendido_por, NOME_PRODUTO[v.produto]]).itens : vendas),
+    () => (busca.trim() ? buscar(vendas, busca, (v) => [v.nome_empresa, v.cnpj, v.municipio, v.vendido_por, NOME_PRODUTO[v.produto], ...(v.detalhe?.intervencoes.map((i) => i.nome) ?? [])]).itens : vendas),
     [vendas, busca],
   );
 
@@ -73,7 +73,9 @@ export default function VendasPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {linhas.map((v) => {
-                const k = `${v.id_empresa}|${v.produto}`;
+                const k = `${v.id_empresa}|${v.produto}|${v.id_item ?? ""}`;
+                // 0.3.247: venda de uma intervenção só mostra o nome dela embaixo do serviço.
+                const item = v.id_item ? v.detalhe?.intervencoes[0]?.nome : null;
                 const aberta = !recolhidas.has(k);
                 return (
                 <Fragment key={k}>
@@ -96,7 +98,10 @@ export default function VendasPage() {
                       {v.municipio ? ` · ${v.municipio}${v.uf ? `/${v.uf}` : ""}` : ""}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-gray-700">{NOME_PRODUTO[v.produto] ?? v.produto}</td>
+                  <td className="px-3 py-2.5 text-gray-700">
+                    {NOME_PRODUTO[v.produto] ?? v.produto}
+                    {v.id_item && <span className="block text-xs font-semibold text-gray-900">{item ?? "Intervenção que saiu da Conciliação"}</span>}
+                  </td>
                   <td className="px-3 py-2.5 text-gray-700">{v.vendido_por}</td>
                   <td className="px-3 py-2.5 text-xs text-gray-600">{fmtData(v.vendido_em)}</td>
                   <td className="px-3 py-2.5 text-xs text-gray-600">{v.observacao || "—"}</td>

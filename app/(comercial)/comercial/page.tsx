@@ -8,7 +8,7 @@
 // 0.3.246: primeiro a lista de empresas, recolhida; ao abrir, cada serviço numa linha com a origem
 // (Inspeção, AEP, Conciliação), o que justifica, a situação e a venda.
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 import { BadgeCheck, Building2, ChevronDown, ChevronRight, ClipboardCheck, Download, FilterX, Handshake, Loader2, Mail, MapPin, Phone, Search, Undo2 } from "lucide-react";
 import { useComercial, useDesfazerVenda, useRegistrarVenda } from "@/lib/hooks/useComercial";
 import Modal from "@/components/ui/Modal";
@@ -21,11 +21,11 @@ import {
   NOME_PRODUTO,
   PRODUTOS,
   type EmpresaComercial,
-  type LinhaIntervencaoOferta,
   type Oportunidade,
   type Origem,
   type Produto,
   type SituacaoOportunidade,
+  type VendaFeita,
 } from "@/lib/comercial/oportunidades";
 import { opcoesDistintas } from "@/lib/aep/sinalizacao-filtros";
 import SeloNivelAiha from "@/components/aep/SeloNivelAiha";
@@ -490,7 +490,7 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
           {c.oportunidades
             .filter((o) => o.produto === "Intervenção psicossocial" && o.intervencoes?.length)
             .map((o) => (
-              <TabelaIntervencoes key={o.produto} linhas={o.intervencoes!} />
+              <TabelaIntervencoes key={o.produto} idEmpresa={e.idEmpresa} o={o} />
             ))}
 
       {c.parecerEquipe && (
@@ -565,36 +565,55 @@ function ItemJustificativa({ texto }: { texto: string }) {
   );
 }
 
-/** As intervenções que a Conciliação indicou: Setor, Risco, Intervenção, Modalidade, Responsável e Prazo. */
-function TabelaIntervencoes({ linhas }: { linhas: LinhaIntervencaoOferta[] }) {
+/**
+ * As intervenções que a Conciliação indicou: Setor, Risco, Intervenção, Modalidade, Responsável, Prazo e,
+ * desde a 0.3.247, a Situação e a Venda de cada uma.
+ */
+function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunidade }) {
+  const linhas = o.intervencoes ?? [];
   return (
     <div className="overflow-x-auto rounded-xl border border-indigo-200 bg-white">
       <p className="border-b border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-900">
         Intervenções psicossociais · indicadas na Conciliação
       </p>
-      <table className="w-full min-w-[52rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
+      <table className="w-full min-w-[72rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
         <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
           <tr>
-            <th className="w-44 px-3 py-2">Setor</th>
-            <th className="w-40 px-3 py-2">Risco</th>
+            <th className="w-40 px-3 py-2">Setor</th>
+            <th className="w-32 px-3 py-2">Risco</th>
             <th className="px-3 py-2">Intervenção</th>
             <th className="w-28 px-3 py-2">Modalidade</th>
-            <th className="w-56 px-3 py-2">Responsável</th>
+            <th className="w-48 px-3 py-2">Responsável</th>
             <th className="w-20 px-3 py-2">Prazo</th>
+            <th className="w-40 px-3 py-2">Situação</th>
+            <th className="w-52 px-3 py-2">Venda</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 text-gray-700">
           {linhas.map((l, n) => {
             const novoSetor = n === 0 || linhas[n - 1].setor !== l.setor;
             const novoRisco = novoSetor || linhas[n - 1].risco !== l.risco;
+            const st = SITUACAO[l.venda || o.venda ? "vendida" : "aberta"];
             return (
-              <tr key={n} className="align-top">
+              <tr key={l.idItem} className="align-top">
                 <td className="px-3 py-2 font-semibold text-gray-900">{novoSetor ? l.setor : ""}</td>
                 <td className="px-3 py-2 font-medium text-gray-800">{novoRisco ? l.risco : ""}</td>
                 <td className="px-3 py-2 font-semibold text-gray-900">{l.intervencao}</td>
                 <td className="px-3 py-2">{l.modalidade ?? "—"}</td>
                 <td className="px-3 py-2">{l.responsavel ?? "—"}</td>
                 <td className="px-3 py-2 whitespace-nowrap">{l.prazoDias ? `${l.prazoDias} ${l.prazoDias === 1 ? "dia" : "dias"}` : "—"}</td>
+                <td className="px-3 py-2">
+                  <span title={st.dica} className={cn("inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold", st.cls)}>
+                    {st.rotulo}
+                  </span>
+                </td>
+                <td className="px-3 py-2">
+                  {!l.venda && o.venda ? (
+                    <span className="text-xs text-violet-900">Vendida com o serviço inteiro</span>
+                  ) : (
+                    <Venda idEmpresa={idEmpresa} produto={o.produto} idItem={l.idItem} nome={l.intervencao} venda={l.venda} podeVender />
+                  )}
+                </td>
               </tr>
             );
           })}
@@ -673,22 +692,56 @@ function Justificativa({ c, o }: { c: EmpresaComercial; o: Oportunidade }) {
   );
 }
 
-/** "Marcar como vendido" no cartão; depois da venda, quem vendeu e o desfazer (v323). */
+/**
+ * Coluna Venda da linha do serviço. Nas intervenções psicossociais a venda é por intervenção, na tabela
+ * de baixo (0.3.247); aqui fica a contagem. Uma venda antiga do serviço inteiro continua aparecendo aqui.
+ */
 function VendaDoServico({ idEmpresa, oportunidade: o }: { idEmpresa: string; oportunidade: Oportunidade }) {
+  if (!o.venda && o.intervencoes?.length) {
+    const n = o.intervencoes.filter((l) => l.venda).length;
+    return (
+      <p className="text-xs text-gray-600">
+        <strong className="text-gray-900">{n}</strong> de <strong className="text-gray-900">{o.intervencoes.length}</strong> vendida
+        {o.intervencoes.length !== 1 ? "s" : ""} · <span className="text-indigo-700">na tabela abaixo</span>
+      </p>
+    );
+  }
+  return (
+    <Venda idEmpresa={idEmpresa} produto={o.produto} nome={NOME_PRODUTO[o.produto]} venda={o.venda} podeVender={A_VENDER.includes(o.situacao)} />
+  );
+}
+
+/** "Marcar como vendido"; depois da venda, quem vendeu e o desfazer (v323). Com idItem, uma intervenção só (v329). */
+function Venda({
+  idEmpresa,
+  produto,
+  idItem,
+  nome,
+  venda,
+  podeVender,
+}: {
+  idEmpresa: string;
+  produto: Produto;
+  idItem?: string;
+  nome: string;
+  venda?: VendaFeita;
+  podeVender: boolean;
+}) {
   const registrar = useRegistrarVenda();
   const desfazer = useDesfazerVenda();
   const user = useUserStore((s) => s.user);
   const [aberta, setAberta] = useState(false);
   const [observacao, setObservacao] = useState("");
+  const idObs = useId();
 
-  if (o.venda) {
-    const podeDesfazer = user?.perfil === "Admin" || user?.email?.toLowerCase() === o.venda.porEmail;
+  if (venda) {
+    const podeDesfazer = user?.perfil === "Admin" || user?.email?.toLowerCase() === venda.porEmail;
     return (
       <div className="text-xs text-violet-900">
         <p className="flex items-center gap-1 font-semibold">
-          <BadgeCheck className="size-3.5" /> Vendido em {fmtData(o.venda.em)} por {o.venda.por}
+          <BadgeCheck className="size-3.5 shrink-0" /> Vendido em {fmtData(venda.em)} por {venda.por}
         </p>
-        {o.venda.observacao && <p className="mt-0.5">{o.venda.observacao}</p>}
+        {venda.observacao && <p className="mt-0.5">{venda.observacao}</p>}
         {podeDesfazer && (
           <button
             type="button"
@@ -696,11 +749,11 @@ function VendaDoServico({ idEmpresa, oportunidade: o }: { idEmpresa: string; opo
             onClick={async () => {
               const ok = await confirmar({
                 title: "Desfazer a venda?",
-                description: `${NOME_PRODUTO[o.produto]} volta a ficar a vender, e a venda sai da lista da Consolidação.`,
+                description: `${nome} volta a ficar a vender, e a venda sai da lista da Consolidação.`,
                 confirmLabel: "Desfazer",
                 variant: "danger",
               });
-              if (ok) desfazer.mutate({ idEmpresa, produto: o.produto });
+              if (ok) desfazer.mutate({ idEmpresa, produto, idItem });
             }}
             className="mt-1 inline-flex items-center gap-1 font-medium underline disabled:opacity-60"
           >
@@ -710,7 +763,7 @@ function VendaDoServico({ idEmpresa, oportunidade: o }: { idEmpresa: string; opo
       </div>
     );
   }
-  if (!A_VENDER.includes(o.situacao)) return null;
+  if (!podeVender) return null;
   return (
     <>
       <button
@@ -733,7 +786,7 @@ function VendaDoServico({ idEmpresa, oportunidade: o }: { idEmpresa: string; opo
               <button
                 type="button"
                 disabled={registrar.isPending}
-                onClick={() => registrar.mutate({ idEmpresa, produto: o.produto, observacao: observacao.trim() || null }, { onSuccess: () => setAberta(false) })}
+                onClick={() => registrar.mutate({ idEmpresa, produto, idItem, observacao: observacao.trim() || null }, { onSuccess: () => setAberta(false) })}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-marca-primary px-3 py-1.5 text-sm font-semibold text-white hover:bg-marca-accent disabled:opacity-60"
               >
                 {registrar.isPending && <Loader2 className="size-4 animate-spin" />} Registrar venda
@@ -743,13 +796,13 @@ function VendaDoServico({ idEmpresa, oportunidade: o }: { idEmpresa: string; opo
         >
           <div className="space-y-2 text-sm">
             <p className="text-gray-700">
-              <strong>{NOME_PRODUTO[o.produto]}</strong> sai do &quot;a vender&quot; e aparece para a equipe técnica em Consolidação › Vendas.
+              <strong>{nome}</strong> sai do &quot;a vender&quot; e aparece para a equipe técnica em Consolidação › Vendas.
             </p>
-            <label htmlFor="comercial-venda-obs" className="block text-xs font-semibold text-gray-600">
+            <label htmlFor={idObs} className="block text-xs font-semibold text-gray-600">
               Observação para a equipe (opcional)
             </label>
             <textarea
-              id="comercial-venda-obs"
+              id={idObs}
               rows={3}
               value={observacao}
               onChange={(ev) => setObservacao(ev.target.value)}

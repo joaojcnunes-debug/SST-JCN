@@ -114,13 +114,18 @@ export function useVendasComercial() {
         const op = emp?.oportunidades.find((o) => o.produto === v.produto);
         if (!emp || !op) return { ...v, detalhe: null };
         const psico = v.produto === "Intervenção psicossocial";
+        // 0.3.247: venda de uma intervenção só mostra essa intervenção.
+        const intervencoes = psico
+          ? d.indicadas.filter((i) => i.id_empresa === v.id_empresa && (!v.id_item || i.id_item === v.id_item))
+          : [];
+        if (v.id_item && intervencoes.length === 0) return { ...v, detalhe: null };
         return {
           ...v,
           detalhe: {
             detalhes: op.detalhes,
             origens: op.origens,
             setoresAet: op.setores.map((s) => ({ nome: s.nome, expostos: s.expostos })),
-            intervencoes: psico ? d.indicadas.filter((i) => i.id_empresa === v.id_empresa) : [],
+            intervencoes,
             parecer: psico ? (emp.parecerEquipe ?? null) : null,
           },
         };
@@ -128,19 +133,20 @@ export function useVendasComercial() {
   });
 }
 
+/** idItem: venda de uma intervenção psicossocial só (v329); sem ele, o serviço inteiro. */
 export function useRegistrarVenda() {
-  return useGravar<{ idEmpresa: string; produto: string; observacao: string | null }>(
+  return useGravar<{ idEmpresa: string; produto: string; observacao: string | null; idItem?: string }>(
     "comercial_venda_registrar",
-    (d) => ({ p_id_empresa: d.idEmpresa, p_produto: d.produto, p_observacao: d.observacao }),
+    (d) => ({ p_id_empresa: d.idEmpresa, p_produto: d.produto, p_observacao: d.observacao, p_id_item: d.idItem ?? null }),
     () => "Venda registrada",
     "Falha ao registrar a venda",
   );
 }
 
 export function useDesfazerVenda() {
-  return useGravar<{ idEmpresa: string; produto: string }>(
+  return useGravar<{ idEmpresa: string; produto: string; idItem?: string }>(
     "comercial_venda_desfazer",
-    (d) => ({ p_id_empresa: d.idEmpresa, p_produto: d.produto }),
+    (d) => ({ p_id_empresa: d.idEmpresa, p_produto: d.produto, p_id_item: d.idItem ?? null }),
     () => "Venda desfeita",
     "Falha ao desfazer a venda",
   );

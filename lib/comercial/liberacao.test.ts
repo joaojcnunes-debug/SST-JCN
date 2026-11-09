@@ -264,6 +264,40 @@ test("venda de outra empresa não vale aqui", () => {
   assert.equal(r.oportunidades[0].situacao, "aberta");
 });
 
+test("intervenção vendida sozinha: só ela vira vendida; com todas vendidas, o serviço vira vendida (0.3.247)", () => {
+  const c = fechada("A", [item("RH", "Assédio", "CONFIRMAR"), item("Padaria", "Sobrecarga", "CONFIRMAR")]);
+  const visao = visaoDoVendedor([], [atendimento("A", "CONCLUIDO")], [indicada("A", "RH", "Assédio"), indicada("A", "Padaria", "Sobrecarga")], [c]);
+  const venda = (id_item: string) => ({
+    id_empresa: "A", produto: "Intervenção psicossocial" as const, id_item, observacao: null,
+    vendido_por: "Ana", vendido_por_email: "ana@x", vendido_em: "2026-11-09T12:00:00Z",
+  });
+  const psico = (vendas: ReturnType<typeof venda>[]) =>
+    aplicarVendas(visao, vendas)[0].oportunidades.find((o) => o.produto === "Intervenção psicossocial")!;
+
+  const uma = psico([venda("RHAssédio")]);
+  assert.equal(uma.situacao, "aberta");
+  assert.equal(uma.venda, undefined);
+  assert.deepEqual(uma.intervencoes?.map((i) => [i.idItem, i.venda?.por ?? null]), [["PadariaSobrecarga", null], ["RHAssédio", "Ana"]]);
+
+  const todas = psico([venda("RHAssédio"), venda("PadariaSobrecarga")]);
+  assert.equal(todas.situacao, "vendida");
+  assert.equal(todas.venda, undefined);
+
+  // Venda de item de outra empresa não vale aqui.
+  assert.equal(psico([{ ...venda("RHAssédio"), id_empresa: "B" }]).intervencoes?.some((i) => i.venda), false);
+});
+
+test("venda antiga do serviço inteiro continua valendo para a intervenção psicossocial", () => {
+  const c = fechada("A", [item("RH", "Assédio", "CONFIRMAR")]);
+  const visao = visaoDoVendedor([], [atendimento("A", "CONCLUIDO")], [indicada("A", "RH", "Assédio")], [c]);
+  const [r] = aplicarVendas(visao, [
+    { id_empresa: "A", produto: "Intervenção psicossocial", id_item: "", observacao: null, vendido_por: "Ana", vendido_por_email: "ana@x", vendido_em: "2026-11-09T12:00:00Z" },
+  ]);
+  assert.equal(r.oportunidades[0].situacao, "vendida");
+  assert.equal(r.oportunidades[0].venda?.por, "Ana");
+  assert.equal(r.oportunidades[0].intervencoes?.[0].venda, undefined);
+});
+
 test("conciliação reaberta tira a intervenção e o parecer do vendedor", () => {
   const [v] = visaoDoVendedor(
     [empresa("A", [op("Apreciação NR-12")])],
