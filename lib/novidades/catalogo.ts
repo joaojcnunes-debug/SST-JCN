@@ -41,6 +41,20 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-venda-por-intervencao",
+    data: "2026-11-09",
+    tipo: "melhoria",
+    titulo: "Oportunidades: cada intervenção psicossocial se vende sozinha",
+    texto:
+      "Na tabela das intervenções psicossociais do Comercial, cada intervenção tem agora a sua Situação e o seu botão " +
+      "Marcar como vendido, com Desfazer, e o serviço só sai do \"a vender\" quando todas forem vendidas. Elas ficam só na " +
+      "tabela própria (saíram da tabela de serviços), com o setor e o risco numa célula só para as linhas do mesmo grupo. Em Consolidação › Vendas, a venda mostra a intervenção vendida. " +
+      "Os títulos das duas tabelas ganharam uma faixa que separa o que indicamos (em azul) das colunas do Comercial " +
+      "(em âmbar), e cada título explica a coluna ao passar o mouse.",
+    onde: "Comercial › Oportunidades e Consolidação › Vendas",
+    versoes: ["0.3.247"],
+  },
+  {
     id: "comercial-lista-de-empresas",
     data: "2026-11-09",
     tipo: "melhoria",

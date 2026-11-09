@@ -10,7 +10,7 @@
 // indo direto às Oportunidades.
 
 import type { DecisaoParecer, Questionario } from "@/lib/psico-consolidacao/conciliacao";
-import { A_VENDER, empresaBase, type Cad, type EmpresaComercial, type Oportunidade, type Produto } from "@/lib/comercial/oportunidades";
+import { A_VENDER, empresaBase, type Cad, type EmpresaComercial, type Oportunidade, type Produto, type VendaFeita } from "@/lib/comercial/oportunidades";
 
 /** As modalidades de partida. Desde a 0.3.240 a equipe pode inserir outras, que ficam no catálogo. */
 export const MODALIDADES = ["EAD", "Presencial", "Ao vivo"] as const;
@@ -235,6 +235,8 @@ export function textoIntervencao(i: IntervencaoIndicada): string {
 export interface VendaRegistrada {
   id_empresa: string;
   produto: Produto;
+  /** v329: intervenção psicossocial vendida sozinha; vazio (ou ausente) = o serviço inteiro. */
+  id_item?: string | null;
   observacao: string | null;
   vendido_por: string;
   vendido_por_email: string;
@@ -245,21 +247,40 @@ export interface VendaRegistrada {
   uf?: string | null;
 }
 
+const vendaFeita = (v: VendaRegistrada): VendaFeita => ({
+  por: v.vendido_por,
+  porEmail: v.vendido_por_email,
+  em: v.vendido_em,
+  observacao: v.observacao,
+});
+
 /**
  * Marca as oportunidades vendidas. Com o documento já em andamento ou feito, a situação dele continua
  * valendo, porque diz mais do que a venda; a informação da venda segue junto.
+ * 0.3.247 (v329): a intervenção psicossocial também se vende uma a uma; o serviço só vira "vendida"
+ * quando todas as intervenções foram vendidas (ou quando a venda é do serviço inteiro, como antes).
  */
 export function aplicarVendas(lista: readonly EmpresaComercial[], vendas: readonly VendaRegistrada[]): EmpresaComercial[] {
-  const porChave = new Map(vendas.map((v) => [`${v.id_empresa}|${v.produto}`, v]));
+  const doServico = new Map(vendas.filter((v) => !v.id_item).map((v) => [`${v.id_empresa}|${v.produto}`, v]));
+  const porItem = new Map(vendas.filter((v) => v.id_item).map((v) => [`${v.id_empresa}|${v.produto}|${v.id_item}`, v]));
   return lista.map((c) => ({
     ...c,
     oportunidades: c.oportunidades.map((o) => {
-      const v = porChave.get(`${c.empresa.idEmpresa}|${o.produto}`);
-      if (!v) return o;
+      let r: Oportunidade = o;
+      if (o.intervencoes?.length) {
+        const linhas = o.intervencoes.map((l) => {
+          const vi = porItem.get(`${c.empresa.idEmpresa}|${o.produto}|${l.idItem}`);
+          return vi ? { ...l, venda: vendaFeita(vi) } : l;
+        });
+        r = { ...r, intervencoes: linhas };
+        if (linhas.every((l) => l.venda) && A_VENDER.includes(r.situacao)) r = { ...r, situacao: "vendida" };
+      }
+      const v = doServico.get(`${c.empresa.idEmpresa}|${o.produto}`);
+      if (!v) return r;
       return {
-        ...o,
-        situacao: A_VENDER.includes(o.situacao) ? ("vendida" as const) : o.situacao,
-        venda: { por: v.vendido_por, porEmail: v.vendido_por_email, em: v.vendido_em, observacao: v.observacao },
+        ...r,
+        situacao: A_VENDER.includes(r.situacao) ? ("vendida" as const) : r.situacao,
+        venda: vendaFeita(v),
       };
     }),
   }));
@@ -319,6 +340,7 @@ export function visaoDoVendedor(
           setores: [],
           intervencoes: dela
             .map((i) => ({
+              idItem: i.id_item,
               setor: i.setor_nome,
               risco: i.fator_nome,
               intervencao: i.nome,
