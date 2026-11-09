@@ -17,6 +17,7 @@ import { DICAS_COMERCIAL_LIBERAR } from "@/lib/dicas/comercial";
 import {
   useAtualizarListasDoCatalogo,
   useCatalogoIntervencoes,
+  useTopicosIntervencao,
   useConcluirAtendimento,
   useCriarIntervencaoNoCatalogo,
   useEventosAtendimento,
@@ -97,7 +98,8 @@ export default function LiberarParaComercial({
   const liberado = atendimento?.status === "CONCLUIDO";
   const parecer = rascunho ?? atendimento?.parecer ?? "";
   const falta = faltaParaConcluir(parecer);
-  const opcoes = useMemo(() => opcoesDoCatalogo(catalogo), [catalogo]);
+  const { data: topicos } = useTopicosIntervencao();
+  const opcoes = useMemo(() => opcoesDoCatalogo(catalogo, topicos), [catalogo, topicos]);
 
   async function sugerirParecer() {
     if (parecer.trim()) {

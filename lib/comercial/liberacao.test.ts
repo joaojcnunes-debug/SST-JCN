@@ -7,6 +7,7 @@ import {
   comOpcao,
   normalizarOpcao,
   opcoesDoCatalogo,
+  contarUsos,
   aplicarVendas,
   chaveRisco,
   faltaParaConcluir,
@@ -91,6 +92,22 @@ test("as opções juntam as modalidades de partida e o que está no catálogo", 
   ]);
   assert.deepEqual(o.modalidades, ["EAD", "Presencial", "Ao vivo", "Híbrido"]);
   assert.deepEqual(o.responsaveis, ["Ana", "Bia"]);
+});
+
+test("os tópicos inseridos pelo título da coluna entram nas opções sem repetir (0.3.242)", () => {
+  const o = opcoesDoCatalogo(
+    [{ modalidades: ["EAD"], responsaveis: ["Ana"] }],
+    [
+      { coluna: "MODALIDADE", valor: "Híbrido" },
+      { coluna: "MODALIDADE", valor: "ead" },
+      { coluna: "RESPONSAVEL", valor: "Carla" },
+      { coluna: "RESPONSAVEL", valor: "ana" },
+    ],
+  );
+  assert.deepEqual(o.modalidades, ["EAD", "Presencial", "Ao vivo", "Híbrido"]);
+  assert.deepEqual(o.responsaveis, ["Ana", "Carla"]);
+  assert.equal(contarUsos([["EAD", "Híbrido"], ["híbrido"], ["Ao vivo"]], "Híbrido"), 2);
+  assert.equal(contarUsos([["EAD"]], "Carla"), 0);
 });
 
 test("só Confirmar e AET viram risco; descartado e sem parecer ficam de fora", () => {
