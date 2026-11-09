@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-empresas-em-cartoes",
+    data: "2026-11-09",
+    tipo: "melhoria",
+    titulo: "Oportunidades: cada empresa num bloco separado",
+    texto:
+      "A lista de empresas do Comercial mostra cada empresa num cartão próprio, com espaço entre eles, em vez de uma " +
+      "lista corrida. A empresa aberta ganha uma sombra maior, para ficar claro onde começa e termina.",
+    onde: "Comercial › Oportunidades",
+    versoes: ["0.3.250"],
+  },
+  {
     id: "comercial-desfazer-venda-servico-inteiro",
     data: "2026-11-09",
     tipo: "correcao",
