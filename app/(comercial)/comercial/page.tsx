@@ -445,7 +445,8 @@ function CartaoEmpresa({ c, unidade, aberta, onAlternar }: { c: EmpresaComercial
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {c.oportunidades.map((o) => {
+                {/* As intervenções psicossociais ficam só na tabela própria, embaixo (0.3.247). */}
+                {c.oportunidades.filter((o) => !(o.produto === "Intervenção psicossocial" && o.intervencoes?.length)).map((o) => {
                   const st = SITUACAO[o.situacao];
                   return (
                     <tr key={o.produto} className="align-top">
@@ -569,6 +570,13 @@ function Titulo({ children, dica, className, comercial }: { children: ReactNode;
   );
 }
 
+/** Quantas linhas seguidas, a partir de `inicio`, atendem `igual` (para mesclar células com rowSpan). */
+function contarSeguidas<T>(linhas: readonly T[], inicio: number, igual: (x: T) => boolean): number {
+  let k = inicio;
+  while (k < linhas.length && igual(linhas[k])) k++;
+  return k - inicio;
+}
+
 /** Observação sobre a situação (documento antigo, rascunho parado), não item a vender. */
 const ehNota = (d: string) => /antes da indicação|não conta como|^Há \d/.test(d);
 
@@ -609,7 +617,7 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
       <p className="border-b border-indigo-100 bg-indigo-50 px-3 py-2 text-xs font-bold uppercase tracking-wide text-indigo-900">
         Intervenções psicossociais
       </p>
-      <table className="w-full min-w-[72rem] text-sm [&_td+td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
+      <table className="w-full min-w-[72rem] text-sm [&_td]:border-l [&_td]:border-gray-200 [&_th+th]:border-l [&_th]:border-gray-200">
         <thead className={CLS_THEAD}>
           <FaixaGrupos indicacao="Indicado na Conciliação" colunas={6} />
           <tr>
@@ -627,11 +635,22 @@ function TabelaIntervencoes({ idEmpresa, o }: { idEmpresa: string; o: Oportunida
           {linhas.map((l, n) => {
             const novoSetor = n === 0 || linhas[n - 1].setor !== l.setor;
             const novoRisco = novoSetor || linhas[n - 1].risco !== l.risco;
+            // Setor e risco numa célula só para as linhas do mesmo grupo (as linhas vêm ordenadas por setor e risco).
+            const linhasSetor = novoSetor ? contarSeguidas(linhas, n, (x) => x.setor === l.setor) : 0;
+            const linhasRisco = novoRisco ? contarSeguidas(linhas, n, (x) => x.setor === l.setor && x.risco === l.risco) : 0;
             const st = SITUACAO[l.venda || o.venda ? "vendida" : "aberta"];
             return (
               <tr key={l.idItem} className="align-top">
-                <td className="px-3 py-2 font-semibold text-gray-900">{novoSetor ? l.setor : ""}</td>
-                <td className="px-3 py-2 font-medium text-gray-800">{novoRisco ? l.risco : ""}</td>
+                {novoSetor && (
+                  <td rowSpan={linhasSetor} className="border-l-0 px-3 py-2 font-semibold text-gray-900">
+                    {l.setor}
+                  </td>
+                )}
+                {novoRisco && (
+                  <td rowSpan={linhasRisco} className="px-3 py-2 font-medium text-gray-800">
+                    {l.risco}
+                  </td>
+                )}
                 <td className="px-3 py-2 font-semibold text-gray-900">{l.intervencao}</td>
                 <td className="px-3 py-2">{l.modalidade ?? "—"}</td>
                 <td className="px-3 py-2">{l.responsavel ?? "—"}</td>
