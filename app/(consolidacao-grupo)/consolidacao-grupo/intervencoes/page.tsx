@@ -7,19 +7,35 @@
 
 // 0.3.241: cada coluna se edita na própria linha. Nome e observação viram campo ao clicar;
 // Modalidades e Responsável são listas suspensas para marcar, desmarcar ou inserir, gravando na hora.
+// 0.3.242 (banco v328): o título de cada coluna é uma lista com todos os tópicos dela, onde se insere
+// outro. Modalidade e responsável inseridos ali ficam guardados mesmo antes de entrar numa intervenção.
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ChevronDown, HeartHandshake, Loader2, Pencil, Plus, Star, Trash2 } from "lucide-react";
+import { ChevronDown, HeartHandshake, Loader2, Pencil, Plus, Star, Trash2, X } from "lucide-react";
+import toast from "react-hot-toast";
 import Badge from "@/components/ui/Badge";
 import Dica from "@/components/ui/Dica";
 import Modal from "@/components/ui/Modal";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { ConfirmHost, confirmar } from "@/components/ui/confirm";
 import { DICAS_COMERCIAL_INTERVENCAO } from "@/lib/dicas/comercial";
-import { comOpcao, normalizarOpcao, opcoesDoCatalogo } from "@/lib/comercial/liberacao";
+import {
+  MODALIDADES,
+  acharNaLista,
+  comOpcao,
+  contarUsos,
+  normalizarOpcao,
+  opcoesDoCatalogo,
+  type ColunaTopico,
+  type TopicoIntervencao,
+} from "@/lib/comercial/liberacao";
 import {
   useAtualizarIntervencaoNaLinha,
   useCatalogoIntervencoes,
+  useCriarIntervencaoNoCatalogo,
+  useExcluirTopico,
+  useInserirTopico,
+  useTopicosIntervencao,
   useExcluirIntervencao,
   usePodeLiberarServicos,
   useSalvarIntervencao,
@@ -37,8 +53,21 @@ export default function IntervencoesPage() {
   const excluir = useExcluirIntervencao();
   const pode = usePodeLiberarServicos();
   const atualizar = useAtualizarIntervencaoNaLinha();
+  const criar = useCriarIntervencaoNoCatalogo();
+  const { data: topicos = [] } = useTopicosIntervencao();
+  const inserirTopico = useInserirTopico();
+  const excluirTopico = useExcluirTopico();
   const [forma, setForma] = useState<Forma | null>(null);
-  const opcoes = opcoesDoCatalogo(catalogo);
+  const opcoes = opcoesDoCatalogo(catalogo, topicos);
+
+  /** Os itens da lista do título: cada opção com o uso nas intervenções e o tópico guardado, se houver. */
+  const itensDaColuna = (coluna: ColunaTopico, valores: string[], listas: string[][]): ItemColuna[] =>
+    valores.map((valor) => ({
+      valor,
+      usos: contarUsos(listas, valor),
+      topico: topicos.find((t) => t.coluna === coluna && acharNaLista([t.valor], valor) !== undefined),
+      fixo: coluna === "MODALIDADE" && acharNaLista(MODALIDADES, valor) !== undefined,
+    }));
 
   if (!pode) {
     return (
@@ -73,9 +102,10 @@ export default function IntervencoesPage() {
             <HeartHandshake className="size-5 text-marca-primary" /> Intervenções
           </h1>
           <p className="max-w-3xl text-sm text-gray-500">
-            O que pode ser indicado aos riscos na Conciliação DRPS/QPS × AEP, com as modalidades e os responsáveis de cada uma. Clique no nome ou
-            na observação para alterar; abra Modalidades ou Responsável para marcar, desmarcar ou inserir outro. Tudo grava na hora, e o que for
-            inserido na Conciliação também aparece aqui.
+            O que pode ser indicado aos riscos na Conciliação DRPS/QPS × AEP, com as modalidades e os responsáveis de cada uma. O título de
+            cada coluna abre a lista dela, para inserir um tópico novo. Na linha, clique no nome ou na observação para alterar, e abra
+            Modalidades ou Responsável para marcar, desmarcar ou inserir. Tudo grava na hora, e o que for inserido na Conciliação também
+            aparece aqui.
           </p>
         </div>
         <button
@@ -91,9 +121,32 @@ export default function IntervencoesPage() {
         <table className="w-full min-w-[760px] text-sm">
           <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-600">
             <tr>
-              <th className="px-3 py-2">Intervenção</th>
-              <th className="w-48 px-3 py-2">Modalidades</th>
-              <th className="w-64 px-3 py-2">Responsável</th>
+              <th className="px-3 py-2">
+                <ListaDaColuna
+                  titulo="Intervenção"
+                  itens={catalogo.map((i) => ({ valor: i.nome }))}
+                  rotuloNovo="Nova intervenção"
+                  onInserir={(nome) => criar.mutateAsync({ nome, modalidades: [], responsaveis: [], ordem: proximaOrdem })}
+                />
+              </th>
+              <th className="w-48 px-3 py-2">
+                <ListaDaColuna
+                  titulo="Modalidades"
+                  itens={itensDaColuna("MODALIDADE", opcoes.modalidades, catalogo.map((i) => i.modalidades))}
+                  rotuloNovo="Nova modalidade"
+                  onInserir={(valor) => inserirTopico.mutateAsync({ coluna: "MODALIDADE", valor })}
+                  onExcluir={(t) => excluirTopico.mutateAsync(t)}
+                />
+              </th>
+              <th className="w-64 px-3 py-2">
+                <ListaDaColuna
+                  titulo="Responsável"
+                  itens={itensDaColuna("RESPONSAVEL", opcoes.responsaveis, catalogo.map((i) => i.responsaveis))}
+                  rotuloNovo="Novo responsável"
+                  onInserir={(valor) => inserirTopico.mutateAsync({ coluna: "RESPONSAVEL", valor })}
+                  onExcluir={(t) => excluirTopico.mutateAsync(t)}
+                />
+              </th>
               <th className="w-44 px-3 py-2" />
             </tr>
           </thead>
@@ -237,29 +290,11 @@ function TextoNaLinha({
 }
 
 /**
- * Lista suspensa da linha: marca e desmarca entre tudo o que já existe no catálogo, ou insere outro.
- * Cada mudança grava na hora; enquanto grava, a lista espera, para dois cliques não se atropelarem.
- * Com `comPadrao`, o primeiro marcado é o que a Conciliação traz preenchido, e a estrela troca o padrão.
- * A lista abre em posição fixa porque a tabela tem rolagem própria e a cortaria.
+ * Caixa que abre abaixo do botão (ou acima, sem espaço embaixo) em posição fixa: a tabela tem rolagem
+ * própria e cortaria uma caixa absoluta. Fecha ao clicar fora, rolar a página, mudar o tamanho ou com Esc.
  */
-function ListaNaLinha({
-  marcadas,
-  opcoes,
-  rotuloNovo,
-  ariaLabel,
-  comPadrao,
-  onMudar,
-}: {
-  marcadas: string[];
-  opcoes: string[];
-  rotuloNovo: string;
-  ariaLabel: string;
-  comPadrao?: boolean;
-  onMudar: (lista: string[]) => Promise<unknown>;
-}) {
+function useCaixaFixa() {
   const [aberto, setAberto] = useState(false);
-  const [gravando, setGravando] = useState(false);
-  const [novo, setNovo] = useState("");
   const [pos, setPos] = useState<{ left: number; top?: number; bottom?: number }>({ left: 0 });
   const botao = useRef<HTMLButtonElement>(null);
   const caixa = useRef<HTMLDivElement>(null);
@@ -289,6 +324,180 @@ function ListaNaLinha({
       window.removeEventListener("resize", fechar);
     };
   }, [aberto]);
+
+  const estilo: React.CSSProperties = { position: "fixed", left: pos.left, top: pos.top, bottom: pos.bottom };
+  const teclas = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setAberto(false);
+      botao.current?.focus();
+    }
+  };
+  return { aberto, setAberto, botao, caixa, estilo, teclas };
+}
+
+interface ItemColuna {
+  valor: string;
+  /** Em quantas intervenções aparece; sem número, não se aplica (a própria intervenção). */
+  usos?: number;
+  /** Só o tópico inserido pelo título e fora de qualquer intervenção pode sair daqui. */
+  topico?: TopicoIntervencao;
+  /** Das três modalidades de partida: fica sempre. */
+  fixo?: boolean;
+}
+
+/**
+ * Lista suspensa no título da coluna (0.3.242): todos os tópicos daquela coluna e o campo para inserir
+ * outro. Em Modalidades e Responsável o tópico novo fica guardado mesmo antes de estar em alguma
+ * intervenção (banco v328); em Intervenção, inserir cria a linha no catálogo.
+ */
+function ListaDaColuna({
+  titulo,
+  itens,
+  rotuloNovo,
+  onInserir,
+  onExcluir,
+}: {
+  titulo: string;
+  itens: ItemColuna[];
+  rotuloNovo: string;
+  onInserir: (valor: string) => Promise<unknown>;
+  onExcluir?: (t: TopicoIntervencao) => Promise<unknown>;
+}) {
+  const { aberto, setAberto, botao, caixa, estilo, teclas } = useCaixaFixa();
+  const [gravando, setGravando] = useState(false);
+  const [novo, setNovo] = useState("");
+
+  async function rodar(f: () => Promise<unknown>) {
+    setGravando(true);
+    try {
+      await f();
+    } catch {
+      // o hook já avisou o erro
+    } finally {
+      setGravando(false);
+    }
+  }
+
+  const inserir = () => {
+    const v = normalizarOpcao(novo);
+    if (!v) return;
+    const igual = acharNaLista(itens.map((i) => i.valor), v);
+    if (igual) {
+      toast.error(`${igual} já está na lista.`);
+      return;
+    }
+    setNovo("");
+    void rodar(() => onInserir(v));
+  };
+
+  return (
+    <>
+      <button
+        ref={botao}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={aberto}
+        title={`Ver e inserir ${titulo.toLowerCase()}`}
+        onClick={() => setAberto((a) => !a)}
+        className={cn(
+          "inline-flex items-center gap-1 rounded px-1 -mx-1 py-0.5 text-xs font-semibold text-gray-600 hover:bg-gray-200",
+          aberto && "bg-gray-200",
+        )}
+      >
+        {titulo}
+        <span className="font-normal text-gray-400">({itens.length})</span>
+        <ChevronDown className="size-3.5" />
+      </button>
+      {aberto && (
+        <div
+          ref={caixa}
+          role="listbox"
+          aria-label={titulo}
+          style={estilo}
+          className="z-50 w-72 rounded-lg border border-gray-200 bg-white py-1 text-left font-normal shadow-lg"
+          onKeyDown={teclas}
+        >
+          <p className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-gray-400">{titulo}</p>
+          <div className="max-h-60 overflow-y-auto">
+            {itens.map((i) => (
+              <div key={i.valor} className="flex items-center gap-2 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50">
+                <span className="flex-1">{i.valor}</span>
+                {i.usos !== undefined && (
+                  <span className="text-[11px] text-gray-400" title="Em quantas intervenções aparece">
+                    {i.usos === 0 ? "sem uso" : `em ${i.usos}`}
+                  </span>
+                )}
+                {onExcluir && i.topico && !i.usos && !i.fixo && (
+                  <button
+                    type="button"
+                    disabled={gravando}
+                    onClick={() => void rodar(() => onExcluir(i.topico!))}
+                    title="Tirar da lista"
+                    aria-label={`Tirar ${i.valor} da lista`}
+                    className="rounded p-0.5 text-gray-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-60"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            ))}
+            {itens.length === 0 && <p className="px-3 py-2 text-xs text-gray-500">Nada cadastrado ainda.</p>}
+          </div>
+          <div className="mt-1 flex gap-2 border-t border-gray-100 px-3 pt-2 pb-1">
+            <input
+              value={novo}
+              onChange={(e) => setNovo(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  inserir();
+                }
+              }}
+              placeholder={rotuloNovo}
+              aria-label={rotuloNovo}
+              disabled={gravando}
+              className={cn(inputCls, "py-1")}
+            />
+            <button
+              type="button"
+              onClick={inserir}
+              disabled={!novo.trim() || gravando}
+              className="shrink-0 rounded-lg border border-gray-300 px-2.5 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              {gravando ? <Loader2 className="size-4 animate-spin" /> : "Inserir"}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * Lista suspensa da linha: marca e desmarca entre tudo o que já existe no catálogo, ou insere outro.
+ * Cada mudança grava na hora; enquanto grava, a lista espera, para dois cliques não se atropelarem.
+ * Com `comPadrao`, o primeiro marcado é o que a Conciliação traz preenchido, e a estrela troca o padrão.
+ * A lista abre em posição fixa porque a tabela tem rolagem própria e a cortaria.
+ */
+function ListaNaLinha({
+  marcadas,
+  opcoes,
+  rotuloNovo,
+  ariaLabel,
+  comPadrao,
+  onMudar,
+}: {
+  marcadas: string[];
+  opcoes: string[];
+  rotuloNovo: string;
+  ariaLabel: string;
+  comPadrao?: boolean;
+  onMudar: (lista: string[]) => Promise<unknown>;
+}) {
+  const { aberto, setAberto, botao, caixa, estilo, teclas } = useCaixaFixa();
+  const [gravando, setGravando] = useState(false);
+  const [novo, setNovo] = useState("");
 
   async function mudar(lista: string[]) {
     setGravando(true);
@@ -333,15 +542,9 @@ function ListaNaLinha({
           role="listbox"
           aria-multiselectable
           aria-label={ariaLabel}
-          style={{ position: "fixed", left: pos.left, top: pos.top, bottom: pos.bottom }}
+          style={estilo}
           className="z-50 w-72 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.preventDefault();
-              setAberto(false);
-              botao.current?.focus();
-            }
-          }}
+          onKeyDown={teclas}
         >
           <div className="max-h-60 overflow-y-auto">
             {todas.map((o) => {
@@ -465,7 +668,8 @@ function ListaAberta({
 function JanelaIntervencao({ inicial, catalogo, onFechar }: { inicial: Forma; catalogo: IntervencaoCatalogo[]; onFechar: () => void }) {
   const salvar = useSalvarIntervencao();
   const [f, setF] = useState(inicial);
-  const opcoes = opcoesDoCatalogo(catalogo);
+  const { data: topicos } = useTopicosIntervencao();
+  const opcoes = opcoesDoCatalogo(catalogo, topicos);
 
   const gravar = () =>
     salvar.mutate(

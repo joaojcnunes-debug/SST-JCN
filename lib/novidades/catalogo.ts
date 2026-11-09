@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "intervencoes-topicos-por-coluna",
+    data: "2026-11-09",
+    tipo: "melhoria",
+    titulo: "Intervenções: cada coluna tem a própria lista de tópicos",
+    texto:
+      "Na página Intervenções, o título de cada coluna (Intervenção, Modalidades e Responsável) abre a lista de tudo o que " +
+      "existe naquela coluna, com o número de intervenções em que cada um aparece. Ali você insere um tópico novo: uma " +
+      "modalidade ou um responsável inserido fica disponível nas linhas e na Conciliação mesmo antes de entrar em alguma " +
+      "intervenção, e inserir em Intervenção cria a linha. Tópico sem uso pode sair da lista pelo X.",
+    onde: "Consolidação › Intervenções",
+    versoes: ["0.3.242"],
+  },
+  {
     id: "intervencoes-lista-na-linha",
     data: "2026-11-09",
     tipo: "melhoria",

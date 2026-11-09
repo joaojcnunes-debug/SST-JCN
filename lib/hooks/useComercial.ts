@@ -25,7 +25,9 @@ import {
   aplicarVendas,
   visaoDoVendedor,
   type AtendimentoComercial,
+  type ColunaTopico,
   type ConciliacaoFechada,
+  type TopicoIntervencao,
   type IntervencaoIndicada,
   type VendaRegistrada,
 } from "@/lib/comercial/liberacao";
@@ -266,6 +268,53 @@ export function useCatalogoIntervencoes() {
       if (error) throw error;
       return (data ?? []) as IntervencaoCatalogo[];
     },
+  });
+}
+
+/** Tópicos inseridos pelo título das colunas Modalidades e Responsável (0.3.242, banco v328). */
+export function useTopicosIntervencao() {
+  return useQuery({
+    // Debaixo da chave do catálogo: o que invalida o catálogo também relê os tópicos.
+    queryKey: [CHAVE_CATALOGO, "topicos"],
+    queryFn: async () => {
+      const { data, error } = await sb()
+        .from("comercial_intervencao_topicos")
+        .select("id_topico, coluna, valor")
+        .order("criado_em");
+      if (error) throw error;
+      return (data ?? []) as TopicoIntervencao[];
+    },
+  });
+}
+
+export function useInserirTopico() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (t: { coluna: ColunaTopico; valor: string }) => {
+      const { error } = await sb().from("comercial_intervencao_topicos").insert(t);
+      if (error) throw error;
+    },
+    onSuccess: async (_d, t) => {
+      toast.success(`${t.valor} entrou na lista`);
+      await qc.invalidateQueries({ queryKey: [CHAVE_CATALOGO] });
+    },
+    onError: (e: Error & { code?: string }) =>
+      toast.error(e.code === "23505" ? "Esse tópico já está na lista." : mensagemErro(e, "Falha ao inserir o tópico")),
+  });
+}
+
+export function useExcluirTopico() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (t: TopicoIntervencao) => {
+      const { error } = await sb().from("comercial_intervencao_topicos").delete().eq("id_topico", t.id_topico);
+      if (error) throw error;
+    },
+    onSuccess: async (_d, t) => {
+      toast.success(`${t.valor} saiu da lista`);
+      await qc.invalidateQueries({ queryKey: [CHAVE_CATALOGO] });
+    },
+    onError: (e: Error) => toast.error(mensagemErro(e, "Falha ao excluir o tópico")),
   });
 }
 

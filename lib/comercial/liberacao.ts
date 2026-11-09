@@ -35,13 +35,35 @@ export function acharIntervencao<T extends { nome: string }>(catalogo: readonly 
   return catalogo.find((c) => mesmaOpcao(c.nome, nome));
 }
 
-/** O que os campos Modalidade e Responsável oferecem: tudo o que já está no catálogo. */
-export function opcoesDoCatalogo(catalogo: readonly { modalidades: readonly string[]; responsaveis: readonly string[] }[]) {
+/** Coluna da página Intervenções que guarda tópicos próprios (0.3.242, banco v328). */
+export type ColunaTopico = "MODALIDADE" | "RESPONSAVEL";
+
+/** Tópico inserido pelo título da coluna: existe mesmo antes de estar em alguma intervenção. */
+export interface TopicoIntervencao {
+  id_topico: string;
+  coluna: ColunaTopico;
+  valor: string;
+}
+
+/**
+ * O que os campos Modalidade e Responsável oferecem: as modalidades de partida, tudo o que já está no
+ * catálogo e os tópicos inseridos pelo título da coluna (0.3.242), sem repetir.
+ */
+export function opcoesDoCatalogo(
+  catalogo: readonly { modalidades: readonly string[]; responsaveis: readonly string[] }[],
+  topicos: readonly { coluna: ColunaTopico; valor: string }[] = [],
+) {
   const juntar = (base: readonly string[], listas: (readonly string[])[]) => listas.flat().reduce<string[]>((acc, v) => comOpcao(acc, v), [...base]);
+  const daColuna = (c: ColunaTopico) => topicos.filter((t) => t.coluna === c).map((t) => t.valor);
   return {
-    modalidades: juntar(MODALIDADES, catalogo.map((c) => c.modalidades)),
-    responsaveis: juntar([], catalogo.map((c) => c.responsaveis)),
+    modalidades: juntar(MODALIDADES, [...catalogo.map((c) => c.modalidades), daColuna("MODALIDADE")]),
+    responsaveis: juntar([], [...catalogo.map((c) => c.responsaveis), daColuna("RESPONSAVEL")]),
   };
+}
+
+/** Em quantas intervenções o tópico aparece, sem olhar maiúsculas. */
+export function contarUsos(listas: readonly (readonly string[])[], valor: string): number {
+  return listas.filter((l) => acharNaLista(l, valor) !== undefined).length;
 }
 
 export type StatusAtendimento = "EM_ANDAMENTO" | "CONCLUIDO";
