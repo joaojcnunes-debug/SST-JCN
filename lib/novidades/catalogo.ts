@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-coluna-setor",
+    data: "2026-11-09",
+    tipo: "melhoria",
+    titulo: "Oportunidades: coluna Setor em cada serviço",
+    texto:
+      "A tabela de serviços do Comercial ganhou a coluna Setor, com os setores a que cada serviço se refere: os setores " +
+      "da AET e os com fatores organizacionais na AEP, o setor de cada máquina, de cada medição e dos riscos químicos e " +
+      "psicossociais da inspeção. Treinamentos NR aparecem como \"Empresa toda\", porque são cadastrados para a empresa; " +
+      "item cadastrado sem setor aparece como \"Setor não informado\".",
+    onde: "Comercial › Oportunidades",
+    versoes: ["0.3.248"],
+  },
+  {
     id: "comercial-venda-por-intervencao",
     data: "2026-11-09",
     tipo: "melhoria",

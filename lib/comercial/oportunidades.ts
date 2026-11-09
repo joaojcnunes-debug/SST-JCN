@@ -87,9 +87,13 @@ export interface InspecaoComercial {
   liberado_comercial_em?: string | null;
   liberado_comercial_por?: string | null;
   empresas?: unknown;
-  maquinas: { nome: string | null; grau_risco: string | null; adequacao: boolean | null }[];
+  /** v330: `setor` da máquina (pode faltar no cadastro). */
+  maquinas: { nome: string | null; grau_risco: string | null; adequacao: boolean | null; setor?: string | null }[];
   medicoes: { agente: string | null; qual: string | null; setor: string | null }[];
   quimicos: string[];
+  /** v330: setores dos riscos químicos e dos psicossociais da inspeção. */
+  quimicos_setores?: string[];
+  psicossociais_setores?: string[];
   ergonomicos: number;
   psicossociais: number;
   treinamentos: { nr: string | null; titulo: string | null }[];
@@ -132,11 +136,39 @@ export interface Oportunidade {
   detalhes: string[];
   /** Para AET: setores indicados (com expostos). */
   setores: SetorAet[];
+  /**
+   * 0.3.248: os setores a que o serviço se refere, para a coluna Setor do vendedor. Treinamentos NR
+   * valem para a empresa toda (SETOR_EMPRESA_TODA); item sem setor no cadastro vira SETOR_NAO_INFORMADO.
+   */
+  setoresIndicados?: string[];
   /** Intervenções psicossociais: uma linha por intervenção indicada na Conciliação (0.3.246). */
   intervencoes?: LinhaIntervencaoOferta[];
   /** v323: o vendedor marcou como vendido. Ainda sem documento, a situação vira "vendida". */
   venda?: VendaFeita;
 }
+
+export const SETOR_EMPRESA_TODA = "Empresa toda";
+export const SETOR_NAO_INFORMADO = "Setor não informado";
+
+/** Junta setores sem repetir, mantendo a ordem; "Empresa toda" e "Setor não informado" vão para o fim. */
+export function juntarSetores(...listas: (readonly (string | null | undefined)[])[]): string[] {
+  const vistos = new Set<string>();
+  const nomes: string[] = [];
+  for (const l of listas)
+    for (const x of l) {
+      const n = x?.trim();
+      if (n && !vistos.has(n)) {
+        vistos.add(n);
+        nomes.push(n);
+      }
+    }
+  const fim = [SETOR_EMPRESA_TODA, SETOR_NAO_INFORMADO];
+  return [...nomes.filter((n) => !fim.includes(n)), ...fim.filter((n) => vistos.has(n))];
+}
+
+/** Setores de uma lista de itens; o item sem setor conta como "Setor não informado". */
+const setoresDosItens = (itens: readonly { setor?: string | null }[]) =>
+  juntarSetores(itens.map((x) => x.setor?.trim() || SETOR_NAO_INFORMADO));
 
 export interface InfoInspecao {
   idInspecao: string;
@@ -329,14 +361,22 @@ export function montarComercial(
         : { situacao, nota: [] };
     };
     const ops = new Map<Produto, Oportunidade>();
-    const add = (produto: Produto, situacao: SituacaoOportunidade, origem: Origem, detalhes: string[], setores: SetorAet[] = []) => {
+    const add = (
+      produto: Produto,
+      situacao: SituacaoOportunidade,
+      origem: Origem,
+      detalhes: string[],
+      setoresIndicados: string[],
+      setores: SetorAet[] = [],
+    ) => {
       const ja = ops.get(produto);
       if (ja) {
         if (!ja.origens.includes(origem)) ja.origens.push(origem);
         ja.detalhes.push(...detalhes.filter((d) => !ja.detalhes.includes(d)));
+        ja.setoresIndicados = juntarSetores(ja.setoresIndicados ?? [], setoresIndicados);
         return;
       }
-      ops.set(produto, { produto, situacao, origens: [origem], detalhes: [...detalhes], setores });
+      ops.set(produto, { produto, situacao, origens: [origem], detalhes: [...detalhes], setores, setoresIndicados: juntarSetores(setoresIndicados) });
     };
 
     // ── Da AEP entregue
@@ -351,7 +391,7 @@ export function montarComercial(
     const dataInsp = insp?.concluida_em ?? null;
     if (aep && empresa.precisaAet) {
       const r = avaliar(["AET"], [dataAep]);
-      add("AET", r.situacao, "AEP", [...setoresAet.map((s) => s.nome), ...r.nota], setoresAet);
+      add("AET", r.situacao, "AEP", [...setoresAet.map((s) => s.nome), ...r.nota], setoresAet.map((s) => s.nome), setoresAet);
     }
     // DRPS/Questionário: a indicação mais nova (AEP ou inspeção) decide.
     const quest = avaliar(
@@ -362,7 +402,7 @@ export function montarComercial(
       add("DRPS/Questionário", quest.situacao, "AEP", [
         `${empresa.totalAlertas} fator(es) organizacional(is) na AEP`,
         ...quest.nota,
-      ]);
+      ], (empresa.avaliacoes[0]?.setores ?? []).map((s) => s.nome));
     }
 
     // ── Da inspeção concluída
@@ -375,7 +415,7 @@ export function montarComercial(
               `${m.nome || "Máquina"}${m.grau_risco ? ` (grau ${m.grau_risco.toLowerCase()})` : ""}${m.adequacao ? " · necessita adequação" : ""}`,
           ),
           ...r.nota,
-        ]);
+        ], setoresDosItens(insp.maquinas));
       }
       if (insp.medicoes.length > 0) {
         add(
@@ -383,17 +423,18 @@ export function montarComercial(
           "aberta",
           "Inspeção",
           insp.medicoes.map((m) => [m.qual || m.agente || "Agente físico", m.setor].filter(Boolean).join(" · ")),
+          setoresDosItens(insp.medicoes),
         );
       }
       if (insp.quimicos.length > 0) {
         const r = avaliar(["QUIMICOS"], [dataInsp]);
-        add("Análise de Químicos", r.situacao, "Inspeção", [...insp.quimicos, ...r.nota]);
+        add("Análise de Químicos", r.situacao, "Inspeção", [...insp.quimicos, ...r.nota], insp.quimicos_setores ?? []);
       }
       if (insp.psicossociais > 0) {
         add("DRPS/Questionário", quest.situacao, "Inspeção", [
           `${insp.psicossociais} risco(s) psicossocial(is) na inspeção`,
           ...quest.nota,
-        ]);
+        ], insp.psicossociais_setores ?? []);
       }
       if (insp.treinamentos.length > 0) {
         const certs = new Set(certificados.filter((c) => c.id_empresa === id).map((c) => numeroNr(c.nr)));
@@ -407,6 +448,8 @@ export function montarComercial(
           insp.treinamentos.map(
             (t) => `${[t.nr, t.titulo].filter(Boolean).join(" – ")}${certs.has(numeroNr(t.nr)) ? " · certificado emitido" : ""}`,
           ),
+          // O treinamento é cadastrado na inspeção para a empresa, sem setor.
+          [SETOR_EMPRESA_TODA],
         );
       }
     }
