@@ -41,6 +41,19 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "comercial-desfazer-venda-servico-inteiro",
+    data: "2026-11-09",
+    tipo: "correcao",
+    titulo: "Oportunidades: desfazer a venda antiga do serviço inteiro",
+    texto:
+      "A venda de Intervenção psicossocial marcada como serviço inteiro, antes da venda por intervenção, agora aparece " +
+      "numa faixa no topo da tabela das intervenções, com quem vendeu e o botão Desfazer. Desfeita, cada intervenção " +
+      "volta a ter o seu \"Marcar como vendido\".",
+    onde: "Comercial › Oportunidades",
+    impacto: "O Desfazer aparece para quem registrou a venda ou para um Admin.",
+    versoes: ["0.3.249"],
+  },
+  {
     id: "comercial-coluna-setor",
     data: "2026-11-09",
     tipo: "melhoria",
