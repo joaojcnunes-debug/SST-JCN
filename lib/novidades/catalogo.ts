@@ -41,6 +41,17 @@ import type { MelhoriasInternas, Novidade } from "@/lib/novidades/tipos";
  */
 export const CATALOGO: Novidade[] = [
   {
+    id: "conciliacao-intervencoes-rotulo-setor-risco",
+    data: "2026-11-09",
+    tipo: "melhoria",
+    titulo: "Conciliação: Setor e Risco identificados na etapa Intervenções",
+    texto:
+      "Na etapa Intervenções da Conciliação, a coluna Risco virou \"Setor e risco\" e mostra \"Setor:\" antes do nome do setor e \"Risco:\" " +
+      "antes do fator, para identificar cada linha mais rápido.",
+    onde: "Consolidação › Conciliação DRPS/QPS × AEP › Intervenções",
+    versoes: ["0.3.243"],
+  },
+  {
     id: "intervencoes-topicos-por-coluna",
     data: "2026-11-09",
     tipo: "melhoria",
